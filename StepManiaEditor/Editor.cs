@@ -8,21 +8,27 @@ using System;
 using System.Collections.Generic;
 using System.Numerics;
 using Vector2 = Microsoft.Xna.Framework.Vector2;
+using Vector4 = Microsoft.Xna.Framework.Vector4;
 
 namespace StepManiaEditor
 {
 	public class Editor : Game
 	{
-		private const int ReceptorY = 100;
-		private const int WaveFormTextureWidth = 128 * 8;
+		private const int DefaultWindowWidth = 1920;
+		private const int DefaultWindowHeight = 1080;
+		private const int DefaultArrowWidth = 128;
+		private Vector2 FocalPoint = new Vector2(DefaultWindowWidth >> 1, 100 + (DefaultArrowWidth >> 1));
+
+		private const int WaveFormTextureWidth = DefaultArrowWidth * 8;
 
 		private GraphicsDeviceManager Graphics;
 		private SpriteBatch SpriteBatch;
-		private Texture2D TextureReceptor;
 		private ImGuiRenderer ImGuiRenderer;
 		private WaveFormRenderer WaveFormRenderer;
 		private SoundManager SoundManager;
 		private SoundMipMap SongMipMap;
+
+		private TextureAtlas TextureAtlas;
 
 		// temp controls
 		private int MouseScrollValue = 0;
@@ -42,7 +48,7 @@ namespace StepManiaEditor
 
 		private ImFontPtr Font;
 
-		// Logger
+		// Logger GUI
 		private readonly LinkedList<Logger.LogMessage> LogBuffer = new LinkedList<Logger.LogMessage>();
 		private readonly object LogBufferLock = new object();
 		private bool ShowLogWindow = true;
@@ -57,6 +63,19 @@ namespace StepManiaEditor
 			new System.Numerics.Vector4(1.0f, 0.0f, 0.0f, 1.0f),
 		};
 		private bool LogWindowLineWrap;
+
+		// WaveForm GUI
+		private bool ShowWaveFormWindow = true;
+		private bool ShowWaveForm = true;
+		private bool WaveFormScaleXWhenZooming = true;
+		private readonly string[] WaveFormWindowSparseColorOptions = {"Darker Dense Color", "Same As Dense Color", "Unique Color"};
+		private int WaveFormWindowSparseColorOption = 0;
+		private float SparseColorScale = 0.5f;
+		private System.Numerics.Vector3 WaveFormDenseColor;
+		private System.Numerics.Vector3 WaveFormSparseColor;
+		private float WaveFormMaxXPercentagePerChannel = 0.9f;
+
+		private bool ShowImGuiTestWindow = true;
 
 		public Editor()
 		{
@@ -94,8 +113,8 @@ namespace StepManiaEditor
 
 		protected override void Initialize()
 		{
-			Graphics.PreferredBackBufferHeight = 1080;
-			Graphics.PreferredBackBufferWidth = 1920;
+			Graphics.PreferredBackBufferHeight = DefaultWindowHeight;
+			Graphics.PreferredBackBufferWidth = DefaultWindowWidth;
 			Graphics.ApplyChanges();
 
 			ImGuiRenderer = new ImGuiRenderer(this);
@@ -112,8 +131,11 @@ namespace StepManiaEditor
 			}
 
 			WaveFormRenderer = new WaveFormRenderer(GraphicsDevice, WaveFormTextureWidth, MaxScreenHeight);
+			WaveFormRenderer.SetXScale(WaveFormMaxXPercentagePerChannel);
 			WaveFormRenderer.SetSoundMipMap(SongMipMap);
-			WaveFormRenderer.SetYFocusOffset(128);
+			WaveFormRenderer.SetFocalPoint(FocalPoint);
+
+			TextureAtlas = new TextureAtlas(GraphicsDevice, 2048, 2048, 1);
 
 			base.Initialize();
 		}
@@ -122,22 +144,78 @@ namespace StepManiaEditor
 		{
 			SpriteBatch = new SpriteBatch(GraphicsDevice);
 
-			// TODO: use this.Content to load your game content here
-			TextureReceptor = Content.Load<Texture2D>("receptor");
-
-			// Texture loading example
-
+			TextureAtlas.AddTexture("1_4", Content.Load<Texture2D>("1_4"));
+			TextureAtlas.AddTexture("1_8", Content.Load<Texture2D>("1_8"));
+			TextureAtlas.AddTexture("receptor", Content.Load<Texture2D>("receptor"));
+			
 			LoadSongAsync();
 			
 			base.LoadContent();
 		}
 
-		private int LastLogSecond = 0;
-
 		protected override void Update(GameTime gameTime)
 		{
+			ProcessInput(gameTime);
+
+			TextureAtlas.Update();
+
+			// Time-dependent updates
+			if (SongTime != DesiredSongTime)
+			{
+				SongTime = Interpolation.Lerp(
+					SongTimeAtStartOfInterpolation,
+					DesiredSongTime,
+					SongTimeInterpolationTimeStart,
+					SongTimeInterpolationTimeStart + 0.1,
+					gameTime.TotalGameTime.TotalSeconds);
+			}
+
+			if (Zoom != DesiredZoom)
+			{
+				Zoom = Interpolation.Lerp(
+					ZoomAtStartOfInterpolation,
+					DesiredZoom,
+					ZoomInterpolationTimeStart,
+					ZoomInterpolationTimeStart + 0.1,
+					gameTime.TotalGameTime.TotalSeconds);
+			}
+
+			if (Playing)
+			{
+				SongTime += gameTime.ElapsedGameTime.TotalSeconds;
+				DesiredSongTime = SongTime;
+			}
+
+			if (SongMipMap.IsMipMapDataLoaded())
+			{
+				// smooth zooming in and out
+				//Zoom = 4000;
+				//const double startTime = 0.0;
+				//if (gameTime.TotalGameTime.TotalSeconds > startTime)
+				//{
+				//	var period = 30;
+				//	var time = (gameTime.TotalGameTime.TotalSeconds - startTime) % period;
+				//	if (time > (double)period / 2)
+				//		time = period - time;
+					
+				//	Zoom /= Math.Pow(2.0, time);
+				//}
+			}
+
+			WaveFormRenderer.SetXScale(WaveFormMaxXPercentagePerChannel);
+			WaveFormRenderer.SetColors(
+				WaveFormDenseColor.X, WaveFormDenseColor.Y, WaveFormDenseColor.Z,
+				WaveFormSparseColor.X, WaveFormSparseColor.Y, WaveFormSparseColor.Z);
+			WaveFormRenderer.SetScaleXWhenZooming(WaveFormScaleXWhenZooming);
+			WaveFormRenderer.Update(SongTime, Zoom);
+
+			base.Update(gameTime);
+		}
+
+		private void ProcessInput(GameTime gameTime)
+		{
 			if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed ||
-			    Keyboard.GetState().IsKeyDown(Keys.Escape))
+				Keyboard.GetState().IsKeyDown(Keys.Escape))
 				Exit();
 
 			// Let imGui process input so we can see if we should ignore it.
@@ -207,63 +285,17 @@ namespace StepManiaEditor
 					}
 				}
 			}
-
-			// Time-dependent updates
-			if (SongTime != DesiredSongTime)
-			{
-				SongTime = Interpolation.Lerp(
-					SongTimeAtStartOfInterpolation,
-					DesiredSongTime,
-					SongTimeInterpolationTimeStart,
-					SongTimeInterpolationTimeStart + 0.1,
-					gameTime.TotalGameTime.TotalSeconds);
-			}
-
-			if (Zoom != DesiredZoom)
-			{
-				Zoom = Interpolation.Lerp(
-					ZoomAtStartOfInterpolation,
-					DesiredZoom,
-					ZoomInterpolationTimeStart,
-					ZoomInterpolationTimeStart + 0.1,
-					gameTime.TotalGameTime.TotalSeconds);
-			}
-
-			if (Playing)
-			{
-				SongTime += gameTime.ElapsedGameTime.TotalSeconds;
-				DesiredSongTime = SongTime;
-			}
-
-			if (SongMipMap.IsMipMapDataLoaded())
-			{
-				// smooth zooming in and out
-				//Zoom = 4000;
-				//const double startTime = 0.0;
-				//if (gameTime.TotalGameTime.TotalSeconds > startTime)
-				//{
-				//	var period = 30;
-				//	var time = (gameTime.TotalGameTime.TotalSeconds - startTime) % period;
-				//	if (time > (double)period / 2)
-				//		time = period - time;
-					
-				//	Zoom /= Math.Pow(2.0, time);
-				//}
-			}
-
-			WaveFormRenderer.Update(SongTime, Zoom);
-
-			base.Update(gameTime);
 		}
-
-		
 
 		protected override void Draw(GameTime gameTime)
 		{
-			GraphicsDevice.Clear(Color.CornflowerBlue);
+			GraphicsDevice.Clear(Color.Black);
 
 			SpriteBatch.Begin();
-			WaveFormRenderer.Draw(SpriteBatch);
+			if (ShowWaveForm)
+			{
+				WaveFormRenderer.Draw(SpriteBatch);
+			}
 			DrawReceptors();
 			SpriteBatch.End();
 
@@ -271,51 +303,26 @@ namespace StepManiaEditor
 
 			base.Draw(gameTime);
 		}
-
-		// TEST DATA
-		private float f = 0.0f;
-		private bool show_test_window = false;
-		private bool show_another_window = false;
-		private System.Numerics.Vector3 clear_color = new System.Numerics.Vector3(114f / 255f, 144f / 255f, 154f / 255f);
-		private byte[] _textBuffer = new byte[100];
-
+		
 		private void DrawGui(GameTime gameTime)
 		{
-			// Call BeforeLayout first to set things up
-			ImGuiRenderer.BeforeLayout(gameTime);
-
 			ImGui.PushFont(Font);
 
-			// 1. Show a simple window
-			// Tip: if we don't call ImGui.Begin()/ImGui.End() the widgets appears in a window automatically called "Debug"
+			DrawMainMenuUI();
+
+			// Debug UI
 			{
 				ImGui.Text("Hello, world!");
-				ImGui.SliderFloat("float", ref f, 0.0f, 1.0f, string.Empty);
-				ImGui.ColorEdit3("clear color", ref clear_color);
-				if (ImGui.Button("Test Window")) show_test_window = !show_test_window;
-				if (ImGui.Button("Another Window")) show_another_window = !show_another_window;
 				ImGui.Text(string.Format("Application average {0:F3} ms/frame ({1:F1} FPS)", 1000f / ImGui.GetIO().Framerate, ImGui.GetIO().Framerate));
-
-				ImGui.InputText("Text input", _textBuffer, 100);
 			}
-
-			// 2. Show another simple window, this time using an explicit Begin/End pair
-			if (show_another_window)
-			{
-				ImGui.SetNextWindowSize(new System.Numerics.Vector2(200, 100), ImGuiCond.FirstUseEver);
-				ImGui.Begin("Another Window", ref show_another_window);
-				ImGui.Text("Hello");
-				ImGui.End();
-			}
-
-			// 3. Show the ImGui test window. Most of the sample code is in ImGui.ShowTestWindow()
-			if (show_test_window)
+			if (ShowImGuiTestWindow)
 			{
 				ImGui.SetNextWindowPos(new System.Numerics.Vector2(650, 20), ImGuiCond.FirstUseEver);
-				ImGui.ShowDemoWindow(ref show_test_window);
+				ImGui.ShowDemoWindow(ref ShowImGuiTestWindow);
 			}
 
-			DrawLog();
+			DrawLogUI();
+			DrawWaveFormUI();
 
 			ImGui.PopFont();
 
@@ -325,31 +332,42 @@ namespace StepManiaEditor
 
 		private void DrawReceptors()
 		{
-			//SpriteBatch.Draw(
-			//	TextureReceptor,
-			//	new Vector2(0, ReceptorY),
-			//	null,
-			//	Color.White,
-			//	0.1f,//(float)Math.PI * 0.5f,
-			//	Vector2.Zero,
-			//	1.0f,
-			//	SpriteEffects.None,
-			//	1.0f);
-
-			SpriteBatch.Draw(
-				TextureReceptor,
-				new Vector2(128, ReceptorY),
-				null,
-				Color.White,
-				0.0f,
-				Vector2.Zero,
-				1.0f,
-				SpriteEffects.None,
-				1.0f);
-
+			var numArrows = 8;
+			var zoom = Zoom;
+			if (zoom > 1.0)
+				zoom = 1.0;
+			var arrowSize = DefaultArrowWidth * zoom;
+			var xStart = FocalPoint.X - (numArrows * arrowSize * 0.5);
+			var y = FocalPoint.Y - (arrowSize * 0.5);
+			
+			var rot = new [] {(float) Math.PI * 0.5f, 0.0f, (float) Math.PI, (float) Math.PI * 1.5f};
+			for (var i = 0; i < numArrows; i++)
+			{
+				var x = xStart + i * arrowSize;
+				TextureAtlas.Draw("receptor", SpriteBatch, new Rectangle((int)x, (int)y, (int)arrowSize, (int)arrowSize), rot[i % rot.Length]);
+			}
 		}
 
-		private void DrawLog()
+		private void DrawMainMenuUI()
+		{
+			if (ImGui.BeginMainMenuBar())
+			{
+				if (ImGui.BeginMenu("File"))
+				{
+					ImGui.EndMenu();
+				}
+				if (ImGui.BeginMenu("View"))
+				{
+					ImGui.Checkbox("Log", ref ShowLogWindow);
+					ImGui.Checkbox("Waveform Controls", ref ShowWaveFormWindow);
+					ImGui.Checkbox("ImGui Demo Window", ref ShowImGuiTestWindow);
+					ImGui.EndMenu();
+				}
+				ImGui.EndMainMenuBar();
+			}
+		}
+
+		private void DrawLogUI()
 		{
 			if (!ShowLogWindow)
 				return;
@@ -394,6 +412,39 @@ namespace StepManiaEditor
 					}
 				}
 				ImGui.EndChild();
+			}
+			ImGui.End();
+		}
+
+		private void DrawWaveFormUI()
+		{
+			if (!ShowWaveFormWindow)
+				return;
+
+			ImGui.SetNextWindowSize(new System.Numerics.Vector2(0, 0), ImGuiCond.FirstUseEver);
+			ImGui.Begin("Waveform", ref ShowWaveFormWindow, ImGuiWindowFlags.NoScrollbar);
+
+			ImGui.Checkbox("Show Waveform", ref ShowWaveForm);
+			ImGui.Checkbox("Scale X When Zooming", ref WaveFormScaleXWhenZooming);
+			ImGui.SliderFloat("X Scale", ref WaveFormMaxXPercentagePerChannel, 0.0f, 1.0f);
+
+			ImGui.ColorEdit3("Dense Color", ref WaveFormDenseColor, ImGuiColorEditFlags.NoAlpha);
+
+			ImGui.Combo("Sparse Color Mode", ref WaveFormWindowSparseColorOption, WaveFormWindowSparseColorOptions, WaveFormWindowSparseColorOptions.Length);
+			if (WaveFormWindowSparseColorOption == 0)
+			{
+				ImGui.SliderFloat("Sparse Color Scale", ref SparseColorScale, 0.0f, 1.0f);
+				WaveFormSparseColor.X = WaveFormDenseColor.X * SparseColorScale;
+				WaveFormSparseColor.Y = WaveFormDenseColor.Y * SparseColorScale;
+				WaveFormSparseColor.Z = WaveFormDenseColor.Z * SparseColorScale;
+			}
+			else if (WaveFormWindowSparseColorOption == 1)
+			{
+				WaveFormSparseColor = WaveFormDenseColor;
+			}
+			else
+			{
+				ImGui.ColorEdit3("Sparse Color", ref WaveFormSparseColor, ImGuiColorEditFlags.NoAlpha);
 			}
 			ImGui.End();
 		}

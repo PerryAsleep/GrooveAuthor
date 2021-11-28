@@ -125,18 +125,6 @@ namespace StepManiaEditor
         }
 
         /// <summary>
-        /// Sets up ImGui for a new frame, should be called at frame start
-        /// </summary>
-        public virtual void BeforeLayout(GameTime gameTime)
-        {
-            //ImGui.GetIO().DeltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
-
-            //UpdateInput();
-
-            //ImGui.NewFrame();
-        }
-
-        /// <summary>
         /// Asks ImGui for the generated geometry data and sends it to the graphics pipeline, should be called after the UI is drawn using ImGui.** calls
         /// </summary>
         public virtual void AfterLayout()

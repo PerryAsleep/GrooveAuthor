@@ -11,13 +11,15 @@ namespace StepManiaEditor
 		/// </summary>
 		private const int NumTextures = 2;
 		/// <summary>
-		/// Color for sparse area of waveform. Dark green in BRG565.
+		/// Color for sparse area of waveform. Dark green in BGR565.
 		/// </summary>
-		private const ushort ColorSparse = 0x3E0;
+		private ushort ColorSparse = 0x3E0;
 		/// <summary>
-		/// Color for dense area of waveform. Light green in BRG565.
+		/// Color for dense area of waveform. Light green in BGR565.
 		/// </summary>
-		private const ushort ColorDense = 0x7E0;
+		private ushort ColorDense = 0x7E0;
+
+		private bool ScaleXWhenZooming = true;
 
 		/// <summary>
 		/// Width of texture in pixels.
@@ -31,16 +33,18 @@ namespace StepManiaEditor
 		/// Y Offset in pixels of the focal point of the waveform.
 		/// At 0, the waveform will be rendered such that the given time is at the top of the texture.
 		/// </summary>
-		private int YFocusOffset;
+		private Vector2 FocalPoint;
+
+		private float XScale = 1.0f;
 
 		/// <summary>
 		/// Textures to render to. Array for double buffering.
 		/// </summary>
 		private readonly Texture2D[] Textures;
 		/// <summary>
-		/// BRG565 data to set on the texture after updating each frame.
+		/// BGR565 data to set on the texture after updating each frame.
 		/// </summary>
-		private readonly ushort[] BRG565Data;
+		private readonly ushort[] BGR565Data;
 		/// <summary>
 		/// One row of dense colored pixels, used for copying memory quickly into the data buffer instead of looping.
 		/// </summary>
@@ -77,7 +81,7 @@ namespace StepManiaEditor
 			}
 
 			// Set up the pixel data.
-			BRG565Data = new ushort[Width * Height];
+			BGR565Data = new ushort[Width * Height];
 			DenseLine = new ushort[Width];
 			SparseLine = new ushort[Width];
 			for (var i = 0; i < Width; i++)
@@ -87,21 +91,54 @@ namespace StepManiaEditor
 			}
 		}
 
+		public void SetXScale(float xScale)
+		{
+			XScale = xScale;
+		}
+
+		public void SetScaleXWhenZooming(bool scaleXWhenZooming)
+		{
+			ScaleXWhenZooming = scaleXWhenZooming;
+		}
+
+		public void SetColors(float dr, float dg, float db, float sr, float sg, float sb)
+		{
+			ushort colorDense = (ushort)(((ushort)(dr * 31) << 11) + ((ushort)(dg * 63) << 5) + (ushort)(db * 31));
+			if (colorDense != ColorDense)
+			{
+				ColorDense = colorDense;
+				for (var i = 0; i < Width; i++)
+				{
+					DenseLine[i] = ColorDense;
+				}
+			}
+
+			ushort colorSparse = (ushort)(((ushort)(sr * 31) << 11) + ((ushort)(sg * 63) << 5) + (ushort)(sb * 31));
+			if (colorSparse != ColorSparse)
+			{
+				ColorSparse = colorSparse;
+				for (var i = 0; i < Width; i++)
+				{
+					SparseLine[i] = ColorSparse;
+				}
+			}
+		}
+
 		public void SetSoundMipMap(SoundMipMap mipMap)
 		{
 			MipMap = mipMap;
 			SampleRate = MipMap.GetSampleRate();
 		}
 
-		public void SetYFocusOffset(int yFocusOffset)
+		public void SetFocalPoint(Vector2 focalPoint)
 		{
-			YFocusOffset = yFocusOffset;
+			FocalPoint = focalPoint;
 		}
 
 		public void Draw(SpriteBatch spriteBatch)
 		{
 			// Draw the current texture.
-			spriteBatch.Draw(Textures[TextureIndex], new Vector2(0, 0), null, Color.White);
+			spriteBatch.Draw(Textures[TextureIndex], new Vector2(FocalPoint.X - (Width >> 1), 0), null, Color.White);
 			// Advance to the next texture index for the next frame.
 			TextureIndex = (TextureIndex + 1) % NumTextures;
 		}
@@ -122,10 +159,13 @@ namespace StepManiaEditor
 			
 			// Clear the pixel data to all black.
 			// Array.Clear is the most efficient way to do this in practice.
-			Array.Clear(BRG565Data, 0, (int)(Width * Height));
+			Array.Clear(BGR565Data, 0, (int)(Width * Height));
+
+			var xZoom = ScaleXWhenZooming ? Math.Min(1.0, zoom) : 1.0;
+			var renderWidth = Width * xZoom;
 
 			var numChannels = MipMap.GetNumChannels();
-			var totalWidthPerChannel = (uint)(Width / numChannels);
+			var totalWidthPerChannel = (uint)(renderWidth / numChannels);
 
 			//uint endSample = startSample + (uint)(SampleRate / Zoom);
 			//uint numSamples = endSample - startSample;
@@ -143,7 +183,7 @@ namespace StepManiaEditor
 				//samplesPerPixel = (long) samplesPerPixel;
 			}
 
-			var startSampleOffset = (YFocusOffset * samplesPerPixel * -1);
+			var startSampleOffset = (FocalPoint.Y * samplesPerPixel * -1);
 			long startSample = (long)(soundTimeSeconds * SampleRate + startSampleOffset);
 
 			// Snap the start sample so that the waveform doesn't jitter while scrolling
@@ -286,6 +326,9 @@ namespace StepManiaEditor
 					previousXMin[channel] = minXPerChannel[channel];
 					previousXMax[channel] = maxXPerChannel[channel];
 
+					minX = (ushort)(minX * xZoom * XScale);
+					maxX = (ushort)(maxX * xZoom * XScale);
+
 					var range = maxX - minX;
 					uint denseMinX = 0;
 					uint denseMaxX = 0;
@@ -303,7 +346,11 @@ namespace StepManiaEditor
 						denseMaxX = (uint)(denseMinX + denseRange);
 					}
 
-					var startIndexForRowAndChannel = Width * y + (channel * totalWidthPerChannel);
+					var startIndexForRowAndChannel = (int)
+						(Width * y								// start pixel for this row
+						 + ((Width - renderWidth) * 0.5f)		// account for the space to the left of the start due to being zoomed in
+						 + ((totalWidthPerChannel - (totalWidthPerChannel * XScale)) * 0.5f)		// account for the offset due to x scaling
+						 + (channel * totalWidthPerChannel));	// account for the channel offset.
 
 					var densePixelStart = startIndexForRowAndChannel + denseMinX;
 					var densePixelEnd = startIndexForRowAndChannel + denseMaxX;
@@ -311,14 +358,14 @@ namespace StepManiaEditor
 					var sparsePixelEnd = startIndexForRowAndChannel + maxX;
 
 					// Copy the sparse color line into the waveform pixel data.
-					Buffer.BlockCopy(SparseLine, 0, BRG565Data, (int)(sparsePixelStart << 1), (int)((sparsePixelEnd + 1 - sparsePixelStart) << 1));
+					Buffer.BlockCopy(SparseLine, 0, BGR565Data, (int)(sparsePixelStart << 1), (int)((sparsePixelEnd + 1 - sparsePixelStart) << 1));
 					// Copy the dense color line into the waveform pixel data.
 					if (dirChanges > 0)
-						Buffer.BlockCopy(DenseLine, 0, BRG565Data, (int)(densePixelStart << 1), (int)((densePixelEnd + 1 - densePixelStart) << 1));
+						Buffer.BlockCopy(DenseLine, 0, BGR565Data, (int)(densePixelStart << 1), (int)((densePixelEnd + 1 - densePixelStart) << 1));
 				}
 			}
 
-			texture.SetData(BRG565Data);
+			texture.SetData(BGR565Data);
 		}
 	}
 }
