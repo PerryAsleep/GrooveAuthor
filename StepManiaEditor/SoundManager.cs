@@ -25,17 +25,26 @@ namespace StepManiaEditor
 		{
 			return await Task.Run(() =>
 			{
-				ErrCheck(System.createSound(fileName, MODE.DEFAULT, out var sound));
+				ErrCheck(System.createSound(fileName, MODE.DEFAULT, out var sound), $"Failed to load {fileName}");
 				return sound;
 			});
 		}
 
-		public static void ErrCheck(RESULT result)
+		public static bool ErrCheck(RESULT result, string failureMessage = null)
 		{
 			if (result != RESULT.OK)
 			{
-				Logger.Error($"[FMOD] {result:G}");
+				if (!string.IsNullOrEmpty(failureMessage))
+				{
+					Logger.Error($"{failureMessage} {result:G}");
+				}
+				else
+				{
+					Logger.Error($"FMOD error: {result:G}");
+				}
+				return false;
 			}
+			return true;
 		}
 	}
 }

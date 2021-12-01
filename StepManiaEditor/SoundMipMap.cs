@@ -1,19 +1,56 @@
-﻿using System;
-using System.Threading.Tasks;
+﻿using System.Threading.Tasks;
 using FMOD;
+using Fumen;
 
 namespace StepManiaEditor
 {
+	/// <summary>
+	/// A SoundMipMap is mip mapped sound data used for visualizing a sound waveform.
+	/// The data at each mip level represents pre-computed values a range of underlying
+	/// samples.
+	/// This data allows for performant rendering of waveform data by minimizing the number
+	/// of samples that need to be looped over when rendering an arbitrary range of
+	/// samples per pixel.
+	/// </summary>
 	public class SoundMipMap
 	{
+		/// <summary>
+		/// Data stored at one mip level.
+		/// An array of SampleDataPerChannel where each SampleDataPerChannel entry represents data
+		/// for a range of underlying audio samples.
+		/// At each mip level, the number of samples represented by each SampleDataPerChannel entry
+		/// is 2 to the power of the mip level. For example at mip level 0 each SampleDataPerChannel
+		/// entry corresponds to 1 sample. At mip level 1 it is 2 samples, at 2 it is 4, etc.
+		/// </summary>
 		public class MipLevel
 		{
+			/// <summary>
+			/// Data combined from one or more underlying samples of audio data.
+			/// </summary>
 			public struct SampleDataPerChannel
 			{
+				/// <summary>
+				/// Minimum x value of samples. Range is from 0 to the provided range to
+				/// CreateMipMapAsync divided by the number of channels.
+				/// </summary>
 				public ushort MinX;
+				/// <summary>
+				/// Maximum x value of samples. Range is from 0 to the provided range to
+				/// CreateMipMapAsync divided by the number of channels.
+				/// </summary>
 				public ushort MaxX;
-				public uint NumDirectionChanges;
+				/// <summary>
+				/// Sum of the squares of the samples where each sample is represented as
+				/// a floating point value from -1.0f to 1.0f. Used to visualize root mean
+				/// square.
+				/// </summary>
+				public float SumOfSquares;
 			}
+
+			/// <summary>
+			/// Array of SampleDataPerChannel. Channels are interleaved.
+			/// </summary>
+			public readonly SampleDataPerChannel[] Data;
 
 			public MipLevel(uint numSamples, uint numChannels)
 			{
@@ -24,14 +61,12 @@ namespace StepManiaEditor
 					Data[i].MinX = ushort.MaxValue;
 				}
 			}
-
-			public readonly SampleDataPerChannel[] Data;
 		}
 
-		private SoundManager SoundManager;
+		private readonly SoundManager SoundManager;
 		public Sound Sound;
 		public MipLevel[] MipLevels;
-		private int NumChannels;
+		private uint NumChannels;
 
 		private bool SoundLoaded;
 		private bool MipMapDataLoaded;
@@ -42,62 +77,154 @@ namespace StepManiaEditor
 			SoundManager = soundManager;
 		}
 
-		public int GetMipLevel0NumSamples()
+		/// <summary>
+		/// Returns the number of samples at the lowest mip level.
+		/// Returns 0 if the Sound has not been loaded or the mip map data generation failed.
+		/// </summary>
+		/// <returns>Number of samples at the lowest mip level.</returns>
+		public uint GetMipLevel0NumSamples()
 		{
-			return MipLevels[0].Data.Length / NumChannels;
+			if (NumChannels == 0 || MipLevels == null || MipLevels.Length == 0)
+				return 0;
+			return (uint)MipLevels[0].Data.Length / NumChannels;
 		}
 
-		public int GetNumChannels()
+		/// <summary>
+		/// Returns the number of channels of the Sound.
+		/// </summary>
+		/// <returns>Number of channels of the Sound.</returns>
+		public uint GetNumChannels()
 		{
 			return NumChannels;
 		}
 
+		/// <summary>
+		/// Returns whether or not the mip map data has been fully generated.
+		/// </summary>
+		/// <returns>Whether or not the mip map data has been fully generated.</returns>
 		public bool IsMipMapDataLoaded()
 		{
 			return MipMapDataLoaded;
 		}
 
+		/// <summary>
+		/// Returns whether or not the mip map data has been allocated.
+		/// </summary>
+		/// <returns>Whether or not the mip map data has been allocated.</returns>
 		public bool IsMipMapDataAllocated()
 		{
 			return MipLevelsAllocated;
 		}
 
+		/// <summary>
+		/// Returns the sample rate in hz of the Sound.
+		/// </summary>
+		/// <returns>Sample rate in hz of the Sound.</returns>
 		public uint GetSampleRate()
 		{
 			return SoundManager.GetSampleRate();
 		}
 
-		public async Task<Sound> LoadSoundAsync(SoundManager soundManager, string soundFileName)
+		/// <summary>
+		/// Loads the sound specified by the given file name.
+		/// </summary>
+		/// <param name="soundFileName">File name of sound to load.</param>
+		/// <returns>Generated Sound.</returns>
+		public async Task<Sound> LoadSoundAsync(string soundFileName)
 		{
-			// TODO: Investigate loading streaming so we can speed up the mip map load even further.
-			Sound = await soundManager.LoadAsync(soundFileName);
-			SoundLoaded = true;
+			Logger.Info($"Loading {soundFileName}...");
+			Sound = await SoundManager.LoadAsync(soundFileName);
+			if (Sound.hasHandle())
+			{
+				Logger.Info($"Finished loading {soundFileName}.");
+				SoundLoaded = true;
+			}
 			return Sound;
 		}
 
+		/// <summary>
+		/// Creates the mip map data for the Sound.
+		/// </summary>
+		/// <param name="xRange">Total x range in pixels for all channels.</param>
 		public async Task CreateMipMapAsync(int xRange)
 		{
-			await Task.Run(() => { CreateMipMap(xRange); });
+			if (!SoundLoaded)
+			{
+				Logger.Warn("Cannot create sound mip map data. Sound is not loaded.");
+				return;
+			}
+
+			if (!Sound.hasHandle())
+			{
+				Logger.Warn("Cannot create sound mip map data. Invalid sound handle.");
+				return;
+			}
+
+			Logger.Info("Generating sound mip map...");
+			var success = false;
+			await Task.Run(() => { success = CreateMipMap(xRange); });
+			if (!success)
+			{
+				Logger.Warn("Failed generating sound mip map.");
+				return;
+			}
+
+			Logger.Info("Finished generating sound mip map.");
 			MipMapDataLoaded = true;
 		}
-		
-		private unsafe void CreateMipMap(int xRange)
+
+		/// <summary>
+		/// Creates and fills out the MipLevels for the loaded Sound.
+		/// </summary>
+		/// <remarks>
+		/// Expect this method to take a long time as it must loop over all samples and
+		/// update all mip level data.
+		/// Unsafe due to byte array usage from native library.
+		/// </remarks>
+		/// <param name="xRange">Total x range in pixels for all channels.</param>
+		/// <returns>True if successful and false otherwise.</returns>
+		private unsafe bool CreateMipMap(int xRange)
 		{
-			SoundManager.ErrCheck(Sound.getLength(out var length, TIMEUNIT.PCMBYTES));
-			SoundManager.ErrCheck(Sound.getFormat(out var type, out var format, out var numChannels, out var bits));
-			SoundManager.ErrCheck(Sound.@lock(0, length, out var ptr1, out var ptr2, out var len1, out var len2));
+			// Get the sound data from FMOD.
+			if (!SoundManager.ErrCheck(Sound.getLength(out var length, TIMEUNIT.PCMBYTES)))
+				return false;
+			if (!SoundManager.ErrCheck(Sound.getFormat(out _, out var format, out var numChannels, out var bits)))
+				return false;
+			if (!SoundManager.ErrCheck(Sound.@lock(0, length, out var ptr1, out var ptr2, out var len1, out var len2)))
+				return false;
 
-			byte* ptr = (byte*)ptr1.ToPointer();
+			// Early outs for data that can't be parsed.
+			if (format != SOUND_FORMAT.PCM8
+			    && format != SOUND_FORMAT.PCM16
+			    && format != SOUND_FORMAT.PCM24
+			    && format != SOUND_FORMAT.PCM32
+			    && format != SOUND_FORMAT.PCMFLOAT)
+			{
+				Logger.Warn($"Unsupported sound format: {format:G}");
+				return false;
+			}
+			if (numChannels < 1)
+			{
+				Logger.Warn($"Sound has {numChannels} channels. Expected at least one.");
+				return false;
+			}
+			if (bits < 1)
+			{
+				Logger.Warn($"Sound has {bits} bits per sample. Expected at least one.");
+				return false;
+			}
 
-			NumChannels = numChannels;
+			var ptr = (byte*)ptr1.ToPointer();
 
-			int xRangePerChannel = xRange / numChannels;
+			NumChannels = (uint)numChannels;
 
-			uint bitsPerSample = (uint)bits * (uint)numChannels;
-			uint bytesPerSample = bitsPerSample >> 3;
-			uint totalNumSamples = length / bytesPerSample;
-			uint bytesPerChannelPerSample = (uint)(bits / 8);
+			var xRangePerChannel = xRange / numChannels;
+			var bitsPerSample = (uint)bits * (uint)numChannels;
+			var bytesPerSample = bitsPerSample >> 3;
+			var totalNumSamples = length / bytesPerSample;
+			var bytesPerChannelPerSample = (uint)(bits >> 3);
 
+			// Determine the number of mip levels needed.
 			var numMipLevels = 0;
 			var samplesPerIndex = 1;
 			while (samplesPerIndex < totalNumSamples)
@@ -106,6 +233,7 @@ namespace StepManiaEditor
 				samplesPerIndex <<= 1;
 			}
 
+			// Allocate memory for all the MipLevels.
 			MipLevels = new MipLevel[numMipLevels];
 			var mipSampleSize = 1;
 			for (var mipLevelIndex = 0; mipLevelIndex < numMipLevels; mipLevelIndex++)
@@ -118,87 +246,72 @@ namespace StepManiaEditor
 			}
 			MipLevelsAllocated = true;
 
-			var sampleIndex = 0;
-			var previousXValues = new ushort[numChannels];
-			var previousSlopePositive = new bool[numChannels];
-			for (var channel = 0; channel < numChannels; channel++)
-			{
-				previousXValues[channel] = 0;
-				previousSlopePositive[channel] = false;
-			}
+			// Constants for converting sound formats to floats.
+			const float invPcm8Max = 1.0f / byte.MaxValue;
+			const float invPcm16Max = 1.0f / short.MaxValue;
+			const float invPcm24Max = 1.0f / 8388607;
+			const float invPcm32Max = 1.0f / int.MaxValue;
 
+			// Loop over every sample for every channel.
+			var sampleIndex = 0;
+			var value = 0.0f;
 			while (sampleIndex < totalNumSamples)
 			{
 				for (var channel = 0; channel < numChannels; channel++)
 				{
 					var byteIndex = sampleIndex * bytesPerSample + channel * bytesPerChannelPerSample;
-
-					float value = 0.0f;
+					
 					switch (format)
 					{
 						case SOUND_FORMAT.PCM8:
 						{
-							value = ptr[byteIndex] / (float)byte.MaxValue;
+							value = ptr[byteIndex] * invPcm8Max;
 							break;
 						}
 						case SOUND_FORMAT.PCM16:
 						{
-							value = ((short)ptr[byteIndex] + (short)(ptr[byteIndex + 1] << 8)) / (float)short.MaxValue;
+							value = ((short)ptr[byteIndex] + (short)(ptr[byteIndex + 1] << 8)) * invPcm16Max;
 							break;
 						}
 						case SOUND_FORMAT.PCM24:
 						{
-							// TODO: Test
-							value = ((int)ptr[byteIndex] + (int)(ptr[byteIndex + 1] << 8) + (int)(ptr[byteIndex + 2] << 16)) / (float)8388607;
+							value = (((int)(ptr[byteIndex] << 8) + (int)(ptr[byteIndex + 1] << 16) + (int)(ptr[byteIndex + 2] << 24)) >> 8) * invPcm24Max;
 							break;
 						}
 						case SOUND_FORMAT.PCM32:
 						{
-							// TODO: Test
-							value = ((int)ptr[byteIndex] + (int)(ptr[byteIndex + 1] << 8) + (int)(ptr[byteIndex + 2] << 16) + (int)(ptr[byteIndex + 3] << 24)) / (float)Int32.MaxValue;
+							value = ((int)ptr[byteIndex] + (int)(ptr[byteIndex + 1] << 8) + (int)(ptr[byteIndex + 2] << 16) + (int)(ptr[byteIndex + 3] << 24)) * invPcm32Max;
 							break;
 						}
 						case SOUND_FORMAT.PCMFLOAT:
 						{
-							// TODO: Test
 							value = ((float*)ptr)[byteIndex >> 2];
 							break;
 						}
 					}
 					
-					var xValueForChannelSample = (ushort)((xRangePerChannel - 1) * (value + 1.0f) / 2.0f);
+					// Determine values for mip data.
+					var xValueForChannelSample = (ushort)((xRangePerChannel - 1) * (value + 1.0f) * 0.5f);
+					var square = value * value;
 
-					bool directionChange = false;
-					if (xValueForChannelSample != previousXValues[channel])
-					{
-						bool bSlopePositive = xValueForChannelSample > previousXValues[channel];
-						if (bSlopePositive != previousSlopePositive[channel])
-						{
-							directionChange = true;
-							previousSlopePositive[channel] = bSlopePositive;
-						}
-					}
-					
-					var powerOfTwo = 1;
+					// Update mip data.
 					for (var mipLevelIndex = 0; mipLevelIndex < numMipLevels; mipLevelIndex++)
 					{
-						var relativeSampleIndex = ((sampleIndex / powerOfTwo) * numChannels) + channel;
+						var relativeSampleIndex = (sampleIndex >> mipLevelIndex) * numChannels + channel;
 						if (MipLevels[mipLevelIndex].Data[relativeSampleIndex].MinX > xValueForChannelSample)
 							MipLevels[mipLevelIndex].Data[relativeSampleIndex].MinX = xValueForChannelSample;
 						if (MipLevels[mipLevelIndex].Data[relativeSampleIndex].MaxX < xValueForChannelSample)
 							MipLevels[mipLevelIndex].Data[relativeSampleIndex].MaxX = xValueForChannelSample;
-						if (directionChange)
-							MipLevels[mipLevelIndex].Data[relativeSampleIndex].NumDirectionChanges++;
-						powerOfTwo <<= 1;
+						MipLevels[mipLevelIndex].Data[relativeSampleIndex].SumOfSquares += square;
 					}
-
-					previousXValues[channel] = xValueForChannelSample;
 				}
 
 				sampleIndex++;
 			}
 
 			SoundManager.ErrCheck(Sound.unlock(ptr1, ptr2, len1, len2));
+
+			return true;
 		}
 	}
 }

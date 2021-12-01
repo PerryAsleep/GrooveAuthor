@@ -1,14 +1,11 @@
-﻿using FMOD;
-using Fumen;
+﻿using Fumen;
 using ImGuiNET;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using System;
 using System.Collections.Generic;
-using System.Numerics;
 using Vector2 = Microsoft.Xna.Framework.Vector2;
-using Vector4 = Microsoft.Xna.Framework.Vector4;
 
 namespace StepManiaEditor
 {
@@ -131,7 +128,7 @@ namespace StepManiaEditor
 			}
 
 			WaveFormRenderer = new WaveFormRenderer(GraphicsDevice, WaveFormTextureWidth, MaxScreenHeight);
-			WaveFormRenderer.SetXScale(WaveFormMaxXPercentagePerChannel);
+			WaveFormRenderer.SetXPerChannelScale(WaveFormMaxXPercentagePerChannel);
 			WaveFormRenderer.SetSoundMipMap(SongMipMap);
 			WaveFormRenderer.SetFocalPoint(FocalPoint);
 
@@ -186,23 +183,8 @@ namespace StepManiaEditor
 				DesiredSongTime = SongTime;
 			}
 
-			if (SongMipMap.IsMipMapDataLoaded())
-			{
-				// smooth zooming in and out
-				//Zoom = 4000;
-				//const double startTime = 0.0;
-				//if (gameTime.TotalGameTime.TotalSeconds > startTime)
-				//{
-				//	var period = 30;
-				//	var time = (gameTime.TotalGameTime.TotalSeconds - startTime) % period;
-				//	if (time > (double)period / 2)
-				//		time = period - time;
-					
-				//	Zoom /= Math.Pow(2.0, time);
-				//}
-			}
-
-			WaveFormRenderer.SetXScale(WaveFormMaxXPercentagePerChannel);
+			// Update WaveFormRenderer
+			WaveFormRenderer.SetXPerChannelScale(WaveFormMaxXPercentagePerChannel);
 			WaveFormRenderer.SetColors(
 				WaveFormDenseColor.X, WaveFormDenseColor.Y, WaveFormDenseColor.Z,
 				WaveFormSparseColor.X, WaveFormSparseColor.Y, WaveFormSparseColor.Z);
@@ -451,10 +433,8 @@ namespace StepManiaEditor
 
 		private async void LoadSongAsync()
 		{
-			//SongSound = await SoundManager.Load(@"C:\Games\StepMania 5\Songs\Customs\Acid Wall\Acid Wall.ogg");
-			//SongSound = await SoundManager.Load(@"C:\Games\StepMania 5\Songs\Customs\ASYS Live for Shiny People & TechoV\ASYS Live.ogg");
-
-			await SongMipMap.LoadSoundAsync(SoundManager, @"C:\Games\StepMania 5\Songs\Customs\Acid Wall\Acid Wall.ogg");
+			var file = @"C:\Games\StepMania 5\Songs\Customs\Acid Wall\Acid Wall.ogg";
+			await SongMipMap.LoadSoundAsync(file);
 			await SongMipMap.CreateMipMapAsync(WaveFormTextureWidth);
 		}
 	}
