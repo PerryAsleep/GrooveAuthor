@@ -11,10 +11,8 @@ namespace StepManiaEditor
 {
 	public class Editor : Game
 	{
-		private const int DefaultWindowWidth = 1920;
-		private const int DefaultWindowHeight = 1080;
 		private const int DefaultArrowWidth = 128;
-		private Vector2 FocalPoint = new Vector2(DefaultWindowWidth >> 1, 100 + (DefaultArrowWidth >> 1));
+		private Vector2 FocalPoint;
 
 		private const int WaveFormTextureWidth = DefaultArrowWidth * 8;
 
@@ -48,29 +46,17 @@ namespace StepManiaEditor
 		// Logger GUI
 		private readonly LinkedList<Logger.LogMessage> LogBuffer = new LinkedList<Logger.LogMessage>();
 		private readonly object LogBufferLock = new object();
-		private bool ShowLogWindow = true;
-		private int LogWindowDateDisplay = 0;
 		private readonly string[] LogWindowDateStrings = { "None", "HH:mm:ss", "HH:mm:ss.fff", "yyyy-MM-dd HH:mm:ss.fff" };
 		private readonly int[] LogWindowDateWidths = { 0, 70, 100, 176 };
-		private int LogWindowLevel = (int)LogLevel.Info;
 		private readonly string[] LogWindowLevelStrings = {"Info", "Warn", "Error"};
 		private readonly System.Numerics.Vector4[] LogWindowLevelColors = {
 			new System.Numerics.Vector4(1.0f, 1.0f, 1.0f, 1.0f),
 			new System.Numerics.Vector4(1.0f, 1.0f, 0.0f, 1.0f),
 			new System.Numerics.Vector4(1.0f, 0.0f, 0.0f, 1.0f),
 		};
-		private bool LogWindowLineWrap;
 
 		// WaveForm GUI
-		private bool ShowWaveFormWindow = true;
-		private bool ShowWaveForm = true;
-		private bool WaveFormScaleXWhenZooming = true;
 		private readonly string[] WaveFormWindowSparseColorOptions = {"Darker Dense Color", "Same As Dense Color", "Unique Color"};
-		private int WaveFormWindowSparseColorOption = 0;
-		private float SparseColorScale = 0.5f;
-		private System.Numerics.Vector3 WaveFormDenseColor;
-		private System.Numerics.Vector3 WaveFormSparseColor;
-		private float WaveFormMaxXPercentagePerChannel = 0.9f;
 
 		private bool ShowImGuiTestWindow = true;
 
@@ -92,6 +78,11 @@ namespace StepManiaEditor
 				Buffer = LogBuffer
 			});
 
+			// Load Preferences synchronously so they can be used immediately.
+			Preferences.Load();
+
+			FocalPoint = new Vector2(Preferences.Instance.WindowWidth >> 1, 100 + (DefaultArrowWidth >> 1));
+
 			SoundManager = new SoundManager();
 			SongMipMap = new SoundMipMap(SoundManager);
 
@@ -100,18 +91,16 @@ namespace StepManiaEditor
 			Content.RootDirectory = "Content";
 			IsMouseVisible = true;
 			Window.AllowUserResizing = true;
+			Window.ClientSizeChanged += OnResize;
 
 			IsFixedTimeStep = false;
-
-			//IsFixedTimeStep = true;
-			//TargetElapsedTime = TimeSpan.FromMilliseconds(1000.0f / 200.0f);
-			//Graphics.SynchronizeWithVerticalRetrace = false;
 		}
 
 		protected override void Initialize()
 		{
-			Graphics.PreferredBackBufferHeight = DefaultWindowHeight;
-			Graphics.PreferredBackBufferWidth = DefaultWindowWidth;
+			Graphics.PreferredBackBufferHeight = Preferences.Instance.WindowHeight;
+			Graphics.PreferredBackBufferWidth = Preferences.Instance.WindowWidth;
+			Graphics.IsFullScreen = Preferences.Instance.WindowFullScreen;
 			Graphics.ApplyChanges();
 
 			ImGuiRenderer = new ImGuiRenderer(this);
@@ -128,13 +117,20 @@ namespace StepManiaEditor
 			}
 
 			WaveFormRenderer = new WaveFormRenderer(GraphicsDevice, WaveFormTextureWidth, MaxScreenHeight);
-			WaveFormRenderer.SetXPerChannelScale(WaveFormMaxXPercentagePerChannel);
+			WaveFormRenderer.SetXPerChannelScale(Preferences.Instance.WaveFormMaxXPercentagePerChannel);
 			WaveFormRenderer.SetSoundMipMap(SongMipMap);
 			WaveFormRenderer.SetFocalPoint(FocalPoint);
 
 			TextureAtlas = new TextureAtlas(GraphicsDevice, 2048, 2048, 1);
 
 			base.Initialize();
+		}
+
+		protected override void EndRun()
+		{
+			Preferences.Save();
+			Logger.Shutdown();
+			base.EndRun();
 		}
 
 		protected override void LoadContent()
@@ -148,6 +144,18 @@ namespace StepManiaEditor
 			LoadSongAsync();
 			
 			base.LoadContent();
+		}
+
+		public void OnResize(Object sender, EventArgs e)
+		{
+			Preferences.Instance.WindowWidth = Graphics.GraphicsDevice.Viewport.Width;
+			Preferences.Instance.WindowHeight = Graphics.GraphicsDevice.Viewport.Height;
+			Preferences.Instance.WindowFullScreen = Graphics.IsFullScreen;
+
+			FocalPoint.X = Graphics.GraphicsDevice.Viewport.Width >> 1;
+
+			//var form = (Form)Form.FromHandle(Window.Handle);
+			//form.WindowState = FormWindowState.Maximized;
 		}
 
 		protected override void Update(GameTime gameTime)
@@ -184,11 +192,12 @@ namespace StepManiaEditor
 			}
 
 			// Update WaveFormRenderer
-			WaveFormRenderer.SetXPerChannelScale(WaveFormMaxXPercentagePerChannel);
+			WaveFormRenderer.SetFocalPoint(FocalPoint);
+			WaveFormRenderer.SetXPerChannelScale(Preferences.Instance.WaveFormMaxXPercentagePerChannel);
 			WaveFormRenderer.SetColors(
-				WaveFormDenseColor.X, WaveFormDenseColor.Y, WaveFormDenseColor.Z,
-				WaveFormSparseColor.X, WaveFormSparseColor.Y, WaveFormSparseColor.Z);
-			WaveFormRenderer.SetScaleXWhenZooming(WaveFormScaleXWhenZooming);
+				Preferences.Instance.WaveFormDenseColor.X, Preferences.Instance.WaveFormDenseColor.Y, Preferences.Instance.WaveFormDenseColor.Z,
+				Preferences.Instance.WaveFormSparseColor.X, Preferences.Instance.WaveFormSparseColor.Y, Preferences.Instance.WaveFormSparseColor.Z);
+			WaveFormRenderer.SetScaleXWhenZooming(Preferences.Instance.WaveFormScaleXWhenZooming);
 			WaveFormRenderer.Update(SongTime, Zoom);
 
 			base.Update(gameTime);
@@ -196,10 +205,6 @@ namespace StepManiaEditor
 
 		private void ProcessInput(GameTime gameTime)
 		{
-			if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed ||
-				Keyboard.GetState().IsKeyDown(Keys.Escape))
-				Exit();
-
 			// Let imGui process input so we can see if we should ignore it.
 			(bool imGuiWantMouse, bool imGuiWantKeyboard) = ImGuiRenderer.Update(gameTime);
 
@@ -274,7 +279,7 @@ namespace StepManiaEditor
 			GraphicsDevice.Clear(Color.Black);
 
 			SpriteBatch.Begin();
-			if (ShowWaveForm)
+			if (Preferences.Instance.ShowWaveForm)
 			{
 				WaveFormRenderer.Draw(SpriteBatch);
 			}
@@ -340,8 +345,8 @@ namespace StepManiaEditor
 				}
 				if (ImGui.BeginMenu("View"))
 				{
-					ImGui.Checkbox("Log", ref ShowLogWindow);
-					ImGui.Checkbox("Waveform Controls", ref ShowWaveFormWindow);
+					ImGui.Checkbox("Log", ref Preferences.Instance.ShowLogWindow);
+					ImGui.Checkbox("Waveform Controls", ref Preferences.Instance.ShowWaveFormWindow);
 					ImGui.Checkbox("ImGui Demo Window", ref ShowImGuiTestWindow);
 					ImGui.EndMenu();
 				}
@@ -351,45 +356,45 @@ namespace StepManiaEditor
 
 		private void DrawLogUI()
 		{
-			if (!ShowLogWindow)
+			if (!Preferences.Instance.ShowLogWindow)
 				return;
 
 			ImGui.SetNextWindowSize(new System.Numerics.Vector2(200, 100), ImGuiCond.FirstUseEver);
-			ImGui.Begin("Log", ref ShowLogWindow, ImGuiWindowFlags.NoScrollbar);
+			ImGui.Begin("Log", ref Preferences.Instance.ShowLogWindow, ImGuiWindowFlags.NoScrollbar);
 			lock (LogBufferLock)
 			{
 				ImGui.PushItemWidth(60);
-				ImGui.Combo("Level", ref LogWindowLevel, LogWindowLevelStrings, LogWindowLevelStrings.Length);
+				ImGui.Combo("Level", ref Preferences.Instance.LogWindowLevel, LogWindowLevelStrings, LogWindowLevelStrings.Length);
 				ImGui.PopItemWidth(); 
 				
 				ImGui.SameLine();
 				ImGui.PushItemWidth(186);
-				ImGui.Combo("Time", ref LogWindowDateDisplay, LogWindowDateStrings, LogWindowDateStrings.Length);
+				ImGui.Combo("Time", ref Preferences.Instance.LogWindowDateDisplay, LogWindowDateStrings, LogWindowDateStrings.Length);
 				ImGui.PopItemWidth();
 				
 				ImGui.SameLine();
-				ImGui.Checkbox("Wrap", ref LogWindowLineWrap);
+				ImGui.Checkbox("Wrap", ref Preferences.Instance.LogWindowLineWrap);
 
 				ImGui.Separator();
 
-				var flags = LogWindowLineWrap ? ImGuiWindowFlags.None : ImGuiWindowFlags.HorizontalScrollbar;
+				var flags = Preferences.Instance.LogWindowLineWrap ? ImGuiWindowFlags.None : ImGuiWindowFlags.HorizontalScrollbar;
 				ImGui.BeginChild("LogMessages", new System.Numerics.Vector2(), false, flags);
 				{
 					foreach (var message in LogBuffer)
 					{
-						if ((int) message.Level < LogWindowLevel)
+						if ((int) message.Level < Preferences.Instance.LogWindowLevel)
 							continue;
 
-						if (LogWindowDateDisplay != 0)
+						if (Preferences.Instance.LogWindowDateDisplay != 0)
 						{
-							ImGui.Text(message.Time.ToString(LogWindowDateStrings[LogWindowDateDisplay]));
+							ImGui.Text(message.Time.ToString(LogWindowDateStrings[Preferences.Instance.LogWindowDateDisplay]));
 							ImGui.SameLine();
 						}
 
-						if (LogWindowLineWrap)
+						if (Preferences.Instance.LogWindowLineWrap)
 							ImGui.PushTextWrapPos();
 						ImGui.TextColored(LogWindowLevelColors[(int) message.Level], message.Message);
-						if (LogWindowLineWrap)
+						if (Preferences.Instance.LogWindowLineWrap)
 							ImGui.PopTextWrapPos();
 					}
 				}
@@ -400,33 +405,33 @@ namespace StepManiaEditor
 
 		private void DrawWaveFormUI()
 		{
-			if (!ShowWaveFormWindow)
+			if (!Preferences.Instance.ShowWaveFormWindow)
 				return;
 
 			ImGui.SetNextWindowSize(new System.Numerics.Vector2(0, 0), ImGuiCond.FirstUseEver);
-			ImGui.Begin("Waveform", ref ShowWaveFormWindow, ImGuiWindowFlags.NoScrollbar);
+			ImGui.Begin("Waveform", ref Preferences.Instance.ShowWaveFormWindow, ImGuiWindowFlags.NoScrollbar);
 
-			ImGui.Checkbox("Show Waveform", ref ShowWaveForm);
-			ImGui.Checkbox("Scale X When Zooming", ref WaveFormScaleXWhenZooming);
-			ImGui.SliderFloat("X Scale", ref WaveFormMaxXPercentagePerChannel, 0.0f, 1.0f);
+			ImGui.Checkbox("Show Waveform", ref Preferences.Instance.ShowWaveForm);
+			ImGui.Checkbox("Scale X When Zooming", ref Preferences.Instance.WaveFormScaleXWhenZooming);
+			ImGui.SliderFloat("X Scale", ref Preferences.Instance.WaveFormMaxXPercentagePerChannel, 0.0f, 1.0f);
 
-			ImGui.ColorEdit3("Dense Color", ref WaveFormDenseColor, ImGuiColorEditFlags.NoAlpha);
+			ImGui.ColorEdit3("Dense Color", ref Preferences.Instance.WaveFormDenseColor, ImGuiColorEditFlags.NoAlpha);
 
-			ImGui.Combo("Sparse Color Mode", ref WaveFormWindowSparseColorOption, WaveFormWindowSparseColorOptions, WaveFormWindowSparseColorOptions.Length);
-			if (WaveFormWindowSparseColorOption == 0)
+			ImGui.Combo("Sparse Color Mode", ref Preferences.Instance.WaveFormWindowSparseColorOption, WaveFormWindowSparseColorOptions, WaveFormWindowSparseColorOptions.Length);
+			if (Preferences.Instance.WaveFormWindowSparseColorOption == 0)
 			{
-				ImGui.SliderFloat("Sparse Color Scale", ref SparseColorScale, 0.0f, 1.0f);
-				WaveFormSparseColor.X = WaveFormDenseColor.X * SparseColorScale;
-				WaveFormSparseColor.Y = WaveFormDenseColor.Y * SparseColorScale;
-				WaveFormSparseColor.Z = WaveFormDenseColor.Z * SparseColorScale;
+				ImGui.SliderFloat("Sparse Color Scale", ref Preferences.Instance.SparseColorScale, 0.0f, 1.0f);
+				Preferences.Instance.WaveFormSparseColor.X = Preferences.Instance.WaveFormDenseColor.X * Preferences.Instance.SparseColorScale;
+				Preferences.Instance.WaveFormSparseColor.Y = Preferences.Instance.WaveFormDenseColor.Y * Preferences.Instance.SparseColorScale;
+				Preferences.Instance.WaveFormSparseColor.Z = Preferences.Instance.WaveFormDenseColor.Z * Preferences.Instance.SparseColorScale;
 			}
-			else if (WaveFormWindowSparseColorOption == 1)
+			else if (Preferences.Instance.WaveFormWindowSparseColorOption == 1)
 			{
-				WaveFormSparseColor = WaveFormDenseColor;
+				Preferences.Instance.WaveFormSparseColor = Preferences.Instance.WaveFormDenseColor;
 			}
 			else
 			{
-				ImGui.ColorEdit3("Sparse Color", ref WaveFormSparseColor, ImGuiColorEditFlags.NoAlpha);
+				ImGui.ColorEdit3("Sparse Color", ref Preferences.Instance.WaveFormSparseColor, ImGuiColorEditFlags.NoAlpha);
 			}
 			ImGui.End();
 		}

@@ -245,7 +245,7 @@ namespace StepManiaEditor
 			//uint endSample = startSample + (uint)(SampleRate / Zoom);
 			//uint numSamples = endSample - startSample;
 			// range shown = 1 second / Zoom
-			double samplesPerPixel = (double)SampleRate / Height / zoom;
+			var samplesPerPixel = (double)SampleRate / Height / zoom;
 
 			// Quantizing the samples per pixel to an integer value guarantees that for a given zoom
 			// level, the same samples will always be grouped together. This prevents a jittering
@@ -260,14 +260,14 @@ namespace StepManiaEditor
 			}
 
 			var startSampleOffset = (FocalPoint.Y * samplesPerPixel * -1);
-			long startSample = (long)(soundTimeSeconds * SampleRate + startSampleOffset);
+			var startSample = (long)(soundTimeSeconds * SampleRate + startSampleOffset);
 
 			// Snap the start sample so that the waveform doesn't jitter while scrolling
 			// by moving samples between pixel boundaries on different frames.
 			var pixel = (int)(startSample / samplesPerPixel);
 			startSample = (long)(pixel * samplesPerPixel);
 
-			uint totalNumSamples = (uint)MipMap.GetMipLevel0NumSamples();
+			var totalNumSamples = MipMap.GetMipLevel0NumSamples();
 			var channelMidX = (ushort)(((Width / numChannels) >> 1) - 1);
 
 			// Set up structures for determining the values to use for each row of pixels.
@@ -308,10 +308,10 @@ namespace StepManiaEditor
 			{
 				var bSilentSample = false;
 				var bUsePreviousSample = false;
-				long numSamplesUsedThisLoop = 0;
+				var numSamplesUsedThisLoop = 0L;
 
 				// Determine the last sample to be considered for this row.
-				long endSampleForPixel = (long)((y + 1) * samplesPerPixel) + startSample;
+				var endSampleForPixel = (long)((y + 1) * samplesPerPixel) + startSample;
 				// Always use at least one sample for data to be rendered.
 				if (endSampleForPixel == sampleIndex)
 					endSampleForPixel++;
@@ -392,8 +392,8 @@ namespace StepManiaEditor
 					{
 						// Determine the greatest power of two that evenly divides the current sample
 						// index and also will not exceed the last sample for this row.
-						uint powerOfTwo = 2;
-						uint mipLevelIndex = 1;
+						var powerOfTwo = 2u;
+						var mipLevelIndex = 1u;
 						while (sampleIndex % powerOfTwo == 0 && sampleIndex + powerOfTwo < endSampleForPixel)
 						{
 							powerOfTwo <<= 1;
@@ -455,9 +455,9 @@ namespace StepManiaEditor
 					var range = maxX - minX;
 
 					// Determine the min and max x values for the dense range.
-					uint denseMinX = 0;
-					uint denseMaxX = 0;
-					double denseRange = 0.0;
+					ushort denseMinX = 0;
+					ushort denseMaxX = 0;
+					var denseRange = 0.0;
 					// Don't draw any dense values if we are only processing one sample.
 					if (numSamplesUsedThisLoop > 1)
 					{
@@ -467,8 +467,8 @@ namespace StepManiaEditor
 							rms = 1.0f;
 						var densePercentage = rms;
 						denseRange = range * densePercentage;
-						denseMinX = minX + (uint) ((range - (denseRange)) * 0.5f);
-						denseMaxX = (uint) (denseMinX + denseRange);
+						denseMinX = (ushort) (minX + (ushort) ((range - denseRange) * 0.5f));
+						denseMaxX = (ushort) (denseMinX + denseRange);
 					}
 
 					// Determine the start index in the overall texture data for this channel.
@@ -489,10 +489,10 @@ namespace StepManiaEditor
 					var sparsePixelEnd = startIndexForRowAndChannel + maxX;
 
 					// Copy the sparse color line into the waveform pixel data.
-					Buffer.BlockCopy(SparseLine, 0, BGR565Data, (int)(sparsePixelStart << 1), (int)((sparsePixelEnd + 1 - sparsePixelStart) << 1));
+					Buffer.BlockCopy(SparseLine, 0, BGR565Data, sparsePixelStart << 1, (sparsePixelEnd + 1 - sparsePixelStart) << 1);
 					// Copy the dense color line into the waveform pixel data.
 					if (denseRange > 0.0)
-						Buffer.BlockCopy(DenseLine, 0, BGR565Data, (int)(densePixelStart << 1), (int)((densePixelEnd + 1 - densePixelStart) << 1));
+						Buffer.BlockCopy(DenseLine, 0, BGR565Data, densePixelStart << 1, (densePixelEnd + 1 - densePixelStart) << 1);
 				}
 			}
 
