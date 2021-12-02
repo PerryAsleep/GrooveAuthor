@@ -42,6 +42,7 @@ namespace StepManiaEditor
 		[JsonInclude] public int WindowWidth = 1920;
 		[JsonInclude] public int WindowHeight = 1080;
 		[JsonInclude] public bool WindowFullScreen = false;
+		[JsonInclude] public bool WindowMaximized = false;
 
 		// Waveform preferences
 		[JsonInclude] public bool ShowWaveFormWindow = true;

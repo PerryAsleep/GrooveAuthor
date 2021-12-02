@@ -5,6 +5,8 @@ using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using System;
 using System.Collections.Generic;
+using System.Windows.Forms;
+using Keys = Microsoft.Xna.Framework.Input.Keys;
 using Vector2 = Microsoft.Xna.Framework.Vector2;
 
 namespace StepManiaEditor
@@ -103,6 +105,11 @@ namespace StepManiaEditor
 			Graphics.IsFullScreen = Preferences.Instance.WindowFullScreen;
 			Graphics.ApplyChanges();
 
+			if (Preferences.Instance.WindowMaximized)
+			{
+				((Form) Control.FromHandle(Window.Handle)).WindowState = FormWindowState.Maximized;
+			}
+
 			ImGuiRenderer = new ImGuiRenderer(this);
 			Font = ImGui.GetIO().Fonts.AddFontFromFileTTF(
 				@"C:\Users\perry\Projects\Fumen\StepManiaEditor\Mplus1Code-Medium.ttf",
@@ -148,14 +155,17 @@ namespace StepManiaEditor
 
 		public void OnResize(Object sender, EventArgs e)
 		{
-			Preferences.Instance.WindowWidth = Graphics.GraphicsDevice.Viewport.Width;
-			Preferences.Instance.WindowHeight = Graphics.GraphicsDevice.Viewport.Height;
+			var maximized = ((Form) Control.FromHandle(Window.Handle)).WindowState == FormWindowState.Maximized;
+
+			if (!maximized)
+			{
+				Preferences.Instance.WindowWidth = Graphics.GraphicsDevice.Viewport.Width;
+				Preferences.Instance.WindowHeight = Graphics.GraphicsDevice.Viewport.Height;
+			}
 			Preferences.Instance.WindowFullScreen = Graphics.IsFullScreen;
+			Preferences.Instance.WindowMaximized = maximized;
 
 			FocalPoint.X = Graphics.GraphicsDevice.Viewport.Width >> 1;
-
-			//var form = (Form)Form.FromHandle(Window.Handle);
-			//form.WindowState = FormWindowState.Maximized;
 		}
 
 		protected override void Update(GameTime gameTime)
