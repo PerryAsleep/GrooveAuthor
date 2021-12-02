@@ -264,8 +264,8 @@ namespace StepManiaEditor
 
 			// Snap the start sample so that the waveform doesn't jitter while scrolling
 			// by moving samples between pixel boundaries on different frames.
-			var pixel = (int)(startSample / samplesPerPixel);
-			startSample = (long)(pixel * samplesPerPixel);
+			var pixel = (int) (startSample / samplesPerPixel);
+			startSample = (long) (pixel * samplesPerPixel);
 
 			var totalNumSamples = MipMap.GetMipLevel0NumSamples();
 			var channelMidX = (ushort)(((Width / numChannels) >> 1) - 1);
@@ -369,8 +369,8 @@ namespace StepManiaEditor
 				{
 					for (var channel = 0; channel < numChannels; channel++)
 					{
-						previousXMin[channel] = channelMidX;
-						previousXMax[channel] = channelMidX;
+						minXPerChannel[channel] = channelMidX;
+						maxXPerChannel[channel] = channelMidX;
 					}
 				}
 
