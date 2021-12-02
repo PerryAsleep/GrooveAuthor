@@ -49,7 +49,6 @@ namespace StepManiaEditor
 		private readonly LinkedList<Logger.LogMessage> LogBuffer = new LinkedList<Logger.LogMessage>();
 		private readonly object LogBufferLock = new object();
 		private readonly string[] LogWindowDateStrings = { "None", "HH:mm:ss", "HH:mm:ss.fff", "yyyy-MM-dd HH:mm:ss.fff" };
-		private readonly int[] LogWindowDateWidths = { 0, 70, 100, 176 };
 		private readonly string[] LogWindowLevelStrings = {"Info", "Warn", "Error"};
 		private readonly System.Numerics.Vector4[] LogWindowLevelColors = {
 			new System.Numerics.Vector4(1.0f, 1.0f, 1.0f, 1.0f),
@@ -111,6 +110,7 @@ namespace StepManiaEditor
 			}
 
 			ImGuiRenderer = new ImGuiRenderer(this);
+			// TODO: Load font from install directory
 			Font = ImGui.GetIO().Fonts.AddFontFromFileTTF(
 				@"C:\Users\perry\Projects\Fumen\StepManiaEditor\Mplus1Code-Medium.ttf",
 				15,
@@ -153,10 +153,11 @@ namespace StepManiaEditor
 			base.LoadContent();
 		}
 
-		public void OnResize(Object sender, EventArgs e)
+		public void OnResize(object sender, EventArgs e)
 		{
 			var maximized = ((Form) Control.FromHandle(Window.Handle)).WindowState == FormWindowState.Maximized;
 
+			// Update window preferences.
 			if (!maximized)
 			{
 				Preferences.Instance.WindowWidth = Graphics.GraphicsDevice.Viewport.Width;
@@ -165,6 +166,7 @@ namespace StepManiaEditor
 			Preferences.Instance.WindowFullScreen = Graphics.IsFullScreen;
 			Preferences.Instance.WindowMaximized = maximized;
 
+			// Update FocalPoint.
 			FocalPoint.X = Graphics.GraphicsDevice.Viewport.Width >> 1;
 		}
 
@@ -351,6 +353,10 @@ namespace StepManiaEditor
 			{
 				if (ImGui.BeginMenu("File"))
 				{
+					if (ImGui.MenuItem("Exit", "Alt+F4"))
+					{
+						Exit();
+					}
 					ImGui.EndMenu();
 				}
 				if (ImGui.BeginMenu("View"))
