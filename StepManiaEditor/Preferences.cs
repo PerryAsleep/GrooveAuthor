@@ -119,10 +119,8 @@ namespace StepManiaEditor
 
 			try
 			{
-				using (FileStream openStream = File.OpenWrite(Fumen.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, FileName)))
-				{
-					await JsonSerializer.SerializeAsync(openStream, Instance, SerializationOptions);
-				}
+				var jsonString = JsonSerializer.Serialize(Instance, SerializationOptions);
+				await File.WriteAllTextAsync(Fumen.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, FileName), jsonString);
 			}
 			catch (Exception e)
 			{
@@ -142,10 +140,8 @@ namespace StepManiaEditor
 
 			try
 			{
-				using (FileStream openStream = File.OpenWrite(Fumen.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, FileName)))
-				{
-					JsonSerializer.Serialize(openStream, Instance, SerializationOptions);
-				}
+				var jsonString = JsonSerializer.Serialize(Instance, SerializationOptions);
+				File.WriteAllText(Fumen.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, FileName), jsonString);
 			}
 			catch (Exception e)
 			{
