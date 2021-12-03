@@ -427,10 +427,21 @@ namespace StepManiaEditor
 				// update the data.
 				for (var channel = 0; channel < numChannels; channel++)
 				{
+					// Somewhat kludgy, but because we start rendering the waveform before all the
+					// mip map data is available, we may process data in its default state where
+					// minX is ushort.MaxValue and maxX is 0. In this case it's more graceful to
+					// render silence.
+					if (maxXPerChannel[channel] < minXPerChannel[channel])
+					{
+						minXPerChannel[channel] = channelMidX;
+						maxXPerChannel[channel] = channelMidX;
+					}
+
 					// Prevent gaps due to samples being more than one column apart.
 					// Extend this row's min or max to reach the previous row's max or min.
 					var minX = minXPerChannel[channel];
 					var maxX = maxXPerChannel[channel];
+					
 					if (minX > previousXMax[channel] + 1)
 					{
 						minX = (ushort)(previousXMax[channel] + 1);
