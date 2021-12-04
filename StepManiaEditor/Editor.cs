@@ -4,8 +4,14 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using System.Windows.Forms;
+using Fumen.Converters;
+using StepManiaLibrary;
+using static StepManiaLibrary.Constants;
 using Keys = Microsoft.Xna.Framework.Input.Keys;
 using Vector2 = Microsoft.Xna.Framework.Vector2;
 
@@ -24,8 +30,10 @@ namespace StepManiaEditor
 		private WaveFormRenderer WaveFormRenderer;
 		private SoundManager SoundManager;
 		private SoundMipMap SongMipMap;
-
 		private TextureAtlas TextureAtlas;
+
+		private Dictionary<string, PadData> PadDataByStepsType = new Dictionary<string, PadData>();
+		private Dictionary<string, StepGraph> StepGraphByStepsType = new Dictionary<string, StepGraph>();
 
 		// temp controls
 		private int MouseScrollValue = 0;
@@ -49,7 +57,7 @@ namespace StepManiaEditor
 		private readonly LinkedList<Logger.LogMessage> LogBuffer = new LinkedList<Logger.LogMessage>();
 		private readonly object LogBufferLock = new object();
 		private readonly string[] LogWindowDateStrings = { "None", "HH:mm:ss", "HH:mm:ss.fff", "yyyy-MM-dd HH:mm:ss.fff" };
-		private readonly string[] LogWindowLevelStrings = {"Info", "Warn", "Error"};
+		private readonly string[] LogWindowLevelStrings = { "Info", "Warn", "Error" };
 		private readonly System.Numerics.Vector4[] LogWindowLevelColors = {
 			new System.Numerics.Vector4(1.0f, 1.0f, 1.0f, 1.0f),
 			new System.Numerics.Vector4(1.0f, 1.0f, 0.0f, 1.0f),
@@ -57,8 +65,8 @@ namespace StepManiaEditor
 		};
 
 		// WaveForm GUI
-		private readonly string[] WaveFormWindowSparseColorOptions = {"Darker Dense Color", "Same As Dense Color", "Unique Color"};
-
+		private readonly string[] WaveFormWindowSparseColorOptions = { "Darker Dense Color", "Same As Dense Color", "Unique Color" };
+		
 		private bool ShowImGuiTestWindow = true;
 
 		public Editor()
@@ -72,7 +80,7 @@ namespace StepManiaEditor
 				LogFilePath = Path.Combine(@"C:\Users\perry\Projects\Fumen\Logs", logFileName),
 				LogFileFlushIntervalSeconds = 20,
 				LogFileBufferSizeBytes = 10240,
-				
+
 				WriteToBuffer = true,
 				BufferSize = 1024,
 				BufferLock = LogBufferLock,
@@ -106,7 +114,7 @@ namespace StepManiaEditor
 
 			if (Preferences.Instance.WindowMaximized)
 			{
-				((Form) Control.FromHandle(Window.Handle)).WindowState = FormWindowState.Maximized;
+				((Form)Control.FromHandle(Window.Handle)).WindowState = FormWindowState.Maximized;
 			}
 
 			ImGuiRenderer = new ImGuiRenderer(this);
@@ -130,6 +138,8 @@ namespace StepManiaEditor
 
 			TextureAtlas = new TextureAtlas(GraphicsDevice, 2048, 2048, 1);
 
+
+
 			base.Initialize();
 		}
 
@@ -147,15 +157,16 @@ namespace StepManiaEditor
 			TextureAtlas.AddTexture("1_4", Content.Load<Texture2D>("1_4"));
 			TextureAtlas.AddTexture("1_8", Content.Load<Texture2D>("1_8"));
 			TextureAtlas.AddTexture("receptor", Content.Load<Texture2D>("receptor"));
-			
+
 			LoadSongAsync();
-			
+			InitPadDataAndStepGraphsAsync();
+
 			base.LoadContent();
 		}
 
 		public void OnResize(object sender, EventArgs e)
 		{
-			var maximized = ((Form) Control.FromHandle(Window.Handle)).WindowState == FormWindowState.Maximized;
+			var maximized = ((Form)Control.FromHandle(Window.Handle)).WindowState == FormWindowState.Maximized;
 
 			// Update window preferences.
 			if (!maximized)
@@ -302,7 +313,7 @@ namespace StepManiaEditor
 
 			base.Draw(gameTime);
 		}
-		
+
 		private void DrawGui(GameTime gameTime)
 		{
 			ImGui.PushFont(Font);
@@ -322,6 +333,7 @@ namespace StepManiaEditor
 
 			DrawLogUI();
 			DrawWaveFormUI();
+			DrawOptionsUI();
 
 			ImGui.PopFont();
 
@@ -338,8 +350,8 @@ namespace StepManiaEditor
 			var arrowSize = DefaultArrowWidth * zoom;
 			var xStart = FocalPoint.X - (numArrows * arrowSize * 0.5);
 			var y = FocalPoint.Y - (arrowSize * 0.5);
-			
-			var rot = new [] {(float) Math.PI * 0.5f, 0.0f, (float) Math.PI, (float) Math.PI * 1.5f};
+
+			var rot = new[] { (float)Math.PI * 0.5f, 0.0f, (float)Math.PI, (float)Math.PI * 1.5f };
 			for (var i = 0; i < numArrows; i++)
 			{
 				var x = xStart + i * arrowSize;
@@ -361,9 +373,14 @@ namespace StepManiaEditor
 				}
 				if (ImGui.BeginMenu("View"))
 				{
-					ImGui.Checkbox("Log", ref Preferences.Instance.ShowLogWindow);
-					ImGui.Checkbox("Waveform Controls", ref Preferences.Instance.ShowWaveFormWindow);
-					ImGui.Checkbox("ImGui Demo Window", ref ShowImGuiTestWindow);
+					if (ImGui.MenuItem("Log"))
+						Preferences.Instance.ShowLogWindow = true;
+					if (ImGui.MenuItem("Waveform Controls"))
+						Preferences.Instance.ShowWaveFormWindow = true;
+					if (ImGui.MenuItem("Options"))
+						Preferences.Instance.ShowOptionsWindow = true;
+					if (ImGui.MenuItem("ImGui Demo Window"))
+						ShowImGuiTestWindow = true;
 					ImGui.EndMenu();
 				}
 				ImGui.EndMainMenuBar();
@@ -381,13 +398,13 @@ namespace StepManiaEditor
 			{
 				ImGui.PushItemWidth(60);
 				ImGui.Combo("Level", ref Preferences.Instance.LogWindowLevel, LogWindowLevelStrings, LogWindowLevelStrings.Length);
-				ImGui.PopItemWidth(); 
-				
+				ImGui.PopItemWidth();
+
 				ImGui.SameLine();
 				ImGui.PushItemWidth(186);
 				ImGui.Combo("Time", ref Preferences.Instance.LogWindowDateDisplay, LogWindowDateStrings, LogWindowDateStrings.Length);
 				ImGui.PopItemWidth();
-				
+
 				ImGui.SameLine();
 				ImGui.Checkbox("Wrap", ref Preferences.Instance.LogWindowLineWrap);
 
@@ -398,7 +415,7 @@ namespace StepManiaEditor
 				{
 					foreach (var message in LogBuffer)
 					{
-						if ((int) message.Level < Preferences.Instance.LogWindowLevel)
+						if ((int)message.Level < Preferences.Instance.LogWindowLevel)
 							continue;
 
 						if (Preferences.Instance.LogWindowDateDisplay != 0)
@@ -409,7 +426,7 @@ namespace StepManiaEditor
 
 						if (Preferences.Instance.LogWindowLineWrap)
 							ImGui.PushTextWrapPos();
-						ImGui.TextColored(LogWindowLevelColors[(int) message.Level], message.Message);
+						ImGui.TextColored(LogWindowLevelColors[(int)message.Level], message.Message);
 						if (Preferences.Instance.LogWindowLineWrap)
 							ImGui.PopTextWrapPos();
 					}
@@ -452,11 +469,109 @@ namespace StepManiaEditor
 			ImGui.End();
 		}
 
+		private void DrawOptionsUI()
+		{
+			if (!Preferences.Instance.ShowOptionsWindow)
+				return;
+
+			ImGui.SetNextWindowSize(new System.Numerics.Vector2(0, 0), ImGuiCond.FirstUseEver);
+			ImGui.Begin("Options", ref Preferences.Instance.ShowOptionsWindow, ImGuiWindowFlags.NoScrollbar);
+
+			if (ImGui.TreeNode("Startup Steps Types"))
+			{
+				var index = 0;
+				foreach(var stepsType in Enum.GetValues(typeof(SMCommon.ChartType)).Cast<SMCommon.ChartType>())
+				{
+					if (ImGui.Selectable(
+						SMCommon.ChartTypeString(stepsType),
+						Preferences.Instance.StartupStepsTypesBools[index]))
+					{
+						if (!ImGui.GetIO().KeyCtrl)
+						{
+							for (var i = 0; i < Preferences.Instance.StartupStepsTypesBools.Length; i++)
+							{
+								Preferences.Instance.StartupStepsTypesBools[i] = false;
+							}
+						}
+						Preferences.Instance.StartupStepsTypesBools[index] = !Preferences.Instance.StartupStepsTypesBools[index];
+					}
+
+					index++;
+				}
+				ImGui.TreePop();
+			}
+
+			ImGui.End();
+		}
+
 		private async void LoadSongAsync()
 		{
 			var file = @"C:\Games\StepMania 5\Songs\Customs\Acid Wall\Acid Wall.ogg";
 			await SongMipMap.LoadSoundAsync(file);
 			await SongMipMap.CreateMipMapAsync(WaveFormTextureWidth);
+		}
+
+		private async void InitPadDataAndStepGraphsAsync()
+		{
+			var tasks = new Task<bool>[Preferences.Instance.StartupStepsTypes.Length];
+			for (var i = 0; i < Preferences.Instance.StartupStepsTypes.Length; i++)
+			{
+				tasks[i] = LoadPadDataAndCreateStepGraph(Preferences.Instance.StartupStepsTypes[i]);
+			}
+			await Task.WhenAll(tasks);
+		}
+
+		/// <summary>
+		/// Loads PadData and creates a StepGraph for the given StepMania StepsType.
+		/// </summary>
+		/// <returns>
+		/// True if no errors were generated and false otherwise.
+		/// </returns>
+		private async Task<bool> LoadPadDataAndCreateStepGraph(string stepsType)
+		{
+			if (PadDataByStepsType.ContainsKey(stepsType))
+				return true;
+
+			PadDataByStepsType[stepsType] = null;
+			StepGraphByStepsType[stepsType] = null;
+
+			// Load the PadData.
+			PadDataByStepsType[stepsType] = await LoadPadData(stepsType);
+			if (PadDataByStepsType[stepsType] == null)
+			{
+				PadDataByStepsType.Remove(stepsType);
+				StepGraphByStepsType.Remove(stepsType);
+				return false;
+			}
+
+			// Create the StepGraph.
+			await Task.Run(() =>
+			{
+				Logger.Info($"Creating {stepsType} StepGraph.");
+				StepGraphByStepsType[stepsType] = StepGraph.CreateStepGraph(
+					PadDataByStepsType[stepsType],
+					PadDataByStepsType[stepsType].StartingPositions[0][0][L],
+					PadDataByStepsType[stepsType].StartingPositions[0][0][R]);
+				Logger.Info($"Finished creating {stepsType} StepGraph.");
+			});
+
+			return true;
+		}
+
+		/// <summary>
+		/// Loads PadData for the given stepsType.
+		/// </summary>
+		/// <param name="stepsType">Stepmania StepsType to load PadData for.</param>
+		/// <returns>Loaded PadData or null if any errors were generated.</returns>
+		private static async Task<PadData> LoadPadData(string stepsType)
+		{
+			var fileName = $"{stepsType}.json";
+			Logger.Info($"Loading PadData from {fileName}.");
+			var padData = await PadData.LoadPadData(stepsType, fileName);
+			if (padData == null)
+				return null;
+			Logger.Info($"Finished loading {stepsType} PadData.");
+			return padData;
 		}
 	}
 }

@@ -1,10 +1,12 @@
 ﻿using System;
+using System.Collections;
 using System.IO;
 using System.Numerics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Fumen;
+using Fumen.Converters;
 
 namespace StepManiaEditor
 {
@@ -60,6 +62,51 @@ namespace StepManiaEditor
 		[JsonInclude] public int LogWindowLevel = (int)LogLevel.Info;
 		[JsonInclude] public bool LogWindowLineWrap;
 
+		// Option preferences
+		[JsonInclude] public bool ShowOptionsWindow = false;
+
+		// Strings are serialized, but converted to an array of booleans for UI.
+		[JsonIgnore] public bool[] StartupStepsTypesBools;
+		[JsonInclude] public string[] StartupStepsTypes = { "dance-single", "dance-double" };
+
+		public Preferences()
+		{
+			PostLoad();
+		}
+
+		private void PostLoad()
+		{
+			// Set up StartupStepsTypesBools from StartupStepsTypes.
+			StartupStepsTypesBools = new bool[Enum.GetNames(typeof(SMCommon.ChartType)).Length];
+			foreach (var stepsType in StartupStepsTypes)
+			{
+				if (SMCommon.TryGetChartType(stepsType, out var chartType))
+				{
+					StartupStepsTypesBools[(int)chartType] = true;
+				}
+			}
+		}
+
+		private void PreSave()
+		{
+			// Set up StartupStepsTypes from StartupStepsTypesBools.
+			var count = 0;
+			for (var i = 0; i < StartupStepsTypesBools.Length; i++)
+			{
+				if (StartupStepsTypesBools[i])
+					count++;
+			}
+			StartupStepsTypes = new string[count];
+			count = 0;
+			for (var i = 0; i < StartupStepsTypesBools.Length; i++)
+			{
+				if (StartupStepsTypesBools[i])
+				{
+					StartupStepsTypes[count++] = SMCommon.ChartTypeString((SMCommon.ChartType)i);
+				}
+			}
+		}
+
 		/// <summary>
 		/// Loads the Preferences from the preferences json file.
 		/// </summary>
@@ -73,6 +120,7 @@ namespace StepManiaEditor
 				using (FileStream openStream = File.OpenRead(Fumen.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, FileName)))
 				{
 					Instance = await JsonSerializer.DeserializeAsync<Preferences>(openStream, SerializationOptions);
+					Instance.PostLoad();
 				}
 			}
 			catch (Exception e)
@@ -98,6 +146,7 @@ namespace StepManiaEditor
 				using (FileStream openStream = File.OpenRead(Fumen.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, FileName)))
 				{
 					Instance = JsonSerializer.Deserialize<Preferences>(openStream, SerializationOptions);
+					Instance.PostLoad();
 				}
 			}
 			catch (Exception e)
@@ -119,6 +168,7 @@ namespace StepManiaEditor
 
 			try
 			{
+				Instance.PreSave();
 				var jsonString = JsonSerializer.Serialize(Instance, SerializationOptions);
 				await File.WriteAllTextAsync(Fumen.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, FileName), jsonString);
 			}
@@ -140,6 +190,7 @@ namespace StepManiaEditor
 
 			try
 			{
+				Instance.PreSave();
 				var jsonString = JsonSerializer.Serialize(Instance, SerializationOptions);
 				File.WriteAllText(Fumen.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, FileName), jsonString);
 			}
