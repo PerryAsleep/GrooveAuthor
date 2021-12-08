@@ -220,291 +220,311 @@ namespace StepManiaEditor
 		/// <param name="zoom">Zoom level.</param>
 		private void UpdateTexture(double soundTimeSeconds, double zoom)
 		{
-			// Don't render unless there is SoundMipMap data to use.
-			// It doesn't matter if the SoundMipMap data is fully generated yet as it can
-			// still be partially renderer.
-			if (MipMap == null || !MipMap.IsMipMapDataAllocated())
-			{
-				return;
-			}
-
 			// Get the correct texture to update.
 			var texture = Textures[TextureIndex];
-			
+
 			// Clear the pixel data to all black.
 			// Array.Clear is the most efficient way to do this in practice.
 			Array.Clear(BGR565Data, 0, (int)(Width * Height));
 
-			// Determine the zoom to use in x. Zoom in x is separate from zoom in y.
-			var xZoom = ScaleXWhenZooming ? Math.Min(1.0, zoom) : 1.0;
-			var renderWidth = Width * xZoom;
-
-			var numChannels = MipMap.GetNumChannels();
-			var totalWidthPerChannel = (uint)(renderWidth / numChannels);
-
-			//uint endSample = startSample + (uint)(SampleRate / Zoom);
-			//uint numSamples = endSample - startSample;
-			// range shown = 1 second / Zoom
-			var samplesPerPixel = (double)SampleRate / Height / zoom;
-
-			// Quantizing the samples per pixel to an integer value guarantees that for a given zoom
-			// level, the same samples will always be grouped together. This prevents a jittering
-			// artifact that could occur otherwise due to samples being grouped with different sets
-			// depending on the range we are looking at.
-			// When the zoom is so high that individual samples are spread out across multiple pixels,
-			// do not quantize. This could introduce jitter, but at this zoom level the scroll speed
-			// would need to be unrealistically slow to notice any artifact.
-			if (samplesPerPixel > 1.0)
+			var lockTaken = false;
+			try
 			{
-				//samplesPerPixel = (long) samplesPerPixel;
-			}
-
-			var startSampleOffset = (FocalPoint.Y * samplesPerPixel * -1);
-			var startSample = (long)(soundTimeSeconds * SampleRate + startSampleOffset);
-
-			// Snap the start sample so that the waveform doesn't jitter while scrolling
-			// by moving samples between pixel boundaries on different frames.
-			var pixel = (int) (startSample / samplesPerPixel);
-			startSample = (long) (pixel * samplesPerPixel);
-
-			var totalNumSamples = MipMap.GetMipLevel0NumSamples();
-			var channelMidX = (ushort)(((Width / numChannels) >> 1) - 1);
-
-			// Set up structures for determining the values to use for each row of pixels.
-			var minXPerChannel = new ushort[numChannels];
-			var maxXPerChannel = new ushort[numChannels];
-			var sumOfSquaresPerChannel = new float[numChannels];
-
-			// Set up structures to track the previous values.
-			var previousXMin = new ushort[numChannels];
-			var previousXMax = new ushort[numChannels];
-			// If the first sample index falls within the range of the underlying sound,
-			// then copy the previous sample's data for the first previous values. This
-			// ensures that when rendering samples that are heavily zoomed in we start
-			// the first pixel at the correct location.
-			if (startSample > 0 && startSample < totalNumSamples + 1)
-			{
-				for (var channel = 0; channel < numChannels; channel++)
+				// Try to lock, but don't require it. If the lock is already taken then SoundMipMap is destroying
+				// or allocating the data. In that case we should just draw the clear texture rather than waiting.
+				MipMap.TryLockMipLevels(ref lockTaken);
+				if (lockTaken)
 				{
-					var data = MipMap.MipLevels[0].Data[(startSample - 1) * numChannels + channel];
-					previousXMin[channel] = data.MinX;
-					previousXMax[channel] = data.MaxX;
-				}
-			}
-			// If the first sample index to be rendered is before the first sample in the audio then
-			// default to using the middle of the sample range.
-			else
-			{
-				for (var channel = 0; channel < numChannels; channel++)
-				{
-					previousXMin[channel] = channelMidX;
-					previousXMax[channel] = channelMidX;
-				}
-			}
-
-			// Loop over every y pixel and update the pixels in BGR565Data for that row.
-			var sampleIndex = startSample;
-			for (uint y = 0; y < Height; y++)
-			{
-				var bSilentSample = false;
-				var bUsePreviousSample = false;
-				var numSamplesUsedThisLoop = 0L;
-
-				// Determine the last sample to be considered for this row.
-				var endSampleForPixel = (long)((y + 1) * samplesPerPixel) + startSample;
-				// Always use at least one sample for data to be rendered.
-				if (endSampleForPixel == sampleIndex)
-					endSampleForPixel++;
-
-				// Handling for the last pixel being beyond the end of the sound.
-				if (endSampleForPixel > totalNumSamples)
-				{
-					// If both the start and end sample are beyond the end, render silence.
-					if ((long)(y * samplesPerPixel) + startSample > totalNumSamples)
+					// Don't render unless there is SoundMipMap data to use.
+					// It doesn't matter if the SoundMipMap data is fully generated yet as it can
+					// still be partially renderer.
+					if (MipMap == null || !MipMap.IsMipMapDataAllocated())
 					{
-						bSilentSample = true;
+						texture.SetData(BGR565Data);
+						return;
 					}
-					// Clamp the end sample.
-					endSampleForPixel = totalNumSamples;
-				}
 
-				// Set up base values for looping over samples to calculate the min, max, and
-				// number of direction changes.
-				for (var channel = 0; channel < numChannels; channel++)
-				{
-					minXPerChannel[channel] = ushort.MaxValue;
-					maxXPerChannel[channel] = 0;
-					sumOfSquaresPerChannel[channel] = 0.0f;
-				}
-				
-				// Handling for the first sample for this row being before the start of the sound.
-				if (sampleIndex < 0)
-				{
-					// If the entire range of samples for this row are before the start, use
-					// the previous sample, which will default to silence.
-					if (endSampleForPixel < 0)
+					// Determine the zoom to use in x. Zoom in x is separate from zoom in y.
+					var xZoom = ScaleXWhenZooming ? Math.Min(1.0, zoom) : 1.0;
+					var renderWidth = Width * xZoom;
+
+					var numChannels = MipMap.GetNumChannels();
+					var totalWidthPerChannel = (uint)(renderWidth / numChannels);
+
+					//uint endSample = startSample + (uint)(SampleRate / Zoom);
+					//uint numSamples = endSample - startSample;
+					// range shown = 1 second / Zoom
+					var samplesPerPixel = (double)SampleRate / Height / zoom;
+
+					// Quantizing the samples per pixel to an integer value guarantees that for a given zoom
+					// level, the same samples will always be grouped together. This prevents a jittering
+					// artifact that could occur otherwise due to samples being grouped with different sets
+					// depending on the range we are looking at.
+					// When the zoom is so high that individual samples are spread out across multiple pixels,
+					// do not quantize. This could introduce jitter, but at this zoom level the scroll speed
+					// would need to be unrealistically slow to notice any artifact.
+					if (samplesPerPixel > 1.0)
 					{
-						bUsePreviousSample = true;
+						//samplesPerPixel = (long) samplesPerPixel;
 					}
-					// Otherwise we will loop over samples, so clamp the start sample to 0.
-					else
+
+					var startSampleOffset = (FocalPoint.Y * samplesPerPixel * -1);
+					var startSample = (long)(soundTimeSeconds * SampleRate + startSampleOffset);
+
+					// Snap the start sample so that the waveform doesn't jitter while scrolling
+					// by moving samples between pixel boundaries on different frames.
+					var pixel = (int)(startSample / samplesPerPixel);
+					startSample = (long)(pixel * samplesPerPixel);
+
+					var totalNumSamples = MipMap.GetMipLevel0NumSamples();
+					var channelMidX = (ushort)(((Width / numChannels) >> 1) - 1);
+
+					// Set up structures for determining the values to use for each row of pixels.
+					var minXPerChannel = new ushort[numChannels];
+					var maxXPerChannel = new ushort[numChannels];
+					var sumOfSquaresPerChannel = new float[numChannels];
+
+					// Set up structures to track the previous values.
+					var previousXMin = new ushort[numChannels];
+					var previousXMax = new ushort[numChannels];
+					// If the first sample index falls within the range of the underlying sound,
+					// then copy the previous sample's data for the first previous values. This
+					// ensures that when rendering samples that are heavily zoomed in we start
+					// the first pixel at the correct location.
+					if (startSample > 0 && startSample < totalNumSamples + 1)
 					{
-						sampleIndex = 0;
-					}
-				}
-
-				if (sampleIndex > totalNumSamples)
-				{
-					bUsePreviousSample = true;
-				}
-
-				// If the zoom is so great that this row has no samples, use the previous sample.
-				if (sampleIndex >= endSampleForPixel)
-				{
-					bUsePreviousSample = true;
-				}
-
-				// Edge case, use a silent sample.
-				if (bSilentSample)
-				{
-					for (var channel = 0; channel < numChannels; channel++)
-					{
-						minXPerChannel[channel] = channelMidX;
-						maxXPerChannel[channel] = channelMidX;
-					}
-				}
-
-				// Edge case, use the previous sample.
-				else if (bUsePreviousSample)
-				{
-					for (var channel = 0; channel < numChannels; channel++)
-					{
-						minXPerChannel[channel] = previousXMin[channel];
-						maxXPerChannel[channel] = previousXMax[channel];
-					}
-				}
-
-				// Normal case, use one or more samples for this row.
-				else
-				{
-					numSamplesUsedThisLoop = endSampleForPixel - sampleIndex;
-					while (sampleIndex < endSampleForPixel)
-					{
-						// Determine the greatest power of two that evenly divides the current sample
-						// index and also will not exceed the last sample for this row.
-						var powerOfTwo = 2u;
-						var mipLevelIndex = 1u;
-						while (sampleIndex % powerOfTwo == 0 && sampleIndex + powerOfTwo < endSampleForPixel)
-						{
-							powerOfTwo <<= 1;
-							mipLevelIndex++;
-						}
-						mipLevelIndex--;
-						powerOfTwo >>= 1;
-
 						for (var channel = 0; channel < numChannels; channel++)
 						{
-							// Use the precomputed sample data at the appropriate mip level.
-							var relativeSampleIndex = ((sampleIndex / powerOfTwo) * numChannels) + channel;
-							var data = MipMap.MipLevels[mipLevelIndex].Data[relativeSampleIndex];
+							var data = MipMap.MipLevels[0].Data[(startSample - 1) * numChannels + channel];
+							previousXMin[channel] = data.MinX;
+							previousXMax[channel] = data.MaxX;
+						}
+					}
+					// If the first sample index to be rendered is before the first sample in the audio then
+					// default to using the middle of the sample range.
+					else
+					{
+						for (var channel = 0; channel < numChannels; channel++)
+						{
+							previousXMin[channel] = channelMidX;
+							previousXMax[channel] = channelMidX;
+						}
+					}
 
-							// Update tracking variables for min, max, and rms.
-							var curMinX = data.MinX;
-							var curMaxX = data.MaxX;
-							if (curMinX < minXPerChannel[channel])
-								minXPerChannel[channel] = curMinX;
-							if (curMaxX > maxXPerChannel[channel])
-								maxXPerChannel[channel] = curMaxX;
-							sumOfSquaresPerChannel[channel] += data.SumOfSquares;
+					// Loop over every y pixel and update the pixels in BGR565Data for that row.
+					var sampleIndex = startSample;
+					for (uint y = 0; y < Height; y++)
+					{
+						var bSilentSample = false;
+						var bUsePreviousSample = false;
+						var numSamplesUsedThisLoop = 0L;
+
+						// Determine the last sample to be considered for this row.
+						var endSampleForPixel = (long)((y + 1) * samplesPerPixel) + startSample;
+						// Always use at least one sample for data to be rendered.
+						if (endSampleForPixel == sampleIndex)
+							endSampleForPixel++;
+
+						// Handling for the last pixel being beyond the end of the sound.
+						if (endSampleForPixel > totalNumSamples)
+						{
+							// If both the start and end sample are beyond the end, render silence.
+							if ((long)(y * samplesPerPixel) + startSample > totalNumSamples)
+							{
+								bSilentSample = true;
+							}
+
+							// Clamp the end sample.
+							endSampleForPixel = totalNumSamples;
 						}
 
-						sampleIndex += powerOfTwo;
+						// Set up base values for looping over samples to calculate the min, max, and
+						// number of direction changes.
+						for (var channel = 0; channel < numChannels; channel++)
+						{
+							minXPerChannel[channel] = ushort.MaxValue;
+							maxXPerChannel[channel] = 0;
+							sumOfSquaresPerChannel[channel] = 0.0f;
+						}
+
+						// Handling for the first sample for this row being before the start of the sound.
+						if (sampleIndex < 0)
+						{
+							// If the entire range of samples for this row are before the start, use
+							// the previous sample, which will default to silence.
+							if (endSampleForPixel < 0)
+							{
+								bUsePreviousSample = true;
+							}
+							// Otherwise we will loop over samples, so clamp the start sample to 0.
+							else
+							{
+								sampleIndex = 0;
+							}
+						}
+
+						if (sampleIndex > totalNumSamples)
+						{
+							bUsePreviousSample = true;
+						}
+
+						// If the zoom is so great that this row has no samples, use the previous sample.
+						if (sampleIndex >= endSampleForPixel)
+						{
+							bUsePreviousSample = true;
+						}
+
+						// Edge case, use a silent sample.
+						if (bSilentSample)
+						{
+							for (var channel = 0; channel < numChannels; channel++)
+							{
+								minXPerChannel[channel] = channelMidX;
+								maxXPerChannel[channel] = channelMidX;
+							}
+						}
+
+						// Edge case, use the previous sample.
+						else if (bUsePreviousSample)
+						{
+							for (var channel = 0; channel < numChannels; channel++)
+							{
+								minXPerChannel[channel] = previousXMin[channel];
+								maxXPerChannel[channel] = previousXMax[channel];
+							}
+						}
+
+						// Normal case, use one or more samples for this row.
+						else
+						{
+							numSamplesUsedThisLoop = endSampleForPixel - sampleIndex;
+							while (sampleIndex < endSampleForPixel)
+							{
+								// Determine the greatest power of two that evenly divides the current sample
+								// index and also will not exceed the last sample for this row.
+								var powerOfTwo = 2u;
+								var mipLevelIndex = 1u;
+								while (sampleIndex % powerOfTwo == 0 && sampleIndex + powerOfTwo < endSampleForPixel)
+								{
+									powerOfTwo <<= 1;
+									mipLevelIndex++;
+								}
+
+								mipLevelIndex--;
+								powerOfTwo >>= 1;
+
+								for (var channel = 0; channel < numChannels; channel++)
+								{
+									// Use the precomputed sample data at the appropriate mip level.
+									var relativeSampleIndex = ((sampleIndex / powerOfTwo) * numChannels) + channel;
+									var data = MipMap.MipLevels[mipLevelIndex].Data[relativeSampleIndex];
+
+									// Update tracking variables for min, max, and rms.
+									var curMinX = data.MinX;
+									var curMaxX = data.MaxX;
+									if (curMinX < minXPerChannel[channel])
+										minXPerChannel[channel] = curMinX;
+									if (curMaxX > maxXPerChannel[channel])
+										maxXPerChannel[channel] = curMaxX;
+									sumOfSquaresPerChannel[channel] += data.SumOfSquares;
+								}
+
+								sampleIndex += powerOfTwo;
+							}
+						}
+
+						// Now that the min, max, and sum of squares are known for the sample
+						// range for this row, convert those value into indices into pixel data so we can
+						// update the data.
+						for (var channel = 0; channel < numChannels; channel++)
+						{
+							// Somewhat kludgy, but because we start rendering the waveform before all the
+							// mip map data is available, we may process data in its default state where
+							// minX is ushort.MaxValue and maxX is 0. In this case it's more graceful to
+							// render silence.
+							if (maxXPerChannel[channel] < minXPerChannel[channel])
+							{
+								minXPerChannel[channel] = channelMidX;
+								maxXPerChannel[channel] = channelMidX;
+							}
+
+							// Prevent gaps due to samples being more than one column apart.
+							// Extend this row's min or max to reach the previous row's max or min.
+							var minX = minXPerChannel[channel];
+							var maxX = maxXPerChannel[channel];
+
+							if (minX > previousXMax[channel] + 1)
+							{
+								minX = (ushort)(previousXMax[channel] + 1);
+								if (maxX < minX)
+									maxX = minX;
+							}
+							else if (previousXMin[channel] > 0 && maxX < previousXMin[channel] - 1)
+							{
+								maxX = (ushort)(previousXMin[channel] - 1);
+								if (minX > maxX)
+									minX = maxX;
+							}
+
+							// Record unmodified values for comparisons with previous values.
+							// This way we don't introduce box artifacts when samples are sparse.
+							previousXMin[channel] = minXPerChannel[channel];
+							previousXMax[channel] = maxXPerChannel[channel];
+
+							// Scale in the min and max x values based on the zoom and the channel scaling.
+							minX = (ushort)(minX * xZoom * XPerChannelScale);
+							maxX = (ushort)(maxX * xZoom * XPerChannelScale);
+							var range = maxX - minX;
+
+							// Determine the min and max x values for the dense range.
+							ushort denseMinX = 0;
+							ushort denseMaxX = 0;
+							var denseRange = 0.0;
+							// Don't draw any dense values if we are only processing one sample.
+							if (numSamplesUsedThisLoop > 1)
+							{
+								// Compute root mean square.
+								var rms = Math.Sqrt(sumOfSquaresPerChannel[channel] * (1.0f / numSamplesUsedThisLoop));
+								if (rms > 1.0)
+									rms = 1.0f;
+								var densePercentage = rms;
+								denseRange = range * densePercentage;
+								denseMinX = (ushort)(minX + (ushort)((range - denseRange) * 0.5f));
+								denseMaxX = (ushort)(denseMinX + denseRange);
+							}
+
+							// Determine the start index in the overall texture data for this channel.
+							var startIndexForRowAndChannel = (int)
+								// Start pixel for this row.
+								(Width * y
+								 // Account for the space to the left of the start due to being zoomed in.
+								 + ((Width - renderWidth) * 0.5f)
+								 // Account for the offset due to x scaling.
+								 + ((totalWidthPerChannel - (totalWidthPerChannel * XPerChannelScale)) * 0.5f)
+								 // Account for the channel offset.
+								 + (channel * totalWidthPerChannel));
+
+							// Compute the pixel indices for the sparse and dense regions.
+							var densePixelStart = startIndexForRowAndChannel + denseMinX;
+							var densePixelEnd = startIndexForRowAndChannel + denseMaxX;
+							var sparsePixelStart = startIndexForRowAndChannel + minX;
+							var sparsePixelEnd = startIndexForRowAndChannel + maxX;
+
+							// Copy the sparse color line into the waveform pixel data.
+							Buffer.BlockCopy(SparseLine, 0, BGR565Data, sparsePixelStart << 1,
+								(sparsePixelEnd + 1 - sparsePixelStart) << 1);
+							// Copy the dense color line into the waveform pixel data.
+							if (denseRange > 0.0)
+								Buffer.BlockCopy(DenseLine, 0, BGR565Data, densePixelStart << 1,
+									(densePixelEnd + 1 - densePixelStart) << 1);
+						}
 					}
 				}
-
-				// Now that the min, max, and sum of squares are known for the sample
-				// range for this row, convert those value into indices into pixel data so we can
-				// update the data.
-				for (var channel = 0; channel < numChannels; channel++)
-				{
-					// Somewhat kludgy, but because we start rendering the waveform before all the
-					// mip map data is available, we may process data in its default state where
-					// minX is ushort.MaxValue and maxX is 0. In this case it's more graceful to
-					// render silence.
-					if (maxXPerChannel[channel] < minXPerChannel[channel])
-					{
-						minXPerChannel[channel] = channelMidX;
-						maxXPerChannel[channel] = channelMidX;
-					}
-
-					// Prevent gaps due to samples being more than one column apart.
-					// Extend this row's min or max to reach the previous row's max or min.
-					var minX = minXPerChannel[channel];
-					var maxX = maxXPerChannel[channel];
-					
-					if (minX > previousXMax[channel] + 1)
-					{
-						minX = (ushort)(previousXMax[channel] + 1);
-						if (maxX < minX)
-							maxX = minX;
-					}
-					else if (previousXMin[channel] > 0 && maxX < previousXMin[channel] - 1)
-					{
-						maxX = (ushort)(previousXMin[channel] - 1);
-						if (minX > maxX)
-							minX = maxX;
-					}
-
-					// Record unmodified values for comparisons with previous values.
-					// This way we don't introduce box artifacts when samples are sparse.
-					previousXMin[channel] = minXPerChannel[channel];
-					previousXMax[channel] = maxXPerChannel[channel];
-
-					// Scale in the min and max x values based on the zoom and the channel scaling.
-					minX = (ushort)(minX * xZoom * XPerChannelScale);
-					maxX = (ushort)(maxX * xZoom * XPerChannelScale);
-					var range = maxX - minX;
-
-					// Determine the min and max x values for the dense range.
-					ushort denseMinX = 0;
-					ushort denseMaxX = 0;
-					var denseRange = 0.0;
-					// Don't draw any dense values if we are only processing one sample.
-					if (numSamplesUsedThisLoop > 1)
-					{
-						// Compute root mean square.
-						var rms = Math.Sqrt(sumOfSquaresPerChannel[channel] * (1.0f / numSamplesUsedThisLoop));
-						if (rms > 1.0)
-							rms = 1.0f;
-						var densePercentage = rms;
-						denseRange = range * densePercentage;
-						denseMinX = (ushort) (minX + (ushort) ((range - denseRange) * 0.5f));
-						denseMaxX = (ushort) (denseMinX + denseRange);
-					}
-
-					// Determine the start index in the overall texture data for this channel.
-					var startIndexForRowAndChannel = (int)
-						// Start pixel for this row.
-						(Width * y
-						 // Account for the space to the left of the start due to being zoomed in.
-						 + ((Width - renderWidth) * 0.5f)
-						 // Account for the offset due to x scaling.
-						 + ((totalWidthPerChannel - (totalWidthPerChannel * XPerChannelScale)) * 0.5f)
-						 // Account for the channel offset.
-						 + (channel * totalWidthPerChannel));
-
-					// Compute the pixel indices for the sparse and dense regions.
-					var densePixelStart = startIndexForRowAndChannel + denseMinX;
-					var densePixelEnd = startIndexForRowAndChannel + denseMaxX;
-					var sparsePixelStart = startIndexForRowAndChannel + minX;
-					var sparsePixelEnd = startIndexForRowAndChannel + maxX;
-
-					// Copy the sparse color line into the waveform pixel data.
-					Buffer.BlockCopy(SparseLine, 0, BGR565Data, sparsePixelStart << 1, (sparsePixelEnd + 1 - sparsePixelStart) << 1);
-					// Copy the dense color line into the waveform pixel data.
-					if (denseRange > 0.0)
-						Buffer.BlockCopy(DenseLine, 0, BGR565Data, densePixelStart << 1, (densePixelEnd + 1 - densePixelStart) << 1);
-				}
+			}
+			finally
+			{
+				if (lockTaken)
+					MipMap.UnlockMipLevels();
 			}
 
 			// Update the texture with the updated data.

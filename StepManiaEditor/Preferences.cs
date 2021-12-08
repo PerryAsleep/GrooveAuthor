@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.IO;
 using System.Numerics;
 using System.Text.Json;
@@ -35,6 +36,14 @@ namespace StepManiaEditor
 			WriteIndented = true
 		};
 
+		public class SavedSongInformation
+		{
+			[JsonInclude] public string FileName;
+			[JsonInclude] public string LastChartType;
+			[JsonInclude] public string LastChartDifficultyType;
+			// TODO: Zoom level and position
+		}
+
 		/// <summary>
 		/// Static Config instance.
 		/// </summary>
@@ -47,7 +56,7 @@ namespace StepManiaEditor
 		[JsonInclude] public bool WindowMaximized = false;
 
 		// Waveform preferences
-		[JsonInclude] public bool ShowWaveFormWindow = true;
+		[JsonInclude] public bool ShowWaveFormWindow = false;
 		[JsonInclude] public bool ShowWaveForm = true;
 		[JsonInclude] public bool WaveFormScaleXWhenZooming = true;
 		[JsonInclude] public int WaveFormWindowSparseColorOption = 0;
@@ -55,6 +64,7 @@ namespace StepManiaEditor
 		[JsonInclude] public Vector3 WaveFormDenseColor = new Vector3(0.0f, 0.79646015f, 0.3735608f);
 		[JsonInclude] public Vector3 WaveFormSparseColor = new Vector3(0.0f, 0.39823008f, 0.1867804f);
 		[JsonInclude] public float WaveFormMaxXPercentagePerChannel = 0.9f;
+		[JsonInclude] public int WaveFormLoadingMaxParallelism = 8;
 
 		// Log preferences
 		[JsonInclude] public bool ShowLogWindow = true;
@@ -68,6 +78,14 @@ namespace StepManiaEditor
 		// Strings are serialized, but converted to an array of booleans for UI.
 		[JsonIgnore] public bool[] StartupStepsTypesBools;
 		[JsonInclude] public string[] StartupStepsTypes = { "dance-single", "dance-double" };
+		[JsonInclude] public bool OpenLastOpenedFileOnLaunch = false;
+
+		// Misc
+		[JsonInclude] public string OpenFileDialogInitialDirectory = @"C:\Games\StepMania 5\Songs\";
+		[JsonInclude] public int RecentFilesHistorySize = 10;
+		[JsonInclude] public List<SavedSongInformation> RecentFiles = new List<SavedSongInformation>();
+		[JsonInclude] public string DefaultStepsType = "dance-single";
+		[JsonInclude] public string DefaultDifficultyType = "Challenge";
 
 		public Preferences()
 		{

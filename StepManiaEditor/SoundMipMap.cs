@@ -1,4 +1,6 @@
-﻿using System.Threading.Tasks;
+﻿using System;
+using System.Threading;
+using System.Threading.Tasks;
 using FMOD;
 using Fumen;
 
@@ -52,6 +54,11 @@ namespace StepManiaEditor
 			/// </summary>
 			public readonly SampleDataPerChannel[] Data;
 
+			/// <summary>
+			/// Constructor. Will allocate data and set appropriate defaults to start filling.
+			/// </summary>
+			/// <param name="numSamples">Number of samples at this mip level.</param>
+			/// <param name="numChannels">Number of channels of audio per sample.</param>
 			public MipLevel(uint numSamples, uint numChannels)
 			{
 				var len = numSamples * numChannels;
@@ -63,18 +70,100 @@ namespace StepManiaEditor
 			}
 		}
 
+		/// <summary>
+		/// SoundManager.
+		/// </summary>
 		private readonly SoundManager SoundManager;
-		public Sound Sound;
+		/// <summary>
+		/// MipLevel array containing all data.
+		/// </summary>
 		public MipLevel[] MipLevels;
+		/// <summary>
+		/// Number of channels of underlying Sound.
+		/// </summary>
 		private uint NumChannels;
-
-		private bool SoundLoaded;
-		private bool MipMapDataLoaded;
+		/// <summary>
+		/// Whether or not the MipLevels data has been allocated.
+		/// </summary>
 		private bool MipLevelsAllocated;
+		/// <summary>
+		/// Whether or not the MipLevels data is fully populated after allocation.
+		/// </summary>
+		private bool MipMapDataLoaded;
+		/// <summary>
+		/// number of Tasks to use to parallelize the mip map creation work.
+		/// </summary>
+		private int LoadParallelism = 1;
 
+		/// <summary>
+		/// Object to use for locking when creating and destroying MipLevels.
+		/// This class exposes MipLevels publicly. It is expected that other
+		/// users of MipLevels lock this object when they need it so that this
+		/// class does not destroy or create MipLevels while they are being used.
+		/// We don't need to lock while editing the data in MipLevels, as only
+		/// this class writes to it, but we need to lock when we are going to
+		/// delete the data.
+		/// We could have other classes cache MipLevels but we want to control
+		/// when this data is deleted with a manual Garbage Collector Collect because
+		/// otherwise we could see memory usage double when resetting and loading
+		/// a new song. As this data can be multiple GBs, we want to avoid that.
+		/// </summary>
+		private readonly object MipLevelsLock = new object();
+
+		/// <summary>
+		/// Constructor.
+		/// </summary>
+		/// <param name="soundManager">SoundManager.</param>
 		public SoundMipMap(SoundManager soundManager)
 		{
 			SoundManager = soundManager;
+		}
+
+		/// <summary>
+		/// Public method for externally locking MipLevels.
+		/// </summary>
+		/// <param name="lockTaken">Whether or not the lock was taken.</param>
+		public void TryLockMipLevels(ref bool lockTaken)
+		{
+			Monitor.TryEnter(MipLevelsLock, ref lockTaken);
+		}
+
+		/// <summary>
+		/// Public method for externally unlocking MipLevels.
+		/// </summary>
+		public void UnlockMipLevels()
+		{
+			Monitor.Exit(MipLevelsLock);
+		}
+
+		/// <summary>
+		/// Reset the SoundMipMap.
+		/// Will invoke a Collect on the GarbageCollector to free MipLevels data.
+		/// </summary>
+		public void Reset()
+		{
+			// Clear data.
+			bool shouldGC;
+			lock (MipLevelsLock)
+			{
+				shouldGC = MipLevels != null;
+				MipLevelsAllocated = false;
+				MipMapDataLoaded = false;
+				MipLevels = null;
+				NumChannels = 0;
+			}
+			// Garbage collect to free the MipLevels data.
+			if (shouldGC)
+				GC.Collect();
+		}
+
+		/// <summary>
+		/// Sets the number of Tasks to use to parallelize the mip map creation work.
+		/// </summary>
+		/// <param name="loadParallelism">Number of Tasks to use to parallelize the mip map creation work</param>
+		public void SetLoadParallelism(int loadParallelism)
+		{
+			LoadParallelism = loadParallelism;
 		}
 
 		/// <summary>
@@ -126,43 +215,21 @@ namespace StepManiaEditor
 		}
 
 		/// <summary>
-		/// Loads the sound specified by the given file name.
+		/// Creates the mip map data for the given Sound.
 		/// </summary>
-		/// <param name="soundFileName">File name of sound to load.</param>
-		/// <returns>Generated Sound.</returns>
-		public async Task<Sound> LoadSoundAsync(string soundFileName)
-		{
-			Logger.Info($"Loading {soundFileName}...");
-			Sound = await SoundManager.LoadAsync(soundFileName);
-			if (Sound.hasHandle())
-			{
-				Logger.Info($"Finished loading {soundFileName}.");
-				SoundLoaded = true;
-			}
-			return Sound;
-		}
-
-		/// <summary>
-		/// Creates the mip map data for the Sound.
-		/// </summary>
+		/// <param name="sound">Sound to create mip map data for.</param>
 		/// <param name="xRange">Total x range in pixels for all channels.</param>
-		public async Task CreateMipMapAsync(int xRange)
+		/// <param name="token">CancellationToken for cancelling this Task.</param>
+		public async Task CreateMipMapAsync(Sound sound, int xRange, CancellationToken token)
 		{
-			if (!SoundLoaded)
-			{
-				Logger.Warn("Cannot create sound mip map data. Sound is not loaded.");
-				return;
-			}
-
-			if (!Sound.hasHandle())
+			if (!sound.hasHandle())
 			{
 				Logger.Warn("Cannot create sound mip map data. Invalid sound handle.");
 				return;
 			}
 
 			Logger.Info("Generating sound mip map...");
-			var success = false;
-			await Task.Run(() => { success = CreateMipMap(xRange); });
+			var success = await Task.Run(async () => await InternalCreateMipMapAsync(sound, xRange, token), token);
 			if (!success)
 			{
 				Logger.Warn("Failed generating sound mip map.");
@@ -179,72 +246,209 @@ namespace StepManiaEditor
 		/// <remarks>
 		/// Expect this method to take a long time as it must loop over all samples and
 		/// update all mip level data.
-		/// Unsafe due to byte array usage from native library.
 		/// </remarks>
+		/// <param name="sound">Sound to create mip map data for.</param>
 		/// <param name="xRange">Total x range in pixels for all channels.</param>
+		/// <param name="token">CancellationToken for cancelling this Task.</param>
 		/// <returns>True if successful and false otherwise.</returns>
-		private unsafe bool CreateMipMap(int xRange)
+		private async Task<bool> InternalCreateMipMapAsync(Sound sound, int xRange, CancellationToken token)
 		{
 			// Get the sound data from FMOD.
-			if (!SoundManager.ErrCheck(Sound.getLength(out var length, TIMEUNIT.PCMBYTES)))
+			if (!SoundManager.ErrCheck(sound.getLength(out var length, TIMEUNIT.PCMBYTES)))
 				return false;
-			if (!SoundManager.ErrCheck(Sound.getFormat(out _, out var format, out var numChannels, out var bits)))
+			if (!SoundManager.ErrCheck(sound.getFormat(out _, out var format, out var numChannels, out var bits)))
 				return false;
-			if (!SoundManager.ErrCheck(Sound.@lock(0, length, out var ptr1, out var ptr2, out var len1, out var len2)))
+			if (!SoundManager.ErrCheck(sound.@lock(0, length, out var ptr1, out var ptr2, out var len1, out var len2)))
 				return false;
+			var soundNeedsUnlock = true;
 
-			// Early outs for data that can't be parsed.
-			if (format != SOUND_FORMAT.PCM8
-			    && format != SOUND_FORMAT.PCM16
-			    && format != SOUND_FORMAT.PCM24
-			    && format != SOUND_FORMAT.PCM32
-			    && format != SOUND_FORMAT.PCMFLOAT)
+			try
 			{
-				Logger.Warn($"Unsupported sound format: {format:G}");
-				return false;
+				// Early outs for data that can't be parsed.
+				if (format != SOUND_FORMAT.PCM8
+					&& format != SOUND_FORMAT.PCM16
+					&& format != SOUND_FORMAT.PCM24
+					&& format != SOUND_FORMAT.PCM32
+					&& format != SOUND_FORMAT.PCMFLOAT)
+				{
+					Logger.Warn($"Unsupported sound format: {format:G}");
+					SoundManager.ErrCheck(sound.unlock(ptr1, ptr2, len1, len2));
+					return false;
+				}
+				if (numChannels < 1)
+				{
+					Logger.Warn($"Sound has {numChannels} channels. Expected at least one.");
+					SoundManager.ErrCheck(sound.unlock(ptr1, ptr2, len1, len2));
+					return false;
+				}
+				if (bits < 1)
+				{
+					Logger.Warn($"Sound has {bits} bits per sample. Expected at least one.");
+					SoundManager.ErrCheck(sound.unlock(ptr1, ptr2, len1, len2));
+					return false;
+				}
+
+				NumChannels = (uint)numChannels;
+
+				var xRangePerChannel = xRange / numChannels;
+				var bitsPerSample = (uint)bits * (uint)numChannels;
+				var bytesPerSample = bitsPerSample >> 3;
+				var totalNumSamples = length / bytesPerSample;
+				var bytesPerChannelPerSample = (uint)(bits >> 3);
+
+				// Determine the number of mip levels needed.
+				var numMipLevels = 0;
+				var samplesPerIndex = 1;
+				while (samplesPerIndex < totalNumSamples)
+				{
+					numMipLevels++;
+					samplesPerIndex <<= 1;
+				}
+
+				// Default to using 1 task to do all the work synchronously
+				var samplesPerTask = totalNumSamples;
+				var highestMipLevelToFillPerTask = numMipLevels - 1;
+				var numTasks = 1u;
+
+				// Allocate memory for all the MipLevels.
+				// While looping over the MipLevels, determine how many tasks to split up loading into
+				// and how many samples to loop over per task.
+				MipLevels = new MipLevel[numMipLevels];
+				var mipSampleSize = 1u;
+				var previousNumSamples = 0u;
+				for (var mipLevelIndex = 0; mipLevelIndex < numMipLevels; mipLevelIndex++)
+				{
+					// Allocate memory for the mip level.
+					var numSamples = totalNumSamples / mipSampleSize;
+					if (totalNumSamples % mipSampleSize != 0)
+						numSamples++;
+					MipLevels[mipLevelIndex] = new MipLevel(numSamples, (uint) numChannels);
+
+					// If this mip level divides the data by the number of parallel workers desired,
+					// record information about this level for the tasks.
+					if (previousNumSamples > LoadParallelism && numSamples <= LoadParallelism)
+					{
+						highestMipLevelToFillPerTask = mipLevelIndex;
+						samplesPerTask = mipSampleSize;
+						numTasks = numSamples;
+					}
+
+					previousNumSamples = numSamples;
+					mipSampleSize <<= 1;
+
+					token.ThrowIfCancellationRequested();
+				}
+				MipLevelsAllocated = true;
+
+				// Divide up the mip map generation into parallel tasks.
+				// Each task must operate on a completely independent set of MipLevel data.
+				// Otherwise we would need to lock around non-atomic operations like += and min/max updates.
+				// This will fill the densest mip levels, and then afterwards we can fill
+				// each remaining sparse mip level by combining samples from it's previous level.
+				var tasks = new Task[numTasks];
+				for (var i = 0; i < numTasks; i++)
+				{
+					var startSample = (uint)(i * samplesPerTask);
+					var endSample = (uint)Math.Min(totalNumSamples, (i + 1) * samplesPerTask);
+					tasks[i] = Task.Run(() =>
+						FillMipMapWorker(
+							ptr1,
+							startSample,
+							endSample,
+							bytesPerSample,
+							bytesPerChannelPerSample,
+							highestMipLevelToFillPerTask,
+							xRangePerChannel,
+							format,
+							token));
+				}
+				await Task.WhenAll(tasks);
+
+				token.ThrowIfCancellationRequested();
+
+				// Fill remaining mip levels that weren't filled by the above tasks.
+				for (var mipLevelIndex = highestMipLevelToFillPerTask + 1; mipLevelIndex < numMipLevels; mipLevelIndex++)
+				{
+					var mipDataNumSamples = MipLevels[mipLevelIndex].Data.Length / numChannels;
+					var previousMipLevelIndex = mipLevelIndex - 1;
+
+					for (var mipSampleIndex = 0; mipSampleIndex < mipDataNumSamples; mipSampleIndex++)
+					{
+						for (var channel = 0; channel < NumChannels; channel++)
+						{
+							var relativeSampleIndex = mipSampleIndex * numChannels + channel;
+							var previousRelativeSampleIndex = ((mipSampleIndex * numChannels) << 1) + channel;
+
+							// We want to combine values from the corresponding two samples from the previous, more dense
+							// mip level data. First, just take the first sample.
+							var previousMin = MipLevels[previousMipLevelIndex].Data[previousRelativeSampleIndex].MinX;
+							var previousMax = MipLevels[previousMipLevelIndex].Data[previousRelativeSampleIndex].MaxX;
+							var previousSum = MipLevels[previousMipLevelIndex].Data[previousRelativeSampleIndex].SumOfSquares;
+
+							// Then combine it with the second sample, if there is one.
+							var secondPreviousRelativeSampleIndex = previousRelativeSampleIndex + numChannels;
+							if (secondPreviousRelativeSampleIndex < MipLevels[previousMipLevelIndex].Data.Length)
+							{
+								if (previousMin > MipLevels[previousMipLevelIndex].Data[secondPreviousRelativeSampleIndex].MinX)
+									previousMin = MipLevels[previousMipLevelIndex].Data[secondPreviousRelativeSampleIndex].MinX;
+								if (previousMax < MipLevels[previousMipLevelIndex].Data[secondPreviousRelativeSampleIndex].MaxX)
+									previousMax = MipLevels[previousMipLevelIndex].Data[secondPreviousRelativeSampleIndex].MaxX;
+								previousSum += MipLevels[previousMipLevelIndex].Data[secondPreviousRelativeSampleIndex].SumOfSquares;
+							}
+
+							// Update the data at this mip level index based on the combined samples.
+							MipLevels[mipLevelIndex].Data[relativeSampleIndex].MinX = previousMin;
+							MipLevels[mipLevelIndex].Data[relativeSampleIndex].MaxX = previousMax;
+							MipLevels[mipLevelIndex].Data[relativeSampleIndex].SumOfSquares = previousSum;
+						}
+					}
+
+					token.ThrowIfCancellationRequested();
+				}
 			}
-			if (numChannels < 1)
+			catch (OperationCanceledException)
 			{
-				Logger.Warn($"Sound has {numChannels} channels. Expected at least one.");
-				return false;
+				Reset();
+				if (soundNeedsUnlock)
+				{
+					SoundManager.ErrCheck(sound.unlock(ptr1, ptr2, len1, len2));
+					soundNeedsUnlock = false;
+				}
+				throw;
 			}
-			if (bits < 1)
+			finally
 			{
-				Logger.Warn($"Sound has {bits} bits per sample. Expected at least one.");
-				return false;
+				if (soundNeedsUnlock)
+				{
+					SoundManager.ErrCheck(sound.unlock(ptr1, ptr2, len1, len2));
+					soundNeedsUnlock = false;
+				}
 			}
 
-			var ptr = (byte*)ptr1.ToPointer();
+			return true;
+		}
 
-			NumChannels = (uint)numChannels;
-
-			var xRangePerChannel = xRange / numChannels;
-			var bitsPerSample = (uint)bits * (uint)numChannels;
-			var bytesPerSample = bitsPerSample >> 3;
-			var totalNumSamples = length / bytesPerSample;
-			var bytesPerChannelPerSample = (uint)(bits >> 3);
-
-			// Determine the number of mip levels needed.
-			var numMipLevels = 0;
-			var samplesPerIndex = 1;
-			while (samplesPerIndex < totalNumSamples)
-			{
-				numMipLevels++;
-				samplesPerIndex <<= 1;
-			}
-
-			// Allocate memory for all the MipLevels.
-			MipLevels = new MipLevel[numMipLevels];
-			var mipSampleSize = 1;
-			for (var mipLevelIndex = 0; mipLevelIndex < numMipLevels; mipLevelIndex++)
-			{
-				var numSamples = (uint) (totalNumSamples / mipSampleSize);
-				if (totalNumSamples % mipSampleSize != 0)
-					numSamples++;
-				MipLevels[mipLevelIndex] = new MipLevel(numSamples, (uint)numChannels);
-				mipSampleSize <<= 1;
-			}
-			MipLevelsAllocated = true;
+		/// <summary>
+		/// Called by CreateMipMap to perform a portion of the work of filling MipLevels data.
+		/// This method can be run on its own thead but it is expected that the data range covered
+		/// by the provided sampleStart, sampleEnd, and numMipLevels is not also being modified
+		/// on another thread. The operations to fill a SampleDataPerChannel are not thread safe.
+		/// </summary>
+		/// <remarks>
+		/// Unsafe due to byte array usage from native library.
+		/// </remarks>
+		private unsafe void FillMipMapWorker(
+			IntPtr intPtr,
+			uint startSample,
+			uint endSample,
+			uint bytesPerSample,
+			uint bytesPerChannelPerSample,
+			int numMipLevels,
+			int xRangePerChannel,
+			SOUND_FORMAT format,
+			CancellationToken token)
+		{
+			var ptr = (byte*)intPtr.ToPointer();
 
 			// Constants for converting sound formats to floats.
 			const float invPcm8Max = 1.0f / byte.MaxValue;
@@ -253,43 +457,49 @@ namespace StepManiaEditor
 			const float invPcm32Max = 1.0f / int.MaxValue;
 
 			// Loop over every sample for every channel.
-			var sampleIndex = 0;
+			var sampleIndex = startSample;
 			var value = 0.0f;
-			while (sampleIndex < totalNumSamples)
+			while (sampleIndex < endSample)
 			{
-				for (var channel = 0; channel < numChannels; channel++)
+				for (var channel = 0; channel < NumChannels; channel++)
 				{
 					var byteIndex = sampleIndex * bytesPerSample + channel * bytesPerChannelPerSample;
-					
+
 					switch (format)
 					{
 						case SOUND_FORMAT.PCM8:
-						{
-							value = ptr[byteIndex] * invPcm8Max;
-							break;
-						}
+							{
+								value = ptr[byteIndex] * invPcm8Max;
+								break;
+							}
 						case SOUND_FORMAT.PCM16:
-						{
-							value = ((short)ptr[byteIndex] + (short)(ptr[byteIndex + 1] << 8)) * invPcm16Max;
-							break;
-						}
+							{
+								value = ((short)ptr[byteIndex]
+								         + (short)(ptr[byteIndex + 1] << 8)) * invPcm16Max;
+								break;
+							}
 						case SOUND_FORMAT.PCM24:
-						{
-							value = (((int)(ptr[byteIndex] << 8) + (int)(ptr[byteIndex + 1] << 16) + (int)(ptr[byteIndex + 2] << 24)) >> 8) * invPcm24Max;
-							break;
-						}
+							{
+								value = (((int)(ptr[byteIndex] << 8)
+								          + (int)(ptr[byteIndex + 1] << 16)
+								          + (int)(ptr[byteIndex + 2] << 24)) >> 8) * invPcm24Max;
+								break;
+							}
 						case SOUND_FORMAT.PCM32:
-						{
-							value = ((int)ptr[byteIndex] + (int)(ptr[byteIndex + 1] << 8) + (int)(ptr[byteIndex + 2] << 16) + (int)(ptr[byteIndex + 3] << 24)) * invPcm32Max;
-							break;
-						}
+							{
+								value = ((int)ptr[byteIndex]
+								         + (int)(ptr[byteIndex + 1] << 8)
+								         + (int)(ptr[byteIndex + 2] << 16)
+								         + (int)(ptr[byteIndex + 3] << 24)) * invPcm32Max;
+								break;
+							}
 						case SOUND_FORMAT.PCMFLOAT:
-						{
-							value = ((float*)ptr)[byteIndex >> 2];
-							break;
-						}
+							{
+								value = ((float*)ptr)[byteIndex >> 2];
+								break;
+							}
 					}
-					
+
 					// Determine values for mip data.
 					var xValueForChannelSample = (ushort)((xRangePerChannel - 1) * (value + 1.0f) * 0.5f);
 					var square = value * value;
@@ -297,7 +507,7 @@ namespace StepManiaEditor
 					// Update mip data.
 					for (var mipLevelIndex = 0; mipLevelIndex < numMipLevels; mipLevelIndex++)
 					{
-						var relativeSampleIndex = (sampleIndex >> mipLevelIndex) * numChannels + channel;
+						var relativeSampleIndex = (sampleIndex >> mipLevelIndex) * NumChannels + channel;
 						if (MipLevels[mipLevelIndex].Data[relativeSampleIndex].MinX > xValueForChannelSample)
 							MipLevels[mipLevelIndex].Data[relativeSampleIndex].MinX = xValueForChannelSample;
 						if (MipLevels[mipLevelIndex].Data[relativeSampleIndex].MaxX < xValueForChannelSample)
@@ -307,11 +517,11 @@ namespace StepManiaEditor
 				}
 
 				sampleIndex++;
+
+				// Every 15 seconds of audio assuming 44.1kHz.
+				if (sampleIndex % 661500 == 0)
+					token.ThrowIfCancellationRequested();
 			}
-
-			SoundManager.ErrCheck(Sound.unlock(ptr1, ptr2, len1, len2));
-
-			return true;
 		}
 	}
 }
