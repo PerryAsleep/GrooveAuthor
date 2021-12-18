@@ -6,6 +6,7 @@ using Microsoft.Xna.Framework.Input;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -42,15 +43,26 @@ namespace StepManiaEditor
 
 		private Dictionary<string, PadData> PadDataByStepsType = new Dictionary<string, PadData>();
 		private Dictionary<string, StepGraph> StepGraphByStepsType = new Dictionary<string, StepGraph>();
-		private Song Song;
 		private string SongDirectory;
-		private Chart ActiveChart;
 		private string SongMipMapFile;
 		private CancellationTokenSource LoadSongCancellationTokenSource;
 		private Task LoadSongTask;
-		public Sound Music;
+		private Sound Music;
+		private int MusicNumChannels;
+		private int MusicBitsPerSample;
+		private uint MusicTotalBytes;
+		public ChannelGroup MusicChannelGroup;
+		public Channel MusicChannel;
 		private CancellationTokenSource LoadMusicCancellationTokenSource;
 		private Task LoadMusicTask;
+
+		private double PlaybackStartTime;
+		private Stopwatch PlaybackStopwatch;
+
+		private Song Song;
+		private Chart ActiveChart;
+		private LinkedList<Event> ChartEvents;
+		private double ChartPosition = 0.0;
 
 		// temp controls
 		private int MouseScrollValue = 0;
@@ -73,8 +85,8 @@ namespace StepManiaEditor
 		// Logger GUI
 		private readonly LinkedList<Logger.LogMessage> LogBuffer = new LinkedList<Logger.LogMessage>();
 		private readonly object LogBufferLock = new object();
-		private readonly string[] LogWindowDateStrings = {"None", "HH:mm:ss", "HH:mm:ss.fff", "yyyy-MM-dd HH:mm:ss.fff"};
-		private readonly string[] LogWindowLevelStrings = {"Info", "Warn", "Error"};
+		private readonly string[] LogWindowDateStrings = { "None", "HH:mm:ss", "HH:mm:ss.fff", "yyyy-MM-dd HH:mm:ss.fff" };
+		private readonly string[] LogWindowLevelStrings = { "Info", "Warn", "Error" };
 
 		private readonly System.Numerics.Vector4[] LogWindowLevelColors =
 		{
@@ -113,6 +125,7 @@ namespace StepManiaEditor
 			FocalPoint = new Vector2(Preferences.Instance.WindowWidth >> 1, 100 + (DefaultArrowWidth >> 1));
 
 			SoundManager = new SoundManager();
+			SoundManager.CreateChannelGroup("MusicChannelGroup", out MusicChannelGroup);
 			MusicMipMap = new SoundMipMap(SoundManager);
 			MusicMipMap.SetLoadParallelism(Preferences.Instance.WaveFormLoadingMaxParallelism);
 
@@ -135,7 +148,7 @@ namespace StepManiaEditor
 
 			if (Preferences.Instance.WindowMaximized)
 			{
-				((Form) Control.FromHandle(Window.Handle)).WindowState = FormWindowState.Maximized;
+				((Form)Control.FromHandle(Window.Handle)).WindowState = FormWindowState.Maximized;
 			}
 
 			ImGuiRenderer = new ImGuiRenderer(this);
@@ -149,7 +162,7 @@ namespace StepManiaEditor
 
 			foreach (var adapter in GraphicsAdapter.Adapters)
 			{
-				MaxScreenHeight = Math.Max(MaxScreenHeight, (uint) adapter.CurrentDisplayMode.Height);
+				MaxScreenHeight = Math.Max(MaxScreenHeight, (uint)adapter.CurrentDisplayMode.Height);
 			}
 
 			WaveFormRenderer = new WaveFormRenderer(GraphicsDevice, WaveFormTextureWidth, MaxScreenHeight);
@@ -195,7 +208,7 @@ namespace StepManiaEditor
 
 		public void OnResize(object sender, EventArgs e)
 		{
-			var maximized = ((Form) Control.FromHandle(Window.Handle)).WindowState == FormWindowState.Maximized;
+			var maximized = ((Form)Control.FromHandle(Window.Handle)).WindowState == FormWindowState.Maximized;
 
 			// Update window preferences.
 			if (!maximized)
@@ -218,14 +231,19 @@ namespace StepManiaEditor
 			TextureAtlas.Update();
 
 			// Time-dependent updates
-			if (SongTime != DesiredSongTime)
+			if (!Playing)
 			{
-				SongTime = Interpolation.Lerp(
-					SongTimeAtStartOfInterpolation,
-					DesiredSongTime,
-					SongTimeInterpolationTimeStart,
-					SongTimeInterpolationTimeStart + 0.1,
-					gameTime.TotalGameTime.TotalSeconds);
+				if (SongTime != DesiredSongTime)
+				{
+					SongTime = Interpolation.Lerp(
+						SongTimeAtStartOfInterpolation,
+						DesiredSongTime,
+						SongTimeInterpolationTimeStart,
+						SongTimeInterpolationTimeStart + 0.1,
+						gameTime.TotalGameTime.TotalSeconds);
+
+					SetMusicPosition(SongTime);
+				}
 			}
 
 			if (Zoom != DesiredZoom)
@@ -240,7 +258,32 @@ namespace StepManiaEditor
 
 			if (Playing)
 			{
-				SongTime += gameTime.ElapsedGameTime.TotalSeconds;
+				SongTime = PlaybackStartTime + PlaybackStopwatch.Elapsed.TotalSeconds;
+				MusicChannel.setPaused(SongTime < 0.0);
+
+				// The goal is to set the SongTime to match the actual time of the music
+				// being played through FMOD. Querying the time from FMOD does not have high
+				// enough precision, so we need to use our own timer.
+				// The best C# timer for this task is a StopWatch, but StopWatches have been
+				// reported to drift, sometimes up to a half a second per hour. If we detect
+				// it has drifted significantly by comparing it to the time from FMOD, then
+				// snap it back
+				var maxDeviation = 0.1;
+				var fmodSongTime = GetMusicPosition();
+				if (SongTime >= 0.0 && SongTime < GetMusicLength())
+				{
+					if (SongTime - fmodSongTime > maxDeviation)
+					{
+						PlaybackStartTime -= (0.5 * maxDeviation);
+						SongTime = PlaybackStartTime + PlaybackStopwatch.Elapsed.TotalSeconds;
+					}
+					else if (fmodSongTime - SongTime > maxDeviation)
+					{
+						PlaybackStartTime += (0.5 * maxDeviation);
+						SongTime = PlaybackStartTime + PlaybackStopwatch.Elapsed.TotalSeconds;
+					}
+				}
+
 				DesiredSongTime = SongTime;
 			}
 
@@ -273,7 +316,10 @@ namespace StepManiaEditor
 				var bHoldingSpace = Keyboard.GetState().IsKeyDown(Keys.Space);
 				if (!SpacePressed && bHoldingSpace)
 				{
-					Playing = !Playing;
+					if (Playing)
+						StopPlayback();
+					else
+						StartPlayback();
 				}
 
 				SpacePressed = bHoldingSpace;
@@ -313,21 +359,77 @@ namespace StepManiaEditor
 				{
 					if (MouseScrollValue < newMouseScrollValue)
 					{
-						DesiredSongTime -= 0.25 * (1.0 / Zoom);
-						SongTimeInterpolationTimeStart = gameTime.TotalGameTime.TotalSeconds;
-						SongTimeAtStartOfInterpolation = SongTime;
+						var delta = 0.25 * (1.0 / Zoom);
+						if (Playing)
+						{
+							PlaybackStartTime -= delta;
+							SongTime = PlaybackStartTime + PlaybackStopwatch.Elapsed.TotalSeconds;
+							SetMusicPosition(SongTime);
+							MusicChannel.setPaused(SongTime < 0.0);
+						}
+						else
+						{
+							DesiredSongTime -= delta;
+							SongTimeInterpolationTimeStart = gameTime.TotalGameTime.TotalSeconds;
+							SongTimeAtStartOfInterpolation = SongTime;
+						}
+
 						MouseScrollValue = newMouseScrollValue;
 					}
 
 					if (MouseScrollValue > newMouseScrollValue)
 					{
-						DesiredSongTime += 0.25 * (1.0 / Zoom);
-						SongTimeInterpolationTimeStart = gameTime.TotalGameTime.TotalSeconds;
-						SongTimeAtStartOfInterpolation = SongTime;
+						var delta = 0.25 * (1.0 / Zoom);
+						if (Playing)
+						{
+							PlaybackStartTime += delta;
+							SongTime = PlaybackStartTime + PlaybackStopwatch.Elapsed.TotalSeconds;
+							SetMusicPosition(SongTime);
+							MusicChannel.setPaused(SongTime < 0.0);
+						}
+						else
+						{
+							DesiredSongTime += delta;
+							SongTimeInterpolationTimeStart = gameTime.TotalGameTime.TotalSeconds;
+							SongTimeAtStartOfInterpolation = SongTime;
+						}
+
 						MouseScrollValue = newMouseScrollValue;
 					}
 				}
 			}
+		}
+
+		private void StartPlayback()
+		{
+			if (Playing)
+				return;
+
+			if (SongTime < 0.0 || SongTime > GetMusicLength())
+			{
+				PlaybackStartTime = SongTime;
+			}
+			else
+			{
+				PlaybackStartTime = GetMusicPosition();
+			}
+
+			PlaybackStopwatch = new Stopwatch();
+			PlaybackStopwatch.Start();
+			MusicChannel.setPaused(SongTime < 0.0);
+
+			Playing = true;
+		}
+
+		private void StopPlayback()
+		{
+			if (!Playing)
+				return;
+
+			PlaybackStopwatch.Stop();
+			MusicChannel.setPaused(true);
+
+			Playing = false;
 		}
 
 		protected override void Draw(GameTime gameTime)
@@ -364,6 +466,17 @@ namespace StepManiaEditor
 				var x = xStart + i * arrowSize;
 				TextureAtlas.Draw("receptor", SpriteBatch, new Rectangle((int)x, (int)y, (int)arrowSize, (int)arrowSize),
 					rot[i % rot.Length]);
+			}
+		}
+
+		private void DrawChartEvents()
+		{
+			foreach (var chartEvent in ChartEvents)
+			{
+				if (chartEvent is LaneTapNote ltn)
+				{
+					//ltn.
+				}
 			}
 		}
 
@@ -421,6 +534,7 @@ namespace StepManiaEditor
 									recentFile.LastChartDifficultyType);
 							}
 						}
+
 						ImGui.EndMenu();
 					}
 
@@ -487,7 +601,7 @@ namespace StepManiaEditor
 				{
 					foreach (var message in LogBuffer)
 					{
-						if ((int) message.Level < Preferences.Instance.LogWindowLevel)
+						if ((int)message.Level < Preferences.Instance.LogWindowLevel)
 							continue;
 
 						if (Preferences.Instance.LogWindowDateDisplay != 0)
@@ -498,7 +612,7 @@ namespace StepManiaEditor
 
 						if (Preferences.Instance.LogWindowLineWrap)
 							ImGui.PushTextWrapPos();
-						ImGui.TextColored(LogWindowLevelColors[(int) message.Level], message.Message);
+						ImGui.TextColored(LogWindowLevelColors[(int)message.Level], message.Message);
 						if (Preferences.Instance.LogWindowLineWrap)
 							ImGui.PopTextWrapPos();
 					}
@@ -582,6 +696,7 @@ namespace StepManiaEditor
 
 					index++;
 				}
+
 				ImGui.TreePop();
 			}
 
@@ -597,12 +712,14 @@ namespace StepManiaEditor
 						Preferences.Instance.DefaultStepsType = stepsTypeString;
 					}
 				}
+
 				ImGui.EndCombo();
 			}
 
 			if (ImGui.BeginCombo("Default Difficulty Type", Preferences.Instance.DefaultDifficultyType))
 			{
-				foreach (var difficultyType in Enum.GetValues(typeof(SMCommon.ChartDifficultyType)).Cast<SMCommon.ChartDifficultyType>())
+				foreach (var difficultyType in Enum.GetValues(typeof(SMCommon.ChartDifficultyType))
+					.Cast<SMCommon.ChartDifficultyType>())
 				{
 					var difficultyTypeString = difficultyType.ToString();
 					if (ImGui.Selectable(
@@ -612,6 +729,7 @@ namespace StepManiaEditor
 						Preferences.Instance.DefaultDifficultyType = difficultyTypeString;
 					}
 				}
+
 				ImGui.EndCombo();
 			}
 
@@ -764,6 +882,7 @@ namespace StepManiaEditor
 							Logger.Error($"Unsupported file format. Cannot parse {fileName}");
 							return;
 						}
+
 						Logger.Info($"Loading {fileName}...");
 						Song = await reader.LoadAsync(LoadSongCancellationTokenSource.Token);
 						if (Song == null)
@@ -771,10 +890,11 @@ namespace StepManiaEditor
 							Logger.Error($"Failed to load {fileName}");
 							return;
 						}
+
 						Logger.Info($"Loaded {fileName}");
 
 						SongDirectory = System.IO.Path.GetDirectoryName(fileName);
-						
+
 						// Select the best Chart to make active.
 						ActiveChart = SelectBestChart(Song, chartType, chartDifficultyType);
 
@@ -972,6 +1092,9 @@ namespace StepManiaEditor
 					// Normally this is not a problem, but for hour-long files this is unfortunate.
 					Logger.Info($"Loading {SongMipMapFile}...");
 					Music = await SoundManager.LoadAsync(SongMipMapFile);
+					SoundManager.PlaySound(Music, MusicChannelGroup, out MusicChannel);
+					SoundManager.ErrCheck(Music.getFormat(out _, out _, out MusicNumChannels, out MusicBitsPerSample));
+					SoundManager.ErrCheck(Music.getLength(out MusicTotalBytes, TIMEUNIT.PCMBYTES));
 					Logger.Info($"Loaded {SongMipMapFile}...");
 
 					LoadMusicCancellationTokenSource.Token.ThrowIfCancellationRequested();
@@ -999,5 +1122,68 @@ namespace StepManiaEditor
 		}
 
 		#endregion Loading
+
+		private double GetMusicPosition()
+		{
+			SoundManager.ErrCheck(MusicChannel.getPosition(out uint bytes, TIMEUNIT.PCMBYTES));
+			return (double)bytes / MusicNumChannels / (MusicBitsPerSample >> 3) / SoundManager.GetSampleRate();
+		}
+
+		private void SetMusicPosition(double timeInSeconds)
+		{
+			uint bytes = 0;
+			if (timeInSeconds >= 0.0)
+				bytes = (uint)(timeInSeconds * MusicNumChannels * (MusicBitsPerSample >> 3) * SoundManager.GetSampleRate());
+			if (bytes > MusicTotalBytes)
+				bytes = MusicTotalBytes - 1;
+			SoundManager.ErrCheck(MusicChannel.setPosition(bytes, TIMEUNIT.PCMBYTES));
+		}
+
+		private double GetMusicLength()
+		{
+			return (double)MusicTotalBytes / MusicNumChannels / (MusicBitsPerSample >> 3) / SoundManager.GetSampleRate();
+		}
+
+		private void CopyEvents()
+		{
+			if (ActiveChart == null)
+				return;
+			ChartEvents = new LinkedList<Event>();
+			foreach (var chartEvent in ActiveChart.Layers[0].Events)
+				ChartEvents.AddLast(chartEvent);
+		}
+
+		private Event FindEarliestEventAfterPosition(int measure, double beat)
+		{
+			var events = ActiveChart.Layers[0].Events;
+			var count = events.Count;
+			if (count == 0)
+				return null;
+			var idx = count >> 1;
+			var low = 0;
+			var high = count;
+			Event bestEvent = null;
+			//while (true)
+			//{
+			//	if (events[idx].MetricPosition.GreaterThan(measure, beat))
+			//	{
+			//		bestEvent = events[idx];
+			//		high = idx;
+			//	}
+			//	else if (events[idx].MetricPosition.LessThan(measure, beat))
+			//	{
+			//		low = idx;
+			//	}
+			//	else
+			//	{
+			//		break;
+			//	}
+
+			//	if (high == low)
+			//		break;
+			//	idx = low + ((high - low) >> 1);
+			//}
+			return bestEvent;
+		}
 	}
 }

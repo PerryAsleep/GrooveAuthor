@@ -30,6 +30,16 @@ namespace StepManiaEditor
 			});
 		}
 
+		public void CreateChannelGroup(string name, out ChannelGroup channelGroup)
+		{
+			ErrCheck(System.createChannelGroup(name, out channelGroup));
+		}
+
+		public void PlaySound(Sound sound, ChannelGroup channelGroup, out Channel channel)
+		{
+			ErrCheck(System.playSound(sound, channelGroup, true, out channel));
+		}
+
 		public static bool ErrCheck(RESULT result, string failureMessage = null)
 		{
 			if (result != RESULT.OK)
