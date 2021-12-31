@@ -158,7 +158,9 @@ namespace StepManiaEditor
 			var rotationOffset = new Vector2(node.TextureRect.Width >> 1, node.TextureRect.Height >> 1);
 			destinationRectangle.X += (destinationRectangle.Width >> 1);
 			destinationRectangle.Y += (destinationRectangle.Height >> 1);
-			Draw(textureId, spriteBatch, destinationRectangle, rotation, rotationOffset);
+
+			spriteBatch.Draw(Atlas, destinationRectangle, node.TextureRect, Color.White, rotation, rotationOffset,
+				SpriteEffects.None, 1.0f);
 		}
 
 		public void Draw(string textureId, SpriteBatch spriteBatch, Rectangle destinationRectangle, float rotation, Vector2 rotationOffset)
@@ -170,6 +172,45 @@ namespace StepManiaEditor
 			}
 
 			spriteBatch.Draw(Atlas, destinationRectangle, node.TextureRect, Color.White, rotation, rotationOffset,
+				SpriteEffects.None, 1.0f);
+		}
+
+		public void Draw(string textureId, SpriteBatch spriteBatch, Vector2 position)
+		{
+			if (!TextureNodes.TryGetValue(textureId, out var node))
+			{
+				Logger.Warn($"Failed to draw packed texture identified by \"{textureId}\". No texture with that id found.");
+				return;
+			}
+
+			spriteBatch.Draw(Atlas, position, node.TextureRect, Color.White);
+		}
+
+		public void Draw(string textureId, SpriteBatch spriteBatch, Vector2 position, float scale, float rotation)
+		{
+			if (!TextureNodes.TryGetValue(textureId, out var node))
+			{
+				Logger.Warn($"Failed to draw packed texture identified by \"{textureId}\". No texture with that id found.");
+				return;
+			}
+
+			var rotationOffset = new Vector2(node.TextureRect.Width >> 1, node.TextureRect.Height >> 1);
+			position.X += node.TextureRect.Width * scale * 0.5f;
+			position.Y += node.TextureRect.Height * scale * 0.5f;
+
+			spriteBatch.Draw(Atlas, position, node.TextureRect, Color.White, rotation, rotationOffset, scale,
+				SpriteEffects.None, 1.0f);
+		}
+
+		public void Draw(string textureId, SpriteBatch spriteBatch, Vector2 position, float scale, float rotation, Vector2 rotationOffset)
+		{
+			if (!TextureNodes.TryGetValue(textureId, out var node))
+			{
+				Logger.Warn($"Failed to draw packed texture identified by \"{textureId}\". No texture with that id found.");
+				return;
+			}
+
+			spriteBatch.Draw(Atlas, position, node.TextureRect, Color.White, rotation, rotationOffset, scale,
 				SpriteEffects.None, 1.0f);
 		}
 	}

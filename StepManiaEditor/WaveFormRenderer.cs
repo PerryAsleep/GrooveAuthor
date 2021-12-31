@@ -208,9 +208,9 @@ namespace StepManiaEditor
 		/// </summary>
 		/// <param name="soundTimeSeconds">Time of the underlying sound in seconds.</param>
 		/// <param name="zoom">Zoom level.</param>
-		public void Update(double soundTimeSeconds, double zoom)
+		public void Update(double soundTimeSeconds, double zoom, double pixelsPerSecond)
 		{
-			UpdateTexture(soundTimeSeconds, zoom);
+			UpdateTexture(soundTimeSeconds, zoom, pixelsPerSecond);
 		}
 
 		/// <summary>
@@ -218,7 +218,7 @@ namespace StepManiaEditor
 		/// </summary>
 		/// <param name="soundTimeSeconds">Time of the underlying sound in seconds.</param>
 		/// <param name="zoom">Zoom level.</param>
-		private void UpdateTexture(double soundTimeSeconds, double zoom)
+		private void UpdateTexture(double soundTimeSeconds, double zoom, double pixelsPerSecond)
 		{
 			// Get the correct texture to update.
 			var texture = Textures[TextureIndex];
@@ -253,8 +253,7 @@ namespace StepManiaEditor
 
 					//uint endSample = startSample + (uint)(SampleRate / Zoom);
 					//uint numSamples = endSample - startSample;
-					// range shown = 1 second / Zoom
-					var samplesPerPixel = (double)SampleRate / Height / zoom;
+					var samplesPerPixel = SampleRate / pixelsPerSecond / zoom;
 
 					// Quantizing the samples per pixel to an integer value guarantees that for a given zoom
 					// level, the same samples will always be grouped together. This prevents a jittering
