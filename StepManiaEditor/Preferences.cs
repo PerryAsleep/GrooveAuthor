@@ -66,10 +66,18 @@ namespace StepManiaEditor
 		[JsonInclude] public float WaveFormMaxXPercentagePerChannel = 0.9f;
 		[JsonInclude] public int WaveFormLoadingMaxParallelism = 8;
 
+		// Scroll control preferences
+		[JsonInclude] public bool ShowScrollControlWindow = true;
+		[JsonInclude] public Editor.ScrollMode EditScrollMode = Editor.ScrollMode.TimeBased;
+		[JsonInclude] public Editor.ScrollMode PlayScrollMode = Editor.ScrollMode.TimeBased;
+		[JsonInclude] public float RowBasedPixelsPerSecondAtDefaultBPM = 1000.0f;
+		[JsonInclude] public float RowBasedDefaultBPM = 120.0f;
+		[JsonInclude] public float TimeBasedPixelsPerSecond = 1000.0f;
+
 		// Log preferences
 		[JsonInclude] public bool ShowLogWindow = true;
 		[JsonInclude] public int LogWindowDateDisplay = 1;
-		[JsonInclude] public int LogWindowLevel = (int)LogLevel.Info;
+		[JsonInclude] public LogLevel LogWindowLevel = LogLevel.Info;
 		[JsonInclude] public bool LogWindowLineWrap;
 
 		// Option preferences

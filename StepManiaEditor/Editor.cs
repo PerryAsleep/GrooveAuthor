@@ -4,7 +4,6 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -23,29 +22,15 @@ namespace StepManiaEditor
 {
 	public class Editor : Game
 	{
-		enum ScrollMode
+		public enum ScrollMode
 		{
 			TimeBased,	// Everything scrolls at a constant speed based on time (CMOD)
 			RowBased	// Chart scrolls at a rate based on the tempo and is affected by stops and other rate modifying events (XMOD)
 		}
 
-		/// <summary>
-		/// Whether the user is moving time or rows when they are moving the Chart in the Editor.
-		/// </summary>
-		private ScrollMode ControlMode = ScrollMode.TimeBased;
-		/// <summary>
-		/// Whether the Chart moves in a TimeBased (CMOD) or RowBased (XMOD) manner when playing.
-		/// </summary>
-		private ScrollMode PlayMode = ScrollMode.TimeBased;
-
-		private double RowBasedPixelsPerSecondAtDefaultBPM = 2000.0;
-		private double RowBasedDefaultBPM = 120.0;
-		private double TimeBasedPixelsPerSecond = 2000.0;
-
-		private const int DefaultArrowWidth = 128;
 		private Vector2 FocalPoint;
 
-		private const int WaveFormTextureWidth = DefaultArrowWidth * 8;
+		private const int WaveFormTextureWidth = Utils.DefaultArrowWidth * 8;
 
 		private string PendingOpenFileName;
 		private string PendingOpenFileChartType;
@@ -71,6 +56,7 @@ namespace StepManiaEditor
 		private int MusicNumChannels;
 		private int MusicBitsPerSample;
 		private uint MusicTotalBytes;
+		private uint MusicSampleRate;
 		public ChannelGroup MusicChannelGroup;
 		public Channel MusicChannel;
 		private CancellationTokenSource LoadMusicCancellationTokenSource;
@@ -91,6 +77,7 @@ namespace StepManiaEditor
 		private int MouseScrollValue = 0;
 		private double SongTimeInterpolationTimeStart = 0.0;
 		private double SongTime = 0.0;
+		private double PreviousFrameSongTime = 0.0;
 		private double SongTimeAtStartOfInterpolation = 0.0;
 		private double DesiredSongTime = 0.0;
 		private double ZoomInterpolationTimeStart = 0.0;
@@ -111,7 +98,6 @@ namespace StepManiaEditor
 		private readonly LinkedList<Logger.LogMessage> LogBuffer = new LinkedList<Logger.LogMessage>();
 		private readonly object LogBufferLock = new object();
 		private readonly string[] LogWindowDateStrings = { "None", "HH:mm:ss", "HH:mm:ss.fff", "yyyy-MM-dd HH:mm:ss.fff" };
-		private readonly string[] LogWindowLevelStrings = { "Info", "Warn", "Error" };
 
 		private readonly System.Numerics.Vector4[] LogWindowLevelColors =
 		{
@@ -123,6 +109,8 @@ namespace StepManiaEditor
 		// WaveForm GUI
 		private readonly string[] WaveFormWindowSparseColorOptions =
 			{"Darker Dense Color", "Same As Dense Color", "Unique Color"};
+
+
 
 		private bool ShowImGuiTestWindow = true;
 
@@ -147,7 +135,7 @@ namespace StepManiaEditor
 			// Load Preferences synchronously so they can be used immediately.
 			Preferences.Load();
 
-			FocalPoint = new Vector2(Preferences.Instance.WindowWidth >> 1, 100 + (DefaultArrowWidth >> 1));
+			FocalPoint = new Vector2(Preferences.Instance.WindowWidth >> 1, 100 + (Utils.DefaultArrowWidth >> 1));
 
 			SoundManager = new SoundManager();
 			SoundManager.CreateChannelGroup("MusicChannelGroup", out MusicChannelGroup);
@@ -215,6 +203,10 @@ namespace StepManiaEditor
 			foreach (var kvp in Utils.ArrowTextureBySubdivision)
 				TextureAtlas.AddTexture(kvp.Value, Content.Load<Texture2D>(kvp.Value));
 			TextureAtlas.AddTexture("receptor", Content.Load<Texture2D>("receptor"));
+			TextureAtlas.AddTexture("hold", Content.Load<Texture2D>("hold"));
+			TextureAtlas.AddTexture("hold_cap", Content.Load<Texture2D>("hold_cap"));
+			TextureAtlas.AddTexture("roll", Content.Load<Texture2D>("roll"));
+			TextureAtlas.AddTexture("roll_cap", Content.Load<Texture2D>("roll_cap"));
 
 			InitPadDataAndStepGraphsAsync();
 
@@ -250,6 +242,8 @@ namespace StepManiaEditor
 
 		protected override void Update(GameTime gameTime)
 		{
+			PreviousFrameSongTime = SongTime;
+
 			ProcessInput(gameTime);
 
 			TextureAtlas.Update();
@@ -477,7 +471,7 @@ namespace StepManiaEditor
 			var zoom = Zoom;
 			if (zoom > 1.0)
 				zoom = 1.0;
-			var arrowSize = DefaultArrowWidth * zoom;
+			var arrowSize = Utils.DefaultArrowWidth * zoom;
 			var xStart = FocalPoint.X - (numArrows * arrowSize * 0.5);
 			var y = FocalPoint.Y - (arrowSize * 0.5);
 
@@ -502,12 +496,12 @@ namespace StepManiaEditor
 			WaveFormRenderer.SetScaleXWhenZooming(Preferences.Instance.WaveFormScaleXWhenZooming);
 
 			var waveFormPPS = 0.0;
-			var mode = Playing ? PlayMode : ControlMode;
+			var mode = Playing ? Preferences.Instance.PlayScrollMode : Preferences.Instance.EditScrollMode;
 			switch (mode)
 			{
 				case ScrollMode.TimeBased:
 				{
-					waveFormPPS = TimeBasedPixelsPerSecond;
+					waveFormPPS = Preferences.Instance.TimeBasedPixelsPerSecond;
 					break;
 				}
 				case ScrollMode.RowBased:
@@ -533,31 +527,71 @@ namespace StepManiaEditor
 			var sizeZoom = Zoom;
 			if (sizeZoom > 1.0)
 				sizeZoom = 1.0;
-			var arrowSize = DefaultArrowWidth * sizeZoom;
+			var arrowSize = Utils.DefaultArrowWidth * sizeZoom;
+			var holdCapHeight = Utils.DefaultHoldCapHeight * sizeZoom;
 
 			var numArrows = ActiveChart.NumInputs;
 			var xStart = FocalPoint.X - (numArrows * arrowSize * 0.5);
 
-			var mode = Playing ? PlayMode : ControlMode;
+			var mode = Playing ? Preferences.Instance.PlayScrollMode : Preferences.Instance.EditScrollMode;
 			switch (mode)
 			{
 				// CMOD
 				case ScrollMode.TimeBased:
 				{
-					var pps = TimeBasedPixelsPerSecond * spacingZoom;
+					var pps = Preferences.Instance.TimeBasedPixelsPerSecond * spacingZoom;
 					var time = SongTime + ActiveChart.ChartOffsetFromMusic;
 					var timeAtTopOfScreen = time - (FocalPoint.Y / pps);
 					double chartPosition = 0.0;
 					if (!TryGetChartPositionFromSongTime(timeAtTopOfScreen, ref chartPosition))
 						return;
 
-					var enumerator = FindEvent(new EditorEvent(new LaneTapNote
-					{
-						IntegerPosition = (int)chartPosition
-					}));
-
+					var pos = EditorEvent.CreateEvent(new LaneTapNote { IntegerPosition = (int)chartPosition });
+					var enumerator = EditorEvents.FindGreatestPreceding(pos);
+					if (enumerator == null)
+						enumerator = EditorEvents.FindLeastFollowing(pos);
 					if (enumerator == null)
 						return;
+
+					// Scan backwards until we have checked every lane for a long note which may
+					// be extending through the given start row.
+					var lanesChecked = new bool[ActiveChart.NumInputs];
+					var numLanesChecked = 0;
+					var current = new RedBlackTree<EditorEvent>.Enumerator(enumerator);
+					while (current.MovePrev() && numLanesChecked < ActiveChart.NumInputs)
+					{
+						var e = current.Current;
+						var lane = e.GetLane();
+						if (lane >= 0)
+						{
+							if (!lanesChecked[lane])
+							{
+								lanesChecked[lane] = true;
+								numLanesChecked++;
+
+								if (e.GetRow() + e.GetLength() > pos.GetRow())
+								{
+									if (e is EditorHoldStartNote hsn)
+									{
+										e.X = xStart + e.GetLane() * arrowSize;
+										e.Y = ((e.ChartEvent.TimeMicros / 1000000.0) - timeAtTopOfScreen) * pps - (arrowSize * 0.5);
+										e.W = arrowSize;
+										e.H = arrowSize;
+										e.Scale = sizeZoom;
+										VisibleEvents.Add(e);
+
+										var end = hsn.GetHoldEndNote();
+										VisibleEvents.Add(end);
+										end.X = xStart + end.GetLane() * arrowSize;
+										end.Y = ((e.ChartEvent.TimeMicros / 1000000.0) - timeAtTopOfScreen) * pps;
+										end.W = arrowSize;
+										end.H = (((end.ChartEvent.TimeMicros / 1000000.0) - timeAtTopOfScreen) * pps) - end.Y + holdCapHeight;
+										end.Scale = sizeZoom;
+									}
+								}
+							}
+						}
+					}
 
 					while (enumerator.MoveNext())
 					{
@@ -566,13 +600,27 @@ namespace StepManiaEditor
 						if (y > screenHeight)
 							break;
 
-						if (e.ChartEvent is LaneNote ltn)
+						if (e is EditorHoldEndNote)
+							continue;
+
+						if (e is EditorTapNote || e is EditorHoldStartNote)
 						{
-							e.X = xStart + ltn.Lane * arrowSize;
+							e.X = xStart + e.GetLane() * arrowSize;
 							e.Y = y;
 							e.W = arrowSize;
 							e.H = arrowSize;
 							e.Scale = sizeZoom;
+
+							if (e is EditorHoldStartNote hsn)
+							{
+								var end = hsn.GetHoldEndNote();
+								VisibleEvents.Add(end);
+								end.X = xStart + end.GetLane() * arrowSize;
+								end.Y = ((e.ChartEvent.TimeMicros / 1000000.0) - timeAtTopOfScreen) * pps;
+								end.W = arrowSize;
+								end.H = (((end.ChartEvent.TimeMicros / 1000000.0) - timeAtTopOfScreen) * pps) - end.Y + holdCapHeight;
+								end.Scale = sizeZoom;
+							}
 						}
 
 						VisibleEvents.Add(e);
@@ -586,8 +634,10 @@ namespace StepManiaEditor
 					break;
 				}
 
+				// XMOD
 				case ScrollMode.RowBased:
 				{
+
 					break;
 				}
 			}
@@ -660,6 +710,7 @@ namespace StepManiaEditor
 			}
 
 			DrawLogUI();
+			DrawScrollControlUI();
 			DrawWaveFormUI();
 			DrawOptionsUI();
 
@@ -719,6 +770,8 @@ namespace StepManiaEditor
 						Preferences.Instance.ShowLogWindow = true;
 					if (ImGui.MenuItem("Waveform Controls"))
 						Preferences.Instance.ShowWaveFormWindow = true;
+					if (ImGui.MenuItem("Scroll Controls"))
+						Preferences.Instance.ShowScrollControlWindow = true;
 					if (ImGui.MenuItem("Options"))
 						Preferences.Instance.ShowOptionsWindow = true;
 					if (ImGui.MenuItem("ImGui Demo Window"))
@@ -740,8 +793,7 @@ namespace StepManiaEditor
 			lock (LogBufferLock)
 			{
 				ImGui.PushItemWidth(60);
-				ImGui.Combo("Level", ref Preferences.Instance.LogWindowLevel, LogWindowLevelStrings,
-					LogWindowLevelStrings.Length);
+				Utils.ComboFromEnum("Level", ref Preferences.Instance.LogWindowLevel);
 				ImGui.PopItemWidth();
 
 				ImGui.SameLine();
@@ -760,7 +812,7 @@ namespace StepManiaEditor
 				{
 					foreach (var message in LogBuffer)
 					{
-						if ((int)message.Level < Preferences.Instance.LogWindowLevel)
+						if (message.Level < Preferences.Instance.LogWindowLevel)
 							continue;
 
 						if (Preferences.Instance.LogWindowDateDisplay != 0)
@@ -821,6 +873,24 @@ namespace StepManiaEditor
 			{
 				MusicMipMap.SetLoadParallelism(Preferences.Instance.WaveFormLoadingMaxParallelism);
 			}
+
+			ImGui.End();
+		}
+
+		private void DrawScrollControlUI()
+		{
+			if (!Preferences.Instance.ShowScrollControlWindow)
+				return;
+
+			ImGui.SetNextWindowSize(new System.Numerics.Vector2(0, 0), ImGuiCond.FirstUseEver);
+			ImGui.Begin("Scroll Controls", ref Preferences.Instance.ShowScrollControlWindow, ImGuiWindowFlags.NoScrollbar);
+
+			Utils.ComboFromEnum("Edit Scroll Mode", ref Preferences.Instance.EditScrollMode);
+			Utils.ComboFromEnum("Play Scroll Mode", ref Preferences.Instance.PlayScrollMode);
+
+			ImGui.SliderFloat("Timed Based Speed", ref Preferences.Instance.TimeBasedPixelsPerSecond, 1.0f, 100000.0f, null, ImGuiSliderFlags.Logarithmic);
+			ImGui.SliderFloat($"Row Based Speed at {Preferences.Instance.RowBasedDefaultBPM} BPM", ref Preferences.Instance.RowBasedPixelsPerSecondAtDefaultBPM, 1.0f, 1000.0f, null, ImGuiSliderFlags.Logarithmic);
+			ImGui.SliderFloat("Row Based BPM Scroll Rate", ref Preferences.Instance.RowBasedDefaultBPM, 1.0f, 1000.0f, null, ImGuiSliderFlags.Logarithmic);
 
 			ImGui.End();
 		}
@@ -1098,6 +1168,12 @@ namespace StepManiaEditor
 						Preferences.Instance.RecentFiles.Count - Preferences.Instance.RecentFilesHistorySize);
 				}
 
+				// Find a better spot for this
+				DesiredSongTime = 0.0;
+				SongTime = 0.0;
+				DesiredZoom = 1.0;
+				Zoom = 1.0;
+
 				// Start loading music for this Chart.
 				LoadMusicAsync();
 			}
@@ -1288,12 +1364,14 @@ namespace StepManiaEditor
 					SoundManager.PlaySound(Music, MusicChannelGroup, out MusicChannel);
 					SoundManager.ErrCheck(Music.getFormat(out _, out _, out MusicNumChannels, out MusicBitsPerSample));
 					SoundManager.ErrCheck(Music.getLength(out MusicTotalBytes, TIMEUNIT.PCMBYTES));
+					SoundManager.ErrCheck(MusicChannel.getFrequency(out float frequency));
+					MusicSampleRate = (uint)frequency;
 					Logger.Info($"Loaded {SongMipMapFile}...");
 
 					LoadMusicCancellationTokenSource.Token.ThrowIfCancellationRequested();
 
 					// Set up the new sound mip map.
-					await MusicMipMap.CreateMipMapAsync(Music, WaveFormTextureWidth, LoadMusicCancellationTokenSource.Token);
+					await MusicMipMap.CreateMipMapAsync(Music, MusicSampleRate, WaveFormTextureWidth, LoadMusicCancellationTokenSource.Token);
 
 					LoadMusicCancellationTokenSource.Token.ThrowIfCancellationRequested();
 				}
@@ -1319,14 +1397,14 @@ namespace StepManiaEditor
 		private double GetMusicPosition()
 		{
 			SoundManager.ErrCheck(MusicChannel.getPosition(out uint bytes, TIMEUNIT.PCMBYTES));
-			return (double)bytes / MusicNumChannels / (MusicBitsPerSample >> 3) / SoundManager.GetSampleRate();
+			return (double)bytes / MusicNumChannels / (MusicBitsPerSample >> 3) / MusicSampleRate;
 		}
 
 		private void SetMusicPosition(double timeInSeconds)
 		{
 			uint bytes = 0;
 			if (timeInSeconds >= 0.0)
-				bytes = (uint)(timeInSeconds * MusicNumChannels * (MusicBitsPerSample >> 3) * SoundManager.GetSampleRate());
+				bytes = (uint)(timeInSeconds * MusicNumChannels * (MusicBitsPerSample >> 3) * MusicSampleRate);
 			if (bytes > MusicTotalBytes)
 				bytes = MusicTotalBytes - 1;
 			SoundManager.ErrCheck(MusicChannel.setPosition(bytes, TIMEUNIT.PCMBYTES));
@@ -1334,7 +1412,7 @@ namespace StepManiaEditor
 
 		private double GetMusicLength()
 		{
-			return (double)MusicTotalBytes / MusicNumChannels / (MusicBitsPerSample >> 3) / SoundManager.GetSampleRate();
+			return (double)MusicTotalBytes / MusicNumChannels / (MusicBitsPerSample >> 3) / MusicSampleRate;
 		}
 
 		private void SetUpEditorEvents()
@@ -1351,9 +1429,23 @@ namespace StepManiaEditor
 				SecondsPerRow = 0.0
 			};
 
+			var lastHoldStarts = new EditorHoldStartNote[ActiveChart.NumInputs];
 			foreach (var chartEvent in ActiveChart.Layers[0].Events)
 			{
-				editorEvents.Insert(new EditorEvent(chartEvent));
+				var editorEvent = EditorEvent.CreateEvent(chartEvent);
+				if (editorEvent != null)
+					editorEvents.Insert(editorEvent);
+
+				if (editorEvent is EditorHoldStartNote hs)
+				{
+					lastHoldStarts[hs.GetLane()] = hs;
+				}
+				else if (editorEvent is EditorHoldEndNote he)
+				{
+					var start = lastHoldStarts[he.GetLane()];
+					he.SetHoldStartNote(start);
+					start.SetHoldEndNote(he);
+				}
 
 				if (chartEvent is TempoChange tc)
 				{
@@ -1368,7 +1460,7 @@ namespace StepManiaEditor
 						Row = chartEvent.IntegerPosition,
 						ChartEvent = chartEvent,
 						SongTime = previousEvent.SongTimeForFollowingEvents + secondsSincePrevious,
-						SongTimeForFollowingEvents = SongTime,
+						SongTimeForFollowingEvents = previousEvent.SongTimeForFollowingEvents + secondsSincePrevious,
 						RowsPerSecond = newRowsPerSecond,
 						SecondsPerRow = newSecondsPerRow,
 					};
@@ -1386,7 +1478,7 @@ namespace StepManiaEditor
 						Row = chartEvent.IntegerPosition,
 						ChartEvent = chartEvent,
 						SongTime = previousEvent.SongTimeForFollowingEvents + secondsSincePrevious,
-						SongTimeForFollowingEvents = SongTime + (stop.LengthMicros * 1000000.0),
+						SongTimeForFollowingEvents = previousEvent.SongTimeForFollowingEvents + secondsSincePrevious + (stop.LengthMicros * 1000000.0),
 						RowsPerSecond = previousEvent.RowsPerSecond,
 						SecondsPerRow = previousEvent.SecondsPerRow,
 					};

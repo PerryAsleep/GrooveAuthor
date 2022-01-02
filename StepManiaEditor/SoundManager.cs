@@ -15,12 +15,6 @@ namespace StepManiaEditor
 			ErrCheck(System.init(100, INITFLAGS.NORMAL, IntPtr.Zero));
 		}
 
-		public uint GetSampleRate()
-		{
-			ErrCheck(System.getSoftwareFormat(out var sampleRate, out _, out _));
-			return (uint)sampleRate;
-		}
-
 		public async Task<Sound> LoadAsync(string fileName)
 		{
 			return await Task.Run(() =>

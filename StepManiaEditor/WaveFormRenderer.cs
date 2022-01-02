@@ -80,10 +80,6 @@ namespace StepManiaEditor
 		/// SoundMipMap data to use for rendering.
 		/// </summary>
 		private SoundMipMap MipMap;
-		/// <summary>
-		/// Cached sample rate of the audio in hz.
-		/// </summary>
-		private uint SampleRate;
 
 		/// <summary>
 		/// Constructor.
@@ -175,7 +171,6 @@ namespace StepManiaEditor
 		public void SetSoundMipMap(SoundMipMap mipMap)
 		{
 			MipMap = mipMap;
-			SampleRate = MipMap.GetSampleRate();
 		}
 
 		/// <summary>
@@ -235,6 +230,8 @@ namespace StepManiaEditor
 				MipMap.TryLockMipLevels(ref lockTaken);
 				if (lockTaken)
 				{
+					var sampleRate = MipMap.GetSampleRate();
+
 					// Don't render unless there is SoundMipMap data to use.
 					// It doesn't matter if the SoundMipMap data is fully generated yet as it can
 					// still be partially renderer.
@@ -251,9 +248,9 @@ namespace StepManiaEditor
 					var numChannels = MipMap.GetNumChannels();
 					var totalWidthPerChannel = (uint)(renderWidth / numChannels);
 
-					//uint endSample = startSample + (uint)(SampleRate / Zoom);
+					//uint endSample = startSample + (uint)(sampleRate / Zoom);
 					//uint numSamples = endSample - startSample;
-					var samplesPerPixel = SampleRate / pixelsPerSecond / zoom;
+					var samplesPerPixel = sampleRate / pixelsPerSecond / zoom;
 
 					// Quantizing the samples per pixel to an integer value guarantees that for a given zoom
 					// level, the same samples will always be grouped together. This prevents a jittering
@@ -268,7 +265,7 @@ namespace StepManiaEditor
 					}
 
 					var startSampleOffset = (FocalPoint.Y * samplesPerPixel * -1);
-					var startSample = (long)(soundTimeSeconds * SampleRate + startSampleOffset);
+					var startSample = (long)(soundTimeSeconds * sampleRate + startSampleOffset);
 
 					// Snap the start sample so that the waveform doesn't jitter while scrolling
 					// by moving samples between pixel boundaries on different frames.

@@ -94,6 +94,10 @@ namespace StepManiaEditor
 		/// number of Tasks to use to parallelize the mip map creation work.
 		/// </summary>
 		private int LoadParallelism = 1;
+		/// <summary>
+		/// Cached sound sample rate in Hz.
+		/// </summary>
+		private uint SampleRate;
 
 		/// <summary>
 		/// Object to use for locking when creating and destroying MipLevels.
@@ -211,22 +215,25 @@ namespace StepManiaEditor
 		/// <returns>Sample rate in hz of the Sound.</returns>
 		public uint GetSampleRate()
 		{
-			return SoundManager.GetSampleRate();
+			return SampleRate;
 		}
 
 		/// <summary>
 		/// Creates the mip map data for the given Sound.
 		/// </summary>
 		/// <param name="sound">Sound to create mip map data for.</param>
+		/// <param name="sampleRate">Sample rate of sound in hz.</param>
 		/// <param name="xRange">Total x range in pixels for all channels.</param>
 		/// <param name="token">CancellationToken for cancelling this Task.</param>
-		public async Task CreateMipMapAsync(Sound sound, int xRange, CancellationToken token)
+		public async Task CreateMipMapAsync(Sound sound, uint sampleRate, int xRange, CancellationToken token)
 		{
 			if (!sound.hasHandle())
 			{
 				Logger.Warn("Cannot create sound mip map data. Invalid sound handle.");
 				return;
 			}
+
+			SampleRate = sampleRate;
 
 			Logger.Info("Generating sound mip map...");
 			var success = await Task.Run(async () => await InternalCreateMipMapAsync(sound, xRange, token), token);
