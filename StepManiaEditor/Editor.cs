@@ -1447,7 +1447,7 @@ namespace StepManiaEditor
 					start.SetHoldEndNote(he);
 				}
 
-				if (chartEvent is TempoChange tc)
+				if (chartEvent is Tempo tc)
 				{
 					var rowsSincePrevious = chartEvent.IntegerPosition - previousEvent.Row;
 					var secondsSincePrevious = rowsSincePrevious * previousEvent.SecondsPerRow;
