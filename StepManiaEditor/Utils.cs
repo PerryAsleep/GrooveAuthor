@@ -7,11 +7,26 @@ namespace StepManiaEditor
 {
 	class Utils
 	{
+		// TODO: Rename / Reorganize. Currently dumping a lot of rendering-related constants in here.
+
 		public static readonly Dictionary<int, string> ArrowTextureBySubdivision;
 
 		public const int DefaultArrowWidth = 128;
 		public const int DefaultHoldCapHeight = 64;
 		public const int DefaultHoldSegmentHeight = 64;
+
+		public const string TextureIdReceptor = "receptor";
+		public const string TextureIdReceptorFlash = "receptor_flash";
+		public const string TextureIdReceptorGlow = "receptor_glow";
+		public const string TextureIdHoldActive = "hold_active";
+		public const string TextureIdHoldActiveCap = "hold_active_cap";
+		public const string TextureIdHoldInactive = "hold_inactive";
+		public const string TextureIdHoldInactiveCap = "hold_inactive_cap";
+		public const string TextureIdRollActive = "roll_active";
+		public const string TextureIdRollActiveCap = "roll_active_cap";
+		public const string TextureIdRollInactive = "roll_inactive";
+		public const string TextureIdRollInactiveCap = "roll_inactive_cap";
+		public const string TextureIdMine = "mine";
 
 		private static readonly Dictionary<Type, string[]> EnumStringsCache = new Dictionary<Type, string[]>();
 

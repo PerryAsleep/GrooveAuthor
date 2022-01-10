@@ -15,6 +15,7 @@ using Fumen.ChartDefinition;
 using Fumen.Converters;
 using StepManiaLibrary;
 using static StepManiaLibrary.Constants;
+using static StepManiaEditor.Utils;
 using Keys = Microsoft.Xna.Framework.Input.Keys;
 using Vector2 = Microsoft.Xna.Framework.Vector2;
 
@@ -22,15 +23,46 @@ namespace StepManiaEditor
 {
 	public class Editor : Game
 	{
+		/// <summary>
+		/// How to control the position of the Chart when scrolling.
+		/// </summary>
 		public enum ScrollMode
 		{
-			TimeBased,	// Everything scrolls at a constant speed based on time (CMOD)
-			RowBased	// Chart scrolls at a rate based on the tempo and is affected by stops and other rate modifying events (XMOD)
+			/// <summary>
+			/// Scrolling moves time.
+			/// This is the mode used playing the song.
+			/// </summary>
+			Time,
+			/// <summary>
+			/// Scrolling moves rows.
+			/// </summary>
+			Row,
+		}
+
+		/// <summary>
+		/// How to space Chart Events when rendering.
+		/// </summary>
+		public enum SpacingMode
+		{
+			/// <summary>
+			/// Spacing between notes is based on time.
+			/// Using a Time ScrollMode with a ConstantTime SpacingMode is effectively a CMOD.
+			/// </summary>
+			ConstantTime,
+			/// <summary>
+			/// Spacing between notes is based on row.
+			/// </summary>
+			ConstantRow,
+			/// <summary>
+			/// Spacing between nodes varies based on rate altering Events in the Chart.
+			/// Using TimeBased ScrollMode with a Variable SpacingMode is effectively an XMOD.
+			/// </summary>
+			Variable,
 		}
 
 		private Vector2 FocalPoint;
 
-		private const int WaveFormTextureWidth = Utils.DefaultArrowWidth * 8;
+		private const int WaveFormTextureWidth = DefaultArrowWidth * 8;
 
 		private string PendingOpenFileName;
 		private string PendingOpenFileChartType;
@@ -69,8 +101,11 @@ namespace StepManiaEditor
 		private Chart ActiveChart;
 		private double ChartPosition = 0.0;
 		private RedBlackTree<EditorEvent> EditorEvents;
+		
 		private RedBlackTree<EditorRateAlteringEvent> RateAlteringEventsBySongTime;
 		private RedBlackTree<EditorRateAlteringEvent> RateAlteringEventsByRow;
+		private RedBlackTree<EditorInterpolatedRateAlteringEvent> InterpolatedScrollRateEvents;
+		
 		private List<EditorEvent> VisibleEvents = new List<EditorEvent>();
 
 		// temp controls
@@ -135,7 +170,7 @@ namespace StepManiaEditor
 			// Load Preferences synchronously so they can be used immediately.
 			Preferences.Load();
 
-			FocalPoint = new Vector2(Preferences.Instance.WindowWidth >> 1, 100 + (Utils.DefaultArrowWidth >> 1));
+			FocalPoint = new Vector2(Preferences.Instance.WindowWidth >> 1, 100 + (DefaultArrowWidth >> 1));
 
 			SoundManager = new SoundManager();
 			SoundManager.CreateChannelGroup("MusicChannelGroup", out MusicChannelGroup);
@@ -200,13 +235,23 @@ namespace StepManiaEditor
 		{
 			SpriteBatch = new SpriteBatch(GraphicsDevice);
 
-			foreach (var kvp in Utils.ArrowTextureBySubdivision)
+			// Load textures from disk and add them to the Texture Atlas.
+			foreach (var kvp in ArrowTextureBySubdivision)
 				TextureAtlas.AddTexture(kvp.Value, Content.Load<Texture2D>(kvp.Value));
-			TextureAtlas.AddTexture("receptor", Content.Load<Texture2D>("receptor"));
-			TextureAtlas.AddTexture("hold", Content.Load<Texture2D>("hold"));
-			TextureAtlas.AddTexture("hold_cap", Content.Load<Texture2D>("hold_cap"));
-			TextureAtlas.AddTexture("roll", Content.Load<Texture2D>("roll"));
-			TextureAtlas.AddTexture("roll_cap", Content.Load<Texture2D>("roll_cap"));
+			TextureAtlas.AddTexture(TextureIdMine, Content.Load<Texture2D>(TextureIdMine));
+			TextureAtlas.AddTexture(TextureIdReceptor, Content.Load<Texture2D>(TextureIdReceptor));
+			TextureAtlas.AddTexture(TextureIdReceptorFlash, Content.Load<Texture2D>(TextureIdReceptorFlash));
+			TextureAtlas.AddTexture(TextureIdReceptorGlow, Content.Load<Texture2D>(TextureIdReceptorGlow));
+			TextureAtlas.AddTexture(TextureIdHoldActive, Content.Load<Texture2D>(TextureIdHoldActive));
+			TextureAtlas.AddTexture(TextureIdHoldActiveCap, Content.Load<Texture2D>(TextureIdHoldActiveCap));
+			TextureAtlas.AddTexture(TextureIdHoldInactive, Content.Load<Texture2D>(TextureIdHoldInactive));
+			TextureAtlas.AddTexture(TextureIdHoldInactiveCap, Content.Load<Texture2D>(TextureIdHoldInactiveCap));
+			TextureAtlas.AddTexture(TextureIdRollActive, Content.Load<Texture2D>(TextureIdRollActive));
+			TextureAtlas.AddTexture(TextureIdRollActiveCap, Content.Load<Texture2D>(TextureIdRollActiveCap));
+			TextureAtlas.AddTexture(TextureIdRollInactive, Content.Load<Texture2D>(TextureIdRollInactive));
+			TextureAtlas.AddTexture(TextureIdRollInactiveCap, Content.Load<Texture2D>(TextureIdRollInactiveCap));
+
+			// TODO: Add textures for measure markers.
 
 			InitPadDataAndStepGraphsAsync();
 
@@ -471,7 +516,7 @@ namespace StepManiaEditor
 			var zoom = Zoom;
 			if (zoom > 1.0)
 				zoom = 1.0;
-			var arrowSize = Utils.DefaultArrowWidth * zoom;
+			var arrowSize = DefaultArrowWidth * zoom;
 			var xStart = FocalPoint.X - (numArrows * arrowSize * 0.5);
 			var y = FocalPoint.Y - (arrowSize * 0.5);
 
@@ -479,7 +524,7 @@ namespace StepManiaEditor
 			for (var i = 0; i < numArrows; i++)
 			{
 				var x = xStart + i * arrowSize;
-				TextureAtlas.Draw("receptor", SpriteBatch, new Rectangle((int)x, (int)y, (int)arrowSize, (int)arrowSize),
+				TextureAtlas.Draw(TextureIdReceptor, SpriteBatch, new Rectangle((int)x, (int)y, (int)arrowSize, (int)arrowSize),
 					rot[i % rot.Length]);
 			}
 		}
@@ -496,18 +541,18 @@ namespace StepManiaEditor
 			WaveFormRenderer.SetScaleXWhenZooming(Preferences.Instance.WaveFormScaleXWhenZooming);
 
 			var waveFormPPS = 0.0;
-			var mode = Playing ? Preferences.Instance.PlayScrollMode : Preferences.Instance.EditScrollMode;
-			switch (mode)
+			switch (Preferences.Instance.SpacingMode)
 			{
-				case ScrollMode.TimeBased:
+				case SpacingMode.ConstantTime:
 				{
 					waveFormPPS = Preferences.Instance.TimeBasedPixelsPerSecond;
 					break;
 				}
-				case ScrollMode.RowBased:
+				case SpacingMode.ConstantRow:
+				case SpacingMode.Variable:
 				{
 					// TODO
-					//waveFormPPS = ;
+					waveFormPPS = Preferences.Instance.RowBasedPixelsPerSecondAtDefaultBPM;
 					break;
 				}
 			}
@@ -516,6 +561,8 @@ namespace StepManiaEditor
 
 		private void UpdateChartEvents()
 		{
+			// TODO: Cleanup
+
 			VisibleEvents.Clear();
 
 			if (EditorEvents == null)
@@ -527,17 +574,15 @@ namespace StepManiaEditor
 			var sizeZoom = Zoom;
 			if (sizeZoom > 1.0)
 				sizeZoom = 1.0;
-			var arrowSize = Utils.DefaultArrowWidth * sizeZoom;
-			var holdCapHeight = Utils.DefaultHoldCapHeight * sizeZoom;
+			var arrowSize = DefaultArrowWidth * sizeZoom;
+			var holdCapHeight = DefaultHoldCapHeight * sizeZoom;
 
 			var numArrows = ActiveChart.NumInputs;
 			var xStart = FocalPoint.X - (numArrows * arrowSize * 0.5);
-
-			var mode = Playing ? Preferences.Instance.PlayScrollMode : Preferences.Instance.EditScrollMode;
-			switch (mode)
+			
+			switch (Preferences.Instance.SpacingMode)
 			{
-				// CMOD
-				case ScrollMode.TimeBased:
+				case SpacingMode.ConstantTime:
 				{
 					var pps = Preferences.Instance.TimeBasedPixelsPerSecond * spacingZoom;
 					var time = SongTime + ActiveChart.ChartOffsetFromMusic;
@@ -603,7 +648,9 @@ namespace StepManiaEditor
 						if (e is EditorHoldEndNote)
 							continue;
 
-						if (e is EditorTapNote || e is EditorHoldStartNote)
+						if (e is EditorTapNote
+							|| e is EditorMineNote
+						    || e is EditorHoldStartNote)
 						{
 							e.X = xStart + e.GetLane() * arrowSize;
 							e.Y = y;
@@ -626,58 +673,244 @@ namespace StepManiaEditor
 						VisibleEvents.Add(e);
 					}
 
-					// here we need to take into account negative stops and warps
-					// negative stops and warps produce more than one set of notes during a chunk of time
-					// we need to only render the the notes outside of the warp / stop time
-					// I think... what does stepmania do?
-
 					break;
 				}
-
-				// XMOD
-				case ScrollMode.RowBased:
+					
+				case SpacingMode.ConstantRow:
 				{
+					break;
+				}
+				case SpacingMode.Variable:
+				{
+					// Negative Scrolls.
+					// If a chart has negative scrolls then we may need to render notes which come before
+					// the chart position at the top of the screen.
+					// More likely the most visible problem will be at the bottom of the screen where if we
+					// were to detect the first note which falls below the bottom it would prevent us from
+					// finding the next set of notes which might need to be rendered because they appear 
+					// above.
+
+					List<EditorEvent> holdBodyEvents = new List<EditorEvent>();
+					List<EditorEvent> noteEvents = new List<EditorEvent>();
+
+					var time = SongTime + ActiveChart.ChartOffsetFromMusic;
+					double chartPosition = 0.0;
+					if (!TryGetChartPositionFromSongTime(time, ref chartPosition))
+						return;
+					var ratePosEventForChecking = new EditorInterpolatedRateAlteringEvent
+					{
+						Row = chartPosition,
+						SongTime = time
+					};
+
+					// Find the interpolated scroll rate to use as a multiplier.
+					// The interpolated scroll rate to use is the value at the current exact time.
+					var interpolatedScrollRate = 1.0;
+					var interpolatedScrollRateEnumerator = InterpolatedScrollRateEvents.FindGreatestPreceding(ratePosEventForChecking);
+					if (interpolatedScrollRateEnumerator != null)
+					{
+						interpolatedScrollRateEnumerator.MoveNext();
+						var interpolatedRateEvent = interpolatedScrollRateEnumerator.Current;
+						if (interpolatedRateEvent.InterpolatesByTime())
+							interpolatedScrollRate = interpolatedRateEvent.GetInterpolatedScrollRateFromTime(time);
+						else
+							interpolatedScrollRate = interpolatedRateEvent.GetInterpolatedScrollRateFromRow(chartPosition);
+					}
+
+					// Now, scroll up to the top of the screen so we can start processing events going downwards.
+					// We know what time / pos we are drawing at the receptors, but not the rate to get to that time from the top
+					// of the screen.
+					// We need to find the greatest preceding rate event, and continue until it is beyond the start of the screen.
+					// Then we need to find the greatest preceding notes by scanning upwards.
+					// Once we find that note, we start iterating downwards while also keeping track of the rate events along the way.
+
+					// Need to be careful with 0 scroll rates. We need to put a cap in: max notes to render above and max below.
+
+					var noteForChecking = new EditorRateAlteringEvent
+					{
+						Row = chartPosition,
+						SongTime = time
+					};
+					var rateEnumerator = RateAlteringEventsByRow.FindGreatestPreceding(noteForChecking);
+					if (rateEnumerator == null)
+						rateEnumerator = RateAlteringEventsByRow.FindLeastFollowing(noteForChecking);
+					if (rateEnumerator == null)
+						return;
+
+					// Scan upwards to find the earliest rate altering event that should be used to start rendering.
+					var previousRateEventPixelPosition = (double)FocalPoint.Y;
+					var previousRateEventRow = chartPosition;
+					var pps = 1.0;
+					var ppr = 1.0;
+					EditorRateAlteringEvent rateEvent = null;
+					while(previousRateEventPixelPosition > 0.0 && rateEnumerator.MovePrev())
+					{
+						rateEvent = rateEnumerator.Current;
+						var scrollRateForThisSection = rateEvent.ScrollRate * interpolatedScrollRate;
+						pps = Preferences.Instance.RowBasedPixelsPerSecondAtDefaultBPM
+						          * (rateEvent.Tempo / Preferences.Instance.RowBasedDefaultBPM)
+						          * scrollRateForThisSection
+						          * spacingZoom;
+						ppr = pps * rateEvent.SecondsPerRow;
+						var rateEventPositionInPixels = previousRateEventPixelPosition - ((previousRateEventRow - rateEvent.Row) * ppr);
+						previousRateEventPixelPosition = rateEventPositionInPixels;
+						previousRateEventRow = rateEvent.Row;
+					};
+
+					// Now we know the position of first rate altering event to use.
+					// We can now determine the chart position at the top of the screen
+					var pixelPositionAtTopOfScreen = 0.0;
+					var chartPositionAtTopOfScreen =
+						rateEvent.Row + (pixelPositionAtTopOfScreen - previousRateEventPixelPosition) *
+						rateEvent.RowsPerSecond / pps;
+
+					// Now that we know the position at the start of the screen we can find the first event to start rendering.
+					var pos = EditorEvent.CreateEvent(new LaneTapNote { IntegerPosition = (int)chartPositionAtTopOfScreen });
+					var enumerator = EditorEvents.FindGreatestPreceding(pos);
+					if (enumerator == null)
+						enumerator = EditorEvents.FindLeastFollowing(pos);
+					if (enumerator == null)
+						return;
+
+					// Scan backwards until we have checked every lane for a long note which may
+					// be extending through the given start row. We cannot add the end events yet because
+					// we do not know at what position they will end until we scan down.
+					var lanesChecked = new bool[ActiveChart.NumInputs];
+					var numLanesChecked = 0;
+					var current = new RedBlackTree<EditorEvent>.Enumerator(enumerator);
+					var holdEndNotesNeedingToBeAdded = new EditorHoldEndNote[ActiveChart.NumInputs];
+					while (current.MovePrev() && numLanesChecked < ActiveChart.NumInputs)
+					{
+						var e = current.Current;
+						var lane = e.GetLane();
+						if (lane >= 0)
+						{
+							if (!lanesChecked[lane])
+							{
+								lanesChecked[lane] = true;
+								numLanesChecked++;
+
+								if (e.GetRow() + e.GetLength() > pos.GetRow())
+								{
+									if (e is EditorHoldStartNote hsn)
+									{
+										e.X = xStart + e.GetLane() * arrowSize;
+										e.Y = (e.ChartEvent.IntegerPosition - chartPositionAtTopOfScreen) * ppr -
+										      (arrowSize * 0.5);
+										e.W = arrowSize;
+										e.H = arrowSize;
+										e.Scale = sizeZoom;
+										noteEvents.Add(e);
+
+										holdEndNotesNeedingToBeAdded[e.GetLane()] = hsn.GetHoldEndNote();
+									}
+								}
+							}
+						}
+					}
+
+					var hasNextRateEvent = rateEnumerator.MoveNext();
+					EditorRateAlteringEvent nextRateEvent = hasNextRateEvent ? rateEnumerator.Current : null;
+
+					// Now we can scan forward
+					while (enumerator.MoveNext())
+					{
+						var e = enumerator.Current;
+						
+						// Check to see if we have crossed into a new rate altering event section
+						if (nextRateEvent != null && e.ChartEvent == nextRateEvent.ChartEvent)
+						{
+							// update rate parameters
+							rateEvent = nextRateEvent;
+
+							var previousPPR = ppr;
+							var scrollRateForThisSection = rateEvent.ScrollRate * interpolatedScrollRate;
+							pps = Preferences.Instance.RowBasedPixelsPerSecondAtDefaultBPM
+							      * (rateEvent.Tempo / Preferences.Instance.RowBasedDefaultBPM)
+							      * scrollRateForThisSection
+							      * spacingZoom;
+							ppr = pps * rateEvent.SecondsPerRow;
+							var rateEventPositionInPixels = previousRateEventPixelPosition + ((rateEvent.Row - previousRateEventRow) * previousPPR);
+							previousRateEventPixelPosition = rateEventPositionInPixels;
+							previousRateEventRow = rateEvent.Row;
+
+							// advance next rate altering event.
+							hasNextRateEvent = rateEnumerator.MoveNext();
+							nextRateEvent = hasNextRateEvent ? rateEnumerator.Current : null;
+							continue;
+						}
+						
+						var y = previousRateEventPixelPosition + 
+							(e.ChartEvent.IntegerPosition - rateEvent.Row) * ppr - (arrowSize * 0.5);
+						if (y > screenHeight)
+							break;
+						
+						if (e is EditorTapNote
+						    || e is EditorHoldStartNote
+						    || e is EditorHoldEndNote
+						    || e is EditorMineNote)
+						{
+							e.X = xStart + e.GetLane() * arrowSize;
+							e.Y = y;
+							e.W = arrowSize;
+							e.H = arrowSize;
+							e.Scale = sizeZoom;
+
+							if (e is EditorHoldEndNote hen)
+							{
+								var start = hen.GetHoldStartNote();
+								var endY = previousRateEventPixelPosition +
+								           (e.ChartEvent.IntegerPosition - rateEvent.Row) * ppr;
+								
+								e.Y = start.Y + arrowSize * 0.5f;
+								e.H = endY - start.Y;
+
+								holdBodyEvents.Add(e);
+
+								// Remove from holdEndNotesNeedingToBeAdded
+								holdEndNotesNeedingToBeAdded[e.GetLane()] = null;
+							}
+
+							else if (e is EditorHoldStartNote hsn)
+							{
+								holdEndNotesNeedingToBeAdded[e.GetLane()] = hsn.GetHoldEndNote();
+								noteEvents.Add(e);
+							}
+							else
+							{
+								noteEvents.Add(e);
+							}
+						}
+						
+					}
+
+					// Now we need to wrap up any holds which started before the top of the screen and still are not yet complete.
+					// We do not need to scan forward for more rate events.
+					foreach (var holdEndNote in holdEndNotesNeedingToBeAdded)
+					{
+						if (holdEndNote == null)
+							continue;
+
+						holdEndNote.X = xStart + holdEndNote.GetLane() * arrowSize;
+						holdEndNote.W = arrowSize;
+						holdEndNote.Scale = sizeZoom;
+
+						var start = holdEndNote.GetHoldStartNote();
+						var endY = previousRateEventPixelPosition +
+							           (holdEndNote.ChartEvent.IntegerPosition - rateEvent.Row) * ppr;
+
+						holdEndNote.Y = start.Y + arrowSize * 0.5;
+						holdEndNote.H = endY - start.Y;
+
+						holdBodyEvents.Add(holdEndNote);
+					}
+
+					VisibleEvents.AddRange(holdBodyEvents);
+					VisibleEvents.AddRange(noteEvents);
 
 					break;
 				}
 			}
-			
-
-			// Two ways of rendering
-			// one is row based (row spacing is constant regardless of tempo changes / rate mods etc)
-			//	in this mode, the waveform will slide around
-			// one is time based (row spacing changes with tempo changes)
-
-			// If row based
-
-
-			// If CMOD...
-
-			//var rowsPerSecond = 192.0;
-			//var pixelsPerSecond = 1000.0 * spacingZoom;
-			//var songTimeAtTopOfScreen = SongTime - (FocalPoint.Y / pixelsPerSecond);
-			//int topOfScreenRow = (int)(songTimeAtTopOfScreen * rowsPerSecond);
-			//int bottomOfScreenRow = (int)((songTimeAtTopOfScreen + (MaxScreenHeight / pixelsPerSecond)) * rowsPerSecond);
-
-			//foreach (var chartEvent in ActiveChart.Layers[0].Events)
-			//{
-			//	if (chartEvent is LaneTapNote ltn)
-			//	{
-			//		// TODO: Chart / Song offset time.
-			//		double timeRelativeToFocalPoint = (ltn.TimeMicros / 1000000.0) - SongTime;
-			//		var yPositionRelativeToFocalPoint = timeRelativeToFocalPoint * pixelsPerSecond;
-			//		var yPositionOnScreen = FocalPoint.Y + yPositionRelativeToFocalPoint;
-			//		var y = yPositionOnScreen - (arrowSize * 0.5);
-			//		var x = xStart + ltn.Lane * arrowSize;
-
-			//		if (y > 0 && y < MaxScreenHeight)
-			//		{
-			//			// TODO: Use floats, clamp scale to 1 px
-			//			//TextureAtlas.Draw("1_4", SpriteBatch, new Rectangle((int)x, (int)y, (int)arrowSize, (int)arrowSize),
-			//			//	rot[ltn.Lane % rot.Length]);
-			//		}
-			//	}
-			//}
 		}
 
 		private void DrawChartEvents()
@@ -793,7 +1026,7 @@ namespace StepManiaEditor
 			lock (LogBufferLock)
 			{
 				ImGui.PushItemWidth(60);
-				Utils.ComboFromEnum("Level", ref Preferences.Instance.LogWindowLevel);
+				ComboFromEnum("Level", ref Preferences.Instance.LogWindowLevel);
 				ImGui.PopItemWidth();
 
 				ImGui.SameLine();
@@ -885,8 +1118,8 @@ namespace StepManiaEditor
 			ImGui.SetNextWindowSize(new System.Numerics.Vector2(0, 0), ImGuiCond.FirstUseEver);
 			ImGui.Begin("Scroll Controls", ref Preferences.Instance.ShowScrollControlWindow, ImGuiWindowFlags.NoScrollbar);
 
-			Utils.ComboFromEnum("Edit Scroll Mode", ref Preferences.Instance.EditScrollMode);
-			Utils.ComboFromEnum("Play Scroll Mode", ref Preferences.Instance.PlayScrollMode);
+			ComboFromEnum("Scroll Mode", ref Preferences.Instance.ScrollMode);
+			ComboFromEnum("Spacing Mode", ref Preferences.Instance.SpacingMode);
 
 			ImGui.SliderFloat("Timed Based Speed", ref Preferences.Instance.TimeBasedPixelsPerSecond, 1.0f, 100000.0f, null, ImGuiSliderFlags.Logarithmic);
 			ImGui.SliderFloat($"Row Based Speed at {Preferences.Instance.RowBasedDefaultBPM} BPM", ref Preferences.Instance.RowBasedPixelsPerSecondAtDefaultBPM, 1.0f, 1000.0f, null, ImGuiSliderFlags.Logarithmic);
@@ -1048,7 +1281,7 @@ namespace StepManiaEditor
 			using (OpenFileDialog openFileDialog = new OpenFileDialog())
 			{
 				openFileDialog.InitialDirectory = Preferences.Instance.OpenFileDialogInitialDirectory;
-				openFileDialog.Filter = "StepMania Files (*.sm,*.ssc)|All files (*.*)|*.*";
+				openFileDialog.Filter = "StepMania Files (*.sm,*.ssc)|*.sm;*.ssc|All files (*.*)|*.*";
 				openFileDialog.FilterIndex = 1;
 
 				if (openFileDialog.ShowDialog() == DialogResult.OK)
@@ -1139,6 +1372,7 @@ namespace StepManiaEditor
 						EditorEvents = null;
 						RateAlteringEventsBySongTime = null;
 						RateAlteringEventsByRow = null;
+						InterpolatedScrollRateEvents = null;
 					}
 					finally
 					{
@@ -1420,6 +1654,7 @@ namespace StepManiaEditor
 			var editorEvents = new RedBlackTree<EditorEvent>();
 			var rateAlteringEventsBySongTime = new RedBlackTree<EditorRateAlteringEvent>(EditorRateAlteringEvent.SortSongTime());
 			var rateAlteringEventsByRow = new RedBlackTree<EditorRateAlteringEvent>(EditorRateAlteringEvent.SortRow());
+			var interpolatedScrollRateEvents = new RedBlackTree<EditorInterpolatedRateAlteringEvent>();
 
 			EditorRateAlteringEvent previousEvent = new EditorRateAlteringEvent
 			{
@@ -1430,6 +1665,9 @@ namespace StepManiaEditor
 			};
 
 			var lastHoldStarts = new EditorHoldStartNote[ActiveChart.NumInputs];
+			var lastScrollRateInterpolationValue = 1.0;
+			var lastScrollRate = 1.0;
+			var lastTempo = 1.0;
 			foreach (var chartEvent in ActiveChart.Layers[0].Events)
 			{
 				var editorEvent = EditorEvent.CreateEvent(chartEvent);
@@ -1458,15 +1696,19 @@ namespace StepManiaEditor
 					var newEvent = new EditorRateAlteringEvent
 					{
 						Row = chartEvent.IntegerPosition,
+						RowForFollowingEvents = chartEvent.IntegerPosition,
 						ChartEvent = chartEvent,
 						SongTime = previousEvent.SongTimeForFollowingEvents + secondsSincePrevious,
 						SongTimeForFollowingEvents = previousEvent.SongTimeForFollowingEvents + secondsSincePrevious,
 						RowsPerSecond = newRowsPerSecond,
 						SecondsPerRow = newSecondsPerRow,
+						ScrollRate = lastScrollRate,
+						Tempo = tc.TempoBPM
 					};
 					rateAlteringEventsBySongTime.Insert(newEvent);
 					rateAlteringEventsByRow.Insert(newEvent);
 					previousEvent = newEvent;
+					lastTempo = tc.TempoBPM;
 				}
 				else if (chartEvent is Stop stop)
 				{
@@ -1476,23 +1718,80 @@ namespace StepManiaEditor
 					var newEvent = new EditorRateAlteringEvent
 					{
 						Row = chartEvent.IntegerPosition,
+						RowForFollowingEvents = chartEvent.IntegerPosition,
 						ChartEvent = chartEvent,
 						SongTime = previousEvent.SongTimeForFollowingEvents + secondsSincePrevious,
-						SongTimeForFollowingEvents = previousEvent.SongTimeForFollowingEvents + secondsSincePrevious + (stop.LengthMicros * 1000000.0),
+						SongTimeForFollowingEvents = previousEvent.SongTimeForFollowingEvents + secondsSincePrevious + (stop.LengthMicros / 1000000.0),
 						RowsPerSecond = previousEvent.RowsPerSecond,
 						SecondsPerRow = previousEvent.SecondsPerRow,
+						ScrollRate = lastScrollRate,
+						Tempo = lastTempo
 					};
 					rateAlteringEventsBySongTime.Insert(newEvent);
 					rateAlteringEventsByRow.Insert(newEvent);
 					previousEvent = newEvent;
 				}
+				else if (chartEvent is Warp warp)
+				{
+					var rowsSincePrevious = chartEvent.IntegerPosition - previousEvent.Row;
+					var secondsSincePrevious = rowsSincePrevious * previousEvent.SecondsPerRow;
 
-				// TODO: Warps
+					var newEvent = new EditorRateAlteringEvent
+					{
+						Row = chartEvent.IntegerPosition,
+						RowForFollowingEvents = chartEvent.IntegerPosition + warp.LengthIntegerPosition,
+						ChartEvent = chartEvent,
+						SongTime = previousEvent.SongTimeForFollowingEvents + secondsSincePrevious,
+						SongTimeForFollowingEvents = previousEvent.SongTimeForFollowingEvents + secondsSincePrevious,
+						RowsPerSecond = previousEvent.RowsPerSecond,
+						SecondsPerRow = previousEvent.SecondsPerRow,
+						ScrollRate = lastScrollRate,
+						Tempo = lastTempo
+					};
+					rateAlteringEventsBySongTime.Insert(newEvent);
+					rateAlteringEventsByRow.Insert(newEvent);
+					previousEvent = newEvent;
+				}
+				else if (chartEvent is ScrollRate scrollRate)
+				{
+					var rowsSincePrevious = chartEvent.IntegerPosition - previousEvent.Row;
+					var secondsSincePrevious = rowsSincePrevious * previousEvent.SecondsPerRow;
+
+					var newEvent = new EditorRateAlteringEvent
+					{
+						Row = chartEvent.IntegerPosition,
+						RowForFollowingEvents = chartEvent.IntegerPosition,
+						ChartEvent = chartEvent,
+						SongTime = previousEvent.SongTimeForFollowingEvents + secondsSincePrevious,
+						SongTimeForFollowingEvents = previousEvent.SongTimeForFollowingEvents + secondsSincePrevious,
+						RowsPerSecond = previousEvent.RowsPerSecond,
+						SecondsPerRow = previousEvent.SecondsPerRow,
+						ScrollRate = scrollRate.Rate,
+						Tempo = lastTempo
+					};
+					rateAlteringEventsBySongTime.Insert(newEvent);
+					rateAlteringEventsByRow.Insert(newEvent);
+					previousEvent = newEvent;
+					lastScrollRate = scrollRate.Rate;
+				}
+				else if (chartEvent is ScrollRateInterpolation scrollRateInterpolation)
+				{
+					var newEvent = new EditorInterpolatedRateAlteringEvent
+					{
+						Row = scrollRateInterpolation.IntegerPosition,
+						SongTime = scrollRateInterpolation.TimeMicros,
+						ChartEvent = scrollRateInterpolation,
+						PreviousScrollRate = lastScrollRateInterpolationValue
+					};
+					interpolatedScrollRateEvents.Insert(newEvent);
+					lastScrollRateInterpolationValue = scrollRateInterpolation.Rate;
+				}
 			}
 
 			EditorEvents = editorEvents;
 			RateAlteringEventsBySongTime = rateAlteringEventsBySongTime;
 			RateAlteringEventsByRow = rateAlteringEventsByRow;
+			InterpolatedScrollRateEvents = interpolatedScrollRateEvents;
 		}
 
 		private bool TryGetChartPositionFromSongTime(double songTime, ref double chartPosition)
@@ -1512,7 +1811,10 @@ namespace StepManiaEditor
 			// Update the ChartPosition based on the cached rate information.
 			enumerator.MoveNext();
 			var rateEvent = enumerator.Current;
-			chartPosition = rateEvent.Row + rateEvent.RowsPerSecond * (songTime - rateEvent.SongTimeForFollowingEvents);
+			if (songTime >= rateEvent.SongTime && songTime < rateEvent.SongTimeForFollowingEvents)
+				chartPosition = rateEvent.Row;
+			else
+				chartPosition = rateEvent.Row + rateEvent.RowsPerSecond * (songTime - rateEvent.SongTimeForFollowingEvents);
 			return true;
 		}
 
@@ -1536,6 +1838,7 @@ namespace StepManiaEditor
 				return false;
 
 			// Update the Song time based on the cached rate information.
+			// TODO: Need to take into account Stops vs Delays?
 			enumerator.MoveNext();
 			var rateEvent = enumerator.Current;
 			songTime = rateEvent.SongTimeForFollowingEvents + rateEvent.SecondsPerRow * (chartPosition - rateEvent.Row);

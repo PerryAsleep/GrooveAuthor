@@ -4,10 +4,11 @@ using Fumen.ChartDefinition;
 using Fumen.Converters;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using static StepManiaEditor.Utils;
 
 namespace StepManiaEditor
 {
-	public abstract class EditorEvent : IComparable<EditorEvent>
+	public class EditorEvent : IComparable<EditorEvent>
 	{
 		// Foot, expression, etc.
 
@@ -27,13 +28,17 @@ namespace StepManiaEditor
 				return new EditorHoldStartNote(lhsn);
 			if (chartEvent is LaneHoldEndNote lhen)
 				return new EditorHoldEndNote(lhen);
+			if (chartEvent is LaneNote ln && ln.SourceType == SMCommon.NoteChars[(int)SMCommon.NoteType.Mine].ToString())
+				return new EditorMineNote(ln);
 
 			// TODO: More event types
+			// For now, using what should be an abstract class
+			return new EditorEvent(chartEvent);
 
 			return null;
 		}
 
-		protected EditorEvent(Event chartEvent)
+		public EditorEvent(Event chartEvent)
 		{
 			ChartEvent = chartEvent;
 		}
@@ -89,7 +94,7 @@ namespace StepManiaEditor
 			var rot = new[] { (float)Math.PI * 0.5f, 0.0f, (float)Math.PI, (float)Math.PI * 1.5f };
 
 			var measureSubdivision = new Fraction(LaneTapNote.IntegerPosition % SMCommon.RowsPerMeasure, SMCommon.RowsPerMeasure).Reduce().Denominator;
-			var textureId = Utils.GetArrowTextureId(measureSubdivision);
+			var textureId = GetArrowTextureId(measureSubdivision);
 
 			textureAtlas.Draw(
 				textureId,
@@ -99,6 +104,32 @@ namespace StepManiaEditor
 				rot[LaneTapNote.Lane % rot.Length]);
 		}
 	}
+
+	public class EditorMineNote : EditorEvent
+	{
+		private readonly LaneNote LaneNote;
+
+		public EditorMineNote(LaneNote chartEvent) : base(chartEvent)
+		{
+			LaneNote = chartEvent;
+		}
+
+		public override int GetLane()
+		{
+			return LaneNote.Lane;
+		}
+
+		public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch)
+		{
+			textureAtlas.Draw(
+				TextureIdMine,
+				spriteBatch,
+				new Vector2((float)X, (float)Y),
+				(float)Scale,
+				0.0f);
+		}
+	}
+
 
 	public class EditorHoldStartNote : EditorEvent
 	{
@@ -140,7 +171,7 @@ namespace StepManiaEditor
 			var rot = new[] { (float)Math.PI * 0.5f, 0.0f, (float)Math.PI, (float)Math.PI * 1.5f };
 
 			var measureSubdivision = new Fraction(LaneHoldStartNote.IntegerPosition % SMCommon.RowsPerMeasure, SMCommon.RowsPerMeasure).Reduce().Denominator;
-			var textureId = Utils.GetArrowTextureId(measureSubdivision);
+			var textureId = GetArrowTextureId(measureSubdivision);
 
 			textureAtlas.Draw(
 				textureId,
@@ -156,6 +187,11 @@ namespace StepManiaEditor
 		private EditorHoldStartNote EditorHoldStartNote;
 		private readonly LaneHoldEndNote LaneHoldEndNote;
 
+		/// <summary>
+		/// Whether or not this hold should be considered active for rendering.
+		/// </summary>
+		public bool Active;
+
 		public EditorHoldEndNote(LaneHoldEndNote chartEvent) : base(chartEvent)
 		{
 			LaneHoldEndNote = chartEvent;
@@ -164,6 +200,11 @@ namespace StepManiaEditor
 		public void SetHoldStartNote(EditorHoldStartNote editorHoldStartNote)
 		{
 			EditorHoldStartNote = editorHoldStartNote;
+		}
+
+		public EditorHoldStartNote GetHoldStartNote()
+		{
+			return EditorHoldStartNote;
 		}
 
 		public override int GetLane()
@@ -178,13 +219,24 @@ namespace StepManiaEditor
 
 		public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch)
 		{
-			var bodyTextureId = IsRoll() ? "roll" : "hold";
-			var capTextureId = IsRoll() ? "roll_cap" : "hold_cap";
+			string bodyTextureId;
+			string capTextureId;
+			var roll = IsRoll();
+			if (Active)
+			{
+				bodyTextureId = roll ? TextureIdRollActive : TextureIdHoldActive;
+				capTextureId = roll ? TextureIdRollActiveCap : TextureIdHoldActiveCap;
+			}
+			else
+			{
+				bodyTextureId = roll ? TextureIdRollInactive : TextureIdHoldInactive;
+				capTextureId = roll ? TextureIdRollInactiveCap : TextureIdHoldInactiveCap;
+			}
 
 			// TODO: Tiling?
 
-			var capH = (int)(Utils.DefaultHoldCapHeight * Scale + 0.5);
-			var bodyTileH = (int)(Utils.DefaultHoldSegmentHeight * Scale + 0.5);
+			var capH = (int)(DefaultHoldCapHeight * Scale + 0.5);
+			var bodyTileH = (int)(DefaultHoldSegmentHeight * Scale + 0.5);
 			var y = (int)(Y + H + 0.5) - capH;
 			var minY = (int)(Y + 0.5);
 			var x = (int)(X + 0.5);

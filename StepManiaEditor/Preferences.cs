@@ -68,8 +68,8 @@ namespace StepManiaEditor
 
 		// Scroll control preferences
 		[JsonInclude] public bool ShowScrollControlWindow = true;
-		[JsonInclude] public Editor.ScrollMode EditScrollMode = Editor.ScrollMode.TimeBased;
-		[JsonInclude] public Editor.ScrollMode PlayScrollMode = Editor.ScrollMode.TimeBased;
+		[JsonInclude] public Editor.ScrollMode ScrollMode = Editor.ScrollMode.Time;
+		[JsonInclude] public Editor.SpacingMode SpacingMode = Editor.SpacingMode.ConstantTime;
 		[JsonInclude] public float RowBasedPixelsPerSecondAtDefaultBPM = 1000.0f;
 		[JsonInclude] public float RowBasedDefaultBPM = 120.0f;
 		[JsonInclude] public float TimeBasedPixelsPerSecond = 1000.0f;
