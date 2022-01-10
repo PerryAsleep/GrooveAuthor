@@ -64,7 +64,7 @@ namespace StepManiaEditor
 				// Split into two rectangles aligned vertically.
 				else
 				{
-					Children[0] = new PackNode(new Rectangle(Rect.X, Rect.Y, Rect.Width, Rect.Y + thp));
+					Children[0] = new PackNode(new Rectangle(Rect.X, Rect.Y, Rect.Width, thp));
 					Children[1] = new PackNode(new Rectangle(Rect.X, Rect.Y + thp, Rect.Width, Rect.Height - thp));
 				}
 
@@ -147,7 +147,7 @@ namespace StepManiaEditor
 			spriteBatch.Draw(Atlas, destinationRectangle, node.TextureRect, Color.White);
 		}
 
-		public void Draw(string textureId, SpriteBatch spriteBatch, Rectangle destinationRectangle, float rotation)
+		public void Draw(string textureId, SpriteBatch spriteBatch, Rectangle destinationRectangle, float rotation, float depth = 1.0f)
 		{
 			if (!TextureNodes.TryGetValue(textureId, out var node))
 			{
@@ -160,10 +160,10 @@ namespace StepManiaEditor
 			destinationRectangle.Y += (destinationRectangle.Height >> 1);
 
 			spriteBatch.Draw(Atlas, destinationRectangle, node.TextureRect, Color.White, rotation, rotationOffset,
-				SpriteEffects.None, 1.0f);
+				SpriteEffects.None, depth);
 		}
 
-		public void Draw(string textureId, SpriteBatch spriteBatch, Rectangle destinationRectangle, float rotation, Vector2 rotationOffset)
+		public void Draw(string textureId, SpriteBatch spriteBatch, Rectangle destinationRectangle, float rotation, Vector2 rotationOffset, float depth = 1.0f)
 		{
 			if (!TextureNodes.TryGetValue(textureId, out var node))
 			{
@@ -172,7 +172,7 @@ namespace StepManiaEditor
 			}
 
 			spriteBatch.Draw(Atlas, destinationRectangle, node.TextureRect, Color.White, rotation, rotationOffset,
-				SpriteEffects.None, 1.0f);
+				SpriteEffects.None, depth);
 		}
 
 		public void Draw(string textureId, SpriteBatch spriteBatch, Vector2 position)
@@ -186,7 +186,7 @@ namespace StepManiaEditor
 			spriteBatch.Draw(Atlas, position, node.TextureRect, Color.White);
 		}
 
-		public void Draw(string textureId, SpriteBatch spriteBatch, Vector2 position, float scale, float rotation)
+		public void Draw(string textureId, SpriteBatch spriteBatch, Vector2 position, float scale, float rotation, float depth = 1.0f)
 		{
 			if (!TextureNodes.TryGetValue(textureId, out var node))
 			{
@@ -199,10 +199,10 @@ namespace StepManiaEditor
 			position.Y += node.TextureRect.Height * scale * 0.5f;
 
 			spriteBatch.Draw(Atlas, position, node.TextureRect, Color.White, rotation, rotationOffset, scale,
-				SpriteEffects.None, 1.0f);
+				SpriteEffects.None, depth);
 		}
 
-		public void Draw(string textureId, SpriteBatch spriteBatch, Vector2 position, float scale, float rotation, Vector2 rotationOffset)
+		public void Draw(string textureId, SpriteBatch spriteBatch, Vector2 position, float scale, float rotation, Vector2 rotationOffset, float depth = 1.0f)
 		{
 			if (!TextureNodes.TryGetValue(textureId, out var node))
 			{
@@ -211,7 +211,7 @@ namespace StepManiaEditor
 			}
 
 			spriteBatch.Draw(Atlas, position, node.TextureRect, Color.White, rotation, rotationOffset, scale,
-				SpriteEffects.None, 1.0f);
+				SpriteEffects.None, depth);
 		}
 	}
 }
