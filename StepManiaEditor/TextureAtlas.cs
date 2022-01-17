@@ -136,7 +136,7 @@ namespace StepManiaEditor
 			DirtyNodes.Clear();
 		}
 
-		public void Draw(string textureId, SpriteBatch spriteBatch, Rectangle destinationRectangle)
+		public void Draw(string textureId, SpriteBatch spriteBatch, Rectangle destinationRectangle, float alpha)
 		{
 			if (!TextureNodes.TryGetValue(textureId, out var node))
 			{
@@ -144,10 +144,10 @@ namespace StepManiaEditor
 				return;
 			}
 
-			spriteBatch.Draw(Atlas, destinationRectangle, node.TextureRect, Color.White);
+			spriteBatch.Draw(Atlas, destinationRectangle, node.TextureRect, new Color(1.0f, 1.0f, 1.0f, alpha));
 		}
 
-		public void Draw(string textureId, SpriteBatch spriteBatch, Rectangle destinationRectangle, float rotation, float depth = 1.0f)
+		public void Draw(string textureId, SpriteBatch spriteBatch, Rectangle destinationRectangle, float rotation, float alpha)
 		{
 			if (!TextureNodes.TryGetValue(textureId, out var node))
 			{
@@ -159,11 +159,11 @@ namespace StepManiaEditor
 			destinationRectangle.X += (destinationRectangle.Width >> 1);
 			destinationRectangle.Y += (destinationRectangle.Height >> 1);
 
-			spriteBatch.Draw(Atlas, destinationRectangle, node.TextureRect, Color.White, rotation, rotationOffset,
-				SpriteEffects.None, depth);
+			spriteBatch.Draw(Atlas, destinationRectangle, node.TextureRect, new Color(1.0f, 1.0f, 1.0f, alpha), rotation, rotationOffset,
+				SpriteEffects.None, 1.0f);
 		}
 
-		public void Draw(string textureId, SpriteBatch spriteBatch, Rectangle destinationRectangle, float rotation, Vector2 rotationOffset, float depth = 1.0f)
+		public void Draw(string textureId, SpriteBatch spriteBatch, Rectangle destinationRectangle, float rotation, Vector2 rotationOffset, float alpha)
 		{
 			if (!TextureNodes.TryGetValue(textureId, out var node))
 			{
@@ -171,11 +171,11 @@ namespace StepManiaEditor
 				return;
 			}
 
-			spriteBatch.Draw(Atlas, destinationRectangle, node.TextureRect, Color.White, rotation, rotationOffset,
-				SpriteEffects.None, depth);
+			spriteBatch.Draw(Atlas, destinationRectangle, node.TextureRect, new Color(1.0f, 1.0f, 1.0f, alpha), rotation, rotationOffset,
+				SpriteEffects.None, 1.0f);
 		}
 
-		public void Draw(string textureId, SpriteBatch spriteBatch, Vector2 position)
+		public void Draw(string textureId, SpriteBatch spriteBatch, Vector2 position, float alpha)
 		{
 			if (!TextureNodes.TryGetValue(textureId, out var node))
 			{
@@ -183,10 +183,10 @@ namespace StepManiaEditor
 				return;
 			}
 
-			spriteBatch.Draw(Atlas, position, node.TextureRect, Color.White);
+			spriteBatch.Draw(Atlas, position, node.TextureRect, new Color(1.0f, 1.0f, 1.0f, alpha));
 		}
 
-		public void Draw(string textureId, SpriteBatch spriteBatch, Vector2 position, float scale, float rotation, float depth = 1.0f)
+		public void Draw(string textureId, SpriteBatch spriteBatch, Vector2 position, float scale, float rotation, float alpha)
 		{
 			if (!TextureNodes.TryGetValue(textureId, out var node))
 			{
@@ -198,11 +198,11 @@ namespace StepManiaEditor
 			position.X += node.TextureRect.Width * scale * 0.5f;
 			position.Y += node.TextureRect.Height * scale * 0.5f;
 
-			spriteBatch.Draw(Atlas, position, node.TextureRect, Color.White, rotation, rotationOffset, scale,
-				SpriteEffects.None, depth);
+			spriteBatch.Draw(Atlas, position, node.TextureRect, new Color(1.0f, 1.0f, 1.0f, alpha), rotation, rotationOffset, scale,
+				SpriteEffects.None, 1.0f);
 		}
 
-		public void Draw(string textureId, SpriteBatch spriteBatch, Vector2 position, float scale, float rotation, Vector2 rotationOffset, float depth = 1.0f)
+		public void Draw(string textureId, SpriteBatch spriteBatch, Vector2 position, float scale, float rotation, Vector2 rotationOffset, float alpha)
 		{
 			if (!TextureNodes.TryGetValue(textureId, out var node))
 			{
@@ -210,8 +210,8 @@ namespace StepManiaEditor
 				return;
 			}
 
-			spriteBatch.Draw(Atlas, position, node.TextureRect, Color.White, rotation, rotationOffset, scale,
-				SpriteEffects.None, depth);
+			spriteBatch.Draw(Atlas, position, node.TextureRect, new Color(1.0f, 1.0f, 1.0f, alpha), rotation, rotationOffset, scale,
+				SpriteEffects.None, 1.0f);
 		}
 	}
 }

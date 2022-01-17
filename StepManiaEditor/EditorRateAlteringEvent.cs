@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Fumen;
 using Fumen.ChartDefinition;
 using Fumen.Converters;
 
@@ -40,6 +41,8 @@ namespace StepManiaEditor
 		public double RowsPerSecond;
 		public double SecondsPerRow;
 
+		public TimeSignature LastTimeSignature;
+
 		private class SortSongTimeHelper : IComparer<EditorRateAlteringEvent>
 		{
 			int IComparer<EditorRateAlteringEvent>.Compare(EditorRateAlteringEvent e1, EditorRateAlteringEvent e2)
@@ -79,12 +82,12 @@ namespace StepManiaEditor
 			return SMCommon.SMEventComparer.Compare(ChartEvent, other.ChartEvent);
 		}
 
-		public static int CompareByRow(double row, EditorRateAlteringEvent editorEvent)
+		public static int CompareToRow(double row, EditorRateAlteringEvent editorEvent)
 		{
 			return row.CompareTo(editorEvent.Row);
 		}
 
-		public static int CompareBySongTime(double songTime, EditorRateAlteringEvent editorEvent)
+		public static int CompareToTime(double songTime, EditorRateAlteringEvent editorEvent)
 		{
 			return songTime.CompareTo(editorEvent.SongTime);
 		}

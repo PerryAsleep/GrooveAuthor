@@ -67,12 +67,17 @@ namespace StepManiaEditor
 		[JsonInclude] public int WaveFormLoadingMaxParallelism = 8;
 
 		// Scroll control preferences
+		public const float DefaultTimeBasedPixelsPerSecond = 1000.0f;
+		public const float DefaultRowBasedPixelsPerRow = 10.0f;
+		public const float DefaultVariablePixelsPerSecond = 1000.0f;
+		public const float DefaultVariableSpeedBPM = 120.0f;
 		[JsonInclude] public bool ShowScrollControlWindow = true;
 		[JsonInclude] public Editor.ScrollMode ScrollMode = Editor.ScrollMode.Time;
 		[JsonInclude] public Editor.SpacingMode SpacingMode = Editor.SpacingMode.ConstantTime;
-		[JsonInclude] public float RowBasedPixelsPerSecondAtDefaultBPM = 1000.0f;
-		[JsonInclude] public float RowBasedDefaultBPM = 120.0f;
-		[JsonInclude] public float TimeBasedPixelsPerSecond = 1000.0f;
+		[JsonInclude] public float TimeBasedPixelsPerSecond = DefaultTimeBasedPixelsPerSecond;
+		[JsonInclude] public float RowBasedPixelsPerRow = DefaultRowBasedPixelsPerRow;
+		[JsonInclude] public float VariablePixelsPerSecondAtDefaultBPM = DefaultVariablePixelsPerSecond;
+		[JsonInclude] public Editor.WaveFormScrollMode RowBasedWaveFormScrollMode = Editor.WaveFormScrollMode.MostCommonTempo;
 
 		// Log preferences
 		[JsonInclude] public bool ShowLogWindow = true;

@@ -8,6 +8,58 @@ using static StepManiaEditor.Utils;
 
 namespace StepManiaEditor
 {
+	public class MarkerEvent
+	{
+		public double X;
+		public double Y;
+		public double W;
+		public double H;
+		public double Scale;
+		public bool MeasureMarker;
+		public int Measure;
+
+		public void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, SpriteFont font)
+		{
+			// Measure marker.
+			if (MeasureMarker)
+			{
+				var alpha = Interpolation.Lerp(1.0f, 0.0f, MeasureMarkerScaleToStartingFading, MeasureMarkerMinScale, Scale);
+
+				// Measure line.
+				textureAtlas.Draw(
+					TextureIdMeasureMarker,
+					spriteBatch,
+					new Rectangle((int)(X + 0.5), (int)(Y + 0.5), (int)(W + .5), (int)(H + 0.5)),
+					(float)alpha);
+
+				// Measure number value.
+				if (Scale < MeasureNumberMinScale)
+					return;
+
+				alpha = Interpolation.Lerp(1.0f, 0.0f, MeasureNumberScaleToStartFading, MeasureNumberMinScale, Scale);
+				var measureString = Measure.ToString();
+				var anchorPos = new Vector2((float)(X - 20 * Scale), (float)Y);
+				var drawPos = GetDrawPos(font, measureString, anchorPos, 1.0f, HorizontalAlignment.Right,
+					VerticalAlignment.Center);
+				spriteBatch.DrawString(font, measureString, drawPos, new Color(1.0f, 1.0f, 1.0f, (float)alpha), 0.0f, Vector2.Zero, 1.0f, SpriteEffects.None, 1.0f);
+			}
+
+			// Beat marker.
+			else
+			{
+				var alpha = Interpolation.Lerp(1.0f, 0.0f, BeatMarkerScaleToStartingFading, BeatMarkerMinScale, Scale);
+
+				// Beat line.
+				textureAtlas.Draw(
+					TextureIdBeatMarker,
+					spriteBatch,
+					new Rectangle((int)(X + 0.5), (int)(Y + 0.5), (int)(W + .5), (int)(H + 0.5)),
+					(float)alpha);
+			}
+		}
+	}
+
+
 	public class EditorEvent : IComparable<EditorEvent>
 	{
 		// Foot, expression, etc.
@@ -73,6 +125,16 @@ namespace StepManiaEditor
 		public virtual void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch)
 		{
 		}
+
+		public static int CompareToRow(double row, EditorEvent editorEvent)
+		{
+			return row.CompareTo(editorEvent.ChartEvent.IntegerPosition);
+		}
+
+		public static int CompareToTime(double time, EditorEvent editorEvent)
+		{
+			return time.CompareTo(editorEvent.ChartEvent.TimeMicros / 1000000.0);
+		}
 	}
 
 	public class EditorTapNote : EditorEvent
@@ -101,7 +163,8 @@ namespace StepManiaEditor
 				spriteBatch,
 				new Vector2((float)X, (float)Y),
 				(float)Scale,
-				rot[LaneTapNote.Lane % rot.Length]);
+				rot[LaneTapNote.Lane % rot.Length],
+				1.0f);
 		}
 	}
 
@@ -126,7 +189,8 @@ namespace StepManiaEditor
 				spriteBatch,
 				new Vector2((float)X, (float)Y),
 				(float)Scale,
-				0.0f);
+				0.0f,
+				1.0f);
 		}
 	}
 
@@ -178,7 +242,8 @@ namespace StepManiaEditor
 				spriteBatch,
 				new Vector2((float)X, (float)Y),
 				(float)Scale,
-				rot[LaneHoldStartNote.Lane % rot.Length]);
+				rot[LaneHoldStartNote.Lane % rot.Length],
+				1.0f);
 		}
 	}
 
@@ -241,7 +306,7 @@ namespace StepManiaEditor
 			var minY = (int)(Y + 0.5);
 			var x = (int)(X + 0.5);
 			var w = (int)(W + 0.5);
-			textureAtlas.Draw(capTextureId, spriteBatch, new Rectangle(x, y, w, capH));
+			textureAtlas.Draw(capTextureId, spriteBatch, new Rectangle(x, y, w, capH), 1.0f);
 
 			// TODO: depth
 			while (y >= minY)
@@ -250,7 +315,7 @@ namespace StepManiaEditor
 				if (h == 0)
 					break;
 				y -= h;
-				textureAtlas.Draw(bodyTextureId, spriteBatch, new Rectangle(x, y, w, h));
+				textureAtlas.Draw(bodyTextureId, spriteBatch, new Rectangle(x, y, w, h), 1.0f);
 			}
 		}
 	}

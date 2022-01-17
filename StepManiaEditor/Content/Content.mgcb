@@ -181,6 +181,13 @@
 /processorParam:TextureFormat=Color
 /build:mine.png
 
+#begin mplus1code-medium.spritefont
+/importer:FontDescriptionImporter
+/processor:FontDescriptionProcessor
+/processorParam:PremultiplyAlpha=True
+/processorParam:TextureFormat=Compressed
+/build:mplus1code-medium.spritefont
+
 #begin r.png
 /importer:TextureImporter
 /processor:TextureProcessor

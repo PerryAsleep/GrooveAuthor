@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
 using ImGuiNET;
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
 
 namespace StepManiaEditor
 {
@@ -14,6 +16,16 @@ namespace StepManiaEditor
 		public const int DefaultArrowWidth = 128;
 		public const int DefaultHoldCapHeight = 64;
 		public const int DefaultHoldSegmentHeight = 64;
+
+		public const float BeatMarkerScaleToStartingFading = 0.15f;
+		public const float BeatMarkerMinScale = 0.10f;
+		public const float MeasureMarkerScaleToStartingFading = 0.10f;
+		public const float MeasureMarkerMinScale = 0.05f;
+		public const float MeasureNumberScaleToStartFading = 0.20f;
+		public const float MeasureNumberMinScale = 0.10f;
+
+		public const int MaxMarkersToDraw = 256;
+		public const int MaxEventsToDraw = 2048;
 
 		public const string TextureIdReceptor = "receptor";
 		public const string TextureIdReceptorFlash = "receptor_flash";
@@ -28,7 +40,25 @@ namespace StepManiaEditor
 		public const string TextureIdRollInactiveCap = "roll_inactive_cap";
 		public const string TextureIdMine = "mine";
 
+		public const string TextureIdMeasureMarker = "measure_marker";
+		public const string TextureIdBeatMarker = "beat_marker";
+
 		private static readonly Dictionary<Type, string[]> EnumStringsCache = new Dictionary<Type, string[]>();
+
+		public enum HorizontalAlignment
+		{
+			Left,
+			Center,
+			Right
+		}
+
+		public enum VerticalAlignment
+		{
+			Top,
+			Center,
+			Bottom
+		}
+
 
 		static Utils()
 		{
@@ -71,6 +101,51 @@ namespace StepManiaEditor
 			var intValue = (int)(object)enumValue;
 			ImGui.Combo(name, ref intValue, strings, strings.Length);
 			enumValue = (T)(object)intValue;
+		}
+
+		public static void HelpMarker(string text)
+		{
+			ImGui.TextDisabled("(?)");
+			if (ImGui.IsItemHovered())
+			{
+				ImGui.BeginTooltip();
+				ImGui.PushTextWrapPos(ImGui.GetFontSize() * 80.0f);
+				ImGui.TextUnformatted(text);
+				ImGui.PopTextWrapPos();
+				ImGui.EndTooltip();
+			}
+		}
+
+		public static Vector2 GetDrawPos(
+			SpriteFont font,
+			string text,
+			Vector2 anchorPos,
+			float scale,
+			HorizontalAlignment hAlign = HorizontalAlignment.Left,
+			VerticalAlignment vAlign = VerticalAlignment.Top)
+		{
+			var x = anchorPos.X;
+			var y = anchorPos.Y;
+			var size = font.MeasureString(text);
+			switch (hAlign)
+			{
+				case HorizontalAlignment.Center:
+					x -= size.X * 0.5f * scale;
+					break;
+				case HorizontalAlignment.Right:
+					x -= size.X * scale;
+					break;
+			}
+			switch (vAlign)
+			{
+				case VerticalAlignment.Center:
+					y -= size.Y * 0.5f * scale;
+					break;
+				case VerticalAlignment.Bottom:
+					y -= size.Y * scale;
+					break;
+			}
+			return new Vector2(x, y);
 		}
 	}
 }
