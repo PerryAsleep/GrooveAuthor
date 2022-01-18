@@ -79,6 +79,9 @@ namespace StepManiaEditor
 		{
 			if (measureSubDivision == 1 || measureSubDivision == 2)
 				measureSubDivision = 4;
+			else if (measureSubDivision == 3 || measureSubDivision == 6)
+				measureSubDivision = 12;
+
 			if (ArrowTextureBySubdivision.ContainsKey(measureSubDivision))
 				return ArrowTextureBySubdivision[measureSubDivision];
 			return ArrowTextureBySubdivision[64];
