@@ -7,7 +7,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
-using System.Linq.Expressions;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -17,6 +16,7 @@ using Fumen.Converters;
 using StepManiaLibrary;
 using static StepManiaLibrary.Constants;
 using static StepManiaEditor.Utils;
+using ButtonState = Microsoft.Xna.Framework.Input.ButtonState;
 using Keys = Microsoft.Xna.Framework.Input.Keys;
 using Vector2 = Microsoft.Xna.Framework.Vector2;
 
@@ -95,6 +95,7 @@ namespace StepManiaEditor
 		private WaveFormRenderer WaveFormRenderer;
 		private SoundManager SoundManager;
 		private SoundMipMap MusicMipMap;
+		private MiniMap MiniMap;
 
 		private TextureAtlas TextureAtlas;
 
@@ -135,7 +136,6 @@ namespace StepManiaEditor
 		private int MouseScrollValue = 0;
 		private double SongTimeInterpolationTimeStart = 0.0;
 		private double SongTime = 0.0;
-		private double PreviousFrameSongTime = 0.0;
 		private double SongTimeAtStartOfInterpolation = 0.0;
 		private double DesiredSongTime = 0.0;
 		private double ZoomInterpolationTimeStart = 0.0;
@@ -145,11 +145,22 @@ namespace StepManiaEditor
 
 		private bool SpacePressed = false;
 		private bool Playing = false;
+		private bool MiniMapCapturingMouse = false;
+		private bool StartPlayingWhenMiniMapDone = false;
+		private MouseState PreviousMouseState;
 
 		private uint MaxScreenHeight;
 
 		private ImFontPtr ImGuiFont;
 		private SpriteFont MonogameFont_MPlus1Code_Medium;
+
+		// Debug
+		private bool ParallelizeUpdateLoop = false;
+		private double UpdateTimeTotal;
+		private double UpdateTimeWaveForm;
+		private double UpdateTimeMiniMap;
+		private double UpdateTimeChartEvents;
+		private double DrawTimeTotal;
 
 		// Logger GUI
 		private readonly LinkedList<Logger.LogMessage> LogBuffer = new LinkedList<Logger.LogMessage>();
@@ -243,6 +254,11 @@ namespace StepManiaEditor
 			WaveFormRenderer.SetSoundMipMap(MusicMipMap);
 			WaveFormRenderer.SetFocalPoint(FocalPoint);
 
+			MiniMap = new MiniMap(GraphicsDevice, new Rectangle(0, 0, 0, 0));
+			MiniMap.SetSelectMode(Preferences.Instance.MiniMapSelectMode);
+			UpdateMiniMapBounds();
+			UpdateMiniMapLaneSpacing();
+
 			TextureAtlas = new TextureAtlas(GraphicsDevice, 2048, 2048, 1);
 
 			base.Initialize();
@@ -260,7 +276,7 @@ namespace StepManiaEditor
 			SpriteBatch = new SpriteBatch(GraphicsDevice);
 
 			// Load textures from disk and add them to the Texture Atlas.
-			foreach (var kvp in ArrowTextureBySubdivision)
+			foreach (var kvp in ArrowTextureByBeatSubdivision)
 				TextureAtlas.AddTexture(kvp.Value, Content.Load<Texture2D>(kvp.Value));
 			TextureAtlas.AddTexture(TextureIdMine, Content.Load<Texture2D>(TextureIdMine));
 			TextureAtlas.AddTexture(TextureIdReceptor, Content.Load<Texture2D>(TextureIdReceptor));
@@ -318,11 +334,64 @@ namespace StepManiaEditor
 
 			// Update FocalPoint.
 			FocalPoint.X = Graphics.GraphicsDevice.Viewport.Width >> 1;
+
+			// Update ViewPort dependent state
+			UpdateMiniMapBounds();
+		}
+
+		private void UpdateMiniMapBounds()
+		{
+			var x = 0;
+			var zoom = Math.Min(1.0, Zoom);
+			switch (Preferences.Instance.MiniMapPosition)
+			{
+				case MiniMap.Position.RightSideOfWindow:
+				{
+					x = Graphics.PreferredBackBufferWidth - MiniMapXPadding - (int)Preferences.Instance.MiniMapWidth;
+					break;
+				}
+				case MiniMap.Position.RightOfChartArea:
+				{
+					x = (int)(FocalPoint.X + (WaveFormTextureWidth >> 1) + MiniMapXPadding);
+					break;
+				}
+				case MiniMap.Position.MountedToWaveForm:
+				{
+					if (Preferences.Instance.WaveFormScaleXWhenZooming)
+					{
+						x = (int)(FocalPoint.X + (WaveFormTextureWidth >> 1) * zoom + MiniMapXPadding);
+					}
+					else
+					{
+						x = (int)(FocalPoint.X + (WaveFormTextureWidth >> 1) + MiniMapXPadding);
+					}
+					break;
+				}
+				case MiniMap.Position.MountedToChart:
+				{
+					x = (int)(FocalPoint.X + ((ActiveChart.NumInputs * DefaultArrowWidth) >> 1) * zoom + MiniMapXPadding);
+					break;
+				}
+			}
+
+			var h = Math.Max(0, Graphics.PreferredBackBufferHeight - MiniMapYPaddingFromTop - MiniMapYPaddingFromBottom);
+
+			MiniMap.UpdateBounds(
+				GraphicsDevice,
+				new Rectangle(x, MiniMapYPaddingFromTop, (int)Preferences.Instance.MiniMapWidth, h));
+		}
+
+		private void UpdateMiniMapLaneSpacing()
+		{
+			MiniMap.SetLaneSpacing(
+				Preferences.Instance.MiniMapNoteWidth,
+				Preferences.Instance.MiniMapNoteSpacing);
 		}
 
 		protected override void Update(GameTime gameTime)
 		{
-			PreviousFrameSongTime = SongTime;
+			var stopWatch = new Stopwatch();
+			stopWatch.Start();
 
 			ProcessInput(gameTime);
 
@@ -345,12 +414,12 @@ namespace StepManiaEditor
 
 			if (Zoom != DesiredZoom)
 			{
-				Zoom = Interpolation.Lerp(
+				SetZoom(Interpolation.Lerp(
 					ZoomAtStartOfInterpolation,
 					DesiredZoom,
 					ZoomInterpolationTimeStart,
 					ZoomInterpolationTimeStart + 0.1,
-					gameTime.TotalGameTime.TotalSeconds);
+					gameTime.TotalGameTime.TotalSeconds), false);
 			}
 
 			if (Playing)
@@ -386,10 +455,53 @@ namespace StepManiaEditor
 
 			// If using SongTime
 			UpdateChartPositionFromSongTime();
-			UpdateChartEvents();
-			UpdateWaveFormRenderer();
+
+
+			Action timedUpdateChartEvents = () =>
+			{
+				var s = new Stopwatch();
+				s.Start();
+				UpdateChartEvents();
+				s.Stop();
+				UpdateTimeChartEvents = s.Elapsed.TotalSeconds;
+			};
+			Action timedUpdateMiniMap = () =>
+			{
+				var s = new Stopwatch();
+				s.Start();
+				UpdateMiniMap();
+				s.Stop();
+				UpdateTimeMiniMap = s.Elapsed.TotalSeconds;
+			};
+			Action timedUpdateWaveForm = () =>
+			{
+				var s = new Stopwatch();
+				s.Start();
+				UpdateWaveFormRenderer();
+				s.Stop();
+				UpdateTimeWaveForm = s.Elapsed.TotalSeconds;
+			};
+
+			// CPU heavy updates.
+			// This kind of parallelization isn't helpful as it has to create new threads each frame.
+			if (ParallelizeUpdateLoop)
+			{
+				Parallel.Invoke(
+					() => timedUpdateChartEvents(),
+					() => timedUpdateMiniMap(),
+					() => timedUpdateWaveForm());
+			}
+			else
+			{
+				timedUpdateChartEvents();
+				timedUpdateMiniMap();
+				timedUpdateWaveForm();
+			}
 
 			base.Update(gameTime);
+
+			stopWatch.Stop();
+			UpdateTimeTotal = stopWatch.Elapsed.TotalSeconds;
 		}
 
 		private void ProcessInput(GameTime gameTime)
@@ -418,7 +530,10 @@ namespace StepManiaEditor
 
 			// Process Mouse Input
 			var mouseState = Mouse.GetState();
+			var mouseDownThisFrame = mouseState.LeftButton == ButtonState.Pressed && PreviousMouseState.LeftButton != ButtonState.Pressed;
+			var mouseUpThisFrame = mouseState.LeftButton != ButtonState.Pressed && PreviousMouseState.LeftButton == ButtonState.Pressed;
 			var newMouseScrollValue = mouseState.ScrollWheelValue;
+
 			if (imGuiWantMouse)
 			{
 				// Update our last tracked mouse scroll value even if imGui captured it so that
@@ -427,6 +542,66 @@ namespace StepManiaEditor
 			}
 			else
 			{
+				var miniMapCapturingMouseLastFrame = MiniMapCapturingMouse;
+
+				var miniMapNeedsMouseThisFrame = false;
+				if (mouseDownThisFrame)
+				{
+					miniMapNeedsMouseThisFrame = MiniMap.MouseDown(mouseState.X, mouseState.Y);
+				}
+				MiniMap.MouseMove(mouseState.X, mouseState.Y);
+				if (mouseUpThisFrame)
+				{
+					MiniMap.MouseUp(mouseState.X, mouseState.Y);
+				}
+
+				MiniMapCapturingMouse = MiniMap.WantsMouse();
+
+				// Set the Song Position based on the MiniMap position
+				miniMapNeedsMouseThisFrame |= MiniMapCapturingMouse;
+				if (miniMapNeedsMouseThisFrame)
+				{
+					// When moving the MiniMap, pause or stop playback.
+					if (mouseDownThisFrame && Playing)
+					{
+						// Set a flag to unpause playback unless the preference is to completely stop when scrolling.
+						StartPlayingWhenMiniMapDone = !Preferences.Instance.MiniMapStopPlaybackWhenScrolling;
+						StopPlayback();
+					}
+
+					// Set the music position based off of the MiniMap editor area.
+					var editorPosition = MiniMap.GetEditorPosition();
+					switch (GetMiniMapSpacingMode())
+					{
+						case SpacingMode.ConstantTime:
+						{
+							SetSongTime(editorPosition + (FocalPoint.Y / (Preferences.Instance.TimeBasedPixelsPerSecond * Zoom)) - ActiveChart.ChartOffsetFromMusic);
+							break;
+						}
+						case SpacingMode.ConstantRow:
+						{
+							var chartPosition =
+								editorPosition + (FocalPoint.Y / (Preferences.Instance.RowBasedPixelsPerRow * Zoom));
+							var songTime = 0.0;
+							if (TryGetSongTimeFromChartPosition(chartPosition, ref songTime))
+							{
+								SetSongTime(songTime);
+							}
+
+							break;
+						}
+					}
+				}
+
+				// When letting go of the MiniMap, start playing again.
+				if (miniMapCapturingMouseLastFrame && !MiniMapCapturingMouse && StartPlayingWhenMiniMapDone)
+				{
+					StartPlayingWhenMiniMapDone = false;
+					StartPlayback();
+				}
+
+				//mouseState.
+
 				// TODO: wtf are these values
 				if (scrollShouldZoom)
 				{
@@ -455,8 +630,16 @@ namespace StepManiaEditor
 						{
 							PlaybackStartTime -= delta;
 							SongTime = PlaybackStartTime + PlaybackStopwatch.Elapsed.TotalSeconds;
-							SetMusicPosition(SongTime);
-							MusicChannel.setPaused(SongTime < 0.0);
+
+							if (Preferences.Instance.StopPlaybackWhenScrolling)
+							{
+								StopPlayback();
+							}
+							else
+							{
+								SetMusicPosition(SongTime);
+								MusicChannel.setPaused(SongTime < 0.0);
+							}
 						}
 						else
 						{
@@ -475,8 +658,16 @@ namespace StepManiaEditor
 						{
 							PlaybackStartTime += delta;
 							SongTime = PlaybackStartTime + PlaybackStopwatch.Elapsed.TotalSeconds;
-							SetMusicPosition(SongTime);
-							MusicChannel.setPaused(SongTime < 0.0);
+
+							if (Preferences.Instance.StopPlaybackWhenScrolling)
+							{
+								StopPlayback();
+							}
+							else
+							{
+								SetMusicPosition(SongTime);
+								MusicChannel.setPaused(SongTime < 0.0);
+							}
 						}
 						else
 						{
@@ -489,6 +680,8 @@ namespace StepManiaEditor
 					}
 				}
 			}
+
+			PreviousMouseState = mouseState;
 		}
 
 		private void StartPlayback()
@@ -512,6 +705,32 @@ namespace StepManiaEditor
 			Playing = true;
 		}
 
+		private void SetSongTime(double songTime)
+		{
+			SongTime = songTime;
+			DesiredSongTime = songTime;
+			SetMusicPosition(SongTime);
+
+			if (Playing)
+			{
+				MusicChannel.setPaused(SongTime < 0.0);
+
+				PlaybackStartTime = SongTime;
+				PlaybackStopwatch = new Stopwatch();
+				PlaybackStopwatch.Start();
+			}
+		}
+
+		private void SetZoom(double zoom, bool setDesiredZoom)
+		{
+			Zoom = zoom;
+			if (setDesiredZoom)
+			{
+				DesiredZoom = zoom;
+			}
+			UpdateMiniMapBounds();
+		}
+
 		private void StopPlayback()
 		{
 			if (!Playing)
@@ -525,12 +744,20 @@ namespace StepManiaEditor
 
 		protected override void Draw(GameTime gameTime)
 		{
+			var stopWatch = new Stopwatch();
+			stopWatch.Start();
+
 			GraphicsDevice.Clear(Color.Black);
 
 			SpriteBatch.Begin(SpriteSortMode.Deferred, BlendState.NonPremultiplied);
 			if (Preferences.Instance.ShowWaveForm)
 			{
 				WaveFormRenderer.Draw(SpriteBatch);
+			}
+
+			if (Preferences.Instance.ShowMiniMap)
+			{
+				MiniMap.Draw(SpriteBatch);
 			}
 
 			DrawReceptors();
@@ -540,6 +767,9 @@ namespace StepManiaEditor
 			DrawGui(gameTime);
 
 			base.Draw(gameTime);
+
+			stopWatch.Stop();
+			DrawTimeTotal = stopWatch.Elapsed.TotalSeconds;
 		}
 
 		private void DrawReceptors()
@@ -570,6 +800,10 @@ namespace StepManiaEditor
 
 		private void UpdateWaveFormRenderer()
 		{
+			// Performance optimization. Do not update the texture if we won't render it.
+			if (!Preferences.Instance.ShowWaveForm)
+				return;
+
 			WaveFormRenderer.SetFocalPoint(FocalPoint);
 			WaveFormRenderer.SetXPerChannelScale(Preferences.Instance.WaveFormMaxXPercentagePerChannel);
 			WaveFormRenderer.SetColors(
@@ -693,42 +927,23 @@ namespace StepManiaEditor
 
 					// Scan backwards until we have checked every lane for a long note which may
 					// be extending through the given start row.
-					var lanesChecked = new bool[ActiveChart.NumInputs];
-					var numLanesChecked = 0;
-					var current = new RedBlackTree<EditorEvent>.Enumerator(enumerator);
-					while (current.MovePrev() && numLanesChecked < ActiveChart.NumInputs)
+					var holdStartNotes = ScanBackwardsForHolds(enumerator, chartPosition);
+					foreach (var hsn in holdStartNotes)
 					{
-						var e = current.Current;
-						var lane = e.GetLane();
-						if (lane >= 0)
-						{
-							if (!lanesChecked[lane])
-							{
-								lanesChecked[lane] = true;
-								numLanesChecked++;
+						hsn.X = xStart + hsn.GetLane() * arrowSize;
+						hsn.Y = ((hsn.ChartEvent.TimeMicros / 1000000.0) - timeAtTopOfScreen) * pps - (arrowSize * 0.5);
+						hsn.W = arrowSize;
+						hsn.H = arrowSize;
+						hsn.Scale = sizeZoom;
+						noteEvents.Add(hsn);
 
-								if (e.GetRow() + e.GetLength() > chartPosition)
-								{
-									if (e is EditorHoldStartNote hsn)
-									{
-										e.X = xStart + e.GetLane() * arrowSize;
-										e.Y = ((e.ChartEvent.TimeMicros / 1000000.0) - timeAtTopOfScreen) * pps - (arrowSize * 0.5);
-										e.W = arrowSize;
-										e.H = arrowSize;
-										e.Scale = sizeZoom;
-										noteEvents.Add(e);
-
-										var end = hsn.GetHoldEndNote();
-										holdBodyEvents.Add(end);
-										end.X = xStart + end.GetLane() * arrowSize;
-										end.Y = ((e.ChartEvent.TimeMicros / 1000000.0) - timeAtTopOfScreen) * pps;
-										end.W = arrowSize;
-										end.H = (((end.ChartEvent.TimeMicros / 1000000.0) - timeAtTopOfScreen) * pps) - end.Y + holdCapHeight;
-										end.Scale = sizeZoom;
-									}
-								}
-							}
-						}
+						var end = hsn.GetHoldEndNote();
+						holdBodyEvents.Add(end);
+						end.X = xStart + end.GetLane() * arrowSize;
+						end.Y = ((hsn.ChartEvent.TimeMicros / 1000000.0) - timeAtTopOfScreen) * pps;
+						end.W = arrowSize;
+						end.H = (((end.ChartEvent.TimeMicros / 1000000.0) - timeAtTopOfScreen) * pps) - end.Y + holdCapHeight;
+						end.Scale = sizeZoom;
 					}
 
 					// Scan forward and add notes.
@@ -838,42 +1053,23 @@ namespace StepManiaEditor
 
 					// Scan backwards until we have checked every lane for a long note which may
 					// be extending through the given start row.
-					var lanesChecked = new bool[ActiveChart.NumInputs];
-					var numLanesChecked = 0;
-					var current = new RedBlackTree<EditorEvent>.Enumerator(enumerator);
-					while (current.MovePrev() && numLanesChecked < ActiveChart.NumInputs)
+					var holdStartNotes = ScanBackwardsForHolds(enumerator, chartPositionAtTopOfScreen);
+					foreach (var hsn in holdStartNotes)
 					{
-						var e = current.Current;
-						var lane = e.GetLane();
-						if (lane >= 0)
-						{
-							if (!lanesChecked[lane])
-							{
-								lanesChecked[lane] = true;
-								numLanesChecked++;
+						hsn.X = xStart + hsn.GetLane() * arrowSize;
+						hsn.Y = (hsn.GetRow() - chartPositionAtTopOfScreen) * ppr - (arrowSize * 0.5);
+						hsn.W = arrowSize;
+						hsn.H = arrowSize;
+						hsn.Scale = sizeZoom;
+						noteEvents.Add(hsn);
 
-								if (e.GetRow() + e.GetLength() > chartPositionAtTopOfScreen)
-								{
-									if (e is EditorHoldStartNote hsn)
-									{
-										e.X = xStart + e.GetLane() * arrowSize;
-										e.Y = (e.GetRow() - chartPositionAtTopOfScreen) * ppr - (arrowSize * 0.5);
-										e.W = arrowSize;
-										e.H = arrowSize;
-										e.Scale = sizeZoom;
-										noteEvents.Add(e);
-
-										var end = hsn.GetHoldEndNote();
-										holdBodyEvents.Add(end);
-										end.X = xStart + end.GetLane() * arrowSize;
-										end.Y = (e.GetRow() - chartPositionAtTopOfScreen) * ppr;
-										end.W = arrowSize;
-										end.H = ((end.GetRow() - chartPositionAtTopOfScreen) * ppr) - end.Y + holdCapHeight;
-										end.Scale = sizeZoom;
-									}
-								}
-							}
-						}
+						var end = hsn.GetHoldEndNote();
+						holdBodyEvents.Add(end);
+						end.X = xStart + end.GetLane() * arrowSize;
+						end.Y = (hsn.GetRow() - chartPositionAtTopOfScreen) * ppr;
+						end.W = arrowSize;
+						end.H = ((end.GetRow() - chartPositionAtTopOfScreen) * ppr) - end.Y + holdCapHeight;
+						end.Scale = sizeZoom;
 					}
 
 					// Scan forward and add notes.
@@ -1021,38 +1217,19 @@ namespace StepManiaEditor
 					// Scan backwards until we have checked every lane for a long note which may
 					// be extending through the given start row. We cannot add the end events yet because
 					// we do not know at what position they will end until we scan down.
-					var lanesChecked = new bool[ActiveChart.NumInputs];
-					var numLanesChecked = 0;
-					var current = new RedBlackTree<EditorEvent>.Enumerator(enumerator);
 					var holdEndNotesNeedingToBeAdded = new EditorHoldEndNote[ActiveChart.NumInputs];
-					while (current.MovePrev() && numLanesChecked < ActiveChart.NumInputs)
+					var holdStartNotes = ScanBackwardsForHolds(enumerator, chartPositionAtTopOfScreen);
+					foreach (var hsn in holdStartNotes)
 					{
-						var e = current.Current;
-						var lane = e.GetLane();
-						if (lane >= 0)
-						{
-							if (!lanesChecked[lane])
-							{
-								lanesChecked[lane] = true;
-								numLanesChecked++;
+						hsn.X = xStart + hsn.GetLane() * arrowSize;
+						hsn.Y = (hsn.ChartEvent.IntegerPosition - chartPositionAtTopOfScreen) * ppr -
+						        (arrowSize * 0.5);
+						hsn.W = arrowSize;
+						hsn.H = arrowSize;
+						hsn.Scale = sizeZoom;
+						noteEvents.Add(hsn);
 
-								if (e.GetRow() + e.GetLength() > chartPositionAtTopOfScreen)
-								{
-									if (e is EditorHoldStartNote hsn)
-									{
-										e.X = xStart + e.GetLane() * arrowSize;
-										e.Y = (e.ChartEvent.IntegerPosition - chartPositionAtTopOfScreen) * ppr -
-										      (arrowSize * 0.5);
-										e.W = arrowSize;
-										e.H = arrowSize;
-										e.Scale = sizeZoom;
-										noteEvents.Add(e);
-
-										holdEndNotesNeedingToBeAdded[e.GetLane()] = hsn.GetHoldEndNote();
-									}
-								}
-							}
-						}
+						holdEndNotesNeedingToBeAdded[hsn.GetLane()] = hsn.GetHoldEndNote();
 					}
 
 					var hasNextRateEvent = rateEnumerator.MoveNext();
@@ -1334,6 +1511,265 @@ namespace StepManiaEditor
 			}
 		}
 
+		private SpacingMode GetMiniMapSpacingMode()
+		{
+			if (Preferences.Instance.SpacingMode == SpacingMode.Variable)
+				return Preferences.Instance.MiniMapSpacingModeForVariable;
+			return Preferences.Instance.SpacingMode;
+		}
+
+		private void UpdateMiniMap()
+		{
+			// Performance optimization. Do not update the MiniMap if we won't render it.
+			if (!Preferences.Instance.ShowMiniMap)
+				return;
+
+			if (EditorEvents == null)
+				return;
+
+			MiniMap.SetSelectMode(Preferences.Instance.MiniMapSelectMode);
+
+			switch (GetMiniMapSpacingMode())
+			{
+				case SpacingMode.ConstantTime:
+				{
+					var screenHeight = Graphics.GraphicsDevice.Viewport.Height;
+					var spacingZoom = Zoom;
+					var pps = Preferences.Instance.TimeBasedPixelsPerSecond * spacingZoom;
+					var time = SongTime + ActiveChart.ChartOffsetFromMusic;
+
+					// Editor Area. The visible time range.
+					var editorAreaTimeStart = time - (FocalPoint.Y / pps);
+					var editorAreaTimeEnd = editorAreaTimeStart + (screenHeight / pps);
+					var editorAreaTimeRange = editorAreaTimeEnd - editorAreaTimeStart;
+
+					// Determine the end time.
+					var lastEvent = EditorEvents.Last();
+					var maxTimeFromChart = 0.0;
+					if (lastEvent.MoveNext())
+						maxTimeFromChart = lastEvent.Current.ChartEvent.TimeMicros / 1000000.0;
+					if (ActiveChart.Extras.TryGetExtra(SMCommon.TagLastSecondHint, out double lastSecondHint))
+						maxTimeFromChart = Math.Max(maxTimeFromChart, lastSecondHint);
+
+					// Full Area. The time from the chart, extended in both directions by the editor range.
+					var fullAreaTimeStart = 0.0 - editorAreaTimeRange;
+					var fullAreaTimeEnd = maxTimeFromChart + editorAreaTimeRange;
+
+					// Content Area. The time from the chart.
+					var contentAreaTimeStart = 0.0;
+					var contentAreaTimeEnd = maxTimeFromChart;
+
+					// Update the MiniMap with the ranges.
+					MiniMap.SetNumLanes((uint)ActiveChart.NumInputs);
+					MiniMap.UpdateBegin(
+						fullAreaTimeStart, fullAreaTimeEnd,
+						contentAreaTimeStart, contentAreaTimeEnd,
+						Preferences.Instance.MiniMapVisibleTimeRange,
+						editorAreaTimeStart, editorAreaTimeEnd);
+
+					// Add notes
+					double chartPosition = 0.0;
+					if (!TryGetChartPositionFromSongTime(MiniMap.GetMiniMapAreaStart(), ref chartPosition))
+						break;
+					var enumerator = FindBest(EditorEvents, chartPosition, EditorEvent.CompareToRow);
+					if (enumerator == null)
+						break;
+
+					var numNotesAdded = 0;
+
+					// Scan backwards until we have checked every lane for a long note which may
+					// be extending through the given start row.
+					var holdStartNotes = ScanBackwardsForHolds(enumerator, chartPosition);
+					foreach (var hsn in holdStartNotes)
+					{
+						MiniMap.AddHold(
+							(LaneHoldStartNote)hsn.ChartEvent,
+							hsn.ChartEvent.TimeMicros / 1000000.0,
+							hsn.GetHoldEndNote().ChartEvent.TimeMicros / 1000000.0,
+							hsn.IsRoll());
+						numNotesAdded++;
+					}
+
+					while (enumerator.MoveNext())
+					{
+						var e = enumerator.Current;
+						if (e is EditorHoldEndNote)
+							continue;
+
+						if (e is EditorTapNote)
+						{
+							numNotesAdded++;
+							if (MiniMap.AddNote((LaneNote)e.ChartEvent, e.ChartEvent.TimeMicros / 1000000.0) == MiniMap.AddResult.BelowBottom)
+								break;
+						}
+						else if (e is EditorMineNote)
+						{
+							numNotesAdded++;
+								if (MiniMap.AddMine((LaneNote)e.ChartEvent, e.ChartEvent.TimeMicros / 1000000.0) == MiniMap.AddResult.BelowBottom)
+								break;
+						}
+						else if (e is EditorHoldStartNote hsn)
+						{
+							numNotesAdded++;
+								if (MiniMap.AddHold(
+								(LaneHoldStartNote)e.ChartEvent,
+								e.ChartEvent.TimeMicros / 1000000.0,
+								hsn.GetHoldEndNote().ChartEvent.TimeMicros / 1000000.0,
+								hsn.IsRoll()) == MiniMap.AddResult.BelowBottom)
+								break;
+						}
+
+						if (numNotesAdded > MiniMapMaxNotesToDraw)
+							break;
+					}
+
+					break;
+				}
+
+				case SpacingMode.ConstantRow:
+				{
+					var time = SongTime + ActiveChart.ChartOffsetFromMusic;
+					var screenHeight = Graphics.GraphicsDevice.Viewport.Height;
+					double chartPosition = 0.0;
+					if (!TryGetChartPositionFromSongTime(time, ref chartPosition))
+						return;
+					var spacingZoom = Zoom;
+					var ppr = Preferences.Instance.RowBasedPixelsPerRow * spacingZoom;
+
+					// Editor Area. The visible row range.
+					var editorAreaRowStart = chartPosition - (FocalPoint.Y / ppr);
+					var editorAreaRowEnd = editorAreaRowStart + (screenHeight / ppr);
+					var editorAreaRowRange = editorAreaRowEnd - editorAreaRowStart;
+
+					// Determine the end row.
+					var lastEvent = EditorEvents.Last();
+					var maxRowFromChart = 0.0;
+					if (lastEvent.MoveNext())
+						maxRowFromChart = lastEvent.Current.ChartEvent.IntegerPosition;
+					if (ActiveChart.Extras.TryGetExtra(SMCommon.TagLastSecondHint, out double lastSecondHint))
+					{
+						var lastSecondChartPosition = 0.0;
+						if (TryGetChartPositionFromSongTime(time, ref lastSecondChartPosition))
+						{
+							maxRowFromChart = Math.Max(lastSecondChartPosition, lastSecondHint);
+						}
+					}
+
+					// Full Area. The area from the chart, extended in both directions by the editor range.
+					var fullAreaRowStart = 0.0 - editorAreaRowRange;
+					var fullAreaRowEnd = maxRowFromChart + editorAreaRowRange;
+
+					// Content Area. The rows from the chart.
+					var contentAreaTimeStart = 0.0;
+					var contentAreaTimeEnd = maxRowFromChart;
+
+					// Update the MiniMap with the ranges.
+					MiniMap.SetNumLanes((uint)ActiveChart.NumInputs);
+					MiniMap.UpdateBegin(
+						fullAreaRowStart, fullAreaRowEnd,
+						contentAreaTimeStart, contentAreaTimeEnd,
+						Preferences.Instance.MiniMapVisibleRowRange,
+						editorAreaRowStart, editorAreaRowEnd);
+
+					// Add notes
+					chartPosition = MiniMap.GetMiniMapAreaStart();
+					var enumerator = FindBest(EditorEvents, chartPosition, EditorEvent.CompareToRow);
+					if (enumerator == null)
+						break;
+
+					var numNotesAdded = 0;
+
+					// Scan backwards until we have checked every lane for a long note which may
+					// be extending through the given start row.
+					var holdStartNotes = ScanBackwardsForHolds(enumerator, chartPosition);
+					foreach (var hsn in holdStartNotes)
+					{
+						MiniMap.AddHold(
+							(LaneHoldStartNote)hsn.ChartEvent,
+							hsn.ChartEvent.IntegerPosition,
+							hsn.GetHoldEndNote().ChartEvent.IntegerPosition,
+							hsn.IsRoll());
+						numNotesAdded++;
+					}
+
+					while (enumerator.MoveNext())
+					{
+						var e = enumerator.Current;
+						if (e is EditorHoldEndNote)
+							continue;
+
+						if (e is EditorTapNote)
+						{
+							numNotesAdded++;
+							if (MiniMap.AddNote((LaneNote)e.ChartEvent, e.ChartEvent.IntegerPosition) == MiniMap.AddResult.BelowBottom)
+								break;
+						}
+						else if (e is EditorMineNote)
+						{
+							numNotesAdded++;
+							if (MiniMap.AddMine((LaneNote)e.ChartEvent, e.ChartEvent.IntegerPosition) == MiniMap.AddResult.BelowBottom)
+								break;
+						}
+						else if (e is EditorHoldStartNote hsn)
+						{
+							numNotesAdded++;
+							if (MiniMap.AddHold(
+							(LaneHoldStartNote)e.ChartEvent,
+							e.ChartEvent.IntegerPosition,
+							hsn.GetHoldEndNote().ChartEvent.IntegerPosition,
+							hsn.IsRoll()) == MiniMap.AddResult.BelowBottom)
+								break;
+						}
+
+						if (numNotesAdded > MiniMapMaxNotesToDraw)
+							break;
+					}
+
+
+					break;
+				}
+			}
+
+			MiniMap.UpdateEnd();
+		}
+
+		/// <summary>
+		/// Given a chart position, scans backwards for hold notes which begin earlier and end later.
+		/// </summary>
+		/// <param name="enumerator">Enumerator to use for scanning backwards.</param>
+		/// <param name="chartPosition">Chart position to use for checking.</param>
+		/// <returns>List of EditorHoldStartNotes.</returns>
+		private List<EditorHoldStartNote> ScanBackwardsForHolds(RedBlackTree<EditorEvent>.Enumerator enumerator, double chartPosition)
+		{
+			var lanesChecked = new bool[ActiveChart.NumInputs];
+			var numLanesChecked = 0;
+			var holds = new List<EditorHoldStartNote>();
+			var current = new RedBlackTree<EditorEvent>.Enumerator(enumerator);
+			while (current.MovePrev() && numLanesChecked < ActiveChart.NumInputs)
+			{
+				var e = current.Current;
+				var lane = e.GetLane();
+				if (lane >= 0)
+				{
+					if (!lanesChecked[lane])
+					{
+						lanesChecked[lane] = true;
+						numLanesChecked++;
+
+						if (e.GetRow() + e.GetLength() > chartPosition)
+						{
+							if (e is EditorHoldStartNote hsn)
+							{
+								holds.Add(hsn);
+							}
+						}
+					}
+				}
+			}
+
+			return holds;
+		}
+
 		private void DrawChartEvents()
 		{
 			foreach (var visibleMarker in VisibleMarkers)
@@ -1357,11 +1793,33 @@ namespace StepManiaEditor
 			DrawMainMenuUI();
 
 			// Debug UI
+			ImGui.Begin("Debug");
 			{
-				ImGui.Text("Hello, world!");
-				ImGui.Text(string.Format("Application average {0:F3} ms/frame ({1:F1} FPS)", 1000f / ImGui.GetIO().Framerate,
-					ImGui.GetIO().Framerate));
+				ImGui.Checkbox("Parallelize Update Loop", ref ParallelizeUpdateLoop);
+				ImGui.Text($"Update Time:       {UpdateTimeTotal:F6} seconds");
+				ImGui.Text($"  Waveform:        {UpdateTimeWaveForm:F6} seconds");
+				ImGui.Text($"  Mini Map:        {UpdateTimeMiniMap:F6} seconds");
+				ImGui.Text($"  Chart Events:    {UpdateTimeChartEvents:F6} seconds");
+				ImGui.Text($"Draw Time:         {DrawTimeTotal:F6} seconds");
+				ImGui.Text($"Total Time:        {(UpdateTimeTotal + DrawTimeTotal):F6} seconds");
+				ImGui.Text($"Total FPS:         {(1.0f / (UpdateTimeTotal + DrawTimeTotal)):F6}");
+				ImGui.Text($"Actual Time:       {1.0f / ImGui.GetIO().Framerate:F6} seconds");
+				ImGui.Text($"Actual FPS:        {ImGui.GetIO().Framerate:F6}");
+
+				if (ImGui.Button("Save Time and Zoom"))
+				{
+					Preferences.Instance.DebugSongTime = SongTime;
+					Preferences.Instance.DebugZoom = Zoom;
+				}
+
+				if (ImGui.Button("Load Time and Zoom"))
+				{
+					SetSongTime(Preferences.Instance.DebugSongTime);
+					SetZoom(Preferences.Instance.DebugZoom, true);
+				}
 			}
+			ImGui.End();
+
 			if (ShowImGuiTestWindow)
 			{
 				ImGui.SetNextWindowPos(new System.Numerics.Vector2(650, 20), ImGuiCond.FirstUseEver);
@@ -1371,6 +1829,7 @@ namespace StepManiaEditor
 			DrawLogUI();
 			DrawScrollControlUI();
 			DrawWaveFormUI();
+			DrawMiniMapUI();
 			DrawOptionsUI();
 
 			ImGui.PopFont();
@@ -1431,6 +1890,8 @@ namespace StepManiaEditor
 						Preferences.Instance.ShowWaveFormWindow = true;
 					if (ImGui.MenuItem("Scroll Controls"))
 						Preferences.Instance.ShowScrollControlWindow = true;
+					if (ImGui.MenuItem("Mini Map Controls"))
+						Preferences.Instance.ShowMiniMapWindow = true;
 					if (ImGui.MenuItem("Options"))
 						Preferences.Instance.ShowOptionsWindow = true;
 					if (ImGui.MenuItem("ImGui Demo Window"))
@@ -1502,7 +1963,8 @@ namespace StepManiaEditor
 			ImGui.Begin("Waveform", ref Preferences.Instance.ShowWaveFormWindow, ImGuiWindowFlags.NoScrollbar);
 
 			ImGui.Checkbox("Show Waveform", ref Preferences.Instance.ShowWaveForm);
-			ImGui.Checkbox("Scale X When Zooming", ref Preferences.Instance.WaveFormScaleXWhenZooming);
+			if (ImGui.Checkbox("Scale X When Zooming", ref Preferences.Instance.WaveFormScaleXWhenZooming))
+				UpdateMiniMapBounds();
 			ImGui.SliderFloat("X Scale", ref Preferences.Instance.WaveFormMaxXPercentagePerChannel, 0.0f, 1.0f);
 
 			ImGui.ColorEdit3("Dense Color", ref Preferences.Instance.WaveFormDenseColor, ImGuiColorEditFlags.NoAlpha);
@@ -1536,6 +1998,75 @@ namespace StepManiaEditor
 			ImGui.End();
 		}
 
+		private void DrawMiniMapUI()
+		{
+			if (!Preferences.Instance.ShowMiniMapWindow)
+				return;
+			ImGui.SetNextWindowSize(new System.Numerics.Vector2(0, 0), ImGuiCond.FirstUseEver);
+			ImGui.Begin("Mini Map", ref Preferences.Instance.ShowMiniMapWindow, ImGuiWindowFlags.NoScrollbar);
+
+			ImGui.PushItemWidth(200);
+
+			ImGui.Checkbox("Show Mini Map", ref Preferences.Instance.ShowMiniMap);
+
+			ImGui.Separator();
+			if (ComboFromEnum("Position", ref Preferences.Instance.MiniMapPosition))
+				UpdateMiniMapBounds();
+			if (SliderUInt("Width", ref Preferences.Instance.MiniMapWidth, 2, 128, null, ImGuiSliderFlags.None))
+				UpdateMiniMapBounds();
+			if (SliderUInt("Note Width", ref Preferences.Instance.MiniMapNoteWidth, 1, 32, null, ImGuiSliderFlags.None))
+				UpdateMiniMapLaneSpacing();
+			if (SliderUInt("Note Spacing", ref Preferences.Instance.MiniMapNoteSpacing, 0, 32, null, ImGuiSliderFlags.None))
+				UpdateMiniMapLaneSpacing();
+
+			ImGui.Separator();
+			ComboFromEnum("Select Mode", ref Preferences.Instance.MiniMapSelectMode);
+			ImGui.SameLine();
+			HelpMarker("How the editor should move when selecting an area outside of the editor range in the mini map."
+			           + "\nMove Editor To Cursor:         Move the editor to the cursor, not to the area under the cursor."
+			           + "\n                               This is the natural option if you consider the mini map like a scroll bar."
+			           + "\nMove Editor To Selected Area:  Move the editor to the area under the cursor, not to the cursor."
+			           + "\n                               This is the natural option if you consider the mini map like a map.");
+
+			ImGui.Checkbox("Always Grab", ref Preferences.Instance.MiniMapGrabWhenClickingOutsideEditorArea);
+			ImGui.SameLine();
+			HelpMarker("When the Select Mode is set to Move Editor To Cursor, enabling this will cause the editor range "
+			           + "\nto be grabbed while holding down the left mouse button.");
+			ImGui.Checkbox("Stop Playback When Scrolling", ref Preferences.Instance.MiniMapStopPlaybackWhenScrolling);
+
+			ImGui.Separator();
+			ComboFromEnum("Spacing Mode For Variable Scroll Spacing",
+				ref Preferences.Instance.MiniMapSpacingModeForVariable,
+				Preferences.MiniMapVariableSpacingModes,
+				"MiniMapVariableScrollSpacing");
+			ImGui.SameLine();
+			HelpMarker("The Spacing Mode the MiniMap should use when the Scroll Spacing Mode is Variable.");
+			SliderUInt("Constant Time Spacing Range (seconds)", ref Preferences.Instance.MiniMapVisibleTimeRange, 30, 300, null, ImGuiSliderFlags.Logarithmic);
+			SliderUInt("Constant Row Spacing Range (rows)", ref Preferences.Instance.MiniMapVisibleRowRange, 3072, 28800, null, ImGuiSliderFlags.Logarithmic);
+
+			ImGui.Separator();
+			if (ImGui.Button("Restore Defaults"))
+			{
+				Preferences.Instance.ShowMiniMap = Preferences.DefaultShowMiniMap;
+				Preferences.Instance.MiniMapSelectMode = Preferences.DefualtMiniMapSelectMode;
+				Preferences.Instance.MiniMapGrabWhenClickingOutsideEditorArea = Preferences.DefaultMiniMapGrabWhenClickingOutsideEditorArea;
+				Preferences.Instance.MiniMapStopPlaybackWhenScrolling = Preferences.DefaultMiniMapStopPlaybackWhenScrolling;
+				Preferences.Instance.MiniMapWidth = Preferences.DefaultMiniMapWidth;
+				Preferences.Instance.MiniMapNoteWidth = Preferences.DefaultMiniMapNoteWidth;
+				Preferences.Instance.MiniMapNoteSpacing = Preferences.DefaultMiniMapNoteSpacing;
+				Preferences.Instance.MiniMapPosition = Preferences.DefaultMiniMapPosition;
+				Preferences.Instance.MiniMapSpacingModeForVariable = Preferences.DefaultMiniMapSpacingModeForVariable;
+				Preferences.Instance.MiniMapVisibleTimeRange = Preferences.DefaultMiniMapVisibleTimeRange;
+				Preferences.Instance.MiniMapVisibleRowRange = Preferences.DefaultMiniMapVisibleRowRange;
+				UpdateMiniMapBounds();
+				UpdateMiniMapLaneSpacing();
+			}
+
+			ImGui.PopItemWidth();
+
+			ImGui.End();
+		}
+
 		private void DrawScrollControlUI()
 		{
 			if (!Preferences.Instance.ShowScrollControlWindow)
@@ -1543,6 +2074,8 @@ namespace StepManiaEditor
 
 			ImGui.SetNextWindowSize(new System.Numerics.Vector2(0, 0), ImGuiCond.FirstUseEver);
 			ImGui.Begin("Scroll Controls", ref Preferences.Instance.ShowScrollControlWindow, ImGuiWindowFlags.NoScrollbar);
+
+			ImGui.Checkbox("Stop Playback When Scrolling", ref Preferences.Instance.StopPlaybackWhenScrolling);
 
 			ComboFromEnum("Scroll Mode", ref Preferences.Instance.ScrollMode);
 			ImGui.SameLine();
@@ -1563,7 +2096,7 @@ namespace StepManiaEditor
 
 			ImGui.Separator();
 			ImGui.Text("Constant Time Spacing Options");
-			ImGui.SliderFloat("Speed", ref Preferences.Instance.TimeBasedPixelsPerSecond, 1.0f, 100000.0f, null, ImGuiSliderFlags.Logarithmic);
+			ImGui.SliderFloat("Speed###Time", ref Preferences.Instance.TimeBasedPixelsPerSecond, 1.0f, 100000.0f, null, ImGuiSliderFlags.Logarithmic);
 			ImGui.SameLine();
 			if (ImGui.Button("Reset##TimeSpeed"))
 			{
@@ -1585,7 +2118,7 @@ namespace StepManiaEditor
 			
 			ImGui.Separator();
 			ImGui.Text("Variable Spacing Options");
-			ImGui.SliderFloat("Speed", ref Preferences.Instance.VariablePixelsPerSecondAtDefaultBPM, 1.0f, 100000.0f, null, ImGuiSliderFlags.Logarithmic);
+			ImGui.SliderFloat("Speed###Variable", ref Preferences.Instance.VariablePixelsPerSecondAtDefaultBPM, 1.0f, 100000.0f, null, ImGuiSliderFlags.Logarithmic);
 			ImGui.SameLine();
 			if (ImGui.Button("Reset##VariableSpeed"))
 			{
@@ -1889,8 +2422,7 @@ namespace StepManiaEditor
 				// Find a better spot for this
 				DesiredSongTime = 0.0;
 				SongTime = 0.0;
-				DesiredZoom = 1.0;
-				Zoom = 1.0;
+				SetZoom(1.0, true);
 
 				// Start loading music for this Chart.
 				LoadMusicAsync();

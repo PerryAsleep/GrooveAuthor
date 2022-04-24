@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
@@ -82,6 +83,17 @@ namespace StepManiaEditor
 		private SoundMipMap MipMap;
 
 		/// <summary>
+		/// Bit positions for fast determination of a number's lowest bit index.
+		/// See https://graphics.stanford.edu/~seander/bithacks.html and
+		// https://en.wikipedia.org/wiki/De_Bruijn_sequence
+		/// </summary>
+		private static int[] DeBruijnBitPositions =
+		{
+			0, 1, 28, 2, 29, 14, 24, 3, 30, 22, 20, 15, 25, 17, 4, 8,
+			31, 27, 13, 23, 21, 19, 16, 7, 26, 12, 18, 6, 11, 5, 10, 9
+		};
+
+		/// <summary>
 		/// Constructor.
 		/// </summary>
 		/// <param name="graphicsDevice">GraphicsDevice to use for creating textures.</param>
@@ -143,7 +155,7 @@ namespace StepManiaEditor
 		public void SetColors(float dr, float dg, float db, float sr, float sg, float sb)
 		{
 			// TODO: Reevaluate if 565 format is needed.
-			ushort colorDense = (ushort)(((ushort)(dr * 31) << 11) + ((ushort)(dg * 63) << 5) + (ushort)(db * 31));
+			var colorDense = Utils.ToBGR565(dr, dg, db);
 			if (colorDense != ColorDense)
 			{
 				ColorDense = colorDense;
@@ -153,7 +165,7 @@ namespace StepManiaEditor
 				}
 			}
 
-			ushort colorSparse = (ushort)(((ushort)(sr * 31) << 11) + ((ushort)(sg * 63) << 5) + (ushort)(sb * 31));
+			var colorSparse = Utils.ToBGR565(sr, sg, sb);
 			if (colorSparse != ColorSparse)
 			{
 				ColorSparse = colorSparse;
@@ -396,32 +408,34 @@ namespace StepManiaEditor
 							numSamplesUsedThisLoop = endSampleForPixel - sampleIndex;
 							while (sampleIndex < endSampleForPixel)
 							{
-								// Determine the greatest power of two that evenly divides the current sample
-								// index and also will not exceed the last sample for this row.
-								var powerOfTwo = 2u;
-								var mipLevelIndex = 1u;
-								while (sampleIndex % powerOfTwo == 0 && sampleIndex + powerOfTwo < endSampleForPixel)
-								{
-									powerOfTwo <<= 1;
-									mipLevelIndex++;
-								}
+								// Determine the largest power of two which evenly divides the current sample index.
+								var powerOfTwo = sampleIndex & ~(sampleIndex - 1);
+								// For the first sample, use the same range for this pixel.
+								if (sampleIndex == 0)
+									powerOfTwo = endSampleForPixel & ~(endSampleForPixel - 1);
+								// Halve the power of two until we do not overshoot samples for this pixel.
+								while (sampleIndex + powerOfTwo > endSampleForPixel)
+									powerOfTwo >>= 1;
+								// Get the index for this power of two for looking up the appropriate mip level data.
+								var mipLevelIndex = DeBruijnBitPositions[(uint)(powerOfTwo * 0x077CB531U) >> 27];
 
-								mipLevelIndex--;
-								powerOfTwo >>= 1;
-
-								for (var channel = 0; channel < numChannels; channel++)
+								// Get the data and sample index into that data.
+								var mipLevelData = MipMap.MipLevels[mipLevelIndex];
+								var relativeSampleIndex = ((sampleIndex / powerOfTwo) * numChannels);
+								
+								// Update tracking variables for each channel.
+								for (var channel = 0;
+								     channel < numChannels;
+								     channel++, relativeSampleIndex++)
 								{
 									// Use the precomputed sample data at the appropriate mip level.
-									var relativeSampleIndex = ((sampleIndex / powerOfTwo) * numChannels) + channel;
-									var data = MipMap.MipLevels[mipLevelIndex].Data[relativeSampleIndex];
+									ref var data = ref mipLevelData.Data[relativeSampleIndex];
 
 									// Update tracking variables for min, max, and rms.
-									var curMinX = data.MinX;
-									var curMaxX = data.MaxX;
-									if (curMinX < minXPerChannel[channel])
-										minXPerChannel[channel] = curMinX;
-									if (curMaxX > maxXPerChannel[channel])
-										maxXPerChannel[channel] = curMaxX;
+									if (data.MinX < minXPerChannel[channel])
+										minXPerChannel[channel] = data.MinX;
+									if (data.MaxX > maxXPerChannel[channel])
+										maxXPerChannel[channel] = data.MaxX;
 									sumOfSquaresPerChannel[channel] += data.SumOfSquares;
 								}
 

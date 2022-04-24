@@ -60,17 +60,18 @@ namespace StepManiaEditor
 		[JsonInclude] public bool ShowWaveForm = true;
 		[JsonInclude] public bool WaveFormScaleXWhenZooming = true;
 		[JsonInclude] public int WaveFormWindowSparseColorOption = 0;
-		[JsonInclude] public float SparseColorScale = 0.5f;
-		[JsonInclude] public Vector3 WaveFormDenseColor = new Vector3(0.0f, 0.79646015f, 0.3735608f);
-		[JsonInclude] public Vector3 WaveFormSparseColor = new Vector3(0.0f, 0.39823008f, 0.1867804f);
+		[JsonInclude] public float SparseColorScale = 0.8f;
+		[JsonInclude] public Vector3 WaveFormDenseColor = new Vector3(0.0f, 0.389f, 0.183f);
+		[JsonInclude] public Vector3 WaveFormSparseColor = new Vector3(0.0f, 0.350f, 0.164f);
 		[JsonInclude] public float WaveFormMaxXPercentagePerChannel = 0.9f;
 		[JsonInclude] public int WaveFormLoadingMaxParallelism = 8;
 
 		// Scroll control preferences
-		public const float DefaultTimeBasedPixelsPerSecond = 1000.0f;
-		public const float DefaultRowBasedPixelsPerRow = 10.0f;
-		public const float DefaultVariablePixelsPerSecond = 1000.0f;
+		public const float DefaultTimeBasedPixelsPerSecond = 300.0f;
+		public const float DefaultRowBasedPixelsPerRow = 6.0f;
+		public const float DefaultVariablePixelsPerSecond = 300.0f;
 		public const float DefaultVariableSpeedBPM = 120.0f;
+
 		[JsonInclude] public bool ShowScrollControlWindow = true;
 		[JsonInclude] public Editor.ScrollMode ScrollMode = Editor.ScrollMode.Time;
 		[JsonInclude] public Editor.SpacingMode SpacingMode = Editor.SpacingMode.ConstantTime;
@@ -78,6 +79,34 @@ namespace StepManiaEditor
 		[JsonInclude] public float RowBasedPixelsPerRow = DefaultRowBasedPixelsPerRow;
 		[JsonInclude] public float VariablePixelsPerSecondAtDefaultBPM = DefaultVariablePixelsPerSecond;
 		[JsonInclude] public Editor.WaveFormScrollMode RowBasedWaveFormScrollMode = Editor.WaveFormScrollMode.MostCommonTempo;
+		[JsonInclude] public bool StopPlaybackWhenScrolling = false;
+
+		// MiniMap preferences
+		public const bool DefaultShowMiniMap = true;
+		public const MiniMap.SelectMode DefualtMiniMapSelectMode = MiniMap.SelectMode.MoveEditorToCursor;
+		public const bool DefaultMiniMapGrabWhenClickingOutsideEditorArea = true;
+		public const bool DefaultMiniMapStopPlaybackWhenScrolling = false;
+		public const uint DefaultMiniMapWidth = 90;
+		public const uint DefaultMiniMapNoteWidth = 2;
+		public const uint DefaultMiniMapNoteSpacing = 3;
+		public const MiniMap.Position DefaultMiniMapPosition = MiniMap.Position.RightOfChartArea;
+		public const Editor.SpacingMode DefaultMiniMapSpacingModeForVariable = Editor.SpacingMode.ConstantTime;
+		public static readonly Editor.SpacingMode[] MiniMapVariableSpacingModes = { Editor.SpacingMode.ConstantTime, Editor.SpacingMode.ConstantRow };
+		public const uint DefaultMiniMapVisibleTimeRange = 240;
+		public const uint DefaultMiniMapVisibleRowRange = 24576;
+
+		[JsonInclude] public bool ShowMiniMapWindow = false;
+		[JsonInclude] public bool ShowMiniMap = DefaultShowMiniMap;
+		[JsonInclude] public MiniMap.SelectMode MiniMapSelectMode = DefualtMiniMapSelectMode;
+		[JsonInclude] public bool MiniMapGrabWhenClickingOutsideEditorArea = DefaultMiniMapGrabWhenClickingOutsideEditorArea;
+		[JsonInclude] public bool MiniMapStopPlaybackWhenScrolling = DefaultMiniMapStopPlaybackWhenScrolling;
+		[JsonInclude] public uint MiniMapWidth = DefaultMiniMapWidth;
+		[JsonInclude] public uint MiniMapNoteWidth = DefaultMiniMapNoteWidth;
+		[JsonInclude] public uint MiniMapNoteSpacing = DefaultMiniMapNoteSpacing;
+		[JsonInclude] public MiniMap.Position MiniMapPosition = DefaultMiniMapPosition;
+		[JsonInclude] public Editor.SpacingMode MiniMapSpacingModeForVariable = DefaultMiniMapSpacingModeForVariable;
+		[JsonInclude] public uint MiniMapVisibleTimeRange = DefaultMiniMapVisibleTimeRange;
+		[JsonInclude] public uint MiniMapVisibleRowRange = DefaultMiniMapVisibleRowRange;
 
 		// Log preferences
 		[JsonInclude] public bool ShowLogWindow = true;
@@ -99,6 +128,10 @@ namespace StepManiaEditor
 		[JsonInclude] public List<SavedSongInformation> RecentFiles = new List<SavedSongInformation>();
 		[JsonInclude] public string DefaultStepsType = "dance-single";
 		[JsonInclude] public string DefaultDifficultyType = "Challenge";
+
+		// Debug
+		[JsonInclude] public double DebugSongTime = 0.0;
+		[JsonInclude] public double DebugZoom = 1.0;
 
 		public Preferences()
 		{

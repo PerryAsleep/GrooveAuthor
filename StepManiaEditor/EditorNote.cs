@@ -155,8 +155,7 @@ namespace StepManiaEditor
 		{
 			var rot = new[] { (float)Math.PI * 0.5f, 0.0f, (float)Math.PI, (float)Math.PI * 1.5f };
 
-			var measureSubdivision = new Fraction(LaneTapNote.IntegerPosition % SMCommon.RowsPerMeasure, SMCommon.RowsPerMeasure).Reduce().Denominator;
-			var textureId = GetArrowTextureId(measureSubdivision);
+			var textureId = GetArrowTextureId(LaneTapNote.IntegerPosition);
 
 			textureAtlas.Draw(
 				textureId,
@@ -199,10 +198,12 @@ namespace StepManiaEditor
 	{
 		private readonly LaneHoldStartNote LaneHoldStartNote;
 		private EditorHoldEndNote EditorHoldEndNote;
+		private readonly bool Roll;
 
 		public EditorHoldStartNote(LaneHoldStartNote chartEvent) : base(chartEvent)
 		{
 			LaneHoldStartNote = chartEvent;
+			Roll = LaneHoldStartNote.SourceType == SMCommon.NoteChars[(int)SMCommon.NoteType.RollStart].ToString();
 		}
 
 		public void SetHoldEndNote(EditorHoldEndNote editorHoldEndNote)
@@ -227,15 +228,14 @@ namespace StepManiaEditor
 
 		public bool IsRoll()
 		{
-			return LaneHoldStartNote.SourceType == SMCommon.NoteChars[(int)SMCommon.NoteType.RollStart].ToString();
+			return Roll;
 		}
 
 		public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch)
 		{
 			var rot = new[] { (float)Math.PI * 0.5f, 0.0f, (float)Math.PI, (float)Math.PI * 1.5f };
 
-			var measureSubdivision = new Fraction(LaneHoldStartNote.IntegerPosition % SMCommon.RowsPerMeasure, SMCommon.RowsPerMeasure).Reduce().Denominator;
-			var textureId = GetArrowTextureId(measureSubdivision);
+			var textureId = GetArrowTextureId(LaneHoldStartNote.IntegerPosition);
 
 			textureAtlas.Draw(
 				textureId,
