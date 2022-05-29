@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
+using System.Text;
 using System.Text.RegularExpressions;
 using Fumen;
 using Fumen.Converters;
@@ -9,7 +11,7 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace StepManiaEditor
 {
-	class Utils
+	public class Utils
 	{
 		// TODO: Rename / Reorganize. Currently dumping a lot of rendering-related constants in here.
 
@@ -29,12 +31,23 @@ namespace StepManiaEditor
 		public const int DefaultHoldCapHeight = 64;
 		public const int DefaultHoldSegmentHeight = 64;
 
+		public const int WaveFormTextureWidth = DefaultArrowWidth * 8;
+
 		public const float BeatMarkerScaleToStartingFading = 0.15f;
 		public const float BeatMarkerMinScale = 0.10f;
 		public const float MeasureMarkerScaleToStartingFading = 0.10f;
 		public const float MeasureMarkerMinScale = 0.05f;
 		public const float MeasureNumberScaleToStartFading = 0.20f;
 		public const float MeasureNumberMinScale = 0.10f;
+
+		public const float HelpWidth = 20.0f;
+
+		public const int BackgroundWidth = 640;
+		public const int BackgroundHeight = 480;
+		public const int BannerWidth = 418;
+		public const int BannerHeight = 164;
+		public const int CDTitleWidth = 164;
+		public const int CDTitleHeight = 164;
 
 		public const int MaxMarkersToDraw = 256;
 		public const int MaxEventsToDraw = 2048;
@@ -60,8 +73,15 @@ namespace StepManiaEditor
 		public const string TextureIdMeasureMarker = "measure_marker";
 		public const string TextureIdBeatMarker = "beat_marker";
 
+		public static readonly string[] ExpectedAudioFormats = { "mp3", "oga", "ogg", "wav" };
+		public static readonly string[] ExpectedImageFormats = { "bmp", "gif", "jpeg", "jpg", "png", "tif", "tiff", "webp" };
+		public static readonly string[] ExpectedVideoFormats = { "avi", "f4v", "flv", "mkv", "mp4", "mpeg", "mpg", "mov", "ogv", "webm", "wmv" };
+		public static readonly string[] ExpectedLyricsFormats = { "lrc" };
+
 		private static readonly Dictionary<Type, string[]> EnumStringsCacheByType = new Dictionary<Type, string[]>();
 		private static readonly Dictionary<string, string[]> EnumStringsCacheByCustomKey = new Dictionary<string, string[]>();
+
+		private static List<bool> EnabledStack = new List<bool>();
 
 		public enum HorizontalAlignment
 		{
@@ -76,6 +96,35 @@ namespace StepManiaEditor
 			Center,
 			Bottom
 		}
+
+		public enum TextureLayoutMode
+		{
+			/// <summary>
+			/// Draw the texture at its original size, centered in the destination area. If the texture is larger
+			/// than the destination area then it will be cropped as needed to fit. If it is smaller then it will
+			/// be rendered smaller.
+			/// </summary>
+			OriginalSize,
+
+			/// <summary>
+			/// The texture will fill the destination area exactly. It will shrink or grow as needed and the aspect
+			/// ratio will change to match the destination.
+			/// </summary>
+			Stretch,
+
+			/// <summary>
+			/// Maintain the texture's original aspect ratio and fill the destination area. If the texture aspect
+			/// ratio does not match the destination area's aspect ratio, then the texture will be cropped.
+			/// </summary>
+			Fill,
+
+			/// <summary>
+			/// Letterbox or pillarbox as needed such that texture's original aspect ratio is maintained and it fills
+			/// the destination area as much as possible.
+			/// </summary>
+			Box
+		}
+
 
 		static Utils()
 		{
@@ -258,7 +307,10 @@ namespace StepManiaEditor
 
 		public static void HelpMarker(string text)
 		{
+			PushEnabled();
+			ImGui.PushItemWidth(HelpWidth);
 			ImGui.TextDisabled("(?)");
+			ImGui.PopItemWidth();
 			if (ImGui.IsItemHovered())
 			{
 				ImGui.BeginTooltip();
@@ -267,6 +319,7 @@ namespace StepManiaEditor
 				ImGui.PopTextWrapPos();
 				ImGui.EndTooltip();
 			}
+			PopEnabled();
 		}
 
 		public static bool SliderUInt(string text, ref uint value, uint min, uint max, string format, ImGuiSliderFlags flags)
@@ -274,6 +327,67 @@ namespace StepManiaEditor
 			int iValue = (int)value;
 			var ret = ImGui.SliderInt(text, ref iValue, (int)min, (int)max, format, flags);
 			value = (uint)iValue;
+			return ret;
+		}
+
+		public static bool DragDoubleNoMinMax(ref double value, string label, float speed, string format)
+		{
+			return DragDouble(ref value, label, speed, format, false, 0.0, false, 0.0);
+		}
+
+		public static bool DragDoubleMin(ref double value, string label, float speed, string format, double min)
+		{
+			return DragDouble(ref value, label, speed, format, true, min);
+		}
+
+		public static bool DragDoubleMax(ref double value, string label, float speed, string format, double max)
+		{
+			return DragDouble(ref value, label, speed, format, false, 0.0, true, max);
+		}
+
+		public static bool DragDoubleMinMax(ref double value, string label, float speed, string format, double min, double max)
+		{
+			return DragDouble(ref value, label, speed, format, true, min, true, max);
+		}
+
+		public static unsafe bool DragDouble(
+			ref double value,
+			string label,
+			float speed,
+			string format,
+			bool useMin = false,
+			double min = 0.0,
+			bool useMax = false,
+			double max = 0.0)
+		{
+			var ret = false;
+			fixed (double* p = &value)
+			{
+				IntPtr pData = new IntPtr(p);
+				IntPtr pMin = useMin ? new IntPtr(&min) : IntPtr.Zero;
+				IntPtr pMax = useMax ? new IntPtr(&max) : IntPtr.Zero;
+				ret = ImGui.DragScalar(label, ImGuiDataType.Double, pData, speed, pMin, pMax, format);
+			}
+
+			if (ret)
+			{
+				if (useMin)
+					value = Math.Max(min, value);
+				if (useMax)
+					value = Math.Min(max, value);
+			}
+
+			return ret;
+		}
+
+		public static unsafe bool DragDouble(ref double value, string label)
+		{
+			var ret = false;
+			fixed (double* p = &value)
+			{
+				IntPtr pData = new IntPtr(p);
+				ret = ImGui.DragScalar(label, ImGuiDataType.Double, pData);
+			}
 			return ret;
 		}
 
@@ -307,6 +421,329 @@ namespace StepManiaEditor
 					break;
 			}
 			return new Vector2(x, y);
+		}
+
+		public static void PushEnabled()
+		{
+			var wasEnabled = EnabledStack.Count <= 0 || EnabledStack[^1];
+			EnabledStack.Add(true);
+			if (!wasEnabled)
+				ImGui.EndDisabled();
+		}
+
+		public static void PushDisabled()
+		{
+			var wasEnabled = EnabledStack.Count <= 0 || EnabledStack[^1];
+			EnabledStack.Add(false);
+			if (wasEnabled)
+				ImGui.BeginDisabled();
+		}
+
+		public static void PopEnabled()
+		{
+			Debug.Assert(EnabledStack.Count >= 0 && EnabledStack[^1]);
+			PopEnabledOrDisabled();
+		}
+
+		public static void PopDisabled()
+		{
+			Debug.Assert(EnabledStack.Count >= 0 && !EnabledStack[^1]);
+			PopEnabledOrDisabled();
+		}
+
+		private static void PopEnabledOrDisabled()
+		{
+			var wasEnabled = EnabledStack.Count <= 0 || EnabledStack[^1];
+			EnabledStack.RemoveAt(EnabledStack.Count - 1);
+			var isEnabled = EnabledStack.Count <= 0 || EnabledStack[^1];
+			if (isEnabled && !wasEnabled)
+				ImGui.EndDisabled();
+			if (!isEnabled && wasEnabled)
+				ImGui.BeginDisabled();
+		}
+
+		public static void DrawImage(
+			string id,
+			IntPtr textureImGui,
+			Texture2D textureMonogame,
+			uint width,
+			uint height,
+			TextureLayoutMode mode)
+		{
+			DrawImageInternal(id, textureImGui, textureMonogame, width, height, mode, false);
+		}
+
+		public static bool DrawButton(
+			string id,
+			IntPtr textureImGui,
+			Texture2D textureMonogame,
+			uint width,
+			uint height,
+			TextureLayoutMode mode)
+		{
+			return DrawImageInternal(id, textureImGui, textureMonogame, width, height, mode, true);
+		}
+
+		private static bool DrawImageInternal(
+			string id,
+			IntPtr textureImGui,
+			Texture2D textureMonogame,
+			uint width,
+			uint height,
+			TextureLayoutMode mode,
+			bool button)
+		{
+			var result = false;
+
+			// Record original spacing and padding so we can edit it and restore it.
+			var originalItemSpacingX = ImGui.GetStyle().ItemSpacing.X;
+			var originalItemSpacingY = ImGui.GetStyle().ItemSpacing.Y;
+			var originalFramePaddingX = ImGui.GetStyle().FramePadding.X;
+			var originalFramePaddingY = ImGui.GetStyle().FramePadding.Y;
+
+			// The total dimensions to draw including the frame padding.
+			var totalWidth = width + originalFramePaddingX * 2.0f;
+			var totalHeight = height + originalFramePaddingY * 2.0f;
+
+			// The offset in pixels from within the total dimensions to draw the image.
+			var xOffset = 0.0f;
+			var yOffset = 0.0f;
+
+			// The size of the image to draw.
+			var size = new System.Numerics.Vector2(width, height);
+			
+			// The UV coordinates for drawing the texture on the image.
+			var uv0 = new System.Numerics.Vector2(0.0f, 0.0f);
+			var uv1 = new System.Numerics.Vector2(1.0f, 1.0f);
+
+			switch (mode)
+			{
+				// Maintain the original size of the texture.
+				// Crop and offset as needed.
+				case TextureLayoutMode.OriginalSize:
+				{
+					// If the texture is wider than the destination area then adjust the UV X values
+					// so that we crop the texture.
+					if (textureMonogame.Width > width)
+					{
+						xOffset = 0.0f;
+						size.X = width;
+						uv0.X = (textureMonogame.Width - width) * 0.5f / textureMonogame.Width;
+						uv1.X = 1.0f - uv0.X;
+					}
+					// If the destination area is wider than the texture, then set the X offset value
+					// so that we center the texture in X within the destination area.
+					else if (textureMonogame.Width < width)
+					{
+						xOffset = (width - textureMonogame.Width) * 0.5f;
+						size.X = textureMonogame.Width;
+						uv0.X = 0.0f;
+						uv1.X = 1.0f;
+					}
+
+					// If the texture is taller than the destination area then adjust the UV Y values
+					// so that we crop the texture.
+					if (textureMonogame.Height > height)
+					{
+						yOffset = 0.0f;
+						size.Y = height;
+						uv0.Y = (textureMonogame.Height - height) * 0.5f / textureMonogame.Height;
+						uv1.Y = 1.0f - uv0.Y;
+					}
+					// If the destination area is taller than the texture, then set the Y offset value
+					// so that we center the texture in Y within the destination area.
+					else if (textureMonogame.Height < height)
+					{
+						yOffset = (height - textureMonogame.Height) * 0.5f;
+						size.Y = textureMonogame.Height;
+						uv0.Y = 0.0f;
+						uv1.Y = 1.0f;
+					}
+
+					break;
+				}
+				
+				// Stretch the texture to exactly fill the destination area.
+				// The parameters are already set for rendering in this mode.
+				case TextureLayoutMode.Stretch:
+				{
+					break;
+				}
+
+				// Scale the texture uniformly such that it fills the entire destination area.
+				// Crop the dimension which goes beyond the destination area as needed.
+				case TextureLayoutMode.Fill:
+				{
+					var textureAspectRatio = (float)textureMonogame.Width / textureMonogame.Height;
+					var destinationAspectRatio = (float)width / height;
+
+					// If the texture is wider than the destination area, crop the left and right.
+					if (textureAspectRatio > destinationAspectRatio)
+					{
+						// Crop left and right.
+						var scaledTextureW = textureMonogame.Width * ((float)height / textureMonogame.Height);
+						uv0.X = (scaledTextureW - height) * 0.5f / scaledTextureW;
+						uv1.X = 1.0f - uv0.X;
+
+						// Fill Y.
+						uv0.Y = 0.0f;
+						uv1.Y = 1.0f;
+					}
+
+					// If the texture is taller than the destination area, crop the top and bottom.
+					else if (textureAspectRatio < destinationAspectRatio)
+					{
+						// Fill X.
+						uv0.X = 0.0f;
+						uv1.X = 1.0f;
+
+						// Crop top and bottom.
+						var scaledTextureH = textureMonogame.Height * ((float)width / textureMonogame.Width);
+						uv0.Y = (scaledTextureH - width) * 0.5f / scaledTextureH;
+						uv1.Y = 1.0f - uv0.Y;
+					}
+
+					break;
+				}
+
+				// Scale the texture uniformly such that it fills the destination area without going over
+				// in either dimension.
+				case TextureLayoutMode.Box:
+				{
+					var textureAspectRatio = (float)textureMonogame.Width / textureMonogame.Height;
+					var destinationAspectRatio = (float)width / height;
+
+					// If the texture is wider than the destination area, letterbox.
+					if (textureAspectRatio > destinationAspectRatio)
+					{
+						var scale = (float)width / textureMonogame.Width;
+						size.X = textureMonogame.Width * scale;
+						size.Y = textureMonogame.Height * scale;
+						yOffset = (height - textureMonogame.Height * scale) * 0.5f;
+					}
+
+					// If the texture is taller than the destination area, pillarbox.
+					else if (textureAspectRatio < destinationAspectRatio)
+					{
+						var scale = (float)height / textureMonogame.Height;
+						size.X = textureMonogame.Width * scale;
+						size.Y = textureMonogame.Height * scale;
+						xOffset = (width - textureMonogame.Width * scale) * 0.5f;
+					}
+
+					break;
+				}
+			}
+
+			// Set the padding and spacing so we can draw dummy boxes to offset the image.
+			ImGui.GetStyle().ItemSpacing.X = 0;
+			ImGui.GetStyle().ItemSpacing.Y = 0;
+			ImGui.GetStyle().FramePadding.X = 0;
+			ImGui.GetStyle().FramePadding.Y = 0;
+
+			// Begin a child so we can add dummy items to offset the image.
+			if (ImGui.BeginChild(id, new System.Numerics.Vector2(totalWidth, totalHeight)))
+			{
+				// Offset in Y.
+				if (yOffset > 0.0f)
+					ImGui.Dummy(new System.Numerics.Vector2(width, yOffset));
+				
+				// Offset in X.
+				if (xOffset > 0.0f)
+				{
+					ImGui.Dummy(new System.Numerics.Vector2(xOffset, size.Y));
+					ImGui.SameLine();
+				}
+
+				// Reset the padding now so it draws correctly on the image.
+				ImGui.GetStyle().FramePadding.X = originalFramePaddingX;
+				ImGui.GetStyle().FramePadding.Y = originalFramePaddingY;
+				
+				// Draw the image.
+				if (button)
+					result = ImGui.ImageButton(textureImGui, size, uv0, uv1);
+				else
+					ImGui.Image(textureImGui, size, uv0, uv1);
+			}
+			ImGui.EndChild();
+
+			// Restore the padding and spacing values.
+			ImGui.GetStyle().FramePadding.X = originalFramePaddingX;
+			ImGui.GetStyle().FramePadding.Y = originalFramePaddingY;
+			ImGui.GetStyle().ItemSpacing.X = originalItemSpacingX;
+			ImGui.GetStyle().ItemSpacing.Y = originalItemSpacingY;
+
+			return result;
+		}
+
+		public static string FileOpenFilterForImages(string name, bool includeAllFiles)
+		{
+			var extenstionTypes = new List<string[]> { ExpectedImageFormats };
+			return FileOpenFilter(name, extenstionTypes, includeAllFiles);
+		}
+
+		public static string FileOpenFilterForImagesAndVideos(string name, bool includeAllFiles)
+		{
+			var extenstionTypes = new List<string[]> { ExpectedImageFormats, ExpectedVideoFormats };
+			return FileOpenFilter(name, extenstionTypes, includeAllFiles);
+		}
+
+		public static string FileOpenFilterForAudio(string name, bool includeAllFiles)
+		{
+			var extenstionTypes = new List<string[]> { ExpectedAudioFormats };
+			return FileOpenFilter(name, extenstionTypes, includeAllFiles);
+		}
+
+		public static string FileOpenFilterForVideo(string name, bool includeAllFiles)
+		{
+			var extenstionTypes = new List<string[]> { ExpectedVideoFormats };
+			return FileOpenFilter(name, extenstionTypes, includeAllFiles);
+		}
+
+		public static string FileOpenFilterForLyrics(string name, bool includeAllFiles)
+		{
+			var extenstionTypes = new List<string[]> { ExpectedLyricsFormats };
+			return FileOpenFilter(name, extenstionTypes, includeAllFiles);
+		}
+
+		private static string FileOpenFilter(string name, List<string[]> extensionTypes, bool includeAllFiles)
+		{
+			var sb = new StringBuilder();
+			sb.Append(name);
+			sb.Append(" Files (");
+			var first = true;
+			foreach (var extensions in extensionTypes)
+			{
+				foreach (var extension in extensions)
+				{
+					if (!first)
+						sb.Append(",");
+					sb.Append("*.");
+					sb.Append(extension);
+					first = false;
+				}
+			}
+
+			sb.Append(")|");
+			first = true;
+			foreach (var extensions in extensionTypes)
+			{
+				foreach (var extension in extensions)
+				{
+					if (!first)
+						sb.Append(";");
+					sb.Append("*.");
+					sb.Append(extension);
+					first = false;
+				}
+			}
+
+			if (includeAllFiles)
+			{
+				sb.Append("|All files (*.*)|*.*");
+			}
+
+			return sb.ToString();
 		}
 	}
 }

@@ -117,6 +117,10 @@ namespace StepManiaEditor
 		// Option preferences
 		[JsonInclude] public bool ShowOptionsWindow = false;
 
+
+		[JsonInclude] public bool ShowSongPropertiesWindow = false;
+		[JsonInclude] public bool ShowChartPropertiesWindow = false;
+
 		// Strings are serialized, but converted to an array of booleans for UI.
 		[JsonIgnore] public bool[] StartupStepsTypesBools;
 		[JsonInclude] public string[] StartupStepsTypes = { "dance-single", "dance-double" };
@@ -128,6 +132,8 @@ namespace StepManiaEditor
 		[JsonInclude] public List<SavedSongInformation> RecentFiles = new List<SavedSongInformation>();
 		[JsonInclude] public string DefaultStepsType = "dance-single";
 		[JsonInclude] public string DefaultDifficultyType = "Challenge";
+		[JsonInclude] public double PreviewFadeInTime = 0.0;
+		[JsonInclude] public double PreviewFadeOutTime = 1.5;
 
 		// Debug
 		[JsonInclude] public double DebugSongTime = 0.0;

@@ -15,11 +15,11 @@ namespace StepManiaEditor
 			ErrCheck(System.init(100, INITFLAGS.NORMAL, IntPtr.Zero));
 		}
 
-		public async Task<Sound> LoadAsync(string fileName)
+		public async Task<Sound> LoadAsync(string fileName, MODE mode = MODE.DEFAULT)
 		{
 			return await Task.Run(() =>
 			{
-				ErrCheck(System.createSound(fileName, MODE.DEFAULT, out var sound), $"Failed to load {fileName}");
+				ErrCheck(System.createSound(fileName, mode, out var sound), $"Failed to load {fileName}");
 				return sound;
 			});
 		}
