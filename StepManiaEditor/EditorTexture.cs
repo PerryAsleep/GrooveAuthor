@@ -117,6 +117,9 @@ namespace StepManiaEditor
 		/// </summary>
 		public async void LoadAsync(string filePath)
 		{
+			if (FilePath == filePath)
+				return;
+
 			FilePath = filePath;
 
 			if (LoadCancellationTokenSource != null)
@@ -157,7 +160,7 @@ namespace StepManiaEditor
 				}
 				finally
 				{
-					LoadCancellationTokenSource.Dispose();
+					LoadCancellationTokenSource?.Dispose();
 					LoadCancellationTokenSource = null;
 				}
 			}, LoadCancellationTokenSource.Token);

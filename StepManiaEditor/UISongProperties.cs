@@ -3,8 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Numerics;
-using System.Reflection;
-using System.Windows.Forms;
 using Fumen;
 using ImGuiNET;
 using Microsoft.Xna.Framework.Graphics;
@@ -12,24 +10,21 @@ using Path = Fumen.Path;
 
 namespace StepManiaEditor
 {
+	/// <summary>
+	/// Class for drawing Song properties UI.
+	/// </summary>
 	public class UISongProperties
 	{
-		private static Dictionary<string, string> Cache = new Dictionary<string, string>();
-		private static Dictionary<string, double> DoubleCache = new Dictionary<string, double>();
-
 		private static EditorSong EditorSong;
 
-
 		private readonly Editor Editor;
-		private static ActionQueue ActionQueue;
 		private static EmptyTexture EmptyTextureBanner;
 		private static EmptyTexture EmptyTextureCDTitle;
 
-		public UISongProperties(Editor editor, GraphicsDevice graphicsDevice, ImGuiRenderer imGuiRenderer, ActionQueue actionQueue)
+		public UISongProperties(Editor editor, GraphicsDevice graphicsDevice, ImGuiRenderer imGuiRenderer)
 		{
 			EmptyTextureBanner = new EmptyTexture(graphicsDevice, imGuiRenderer, Utils.BannerWidth, Utils.BannerHeight);
 			EmptyTextureCDTitle = new EmptyTexture(graphicsDevice, imGuiRenderer, Utils.CDTitleWidth, Utils.CDTitleHeight);
-			ActionQueue = actionQueue;
 			Editor = editor;
 		}
 
@@ -65,404 +60,115 @@ namespace StepManiaEditor
 				EmptyTextureCDTitle.DrawButton();
 			}
 
-			if (ImGui.BeginTable("SongInfoTable", 2, ImGuiTableFlags.None))
+			if (ImGuiLayoutUtils.BeginTable("SongInfoTable", 100))
 			{
-				ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, 100);
-				ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100);
-
-				DrawTextInputRowWithTransliteration("Title", EditorSong, nameof(EditorSong.Title), nameof(EditorSong.TitleTransliteration),
+				ImGuiLayoutUtils.DrawRowTextInputWithTransliteration(true, "Title", EditorSong, nameof(EditorSong.Title), nameof(EditorSong.TitleTransliteration),
 					"The title of the song.");
-				DrawTextInputRowWithTransliteration("Subtitle", EditorSong, nameof(EditorSong.Subtitle), nameof(EditorSong.SubtitleTransliteration),
+				ImGuiLayoutUtils.DrawRowTextInputWithTransliteration(true, "Subtitle", EditorSong, nameof(EditorSong.Subtitle), nameof(EditorSong.SubtitleTransliteration),
 					"The subtitle of the song.");
-				DrawTextInputRowWithTransliteration("Artist", EditorSong, nameof(EditorSong.Artist), nameof(EditorSong.ArtistTransliteration),
+				ImGuiLayoutUtils.DrawRowTextInputWithTransliteration(true, "Artist", EditorSong, nameof(EditorSong.Artist), nameof(EditorSong.ArtistTransliteration),
 					"The artist who composed the song.");
-				DrawTextInputRow("Genre", EditorSong, nameof(EditorSong.Genre),
+				ImGuiLayoutUtils.DrawRowTextInput(true, "Genre", EditorSong, nameof(EditorSong.Genre),
 					"The genre of the song.");
-				DrawTextInputRow("Credit", EditorSong, nameof(EditorSong.Credit),
+				ImGuiLayoutUtils.DrawRowTextInput(true, "Credit", EditorSong, nameof(EditorSong.Credit),
 					"Who this file should be credited to.");
-				DrawTextInputRow("Origin", EditorSong, nameof(EditorSong.Origin),
+				ImGuiLayoutUtils.DrawRowTextInput(true, "Origin", EditorSong, nameof(EditorSong.Origin),
 					"(Uncommon) What game this song originated from.");
+				ImGuiLayoutUtils.EndTable();
 			}
-			ImGui.EndTable();
 
 			ImGui.Separator();
-			if (ImGui.BeginTable("SongAssetsTable", 2, ImGuiTableFlags.None))
+			if (ImGuiLayoutUtils.BeginTable("SongAssetsTable", 100))
 			{
-				ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, 100);
-				ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100);
-
-				DrawAutoFileBrowseRow("Banner", EditorSong?.Banner, nameof(EditorSong.Banner.Path), TryFindBestBanner, BrowseBanner, ClearBanner,
+				ImGuiLayoutUtils.DrawRowAutoFileBrowse("Banner", EditorSong?.Banner, nameof(EditorSong.Banner.Path), TryFindBestBanner, BrowseBanner, ClearBanner,
 					"The banner graphic to display for this song when it is selected in the song wheel."
 					+ "\nITG banners are 418x164."
 					+ "\nDDR banners are 512x160 or 256x80.");
 
-				DrawAutoFileBrowseRow("Background", EditorSong?.Background, nameof(EditorSong.Background.Path), TryFindBestBackground, BrowseBackground, ClearBackground,
+				ImGuiLayoutUtils.DrawRowAutoFileBrowse("Background", EditorSong?.Background, nameof(EditorSong.Background.Path), TryFindBestBackground, BrowseBackground, ClearBackground,
 					"The background graphic to display for this song while it is being played."
 					+ "\nITG backgrounds are 640x480.");
 
-				DrawFileBrowseRow("CD Title", EditorSong?.CDTitle, nameof(EditorSong.CDTitle.Path), BrowseCDTitle, ClearCDTitle,
+				ImGuiLayoutUtils.DrawRowFileBrowse("CD Title", EditorSong?.CDTitle, nameof(EditorSong.CDTitle.Path), BrowseCDTitle, ClearCDTitle,
 					"The CD title graphic is most commonly used as a logo for the file author."
 					+ "\nDimensions are arbitrary.");
 
-				DrawFileBrowseRow("Jacket", EditorSong?.Jacket, nameof(EditorSong.CDTitle.Path), BrowseJacket, ClearJacket,
+				ImGuiLayoutUtils.DrawRowFileBrowse("Jacket", EditorSong?.Jacket, nameof(EditorSong.CDTitle.Path), BrowseJacket, ClearJacket,
 					"(Uncommon) Jacket graphic."
 					+ "\nMeant for themes which display songs with jacket assets in the song wheel like DDR X2."
 					+ "\nTypically square, but dimensions are arbitrary.");
 
-				DrawFileBrowseRow("CD Image", EditorSong?.CDImage, nameof(EditorSong.CDTitle.Path), BrowseCDImage, ClearCDImage,
+				ImGuiLayoutUtils.DrawRowFileBrowse("CD Image", EditorSong?.CDImage, nameof(EditorSong.CDTitle.Path), BrowseCDImage, ClearCDImage,
 					"(Uncommon) CD image graphic."
 					+ "\nOriginally meant to capture song select graphics which looked like CDs from the original DDR."
 					+ "\nTypically square, but dimensions are arbitrary.");
 
-				DrawFileBrowseRow("Disc Image", EditorSong?.DiscImage, nameof(EditorSong.CDTitle.Path), BrowseDiscImage, ClearDiscImage,
+				ImGuiLayoutUtils.DrawRowFileBrowse("Disc Image", EditorSong?.DiscImage, nameof(EditorSong.CDTitle.Path), BrowseDiscImage, ClearDiscImage,
 					"(Uncommon) Disc Image graphic."
 					+ "\nOriginally meant to capture PIU song select graphics, which were discs in very old versions."
 					+ "\nMore modern PIU uses rectangular banners, but dimensions are arbitrary.");
 
-				DrawFileBrowseRow("Preview Video", EditorSong, nameof(EditorSong.PreviewVideoPath), BrowsePreviewVideoFile, ClearPreviewVideoFile,
+				ImGuiLayoutUtils.DrawRowFileBrowse("Preview Video", EditorSong, nameof(EditorSong.PreviewVideoPath), BrowsePreviewVideoFile, ClearPreviewVideoFile,
 					"(Uncommon) The preview video file." +
 					"\nMeant for themes based on PIU where videos play on the song select screen.");
+				ImGuiLayoutUtils.EndTable();
 			}
-			ImGui.EndTable();
 
 			ImGui.Separator();
-			if (ImGui.BeginTable("SongMusicTimingTable", 2, ImGuiTableFlags.None))
+			if (ImGuiLayoutUtils.BeginTable("SongMusicTimingTable", 100))
 			{
-				ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, 100);
-				ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100);
-
-				DrawFileBrowseRow("Music", EditorSong, nameof(EditorSong.MusicPath), BrowseMusicFile, ClearMusicFile,
+				ImGuiLayoutUtils.DrawRowFileBrowse("Music", EditorSong, nameof(EditorSong.MusicPath), BrowseMusicFile, ClearMusicFile,
 					"The default audio file to use for all Charts for this Song." +
 					"\nIn most cases all Charts use the same Music and it is defined here at the Song level.");
-				
-				DrawDragDoubleRow("Music Offset", EditorSong, nameof(EditorSong.MusicOffset),
-					"The music offset from the start of the chart.");
 
-				DrawFileBrowseRow("Preview File", EditorSong, nameof(EditorSong.MusicPreviewPath), BrowseMusicPreviewFile, ClearMusicPreviewFile,
+				ImGuiLayoutUtils.DrawRowDragDouble(true, "Music Offset", EditorSong, nameof(EditorSong.MusicOffset),
+					"The music offset from the start of the chart.",
+					0.0001f, "%.6f seconds");
+
+				ImGuiLayoutUtils.DrawRowFileBrowse("Preview File", EditorSong, nameof(EditorSong.MusicPreviewPath), BrowseMusicPreviewFile, ClearMusicPreviewFile,
 					"(Uncommon) An audio file to use for a preview instead of playing a range from the music file.");
 
 				// TODO: Better Preview Controls
-				DrawDragDoubleRow("Preview Start", EditorSong, nameof(EditorSong.SampleStart),
-					"Music preview start time.");
-				DrawDragDoubleRow("Preview Length", EditorSong, nameof(EditorSong.SampleLength),
+				ImGuiLayoutUtils.DrawRowDragDouble(true, "Preview Start", EditorSong, nameof(EditorSong.SampleStart),
+					"Music preview start time.",
+					0.0001f, "%.6f seconds");
+				ImGuiLayoutUtils.DrawRowDragDouble(true, "Preview Length", EditorSong, nameof(EditorSong.SampleLength),
 					"Music preview length.",
 					0.0001f, "%.6f seconds", true, 0.0f);
-				if (DrawButtonRow(null, Editor.IsPlayingPreview() ? "Stop Preview" : "Play Preview"))
+				if (ImGuiLayoutUtils.DrawRowButton(null, Editor.IsPlayingPreview() ? "Stop Preview" : "Play Preview"))
 					Editor.OnTogglePlayPreview();
 
-				// DisplayTempo
-				
+				// DisplayTemp
 
 				// TODO: Better LastSecondHint Controls.
-				DrawDragDoubleRow("Last Second Hint", EditorSong, nameof(EditorSong.LastSecondHint),
+				ImGuiLayoutUtils.DrawRowDragDouble(true, "Last Second Hint", EditorSong, nameof(EditorSong.LastSecondHint),
 					"The specified end time of the song." +
 					"\nOptional. When not set StepMania will stop a chart shortly after the last note." +
 					"\nUseful if you want the chart to continue after the last note." +
 					"\nStepMania will ignore this value if it is less than or equal to 0.0.",
 					0.0001f, "%.6f seconds", true, 0.0f);
-
+				
+				ImGuiLayoutUtils.EndTable();
 			}
-			ImGui.EndTable();
 
 			ImGui.Separator();
-			if (ImGui.BeginTable("SongMiscTable", 2, ImGuiTableFlags.None))
+			if (ImGuiLayoutUtils.BeginTable("SongMiscTable", 100))
 			{
-				ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, 100);
-				ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100);
-
-				DrawEnumRow<Selectable>("Selectable", EditorSong, nameof(EditorSong.Selectable),
+				ImGuiLayoutUtils.DrawRowEnum<Selectable>(true, "Selectable", EditorSong, nameof(EditorSong.Selectable),
 					"(Uncommon) Under what conditions this song should be selectable." +
 					"\nMeant to capture stage requirements from DDR like extra stage and one more extra stage." +
 					"\nLeave as YES if you are unsure what to use.");
-				
-				DrawFileBrowseRow("Lyrics", EditorSong, nameof(EditorSong.LyricsPath), BrowseLyricsFile, ClearLyricsFile,
+
+				ImGuiLayoutUtils.DrawRowFileBrowse("Lyrics", EditorSong, nameof(EditorSong.LyricsPath), BrowseLyricsFile, ClearLyricsFile,
 					"(Uncommon) Lyrics file for displaying lyrics while the song plays.");
+				
+				ImGuiLayoutUtils.EndTable();
 			}
-			ImGui.EndTable();
 
 			if (EditorSong == null)
 				Utils.PopDisabled();
 
 			ImGui.End();
-		}
-
-		private static void DrawRowTitleAndAdvanceColumn(string title)
-		{
-			ImGui.TableNextRow();
-
-			ImGui.TableSetColumnIndex(0);
-			if (!string.IsNullOrEmpty(title))
-				ImGui.Text(title);
-
-			ImGui.TableSetColumnIndex(1);
-		}
-
-		private static bool DrawButtonRow(string title, string buttonText)
-		{
-			DrawRowTitleAndAdvanceColumn(title);
-			return ImGui.Button(buttonText);
-		}
-
-		private static void DrawTextInputRowWithTransliteration(string title, object o, string fieldName, string transliterationFieldName, string help = null)
-		{
-			DrawRowTitleAndAdvanceColumn(title);
-			DrawTextInput(title, o, fieldName, ImGui.GetContentRegionAvail().X * 0.5f, help);
-			ImGui.SameLine();
-			DrawTextInput("Transliteration", o, transliterationFieldName, ImGui.GetContentRegionAvail().X,
-				"Optional text to use when sorting by this value.\nStepMania sorts values lexicographically, preferring transliterations.");
-		}
-
-		private static void DrawTextInputRow(string title, object o, string fieldName, string help = null)
-		{
-			DrawRowTitleAndAdvanceColumn(title);
-			DrawTextInput(title, o, fieldName, ImGui.GetContentRegionAvail().X, help);
-		}
-
-		private static void DrawTextInput(string title, object o, string fieldName, float width, string help = null)
-		{
-			var cacheKey = $"{title}{fieldName}";
-			if (!Cache.TryGetValue(cacheKey, out var cachedValue))
-			{
-				cachedValue = "";
-				Cache[cacheKey] = cachedValue;
-			}
-
-			var hasHelp = !string.IsNullOrEmpty(help);
-			var textWidth = hasHelp ? Math.Max(1.0f, width - Utils.HelpWidth - ImGui.GetStyle().ItemSpacing.X) : width;
-
-			string value = "";
-			var isField = false;
-			if (o != null)
-			{
-				isField = o.GetType().GetField(fieldName, BindingFlags.Public | BindingFlags.Instance) != null;
-				if (isField)
-					value = (string)o.GetType().GetField(fieldName).GetValue(o);
-				else
-					value = (string)o.GetType().GetProperty(fieldName).GetValue(o);
-			}
-
-			ImGui.SetNextItemWidth(textWidth);
-			ImGui.InputTextWithHint($"##{title}{fieldName}", title, ref cachedValue, 256);
-			Cache[cacheKey] = cachedValue;
-			if (ImGui.IsItemDeactivatedAfterEdit() && o != null)
-			{
-				if (cachedValue != value)
-				{
-					if (isField)
-						ActionQueue.Do(new ActionSetObjectField<string>(o, fieldName, cachedValue));
-					else
-						ActionQueue.Do(new ActionSetObjectProperty<string>(o, fieldName, cachedValue));
-					value = cachedValue;
-				}
-			}
-			if (!ImGui.IsItemActive())
-				Cache[cacheKey] = value;
-
-			if (hasHelp)
-			{
-				ImGui.SameLine();
-				Utils.HelpMarker(help);
-			}
-		}
-
-		private static void DrawDragDoubleRow(
-			string title,
-			object o,
-			string fieldName,
-			string help = null,
-			float speed = 0.0001f,
-			string format = "%.6f seconds",
-			bool useMin = false,
-			double min = 0.0,
-			bool useMax = false,
-			double max = 0.0)
-		{
-			DrawRowTitleAndAdvanceColumn(title);
-			DrawDragDouble(title, o, fieldName, ImGui.GetContentRegionAvail().X, help, speed, format, useMin, min, useMax, max);
-		}
-
-		private static void DrawDragDouble(
-			string title,
-			object o,
-			string fieldName,
-			float width,
-			string help,
-			float speed,
-			string format,
-			bool useMin = false,
-			double min = 0.0,
-			bool useMax = false,
-			double max = 0.0)
-		{
-			var cacheKey = $"{title}{fieldName}";
-
-			// Get the current double value.
-			double value = 0.0;
-			var isField = false;
-			if (o != null)
-			{
-				isField = o.GetType().GetField(fieldName, BindingFlags.Public | BindingFlags.Instance) != null;
-				if (isField)
-					value = (double)o.GetType().GetField(fieldName).GetValue(o);
-				else
-					value = (double)o.GetType().GetProperty(fieldName).GetValue(o);
-			}
-			var beforeValue = value;
-
-			// Determine width.
-			var hasHelp = !string.IsNullOrEmpty(help);
-			var itemWidth = hasHelp ? Math.Max(1.0f, width - Utils.HelpWidth - ImGui.GetStyle().ItemSpacing.X) : width;
-			ImGui.SetNextItemWidth(itemWidth);
-
-			// Draw a scalar using the actual value, not the cached value.
-			// We want to see the effect of changing this value immediately.
-			// Do not however enqueue an EditorAction for this change yet.
-			if (Utils.DragDouble(ref value, $"##{title}{fieldName}", speed, format, useMin, min, useMax, max))
-			{
-				if (isField)
-					o.GetType().GetField(fieldName).SetValue(o, value);
-				else
-					o.GetType().GetProperty(fieldName).SetValue(o, value);
-			}
-			// At the moment of activating the drag control, record the current value so we can undo to it later.
-			if (ImGui.IsItemActivated())
-			{
-				DoubleCache[cacheKey] = beforeValue;
-			}
-			// At the moment of releasing the drag control, enqueue an event so we can undo to the previous value.
-			if (ImGui.IsItemDeactivatedAfterEdit() && o != null && value != DoubleCache[cacheKey])
-			{
-				if (isField)
-					ActionQueue.Do(new ActionSetObjectField<double>(o, fieldName, value, DoubleCache[cacheKey]));
-				else
-					ActionQueue.Do(new ActionSetObjectProperty<double>(o, fieldName, value, DoubleCache[cacheKey]));
-			}
-
-			if (hasHelp)
-			{
-				var helpText = help +
-				               "\nShift+drag for large adjustments." +
-				               "\nAlt+drag for small adjustments.";
-				ImGui.SameLine();
-				Utils.HelpMarker(helpText);
-			}
-		}
-
-		private static void DrawEnumRow<T>(string title, object o, string fieldName, string help = null) where T : Enum
-		{
-			DrawRowTitleAndAdvanceColumn(title);
-			DrawEnum<T>(title, o, fieldName, ImGui.GetContentRegionAvail().X, help);
-		}
-
-		private static void DrawEnum<T>(string title, object o, string fieldName, float width, string help = null) where T : Enum
-		{
-			var hasHelp = !string.IsNullOrEmpty(help);
-			var enumWidth = hasHelp ? Math.Max(1.0f, width - Utils.HelpWidth - ImGui.GetStyle().ItemSpacing.X) : width;
-
-			var value = default(T);
-			var isField = false;
-			if (o != null)
-			{
-				isField = o.GetType().GetField(fieldName, BindingFlags.Public | BindingFlags.Instance) != null;
-				if (isField)
-					value = (T)o.GetType().GetField(fieldName).GetValue(o);
-				else
-					value = (T)o.GetType().GetProperty(fieldName).GetValue(o);
-			}
-
-			ImGui.SetNextItemWidth(enumWidth);
-			T newValue = value;
-			if (Utils.ComboFromEnum("", ref newValue))
-			{
-				if (!newValue.Equals(value))
-				{
-					if (isField)
-						ActionQueue.Do(new ActionSetObjectField<Enum>(o, fieldName, newValue));
-					else
-						ActionQueue.Do(new ActionSetObjectProperty<Enum>(o, fieldName, newValue));
-				}
-			};
-
-			if (hasHelp)
-			{
-				ImGui.SameLine();
-				Utils.HelpMarker(help);
-			}
-		}
-
-		private static void DrawAutoFileBrowseRow(
-			string title, object o, string fieldName, Action autoAction, Action browseAction, Action clearAction, string help = null)
-		{
-			DrawRowTitleAndAdvanceColumn(title);
-
-			Utils.PushDisabled();
-			DrawTextInput(title, o, fieldName, Math.Max(1.0f, ImGui.GetContentRegionAvail().X - 120.0f - ImGui.GetStyle().ItemSpacing.X * 3), help);
-			Utils.PopDisabled();
-
-			ImGui.SameLine();
-			if (ImGui.Button($"X##{title}{fieldName}", new Vector2(20.0f, 0.0f)))
-			{
-				clearAction();
-			}
-
-			ImGui.SameLine();
-			if (ImGui.Button($"Auto##{title}{fieldName}", new Vector2(50.0f, 0.0f)))
-			{
-				autoAction();
-			}
-
-			ImGui.SameLine();
-			if (ImGui.Button($"Browse##{title}{fieldName}", new Vector2(50.0f, 0.0f)))
-			{
-				browseAction();
-			}
-		}
-
-		private static void DrawFileBrowseRow(
-			string title, object o, string fieldName, Action browseAction, Action clearAction, string help = null)
-		{
-			DrawRowTitleAndAdvanceColumn(title);
-
-			Utils.PushDisabled();
-			DrawTextInput(title, o, fieldName, Math.Max(1.0f, ImGui.GetContentRegionAvail().X - 70.0f - ImGui.GetStyle().ItemSpacing.X * 2), help);
-			Utils.PopDisabled();
-
-			ImGui.SameLine();
-			if (ImGui.Button($"X##{title}{fieldName}", new Vector2(20.0f, 0.0f)))
-			{
-				clearAction();
-			}
-
-			ImGui.SameLine();
-			if (ImGui.Button($"Browse##{title}{fieldName}", new Vector2(50.0f, 0.0f)))
-			{
-				browseAction();
-			}
-		}
-
-		private static string BrowseFile(string name, string currentFileRelativePath, string filter)
-		{
-			string relativePath = null;
-			using var openFileDialog = new OpenFileDialog();
-			var initialDirectory = EditorSong.FileDirectory;
-			if (!string.IsNullOrEmpty(currentFileRelativePath))
-			{
-				initialDirectory = Path.Combine(initialDirectory, currentFileRelativePath);
-				initialDirectory = System.IO.Path.GetDirectoryName(initialDirectory);
-			}
-
-			openFileDialog.InitialDirectory = initialDirectory;
-			openFileDialog.Filter = filter;
-			openFileDialog.FilterIndex = 1;
-			openFileDialog.Title = $"Open {name} File";
-
-			if (openFileDialog.ShowDialog() == DialogResult.OK)
-			{
-				var fileName = openFileDialog.FileName;
-				relativePath = Path.GetRelativePath(EditorSong.FileDirectory, fileName);
-			}
-
-			return relativePath;
 		}
 
 		private static string TryFindBestAsset(
@@ -572,7 +278,7 @@ namespace StepManiaEditor
 			{
 				var relativePath = Path.GetRelativePath(EditorSong.FileDirectory, bestFile);
 				if (relativePath != EditorSong.Banner.Path)
-					ActionQueue.Do(new ActionSetObjectProperty<string>(EditorSong.Banner, nameof(EditorSong.Banner.Path), relativePath));
+					ActionQueue.Instance.Do(new ActionSetObjectProperty<string>(EditorSong.Banner, nameof(EditorSong.Banner.Path), relativePath));
 				else
 					Logger.Info($"Song banner is already set to the best automatic choice: '{relativePath}'.");
 			}
@@ -584,18 +290,19 @@ namespace StepManiaEditor
 
 		private static void BrowseBanner()
 		{
-			var relativePath = BrowseFile(
+			var relativePath = Utils.BrowseFile(
 				"Banner",
+				EditorSong.FileDirectory,
 				EditorSong.Banner.Path,
 				Utils.FileOpenFilterForImages("Banner", true));
 			if (relativePath != null && relativePath != EditorSong.Banner.Path)
-				ActionQueue.Do(new ActionSetObjectProperty<string>(EditorSong.Banner, nameof(EditorSong.Banner.Path), relativePath));
+				ActionQueue.Instance.Do(new ActionSetObjectProperty<string>(EditorSong.Banner, nameof(EditorSong.Banner.Path), relativePath));
 		}
 
 		private static void ClearBanner()
 		{
 			if (!string.IsNullOrEmpty(EditorSong.Banner.Path))
-				ActionQueue.Do(new ActionSetObjectProperty<string>(EditorSong.Banner, nameof(EditorSong.Banner.Path), ""));
+				ActionQueue.Instance.Do(new ActionSetObjectProperty<string>(EditorSong.Banner, nameof(EditorSong.Banner.Path), ""));
 		}
 
 		private static void TryFindBestBackground()
@@ -605,7 +312,7 @@ namespace StepManiaEditor
 			{
 				var relativePath = Path.GetRelativePath(EditorSong.FileDirectory, bestFile);
 				if (relativePath != EditorSong.Background.Path)
-					ActionQueue.Do(new ActionSetObjectProperty<string>(EditorSong.Background, nameof(EditorSong.Background.Path), relativePath));
+					ActionQueue.Instance.Do(new ActionSetObjectProperty<string>(EditorSong.Background, nameof(EditorSong.Background.Path), relativePath));
 				else
 					Logger.Info($"Song background is already set to the best automatic choice: '{relativePath}'.");
 			}
@@ -617,146 +324,155 @@ namespace StepManiaEditor
 
 		private static void BrowseBackground()
 		{
-			var relativePath = BrowseFile(
+			var relativePath = Utils.BrowseFile(
 				"Background",
+				EditorSong.FileDirectory,
 				EditorSong.Banner.Path,
 				Utils.FileOpenFilterForImagesAndVideos("Background", true));
 			if (relativePath != null && relativePath != EditorSong.Background.Path)
-				ActionQueue.Do(new ActionSetObjectProperty<string>(EditorSong.Background, nameof(EditorSong.Background.Path), relativePath));
+				ActionQueue.Instance.Do(new ActionSetObjectProperty<string>(EditorSong.Background, nameof(EditorSong.Background.Path), relativePath));
 		}
 
 		private static void ClearBackground()
 		{
 			if (!string.IsNullOrEmpty(EditorSong.Background.Path))
-				ActionQueue.Do(new ActionSetObjectProperty<string>(EditorSong.Background, nameof(EditorSong.Background.Path), ""));
+				ActionQueue.Instance.Do(new ActionSetObjectProperty<string>(EditorSong.Background, nameof(EditorSong.Background.Path), ""));
 		}
 
 		private static void BrowseCDTitle()
 		{
-			var relativePath = BrowseFile(
+			var relativePath = Utils.BrowseFile(
 				"CD Title",
+				EditorSong.FileDirectory,
 				EditorSong.CDTitle.Path,
 				Utils.FileOpenFilterForImages("CD Title", true));
 			if (relativePath != null && relativePath != EditorSong.CDTitle.Path)
-				ActionQueue.Do(new ActionSetObjectProperty<string>(EditorSong.CDTitle, nameof(EditorSong.CDTitle.Path), relativePath));
+				ActionQueue.Instance.Do(new ActionSetObjectProperty<string>(EditorSong.CDTitle, nameof(EditorSong.CDTitle.Path), relativePath));
 		}
 
 		private static void ClearCDTitle()
 		{
 			if (!string.IsNullOrEmpty(EditorSong.CDTitle.Path))
-				ActionQueue.Do(new ActionSetObjectProperty<string>(EditorSong.CDTitle, nameof(EditorSong.CDTitle.Path), ""));
+				ActionQueue.Instance.Do(new ActionSetObjectProperty<string>(EditorSong.CDTitle, nameof(EditorSong.CDTitle.Path), ""));
 		}
 
 		private static void BrowseJacket()
 		{
-			var relativePath = BrowseFile(
+			var relativePath = Utils.BrowseFile(
 				"Jacket",
+				EditorSong.FileDirectory,
 				EditorSong.Jacket.Path,
 				Utils.FileOpenFilterForImages("Jacket", true));
 			if (relativePath != null && relativePath != EditorSong.Jacket.Path)
-				ActionQueue.Do(new ActionSetObjectProperty<string>(EditorSong.Jacket, nameof(EditorSong.Jacket.Path), relativePath));
+				ActionQueue.Instance.Do(new ActionSetObjectProperty<string>(EditorSong.Jacket, nameof(EditorSong.Jacket.Path), relativePath));
 		}
 
 		private static void ClearJacket()
 		{
 			if (!string.IsNullOrEmpty(EditorSong.Jacket.Path))
-				ActionQueue.Do(new ActionSetObjectProperty<string>(EditorSong.Jacket, nameof(EditorSong.Jacket.Path), ""));
+				ActionQueue.Instance.Do(new ActionSetObjectProperty<string>(EditorSong.Jacket, nameof(EditorSong.Jacket.Path), ""));
 		}
 
 		private static void BrowseCDImage()
 		{
-			var relativePath = BrowseFile(
+			var relativePath = Utils.BrowseFile(
 				"CD Image",
+				EditorSong.FileDirectory,
 				EditorSong.CDImage.Path,
 				Utils.FileOpenFilterForImages("CD Image", true));
 			if (relativePath != null && relativePath != EditorSong.CDImage.Path)
-				ActionQueue.Do(new ActionSetObjectProperty<string>(EditorSong.CDImage, nameof(EditorSong.CDImage.Path), relativePath));
+				ActionQueue.Instance.Do(new ActionSetObjectProperty<string>(EditorSong.CDImage, nameof(EditorSong.CDImage.Path), relativePath));
 		}
 
 		private static void ClearCDImage()
 		{
 			if (!string.IsNullOrEmpty(EditorSong.CDImage.Path))
-				ActionQueue.Do(new ActionSetObjectProperty<string>(EditorSong.CDImage, nameof(EditorSong.CDImage.Path), ""));
+				ActionQueue.Instance.Do(new ActionSetObjectProperty<string>(EditorSong.CDImage, nameof(EditorSong.CDImage.Path), ""));
 		}
 
 		private static void BrowseDiscImage()
 		{
-			var relativePath = BrowseFile(
+			var relativePath = Utils.BrowseFile(
 				"Disc Image",
+				EditorSong.FileDirectory,
 				EditorSong.DiscImage.Path,
 				Utils.FileOpenFilterForImages("Disc Image", true));
 			if (relativePath != null && relativePath != EditorSong.DiscImage.Path)
-				ActionQueue.Do(new ActionSetObjectProperty<string>(EditorSong.DiscImage, nameof(EditorSong.DiscImage.Path), relativePath));
+				ActionQueue.Instance.Do(new ActionSetObjectProperty<string>(EditorSong.DiscImage, nameof(EditorSong.DiscImage.Path), relativePath));
 		}
 
 		private static void ClearDiscImage()
 		{
 			if (!string.IsNullOrEmpty(EditorSong.DiscImage.Path))
-				ActionQueue.Do(new ActionSetObjectProperty<string>(EditorSong.DiscImage, nameof(EditorSong.DiscImage.Path), ""));
+				ActionQueue.Instance.Do(new ActionSetObjectProperty<string>(EditorSong.DiscImage, nameof(EditorSong.DiscImage.Path), ""));
 		}
 
 		private static void BrowseMusicFile()
 		{
-			var relativePath = BrowseFile(
+			var relativePath = Utils.BrowseFile(
 				"Music",
+				EditorSong.FileDirectory,
 				EditorSong.MusicPath,
 				Utils.FileOpenFilterForAudio("Music", true));
 			if (relativePath != null && relativePath != EditorSong.MusicPath)
-				ActionQueue.Do(new ActionSetObjectProperty<string>(EditorSong, nameof(EditorSong.MusicPath), relativePath));
+				ActionQueue.Instance.Do(new ActionSetObjectProperty<string>(EditorSong, nameof(EditorSong.MusicPath), relativePath));
 		}
 
 		private static void ClearMusicFile()
 		{
 			if (!string.IsNullOrEmpty(EditorSong.MusicPath))
-				ActionQueue.Do(new ActionSetObjectProperty<string>(EditorSong, nameof(EditorSong.MusicPath), ""));
+				ActionQueue.Instance.Do(new ActionSetObjectProperty<string>(EditorSong, nameof(EditorSong.MusicPath), ""));
 		}
 
 		private static void BrowseMusicPreviewFile()
 		{
-			var relativePath = BrowseFile(
+			var relativePath = Utils.BrowseFile(
 				"Music Preview",
+				EditorSong.FileDirectory,
 				EditorSong.MusicPreviewPath,
 				Utils.FileOpenFilterForAudio("Music Preview", true));
 			if (relativePath != null && relativePath != EditorSong.MusicPreviewPath)
-				ActionQueue.Do(new ActionSetObjectProperty<string>(EditorSong, nameof(EditorSong.MusicPreviewPath), relativePath));
+				ActionQueue.Instance.Do(new ActionSetObjectProperty<string>(EditorSong, nameof(EditorSong.MusicPreviewPath), relativePath));
 		}
 
 		private static void ClearMusicPreviewFile()
 		{
 			if (!string.IsNullOrEmpty(EditorSong.MusicPreviewPath))
-				ActionQueue.Do(new ActionSetObjectProperty<string>(EditorSong, nameof(EditorSong.MusicPreviewPath), ""));
+				ActionQueue.Instance.Do(new ActionSetObjectProperty<string>(EditorSong, nameof(EditorSong.MusicPreviewPath), ""));
 		}
 
 		private static void BrowseLyricsFile()
 		{
-			var relativePath = BrowseFile(
+			var relativePath = Utils.BrowseFile(
 				"Lyrics",
+				EditorSong.FileDirectory,
 				EditorSong.LyricsPath,
 				Utils.FileOpenFilterForLyrics("Lyrics", true));
 			if (relativePath != null && relativePath != EditorSong.LyricsPath)
-				ActionQueue.Do(new ActionSetObjectField<string>(EditorSong, nameof(EditorSong.LyricsPath), relativePath));
+				ActionQueue.Instance.Do(new ActionSetObjectField<string>(EditorSong, nameof(EditorSong.LyricsPath), relativePath));
 		}
 
 		private static void ClearLyricsFile()
 		{
 			if (!string.IsNullOrEmpty(EditorSong.LyricsPath))
-				ActionQueue.Do(new ActionSetObjectField<string>(EditorSong, nameof(EditorSong.LyricsPath), ""));
+				ActionQueue.Instance.Do(new ActionSetObjectField<string>(EditorSong, nameof(EditorSong.LyricsPath), ""));
 		}
 
 		private static void BrowsePreviewVideoFile()
 		{
-			var relativePath = BrowseFile(
+			var relativePath = Utils.BrowseFile(
 				"Preview Video",
+				EditorSong.FileDirectory,
 				EditorSong.PreviewVideoPath,
 				Utils.FileOpenFilterForVideo("Preview Video", true));
 			if (relativePath != null && relativePath != EditorSong.PreviewVideoPath)
-				ActionQueue.Do(new ActionSetObjectField<string>(EditorSong, nameof(EditorSong.PreviewVideoPath), relativePath));
+				ActionQueue.Instance.Do(new ActionSetObjectField<string>(EditorSong, nameof(EditorSong.PreviewVideoPath), relativePath));
 		}
 
 		private static void ClearPreviewVideoFile()
 		{
 			if (!string.IsNullOrEmpty(EditorSong.PreviewVideoPath))
-				ActionQueue.Do(new ActionSetObjectField<string>(EditorSong, nameof(EditorSong.PreviewVideoPath), ""));
+				ActionQueue.Instance.Do(new ActionSetObjectField<string>(EditorSong, nameof(EditorSong.PreviewVideoPath), ""));
 		}
 	}
 }

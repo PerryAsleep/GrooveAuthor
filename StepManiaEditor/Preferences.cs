@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Numerics;
@@ -39,8 +38,8 @@ namespace StepManiaEditor
 		public class SavedSongInformation
 		{
 			[JsonInclude] public string FileName;
-			[JsonInclude] public string LastChartType;
-			[JsonInclude] public string LastChartDifficultyType;
+			[JsonInclude] public SMCommon.ChartType LastChartType;
+			[JsonInclude] public SMCommon.ChartDifficultyType LastChartDifficultyType;
 			// TODO: Zoom level and position
 		}
 
@@ -55,16 +54,8 @@ namespace StepManiaEditor
 		[JsonInclude] public bool WindowFullScreen = false;
 		[JsonInclude] public bool WindowMaximized = false;
 
-		// Waveform preferences
-		[JsonInclude] public bool ShowWaveFormWindow = false;
-		[JsonInclude] public bool ShowWaveForm = true;
-		[JsonInclude] public bool WaveFormScaleXWhenZooming = true;
-		[JsonInclude] public int WaveFormWindowSparseColorOption = 0;
-		[JsonInclude] public float SparseColorScale = 0.8f;
-		[JsonInclude] public Vector3 WaveFormDenseColor = new Vector3(0.0f, 0.389f, 0.183f);
-		[JsonInclude] public Vector3 WaveFormSparseColor = new Vector3(0.0f, 0.350f, 0.164f);
-		[JsonInclude] public float WaveFormMaxXPercentagePerChannel = 0.9f;
-		[JsonInclude] public int WaveFormLoadingMaxParallelism = 8;
+		// Waveform preferences.
+		[JsonInclude] public PreferencesWaveForm PreferencesWaveForm = new PreferencesWaveForm();
 
 		// Scroll control preferences
 		public const float DefaultTimeBasedPixelsPerSecond = 300.0f;
@@ -122,16 +113,20 @@ namespace StepManiaEditor
 		[JsonInclude] public bool ShowChartPropertiesWindow = false;
 
 		// Strings are serialized, but converted to an array of booleans for UI.
-		[JsonIgnore] public bool[] StartupStepsTypesBools;
-		[JsonInclude] public string[] StartupStepsTypes = { "dance-single", "dance-double" };
+		[JsonIgnore] public bool[] StartupChartTypesBools;
+		[JsonInclude] public SMCommon.ChartType[] StartupChartTypes =
+		{
+			SMCommon.ChartType.dance_single,
+			SMCommon.ChartType.dance_double
+		};
 		[JsonInclude] public bool OpenLastOpenedFileOnLaunch = false;
 
 		// Misc
 		[JsonInclude] public string OpenFileDialogInitialDirectory = @"C:\Games\StepMania 5\Songs\";
 		[JsonInclude] public int RecentFilesHistorySize = 10;
 		[JsonInclude] public List<SavedSongInformation> RecentFiles = new List<SavedSongInformation>();
-		[JsonInclude] public string DefaultStepsType = "dance-single";
-		[JsonInclude] public string DefaultDifficultyType = "Challenge";
+		[JsonInclude] public SMCommon.ChartType DefaultStepsType = SMCommon.ChartType.dance_single;
+		[JsonInclude] public SMCommon.ChartDifficultyType DefaultDifficultyType = SMCommon.ChartDifficultyType.Challenge;
 		[JsonInclude] public double PreviewFadeInTime = 0.0;
 		[JsonInclude] public double PreviewFadeOutTime = 1.5;
 
@@ -139,6 +134,10 @@ namespace StepManiaEditor
 		[JsonInclude] public double DebugSongTime = 0.0;
 		[JsonInclude] public double DebugZoom = 1.0;
 
+		/// <summary>
+		/// Public Constructor.
+		/// This should be private but it needs to be public for JSON deserialization.
+		/// </summary>
 		public Preferences()
 		{
 			PostLoad();
@@ -146,33 +145,30 @@ namespace StepManiaEditor
 
 		private void PostLoad()
 		{
-			// Set up StartupStepsTypesBools from StartupStepsTypes.
-			StartupStepsTypesBools = new bool[Enum.GetNames(typeof(SMCommon.ChartType)).Length];
-			foreach (var stepsType in StartupStepsTypes)
+			// Set up StartupChartTypesBools from StartupChartTypes.
+			StartupChartTypesBools = new bool[Enum.GetNames(typeof(SMCommon.ChartType)).Length];
+			foreach (var chartType in StartupChartTypes)
 			{
-				if (SMCommon.TryGetChartType(stepsType, out var chartType))
-				{
-					StartupStepsTypesBools[(int)chartType] = true;
-				}
+				StartupChartTypesBools[(int)chartType] = true;
 			}
 		}
 
 		private void PreSave()
 		{
-			// Set up StartupStepsTypes from StartupStepsTypesBools.
+			// Set up StartupChartTypes from StartupChartTypesBools.
 			var count = 0;
-			for (var i = 0; i < StartupStepsTypesBools.Length; i++)
+			for (var i = 0; i < StartupChartTypesBools.Length; i++)
 			{
-				if (StartupStepsTypesBools[i])
+				if (StartupChartTypesBools[i])
 					count++;
 			}
-			StartupStepsTypes = new string[count];
+			StartupChartTypes = new SMCommon.ChartType[count];
 			count = 0;
-			for (var i = 0; i < StartupStepsTypesBools.Length; i++)
+			for (var i = 0; i < StartupChartTypesBools.Length; i++)
 			{
-				if (StartupStepsTypesBools[i])
+				if (StartupChartTypesBools[i])
 				{
-					StartupStepsTypes[count++] = SMCommon.ChartTypeString((SMCommon.ChartType)i);
+					StartupChartTypes[count++] = (SMCommon.ChartType)i;
 				}
 			}
 		}

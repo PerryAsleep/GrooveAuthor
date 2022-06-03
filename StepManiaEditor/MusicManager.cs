@@ -65,7 +65,7 @@ namespace StepManiaEditor
 				if (mipMap != null)
 				{
 					MipMap = mipMap;
-					MipMap.SetLoadParallelism(Preferences.Instance.WaveFormLoadingMaxParallelism);
+					MipMap.SetLoadParallelism(Preferences.Instance.PreferencesWaveForm.WaveFormLoadingMaxParallelism);
 				}
 			}
 
@@ -306,7 +306,7 @@ namespace StepManiaEditor
 				}
 				finally
 				{
-					soundData.LoadCancellationTokenSource.Dispose();
+					soundData.LoadCancellationTokenSource?.Dispose();
 					soundData.LoadCancellationTokenSource = null;
 				}
 			}, soundData.LoadCancellationTokenSource.Token);

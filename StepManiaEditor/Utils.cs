@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Windows.Forms;
 using Fumen;
 using Fumen.Converters;
 using ImGuiNET;
@@ -261,6 +262,40 @@ namespace StepManiaEditor
 				(byte)((ABGR | 0x000000FF) >> 8) / (float)byte.MaxValue);
 		}
 
+		public static Vector2 GetDrawPos(
+			SpriteFont font,
+			string text,
+			Vector2 anchorPos,
+			float scale,
+			HorizontalAlignment hAlign = HorizontalAlignment.Left,
+			VerticalAlignment vAlign = VerticalAlignment.Top)
+		{
+			var x = anchorPos.X;
+			var y = anchorPos.Y;
+			var size = font.MeasureString(text);
+			switch (hAlign)
+			{
+				case HorizontalAlignment.Center:
+					x -= size.X * 0.5f * scale;
+					break;
+				case HorizontalAlignment.Right:
+					x -= size.X * scale;
+					break;
+			}
+			switch (vAlign)
+			{
+				case VerticalAlignment.Center:
+					y -= size.Y * 0.5f * scale;
+					break;
+				case VerticalAlignment.Bottom:
+					y -= size.Y * scale;
+					break;
+			}
+			return new Vector2(x, y);
+		}
+
+		#region ImGui Helpers
+
 		public static bool ComboFromEnum<T>(string name, ref T enumValue) where T : Enum
 		{
 			var typeOfT = typeof(T);
@@ -300,9 +335,72 @@ namespace StepManiaEditor
 			return result;
 		}
 
+		/// <summary>
+		/// Formats an enum string value for by returning a string value
+		/// with space-separated capitalized words.
+		/// </summary>
+		/// <param name="enumValue">String representation of enum value.</param>
+		/// <returns>Formatting string representation of enum value.</returns>
 		private static string FormatEnumForUI(string enumValue)
 		{
-			return Regex.Replace(enumValue, "((?<!^)([A-Z][a-z]|(?<=[a-z])[A-Z]))", " $1").Trim();
+			StringBuilder sb = new StringBuilder(enumValue.Length * 2);
+			var capitalizeNext = true;
+			var previousWasCapital = false;
+			var first = true;
+			foreach (var character in enumValue)
+			{
+				// Treat dashes as spaces. Capitalize the letter after a space.
+				if (character == '_' || character == '-')
+				{
+					sb.Append(' ');
+					capitalizeNext = true;
+					first = false;
+					previousWasCapital = false;
+					continue;
+				}
+
+				// Lowercase character. Use this character unless we are supposed to
+				// capitalize it due to it following a space.
+				if (char.IsLower(character))
+				{
+					if (capitalizeNext)
+					{
+						sb.Append(char.ToUpper(character));
+						previousWasCapital = true;
+					}
+					else
+					{
+						sb.Append(character);
+						previousWasCapital = false;
+					}
+				}
+
+				// Uppercase character. Prepend a space, unless this followed another
+				// capitalized character, in which case lowercase it. This is to support
+				// formatting strings like "YES" to "Yes".
+				else if (char.IsUpper(character))
+				{
+					if (!first && !previousWasCapital)
+						sb.Append(' ');
+					if (previousWasCapital)
+						sb.Append(char.ToLower(character));
+					else
+						sb.Append(character);
+					previousWasCapital = true;
+				}
+
+				// For any other character type, just record it as is.
+				else
+				{
+					sb.Append(character);
+					previousWasCapital = false;
+				}
+
+				first = false;
+				capitalizeNext = false;
+			}
+
+			return sb.ToString();
 		}
 
 		public static void HelpMarker(string text)
@@ -327,6 +425,23 @@ namespace StepManiaEditor
 			int iValue = (int)value;
 			var ret = ImGui.SliderInt(text, ref iValue, (int)min, (int)max, format, flags);
 			value = (uint)iValue;
+			if (value < min)
+				value = min;
+			if (value > max)
+				value = max;
+			return ret;
+		}
+
+		public static bool InputInt(string label, ref int value, bool useMin, int min,  bool useMax, int max)
+		{
+			var ret = ImGui.InputInt(label, ref value);
+			if (ret)
+			{
+				if (useMin)
+					value = Math.Max(min, value);
+				if (useMax)
+					value = Math.Min(max, value);
+			}
 			return ret;
 		}
 
@@ -389,38 +504,6 @@ namespace StepManiaEditor
 				ret = ImGui.DragScalar(label, ImGuiDataType.Double, pData);
 			}
 			return ret;
-		}
-
-		public static Vector2 GetDrawPos(
-			SpriteFont font,
-			string text,
-			Vector2 anchorPos,
-			float scale,
-			HorizontalAlignment hAlign = HorizontalAlignment.Left,
-			VerticalAlignment vAlign = VerticalAlignment.Top)
-		{
-			var x = anchorPos.X;
-			var y = anchorPos.Y;
-			var size = font.MeasureString(text);
-			switch (hAlign)
-			{
-				case HorizontalAlignment.Center:
-					x -= size.X * 0.5f * scale;
-					break;
-				case HorizontalAlignment.Right:
-					x -= size.X * scale;
-					break;
-			}
-			switch (vAlign)
-			{
-				case VerticalAlignment.Center:
-					y -= size.Y * 0.5f * scale;
-					break;
-				case VerticalAlignment.Bottom:
-					y -= size.Y * scale;
-					break;
-			}
-			return new Vector2(x, y);
 		}
 
 		public static void PushEnabled()
@@ -676,6 +759,10 @@ namespace StepManiaEditor
 			return result;
 		}
 
+		#endregion ImGui Helpers
+
+		#region File Open Helpers
+
 		public static string FileOpenFilterForImages(string name, bool includeAllFiles)
 		{
 			var extenstionTypes = new List<string[]> { ExpectedImageFormats };
@@ -744,6 +831,46 @@ namespace StepManiaEditor
 			}
 
 			return sb.ToString();
+		}
+
+		public static string BrowseFile(string name, string initialDirectory, string currentFileRelativePath, string filter)
+		{
+			string relativePath = null;
+			using var openFileDialog = new OpenFileDialog();
+			var startInitialDirectory = initialDirectory;
+			if (!string.IsNullOrEmpty(currentFileRelativePath))
+			{
+				initialDirectory = Path.Combine(initialDirectory, currentFileRelativePath);
+				initialDirectory = System.IO.Path.GetDirectoryName(initialDirectory);
+			}
+
+			openFileDialog.InitialDirectory = initialDirectory;
+			openFileDialog.Filter = filter;
+			openFileDialog.FilterIndex = 1;
+			openFileDialog.Title = $"Open {name} File";
+
+			if (openFileDialog.ShowDialog() == DialogResult.OK)
+			{
+				var fileName = openFileDialog.FileName;
+				relativePath = Path.GetRelativePath(startInitialDirectory, fileName);
+			}
+
+			return relativePath;
+		}
+
+		#endregion File Open Helpers
+	}
+
+	public static class EditorExtensions
+	{
+		public static bool FloatEquals(this float f, float other)
+		{
+			return f - float.Epsilon <= other && f + float.Epsilon >= other;
+		}
+
+		public static bool DoubleEquals(this double d, double other)
+		{
+			return d - double.Epsilon <= other && d + double.Epsilon >= other;
 		}
 	}
 }

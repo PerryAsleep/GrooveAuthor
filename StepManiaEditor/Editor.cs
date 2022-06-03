@@ -91,8 +91,14 @@ namespace StepManiaEditor
 		
 
 		private string PendingOpenFileName;
-		private string PendingOpenFileChartType;
-		private string PendingOpenFileChartDifficultyType;
+		private SMCommon.ChartType PendingOpenFileChartType;
+		private SMCommon.ChartDifficultyType PendingOpenFileChartDifficultyType;
+
+		private static readonly SMCommon.ChartType[] SupportedChartTypes = new[]
+		{
+			SMCommon.ChartType.dance_single,
+			SMCommon.ChartType.dance_double,
+		};
 
 		private GraphicsDeviceManager Graphics;
 		private SpriteBatch SpriteBatch;
@@ -102,33 +108,29 @@ namespace StepManiaEditor
 		private MusicManager MusicManager;
 		private MiniMap MiniMap;
 		private UISongProperties UISongProperties;
+		private UIChartProperties UIChartProperties;
+		private UIWaveFormPreferences UIWaveFormPreferences;
 
 		private TextureAtlas TextureAtlas;
 
 		private CancellationTokenSource LoadSongCancellationTokenSource;
 		private Task LoadSongTask;
 
-		private Dictionary<string, PadData> PadDataByStepsType = new Dictionary<string, PadData>();
-		private Dictionary<string, StepGraph> StepGraphByStepsType = new Dictionary<string, StepGraph>();
+		private Dictionary<SMCommon.ChartType, PadData> PadDataByChartType = new Dictionary<SMCommon.ChartType, PadData>();
+		private Dictionary<SMCommon.ChartType, StepGraph> StepGraphByChartType = new Dictionary<SMCommon.ChartType, StepGraph>();
 
 		private double PlaybackStartTime;
 		private Stopwatch PlaybackStopwatch;
-
-		private ActionQueue ActionQueue;
+		
 		private EditorSong EditorSong;
-
-		private Chart ActiveChart;
+		private EditorChart ActiveChart;
+		
 		private double ChartPosition = 0.0;
-		private RedBlackTree<EditorEvent> EditorEvents;
-		private RedBlackTree<EditorRateAlteringEvent> RateAlteringEventsBySongTime;
-		private RedBlackTree<EditorRateAlteringEvent> RateAlteringEventsByRow;
-		private RedBlackTree<EditorInterpolatedRateAlteringEvent> InterpolatedScrollRateEvents;
 
 		private List<EditorEvent> VisibleEvents = new List<EditorEvent>();
 		private List<MarkerEvent> VisibleMarkers = new List<MarkerEvent>();
 
 		private double WaveFormPPS = 1.0;
-		private double CurrentChartMostCommonTempo = 1.0;
 
 		// temp controls
 		private int MouseScrollValue = 0;
@@ -207,8 +209,6 @@ namespace StepManiaEditor
 
 			Graphics = new GraphicsDeviceManager(this);
 
-			ActionQueue = new ActionQueue();
-
 			KeyCommandManager = new KeyCommandManager();
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.Z }, OnUndo, true));
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.Z }, OnRedo, true));
@@ -228,12 +228,13 @@ namespace StepManiaEditor
 
 		protected override void Initialize()
 		{
-			Graphics.PreferredBackBufferHeight = Preferences.Instance.WindowHeight;
-			Graphics.PreferredBackBufferWidth = Preferences.Instance.WindowWidth;
-			Graphics.IsFullScreen = Preferences.Instance.WindowFullScreen;
+			var p = Preferences.Instance;
+			Graphics.PreferredBackBufferHeight = p.WindowHeight;
+			Graphics.PreferredBackBufferWidth = p.WindowWidth;
+			Graphics.IsFullScreen = p.WindowFullScreen;
 			Graphics.ApplyChanges();
 
-			if (Preferences.Instance.WindowMaximized)
+			if (p.WindowMaximized)
 			{
 				((Form)Control.FromHandle(Window.Handle)).WindowState = FormWindowState.Maximized;
 			}
@@ -255,18 +256,20 @@ namespace StepManiaEditor
 			}
 
 			WaveFormRenderer = new WaveFormRenderer(GraphicsDevice, WaveFormTextureWidth, MaxScreenHeight);
-			WaveFormRenderer.SetXPerChannelScale(Preferences.Instance.WaveFormMaxXPercentagePerChannel);
+			WaveFormRenderer.SetXPerChannelScale(p.PreferencesWaveForm.WaveFormMaxXPercentagePerChannel);
 			WaveFormRenderer.SetSoundMipMap(MusicManager.GetMusicMipMap());
 			WaveFormRenderer.SetFocalPoint(FocalPoint);
 
 			MiniMap = new MiniMap(GraphicsDevice, new Rectangle(0, 0, 0, 0));
-			MiniMap.SetSelectMode(Preferences.Instance.MiniMapSelectMode);
+			MiniMap.SetSelectMode(p.MiniMapSelectMode);
 			UpdateMiniMapBounds();
 			UpdateMiniMapLaneSpacing();
 
 			TextureAtlas = new TextureAtlas(GraphicsDevice, 2048, 2048, 1);
 
-			UISongProperties = new UISongProperties(this, GraphicsDevice, ImGuiRenderer, ActionQueue);
+			UISongProperties = new UISongProperties(this, GraphicsDevice, ImGuiRenderer);
+			UIChartProperties = new UIChartProperties(this);
+			UIWaveFormPreferences = new UIWaveFormPreferences(this, MusicManager);
 
 			base.Initialize();
 		}
@@ -357,7 +360,7 @@ namespace StepManiaEditor
 
 			if (!Playing)
 			{
-				if (SongTime != DesiredSongTime)
+				if (!SongTime.DoubleEquals(DesiredSongTime))
 				{
 					SongTime = Interpolation.Lerp(
 						SongTimeAtStartOfInterpolation,
@@ -370,7 +373,7 @@ namespace StepManiaEditor
 				}
 			}
 
-			if (Zoom != DesiredZoom)
+			if (!Zoom.DoubleEquals(DesiredZoom))
 			{
 				SetZoom(Interpolation.Lerp(
 					ZoomAtStartOfInterpolation,
@@ -649,7 +652,7 @@ namespace StepManiaEditor
 			GraphicsDevice.Clear(Color.Black);
 
 			SpriteBatch.Begin(SpriteSortMode.Deferred, BlendState.NonPremultiplied);
-			if (Preferences.Instance.ShowWaveForm)
+			if (Preferences.Instance.PreferencesWaveForm.ShowWaveForm)
 			{
 				WaveFormRenderer.Draw(SpriteBatch);
 			}
@@ -696,18 +699,33 @@ namespace StepManiaEditor
 
 		private void UpdateWaveFormRenderer()
 		{
+			var p = Preferences.Instance.PreferencesWaveForm;
+
 			// Performance optimization. Do not update the texture if we won't render it.
-			if (!Preferences.Instance.ShowWaveForm)
+			if (!p.ShowWaveForm)
 				return;
 
+			// Determine the sparse color.
+			var sparseColor = p.WaveFormSparseColor;
+			switch (p.WaveFormSparseColorOption)
+			{
+				case UIWaveFormPreferences.SparseColorOption.DarkerDenseColor:
+					sparseColor.X = p.WaveFormDenseColor.X * p.WaveFormSparseColorScale;
+					sparseColor.Y = p.WaveFormDenseColor.Y * p.WaveFormSparseColorScale;
+					sparseColor.Z = p.WaveFormDenseColor.Z * p.WaveFormSparseColorScale;
+					break;
+				case UIWaveFormPreferences.SparseColorOption.SameAsDenseColor:
+					sparseColor = p.WaveFormDenseColor;
+					break;
+			}
+
+			// Update the WaveFormRenderer.
 			WaveFormRenderer.SetFocalPoint(FocalPoint);
-			WaveFormRenderer.SetXPerChannelScale(Preferences.Instance.WaveFormMaxXPercentagePerChannel);
+			WaveFormRenderer.SetXPerChannelScale(p.WaveFormMaxXPercentagePerChannel);
 			WaveFormRenderer.SetColors(
-				Preferences.Instance.WaveFormDenseColor.X, Preferences.Instance.WaveFormDenseColor.Y,
-				Preferences.Instance.WaveFormDenseColor.Z,
-				Preferences.Instance.WaveFormSparseColor.X, Preferences.Instance.WaveFormSparseColor.Y,
-				Preferences.Instance.WaveFormSparseColor.Z);
-			WaveFormRenderer.SetScaleXWhenZooming(Preferences.Instance.WaveFormScaleXWhenZooming);
+				p.WaveFormDenseColor.X, p.WaveFormDenseColor.Y, p.WaveFormDenseColor.Z,
+				sparseColor.X, sparseColor.Y, sparseColor.Z);
+			WaveFormRenderer.SetScaleXWhenZooming(p.WaveFormScaleXWhenZooming);
 			WaveFormRenderer.Update(SongTime, Zoom, WaveFormPPS);
 		}
 
@@ -750,7 +768,7 @@ namespace StepManiaEditor
 			VisibleEvents.Clear();
 			VisibleMarkers.Clear();
 
-			if (EditorEvents == null)
+			if (ActiveChart == null || ActiveChart.EditorEvents == null)
 				return;
 
 			List<EditorEvent> holdBodyEvents = new List<EditorEvent>();
@@ -780,14 +798,14 @@ namespace StepManiaEditor
 					var time = SongTime + GetMusicOffset();
 					var timeAtTopOfScreen = time - (FocalPoint.Y / pps);
 					double chartPosition = 0.0;
-					if (!TryGetChartPositionFromSongTime(timeAtTopOfScreen, ref chartPosition))
+					if (!ActiveChart.TryGetChartPositionFromTime(timeAtTopOfScreen, ref chartPosition))
 						return;
 
 					// Beat markers.
 					if (sizeZoom >= MeasureMarkerMinScale)
 					{
 						// Find the first rate altering event to use.
-						var rateEnumerator = FindBest(RateAlteringEventsByRow, chartPosition,
+						var rateEnumerator = FindBest(ActiveChart.RateAlteringEventsByRow, chartPosition,
 							EditorRateAlteringEvent.CompareToRow);
 						if (rateEnumerator == null)
 							return;
@@ -819,7 +837,7 @@ namespace StepManiaEditor
 						}
 					}
 
-					var enumerator = FindBest(EditorEvents, chartPosition, EditorEvent.CompareToRow);
+					var enumerator = FindBest(ActiveChart.EditorEvents, chartPosition, EditorEvent.CompareToRow);
 					if (enumerator == null)
 						return;
 
@@ -891,14 +909,14 @@ namespace StepManiaEditor
 				{
 					var time = SongTime + GetMusicOffset();
 					double chartPosition = 0.0;
-					if (!TryGetChartPositionFromSongTime(time, ref chartPosition))
+					if (!ActiveChart.TryGetChartPositionFromTime(time, ref chartPosition))
 						return;
 					var ppr = Preferences.Instance.RowBasedPixelsPerRow * spacingZoom;
 					var chartPositionAtTopOfScreen = chartPosition - (FocalPoint.Y / ppr);
 
 					// Update WaveForm scroll scroll rate
 					{
-						var rateEnumerator = FindBest(RateAlteringEventsByRow, chartPosition,
+						var rateEnumerator = FindBest(ActiveChart.RateAlteringEventsByRow, chartPosition,
 							EditorRateAlteringEvent.CompareToRow);
 						if (rateEnumerator != null)
 						{
@@ -907,7 +925,7 @@ namespace StepManiaEditor
 							WaveFormPPS = pps;
 							if (Preferences.Instance.RowBasedWaveFormScrollMode == WaveFormScrollMode.MostCommonTempo)
 							{
-								WaveFormPPS *= (CurrentChartMostCommonTempo / rateEnumerator.Current.Tempo);
+								WaveFormPPS *= (ActiveChart.MostCommonTempo / rateEnumerator.Current.Tempo);
 							}
 						}
 					}
@@ -916,7 +934,7 @@ namespace StepManiaEditor
 					if (sizeZoom >= MeasureMarkerMinScale)
 					{
 						// Find the first rate altering event to use.
-						var rateEnumerator = FindBest(RateAlteringEventsByRow, chartPositionAtTopOfScreen,
+						var rateEnumerator = FindBest(ActiveChart.RateAlteringEventsByRow, chartPositionAtTopOfScreen,
 							EditorRateAlteringEvent.CompareToRow);
 						if (rateEnumerator == null)
 							return;
@@ -948,7 +966,7 @@ namespace StepManiaEditor
 						}
 					}
 
-					var enumerator = FindBest(EditorEvents, chartPositionAtTopOfScreen, EditorEvent.CompareToRow);
+					var enumerator = FindBest(ActiveChart.EditorEvents, chartPositionAtTopOfScreen, EditorEvent.CompareToRow);
 					if (enumerator == null)
 						return;
 
@@ -1027,7 +1045,7 @@ namespace StepManiaEditor
 
 					var time = SongTime + GetMusicOffset();
 					double chartPosition = 0.0;
-					if (!TryGetChartPositionFromSongTime(time, ref chartPosition))
+					if (!ActiveChart.TryGetChartPositionFromTime(time, ref chartPosition))
 						return;
 					var ratePosEventForChecking = new EditorInterpolatedRateAlteringEvent
 					{
@@ -1039,7 +1057,7 @@ namespace StepManiaEditor
 					// The interpolated scroll rate to use is the value at the current exact time.
 					var interpolatedScrollRate = 1.0;
 					var interpolatedScrollRateEnumerator =
-						InterpolatedScrollRateEvents.FindGreatestPreceding(ratePosEventForChecking);
+						ActiveChart.InterpolatedScrollRateEvents.FindGreatestPreceding(ratePosEventForChecking);
 					if (interpolatedScrollRateEnumerator != null)
 					{
 						interpolatedScrollRateEnumerator.MoveNext();
@@ -1057,7 +1075,7 @@ namespace StepManiaEditor
 					// Then we need to find the greatest preceding notes by scanning upwards.
 					// Once we find that note, we start iterating downwards while also keeping track of the rate events along the way.
 
-					var rateEnumerator = FindBest(RateAlteringEventsByRow, chartPosition, EditorRateAlteringEvent.CompareToRow);
+					var rateEnumerator = FindBest(ActiveChart.RateAlteringEventsByRow, chartPosition, EditorRateAlteringEvent.CompareToRow);
 					if (rateEnumerator == null)
 						return;
 
@@ -1073,7 +1091,7 @@ namespace StepManiaEditor
 						// Record the pixels per second to use for the WaveForm.
 						if (rateEvent == null)
 						{
-							var tempo = CurrentChartMostCommonTempo;
+							var tempo = ActiveChart.MostCommonTempo;
 							if (Preferences.Instance.RowBasedWaveFormScrollMode != WaveFormScrollMode.MostCommonTempo)
 								tempo = rateEnumerator.Current.Tempo;
 							var useRate = Preferences.Instance.RowBasedWaveFormScrollMode ==
@@ -1113,7 +1131,7 @@ namespace StepManiaEditor
 					var beatMarkerLastRecordedRow = -1;
 
 					// Now that we know the position at the start of the screen we can find the first event to start rendering.
-					var enumerator = FindBest(EditorEvents, chartPositionAtTopOfScreen, EditorEvent.CompareToRow);
+					var enumerator = FindBest(ActiveChart.EditorEvents, chartPositionAtTopOfScreen, EditorEvent.CompareToRow);
 					if (enumerator == null)
 						return;
 
@@ -1468,7 +1486,7 @@ namespace StepManiaEditor
 						var chartPosition =
 							editorPosition + (FocalPoint.Y / (Preferences.Instance.RowBasedPixelsPerRow * Zoom));
 						var songTime = 0.0;
-						if (TryGetSongTimeFromChartPosition(chartPosition, ref songTime))
+						if (ActiveChart.TryGetTimeFromChartPosition(chartPosition, ref songTime))
 						{
 							SetSongTime(songTime);
 						}
@@ -1486,15 +1504,16 @@ namespace StepManiaEditor
 			}
 		}
 
-		private void UpdateMiniMapBounds()
+		public void UpdateMiniMapBounds()
 		{
+			var p = Preferences.Instance;
 			var x = 0;
 			var zoom = Math.Min(1.0, Zoom);
-			switch (Preferences.Instance.MiniMapPosition)
+			switch (p.MiniMapPosition)
 			{
 				case MiniMap.Position.RightSideOfWindow:
 				{
-					x = Graphics.PreferredBackBufferWidth - MiniMapXPadding - (int)Preferences.Instance.MiniMapWidth;
+					x = Graphics.PreferredBackBufferWidth - MiniMapXPadding - (int)p.MiniMapWidth;
 					break;
 				}
 				case MiniMap.Position.RightOfChartArea:
@@ -1504,7 +1523,7 @@ namespace StepManiaEditor
 				}
 				case MiniMap.Position.MountedToWaveForm:
 				{
-					if (Preferences.Instance.WaveFormScaleXWhenZooming)
+					if (p.PreferencesWaveForm.WaveFormScaleXWhenZooming)
 					{
 						x = (int)(FocalPoint.X + (WaveFormTextureWidth >> 1) * zoom + MiniMapXPadding);
 					}
@@ -1526,7 +1545,7 @@ namespace StepManiaEditor
 
 			MiniMap.UpdateBounds(
 				GraphicsDevice,
-				new Rectangle(x, MiniMapYPaddingFromTop, (int)Preferences.Instance.MiniMapWidth, h));
+				new Rectangle(x, MiniMapYPaddingFromTop, (int)p.MiniMapWidth, h));
 		}
 
 		private void UpdateMiniMapLaneSpacing()
@@ -1549,7 +1568,7 @@ namespace StepManiaEditor
 			if (!Preferences.Instance.ShowMiniMap)
 				return;
 
-			if (EditorEvents == null)
+			if (ActiveChart == null || ActiveChart.EditorEvents == null)
 				return;
 
 			MiniMap.SetSelectMode(Preferences.Instance.MiniMapSelectMode);
@@ -1569,12 +1588,11 @@ namespace StepManiaEditor
 					var editorAreaTimeRange = editorAreaTimeEnd - editorAreaTimeStart;
 
 					// Determine the end time.
-					var lastEvent = EditorEvents.Last();
+					var lastEvent = ActiveChart.EditorEvents.Last();
 					var maxTimeFromChart = 0.0;
 					if (lastEvent.MoveNext())
 						maxTimeFromChart = lastEvent.Current.ChartEvent.TimeMicros / 1000000.0;
-					if (ActiveChart.Extras.TryGetExtra(SMCommon.TagLastSecondHint, out double lastSecondHint))
-						maxTimeFromChart = Math.Max(maxTimeFromChart, lastSecondHint);
+					maxTimeFromChart = Math.Max(maxTimeFromChart, EditorSong.LastSecondHint);
 
 					// Full Area. The time from the chart, extended in both directions by the editor range.
 					var fullAreaTimeStart = 0.0 - editorAreaTimeRange;
@@ -1594,9 +1612,9 @@ namespace StepManiaEditor
 
 					// Add notes
 					double chartPosition = 0.0;
-					if (!TryGetChartPositionFromSongTime(MiniMap.GetMiniMapAreaStart(), ref chartPosition))
+					if (!ActiveChart.TryGetChartPositionFromTime(MiniMap.GetMiniMapAreaStart(), ref chartPosition))
 						break;
-					var enumerator = FindBest(EditorEvents, chartPosition, EditorEvent.CompareToRow);
+					var enumerator = FindBest(ActiveChart.EditorEvents, chartPosition, EditorEvent.CompareToRow);
 					if (enumerator == null)
 						break;
 
@@ -1658,7 +1676,7 @@ namespace StepManiaEditor
 					var time = SongTime + GetMusicOffset();
 					var screenHeight = Graphics.GraphicsDevice.Viewport.Height;
 					double chartPosition = 0.0;
-					if (!TryGetChartPositionFromSongTime(time, ref chartPosition))
+					if (!ActiveChart.TryGetChartPositionFromTime(time, ref chartPosition))
 						return;
 					var spacingZoom = Zoom;
 					var ppr = Preferences.Instance.RowBasedPixelsPerRow * spacingZoom;
@@ -1669,16 +1687,17 @@ namespace StepManiaEditor
 					var editorAreaRowRange = editorAreaRowEnd - editorAreaRowStart;
 
 					// Determine the end row.
-					var lastEvent = EditorEvents.Last();
+					var lastEvent = ActiveChart.EditorEvents.Last();
 					var maxRowFromChart = 0.0;
 					if (lastEvent.MoveNext())
 						maxRowFromChart = lastEvent.Current.ChartEvent.IntegerPosition;
-					if (ActiveChart.Extras.TryGetExtra(SMCommon.TagLastSecondHint, out double lastSecondHint))
+
+					if (EditorSong.LastSecondHint > 0.0)
 					{
 						var lastSecondChartPosition = 0.0;
-						if (TryGetChartPositionFromSongTime(time, ref lastSecondChartPosition))
+						if (ActiveChart.TryGetChartPositionFromTime(time, ref lastSecondChartPosition))
 						{
-							maxRowFromChart = Math.Max(lastSecondChartPosition, lastSecondHint);
+							maxRowFromChart = Math.Max(lastSecondChartPosition, EditorSong.LastSecondHint);
 						}
 					}
 
@@ -1700,7 +1719,7 @@ namespace StepManiaEditor
 
 					// Add notes
 					chartPosition = MiniMap.GetMiniMapAreaStart();
-					var enumerator = FindBest(EditorEvents, chartPosition, EditorEvent.CompareToRow);
+					var enumerator = FindBest(ActiveChart.EditorEvents, chartPosition, EditorEvent.CompareToRow);
 					if (enumerator == null)
 						break;
 
@@ -1841,12 +1860,12 @@ namespace StepManiaEditor
 
 			DrawLogUI();
 			DrawScrollControlUI();
-			DrawWaveFormUI();
+			UIWaveFormPreferences.Draw();
 			DrawMiniMapUI();
 			DrawOptionsUI();
 
 			UISongProperties.Draw(EditorSong);
-			DrawChartPropertiesUI();
+			UIChartProperties.Draw(ActiveChart);
 
 			ImGui.PopFont();
 
@@ -1855,6 +1874,7 @@ namespace StepManiaEditor
 
 		private void DrawMainMenuUI()
 		{
+			var p = Preferences.Instance;
 			if (ImGui.BeginMainMenuBar())
 			{
 				if (ImGui.BeginMenu("File"))
@@ -1864,9 +1884,9 @@ namespace StepManiaEditor
 						OpenSongFile();
 					}
 
-					if (ImGui.BeginMenu("Open Recent", Preferences.Instance.RecentFiles.Count > 0))
+					if (ImGui.BeginMenu("Open Recent", p.RecentFiles.Count > 0))
 					{
-						foreach (var recentFile in Preferences.Instance.RecentFiles)
+						foreach (var recentFile in p.RecentFiles)
 						{
 							var fileNameWithPath = recentFile.FileName;
 							var fileName = System.IO.Path.GetFileName(fileNameWithPath);
@@ -1882,11 +1902,11 @@ namespace StepManiaEditor
 					}
 
 					if (ImGui.MenuItem("Reload", "Ctrl+R", false,
-						    EditorSong != null && Preferences.Instance.RecentFiles.Count > 0))
+						    EditorSong != null && p.RecentFiles.Count > 0))
 					{
-						OpenSongFileAsync(Preferences.Instance.RecentFiles[0].FileName,
-							Preferences.Instance.RecentFiles[0].LastChartType,
-							Preferences.Instance.RecentFiles[0].LastChartDifficultyType);
+						OpenSongFileAsync(p.RecentFiles[0].FileName,
+							p.RecentFiles[0].LastChartType,
+							p.RecentFiles[0].LastChartDifficultyType);
 					}
 
 					if (ImGui.MenuItem("Exit", "Alt+F4"))
@@ -1900,25 +1920,25 @@ namespace StepManiaEditor
 				if (ImGui.BeginMenu("View"))
 				{
 					if (ImGui.MenuItem("Options"))
-						Preferences.Instance.ShowOptionsWindow = true;
+						p.ShowOptionsWindow = true;
 
 					ImGui.Separator();
 					if (ImGui.MenuItem("Song Properties"))
-						Preferences.Instance.ShowSongPropertiesWindow = true;
+						p.ShowSongPropertiesWindow = true;
 					if (ImGui.MenuItem("Chart Properties"))
-						Preferences.Instance.ShowChartPropertiesWindow = true;
+						p.ShowChartPropertiesWindow = true;
 
 					ImGui.Separator();
-					if (ImGui.MenuItem("Waveform Controls"))
-						Preferences.Instance.ShowWaveFormWindow = true;
-					if (ImGui.MenuItem("Scroll Controls"))
-						Preferences.Instance.ShowScrollControlWindow = true;
-					if (ImGui.MenuItem("Mini Map Controls"))
-						Preferences.Instance.ShowMiniMapWindow = true;
+					if (ImGui.MenuItem("Waveform Preferences"))
+						p.PreferencesWaveForm.ShowWaveFormWindow = true;
+					if (ImGui.MenuItem("Scroll Preferences"))
+						p.ShowScrollControlWindow = true;
+					if (ImGui.MenuItem("Mini Map Preferences"))
+						p.ShowMiniMapWindow = true;
 
 					ImGui.Separator();
 					if (ImGui.MenuItem("Log"))
-						Preferences.Instance.ShowLogWindow = true;
+						p.ShowLogWindow = true;
 					if (ImGui.MenuItem("ImGui Demo Window"))
 						ShowImGuiTestWindow = true;
 					ImGui.EndMenu();
@@ -2009,56 +2029,12 @@ namespace StepManiaEditor
 			ImGui.End();
 		}
 
-		private void DrawWaveFormUI()
-		{
-			if (!Preferences.Instance.ShowWaveFormWindow)
-				return;
-
-			ImGui.SetNextWindowSize(new System.Numerics.Vector2(0, 0), ImGuiCond.FirstUseEver);
-			ImGui.Begin("Waveform", ref Preferences.Instance.ShowWaveFormWindow, ImGuiWindowFlags.NoScrollbar);
-
-			ImGui.Checkbox("Show Waveform", ref Preferences.Instance.ShowWaveForm);
-			if (ImGui.Checkbox("Scale X When Zooming", ref Preferences.Instance.WaveFormScaleXWhenZooming))
-				UpdateMiniMapBounds();
-			ImGui.SliderFloat("X Scale", ref Preferences.Instance.WaveFormMaxXPercentagePerChannel, 0.0f, 1.0f);
-
-			ImGui.ColorEdit3("Dense Color", ref Preferences.Instance.WaveFormDenseColor, ImGuiColorEditFlags.NoAlpha);
-
-			ImGui.Combo("Sparse Color Mode", ref Preferences.Instance.WaveFormWindowSparseColorOption,
-				WaveFormWindowSparseColorOptions, WaveFormWindowSparseColorOptions.Length);
-			if (Preferences.Instance.WaveFormWindowSparseColorOption == 0)
-			{
-				ImGui.SliderFloat("Sparse Color Scale", ref Preferences.Instance.SparseColorScale, 0.0f, 1.0f);
-				Preferences.Instance.WaveFormSparseColor.X =
-					Preferences.Instance.WaveFormDenseColor.X * Preferences.Instance.SparseColorScale;
-				Preferences.Instance.WaveFormSparseColor.Y =
-					Preferences.Instance.WaveFormDenseColor.Y * Preferences.Instance.SparseColorScale;
-				Preferences.Instance.WaveFormSparseColor.Z =
-					Preferences.Instance.WaveFormDenseColor.Z * Preferences.Instance.SparseColorScale;
-			}
-			else if (Preferences.Instance.WaveFormWindowSparseColorOption == 1)
-			{
-				Preferences.Instance.WaveFormSparseColor = Preferences.Instance.WaveFormDenseColor;
-			}
-			else
-			{
-				ImGui.ColorEdit3("Sparse Color", ref Preferences.Instance.WaveFormSparseColor, ImGuiColorEditFlags.NoAlpha);
-			}
-
-			if (ImGui.SliderInt("Loading Parallelism", ref Preferences.Instance.WaveFormLoadingMaxParallelism, 1, 128))
-			{
-				MusicManager.GetMusicMipMap().SetLoadParallelism(Preferences.Instance.WaveFormLoadingMaxParallelism);
-			}
-
-			ImGui.End();
-		}
-
 		private void DrawMiniMapUI()
 		{
 			if (!Preferences.Instance.ShowMiniMapWindow)
 				return;
 			ImGui.SetNextWindowSize(new System.Numerics.Vector2(0, 0), ImGuiCond.FirstUseEver);
-			ImGui.Begin("Mini Map", ref Preferences.Instance.ShowMiniMapWindow, ImGuiWindowFlags.NoScrollbar);
+			ImGui.Begin("Mini Map Preferences", ref Preferences.Instance.ShowMiniMapWindow, ImGuiWindowFlags.NoScrollbar);
 
 			ImGui.PushItemWidth(200);
 
@@ -2131,7 +2107,7 @@ namespace StepManiaEditor
 				return;
 
 			ImGui.SetNextWindowSize(new System.Numerics.Vector2(0, 0), ImGuiCond.FirstUseEver);
-			ImGui.Begin("Scroll Controls", ref Preferences.Instance.ShowScrollControlWindow, ImGuiWindowFlags.NoScrollbar);
+			ImGui.Begin("Scroll Preferences", ref Preferences.Instance.ShowScrollControlWindow, ImGuiWindowFlags.NoScrollbar);
 
 			ImGui.Checkbox("Stop Playback When Scrolling", ref Preferences.Instance.StopPlaybackWhenScrolling);
 
@@ -2221,21 +2197,21 @@ namespace StepManiaEditor
 			if (ImGui.TreeNode("Startup Steps Types"))
 			{
 				var index = 0;
-				foreach (var stepsType in Enum.GetValues(typeof(SMCommon.ChartType)).Cast<SMCommon.ChartType>())
+				foreach (var chartType in Enum.GetValues(typeof(SMCommon.ChartType)).Cast<SMCommon.ChartType>())
 				{
 					if (ImGui.Selectable(
-						    SMCommon.ChartTypeString(stepsType),
-						    Preferences.Instance.StartupStepsTypesBools[index]))
+						    SMCommon.ChartTypeString(chartType),
+						    Preferences.Instance.StartupChartTypesBools[index]))
 					{
 						if (!ImGui.GetIO().KeyCtrl)
 						{
-							for (var i = 0; i < Preferences.Instance.StartupStepsTypesBools.Length; i++)
+							for (var i = 0; i < Preferences.Instance.StartupChartTypesBools.Length; i++)
 							{
-								Preferences.Instance.StartupStepsTypesBools[i] = false;
+								Preferences.Instance.StartupChartTypesBools[i] = false;
 							}
 						}
 
-						Preferences.Instance.StartupStepsTypesBools[index] = !Preferences.Instance.StartupStepsTypesBools[index];
+						Preferences.Instance.StartupChartTypesBools[index] = !Preferences.Instance.StartupChartTypesBools[index];
 					}
 
 					index++;
@@ -2244,38 +2220,8 @@ namespace StepManiaEditor
 				ImGui.TreePop();
 			}
 
-			if (ImGui.BeginCombo("Default Steps Type", Preferences.Instance.DefaultStepsType))
-			{
-				foreach (var stepsType in Enum.GetValues(typeof(SMCommon.ChartType)).Cast<SMCommon.ChartType>())
-				{
-					var stepsTypeString = SMCommon.ChartTypeString(stepsType);
-					if (ImGui.Selectable(
-						    stepsTypeString,
-						    Preferences.Instance.DefaultStepsType == stepsTypeString))
-					{
-						Preferences.Instance.DefaultStepsType = stepsTypeString;
-					}
-				}
-
-				ImGui.EndCombo();
-			}
-
-			if (ImGui.BeginCombo("Default Difficulty Type", Preferences.Instance.DefaultDifficultyType))
-			{
-				foreach (var difficultyType in Enum.GetValues(typeof(SMCommon.ChartDifficultyType))
-					         .Cast<SMCommon.ChartDifficultyType>())
-				{
-					var difficultyTypeString = difficultyType.ToString();
-					if (ImGui.Selectable(
-						    difficultyTypeString,
-						    Preferences.Instance.DefaultDifficultyType == difficultyTypeString))
-					{
-						Preferences.Instance.DefaultDifficultyType = difficultyTypeString;
-					}
-				}
-
-				ImGui.EndCombo();
-			}
+			ComboFromEnum("Default Steps Type", ref Preferences.Instance.DefaultStepsType);
+			ComboFromEnum("Default Difficulty Type", ref Preferences.Instance.DefaultDifficultyType);
 
 			ImGui.Checkbox("Open Last Opened File On Launch", ref Preferences.Instance.OpenLastOpenedFileOnLaunch);
 			ImGui.SliderInt("Recent File History Size", ref Preferences.Instance.RecentFilesHistorySize, 0, 50);
@@ -2286,26 +2232,20 @@ namespace StepManiaEditor
 			ImGui.End();
 		}
 
-		private void DrawChartPropertiesUI()
-		{
-			if (!Preferences.Instance.ShowChartPropertiesWindow)
-				return;
-		}
-
 		#endregion Gui Rendering
 
 		#region Loading
 
 		/// <summary>
-		/// Initializes all PadData and creates corresponding StepGraphs for all StepsTypes
-		/// specified in the StartupStepsTypes.
+		/// Initializes all PadData and creates corresponding StepGraphs for all ChartTypes
+		/// specified in the StartupChartTypes.
 		/// </summary>
 		private async void InitPadDataAndStepGraphsAsync()
 		{
-			var tasks = new Task<bool>[Preferences.Instance.StartupStepsTypes.Length];
-			for (var i = 0; i < Preferences.Instance.StartupStepsTypes.Length; i++)
+			var tasks = new Task<bool>[Preferences.Instance.StartupChartTypes.Length];
+			for (var i = 0; i < Preferences.Instance.StartupChartTypes.Length; i++)
 			{
-				tasks[i] = LoadPadDataAndCreateStepGraph(Preferences.Instance.StartupStepsTypes[i]);
+				tasks[i] = LoadPadDataAndCreateStepGraph(Preferences.Instance.StartupChartTypes[i]);
 			}
 
 			await Task.WhenAll(tasks);
@@ -2317,50 +2257,51 @@ namespace StepManiaEditor
 		/// <returns>
 		/// True if no errors were generated and false otherwise.
 		/// </returns>
-		private async Task<bool> LoadPadDataAndCreateStepGraph(string stepsType)
+		private async Task<bool> LoadPadDataAndCreateStepGraph(SMCommon.ChartType chartType)
 		{
-			if (PadDataByStepsType.ContainsKey(stepsType))
+			if (PadDataByChartType.ContainsKey(chartType))
 				return true;
 
-			PadDataByStepsType[stepsType] = null;
-			StepGraphByStepsType[stepsType] = null;
+			PadDataByChartType[chartType] = null;
+			StepGraphByChartType[chartType] = null;
 
 			// Load the PadData.
-			PadDataByStepsType[stepsType] = await LoadPadData(stepsType);
-			if (PadDataByStepsType[stepsType] == null)
+			PadDataByChartType[chartType] = await LoadPadData(chartType);
+			if (PadDataByChartType[chartType] == null)
 			{
-				PadDataByStepsType.Remove(stepsType);
-				StepGraphByStepsType.Remove(stepsType);
+				PadDataByChartType.Remove(chartType);
+				StepGraphByChartType.Remove(chartType);
 				return false;
 			}
 
 			// Create the StepGraph.
 			await Task.Run(() =>
 			{
-				Logger.Info($"Creating {stepsType} StepGraph.");
-				StepGraphByStepsType[stepsType] = StepGraph.CreateStepGraph(
-					PadDataByStepsType[stepsType],
-					PadDataByStepsType[stepsType].StartingPositions[0][0][L],
-					PadDataByStepsType[stepsType].StartingPositions[0][0][R]);
-				Logger.Info($"Finished creating {stepsType} StepGraph.");
+				Logger.Info($"Creating {chartType} StepGraph.");
+				StepGraphByChartType[chartType] = StepGraph.CreateStepGraph(
+					PadDataByChartType[chartType],
+					PadDataByChartType[chartType].StartingPositions[0][0][L],
+					PadDataByChartType[chartType].StartingPositions[0][0][R]);
+				Logger.Info($"Finished creating {chartType} StepGraph.");
 			});
 
 			return true;
 		}
 
 		/// <summary>
-		/// Loads PadData for the given stepsType.
+		/// Loads PadData for the given ChartType.
 		/// </summary>
-		/// <param name="stepsType">Stepmania StepsType to load PadData for.</param>
+		/// <param name="chartType">ChartType to load PadData for.</param>
 		/// <returns>Loaded PadData or null if any errors were generated.</returns>
-		private static async Task<PadData> LoadPadData(string stepsType)
+		private static async Task<PadData> LoadPadData(SMCommon.ChartType chartType)
 		{
-			var fileName = $"{stepsType}.json";
+			var chartTypeString = SMCommon.ChartTypeString(chartType);
+			var fileName = $"{chartTypeString}.json";
 			Logger.Info($"Loading PadData from {fileName}.");
-			var padData = await PadData.LoadPadData(stepsType, fileName);
+			var padData = await PadData.LoadPadData(chartTypeString, fileName);
 			if (padData == null)
 				return null;
-			Logger.Info($"Finished loading {stepsType} PadData.");
+			Logger.Info($"Finished loading {chartTypeString} PadData.");
 			return padData;
 		}
 
@@ -2393,7 +2334,10 @@ namespace StepManiaEditor
 		/// <param name="fileName">File name of the Song file to open.</param>
 		/// <param name="chartType">Desired ChartType (StepMania StepsType) to default to once open.</param>
 		/// <param name="chartDifficultyType">Desired DifficultyType to default to once open.</param>
-		private async void OpenSongFileAsync(string fileName, string chartType, string chartDifficultyType)
+		private async void OpenSongFileAsync(
+			string fileName,
+			SMCommon.ChartType chartType,
+			SMCommon.ChartDifficultyType chartDifficultyType)
 		{
 			try
 			{
@@ -2448,6 +2392,7 @@ namespace StepManiaEditor
 
 						Logger.Info($"Loaded {fileName}");
 
+						LoadSongCancellationTokenSource.Token.ThrowIfCancellationRequested();
 						EditorSong = new EditorSong(
 							this,
 							System.IO.Path.GetDirectoryName(fileName),
@@ -2456,11 +2401,8 @@ namespace StepManiaEditor
 							ImGuiRenderer);
 
 						// Select the best Chart to make active.
-						ActiveChart = SelectBestChart(song, chartType, chartDifficultyType);
+						ActiveChart = SelectBestChart(EditorSong, chartType, chartDifficultyType);
 						LoadSongCancellationTokenSource.Token.ThrowIfCancellationRequested();
-
-						// Set up Tree of EditorEvents for the Chart.
-						SetUpEditorEvents();
 					}
 					catch (OperationCanceledException)
 					{
@@ -2469,7 +2411,7 @@ namespace StepManiaEditor
 					}
 					finally
 					{
-						LoadSongCancellationTokenSource.Dispose();
+						LoadSongCancellationTokenSource?.Dispose();
 						LoadSongCancellationTokenSource = null;
 					}
 				}, LoadSongCancellationTokenSource.Token);
@@ -2483,8 +2425,8 @@ namespace StepManiaEditor
 				var savedSongInfo = new Preferences.SavedSongInformation
 				{
 					FileName = fileName,
-					LastChartType = ActiveChart?.Type,
-					LastChartDifficultyType = ActiveChart?.DifficultyType,
+					LastChartType = ActiveChart?.ChartType ?? Preferences.Instance.DefaultStepsType,
+					LastChartDifficultyType = ActiveChart?.ChartDifficultyType ?? Preferences.Instance.DefaultDifficultyType,
 				};
 				Preferences.Instance.RecentFiles.RemoveAll(info => info.FileName == fileName);
 				Preferences.Instance.RecentFiles.Insert(0, savedSongInfo);
@@ -2517,102 +2459,80 @@ namespace StepManiaEditor
 		/// <param name="preferredChartType">The preferred ChartType (StepMania StepsType) to use.</param>
 		/// <param name="preferredChartDifficultyType">The preferred DifficultyType to use.</param>
 		/// <returns>Best Chart to use or null if no Charts exist.</returns>
-		private Chart SelectBestChart(Song song, string preferredChartType, string preferredChartDifficultyType)
+		private EditorChart SelectBestChart(EditorSong song, SMCommon.ChartType preferredChartType, SMCommon.ChartDifficultyType preferredChartDifficultyType)
 		{
 			if (song.Charts.Count == 0)
 				return null;
+			var hasChartsOfPreferredType = song.Charts.TryGetValue(preferredChartType, out var preferredChartsByType);
 
 			// Choose the preferred chart, if it exists.
-			foreach (var chart in song.Charts)
+			if (hasChartsOfPreferredType)
 			{
-				if (chart.Type == preferredChartType && chart.DifficultyType == preferredChartDifficultyType)
+				foreach (var chart in preferredChartsByType)
 				{
-					return chart;
+					if (chart.ChartDifficultyType == preferredChartDifficultyType)
+						return chart;
 				}
 			}
 
-			var orderdDifficultyTypes = new[]
+			var orderedDifficultyTypes = new[]
 			{
-				SMCommon.ChartDifficultyType.Challenge.ToString(),
-				SMCommon.ChartDifficultyType.Hard.ToString(),
-				SMCommon.ChartDifficultyType.Medium.ToString(),
-				SMCommon.ChartDifficultyType.Easy.ToString(),
-				SMCommon.ChartDifficultyType.Beginner.ToString(),
-				SMCommon.ChartDifficultyType.Edit.ToString(),
+				SMCommon.ChartDifficultyType.Challenge,
+				SMCommon.ChartDifficultyType.Hard,
+				SMCommon.ChartDifficultyType.Medium,
+				SMCommon.ChartDifficultyType.Easy,
+				SMCommon.ChartDifficultyType.Beginner,
+				SMCommon.ChartDifficultyType.Edit,
 			};
 
 			// If the preferred chart doesn't exist, try to choose the highest difficulty type
 			// of the preferred chart type.
-			foreach (var currDifficultyType in orderdDifficultyTypes)
+			if (hasChartsOfPreferredType)
 			{
-				foreach (var chart in song.Charts)
+				foreach (var currDifficultyType in orderedDifficultyTypes)
 				{
-					if (chart.Type == preferredChartType && chart.DifficultyType == currDifficultyType)
+					foreach (var chart in preferredChartsByType)
 					{
-						return chart;
+						if (chart.ChartDifficultyType == currDifficultyType)
+							return chart;
 					}
 				}
 			}
 
 			// No charts of the specified type exist. Try the next best type.
-			string nextBestChartType = null;
-			if (preferredChartType == "dance-single")
-				nextBestChartType = "dance-double";
-			else if (preferredChartType == "dance-double")
-				nextBestChartType = "dance-single";
-			else if (preferredChartType == "pump-single")
-				nextBestChartType = "pump-double";
-			else if (preferredChartType == "pump-double")
-				nextBestChartType = "pump-single";
-			if (!string.IsNullOrEmpty(nextBestChartType))
+			SMCommon.ChartType nextBestChartType = SMCommon.ChartType.dance_single;
+			var hasNextBestChartType = true;
+			if (preferredChartType == SMCommon.ChartType.dance_single)
+				nextBestChartType = SMCommon.ChartType.dance_double;
+			else if (preferredChartType == SMCommon.ChartType.dance_double)
+				nextBestChartType = SMCommon.ChartType.dance_single;
+			else if (preferredChartType == SMCommon.ChartType.pump_single)
+				nextBestChartType = SMCommon.ChartType.pump_double;
+			else if (preferredChartType == SMCommon.ChartType.pump_double)
+				nextBestChartType = SMCommon.ChartType.pump_single;
+			else
+				hasNextBestChartType = false;
+			if (hasNextBestChartType)
 			{
-				foreach (var currDifficultyType in orderdDifficultyTypes)
+				if (song.Charts.TryGetValue(nextBestChartType, out var nextBestChartsByType))
 				{
-					foreach (var chart in song.Charts)
+					foreach (var currDifficultyType in orderedDifficultyTypes)
 					{
-						if (chart.Type == nextBestChartType && chart.DifficultyType == currDifficultyType)
+						foreach (var chart in nextBestChartsByType)
 						{
-							return chart;
+							if (chart.ChartDifficultyType == currDifficultyType)
+								return chart;
 						}
 					}
 				}
 			}
 
 			// At this point, just return the first chart we have.
-			return song.Charts[0];
-		}
-
-		public RedBlackTree<EditorEvent>.Enumerator FindEvent(EditorEvent pos)
-		{
-			var best = EditorEvents.FindGreatestPreceding(pos);
-			if (best == null)
-				best = EditorEvents.FindLeastFollowing(pos);
-			if (best == null)
-				return null;
-
-			// Scan backwards until we have checked every lane for a long note which may
-			// be extending through the given start row.
-			var lanesChecked = new bool[ActiveChart.NumInputs];
-			var numLanesChecked = 0;
-			var current = new RedBlackTree<EditorEvent>.Enumerator(best);
-			while (current.MovePrev() && numLanesChecked < ActiveChart.NumInputs)
+			foreach (var charts in song.Charts)
 			{
-				var e = current.Current;
-				var lane = e.GetLane();
-				if (lane >= 0)
-				{
-					if (lanesChecked[lane])
-					{
-						lanesChecked[lane] = true;
-						numLanesChecked++;
-
-						if (e.GetRow() + e.GetLength() > pos.GetRow())
-							best = new RedBlackTree<EditorEvent>.Enumerator(current);
-					}
-				}
+				return charts.Value[0];
 			}
-
-			return best;
+			return null;
 		}
 
 		private string GetFullPathToMusicFile()
@@ -2620,9 +2540,8 @@ namespace StepManiaEditor
 			string musicFile = null;
 
 			// If the active chart has a music file defined, use that.
-			// TODO: EditorChart value
-			//if (ActiveChart != null)
-			//	musicFile = ActiveChart.MusicFile;
+			if (ActiveChart != null)
+				musicFile = ActiveChart.MusicPath;
 
 			// If the active chart does not have a music file defined, fall back to use the song's music file.
 			if (string.IsNullOrEmpty(musicFile))
@@ -2656,309 +2575,57 @@ namespace StepManiaEditor
 		{
 			EditorSong = null;
 			ActiveChart = null;
-			EditorEvents = null;
-			RateAlteringEventsBySongTime = null;
-			RateAlteringEventsByRow = null;
-			InterpolatedScrollRateEvents = null;
-			ActionQueue.Clear();
+			ActionQueue.Instance.Clear();
 		}
 
 		#endregion Loading
 
-		private void SetUpEditorEvents()
-		{
-			var editorEvents = new RedBlackTree<EditorEvent>();
-			var rateAlteringEventsBySongTime = new RedBlackTree<EditorRateAlteringEvent>(EditorRateAlteringEvent.SortSongTime());
-			var rateAlteringEventsByRow = new RedBlackTree<EditorRateAlteringEvent>(EditorRateAlteringEvent.SortRow());
-			var interpolatedScrollRateEvents = new RedBlackTree<EditorInterpolatedRateAlteringEvent>();
-
-			EditorRateAlteringEvent previousEvent = new EditorRateAlteringEvent
-			{
-				Row = 0,
-				SongTime = 0.0,
-				RowsPerSecond = 0.0,
-				SecondsPerRow = 0.0
-			};
-
-			var lastHoldStarts = new EditorHoldStartNote[ActiveChart.NumInputs];
-			var lastScrollRateInterpolationValue = 1.0;
-			var lastScrollRate = 1.0;
-			var lastTempo = 1.0;
-			var firstTempo = true;
-			var firstScrollRate = true;
-			TimeSignature lastTimeSignature = null;
-			var timePerTempo = new Dictionary<double, long>();
-			var lastTempoChangeTime = 0L;
-			for (var eventIndex = 0; eventIndex < ActiveChart.Layers[0].Events.Count; eventIndex++)
-			{
-				var chartEvent = ActiveChart.Layers[0].Events[eventIndex];
-
-				var editorEvent = EditorEvent.CreateEvent(chartEvent);
-				if (editorEvent != null)
-					editorEvents.Insert(editorEvent);
-
-				if (editorEvent is EditorHoldStartNote hs)
-				{
-					lastHoldStarts[hs.GetLane()] = hs;
-				}
-				else if (editorEvent is EditorHoldEndNote he)
-				{
-					var start = lastHoldStarts[he.GetLane()];
-					he.SetHoldStartNote(start);
-					start.SetHoldEndNote(he);
-				}
-
-				if (chartEvent is Tempo tc)
-				{
-					var rowsSincePrevious = chartEvent.IntegerPosition - previousEvent.Row;
-					var secondsSincePrevious = rowsSincePrevious * previousEvent.SecondsPerRow;
-
-					var newSecondsPerRow = 60.0 / tc.TempoBPM / (double)SMCommon.MaxValidDenominator;
-					var newRowsPerSecond = 1.0 / newSecondsPerRow;
-
-					// Update any events which precede the first tempo so they can have accurate rates.
-					// This is useful for determining spacing prior to the first event
-					if (firstTempo)
-					{
-						foreach (var previousRateAlteringEvent in rateAlteringEventsBySongTime)
-						{
-							previousRateAlteringEvent.RowsPerSecond = newRowsPerSecond;
-							previousRateAlteringEvent.SecondsPerRow = newSecondsPerRow;
-							previousRateAlteringEvent.Tempo = tc.TempoBPM;
-						}
-					}
-
-					var newEvent = new EditorRateAlteringEvent
-					{
-						Row = chartEvent.IntegerPosition,
-						RowForFollowingEvents = chartEvent.IntegerPosition,
-						ChartEvent = chartEvent,
-						SongTime = previousEvent.SongTimeForFollowingEvents + secondsSincePrevious,
-						SongTimeForFollowingEvents = previousEvent.SongTimeForFollowingEvents + secondsSincePrevious,
-						RowsPerSecond = newRowsPerSecond,
-						SecondsPerRow = newSecondsPerRow,
-						ScrollRate = lastScrollRate,
-						Tempo = tc.TempoBPM,
-						LastTimeSignature = lastTimeSignature,
-					};
-					rateAlteringEventsBySongTime.Insert(newEvent);
-					rateAlteringEventsByRow.Insert(newEvent);
-
-					if (!firstTempo)
-					{
-						timePerTempo.TryGetValue(lastTempo, out var currentTempoTime);
-						timePerTempo[lastTempo] = currentTempoTime + tc.TimeMicros - lastTempoChangeTime;
-						lastTempoChangeTime = tc.TimeMicros;
-					}
-
-					previousEvent = newEvent;
-					lastTempo = tc.TempoBPM;
-					firstTempo = false;
-				}
-				else if (chartEvent is Stop stop)
-				{
-					var rowsSincePrevious = chartEvent.IntegerPosition - previousEvent.Row;
-					var secondsSincePrevious = rowsSincePrevious * previousEvent.SecondsPerRow;
-
-					var newEvent = new EditorRateAlteringEvent
-					{
-						Row = chartEvent.IntegerPosition,
-						RowForFollowingEvents = chartEvent.IntegerPosition,
-						ChartEvent = chartEvent,
-						SongTime = previousEvent.SongTimeForFollowingEvents + secondsSincePrevious,
-						SongTimeForFollowingEvents = previousEvent.SongTimeForFollowingEvents + secondsSincePrevious +
-						                             (stop.LengthMicros / 1000000.0),
-						RowsPerSecond = previousEvent.RowsPerSecond,
-						SecondsPerRow = previousEvent.SecondsPerRow,
-						ScrollRate = lastScrollRate,
-						Tempo = lastTempo,
-						LastTimeSignature = lastTimeSignature,
-					};
-					rateAlteringEventsBySongTime.Insert(newEvent);
-					rateAlteringEventsByRow.Insert(newEvent);
-					previousEvent = newEvent;
-				}
-				else if (chartEvent is Warp warp)
-				{
-					var rowsSincePrevious = chartEvent.IntegerPosition - previousEvent.Row;
-					var secondsSincePrevious = rowsSincePrevious * previousEvent.SecondsPerRow;
-
-					var newEvent = new EditorRateAlteringEvent
-					{
-						Row = chartEvent.IntegerPosition,
-						RowForFollowingEvents = chartEvent.IntegerPosition + warp.LengthIntegerPosition,
-						ChartEvent = chartEvent,
-						SongTime = previousEvent.SongTimeForFollowingEvents + secondsSincePrevious,
-						SongTimeForFollowingEvents = previousEvent.SongTimeForFollowingEvents + secondsSincePrevious,
-						RowsPerSecond = previousEvent.RowsPerSecond,
-						SecondsPerRow = previousEvent.SecondsPerRow,
-						ScrollRate = lastScrollRate,
-						Tempo = lastTempo,
-						LastTimeSignature = lastTimeSignature,
-					};
-					rateAlteringEventsBySongTime.Insert(newEvent);
-					rateAlteringEventsByRow.Insert(newEvent);
-					previousEvent = newEvent;
-				}
-				else if (chartEvent is ScrollRate scrollRate)
-				{
-					var rowsSincePrevious = chartEvent.IntegerPosition - previousEvent.Row;
-					var secondsSincePrevious = rowsSincePrevious * previousEvent.SecondsPerRow;
-
-					// Update any events which precede the first tempo so they can have accurate rates.
-					// This is useful for determining spacing prior to the first event
-					if (firstScrollRate)
-					{
-						foreach (var previousRateAlteringEvent in rateAlteringEventsBySongTime)
-						{
-							previousRateAlteringEvent.ScrollRate = scrollRate.Rate;
-						}
-					}
-
-					var newEvent = new EditorRateAlteringEvent
-					{
-						Row = chartEvent.IntegerPosition,
-						RowForFollowingEvents = chartEvent.IntegerPosition,
-						ChartEvent = chartEvent,
-						SongTime = previousEvent.SongTimeForFollowingEvents + secondsSincePrevious,
-						SongTimeForFollowingEvents = previousEvent.SongTimeForFollowingEvents + secondsSincePrevious,
-						RowsPerSecond = previousEvent.RowsPerSecond,
-						SecondsPerRow = previousEvent.SecondsPerRow,
-						ScrollRate = scrollRate.Rate,
-						Tempo = lastTempo,
-						LastTimeSignature = lastTimeSignature,
-					};
-					rateAlteringEventsBySongTime.Insert(newEvent);
-					rateAlteringEventsByRow.Insert(newEvent);
-					previousEvent = newEvent;
-					lastScrollRate = scrollRate.Rate;
-					firstScrollRate = false;
-				}
-				else if (chartEvent is ScrollRateInterpolation scrollRateInterpolation)
-				{
-					var newEvent = new EditorInterpolatedRateAlteringEvent
-					{
-						Row = scrollRateInterpolation.IntegerPosition,
-						SongTime = scrollRateInterpolation.TimeMicros,
-						ChartEvent = scrollRateInterpolation,
-						PreviousScrollRate = lastScrollRateInterpolationValue
-					};
-					interpolatedScrollRateEvents.Insert(newEvent);
-					lastScrollRateInterpolationValue = scrollRateInterpolation.Rate;
-				}
-				else if (chartEvent is TimeSignature timeSignature)
-				{
-					var rowsSincePrevious = chartEvent.IntegerPosition - previousEvent.Row;
-					var secondsSincePrevious = rowsSincePrevious * previousEvent.SecondsPerRow;
-
-					var newEvent = new EditorRateAlteringEvent
-					{
-						Row = chartEvent.IntegerPosition,
-						RowForFollowingEvents = chartEvent.IntegerPosition,
-						ChartEvent = chartEvent,
-						SongTime = previousEvent.SongTimeForFollowingEvents + secondsSincePrevious,
-						SongTimeForFollowingEvents = previousEvent.SongTimeForFollowingEvents + secondsSincePrevious,
-						RowsPerSecond = previousEvent.RowsPerSecond,
-						SecondsPerRow = previousEvent.SecondsPerRow,
-						ScrollRate = lastScrollRate,
-						Tempo = lastTempo,
-						LastTimeSignature = timeSignature,
-					};
-					rateAlteringEventsBySongTime.Insert(newEvent);
-					rateAlteringEventsByRow.Insert(newEvent);
-					lastTimeSignature = timeSignature;
-				}
-			}
-
-			if (previousEvent.ChartEvent != null)
-			{
-				timePerTempo.TryGetValue(lastTempo, out var lastTempoTime);
-				timePerTempo[lastTempo] = lastTempoTime + previousEvent.ChartEvent.TimeMicros - lastTempoChangeTime;
-			}
-
-			var longestTempoTime = -1L;
-			var mostCommonTempo = 0.0;
-			foreach (var kvp in timePerTempo)
-			{
-				if (kvp.Value > longestTempoTime)
-				{
-					longestTempoTime = kvp.Value;
-					mostCommonTempo = kvp.Key;
-				}
-			}
-
-			EditorEvents = editorEvents;
-			RateAlteringEventsBySongTime = rateAlteringEventsBySongTime;
-			RateAlteringEventsByRow = rateAlteringEventsByRow;
-			InterpolatedScrollRateEvents = interpolatedScrollRateEvents;
-			CurrentChartMostCommonTempo = mostCommonTempo;
-		}
-
-		private bool TryGetChartPositionFromSongTime(double songTime, ref double chartPosition)
-		{
-			if (RateAlteringEventsBySongTime == null)
-				return false;
-
-			// Given the current song time, get the greatest preceding event which alters the rate of rows to time.
-			var enumerator =
-				RateAlteringEventsBySongTime.FindGreatestPreceding(new EditorRateAlteringEvent { SongTime = songTime });
-			// If there is no preceding event (e.g. SongTime is negative), use the first event.
-			if (enumerator == null)
-				enumerator = RateAlteringEventsBySongTime.GetEnumerator();
-			// If there is still no event then the Chart is misconfigured as it must have at least a Tempo event.
-			if (enumerator == null)
-				return false;
-
-			// Update the ChartPosition based on the cached rate information.
-			enumerator.MoveNext();
-			var rateEvent = enumerator.Current;
-			if (songTime >= rateEvent.SongTime && songTime < rateEvent.SongTimeForFollowingEvents)
-				chartPosition = rateEvent.Row;
-			else
-				chartPosition = rateEvent.Row + rateEvent.RowsPerSecond * (songTime - rateEvent.SongTimeForFollowingEvents);
-			return true;
-		}
-
 		private void UpdateChartPositionFromSongTime()
 		{
-			TryGetChartPositionFromSongTime(SongTime, ref ChartPosition);
-		}
-
-		private bool TryGetSongTimeFromChartPosition(double chartPosition, ref double songTime)
-		{
-			if (RateAlteringEventsByRow == null)
-				return false;
-
-			// Given the current song time, get the greatest preceding event which alters the rate of rows to time.
-			var enumerator = RateAlteringEventsByRow.FindGreatestPreceding(new EditorRateAlteringEvent { Row = chartPosition });
-			// If there is no preceding event (e.g. ChartPosition is negative), use the first event.
-			if (enumerator == null)
-				enumerator = RateAlteringEventsByRow.GetEnumerator();
-			// If there is still no event then the Chart is misconfigured as it must have at least a Tempo event.
-			if (enumerator == null)
-				return false;
-
-			// Update the Song time based on the cached rate information.
-			// TODO: Need to take into account Stops vs Delays?
-			enumerator.MoveNext();
-			var rateEvent = enumerator.Current;
-			songTime = rateEvent.SongTimeForFollowingEvents + rateEvent.SecondsPerRow * (chartPosition - rateEvent.Row);
-			return true;
+			ActiveChart?.TryGetChartPositionFromTime(SongTime, ref ChartPosition);
 		}
 
 		private void UpdateSongTimeFromChartPosition()
 		{
-			TryGetSongTimeFromChartPosition(ChartPosition, ref SongTime);
+			ActiveChart?.TryGetTimeFromChartPosition(ChartPosition, ref SongTime);
 		}
+
+
+
+		public bool IsChartSupported(Chart chart)
+		{
+			if (!SMCommon.TryGetChartType(chart.Type, out var chartType))
+				return false;
+			var typeSupported = false;
+			foreach (var supportedType in SupportedChartTypes)
+			{
+				if (supportedType == chartType)
+				{
+					typeSupported = true;
+					break;
+				}
+			}
+
+			if (!typeSupported)
+				return false;
+
+			if (!Enum.TryParse<SMCommon.ChartDifficultyType>(chart.DifficultyType, out _))
+				return false;
+
+			return true;
+		}
+
+
+
 
 		private void OnUndo()
 		{
-			var action = ActionQueue.Undo();
+			var action = ActionQueue.Instance.Undo();
 		}
 
 		private void OnRedo()
 		{
-			var action = ActionQueue.Redo();
+			var action = ActionQueue.Instance.Redo();
 		}
 
 		private void OnOpen()
@@ -3008,6 +2675,7 @@ namespace StepManiaEditor
 
 		public void OnSongMusicChanged()
 		{
+			StopPreview();
 			MusicManager.LoadMusicAsync(GetFullPathToMusicFile(), GetSongTime);
 		}
 
@@ -3019,9 +2687,8 @@ namespace StepManiaEditor
 
 		private double GetMusicOffset()
 		{
-			// TODO: EditorChart value
-			//if (ActiveChart != null)
-			//	return ActiveChart.ChartOffsetFromMusic;
+			if (ActiveChart != null && ActiveChart.UsesChartMusicOffset)
+				return ActiveChart.MusicOffset;
 			return EditorSong.MusicOffset;
 		}
 

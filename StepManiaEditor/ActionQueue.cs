@@ -32,6 +32,13 @@ namespace StepManiaEditor
 		/// </summary>
 		private readonly List<EditorAction> Actions = new List<EditorAction>();
 
+		public static ActionQueue Instance { get; } = new ActionQueue();
+
+		private ActionQueue()
+		{
+
+		}
+
 		/// <summary>
 		/// Do the given EditorAction and add it to the queue of EditorAction for undo and redo.
 		/// </summary>
