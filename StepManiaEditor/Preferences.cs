@@ -58,19 +58,7 @@ namespace StepManiaEditor
 		[JsonInclude] public PreferencesWaveForm PreferencesWaveForm = new PreferencesWaveForm();
 
 		// Scroll control preferences
-		public const float DefaultTimeBasedPixelsPerSecond = 300.0f;
-		public const float DefaultRowBasedPixelsPerRow = 6.0f;
-		public const float DefaultVariablePixelsPerSecond = 300.0f;
-		public const float DefaultVariableSpeedBPM = 120.0f;
-
-		[JsonInclude] public bool ShowScrollControlWindow = true;
-		[JsonInclude] public Editor.ScrollMode ScrollMode = Editor.ScrollMode.Time;
-		[JsonInclude] public Editor.SpacingMode SpacingMode = Editor.SpacingMode.ConstantTime;
-		[JsonInclude] public float TimeBasedPixelsPerSecond = DefaultTimeBasedPixelsPerSecond;
-		[JsonInclude] public float RowBasedPixelsPerRow = DefaultRowBasedPixelsPerRow;
-		[JsonInclude] public float VariablePixelsPerSecondAtDefaultBPM = DefaultVariablePixelsPerSecond;
-		[JsonInclude] public Editor.WaveFormScrollMode RowBasedWaveFormScrollMode = Editor.WaveFormScrollMode.MostCommonTempo;
-		[JsonInclude] public bool StopPlaybackWhenScrolling = false;
+		[JsonInclude] public PreferencesScroll PreferencesScroll = new PreferencesScroll();
 
 		// MiniMap preferences
 		public const bool DefaultShowMiniMap = true;

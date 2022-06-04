@@ -19,7 +19,7 @@ namespace StepManiaEditor
 		public const int DefaultWaveFormLoadingMaxParallelism = 8;
 
 		// Preferences.
-		[JsonInclude] public bool ShowWaveFormWindow = false;
+		[JsonInclude] public bool ShowWaveFormPreferencesWindow = false;
 		[JsonInclude] public bool ShowWaveForm = DefaultShowWaveForm;
 		[JsonInclude] public bool WaveFormScaleXWhenZooming = DefaultWaveFormScaleXWhenZooming;
 		[JsonInclude] public UIWaveFormPreferences.SparseColorOption WaveFormSparseColorOption = DefaultWaveFormSparseColorOption;

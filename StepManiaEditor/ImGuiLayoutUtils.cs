@@ -311,10 +311,11 @@ namespace StepManiaEditor
 			float min,
 			float max,
 			string help = null,
-			string format = "%.3f")
+			string format = "%.3f",
+			ImGuiSliderFlags flags = ImGuiSliderFlags.None)
 		{
 			DrawRowTitleAndAdvanceColumn(title);
-			return DrawSliderFloat(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, min, max, help, format);
+			return DrawSliderFloat(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, min, max, help, format, flags);
 		}
 
 		private static bool DrawSliderFloat(
@@ -326,14 +327,47 @@ namespace StepManiaEditor
 			float min,
 			float max,
 			string help = null,
-			string format = "%.3f")
+			string format = "%.3f",
+			ImGuiSliderFlags flags = ImGuiSliderFlags.None)
 		{
 			(bool, float) Func(float v)
 			{
-				var r = ImGui.SliderFloat(GetElementTitle(title, fieldName), ref v, min, max, format);
+				var r = ImGui.SliderFloat(GetElementTitle(title, fieldName), ref v, min, max, format, flags);
 				return (r, v);
 			}
 			return DrawLiveEdit<float>(undoable, title, o, fieldName, width, Func, FloatCompare, help);
+		}
+
+		public static void DrawRowSliderFloatWithReset(
+			bool undoable,
+			string title,
+			object o,
+			string fieldName,
+			float min,
+			float max,
+			float resetValue,
+			string help = null,
+			string format = "%.3f",
+			ImGuiSliderFlags flags = ImGuiSliderFlags.None)
+		{
+			DrawRowTitleAndAdvanceColumn(title);
+
+			// Slider
+			DrawSliderFloat(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X - 50.0f, min, max, help, format, flags);
+
+			// Reset
+			ImGui.SameLine();
+			if (ImGui.Button($"Reset{GetElementTitle(title, fieldName)}", new Vector2(5.0f, 0.0f)))
+			{
+				var value = GetValueFromFieldOrProperty<float>(o, fieldName);
+				if (!resetValue.FloatEquals(value))
+				{
+					if (undoable)
+						EnqueueSetFieldOrPropertyAction(o, fieldName, resetValue);
+					else
+						SetFieldOrPropertyToValue(o, fieldName, resetValue);
+				}
+			}
 		}
 
 		#endregion Slider Float

@@ -27,11 +27,11 @@ namespace StepManiaEditor
 		public void Draw()
 		{
 			var p = Preferences.Instance.PreferencesWaveForm;
-			if (!p.ShowWaveFormWindow)
+			if (!p.ShowWaveFormPreferencesWindow)
 				return;
 
 			ImGui.SetNextWindowSize(new Vector2(0, 0), ImGuiCond.FirstUseEver);
-			ImGui.Begin("Waveform Preferences", ref p.ShowWaveFormWindow, ImGuiWindowFlags.NoScrollbar);
+			ImGui.Begin("Waveform Preferences", ref p.ShowWaveFormPreferencesWindow, ImGuiWindowFlags.NoScrollbar);
 
 			if (ImGuiLayoutUtils.BeginTable("Show Waveform", 120))
 			{

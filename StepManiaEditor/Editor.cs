@@ -110,6 +110,7 @@ namespace StepManiaEditor
 		private UISongProperties UISongProperties;
 		private UIChartProperties UIChartProperties;
 		private UIWaveFormPreferences UIWaveFormPreferences;
+		private UIScrollPreferences UIScrollPreferences;
 
 		private TextureAtlas TextureAtlas;
 
@@ -270,6 +271,7 @@ namespace StepManiaEditor
 			UISongProperties = new UISongProperties(this, GraphicsDevice, ImGuiRenderer);
 			UIChartProperties = new UIChartProperties(this);
 			UIWaveFormPreferences = new UIWaveFormPreferences(this, MusicManager);
+			UIScrollPreferences = new UIScrollPreferences();
 
 			base.Initialize();
 		}
@@ -479,6 +481,8 @@ namespace StepManiaEditor
 
 		private void ProcessInput(GameTime gameTime)
 		{
+			var pScroll = Preferences.Instance.PreferencesScroll;
+
 			// Let imGui process input so we can see if we should ignore it.
 			(bool imGuiWantMouse, bool imGuiWantKeyboard) = ImGuiRenderer.Update(gameTime);
 
@@ -534,7 +538,7 @@ namespace StepManiaEditor
 							PlaybackStartTime -= delta;
 							SongTime = PlaybackStartTime + PlaybackStopwatch.Elapsed.TotalSeconds;
 
-							if (Preferences.Instance.StopPlaybackWhenScrolling)
+							if (pScroll.StopPlaybackWhenScrolling)
 							{
 								StopPlayback();
 							}
@@ -561,7 +565,7 @@ namespace StepManiaEditor
 							PlaybackStartTime += delta;
 							SongTime = PlaybackStartTime + PlaybackStopwatch.Elapsed.TotalSeconds;
 
-							if (Preferences.Instance.StopPlaybackWhenScrolling)
+							if (pScroll.StopPlaybackWhenScrolling)
 							{
 								StopPlayback();
 							}
@@ -771,6 +775,8 @@ namespace StepManiaEditor
 			if (ActiveChart == null || ActiveChart.EditorEvents == null)
 				return;
 
+			var pScroll = Preferences.Instance.PreferencesScroll;
+
 			List<EditorEvent> holdBodyEvents = new List<EditorEvent>();
 			List<EditorEvent> noteEvents = new List<EditorEvent>();
 
@@ -788,13 +794,13 @@ namespace StepManiaEditor
 
 			// TODO: Common(?) code for determining song time by chart position or vice versa based on scroll mode
 
-			switch (Preferences.Instance.SpacingMode)
+			switch (pScroll.SpacingMode)
 			{
 				case SpacingMode.ConstantTime:
 				{
-					WaveFormPPS = Preferences.Instance.TimeBasedPixelsPerSecond;
+					WaveFormPPS = pScroll.TimeBasedPixelsPerSecond;
 
-					var pps = Preferences.Instance.TimeBasedPixelsPerSecond * spacingZoom;
+					var pps = pScroll.TimeBasedPixelsPerSecond * spacingZoom;
 					var time = SongTime + GetMusicOffset();
 					var timeAtTopOfScreen = time - (FocalPoint.Y / pps);
 					double chartPosition = 0.0;
@@ -911,7 +917,7 @@ namespace StepManiaEditor
 					double chartPosition = 0.0;
 					if (!ActiveChart.TryGetChartPositionFromTime(time, ref chartPosition))
 						return;
-					var ppr = Preferences.Instance.RowBasedPixelsPerRow * spacingZoom;
+					var ppr = pScroll.RowBasedPixelsPerRow * spacingZoom;
 					var chartPositionAtTopOfScreen = chartPosition - (FocalPoint.Y / ppr);
 
 					// Update WaveForm scroll scroll rate
@@ -921,9 +927,9 @@ namespace StepManiaEditor
 						if (rateEnumerator != null)
 						{
 							rateEnumerator.MoveNext();
-							var pps = Preferences.Instance.RowBasedPixelsPerRow * rateEnumerator.Current.RowsPerSecond;
+							var pps = pScroll.RowBasedPixelsPerRow * rateEnumerator.Current.RowsPerSecond;
 							WaveFormPPS = pps;
-							if (Preferences.Instance.RowBasedWaveFormScrollMode == WaveFormScrollMode.MostCommonTempo)
+							if (pScroll.RowBasedWaveFormScrollMode == WaveFormScrollMode.MostCommonTempo)
 							{
 								WaveFormPPS *= (ActiveChart.MostCommonTempo / rateEnumerator.Current.Tempo);
 							}
@@ -1092,12 +1098,12 @@ namespace StepManiaEditor
 						if (rateEvent == null)
 						{
 							var tempo = ActiveChart.MostCommonTempo;
-							if (Preferences.Instance.RowBasedWaveFormScrollMode != WaveFormScrollMode.MostCommonTempo)
+							if (pScroll.RowBasedWaveFormScrollMode != WaveFormScrollMode.MostCommonTempo)
 								tempo = rateEnumerator.Current.Tempo;
-							var useRate = Preferences.Instance.RowBasedWaveFormScrollMode ==
+							var useRate = pScroll.RowBasedWaveFormScrollMode ==
 							              WaveFormScrollMode.CurrentTempoAndRate;
-							WaveFormPPS = Preferences.Instance.VariablePixelsPerSecondAtDefaultBPM
-							              * (tempo / Preferences.DefaultVariableSpeedBPM);
+							WaveFormPPS = pScroll.VariablePixelsPerSecondAtDefaultBPM
+							              * (tempo / PreferencesScroll.DefaultVariablePixelsPerSecondAtDefaultBPM);
 							if (useRate)
 							{
 								var rate = rateEnumerator.Current.ScrollRate * interpolatedScrollRate;
@@ -1109,8 +1115,8 @@ namespace StepManiaEditor
 
 						rateEvent = rateEnumerator.Current;
 						var scrollRateForThisSection = rateEvent.ScrollRate * interpolatedScrollRate;
-						pps = Preferences.Instance.VariablePixelsPerSecondAtDefaultBPM
-						      * (rateEvent.Tempo / Preferences.DefaultVariableSpeedBPM)
+						pps = pScroll.VariablePixelsPerSecondAtDefaultBPM
+						      * (rateEvent.Tempo / PreferencesScroll.DefaultVariablePixelsPerSecondAtDefaultBPM)
 						      * scrollRateForThisSection
 						      * spacingZoom;
 						ppr = pps * rateEvent.SecondsPerRow;
@@ -1179,8 +1185,8 @@ namespace StepManiaEditor
 							rateEvent = nextRateEvent;
 							var previousPPR = ppr;
 							var scrollRateForThisSection = rateEvent.ScrollRate * interpolatedScrollRate;
-							pps = Preferences.Instance.VariablePixelsPerSecondAtDefaultBPM
-							      * (rateEvent.Tempo / Preferences.DefaultVariableSpeedBPM)
+							pps = pScroll.VariablePixelsPerSecondAtDefaultBPM
+							      * (rateEvent.Tempo / PreferencesScroll.DefaultVariablePixelsPerSecondAtDefaultBPM)
 							      * scrollRateForThisSection
 							      * spacingZoom;
 							ppr = pps * rateEvent.SecondsPerRow;
@@ -1336,6 +1342,8 @@ namespace StepManiaEditor
 			if (VisibleMarkers.Count >= MaxMarkersToDraw)
 				return true;
 
+			var pScroll = Preferences.Instance.PreferencesScroll;
+
 			// Based on the current rate altering event, determine the beat spacing and snap the current row to a beat.
 			var beatsPerMeasure = currentRateEvent.LastTimeSignature.Signature.Numerator;
 			var rowsPerBeat = (SMCommon.MaxValidDenominator * SMCommon.NumBeatsPerMeasure * beatsPerMeasure)
@@ -1363,7 +1371,7 @@ namespace StepManiaEditor
 				var rowRelativeToLastRateChangeEvent = Math.Max(0, currentRow - currentRateEvent.RowForFollowingEvents);
 				rowRelativeToLastRateChangeEvent = Math.Max(0, rowRelativeToLastRateChangeEvent);
 				var y = 0.0;
-				switch (Preferences.Instance.SpacingMode)
+				switch (pScroll.SpacingMode)
 				{
 					case SpacingMode.ConstantTime:
 					{
@@ -1439,6 +1447,8 @@ namespace StepManiaEditor
 
 		private void ProcessInputForMiniMap(MouseState mouseState)
 		{
+			var pScroll = Preferences.Instance.PreferencesScroll;
+
 			var mouseDownThisFrame = mouseState.LeftButton == ButtonState.Pressed &&
 			                         PreviousMouseState.LeftButton != ButtonState.Pressed;
 			var mouseUpThisFrame = mouseState.LeftButton != ButtonState.Pressed &&
@@ -1477,14 +1487,14 @@ namespace StepManiaEditor
 				{
 					case SpacingMode.ConstantTime:
 					{
-						SetSongTime(editorPosition + (FocalPoint.Y / (Preferences.Instance.TimeBasedPixelsPerSecond * Zoom)) -
+						SetSongTime(editorPosition + (FocalPoint.Y / (pScroll.TimeBasedPixelsPerSecond * Zoom)) -
 						            GetMusicOffset());
 						break;
 					}
 					case SpacingMode.ConstantRow:
 					{
 						var chartPosition =
-							editorPosition + (FocalPoint.Y / (Preferences.Instance.RowBasedPixelsPerRow * Zoom));
+							editorPosition + (FocalPoint.Y / (pScroll.RowBasedPixelsPerRow * Zoom));
 						var songTime = 0.0;
 						if (ActiveChart.TryGetTimeFromChartPosition(chartPosition, ref songTime))
 						{
@@ -1557,9 +1567,9 @@ namespace StepManiaEditor
 
 		private SpacingMode GetMiniMapSpacingMode()
 		{
-			if (Preferences.Instance.SpacingMode == SpacingMode.Variable)
+			if (Preferences.Instance.PreferencesScroll.SpacingMode == SpacingMode.Variable)
 				return Preferences.Instance.MiniMapSpacingModeForVariable;
-			return Preferences.Instance.SpacingMode;
+			return Preferences.Instance.PreferencesScroll.SpacingMode;
 		}
 
 		private void UpdateMiniMap()
@@ -1571,6 +1581,8 @@ namespace StepManiaEditor
 			if (ActiveChart == null || ActiveChart.EditorEvents == null)
 				return;
 
+			var pScroll = Preferences.Instance.PreferencesScroll;
+
 			MiniMap.SetSelectMode(Preferences.Instance.MiniMapSelectMode);
 
 			switch (GetMiniMapSpacingMode())
@@ -1579,7 +1591,7 @@ namespace StepManiaEditor
 				{
 					var screenHeight = Graphics.GraphicsDevice.Viewport.Height;
 					var spacingZoom = Zoom;
-					var pps = Preferences.Instance.TimeBasedPixelsPerSecond * spacingZoom;
+					var pps = pScroll.TimeBasedPixelsPerSecond * spacingZoom;
 					var time = SongTime + GetMusicOffset();
 
 					// Editor Area. The visible time range.
@@ -1679,7 +1691,7 @@ namespace StepManiaEditor
 					if (!ActiveChart.TryGetChartPositionFromTime(time, ref chartPosition))
 						return;
 					var spacingZoom = Zoom;
-					var ppr = Preferences.Instance.RowBasedPixelsPerRow * spacingZoom;
+					var ppr = pScroll.RowBasedPixelsPerRow * spacingZoom;
 
 					// Editor Area. The visible row range.
 					var editorAreaRowStart = chartPosition - (FocalPoint.Y / ppr);
@@ -1859,7 +1871,7 @@ namespace StepManiaEditor
 			}
 
 			DrawLogUI();
-			DrawScrollControlUI();
+			UIScrollPreferences.Draw();
 			UIWaveFormPreferences.Draw();
 			DrawMiniMapUI();
 			DrawOptionsUI();
@@ -1930,9 +1942,9 @@ namespace StepManiaEditor
 
 					ImGui.Separator();
 					if (ImGui.MenuItem("Waveform Preferences"))
-						p.PreferencesWaveForm.ShowWaveFormWindow = true;
+						p.PreferencesWaveForm.ShowWaveFormPreferencesWindow = true;
 					if (ImGui.MenuItem("Scroll Preferences"))
-						p.ShowScrollControlWindow = true;
+						p.PreferencesScroll.ShowScrollControlPreferencesWindow = true;
 					if (ImGui.MenuItem("Mini Map Preferences"))
 						p.ShowMiniMapWindow = true;
 
@@ -2097,91 +2109,6 @@ namespace StepManiaEditor
 			}
 
 			ImGui.PopItemWidth();
-
-			ImGui.End();
-		}
-
-		private void DrawScrollControlUI()
-		{
-			if (!Preferences.Instance.ShowScrollControlWindow)
-				return;
-
-			ImGui.SetNextWindowSize(new System.Numerics.Vector2(0, 0), ImGuiCond.FirstUseEver);
-			ImGui.Begin("Scroll Preferences", ref Preferences.Instance.ShowScrollControlWindow, ImGuiWindowFlags.NoScrollbar);
-
-			ImGui.Checkbox("Stop Playback When Scrolling", ref Preferences.Instance.StopPlaybackWhenScrolling);
-
-			ComboFromEnum("Scroll Mode", ref Preferences.Instance.ScrollMode);
-			ImGui.SameLine();
-			HelpMarker("The Scroll Mode to use when editing. When playing the Scroll Mode is always Time."
-			           + "\nTime: Scrolling moves time."
-			           + "\nRow:  Scrolling moves rows.");
-
-			ComboFromEnum("Spacing Mode", ref Preferences.Instance.SpacingMode);
-			ImGui.SameLine();
-			HelpMarker("How events in the Chart should be spaced when rendering."
-			           + "\nConstant Time: Events are spaced by their time."
-			           + "\n               Equivalent to a CMOD when scrolling by time."
-			           + "\nConstant Row:  Spacing is based on row and rows are treated as always the same distance apart."
-			           + "\n               Scroll rate modifiers are ignored."
-			           + "\n               Other rate altering events like stops and tempo changes affect the scroll rate."
-			           + "\nVariable:      Spacing is based on tempo and is affected by all rate altering events."
-			           + "\n               Equivalent to a XMOD when scrolling by time.");
-
-			ImGui.Separator();
-			ImGui.Text("Constant Time Spacing Options");
-			ImGui.SliderFloat("Speed###Time", ref Preferences.Instance.TimeBasedPixelsPerSecond, 1.0f, 100000.0f, null,
-				ImGuiSliderFlags.Logarithmic);
-			ImGui.SameLine();
-			if (ImGui.Button("Reset##TimeSpeed"))
-			{
-				Preferences.Instance.TimeBasedPixelsPerSecond = Preferences.DefaultTimeBasedPixelsPerSecond;
-			}
-
-			ImGui.SameLine();
-			HelpMarker("Speed in pixels per second at default zoom level.");
-
-			ImGui.Separator();
-			ImGui.Text("Constant Row Spacing Options");
-			ImGui.SliderFloat("Spacing", ref Preferences.Instance.RowBasedPixelsPerRow, 0.05f, 100.0f, null,
-				ImGuiSliderFlags.Logarithmic);
-			ImGui.SameLine();
-			if (ImGui.Button("Reset##RowDistance"))
-			{
-				Preferences.Instance.RowBasedPixelsPerRow = Preferences.DefaultRowBasedPixelsPerRow;
-			}
-
-			ImGui.SameLine();
-			HelpMarker(
-				$"Spacing in pixels per row at default zoom level. A row is 1/{SMCommon.MaxValidDenominator} of a {SMCommon.NumBeatsPerMeasure}/{SMCommon.NumBeatsPerMeasure} beat.");
-
-			ImGui.Separator();
-			ImGui.Text("Variable Spacing Options");
-			ImGui.SliderFloat("Speed###Variable", ref Preferences.Instance.VariablePixelsPerSecondAtDefaultBPM, 1.0f, 100000.0f,
-				null, ImGuiSliderFlags.Logarithmic);
-			ImGui.SameLine();
-			if (ImGui.Button("Reset##VariableSpeed"))
-			{
-				Preferences.Instance.VariablePixelsPerSecondAtDefaultBPM = Preferences.DefaultVariablePixelsPerSecond;
-			}
-
-			ImGui.SameLine();
-			HelpMarker($"Speed in pixels per second at default zoom level at {Preferences.DefaultVariableSpeedBPM} BPM.");
-
-			ImGui.Separator();
-			ComboFromEnum("Waveform Scroll Mode", ref Preferences.Instance.RowBasedWaveFormScrollMode);
-			ImGui.SameLine();
-			HelpMarker("How the wave form should scroll when the Chart does not scroll with Constant Time."
-			           + "\nCurrent Tempo:          The wave form will match the current tempo, ignoring rate changes."
-			           + "\n                        Best option for Charts which have legitimate musical tempo changes."
-			           + "\n                        Bad option for sm file stutter gimmicks as they momentarily double the tempo."
-			           + "\nCurrent Tempo And Rate: The wave form will match the current tempo and rate."
-			           + "\n                        Rates that are less than or equal 0 will be ignored."
-			           + "\n                        Best option to match ssc file scroll gimmicks."
-			           + "\n                        Bad option for sm file stutter gimmicks as they momentarily double the tempo."
-			           + "\nMost Common Tempo:      The wave form will match the most common tempo in the Chart, ignoring rate changes."
-			           + "\n                        Best option to achieve smooth scrolling when the Chart is effectively one tempo"
-			           + "\n                        but has brief scroll rate gimmicks.");
 
 			ImGui.End();
 		}
