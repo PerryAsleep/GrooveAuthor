@@ -353,11 +353,11 @@ namespace StepManiaEditor
 			DrawRowTitleAndAdvanceColumn(title);
 
 			// Slider
-			DrawSliderFloat(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X - 50.0f, min, max, help, format, flags);
+			DrawSliderFloat(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X - 50.0f - ImGui.GetStyle().ItemSpacing.X, min, max, help, format, flags);
 
 			// Reset
 			ImGui.SameLine();
-			if (ImGui.Button($"Reset{GetElementTitle(title, fieldName)}", new Vector2(5.0f, 0.0f)))
+			if (ImGui.Button($"Reset{GetElementTitle(title, fieldName)}", new Vector2(50.0f, 0.0f)))
 			{
 				var value = GetValueFromFieldOrProperty<float>(o, fieldName);
 				if (!resetValue.FloatEquals(value))
