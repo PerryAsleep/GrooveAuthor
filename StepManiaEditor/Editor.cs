@@ -1479,8 +1479,8 @@ namespace StepManiaEditor
 			MiniMapCapturingMouse = MiniMap.WantsMouse();
 
 			// Set the Song Position based on the MiniMap position
-			miniMapNeedsMouseThisFrame |= MiniMapCapturingMouse;
-			if (miniMapNeedsMouseThisFrame)
+			MiniMapCapturingMouse |= miniMapNeedsMouseThisFrame;
+			if (MiniMapCapturingMouse)
 			{
 				// When moving the MiniMap, pause or stop playback.
 				if (mouseDownThisFrame && Playing)
