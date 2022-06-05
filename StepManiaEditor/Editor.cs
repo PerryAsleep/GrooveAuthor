@@ -355,6 +355,8 @@ namespace StepManiaEditor
 			var stopWatch = new Stopwatch();
 			stopWatch.Start();
 
+			
+
 			ProcessInput(gameTime);
 
 			TextureAtlas.Update();
@@ -481,10 +483,18 @@ namespace StepManiaEditor
 
 		private void ProcessInput(GameTime gameTime)
 		{
-			var pScroll = Preferences.Instance.PreferencesScroll;
+			var inFocus = IsApplicationFocused();
 
-			// Let imGui process input so we can see if we should ignore it.
-			(bool imGuiWantMouse, bool imGuiWantKeyboard) = ImGuiRenderer.Update(gameTime);
+			// ImGui needs to update it's frame even the app is not in focus.
+			// There may be a way to decouple input processing and advancing the frame, but for now
+			// use the ImGuiRenderer.Update method and give it a flag so it knows to not process input.
+			(var imGuiWantMouse, var imGuiWantKeyboard) = ImGuiRenderer.Update(gameTime, inFocus);
+
+			// Do not do any further input processing if the application does not have focus.
+			if (!inFocus)
+				return;
+			
+			var pScroll = Preferences.Instance.PreferencesScroll;
 
 			// Process Keyboard Input.
 			if (imGuiWantKeyboard)

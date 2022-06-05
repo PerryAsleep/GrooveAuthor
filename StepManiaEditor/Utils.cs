@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Windows.Forms;
@@ -918,6 +919,26 @@ namespace StepManiaEditor
 		}
 
 		#endregion File Open Helpers
+
+		#region Application Focus
+
+		public static bool IsApplicationFocused()
+		{
+			var activatedHandle = GetForegroundWindow();
+			if (activatedHandle == IntPtr.Zero)
+				return false;
+
+			GetWindowThreadProcessId(activatedHandle, out var activeProcId);
+			return activeProcId == Process.GetCurrentProcess().Id;
+		}
+
+		[DllImport("user32.dll", CharSet = CharSet.Auto, ExactSpelling = true)]
+		private static extern IntPtr GetForegroundWindow();
+
+		[DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
+		private static extern int GetWindowThreadProcessId(IntPtr handle, out int processId);
+
+		#endregion Application Focus
 	}
 
 	public static class EditorExtensions

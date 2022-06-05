@@ -115,10 +115,11 @@ namespace StepManiaEditor
             _loadedTextures.Remove(textureId);
         }
 
-        public (bool, bool) Update(GameTime gameTime)
+        public (bool, bool) Update(GameTime gameTime, bool inFocus)
         {
-	        ImGui.GetIO().DeltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
-	        UpdateInput();
+            ImGui.GetIO().DeltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
+            if (inFocus)
+                UpdateInput();
             ImGui.NewFrame();
             var io = ImGui.GetIO();
             return (io.WantCaptureMouse, io.WantCaptureKeyboard);
