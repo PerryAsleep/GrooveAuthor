@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using System;
+using System.Reflection;
 using Fumen.ChartDefinition;
 
 namespace StepManiaEditor
@@ -14,100 +15,179 @@ namespace StepManiaEditor
 	}
 
 	/// <summary>
-	/// EditorAction which sets a property on an object to a new value.
+	/// EditorAction to set a Field or a Property for a value type on an object.
 	/// </summary>
-	/// <typeparam name="T">Type of the property.</typeparam>
-	public class ActionSetObjectProperty<T> : EditorAction
+	/// <typeparam name="T">
+	/// Reference type of object field or property.
+	/// </typeparam>
+	public class ActionSetObjectFieldOrPropertyValue<T> : EditorAction where T : struct
 	{
 		private readonly T Value;
 		private readonly T PreviousValue;
 		private readonly object O;
-		private readonly string PropertyName;
+		private readonly string FieldOrPropertyName;
+		private readonly bool IsField;
+		private readonly FieldInfo FieldInfo;
 		private readonly PropertyInfo PropertyInfo;
 
-		public ActionSetObjectProperty(object o, string propertyName, T value)
+		/// <summary>
+		/// Constructor with a given value to set.
+		/// It is assumed that a public instance field or property exists on the object with the given fieldOrPropertyName.
+		/// </summary>
+		/// <param name="o">Object to modify.</param>
+		/// <param name="fieldOrPropertyName">Name of Field or Property on the object to modify.</param>
+		/// <param name="value">New value to set.</param>
+		public ActionSetObjectFieldOrPropertyValue(object o, string fieldOrPropertyName, T value)
 		{
 			O = o;
 			Value = value;
-			PropertyName = propertyName;
+			FieldOrPropertyName = fieldOrPropertyName;
 
-			PropertyInfo = O.GetType().GetProperty(PropertyName, BindingFlags.Public | BindingFlags.Instance);
-			PreviousValue = (T)PropertyInfo.GetValue(O);
+			FieldInfo = O.GetType().GetField(FieldOrPropertyName, BindingFlags.Public | BindingFlags.Instance);
+			IsField = FieldInfo != null;
+			if (!IsField)
+				PropertyInfo = O.GetType().GetProperty(FieldOrPropertyName, BindingFlags.Public | BindingFlags.Instance);
+
+			PreviousValue = IsField ? (T)FieldInfo.GetValue(O) : (T)PropertyInfo.GetValue(O);
 		}
 
-		public ActionSetObjectProperty(object o, string propertyName, T value, T previousValue)
+		/// <summary>
+		/// Constructor with a given value and previous value to set.
+		/// It is assumed value is a Clone of the value.
+		/// It is assumed previousValue is a Clone of the previous value.
+		/// It is assumed that a public instance field or property exists on the object with the given fieldOrPropertyName.
+		/// </summary>
+		/// <param name="o"></param>
+		/// <param name="fieldOrPropertyName"></param>
+		/// <param name="value"></param>
+		/// <param name="previousValue"></param>
+		public ActionSetObjectFieldOrPropertyValue(object o, string fieldOrPropertyName, T value, T previousValue)
 		{
 			O = o;
 			Value = value;
-			PropertyName = propertyName;
+			FieldOrPropertyName = fieldOrPropertyName;
 
-			PropertyInfo = O.GetType().GetProperty(PropertyName, BindingFlags.Public | BindingFlags.Instance);
+			FieldInfo = O.GetType().GetField(FieldOrPropertyName, BindingFlags.Public | BindingFlags.Instance);
+			IsField = FieldInfo != null;
+			if (!IsField)
+				PropertyInfo = O.GetType().GetProperty(FieldOrPropertyName, BindingFlags.Public | BindingFlags.Instance);
+
 			PreviousValue = previousValue;
 		}
 
 		public override string ToString()
 		{
-			return $"Set {O.GetType()} {PropertyName} '{PreviousValue}' > '{Value}'.";
+			return $"Set {O.GetType()} {FieldOrPropertyName} '{PreviousValue}' > '{Value}'.";
 		}
 
 		public override void Do()
 		{
-			PropertyInfo.SetValue(O, Value, null);
+			// Set Value on O.
+			if (IsField)
+				FieldInfo.SetValue(O, Value);
+			else
+				PropertyInfo.SetValue(O, Value);
 		}
 
 		public override void Undo()
 		{
-			PropertyInfo.SetValue(O, PreviousValue, null);
+			// Set PreviousValue on O.
+			if (IsField)
+				FieldInfo.SetValue(O, PreviousValue);
+			else
+				PropertyInfo.SetValue(O, PreviousValue);
 		}
 	}
 
 	/// <summary>
-	/// EditorAction which sets a field on an object to a new value.
+	/// EditorAction to set a Field or a Property for a reference type on an object.
 	/// </summary>
-	/// <typeparam name="T">Type of the field.</typeparam>
-	public class ActionSetObjectField<T> : EditorAction
+	/// <typeparam name="T">
+	/// Reference type of object field or property.
+	/// Must be Cloneable to ensure save undo and redo operations.
+	/// </typeparam>
+	public class ActionSetObjectFieldOrPropertyReference<T> : EditorAction where T : class, ICloneable
 	{
 		private readonly T Value;
 		private readonly T PreviousValue;
 		private readonly object O;
-		private readonly string FieldName;
+		private readonly string FieldOrPropertyName;
+		private readonly bool IsField;
 		private readonly FieldInfo FieldInfo;
+		private readonly PropertyInfo PropertyInfo;
 
-		public ActionSetObjectField(object o, string fieldName, T value)
+		/// <summary>
+		/// Constructor with a given value to set.
+		/// It is assumed value is a Clone of the value.
+		/// It is assumed that a public instance field or property exists on the object with the given fieldOrPropertyName.
+		/// </summary>
+		/// <param name="o">Object to modify.</param>
+		/// <param name="fieldOrPropertyName">Name of Field or Property on the object to modify.</param>
+		/// <param name="value">New value to set.</param>
+		public ActionSetObjectFieldOrPropertyReference(object o, string fieldOrPropertyName, T value)
 		{
 			O = o;
 			Value = value;
-			FieldName = fieldName;
+			FieldOrPropertyName = fieldOrPropertyName;
 
-			FieldInfo = O.GetType().GetField(FieldName, BindingFlags.Public | BindingFlags.Instance);
-			PreviousValue = (T)FieldInfo.GetValue(O);
+			FieldInfo = O.GetType().GetField(FieldOrPropertyName, BindingFlags.Public | BindingFlags.Instance);
+			IsField = FieldInfo != null;
+			if (!IsField)
+				PropertyInfo = O.GetType().GetProperty(FieldOrPropertyName, BindingFlags.Public | BindingFlags.Instance);
+
+			// Clone the previous value.
+			PreviousValue = IsField ? (T)FieldInfo.GetValue(O) : (T)PropertyInfo.GetValue(O);
+			PreviousValue = (T)PreviousValue.Clone();
 		}
 
-		public ActionSetObjectField(object o, string fieldName, T value, T previousValue)
+		/// <summary>
+		/// Constructor with a given value and previous value to set.
+		/// It is assumed value is a Clone of the value.
+		/// It is assumed previousValue is a Clone of the previous value.
+		/// It is assumed that a public instance field or property exists on the object with the given fieldOrPropertyName.
+		/// </summary>
+		/// <param name="o"></param>
+		/// <param name="fieldOrPropertyName"></param>
+		/// <param name="value"></param>
+		/// <param name="previousValue"></param>
+		public ActionSetObjectFieldOrPropertyReference(object o, string fieldOrPropertyName, T value, T previousValue)
 		{
 			O = o;
 			Value = value;
-			FieldName = fieldName;
+			FieldOrPropertyName = fieldOrPropertyName;
 
-			FieldInfo = O.GetType().GetField(FieldName, BindingFlags.Public | BindingFlags.Instance);
+			FieldInfo = O.GetType().GetField(FieldOrPropertyName, BindingFlags.Public | BindingFlags.Instance);
+			IsField = FieldInfo != null;
+			if (!IsField)
+				PropertyInfo = O.GetType().GetProperty(FieldOrPropertyName, BindingFlags.Public | BindingFlags.Instance);
+
 			PreviousValue = previousValue;
 		}
 
 		public override string ToString()
 		{
-			return $"Set {O.GetType()} {FieldInfo} '{PreviousValue}' > '{Value}'.";
+			return $"Set {O.GetType()} {FieldOrPropertyName} '{PreviousValue}' > '{Value}'.";
 		}
 
 		public override void Do()
 		{
-			FieldInfo.SetValue(O, Value);
+			// Clone Value to O.
+			if (IsField)
+				FieldInfo.SetValue(O, (T)Value.Clone());
+			else
+				PropertyInfo.SetValue(O, (T)Value.Clone());
 		}
 
 		public override void Undo()
 		{
-			FieldInfo.SetValue(O, PreviousValue);
+			// Clone PreviousValue to O.
+			if (IsField)
+				FieldInfo.SetValue(O, (T)PreviousValue.Clone());
+			else
+				PropertyInfo.SetValue(O, (T)PreviousValue.Clone());
 		}
 	}
+
 
 	public class ActionSetExtrasValue<T> : EditorAction
 	{

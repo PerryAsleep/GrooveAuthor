@@ -298,18 +298,7 @@ namespace StepManiaEditor
 
 		public static bool ComboFromEnum<T>(string name, ref T enumValue) where T : Enum
 		{
-			var typeOfT = typeof(T);
-			if (!EnumStringsCacheByType.ContainsKey(typeOfT))
-			{
-				var enumValues = Enum.GetValues(typeOfT);
-				var numEnumValues = enumValues.Length;
-				var enumStrings = new string[numEnumValues];
-				for (var i = 0; i < numEnumValues; i++)
-					enumStrings[i] = FormatEnumForUI(enumValues.GetValue(i).ToString());
-				EnumStringsCacheByType[typeOfT] = enumStrings;
-			}
-
-			var strings = EnumStringsCacheByType[typeOfT];
+			var strings = GetCachedEnumStrings<T>();
 			var intValue = (int)(object)enumValue;
 			var result = ImGui.Combo(name, ref intValue, strings, strings.Length);
 			enumValue = (T)(object)intValue;
@@ -318,7 +307,6 @@ namespace StepManiaEditor
 
 		public static bool ComboFromEnum<T>(string name, ref T enumValue, T[] allowedValues, string cacheKey) where T : Enum
 		{
-			var typeOfT = typeof(T);
 			if (!EnumStringsCacheByCustomKey.ContainsKey(cacheKey))
 			{
 				var numEnumValues = allowedValues.Length;
@@ -333,6 +321,77 @@ namespace StepManiaEditor
 			var result = ImGui.Combo(name, ref intValue, strings, strings.Length);
 			enumValue = (T)(object)intValue;
 			return result;
+		}
+
+		/// <summary>
+		/// Draws a TreeNode in ImGui with Selectable elements for each value in the
+		/// Enum specified by the given type parameter T.
+		/// </summary>
+		/// <typeparam name="T">Enum type for drawing elements.</typeparam>
+		/// <param name="label">Label for the TreeNode.</param>
+		/// <param name="values">
+		/// Array of booleans represented the selected state of each value in the Enum.
+		/// Assumed to be the same length as the Enum type param.
+		/// </param>
+		/// <returns>
+		/// Tuple. First value is whether any Selectable was changed.
+		/// Second value is an array of bools represented the previous state. This is only
+		/// set if the state changes. This is meant is a convenience for undo/redo so the
+		/// caller can avoid creating a before state unnecessarily.
+		/// </returns>
+		public static (bool, bool[]) SelectableTree<T>(string label, ref bool[] values) where T : Enum
+		{
+			var strings = GetCachedEnumStrings<T>();
+			var index = 0;
+			var ret = false;
+			bool[] originalValues = null;
+			if (ImGui.TreeNode(label))
+			{
+				foreach (var enumString in strings)
+				{
+					if (ImGui.Selectable(enumString, values[index]))
+					{
+						if (!ret)
+						{
+							originalValues = (bool[])values.Clone();
+						}
+						ret = true;
+
+						// Unset other selections if not holding control.
+						if (!ImGui.GetIO().KeyCtrl)
+						{
+							for (var i = 0; i < values.Length; i++)
+							{
+								values[i] = false;
+							}
+						}
+
+						// Toggle selected element.
+						values[index] = !values[index];
+					}
+
+					index++;
+				}
+
+				ImGui.TreePop();
+			}
+
+			return (ret, originalValues);
+		}
+
+		private static string[] GetCachedEnumStrings<T>()
+		{
+			var typeOfT = typeof(T);
+			if (EnumStringsCacheByType.ContainsKey(typeOfT))
+				return EnumStringsCacheByType[typeOfT];
+			
+			var enumValues = Enum.GetValues(typeOfT);
+			var numEnumValues = enumValues.Length;
+			var enumStrings = new string[numEnumValues];
+			for (var i = 0; i < numEnumValues; i++)
+				enumStrings[i] = FormatEnumForUI(enumValues.GetValue(i).ToString());
+			EnumStringsCacheByType[typeOfT] = enumStrings;
+			return EnumStringsCacheByType[typeOfT];
 		}
 
 		/// <summary>

@@ -35,7 +35,7 @@ namespace StepManiaEditor
 
 			if (ImGuiLayoutUtils.BeginTable("Show Waveform", 120))
 			{
-				ImGuiLayoutUtils.DrawRowCheckboxUndoable("Show Waveform", p, nameof(PreferencesWaveForm.ShowWaveForm),
+				ImGuiLayoutUtils.DrawRowCheckbox(true, "Show Waveform", p, nameof(PreferencesWaveForm.ShowWaveForm),
 					"Whether to show the waveform." +
 					"\nDisabling the waveform will increase performance.");
 				ImGuiLayoutUtils.EndTable();
@@ -44,7 +44,7 @@ namespace StepManiaEditor
 			ImGui.Separator();
 			if (ImGuiLayoutUtils.BeginTable("Waveform", 120))
 			{
-				ImGuiLayoutUtils.DrawRowCheckboxUndoable("Scale Width", p,
+				ImGuiLayoutUtils.DrawRowCheckbox(true, "Scale Width", p,
 					nameof(PreferencesWaveForm.WaveFormScaleXWhenZooming),
 					"When zooming, whether the waveform should scale its width to match" +
 					"\nthe chart instead of staying a constant width.");

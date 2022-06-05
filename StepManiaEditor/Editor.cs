@@ -112,6 +112,7 @@ namespace StepManiaEditor
 		private UIWaveFormPreferences UIWaveFormPreferences;
 		private UIScrollPreferences UIScrollPreferences;
 		private UIMiniMapPreferences UIMiniMapPreferences;
+		private UIOptions UIOptions;
 
 		private TextureAtlas TextureAtlas;
 
@@ -272,6 +273,7 @@ namespace StepManiaEditor
 			UIWaveFormPreferences = new UIWaveFormPreferences(this, MusicManager);
 			UIScrollPreferences = new UIScrollPreferences();
 			UIMiniMapPreferences = new UIMiniMapPreferences(this);
+			UIOptions = new UIOptions();
 
 			base.Initialize();
 		}
@@ -319,7 +321,7 @@ namespace StepManiaEditor
 			InitPadDataAndStepGraphsAsync();
 
 			// If we have a saved file to open, open it now.
-			if (Preferences.Instance.OpenLastOpenedFileOnLaunch
+			if (Preferences.Instance.PreferencesOptions.OpenLastOpenedFileOnLaunch
 			    && Preferences.Instance.RecentFiles.Count > 0)
 			{
 				OpenSongFileAsync(Preferences.Instance.RecentFiles[0].FileName,
@@ -382,11 +384,12 @@ namespace StepManiaEditor
 					gameTime.TotalGameTime.TotalSeconds), false);
 			}
 
+			var pOptions = Preferences.Instance.PreferencesOptions;
 			MusicManager.SetPreviewParameters(
 				EditorSong?.SampleStart ?? 0.0,
 				EditorSong?.SampleLength ?? 0.0,
-				Preferences.Instance.PreviewFadeInTime,
-				Preferences.Instance.PreviewFadeOutTime);
+				pOptions.PreviewFadeInTime,
+				pOptions.PreviewFadeOutTime);
 
 			if (Playing)
 			{
@@ -1874,7 +1877,7 @@ namespace StepManiaEditor
 			UIScrollPreferences.Draw();
 			UIWaveFormPreferences.Draw();
 			UIMiniMapPreferences.Draw();
-			DrawOptionsUI();
+			UIOptions.Draw();
 
 			UISongProperties.Draw(EditorSong);
 			UIChartProperties.Draw(ActiveChart);
@@ -1932,7 +1935,7 @@ namespace StepManiaEditor
 				if (ImGui.BeginMenu("View"))
 				{
 					if (ImGui.MenuItem("Options"))
-						p.ShowOptionsWindow = true;
+						p.PreferencesOptions.ShowOptionsWindow = true;
 
 					ImGui.Separator();
 					if (ImGui.MenuItem("Song Properties"))
@@ -2041,52 +2044,6 @@ namespace StepManiaEditor
 			ImGui.End();
 		}
 
-		private void DrawOptionsUI()
-		{
-			if (!Preferences.Instance.ShowOptionsWindow)
-				return;
-
-			ImGui.SetNextWindowSize(new System.Numerics.Vector2(0, 0), ImGuiCond.FirstUseEver);
-			ImGui.Begin("Options", ref Preferences.Instance.ShowOptionsWindow, ImGuiWindowFlags.NoScrollbar);
-
-			if (ImGui.TreeNode("Startup Steps Types"))
-			{
-				var index = 0;
-				foreach (var chartType in Enum.GetValues(typeof(SMCommon.ChartType)).Cast<SMCommon.ChartType>())
-				{
-					if (ImGui.Selectable(
-						    SMCommon.ChartTypeString(chartType),
-						    Preferences.Instance.StartupChartTypesBools[index]))
-					{
-						if (!ImGui.GetIO().KeyCtrl)
-						{
-							for (var i = 0; i < Preferences.Instance.StartupChartTypesBools.Length; i++)
-							{
-								Preferences.Instance.StartupChartTypesBools[i] = false;
-							}
-						}
-
-						Preferences.Instance.StartupChartTypesBools[index] = !Preferences.Instance.StartupChartTypesBools[index];
-					}
-
-					index++;
-				}
-
-				ImGui.TreePop();
-			}
-
-			ComboFromEnum("Default Steps Type", ref Preferences.Instance.DefaultStepsType);
-			ComboFromEnum("Default Difficulty Type", ref Preferences.Instance.DefaultDifficultyType);
-
-			ImGui.Checkbox("Open Last Opened File On Launch", ref Preferences.Instance.OpenLastOpenedFileOnLaunch);
-			ImGui.SliderInt("Recent File History Size", ref Preferences.Instance.RecentFilesHistorySize, 0, 50);
-
-			DragDouble(ref Preferences.Instance.PreviewFadeInTime, "Preview Fade In Time", 0.001f, "%.3f", true, 0.0);
-			DragDouble(ref Preferences.Instance.PreviewFadeOutTime, "Preview Fade Out Time", 0.001f, "%.3f", true, 0.0);
-
-			ImGui.End();
-		}
-
 		#endregion Gui Rendering
 
 		#region Loading
@@ -2097,10 +2054,11 @@ namespace StepManiaEditor
 		/// </summary>
 		private async void InitPadDataAndStepGraphsAsync()
 		{
-			var tasks = new Task<bool>[Preferences.Instance.StartupChartTypes.Length];
-			for (var i = 0; i < Preferences.Instance.StartupChartTypes.Length; i++)
+			var pOptions = Preferences.Instance.PreferencesOptions;
+			var tasks = new Task<bool>[pOptions.StartupChartTypes.Length];
+			for (var i = 0; i < pOptions.StartupChartTypes.Length; i++)
 			{
-				tasks[i] = LoadPadDataAndCreateStepGraph(Preferences.Instance.StartupChartTypes[i]);
+				tasks[i] = LoadPadDataAndCreateStepGraph(pOptions.StartupChartTypes[i]);
 			}
 
 			await Task.WhenAll(tasks);
@@ -2165,6 +2123,7 @@ namespace StepManiaEditor
 		/// </summary>
 		private void OpenSongFile()
 		{
+			var pOptions = Preferences.Instance.PreferencesOptions;
 			using (OpenFileDialog openFileDialog = new OpenFileDialog())
 			{
 				openFileDialog.InitialDirectory = Preferences.Instance.OpenFileDialogInitialDirectory;
@@ -2176,8 +2135,8 @@ namespace StepManiaEditor
 					var fileName = openFileDialog.FileName;
 					Preferences.Instance.OpenFileDialogInitialDirectory = System.IO.Path.GetDirectoryName(fileName);
 					OpenSongFileAsync(openFileDialog.FileName,
-						Preferences.Instance.DefaultStepsType,
-						Preferences.Instance.DefaultDifficultyType);
+						pOptions.DefaultStepsType,
+						pOptions.DefaultDifficultyType);
 				}
 			}
 		}
@@ -2277,19 +2236,21 @@ namespace StepManiaEditor
 				}
 
 				// Insert a new entry at the top of the saved recent files.
+				var p = Preferences.Instance;
+				var pOptions = p.PreferencesOptions;
 				var savedSongInfo = new Preferences.SavedSongInformation
 				{
 					FileName = fileName,
-					LastChartType = ActiveChart?.ChartType ?? Preferences.Instance.DefaultStepsType,
-					LastChartDifficultyType = ActiveChart?.ChartDifficultyType ?? Preferences.Instance.DefaultDifficultyType,
+					LastChartType = ActiveChart?.ChartType ?? pOptions.DefaultStepsType,
+					LastChartDifficultyType = ActiveChart?.ChartDifficultyType ?? pOptions.DefaultDifficultyType,
 				};
-				Preferences.Instance.RecentFiles.RemoveAll(info => info.FileName == fileName);
-				Preferences.Instance.RecentFiles.Insert(0, savedSongInfo);
-				if (Preferences.Instance.RecentFiles.Count > Preferences.Instance.RecentFilesHistorySize)
+				p.RecentFiles.RemoveAll(info => info.FileName == fileName);
+				p.RecentFiles.Insert(0, savedSongInfo);
+				if (p.RecentFiles.Count > pOptions.RecentFilesHistorySize)
 				{
-					Preferences.Instance.RecentFiles.RemoveRange(
-						Preferences.Instance.RecentFilesHistorySize,
-						Preferences.Instance.RecentFiles.Count - Preferences.Instance.RecentFilesHistorySize);
+					p.RecentFiles.RemoveRange(
+						pOptions.RecentFilesHistorySize,
+						p.RecentFiles.Count - pOptions.RecentFilesHistorySize);
 				}
 
 				// Find a better spot for this

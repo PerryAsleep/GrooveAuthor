@@ -1,4 +1,6 @@
 ﻿
+using System.Text.Json.Serialization;
+
 namespace StepManiaEditor
 {
 	/// <summary>
@@ -21,17 +23,17 @@ namespace StepManiaEditor
 		public const uint DefaultMiniMapVisibleRowRange = 24576;
 
 		// Preferences.
-		public bool ShowMiniMapPreferencesWindow = false;
-		public bool ShowMiniMap = DefaultShowMiniMap;
-		public MiniMap.SelectMode MiniMapSelectMode = DefaultMiniMapSelectMode;
-		public bool MiniMapStopPlaybackWhenScrolling = DefaultMiniMapStopPlaybackWhenScrolling;
-		public uint MiniMapWidth = DefaultMiniMapWidth;
-		public uint MiniMapNoteWidth = DefaultMiniMapNoteWidth;
-		public uint MiniMapNoteSpacing = DefaultMiniMapNoteSpacing;
-		public MiniMap.Position MiniMapPosition = DefaultMiniMapPosition;
-		public Editor.SpacingMode MiniMapSpacingModeForVariable = DefaultMiniMapSpacingModeForVariable;
-		public uint MiniMapVisibleTimeRange = DefaultMiniMapVisibleTimeRange;
-		public uint MiniMapVisibleRowRange = DefaultMiniMapVisibleRowRange;
+		[JsonInclude] public bool ShowMiniMapPreferencesWindow = false;
+		[JsonInclude] public bool ShowMiniMap = DefaultShowMiniMap;
+		[JsonInclude] public MiniMap.SelectMode MiniMapSelectMode = DefaultMiniMapSelectMode;
+		[JsonInclude] public bool MiniMapStopPlaybackWhenScrolling = DefaultMiniMapStopPlaybackWhenScrolling;
+		[JsonInclude] public uint MiniMapWidth = DefaultMiniMapWidth;
+		[JsonInclude] public uint MiniMapNoteWidth = DefaultMiniMapNoteWidth;
+		[JsonInclude] public uint MiniMapNoteSpacing = DefaultMiniMapNoteSpacing;
+		[JsonInclude] public MiniMap.Position MiniMapPosition = DefaultMiniMapPosition;
+		[JsonInclude] public Editor.SpacingMode MiniMapSpacingModeForVariable = DefaultMiniMapSpacingModeForVariable;
+		[JsonInclude] public uint MiniMapVisibleTimeRange = DefaultMiniMapVisibleTimeRange;
+		[JsonInclude] public uint MiniMapVisibleRowRange = DefaultMiniMapVisibleRowRange;
 
 		public bool IsUsingDefaults()
 		{

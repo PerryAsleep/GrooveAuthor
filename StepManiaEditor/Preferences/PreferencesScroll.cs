@@ -10,7 +10,6 @@ namespace StepManiaEditor
 		public const float DefaultVariableSpeedBPM = 120.0f;
 		
 		// Default values.
-		public const bool DefaultShowWaveForm = true;
 		public const Editor.ScrollMode DefaultScrollMode = Editor.ScrollMode.Time;
 		public const Editor.SpacingMode DefaultSpacingMode = Editor.SpacingMode.ConstantTime;
 		public const float DefaultTimeBasedPixelsPerSecond = 300.0f;

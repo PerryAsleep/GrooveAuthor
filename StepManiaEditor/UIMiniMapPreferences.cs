@@ -26,7 +26,7 @@ namespace StepManiaEditor
 
 			if (ImGuiLayoutUtils.BeginTable("Show MiniMap", 120))
 			{
-				ImGuiLayoutUtils.DrawRowCheckboxUndoable("Show Mini Map", p, nameof(PreferencesMiniMap.ShowMiniMap),
+				ImGuiLayoutUtils.DrawRowCheckbox(true, "Show Mini Map", p, nameof(PreferencesMiniMap.ShowMiniMap),
 					"Whether to show the mini map." +
 					"\nDisabling the mini map will increase performance.");
 				ImGuiLayoutUtils.EndTable();

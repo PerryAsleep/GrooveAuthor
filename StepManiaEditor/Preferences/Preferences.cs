@@ -53,7 +53,7 @@ namespace StepManiaEditor
 		[JsonInclude] public bool WindowFullScreen = false;
 		[JsonInclude] public bool WindowMaximized = false;
 
-		// Waveform preferences.
+		// Waveform preferences
 		[JsonInclude] public PreferencesWaveForm PreferencesWaveForm = new PreferencesWaveForm();
 
 		// Scroll control preferences
@@ -62,36 +62,20 @@ namespace StepManiaEditor
 		// MiniMap preferences
 		[JsonInclude] public PreferencesMiniMap PreferencesMiniMap = new PreferencesMiniMap();
 
+		// Option preferences
+		[JsonInclude] public PreferencesOptions PreferencesOptions = new PreferencesOptions();
+
 		// Log preferences
 		[JsonInclude] public bool ShowLogWindow = true;
 		[JsonInclude] public int LogWindowDateDisplay = 1;
 		[JsonInclude] public LogLevel LogWindowLevel = LogLevel.Info;
 		[JsonInclude] public bool LogWindowLineWrap;
 
-		// Option preferences
-		[JsonInclude] public bool ShowOptionsWindow = false;
-
-
+		// Misc
 		[JsonInclude] public bool ShowSongPropertiesWindow = false;
 		[JsonInclude] public bool ShowChartPropertiesWindow = false;
-
-		// Strings are serialized, but converted to an array of booleans for UI.
-		[JsonIgnore] public bool[] StartupChartTypesBools;
-		[JsonInclude] public SMCommon.ChartType[] StartupChartTypes =
-		{
-			SMCommon.ChartType.dance_single,
-			SMCommon.ChartType.dance_double
-		};
-		[JsonInclude] public bool OpenLastOpenedFileOnLaunch = false;
-
-		// Misc
 		[JsonInclude] public string OpenFileDialogInitialDirectory = @"C:\Games\StepMania 5\Songs\";
-		[JsonInclude] public int RecentFilesHistorySize = 10;
 		[JsonInclude] public List<SavedSongInformation> RecentFiles = new List<SavedSongInformation>();
-		[JsonInclude] public SMCommon.ChartType DefaultStepsType = SMCommon.ChartType.dance_single;
-		[JsonInclude] public SMCommon.ChartDifficultyType DefaultDifficultyType = SMCommon.ChartDifficultyType.Challenge;
-		[JsonInclude] public double PreviewFadeInTime = 0.0;
-		[JsonInclude] public double PreviewFadeOutTime = 1.5;
 
 		// Debug
 		[JsonInclude] public double DebugSongTime = 0.0;
@@ -108,32 +92,12 @@ namespace StepManiaEditor
 
 		private void PostLoad()
 		{
-			// Set up StartupChartTypesBools from StartupChartTypes.
-			StartupChartTypesBools = new bool[Enum.GetNames(typeof(SMCommon.ChartType)).Length];
-			foreach (var chartType in StartupChartTypes)
-			{
-				StartupChartTypesBools[(int)chartType] = true;
-			}
+			PreferencesOptions.PostLoad();
 		}
 
 		private void PreSave()
 		{
-			// Set up StartupChartTypes from StartupChartTypesBools.
-			var count = 0;
-			for (var i = 0; i < StartupChartTypesBools.Length; i++)
-			{
-				if (StartupChartTypesBools[i])
-					count++;
-			}
-			StartupChartTypes = new SMCommon.ChartType[count];
-			count = 0;
-			for (var i = 0; i < StartupChartTypesBools.Length; i++)
-			{
-				if (StartupChartTypesBools[i])
-				{
-					StartupChartTypes[count++] = (SMCommon.ChartType)i;
-				}
-			}
+			PreferencesOptions.PreSave();
 		}
 
 		/// <summary>
