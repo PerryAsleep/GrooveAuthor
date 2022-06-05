@@ -219,6 +219,7 @@ namespace StepManiaEditor
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.O }, OnOpen, false));
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Space }, OnTogglePlayback, false));
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.P }, OnTogglePlayPreview, false));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Escape }, OnEscape, false));
 
 			Content.RootDirectory = "Content";
 			IsMouseVisible = true;
@@ -2452,6 +2453,14 @@ namespace StepManiaEditor
 		private void OnRedo()
 		{
 			var action = ActionQueue.Instance.Redo();
+		}
+
+		private void OnEscape()
+		{
+			if (IsPlayingPreview())
+				StopPreview();
+			else if (Playing)
+				StopPlayback();
 		}
 
 		private void OnOpen()
