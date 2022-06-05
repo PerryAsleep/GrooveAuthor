@@ -299,7 +299,46 @@ namespace StepManiaEditor
 			return DrawLiveEdit<int>(undoable, title, o, fieldName, width, Func, IntCompare, help);
 		}
 
-		#endregion Slider Float
+		#endregion Slider Int
+
+		#region Slider UInt
+
+		public static bool DrawRowSliderUInt(
+			bool undoable,
+			string title,
+			object o,
+			string fieldName,
+			uint min,
+			uint max,
+			string format = null,
+			ImGuiSliderFlags flags = ImGuiSliderFlags.None,
+			string help = null)
+		{
+			DrawRowTitleAndAdvanceColumn(title);
+			return DrawSliderUInt(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, min, max, format, flags, help);
+		}
+
+		private static bool DrawSliderUInt(
+			bool undoable,
+			string title,
+			object o,
+			string fieldName,
+			float width,
+			uint min,
+			uint max,
+			string format = null,
+			ImGuiSliderFlags flags = ImGuiSliderFlags.None,
+			string help = null)
+		{
+			(bool, uint) Func(uint v)
+			{
+				var r = Utils.SliderUInt(GetElementTitle(title, fieldName), ref v, min, max, format, flags);
+				return (r, v);
+			}
+			return DrawLiveEdit<uint>(undoable, title, o, fieldName, width, Func, UIntCompare, help);
+		}
+
+		#endregion Slider UInt
 
 		#region Slider Float
 
@@ -450,20 +489,31 @@ namespace StepManiaEditor
 
 		#region Enum
 
-		public static void DrawRowEnum<T>(bool undoable, string title, object o, string fieldName, string help = null) where T : Enum
+		public static bool DrawRowEnum<T>(bool undoable, string title, object o, string fieldName, string help = null) where T : Enum
 		{
 			DrawRowTitleAndAdvanceColumn(title);
-			DrawEnum<T>(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, help);
+			return DrawEnum<T>(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, null, help);
 		}
 
-		public static void DrawEnum<T>(bool undoable, string title, object o, string fieldName, float width, string help = null) where T : Enum
+		public static bool DrawRowEnum<T>(bool undoable, string title, object o, string fieldName, T[] allowedValues, string help = null) where T : Enum
+		{
+			DrawRowTitleAndAdvanceColumn(title);
+			return DrawEnum<T>(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, allowedValues, help);
+		}
+
+		public static bool DrawEnum<T>(bool undoable, string title, object o, string fieldName, float width, T[] allowedValues, string help = null) where T : Enum
 		{
 			var value = GetValueFromFieldOrProperty<T>(o, fieldName);
 
 			var itemWidth = DrawHelp(help, width);
 			ImGui.SetNextItemWidth(itemWidth);
 			T newValue = value;
-			if (Utils.ComboFromEnum(GetElementTitle(title, fieldName), ref newValue))
+			var ret = false;
+			if (allowedValues != null)
+				ret = Utils.ComboFromEnum(GetElementTitle(title, fieldName), ref newValue, allowedValues, GetElementTitle(title, fieldName));
+			else
+				ret = Utils.ComboFromEnum(GetElementTitle(title, fieldName), ref newValue);
+			if (ret)
 			{
 				if (!newValue.Equals(value))
 				{
@@ -473,6 +523,7 @@ namespace StepManiaEditor
 						SetFieldOrPropertyToValue<T>(o, fieldName, newValue);
 				}
 			}
+			return ret;
 		}
 
 		#endregion Enum
@@ -513,6 +564,7 @@ namespace StepManiaEditor
 		#region Compare Functions
 
 		private static bool IntCompare(int a, int b) { return a == b; }
+		private static bool UIntCompare(uint a, uint b) { return a == b; }
 		private static bool FloatCompare(float a, float b) { return a.FloatEquals(b); }
 		private static bool DoubleCompare(double a, double b) { return a.DoubleEquals(b); }
 		private static bool StringCompare(string a, string b) { return a == b; }

@@ -111,6 +111,7 @@ namespace StepManiaEditor
 		private UIChartProperties UIChartProperties;
 		private UIWaveFormPreferences UIWaveFormPreferences;
 		private UIScrollPreferences UIScrollPreferences;
+		private UIMiniMapPreferences UIMiniMapPreferences;
 
 		private TextureAtlas TextureAtlas;
 
@@ -262,9 +263,7 @@ namespace StepManiaEditor
 			WaveFormRenderer.SetFocalPoint(FocalPoint);
 
 			MiniMap = new MiniMap(GraphicsDevice, new Rectangle(0, 0, 0, 0));
-			MiniMap.SetSelectMode(p.MiniMapSelectMode);
-			UpdateMiniMapBounds();
-			UpdateMiniMapLaneSpacing();
+			MiniMap.SetSelectMode(p.PreferencesMiniMap.MiniMapSelectMode);
 
 			TextureAtlas = new TextureAtlas(GraphicsDevice, 2048, 2048, 1);
 
@@ -272,6 +271,7 @@ namespace StepManiaEditor
 			UIChartProperties = new UIChartProperties(this);
 			UIWaveFormPreferences = new UIWaveFormPreferences(this, MusicManager);
 			UIScrollPreferences = new UIScrollPreferences();
+			UIMiniMapPreferences = new UIMiniMapPreferences(this);
 
 			base.Initialize();
 		}
@@ -346,9 +346,6 @@ namespace StepManiaEditor
 
 			// Update FocalPoint.
 			FocalPoint.X = Graphics.GraphicsDevice.Viewport.Width >> 1;
-
-			// Update ViewPort dependent state
-			UpdateMiniMapBounds();
 		}
 
 		protected override void Update(GameTime gameTime)
@@ -644,8 +641,6 @@ namespace StepManiaEditor
 			{
 				DesiredZoom = zoom;
 			}
-
-			UpdateMiniMapBounds();
 		}
 
 		protected override void Draw(GameTime gameTime)
@@ -703,33 +698,33 @@ namespace StepManiaEditor
 
 		private void UpdateWaveFormRenderer()
 		{
-			var p = Preferences.Instance.PreferencesWaveForm;
+			var pWave = Preferences.Instance.PreferencesWaveForm;
 
 			// Performance optimization. Do not update the texture if we won't render it.
-			if (!p.ShowWaveForm)
+			if (!pWave.ShowWaveForm)
 				return;
 
 			// Determine the sparse color.
-			var sparseColor = p.WaveFormSparseColor;
-			switch (p.WaveFormSparseColorOption)
+			var sparseColor = pWave.WaveFormSparseColor;
+			switch (pWave.WaveFormSparseColorOption)
 			{
 				case UIWaveFormPreferences.SparseColorOption.DarkerDenseColor:
-					sparseColor.X = p.WaveFormDenseColor.X * p.WaveFormSparseColorScale;
-					sparseColor.Y = p.WaveFormDenseColor.Y * p.WaveFormSparseColorScale;
-					sparseColor.Z = p.WaveFormDenseColor.Z * p.WaveFormSparseColorScale;
+					sparseColor.X = pWave.WaveFormDenseColor.X * pWave.WaveFormSparseColorScale;
+					sparseColor.Y = pWave.WaveFormDenseColor.Y * pWave.WaveFormSparseColorScale;
+					sparseColor.Z = pWave.WaveFormDenseColor.Z * pWave.WaveFormSparseColorScale;
 					break;
 				case UIWaveFormPreferences.SparseColorOption.SameAsDenseColor:
-					sparseColor = p.WaveFormDenseColor;
+					sparseColor = pWave.WaveFormDenseColor;
 					break;
 			}
 
 			// Update the WaveFormRenderer.
 			WaveFormRenderer.SetFocalPoint(FocalPoint);
-			WaveFormRenderer.SetXPerChannelScale(p.WaveFormMaxXPercentagePerChannel);
+			WaveFormRenderer.SetXPerChannelScale(pWave.WaveFormMaxXPercentagePerChannel);
 			WaveFormRenderer.SetColors(
-				p.WaveFormDenseColor.X, p.WaveFormDenseColor.Y, p.WaveFormDenseColor.Z,
+				pWave.WaveFormDenseColor.X, pWave.WaveFormDenseColor.Y, pWave.WaveFormDenseColor.Z,
 				sparseColor.X, sparseColor.Y, sparseColor.Z);
-			WaveFormRenderer.SetScaleXWhenZooming(p.WaveFormScaleXWhenZooming);
+			WaveFormRenderer.SetScaleXWhenZooming(pWave.WaveFormScaleXWhenZooming);
 			WaveFormRenderer.Update(SongTime, Zoom, WaveFormPPS);
 		}
 
@@ -1448,6 +1443,7 @@ namespace StepManiaEditor
 		private void ProcessInputForMiniMap(MouseState mouseState)
 		{
 			var pScroll = Preferences.Instance.PreferencesScroll;
+			var pMiniMap = Preferences.Instance.PreferencesMiniMap;
 
 			var mouseDownThisFrame = mouseState.LeftButton == ButtonState.Pressed &&
 			                         PreviousMouseState.LeftButton != ButtonState.Pressed;
@@ -1477,7 +1473,7 @@ namespace StepManiaEditor
 				if (mouseDownThisFrame && Playing)
 				{
 					// Set a flag to unpause playback unless the preference is to completely stop when scrolling.
-					StartPlayingWhenMiniMapDone = !Preferences.Instance.MiniMapStopPlaybackWhenScrolling;
+					StartPlayingWhenMiniMapDone = !pMiniMap.MiniMapStopPlaybackWhenScrolling;
 					StopPlayback();
 				}
 
@@ -1514,16 +1510,16 @@ namespace StepManiaEditor
 			}
 		}
 
-		public void UpdateMiniMapBounds()
+		private void UpdateMiniMapBounds()
 		{
 			var p = Preferences.Instance;
 			var x = 0;
 			var zoom = Math.Min(1.0, Zoom);
-			switch (p.MiniMapPosition)
+			switch (p.PreferencesMiniMap.MiniMapPosition)
 			{
 				case MiniMap.Position.RightSideOfWindow:
 				{
-					x = Graphics.PreferredBackBufferWidth - MiniMapXPadding - (int)p.MiniMapWidth;
+					x = Graphics.PreferredBackBufferWidth - MiniMapXPadding - (int)p.PreferencesMiniMap.MiniMapWidth;
 					break;
 				}
 				case MiniMap.Position.RightOfChartArea:
@@ -1555,35 +1551,39 @@ namespace StepManiaEditor
 
 			MiniMap.UpdateBounds(
 				GraphicsDevice,
-				new Rectangle(x, MiniMapYPaddingFromTop, (int)p.MiniMapWidth, h));
+				new Rectangle(x, MiniMapYPaddingFromTop, (int)p.PreferencesMiniMap.MiniMapWidth, h));
 		}
 
 		private void UpdateMiniMapLaneSpacing()
 		{
 			MiniMap.SetLaneSpacing(
-				Preferences.Instance.MiniMapNoteWidth,
-				Preferences.Instance.MiniMapNoteSpacing);
+				Preferences.Instance.PreferencesMiniMap.MiniMapNoteWidth,
+				Preferences.Instance.PreferencesMiniMap.MiniMapNoteSpacing);
 		}
 
 		private SpacingMode GetMiniMapSpacingMode()
 		{
 			if (Preferences.Instance.PreferencesScroll.SpacingMode == SpacingMode.Variable)
-				return Preferences.Instance.MiniMapSpacingModeForVariable;
+				return Preferences.Instance.PreferencesMiniMap.MiniMapSpacingModeForVariable;
 			return Preferences.Instance.PreferencesScroll.SpacingMode;
 		}
 
 		private void UpdateMiniMap()
 		{
+			var pMiniMap = Preferences.Instance.PreferencesMiniMap;
 			// Performance optimization. Do not update the MiniMap if we won't render it.
-			if (!Preferences.Instance.ShowMiniMap)
+			if (!pMiniMap.ShowMiniMap)
 				return;
 
 			if (ActiveChart == null || ActiveChart.EditorEvents == null)
 				return;
 
+			UpdateMiniMapBounds();
+			UpdateMiniMapLaneSpacing();
+
 			var pScroll = Preferences.Instance.PreferencesScroll;
 
-			MiniMap.SetSelectMode(Preferences.Instance.MiniMapSelectMode);
+			MiniMap.SetSelectMode(pMiniMap.MiniMapSelectMode);
 
 			switch (GetMiniMapSpacingMode())
 			{
@@ -1619,7 +1619,7 @@ namespace StepManiaEditor
 					MiniMap.UpdateBegin(
 						fullAreaTimeStart, fullAreaTimeEnd,
 						contentAreaTimeStart, contentAreaTimeEnd,
-						Preferences.Instance.MiniMapVisibleTimeRange,
+						pMiniMap.MiniMapVisibleTimeRange,
 						editorAreaTimeStart, editorAreaTimeEnd);
 
 					// Add notes
@@ -1726,7 +1726,7 @@ namespace StepManiaEditor
 					MiniMap.UpdateBegin(
 						fullAreaRowStart, fullAreaRowEnd,
 						contentAreaTimeStart, contentAreaTimeEnd,
-						Preferences.Instance.MiniMapVisibleRowRange,
+						pMiniMap.MiniMapVisibleRowRange,
 						editorAreaRowStart, editorAreaRowEnd);
 
 					// Add notes
@@ -1795,7 +1795,7 @@ namespace StepManiaEditor
 
 		private void DrawMiniMap()
 		{
-			if (!Preferences.Instance.ShowMiniMap)
+			if (!Preferences.Instance.PreferencesMiniMap.ShowMiniMap)
 				return;
 			MiniMap.Draw(SpriteBatch);
 		}
@@ -1873,7 +1873,7 @@ namespace StepManiaEditor
 			DrawLogUI();
 			UIScrollPreferences.Draw();
 			UIWaveFormPreferences.Draw();
-			DrawMiniMapUI();
+			UIMiniMapPreferences.Draw();
 			DrawOptionsUI();
 
 			UISongProperties.Draw(EditorSong);
@@ -1946,7 +1946,7 @@ namespace StepManiaEditor
 					if (ImGui.MenuItem("Scroll Preferences"))
 						p.PreferencesScroll.ShowScrollControlPreferencesWindow = true;
 					if (ImGui.MenuItem("Mini Map Preferences"))
-						p.ShowMiniMapWindow = true;
+						p.PreferencesMiniMap.ShowMiniMapPreferencesWindow = true;
 
 					ImGui.Separator();
 					if (ImGui.MenuItem("Log"))
@@ -2037,78 +2037,6 @@ namespace StepManiaEditor
 				}
 				ImGui.EndChild();
 			}
-
-			ImGui.End();
-		}
-
-		private void DrawMiniMapUI()
-		{
-			if (!Preferences.Instance.ShowMiniMapWindow)
-				return;
-			ImGui.SetNextWindowSize(new System.Numerics.Vector2(0, 0), ImGuiCond.FirstUseEver);
-			ImGui.Begin("Mini Map Preferences", ref Preferences.Instance.ShowMiniMapWindow, ImGuiWindowFlags.NoScrollbar);
-
-			ImGui.PushItemWidth(200);
-
-			ImGui.Checkbox("Show Mini Map", ref Preferences.Instance.ShowMiniMap);
-
-			ImGui.Separator();
-			if (ComboFromEnum("Position", ref Preferences.Instance.MiniMapPosition))
-				UpdateMiniMapBounds();
-			if (SliderUInt("Width", ref Preferences.Instance.MiniMapWidth, 2, 128, null, ImGuiSliderFlags.None))
-				UpdateMiniMapBounds();
-			if (SliderUInt("Note Width", ref Preferences.Instance.MiniMapNoteWidth, 1, 32, null, ImGuiSliderFlags.None))
-				UpdateMiniMapLaneSpacing();
-			if (SliderUInt("Note Spacing", ref Preferences.Instance.MiniMapNoteSpacing, 0, 32, null, ImGuiSliderFlags.None))
-				UpdateMiniMapLaneSpacing();
-
-			ImGui.Separator();
-			ComboFromEnum("Select Mode", ref Preferences.Instance.MiniMapSelectMode);
-			ImGui.SameLine();
-			HelpMarker("How the editor should move when selecting an area outside of the editor range in the mini map."
-			           + "\nMove Editor To Cursor:         Move the editor to the cursor, not to the area under the cursor."
-			           + "\n                               This is the natural option if you consider the mini map like a scroll bar."
-			           + "\nMove Editor To Selected Area:  Move the editor to the area under the cursor, not to the cursor."
-			           + "\n                               This is the natural option if you consider the mini map like a map.");
-
-			ImGui.Checkbox("Always Grab", ref Preferences.Instance.MiniMapGrabWhenClickingOutsideEditorArea);
-			ImGui.SameLine();
-			HelpMarker("When the Select Mode is set to Move Editor To Cursor, enabling this will cause the editor range "
-			           + "\nto be grabbed while holding down the left mouse button.");
-			ImGui.Checkbox("Stop Playback When Scrolling", ref Preferences.Instance.MiniMapStopPlaybackWhenScrolling);
-
-			ImGui.Separator();
-			ComboFromEnum("Spacing Mode For Variable Scroll Spacing",
-				ref Preferences.Instance.MiniMapSpacingModeForVariable,
-				Preferences.MiniMapVariableSpacingModes,
-				"MiniMapVariableScrollSpacing");
-			ImGui.SameLine();
-			HelpMarker("The Spacing Mode the MiniMap should use when the Scroll Spacing Mode is Variable.");
-			SliderUInt("Constant Time Spacing Range (seconds)", ref Preferences.Instance.MiniMapVisibleTimeRange, 30, 300, null,
-				ImGuiSliderFlags.Logarithmic);
-			SliderUInt("Constant Row Spacing Range (rows)", ref Preferences.Instance.MiniMapVisibleRowRange, 3072, 28800, null,
-				ImGuiSliderFlags.Logarithmic);
-
-			ImGui.Separator();
-			if (ImGui.Button("Restore Defaults"))
-			{
-				Preferences.Instance.ShowMiniMap = Preferences.DefaultShowMiniMap;
-				Preferences.Instance.MiniMapSelectMode = Preferences.DefualtMiniMapSelectMode;
-				Preferences.Instance.MiniMapGrabWhenClickingOutsideEditorArea =
-					Preferences.DefaultMiniMapGrabWhenClickingOutsideEditorArea;
-				Preferences.Instance.MiniMapStopPlaybackWhenScrolling = Preferences.DefaultMiniMapStopPlaybackWhenScrolling;
-				Preferences.Instance.MiniMapWidth = Preferences.DefaultMiniMapWidth;
-				Preferences.Instance.MiniMapNoteWidth = Preferences.DefaultMiniMapNoteWidth;
-				Preferences.Instance.MiniMapNoteSpacing = Preferences.DefaultMiniMapNoteSpacing;
-				Preferences.Instance.MiniMapPosition = Preferences.DefaultMiniMapPosition;
-				Preferences.Instance.MiniMapSpacingModeForVariable = Preferences.DefaultMiniMapSpacingModeForVariable;
-				Preferences.Instance.MiniMapVisibleTimeRange = Preferences.DefaultMiniMapVisibleTimeRange;
-				Preferences.Instance.MiniMapVisibleRowRange = Preferences.DefaultMiniMapVisibleRowRange;
-				UpdateMiniMapBounds();
-				UpdateMiniMapLaneSpacing();
-			}
-
-			ImGui.PopItemWidth();
 
 			ImGui.End();
 		}

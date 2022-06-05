@@ -44,13 +44,10 @@ namespace StepManiaEditor
 			ImGui.Separator();
 			if (ImGuiLayoutUtils.BeginTable("Waveform", 120))
 			{
-				if (ImGuiLayoutUtils.DrawRowCheckboxUndoable("Scale Width", p,
-					    nameof(PreferencesWaveForm.WaveFormScaleXWhenZooming),
-					    "When zooming, whether the waveform should scale its width to match" +
-					    "\nthe chart instead of staying a constant width."))
-				{
-					Editor.UpdateMiniMapBounds();
-				}
+				ImGuiLayoutUtils.DrawRowCheckboxUndoable("Scale Width", p,
+					nameof(PreferencesWaveForm.WaveFormScaleXWhenZooming),
+					"When zooming, whether the waveform should scale its width to match" +
+					"\nthe chart instead of staying a constant width.");
 
 				ImGuiLayoutUtils.DrawRowSliderFloat(true, "Channel Width", p,
 					nameof(PreferencesWaveForm.WaveFormMaxXPercentagePerChannel),

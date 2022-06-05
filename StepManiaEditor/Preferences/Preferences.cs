@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Numerics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
@@ -61,31 +60,7 @@ namespace StepManiaEditor
 		[JsonInclude] public PreferencesScroll PreferencesScroll = new PreferencesScroll();
 
 		// MiniMap preferences
-		public const bool DefaultShowMiniMap = true;
-		public const MiniMap.SelectMode DefualtMiniMapSelectMode = MiniMap.SelectMode.MoveEditorToCursor;
-		public const bool DefaultMiniMapGrabWhenClickingOutsideEditorArea = true;
-		public const bool DefaultMiniMapStopPlaybackWhenScrolling = false;
-		public const uint DefaultMiniMapWidth = 90;
-		public const uint DefaultMiniMapNoteWidth = 2;
-		public const uint DefaultMiniMapNoteSpacing = 3;
-		public const MiniMap.Position DefaultMiniMapPosition = MiniMap.Position.RightOfChartArea;
-		public const Editor.SpacingMode DefaultMiniMapSpacingModeForVariable = Editor.SpacingMode.ConstantTime;
-		public static readonly Editor.SpacingMode[] MiniMapVariableSpacingModes = { Editor.SpacingMode.ConstantTime, Editor.SpacingMode.ConstantRow };
-		public const uint DefaultMiniMapVisibleTimeRange = 240;
-		public const uint DefaultMiniMapVisibleRowRange = 24576;
-
-		[JsonInclude] public bool ShowMiniMapWindow = false;
-		[JsonInclude] public bool ShowMiniMap = DefaultShowMiniMap;
-		[JsonInclude] public MiniMap.SelectMode MiniMapSelectMode = DefualtMiniMapSelectMode;
-		[JsonInclude] public bool MiniMapGrabWhenClickingOutsideEditorArea = DefaultMiniMapGrabWhenClickingOutsideEditorArea;
-		[JsonInclude] public bool MiniMapStopPlaybackWhenScrolling = DefaultMiniMapStopPlaybackWhenScrolling;
-		[JsonInclude] public uint MiniMapWidth = DefaultMiniMapWidth;
-		[JsonInclude] public uint MiniMapNoteWidth = DefaultMiniMapNoteWidth;
-		[JsonInclude] public uint MiniMapNoteSpacing = DefaultMiniMapNoteSpacing;
-		[JsonInclude] public MiniMap.Position MiniMapPosition = DefaultMiniMapPosition;
-		[JsonInclude] public Editor.SpacingMode MiniMapSpacingModeForVariable = DefaultMiniMapSpacingModeForVariable;
-		[JsonInclude] public uint MiniMapVisibleTimeRange = DefaultMiniMapVisibleTimeRange;
-		[JsonInclude] public uint MiniMapVisibleRowRange = DefaultMiniMapVisibleRowRange;
+		[JsonInclude] public PreferencesMiniMap PreferencesMiniMap = new PreferencesMiniMap();
 
 		// Log preferences
 		[JsonInclude] public bool ShowLogWindow = true;
