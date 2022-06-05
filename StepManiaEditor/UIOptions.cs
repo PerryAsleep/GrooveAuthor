@@ -1,12 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using Fumen.Converters;
+﻿using Fumen.Converters;
 using ImGuiNET;
 
 namespace StepManiaEditor
 {
+	/// <summary>
+	/// Class for drawing options UI.
+	/// </summary>
 	public class UIOptions
 	{
 		public void Draw()
@@ -37,10 +36,10 @@ namespace StepManiaEditor
 			if (ImGuiLayoutUtils.BeginTable("Options File History", 160))
 			{
 				ImGuiLayoutUtils.DrawRowCheckbox(true, "Open Last File On Launch", p, nameof(PreferencesOptions.OpenLastOpenedFileOnLaunch),
-					"");
+					"Whether or not to open the last opened file when launching the application.");
 				ImGuiLayoutUtils.DrawRowSliderInt(true, "File History Size", p,
 					nameof(PreferencesOptions.RecentFilesHistorySize), 0, 50,
-					"");
+					"Number of files to remember in the history used for opening recent files.");
 
 				ImGuiLayoutUtils.EndTable();
 			}
