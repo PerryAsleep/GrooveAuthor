@@ -110,9 +110,21 @@ namespace StepManiaEditor
 		public double SpecifiedTempoMin;
 		public double SpecifiedTempoMax;
 
+		// Not serialized. Used for UI controls to avoid having to enter both a min and a max
+		// when just wanted one tempo.
+		public bool ShouldAllowEditsOfMax = true;
+
 		public DisplayTempo()
 		{
 
+		}
+
+		public DisplayTempo(DisplayTempoMode mode, double min, double max)
+		{
+			Mode = mode;
+			SpecifiedTempoMin = min;
+			SpecifiedTempoMax = max;
+			ShouldAllowEditsOfMax = !SpecifiedTempoMin.DoubleEquals(SpecifiedTempoMax);
 		}
 
 		public DisplayTempo(DisplayTempo other)
@@ -120,6 +132,7 @@ namespace StepManiaEditor
 			Mode = other.Mode;
 			SpecifiedTempoMin = other.SpecifiedTempoMin;
 			SpecifiedTempoMax = other.SpecifiedTempoMax;
+			ShouldAllowEditsOfMax = other.ShouldAllowEditsOfMax;
 		}
 
 		public void FromString(string displayTempoString)
@@ -147,6 +160,7 @@ namespace StepManiaEditor
 						parsed = true;
 						SpecifiedTempoMax = SpecifiedTempoMin;
 						Mode = DisplayTempoMode.Specified;
+						ShouldAllowEditsOfMax = false;
 					}
 				}
 				else if (parts.Length == 2)
@@ -155,6 +169,7 @@ namespace StepManiaEditor
 					{
 						parsed = true;
 						Mode = DisplayTempoMode.Specified;
+						ShouldAllowEditsOfMax = !SpecifiedTempoMin.DoubleEquals(SpecifiedTempoMax);
 					}
 				}
 			}
@@ -320,12 +335,12 @@ namespace StepManiaEditor
 			song.Extras.TryGetExtra(SMCommon.TagSampleStart, out SampleStart, true);
 			song.Extras.TryGetExtra(SMCommon.TagSampleLength, out SampleLength, true);
 
-			var hasDisplayTempo = song.Extras.TryGetExtra(SMCommon.TagDisplayBPM, out string displayTempoString, true);
+			var hasDisplayTempo = song.Extras.TryGetExtra(SMCommon.TagDisplayBPM, out object _, true);
 			DisplayTempo displayTempo = null;
 			if (hasDisplayTempo)
 			{
 				displayTempo = new DisplayTempo();
-				displayTempo.FromString(displayTempoString);
+				displayTempo.FromString(SMCommon.GetDisplayBPMStringFromSourceExtrasList(song.Extras, null));
 			}
 
 			song.Extras.TryGetExtra(SMCommon.TagSelectable, out string selectableString, true);
@@ -454,8 +469,8 @@ namespace StepManiaEditor
 		public double MaxTempo;
 
 
-		public int NumInputs;
-		public int NumPlayers;
+		public readonly int NumInputs;
+		public readonly int NumPlayers;
 
 
 		public EditorChart(Editor editor, Chart chart)
@@ -481,7 +496,12 @@ namespace StepManiaEditor
 			MusicPath = musicPath;
 			UsesChartMusicOffset = chart.Extras.TryGetExtra(SMCommon.TagOffset, out MusicOffset, true);
 
-			HasDisplayTempoFromChart = chart.Extras.TryGetExtra(SMCommon.TagDisplayBPM, out string displayTempoString, true);
+			HasDisplayTempoFromChart = chart.Extras.TryGetExtra(SMCommon.TagDisplayBPM, out object _, true);
+			var displayTempoString = "";
+			if (HasDisplayTempoFromChart)
+			{
+				displayTempoString = SMCommon.GetDisplayBPMStringFromSourceExtrasList(chart.Extras, null);
+			}
 			DisplayTempo.FromString(displayTempoString);
 
 			// TODO: I wonder if there is an optimization to not do all the tree parsing for inactive charts.
@@ -587,7 +607,7 @@ namespace StepManiaEditor
 					}
 
 					minTempo = Math.Min(minTempo, tc.TempoBPM);
-					maxTempo = Math.Min(maxTempo, tc.TempoBPM);
+					maxTempo = Math.Max(maxTempo, tc.TempoBPM);
 
 					var newEvent = new EditorRateAlteringEvent
 					{

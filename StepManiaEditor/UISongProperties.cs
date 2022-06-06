@@ -138,8 +138,6 @@ namespace StepManiaEditor
 				if (ImGuiLayoutUtils.DrawRowButton(null, Editor.IsPlayingPreview() ? "Stop Preview" : "Play Preview"))
 					Editor.OnTogglePlayPreview();
 
-				// DisplayTemp
-
 				// TODO: Better LastSecondHint Controls.
 				ImGuiLayoutUtils.DrawRowDragDouble(true, "Last Second Hint", EditorSong, nameof(EditorSong.LastSecondHint),
 					"The specified end time of the song." +

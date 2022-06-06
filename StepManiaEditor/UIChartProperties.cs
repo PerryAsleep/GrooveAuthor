@@ -10,11 +10,15 @@ namespace StepManiaEditor
 	public class UIChartProperties
 	{
 		private readonly Editor Editor;
+		private readonly DisplayTempo DummyDisplayTempo;
+		
 		private static EditorChart EditorChart;
+
 
 		public UIChartProperties(Editor editor)
 		{
 			Editor = editor;
+			DummyDisplayTempo = new DisplayTempo(DisplayTempoMode.Specified, 0.0, 0.0);
 		}
 
 		public void Draw(EditorChart editorChart)
@@ -50,7 +54,12 @@ namespace StepManiaEditor
 					"Who this chart should be credited to.");
 				ImGuiLayoutUtils.DrawRowTextInput(true, "Style", EditorChart, nameof(EditorChart.Style),
 					"(Uncommon) Originally meant to denote \"Pad\" versus \"Keyboard\" charts.");
-				
+
+				if (EditorChart != null)
+					ImGuiLayoutUtils.DrawRowDisplayTempo(true, EditorChart.DisplayTempo, EditorChart.MinTempo, EditorChart.MaxTempo);
+				else
+					ImGuiLayoutUtils.DrawRowDisplayTempo(true, DummyDisplayTempo, 0.0, 0.0);
+
 				ImGuiLayoutUtils.EndTable();
 			}
 
