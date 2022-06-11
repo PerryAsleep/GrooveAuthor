@@ -217,6 +217,10 @@ namespace StepManiaEditor
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.Z }, OnRedo, true));
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.Y }, OnRedo, true));
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.O }, OnOpen, false));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.S }, OnSave, false));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.E }, OnExport, false));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.E }, OnExportAs, false));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.N }, OnNew, false));
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Space }, OnTogglePlayback, false));
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.P }, OnTogglePlayPreview, false));
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Escape }, OnEscape, false));
@@ -1930,9 +1934,30 @@ namespace StepManiaEditor
 					if (ImGui.MenuItem("Reload", "Ctrl+R", false,
 						    EditorSong != null && p.RecentFiles.Count > 0))
 					{
+						// TODO: Need to make sure this right, also need to hook up key command.
 						OpenSongFileAsync(p.RecentFiles[0].FileName,
 							p.RecentFiles[0].LastChartType,
 							p.RecentFiles[0].LastChartDifficultyType);
+					}
+
+					var editorFileName = EditorSong?.FileName;
+					if (!string.IsNullOrEmpty(editorFileName))
+					{
+						if (ImGui.MenuItem($"Export {editorFileName}", "Ctrl+E"))
+						{
+							OnExport();
+						}
+					}
+					else
+					{
+						if (ImGui.MenuItem("Export", "Ctrl+E", false, EditorSong != null))
+						{
+							OnExport();
+						}
+					}
+					if (ImGui.MenuItem("Export As...", "Ctrl+Shift+E", false, EditorSong != null))
+					{
+						OnExportAs();
 					}
 
 					if (ImGui.MenuItem("Exit", "Alt+F4"))
@@ -2220,7 +2245,7 @@ namespace StepManiaEditor
 						LoadSongCancellationTokenSource.Token.ThrowIfCancellationRequested();
 						EditorSong = new EditorSong(
 							this,
-							System.IO.Path.GetDirectoryName(fileName),
+							fileName,
 							song,
 							GraphicsDevice,
 							ImGuiRenderer);
@@ -2466,6 +2491,111 @@ namespace StepManiaEditor
 		private void OnOpen()
 		{
 			OpenSongFile();
+		}
+
+		private void OnNew()
+		{
+			// Prompt for saving first.
+
+		}
+		private void OnSave()
+		{
+			// TODO: Export vs Save
+			if (EditorSong != null)
+			{
+				var song = EditorSong.SaveToSong();
+
+				//var saveFile = Fumen.Path.GetWin32FileSystemFullPath(Fumen.Path.Combine(songArgs.SaveDir, songArgs.FileInfo.Name));
+				//var config = new SMWriterBase.SMWriterBaseConfig
+				//{
+				//	FilePath = saveFile,
+				//	Song = song,
+				//	MeasureSpacingBehavior = SMWriterBase.MeasureSpacingBehavior.UseLeastCommonMultiple,
+				//	PropertyEmissionBehavior = SMWriterBase.PropertyEmissionBehavior.Stepmania,
+				//};
+				//var fileFormat = FileFormat.GetFileFormatByExtension(songArgs.FileInfo.Extension);
+				//switch (fileFormat.Type)
+				//{
+				//	case FileFormatType.SM:
+				//		new SMWriter(config).Save();
+				//		break;
+				//	case FileFormatType.SSC:
+				//		new SSCWriter(config).Save();
+				//		break;
+				//	default:
+				//		LogError("Unsupported file format. Cannot save.", songArgs.FileInfo, songArgs.RelativePath);
+				//		break;
+				//}
+			}
+		}
+
+		private void OnExport()
+		{
+			if (EditorSong == null)
+				return;
+
+			if (EditorSong.FileFormat == null)
+				return;
+
+			Export(EditorSong.FileFormat.Type, EditorSong.FileFullPath, EditorSong);
+		}
+
+		private void OnExportAs()
+		{
+			if (EditorSong != null)
+				return;
+
+			SaveFileDialog saveFileDialog1 = new SaveFileDialog();
+			saveFileDialog1.Filter = "SSC File|*.ssc|SM File|*.sm";
+			saveFileDialog1.Title = "Export As...";
+			if (saveFileDialog1.ShowDialog() != DialogResult.OK)
+				return;
+			
+			var fullPath = saveFileDialog1.FileName;
+			var extension = System.IO.Path.GetExtension(fullPath);
+			var fileFormat = FileFormat.GetFileFormatByExtension(extension);
+			if (fileFormat == null)
+				return;
+
+			Export(fileFormat.Type, fullPath, EditorSong);
+		}
+
+		private void Export(FileFormatType fileType, string fullPath, EditorSong editorSong)
+		{
+			// TODO: Check for incompatible features with SM format.
+			if (fileType == FileFormatType.SM)
+			{
+
+			}
+
+			// Temp hack to not overwrite original file.
+			var start = fullPath.Substring(0, fullPath.LastIndexOf('.'));
+			var end = fullPath.Substring(fullPath.LastIndexOf('.'));
+			fullPath = $"{start}-exported{end}";
+
+			var song = EditorSong.SaveToSong();
+			var config = new SMWriterBase.SMWriterBaseConfig
+			{
+				FilePath = fullPath,
+				Song = song,
+				MeasureSpacingBehavior = SMWriterBase.MeasureSpacingBehavior.UseLeastCommonMultiple,
+				PropertyEmissionBehavior = SMWriterBase.PropertyEmissionBehavior.Stepmania,
+			};
+			switch (fileType)
+			{
+				case FileFormatType.SM:
+					new SMWriter(config).Save();
+					break;
+				case FileFormatType.SSC:
+					new SSCWriter(config).Save();
+					break;
+				default:
+					Logger.Error("Unsupported file format. Cannot save.");
+					break;
+			}
+
+			// Update the EditorSong's file path information.
+			editorSong.SetFullFilePath(fullPath);
 		}
 
 		private void OnTogglePlayback()

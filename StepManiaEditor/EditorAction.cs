@@ -264,4 +264,35 @@ namespace StepManiaEditor
 				DisplayTempo.SpecifiedTempoMax = PreviousMax;
 		}
 	}
+
+	public class ActionSetObjectFieldOrPropertyValue<T, U> : EditorAction where T : struct where U : struct
+	{
+		private readonly ActionSetObjectFieldOrPropertyValue<T> ActionFirst;
+		private readonly ActionSetObjectFieldOrPropertyValue<U> ActionSecond;
+
+		public ActionSetObjectFieldOrPropertyValue(object o,
+			string fieldOrPropertyNameFirst, T valueFirst, T previousValueFirst,
+			string fieldOrPropertyNameSecond, U valueSecond, U previousValueSecond)
+		{
+			ActionFirst = new ActionSetObjectFieldOrPropertyValue<T>(o, fieldOrPropertyNameFirst, valueFirst, previousValueFirst);
+			ActionSecond = new ActionSetObjectFieldOrPropertyValue<U>(o, fieldOrPropertyNameSecond, valueSecond, previousValueSecond);
+		}
+
+		public override string ToString()
+		{
+			return $"{ActionFirst} {ActionSecond}";
+		}
+
+		public override void Do()
+		{
+			ActionFirst.Do();
+			ActionSecond.Do();
+		}
+
+		public override void Undo()
+		{
+			ActionFirst.Undo();
+			ActionSecond.Undo();
+		}
+	}
 }

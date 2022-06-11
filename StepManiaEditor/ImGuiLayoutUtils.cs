@@ -444,7 +444,68 @@ namespace StepManiaEditor
 			double max = 0.0)
 		{
 			DrawRowTitleAndAdvanceColumn(title);
-			return DrawDragDouble(true, title, o, fieldName, ImGui.GetContentRegionAvail().X, help, speed, format, useMin, min, useMax, max);
+			return DrawDragDouble(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, help, speed, format, useMin, min, useMax, max);
+		}
+
+		public static void DrawRowDragDoubleWithEnabledCheckbox(
+			bool undoable,
+			string title,
+			object o,
+			string fieldName,
+			string enabledFieldName,
+			string help = null,
+			float speed = 0.0001f,
+			string format = "%.6f",
+			bool useMin = false,
+			double min = 0.0,
+			bool useMax = false,
+			double max = 0.0)
+		{
+			title ??= "";
+
+			DrawRowTitleAndAdvanceColumn(title);
+
+			bool enabled;
+
+			var controlWidth = ImGui.GetContentRegionAvail().X - 20.0f - ImGui.GetStyle().ItemSpacing.X;
+
+			// Draw the checkbox for enabling the other control.
+			if (DrawCheckbox(false, title + "check", o, enabledFieldName, 20.0f, help))
+			{
+				if (undoable)
+				{
+					enabled = GetValueFromFieldOrProperty<bool>(o, enabledFieldName);
+
+					// If disabling the checkbox enqueue an action for undoing both the bool
+					// and the setting of the double value to 0.
+					if (!enabled)
+					{
+						ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyValue<double, bool>(
+							o,
+							fieldName, 0.0, GetValueFromFieldOrProperty<double>(o, fieldName),
+							enabledFieldName, enabled, !enabled));
+					}
+
+					// If enabling the checkbox we only need to enqueue an action for the checkbox bool.
+					else
+					{
+						ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyValue<bool>(
+							o,
+							enabledFieldName, enabled, !enabled));
+					}
+				}
+			}
+
+			enabled = GetValueFromFieldOrProperty<bool>(o, enabledFieldName);
+			if (!enabled)
+				Utils.PushDisabled();
+
+			// Control for the double value.
+			ImGui.SameLine();
+			DrawDragDouble(undoable, title, o, fieldName, controlWidth, null, speed, format, useMin, min, useMax, max);
+
+			if (!enabled)
+				Utils.PopDisabled();
 		}
 
 		private static bool DrawDragDouble(

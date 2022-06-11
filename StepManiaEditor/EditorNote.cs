@@ -74,6 +74,9 @@ namespace StepManiaEditor
 
 		public static EditorEvent CreateEvent(Event chartEvent)
 		{
+			// Intentional modification of DestType to preserve StepMania types like mines.
+			chartEvent.DestType = chartEvent.SourceType;
+
 			if (chartEvent is LaneTapNote ltn)
 				return new EditorTapNote(ltn);
 			if (chartEvent is LaneHoldStartNote lhsn)

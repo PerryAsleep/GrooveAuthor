@@ -63,8 +63,40 @@ namespace StepManiaEditor
 				ImGuiLayoutUtils.EndTable();
 			}
 
+			ImGui.Separator();
+			if (ImGuiLayoutUtils.BeginTable("ChartMusicTable", 100))
+			{
+				ImGuiLayoutUtils.DrawRowFileBrowse("Music", EditorChart, nameof(EditorChart.MusicPath), BrowseMusicFile, ClearMusicFile,
+					"(Uncommon) The audio file to use this chart, overriding the song music." +
+					"\nIn most cases all charts use the same music and it is defined at the song level.");
+				
+				ImGuiLayoutUtils.DrawRowDragDoubleWithEnabledCheckbox(true, "Music Offset", EditorChart, nameof(EditorChart.MusicOffset), nameof(EditorChart.UsesChartMusicOffset),
+					"(Uncommon) The music offset from the start of the chart." +
+					"\nIn most cases all charts use the same music offset and it is defined at the song level.",
+					0.0001f, "%.6f seconds");
+
+				ImGuiLayoutUtils.EndTable();
+			}
+
 			if (EditorChart == null)
 				Utils.PopDisabled();
+		}
+
+		private static void BrowseMusicFile()
+		{
+			var relativePath = Utils.BrowseFile(
+				"Music",
+				EditorChart.EditorSong.FileDirectory,
+				EditorChart.MusicPath,
+				Utils.FileOpenFilterForAudio("Music", true));
+			if (relativePath != null && relativePath != EditorChart.MusicPath)
+				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorChart, nameof(EditorChart.MusicPath), relativePath));
+		}
+
+		private static void ClearMusicFile()
+		{
+			if (!string.IsNullOrEmpty(EditorChart.MusicPath))
+				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorChart, nameof(EditorChart.MusicPath), ""));
 		}
 	}
 }
