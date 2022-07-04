@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Reflection;
 using ImGuiNET;
 using System.Numerics;
+using Fumen;
+using Fumen.ChartDefinition;
 
 namespace StepManiaEditor
 {
@@ -31,6 +33,7 @@ namespace StepManiaEditor
 				ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, titleColumnWidth);
 				ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100);
 			}
+
 			return ret;
 		}
 
@@ -97,6 +100,7 @@ namespace StepManiaEditor
 					SetFieldOrPropertyToValue(o, fieldName, value);
 				}
 			}
+
 			return ret;
 		}
 
@@ -133,7 +137,8 @@ namespace StepManiaEditor
 			DrawTextInput(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, help);
 		}
 
-		public static void DrawRowTextInputWithTransliteration(bool undoable, string title, object o, string fieldName, string transliterationFieldName, string help = null)
+		public static void DrawRowTextInputWithTransliteration(bool undoable, string title, object o, string fieldName,
+			string transliterationFieldName, string help = null)
 		{
 			DrawRowTitleAndAdvanceColumn(title);
 			DrawTextInput(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X * 0.5f, help);
@@ -142,7 +147,8 @@ namespace StepManiaEditor
 				"Optional text to use when sorting by this value.\nStepMania sorts values lexicographically, preferring transliterations.");
 		}
 
-		private static void DrawTextInput(bool undoable, string title, object o, string fieldName, float width, string help = null)
+		private static void DrawTextInput(bool undoable, string title, object o, string fieldName, float width,
+			string help = null)
 		{
 			(bool, string) Func(string v)
 			{
@@ -150,10 +156,33 @@ namespace StepManiaEditor
 				var r = ImGui.InputTextWithHint(GetElementTitle(title, fieldName), title, ref v, 256);
 				return (r, v);
 			}
-			DrawCachedEditReference<string>(undoable, title, o, fieldName, width, Func, StringCompare, help);
+
+			DrawCachedEditReference<string>(undoable, title, o, fieldName, width, Func, StringCompare, null, help);
 		}
 
 		#endregion Text Input
+
+		#region Time Signature
+
+		private static void DrawTimeSignatureInput(bool undoable, string title, object o, string fieldName, float width,
+			string help = null)
+		{
+			(bool, string) Func(string v)
+			{
+				v ??= "";
+				var r = ImGui.InputText(GetElementTitle(title, fieldName), ref v, 256);
+				return (r, v);
+			}
+
+			bool ValidationFunc(string v)
+			{
+				return Fraction.FromString(v) != null;
+			}
+
+			DrawCachedEditReference<string>(undoable, title, o, fieldName, width, Func, StringCompare, ValidationFunc, help);
+		}
+
+		#endregion Time Signature
 
 		#region File Browse
 
@@ -164,7 +193,8 @@ namespace StepManiaEditor
 
 			// Display the text input but do not allow edits to it.
 			Utils.PushDisabled();
-			DrawTextInput(false, title, o, fieldName, Math.Max(1.0f, ImGui.GetContentRegionAvail().X - 70.0f - ImGui.GetStyle().ItemSpacing.X * 2), help);
+			DrawTextInput(false, title, o, fieldName,
+				Math.Max(1.0f, ImGui.GetContentRegionAvail().X - 70.0f - ImGui.GetStyle().ItemSpacing.X * 2), help);
 			Utils.PopDisabled();
 
 			ImGui.SameLine();
@@ -181,13 +211,15 @@ namespace StepManiaEditor
 		}
 
 		public static void DrawRowAutoFileBrowse(
-			string title, object o, string fieldName, Action autoAction, Action browseAction, Action clearAction, string help = null)
+			string title, object o, string fieldName, Action autoAction, Action browseAction, Action clearAction,
+			string help = null)
 		{
 			DrawRowTitleAndAdvanceColumn(title);
 
 			// Display the text input but do not allow edits to it.
 			Utils.PushDisabled();
-			DrawTextInput(false, title, o, fieldName, Math.Max(1.0f, ImGui.GetContentRegionAvail().X - 120.0f - ImGui.GetStyle().ItemSpacing.X * 3), help);
+			DrawTextInput(false, title, o, fieldName,
+				Math.Max(1.0f, ImGui.GetContentRegionAvail().X - 120.0f - ImGui.GetStyle().ItemSpacing.X * 3), help);
 			Utils.PopDisabled();
 
 			ImGui.SameLine();
@@ -245,6 +277,7 @@ namespace StepManiaEditor
 				var r = Utils.InputInt(GetElementTitle(title, fieldName), ref v, useMin, min, useMax, max);
 				return (r, v);
 			}
+
 			DrawLiveEditValue<int>(undoable, title, o, fieldName, width, Func, IntCompare, help);
 		}
 
@@ -280,6 +313,7 @@ namespace StepManiaEditor
 				var r = ImGui.SliderInt(GetElementTitle(title, fieldName), ref v, min, max);
 				return (r, v);
 			}
+
 			return DrawLiveEditValue<int>(undoable, title, o, fieldName, width, Func, IntCompare, help);
 		}
 
@@ -319,6 +353,7 @@ namespace StepManiaEditor
 				var r = Utils.SliderUInt(GetElementTitle(title, fieldName), ref v, min, max, format, flags);
 				return (r, v);
 			}
+
 			return DrawLiveEditValue<uint>(undoable, title, o, fieldName, width, Func, UIntCompare, help);
 		}
 
@@ -358,6 +393,7 @@ namespace StepManiaEditor
 				var r = ImGui.SliderFloat(GetElementTitle(title, fieldName), ref v, min, max, format, flags);
 				return (r, v);
 			}
+
 			return DrawLiveEditValue<float>(undoable, title, o, fieldName, width, Func, FloatCompare, help);
 		}
 
@@ -376,7 +412,8 @@ namespace StepManiaEditor
 			DrawRowTitleAndAdvanceColumn(title);
 
 			// Slider
-			DrawSliderFloat(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X - 50.0f - ImGui.GetStyle().ItemSpacing.X, min, max, help, format, flags);
+			DrawSliderFloat(undoable, title, o, fieldName,
+				ImGui.GetContentRegionAvail().X - 50.0f - ImGui.GetStyle().ItemSpacing.X, min, max, help, format, flags);
 
 			// Reset
 			ImGui.SameLine();
@@ -409,9 +446,10 @@ namespace StepManiaEditor
 			double max = 0.0)
 		{
 			DrawRowTitleAndAdvanceColumn(title);
-			return DrawDragDouble(title, ref value, ImGui.GetContentRegionAvail().X, help, speed, format, useMin, min, useMax, max);
+			return DrawDragDouble(title, ref value, ImGui.GetContentRegionAvail().X, help, speed, format, useMin, min, useMax,
+				max);
 		}
-		
+
 		private static bool DrawDragDouble(
 			string title,
 			ref double value,
@@ -444,7 +482,8 @@ namespace StepManiaEditor
 			double max = 0.0)
 		{
 			DrawRowTitleAndAdvanceColumn(title);
-			return DrawDragDouble(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, help, speed, format, useMin, min, useMax, max);
+			return DrawDragDouble(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, help, speed, format, useMin,
+				min, useMax, max);
 		}
 
 		public static void DrawRowDragDoubleWithEnabledCheckbox(
@@ -527,6 +566,7 @@ namespace StepManiaEditor
 				var r = Utils.DragDouble(ref v, GetElementTitle(title, fieldName), speed, format, useMin, min, useMax, max);
 				return (r, v);
 			}
+
 			return DrawLiveEditValue<double>(undoable, title, o, fieldName, width, Func, DoubleCompare, help);
 		}
 
@@ -534,19 +574,22 @@ namespace StepManiaEditor
 
 		#region Enum
 
-		public static bool DrawRowEnum<T>(bool undoable, string title, object o, string fieldName, string help = null) where T : struct, Enum
+		public static bool DrawRowEnum<T>(bool undoable, string title, object o, string fieldName, string help = null)
+			where T : struct, Enum
 		{
 			DrawRowTitleAndAdvanceColumn(title);
 			return DrawEnum<T>(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, null, help);
 		}
 
-		public static bool DrawRowEnum<T>(bool undoable, string title, object o, string fieldName, T[] allowedValues, string help = null) where T : struct, Enum
+		public static bool DrawRowEnum<T>(bool undoable, string title, object o, string fieldName, T[] allowedValues,
+			string help = null) where T : struct, Enum
 		{
 			DrawRowTitleAndAdvanceColumn(title);
 			return DrawEnum<T>(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, allowedValues, help);
 		}
 
-		public static bool DrawEnum<T>(bool undoable, string title, object o, string fieldName, float width, T[] allowedValues, string help = null) where T : struct, Enum
+		public static bool DrawEnum<T>(bool undoable, string title, object o, string fieldName, float width, T[] allowedValues,
+			string help = null) where T : struct, Enum
 		{
 			var value = GetValueFromFieldOrProperty<T>(o, fieldName);
 
@@ -555,7 +598,8 @@ namespace StepManiaEditor
 			T newValue = value;
 			var ret = false;
 			if (allowedValues != null)
-				ret = Utils.ComboFromEnum(GetElementTitle(title, fieldName), ref newValue, allowedValues, GetElementTitle(title, fieldName));
+				ret = Utils.ComboFromEnum(GetElementTitle(title, fieldName), ref newValue, allowedValues,
+					GetElementTitle(title, fieldName));
 			else
 				ret = Utils.ComboFromEnum(GetElementTitle(title, fieldName), ref newValue);
 			if (ret)
@@ -568,6 +612,7 @@ namespace StepManiaEditor
 						SetFieldOrPropertyToValue<T>(o, fieldName, newValue);
 				}
 			}
+
 			return ret;
 		}
 
@@ -575,13 +620,15 @@ namespace StepManiaEditor
 
 		#region Selectable
 
-		public static bool DrawRowSelectableTree<T>(bool undoable, string title, object o, string fieldName, string help = null) where T : Enum
+		public static bool DrawRowSelectableTree<T>(bool undoable, string title, object o, string fieldName, string help = null)
+			where T : Enum
 		{
 			DrawRowTitleAndAdvanceColumn(title);
 			return DrawSelectableTree<T>(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, help);
 		}
 
-		public static bool DrawSelectableTree<T>(bool undoable, string title, object o, string fieldName, float width, string help = null) where T : Enum
+		public static bool DrawSelectableTree<T>(bool undoable, string title, object o, string fieldName, float width,
+			string help = null) where T : Enum
 		{
 			var value = GetValueFromFieldOrProperty<bool[]>(o, fieldName);
 
@@ -590,7 +637,8 @@ namespace StepManiaEditor
 
 			(var ret, var originalValues) = Utils.SelectableTree<T>(title, ref value);
 			if (ret && undoable)
-				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<bool[]>(o, fieldName, (bool[])value.Clone(), originalValues));
+				ActionQueue.Instance.Do(
+					new ActionSetObjectFieldOrPropertyReference<bool[]>(o, fieldName, (bool[])value.Clone(), originalValues));
 
 			return ret;
 		}
@@ -625,6 +673,7 @@ namespace StepManiaEditor
 				var r = ImGui.ColorEdit3(GetElementTitle(title, fieldName), ref v, flags);
 				return (r, v);
 			}
+
 			DrawLiveEditValue<Vector3>(undoable, title, o, fieldName, width, Func, Vector3Compare, help);
 		}
 
@@ -650,7 +699,7 @@ namespace StepManiaEditor
 			const float enumWidth = 120.0f;
 			const float toWidth = 14.0f;
 			var spacing = ImGui.GetStyle().ItemSpacing.X;
-			
+
 			var tempoControlWidth = ImGui.GetContentRegionAvail().X - enumWidth - spacing;
 			var splitTempoWidth = Math.Max(1.0f, (ImGui.GetContentRegionAvail().X - enumWidth - toWidth - spacing * 3.0f) * 0.5f);
 
@@ -683,7 +732,8 @@ namespace StepManiaEditor
 					// DragDouble for the min.
 					ImGui.SameLine();
 					ImGui.SetNextItemWidth(splitTempoWidth);
-					DrawDragDouble(undoable, "", displayTempo, nameof(DisplayTempo.SpecifiedTempoMin), splitTempoWidth, null, 0.001f, "%.6f");
+					DrawDragDouble(undoable, "", displayTempo, nameof(DisplayTempo.SpecifiedTempoMin), splitTempoWidth, null,
+						0.001f, "%.6f");
 
 					// "to" text to split the min and max.
 					ImGui.SameLine();
@@ -696,7 +746,8 @@ namespace StepManiaEditor
 						if (undoable)
 						{
 							// Enqueue a custom action so that the ShouldAllowEditsOfMax and previous max tempo can be undone together.
-							ActionQueue.Instance.Do(new ActionSetDisplayTempoAllowEditsOfMax(displayTempo, displayTempo.ShouldAllowEditsOfMax));
+							ActionQueue.Instance.Do(
+								new ActionSetDisplayTempoAllowEditsOfMax(displayTempo, displayTempo.ShouldAllowEditsOfMax));
 						}
 					}
 
@@ -708,11 +759,12 @@ namespace StepManiaEditor
 						if (!displayTempo.SpecifiedTempoMin.DoubleEquals(displayTempo.SpecifiedTempoMax))
 							displayTempo.SpecifiedTempoMax = displayTempo.SpecifiedTempoMin;
 					}
-					
+
 					// DragDouble for the max.
 					ImGui.SameLine();
 					ImGui.SetNextItemWidth(splitTempoWidth);
-					DrawDragDouble(undoable, "", displayTempo, nameof(DisplayTempo.SpecifiedTempoMax), ImGui.GetContentRegionAvail().X, null,
+					DrawDragDouble(undoable, "", displayTempo, nameof(DisplayTempo.SpecifiedTempoMax),
+						ImGui.GetContentRegionAvail().X, null,
 						0.001f, "%.6f");
 
 					// Pop the disabled setting if we pushed it before.
@@ -763,14 +815,149 @@ namespace StepManiaEditor
 
 		#endregion Display Tempo
 
+		#region Misc Editor Events
+
+		public static void MiscEditorEventDragDoubleWidget(
+			string id,
+			EditorEvent e,
+			string fieldName,
+			int x,
+			int y,
+			int width,
+			uint colorABGR,
+			bool selected,
+			bool canBeDeleted,
+			string format)
+		{
+			void Func(float elementWidth)
+			{
+				DrawDragDouble(true, $"##{id}", e, fieldName, elementWidth, "", 1.0f, format);
+			}
+
+			MiscEditorEventWidget(id, e, x, y, width, colorABGR, selected, canBeDeleted, Func);
+		}
+
+		public static void MiscEditorEventTimeSignatureWidget(
+			string id,
+			EditorEvent e,
+			string fieldName,
+			int x,
+			int y,
+			int width,
+			uint colorABGR,
+			bool selected,
+			bool canBeDeleted)
+		{
+			void Func(float elementWidth)
+			{
+				DrawTimeSignatureInput(true, $"##{id}", e, fieldName, elementWidth);
+			}
+
+			MiscEditorEventWidget(id, e, x, y, width, colorABGR, selected, canBeDeleted, Func);
+		}
+
+		private static void MiscEditorEventWidget(
+			string id,
+			EditorEvent e,
+			int x,
+			int y,
+			int width,
+			uint colorABGR,
+			bool selected,
+			bool canBeDeleted,
+			Action<float> func)
+		{
+			if (selected)
+			{
+				ImGui.PushStyleColor(ImGuiCol.WindowBg, 0x484848FF);
+				ImGui.PushStyleColor(ImGuiCol.Border, 0xFFFFFFFF);
+			}
+
+			ImGui.PushStyleColor(ImGuiCol.FrameBg, colorABGR);
+
+			var height = ImGui.GetStyle().FramePadding.Y * 2 + ImGui.GetFontSize();
+
+			// Record window size and padding values so we can edit and restore them.
+			var originalWindowPaddingX = ImGui.GetStyle().WindowPadding.X;
+			var originalWindowPaddingY = ImGui.GetStyle().WindowPadding.Y;
+			var originalMinWindowSize = ImGui.GetStyle().WindowMinSize;
+
+			// Set the padding and spacing so we can draw a table with precise dimensions.
+			ImGui.GetStyle().WindowPadding.X = 1;
+			ImGui.GetStyle().WindowPadding.Y = 1;
+			ImGui.GetStyle().WindowMinSize = new Vector2(width, height);
+
+			ImGui.SetNextWindowPos(new Vector2(x, y));
+			ImGui.SetNextWindowSize(new Vector2(width, height));
+			ImGui.Begin($"##Widget{id}",
+				ImGuiWindowFlags.NoMove
+				| ImGuiWindowFlags.NoDecoration
+				| ImGuiWindowFlags.NoSavedSettings
+				| ImGuiWindowFlags.NoDocking
+				| ImGuiWindowFlags.NoBringToFrontOnFocus
+				| ImGuiWindowFlags.NoFocusOnAppearing);
+
+			var elementWidth = width - 20.0f;
+
+			func(elementWidth);
+
+			// Delete button
+			ImGui.SameLine();
+			if (!canBeDeleted)
+				Utils.PushDisabled();
+			if (ImGui.Button($"X##{id}", new Vector2(20.0f, 0.0f)))
+				ActionQueue.Instance.Do(new ActionDeleteEditorEvent(e));
+			if (!canBeDeleted)
+				Utils.PopDisabled();
+
+			ImGui.End();
+
+			// Restore window size and padding values.
+			ImGui.GetStyle().WindowPadding.X = originalWindowPaddingX;
+			ImGui.GetStyle().WindowPadding.Y = originalWindowPaddingY;
+			ImGui.GetStyle().WindowMinSize = originalMinWindowSize;
+
+			ImGui.PopStyleColor(selected ? 3 : 1);
+		}
+
+		#endregion Misc Editor Events
+
 		#region Compare Functions
 
-		private static bool IntCompare(int a, int b) { return a == b; }
-		private static bool UIntCompare(uint a, uint b) { return a == b; }
-		private static bool FloatCompare(float a, float b) { return a.FloatEquals(b); }
-		private static bool DoubleCompare(double a, double b) { return a.DoubleEquals(b); }
-		private static bool StringCompare(string a, string b) { return a == b; }
-		private static bool Vector3Compare(Vector3 a, Vector3 b) { return a == b; }
+		private static bool IntCompare(int a, int b)
+		{
+			return a == b;
+		}
+
+		private static bool UIntCompare(uint a, uint b)
+		{
+			return a == b;
+		}
+
+		private static bool FloatCompare(float a, float b)
+		{
+			return a.FloatEquals(b);
+		}
+
+		private static bool DoubleCompare(double a, double b)
+		{
+			return a.DoubleEquals(b);
+		}
+
+		private static bool StringCompare(string a, string b)
+		{
+			return a == b;
+		}
+
+		private static bool Vector3Compare(Vector3 a, Vector3 b)
+		{
+			return a == b;
+		}
+
+		private static bool TimeSignatureCompare(TimeSignature a, TimeSignature b)
+		{
+			return a.Signature.Equals(b.Signature);
+		}
 
 		#endregion
 
@@ -788,7 +975,7 @@ namespace StepManiaEditor
 			var value = default(T);
 			if (o == null)
 				return value;
-			
+
 			var isField = IsField(o, fieldOrPropertyName);
 			if (isField)
 				value = (T)o.GetType().GetField(fieldOrPropertyName)?.GetValue(o);
@@ -821,6 +1008,7 @@ namespace StepManiaEditor
 		{
 			return (T)Cache[key];
 		}
+
 		private static bool TryGetCachedValue<T>(string key, out T value)
 		{
 			value = default;
@@ -829,6 +1017,7 @@ namespace StepManiaEditor
 				value = (T)outValue;
 			return result;
 		}
+
 		private static void SetCachedValue<T>(string key, T value)
 		{
 			Cache[key] = value;
@@ -862,6 +1051,7 @@ namespace StepManiaEditor
 			float width,
 			Func<T, (bool, T)> imGuiFunc,
 			Func<T, T, bool> compareFunc,
+			Func<T, bool> validationFunc = null,
 			string help = null) where T : class, ICloneable
 		{
 			// Get the cached value.
@@ -888,7 +1078,10 @@ namespace StepManiaEditor
 
 			// At the moment of releasing the control, enqueue an event to update the value to the
 			// newly edited cached value.
-			if (ImGui.IsItemDeactivatedAfterEdit() && o != null && !compareFunc(cachedValue, value))
+			if (ImGui.IsItemDeactivatedAfterEdit()
+			    && o != null
+				&& (validationFunc == null || validationFunc(cachedValue))
+				&& !compareFunc(cachedValue, value))
 			{
 				if (undoable)
 					ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<T>(o, fieldName, (T)cachedValue.Clone()));
@@ -971,7 +1164,8 @@ namespace StepManiaEditor
 			{
 				if (ImGui.IsItemDeactivatedAfterEdit() && o != null && !compareFunc(value, GetCachedValue<T>(cacheKey)))
 				{
-					ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyValue<T>(o, fieldName, value, GetCachedValue<T>(cacheKey)));
+					ActionQueue.Instance.Do(
+						new ActionSetObjectFieldOrPropertyValue<T>(o, fieldName, value, GetCachedValue<T>(cacheKey)));
 				}
 			}
 

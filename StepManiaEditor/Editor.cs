@@ -131,7 +131,7 @@ namespace StepManiaEditor
 		private double ChartPosition = 0.0;
 
 		private List<EditorEvent> VisibleEvents = new List<EditorEvent>();
-		private List<MarkerEvent> VisibleMarkers = new List<MarkerEvent>();
+		private List<EditorMarkerEvent> VisibleMarkers = new List<EditorMarkerEvent>();
 
 		private double WaveFormPPS = 1.0;
 
@@ -177,10 +177,6 @@ namespace StepManiaEditor
 			new System.Numerics.Vector4(1.0f, 1.0f, 0.0f, 1.0f),
 			new System.Numerics.Vector4(1.0f, 0.0f, 0.0f, 1.0f),
 		};
-
-		// WaveForm GUI
-		private readonly string[] WaveFormWindowSparseColorOptions =
-			{ "Darker Dense Color", "Same As Dense Color", "Unique Color" };
 
 		private bool ShowImGuiTestWindow = true;
 
@@ -669,18 +665,20 @@ namespace StepManiaEditor
 			GraphicsDevice.Clear(Color.Black);
 
 			SpriteBatch.Begin(SpriteSortMode.Deferred, BlendState.NonPremultiplied);
-			if (Preferences.Instance.PreferencesWaveForm.ShowWaveForm)
-			{
-				WaveFormRenderer.Draw(SpriteBatch);
-			}
 
+			ImGui.PushFont(ImGuiFont);
+
+			DrawWaveForm();
 			DrawMiniMap();
-
 			DrawReceptors();
 			DrawChartEvents();
 			SpriteBatch.End();
-
 			DrawGui(gameTime);
+
+			ImGui.PopFont();
+			ImGuiRenderer.AfterLayout();
+
+			//SpriteBatch.End();
 
 			base.Draw(gameTime);
 
@@ -746,6 +744,14 @@ namespace StepManiaEditor
 			WaveFormRenderer.Update(SongTime, Zoom, WaveFormPPS);
 		}
 
+		private void DrawWaveForm()
+		{
+			if (Preferences.Instance.PreferencesWaveForm.ShowWaveForm)
+			{
+				WaveFormRenderer.Draw(SpriteBatch);
+			}
+		}
+
 		/// <summary>
 		/// Given a RedBlackTree and a value, find the greatest preceding value.
 		/// If no value precedes the given value, instead find the least value that follows or is
@@ -804,6 +810,8 @@ namespace StepManiaEditor
 
 			var numArrows = ActiveChart.NumInputs;
 			var xStart = FocalPoint.X - (numArrows * arrowSize * 0.5);
+
+			MiscEventWidgetManager.BeginFrame(xStart, FocalPoint.X + (numArrows * arrowSize * 0.5));
 
 			// TODO: Common(?) code for determining song time by chart position or vice versa based on scroll mode
 
@@ -885,24 +893,26 @@ namespace StepManiaEditor
 					while (enumerator.MoveNext())
 					{
 						var e = enumerator.Current;
-						var y = ((e.ChartEvent.TimeMicros / 1000000.0) - timeAtTopOfScreen) * pps - (arrowSize * 0.5);
-						if (y > screenHeight)
+						var y = ((e.ChartEvent.TimeMicros / 1000000.0) - timeAtTopOfScreen) * pps;
+						var arrowY = y - (arrowSize * 0.5);
+
+						if (arrowY > screenHeight)
 							break;
 
-						if (e is EditorHoldEndNote)
+						if (e is EditorHoldEndNoteEvent)
 							continue;
 
-						if (e is EditorTapNote
-						    || e is EditorMineNote
-						    || e is EditorHoldStartNote)
+						if (e is EditorTapNoteEvent
+						    || e is EditorMineNoteEvent
+						    || e is EditorHoldStartNoteEvent)
 						{
 							e.X = xStart + e.GetLane() * arrowSize;
-							e.Y = y;
+							e.Y = arrowY;
 							e.W = arrowSize;
 							e.H = arrowSize;
 							e.Scale = sizeZoom;
 
-							if (e is EditorHoldStartNote hsn)
+							if (e is EditorHoldStartNoteEvent hsn)
 							{
 								var end = hsn.GetHoldEndNote();
 								holdBodyEvents.Add(end);
@@ -913,6 +923,10 @@ namespace StepManiaEditor
 								        holdCapHeight;
 								end.Scale = sizeZoom;
 							}
+						}
+						else
+						{
+							MiscEventWidgetManager.PositionEvent(e, y);
 						}
 
 						noteEvents.Add(e);
@@ -1018,12 +1032,12 @@ namespace StepManiaEditor
 						if (y > screenHeight)
 							break;
 
-						if (e is EditorHoldEndNote)
+						if (e is EditorHoldEndNoteEvent)
 							continue;
 
-						if (e is EditorTapNote
-						    || e is EditorMineNote
-						    || e is EditorHoldStartNote)
+						if (e is EditorTapNoteEvent
+						    || e is EditorMineNoteEvent
+						    || e is EditorHoldStartNoteEvent)
 						{
 							e.X = xStart + e.GetLane() * arrowSize;
 							e.Y = y;
@@ -1031,7 +1045,7 @@ namespace StepManiaEditor
 							e.H = arrowSize;
 							e.Scale = sizeZoom;
 
-							if (e is EditorHoldStartNote hsn)
+							if (e is EditorHoldStartNoteEvent hsn)
 							{
 								var end = hsn.GetHoldEndNote();
 								holdBodyEvents.Add(end);
@@ -1066,7 +1080,7 @@ namespace StepManiaEditor
 					double chartPosition = 0.0;
 					if (!ActiveChart.TryGetChartPositionFromTime(time, ref chartPosition))
 						return;
-					var ratePosEventForChecking = new EditorInterpolatedRateAlteringEvent
+					var ratePosEventForChecking = new EditorInterpolatedRateAlteringEvent(ActiveChart, null)
 					{
 						Row = chartPosition,
 						SongTime = time
@@ -1157,7 +1171,7 @@ namespace StepManiaEditor
 					// Scan backwards until we have checked every lane for a long note which may
 					// be extending through the given start row. We cannot add the end events yet because
 					// we do not know at what position they will end until we scan down.
-					var holdEndNotesNeedingToBeAdded = new EditorHoldEndNote[ActiveChart.NumInputs];
+					var holdEndNotesNeedingToBeAdded = new EditorHoldEndNoteEvent[ActiveChart.NumInputs];
 					var holdStartNotes = ScanBackwardsForHolds(enumerator, chartPositionAtTopOfScreen);
 					foreach (var hsn in holdStartNotes)
 					{
@@ -1221,10 +1235,10 @@ namespace StepManiaEditor
 							break;
 
 						// Record note.
-						if (e is EditorTapNote
-						    || e is EditorHoldStartNote
-						    || e is EditorHoldEndNote
-						    || e is EditorMineNote)
+						if (e is EditorTapNoteEvent
+						    || e is EditorHoldStartNoteEvent
+						    || e is EditorHoldEndNoteEvent
+						    || e is EditorMineNoteEvent)
 						{
 							e.X = xStart + e.GetLane() * arrowSize;
 							e.Y = y;
@@ -1232,7 +1246,7 @@ namespace StepManiaEditor
 							e.H = arrowSize;
 							e.Scale = sizeZoom;
 
-							if (e is EditorHoldEndNote hen)
+							if (e is EditorHoldEndNoteEvent hen)
 							{
 								var start = hen.GetHoldStartNote();
 								var endY = previousRateEventPixelPosition +
@@ -1247,7 +1261,7 @@ namespace StepManiaEditor
 								holdEndNotesNeedingToBeAdded[e.GetLane()] = null;
 							}
 
-							else if (e is EditorHoldStartNote hsn)
+							else if (e is EditorHoldStartNoteEvent hsn)
 							{
 								// Record that there is in an in-progress hold that will need to be ended.
 								holdEndNotesNeedingToBeAdded[e.GetLane()] = hsn.GetHoldEndNote();
@@ -1434,7 +1448,7 @@ namespace StepManiaEditor
 				// Record the marker.
 				if (measureMarker || sizeZoom > BeatMarkerMinScale)
 				{
-					VisibleMarkers.Add(new MarkerEvent
+					VisibleMarkers.Add(new EditorMarkerEvent
 					{
 						X = x,
 						Y = y,
@@ -1666,24 +1680,24 @@ namespace StepManiaEditor
 					while (enumerator.MoveNext())
 					{
 						var e = enumerator.Current;
-						if (e is EditorHoldEndNote)
+						if (e is EditorHoldEndNoteEvent)
 							continue;
 
-						if (e is EditorTapNote)
+						if (e is EditorTapNoteEvent)
 						{
 							numNotesAdded++;
 							if (MiniMap.AddNote((LaneNote)e.ChartEvent, e.ChartEvent.TimeMicros / 1000000.0) ==
 							    MiniMap.AddResult.BelowBottom)
 								break;
 						}
-						else if (e is EditorMineNote)
+						else if (e is EditorMineNoteEvent)
 						{
 							numNotesAdded++;
 							if (MiniMap.AddMine((LaneNote)e.ChartEvent, e.ChartEvent.TimeMicros / 1000000.0) ==
 							    MiniMap.AddResult.BelowBottom)
 								break;
 						}
-						else if (e is EditorHoldStartNote hsn)
+						else if (e is EditorHoldStartNoteEvent hsn)
 						{
 							numNotesAdded++;
 							if (MiniMap.AddHold(
@@ -1771,24 +1785,24 @@ namespace StepManiaEditor
 					while (enumerator.MoveNext())
 					{
 						var e = enumerator.Current;
-						if (e is EditorHoldEndNote)
+						if (e is EditorHoldEndNoteEvent)
 							continue;
 
-						if (e is EditorTapNote)
+						if (e is EditorTapNoteEvent)
 						{
 							numNotesAdded++;
 							if (MiniMap.AddNote((LaneNote)e.ChartEvent, e.ChartEvent.IntegerPosition) ==
 							    MiniMap.AddResult.BelowBottom)
 								break;
 						}
-						else if (e is EditorMineNote)
+						else if (e is EditorMineNoteEvent)
 						{
 							numNotesAdded++;
 							if (MiniMap.AddMine((LaneNote)e.ChartEvent, e.ChartEvent.IntegerPosition) ==
 							    MiniMap.AddResult.BelowBottom)
 								break;
 						}
-						else if (e is EditorHoldStartNote hsn)
+						else if (e is EditorHoldStartNoteEvent hsn)
 						{
 							numNotesAdded++;
 							if (MiniMap.AddHold(
@@ -1826,12 +1840,12 @@ namespace StepManiaEditor
 		/// <param name="enumerator">Enumerator to use for scanning backwards.</param>
 		/// <param name="chartPosition">Chart position to use for checking.</param>
 		/// <returns>List of EditorHoldStartNotes.</returns>
-		private List<EditorHoldStartNote> ScanBackwardsForHolds(RedBlackTree<EditorEvent>.Enumerator enumerator,
+		private List<EditorHoldStartNoteEvent> ScanBackwardsForHolds(RedBlackTree<EditorEvent>.Enumerator enumerator,
 			double chartPosition)
 		{
 			var lanesChecked = new bool[ActiveChart.NumInputs];
 			var numLanesChecked = 0;
-			var holds = new List<EditorHoldStartNote>();
+			var holds = new List<EditorHoldStartNoteEvent>();
 			var current = new RedBlackTree<EditorEvent>.Enumerator(enumerator);
 			while (current.MovePrev() && numLanesChecked < ActiveChart.NumInputs)
 			{
@@ -1846,7 +1860,7 @@ namespace StepManiaEditor
 
 						if (e.GetRow() + e.GetLength() > chartPosition)
 						{
-							if (e is EditorHoldStartNote hsn)
+							if (e is EditorHoldStartNoteEvent hsn)
 							{
 								holds.Add(hsn);
 							}
@@ -1876,8 +1890,6 @@ namespace StepManiaEditor
 
 		private void DrawGui(GameTime gameTime)
 		{
-			ImGui.PushFont(ImGuiFont);
-
 			DrawMainMenuUI();
 
 			DrawDebugUI();
@@ -1896,10 +1908,6 @@ namespace StepManiaEditor
 
 			UISongProperties.Draw(EditorSong);
 			UIChartProperties.Draw(ActiveChart);
-
-			ImGui.PopFont();
-
-			ImGuiRenderer.AfterLayout();
 		}
 
 		private void DrawMainMenuUI()

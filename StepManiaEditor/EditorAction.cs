@@ -295,4 +295,29 @@ namespace StepManiaEditor
 			ActionSecond.Undo();
 		}
 	}
+
+	public class ActionDeleteEditorEvent : EditorAction
+	{
+		private readonly EditorEvent EditorEvent;
+
+		public ActionDeleteEditorEvent(EditorEvent editorEvent)
+		{
+			EditorEvent = editorEvent;
+		}
+
+		public override string ToString()
+		{
+			return $"Delete '{typeof(EditorChart)}'.";
+		}
+
+		public override void Do()
+		{
+			EditorEvent.EditorChart.DeleteEvent(EditorEvent);
+		}
+
+		public override void Undo()
+		{
+			EditorEvent.EditorChart.AddEvent(EditorEvent);
+		}
+	}
 }

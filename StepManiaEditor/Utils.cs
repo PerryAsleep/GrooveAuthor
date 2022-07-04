@@ -29,6 +29,19 @@ namespace StepManiaEditor
 		private static readonly uint RollColorABGR;
 		private static readonly ushort RollColorRBGR565;
 
+		public const uint UITempoColorABGR = 0x8A297A79;			// yellow
+		public const uint UITimeSignatureColorABGR = 0x8A297A29;	// green
+		public const uint UIStopColorABGR = 0x8A29297A;				// red
+		public const uint UIDelayColorABGR = 0x8A29297A;			// red
+		public const uint UIWarpColorABGR = 0x8A7A7929;				// cyan
+		public const uint UIScrollsColorABGR = 0x8A7A2929;			// blue
+		public const uint UISpeedsColorABGR = 0x8A7A294D;			// purple
+
+		public const uint UITicksColorABGR = 0x8A295E7A;			// orange
+		public const uint UIComboColorABGR = 0x8A297A63;			// lime
+		public const uint UIFakesColorABGR = 0x8A29467A;			// dark orange
+		public const uint UILabelColorABGR = 0x8A68297A;			// pink
+
 		public const int DefaultArrowWidth = 128;
 		public const int DefaultHoldCapHeight = 64;
 		public const int DefaultHoldSegmentHeight = 64;
