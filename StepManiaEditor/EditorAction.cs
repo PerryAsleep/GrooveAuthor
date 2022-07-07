@@ -307,17 +307,17 @@ namespace StepManiaEditor
 
 		public override string ToString()
 		{
-			return $"Delete '{typeof(EditorChart)}'.";
+			return $"Delete '{EditorEvent.GetType()}'.";
 		}
 
 		public override void Do()
 		{
-			EditorEvent.EditorChart.DeleteEvent(EditorEvent);
+			EditorEvent.GetEditorChart().DeleteEvent(EditorEvent);
 		}
 
 		public override void Undo()
 		{
-			EditorEvent.EditorChart.AddEvent(EditorEvent);
+			EditorEvent.GetEditorChart().AddEvent(EditorEvent);
 		}
 	}
 }

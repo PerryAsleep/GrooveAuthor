@@ -551,7 +551,7 @@ namespace StepManiaEditor
 			var layer = new Layer();
 			foreach (var editorEvent in EditorEvents)
 			{
-				layer.Events.Add(editorEvent.ChartEvent);
+				layer.Events.Add(editorEvent.GetEvent());
 			}
 			layer.Events.Sort(new SMCommon.SMEventComparer());
 			chart.Layers.Add(layer);
@@ -573,6 +573,7 @@ namespace StepManiaEditor
 
 			var lastHoldStarts = new EditorHoldStartNoteEvent[NumInputs];
 			var lastScrollRateInterpolationValue = 1.0;
+			var firstInterpolatedScrollRate = true;
 
 			for (var eventIndex = 0; eventIndex < chart.Layers[0].Events.Count; eventIndex++)
 			{
@@ -604,8 +605,11 @@ namespace StepManiaEditor
 						irae.Row = scrollRateInterpolation.IntegerPosition;
 						irae.SongTime = scrollRateInterpolation.TimeMicros;
 						irae.PreviousScrollRate = lastScrollRateInterpolationValue;
+						irae.CanBeDeleted = !firstInterpolatedScrollRate;
 						interpolatedScrollRateEvents.Insert(irae);
 						lastScrollRateInterpolationValue = scrollRateInterpolation.Rate;
+
+						firstInterpolatedScrollRate = false;
 					}
 				}
 			}
@@ -631,7 +635,7 @@ namespace StepManiaEditor
 			var minTempo = double.MaxValue;
 			var maxTempo = double.MinValue;
 
-			EditorRateAlteringEvent previousEvent = new DummyEditorRateAlteringEvent(this, null)
+			EditorRateAlteringEvent previousEvent = new EditorDummyRateAlteringEvent(this, null)
 			{
 				Row = 0,
 				SongTime = 0.0,
@@ -643,7 +647,7 @@ namespace StepManiaEditor
 
 			foreach (var rae in RateAlteringEventsByRow)
 			{
-				var chartEvent = rae.ChartEvent;
+				var chartEvent = rae.GetEvent();
 				if (chartEvent is Tempo tc)
 				{
 					var rowsSincePrevious = chartEvent.IntegerPosition - previousEvent.Row;
@@ -750,7 +754,7 @@ namespace StepManiaEditor
 					rae.ScrollRate = scrollRate.Rate;
 					rae.Tempo = lastTempo;
 					rae.LastTimeSignature = lastTimeSignature;
-					rae.CanBeDeleted = true;
+					rae.CanBeDeleted = !firstScrollRate;
 
 					previousEvent = rae;
 					lastScrollRate = scrollRate.Rate;
@@ -797,9 +801,7 @@ namespace StepManiaEditor
 
 		private void UpdateNotePositions()
 		{
-			// TODO: Figure something out
-			//var s = Enumerable.Select<EditorEvent, Event>(EditorEvents, e => e.ChartEvent);
-			//SMCommon.SetEventTimeMicrosAndMetricPositionsFromRows(EditorEvents.Cast<Event>());
+			SMCommon.SetEventTimeMicrosAndMetricPositionsFromRows(EditorEvents.Select(e => e.GetEvent()));
 		}
 
 		public bool TryGetChartPositionFromTime(double songTime, ref double chartPosition)
@@ -809,10 +811,10 @@ namespace StepManiaEditor
 
 			// Given the current song time, get the greatest preceding event which alters the rate of rows to time.
 			var enumerator =
-				RateAlteringEventsBySongTime.FindGreatestPreceding(new DummyEditorRateAlteringEvent(this, null) { SongTime = songTime });
+				RateAlteringEventsBySongTime.FindGreatestPreceding(new EditorDummyRateAlteringEvent(this, null) { SongTime = songTime });
 			// If there is no preceding event (e.g. SongTime is negative), use the first event.
 			if (enumerator == null)
-				enumerator = RateAlteringEventsBySongTime.GetEnumerator();
+				enumerator = RateAlteringEventsBySongTime.GetRedBlackTreeEnumerator();
 			// If there is still no event then the Chart is misconfigured as it must have at least a Tempo event.
 			if (enumerator == null)
 				return false;
@@ -833,10 +835,10 @@ namespace StepManiaEditor
 				return false;
 
 			// Given the current song time, get the greatest preceding event which alters the rate of rows to time.
-			var enumerator = RateAlteringEventsByRow.FindGreatestPreceding(new DummyEditorRateAlteringEvent(this, null) { Row = chartPosition });
+			var enumerator = RateAlteringEventsByRow.FindGreatestPreceding(new EditorDummyRateAlteringEvent(this, null) { Row = chartPosition });
 			// If there is no preceding event (e.g. ChartPosition is negative), use the first event.
 			if (enumerator == null)
-				enumerator = RateAlteringEventsByRow.GetEnumerator();
+				enumerator = RateAlteringEventsByRow.GetRedBlackTreeEnumerator();
 			// If there is still no event then the Chart is misconfigured as it must have at least a Tempo event.
 			if (enumerator == null)
 				return false;
@@ -889,6 +891,20 @@ namespace StepManiaEditor
 			UpdateNotePositions();
 		}
 
+		public void OnInterpolatedRateAlteringEventModified(EditorInterpolatedRateAlteringEvent irae)
+		{
+			var e = InterpolatedScrollRateEvents.Find(irae);
+			if (e != null)
+			{
+				e.MoveNext();
+				if (e.MoveNext())
+				{
+					var next = e.Current;
+					next.PreviousScrollRate = irae.ScrollRateInterpolationEvent.Rate;
+				}
+			}
+		}
+
 		public void DeleteEvent(EditorEvent editorEvent)
 		{
 			EditorEvents.Delete(editorEvent);
@@ -899,6 +915,7 @@ namespace StepManiaEditor
 				RateAlteringEventsBySongTime.Delete(rae);
 				// TODO: Can this be optimized?
 				CleanRateAlteringEvents();
+				UpdateNotePositions();
 			}
 
 			else if (editorEvent is EditorInterpolatedRateAlteringEvent irae)
@@ -916,12 +933,12 @@ namespace StepManiaEditor
 							{
 								var prev = e.Current;
 								next.PreviousScrollRate = prev.ScrollRateInterpolationEvent.Rate;
-								e.MoveNext();
 							}
 							e.MoveNext();
 						}
-						e.MovePrev();
+						e.MoveNext();
 					}
+					e.MovePrev();
 					e.Delete();
 				}
 			}
@@ -937,6 +954,7 @@ namespace StepManiaEditor
 				RateAlteringEventsBySongTime.Insert(rae);
 				// TODO: Can this be optimized?
 				CleanRateAlteringEvents();
+				UpdateNotePositions();
 			}
 
 			else if (editorEvent is EditorInterpolatedRateAlteringEvent irae)

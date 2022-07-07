@@ -3,8 +3,11 @@ using System.Collections.Generic;
 using System.Reflection;
 using ImGuiNET;
 using System.Numerics;
+using System.Runtime.InteropServices;
+using System.Text;
 using Fumen;
 using Fumen.ChartDefinition;
+using Fumen.Converters;
 
 namespace StepManiaEditor
 {
@@ -22,7 +25,14 @@ namespace StepManiaEditor
 		private static readonly Dictionary<string, object> Cache = new Dictionary<string, object>();
 
 		private static string CacheKeyPrefix = "";
-		private const string DragDoubleHelpText = "\nShift+drag for large adjustments.\nAlt+drag for small adjustments.";
+		private const string DragHelpText = "\nShift+drag for large adjustments.\nAlt+drag for small adjustments.";
+
+		private static ImFontPtr ImGuiFont;
+
+		public static void SetFont(ImFontPtr font)
+		{
+			ImGuiFont = font;
+		}
 
 		public static bool BeginTable(string title, float titleColumnWidth)
 		{
@@ -176,13 +186,37 @@ namespace StepManiaEditor
 
 			bool ValidationFunc(string v)
 			{
-				return Fraction.FromString(v) != null;
+				var (valid, _) = EditorTimeSignatureEvent.IsValidTimeSignatureString(v);
+				return valid;
 			}
 
 			DrawCachedEditReference<string>(undoable, title, o, fieldName, width, Func, StringCompare, ValidationFunc, help);
 		}
 
 		#endregion Time Signature
+
+		#region Scroll Rate Interpolation
+
+		private static void DrawScrollRateInterpolationInput(bool undoable, string title, object o, string fieldName, float width,
+			string help = null)
+		{
+			(bool, string) Func(string v)
+			{
+				v ??= "";
+				var r = ImGui.InputText(GetElementTitle(title, fieldName), ref v, 256);
+				return (r, v);
+			}
+
+			bool ValidationFunc(string v)
+			{
+				var (valid, _, _, _, _) = EditorInterpolatedRateAlteringEvent.IsValidScrollRateInterpolationString(v);
+				return valid;
+			}
+
+			DrawCachedEditReference<string>(undoable, title, o, fieldName, width, Func, StringCompare, ValidationFunc, help);
+		}
+
+		#endregion Scroll Rate Interpolation
 
 		#region File Browse
 
@@ -282,6 +316,85 @@ namespace StepManiaEditor
 		}
 
 		#endregion Input Int
+
+		#region Drag Int
+
+		public static bool DrawRowDragInt(
+			string title,
+			ref int value,
+			string help = null,
+			float speed = 1.0f,
+			string format = "%i",
+			bool useMin = false,
+			int min = 0,
+			bool useMax = false,
+			int max = 0)
+		{
+			DrawRowTitleAndAdvanceColumn(title);
+			return DrawDragInt(title, ref value, ImGui.GetContentRegionAvail().X, help, speed, format, useMin, min, useMax,
+				max);
+		}
+
+		private static bool DrawDragInt(
+			string title,
+			ref int value,
+			float width,
+			string help,
+			float speed,
+			string format,
+			bool useMin = false,
+			int min = 0,
+			bool useMax = false,
+			int max = 0)
+		{
+			var helpText = string.IsNullOrEmpty(help) ? null : help + DragHelpText;
+			var itemWidth = DrawHelp(helpText, width);
+			ImGui.SetNextItemWidth(itemWidth);
+			return Utils.DragInt(ref value, GetElementTitle(title), speed, format, useMin, min, useMax, max);
+		}
+
+		public static bool DrawRowDragInt(
+			bool undoable,
+			string title,
+			object o,
+			string fieldName,
+			string help = null,
+			float speed = 1.0f,
+			string format = "%i",
+			bool useMin = false,
+			int min = 0,
+			bool useMax = false,
+			int max = 0)
+		{
+			DrawRowTitleAndAdvanceColumn(title);
+			return DrawDragInt(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, help, speed, format, useMin,
+				min, useMax, max);
+		}
+
+		private static bool DrawDragInt(
+			bool undoable,
+			string title,
+			object o,
+			string fieldName,
+			float width,
+			string help,
+			float speed,
+			string format,
+			bool useMin = false,
+			int min = 0,
+			bool useMax = false,
+			int max = 0)
+		{
+			(bool, int) Func(int v)
+			{
+				var r = Utils.DragInt(ref v, GetElementTitle(title, fieldName), speed, format, useMin, min, useMax, max);
+				return (r, v);
+			}
+
+			return DrawLiveEditValue<int>(undoable, title, o, fieldName, width, Func, IntCompare, help);
+		}
+
+		#endregion Drag Int
 
 		#region Slider Int
 
@@ -462,7 +575,7 @@ namespace StepManiaEditor
 			bool useMax = false,
 			double max = 0.0)
 		{
-			var helpText = string.IsNullOrEmpty(help) ? null : help + DragDoubleHelpText;
+			var helpText = string.IsNullOrEmpty(help) ? null : help + DragHelpText;
 			var itemWidth = DrawHelp(helpText, width);
 			ImGui.SetNextItemWidth(itemWidth);
 			return Utils.DragDouble(ref value, GetElementTitle(title), speed, format, useMin, min, useMax, max);
@@ -817,6 +930,41 @@ namespace StepManiaEditor
 
 		#region Misc Editor Events
 
+		public static double GetMiscEditorEventHeight(bool withBorder = false)
+		{
+			return ImGui.GetStyle().FramePadding.Y * 2 + ImGui.GetFontSize() + (withBorder ? 2 : 0);
+		}
+
+		public static double GetMiscEditorEventDragIntWidgetWidth(int i, string format)
+		{
+			return GetMiscEditorEventStringWidth(Utils.FormatImGuiInt(format, i));
+		}
+
+		public static void MiscEditorEventDragIntWidget(
+			string id,
+			EditorEvent e,
+			string fieldName,
+			int x,
+			int y,
+			int width,
+			uint colorABGR,
+			bool selected,
+			bool canBeDeleted,
+			string format)
+		{
+			void Func(float elementWidth)
+			{
+				DrawDragInt(true, $"##{id}", e, fieldName, elementWidth, "", 1.0f, format);
+			}
+
+			MiscEditorEventWidget(id, e, x, y, width, colorABGR, selected, canBeDeleted, Func);
+		}
+
+		public static double GetMiscEditorEventDragDoubleWidgetWidth(double d, string format)
+		{
+			return GetMiscEditorEventStringWidth(Utils.FormatImGuiDouble(format, d));
+		}
+
 		public static void MiscEditorEventDragDoubleWidget(
 			string id,
 			EditorEvent e,
@@ -837,6 +985,14 @@ namespace StepManiaEditor
 			MiscEditorEventWidget(id, e, x, y, width, colorABGR, selected, canBeDeleted, Func);
 		}
 
+		public static double GetMiscEditorEventStringWidth(string s)
+		{
+			ImGui.PushFont(ImGuiFont);
+			var width = ImGui.CalcTextSize(s).X + Utils.CloseWidth;
+			ImGui.PopFont();
+			return width;
+		}
+
 		public static void MiscEditorEventTimeSignatureWidget(
 			string id,
 			EditorEvent e,
@@ -851,6 +1007,25 @@ namespace StepManiaEditor
 			void Func(float elementWidth)
 			{
 				DrawTimeSignatureInput(true, $"##{id}", e, fieldName, elementWidth);
+			}
+
+			MiscEditorEventWidget(id, e, x, y, width, colorABGR, selected, canBeDeleted, Func);
+		}
+
+		public static void MiscEditorEventScrollRateInterpolationInputWidget(
+			string id,
+			EditorEvent e,
+			string fieldName,
+			int x,
+			int y,
+			int width,
+			uint colorABGR,
+			bool selected,
+			bool canBeDeleted)
+		{
+			void Func(float elementWidth)
+			{
+				DrawScrollRateInterpolationInput(true, $"##{id}", e, fieldName, elementWidth);
 			}
 
 			MiscEditorEventWidget(id, e, x, y, width, colorABGR, selected, canBeDeleted, Func);
@@ -875,17 +1050,23 @@ namespace StepManiaEditor
 
 			ImGui.PushStyleColor(ImGuiCol.FrameBg, colorABGR);
 
-			var height = ImGui.GetStyle().FramePadding.Y * 2 + ImGui.GetFontSize();
+			var height = (int)GetMiscEditorEventHeight(true);
 
 			// Record window size and padding values so we can edit and restore them.
 			var originalWindowPaddingX = ImGui.GetStyle().WindowPadding.X;
 			var originalWindowPaddingY = ImGui.GetStyle().WindowPadding.Y;
 			var originalMinWindowSize = ImGui.GetStyle().WindowMinSize;
+			var originalItemSpacingX = ImGui.GetStyle().ItemSpacing.X;
+			var originalInnerItemSpacingX = ImGui.GetStyle().ItemInnerSpacing.X;
+			var originalFramePaddingX = ImGui.GetStyle().FramePadding.X;
 
 			// Set the padding and spacing so we can draw a table with precise dimensions.
 			ImGui.GetStyle().WindowPadding.X = 1;
 			ImGui.GetStyle().WindowPadding.Y = 1;
 			ImGui.GetStyle().WindowMinSize = new Vector2(width, height);
+			ImGui.GetStyle().ItemSpacing.X = 0;
+			ImGui.GetStyle().ItemInnerSpacing.X = 0;
+			ImGui.GetStyle().FramePadding.X = 0;
 
 			ImGui.SetNextWindowPos(new Vector2(x, y));
 			ImGui.SetNextWindowSize(new Vector2(width, height));
@@ -897,7 +1078,7 @@ namespace StepManiaEditor
 				| ImGuiWindowFlags.NoBringToFrontOnFocus
 				| ImGuiWindowFlags.NoFocusOnAppearing);
 
-			var elementWidth = width - 20.0f;
+			var elementWidth = width - Utils.CloseWidth;
 
 			func(elementWidth);
 
@@ -905,7 +1086,7 @@ namespace StepManiaEditor
 			ImGui.SameLine();
 			if (!canBeDeleted)
 				Utils.PushDisabled();
-			if (ImGui.Button($"X##{id}", new Vector2(20.0f, 0.0f)))
+			if (ImGui.Button($"X##{id}", new Vector2(Utils.CloseWidth, 0.0f)))
 				ActionQueue.Instance.Do(new ActionDeleteEditorEvent(e));
 			if (!canBeDeleted)
 				Utils.PopDisabled();
@@ -913,6 +1094,9 @@ namespace StepManiaEditor
 			ImGui.End();
 
 			// Restore window size and padding values.
+			ImGui.GetStyle().FramePadding.X = originalFramePaddingX;
+			ImGui.GetStyle().ItemInnerSpacing.X = originalInnerItemSpacingX;
+			ImGui.GetStyle().ItemSpacing.X = originalItemSpacingX;
 			ImGui.GetStyle().WindowPadding.X = originalWindowPaddingX;
 			ImGui.GetStyle().WindowPadding.Y = originalWindowPaddingY;
 			ImGui.GetStyle().WindowMinSize = originalMinWindowSize;

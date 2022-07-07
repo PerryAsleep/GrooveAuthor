@@ -24,12 +24,10 @@ namespace StepManiaEditor
 			textureAtlas.Draw(
 				TextureIdMine,
 				spriteBatch,
-				new Vector2((float)X, (float)Y),
-				(float)Scale,
+				new Vector2((float)GetX(), (float)GetY()),
+				(float)GetScale(),
 				0.0f,
 				1.0f);
 		}
-
-		public static implicit operator Event(EditorMineNoteEvent e) => e.ChartEvent;
 	}
 }

@@ -6,14 +6,12 @@ using Microsoft.Xna.Framework.Input;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using FMOD;
 using Fumen.ChartDefinition;
 using Fumen.Converters;
+using static Fumen.Utils;
 using StepManiaLibrary;
 using static StepManiaLibrary.Constants;
 using static StepManiaEditor.Utils;
@@ -251,6 +249,7 @@ namespace StepManiaEditor
 				null,
 				ImGui.GetIO().Fonts.GetGlyphRangesJapanese());
 			ImGuiRenderer.RebuildFontAtlas();
+			ImGuiLayoutUtils.SetFont(ImGuiFont);
 
 			MonogameFont_MPlus1Code_Medium = Content.Load<SpriteFont>("mplus1code-medium");
 
@@ -811,7 +810,16 @@ namespace StepManiaEditor
 			var numArrows = ActiveChart.NumInputs;
 			var xStart = FocalPoint.X - (numArrows * arrowSize * 0.5);
 
-			MiscEventWidgetManager.BeginFrame(xStart, FocalPoint.X + (numArrows * arrowSize * 0.5));
+			// Set up the MiscEventWidgetLayoutManager
+			const int widgetStartPadding = 10;
+			const int widgetMeasureNumberFudge = 10;
+			var lMiscWidgetPos = xStart
+			                     - widgetStartPadding
+			                     + EditorMarkerEvent.GetNumberRelativeAnchorPos(sizeZoom)
+			                     - EditorMarkerEvent.GetNumberAlpha(sizeZoom) * widgetMeasureNumberFudge;
+			var rMiscWidgetPos = FocalPoint.X
+			                     + (numArrows * arrowSize * 0.5) + widgetStartPadding;
+			MiscEventWidgetLayoutManager.BeginFrame(lMiscWidgetPos, rMiscWidgetPos);
 
 			// TODO: Common(?) code for determining song time by chart position or vice versa based on scroll mode
 
@@ -873,27 +881,31 @@ namespace StepManiaEditor
 					var holdStartNotes = ScanBackwardsForHolds(enumerator, chartPosition);
 					foreach (var hsn in holdStartNotes)
 					{
-						hsn.X = xStart + hsn.GetLane() * arrowSize;
-						hsn.Y = ((hsn.ChartEvent.TimeMicros / 1000000.0) - timeAtTopOfScreen) * pps - (arrowSize * 0.5);
-						hsn.W = arrowSize;
-						hsn.H = arrowSize;
-						hsn.Scale = sizeZoom;
+						var startY = (ToSeconds(hsn.GetEvent().TimeMicros) - timeAtTopOfScreen) * pps;
+
+						hsn.SetDimensions(
+							xStart + hsn.GetLane() * arrowSize,
+							startY - (arrowSize * 0.5),
+							arrowSize,
+							arrowSize,
+							sizeZoom);
 						noteEvents.Add(hsn);
 
 						var end = hsn.GetHoldEndNote();
+						end.SetDimensions(
+							xStart + end.GetLane() * arrowSize,
+							(ToSeconds(hsn.GetEvent().TimeMicros) - timeAtTopOfScreen) * pps,
+							arrowSize,
+							((ToSeconds(end.GetEvent().TimeMicros) - timeAtTopOfScreen) * pps) - startY + holdCapHeight,
+							sizeZoom);
 						holdBodyEvents.Add(end);
-						end.X = xStart + end.GetLane() * arrowSize;
-						end.Y = ((hsn.ChartEvent.TimeMicros / 1000000.0) - timeAtTopOfScreen) * pps;
-						end.W = arrowSize;
-						end.H = (((end.ChartEvent.TimeMicros / 1000000.0) - timeAtTopOfScreen) * pps) - end.Y + holdCapHeight;
-						end.Scale = sizeZoom;
 					}
 
 					// Scan forward and add notes.
 					while (enumerator.MoveNext())
 					{
 						var e = enumerator.Current;
-						var y = ((e.ChartEvent.TimeMicros / 1000000.0) - timeAtTopOfScreen) * pps;
+						var y = (ToSeconds(e.GetEvent().TimeMicros) - timeAtTopOfScreen) * pps;
 						var arrowY = y - (arrowSize * 0.5);
 
 						if (arrowY > screenHeight)
@@ -906,27 +918,24 @@ namespace StepManiaEditor
 						    || e is EditorMineNoteEvent
 						    || e is EditorHoldStartNoteEvent)
 						{
-							e.X = xStart + e.GetLane() * arrowSize;
-							e.Y = arrowY;
-							e.W = arrowSize;
-							e.H = arrowSize;
-							e.Scale = sizeZoom;
+							e.SetDimensions(xStart + e.GetLane() * arrowSize, arrowY, arrowSize, arrowSize, sizeZoom);
 
 							if (e is EditorHoldStartNoteEvent hsn)
 							{
+								var endY = (ToSeconds(e.GetEvent().TimeMicros) - timeAtTopOfScreen) * pps;
 								var end = hsn.GetHoldEndNote();
 								holdBodyEvents.Add(end);
-								end.X = xStart + end.GetLane() * arrowSize;
-								end.Y = ((e.ChartEvent.TimeMicros / 1000000.0) - timeAtTopOfScreen) * pps;
-								end.W = arrowSize;
-								end.H = (((end.ChartEvent.TimeMicros / 1000000.0) - timeAtTopOfScreen) * pps) - end.Y +
-								        holdCapHeight;
-								end.Scale = sizeZoom;
+								end.SetDimensions(
+									xStart + end.GetLane() * arrowSize,
+									endY,
+									arrowSize,
+									((ToSeconds(end.GetEvent().TimeMicros) - timeAtTopOfScreen) * pps) - endY + holdCapHeight,
+									sizeZoom);
 							}
 						}
 						else
 						{
-							MiscEventWidgetManager.PositionEvent(e, y);
+							MiscEventWidgetLayoutManager.PositionEvent(e, y);
 						}
 
 						noteEvents.Add(e);
@@ -1008,28 +1017,30 @@ namespace StepManiaEditor
 					var holdStartNotes = ScanBackwardsForHolds(enumerator, chartPositionAtTopOfScreen);
 					foreach (var hsn in holdStartNotes)
 					{
-						hsn.X = xStart + hsn.GetLane() * arrowSize;
-						hsn.Y = (hsn.GetRow() - chartPositionAtTopOfScreen) * ppr - (arrowSize * 0.5);
-						hsn.W = arrowSize;
-						hsn.H = arrowSize;
-						hsn.Scale = sizeZoom;
-						noteEvents.Add(hsn);
+						hsn.SetDimensions(
+							xStart + hsn.GetLane() * arrowSize,
+							(hsn.GetRow() - chartPositionAtTopOfScreen) * ppr - (arrowSize * 0.5),
+							arrowSize,
+							arrowSize,
+							sizeZoom);
 
 						var end = hsn.GetHoldEndNote();
-						holdBodyEvents.Add(end);
-						end.X = xStart + end.GetLane() * arrowSize;
-						end.Y = (hsn.GetRow() - chartPositionAtTopOfScreen) * ppr;
-						end.W = arrowSize;
-						end.H = ((end.GetRow() - chartPositionAtTopOfScreen) * ppr) - end.Y + holdCapHeight;
-						end.Scale = sizeZoom;
+						var endY = (hsn.GetRow() - chartPositionAtTopOfScreen) * ppr;
+						end.SetDimensions(
+							xStart + end.GetLane() * arrowSize,
+							endY,
+							arrowSize,
+							((end.GetRow() - chartPositionAtTopOfScreen) * ppr) - endY + holdCapHeight,
+							sizeZoom);
 					}
 
 					// Scan forward and add notes.
 					while (enumerator.MoveNext())
 					{
 						var e = enumerator.Current;
-						var y = (e.GetRow() - chartPositionAtTopOfScreen) * ppr - (arrowSize * 0.5);
-						if (y > screenHeight)
+						var y = (e.GetRow() - chartPositionAtTopOfScreen) * ppr;
+						var arrowY = y - (arrowSize * 0.5);
+						if (arrowY > screenHeight)
 							break;
 
 						if (e is EditorHoldEndNoteEvent)
@@ -1039,22 +1050,24 @@ namespace StepManiaEditor
 						    || e is EditorMineNoteEvent
 						    || e is EditorHoldStartNoteEvent)
 						{
-							e.X = xStart + e.GetLane() * arrowSize;
-							e.Y = y;
-							e.W = arrowSize;
-							e.H = arrowSize;
-							e.Scale = sizeZoom;
+							e.SetDimensions(xStart + e.GetLane() * arrowSize, arrowY, arrowSize, arrowSize, sizeZoom);
 
 							if (e is EditorHoldStartNoteEvent hsn)
 							{
 								var end = hsn.GetHoldEndNote();
+								var endY = (e.GetRow() - chartPositionAtTopOfScreen) * ppr;
+								end.SetDimensions(
+									xStart + end.GetLane() * arrowSize,
+									endY,
+									arrowSize,
+									((end.GetRow() - chartPositionAtTopOfScreen) * ppr) - endY + holdCapHeight,
+									sizeZoom);
 								holdBodyEvents.Add(end);
-								end.X = xStart + end.GetLane() * arrowSize;
-								end.Y = (e.GetRow() - chartPositionAtTopOfScreen) * ppr;
-								end.W = arrowSize;
-								end.H = ((end.GetRow() - chartPositionAtTopOfScreen) * ppr) - end.Y + holdCapHeight;
-								end.Scale = sizeZoom;
 							}
+						}
+						else
+						{
+							MiscEventWidgetLayoutManager.PositionEvent(e, y);
 						}
 
 						noteEvents.Add(e);
@@ -1175,12 +1188,12 @@ namespace StepManiaEditor
 					var holdStartNotes = ScanBackwardsForHolds(enumerator, chartPositionAtTopOfScreen);
 					foreach (var hsn in holdStartNotes)
 					{
-						hsn.X = xStart + hsn.GetLane() * arrowSize;
-						hsn.Y = (hsn.ChartEvent.IntegerPosition - chartPositionAtTopOfScreen) * ppr -
-						        (arrowSize * 0.5);
-						hsn.W = arrowSize;
-						hsn.H = arrowSize;
-						hsn.Scale = sizeZoom;
+						hsn.SetDimensions(
+							xStart + hsn.GetLane() * arrowSize,
+							(hsn.GetEvent().IntegerPosition - chartPositionAtTopOfScreen) * ppr - (arrowSize * 0.5),
+							arrowSize,
+							arrowSize,
+							sizeZoom);
 						noteEvents.Add(hsn);
 
 						holdEndNotesNeedingToBeAdded[hsn.GetLane()] = hsn.GetHoldEndNote();
@@ -1195,8 +1208,13 @@ namespace StepManiaEditor
 						var e = enumerator.Current;
 
 						// Check to see if we have crossed into a new rate altering event section
-						if (nextRateEvent != null && e.ChartEvent == nextRateEvent.ChartEvent)
+						if (nextRateEvent != null && e.GetEvent() == nextRateEvent.GetEvent())
 						{
+							// Add a misc widget for this rate event.
+							var rateEventY = previousRateEventPixelPosition + (e.GetEvent().IntegerPosition - rateEvent.Row) * ppr;
+							MiscEventWidgetLayoutManager.PositionEvent(nextRateEvent, rateEventY);
+							noteEvents.Add(nextRateEvent);
+
 							// Update beat markers for the section for the previous rate event.
 							UpdateBeatMarkers(
 								rateEvent,
@@ -1229,9 +1247,9 @@ namespace StepManiaEditor
 						}
 
 						// Determine y position.
-						var y = previousRateEventPixelPosition +
-							(e.ChartEvent.IntegerPosition - rateEvent.Row) * ppr - (arrowSize * 0.5);
-						if (y > screenHeight)
+						var y = previousRateEventPixelPosition + (e.GetEvent().IntegerPosition - rateEvent.Row) * ppr;
+						var arrowY = y - (arrowSize * 0.5);
+						if (arrowY > screenHeight)
 							break;
 
 						// Record note.
@@ -1240,27 +1258,23 @@ namespace StepManiaEditor
 						    || e is EditorHoldEndNoteEvent
 						    || e is EditorMineNoteEvent)
 						{
-							e.X = xStart + e.GetLane() * arrowSize;
-							e.Y = y;
-							e.W = arrowSize;
-							e.H = arrowSize;
-							e.Scale = sizeZoom;
+							var noteY = arrowY;
+							var noteH = arrowSize;
 
 							if (e is EditorHoldEndNoteEvent hen)
 							{
 								var start = hen.GetHoldStartNote();
 								var endY = previousRateEventPixelPosition +
-								           (e.ChartEvent.IntegerPosition - rateEvent.Row) * ppr;
+								           (e.GetEvent().IntegerPosition - rateEvent.Row) * ppr;
 
-								e.Y = start.Y + arrowSize * 0.5f;
-								e.H = endY - start.Y;
+								noteY = start.GetY() + arrowSize * 0.5f;
+								noteH = endY - start.GetY();
 
 								holdBodyEvents.Add(e);
 
 								// Remove from holdEndNotesNeedingToBeAdded.
 								holdEndNotesNeedingToBeAdded[e.GetLane()] = null;
 							}
-
 							else if (e is EditorHoldStartNoteEvent hsn)
 							{
 								// Record that there is in an in-progress hold that will need to be ended.
@@ -1271,6 +1285,13 @@ namespace StepManiaEditor
 							{
 								noteEvents.Add(e);
 							}
+
+							e.SetDimensions(xStart + e.GetLane() * arrowSize, noteY, arrowSize, noteH, sizeZoom);
+						}
+						else
+						{
+							MiscEventWidgetLayoutManager.PositionEvent(e, y);
+							noteEvents.Add(e);
 						}
 
 						if (noteEvents.Count + holdBodyEvents.Count > MaxEventsToDraw)
@@ -1284,16 +1305,16 @@ namespace StepManiaEditor
 						if (holdEndNote == null)
 							continue;
 
-						holdEndNote.X = xStart + holdEndNote.GetLane() * arrowSize;
-						holdEndNote.W = arrowSize;
-						holdEndNote.Scale = sizeZoom;
-
 						var start = holdEndNote.GetHoldStartNote();
 						var endY = previousRateEventPixelPosition +
-						           (holdEndNote.ChartEvent.IntegerPosition - rateEvent.Row) * ppr;
+						           (holdEndNote.GetEvent().IntegerPosition - rateEvent.Row) * ppr;
 
-						holdEndNote.Y = start.Y + arrowSize * 0.5;
-						holdEndNote.H = endY - start.Y;
+						holdEndNote.SetDimensions(
+							xStart + holdEndNote.GetLane() * arrowSize,
+							start.GetY() + arrowSize * 0.5,
+							arrowSize,
+							endY - start.GetY(),
+							sizeZoom);
 
 						holdBodyEvents.Add(holdEndNote);
 					}
@@ -1448,16 +1469,14 @@ namespace StepManiaEditor
 				// Record the marker.
 				if (measureMarker || sizeZoom > BeatMarkerMinScale)
 				{
-					VisibleMarkers.Add(new EditorMarkerEvent
-					{
-						X = x,
-						Y = y,
-						W = ActiveChart.NumInputs * DefaultArrowWidth * sizeZoom,
-						H = 1,
-						MeasureMarker = measureMarker,
-						Measure = measure,
-						Scale = sizeZoom
-					});
+					VisibleMarkers.Add(new EditorMarkerEvent(
+						x,
+						y,
+						ActiveChart.NumInputs * DefaultArrowWidth * sizeZoom,
+						1,
+						sizeZoom,
+						measureMarker,
+						measure));
 				}
 
 				lastRecordedRow = currentRow;
@@ -1635,7 +1654,7 @@ namespace StepManiaEditor
 					var lastEvent = ActiveChart.EditorEvents.Last();
 					var maxTimeFromChart = 0.0;
 					if (lastEvent.MoveNext())
-						maxTimeFromChart = lastEvent.Current.ChartEvent.TimeMicros / 1000000.0;
+						maxTimeFromChart = ToSeconds(lastEvent.Current.GetEvent().TimeMicros);
 					maxTimeFromChart = Math.Max(maxTimeFromChart, EditorSong.LastSecondHint);
 
 					// Full Area. The time from the chart, extended in both directions by the editor range.
@@ -1670,9 +1689,9 @@ namespace StepManiaEditor
 					foreach (var hsn in holdStartNotes)
 					{
 						MiniMap.AddHold(
-							(LaneHoldStartNote)hsn.ChartEvent,
-							hsn.ChartEvent.TimeMicros / 1000000.0,
-							hsn.GetHoldEndNote().ChartEvent.TimeMicros / 1000000.0,
+							(LaneHoldStartNote)hsn.GetEvent(),
+							ToSeconds(hsn.GetEvent().TimeMicros),
+							ToSeconds(hsn.GetHoldEndNote().GetEvent().TimeMicros),
 							hsn.IsRoll());
 						numNotesAdded++;
 					}
@@ -1686,14 +1705,14 @@ namespace StepManiaEditor
 						if (e is EditorTapNoteEvent)
 						{
 							numNotesAdded++;
-							if (MiniMap.AddNote((LaneNote)e.ChartEvent, e.ChartEvent.TimeMicros / 1000000.0) ==
+							if (MiniMap.AddNote((LaneNote)e.GetEvent(), ToSeconds(e.GetEvent().TimeMicros)) ==
 							    MiniMap.AddResult.BelowBottom)
 								break;
 						}
 						else if (e is EditorMineNoteEvent)
 						{
 							numNotesAdded++;
-							if (MiniMap.AddMine((LaneNote)e.ChartEvent, e.ChartEvent.TimeMicros / 1000000.0) ==
+							if (MiniMap.AddMine((LaneNote)e.GetEvent(), ToSeconds(e.GetEvent().TimeMicros)) ==
 							    MiniMap.AddResult.BelowBottom)
 								break;
 						}
@@ -1701,9 +1720,9 @@ namespace StepManiaEditor
 						{
 							numNotesAdded++;
 							if (MiniMap.AddHold(
-								    (LaneHoldStartNote)e.ChartEvent,
-								    e.ChartEvent.TimeMicros / 1000000.0,
-								    hsn.GetHoldEndNote().ChartEvent.TimeMicros / 1000000.0,
+								    (LaneHoldStartNote)e.GetEvent(),
+								    ToSeconds(e.GetEvent().TimeMicros),
+								    ToSeconds(hsn.GetHoldEndNote().GetEvent().TimeMicros),
 								    hsn.IsRoll()) == MiniMap.AddResult.BelowBottom)
 								break;
 						}
@@ -1734,7 +1753,7 @@ namespace StepManiaEditor
 					var lastEvent = ActiveChart.EditorEvents.Last();
 					var maxRowFromChart = 0.0;
 					if (lastEvent.MoveNext())
-						maxRowFromChart = lastEvent.Current.ChartEvent.IntegerPosition;
+						maxRowFromChart = lastEvent.Current.GetEvent().IntegerPosition;
 
 					if (EditorSong.LastSecondHint > 0.0)
 					{
@@ -1775,9 +1794,9 @@ namespace StepManiaEditor
 					foreach (var hsn in holdStartNotes)
 					{
 						MiniMap.AddHold(
-							(LaneHoldStartNote)hsn.ChartEvent,
-							hsn.ChartEvent.IntegerPosition,
-							hsn.GetHoldEndNote().ChartEvent.IntegerPosition,
+							(LaneHoldStartNote)hsn.GetEvent(),
+							hsn.GetEvent().IntegerPosition,
+							hsn.GetHoldEndNote().GetEvent().IntegerPosition,
 							hsn.IsRoll());
 						numNotesAdded++;
 					}
@@ -1791,14 +1810,14 @@ namespace StepManiaEditor
 						if (e is EditorTapNoteEvent)
 						{
 							numNotesAdded++;
-							if (MiniMap.AddNote((LaneNote)e.ChartEvent, e.ChartEvent.IntegerPosition) ==
+							if (MiniMap.AddNote((LaneNote)e.GetEvent(), e.GetEvent().IntegerPosition) ==
 							    MiniMap.AddResult.BelowBottom)
 								break;
 						}
 						else if (e is EditorMineNoteEvent)
 						{
 							numNotesAdded++;
-							if (MiniMap.AddMine((LaneNote)e.ChartEvent, e.ChartEvent.IntegerPosition) ==
+							if (MiniMap.AddMine((LaneNote)e.GetEvent(), e.GetEvent().IntegerPosition) ==
 							    MiniMap.AddResult.BelowBottom)
 								break;
 						}
@@ -1806,9 +1825,9 @@ namespace StepManiaEditor
 						{
 							numNotesAdded++;
 							if (MiniMap.AddHold(
-								    (LaneHoldStartNote)e.ChartEvent,
-								    e.ChartEvent.IntegerPosition,
-								    hsn.GetHoldEndNote().ChartEvent.IntegerPosition,
+								    (LaneHoldStartNote)e.GetEvent(),
+								    e.GetEvent().IntegerPosition,
+								    hsn.GetHoldEndNote().GetEvent().IntegerPosition,
 								    hsn.IsRoll()) == MiniMap.AddResult.BelowBottom)
 								break;
 						}

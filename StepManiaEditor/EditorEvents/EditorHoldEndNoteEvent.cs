@@ -59,12 +59,12 @@ namespace StepManiaEditor
 
 			// TODO: Tiling?
 
-			var capH = (int)(DefaultHoldCapHeight * Scale + 0.5);
-			var bodyTileH = (int)(DefaultHoldSegmentHeight * Scale + 0.5);
-			var y = (int)(Y + H + 0.5) - capH;
-			var minY = (int)(Y + 0.5);
-			var x = (int)(X + 0.5);
-			var w = (int)(W + 0.5);
+			var capH = (int)(DefaultHoldCapHeight * GetScale() + 0.5);
+			var bodyTileH = (int)(DefaultHoldSegmentHeight * GetScale() + 0.5);
+			var y = (int)(GetY() + GetH() + 0.5) - capH;
+			var minY = (int)(GetY() + 0.5);
+			var x = (int)(GetX() + 0.5);
+			var w = (int)(GetW() + 0.5);
 			textureAtlas.Draw(capTextureId, spriteBatch, new Rectangle(x, y, w, capH), 1.0f);
 
 			// TODO: depth
@@ -77,7 +77,5 @@ namespace StepManiaEditor
 				textureAtlas.Draw(bodyTextureId, spriteBatch, new Rectangle(x, y, w, h), 1.0f);
 			}
 		}
-
-		public static implicit operator Event(EditorHoldEndNoteEvent e) => e.ChartEvent;
 	}
 }

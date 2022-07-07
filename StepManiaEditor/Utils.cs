@@ -32,7 +32,7 @@ namespace StepManiaEditor
 		public const uint UITempoColorABGR = 0x8A297A79;			// yellow
 		public const uint UITimeSignatureColorABGR = 0x8A297A29;	// green
 		public const uint UIStopColorABGR = 0x8A29297A;				// red
-		public const uint UIDelayColorABGR = 0x8A29297A;			// red
+		public const uint UIDelayColorABGR = 0x8A295E7A;			// light orange
 		public const uint UIWarpColorABGR = 0x8A7A7929;				// cyan
 		public const uint UIScrollsColorABGR = 0x8A7A2929;			// blue
 		public const uint UISpeedsColorABGR = 0x8A7A294D;			// purple
@@ -56,6 +56,7 @@ namespace StepManiaEditor
 		public const float MeasureNumberMinScale = 0.10f;
 
 		public const float HelpWidth = 18.0f;
+		public const int CloseWidth = 18;
 
 		public const int BackgroundWidth = 640;
 		public const int BackgroundHeight = 480;
@@ -310,6 +311,26 @@ namespace StepManiaEditor
 
 		#region ImGui Helpers
 
+		[DllImport("msvcrt.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl)]
+		private static extern int _snwprintf_s([MarshalAs(UnmanagedType.LPWStr)] StringBuilder sb, IntPtr sizeOfBuffer, IntPtr count, string format, int p);
+
+		public static string FormatImGuiInt(string fmt, int i, int sizeOfBuffer = 64, int count = 32)
+		{
+			StringBuilder sb = new StringBuilder(sizeOfBuffer);
+			_snwprintf_s(sb, (IntPtr)sizeOfBuffer, (IntPtr)count, fmt, i);
+			return sb.ToString();
+		}
+
+		[DllImport("msvcrt.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl)]
+		private static extern int _snwprintf_s([MarshalAs(UnmanagedType.LPWStr)] StringBuilder sb, IntPtr sizeOfBuffer, IntPtr count, string format, double p);
+
+		public static string FormatImGuiDouble(string fmt, double d, int sizeOfBuffer = 64, int count = 32)
+		{
+			StringBuilder sb = new StringBuilder(sizeOfBuffer);
+			_snwprintf_s(sb, (IntPtr)sizeOfBuffer, (IntPtr)count, fmt, d);
+			return sb.ToString();
+		}
+
 		public static bool ComboFromEnum<T>(string name, ref T enumValue) where T : Enum
 		{
 			var strings = GetCachedEnumStrings<T>();
@@ -556,24 +577,27 @@ namespace StepManiaEditor
 			return ret;
 		}
 
-		public static bool DragDoubleNoMinMax(ref double value, string label, float speed, string format)
+		public static bool DragInt(
+			ref int value,
+			string label,
+			float speed,
+			string format,
+			bool useMin = false,
+			int min = 0,
+			bool useMax = false,
+			int max = 0)
 		{
-			return DragDouble(ref value, label, speed, format, false, 0.0, false, 0.0);
-		}
+			var ret = ImGui.DragInt(label, ref value, speed, useMin ? min : 0, useMax ? max : 0, format);
 
-		public static bool DragDoubleMin(ref double value, string label, float speed, string format, double min)
-		{
-			return DragDouble(ref value, label, speed, format, true, min);
-		}
+			if (ret)
+			{
+				if (useMin)
+					value = Math.Max(min, value);
+				if (useMax)
+					value = Math.Min(max, value);
+			}
 
-		public static bool DragDoubleMax(ref double value, string label, float speed, string format, double max)
-		{
-			return DragDouble(ref value, label, speed, format, false, 0.0, true, max);
-		}
-
-		public static bool DragDoubleMinMax(ref double value, string label, float speed, string format, double min, double max)
-		{
-			return DragDouble(ref value, label, speed, format, true, min, true, max);
+			return ret;
 		}
 
 		public static unsafe bool DragDouble(

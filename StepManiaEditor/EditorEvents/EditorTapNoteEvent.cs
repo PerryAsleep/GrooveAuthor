@@ -29,12 +29,10 @@ namespace StepManiaEditor
 			textureAtlas.Draw(
 				textureId,
 				spriteBatch,
-				new Vector2((float)X, (float)Y),
-				(float)Scale,
+				new Vector2((float)GetX(), (float)GetY()),
+				(float)GetScale(),
 				rot[LaneTapNote.Lane % rot.Length],
 				1.0f);
 		}
-
-		public static implicit operator Event(EditorTapNoteEvent e) => e.ChartEvent;
 	}
 }

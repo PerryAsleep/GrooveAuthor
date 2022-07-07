@@ -9,15 +9,14 @@ namespace StepManiaEditor
 	{
 		// Foot, expression, etc.
 
-		public double X;
-		public double Y;
-		public double W;
-		public double H;
-		public double Scale = 1.0;
+		private double X;
+		private double Y;
+		private double W;
+		private double H;
+		private double Scale = 1.0;
 
-		public Event ChartEvent;
-
-		public EditorChart EditorChart;
+		protected readonly Event ChartEvent;
+		protected readonly EditorChart EditorChart;
 
 		public static EditorEvent CreateEvent(EditorChart editorChart, Event chartEvent)
 		{
@@ -60,6 +59,84 @@ namespace StepManiaEditor
 		{
 			EditorChart = editorChart;
 			ChartEvent = chartEvent;
+		}
+
+		public virtual void SetDimensions(double x, double y, double w, double h, double scale)
+		{
+			X = x;
+			Y = y;
+			W = w;
+			H = h;
+			Scale = scale;
+		}
+
+		public virtual void SetDimensions(double x, double y, double w, double h)
+		{
+			X = x;
+			Y = y;
+			W = w;
+			H = h;
+		}
+
+		public virtual void SetPosition(double x, double y)
+		{
+			X = x;
+			Y = y;
+		}
+
+		public virtual void SetX(double x)
+		{
+			X = x;
+		}
+
+		public virtual void SetY(double y)
+		{
+			Y = y;
+		}
+
+		public virtual void SetW(double w)
+		{
+			W = w;
+		}
+
+		public virtual void SetH(double h)
+		{
+			H = h;
+		}
+
+		public virtual double GetX()
+		{
+			return X;
+		}
+
+		public virtual double GetY()
+		{
+			return Y;
+		}
+
+		public virtual double GetW()
+		{
+			return W;
+		}
+
+		public virtual double GetH()
+		{
+			return H;
+		}
+
+		public double GetScale()
+		{
+			return Scale;
+		}
+
+		public EditorChart GetEditorChart()
+		{
+			return EditorChart;
+		}
+
+		public Event GetEvent()
+		{
+			return ChartEvent;
 		}
 
 		public virtual int GetLane()
