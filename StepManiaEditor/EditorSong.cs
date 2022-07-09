@@ -574,6 +574,8 @@ namespace StepManiaEditor
 			var lastHoldStarts = new EditorHoldStartNoteEvent[NumInputs];
 			var lastScrollRateInterpolationValue = 1.0;
 			var firstInterpolatedScrollRate = true;
+			var firstTick = true;
+			var firstMultipliersEvent = true;
 
 			for (var eventIndex = 0; eventIndex < chart.Layers[0].Events.Count; eventIndex++)
 			{
@@ -611,6 +613,16 @@ namespace StepManiaEditor
 
 						firstInterpolatedScrollRate = false;
 					}
+				}
+				else if (editorEvent is EditorTickCountEvent tce)
+				{
+					tce.CanBeDeleted = !firstTick;
+					firstTick = false;
+				}
+				else if (editorEvent is EditorMultipliersEvent me)
+				{
+					me.CanBeDeleted = !firstMultipliersEvent;
+					firstMultipliersEvent = false;
 				}
 			}
 
@@ -702,7 +714,7 @@ namespace StepManiaEditor
 					rae.RowForFollowingEvents = chartEvent.IntegerPosition;
 					rae.SongTime = previousEvent.SongTimeForFollowingEvents + secondsSincePrevious;
 					rae.SongTimeForFollowingEvents = previousEvent.SongTimeForFollowingEvents + secondsSincePrevious +
-													 (stop.LengthMicros / 1000000.0);
+													 Fumen.Utils.ToSeconds(stop.LengthMicros);
 					rae.RowsPerSecond = previousEvent.RowsPerSecond;
 					rae.SecondsPerRow = previousEvent.SecondsPerRow;
 					rae.ScrollRate = lastScrollRate;

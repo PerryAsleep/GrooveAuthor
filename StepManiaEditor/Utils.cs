@@ -38,7 +38,7 @@ namespace StepManiaEditor
 		public const uint UISpeedsColorABGR = 0x8A7A294D;			// purple
 
 		public const uint UITicksColorABGR = 0x8A295E7A;			// orange
-		public const uint UIComboColorABGR = 0x8A297A63;			// lime
+		public const uint UIMultipliersColorABGR = 0x8A297A63;		// lime
 		public const uint UIFakesColorABGR = 0x8A29467A;			// dark orange
 		public const uint UILabelColorABGR = 0x8A68297A;			// pink
 
@@ -564,15 +564,13 @@ namespace StepManiaEditor
 			return ret;
 		}
 
-		public static bool InputInt(string label, ref int value, bool useMin, int min,  bool useMax, int max)
+		public static bool InputInt(string label, ref int value, int min = int.MinValue, int max = int.MaxValue)
 		{
 			var ret = ImGui.InputInt(label, ref value);
 			if (ret)
 			{
-				if (useMin)
-					value = Math.Max(min, value);
-				if (useMax)
-					value = Math.Min(max, value);
+				value = Math.Max(min, value);
+				value = Math.Min(max, value);
 			}
 			return ret;
 		}
@@ -582,19 +580,15 @@ namespace StepManiaEditor
 			string label,
 			float speed,
 			string format,
-			bool useMin = false,
-			int min = 0,
-			bool useMax = false,
-			int max = 0)
+			int min = int.MinValue,
+			int max = int.MaxValue)
 		{
-			var ret = ImGui.DragInt(label, ref value, speed, useMin ? min : 0, useMax ? max : 0, format);
+			var ret = ImGui.DragInt(label, ref value, speed, min, max, format);
 
 			if (ret)
 			{
-				if (useMin)
-					value = Math.Max(min, value);
-				if (useMax)
-					value = Math.Min(max, value);
+				value = Math.Max(min, value);
+				value = Math.Min(max, value);
 			}
 
 			return ret;
@@ -605,26 +599,22 @@ namespace StepManiaEditor
 			string label,
 			float speed,
 			string format,
-			bool useMin = false,
-			double min = 0.0,
-			bool useMax = false,
-			double max = 0.0)
+			double min = double.MinValue,
+			double max = double.MaxValue)
 		{
 			var ret = false;
 			fixed (double* p = &value)
 			{
 				IntPtr pData = new IntPtr(p);
-				IntPtr pMin = useMin ? new IntPtr(&min) : IntPtr.Zero;
-				IntPtr pMax = useMax ? new IntPtr(&max) : IntPtr.Zero;
+				IntPtr pMin = new IntPtr(&min);
+				IntPtr pMax = new IntPtr(&max);
 				ret = ImGui.DragScalar(label, ImGuiDataType.Double, pData, speed, pMin, pMax, format);
 			}
 
 			if (ret)
 			{
-				if (useMin)
-					value = Math.Max(min, value);
-				if (useMax)
-					value = Math.Min(max, value);
+				value = Math.Max(min, value);
+				value = Math.Min(max, value);
 			}
 
 			return ret;

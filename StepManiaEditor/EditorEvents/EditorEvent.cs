@@ -5,7 +5,7 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace StepManiaEditor
 {
-	public class EditorEvent : IComparable<EditorEvent>
+	public abstract class EditorEvent : IComparable<EditorEvent>
 	{
 		// Foot, expression, etc.
 
@@ -47,15 +47,19 @@ namespace StepManiaEditor
 				return new EditorScrollRateEvent(editorChart, sr);
 			if (chartEvent is ScrollRateInterpolation sri)
 				return new EditorInterpolatedRateAlteringEvent(editorChart, sri);
-
-			// TODO: More event types
-			// For now, using what should be an abstract class
-			return new EditorEvent(editorChart, chartEvent);
+			if (chartEvent is TickCount tc)
+				return new EditorTickCountEvent(editorChart, tc);
+			if (chartEvent is Multipliers m)
+				return new EditorMultipliersEvent(editorChart, m);
+			if (chartEvent is Label l)
+				return new EditorLabelEvent(editorChart, l);
+			if (chartEvent is FakeSegment fs)
+				return new EditorFakeSegmentEvent(editorChart, fs);
 
 			return null;
 		}
 
-		public EditorEvent(EditorChart editorChart, Event chartEvent)
+		protected EditorEvent(EditorChart editorChart, Event chartEvent)
 		{
 			EditorChart = editorChart;
 			ChartEvent = chartEvent;
@@ -156,6 +160,11 @@ namespace StepManiaEditor
 			return 0;
 		}
 
+		protected string GetImGuiId()
+		{
+			return $"{ChartEvent.GetType()}{GetLane()}{ChartEvent.IntegerPosition}";
+		}
+
 		public virtual int CompareTo(EditorEvent other)
 		{
 			return SMCommon.SMEventComparer.Compare(ChartEvent, other.ChartEvent);
@@ -177,7 +186,7 @@ namespace StepManiaEditor
 
 		public static int CompareToTime(double time, EditorEvent editorEvent)
 		{
-			return time.CompareTo(editorEvent.ChartEvent.TimeMicros / 1000000.0);
+			return time.CompareTo(Fumen.Utils.ToSeconds(editorEvent.ChartEvent.TimeMicros));
 		}
 	}
 }

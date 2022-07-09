@@ -2,27 +2,25 @@
 using Microsoft.Xna.Framework.Graphics;
 using static Fumen.Utils;
 
-
 namespace StepManiaEditor
 {
-	public class EditorDelayEvent : EditorRateAlteringEvent
+	public class EditorFakeSegmentEvent : EditorEvent
 	{
-		public Stop StopEvent;
+		public FakeSegment FakeSegmentEvent;
 
 		private const string Format = "%.9gs";
 		private bool WidthDirty;
 
 		public double DoubleValue
 		{
-			get => ToSeconds(StopEvent.LengthMicros);
+			get => ToSeconds(FakeSegmentEvent.LengthMicros);
 			set
 			{
 				var newMicros = ToMicros(value);
-				if (StopEvent.LengthMicros != newMicros)
+				if (FakeSegmentEvent.LengthMicros != newMicros)
 				{
-					StopEvent.LengthMicros = newMicros;
+					FakeSegmentEvent.LengthMicros = newMicros;
 					WidthDirty = true;
-					EditorChart.OnRateAlteringEventModified(this);
 				}
 			}
 		}
@@ -44,9 +42,9 @@ namespace StepManiaEditor
 			return base.GetW();
 		}
 
-		public EditorDelayEvent(EditorChart editorChart, Stop chartEvent) : base(editorChart, chartEvent)
+		public EditorFakeSegmentEvent(EditorChart editorChart, FakeSegment chartEvent) : base(editorChart, chartEvent)
 		{
-			StopEvent = chartEvent;
+			FakeSegmentEvent = chartEvent;
 			WidthDirty = true;
 		}
 
@@ -57,9 +55,9 @@ namespace StepManiaEditor
 				this,
 				nameof(DoubleValue),
 				(int)GetX(), (int)GetY(), (int)GetW(),
-				Utils.UIDelayColorABGR,
+				Utils.UIFakesColorABGR,
 				false,
-				CanBeDeleted,
+				true,
 				Format);
 		}
 	}

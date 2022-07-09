@@ -48,9 +48,9 @@ namespace StepManiaEditor
 			if (ImGuiLayoutUtils.BeginTable("Options Preview", 160))
 			{
 				ImGuiLayoutUtils.DrawRowDragDouble(true, "Preview Fade In", p, nameof(PreferencesOptions.PreviewFadeInTime),
-					"Time over which the preview should fade in when previewing the song.", 0.001f, "%.3f seconds", true, 0.0f);
+					"Time over which the preview should fade in when previewing the song.", 0.001f, "%.3f seconds", 0.0);
 				ImGuiLayoutUtils.DrawRowDragDouble(true, "Preview Fade Out", p, nameof(PreferencesOptions.PreviewFadeOutTime),
-					"Time over which the preview should fade out when previewing the song.", 0.001f, "%.3f seconds", true, 0.0f);
+					"Time over which the preview should fade out when previewing the song.", 0.001f, "%.3f seconds", 0.0);
 				ImGuiLayoutUtils.EndTable();
 			}
 

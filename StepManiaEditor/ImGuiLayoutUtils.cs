@@ -195,6 +195,52 @@ namespace StepManiaEditor
 
 		#endregion Time Signature
 
+		#region Multipliers
+
+		private static void DrawMultipliersInput(bool undoable, string title, object o, string fieldName, float width,
+			string help = null)
+		{
+			(bool, string) Func(string v)
+			{
+				v ??= "";
+				var r = ImGui.InputText(GetElementTitle(title, fieldName), ref v, 256);
+				return (r, v);
+			}
+
+			bool ValidationFunc(string v)
+			{
+				var (valid, _, _) = EditorMultipliersEvent.IsValidMultipliersString(v);
+				return valid;
+			}
+
+			DrawCachedEditReference<string>(undoable, title, o, fieldName, width, Func, StringCompare, ValidationFunc, help);
+		}
+
+		#endregion Multipliers
+
+		#region Label
+
+		private static void DrawLabelInput(bool undoable, string title, object o, string fieldName, float width,
+			string help = null)
+		{
+			(bool, string) Func(string v)
+			{
+				v ??= "";
+				var r = ImGui.InputText(GetElementTitle(title, fieldName), ref v, 256);
+				return (r, v);
+			}
+
+			// Consider all input valid. Assume the EditorLabelEvent will sanitize input.
+			bool ValidationFunc(string v)
+			{
+				return true;
+			}
+
+			DrawCachedEditReference<string>(undoable, title, o, fieldName, width, Func, StringCompare, ValidationFunc, help);
+		}
+
+		#endregion Label
+
 		#region Scroll Rate Interpolation
 
 		private static void DrawScrollRateInterpolationInput(bool undoable, string title, object o, string fieldName, float width,
@@ -285,13 +331,11 @@ namespace StepManiaEditor
 			object o,
 			string fieldName,
 			string help = null,
-			bool useMin = false,
-			int min = 0,
-			bool useMax = false,
-			int max = 0)
+			int min = int.MinValue,
+			int max = int.MaxValue)
 		{
 			DrawRowTitleAndAdvanceColumn(title);
-			DrawInputInt(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, help, useMin, min, useMax, max);
+			DrawInputInt(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, help, min, max);
 		}
 
 		private static void DrawInputInt(
@@ -301,14 +345,12 @@ namespace StepManiaEditor
 			string fieldName,
 			float width,
 			string help = null,
-			bool useMin = false,
-			int min = 0,
-			bool useMax = false,
-			int max = 0)
+			int min = int.MinValue,
+			int max = int.MaxValue)
 		{
 			(bool, int) Func(int v)
 			{
-				var r = Utils.InputInt(GetElementTitle(title, fieldName), ref v, useMin, min, useMax, max);
+				var r = Utils.InputInt(GetElementTitle(title, fieldName), ref v, min, max);
 				return (r, v);
 			}
 
@@ -325,14 +367,11 @@ namespace StepManiaEditor
 			string help = null,
 			float speed = 1.0f,
 			string format = "%i",
-			bool useMin = false,
-			int min = 0,
-			bool useMax = false,
-			int max = 0)
+			int min = int.MinValue,
+			int max = int.MaxValue)
 		{
 			DrawRowTitleAndAdvanceColumn(title);
-			return DrawDragInt(title, ref value, ImGui.GetContentRegionAvail().X, help, speed, format, useMin, min, useMax,
-				max);
+			return DrawDragInt(title, ref value, ImGui.GetContentRegionAvail().X, help, speed, format, min, max);
 		}
 
 		private static bool DrawDragInt(
@@ -342,15 +381,13 @@ namespace StepManiaEditor
 			string help,
 			float speed,
 			string format,
-			bool useMin = false,
-			int min = 0,
-			bool useMax = false,
-			int max = 0)
+			int min = int.MinValue,
+			int max = int.MaxValue)
 		{
 			var helpText = string.IsNullOrEmpty(help) ? null : help + DragHelpText;
 			var itemWidth = DrawHelp(helpText, width);
 			ImGui.SetNextItemWidth(itemWidth);
-			return Utils.DragInt(ref value, GetElementTitle(title), speed, format, useMin, min, useMax, max);
+			return Utils.DragInt(ref value, GetElementTitle(title), speed, format, min, max);
 		}
 
 		public static bool DrawRowDragInt(
@@ -361,14 +398,11 @@ namespace StepManiaEditor
 			string help = null,
 			float speed = 1.0f,
 			string format = "%i",
-			bool useMin = false,
-			int min = 0,
-			bool useMax = false,
-			int max = 0)
+			int min = int.MinValue,
+			int max = int.MaxValue)
 		{
 			DrawRowTitleAndAdvanceColumn(title);
-			return DrawDragInt(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, help, speed, format, useMin,
-				min, useMax, max);
+			return DrawDragInt(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, help, speed, format, min, max);
 		}
 
 		private static bool DrawDragInt(
@@ -380,14 +414,12 @@ namespace StepManiaEditor
 			string help,
 			float speed,
 			string format,
-			bool useMin = false,
-			int min = 0,
-			bool useMax = false,
-			int max = 0)
+			int min = int.MinValue,
+			int max = int.MaxValue)
 		{
 			(bool, int) Func(int v)
 			{
-				var r = Utils.DragInt(ref v, GetElementTitle(title, fieldName), speed, format, useMin, min, useMax, max);
+				var r = Utils.DragInt(ref v, GetElementTitle(title, fieldName), speed, format, min, max);
 				return (r, v);
 			}
 
@@ -553,14 +585,11 @@ namespace StepManiaEditor
 			string help = null,
 			float speed = 0.0001f,
 			string format = "%.6f",
-			bool useMin = false,
-			double min = 0.0,
-			bool useMax = false,
-			double max = 0.0)
+			double min = double.MinValue,
+			double max = double.MaxValue)
 		{
 			DrawRowTitleAndAdvanceColumn(title);
-			return DrawDragDouble(title, ref value, ImGui.GetContentRegionAvail().X, help, speed, format, useMin, min, useMax,
-				max);
+			return DrawDragDouble(title, ref value, ImGui.GetContentRegionAvail().X, help, speed, format, min, max);
 		}
 
 		private static bool DrawDragDouble(
@@ -570,15 +599,13 @@ namespace StepManiaEditor
 			string help,
 			float speed,
 			string format,
-			bool useMin = false,
-			double min = 0.0,
-			bool useMax = false,
-			double max = 0.0)
+			double min = double.MinValue,
+			double max = double.MaxValue)
 		{
 			var helpText = string.IsNullOrEmpty(help) ? null : help + DragHelpText;
 			var itemWidth = DrawHelp(helpText, width);
 			ImGui.SetNextItemWidth(itemWidth);
-			return Utils.DragDouble(ref value, GetElementTitle(title), speed, format, useMin, min, useMax, max);
+			return Utils.DragDouble(ref value, GetElementTitle(title), speed, format, min, max);
 		}
 
 		public static bool DrawRowDragDouble(
@@ -589,14 +616,11 @@ namespace StepManiaEditor
 			string help = null,
 			float speed = 0.0001f,
 			string format = "%.6f",
-			bool useMin = false,
-			double min = 0.0,
-			bool useMax = false,
-			double max = 0.0)
+			double min = double.MinValue,
+			double max = double.MaxValue)
 		{
 			DrawRowTitleAndAdvanceColumn(title);
-			return DrawDragDouble(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, help, speed, format, useMin,
-				min, useMax, max);
+			return DrawDragDouble(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, help, speed, format, min, max);
 		}
 
 		public static void DrawRowDragDoubleWithEnabledCheckbox(
@@ -608,10 +632,8 @@ namespace StepManiaEditor
 			string help = null,
 			float speed = 0.0001f,
 			string format = "%.6f",
-			bool useMin = false,
-			double min = 0.0,
-			bool useMax = false,
-			double max = 0.0)
+			double min = double.MinValue,
+			double max = double.MaxValue)
 		{
 			title ??= "";
 
@@ -654,7 +676,7 @@ namespace StepManiaEditor
 
 			// Control for the double value.
 			ImGui.SameLine();
-			DrawDragDouble(undoable, title, o, fieldName, controlWidth, null, speed, format, useMin, min, useMax, max);
+			DrawDragDouble(undoable, title, o, fieldName, controlWidth, null, speed, format, min, max);
 
 			if (!enabled)
 				Utils.PopDisabled();
@@ -669,14 +691,12 @@ namespace StepManiaEditor
 			string help,
 			float speed,
 			string format,
-			bool useMin = false,
-			double min = 0.0,
-			bool useMax = false,
-			double max = 0.0)
+			double min = double.MinValue,
+			double max = double.MaxValue)
 		{
 			(bool, double) Func(double v)
 			{
-				var r = Utils.DragDouble(ref v, GetElementTitle(title, fieldName), speed, format, useMin, min, useMax, max);
+				var r = Utils.DragDouble(ref v, GetElementTitle(title, fieldName), speed, format, min, max);
 				return (r, v);
 			}
 
@@ -950,11 +970,13 @@ namespace StepManiaEditor
 			uint colorABGR,
 			bool selected,
 			bool canBeDeleted,
-			string format)
+			string format,
+			int min = int.MinValue,
+			int max = int.MaxValue)
 		{
 			void Func(float elementWidth)
 			{
-				DrawDragInt(true, $"##{id}", e, fieldName, elementWidth, "", 1.0f, format);
+				DrawDragInt(true, $"##{id}", e, fieldName, elementWidth, "", 1.0f, format, min, max);
 			}
 
 			MiscEditorEventWidget(id, e, x, y, width, colorABGR, selected, canBeDeleted, Func);
@@ -1007,6 +1029,44 @@ namespace StepManiaEditor
 			void Func(float elementWidth)
 			{
 				DrawTimeSignatureInput(true, $"##{id}", e, fieldName, elementWidth);
+			}
+
+			MiscEditorEventWidget(id, e, x, y, width, colorABGR, selected, canBeDeleted, Func);
+		}
+
+		public static void MiscEditorEventMultipliersWidget(
+			string id,
+			EditorEvent e,
+			string fieldName,
+			int x,
+			int y,
+			int width,
+			uint colorABGR,
+			bool selected,
+			bool canBeDeleted)
+		{
+			void Func(float elementWidth)
+			{
+				DrawMultipliersInput(true, $"##{id}", e, fieldName, elementWidth);
+			}
+
+			MiscEditorEventWidget(id, e, x, y, width, colorABGR, selected, canBeDeleted, Func);
+		}
+
+		public static void MiscEditorEventLabelWidget(
+			string id,
+			EditorEvent e,
+			string fieldName,
+			int x,
+			int y,
+			int width,
+			uint colorABGR,
+			bool selected,
+			bool canBeDeleted)
+		{
+			void Func(float elementWidth)
+			{
+				DrawLabelInput(true, $"##{id}", e, fieldName, elementWidth);
 			}
 
 			MiscEditorEventWidget(id, e, x, y, width, colorABGR, selected, canBeDeleted, Func);

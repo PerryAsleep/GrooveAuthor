@@ -5,6 +5,7 @@ using Fumen;
 using Fumen.ChartDefinition;
 using Fumen.Converters;
 using Microsoft.Xna.Framework.Graphics;
+using static Fumen.Utils;
 
 namespace StepManiaEditor
 {
@@ -23,7 +24,7 @@ namespace StepManiaEditor
 
 		public bool CanBeDeleted;
 
-		private bool WidthDirty = false;
+		private bool WidthDirty;
 
 		public ScrollRateInterpolation ScrollRateInterpolationEvent;
 
@@ -33,7 +34,7 @@ namespace StepManiaEditor
 			{
 				if (ScrollRateInterpolationEvent.PreferPeriodAsTimeMicros)
 				{
-					var len = ScrollRateInterpolationEvent.PeriodTimeMicros / 1000000.0;
+					var len = ToSeconds(ScrollRateInterpolationEvent.PeriodTimeMicros);
 					return $"{ScrollRateInterpolationEvent.Rate}x/{len:G9}s";
 				}
 				else
@@ -63,7 +64,7 @@ namespace StepManiaEditor
 			long periodTimeMicros = 0L;
 			bool preferPeriodAsTimeMicros = false;
 
-			var match = Regex.Match(v, @"^(\d+\.?\d*|\d*\.?\d+)x/(\d+\.?\d*|\d*\.?\d+)(s|rows)$", RegexOptions.IgnoreCase);
+			var match = Regex.Match(v, @"^(\d+\.?\d*|\d*\.?\d+)x/(\d+\.?\d*|\d*\.?\d+)(s|rows)$");
 			if (!match.Success)
 				return (false, rate, periodIntegerPosition, periodTimeMicros, preferPeriodAsTimeMicros);
 			if (match.Groups.Count != 4)
@@ -76,7 +77,7 @@ namespace StepManiaEditor
 			{
 				if (!double.TryParse(match.Groups[2].Captures[0].Value, out var periodSeconds))
 					return (false, rate, periodIntegerPosition, periodTimeMicros, preferPeriodAsTimeMicros);
-				periodTimeMicros = (long)(periodSeconds * 1000000);
+				periodTimeMicros = ToMicros(periodSeconds);
 			}
 			else
 			{
@@ -121,7 +122,7 @@ namespace StepManiaEditor
 				PreviousScrollRate,
 				ScrollRateInterpolationEvent.Rate,
 				SongTime,
-				SongTime + ScrollRateInterpolationEvent.PeriodTimeMicros / 1000000.0,
+				SongTime + ToSeconds(ScrollRateInterpolationEvent.PeriodTimeMicros),
 				time);
 		}
 
@@ -177,7 +178,7 @@ namespace StepManiaEditor
 		public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch)
 		{
 			ImGuiLayoutUtils.MiscEditorEventScrollRateInterpolationInputWidget(
-				$"{ChartEvent.GetType()}{Row}",
+				GetImGuiId(),
 				this,
 				nameof(StringValue),
 				(int)GetX(), (int)GetY(), (int)GetW(),

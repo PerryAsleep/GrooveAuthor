@@ -92,11 +92,6 @@ namespace StepManiaEditor
 		{
 			return songTime.CompareTo(editorEvent.SongTime);
 		}
-
-		protected string GetImGuiId()
-		{
-			return $"{ChartEvent.GetType()}{Row}";
-		}
 	}
 
 	public class EditorDummyRateAlteringEvent : EditorRateAlteringEvent

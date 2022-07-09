@@ -57,7 +57,8 @@ namespace StepManiaEditor
 				Utils.UIWarpColorABGR,
 				false,
 				CanBeDeleted,
-				Format);
+				Format,
+				0);
 		}
 	}
 }

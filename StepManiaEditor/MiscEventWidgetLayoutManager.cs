@@ -61,6 +61,10 @@ namespace StepManiaEditor
 				{ typeof(EditorWarpEvent), new WidgetData() },
 				{ typeof(EditorScrollRateEvent), new WidgetData() },
 				{ typeof(EditorInterpolatedRateAlteringEvent), new WidgetData() },
+				{ typeof(EditorTickCountEvent), new WidgetData() },
+				{ typeof(EditorMultipliersEvent), new WidgetData() },
+				{ typeof(EditorFakeSegmentEvent), new WidgetData() },
+				{ typeof(EditorLabelEvent), new WidgetData() },
 			};
 
 			LeftTypes = new List<Type>
@@ -69,12 +73,16 @@ namespace StepManiaEditor
 				typeof(EditorStopEvent),
 				typeof(EditorDelayEvent),
 				typeof(EditorWarpEvent),
+				typeof(EditorTickCountEvent),
+				typeof(EditorMultipliersEvent),
+				typeof(EditorLabelEvent),
 			};
 			RightTypes = new List<Type>
 			{
 				typeof(EditorTempoEvent),
 				typeof(EditorScrollRateEvent),
 				typeof(EditorInterpolatedRateAlteringEvent),
+				typeof(EditorFakeSegmentEvent),
 			};
 
 
@@ -114,53 +122,58 @@ namespace StepManiaEditor
 			}
 
 			var t = e.GetType();
-
-			// Check for adding this event's widget to the left.
-			var order = Data[t].LeftOrder;
-			if (order >= 0)
+			
+			if (Data.TryGetValue(t, out var widgetData))
 			{
-				var x = LeftAnchorPos - e.GetW();
-				for (var i = 0; i < LeftTypes.Count; i++)
+				// Check for adding this event's widget to the left.
+				var order = widgetData.LeftOrder;
+				if (order >= 0)
 				{
-					if (!CurrentLeftEvents.ContainsKey(LeftTypes[i]))
-						continue;
-					
-					// Shift this widget to the left of existing widgets on this row
-					// which should precede it.
-					if (i < order)
-						x -= (CurrentLeftEvents[LeftTypes[i]].GetW() + ElementPadding);
-					// Shift widgets after this widget further to the left.
-					else if (i > order)
-						CurrentLeftEvents[LeftTypes[i]].SetX(CurrentLeftEvents[LeftTypes[i]].GetX() - (e.GetW() + ElementPadding));
+					var x = LeftAnchorPos - e.GetW();
+					for (var i = 0; i < LeftTypes.Count; i++)
+					{
+						if (!CurrentLeftEvents.ContainsKey(LeftTypes[i]))
+							continue;
+
+						// Shift this widget to the left of existing widgets on this row
+						// which should precede it.
+						if (i < order)
+							x -= (CurrentLeftEvents[LeftTypes[i]].GetW() + ElementPadding);
+						// Shift widgets after this widget further to the left.
+						else if (i > order)
+							CurrentLeftEvents[LeftTypes[i]]
+								.SetX(CurrentLeftEvents[LeftTypes[i]].GetX() - (e.GetW() + ElementPadding));
+					}
+
+					// Set position of this widget and record it.
+					e.SetPosition(x, y);
+					CurrentLeftEvents[t] = e;
 				}
 
-				// Set position of this widget and record it.
-				e.SetPosition(x, y);
-				CurrentLeftEvents[t] = e;
-			}
-
-			// Check for adding this event's widget to the right.
-			order = Data[t].RightOrder;
-			if (order >= 0)
-			{
-				var x = RightAnchorPos;
-				for (var i = 0; i < RightTypes.Count; i++)
+				// Check for adding this event's widget to the right.
+				order = widgetData.RightOrder;
+				if (order >= 0)
 				{
-					if (!CurrentRightEvents.ContainsKey(RightTypes[i]))
-						continue;
+					var x = RightAnchorPos;
+					for (var i = 0; i < RightTypes.Count; i++)
+					{
+						if (!CurrentRightEvents.ContainsKey(RightTypes[i]))
+							continue;
 
-					// Shift this widget to the right of existing widgets on this row
-					// which should precede it.
-					if (i < order)
-						x += (CurrentRightEvents[RightTypes[i]].GetW() + ElementPadding);
-					// Shift widgets after this widget further to the right.
-					else if (i > order)
-						CurrentRightEvents[RightTypes[i]].SetX(CurrentRightEvents[RightTypes[i]].GetX() + (e.GetW() + ElementPadding));
+						// Shift this widget to the right of existing widgets on this row
+						// which should precede it.
+						if (i < order)
+							x += (CurrentRightEvents[RightTypes[i]].GetW() + ElementPadding);
+						// Shift widgets after this widget further to the right.
+						else if (i > order)
+							CurrentRightEvents[RightTypes[i]]
+								.SetX(CurrentRightEvents[RightTypes[i]].GetX() + (e.GetW() + ElementPadding));
+					}
+
+					// Set position of this widget and record it.
+					e.SetPosition(x, y);
+					CurrentRightEvents[t] = e;
 				}
-
-				// Set position of this widget and record it.
-				e.SetPosition(x, y);
-				CurrentRightEvents[t] = e;
 			}
 
 			LastRow = e.GetRow();

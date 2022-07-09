@@ -1,30 +1,33 @@
 ﻿using Fumen.ChartDefinition;
 using Microsoft.Xna.Framework.Graphics;
-using static Fumen.Utils;
-
 
 namespace StepManiaEditor
 {
-	public class EditorDelayEvent : EditorRateAlteringEvent
+	public class EditorTickCountEvent : EditorEvent
 	{
-		public Stop StopEvent;
+		public TickCount TickCountEvent;
 
-		private const string Format = "%.9gs";
+		private const string Format = "%iticks";
 		private bool WidthDirty;
+		public bool CanBeDeleted;
 
-		public double DoubleValue
+		public int IntValue
 		{
-			get => ToSeconds(StopEvent.LengthMicros);
+			get => TickCountEvent.Ticks;
 			set
 			{
-				var newMicros = ToMicros(value);
-				if (StopEvent.LengthMicros != newMicros)
+				if (value != TickCountEvent.Ticks)
 				{
-					StopEvent.LengthMicros = newMicros;
+					TickCountEvent.Ticks = value;
 					WidthDirty = true;
-					EditorChart.OnRateAlteringEventModified(this);
 				}
 			}
+		}
+
+		public EditorTickCountEvent(EditorChart editorChart, TickCount chartEvent) : base(editorChart, chartEvent)
+		{
+			TickCountEvent = chartEvent;
+			WidthDirty = true;
 		}
 
 		/// <remarks>
@@ -38,29 +41,24 @@ namespace StepManiaEditor
 		{
 			if (WidthDirty)
 			{
-				SetW(ImGuiLayoutUtils.GetMiscEditorEventDragDoubleWidgetWidth(DoubleValue, Format));
+				SetW(ImGuiLayoutUtils.GetMiscEditorEventDragIntWidgetWidth(IntValue, Format));
 				WidthDirty = false;
 			}
 			return base.GetW();
 		}
 
-		public EditorDelayEvent(EditorChart editorChart, Stop chartEvent) : base(editorChart, chartEvent)
-		{
-			StopEvent = chartEvent;
-			WidthDirty = true;
-		}
-
 		public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch)
 		{
-			ImGuiLayoutUtils.MiscEditorEventDragDoubleWidget(
+			ImGuiLayoutUtils.MiscEditorEventDragIntWidget(
 				GetImGuiId(),
 				this,
-				nameof(DoubleValue),
+				nameof(IntValue),
 				(int)GetX(), (int)GetY(), (int)GetW(),
-				Utils.UIDelayColorABGR,
+				Utils.UITicksColorABGR,
 				false,
 				CanBeDeleted,
-				Format);
+				Format,
+				0);
 		}
 	}
 }

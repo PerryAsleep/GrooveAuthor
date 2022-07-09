@@ -134,7 +134,7 @@ namespace StepManiaEditor
 					0.0001f, "%.6f seconds");
 				ImGuiLayoutUtils.DrawRowDragDouble(true, "Preview Length", EditorSong, nameof(EditorSong.SampleLength),
 					"Music preview length.",
-					0.0001f, "%.6f seconds", true, 0.0f);
+					0.0001f, "%.6f seconds", 0.0);
 				if (ImGuiLayoutUtils.DrawRowButton(null, Editor.IsPlayingPreview() ? "Stop Preview" : "Play Preview"))
 					Editor.OnTogglePlayPreview();
 
@@ -144,7 +144,7 @@ namespace StepManiaEditor
 					"\nOptional. When not set StepMania will stop a chart shortly after the last note." +
 					"\nUseful if you want the chart to continue after the last note." +
 					"\nStepMania will ignore this value if it is less than or equal to 0.0.",
-					0.0001f, "%.6f seconds", true, 0.0f);
+					0.0001f, "%.6f seconds", 0.0);
 				
 				ImGuiLayoutUtils.EndTable();
 			}

@@ -45,7 +45,7 @@ namespace StepManiaEditor
 				ImGuiLayoutUtils.DrawRowEnum<SMCommon.ChartDifficultyType>(true, "Difficulty", EditorChart, nameof(EditorChart.ChartDifficultyType),
 					"Chart difficulty type.");
 				ImGuiLayoutUtils.DrawRowInputInt(true, "Rating", EditorChart, nameof(EditorChart.Rating),
-					"Chart rating.", true, 1);
+					"Chart rating.", 1);
 				ImGuiLayoutUtils.DrawRowTextInput(true, "Name", EditorChart, nameof(EditorChart.Name),
 					"Chart name.");
 				ImGuiLayoutUtils.DrawRowTextInput(true, "Description", EditorChart, nameof(EditorChart.Description),

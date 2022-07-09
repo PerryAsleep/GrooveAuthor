@@ -1,5 +1,6 @@
 ﻿using Fumen.ChartDefinition;
 using Microsoft.Xna.Framework.Graphics;
+using static Fumen.Utils;
 
 namespace StepManiaEditor
 {
@@ -12,10 +13,10 @@ namespace StepManiaEditor
 
 		public double DoubleValue
 		{
-			get => StopEvent.LengthMicros / 1000000.0;
+			get => ToSeconds(StopEvent.LengthMicros);
 			set
 			{
-				var newMicros = (long)(value * 1000000);
+				var newMicros = ToMicros(value);
 				if (StopEvent.LengthMicros != newMicros)
 				{
 					StopEvent.LengthMicros = newMicros;

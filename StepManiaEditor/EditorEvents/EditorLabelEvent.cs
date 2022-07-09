@@ -1,28 +1,26 @@
-﻿using Fumen;
-using Fumen.ChartDefinition;
+﻿using Fumen.ChartDefinition;
 using Fumen.Converters;
 using Microsoft.Xna.Framework.Graphics;
 
 namespace StepManiaEditor
 {
-	public class EditorTimeSignatureEvent : EditorRateAlteringEvent
+	public class EditorLabelEvent : EditorEvent
 	{
-		public TimeSignature TimeSignatureEvent;
+		public Label LabelEvent;
 		private bool WidthDirty;
 
 		public string StringValue
 		{
-			get => TimeSignatureEvent.Signature.ToString();
+			get => LabelEvent.Text;
 			set
 			{
-				var (valid, newSignature) = IsValidTimeSignatureString(value);
+				var (valid, newText) = IsValidLabelString(value);
 				if (valid)
 				{
-					if (!TimeSignatureEvent.Signature.Equals(newSignature))
+					if (!LabelEvent.Text.Equals(newText))
 					{
-						TimeSignatureEvent.Signature = newSignature;
+						LabelEvent.Text = newText;
 						WidthDirty = true;
-						EditorChart.OnRateAlteringEventModified(this);
 					}
 				}
 			}
@@ -45,34 +43,38 @@ namespace StepManiaEditor
 			return base.GetW();
 		}
 
-		public static (bool, Fraction) IsValidTimeSignatureString(string v)
+		public static (bool, string) IsValidLabelString(string v)
 		{
-			var f = Fraction.FromString(v);
-			if (f == null)
-				return (false, f);
-			if (f.Denominator <= 0 || f.Denominator > SMCommon.MaxValidDenominator)
-				return (false, f);
-			if (f.Numerator <= 0)
-				return (false, f);
-			return (true, f);
+			// Accept all input but sanitize the text to change characters which would interfere with MSD file parsing.
+			// StepMania replaces these characters with the underscore character.
+			v = v.Replace('\r', '_');
+			v = v.Replace('\n', '_');
+			v = v.Replace('\t', '_');
+			v = v.Replace(MSDFile.ValueStartMarker, '_');
+			v = v.Replace(MSDFile.ValueEndMarker, '_');
+			v = v.Replace(MSDFile.ParamMarker, '_');
+			v = v.Replace(MSDFile.EscapeMarker, '_');
+			v = v.Replace(MSDFile.CommentChar, '_');
+			v = v.Replace(',', '_');
+			return (true, v);
 		}
 
-		public EditorTimeSignatureEvent(EditorChart editorChart, TimeSignature chartEvent) : base(editorChart, chartEvent)
+		public EditorLabelEvent(EditorChart editorChart, Label chartEvent) : base(editorChart, chartEvent)
 		{
-			TimeSignatureEvent = chartEvent;
+			LabelEvent = chartEvent;
 			WidthDirty = true;
 		}
 
 		public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch)
 		{
-			ImGuiLayoutUtils.MiscEditorEventTimeSignatureWidget(
+			ImGuiLayoutUtils.MiscEditorEventLabelWidget(
 				GetImGuiId(),
 				this,
 				nameof(StringValue),
 				(int)GetX(), (int)GetY(), (int)GetW(),
-				Utils.UITimeSignatureColorABGR,
+				Utils.UILabelColorABGR,
 				false,
-				CanBeDeleted);
+				true);
 		}
 	}
 }

@@ -2569,7 +2569,7 @@ namespace StepManiaEditor
 
 		private void OnExportAs()
 		{
-			if (EditorSong != null)
+			if (EditorSong == null)
 				return;
 
 			SaveFileDialog saveFileDialog1 = new SaveFileDialog();
