@@ -8,6 +8,7 @@ namespace StepManiaEditor
 		public Warp WarpEvent;
 
 		private const string Format = "%irows";
+		private const float Speed = 1.0f;
 		private bool WidthDirty;
 
 		public int IntValue
@@ -49,6 +50,8 @@ namespace StepManiaEditor
 
 		public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch)
 		{
+			if (GetAlpha() <= 0.0f)
+				return;
 			ImGuiLayoutUtils.MiscEditorEventDragIntWidget(
 				GetImGuiId(),
 				this,
@@ -57,7 +60,9 @@ namespace StepManiaEditor
 				Utils.UIWarpColorABGR,
 				false,
 				CanBeDeleted,
+				Speed,
 				Format,
+				GetAlpha(),
 				0);
 		}
 	}

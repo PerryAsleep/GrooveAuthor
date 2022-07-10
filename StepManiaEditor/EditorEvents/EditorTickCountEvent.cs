@@ -8,6 +8,7 @@ namespace StepManiaEditor
 		public TickCount TickCountEvent;
 
 		private const string Format = "%iticks";
+		private const float Speed = 0.1f;
 		private bool WidthDirty;
 		public bool CanBeDeleted;
 
@@ -49,6 +50,8 @@ namespace StepManiaEditor
 
 		public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch)
 		{
+			if (GetAlpha() <= 0.0f)
+				return;
 			ImGuiLayoutUtils.MiscEditorEventDragIntWidget(
 				GetImGuiId(),
 				this,
@@ -57,7 +60,9 @@ namespace StepManiaEditor
 				Utils.UITicksColorABGR,
 				false,
 				CanBeDeleted,
+				Speed,
 				Format,
+				GetAlpha(),
 				0);
 		}
 	}

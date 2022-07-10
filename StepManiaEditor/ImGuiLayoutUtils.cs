@@ -970,16 +970,18 @@ namespace StepManiaEditor
 			uint colorABGR,
 			bool selected,
 			bool canBeDeleted,
+			float speed,
 			string format,
+			float alpha,
 			int min = int.MinValue,
 			int max = int.MaxValue)
 		{
 			void Func(float elementWidth)
 			{
-				DrawDragInt(true, $"##{id}", e, fieldName, elementWidth, "", 1.0f, format, min, max);
+				DrawDragInt(true, $"##{id}", e, fieldName, elementWidth, "", speed, format, min, max);
 			}
 
-			MiscEditorEventWidget(id, e, x, y, width, colorABGR, selected, canBeDeleted, Func);
+			MiscEditorEventWidget(id, e, x, y, width, colorABGR, selected, canBeDeleted, alpha, Func);
 		}
 
 		public static double GetMiscEditorEventDragDoubleWidgetWidth(double d, string format)
@@ -997,14 +999,16 @@ namespace StepManiaEditor
 			uint colorABGR,
 			bool selected,
 			bool canBeDeleted,
-			string format)
+			float speed,
+			string format,
+			float alpha)
 		{
 			void Func(float elementWidth)
 			{
-				DrawDragDouble(true, $"##{id}", e, fieldName, elementWidth, "", 1.0f, format);
+				DrawDragDouble(true, $"##{id}", e, fieldName, elementWidth, "", speed, format);
 			}
 
-			MiscEditorEventWidget(id, e, x, y, width, colorABGR, selected, canBeDeleted, Func);
+			MiscEditorEventWidget(id, e, x, y, width, colorABGR, selected, canBeDeleted, alpha, Func);
 		}
 
 		public static double GetMiscEditorEventStringWidth(string s)
@@ -1024,14 +1028,15 @@ namespace StepManiaEditor
 			int width,
 			uint colorABGR,
 			bool selected,
-			bool canBeDeleted)
+			bool canBeDeleted,
+			float alpha)
 		{
 			void Func(float elementWidth)
 			{
 				DrawTimeSignatureInput(true, $"##{id}", e, fieldName, elementWidth);
 			}
 
-			MiscEditorEventWidget(id, e, x, y, width, colorABGR, selected, canBeDeleted, Func);
+			MiscEditorEventWidget(id, e, x, y, width, colorABGR, selected, canBeDeleted, alpha, Func);
 		}
 
 		public static void MiscEditorEventMultipliersWidget(
@@ -1043,14 +1048,15 @@ namespace StepManiaEditor
 			int width,
 			uint colorABGR,
 			bool selected,
-			bool canBeDeleted)
+			bool canBeDeleted,
+			float alpha)
 		{
 			void Func(float elementWidth)
 			{
 				DrawMultipliersInput(true, $"##{id}", e, fieldName, elementWidth);
 			}
 
-			MiscEditorEventWidget(id, e, x, y, width, colorABGR, selected, canBeDeleted, Func);
+			MiscEditorEventWidget(id, e, x, y, width, colorABGR, selected, canBeDeleted, alpha, Func);
 		}
 
 		public static void MiscEditorEventLabelWidget(
@@ -1062,14 +1068,15 @@ namespace StepManiaEditor
 			int width,
 			uint colorABGR,
 			bool selected,
-			bool canBeDeleted)
+			bool canBeDeleted,
+			float alpha)
 		{
 			void Func(float elementWidth)
 			{
 				DrawLabelInput(true, $"##{id}", e, fieldName, elementWidth);
 			}
 
-			MiscEditorEventWidget(id, e, x, y, width, colorABGR, selected, canBeDeleted, Func);
+			MiscEditorEventWidget(id, e, x, y, width, colorABGR, selected, canBeDeleted, alpha, Func);
 		}
 
 		public static void MiscEditorEventScrollRateInterpolationInputWidget(
@@ -1081,14 +1088,15 @@ namespace StepManiaEditor
 			int width,
 			uint colorABGR,
 			bool selected,
-			bool canBeDeleted)
+			bool canBeDeleted,
+			float alpha)
 		{
 			void Func(float elementWidth)
 			{
 				DrawScrollRateInterpolationInput(true, $"##{id}", e, fieldName, elementWidth);
 			}
 
-			MiscEditorEventWidget(id, e, x, y, width, colorABGR, selected, canBeDeleted, Func);
+			MiscEditorEventWidget(id, e, x, y, width, colorABGR, selected, canBeDeleted, alpha, Func);
 		}
 
 		private static void MiscEditorEventWidget(
@@ -1100,16 +1108,31 @@ namespace StepManiaEditor
 			uint colorABGR,
 			bool selected,
 			bool canBeDeleted,
+			float alpha,
 			Action<float> func)
 		{
+
+			var colorPushCount = 0;
 			if (selected)
 			{
 				ImGui.PushStyleColor(ImGuiCol.WindowBg, 0x484848FF);
 				ImGui.PushStyleColor(ImGuiCol.Border, 0xFFFFFFFF);
+				colorPushCount += 2;
 			}
 
 			ImGui.PushStyleColor(ImGuiCol.FrameBg, colorABGR);
+			colorPushCount += 1;
 
+			if (alpha < 1.0f)
+			{
+				Utils.PushAlpha(ImGuiCol.WindowBg, alpha);
+				Utils.PushAlpha(ImGuiCol.Button, alpha);
+				Utils.PushAlpha(ImGuiCol.FrameBg, alpha);
+				Utils.PushAlpha(ImGuiCol.Text, alpha);
+				Utils.PushAlpha(ImGuiCol.Border, alpha);
+				colorPushCount += 5;
+			}
+			
 			var height = (int)GetMiscEditorEventHeight(true);
 
 			// Record window size and padding values so we can edit and restore them.
@@ -1161,7 +1184,7 @@ namespace StepManiaEditor
 			ImGui.GetStyle().WindowPadding.Y = originalWindowPaddingY;
 			ImGui.GetStyle().WindowMinSize = originalMinWindowSize;
 
-			ImGui.PopStyleColor(selected ? 3 : 1);
+			ImGui.PopStyleColor(colorPushCount);
 		}
 
 		#endregion Misc Editor Events

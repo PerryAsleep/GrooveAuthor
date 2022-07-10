@@ -14,6 +14,7 @@ namespace StepManiaEditor
 		public const bool DefaultShowMiniMap = true;
 		public const MiniMap.SelectMode DefaultMiniMapSelectMode = MiniMap.SelectMode.MoveEditorToCursor;
 		public const bool DefaultMiniMapStopPlaybackWhenScrolling = false;
+		public const uint DefaultMiniMapXPadding = 32;
 		public const uint DefaultMiniMapWidth = 90;
 		public const uint DefaultMiniMapNoteWidth = 2;
 		public const uint DefaultMiniMapNoteSpacing = 3;
@@ -27,6 +28,7 @@ namespace StepManiaEditor
 		[JsonInclude] public bool ShowMiniMap = DefaultShowMiniMap;
 		[JsonInclude] public MiniMap.SelectMode MiniMapSelectMode = DefaultMiniMapSelectMode;
 		[JsonInclude] public bool MiniMapStopPlaybackWhenScrolling = DefaultMiniMapStopPlaybackWhenScrolling;
+		[JsonInclude] public uint MiniMapXPadding = DefaultMiniMapXPadding;
 		[JsonInclude] public uint MiniMapWidth = DefaultMiniMapWidth;
 		[JsonInclude] public uint MiniMapNoteWidth = DefaultMiniMapNoteWidth;
 		[JsonInclude] public uint MiniMapNoteSpacing = DefaultMiniMapNoteSpacing;
@@ -40,7 +42,8 @@ namespace StepManiaEditor
 			return ShowMiniMap == DefaultShowMiniMap
 			       && MiniMapSelectMode == DefaultMiniMapSelectMode
 			       && MiniMapStopPlaybackWhenScrolling == DefaultMiniMapStopPlaybackWhenScrolling
-			       && MiniMapWidth == DefaultMiniMapWidth
+			       && MiniMapXPadding == DefaultMiniMapXPadding
+				   && MiniMapWidth == DefaultMiniMapWidth
 			       && MiniMapNoteWidth == DefaultMiniMapNoteWidth
 			       && MiniMapNoteSpacing == DefaultMiniMapNoteSpacing
 			       && MiniMapPosition == DefaultMiniMapPosition
@@ -66,6 +69,7 @@ namespace StepManiaEditor
 		private readonly bool PreviousShowMiniMap;
 		private readonly MiniMap.SelectMode PreviousMiniMapSelectMode;
 		private readonly bool PreviousMiniMapStopPlaybackWhenScrolling;
+		private readonly uint PreviousMiniMapXPadding;
 		private readonly uint PreviousMiniMapWidth;
 		private readonly uint PreviousMiniMapNoteWidth;
 		private readonly uint PreviousMiniMapNoteSpacing;
@@ -80,6 +84,7 @@ namespace StepManiaEditor
 			PreviousShowMiniMap = p.ShowMiniMap;
 			PreviousMiniMapSelectMode = p.MiniMapSelectMode;
 			PreviousMiniMapStopPlaybackWhenScrolling = p.MiniMapStopPlaybackWhenScrolling;
+			PreviousMiniMapXPadding = p.MiniMapXPadding;
 			PreviousMiniMapWidth = p.MiniMapWidth;
 			PreviousMiniMapNoteWidth = p.MiniMapNoteWidth;
 			PreviousMiniMapNoteSpacing = p.MiniMapNoteSpacing;
@@ -100,6 +105,7 @@ namespace StepManiaEditor
 			p.ShowMiniMap = PreferencesMiniMap.DefaultShowMiniMap;
 			p.MiniMapSelectMode = PreferencesMiniMap.DefaultMiniMapSelectMode;
 			p.MiniMapStopPlaybackWhenScrolling = PreferencesMiniMap.DefaultMiniMapStopPlaybackWhenScrolling;
+			p.MiniMapXPadding = PreferencesMiniMap.DefaultMiniMapXPadding;
 			p.MiniMapWidth = PreferencesMiniMap.DefaultMiniMapWidth;
 			p.MiniMapNoteWidth = PreferencesMiniMap.DefaultMiniMapNoteWidth;
 			p.MiniMapNoteSpacing = PreferencesMiniMap.DefaultMiniMapNoteSpacing;
@@ -115,6 +121,7 @@ namespace StepManiaEditor
 			p.ShowMiniMap = PreviousShowMiniMap;
 			p.MiniMapSelectMode = PreviousMiniMapSelectMode;
 			p.MiniMapStopPlaybackWhenScrolling = PreviousMiniMapStopPlaybackWhenScrolling;
+			p.MiniMapXPadding = PreviousMiniMapXPadding;
 			p.MiniMapWidth = PreviousMiniMapWidth;
 			p.MiniMapNoteWidth = PreviousMiniMapNoteWidth;
 			p.MiniMapNoteSpacing = PreviousMiniMapNoteSpacing;

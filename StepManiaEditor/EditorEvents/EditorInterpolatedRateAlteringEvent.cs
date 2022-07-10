@@ -177,6 +177,8 @@ namespace StepManiaEditor
 
 		public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch)
 		{
+			if (GetAlpha() <= 0.0f)
+				return;
 			ImGuiLayoutUtils.MiscEditorEventScrollRateInterpolationInputWidget(
 				GetImGuiId(),
 				this,
@@ -184,7 +186,8 @@ namespace StepManiaEditor
 				(int)GetX(), (int)GetY(), (int)GetW(),
 				Utils.UISpeedsColorABGR,
 				false,
-				CanBeDeleted);
+				CanBeDeleted,
+				GetAlpha());
 		}
 	}
 }

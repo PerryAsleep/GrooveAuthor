@@ -10,6 +10,8 @@ namespace StepManiaEditor
 	{
 		private EditorHoldStartNoteEvent EditorHoldStartNoteEvent;
 		private readonly LaneHoldEndNote LaneHoldEndNote;
+		private static uint ScreenHeight;
+
 
 		/// <summary>
 		/// Whether or not this hold should be considered active for rendering.
@@ -19,6 +21,11 @@ namespace StepManiaEditor
 		public EditorHoldEndNoteEvent(EditorChart editorChart, LaneHoldEndNote chartEvent) : base(editorChart, chartEvent)
 		{
 			LaneHoldEndNote = chartEvent;
+		}
+
+		public static void SetScreenHeight(uint screenHeight)
+		{
+			ScreenHeight = screenHeight;
 		}
 
 		public void SetHoldStartNote(EditorHoldStartNoteEvent editorHoldStartNoteEvent)
@@ -65,7 +72,17 @@ namespace StepManiaEditor
 			var minY = (int)(GetY() + 0.5);
 			var x = (int)(GetX() + 0.5);
 			var w = (int)(GetW() + 0.5);
-			textureAtlas.Draw(capTextureId, spriteBatch, new Rectangle(x, y, w, capH), 1.0f);
+			
+			// Draw the cap, if it is visible.
+			if (y > -capH && y < ScreenHeight)
+				textureAtlas.Draw(capTextureId, spriteBatch, new Rectangle(x, y, w, capH), 1.0f);
+
+			// Adjust the starting y value so we don't needlessly loop when zoomed in and a large
+			// area of the hold is off the screen.
+			if (y > ScreenHeight + capH)
+			{
+				y -= ((y - (int)ScreenHeight) / capH) * capH;
+			}
 
 			// TODO: depth
 			while (y >= minY)
@@ -74,6 +91,8 @@ namespace StepManiaEditor
 				if (h == 0)
 					break;
 				y -= h;
+				if (y < -capH)
+					break;
 				textureAtlas.Draw(bodyTextureId, spriteBatch, new Rectangle(x, y, w, h), 1.0f);
 			}
 		}

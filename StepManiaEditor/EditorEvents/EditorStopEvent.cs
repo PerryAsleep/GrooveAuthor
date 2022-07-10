@@ -9,6 +9,7 @@ namespace StepManiaEditor
 		public Stop StopEvent;
 
 		private const string Format = "%.9gs";
+		private const float Speed = 0.01f;
 		private bool WidthDirty;
 
 		public double DoubleValue
@@ -16,7 +17,7 @@ namespace StepManiaEditor
 			get => ToSeconds(StopEvent.LengthMicros);
 			set
 			{
-				var newMicros = ToMicros(value);
+				var newMicros = ToMicrosRounded(value);
 				if (StopEvent.LengthMicros != newMicros)
 				{
 					StopEvent.LengthMicros = newMicros;
@@ -51,6 +52,8 @@ namespace StepManiaEditor
 
 		public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch)
 		{
+			if (GetAlpha() <= 0.0f)
+				return;
 			ImGuiLayoutUtils.MiscEditorEventDragDoubleWidget(
 				GetImGuiId(),
 				this,
@@ -59,7 +62,9 @@ namespace StepManiaEditor
 				Utils.UIStopColorABGR,
 				false,
 				CanBeDeleted,
-				Format);
+				Speed,
+				Format,
+				GetAlpha());
 		}
 	}
 }

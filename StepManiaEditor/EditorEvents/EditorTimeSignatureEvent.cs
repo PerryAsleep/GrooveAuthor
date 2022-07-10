@@ -65,6 +65,8 @@ namespace StepManiaEditor
 
 		public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch)
 		{
+			if (GetAlpha() <= 0.0f)
+				return;
 			ImGuiLayoutUtils.MiscEditorEventTimeSignatureWidget(
 				GetImGuiId(),
 				this,
@@ -72,7 +74,8 @@ namespace StepManiaEditor
 				(int)GetX(), (int)GetY(), (int)GetW(),
 				Utils.UITimeSignatureColorABGR,
 				false,
-				CanBeDeleted);
+				CanBeDeleted,
+				GetAlpha());
 		}
 	}
 }

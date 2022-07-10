@@ -149,7 +149,7 @@ namespace StepManiaEditor
 		private bool PlayingPreview = false;
 		private bool MiniMapCapturingMouse = false;
 		private bool StartPlayingWhenMiniMapDone = false;
-		private MouseState PreviousMouseState;
+		private MouseState PreviousMiniMapMouseState;
 
 		private uint MaxScreenHeight;
 
@@ -257,6 +257,8 @@ namespace StepManiaEditor
 			{
 				MaxScreenHeight = Math.Max(MaxScreenHeight, (uint)adapter.CurrentDisplayMode.Height);
 			}
+
+			EditorHoldEndNoteEvent.SetScreenHeight(MaxScreenHeight);
 
 			WaveFormRenderer = new WaveFormRenderer(GraphicsDevice, WaveFormTextureWidth, MaxScreenHeight);
 			WaveFormRenderer.SetXPerChannelScale(p.PreferencesWaveForm.WaveFormMaxXPercentagePerChannel);
@@ -595,8 +597,6 @@ namespace StepManiaEditor
 					}
 				}
 			}
-
-			PreviousMouseState = mouseState;
 		}
 
 		private void StartPlayback()
@@ -811,6 +811,7 @@ namespace StepManiaEditor
 			var xStart = FocalPoint.X - (numArrows * arrowSize * 0.5);
 
 			// Set up the MiscEventWidgetLayoutManager
+			var miscEventAlpha = (float)Interpolation.Lerp(1.0, 0.0, MiscEventScaleToStartingFading, MiscEventMinScale, sizeZoom);
 			const int widgetStartPadding = 10;
 			const int widgetMeasureNumberFudge = 10;
 			var lMiscWidgetPos = xStart
@@ -935,6 +936,7 @@ namespace StepManiaEditor
 						}
 						else
 						{
+							e.SetAlpha(miscEventAlpha);
 							MiscEventWidgetLayoutManager.PositionEvent(e, y);
 						}
 
@@ -1067,6 +1069,7 @@ namespace StepManiaEditor
 						}
 						else
 						{
+							e.SetAlpha(miscEventAlpha);
 							MiscEventWidgetLayoutManager.PositionEvent(e, y);
 						}
 
@@ -1212,6 +1215,7 @@ namespace StepManiaEditor
 						{
 							// Add a misc widget for this rate event.
 							var rateEventY = previousRateEventPixelPosition + (e.GetEvent().IntegerPosition - rateEvent.Row) * ppr;
+							nextRateEvent.SetAlpha(miscEventAlpha);
 							MiscEventWidgetLayoutManager.PositionEvent(nextRateEvent, rateEventY);
 							noteEvents.Add(nextRateEvent);
 
@@ -1290,6 +1294,7 @@ namespace StepManiaEditor
 						}
 						else
 						{
+							e.SetAlpha(miscEventAlpha);
 							MiscEventWidgetLayoutManager.PositionEvent(e, y);
 							noteEvents.Add(e);
 						}
@@ -1497,9 +1502,9 @@ namespace StepManiaEditor
 			var pMiniMap = Preferences.Instance.PreferencesMiniMap;
 
 			var mouseDownThisFrame = mouseState.LeftButton == ButtonState.Pressed &&
-			                         PreviousMouseState.LeftButton != ButtonState.Pressed;
+			                         PreviousMiniMapMouseState.LeftButton != ButtonState.Pressed;
 			var mouseUpThisFrame = mouseState.LeftButton != ButtonState.Pressed &&
-			                       PreviousMouseState.LeftButton == ButtonState.Pressed;
+			                       PreviousMiniMapMouseState.LeftButton == ButtonState.Pressed;
 			var miniMapCapturingMouseLastFrame = MiniMapCapturingMouse;
 
 			var miniMapNeedsMouseThisFrame = false;
@@ -1559,6 +1564,8 @@ namespace StepManiaEditor
 				StartPlayingWhenMiniMapDone = false;
 				StartPlayback();
 			}
+
+			PreviousMiniMapMouseState = mouseState;
 		}
 
 		private void UpdateMiniMapBounds()
@@ -1570,30 +1577,30 @@ namespace StepManiaEditor
 			{
 				case MiniMap.Position.RightSideOfWindow:
 				{
-					x = Graphics.PreferredBackBufferWidth - MiniMapXPadding - (int)p.PreferencesMiniMap.MiniMapWidth;
+					x = Graphics.PreferredBackBufferWidth - (int)p.PreferencesMiniMap.MiniMapXPadding - (int)p.PreferencesMiniMap.MiniMapWidth;
 					break;
 				}
 				case MiniMap.Position.RightOfChartArea:
 				{
-					x = (int)(FocalPoint.X + (WaveFormTextureWidth >> 1) + MiniMapXPadding);
+					x = (int)(FocalPoint.X + (WaveFormTextureWidth >> 1) + (int)p.PreferencesMiniMap.MiniMapXPadding);
 					break;
 				}
 				case MiniMap.Position.MountedToWaveForm:
 				{
 					if (p.PreferencesWaveForm.WaveFormScaleXWhenZooming)
 					{
-						x = (int)(FocalPoint.X + (WaveFormTextureWidth >> 1) * zoom + MiniMapXPadding);
+						x = (int)(FocalPoint.X + (WaveFormTextureWidth >> 1) * zoom + (int)p.PreferencesMiniMap.MiniMapXPadding);
 					}
 					else
 					{
-						x = (int)(FocalPoint.X + (WaveFormTextureWidth >> 1) + MiniMapXPadding);
+						x = (int)(FocalPoint.X + (WaveFormTextureWidth >> 1) + (int)p.PreferencesMiniMap.MiniMapXPadding);
 					}
 
 					break;
 				}
 				case MiniMap.Position.MountedToChart:
 				{
-					x = (int)(FocalPoint.X + ((ActiveChart.NumInputs * DefaultArrowWidth) >> 1) * zoom + MiniMapXPadding);
+					x = (int)(FocalPoint.X + ((ActiveChart.NumInputs * DefaultArrowWidth) >> 1) * zoom + (int)p.PreferencesMiniMap.MiniMapXPadding);
 					break;
 				}
 			}

@@ -14,6 +14,7 @@ namespace StepManiaEditor
 		private double W;
 		private double H;
 		private double Scale = 1.0;
+		private float Alpha = 1.0f;
 
 		protected readonly Event ChartEvent;
 		protected readonly EditorChart EditorChart;
@@ -108,6 +109,11 @@ namespace StepManiaEditor
 			H = h;
 		}
 
+		public virtual void SetAlpha(float a)
+		{
+			Alpha = a;
+		}
+
 		public virtual double GetX()
 		{
 			return X;
@@ -131,6 +137,11 @@ namespace StepManiaEditor
 		public double GetScale()
 		{
 			return Scale;
+		}
+
+		public float GetAlpha()
+		{
+			return Alpha;
 		}
 
 		public EditorChart GetEditorChart()

@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Windows.Forms;
 using Fumen;
 using Fumen.Converters;
@@ -54,6 +53,8 @@ namespace StepManiaEditor
 		public const float MeasureMarkerMinScale = 0.05f;
 		public const float MeasureNumberScaleToStartFading = 0.20f;
 		public const float MeasureNumberMinScale = 0.10f;
+		public const float MiscEventScaleToStartingFading = 0.05f;
+		public const float MiscEventMinScale = 0.04f;
 
 		public const float HelpWidth = 18.0f;
 		public const int CloseWidth = 18;
@@ -71,7 +72,6 @@ namespace StepManiaEditor
 		public const int MiniMapMaxNotesToDraw = 6144;
 		public const int MiniMapYPaddingFromTop = 52;		// This takes into account a 20 pixel padding for the main menu bar.
 		public const int MiniMapYPaddingFromBottom = 32;
-		public const int MiniMapXPadding = 32;
 
 		public const string TextureIdReceptor = "receptor";
 		public const string TextureIdReceptorFlash = "receptor_flash";
@@ -882,6 +882,16 @@ namespace StepManiaEditor
 			ImGui.GetStyle().ItemSpacing.Y = originalItemSpacingY;
 
 			return result;
+		}
+
+		public static unsafe void PushAlpha(ImGuiCol col, float alpha)
+		{
+			var color = ImGui.GetStyleColorVec4(col);
+			uint newColor =   ((uint)(byte)(alpha * color->W * byte.MaxValue) << 24)
+			                | ((uint)(byte)(color->Z * byte.MaxValue) << 16)
+			                | ((uint)(byte)(color->Y * byte.MaxValue) << 8)
+			                | (byte)(color->X * byte.MaxValue);
+			ImGui.PushStyleColor(col, newColor);
 		}
 
 		#endregion ImGui Helpers

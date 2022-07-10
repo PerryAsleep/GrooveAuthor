@@ -666,49 +666,46 @@ namespace StepManiaEditor
 			var w = (uint)Math.Min(Bounds.Width - (RimWidth << 1), NoteWidth);
 
 			int y = (int)yStart;
+			if (y >= Bounds.Height - RimWidth)
+				return AddResult.BelowBottom;
+			if (yEnd < RimWidth)
+				return AddResult.AboveTop;
+			if (w == 0)
+				return AddResult.InRange;
+
 			var i = 0;
+			if (y < RimWidth)
+			{
+				i += (RimWidth - y);
+				y = RimWidth;
+			}
 			while (y < yEnd)
 			{
-				if (y < RimWidth)
-				{
-					if (y + 1 >= yEnd)
-						return AddResult.AboveTop;
-
-					y++;
-					i++;
-					continue;
-				}
-
 				if (y >= Bounds.Height - RimWidth)
 				{
-					if (i == 0)
-						return AddResult.BelowBottom;
 					break;
 				}
 				
-				if (w > 0)
+				// Determine the note color by blending the head and body.
+				var noteColor = i == 0 ? headColor : bodyColor;
+				if (i == 1)
 				{
-					// Determine the note color by blending the head and body.
-					var noteColor = i == 0 ? headColor : bodyColor;
-					if (i == 1)
-					{
-						var spaceToWorkWith = 1.0;
-						if (yEnd < y + 1.0)
-							spaceToWorkWith = yEnd - y;
-						noteColor = Utils.ColorABGRInterpolateBGR(bodyColor, headColor, (float)((yStart - (int)yStart) / spaceToWorkWith));
-					}
-
-					// Blend the note color with the background color.
-					var color = noteColor;
-					if (i == 0)
-						color = Utils.ColorABGRInterpolateBGR(noteColor, ColorData[y * Bounds.Width + x], (float)(yStart - (int)yStart));
-					else if (y + 1 >= yEnd)
-						color = Utils.ColorABGRInterpolateBGR(noteColor, ColorData[y * Bounds.Width + x], (float)(1.0 - (yEnd - y)));
-
-					// Set the color.
-					for (var j = x; j < x + w; j++)
-						ColorData[y * Bounds.Width + j] = color;
+					var spaceToWorkWith = 1.0;
+					if (yEnd < y + 1.0)
+						spaceToWorkWith = yEnd - y;
+					noteColor = Utils.ColorABGRInterpolateBGR(bodyColor, headColor, (float)((yStart - (int)yStart) / spaceToWorkWith));
 				}
+
+				// Blend the note color with the background color.
+				var color = noteColor;
+				if (i == 0)
+					color = Utils.ColorABGRInterpolateBGR(noteColor, ColorData[y * Bounds.Width + x], (float)(yStart - (int)yStart));
+				else if (y + 1 >= yEnd)
+					color = Utils.ColorABGRInterpolateBGR(noteColor, ColorData[y * Bounds.Width + x], (float)(1.0 - (yEnd - y)));
+
+				// Set the color.
+				for (var j = x; j < x + w; j++)
+					ColorData[y * Bounds.Width + j] = color;
 
 				i++;
 				y++;

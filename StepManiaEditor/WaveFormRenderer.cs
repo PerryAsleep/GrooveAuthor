@@ -85,7 +85,7 @@ namespace StepManiaEditor
 		/// <summary>
 		/// Bit positions for fast determination of a number's lowest bit index.
 		/// See https://graphics.stanford.edu/~seander/bithacks.html and
-		// https://en.wikipedia.org/wiki/De_Bruijn_sequence
+		/// https://en.wikipedia.org/wiki/De_Bruijn_sequence
 		/// </summary>
 		private static int[] DeBruijnBitPositions =
 		{

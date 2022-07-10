@@ -8,6 +8,7 @@ namespace StepManiaEditor
 		public ScrollRate ScrollRateEvent;
 
 		private const string Format = "%.9gx";
+		private const float Speed = 0.01f;
 		private bool WidthDirty;
 
 		public double DoubleValue
@@ -49,6 +50,8 @@ namespace StepManiaEditor
 
 		public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch)
 		{
+			if (GetAlpha() <= 0.0f)
+				return;
 			ImGuiLayoutUtils.MiscEditorEventDragDoubleWidget(
 				GetImGuiId(),
 				this,
@@ -57,7 +60,9 @@ namespace StepManiaEditor
 				Utils.UIScrollsColorABGR,
 				false,
 				CanBeDeleted,
-				Format);
+				Speed,
+				Format,
+				GetAlpha());
 		}
 	}
 }

@@ -75,6 +75,8 @@ namespace StepManiaEditor
 
 		public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch)
 		{
+			if (GetAlpha() <= 0.0f)
+				return;
 			ImGuiLayoutUtils.MiscEditorEventMultipliersWidget(
 				GetImGuiId(),
 				this,
@@ -82,7 +84,8 @@ namespace StepManiaEditor
 				(int)GetX(), (int)GetY(), (int)GetW(),
 				Utils.UIMultipliersColorABGR,
 				false,
-				CanBeDeleted);
+				CanBeDeleted,
+				GetAlpha());
 		}
 	}
 }

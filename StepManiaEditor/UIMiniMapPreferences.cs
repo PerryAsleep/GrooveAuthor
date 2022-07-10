@@ -38,6 +38,10 @@ namespace StepManiaEditor
 				ImGuiLayoutUtils.DrawRowEnum<MiniMap.Position>(true, "Position", p, nameof(PreferencesMiniMap.MiniMapPosition),
 					"Where the mini map should be located.");
 
+				ImGuiLayoutUtils.DrawRowSliderUInt(true, "X Offset", p, nameof(PreferencesMiniMap.MiniMapXPadding), 0, 1024, "%i pixels",
+					ImGuiSliderFlags.None,
+					"The x position offset in pixels of the mini map with respect to the selected location.");
+
 				ImGuiLayoutUtils.DrawRowSliderUInt(true, "Width", p, nameof(PreferencesMiniMap.MiniMapWidth), 2, 128, "%i pixels",
 					ImGuiSliderFlags.None,
 					"The width of the mini map in pixels.");

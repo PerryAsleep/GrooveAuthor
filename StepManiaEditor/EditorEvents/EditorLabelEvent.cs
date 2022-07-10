@@ -67,6 +67,8 @@ namespace StepManiaEditor
 
 		public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch)
 		{
+			if (GetAlpha() <= 0.0f)
+				return;
 			ImGuiLayoutUtils.MiscEditorEventLabelWidget(
 				GetImGuiId(),
 				this,
@@ -74,7 +76,8 @@ namespace StepManiaEditor
 				(int)GetX(), (int)GetY(), (int)GetW(),
 				Utils.UILabelColorABGR,
 				false,
-				true);
+				true,
+				GetAlpha());
 		}
 	}
 }
