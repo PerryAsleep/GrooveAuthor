@@ -6,6 +6,11 @@ namespace StepManiaEditor
 {
 	class EditorMultipliersEvent : EditorEvent
 	{
+		public static readonly string WidgetHelp =
+			"Combo Multipliers.\n" +
+			"Expected format: \"<hit multiplier>x/<miss multiplier>x\". e.g. \"1x/1x\"\n" +
+			"Multipliers must be non-negative integer values.";
+
 		public Multipliers MultipliersEvent;
 		private bool WidthDirty;
 		public bool CanBeDeleted;
@@ -85,7 +90,8 @@ namespace StepManiaEditor
 				Utils.UIMultipliersColorABGR,
 				false,
 				CanBeDeleted,
-				GetAlpha());
+				GetAlpha(),
+				WidgetHelp);
 		}
 	}
 }

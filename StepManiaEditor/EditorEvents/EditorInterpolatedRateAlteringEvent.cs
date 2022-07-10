@@ -11,6 +11,17 @@ namespace StepManiaEditor
 {
 	public class EditorInterpolatedRateAlteringEvent : EditorEvent, IComparable<EditorInterpolatedRateAlteringEvent>
 	{
+		public static readonly string WidgetHelp =
+			"Interpolated scroll rate.\n" +
+			"Expected format: \"<rate>x/<length>rows\" or \"<rate>x/<length>s\". e.g. \"2.0x/48rows\".\n" +
+			"StepMania refers to these events as \"speeds\".\n" +
+			"These events change the scroll rate smoothly over a specified period of time from the previous\n" +
+			"interpolated scroll rate value to the newly specified value.\n" +
+			"If the specified time is 0 then the scroll rate changes instantly.\n" +
+			"Unlike non-interpolated scroll rate changes, the player cannot see the effects of interpolated\n" +
+			"scroll rate changes before they begin.\n" +
+			"Interpolated scroll rate changes and non-interpolated scroll rate changes are independent.";
+
 		/// <summary>
 		/// Row of this rate altering event.
 		/// </summary>
@@ -23,9 +34,7 @@ namespace StepManiaEditor
 		public double PreviousScrollRate = 1.0;
 
 		public bool CanBeDeleted;
-
 		private bool WidthDirty;
-
 		public ScrollRateInterpolation ScrollRateInterpolationEvent;
 
 		public string StringValue
@@ -187,7 +196,8 @@ namespace StepManiaEditor
 				Utils.UISpeedsColorABGR,
 				false,
 				CanBeDeleted,
-				GetAlpha());
+				GetAlpha(),
+				WidgetHelp);
 		}
 	}
 }

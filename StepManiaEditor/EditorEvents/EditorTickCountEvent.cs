@@ -1,14 +1,21 @@
 ﻿using Fumen.ChartDefinition;
+using Fumen.Converters;
 using Microsoft.Xna.Framework.Graphics;
 
 namespace StepManiaEditor
 {
 	public class EditorTickCountEvent : EditorEvent
 	{
-		public TickCount TickCountEvent;
-
+		public static readonly string WidgetHelp =
+			"Ticks.\n" +
+			"Expected format: \"<ticks>ticks\". e.g. \"4ticks\"\n" +
+			"Tick value must be non-negative.\n" +
+			"This value represents the number of times per beat that hold notes should contribute towards\n" +
+			$"combo. StepMania defines a beat as {SMCommon.MaxValidDenominator} rows.";
 		private const string Format = "%iticks";
 		private const float Speed = 0.1f;
+
+		public TickCount TickCountEvent;
 		private bool WidthDirty;
 		public bool CanBeDeleted;
 
@@ -17,7 +24,7 @@ namespace StepManiaEditor
 			get => TickCountEvent.Ticks;
 			set
 			{
-				if (value != TickCountEvent.Ticks)
+				if (value != TickCountEvent.Ticks && value >= 0)
 				{
 					TickCountEvent.Ticks = value;
 					WidthDirty = true;
@@ -63,6 +70,7 @@ namespace StepManiaEditor
 				Speed,
 				Format,
 				GetAlpha(),
+				WidgetHelp,
 				0);
 		}
 	}

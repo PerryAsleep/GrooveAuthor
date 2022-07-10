@@ -7,6 +7,15 @@ namespace StepManiaEditor
 {
 	public class EditorTimeSignatureEvent : EditorRateAlteringEvent
 	{
+		public static readonly string WidgetHelp =
+			"Time Signature.\n" +
+			"Expected format: \"<beat unit>/<number of beats>\". e.g. \"4/4\"\n" +
+			"Both values must be positive.\n" +
+			$"The number of beats must be a power of two and less than or equal to {SMCommon.MaxValidDenominator}.\n" +
+			"StepMania ignores time signatures during gameplay. They are a convenience for visualizing measures in the editor.\n" +
+			"StepMania does not color notes based on their beat relative to the current time signature. Rather, it colors\n" +
+			"notes based on their absolute row.";
+
 		public TimeSignature TimeSignatureEvent;
 		private bool WidthDirty;
 
@@ -54,6 +63,8 @@ namespace StepManiaEditor
 				return (false, f);
 			if (f.Numerator <= 0)
 				return (false, f);
+			if ((f.Denominator & (f.Denominator - 1)) != 0)
+				return (false, f);
 			return (true, f);
 		}
 
@@ -75,7 +86,8 @@ namespace StepManiaEditor
 				Utils.UITimeSignatureColorABGR,
 				false,
 				CanBeDeleted,
-				GetAlpha());
+				GetAlpha(),
+				WidgetHelp);
 		}
 	}
 }

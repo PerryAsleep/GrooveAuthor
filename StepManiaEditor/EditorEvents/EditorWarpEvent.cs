@@ -1,14 +1,23 @@
 ﻿using Fumen.ChartDefinition;
+using Fumen.Converters;
 using Microsoft.Xna.Framework.Graphics;
 
 namespace StepManiaEditor
 {
 	public class EditorWarpEvent : EditorRateAlteringEvent
 	{
-		public Warp WarpEvent;
-
+		public static readonly string WidgetHelp =
+			"Warp.\n" +
+			"Expected format: \"<length>rows\". e.g. \"48rows\"\n" +
+			"Length must be non-negative.\n" +
+			"A warp will instantly advance the chart forward by the specified number of rows.\n" +
+			"This is the preferred method of achieving this effect rather than using negative\n" +
+			"stops or tempos. Warp durations are specified in rows where one beat in StepMania is\n" +
+			$"{SMCommon.MaxValidDenominator} rows.";
 		private const string Format = "%irows";
 		private const float Speed = 1.0f;
+
+		public Warp WarpEvent;
 		private bool WidthDirty;
 
 		public int IntValue
@@ -16,7 +25,7 @@ namespace StepManiaEditor
 			get => WarpEvent.LengthIntegerPosition;
 			set
 			{
-				if (WarpEvent.LengthIntegerPosition != value)
+				if (WarpEvent.LengthIntegerPosition != value && value >= 0)
 				{
 					WarpEvent.LengthIntegerPosition = value;
 					WidthDirty = true;
@@ -63,6 +72,7 @@ namespace StepManiaEditor
 				Speed,
 				Format,
 				GetAlpha(),
+				WidgetHelp,
 				0);
 		}
 	}

@@ -5,10 +5,18 @@ namespace StepManiaEditor
 {
 	public class EditorScrollRateEvent : EditorRateAlteringEvent
 	{
-		public ScrollRate ScrollRateEvent;
-
+		public static readonly string WidgetHelp =
+			"Scroll rate.\n" +
+			"Expected format: \"<rate>x\". e.g. \"2.0x\".\n" +
+			"StepMania refers to these events as \"scrolls\".\n" +
+			"These events change the scroll rate instantly.\n" +
+			"Unlike interpolated scroll rate changes, the player can see the effects of these scroll\n" +
+			"rate changes before they begin.\n" +
+			"Scroll rate changes and interpolated scroll rate changes are independent.";
 		private const string Format = "%.9gx";
 		private const float Speed = 0.01f;
+
+		public ScrollRate ScrollRateEvent; 
 		private bool WidthDirty;
 
 		public double DoubleValue
@@ -62,7 +70,8 @@ namespace StepManiaEditor
 				CanBeDeleted,
 				Speed,
 				Format,
-				GetAlpha());
+				GetAlpha(),
+				WidgetHelp);
 		}
 	}
 }

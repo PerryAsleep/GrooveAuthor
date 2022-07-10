@@ -1,15 +1,21 @@
 ﻿using Fumen.ChartDefinition;
+using Fumen.Converters;
 using Microsoft.Xna.Framework.Graphics;
 
 namespace StepManiaEditor
 {
 	public class EditorTempoEvent : EditorRateAlteringEvent
 	{
-		public Tempo TempoEvent;
-
+		public static readonly string WidgetHelp =
+			"Tempo.\n" +
+			"Tempo in beats per minute.\n" +
+			"Expected format: \"<value>bpm\". e.g. \"120.0bpm\".\n" +
+			$"StepMania defines a beat as {SMCommon.MaxValidDenominator} rows.";
+			// TODO: 0.0 and negative tempo handling
 		private const string Format = "%.9gbpm";
 		private const float Speed = 0.25f;
 
+		public Tempo TempoEvent;
 		private bool WidthDirty;
 
 		public double DoubleValue
@@ -17,6 +23,7 @@ namespace StepManiaEditor
 			get => TempoEvent.TempoBPM;
 			set
 			{
+				// TODO: 0.0 and negative bpm handling
 				if (!value.DoubleEquals(0.0))
 				{
 					if (!TempoEvent.TempoBPM.DoubleEquals(value))
@@ -66,7 +73,8 @@ namespace StepManiaEditor
 				CanBeDeleted,
 				Speed,
 				Format,
-				GetAlpha());
+				GetAlpha(),
+				WidgetHelp);
 		}
 	}
 }

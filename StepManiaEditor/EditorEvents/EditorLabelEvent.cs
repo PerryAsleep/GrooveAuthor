@@ -6,6 +6,11 @@ namespace StepManiaEditor
 {
 	public class EditorLabelEvent : EditorEvent
 	{
+		public static readonly string WidgetHelp =
+			"Label.\n" +
+			"Arbitrary text used to label sections of the chart.\n" +
+			"Labels are not visible during gameplay.";
+
 		public Label LabelEvent;
 		private bool WidthDirty;
 
@@ -77,7 +82,8 @@ namespace StepManiaEditor
 				Utils.UILabelColorABGR,
 				false,
 				true,
-				GetAlpha());
+				GetAlpha(),
+				WidgetHelp);
 		}
 	}
 }

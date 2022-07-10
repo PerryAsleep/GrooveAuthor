@@ -6,10 +6,17 @@ namespace StepManiaEditor
 {
 	public class EditorStopEvent : EditorRateAlteringEvent
 	{
-		public Stop StopEvent;
-
+		public static readonly string WidgetHelp =
+			"Stop.\n" +
+			"Stops pause the chart playback and occur after notes at the same position.\n" +
+			"Expected format: \"<time>s\". e.g. \"1.0s\"\n" +
+			"Stop and delay lengths are in seconds.\n" +
+			"Negative stop values result in the chart immediately advancing forward in time during gameplay.\n" +
+			"The recommended method for accomplishing this effect is to use a warp.";
 		private const string Format = "%.9gs";
 		private const float Speed = 0.01f;
+
+		public Stop StopEvent;
 		private bool WidthDirty;
 
 		public double DoubleValue
@@ -64,7 +71,8 @@ namespace StepManiaEditor
 				CanBeDeleted,
 				Speed,
 				Format,
-				GetAlpha());
+				GetAlpha(),
+				WidgetHelp);
 		}
 	}
 }

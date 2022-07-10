@@ -6,10 +6,15 @@ namespace StepManiaEditor
 {
 	public class EditorFakeSegmentEvent : EditorEvent
 	{
-		public FakeSegment FakeSegmentEvent;
-
+		public static readonly string WidgetHelp =
+			"Fake region.\n" +
+			"Notes that occur during a fake region are not counted.\n" +
+			"Expected format: \"<time>s\". e.g. \"1.0s\"\n" +
+			"Fake region lengths are in seconds and must be non-negative.";
 		private const string Format = "%.9gs";
 		private const float Speed = 1.0f;
+
+		public FakeSegment FakeSegmentEvent;
 		private bool WidthDirty;
 
 		public double DoubleValue
@@ -63,7 +68,9 @@ namespace StepManiaEditor
 				true,
 				Speed,
 				Format,
-				GetAlpha());
+				GetAlpha(),
+				WidgetHelp,
+				0.0);
 		}
 	}
 }
