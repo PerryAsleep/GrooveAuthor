@@ -795,6 +795,12 @@ namespace StepManiaEditor
 				previousEvents.Add(rae);
 			}
 
+			if (previousEvent.GetEvent() != null)
+			{
+				timePerTempo.TryGetValue(lastTempo, out var lastTempoTime);
+				timePerTempo[lastTempo] = lastTempoTime + previousEvent.GetEvent().TimeMicros - lastTempoChangeTime;
+			}
+
 			var longestTempoTime = -1L;
 			var mostCommonTempo = 0.0;
 			foreach (var kvp in timePerTempo)
