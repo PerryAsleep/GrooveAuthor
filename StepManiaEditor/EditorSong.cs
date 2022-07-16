@@ -8,6 +8,7 @@ using Fumen.ChartDefinition;
 using Fumen.Converters;
 using Microsoft.Xna.Framework.Graphics;
 using static StepManiaEditor.Utils;
+using static Fumen.Utils;
 
 namespace StepManiaEditor
 {
@@ -258,7 +259,16 @@ namespace StepManiaEditor
 			}
 		}
 
-		public double MusicOffset;
+		private double MusicOffsetInternal;
+		public double MusicOffset
+		{
+			get => MusicOffsetInternal;
+			set
+			{
+				MusicOffsetInternal = value;
+				Editor.OnMusicOffsetChanged();
+			}
+		}
 
 		public double SyncOffset; // TODO: I want a variable so that you can use the 9ms offset but also have the waveform line up.
 
@@ -335,7 +345,8 @@ namespace StepManiaEditor
 			MusicPath = musicPath;
 
 			MusicPreviewPath = song.PreviewMusicFile ?? "";
-			song.Extras.TryGetExtra(SMCommon.TagOffset, out MusicOffset, true);
+			song.Extras.TryGetExtra(SMCommon.TagOffset, out double musicOffset, true);
+			MusicOffset = musicOffset;
 			song.Extras.TryGetExtra(SMCommon.TagLastSecondHint, out LastSecondHint, true);
 			if (LastSecondHint <= 0.0)
 			{
@@ -475,8 +486,27 @@ namespace StepManiaEditor
 			}
 		}
 
-		public bool UsesChartMusicOffset = false;
-		public double MusicOffset;
+		public bool UsesChartMusicOffsetInternal;
+		public bool UsesChartMusicOffset
+		{
+			get => UsesChartMusicOffsetInternal;
+			set
+			{
+				UsesChartMusicOffsetInternal = value;
+				Editor.OnMusicOffsetChanged();
+			}
+		}
+
+		private double MusicOffsetInternal;
+		public double MusicOffset
+		{
+			get => MusicOffsetInternal;
+			set
+			{
+				MusicOffsetInternal = value;
+				Editor.OnMusicOffsetChanged();
+			}
+		}
 
 		public bool HasDisplayTempoFromChart;
 		public DisplayTempo DisplayTempo = new DisplayTempo();
@@ -519,7 +549,9 @@ namespace StepManiaEditor
 			Credit = chart.Author ?? "";
 			chart.Extras.TryGetExtra(SMCommon.TagMusic, out string musicPath, true);
 			MusicPath = musicPath;
-			UsesChartMusicOffset = chart.Extras.TryGetExtra(SMCommon.TagOffset, out MusicOffset, true);
+			UsesChartMusicOffset = chart.Extras.TryGetExtra(SMCommon.TagOffset, out double musicOffset, true);
+			if (UsesChartMusicOffset)
+				MusicOffset = musicOffset;
 
 			HasDisplayTempoFromChart = !string.IsNullOrEmpty(chart.Tempo);
 			DisplayTempo.FromString(chart.Tempo);
@@ -714,7 +746,7 @@ namespace StepManiaEditor
 					rae.RowForFollowingEvents = chartEvent.IntegerPosition;
 					rae.SongTime = previousEvent.SongTimeForFollowingEvents + secondsSincePrevious;
 					rae.SongTimeForFollowingEvents = previousEvent.SongTimeForFollowingEvents + secondsSincePrevious +
-													 Fumen.Utils.ToSeconds(stop.LengthMicros);
+													 ToSeconds(stop.LengthMicros);
 					rae.RowsPerSecond = previousEvent.RowsPerSecond;
 					rae.SecondsPerRow = previousEvent.SecondsPerRow;
 					rae.ScrollRate = lastScrollRate;
@@ -822,51 +854,67 @@ namespace StepManiaEditor
 			SMCommon.SetEventTimeMicrosAndMetricPositionsFromRows(EditorEvents.Select(e => e.GetEvent()));
 		}
 
-		public bool TryGetChartPositionFromTime(double songTime, ref double chartPosition)
+		public bool TryGetChartPositionFromTime(double chartTime, ref double chartPosition)
+		{
+			var rateEvent = GetActiveRateAlteringEventForTime(chartTime, false);
+			if (rateEvent == null)
+				return false;
+			
+			if (chartTime >= rateEvent.SongTime && chartTime < rateEvent.SongTimeForFollowingEvents)
+				chartPosition = rateEvent.Row;
+			else
+				chartPosition = rateEvent.Row + rateEvent.RowsPerSecond * (chartTime - rateEvent.SongTimeForFollowingEvents);
+			return true;
+		}
+
+		public EditorRateAlteringEvent GetActiveRateAlteringEventForTime(double chartTime, bool allowEqualTo = true)
 		{
 			if (RateAlteringEventsBySongTime == null)
-				return false;
+				return null;
 
 			// Given the current song time, get the greatest preceding event which alters the rate of rows to time.
-			var enumerator =
-				RateAlteringEventsBySongTime.FindGreatestPreceding(new EditorDummyRateAlteringEvent(this, null) { SongTime = songTime });
+			var enumerator = RateAlteringEventsBySongTime.FindGreatestPreceding(
+				new EditorDummyRateAlteringEvent(this, null) { SongTime = chartTime },
+				allowEqualTo);
 			// If there is no preceding event (e.g. SongTime is negative), use the first event.
 			if (enumerator == null)
 				enumerator = RateAlteringEventsBySongTime.GetRedBlackTreeEnumerator();
 			// If there is still no event then the Chart is misconfigured as it must have at least a Tempo event.
 			if (enumerator == null)
-				return false;
+				return null;
 
 			// Update the ChartPosition based on the cached rate information.
 			enumerator.MoveNext();
-			var rateEvent = enumerator.Current;
-			if (songTime >= rateEvent.SongTime && songTime < rateEvent.SongTimeForFollowingEvents)
-				chartPosition = rateEvent.Row;
-			else
-				chartPosition = rateEvent.Row + rateEvent.RowsPerSecond * (songTime - rateEvent.SongTimeForFollowingEvents);
+			return enumerator.Current;
+		}
+
+		public bool TryGetTimeFromChartPosition(double chartPosition, ref double chartTime)
+		{
+			var rateEvent = GetActiveRateAlteringEventForPosition(chartPosition, false);
+			if (rateEvent == null)
+				return false;
+			chartTime = rateEvent.SongTimeForFollowingEvents + rateEvent.SecondsPerRow * (chartPosition - rateEvent.Row);
 			return true;
 		}
-		
-		public bool TryGetTimeFromChartPosition(double chartPosition, ref double songTime)
+
+		public EditorRateAlteringEvent GetActiveRateAlteringEventForPosition(double chartPosition, bool allowEqualTo = true)
 		{
 			if (RateAlteringEventsByRow == null)
-				return false;
+				return null;
 
 			// Given the current song time, get the greatest preceding event which alters the rate of rows to time.
-			var enumerator = RateAlteringEventsByRow.FindGreatestPreceding(new EditorDummyRateAlteringEvent(this, null) { Row = chartPosition });
+			var enumerator = RateAlteringEventsByRow.FindGreatestPreceding(
+				new EditorDummyRateAlteringEvent(this, null) { Row = chartPosition },
+				allowEqualTo);
 			// If there is no preceding event (e.g. ChartPosition is negative), use the first event.
 			if (enumerator == null)
 				enumerator = RateAlteringEventsByRow.GetRedBlackTreeEnumerator();
 			// If there is still no event then the Chart is misconfigured as it must have at least a Tempo event.
 			if (enumerator == null)
-				return false;
+				return null;
 
-			// Update the Song time based on the cached rate information.
-			// TODO: Need to take into account Stops vs Delays?
 			enumerator.MoveNext();
-			var rateEvent = enumerator.Current;
-			songTime = rateEvent.SongTimeForFollowingEvents + rateEvent.SecondsPerRow * (chartPosition - rateEvent.Row);
-			return true;
+			return enumerator.Current;
 		}
 
 		public RedBlackTree<EditorEvent>.Enumerator FindEvent(EditorEvent pos)
@@ -996,6 +1044,38 @@ namespace StepManiaEditor
 					}
 				}
 			}
+		}
+
+		public double GetStartTime(bool withOffset)
+		{
+			return withOffset ? -GetMusicOffset() : 0.0;
+		}
+
+		public double GetMusicOffset()
+		{
+			if (UsesChartMusicOffset)
+				return MusicOffset;
+			return EditorSong.MusicOffset;
+		}
+
+		public double GetEndTime(bool withOffset)
+		{
+			var lastEvent = EditorEvents.Last();
+			var endTime = 0.0;
+			if (lastEvent.MoveNext())
+				endTime = ToSeconds(lastEvent.Current.GetEvent().TimeMicros);
+			endTime = Math.Max(endTime, EditorSong.LastSecondHint);
+			if (withOffset)
+				endTime -= GetMusicOffset();
+			return endTime;
+		}
+
+		public double GetEndPosition()
+		{
+			var lastEvent = EditorEvents.Last();
+			if (lastEvent.MoveNext())
+				return lastEvent.Current.GetEvent().IntegerPosition;
+			return 0;
 		}
 
 		//steps_tag_handlers["BPMS"] = &SetStepsBPMs;

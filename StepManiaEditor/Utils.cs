@@ -19,6 +19,7 @@ namespace StepManiaEditor
 		public static readonly Dictionary<int, string> ArrowTextureByBeatSubdivision;
 
 		private static readonly string[] ArrowTextureByRow;
+		private static readonly Dictionary<int, uint> ArrowColorABGRBySubdivision;
 		private static readonly uint[] ArrowColorABGRByRow;
 		private static readonly ushort[] ArrowColorBGR565ByRow;
 		private static readonly uint MineColorABGR;
@@ -70,8 +71,9 @@ namespace StepManiaEditor
 		public const int MaxEventsToDraw = 2048;
 
 		public const int MiniMapMaxNotesToDraw = 6144;
-		public const int MiniMapYPaddingFromTop = 52;		// This takes into account a 20 pixel padding for the main menu bar.
-		public const int MiniMapYPaddingFromBottom = 32;
+		public const int MiniMapYPaddingFromTop = 30;		// This takes into account a 20 pixel padding for the main menu bar.
+		public const int MiniMapYPaddingFromBottom = 10;
+		public const int ChartPositionUIYPAddingFromBottom = 10;
 
 		public const string TextureIdReceptor = "receptor";
 		public const string TextureIdReceptorFlash = "receptor_flash";
@@ -165,16 +167,17 @@ namespace StepManiaEditor
 				ArrowTextureByRow[i] = ArrowTextureByBeatSubdivision[key];
 			}
 
-			var arrowColorABGRBySubdivision = new Dictionary<int, uint>
+			ArrowColorABGRBySubdivision = new Dictionary<int, uint>
 			{
 				{1, 0xFF0000FF},	// Red
-				{2, 0xFFFF0000},	// Blue
+				{2, 0xFFFF4444},	// Blue
 				{3, 0xFF00FF00},	// Green
 				{4, 0xFF00FFFF},	// Yellow
 				{6, 0xFFFF0080},	// Purple
 				{8, 0xFFFFFF00},	// Cyan
 				{12, 0xFFFF80FF},	// Pink
 				{16, 0xFF99bf99},	// Pale Grey Green
+				{48, 0xFF99bf99},	// Pale Grey Green
 			};
 			ArrowColorABGRByRow = new uint[SMCommon.MaxValidDenominator];
 			ArrowColorBGR565ByRow = new ushort[SMCommon.MaxValidDenominator];
@@ -182,9 +185,9 @@ namespace StepManiaEditor
 			{
 				var key = new Fraction(i, SMCommon.MaxValidDenominator).Reduce().Denominator;
 				
-				if (!arrowColorABGRBySubdivision.ContainsKey(key))
+				if (!ArrowColorABGRBySubdivision.ContainsKey(key))
 					key = 16;
-				ArrowColorABGRByRow[i] = arrowColorABGRBySubdivision[key];
+				ArrowColorABGRByRow[i] = ArrowColorABGRBySubdivision[key];
 				ArrowColorBGR565ByRow[i] = ToBGR565(ArrowColorABGRByRow[i]);
 			}
 
@@ -204,6 +207,11 @@ namespace StepManiaEditor
 		public static uint GetArrowColorABGR(int integerPosition)
 		{
 			return ArrowColorABGRByRow[integerPosition % SMCommon.MaxValidDenominator];
+		}
+
+		public static uint GetArrowColorABGRForSubdivision(int subdivision)
+		{
+			return ArrowColorABGRBySubdivision[subdivision];
 		}
 
 		public static ushort GetArrowColorBGR565(int integerPosition)

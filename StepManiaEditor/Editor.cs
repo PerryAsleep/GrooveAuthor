@@ -85,8 +85,19 @@ namespace StepManiaEditor
 			MostCommonTempo
 		}
 
-		private Vector2 FocalPoint;
+		public class SnapData
+		{
+			public int Rows;
+
+			public uint GetColorABGR()
+			{
+				return GetArrowColorABGRForSubdivision(SMCommon.MaxValidDenominator / Rows);
+			}
+		}
+		private SnapData[] SnapLevels;
+		private int SnapIndex = 0;
 		
+		private Vector2 FocalPoint;
 
 		private string PendingOpenFileName;
 		private SMCommon.ChartType PendingOpenFileChartType;
@@ -126,19 +137,20 @@ namespace StepManiaEditor
 		private EditorSong EditorSong;
 		private EditorChart ActiveChart;
 		
-		private double ChartPosition = 0.0;
 
 		private List<EditorEvent> VisibleEvents = new List<EditorEvent>();
 		private List<EditorMarkerEvent> VisibleMarkers = new List<EditorMarkerEvent>();
 
 		private double WaveFormPPS = 1.0;
 
-		// temp controls
-		private int MouseScrollValue = 0;
+		// Movement controls.
+		private EditorPosition Position;
+		private bool UpdatingSongTimeDirectly;
 		private double SongTimeInterpolationTimeStart = 0.0;
-		private double SongTime = 0.0;
 		private double SongTimeAtStartOfInterpolation = 0.0;
 		private double DesiredSongTime = 0.0;
+
+		// Zoom controls
 		private double ZoomInterpolationTimeStart = 0.0;
 		private double Zoom = 1.0;
 		private double ZoomAtStartOfInterpolation = 1.0;
@@ -150,6 +162,7 @@ namespace StepManiaEditor
 		private bool MiniMapCapturingMouse = false;
 		private bool StartPlayingWhenMiniMapDone = false;
 		private MouseState PreviousMiniMapMouseState;
+		private int MouseScrollValue = 0;
 
 		private uint MaxScreenHeight;
 
@@ -164,17 +177,9 @@ namespace StepManiaEditor
 		private double UpdateTimeChartEvents;
 		private double DrawTimeTotal;
 
-		// Logger GUI
+		// Logger
 		private readonly LinkedList<Logger.LogMessage> LogBuffer = new LinkedList<Logger.LogMessage>();
 		private readonly object LogBufferLock = new object();
-		private readonly string[] LogWindowDateStrings = { "None", "HH:mm:ss", "HH:mm:ss.fff", "yyyy-MM-dd HH:mm:ss.fff" };
-
-		private readonly System.Numerics.Vector4[] LogWindowLevelColors =
-		{
-			new System.Numerics.Vector4(1.0f, 1.0f, 1.0f, 1.0f),
-			new System.Numerics.Vector4(1.0f, 1.0f, 0.0f, 1.0f),
-			new System.Numerics.Vector4(1.0f, 0.0f, 0.0f, 1.0f),
-		};
 
 		private bool ShowImGuiTestWindow = true;
 
@@ -199,6 +204,8 @@ namespace StepManiaEditor
 			// Load Preferences synchronously so they can be used immediately.
 			Preferences.Load();
 
+			Position = new EditorPosition(OnSongTimeSet);
+
 			FocalPoint = new Vector2(Preferences.Instance.WindowWidth >> 1, 100 + (DefaultArrowWidth >> 1));
 
 			SoundManager = new SoundManager();
@@ -218,6 +225,14 @@ namespace StepManiaEditor
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Space }, OnTogglePlayback, false));
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.P }, OnTogglePlayPreview, false));
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Escape }, OnEscape, false));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Left }, OnDecreaseSnap, true));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Right }, OnIncreaseSnap, true));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Up }, OnMoveUp, true));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Down }, OnMoveDown, true));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.PageUp }, OnMoveToPreviousMeasure, true));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.PageDown }, OnMoveToNextMeasure, true));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Home }, OnMoveToChartStart, true));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.End }, OnMoveToChartEnd, true));
 
 			Content.RootDirectory = "Content";
 			IsMouseVisible = true;
@@ -226,6 +241,17 @@ namespace StepManiaEditor
 
 			IsFixedTimeStep = false;
 			Graphics.SynchronizeWithVerticalRetrace = true;
+
+			// Set up snap levels for all valid denominators.
+			SnapLevels = new SnapData[SMCommon.ValidDenominators.Length + 1];
+			SnapLevels[0] = new SnapData { Rows = 0 };
+			for (int denominatorIndex = 0; denominatorIndex < SMCommon.ValidDenominators.Length; denominatorIndex++)
+			{
+				SnapLevels[denominatorIndex + 1] = new SnapData
+				{
+					Rows = SMCommon.MaxValidDenominator / SMCommon.ValidDenominators[denominatorIndex]
+				};
+			}
 		}
 
 		protected override void Initialize()
@@ -357,24 +383,26 @@ namespace StepManiaEditor
 			var stopWatch = new Stopwatch();
 			stopWatch.Start();
 
-			
-
 			ProcessInput(gameTime);
 
 			TextureAtlas.Update();
 
 			if (!Playing)
 			{
-				if (!SongTime.DoubleEquals(DesiredSongTime))
+				if (!Position.SongTime.DoubleEquals(DesiredSongTime))
 				{
-					SongTime = Interpolation.Lerp(
+					UpdatingSongTimeDirectly = true;
+
+					Position.SongTime = Interpolation.Lerp(
 						SongTimeAtStartOfInterpolation,
 						DesiredSongTime,
 						SongTimeInterpolationTimeStart,
 						SongTimeInterpolationTimeStart + 0.1,
 						gameTime.TotalGameTime.TotalSeconds);
 
-					MusicManager.SetMusicTimeInSeconds(SongTime);
+					MusicManager.SetMusicTimeInSeconds(Position.SongTime);
+
+					UpdatingSongTimeDirectly = false;
 				}
 			}
 
@@ -397,9 +425,11 @@ namespace StepManiaEditor
 
 			if (Playing)
 			{
-				SongTime = PlaybackStartTime + PlaybackStopwatch.Elapsed.TotalSeconds;
+				UpdatingSongTimeDirectly = true;
 
-				MusicManager.Update(SongTime);
+				Position.SongTime = PlaybackStartTime + PlaybackStopwatch.Elapsed.TotalSeconds;
+
+				MusicManager.Update(Position.SongTime);
 				if (MusicManager.IsMusicLoaded())
 				{
 					// The goal is to set the SongTime to match the actual time of the music
@@ -411,30 +441,29 @@ namespace StepManiaEditor
 					// snap it back.
 					var maxDeviation = 0.1;
 					var fmodSongTime = MusicManager.GetMusicTimeInSeconds();
-					if (SongTime >= 0.0 && SongTime < MusicManager.GetMusicLengthInSeconds())
+					if (Position.SongTime >= 0.0 && Position.SongTime < MusicManager.GetMusicLengthInSeconds())
 					{
-						if (SongTime - fmodSongTime > maxDeviation)
+						if (Position.SongTime - fmodSongTime > maxDeviation)
 						{
 							PlaybackStartTime -= (0.5 * maxDeviation);
-							SongTime = PlaybackStartTime + PlaybackStopwatch.Elapsed.TotalSeconds;
+							Position.SongTime = PlaybackStartTime + PlaybackStopwatch.Elapsed.TotalSeconds;
 						}
-						else if (fmodSongTime - SongTime > maxDeviation)
+						else if (fmodSongTime - Position.SongTime > maxDeviation)
 						{
 							PlaybackStartTime += (0.5 * maxDeviation);
-							SongTime = PlaybackStartTime + PlaybackStopwatch.Elapsed.TotalSeconds;
+							Position.SongTime = PlaybackStartTime + PlaybackStopwatch.Elapsed.TotalSeconds;
 						}
 					}
 				}
 
-				DesiredSongTime = SongTime;
+				DesiredSongTime = Position.SongTime;
+
+				UpdatingSongTimeDirectly = false;
 			}
 			else
 			{
-				MusicManager.Update(SongTime);
+				MusicManager.Update(Position.SongTime);
 			}
-
-			// If using SongTime
-			UpdateChartPositionFromSongTime();
 
 			Action timedUpdateChartEvents = () =>
 			{
@@ -548,7 +577,7 @@ namespace StepManiaEditor
 						if (Playing)
 						{
 							PlaybackStartTime -= delta;
-							SongTime = PlaybackStartTime + PlaybackStopwatch.Elapsed.TotalSeconds;
+							Position.SongTime = PlaybackStartTime + PlaybackStopwatch.Elapsed.TotalSeconds;
 
 							if (pScroll.StopPlaybackWhenScrolling)
 							{
@@ -556,14 +585,21 @@ namespace StepManiaEditor
 							}
 							else
 							{
-								MusicManager.SetMusicTimeInSeconds(SongTime);
+								MusicManager.SetMusicTimeInSeconds(Position.SongTime);
 							}
 						}
 						else
 						{
-							DesiredSongTime -= delta;
-							SongTimeInterpolationTimeStart = gameTime.TotalGameTime.TotalSeconds;
-							SongTimeAtStartOfInterpolation = SongTime;
+							if (SnapLevels[SnapIndex].Rows == 0)
+							{
+								DesiredSongTime -= delta;
+								SongTimeInterpolationTimeStart = gameTime.TotalGameTime.TotalSeconds;
+								SongTimeAtStartOfInterpolation = Position.SongTime;
+							}
+							else
+							{
+								OnMoveUp();
+							}
 						}
 
 						MouseScrollValue = newMouseScrollValue;
@@ -575,7 +611,7 @@ namespace StepManiaEditor
 						if (Playing)
 						{
 							PlaybackStartTime += delta;
-							SongTime = PlaybackStartTime + PlaybackStopwatch.Elapsed.TotalSeconds;
+							Position.SongTime = PlaybackStartTime + PlaybackStopwatch.Elapsed.TotalSeconds;
 
 							if (pScroll.StopPlaybackWhenScrolling)
 							{
@@ -583,14 +619,21 @@ namespace StepManiaEditor
 							}
 							else
 							{
-								MusicManager.SetMusicTimeInSeconds(SongTime);
+								MusicManager.SetMusicTimeInSeconds(Position.SongTime);
 							}
 						}
 						else
 						{
-							DesiredSongTime += delta;
-							SongTimeInterpolationTimeStart = gameTime.TotalGameTime.TotalSeconds;
-							SongTimeAtStartOfInterpolation = SongTime;
+							if (SnapLevels[SnapIndex].Rows == 0)
+							{
+								DesiredSongTime += delta;
+								SongTimeInterpolationTimeStart = gameTime.TotalGameTime.TotalSeconds;
+								SongTimeAtStartOfInterpolation = Position.SongTime;
+							}
+							else
+							{
+								OnMoveDown();
+							}
 						}
 
 						MouseScrollValue = newMouseScrollValue;
@@ -606,9 +649,9 @@ namespace StepManiaEditor
 
 			StopPreview();
 
-			if (!MusicManager.IsMusicLoaded() || SongTime < 0.0 || SongTime > MusicManager.GetMusicLengthInSeconds())
+			if (!MusicManager.IsMusicLoaded() || Position.SongTime < 0.0 || Position.SongTime > MusicManager.GetMusicLengthInSeconds())
 			{
-				PlaybackStartTime = SongTime;
+				PlaybackStartTime = Position.SongTime;
 			}
 			else
 			{
@@ -617,7 +660,7 @@ namespace StepManiaEditor
 
 			PlaybackStopwatch = new Stopwatch();
 			PlaybackStopwatch.Start();
-			MusicManager.StartPlayback(SongTime);
+			MusicManager.StartPlayback(Position.SongTime);
 
 			Playing = true;
 		}
@@ -633,15 +676,18 @@ namespace StepManiaEditor
 			Playing = false;
 		}
 
-		private void SetSongTime(double songTime)
+		private void OnSongTimeSet()
 		{
-			SongTime = songTime;
+			if (UpdatingSongTimeDirectly)
+				return;
+
+			var songTime = Position.SongTime;
 			DesiredSongTime = songTime;
-			MusicManager.SetMusicTimeInSeconds(SongTime);
+			MusicManager.SetMusicTimeInSeconds(songTime);
 
 			if (Playing)
 			{
-				PlaybackStartTime = SongTime;
+				PlaybackStartTime = songTime;
 				PlaybackStopwatch = new Stopwatch();
 				PlaybackStopwatch.Start();
 			}
@@ -740,7 +786,7 @@ namespace StepManiaEditor
 				pWave.WaveFormDenseColor.X, pWave.WaveFormDenseColor.Y, pWave.WaveFormDenseColor.Z,
 				sparseColor.X, sparseColor.Y, sparseColor.Z);
 			WaveFormRenderer.SetScaleXWhenZooming(pWave.WaveFormScaleXWhenZooming);
-			WaveFormRenderer.Update(SongTime, Zoom, WaveFormPPS);
+			WaveFormRenderer.Update(Position.SongTime, Zoom, WaveFormPPS);
 		}
 
 		private void DrawWaveForm()
@@ -831,7 +877,7 @@ namespace StepManiaEditor
 					WaveFormPPS = pScroll.TimeBasedPixelsPerSecond;
 
 					var pps = pScroll.TimeBasedPixelsPerSecond * spacingZoom;
-					var time = SongTime + GetMusicOffset();
+					var time = Position.ChartTime;
 					var timeAtTopOfScreen = time - (FocalPoint.Y / pps);
 					double chartPosition = 0.0;
 					if (!ActiveChart.TryGetChartPositionFromTime(timeAtTopOfScreen, ref chartPosition))
@@ -951,10 +997,7 @@ namespace StepManiaEditor
 
 				case SpacingMode.ConstantRow:
 				{
-					var time = SongTime + GetMusicOffset();
-					double chartPosition = 0.0;
-					if (!ActiveChart.TryGetChartPositionFromTime(time, ref chartPosition))
-						return;
+					var chartPosition = Position.ChartPosition;
 					var ppr = pScroll.RowBasedPixelsPerRow * spacingZoom;
 					var chartPositionAtTopOfScreen = chartPosition - (FocalPoint.Y / ppr);
 
@@ -1092,7 +1135,7 @@ namespace StepManiaEditor
 					// finding the next set of notes which might need to be rendered because they appear 
 					// above.
 
-					var time = SongTime + GetMusicOffset();
+					var time = Position.ChartTime;
 					double chartPosition = 0.0;
 					if (!ActiveChart.TryGetChartPositionFromTime(time, ref chartPosition))
 						return;
@@ -1539,20 +1582,14 @@ namespace StepManiaEditor
 				{
 					case SpacingMode.ConstantTime:
 					{
-						SetSongTime(editorPosition + (FocalPoint.Y / (pScroll.TimeBasedPixelsPerSecond * Zoom)) -
-						            GetMusicOffset());
+						Position.ChartTime =
+							editorPosition + (FocalPoint.Y / (pScroll.TimeBasedPixelsPerSecond * Zoom));
 						break;
 					}
 					case SpacingMode.ConstantRow:
 					{
-						var chartPosition =
+						Position.ChartPosition =
 							editorPosition + (FocalPoint.Y / (pScroll.RowBasedPixelsPerRow * Zoom));
-						var songTime = 0.0;
-						if (ActiveChart.TryGetTimeFromChartPosition(chartPosition, ref songTime))
-						{
-							SetSongTime(songTime);
-						}
-
 						break;
 					}
 				}
@@ -1650,7 +1687,7 @@ namespace StepManiaEditor
 					var screenHeight = Graphics.GraphicsDevice.Viewport.Height;
 					var spacingZoom = Zoom;
 					var pps = pScroll.TimeBasedPixelsPerSecond * spacingZoom;
-					var time = SongTime + GetMusicOffset();
+					var time = Position.ChartTime;
 
 					// Editor Area. The visible time range.
 					var editorAreaTimeStart = time - (FocalPoint.Y / pps);
@@ -1658,18 +1695,14 @@ namespace StepManiaEditor
 					var editorAreaTimeRange = editorAreaTimeEnd - editorAreaTimeStart;
 
 					// Determine the end time.
-					var lastEvent = ActiveChart.EditorEvents.Last();
-					var maxTimeFromChart = 0.0;
-					if (lastEvent.MoveNext())
-						maxTimeFromChart = ToSeconds(lastEvent.Current.GetEvent().TimeMicros);
-					maxTimeFromChart = Math.Max(maxTimeFromChart, EditorSong.LastSecondHint);
+					var maxTimeFromChart = ActiveChart.GetEndTime(false);
 
 					// Full Area. The time from the chart, extended in both directions by the editor range.
-					var fullAreaTimeStart = 0.0 - editorAreaTimeRange;
+					var fullAreaTimeStart = ActiveChart.GetStartTime(false) - editorAreaTimeRange;
 					var fullAreaTimeEnd = maxTimeFromChart + editorAreaTimeRange;
 
 					// Content Area. The time from the chart.
-					var contentAreaTimeStart = 0.0;
+					var contentAreaTimeStart = ActiveChart.GetStartTime(false);
 					var contentAreaTimeEnd = maxTimeFromChart;
 
 					// Update the MiniMap with the ranges.
@@ -1743,11 +1776,9 @@ namespace StepManiaEditor
 
 				case SpacingMode.ConstantRow:
 				{
-					var time = SongTime + GetMusicOffset();
 					var screenHeight = Graphics.GraphicsDevice.Viewport.Height;
-					double chartPosition = 0.0;
-					if (!ActiveChart.TryGetChartPositionFromTime(time, ref chartPosition))
-						return;
+
+					var chartPosition = Position.ChartPosition;
 					var spacingZoom = Zoom;
 					var ppr = pScroll.RowBasedPixelsPerRow * spacingZoom;
 
@@ -1765,9 +1796,9 @@ namespace StepManiaEditor
 					if (EditorSong.LastSecondHint > 0.0)
 					{
 						var lastSecondChartPosition = 0.0;
-						if (ActiveChart.TryGetChartPositionFromTime(time, ref lastSecondChartPosition))
+						if (ActiveChart.TryGetChartPositionFromTime(EditorSong.LastSecondHint, ref lastSecondChartPosition))
 						{
-							maxRowFromChart = Math.Max(lastSecondChartPosition, EditorSong.LastSecondHint);
+							maxRowFromChart = Math.Max(lastSecondChartPosition, maxRowFromChart);
 						}
 					}
 
@@ -1926,7 +1957,7 @@ namespace StepManiaEditor
 				ImGui.ShowDemoWindow(ref ShowImGuiTestWindow);
 			}
 
-			DrawLogUI();
+			UILog.Draw(LogBuffer, LogBufferLock);
 			UIScrollPreferences.Draw();
 			UIWaveFormPreferences.Draw();
 			UIMiniMapPreferences.Draw();
@@ -1934,6 +1965,12 @@ namespace StepManiaEditor
 
 			UISongProperties.Draw(EditorSong);
 			UIChartProperties.Draw(ActiveChart);
+			
+			UIChartPosition.Draw(
+				(int)FocalPoint.X,
+				Graphics.PreferredBackBufferHeight - ChartPositionUIYPAddingFromBottom - (int)(UIChartPosition.Height * 0.5),
+				Position,
+				SnapLevels[SnapIndex]);
 		}
 
 		private void DrawMainMenuUI()
@@ -2050,67 +2087,16 @@ namespace StepManiaEditor
 
 				if (ImGui.Button("Save Time and Zoom"))
 				{
-					Preferences.Instance.DebugSongTime = SongTime;
+					Preferences.Instance.DebugSongTime = Position.SongTime;
 					Preferences.Instance.DebugZoom = Zoom;
 				}
 
 				if (ImGui.Button("Load Time and Zoom"))
 				{
-					SetSongTime(Preferences.Instance.DebugSongTime);
+					Position.SongTime = Preferences.Instance.DebugSongTime;
 					SetZoom(Preferences.Instance.DebugZoom, true);
 				}
 			}
-			ImGui.End();
-		}
-
-		private void DrawLogUI()
-		{
-			if (!Preferences.Instance.ShowLogWindow)
-				return;
-
-			ImGui.SetNextWindowSize(new System.Numerics.Vector2(200, 100), ImGuiCond.FirstUseEver);
-			ImGui.Begin("Log", ref Preferences.Instance.ShowLogWindow, ImGuiWindowFlags.NoScrollbar);
-			lock (LogBufferLock)
-			{
-				ImGui.PushItemWidth(60);
-				ComboFromEnum("Level", ref Preferences.Instance.LogWindowLevel);
-				ImGui.PopItemWidth();
-
-				ImGui.SameLine();
-				ImGui.PushItemWidth(186);
-				ImGui.Combo("Time", ref Preferences.Instance.LogWindowDateDisplay, LogWindowDateStrings,
-					LogWindowDateStrings.Length);
-				ImGui.PopItemWidth();
-
-				ImGui.SameLine();
-				ImGui.Checkbox("Wrap", ref Preferences.Instance.LogWindowLineWrap);
-
-				ImGui.Separator();
-
-				var flags = Preferences.Instance.LogWindowLineWrap ? ImGuiWindowFlags.None : ImGuiWindowFlags.HorizontalScrollbar;
-				ImGui.BeginChild("LogMessages", new System.Numerics.Vector2(), false, flags);
-				{
-					foreach (var message in LogBuffer)
-					{
-						if (message.Level < Preferences.Instance.LogWindowLevel)
-							continue;
-
-						if (Preferences.Instance.LogWindowDateDisplay != 0)
-						{
-							ImGui.Text(message.Time.ToString(LogWindowDateStrings[Preferences.Instance.LogWindowDateDisplay]));
-							ImGui.SameLine();
-						}
-
-						if (Preferences.Instance.LogWindowLineWrap)
-							ImGui.PushTextWrapPos();
-						ImGui.TextColored(LogWindowLevelColors[(int)message.Level], message.Message);
-						if (Preferences.Instance.LogWindowLineWrap)
-							ImGui.PopTextWrapPos();
-					}
-				}
-				ImGui.EndChild();
-			}
-
 			ImGui.End();
 		}
 
@@ -2324,8 +2310,9 @@ namespace StepManiaEditor
 				}
 
 				// Find a better spot for this
-				DesiredSongTime = 0.0;
-				SongTime = 0.0;
+				Position.ActiveChart = ActiveChart;
+				Position.ChartPosition = 0.0;
+				DesiredSongTime = Position.SongTime;
 				SetZoom(1.0, true);
 
 				// Start loading music for this Chart.
@@ -2466,18 +2453,6 @@ namespace StepManiaEditor
 
 		#endregion Loading
 
-		private void UpdateChartPositionFromSongTime()
-		{
-			ActiveChart?.TryGetChartPositionFromTime(SongTime, ref ChartPosition);
-		}
-
-		private void UpdateSongTimeFromChartPosition()
-		{
-			ActiveChart?.TryGetTimeFromChartPosition(ChartPosition, ref SongTime);
-		}
-
-
-
 		public bool IsChartSupported(Chart chart)
 		{
 			if (!SMCommon.TryGetChartType(chart.Type, out var chartType))
@@ -2501,8 +2476,103 @@ namespace StepManiaEditor
 			return true;
 		}
 
+		private void OnDecreaseSnap()
+		{
+			SnapIndex--;
+			if (SnapIndex < 0)
+				SnapIndex = SnapLevels.Length - 1;
 
+			if (SnapLevels[SnapIndex].Rows == 0)
+				Logger.Info("Snap off");
+			else
+				Logger.Info($"Snap to 1/{SMCommon.MaxValidDenominator / SnapLevels[SnapIndex].Rows * 4}");
+		}
 
+		private void OnIncreaseSnap()
+		{
+			SnapIndex++;
+			if (SnapIndex >= SnapLevels.Length)
+				SnapIndex = 0;
+
+			if (SnapLevels[SnapIndex].Rows == 0)
+				Logger.Info("Snap off");
+			else
+				Logger.Info($"Snap to 1/{SMCommon.MaxValidDenominator / SnapLevels[SnapIndex].Rows * 4}");
+		}
+
+		private void OnMoveUp()
+		{
+			if (Preferences.Instance.PreferencesScroll.StopPlaybackWhenScrolling)
+				StopPlayback();
+
+			var rows = SnapLevels[SnapIndex].Rows;
+			if (rows == 0)
+			{
+				OnMoveToPreviousMeasure();
+			}
+			else
+			{
+				var newChartPosition = ((int)Position.ChartPosition / rows) * rows;
+				if (newChartPosition == (int)Position.ChartPosition)
+					newChartPosition -= rows;
+				Position.ChartPosition = newChartPosition;
+			}
+		}
+
+		private void OnMoveDown()
+		{
+			if (Preferences.Instance.PreferencesScroll.StopPlaybackWhenScrolling)
+				StopPlayback();
+
+			var rows = SnapLevels[SnapIndex].Rows;
+			if (rows == 0)
+			{
+				OnMoveToNextMeasure();
+			}
+			else
+			{
+				Position.ChartPosition = ((int)Position.ChartPosition / rows) * rows + rows;
+			}
+		}
+
+		private void OnMoveToPreviousMeasure()
+		{
+			var rate = ActiveChart?.GetActiveRateAlteringEventForPosition(Position.ChartPosition);
+			if (rate == null)
+				return;
+			var sig = rate.LastTimeSignature.Signature;
+			var rows = sig.Numerator * (SMCommon.MaxValidDenominator * SMCommon.NumBeatsPerMeasure / sig.Denominator);
+			Position.ChartPosition -= rows;
+		}
+
+		private void OnMoveToNextMeasure()
+		{
+			var rate = ActiveChart?.GetActiveRateAlteringEventForPosition(Position.ChartPosition);
+			if (rate == null)
+				return;
+			var sig = rate.LastTimeSignature.Signature;
+			var rows = sig.Numerator * (SMCommon.MaxValidDenominator * SMCommon.NumBeatsPerMeasure / sig.Denominator);
+			Position.ChartPosition += rows;
+		}
+
+		private void OnMoveToChartStart()
+		{
+			if (Preferences.Instance.PreferencesScroll.StopPlaybackWhenScrolling)
+				StopPlayback();
+
+			Position.ChartPosition = 0.0;
+		}
+
+		private void OnMoveToChartEnd()
+		{
+			if (Preferences.Instance.PreferencesScroll.StopPlaybackWhenScrolling)
+				StopPlayback();
+			
+			if (ActiveChart != null)
+				Position.ChartPosition = ActiveChart.GetEndPosition();
+			else
+				Position.ChartPosition = 0.0;
+		}
 
 		private void OnUndo()
 		{
@@ -2684,16 +2754,15 @@ namespace StepManiaEditor
 			MusicManager.LoadMusicPreviewAsync(GetFullPathToMusicPreviewFile());
 		}
 
-		private double GetMusicOffset()
+		public void OnMusicOffsetChanged()
 		{
-			if (ActiveChart != null && ActiveChart.UsesChartMusicOffset)
-				return ActiveChart.MusicOffset;
-			return EditorSong.MusicOffset;
+			// Re-set the position to recompute the chart and song times.
+			Position.ChartPosition = Position.ChartPosition;
 		}
 
 		private double GetSongTime()
 		{
-			return SongTime;
+			return Position.SongTime;
 		}
 	}
 }
