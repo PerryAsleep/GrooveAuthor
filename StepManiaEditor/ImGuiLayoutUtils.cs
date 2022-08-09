@@ -654,10 +654,12 @@ namespace StepManiaEditor
 					// and the setting of the double value to 0.
 					if (!enabled)
 					{
-						ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyValue<double, bool>(
-							o,
-							fieldName, 0.0, GetValueFromFieldOrProperty<double>(o, fieldName),
+						var multiple = new ActionMultiple();
+						multiple.EnqueueAndDo(new ActionSetObjectFieldOrPropertyValue<double>(o,
+							fieldName, 0.0, GetValueFromFieldOrProperty<double>(o, fieldName)));
+						multiple.EnqueueAndDo(new ActionSetObjectFieldOrPropertyValue<bool>(o,
 							enabledFieldName, enabled, !enabled));
+						ActionQueue.Instance.EnqueueWithoutDoing(multiple);
 					}
 
 					// If enabling the checkbox we only need to enqueue an action for the checkbox bool.

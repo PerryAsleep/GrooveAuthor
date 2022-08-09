@@ -14,6 +14,11 @@ namespace StepManiaEditor
 			LaneNote = chartEvent;
 		}
 
+		public EditorMineNoteEvent(EditorChart editorChart, LaneNote chartEvent, bool isBeingEdited) : base(editorChart, chartEvent, isBeingEdited)
+		{
+			LaneNote = chartEvent;
+		}
+
 		public override int GetLane()
 		{
 			return LaneNote.Lane;
@@ -21,13 +26,14 @@ namespace StepManiaEditor
 
 		public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch)
 		{
+			var alpha = IsBeingEdited() ? ActiveEditEventAlpha : 1.0f;
 			textureAtlas.Draw(
 				TextureIdMine,
 				spriteBatch,
 				new Vector2((float)GetX(), (float)GetY()),
 				(float)GetScale(),
 				0.0f,
-				1.0f);
+				alpha);
 		}
 	}
 }

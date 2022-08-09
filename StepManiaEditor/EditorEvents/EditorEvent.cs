@@ -15,6 +15,7 @@ namespace StepManiaEditor
 		private double H;
 		private double Scale = 1.0;
 		private float Alpha = 1.0f;
+		private bool BeingEdited = false;
 
 		protected readonly Event ChartEvent;
 		protected readonly EditorChart EditorChart;
@@ -64,6 +65,23 @@ namespace StepManiaEditor
 		{
 			EditorChart = editorChart;
 			ChartEvent = chartEvent;
+		}
+
+		protected EditorEvent(EditorChart editorChart, Event chartEvent, bool beingEdited)
+		{
+			EditorChart = editorChart;
+			ChartEvent = chartEvent;
+			BeingEdited = beingEdited;
+		}
+
+		/// <summary>
+		/// Set this carefully. This changes how events are sorted.
+		/// This cannot be changed while this event is in a sorted list without resorting.
+		/// </summary>
+		/// <returns></returns>
+		public void SetIsBeingEdited(bool beingEdited)
+		{
+			BeingEdited = beingEdited;
 		}
 
 		public virtual void SetDimensions(double x, double y, double w, double h, double scale)
@@ -144,6 +162,11 @@ namespace StepManiaEditor
 			return Alpha;
 		}
 
+		public bool IsBeingEdited()
+		{
+			return BeingEdited;
+		}
+
 		public EditorChart GetEditorChart()
 		{
 			return EditorChart;
@@ -178,7 +201,14 @@ namespace StepManiaEditor
 
 		public virtual int CompareTo(EditorEvent other)
 		{
-			return SMCommon.SMEventComparer.Compare(ChartEvent, other.ChartEvent);
+			var comparison = SMCommon.SMEventComparer.Compare(ChartEvent, other.ChartEvent);
+			if (comparison != 0)
+				return comparison;
+			// Events being edited come after events not being edited.
+			// This sort order is being relied on in EditorChart.FindNoteAt.
+			if (IsBeingEdited() != other.IsBeingEdited())
+				return IsBeingEdited() ? 1 : -1;
+			return 0;
 		}
 
 		public virtual bool InSelection(double x, double y, double w, double h)
@@ -188,16 +218,6 @@ namespace StepManiaEditor
 
 		public virtual void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch)
 		{
-		}
-
-		public static int CompareToRow(double row, EditorEvent editorEvent)
-		{
-			return row.CompareTo(editorEvent.ChartEvent.IntegerPosition);
-		}
-
-		public static int CompareToTime(double time, EditorEvent editorEvent)
-		{
-			return time.CompareTo(Fumen.Utils.ToSeconds(editorEvent.ChartEvent.TimeMicros));
 		}
 	}
 }

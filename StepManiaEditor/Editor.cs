@@ -150,6 +150,9 @@ namespace StepManiaEditor
 		private double SongTimeAtStartOfInterpolation = 0.0;
 		private double DesiredSongTime = 0.0;
 
+		// Note controls
+		private LaneEditState[] LaneEditStates;
+
 		// Zoom controls
 		private double ZoomInterpolationTimeStart = 0.0;
 		private double Zoom = 1.0;
@@ -204,7 +207,7 @@ namespace StepManiaEditor
 			// Load Preferences synchronously so they can be used immediately.
 			Preferences.Load();
 
-			Position = new EditorPosition(OnSongTimeSet);
+			Position = new EditorPosition(OnPositionChanged);
 
 			FocalPoint = new Vector2(Preferences.Instance.WindowWidth >> 1, 100 + (DefaultArrowWidth >> 1));
 
@@ -227,12 +230,24 @@ namespace StepManiaEditor
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Escape }, OnEscape, false));
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Left }, OnDecreaseSnap, true));
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Right }, OnIncreaseSnap, true));
-			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Up }, OnMoveUp, true));
-			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Down }, OnMoveDown, true));
-			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.PageUp }, OnMoveToPreviousMeasure, true));
-			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.PageDown }, OnMoveToNextMeasure, true));
-			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Home }, OnMoveToChartStart, true));
-			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.End }, OnMoveToChartEnd, true));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Up }, OnMoveUp, true, null, true));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Down }, OnMoveDown, true, null, true));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.PageUp }, OnMoveToPreviousMeasure, true, null, true));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.PageDown }, OnMoveToNextMeasure, true, null, true));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Home }, OnMoveToChartStart, false, null, true));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.End }, OnMoveToChartEnd, false, null, true));
+
+			var arrowInputKeys = new []{ Keys.D1, Keys.D2, Keys.D3, Keys.D4, Keys.D5, Keys.D6, Keys.D7, Keys.D8, Keys.D9, Keys.D0 };
+			var index = 0;
+			foreach (var key in arrowInputKeys)
+			{
+				var capturedIndex = index;
+				void Down() { OnLaneInputDown(capturedIndex); }
+				void Up() { OnLaneInputUp(capturedIndex); }
+				index++;
+				KeyCommandManager.Register(new KeyCommandManager.Command(new[] { key }, Down, false, Up, true));
+			}
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftShift }, OnShiftDown, false, OnShiftUp, true));
 
 			Content.RootDirectory = "Content";
 			IsMouseVisible = true;
@@ -676,20 +691,24 @@ namespace StepManiaEditor
 			Playing = false;
 		}
 
-		private void OnSongTimeSet()
+		private void OnPositionChanged()
 		{
-			if (UpdatingSongTimeDirectly)
-				return;
+			// Update events being edited.
+			UpdateLaneEditStatesFromPosition();
 
-			var songTime = Position.SongTime;
-			DesiredSongTime = songTime;
-			MusicManager.SetMusicTimeInSeconds(songTime);
-
-			if (Playing)
+			// Update the music time
+			if (!UpdatingSongTimeDirectly)
 			{
-				PlaybackStartTime = songTime;
-				PlaybackStopwatch = new Stopwatch();
-				PlaybackStopwatch.Start();
+				var songTime = Position.SongTime;
+				DesiredSongTime = songTime;
+				MusicManager.SetMusicTimeInSeconds(songTime);
+
+				if (Playing)
+				{
+					PlaybackStartTime = songTime;
+					PlaybackStopwatch = new Stopwatch();
+					PlaybackStopwatch.Start();
+				}
 			}
 		}
 
@@ -812,12 +831,30 @@ namespace StepManiaEditor
 		/// <param name="data">Value to use for comparisons.</param>
 		/// <param name="comparer">Comparer function.</param>
 		/// <returns>Enumerator to best value or null if a value could not be found.</returns>
-		private RedBlackTree<T>.Enumerator FindBest<T, U>(RedBlackTree<T> tree, U data, Func<U, T, int> comparer)
-			where T : IComparable<T>
+		private RedBlackTree<EditorEvent>.Enumerator FindBest(RedBlackTree<EditorEvent> tree, int row)
 		{
-			var enumerator = tree.FindGreatestPreceding(data, comparer);
+			// This is a bit hacky. Leveraging TimeSignature events being the first event by row in
+			// in SMEventComparer
+			var pos = new EditorTimeSignatureEvent(ActiveChart, new TimeSignature(new Fraction(4, 4))
+			{
+				IntegerPosition = row
+			});
+
+			var enumerator = tree.FindGreatestPreceding(pos, false);
 			if (enumerator == null)
-				enumerator = tree.FindLeastFollowing(data, comparer, true);
+				enumerator = tree.FindLeastFollowing(pos, true);
+			return enumerator;
+		}
+
+		private RedBlackTree<EditorRateAlteringEvent>.Enumerator FindBest(RedBlackTree<EditorRateAlteringEvent> tree, int row)
+		{
+			var pos = new EditorDummyRateAlteringEvent(ActiveChart, null)
+			{
+				Row = row
+			};
+			var enumerator = tree.FindGreatestPreceding(pos, false);
+			if (enumerator == null)
+				enumerator = tree.FindLeastFollowing(pos, true);
 			return enumerator;
 		}
 
@@ -887,8 +924,7 @@ namespace StepManiaEditor
 					if (sizeZoom >= MeasureMarkerMinScale)
 					{
 						// Find the first rate altering event to use.
-						var rateEnumerator = FindBest(ActiveChart.RateAlteringEventsByRow, chartPosition,
-							EditorRateAlteringEvent.CompareToRow);
+						var rateEnumerator = FindBest(ActiveChart.RateAlteringEventsByRow, (int)chartPosition);
 						if (rateEnumerator == null)
 							return;
 						rateEnumerator.MoveNext();
@@ -919,7 +955,7 @@ namespace StepManiaEditor
 						}
 					}
 
-					var enumerator = FindBest(ActiveChart.EditorEvents, chartPosition, EditorEvent.CompareToRow);
+					var enumerator = FindBest(ActiveChart.EditorEvents, (int)chartPosition);
 					if (enumerator == null)
 						return;
 
@@ -1003,8 +1039,7 @@ namespace StepManiaEditor
 
 					// Update WaveForm scroll scroll rate
 					{
-						var rateEnumerator = FindBest(ActiveChart.RateAlteringEventsByRow, chartPosition,
-							EditorRateAlteringEvent.CompareToRow);
+						var rateEnumerator = FindBest(ActiveChart.RateAlteringEventsByRow, (int)chartPosition);
 						if (rateEnumerator != null)
 						{
 							rateEnumerator.MoveNext();
@@ -1021,8 +1056,7 @@ namespace StepManiaEditor
 					if (sizeZoom >= MeasureMarkerMinScale)
 					{
 						// Find the first rate altering event to use.
-						var rateEnumerator = FindBest(ActiveChart.RateAlteringEventsByRow, chartPositionAtTopOfScreen,
-							EditorRateAlteringEvent.CompareToRow);
+						var rateEnumerator = FindBest(ActiveChart.RateAlteringEventsByRow, (int)chartPositionAtTopOfScreen);
 						if (rateEnumerator == null)
 							return;
 						rateEnumerator.MoveNext();
@@ -1053,7 +1087,7 @@ namespace StepManiaEditor
 						}
 					}
 
-					var enumerator = FindBest(ActiveChart.EditorEvents, chartPositionAtTopOfScreen, EditorEvent.CompareToRow);
+					var enumerator = FindBest(ActiveChart.EditorEvents, (int)chartPositionAtTopOfScreen);
 					if (enumerator == null)
 						return;
 
@@ -1077,6 +1111,7 @@ namespace StepManiaEditor
 							arrowSize,
 							((end.GetRow() - chartPositionAtTopOfScreen) * ppr) - endY + holdCapHeight,
 							sizeZoom);
+						holdBodyEvents.Add(end);
 					}
 
 					// Scan forward and add notes.
@@ -1167,7 +1202,7 @@ namespace StepManiaEditor
 					// Then we need to find the greatest preceding notes by scanning upwards.
 					// Once we find that note, we start iterating downwards while also keeping track of the rate events along the way.
 
-					var rateEnumerator = FindBest(ActiveChart.RateAlteringEventsByRow, chartPosition, EditorRateAlteringEvent.CompareToRow);
+					var rateEnumerator = FindBest(ActiveChart.RateAlteringEventsByRow, (int)chartPosition);
 					if (rateEnumerator == null)
 						return;
 
@@ -1223,7 +1258,7 @@ namespace StepManiaEditor
 					var beatMarkerLastRecordedRow = -1;
 
 					// Now that we know the position at the start of the screen we can find the first event to start rendering.
-					var enumerator = FindBest(ActiveChart.EditorEvents, chartPositionAtTopOfScreen, EditorEvent.CompareToRow);
+					var enumerator = FindBest(ActiveChart.EditorEvents, (int)chartPositionAtTopOfScreen);
 					if (enumerator == null)
 						return;
 
@@ -1717,7 +1752,7 @@ namespace StepManiaEditor
 					double chartPosition = 0.0;
 					if (!ActiveChart.TryGetChartPositionFromTime(MiniMap.GetMiniMapAreaStart(), ref chartPosition))
 						break;
-					var enumerator = FindBest(ActiveChart.EditorEvents, chartPosition, EditorEvent.CompareToRow);
+					var enumerator = FindBest(ActiveChart.EditorEvents, (int)chartPosition);
 					if (enumerator == null)
 						break;
 
@@ -1820,7 +1855,7 @@ namespace StepManiaEditor
 
 					// Add notes
 					chartPosition = MiniMap.GetMiniMapAreaStart();
-					var enumerator = FindBest(ActiveChart.EditorEvents, chartPosition, EditorEvent.CompareToRow);
+					var enumerator = FindBest(ActiveChart.EditorEvents, (int)chartPosition);
 					if (enumerator == null)
 						break;
 
@@ -1926,6 +1961,16 @@ namespace StepManiaEditor
 				}
 			}
 
+			foreach (var editState in LaneEditStates)
+			{
+				if (!editState.IsActive())
+					continue;
+				if (!(editState.GetEventBeingEdited() is EditorHoldStartNoteEvent hsn))
+					continue;
+				if (hsn.GetRow() < chartPosition && hsn.GetRow() + hsn.GetLength() > chartPosition)
+					holds.Add(hsn);
+			}
+
 			return holds;
 		}
 
@@ -1936,7 +1981,17 @@ namespace StepManiaEditor
 				visibleMarker.Draw(TextureAtlas, SpriteBatch, MonogameFont_MPlus1Code_Medium);
 			}
 
+			var eventsBeingEdited = new List<EditorEvent>();
 			foreach (var visibleEvent in VisibleEvents)
+			{
+				if (visibleEvent.IsBeingEdited())
+				{
+					eventsBeingEdited.Add(visibleEvent);
+					continue;
+				}
+				visibleEvent.Draw(TextureAtlas, SpriteBatch);
+			}
+			foreach (var visibleEvent in eventsBeingEdited)
 			{
 				visibleEvent.Draw(TextureAtlas, SpriteBatch);
 			}
@@ -2313,6 +2368,9 @@ namespace StepManiaEditor
 				Position.ActiveChart = ActiveChart;
 				Position.ChartPosition = 0.0;
 				DesiredSongTime = Position.SongTime;
+				LaneEditStates = new LaneEditState[ActiveChart.NumInputs];
+				for (var i = 0; i < ActiveChart.NumInputs; i++)
+					LaneEditStates[i] = new LaneEditState();
 				SetZoom(1.0, true);
 
 				// Start loading music for this Chart.
@@ -2446,6 +2504,7 @@ namespace StepManiaEditor
 
 		private void UnloadSongResources()
 		{
+			LaneEditStates = Array.Empty<LaneEditState>();
 			EditorSong = null;
 			ActiveChart = null;
 			ActionQueue.Instance.Clear();
@@ -2574,6 +2633,337 @@ namespace StepManiaEditor
 				Position.ChartPosition = 0.0;
 		}
 
+		private void OnShiftDown()
+		{
+			foreach (var laneEditState in LaneEditStates)
+			{
+				if (laneEditState.IsActive() && laneEditState.GetEventBeingEdited() != null)
+				{
+					laneEditState.Shift(false);
+				}
+			}
+		}
+
+		private void OnShiftUp()
+		{
+			foreach (var laneEditState in LaneEditStates)
+			{
+				if (laneEditState.IsActive() && laneEditState.GetEventBeingEdited() != null)
+				{
+					laneEditState.Shift(true);
+				}
+			}
+		}
+
+		private void OnLaneInputDown(int lane)
+		{
+			if (ActiveChart == null)
+				return;
+			if (lane < 0 || lane >= ActiveChart.NumInputs)
+				return;
+			if (Position.ChartPosition < 0)
+				return;
+			
+			// TODO: If playing we should take sync into account and adjust the position.
+
+			var row = Position.GetNearestRow();
+			if (SnapLevels[SnapIndex].Rows != 0)
+			{
+				var snappedRow = (row / SnapLevels[SnapIndex].Rows) * SnapLevels[SnapIndex].Rows;
+				if (row - snappedRow >= (SnapLevels[SnapIndex].Rows * 0.5))
+					snappedRow += SnapLevels[SnapIndex].Rows;
+				row = snappedRow;
+			}
+
+			// If there is a tap, mine, or hold start at this location, delete it now.
+			// Deleting immediately feels more responsive than deleting on the input up event.
+			EditorAction deleteAction = null;
+			var existingEvent = ActiveChart.FindNoteAt(row, lane, true);
+			if (existingEvent is EditorMineNoteEvent || existingEvent is EditorTapNoteEvent)
+				deleteAction = new ActionDeleteEditorEvent(existingEvent);
+			else if (existingEvent is EditorHoldStartNoteEvent hsn && hsn.GetRow() == row)
+				deleteAction = new ActionDeleteHoldEvent(hsn);
+			if (deleteAction != null)
+			{
+				LaneEditStates[lane].StartEditingWithDelete(existingEvent.GetRow(), deleteAction);
+			}
+
+			SetLaneInputDownNote(lane, row);
+
+			// If we are playing, immediately commit the note so it comes out as a tap and not a short hold.
+			if (Playing)
+			{
+				OnLaneInputUp(lane);
+			}
+		}
+
+		private void SetLaneInputDownNote(int lane, int row)
+		{
+			// If the existing state is only a delete, revert back to that delete operation.
+			if (LaneEditStates[lane].IsOnlyDelete())
+			{
+				LaneEditStates[lane].Clear(false);
+			}
+
+			// Otherwise, set the state to be editing a tap or a mine.
+			else
+			{
+				if (KeyCommandManager.IsKeyDown(Keys.LeftShift))
+				{
+					LaneEditStates[lane].SetEditingTapOrMine(new EditorMineNoteEvent(ActiveChart, new LaneNote
+					{
+						Lane = lane,
+						IntegerPosition = row,
+						TimeMicros = ToMicros(Position.ChartTime),
+						SourceType = SMCommon.NoteChars[(int)SMCommon.NoteType.Mine].ToString()
+					}, true));
+				}
+				else
+				{
+					LaneEditStates[lane].SetEditingTapOrMine(new EditorTapNoteEvent(ActiveChart, new LaneTapNote
+					{
+						Lane = lane,
+						IntegerPosition = row,
+						TimeMicros = ToMicros(Position.ChartTime),
+					}, true));
+				}
+			}
+		}
+
+		private void OnLaneInputUp(int lane)
+		{
+			if (ActiveChart == null)
+				return;
+			if (lane < 0 || lane >= ActiveChart.NumInputs)
+				return;
+			if (!LaneEditStates[lane].IsActive())
+				return;
+
+			// If this action is only a delete, just commit the existing delete action.
+			if (LaneEditStates[lane].IsOnlyDelete())
+			{
+				LaneEditStates[lane].Commit();
+				return;
+			}
+
+			var row = LaneEditStates[lane].GetEventBeingEdited().GetRow();
+			var existingEvent = ActiveChart.FindNoteAt(row, lane, true);
+
+			var newNoteIsMine = LaneEditStates[lane].GetEventBeingEdited() is EditorMineNoteEvent;
+			var newNoteIsTap = LaneEditStates[lane].GetEventBeingEdited() is EditorTapNoteEvent;
+
+			// Handle a new tap note overlapping an existing note.
+			if (newNoteIsMine || newNoteIsTap)
+			{
+				if (existingEvent != null)
+				{
+					var existingIsTap = existingEvent is EditorTapNoteEvent;
+					var existingIsMine = existingEvent is EditorMineNoteEvent;
+
+					// Tap note over existing tap note.
+					if (existingIsTap || existingIsMine)
+					{
+						// If the existing note is a tap and this note is a mine, then replace it with the mine.
+						if (!existingIsMine && newNoteIsMine)
+						{
+							LaneEditStates[lane].SetEditingTapOrMine(LaneEditStates[lane].GetEventBeingEdited(), new List<EditorAction>
+							{
+								new ActionDeleteEditorEvent(existingEvent)
+							});
+						}
+
+						// In all other cases, just delete the existing note and don't add anything else.
+						else
+						{
+							LaneEditStates[lane].Clear(true);
+							ActionQueue.Instance.Do(new ActionDeleteEditorEvent(existingEvent));
+							return;
+						}
+					}
+
+					// Tap note over hold note.
+					else if (existingEvent is EditorHoldStartNoteEvent || existingEvent is EditorHoldEndNoteEvent)
+					{
+						var holdStart = existingEvent is EditorHoldStartNoteEvent
+							? (EditorHoldStartNoteEvent)existingEvent
+							: ((EditorHoldEndNoteEvent)existingEvent).GetHoldStartNote();
+
+						// If the tap note starts at the beginning of the hold, delete the hold.
+						if (row == holdStart.GetRow())
+						{
+							LaneEditStates[lane].SetEditingTapOrMine(LaneEditStates[lane].GetEventBeingEdited(), new List<EditorAction>
+							{
+								new ActionDeleteHoldEvent(holdStart)
+							});
+						}
+
+						// If the tap note is in the in the middle of the hold, shorten the hold.
+						else
+						{
+							// Move the hold up by a 16th.
+							var newHoldEndRow = row - (SMCommon.MaxValidDenominator / 4);
+
+							// If the hold would have a non-positive length, delete it and replace it with a tap.
+							if (newHoldEndRow <= holdStart.GetRow())
+							{
+								var deleteHold = new ActionDeleteHoldEvent(holdStart);
+								var insertNewNoteAtHoldStart = new ActionAddEditorEvent(new EditorTapNoteEvent(ActiveChart, new LaneTapNote
+								{
+									Lane = lane,
+									IntegerPosition = holdStart.GetEvent().IntegerPosition,
+									TimeMicros = holdStart.GetEvent().TimeMicros,
+								}));
+
+								LaneEditStates[lane].SetEditingTapOrMine(LaneEditStates[lane].GetEventBeingEdited(), new List<EditorAction>
+								{
+									deleteHold,
+									insertNewNoteAtHoldStart
+								});
+							}
+
+							// Otherwise, the new length is valid. Update it.
+							else
+							{
+								var changeLength = new ActionChangeHoldLength(holdStart, newHoldEndRow - holdStart.GetRow());
+								LaneEditStates[lane].SetEditingTapOrMine(LaneEditStates[lane].GetEventBeingEdited(), new List<EditorAction>
+								{
+									changeLength
+								});
+							}
+						}
+					}
+				}
+			}
+
+			// Handle a new hold note overlapping any existing notes
+			else if (LaneEditStates[lane].GetEventBeingEdited() is EditorHoldStartNoteEvent editHsn)
+			{
+				var length = editHsn.GetLength();
+				var roll = editHsn.IsRoll();
+
+				if (existingEvent is EditorHoldEndNoteEvent hen)
+					existingEvent = hen.GetHoldStartNote();
+
+				// If the hold is completely within another hold, do not add or delete notes, but make sure the outer
+				// hold is the same type (hold/roll) as the new type.
+				if (existingEvent != null
+				    && existingEvent is EditorHoldStartNoteEvent hsnFull
+				    && hsnFull.GetRow() <= row
+				    && hsnFull.GetRow() + hsnFull.GetLength() >= row + length)
+				{
+					LaneEditStates[lane].Clear(true);
+					if (hsnFull.IsRoll() != roll)
+						ActionQueue.Instance.Do(new ActionChangeHoldType(hsnFull, roll));
+					return;
+				}
+
+				var deleteActions = new List<EditorAction>();
+
+				// If existing holds overlap with only the start or end of the new hold, delete them and extend the
+				// new hold to cover their range. We just need to extend the new event now. The deletion of the
+				// old event will will be handled below when we check for events fully contained within the new
+				// hold region.
+				if (existingEvent != null
+				    && existingEvent is EditorHoldStartNoteEvent hsnStart
+				    && hsnStart.GetRow() < row
+				    && hsnStart.GetRow() + hsnStart.GetLength() >= row
+				    && hsnStart.GetRow() + hsnStart.GetLength() < row + length)
+				{
+					row = hsnStart.GetRow();
+					length = editHsn.GetHoldEndNote().GetRow() - hsnStart.GetRow();
+				}
+				existingEvent = ActiveChart.FindNoteAt(row + length, lane, true);
+				if (existingEvent != null
+				    && existingEvent is EditorHoldStartNoteEvent hsnEnd
+				    && hsnEnd.GetRow() <= row + length
+					&& hsnEnd.GetRow() + hsnEnd.GetLength() >= row + length
+				    && hsnEnd.GetRow() > row)
+				{
+					length = hsnEnd.GetRow() + hsnEnd.GetLength() - row;
+				}
+
+				// For any event in the same lane within the region of the new hold, delete them.
+				var e = FindBest(ActiveChart.EditorEvents, row);
+				if (e != null)
+				{
+					while (e.MoveNext() && e.Current.GetRow() <= row + length)
+					{
+						if (e.Current.GetRow() < row)
+							continue;
+						if (e.Current.GetLane() != lane)
+							continue;
+						if (e.Current.IsBeingEdited())
+							continue;
+						if (e.Current is EditorTapNoteEvent || e.Current is EditorMineNoteEvent)
+							deleteActions.Add(new ActionDeleteEditorEvent(e.Current));
+						else if (e.Current is EditorHoldStartNoteEvent innerHsn && innerHsn.GetRow() + innerHsn.GetLength() <= row + length)
+							deleteActions.Add(new ActionDeleteHoldEvent(innerHsn));
+					}
+				}
+
+				// Set the state to be editing a new hold after running the delete actions.
+				LaneEditStates[lane].SetEditingHold(ActiveChart, lane, row, LaneEditStates[lane].GetStartingRow(), length, roll, deleteActions);
+			}
+
+			LaneEditStates[lane].Commit();
+		}
+
+		private void UpdateLaneEditStatesFromPosition()
+		{
+			var row = Math.Max(0, Position.GetNearestRow());
+			for (var lane = 0; lane < LaneEditStates.Length; lane++)
+			{
+				var laneEditState = LaneEditStates[lane];
+				if (!laneEditState.IsActive())
+					continue;
+
+				// If moving back to the starting position.
+				// In other words, the current state of the note being edited should be a tap.
+				if (laneEditState.GetStartingRow() == row)
+				{
+					// If the event is a hold, convert it to a tap.
+					// This will also convert holds to tap even if the starting action was deleting an existing note.
+					if (laneEditState.GetEventBeingEdited() is EditorHoldStartNoteEvent)
+					{
+						SetLaneInputDownNote(lane, row);
+					}
+				}
+
+				// If the current position is different than the starting position.
+				// In other words, the current state of the note being edited should be a hold.
+				else
+				{
+					var holdStartRow = laneEditState.GetStartingRow() < row ? laneEditState.GetStartingRow() : row;
+					var holdEndRow = laneEditState.GetStartingRow() > row ? laneEditState.GetStartingRow() : row;
+
+					// If the event is a tap, mine, deletion, or it is a hold with different bounds, convert it to a new hold.
+					if (laneEditState.GetEventBeingEdited() is null
+					    || laneEditState.GetEventBeingEdited() is EditorTapNoteEvent
+					    || laneEditState.GetEventBeingEdited() is EditorMineNoteEvent
+					    || (laneEditState.GetEventBeingEdited() is EditorHoldStartNoteEvent h
+					        && (holdStartRow != h.GetRow() || holdEndRow != h.GetHoldEndNote().GetRow())))
+					{
+						var roll = KeyCommandManager.IsKeyDown(Keys.LeftShift);
+						LaneEditStates[lane].SetEditingHold(ActiveChart, lane, holdStartRow, laneEditState.GetStartingRow(), holdEndRow - holdStartRow, roll);
+					}
+				}
+			}
+		}
+
+		private bool CancelLaneInput()
+		{
+			var anyCancelled = false;
+			foreach (var laneEditState in LaneEditStates)
+			{
+				if (laneEditState.IsActive())
+				{
+					laneEditState.Clear(true);
+					anyCancelled = true;
+				}
+			}
+			return anyCancelled;
+		}
+
 		private void OnUndo()
 		{
 			var action = ActionQueue.Instance.Undo();
@@ -2586,6 +2976,8 @@ namespace StepManiaEditor
 
 		private void OnEscape()
 		{
+			if (CancelLaneInput())
+				return;
 			if (IsPlayingPreview())
 				StopPreview();
 			else if (Playing)

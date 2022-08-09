@@ -82,16 +82,6 @@ namespace StepManiaEditor
 				return comparison;
 			return SMCommon.SMEventComparer.Compare(ChartEvent, other.ChartEvent);
 		}
-
-		public static int CompareToRow(double row, EditorRateAlteringEvent editorEvent)
-		{
-			return row.CompareTo(editorEvent.Row);
-		}
-
-		public static int CompareToTime(double songTime, EditorRateAlteringEvent editorEvent)
-		{
-			return songTime.CompareTo(editorEvent.SongTime);
-		}
 	}
 
 	public class EditorDummyRateAlteringEvent : EditorRateAlteringEvent

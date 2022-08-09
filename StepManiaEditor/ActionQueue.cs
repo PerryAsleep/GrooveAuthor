@@ -46,8 +46,18 @@ namespace StepManiaEditor
 		public void Do(EditorAction editorAction)
 		{
 			// Do the action.
-			Logger.Info(editorAction.ToString());
 			editorAction.Do();
+
+			EnqueueWithoutDoing(editorAction);
+		}
+
+		/// <summary>
+		/// Enqueue given EditorAction and add it to the queue of EditorAction for undo and redo without doing the action.
+		/// </summary>
+		/// <param name="editorAction">EditorAction to enqueue.</param>
+		public void EnqueueWithoutDoing(EditorAction editorAction)
+		{
+			Logger.Info(editorAction.ToString());
 
 			// Add the action to the list, overwriting any old future action.
 			if (Index == Actions.Count - 1)

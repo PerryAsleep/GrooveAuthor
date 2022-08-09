@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Reflection;
 using Fumen.ChartDefinition;
 
@@ -265,34 +266,99 @@ namespace StepManiaEditor
 		}
 	}
 
-	public class ActionSetObjectFieldOrPropertyValue<T, U> : EditorAction where T : struct where U : struct
+	public class ActionMultiple : EditorAction
 	{
-		private readonly ActionSetObjectFieldOrPropertyValue<T> ActionFirst;
-		private readonly ActionSetObjectFieldOrPropertyValue<U> ActionSecond;
+		private readonly List<EditorAction> Actions;
 
-		public ActionSetObjectFieldOrPropertyValue(object o,
-			string fieldOrPropertyNameFirst, T valueFirst, T previousValueFirst,
-			string fieldOrPropertyNameSecond, U valueSecond, U previousValueSecond)
+		public ActionMultiple()
 		{
-			ActionFirst = new ActionSetObjectFieldOrPropertyValue<T>(o, fieldOrPropertyNameFirst, valueFirst, previousValueFirst);
-			ActionSecond = new ActionSetObjectFieldOrPropertyValue<U>(o, fieldOrPropertyNameSecond, valueSecond, previousValueSecond);
+			Actions = new List<EditorAction>();
+		}
+
+		public ActionMultiple(List<EditorAction> actions)
+		{
+			Actions = actions;
+		}
+
+		public void EnqueueAndDo(EditorAction action)
+		{
+			action.Do();
+			Actions.Add(action);
+		}
+
+		public void EnqueueWithoutDoing(EditorAction action)
+		{
+			Actions.Add(action);
+		}
+
+		public List<EditorAction> GetActions()
+		{
+			return Actions;
 		}
 
 		public override string ToString()
 		{
-			return $"{ActionFirst} {ActionSecond}";
+			return string.Join(' ', Actions);
 		}
 
 		public override void Do()
 		{
-			ActionFirst.Do();
-			ActionSecond.Do();
+			foreach (var action in Actions)
+			{
+				action.Do();
+			}
 		}
 
 		public override void Undo()
 		{
-			ActionFirst.Undo();
-			ActionSecond.Undo();
+			var i = Actions.Count - 1;
+			while (i >= 0)
+			{
+				Actions[i--].Undo();
+			}
+		}
+
+		public void Clear()
+		{
+			Actions.Clear();
+		}
+	}
+	
+	public class ActionAddEditorEvent : EditorAction
+	{
+		private EditorEvent EditorEvent;
+
+		public ActionAddEditorEvent(EditorEvent editorEvent)
+		{
+			EditorEvent = editorEvent;
+		}
+
+		public void UpdateEvent(EditorEvent editorEvent)
+		{
+			EditorEvent.GetEditorChart().DeleteEvent(EditorEvent);
+			EditorEvent = editorEvent;
+			EditorEvent.GetEditorChart().AddEvent(EditorEvent);
+		}
+
+		public void SetIsBeingEdited(bool isBeingEdited)
+		{
+			EditorEvent.SetIsBeingEdited(isBeingEdited);
+		}
+
+		public override string ToString()
+		{
+			// TODO: Nice strings
+			return $"Add {EditorEvent.GetType()}.";
+		}
+
+		public override void Do()
+		{
+			EditorEvent.GetEditorChart().AddEvent(EditorEvent);
+		}
+
+		public override void Undo()
+		{
+			EditorEvent.GetEditorChart().DeleteEvent(EditorEvent);
 		}
 	}
 
@@ -307,7 +373,8 @@ namespace StepManiaEditor
 
 		public override string ToString()
 		{
-			return $"Delete '{EditorEvent.GetType()}'.";
+			// TODO: Nice strings
+			return $"Delete {EditorEvent.GetType()}.";
 		}
 
 		public override void Do()
@@ -316,8 +383,178 @@ namespace StepManiaEditor
 		}
 
 		public override void Undo()
-		{
+		{  
 			EditorEvent.GetEditorChart().AddEvent(EditorEvent);
+		}
+	}
+
+	public class ActionChangeHoldLength : EditorAction
+	{
+		private EditorHoldStartNoteEvent HoldStart;
+		private EditorHoldEndNoteEvent HoldEnd;
+		private EditorHoldEndNoteEvent NewHoldEnd;
+
+		public ActionChangeHoldLength(EditorHoldStartNoteEvent holdStart, int length)
+		{
+			var newHoldEndRow = holdStart.GetRow() + length;
+			var newHoldEndTime = 0.0;
+			holdStart.GetEditorChart().TryGetTimeFromChartPosition(newHoldEndRow, ref newHoldEndTime);
+
+			HoldStart = holdStart;
+			HoldEnd = holdStart.GetHoldEndNote();
+			NewHoldEnd = new EditorHoldEndNoteEvent(HoldStart.GetEditorChart(), new LaneHoldEndNote()
+			{
+				Lane = HoldStart.GetLane(),
+				IntegerPosition = HoldStart.GetRow() + length,
+				TimeMicros = Fumen.Utils.ToMicros(newHoldEndTime)
+			});
+			NewHoldEnd.SetHoldStartNote(HoldStart);
+		}
+
+		public override string ToString()
+		{
+			var typeStr = HoldStart.IsRoll() ? "roll" : "hold";
+			return $"Change {typeStr} length from to {HoldEnd.GetRow() - HoldStart.GetRow()} to {NewHoldEnd.GetRow() - HoldStart.GetRow()}.";
+		}
+
+		public override void Do()
+		{
+			HoldStart.GetEditorChart().DeleteEvent(HoldEnd);
+			HoldStart.SetHoldEndNote(NewHoldEnd);
+			HoldStart.GetEditorChart().AddEvent(NewHoldEnd);
+		}
+
+		public override void Undo()
+		{
+			HoldStart.GetEditorChart().DeleteEvent(NewHoldEnd);
+			HoldStart.SetHoldEndNote(HoldEnd);
+			HoldStart.GetEditorChart().AddEvent(HoldEnd);
+		}
+	}
+
+	public class ActionAddHoldEvent : EditorAction
+	{
+		private EditorHoldStartNoteEvent HoldStart;
+		private EditorHoldEndNoteEvent HoldEnd;
+
+		public ActionAddHoldEvent(EditorChart chart, int lane, int row, int length, bool roll, bool isBeingEdited)
+		{
+			var holdStartTime = 0.0;
+			chart.TryGetTimeFromChartPosition(row, ref holdStartTime);
+			var holdStartNote = new LaneHoldStartNote()
+			{
+				Lane = lane,
+				IntegerPosition = row,
+				TimeMicros = Fumen.Utils.ToMicros(holdStartTime)
+			};
+			HoldStart = new EditorHoldStartNoteEvent(chart, holdStartNote, isBeingEdited);
+			HoldStart.SetIsRoll(roll);
+
+			var holdEndTime = 0.0;
+			chart.TryGetTimeFromChartPosition(row + length, ref holdEndTime);
+			var holdEndNote = new LaneHoldEndNote()
+			{
+				Lane = lane,
+				IntegerPosition = row + length,
+				TimeMicros = Fumen.Utils.ToMicros(holdEndTime)
+			};
+			HoldEnd = new EditorHoldEndNoteEvent(chart, holdEndNote, isBeingEdited);
+
+			HoldStart.SetHoldEndNote(HoldEnd);
+			HoldEnd.SetHoldStartNote(HoldStart);
+		}
+
+
+		public EditorHoldStartNoteEvent GetHoldStartEvent()
+		{
+			return HoldStart;
+		}
+
+		public void SetIsRoll(bool roll)
+		{
+			HoldStart.SetIsRoll(roll);
+			HoldEnd.SetIsRoll(roll);
+		}
+
+		public void SetIsBeingEdited(bool isBeingEdited)
+		{
+			HoldStart.SetIsBeingEdited(isBeingEdited);
+			HoldEnd.SetIsBeingEdited(isBeingEdited);
+		}
+
+		public override string ToString()
+		{
+			var typeStr = HoldStart.IsRoll() ? "roll" : "hold";
+			return $"Add {typeStr}.";
+		}
+
+		public override void Do()
+		{
+			HoldStart.GetEditorChart().AddEvent(HoldStart);
+			HoldStart.GetEditorChart().AddEvent(HoldEnd);
+		}
+
+		public override void Undo()
+		{
+			HoldStart.GetEditorChart().DeleteEvent(HoldStart);
+			HoldStart.GetEditorChart().DeleteEvent(HoldEnd);
+		}
+	}
+
+	public class ActionChangeHoldType : EditorAction
+	{
+		private bool Roll;
+		private EditorHoldStartNoteEvent HoldStart;
+
+		public ActionChangeHoldType(EditorHoldStartNoteEvent holdStart, bool roll)
+		{
+			HoldStart = holdStart;
+			Roll = roll;
+		}
+
+		public override string ToString()
+		{
+			var originalType = Roll ? "hold" : "roll";
+			var newType = Roll ? "roll" : "hold";
+			return $"Change {originalType} to {newType}.";
+		}
+
+		public override void Do()
+		{
+			HoldStart.SetIsRoll(Roll);
+		}
+
+		public override void Undo()
+		{
+			HoldStart.SetIsRoll(!Roll);
+		}
+	}
+
+	public class ActionDeleteHoldEvent : EditorAction
+	{
+		private EditorHoldStartNoteEvent HoldStart;
+
+		public ActionDeleteHoldEvent(EditorHoldStartNoteEvent holdStart)
+		{
+			HoldStart = holdStart;
+		}
+		
+		public override string ToString()
+		{
+			var typeStr = HoldStart.IsRoll() ? "roll" : "hold";
+			return $"Delete {typeStr}.";
+		}
+
+		public override void Do()
+		{
+			HoldStart.GetEditorChart().DeleteEvent(HoldStart);
+			HoldStart.GetEditorChart().DeleteEvent(HoldStart.GetHoldEndNote());
+		}
+
+		public override void Undo()
+		{
+			HoldStart.GetEditorChart().AddEvent(HoldStart);
+			HoldStart.GetEditorChart().AddEvent(HoldStart.GetHoldEndNote());
 		}
 	}
 }

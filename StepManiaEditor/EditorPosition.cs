@@ -12,7 +12,7 @@ namespace StepManiaEditor
 	public class EditorPosition
 	{
 		public EditorChart ActiveChart;
-		private readonly Action OnSongTimeChanged;
+		private readonly Action OnPositionChanged;
 
 		private double SongTimeInternal;
 		public double SongTime
@@ -23,7 +23,7 @@ namespace StepManiaEditor
 				SongTimeInternal = value;
 				ChartTimeInternal = SongTimeInternal + (ActiveChart?.GetMusicOffset() ?? 0.0);
 				ActiveChart?.TryGetChartPositionFromTime(ChartTimeInternal, ref ChartPositionInternal);
-				OnSongTimeChanged();
+				OnPositionChanged();
 			}
 		}
 
@@ -36,7 +36,7 @@ namespace StepManiaEditor
 				ChartTimeInternal = value;
 				ActiveChart?.TryGetChartPositionFromTime(ChartTimeInternal, ref ChartPositionInternal);
 				SongTimeInternal = ChartTimeInternal - (ActiveChart?.GetMusicOffset() ?? 0.0);
-				OnSongTimeChanged();
+				OnPositionChanged();
 			}
 		}
 
@@ -49,13 +49,21 @@ namespace StepManiaEditor
 				ChartPositionInternal = value;
 				ActiveChart?.TryGetTimeFromChartPosition(ChartPositionInternal, ref ChartTimeInternal);
 				SongTimeInternal = ChartTimeInternal - (ActiveChart?.GetMusicOffset() ?? 0.0);
-				OnSongTimeChanged();
+				OnPositionChanged();
 			}
 		}
 
-		public EditorPosition(Action onSongTimeChanged)
+		public int GetNearestRow()
 		{
-			OnSongTimeChanged = onSongTimeChanged;
+			var row = (int)ChartPosition;
+			if (ChartPosition - row > 0.5)
+				row++;
+			return row;
+		}
+
+		public EditorPosition(Action onPositionChanged)
+		{
+			OnPositionChanged = onPositionChanged;
 		}
 	}
 }

@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Security.AccessControl;
-using System.Text;
 using Fumen;
 using Fumen.ChartDefinition;
 using Fumen.Converters;
@@ -523,10 +521,8 @@ namespace StepManiaEditor
 		public double MinTempo;
 		public double MaxTempo;
 
-
 		public readonly int NumInputs;
 		public readonly int NumPlayers;
-
 
 		public EditorChart(Editor editor, EditorSong editorSong, Chart chart)
 		{
@@ -917,37 +913,47 @@ namespace StepManiaEditor
 			return enumerator.Current;
 		}
 
-		public RedBlackTree<EditorEvent>.Enumerator FindEvent(EditorEvent pos)
+		public EditorEvent FindNoteAt(int row, int lane, bool ignoreNotesBeingEdited)
 		{
-			var best = EditorEvents.FindGreatestPreceding(pos);
-			if (best == null)
-				best = EditorEvents.FindLeastFollowing(pos);
+			var pos = new EditorTapNoteEvent(this, new LaneTapNote
+			{
+				Lane = lane,
+				IntegerPosition = row
+			});
+
+			// Find the greatest preceding event, including events equal to the given position.
+			var best = EditorEvents.FindGreatestPreceding(pos, true);
 			if (best == null)
 				return null;
-
-			// Scan backwards until we have checked every lane for a long note which may
-			// be extending through the given start row.
-			var lanesChecked = new bool[NumInputs];
-			var numLanesChecked = 0;
-			var current = new RedBlackTree<EditorEvent>.Enumerator(best);
-			while (current.MovePrev() && numLanesChecked < NumInputs)
+			
+			// Scan forward to the last note in the row to make sure we consider all notes this row.
+			while (best.MoveNext())
 			{
-				var e = current.Current;
-				var lane = e.GetLane();
-				if (lane >= 0)
+				if (best.Current.GetRow() > row)
 				{
-					if (lanesChecked[lane])
-					{
-						lanesChecked[lane] = true;
-						numLanesChecked++;
-
-						if (e.GetRow() + e.GetLength() > pos.GetRow())
-							best = new RedBlackTree<EditorEvent>.Enumerator(current);
-					}
+					best.MovePrev();
+					break;
 				}
 			}
+			if (best.Current == null)
+				best.MovePrev();
 
-			return best;
+			// Scan backwards finding a note in the given lane and row, or a hold
+			// which starts before the given now but ends at or after it.
+			do
+			{
+				if (best.Current.GetLane() != lane)
+					continue;
+				if (ignoreNotesBeingEdited && best.Current.IsBeingEdited())
+					continue;
+				if (best.Current.GetRow() == row)
+					return best.Current;
+				if (!(best.Current is EditorHoldStartNoteEvent hsn))
+					return null;
+				return hsn.GetHoldEndNote().GetRow() >= row ? best.Current : null;
+			} while (best.MovePrev());
+
+			return null;
 		}
 
 		public void OnRateAlteringEventModified(EditorRateAlteringEvent rae)

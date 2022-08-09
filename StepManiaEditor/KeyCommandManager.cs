@@ -35,6 +35,10 @@ namespace StepManiaEditor
 			/// </summary>
 			public readonly Action Callback;
 			/// <summary>
+			/// Action to invoke when the Command is deactivated.
+			/// </summary>
+			public readonly Action ReleaseCallback;
+			/// <summary>
 			/// Sequence of Keys which much be pressed to activate the Command.
 			/// Order is important in that that last Keys must be pressed last.
 			/// </summary>
@@ -45,11 +49,15 @@ namespace StepManiaEditor
 			/// </summary>
 			public readonly bool Repeat;
 
-			public Command(Keys[] input, Action callback, bool repeat = false)
+			public readonly bool Independent;
+
+			public Command(Keys[] input, Action callback, bool repeat = false, Action releaseCallback = null, bool independent = false)
 			{
 				Input = input;
 				Callback = callback;
+				ReleaseCallback = releaseCallback;
 				Repeat = repeat;
+				Independent = independent;
 			}
 		}
 
@@ -76,9 +84,9 @@ namespace StepManiaEditor
 			/// Returns whether or not this Command is active.
 			/// </summary>
 			/// <returns>True if this Command is active and false otherwise.</returns>
-			public bool IsActive()
+			public bool IsActiveAndShouldBlockOtherCommands()
 			{
-				return Active;
+				return Active && !Command.Independent;
 			}
 
 			/// <summary>
@@ -88,8 +96,10 @@ namespace StepManiaEditor
 			/// <param name="timeInSeconds">Current time in seconds.</param>
 			/// <param name="canActivate">Whether or not this Command can be activated.</param>
 			/// <param name="state">KeyboardState for checking input keys.</param>
-			public void Update(double timeInSeconds, bool canActivate, ref KeyboardState state)
+			public void Update(double timeInSeconds, bool anyOthersBlocking, ref KeyboardState state)
 			{
+				var canActivate = !anyOthersBlocking || Command.Independent;
+
 				// Loop over every key in the inputs and record the current state.
 				var allDown = true;
 				var allUp = true;
@@ -119,7 +129,11 @@ namespace StepManiaEditor
 				// Handle deactivating due to no longer holding all input keys.
 				if (!allDown)
 				{
-					Active = false;
+					if (Active)
+					{
+						Active = false;
+						Command.ReleaseCallback?.Invoke();
+					}
 				}
 
 				if (allUp)
@@ -204,7 +218,7 @@ namespace StepManiaEditor
 			var anyActive = false;
 			foreach (var command in Commands)
 			{
-				if (command.IsActive())
+				if (command.IsActiveAndShouldBlockOtherCommands())
 				{
 					anyActive = true;
 					break;
@@ -214,8 +228,8 @@ namespace StepManiaEditor
 			// Handle each Command.
 			foreach (var command in Commands)
 			{
-				command.Update(timeInSeconds, !anyActive, ref state);
-				anyActive |= command.IsActive();
+				command.Update(timeInSeconds, anyActive, ref state);
+				anyActive |= command.IsActiveAndShouldBlockOtherCommands();
 			}
 		}
 

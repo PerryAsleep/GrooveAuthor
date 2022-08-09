@@ -12,13 +12,17 @@ namespace StepManiaEditor
 		private readonly LaneHoldEndNote LaneHoldEndNote;
 		private static uint ScreenHeight;
 
-
 		/// <summary>
 		/// Whether or not this hold should be considered active for rendering.
 		/// </summary>
 		public bool Active;
 
 		public EditorHoldEndNoteEvent(EditorChart editorChart, LaneHoldEndNote chartEvent) : base(editorChart, chartEvent)
+		{
+			LaneHoldEndNote = chartEvent;
+		}
+
+		public EditorHoldEndNoteEvent(EditorChart editorChart, LaneHoldEndNote chartEvent, bool isBeingEdited) : base(editorChart, chartEvent, isBeingEdited)
 		{
 			LaneHoldEndNote = chartEvent;
 		}
@@ -48,11 +52,17 @@ namespace StepManiaEditor
 			return EditorHoldStartNoteEvent.IsRoll();
 		}
 
+		public void SetIsRoll(bool roll)
+		{
+			EditorHoldStartNoteEvent.SetIsRoll(roll);
+		}
+
 		public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch)
 		{
 			string bodyTextureId;
 			string capTextureId;
 			var roll = IsRoll();
+			var alpha = IsBeingEdited() ? ActiveEditEventAlpha : 1.0f;
 			if (Active)
 			{
 				bodyTextureId = roll ? TextureIdRollActive : TextureIdHoldActive;
@@ -75,7 +85,7 @@ namespace StepManiaEditor
 			
 			// Draw the cap, if it is visible.
 			if (y > -capH && y < ScreenHeight)
-				textureAtlas.Draw(capTextureId, spriteBatch, new Rectangle(x, y, w, capH), 1.0f);
+				textureAtlas.Draw(capTextureId, spriteBatch, new Rectangle(x, y, w, capH), alpha);
 
 			// Adjust the starting y value so we don't needlessly loop when zoomed in and a large
 			// area of the hold is off the screen.
@@ -93,7 +103,7 @@ namespace StepManiaEditor
 				y -= h;
 				if (y < -capH)
 					break;
-				textureAtlas.Draw(bodyTextureId, spriteBatch, new Rectangle(x, y, w, h), 1.0f);
+				textureAtlas.Draw(bodyTextureId, spriteBatch, new Rectangle(x, y, w, h), alpha);
 			}
 		}
 	}

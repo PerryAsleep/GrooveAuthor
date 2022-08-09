@@ -57,6 +57,8 @@ namespace StepManiaEditor
 		public const float MiscEventScaleToStartingFading = 0.05f;
 		public const float MiscEventMinScale = 0.04f;
 
+		public const float ActiveEditEventAlpha = 0.8f;
+
 		public const float HelpWidth = 18.0f;
 		public const int CloseWidth = 18;
 
