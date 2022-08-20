@@ -16,19 +16,6 @@ namespace StepManiaEditor
 	{
 		// TODO: Rename / Reorganize. Currently dumping a lot of rendering-related constants in here.
 
-		public static readonly Dictionary<int, string> ArrowTextureByBeatSubdivision;
-
-		private static readonly string[] ArrowTextureByRow;
-		private static readonly Dictionary<int, uint> ArrowColorABGRBySubdivision;
-		private static readonly uint[] ArrowColorABGRByRow;
-		private static readonly ushort[] ArrowColorBGR565ByRow;
-		private static readonly uint MineColorABGR;
-		private static readonly ushort MineColorRBGR565;
-		private static readonly uint HoldColorABGR;
-		private static readonly ushort HoldColorRBGR565;
-		private static readonly uint RollColorABGR;
-		private static readonly ushort RollColorRBGR565;
-
 		public const uint UITempoColorABGR = 0x8A297A79;			// yellow
 		public const uint UITimeSignatureColorABGR = 0x8A297A29;	// green
 		public const uint UIStopColorABGR = 0x8A29297A;				// red
@@ -43,8 +30,6 @@ namespace StepManiaEditor
 		public const uint UILabelColorABGR = 0x8A68297A;			// pink
 
 		public const int DefaultArrowWidth = 128;
-		public const int DefaultHoldCapHeight = 64;
-		public const int DefaultHoldSegmentHeight = 64;
 
 		public const int WaveFormTextureWidth = DefaultArrowWidth * 8;
 
@@ -76,19 +61,6 @@ namespace StepManiaEditor
 		public const int MiniMapYPaddingFromTop = 30;		// This takes into account a 20 pixel padding for the main menu bar.
 		public const int MiniMapYPaddingFromBottom = 10;
 		public const int ChartPositionUIYPAddingFromBottom = 10;
-
-		public const string TextureIdReceptor = "receptor";
-		public const string TextureIdReceptorFlash = "receptor_flash";
-		public const string TextureIdReceptorGlow = "receptor_glow";
-		public const string TextureIdHoldActive = "hold_active";
-		public const string TextureIdHoldActiveCap = "hold_active_cap";
-		public const string TextureIdHoldInactive = "hold_inactive";
-		public const string TextureIdHoldInactiveCap = "hold_inactive_cap";
-		public const string TextureIdRollActive = "roll_active";
-		public const string TextureIdRollActiveCap = "roll_active_cap";
-		public const string TextureIdRollInactive = "roll_inactive";
-		public const string TextureIdRollInactiveCap = "roll_inactive_cap";
-		public const string TextureIdMine = "mine";
 
 		public const string TextureIdMeasureMarker = "measure_marker";
 		public const string TextureIdBeatMarker = "beat_marker";
@@ -143,112 +115,6 @@ namespace StepManiaEditor
 			/// the destination area as much as possible.
 			/// </summary>
 			Box
-		}
-
-
-		static Utils()
-		{
-			ArrowTextureByBeatSubdivision = new Dictionary<int, string>
-			{
-				{1, "1_4"},
-				{2, "1_8"},
-				{3, "1_12"},
-				{4, "1_16"},
-				{6, "1_24"},
-				{8, "1_32"},
-				{12, "1_48"},
-				{16, "1_64"},
-			};
-
-			ArrowTextureByRow = new string[SMCommon.MaxValidDenominator];
-			for (var i = 0; i < SMCommon.MaxValidDenominator; i++)
-			{
-				var key = new Fraction(i, SMCommon.MaxValidDenominator).Reduce().Denominator;
-				if (!ArrowTextureByBeatSubdivision.ContainsKey(key))
-					key = 16;
-				ArrowTextureByRow[i] = ArrowTextureByBeatSubdivision[key];
-			}
-
-			ArrowColorABGRBySubdivision = new Dictionary<int, uint>
-			{
-				{1, 0xFF0000FF},	// Red
-				{2, 0xFFFF4444},	// Blue
-				{3, 0xFF00FF00},	// Green
-				{4, 0xFF00FFFF},	// Yellow
-				{6, 0xFFFF0080},	// Purple
-				{8, 0xFFFFFF00},	// Cyan
-				{12, 0xFFFF80FF},	// Pink
-				{16, 0xFF99bf99},	// Pale Grey Green
-				{48, 0xFF99bf99},	// Pale Grey Green
-			};
-			ArrowColorABGRByRow = new uint[SMCommon.MaxValidDenominator];
-			ArrowColorBGR565ByRow = new ushort[SMCommon.MaxValidDenominator];
-			for (var i = 0; i < SMCommon.MaxValidDenominator; i++)
-			{
-				var key = new Fraction(i, SMCommon.MaxValidDenominator).Reduce().Denominator;
-				
-				if (!ArrowColorABGRBySubdivision.ContainsKey(key))
-					key = 16;
-				ArrowColorABGRByRow[i] = ArrowColorABGRBySubdivision[key];
-				ArrowColorBGR565ByRow[i] = ToBGR565(ArrowColorABGRByRow[i]);
-			}
-
-			MineColorABGR = 0xFFDCDCDC; // Light Grey
-			MineColorRBGR565 = ToBGR565(MineColorABGR);
-			HoldColorABGR = 0xFF98B476; // Light Blue
-			HoldColorRBGR565 = ToBGR565(HoldColorABGR);
-			RollColorABGR = 0xFFAE8289; // Light Green
-			RollColorRBGR565 = ToBGR565(RollColorABGR);
-		}
-
-		public static string GetArrowTextureId(int integerPosition)
-		{
-			return ArrowTextureByRow[integerPosition % SMCommon.MaxValidDenominator];
-		}
-
-		public static uint GetArrowColorABGR(int integerPosition)
-		{
-			return ArrowColorABGRByRow[integerPosition % SMCommon.MaxValidDenominator];
-		}
-
-		public static uint GetArrowColorABGRForSubdivision(int subdivision)
-		{
-			return ArrowColorABGRBySubdivision[subdivision];
-		}
-
-		public static ushort GetArrowColorBGR565(int integerPosition)
-		{
-			return ArrowColorBGR565ByRow[integerPosition % SMCommon.MaxValidDenominator];
-		}
-
-		public static uint GetMineColorABGR()
-		{
-			return MineColorABGR;
-		}
-
-		public static ushort GetMineColorBGR565()
-		{
-			return MineColorRBGR565;
-		}
-
-		public static uint GetHoldColorABGR()
-		{
-			return HoldColorABGR;
-		}
-
-		public static ushort GetHoldColorBGR565()
-		{
-			return HoldColorRBGR565;
-		}
-
-		public static uint GetRollColorABGR()
-		{
-			return RollColorABGR;
-		}
-
-		public static ushort GetRollColorBGR565()
-		{
-			return RollColorRBGR565;
 		}
 
 		public static uint ColorABGRInterpolate(uint startColor, uint endColor, float endPercent)

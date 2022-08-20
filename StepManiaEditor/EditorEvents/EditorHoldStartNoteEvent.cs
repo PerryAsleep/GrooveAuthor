@@ -56,18 +56,33 @@ namespace StepManiaEditor
 			LaneHoldStartNote.SourceType = Roll ? SMCommon.NoteChars[(int)SMCommon.NoteType.RollStart].ToString() : String.Empty;
 		}
 
-		public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch)
+		public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)
 		{
-			var rot = new[] { (float)Math.PI * 0.5f, 0.0f, (float)Math.PI, (float)Math.PI * 1.5f };
-
-			var textureId = GetArrowTextureId(LaneHoldStartNote.IntegerPosition);
 			var alpha = IsBeingEdited() ? ActiveEditEventAlpha : 1.0f;
+
+			// TODO: Active
+			var active = false;
+
+			var (holdStartTexture, holdStartMirror) = arrowGraphicManager.GetHoldStartTexture(LaneHoldStartNote.IntegerPosition, GetLane(), active);
+			if (holdStartTexture != null)
+			{
+				textureAtlas.Draw(
+					holdStartTexture,
+					spriteBatch,
+					new Vector2((float)GetX(), (float)GetY()),
+					(float)GetScale(),
+					0.0f,
+					alpha,
+					holdStartMirror ? SpriteEffects.FlipHorizontally : SpriteEffects.None);
+			}
+
+			var (holdTexture, holdRot) = arrowGraphicManager.GetArrowTexture(LaneHoldStartNote.IntegerPosition, GetLane());
 			textureAtlas.Draw(
-				textureId,
+				holdTexture,
 				spriteBatch,
 				new Vector2((float)GetX(), (float)GetY()),
 				(float)GetScale(),
-				rot[LaneHoldStartNote.Lane % rot.Length],
+				holdRot,
 				alpha);
 		}
 	}

@@ -216,7 +216,7 @@ namespace StepManiaEditor
 			return X < x + w && X + W > x && Y < y + h && Y + H > y;
 		}
 
-		public virtual void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch)
+		public virtual void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)
 		{
 		}
 	}

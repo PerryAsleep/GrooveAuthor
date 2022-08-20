@@ -59,7 +59,7 @@ namespace StepManiaEditor
 			return base.GetW();
 		}
 
-		public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch)
+		public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)
 		{
 			if (GetAlpha() <= 0.0f)
 				return;

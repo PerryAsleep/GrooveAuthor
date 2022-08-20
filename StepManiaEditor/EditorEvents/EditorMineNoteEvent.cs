@@ -24,11 +24,11 @@ namespace StepManiaEditor
 			return LaneNote.Lane;
 		}
 
-		public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch)
+		public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)
 		{
 			var alpha = IsBeingEdited() ? ActiveEditEventAlpha : 1.0f;
 			textureAtlas.Draw(
-				TextureIdMine,
+				arrowGraphicManager.GetMineTexture(GetRow(), LaneNote.Lane),
 				spriteBatch,
 				new Vector2((float)GetX(), (float)GetY()),
 				(float)GetScale(),

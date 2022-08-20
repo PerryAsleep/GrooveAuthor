@@ -57,35 +57,35 @@ namespace StepManiaEditor
 			EditorHoldStartNoteEvent.SetIsRoll(roll);
 		}
 
-		public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch)
+		public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)
 		{
-			string bodyTextureId;
-			string capTextureId;
 			var roll = IsRoll();
 			var alpha = IsBeingEdited() ? ActiveEditEventAlpha : 1.0f;
-			if (Active)
-			{
-				bodyTextureId = roll ? TextureIdRollActive : TextureIdHoldActive;
-				capTextureId = roll ? TextureIdRollActiveCap : TextureIdHoldActiveCap;
-			}
-			else
-			{
-				bodyTextureId = roll ? TextureIdRollInactive : TextureIdHoldInactive;
-				capTextureId = roll ? TextureIdRollInactiveCap : TextureIdHoldInactiveCap;
-			}
+
+			var (bodyTextureId, bodyMirrored) = roll ?
+				arrowGraphicManager.GetRollBodyTexture(LaneHoldEndNote.IntegerPosition, LaneHoldEndNote.Lane, Active) :
+				arrowGraphicManager.GetHoldBodyTexture(LaneHoldEndNote.IntegerPosition, LaneHoldEndNote.Lane, Active);
+			var (capTextureId, capMirrored) = roll ?
+				arrowGraphicManager.GetRollEndTexture(LaneHoldEndNote.IntegerPosition, LaneHoldEndNote.Lane, Active) :
+				arrowGraphicManager.GetHoldEndTexture(LaneHoldEndNote.IntegerPosition, LaneHoldEndNote.Lane, Active);
 
 			// TODO: Tiling?
 
-			var capH = (int)(DefaultHoldCapHeight * GetScale() + 0.5);
-			var bodyTileH = (int)(DefaultHoldSegmentHeight * GetScale() + 0.5);
+			var (_, capH) = textureAtlas.GetDimensions(capTextureId);
+			var (bodyTexW, bodyTexH) = textureAtlas.GetDimensions(bodyTextureId);
+
+			capH = (int)(capH * GetScale() + 0.5);
+			var bodyTileH = (int)(bodyTexH * GetScale() + 0.5);
 			var y = (int)(GetY() + GetH() + 0.5) - capH;
 			var minY = (int)(GetY() + 0.5);
 			var x = (int)(GetX() + 0.5);
 			var w = (int)(GetW() + 0.5);
-			
+
+			var spriteEffects = capMirrored ? SpriteEffects.FlipHorizontally : SpriteEffects.None;
+
 			// Draw the cap, if it is visible.
 			if (y > -capH && y < ScreenHeight)
-				textureAtlas.Draw(capTextureId, spriteBatch, new Rectangle(x, y, w, capH), alpha);
+				textureAtlas.Draw(capTextureId, spriteBatch, new Rectangle(x, y, w, capH), 0.0f, alpha, spriteEffects);
 
 			// Adjust the starting y value so we don't needlessly loop when zoomed in and a large
 			// area of the hold is off the screen.
@@ -95,6 +95,7 @@ namespace StepManiaEditor
 			}
 
 			// TODO: depth
+			spriteEffects = bodyMirrored ? SpriteEffects.FlipHorizontally : SpriteEffects.None;
 			while (y >= minY)
 			{
 				var h = Math.Min(bodyTileH, y - minY);
@@ -103,7 +104,15 @@ namespace StepManiaEditor
 				y -= h;
 				if (y < -capH)
 					break;
-				textureAtlas.Draw(bodyTextureId, spriteBatch, new Rectangle(x, y, w, h), alpha);
+				if (h < bodyTileH)
+				{
+					var sourceH = (int)(bodyTexH * ((double)h / bodyTileH));
+					textureAtlas.Draw(bodyTextureId, spriteBatch, new Rectangle(0, bodyTexH - sourceH, bodyTexW, sourceH), new Rectangle(x, y, w, h), 0.0f, alpha, spriteEffects);
+				}
+				else
+				{
+					textureAtlas.Draw(bodyTextureId, spriteBatch, new Rectangle(x, y, w, h), 0.0f, alpha, spriteEffects);
+				}
 			}
 		}
 	}

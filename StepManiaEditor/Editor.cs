@@ -88,11 +88,6 @@ namespace StepManiaEditor
 		public class SnapData
 		{
 			public int Rows;
-
-			public uint GetColorABGR()
-			{
-				return GetArrowColorABGRForSubdivision(SMCommon.MaxValidDenominator / Rows);
-			}
 		}
 		private SnapData[] SnapLevels;
 		private int SnapIndex = 0;
@@ -116,6 +111,7 @@ namespace StepManiaEditor
 		private SoundManager SoundManager;
 		private MusicManager MusicManager;
 		private MiniMap MiniMap;
+		private ArrowGraphicManager ArrowGraphicManager;
 		private UISongProperties UISongProperties;
 		private UIChartProperties UIChartProperties;
 		private UIWaveFormPreferences UIWaveFormPreferences;
@@ -136,7 +132,6 @@ namespace StepManiaEditor
 		
 		private EditorSong EditorSong;
 		private EditorChart ActiveChart;
-		
 
 		private List<EditorEvent> VisibleEvents = new List<EditorEvent>();
 		private List<EditorMarkerEvent> VisibleMarkers = new List<EditorMarkerEvent>();
@@ -333,20 +328,8 @@ namespace StepManiaEditor
 			SpriteBatch = new SpriteBatch(GraphicsDevice);
 
 			// Load textures from disk and add them to the Texture Atlas.
-			foreach (var kvp in ArrowTextureByBeatSubdivision)
-				TextureAtlas.AddTexture(kvp.Value, Content.Load<Texture2D>(kvp.Value));
-			TextureAtlas.AddTexture(TextureIdMine, Content.Load<Texture2D>(TextureIdMine));
-			TextureAtlas.AddTexture(TextureIdReceptor, Content.Load<Texture2D>(TextureIdReceptor));
-			TextureAtlas.AddTexture(TextureIdReceptorFlash, Content.Load<Texture2D>(TextureIdReceptorFlash));
-			TextureAtlas.AddTexture(TextureIdReceptorGlow, Content.Load<Texture2D>(TextureIdReceptorGlow));
-			TextureAtlas.AddTexture(TextureIdHoldActive, Content.Load<Texture2D>(TextureIdHoldActive));
-			TextureAtlas.AddTexture(TextureIdHoldActiveCap, Content.Load<Texture2D>(TextureIdHoldActiveCap));
-			TextureAtlas.AddTexture(TextureIdHoldInactive, Content.Load<Texture2D>(TextureIdHoldInactive));
-			TextureAtlas.AddTexture(TextureIdHoldInactiveCap, Content.Load<Texture2D>(TextureIdHoldInactiveCap));
-			TextureAtlas.AddTexture(TextureIdRollActive, Content.Load<Texture2D>(TextureIdRollActive));
-			TextureAtlas.AddTexture(TextureIdRollActiveCap, Content.Load<Texture2D>(TextureIdRollActiveCap));
-			TextureAtlas.AddTexture(TextureIdRollInactive, Content.Load<Texture2D>(TextureIdRollInactive));
-			TextureAtlas.AddTexture(TextureIdRollInactiveCap, Content.Load<Texture2D>(TextureIdRollInactiveCap));
+			foreach (var textureId in ArrowGraphicManager.GetAllTextureIds())
+				TextureAtlas.AddTexture(textureId, Content.Load<Texture2D>(textureId));
 
 			var measureMarkerTexture = new Texture2D(GraphicsDevice, DefaultArrowWidth, 1);
 			var textureData = new uint[DefaultArrowWidth];
@@ -752,7 +735,7 @@ namespace StepManiaEditor
 
 		private void DrawReceptors()
 		{
-			if (ActiveChart == null)
+			if (ActiveChart == null || ArrowGraphicManager == null)
 				return;
 
 			var numArrows = ActiveChart.NumInputs;
@@ -763,15 +746,16 @@ namespace StepManiaEditor
 			var xStart = FocalPoint.X - (numArrows * arrowSize * 0.5);
 			var y = FocalPoint.Y - (arrowSize * 0.5);
 
-			var rot = new[] { (float)Math.PI * 0.5f, 0.0f, (float)Math.PI, (float)Math.PI * 1.5f };
+
 			for (var i = 0; i < numArrows; i++)
 			{
+				var (textureId, rot) = ArrowGraphicManager.GetReceptorTexture(i);
 				var x = xStart + i * arrowSize;
 				TextureAtlas.Draw(
-					TextureIdReceptor,
+					textureId,
 					SpriteBatch,
 					new Rectangle((int)x, (int)y, (int)arrowSize, (int)arrowSize),
-					rot[i % rot.Length],
+					rot,
 					1.0f);
 			}
 		}
@@ -873,7 +857,7 @@ namespace StepManiaEditor
 			VisibleEvents.Clear();
 			VisibleMarkers.Clear();
 
-			if (ActiveChart == null || ActiveChart.EditorEvents == null)
+			if (ActiveChart == null || ActiveChart.EditorEvents == null || ArrowGraphicManager == null)
 				return;
 
 			var pScroll = Preferences.Instance.PreferencesScroll;
@@ -888,7 +872,9 @@ namespace StepManiaEditor
 			if (sizeZoom > 1.0)
 				sizeZoom = 1.0;
 			var arrowSize = DefaultArrowWidth * sizeZoom;
-			var holdCapHeight = DefaultHoldCapHeight * sizeZoom;
+			var (holdCapTexture, _) = ArrowGraphicManager.GetHoldEndTexture(0, 0, false);
+			var (_, holdCapTextureHeight) = TextureAtlas.GetDimensions(holdCapTexture);
+			var holdCapHeight = holdCapTextureHeight * sizeZoom;
 
 			var numArrows = ActiveChart.NumInputs;
 			var xStart = FocalPoint.X - (numArrows * arrowSize * 0.5);
@@ -1746,7 +1732,8 @@ namespace StepManiaEditor
 						fullAreaTimeStart, fullAreaTimeEnd,
 						contentAreaTimeStart, contentAreaTimeEnd,
 						pMiniMap.MiniMapVisibleTimeRange,
-						editorAreaTimeStart, editorAreaTimeEnd);
+						editorAreaTimeStart, editorAreaTimeEnd,
+						ArrowGraphicManager);
 
 					// Add notes
 					double chartPosition = 0.0;
@@ -1851,7 +1838,8 @@ namespace StepManiaEditor
 						fullAreaRowStart, fullAreaRowEnd,
 						contentAreaTimeStart, contentAreaTimeEnd,
 						pMiniMap.MiniMapVisibleRowRange,
-						editorAreaRowStart, editorAreaRowEnd);
+						editorAreaRowStart, editorAreaRowEnd,
+						ArrowGraphicManager);
 
 					// Add notes
 					chartPosition = MiniMap.GetMiniMapAreaStart();
@@ -1989,11 +1977,11 @@ namespace StepManiaEditor
 					eventsBeingEdited.Add(visibleEvent);
 					continue;
 				}
-				visibleEvent.Draw(TextureAtlas, SpriteBatch);
+				visibleEvent.Draw(TextureAtlas, SpriteBatch, ArrowGraphicManager);
 			}
 			foreach (var visibleEvent in eventsBeingEdited)
 			{
-				visibleEvent.Draw(TextureAtlas, SpriteBatch);
+				visibleEvent.Draw(TextureAtlas, SpriteBatch, ArrowGraphicManager);
 			}
 		}
 
@@ -2025,7 +2013,8 @@ namespace StepManiaEditor
 				(int)FocalPoint.X,
 				Graphics.PreferredBackBufferHeight - ChartPositionUIYPAddingFromBottom - (int)(UIChartPosition.Height * 0.5),
 				Position,
-				SnapLevels[SnapIndex]);
+				SnapLevels[SnapIndex],
+				ArrowGraphicManager);
 		}
 
 		private void DrawMainMenuUI()
@@ -2371,6 +2360,7 @@ namespace StepManiaEditor
 				LaneEditStates = new LaneEditState[ActiveChart.NumInputs];
 				for (var i = 0; i < ActiveChart.NumInputs; i++)
 					LaneEditStates[i] = new LaneEditState();
+				ArrowGraphicManager = ArrowGraphicManager.CreateArrowGraphicManager(chartType);
 				SetZoom(1.0, true);
 
 				// Start loading music for this Chart.
@@ -2507,6 +2497,7 @@ namespace StepManiaEditor
 			LaneEditStates = Array.Empty<LaneEditState>();
 			EditorSong = null;
 			ActiveChart = null;
+			ArrowGraphicManager = null;
 			ActionQueue.Instance.Clear();
 		}
 

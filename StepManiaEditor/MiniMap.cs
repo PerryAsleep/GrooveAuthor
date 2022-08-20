@@ -230,6 +230,11 @@ namespace StepManiaEditor
 		private double EditorAreaEnd;
 
 		/// <summary>
+		/// ArrowGraphicManager for getting note colors.
+		/// </summary>
+		private ArrowGraphicManager ArrowGraphicManager;
+
+		/// <summary>
 		/// Constructor.
 		/// </summary>
 		/// <param name="graphicsDevice">GraphicsDevice for rendering.</param>
@@ -581,7 +586,7 @@ namespace StepManiaEditor
 			return AddShortNote(
 				GetYPixelRelativeToBounds(position),
 				LaneXPositions[chartEvent.Lane],
-				Utils.GetArrowColorABGR(chartEvent.IntegerPosition));
+				ArrowGraphicManager.GetArrowColorABGR(chartEvent.IntegerPosition, chartEvent.Lane));
 		}
 
 		/// <summary>
@@ -595,7 +600,7 @@ namespace StepManiaEditor
 			return AddShortNote(
 				GetYPixelRelativeToBounds(position),
 				LaneXPositions[chartEvent.Lane],
-				Utils.GetMineColorABGR());
+				ArrowGraphicManager.GetMineColorABGR());
 		}
 
 		/// <summary>
@@ -660,8 +665,8 @@ namespace StepManiaEditor
 			var yEnd = GetYPixelRelativeToBounds(endPosition) + 1.0;
 
 			var x = LaneXPositions[start.Lane];
-			var bodyColor = roll ? Utils.GetRollColorABGR() : Utils.GetHoldColorABGR();
-			var headColor = Utils.GetArrowColorABGR(start.IntegerPosition);
+			var bodyColor = roll ? ArrowGraphicManager.GetRollColorABGR(start.IntegerPosition, start.Lane) : ArrowGraphicManager.GetHoldColorABGR(start.IntegerPosition, start.Lane);
+			var headColor = ArrowGraphicManager.GetArrowColorABGR(start.IntegerPosition, start.Lane);
 
 			var w = (uint)Math.Min(Bounds.Width - (RimWidth << 1), NoteWidth);
 
@@ -729,6 +734,7 @@ namespace StepManiaEditor
 		/// <param name="miniMapAreaRange">MiniMap area range in Chart space.</param>
 		/// <param name="editorAreaStart">Editor area start in Chart space.</param>
 		/// <param name="editorAreaEnd">Editor area end in Chart space.</param>
+		/// <param name="arrowGraphicManager">ArrowGraphicManager to use for getting event colors.</param>
 		public void UpdateBegin(
 			double fullAreaStart,
 			double fullAreaEnd,
@@ -736,13 +742,15 @@ namespace StepManiaEditor
 			double contentAreaEnd,
 			double miniMapAreaRange,
 			double editorAreaStart,
-			double editorAreaEnd)
+			double editorAreaEnd,
+			ArrowGraphicManager arrowGraphicManager)
 		{
 			FullAreaStart = fullAreaStart;
 			FullAreaEnd = fullAreaEnd;
 			EditorAreaStart = editorAreaStart;
 			EditorAreaEnd = editorAreaEnd;
 			MiniMapAreaRange = miniMapAreaRange;
+			ArrowGraphicManager = arrowGraphicManager;
 
 			if (Bounds.Height <= 0 || Bounds.Width <= 0)
 				return;

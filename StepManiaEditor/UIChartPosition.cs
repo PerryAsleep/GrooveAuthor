@@ -62,7 +62,8 @@ namespace StepManiaEditor
 		/// <param name="y">Desired Y position of the center of the window.</param>
 		/// <param name="position">EditorPosition.</param>
 		/// <param name="snapData">SnapData.</param>
-		public static void Draw(int x, int y, EditorPosition position, Editor.SnapData snapData)
+		/// <param name="arrowGraphicManager">ArrowGraphicManager to use for coloring position information.</param>
+		public static void Draw(int x, int y, EditorPosition position, Editor.SnapData snapData, ArrowGraphicManager arrowGraphicManager)
 		{
 			ImGui.SetNextWindowPos(new Vector2(x - Width / 2, y - Height / 2));
 			ImGui.SetNextWindowSize(new Vector2(Width, Height));
@@ -94,7 +95,7 @@ namespace StepManiaEditor
 			}
 			else
 			{
-				Segments[SnapValueIndex].Color = snapData.GetColorABGR();
+				Segments[SnapValueIndex].Color = arrowGraphicManager?.GetArrowColorABGRForSubdivision(SMCommon.MaxValidDenominator / snapData.Rows) ?? White;
 				Segments[SnapValueIndex].Text = $"1/{(SMCommon.MaxValidDenominator / snapData.Rows) * SMCommon.NumBeatsPerMeasure} ";
 			}
 			Segments[SongTimeValueIndex].Text = $"{FormatTime(position.SongTime)} ";
