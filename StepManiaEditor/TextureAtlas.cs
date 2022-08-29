@@ -224,6 +224,28 @@ namespace StepManiaEditor
 			spriteBatch.Draw(Atlas, destinationRectangle, node.TextureRect, new Color(1.0f, 1.0f, 1.0f, alpha), rotation, rotationOffset, spriteEffects, 1.0f);
 		}
 
+		public void Draw(string textureId, SpriteBatch spriteBatch, Vector2 position, Vector2 origin, float scale, float rotation, float alpha, SpriteEffects spriteEffects)
+		{
+			if (!TextureNodes.TryGetValue(textureId, out var node))
+			{
+				Logger.Warn($"Failed to draw packed texture identified by \"{textureId}\". No texture with that id found.");
+				return;
+			}
+
+			spriteBatch.Draw(Atlas, position, node.TextureRect, new Color(1.0f, 1.0f, 1.0f, alpha), rotation, origin, scale, spriteEffects, 1.0f);
+		}
+
+		public void Draw(string textureId, SpriteBatch spriteBatch, Vector2 position, Vector2 origin, Color color, float scale, float rotation, SpriteEffects spriteEffects)
+		{
+			if (!TextureNodes.TryGetValue(textureId, out var node))
+			{
+				Logger.Warn($"Failed to draw packed texture identified by \"{textureId}\". No texture with that id found.");
+				return;
+			}
+
+			spriteBatch.Draw(Atlas, position, node.TextureRect, color, rotation, origin, scale, spriteEffects, 1.0f);
+		}
+
 		public void Draw(string textureId, SpriteBatch spriteBatch, Rectangle sourceRectangle, Rectangle destinationRectangle, float rotation, float alpha, SpriteEffects spriteEffects)
 		{
 			if (!TextureNodes.TryGetValue(textureId, out var node))
