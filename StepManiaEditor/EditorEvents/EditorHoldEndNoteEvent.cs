@@ -15,7 +15,8 @@ namespace StepManiaEditor
 		/// <summary>
 		/// Whether or not this hold should be considered active for rendering.
 		/// </summary>
-		public bool Active;
+		private bool NextDrawActive;
+		private double NextDrawActiveYCutoffPoint;
 
 		public EditorHoldEndNoteEvent(EditorChart editorChart, LaneHoldEndNote chartEvent) : base(editorChart, chartEvent)
 		{
@@ -57,27 +58,44 @@ namespace StepManiaEditor
 			EditorHoldStartNoteEvent.SetIsRoll(roll);
 		}
 
+		public void SetNextDrawActive(bool active, double y)
+		{
+			NextDrawActive = active;
+			NextDrawActiveYCutoffPoint = y;
+		}
+
 		public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)
 		{
 			var roll = IsRoll();
 			var alpha = IsBeingEdited() ? ActiveEditEventAlpha : 1.0f;
 
-			var (bodyTextureId, bodyMirrored) = roll ?
-				arrowGraphicManager.GetRollBodyTexture(LaneHoldEndNote.IntegerPosition, LaneHoldEndNote.Lane, Active) :
-				arrowGraphicManager.GetHoldBodyTexture(LaneHoldEndNote.IntegerPosition, LaneHoldEndNote.Lane, Active);
-			var (capTextureId, capMirrored) = roll ?
-				arrowGraphicManager.GetRollEndTexture(LaneHoldEndNote.IntegerPosition, LaneHoldEndNote.Lane, Active) :
-				arrowGraphicManager.GetHoldEndTexture(LaneHoldEndNote.IntegerPosition, LaneHoldEndNote.Lane, Active);
+			var active = NextDrawActive && Preferences.Instance.PreferencesAnimations.AutoPlayLightHolds;
+			var activeAndCutoff = NextDrawActive && Preferences.Instance.PreferencesAnimations.AutoPlayHideArrows;
 
-			// TODO: Tiling?
+			var (bodyTextureId, bodyMirrored) = roll ?
+				arrowGraphicManager.GetRollBodyTexture(LaneHoldEndNote.IntegerPosition, LaneHoldEndNote.Lane, active) :
+				arrowGraphicManager.GetHoldBodyTexture(LaneHoldEndNote.IntegerPosition, LaneHoldEndNote.Lane, active);
+			var (capTextureId, capMirrored) = roll ?
+				arrowGraphicManager.GetRollEndTexture(LaneHoldEndNote.IntegerPosition, LaneHoldEndNote.Lane, active) :
+				arrowGraphicManager.GetHoldEndTexture(LaneHoldEndNote.IntegerPosition, LaneHoldEndNote.Lane, active);
 
 			var (_, capH) = textureAtlas.GetDimensions(capTextureId);
 			var (bodyTexW, bodyTexH) = textureAtlas.GetDimensions(bodyTextureId);
 
+			// Determine the Y value and height to use.
+			// If the note is active, we should bring down the top to the cutoff point.
+			var noteY = GetY();
+			var noteH = GetH();
+			if (activeAndCutoff)
+			{
+				noteH -= (NextDrawActiveYCutoffPoint - noteY);
+				noteY = NextDrawActiveYCutoffPoint;
+			}
+
 			capH = (int)(capH * GetScale() + 0.5);
 			var bodyTileH = (int)(bodyTexH * GetScale() + 0.5);
-			var y = (int)(GetY() + GetH() + 0.5) - capH;
-			var minY = (int)(GetY() + 0.5);
+			var y = (int)(noteY + noteH + 0.5) - capH;
+			var minY = (int)(noteY + 0.5);
 			var x = (int)(GetX() + 0.5);
 			var w = (int)(GetW() + 0.5);
 
@@ -94,7 +112,7 @@ namespace StepManiaEditor
 				y -= ((y - (int)ScreenHeight) / capH) * capH;
 			}
 
-			// TODO: depth
+			// Draw the body.
 			spriteEffects = bodyMirrored ? SpriteEffects.FlipHorizontally : SpriteEffects.None;
 			while (y >= minY)
 			{
@@ -114,6 +132,40 @@ namespace StepManiaEditor
 					textureAtlas.Draw(bodyTextureId, spriteBatch, new Rectangle(x, y, w, h), 0.0f, alpha, spriteEffects);
 				}
 			}
+
+			var (holdStartTexture, holdStartMirror) = arrowGraphicManager.GetHoldStartTexture(GetHoldStartNote().GetRow(), GetLane(), NextDrawActive);
+			var holdStartY = 0.0;
+			if (holdStartTexture != null || activeAndCutoff)
+			{
+				var (startTexture, _) = arrowGraphicManager.GetArrowTexture(GetHoldStartNote().GetRow(), GetLane());
+				var (_, startHeight) = textureAtlas.GetDimensions(startTexture);
+				holdStartY = noteY - (startHeight * 0.5 * GetScale());
+			}
+
+			// Some arrows, like solo diagonals need a hold start graphic to fill the gap at the top of the hold
+			// between the arrow midpoint and the widest part of the arrow.
+			if (holdStartTexture != null)
+			{
+				textureAtlas.Draw(
+					holdStartTexture,
+					spriteBatch,
+					new Vector2((float)GetX(), (float)holdStartY),
+					(float)GetScale(),
+					0.0f,
+					alpha,
+					holdStartMirror ? SpriteEffects.FlipHorizontally : SpriteEffects.None);
+			}
+
+			// If active, draw the hold start note on top of the receptors.
+			// The actual hold start note will not draw since it is above the receptors.
+			if (activeAndCutoff)
+			{
+				GetHoldStartNote().DrawAtY(textureAtlas, spriteBatch, arrowGraphicManager, holdStartY);
+			}
+
+			// Reset active flags.
+			NextDrawActive = false;
+			NextDrawActiveYCutoffPoint = 0.0;
 		}
 	}
 }

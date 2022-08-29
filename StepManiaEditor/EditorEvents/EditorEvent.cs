@@ -189,6 +189,11 @@ namespace StepManiaEditor
 			return ChartEvent.IntegerPosition;
 		}
 
+		public virtual double GetChartTime()
+		{
+			return Fumen.Utils.ToSeconds(ChartEvent.TimeMicros);
+		}
+
 		public virtual int GetLength()
 		{
 			return 0;

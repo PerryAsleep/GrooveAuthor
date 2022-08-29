@@ -956,6 +956,94 @@ namespace StepManiaEditor
 			return null;
 		}
 
+		/// <summary>
+		/// Given a chart position, returns the previous note in every lane where the note is either
+		/// a tap, hold start, or hold end.
+		/// </summary>
+		public EditorEvent[] GetPreviousInputNotes(double chartPosition)
+		{
+			var nextNotes = new EditorEvent[NumInputs];
+			var numFound = 0;
+
+			// Get an enumerator to the next note.
+			var pos = new EditorTapNoteEvent(this, new LaneTapNote
+			{
+				Lane = 0,
+				IntegerPosition = (int)chartPosition
+			});
+			var enumerator = EditorEvents.FindLeastFollowing(pos, true);
+			if (enumerator == null)
+				enumerator = EditorEvents.FindGreatestPreceding(pos);
+			if (enumerator == null)
+				return nextNotes;
+
+			// Scan backwards until we have collected every next note.
+			while (enumerator.MovePrev())
+			{
+				var c = enumerator.Current;
+				if (c.GetRow() >= chartPosition || nextNotes[c.GetLane()] != null)
+				{
+					continue;
+				}
+
+				if (c.GetEvent() is LaneTapNote
+				    || c.GetEvent() is LaneHoldStartNote
+				    || c.GetEvent() is LaneHoldEndNote)
+				{
+					nextNotes[c.GetLane()] = c;
+					numFound++;
+					if (numFound == NumInputs)
+						break;
+				}
+			}
+
+			return nextNotes;
+		}
+
+		/// <summary>
+		/// Given a chart position, returns the next note in every lane where the note is either
+		/// a tap, hold start, or hold end.
+		/// </summary>
+		public EditorEvent[] GetNextInputNotes(double chartPosition)
+		{
+			var nextNotes = new EditorEvent[NumInputs];
+			var numFound = 0;
+
+			// Get an enumerator to the next note.
+			var pos = new EditorTapNoteEvent(this, new LaneTapNote
+			{
+				Lane = 0,
+				IntegerPosition = (int)chartPosition
+			});
+			var enumerator = EditorEvents.FindGreatestPreceding(pos, true);
+			if (enumerator == null)
+				enumerator = EditorEvents.FindLeastFollowing(pos);
+			if (enumerator == null)
+				return nextNotes;
+
+			// Scan forward until we have collected every next note.
+			while (enumerator.MoveNext())
+			{
+				var c = enumerator.Current;
+				if (c.GetRow() <= chartPosition || c.GetLane() < 0 || nextNotes[c.GetLane()] != null)
+				{
+					continue;
+				}
+
+				if (c.GetEvent() is LaneTapNote
+				    || c.GetEvent() is LaneHoldStartNote
+				    || c.GetEvent() is LaneHoldEndNote)
+				{
+					nextNotes[c.GetLane()] = c;
+					numFound++;
+					if (numFound == NumInputs)
+						break;
+				}
+			}
+
+			return nextNotes;
+		}
+
 		public void OnRateAlteringEventModified(EditorRateAlteringEvent rae)
 		{
 			// TODO: Can this be optimized?

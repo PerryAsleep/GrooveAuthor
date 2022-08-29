@@ -65,6 +65,9 @@ namespace StepManiaEditor
 		// Option preferences
 		[JsonInclude] public PreferencesOptions PreferencesOptions = new PreferencesOptions();
 
+		// Animations preferences
+		[JsonInclude] public PreferencesAnimations PreferencesAnimations = new PreferencesAnimations();
+
 		// Log preferences
 		[JsonInclude] public bool ShowLogWindow = true;
 		[JsonInclude] public int LogWindowDateDisplay = 1;

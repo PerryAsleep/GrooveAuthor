@@ -135,6 +135,14 @@ namespace StepManiaEditor
 			       | (endColor & 0xFF000000);
 		}
 
+		public static uint ColorABGRMultiply(uint color, float multiplier)
+		{
+			return (uint)(Math.Min((color & 0xFF) * multiplier, byte.MaxValue))
+			       | ((uint)Math.Min(((color >> 8) & 0xFF) * multiplier, byte.MaxValue) << 8)
+			       | ((uint)Math.Min(((color >> 16) & 0xFF) * multiplier, byte.MaxValue) << 16)
+			       | (color & 0xFF000000);
+		}
+
 		public static ushort ToBGR565(float r, float g, float b)
 		{
 			return (ushort)(((ushort)(r * 31) << 11) + ((ushort)(g * 63) << 5) + (ushort)(b * 31));
@@ -148,9 +156,9 @@ namespace StepManiaEditor
 		public static ushort ToBGR565(uint ABGR)
 		{
 			return ToBGR565(
-				(byte)((ABGR | 0x00FF0000) >> 24) / (float)byte.MaxValue,
-				(byte)((ABGR | 0x0000FF00) >> 16) / (float)byte.MaxValue,
-				(byte)((ABGR | 0x000000FF) >> 8) / (float)byte.MaxValue);
+				(byte)((ABGR & 0x00FF0000) >> 24) / (float)byte.MaxValue,
+				(byte)((ABGR & 0x0000FF00) >> 16) / (float)byte.MaxValue,
+				(byte)((ABGR & 0x000000FF) >> 8) / (float)byte.MaxValue);
 		}
 
 		public static Vector2 GetDrawPos(

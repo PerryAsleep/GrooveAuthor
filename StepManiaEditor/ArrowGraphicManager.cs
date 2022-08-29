@@ -11,15 +11,17 @@ namespace StepManiaEditor
 	/// </summary>
 	public abstract class ArrowGraphicManager
 	{
+		protected const float ColorMultiplier = 1.5f;
+
 		private static readonly uint MineColorABGR;
-		private static readonly ushort MineColorRBGR565;
+		private static readonly ushort MineColorBGR565;
 
 		private static readonly string TextureIdMine = "mine";
 
 		static ArrowGraphicManager()
 		{
-			MineColorABGR = 0xFF1D1D41; // Crimson
-			MineColorRBGR565 = ToBGR565(MineColorABGR);
+			MineColorABGR = ColorABGRMultiply(0xFFB7B7B7, ColorMultiplier); // light grey
+			MineColorBGR565 = ToBGR565(MineColorABGR);
 		}
 
 		/// <summary>
@@ -116,7 +118,7 @@ namespace StepManiaEditor
 
 		public ushort GetMineColorBGR565()
 		{
-			return MineColorRBGR565;
+			return MineColorBGR565;
 		}
 
 		public string GetMineTexture(int integerPosition, int lane)
@@ -156,9 +158,9 @@ namespace StepManiaEditor
 		protected static readonly uint[] ArrowColorABGRByRow;
 		protected static readonly ushort[] ArrowColorBGR565ByRow;
 		protected static readonly uint HoldColorABGR;
-		protected static readonly ushort HoldColorRBGR565;
+		protected static readonly ushort HoldColorBGR565;
 		protected static readonly uint RollColorABGR;
-		protected static readonly ushort RollColorRBGR565;
+		protected static readonly ushort RollColorBGR565;
 
 		static ArrowGraphicManagerDance()
 		{
@@ -290,15 +292,15 @@ namespace StepManiaEditor
 
 			ArrowColorABGRBySubdivision = new Dictionary<int, uint>
 			{
-				{ 1, 0xFF1818B6 }, // Red
-				{ 2, 0xFFB63518 }, // Blue
-				{ 3, 0xFF37AD36 }, // Green
-				{ 4, 0xFF16CAD1 }, // Yellow
-				{ 6, 0xFFB61884 }, // Purple
-				{ 8, 0xFF98B618 }, // Cyan
-				{ 12, 0xFF8018B6 }, // Pink
-				{ 16, 0xFF586F4F }, // Pale Grey Green
-				{ 48, 0xFF586F4F }, // Pale Grey Green
+				{ 1, ColorABGRMultiply(0xFF1818B6, ColorMultiplier) }, // Red
+				{ 2, ColorABGRMultiply(0xFFB63518, ColorMultiplier) }, // Blue
+				{ 3, ColorABGRMultiply(0xFF37AD36, ColorMultiplier) }, // Green
+				{ 4, ColorABGRMultiply(0xFF16CAD1, ColorMultiplier) }, // Yellow
+				{ 6, ColorABGRMultiply(0xFFB61884, ColorMultiplier) }, // Purple
+				{ 8, ColorABGRMultiply(0xFF98B618, ColorMultiplier) }, // Cyan
+				{ 12, ColorABGRMultiply(0xFF8018B6, ColorMultiplier) }, // Pink
+				{ 16, ColorABGRMultiply(0xFF586F4F, ColorMultiplier) }, // Pale Grey Green
+				{ 48, ColorABGRMultiply(0xFF586F4F, ColorMultiplier) }, // Pale Grey Green
 			};
 			ArrowColorABGRByRow = new uint[SMCommon.MaxValidDenominator];
 			ArrowColorBGR565ByRow = new ushort[SMCommon.MaxValidDenominator];
@@ -312,10 +314,10 @@ namespace StepManiaEditor
 				ArrowColorBGR565ByRow[i] = ToBGR565(ArrowColorABGRByRow[i]);
 			}
 			
-			HoldColorABGR = 0xFF696969; // Grey
-			HoldColorRBGR565 = ToBGR565(HoldColorABGR);
-			RollColorABGR = 0xFFb3b3b3; // Light Grey
-			RollColorRBGR565 = ToBGR565(RollColorABGR);
+			HoldColorABGR = ColorABGRMultiply(0xFF696969, ColorMultiplier); // Grey
+			HoldColorBGR565 = ToBGR565(HoldColorABGR);
+			RollColorABGR = ColorABGRMultiply(0xFF2264A6, ColorMultiplier); // Orange
+			RollColorBGR565 = ToBGR565(RollColorABGR);
 		}
 
 		public static HashSet<string> GetAllTextures()
@@ -379,7 +381,7 @@ namespace StepManiaEditor
 
 		public override ushort GetHoldColorBGR565(int integerPosition, int lane)
 		{
-			return HoldColorRBGR565;
+			return HoldColorBGR565;
 		}
 
 		public override uint GetRollColorABGR(int integerPosition, int lane)
@@ -389,7 +391,7 @@ namespace StepManiaEditor
 
 		public override ushort GetRollColorBGR565(int integerPosition, int lane)
 		{
-			return RollColorRBGR565;
+			return RollColorBGR565;
 		}
 	}
 
@@ -564,7 +566,6 @@ namespace StepManiaEditor
 			return ArrowRotations[lane];
 		}
 	}
-
 
 	public class ArrowGraphicManagerDanceThreePanel : ArrowGraphicManagerDanceSoloBase
 	{
@@ -800,25 +801,25 @@ namespace StepManiaEditor
 				Blue = "piu-roll-blue",
 			};
 
-			ArrowColorRedABGR = 0xFF371BB3;
+			ArrowColorRedABGR = ColorABGRMultiply(0xFF371BB3, ColorMultiplier);
 			ArrowColorRedBGR565 = ToBGR565(ArrowColorRedABGR);
-			ArrowColorBlueABGR = 0xFFB3401B;
+			ArrowColorBlueABGR = ColorABGRMultiply(0xFFB3401B, ColorMultiplier);
 			ArrowColorBlueBGR565 = ToBGR565(ArrowColorBlueABGR);
-			ArrowColorYellowABGR = 0xFF00EAFF;
+			ArrowColorYellowABGR = ColorABGRMultiply(0xFF00EAFF, ColorMultiplier);
 			ArrowColorYellowBGR565 = ToBGR565(ArrowColorYellowABGR);
 
-			HoldColorRedABGR = 0xFF5039B2;
+			HoldColorRedABGR = ColorABGRMultiply(0xFF5039B2, ColorMultiplier);
 			HoldColorRedBGR565 = ToBGR565(HoldColorRedABGR);
-			HoldColorBlueABGR = 0xFFB35639;
+			HoldColorBlueABGR = ColorABGRMultiply(0xFFB35639, ColorMultiplier);
 			HoldColorBlueBGR565 = ToBGR565(HoldColorBlueABGR);
-			HoldColorYellowABGR = 0xFF6BF3FF;
+			HoldColorYellowABGR = ColorABGRMultiply(0xFF6BF3FF, ColorMultiplier);
 			HoldColorYellowBGR565 = ToBGR565(HoldColorYellowABGR);
 
-			RollColorRedABGR = 0xFF6B54F8;
+			RollColorRedABGR = ColorABGRMultiply(0xFF6B54F8, ColorMultiplier);
 			RollColorRedBGR565 = ToBGR565(RollColorRedABGR);
-			RollColorBlueABGR = 0xFFB38C1B;
+			RollColorBlueABGR = ColorABGRMultiply(0xFFB38C1B, ColorMultiplier);
 			RollColorBlueBGR565 = ToBGR565(RollColorBlueABGR);
-			RollColorYellowABGR = 0xFF2FABB5;
+			RollColorYellowABGR = ColorABGRMultiply(0xFF2FABB5, ColorMultiplier);
 			RollColorYellowBGR565 = ToBGR565(RollColorYellowABGR);
 		}
 

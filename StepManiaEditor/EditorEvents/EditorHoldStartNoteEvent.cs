@@ -53,34 +53,23 @@ namespace StepManiaEditor
 		public void SetIsRoll(bool roll)
 		{
 			Roll = roll;
-			LaneHoldStartNote.SourceType = Roll ? SMCommon.NoteChars[(int)SMCommon.NoteType.RollStart].ToString() : String.Empty;
+			LaneHoldStartNote.SourceType = Roll ? SMCommon.NoteChars[(int)SMCommon.NoteType.RollStart].ToString() : string.Empty;
 		}
 
 		public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)
 		{
+			DrawAtY(textureAtlas, spriteBatch, arrowGraphicManager, GetY());
+		}
+
+		public void DrawAtY(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager, double y)
+		{
 			var alpha = IsBeingEdited() ? ActiveEditEventAlpha : 1.0f;
-
-			// TODO: Active
-			var active = false;
-
-			var (holdStartTexture, holdStartMirror) = arrowGraphicManager.GetHoldStartTexture(LaneHoldStartNote.IntegerPosition, GetLane(), active);
-			if (holdStartTexture != null)
-			{
-				textureAtlas.Draw(
-					holdStartTexture,
-					spriteBatch,
-					new Vector2((float)GetX(), (float)GetY()),
-					(float)GetScale(),
-					0.0f,
-					alpha,
-					holdStartMirror ? SpriteEffects.FlipHorizontally : SpriteEffects.None);
-			}
 
 			var (holdTexture, holdRot) = arrowGraphicManager.GetArrowTexture(LaneHoldStartNote.IntegerPosition, GetLane());
 			textureAtlas.Draw(
 				holdTexture,
 				spriteBatch,
-				new Vector2((float)GetX(), (float)GetY()),
+				new Vector2((float)GetX(), (float)y),
 				(float)GetScale(),
 				holdRot,
 				alpha);

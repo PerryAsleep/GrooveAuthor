@@ -117,6 +117,7 @@ namespace StepManiaEditor
 		private UIWaveFormPreferences UIWaveFormPreferences;
 		private UIScrollPreferences UIScrollPreferences;
 		private UIMiniMapPreferences UIMiniMapPreferences;
+		private UIAnimationsPreferences UIAnimationsPreferences;
 		private UIOptions UIOptions;
 
 		private TextureAtlas TextureAtlas;
@@ -135,6 +136,9 @@ namespace StepManiaEditor
 
 		private List<EditorEvent> VisibleEvents = new List<EditorEvent>();
 		private List<EditorMarkerEvent> VisibleMarkers = new List<EditorMarkerEvent>();
+		private Receptor[] Receptors = null;
+
+		private EditorEvent[] NextAutoPlayNotes = null;
 
 		private double WaveFormPPS = 1.0;
 
@@ -164,6 +168,7 @@ namespace StepManiaEditor
 
 		private uint MaxScreenHeight;
 
+		// Fonts
 		private ImFontPtr ImGuiFont;
 		private SpriteFont MonogameFont_MPlus1Code_Medium;
 
@@ -311,6 +316,7 @@ namespace StepManiaEditor
 			UIWaveFormPreferences = new UIWaveFormPreferences(this, MusicManager);
 			UIScrollPreferences = new UIScrollPreferences();
 			UIMiniMapPreferences = new UIMiniMapPreferences(this);
+			UIAnimationsPreferences = new UIAnimationsPreferences(this);
 			UIOptions = new UIOptions();
 
 			base.Initialize();
@@ -468,6 +474,7 @@ namespace StepManiaEditor
 				var s = new Stopwatch();
 				s.Start();
 				UpdateChartEvents();
+				UpdateAutoPlay();
 				s.Stop();
 				UpdateTimeChartEvents = s.Elapsed.TotalSeconds;
 			};
@@ -502,6 +509,14 @@ namespace StepManiaEditor
 				timedUpdateChartEvents();
 				timedUpdateMiniMap();
 				timedUpdateWaveForm();
+			}
+
+			if (Receptors != null)
+			{
+				foreach (var receptor in Receptors)
+				{
+					receptor.Update(gameTime, Playing, Position.ChartPosition);
+				}
 			}
 
 			base.Update(gameTime);
@@ -585,6 +600,7 @@ namespace StepManiaEditor
 							{
 								MusicManager.SetMusicTimeInSeconds(Position.SongTime);
 							}
+							UpdateAutoPlayFromScrolling();
 						}
 						else
 						{
@@ -619,6 +635,7 @@ namespace StepManiaEditor
 							{
 								MusicManager.SetMusicTimeInSeconds(Position.SongTime);
 							}
+							UpdateAutoPlayFromScrolling();
 						}
 						else
 						{
@@ -670,6 +687,7 @@ namespace StepManiaEditor
 
 			PlaybackStopwatch.Stop();
 			MusicManager.StopPlayback();
+			StopAutoPlay();
 
 			Playing = false;
 		}
@@ -719,7 +737,9 @@ namespace StepManiaEditor
 			DrawMiniMap();
 			DrawReceptors();
 			DrawChartEvents();
+			DrawReceptorForegroundEffects();
 			SpriteBatch.End();
+
 			DrawGui(gameTime);
 
 			ImGui.PopFont();
@@ -735,29 +755,20 @@ namespace StepManiaEditor
 
 		private void DrawReceptors()
 		{
-			if (ActiveChart == null || ArrowGraphicManager == null)
+			if (ActiveChart == null || ArrowGraphicManager == null || Receptors == null)
 				return;
 
-			var numArrows = ActiveChart.NumInputs;
-			var zoom = Zoom;
-			if (zoom > 1.0)
-				zoom = 1.0;
-			var arrowSize = DefaultArrowWidth * zoom;
-			var xStart = FocalPoint.X - (numArrows * arrowSize * 0.5);
-			var y = FocalPoint.Y - (arrowSize * 0.5);
+			foreach(var receptor in Receptors)
+				receptor.Draw(FocalPoint, Zoom, TextureAtlas, SpriteBatch);
+		}
 
+		private void DrawReceptorForegroundEffects()
+		{
+			if (ActiveChart == null || ArrowGraphicManager == null || Receptors == null)
+				return;
 
-			for (var i = 0; i < numArrows; i++)
-			{
-				var (textureId, rot) = ArrowGraphicManager.GetReceptorTexture(i);
-				var x = xStart + i * arrowSize;
-				TextureAtlas.Draw(
-					textureId,
-					SpriteBatch,
-					new Rectangle((int)x, (int)y, (int)arrowSize, (int)arrowSize),
-					rot,
-					1.0f);
-			}
+			foreach (var receptor in Receptors)
+				receptor.DrawForegroundEffects(FocalPoint, Zoom, TextureAtlas, SpriteBatch);
 		}
 
 		private void UpdateWaveFormRenderer()
@@ -1332,11 +1343,12 @@ namespace StepManiaEditor
 							if (e is EditorHoldEndNoteEvent hen)
 							{
 								var start = hen.GetHoldStartNote();
-								var endY = previousRateEventPixelPosition +
-								           (e.GetEvent().IntegerPosition - rateEvent.Row) * ppr;
+								var endY = previousRateEventPixelPosition
+								           + (e.GetEvent().IntegerPosition - rateEvent.Row) * ppr
+								           + holdCapHeight;
 
 								noteY = start.GetY() + arrowSize * 0.5f;
-								noteH = endY - start.GetY();
+								noteH = endY - (start.GetY() + (arrowSize * 0.5f));
 
 								holdBodyEvents.Add(e);
 
@@ -1375,14 +1387,16 @@ namespace StepManiaEditor
 							continue;
 
 						var start = holdEndNote.GetHoldStartNote();
-						var endY = previousRateEventPixelPosition +
-						           (holdEndNote.GetEvent().IntegerPosition - rateEvent.Row) * ppr;
+						var endY = previousRateEventPixelPosition
+						           + (holdEndNote.GetEvent().IntegerPosition - rateEvent.Row) * ppr
+						           + holdCapHeight;
+						var noteH = endY - (start.GetY() + (arrowSize * 0.5f));
 
 						holdEndNote.SetDimensions(
 							xStart + holdEndNote.GetLane() * arrowSize,
 							start.GetY() + arrowSize * 0.5,
 							arrowSize,
-							endY - start.GetY(),
+							noteH,
 							sizeZoom);
 
 						holdBodyEvents.Add(holdEndNote);
@@ -1558,6 +1572,92 @@ namespace StepManiaEditor
 			}
 		}
 
+		#region Autoplay
+
+		private void UpdateAutoPlay()
+		{
+			if (!Playing || ActiveChart == null || NextAutoPlayNotes == null || Receptors == null)
+				return;
+
+			var nextEvents = ActiveChart.GetNextInputNotes(Position.ChartPosition);
+
+			for (var lane = 0; lane < ActiveChart.NumInputs; lane++)
+			{
+				// If the next has changed it means we have just passed over an event.
+				if (NextAutoPlayNotes[lane] != nextEvents[lane])
+				{
+					// Since we have already passed a note, we should offset any animations so they begin
+					// as if they started at the precise moment the event passed.
+					var timeDelta = NextAutoPlayNotes[lane] == null ? 0.0 : 
+						Position.ChartTime - NextAutoPlayNotes[lane].GetChartTime();
+
+					// The new next event can be null at the end of the chart. We need to release any
+					// held input in this case.
+					if (nextEvents[lane] == null && Receptors[lane].IsAutoplayHeld())
+					{
+						Receptors[lane].OnAutoplayInputUp(timeDelta);
+					}
+
+					// Only process inputs if the current input is not null.
+					// This helps ensure that when starting playing in the middle of a chart
+					// we don't incorrectly show input immediately.
+					if (NextAutoPlayNotes[lane] != null)
+					{
+						// If the event that just passed is a hold end, release input.
+						if (NextAutoPlayNotes[lane].GetEvent() is LaneHoldEndNote)
+						{
+							Receptors[lane].OnAutoplayInputUp(timeDelta);
+						}
+						else
+						{
+							// For both taps an hold starts, press input.
+							Receptors[lane].OnAutoplayInputDown(timeDelta);
+
+							// For taps, release them immediately.
+							if (NextAutoPlayNotes[lane].GetEvent() is LaneTapNote)
+							{
+								Receptors[lane].OnAutoplayInputUp(timeDelta);
+							}
+						}
+					}
+
+					// If the next event is a hold end (i.e. we are in a hold) and the currently
+					// tracked note is null (i.e. we just started playback), then start input to
+					// hold the note.
+					else if (NextAutoPlayNotes[lane] == null
+					         && nextEvents[lane] != null
+					         && nextEvents[lane].GetEvent() is LaneHoldEndNote)
+					{
+						Receptors[lane].OnAutoplayInputDown(timeDelta);
+					}
+				}
+
+				// Cache the next event for next time.
+				NextAutoPlayNotes[lane] = nextEvents[lane];
+			}
+		}
+
+		private void UpdateAutoPlayFromScrolling()
+		{
+			StopAutoPlay();
+		}
+
+		private void StopAutoPlay()
+		{
+			if (ActiveChart == null || NextAutoPlayNotes == null || Receptors == null)
+				return;
+
+			for (var lane = 0; lane < ActiveChart.NumInputs; lane++)
+			{
+				//if (NextAutoPlayNotes[lane] is EditorHoldEndNoteEvent hen)
+				//	hen.Active = false;
+				NextAutoPlayNotes[lane] = null;
+				Receptors[lane].OnAutoplayInputCancel();
+			}
+		}
+
+		#endregion Autoplay
+
 		#region MiniMap
 
 		private void ProcessInputForMiniMap(MouseState mouseState)
@@ -1614,6 +1714,7 @@ namespace StepManiaEditor
 						break;
 					}
 				}
+				UpdateAutoPlayFromScrolling();
 			}
 
 			// When letting go of the MiniMap, start playing again.
@@ -1691,7 +1792,7 @@ namespace StepManiaEditor
 			if (!pMiniMap.ShowMiniMap)
 				return;
 
-			if (ActiveChart == null || ActiveChart.EditorEvents == null)
+			if (ActiveChart == null || ActiveChart.EditorEvents == null || ArrowGraphicManager == null)
 				return;
 
 			UpdateMiniMapBounds();
@@ -1964,21 +2065,48 @@ namespace StepManiaEditor
 
 		private void DrawChartEvents()
 		{
+			var eventsBeingEdited = new List<EditorEvent>();
+			// Draw the measure and beat markers.
 			foreach (var visibleMarker in VisibleMarkers)
 			{
 				visibleMarker.Draw(TextureAtlas, SpriteBatch, MonogameFont_MPlus1Code_Medium);
 			}
 
-			var eventsBeingEdited = new List<EditorEvent>();
 			foreach (var visibleEvent in VisibleEvents)
 			{
+				// Capture events being edited to draw after all events not being edited.
 				if (visibleEvent.IsBeingEdited())
 				{
 					eventsBeingEdited.Add(visibleEvent);
 					continue;
 				}
+
+				if (Playing)
+				{
+					// Skip events entirely above the receptors.
+					if (Preferences.Instance.PreferencesAnimations.AutoPlayHideArrows
+						&& visibleEvent.GetChartTime() < Position.ChartTime
+					    && (visibleEvent is EditorTapNoteEvent
+					        || visibleEvent is EditorHoldStartNoteEvent 
+					        || visibleEvent is EditorHoldEndNoteEvent))
+						continue;
+
+					// Cut off hold end notes which intersect the receptors.
+					if (visibleEvent is EditorHoldEndNoteEvent hen)
+					{
+						if (Playing && hen.GetChartTime() > Position.ChartTime
+						            && hen.GetHoldStartNote().GetChartTime() < Position.ChartTime)
+						{
+							hen.SetNextDrawActive(true, FocalPoint.Y);
+						}
+					}
+				}
+				
+				// Draw the event.
 				visibleEvent.Draw(TextureAtlas, SpriteBatch, ArrowGraphicManager);
 			}
+
+			// Draw events being edited.
 			foreach (var visibleEvent in eventsBeingEdited)
 			{
 				visibleEvent.Draw(TextureAtlas, SpriteBatch, ArrowGraphicManager);
@@ -2004,6 +2132,7 @@ namespace StepManiaEditor
 			UIScrollPreferences.Draw();
 			UIWaveFormPreferences.Draw();
 			UIMiniMapPreferences.Draw();
+			UIAnimationsPreferences.Draw();
 			UIOptions.Draw();
 
 			UISongProperties.Draw(EditorSong);
@@ -2101,6 +2230,8 @@ namespace StepManiaEditor
 						p.PreferencesScroll.ShowScrollControlPreferencesWindow = true;
 					if (ImGui.MenuItem("Mini Map Preferences"))
 						p.PreferencesMiniMap.ShowMiniMapPreferencesWindow = true;
+					if (ImGui.MenuItem("Animation Preferences"))
+						p.PreferencesAnimations.ShowAnimationsPreferencesWindow = true;
 
 					ImGui.Separator();
 					if (ImGui.MenuItem("Log"))
@@ -2357,10 +2488,17 @@ namespace StepManiaEditor
 				Position.ActiveChart = ActiveChart;
 				Position.ChartPosition = 0.0;
 				DesiredSongTime = Position.SongTime;
-				LaneEditStates = new LaneEditState[ActiveChart.NumInputs];
-				for (var i = 0; i < ActiveChart.NumInputs; i++)
-					LaneEditStates[i] = new LaneEditState();
 				ArrowGraphicManager = ArrowGraphicManager.CreateArrowGraphicManager(chartType);
+				var laneEditStates = new LaneEditState[ActiveChart.NumInputs];
+				var receptors = new Receptor[ActiveChart.NumInputs];
+				NextAutoPlayNotes = new EditorEvent[ActiveChart.NumInputs];
+				for (var i = 0; i < ActiveChart.NumInputs; i++)
+				{
+					laneEditStates[i] = new LaneEditState();
+					receptors[i] = new Receptor(i, ArrowGraphicManager, ActiveChart);
+				}
+				Receptors = receptors;
+				LaneEditStates = laneEditStates;
 				SetZoom(1.0, true);
 
 				// Start loading music for this Chart.
@@ -2498,6 +2636,8 @@ namespace StepManiaEditor
 			EditorSong = null;
 			ActiveChart = null;
 			ArrowGraphicManager = null;
+			Receptors = null;
+			NextAutoPlayNotes = null;
 			ActionQueue.Instance.Clear();
 		}
 
@@ -2566,6 +2706,7 @@ namespace StepManiaEditor
 				if (newChartPosition == (int)Position.ChartPosition)
 					newChartPosition -= rows;
 				Position.ChartPosition = newChartPosition;
+				UpdateAutoPlayFromScrolling();
 			}
 		}
 
@@ -2582,6 +2723,7 @@ namespace StepManiaEditor
 			else
 			{
 				Position.ChartPosition = ((int)Position.ChartPosition / rows) * rows + rows;
+				UpdateAutoPlayFromScrolling();
 			}
 		}
 
@@ -2593,6 +2735,8 @@ namespace StepManiaEditor
 			var sig = rate.LastTimeSignature.Signature;
 			var rows = sig.Numerator * (SMCommon.MaxValidDenominator * SMCommon.NumBeatsPerMeasure / sig.Denominator);
 			Position.ChartPosition -= rows;
+
+			UpdateAutoPlayFromScrolling();
 		}
 
 		private void OnMoveToNextMeasure()
@@ -2603,6 +2747,8 @@ namespace StepManiaEditor
 			var sig = rate.LastTimeSignature.Signature;
 			var rows = sig.Numerator * (SMCommon.MaxValidDenominator * SMCommon.NumBeatsPerMeasure / sig.Denominator);
 			Position.ChartPosition += rows;
+
+			UpdateAutoPlayFromScrolling();
 		}
 
 		private void OnMoveToChartStart()
@@ -2611,6 +2757,8 @@ namespace StepManiaEditor
 				StopPlayback();
 
 			Position.ChartPosition = 0.0;
+
+			UpdateAutoPlayFromScrolling();
 		}
 
 		private void OnMoveToChartEnd()
@@ -2622,6 +2770,8 @@ namespace StepManiaEditor
 				Position.ChartPosition = ActiveChart.GetEndPosition();
 			else
 				Position.ChartPosition = 0.0;
+
+			UpdateAutoPlayFromScrolling();
 		}
 
 		private void OnShiftDown()
@@ -2652,6 +2802,9 @@ namespace StepManiaEditor
 				return;
 			if (lane < 0 || lane >= ActiveChart.NumInputs)
 				return;
+
+			Receptors?[lane].OnInputDown();
+
 			if (Position.ChartPosition < 0)
 				return;
 			
@@ -2727,6 +2880,9 @@ namespace StepManiaEditor
 				return;
 			if (lane < 0 || lane >= ActiveChart.NumInputs)
 				return;
+
+			Receptors?[lane].OnInputUp();
+
 			if (!LaneEditStates[lane].IsActive())
 				return;
 
