@@ -34,7 +34,7 @@ namespace StepManiaEditor
 				textureId,
 				spriteBatch,
 				new Vector2((float)GetX(), (float)GetY()),
-				(float)GetScale(),
+				GetScale(),
 				rot,
 				alpha);
 		}

@@ -335,20 +335,20 @@ namespace StepManiaEditor
 
 			// Load textures from disk and add them to the Texture Atlas.
 			foreach (var textureId in ArrowGraphicManager.GetAllTextureIds())
-				TextureAtlas.AddTexture(textureId, Content.Load<Texture2D>(textureId));
+				TextureAtlas.AddTexture(textureId, Content.Load<Texture2D>(textureId), true);
 
 			var measureMarkerTexture = new Texture2D(GraphicsDevice, DefaultArrowWidth, 1);
 			var textureData = new uint[DefaultArrowWidth];
 			for (var i = 0; i < DefaultArrowWidth; i++)
 				textureData[i] = 0xFFFFFFFF;
 			measureMarkerTexture.SetData(textureData);
-			TextureAtlas.AddTexture(TextureIdMeasureMarker, measureMarkerTexture);
+			TextureAtlas.AddTexture(TextureIdMeasureMarker, measureMarkerTexture, true);
 
 			var beatMarkerTexture = new Texture2D(GraphicsDevice, DefaultArrowWidth, 1);
 			for (var i = 0; i < DefaultArrowWidth; i++)
 				textureData[i] = 0xFF7F7F7F;
 			beatMarkerTexture.SetData(textureData);
-			TextureAtlas.AddTexture(TextureIdBeatMarker, beatMarkerTexture);
+			TextureAtlas.AddTexture(TextureIdBeatMarker, beatMarkerTexture, true);
 
 			InitPadDataAndStepGraphsAsync();
 
@@ -515,7 +515,7 @@ namespace StepManiaEditor
 			{
 				foreach (var receptor in Receptors)
 				{
-					receptor.Update(gameTime, Playing, Position.ChartPosition);
+					receptor.Update(Playing, Position.ChartPosition);
 				}
 			}
 

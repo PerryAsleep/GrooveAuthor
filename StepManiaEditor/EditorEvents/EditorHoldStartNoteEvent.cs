@@ -70,7 +70,7 @@ namespace StepManiaEditor
 				holdTexture,
 				spriteBatch,
 				new Vector2((float)GetX(), (float)y),
-				(float)GetScale(),
+				GetScale(),
 				holdRot,
 				alpha);
 		}

@@ -31,7 +31,7 @@ namespace StepManiaEditor
 				arrowGraphicManager.GetMineTexture(GetRow(), LaneNote.Lane),
 				spriteBatch,
 				new Vector2((float)GetX(), (float)GetY()),
-				(float)GetScale(),
+				GetScale(),
 				0.0f,
 				alpha);
 		}

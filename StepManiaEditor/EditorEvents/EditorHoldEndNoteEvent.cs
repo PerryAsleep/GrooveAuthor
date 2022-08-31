@@ -150,7 +150,7 @@ namespace StepManiaEditor
 					holdStartTexture,
 					spriteBatch,
 					new Vector2((float)GetX(), (float)holdStartY),
-					(float)GetScale(),
+					GetScale(),
 					0.0f,
 					alpha,
 					holdStartMirror ? SpriteEffects.FlipHorizontally : SpriteEffects.None);
