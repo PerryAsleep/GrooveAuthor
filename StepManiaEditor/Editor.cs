@@ -316,7 +316,7 @@ namespace StepManiaEditor
 			UIWaveFormPreferences = new UIWaveFormPreferences(this, MusicManager);
 			UIScrollPreferences = new UIScrollPreferences();
 			UIMiniMapPreferences = new UIMiniMapPreferences(this);
-			UIAnimationsPreferences = new UIAnimationsPreferences(this);
+			UIAnimationsPreferences = new UIAnimationsPreferences();
 			UIOptions = new UIOptions();
 
 			base.Initialize();

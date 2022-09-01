@@ -8,13 +8,6 @@ namespace StepManiaEditor
 	/// </summary>
 	public class UIAnimationsPreferences
 	{
-		private Editor Editor;
-
-		public UIAnimationsPreferences(Editor editor)
-		{
-			Editor = editor;
-		}
-
 		public void Draw()
 		{
 			var p = Preferences.Instance.PreferencesAnimations;
@@ -56,6 +49,17 @@ namespace StepManiaEditor
 					"When tapping an arrow, whether to show a rim effect on the receptors.");
 				ImGuiLayoutUtils.DrawRowCheckbox(true, "Shrink Effect", p, nameof(PreferencesAnimations.TapShrinkEffect),
 					"When tapping an arrow, whether to shrink the receptors.");
+				ImGuiLayoutUtils.EndTable();
+			}
+
+			ImGui.Separator();
+			if (ImGuiLayoutUtils.BeginTable("Animation Restore", 120))
+			{
+				if (ImGuiLayoutUtils.DrawRowButton("Restore Defaults", "Restore Defaults",
+					    "Restore all animation preferences to their default values."))
+				{
+					p.RestoreDefaults();
+				}
 				ImGuiLayoutUtils.EndTable();
 			}
 
