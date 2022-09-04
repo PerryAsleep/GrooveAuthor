@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
@@ -17,6 +16,10 @@ namespace StepManiaEditor
 	/// </summary>
 	public class WaveFormRenderer
 	{
+		/// <summary>
+		/// Sentinel value for an invalid index.
+		/// </summary>
+		private const long QuantizedSampleIndexInvalid = -1L;
 		/// <summary>
 		/// Number of textures to use for buffering. Double buffering is fine.
 		/// </summary>
@@ -87,11 +90,28 @@ namespace StepManiaEditor
 		/// See https://graphics.stanford.edu/~seander/bithacks.html and
 		/// https://en.wikipedia.org/wiki/De_Bruijn_sequence
 		/// </summary>
-		private static int[] DeBruijnBitPositions =
+		private static readonly int[] DeBruijnBitPositions =
 		{
 			0, 1, 28, 2, 29, 14, 24, 3, 30, 22, 20, 15, 25, 17, 4, 8,
 			31, 27, 13, 23, 21, 19, 16, 7, 26, 12, 18, 6, 11, 5, 10, 9
 		};
+
+		/// <summary>
+		/// Zoom level last frame. Used to determine if we can re-use any of the last frame's data.
+		/// </summary>
+		private double LastZoom = 0.0;
+		/// <summary>
+		/// Pixels per second last frame. Used to determine if we can re-use any of the last frame's data.
+		/// </summary>
+		private double LastPixelsPerSecond = 1.0;
+		/// <summary>
+		/// Last frame's quantized sample start index.
+		/// </summary>
+		private long LastQuantizedIndexStart = QuantizedSampleIndexInvalid;
+		/// <summary>
+		/// Last frame's quantized sample end index.
+		/// </summary>
+		private long LastQuantizedIndexEnd = QuantizedSampleIndexInvalid;
 
 		/// <summary>
 		/// Constructor.
@@ -103,7 +123,7 @@ namespace StepManiaEditor
 		{
 			Width = width;
 			Height = height;
-
+			
 			// Set up the textures.
 			Textures = new Texture2D[NumTextures];
 			for (var i = 0; i < NumTextures; i++)
@@ -129,7 +149,12 @@ namespace StepManiaEditor
 		/// <param name="xPerChannelScale">X scale per channel.</param>
 		public void SetXPerChannelScale(float xPerChannelScale)
 		{
-			XPerChannelScale = Math.Min(1.0f, Math.Max(0.0f, xPerChannelScale));
+			xPerChannelScale = Math.Min(1.0f, Math.Max(0.0f, xPerChannelScale));
+			if (XPerChannelScale.FloatEquals(xPerChannelScale))
+				return;
+
+			XPerChannelScale = xPerChannelScale;
+			InvalidateLastFrameData();
 		}
 
 		/// <summary>
@@ -140,7 +165,10 @@ namespace StepManiaEditor
 		/// <param name="scaleXWhenZooming">Whether or not to scale in x when zooming.</param>
 		public void SetScaleXWhenZooming(bool scaleXWhenZooming)
 		{
+			if (ScaleXWhenZooming == scaleXWhenZooming)
+				return;
 			ScaleXWhenZooming = scaleXWhenZooming;
+			InvalidateLastFrameData();
 		}
 
 		/// <summary>
@@ -155,6 +183,7 @@ namespace StepManiaEditor
 		public void SetColors(float dr, float dg, float db, float sr, float sg, float sb)
 		{
 			// TODO: Reevaluate if 565 format is needed.
+			var diff = false;
 			var colorDense = Utils.ToBGR565(dr, dg, db);
 			if (colorDense != ColorDense)
 			{
@@ -163,6 +192,7 @@ namespace StepManiaEditor
 				{
 					DenseLine[i] = ColorDense;
 				}
+				diff = true;
 			}
 
 			var colorSparse = Utils.ToBGR565(sr, sg, sb);
@@ -173,7 +203,11 @@ namespace StepManiaEditor
 				{
 					SparseLine[i] = ColorSparse;
 				}
+				diff = true;
 			}
+
+			if (diff)
+				InvalidateLastFrameData();
 		}
 
 		/// <summary>
@@ -182,7 +216,10 @@ namespace StepManiaEditor
 		/// <param name="mipMap">SoundMipMap to use.</param>
 		public void SetSoundMipMap(SoundMipMap mipMap)
 		{
+			if (MipMap == mipMap)
+				return;
 			MipMap = mipMap;
+			InvalidateLastFrameData();
 		}
 
 		/// <summary>
@@ -192,7 +229,28 @@ namespace StepManiaEditor
 		/// <param name="focalPoint">Vector representing the focal point.</param>
 		public void SetFocalPoint(Vector2 focalPoint)
 		{
+			if (FocalPoint == focalPoint)
+				return;
 			FocalPoint = focalPoint;
+			InvalidateLastFrameData();
+		}
+
+		/// <summary>
+		/// Invalidates the last frame data such that the entire texture will be recreated during the next update.
+		/// </summary>
+		private void InvalidateLastFrameData()
+		{
+			LastQuantizedIndexStart = QuantizedSampleIndexInvalid;
+			LastQuantizedIndexEnd = QuantizedSampleIndexInvalid;
+		}
+
+		/// <summary>
+		/// Returns whether or not the last frame data is valid and can be used as a performance optimization
+		/// during the next update.
+		/// </summary>
+		private bool IsLastFrameDataValid()
+		{
+			return LastQuantizedIndexStart != QuantizedSampleIndexInvalid && LastQuantizedIndexEnd != QuantizedSampleIndexInvalid;
 		}
 
 		/// <summary>
@@ -215,6 +273,7 @@ namespace StepManiaEditor
 		/// </summary>
 		/// <param name="soundTimeSeconds">Time of the underlying sound in seconds.</param>
 		/// <param name="zoom">Zoom level.</param>
+		/// <param name="pixelsPerSecond">The number of y pixels which cover 1 second of time in the sound.</param>
 		public void Update(double soundTimeSeconds, double zoom, double pixelsPerSecond)
 		{
 			UpdateTexture(soundTimeSeconds, zoom, pixelsPerSecond);
@@ -225,14 +284,11 @@ namespace StepManiaEditor
 		/// </summary>
 		/// <param name="soundTimeSeconds">Time of the underlying sound in seconds.</param>
 		/// <param name="zoom">Zoom level.</param>
+		/// <param name="pixelsPerSecond">The number of y pixels which cover 1 second of time in the sound.</param>
 		private void UpdateTexture(double soundTimeSeconds, double zoom, double pixelsPerSecond)
 		{
 			// Get the correct texture to update.
 			var texture = Textures[TextureIndex];
-
-			// Clear the pixel data to all black.
-			// Array.Clear is the most efficient way to do this in practice.
-			Array.Clear(BGR565Data, 0, (int)(Width * Height));
 
 			var lockTaken = false;
 			try
@@ -240,49 +296,106 @@ namespace StepManiaEditor
 				// Try to lock, but don't require it. If the lock is already taken then SoundMipMap is destroying
 				// or allocating the data. In that case we should just draw the clear texture rather than waiting.
 				MipMap.TryLockMipLevels(ref lockTaken);
-				if (lockTaken)
+				if (!lockTaken)
 				{
-					var sampleRate = MipMap.GetSampleRate();
-
+					Array.Clear(BGR565Data, 0, (int)(Width * Height));
+				}
+				else
+				{
 					// Don't render unless there is SoundMipMap data to use.
 					// It doesn't matter if the SoundMipMap data is fully generated yet as it can
 					// still be partially renderer.
 					if (MipMap == null || !MipMap.IsMipMapDataAllocated())
 					{
+						Array.Clear(BGR565Data, 0, (int)(Width * Height));
 						texture.SetData(BGR565Data);
 						return;
+					}
+
+					// If the parameters have changed since last time, invalidate the last frame data so we do not use it.
+					// Also invalidate the last frame data if the SoundMipMap is still loading since the underlying data will
+					// be changing each frame.
+					if (!zoom.DoubleEquals(LastZoom) || !pixelsPerSecond.DoubleEquals(LastPixelsPerSecond) || !MipMap.IsMipMapDataLoaded())
+					{
+						InvalidateLastFrameData();
 					}
 
 					// Determine the zoom to use in x. Zoom in x is separate from zoom in y.
 					var xZoom = ScaleXWhenZooming ? Math.Min(1.0, zoom) : 1.0;
 					var renderWidth = Width * xZoom;
-
 					var numChannels = MipMap.GetNumChannels();
 					var totalWidthPerChannel = (uint)(renderWidth / numChannels);
 
-					//uint endSample = startSample + (uint)(sampleRate / Zoom);
-					//uint numSamples = endSample - startSample;
+					var sampleRate = MipMap.GetSampleRate();
 					var samplesPerPixel = sampleRate / pixelsPerSecond / zoom;
 
-					// Quantizing the samples per pixel to an integer value guarantees that for a given zoom
-					// level, the same samples will always be grouped together. This prevents a jittering
-					// artifact that could occur otherwise due to samples being grouped with different sets
-					// depending on the range we are looking at.
-					// When the zoom is so high that individual samples are spread out across multiple pixels,
-					// do not quantize. This could introduce jitter, but at this zoom level the scroll speed
-					// would need to be unrealistically slow to notice any artifact.
-					if (samplesPerPixel > 1.0)
+					// For a given pixel per second rate, we must ensure that the same samples are always grouped
+					// together when rendering to prevent jittering artifacts and to allow reusing portions of the
+					// previous frame's buffer. To accomplish this we need to quantize the sample indices we use per
+					// pixel to samples which fall on consistent integer boundaries that match the samples per pixel.
+					var startSampleOffset = (FocalPoint.Y * samplesPerPixel * -1);
+					var startSampleDouble = soundTimeSeconds * sampleRate + startSampleOffset;
+					var quantizedStartSampleIndex = (long)(startSampleDouble / samplesPerPixel);
+					var quantizedEndSampleIndex = quantizedStartSampleIndex + Height;
+
+					// Try to reuse the buffer state from the last frame if it overlaps the are covered this frame.
+					uint yStart = 0;
+					uint yEnd = Height;
+					if (IsLastFrameDataValid())
 					{
-						//samplesPerPixel = (long) samplesPerPixel;
+						// The previous range is identical to this range.
+						// Just reuse last frame's buffer.
+						if (LastQuantizedIndexStart == quantizedStartSampleIndex)
+						{
+							yEnd = 0;
+						}
+
+						// The previous range overlaps the end of this frame's range.
+						else if (LastQuantizedIndexStart > quantizedStartSampleIndex
+						         && LastQuantizedIndexStart < quantizedEndSampleIndex)
+						{
+							var diff = LastQuantizedIndexStart - quantizedStartSampleIndex;
+
+							// This frame, compute from pixel 0 to the the start of last frame's data.
+							yEnd = (uint)diff;
+							// Copy the start of last frame's buffer to where it falls within this frame's range.
+							Array.Copy(BGR565Data, 0, BGR565Data, (int)(Width * diff), (Height - diff) * Width);
+							// Clear the top of the buffer so we can write to it.
+							Array.Clear(BGR565Data, 0, (int)(Width * diff));
+						}
+
+						// The previous range overlaps the start of this frame's range.
+						else if (LastQuantizedIndexEnd - 1 > quantizedStartSampleIndex
+						         && LastQuantizedIndexEnd < quantizedEndSampleIndex)
+						{
+							var diff = quantizedEndSampleIndex - LastQuantizedIndexEnd;
+
+							// This frame, compute from the end of last frame's data to the end of the texture.
+							yStart = (uint)(Height - diff);
+							// Copy the end of last frame's buffer to where it falls within this frame's range.
+							Array.Copy(BGR565Data, diff * Width, BGR565Data, 0, (Height - diff) * Width);
+							// Clear the bottom of the buffer so we can write to it.
+							Array.Clear(BGR565Data, (int)(yStart * Width), (int)(diff * Width));
+						}
+
+						// The previous range does not overlap the new range at all.
+						// Clear the entire buffer.
+						else
+						{
+							Array.Clear(BGR565Data, 0, (int)(Width * Height));
+						}
+					}
+					// No valid last frame data to leverage, clear the buffer and fill it entirely.
+					else
+					{
+						Array.Clear(BGR565Data, 0, (int)(Width * Height));
 					}
 
-					var startSampleOffset = (FocalPoint.Y * samplesPerPixel * -1);
-					var startSample = (long)(soundTimeSeconds * sampleRate + startSampleOffset);
-
-					// Snap the start sample so that the waveform doesn't jitter while scrolling
-					// by moving samples between pixel boundaries on different frames.
-					var pixel = (int)(startSample / samplesPerPixel);
-					startSample = (long)(pixel * samplesPerPixel);
+					// Update the last frame tracking variables for the next frame.
+					LastZoom = zoom;
+					LastPixelsPerSecond = pixelsPerSecond;
+					LastQuantizedIndexStart = quantizedStartSampleIndex;
+					LastQuantizedIndexEnd = quantizedEndSampleIndex;
 
 					var totalNumSamples = MipMap.GetMipLevel0NumSamples();
 					var channelMidX = (ushort)(((Width / numChannels) >> 1) - 1);
@@ -295,15 +408,17 @@ namespace StepManiaEditor
 					// Set up structures to track the previous values.
 					var previousXMin = new ushort[numChannels];
 					var previousXMax = new ushort[numChannels];
+
 					// If the first sample index falls within the range of the underlying sound,
 					// then copy the previous sample's data for the first previous values. This
 					// ensures that when rendering samples that are heavily zoomed in we start
 					// the first pixel at the correct location.
-					if (startSample > 0 && startSample < totalNumSamples + 1)
+					var previousSample = (long)((quantizedStartSampleIndex + yStart - 1) * samplesPerPixel + 0.5);
+					if (previousSample > 0 && previousSample < totalNumSamples)
 					{
 						for (var channel = 0; channel < numChannels; channel++)
 						{
-							var data = MipMap.MipLevels[0].Data[(startSample - 1) * numChannels + channel];
+							var data = MipMap.MipLevels[0].Data[previousSample * numChannels + channel];
 							previousXMin[channel] = data.MinX;
 							previousXMax[channel] = data.MaxX;
 						}
@@ -320,15 +435,17 @@ namespace StepManiaEditor
 					}
 
 					// Loop over every y pixel and update the pixels in BGR565Data for that row.
-					var sampleIndex = startSample;
-					for (uint y = 0; y < Height; y++)
+					for (var y = yStart; y < yEnd; y++)
 					{
 						var bSilentSample = false;
 						var bUsePreviousSample = false;
 						var numSamplesUsedThisLoop = 0L;
 
 						// Determine the last sample to be considered for this row.
-						var endSampleForPixel = (long)((y + 1) * samplesPerPixel) + startSample;
+						var quantizedIndex = quantizedStartSampleIndex + y;
+						var sampleIndex = (long)((quantizedIndex) * samplesPerPixel + 0.5);
+						var endSampleForPixel = (long)((quantizedIndex + 1) * samplesPerPixel + 0.5);
+
 						// Always use at least one sample for data to be rendered.
 						if (endSampleForPixel == sampleIndex)
 							endSampleForPixel++;
@@ -337,7 +454,7 @@ namespace StepManiaEditor
 						if (endSampleForPixel > totalNumSamples)
 						{
 							// If both the start and end sample are beyond the end, render silence.
-							if ((long)(y * samplesPerPixel) + startSample > totalNumSamples)
+							if ((long)(y * samplesPerPixel) + sampleIndex > totalNumSamples)
 							{
 								bSilentSample = true;
 							}
