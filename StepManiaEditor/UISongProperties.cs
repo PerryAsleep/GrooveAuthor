@@ -227,7 +227,8 @@ namespace StepManiaEditor
 						using Stream stream = File.OpenRead(file);
 						using var sourceImage = System.Drawing.Image.FromStream(stream, false, false);
 
-						if ((float)sourceImage.Width / sourceImage.Height - expectedAspectRatio < 0.001f)
+						var sourceAspectRatio = (float)sourceImage.Width / sourceImage.Height;
+						if (Math.Abs(sourceAspectRatio - expectedAspectRatio) < 0.001f)
 							filesWithExpectedAspectRatio.Add(file);
 
 						var size = sourceImage.Width * sourceImage.Height;
