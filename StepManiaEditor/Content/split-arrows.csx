@@ -89,19 +89,31 @@ public static void Main()
 		"itg-roll-solo-start-active",
 		"itg-roll-solo-start-inactive",
 	};
+	ProcessFiles(fileNames, 9, 0, 0, 128, 128, 0);
 
-	const int numRows = 9;
-	const int numCols = 9;
-	const int individualWidth = 128;
-	const int individualHeight = 128;
-	const string svgAsset = "arrows.svg";
+	var snapFileNames = new string[]
+	{
+		"snap-1-4",
+		"snap-1-8",
+		"snap-1-24",
+		"snap-1-32",
+		"snap-1-16",
+		"snap-1-12",
+		"snap-1-48",
+		"snap-1-64",
+	};
+	ProcessFiles(snapFileNames, 4, 648, 1032, 40, 40, 8);
+}
+
+static void ProcessFiles(string[] fileNames, int numCols, int startX, int startY, int w, int h, int padding)
+{
 	const string pngAsset = "arrows.png";
 
 	var i = 0;
 	foreach(var fileName in fileNames)
 	{
-		var x = individualWidth * (i % numCols);
-		var y = individualWidth * (i / numCols);
+		var x = startX + (w + padding) * (i % numCols);
+		var y = startY + (h + padding) * (i / numCols);
 
 		try
 		{
@@ -109,7 +121,7 @@ public static void Main()
 			startInfo.FileName = "magick.exe";
 			startInfo.CreateNoWindow = true;
 			startInfo.WindowStyle = ProcessWindowStyle.Hidden;
-			startInfo.Arguments = $"{pngAsset} -crop {individualWidth}x{individualHeight}+{x}+{y} +repage PNG32:{fileNames[i]}.png";
+			startInfo.Arguments = $"{pngAsset} -crop {w}x{h}+{x}+{y} +repage PNG32:{fileNames[i]}.png";
 
 			using (Process exeProcess = Process.Start(startInfo))
 			{
