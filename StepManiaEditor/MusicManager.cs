@@ -161,7 +161,7 @@ namespace StepManiaEditor
 			// Create a ChannelGroup for music and preview audio.
 			SoundManager.CreateChannelGroup("MusicChannelGroup", out MusicChannelGroup);
 
-			MusicData = new SoundData(new SoundMipMap(SoundManager));
+			MusicData = new SoundData(new SoundMipMap());
 			PreviewData = new SoundData(null);
 		}
 
@@ -190,9 +190,9 @@ namespace StepManiaEditor
 		/// Function to be called to get the music time so that it can be set appropriate immediately
 		/// after loading is complete.
 		/// </param>
-		public void LoadMusicAsync(string fullPathToMusicFile, Func<double> getMusicTimeFunction)
+		public void LoadMusicAsync(string fullPathToMusicFile, Func<double> getMusicTimeFunction, bool force = false)
 		{
-			LoadSoundAsync(MusicData, fullPathToMusicFile, getMusicTimeFunction);
+			LoadSoundAsync(MusicData, fullPathToMusicFile, getMusicTimeFunction, force);
 		}
 
 		/// <summary>
@@ -206,13 +206,13 @@ namespace StepManiaEditor
 		/// <param name="fullPathToMusicFile">
 		/// Full path to the audio file representing the preview.
 		/// </param>
-		public void LoadMusicPreviewAsync(string fullPathToMusicFile)
+		public void LoadMusicPreviewAsync(string fullPathToMusicFile, bool force = false)
 		{
 			// Record that we should be using a unique preview file instead of
 			// the music file if we were given a non-empty string.
 			ShouldBeUsingPreviewFile = !string.IsNullOrEmpty(fullPathToMusicFile);
 
-			LoadSoundAsync(PreviewData, fullPathToMusicFile);
+			LoadSoundAsync(PreviewData, fullPathToMusicFile, null, force);
 		}
 
 		/// <summary>
@@ -221,11 +221,11 @@ namespace StepManiaEditor
 		/// based on SetSoundPositionInternal, which takes into account MusicManager state.
 		/// We set this before loading the SoundMipMap, in the middle of the async load.
 		/// </summary>
-		private async void LoadSoundAsync(SoundData soundData, string fullPathToMusicFile, Func<double> getMusicTimeFunction = null)
+		private async void LoadSoundAsync(SoundData soundData, string fullPathToMusicFile, Func<double> getMusicTimeFunction = null, bool force = false)
 		{
 			// It is common for Charts to re-use the same sound files.
 			// Do not reload the sound file if we were already using it.
-			if (fullPathToMusicFile == soundData.File)
+			if (!force && fullPathToMusicFile == soundData.File)
 				return;
 
 			// Store the sound file we want to load.

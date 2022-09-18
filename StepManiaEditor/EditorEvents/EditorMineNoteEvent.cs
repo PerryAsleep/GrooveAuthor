@@ -28,7 +28,7 @@ namespace StepManiaEditor
 		{
 			var alpha = IsBeingEdited() ? ActiveEditEventAlpha : 1.0f;
 			textureAtlas.Draw(
-				arrowGraphicManager.GetMineTexture(GetRow(), LaneNote.Lane),
+				ArrowGraphicManager.GetMineTexture(GetRow(), LaneNote.Lane),
 				spriteBatch,
 				new Vector2((float)GetX(), (float)GetY()),
 				GetScale(),

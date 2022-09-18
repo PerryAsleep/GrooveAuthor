@@ -18,10 +18,24 @@ namespace StepManiaEditor
 
 		private static readonly string TextureIdMine = "mine";
 
+		protected static readonly Dictionary<int, string> SnapTextureByBeatSubdivision;
+
 		static ArrowGraphicManager()
 		{
 			MineColorABGR = ColorABGRMultiply(0xFFB7B7B7, ColorMultiplier); // light grey
 			MineColorBGR565 = ToBGR565(MineColorABGR);
+
+			SnapTextureByBeatSubdivision = new Dictionary<int, string>
+			{
+				{1, "snap-1-4"},
+				{2, "snap-1-8"},
+				{3, "snap-1-12"},
+				{4, "snap-1-16"},
+				{6, "snap-1-24"},
+				{8, "snap-1-32"},
+				{12, "snap-1-48"},
+				{16, "snap-1-64"},
+			};
 		}
 
 		/// <summary>
@@ -34,6 +48,8 @@ namespace StepManiaEditor
 
 			// Common textures.
 			allTextures.Add(TextureIdMine);
+			foreach (var kvp in SnapTextureByBeatSubdivision)
+				allTextures.Add(kvp.Value);
 
 			// ITG / SMX textures.
 			var danceTextures = ArrowGraphicManagerDance.GetAllTextures();
@@ -111,19 +127,28 @@ namespace StepManiaEditor
 		public abstract uint GetRollColorABGR(int integerPosition, int lane);
 		public abstract ushort GetRollColorBGR565(int integerPosition, int lane);
 
-		public uint GetMineColorABGR()
+		public static uint GetMineColorABGR()
 		{
 			return MineColorABGR;
 		}
 
-		public ushort GetMineColorBGR565()
+		public static ushort GetMineColorBGR565()
 		{
 			return MineColorBGR565;
 		}
 
-		public string GetMineTexture(int integerPosition, int lane)
+		public static string GetMineTexture(int integerPosition, int lane)
 		{
 			return TextureIdMine;
+		}
+
+		public static string GetSnapIndicatorTexture(int subdivision)
+		{
+			if (subdivision == 0)
+				return null;
+			if (!SnapTextureByBeatSubdivision.TryGetValue(subdivision, out string texture))
+				texture = SnapTextureByBeatSubdivision[16];
+			return texture;
 		}
 	}
 

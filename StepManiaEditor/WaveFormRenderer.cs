@@ -1,6 +1,7 @@
 ﻿using System;
-using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Color = Microsoft.Xna.Framework.Color;
+using Vector2 = Microsoft.Xna.Framework.Vector2;
 
 namespace StepManiaEditor
 {
@@ -112,6 +113,14 @@ namespace StepManiaEditor
 		/// Last frame's quantized sample end index.
 		/// </summary>
 		private long LastQuantizedIndexEnd = QuantizedSampleIndexInvalid;
+		/// <summary>
+		/// Whether or not the mip map data was loading last frame.
+		/// </summary>
+		private bool WasMipMapDataLoadingLastFrame = true;
+		/// <summary>
+		/// X scale to apply to the dense region.
+		/// </summary>
+		public float DenseScale = 6.0f;
 
 		/// <summary>
 		/// Constructor.
@@ -123,7 +132,7 @@ namespace StepManiaEditor
 		{
 			Width = width;
 			Height = height;
-			
+
 			// Set up the textures.
 			Textures = new Texture2D[NumTextures];
 			for (var i = 0; i < NumTextures; i++)
@@ -208,6 +217,15 @@ namespace StepManiaEditor
 
 			if (diff)
 				InvalidateLastFrameData();
+		}
+
+		public void SetDenseScale(float denseScale)
+		{
+			if (!DenseScale.FloatEquals(denseScale))
+			{
+				DenseScale = denseScale;
+				InvalidateLastFrameData();
+			}
 		}
 
 		/// <summary>
@@ -315,10 +333,15 @@ namespace StepManiaEditor
 					// If the parameters have changed since last time, invalidate the last frame data so we do not use it.
 					// Also invalidate the last frame data if the SoundMipMap is still loading since the underlying data will
 					// be changing each frame.
-					if (!zoom.DoubleEquals(LastZoom) || !pixelsPerSecond.DoubleEquals(LastPixelsPerSecond) || !MipMap.IsMipMapDataLoaded())
+					var isMipMapDataLoaded = MipMap.IsMipMapDataLoaded();
+					if (!zoom.DoubleEquals(LastZoom)
+					    || !pixelsPerSecond.DoubleEquals(LastPixelsPerSecond)
+					    || !isMipMapDataLoaded
+					    || WasMipMapDataLoadingLastFrame)
 					{
 						InvalidateLastFrameData();
 					}
+					WasMipMapDataLoadingLastFrame = !isMipMapDataLoaded;
 
 					// Determine the zoom to use in x. Zoom in x is separate from zoom in y.
 					var xZoom = ScaleXWhenZooming ? Math.Min(1.0, zoom) : 1.0;
@@ -338,7 +361,7 @@ namespace StepManiaEditor
 					var quantizedStartSampleIndex = (long)(startSampleDouble / samplesPerPixel);
 					var quantizedEndSampleIndex = quantizedStartSampleIndex + Height;
 
-					// Try to reuse the buffer state from the last frame if it overlaps the are covered this frame.
+					// Try to reuse the buffer state from the last frame if it overlaps the area covered this frame.
 					uint yStart = 0;
 					uint yEnd = Height;
 					if (IsLastFrameDataValid())
@@ -403,7 +426,7 @@ namespace StepManiaEditor
 					// Set up structures for determining the values to use for each row of pixels.
 					var minXPerChannel = new ushort[numChannels];
 					var maxXPerChannel = new ushort[numChannels];
-					var sumOfSquaresPerChannel = new float[numChannels];
+					var totalDistancePerChannel = new float[numChannels];
 
 					// Set up structures to track the previous values.
 					var previousXMin = new ushort[numChannels];
@@ -419,8 +442,8 @@ namespace StepManiaEditor
 						for (var channel = 0; channel < numChannels; channel++)
 						{
 							var data = MipMap.MipLevels[0].Data[previousSample * numChannels + channel];
-							previousXMin[channel] = data.MinX;
-							previousXMax[channel] = data.MaxX;
+							previousXMin[channel] = SoundMipMap.MipLevel.GetMin(data);
+							previousXMax[channel] = SoundMipMap.MipLevel.GetMax(data);
 						}
 					}
 					// If the first sample index to be rendered is before the first sample in the audio then
@@ -469,7 +492,7 @@ namespace StepManiaEditor
 						{
 							minXPerChannel[channel] = ushort.MaxValue;
 							maxXPerChannel[channel] = 0;
-							sumOfSquaresPerChannel[channel] = 0.0f;
+							totalDistancePerChannel[channel] = 0.0f;
 						}
 
 						// Handling for the first sample for this row being before the start of the sound.
@@ -526,10 +549,10 @@ namespace StepManiaEditor
 							while (sampleIndex < endSampleForPixel)
 							{
 								// Determine the largest power of two which evenly divides the current sample index.
-								var powerOfTwo = sampleIndex & ~(sampleIndex - 1);
+								var powerOfTwo = sampleIndex & -sampleIndex;
 								// For the first sample, use the same range for this pixel.
 								if (sampleIndex == 0)
-									powerOfTwo = endSampleForPixel & ~(endSampleForPixel - 1);
+									powerOfTwo = endSampleForPixel & -endSampleForPixel;
 								// Halve the power of two until we do not overshoot samples for this pixel.
 								while (sampleIndex + powerOfTwo > endSampleForPixel)
 									powerOfTwo >>= 1;
@@ -545,24 +568,24 @@ namespace StepManiaEditor
 								     channel < numChannels;
 								     channel++, relativeSampleIndex++)
 								{
-									// Use the precomputed sample data at the appropriate mip level.
-									ref var data = ref mipLevelData.Data[relativeSampleIndex];
+									var data = mipLevelData.Data[relativeSampleIndex];
+									var min = SoundMipMap.MipLevel.GetMin(data);
+									var max = SoundMipMap.MipLevel.GetMax(data);
+									var d = SoundMipMap.MipLevel.GetDistanceOverSamples(data);
 
-									// Update tracking variables for min, max, and rms.
-									if (data.MinX < minXPerChannel[channel])
-										minXPerChannel[channel] = data.MinX;
-									if (data.MaxX > maxXPerChannel[channel])
-										maxXPerChannel[channel] = data.MaxX;
-									sumOfSquaresPerChannel[channel] += data.SumOfSquares;
+									if (min < minXPerChannel[channel])
+										minXPerChannel[channel] = min;
+									if (max > maxXPerChannel[channel])
+										maxXPerChannel[channel] = max;
+									totalDistancePerChannel[channel] += ((float)d * powerOfTwo);
 								}
 
 								sampleIndex += powerOfTwo;
 							}
 						}
 
-						// Now that the min, max, and sum of squares are known for the sample
-						// range for this row, convert those value into indices into pixel data so we can
-						// update the data.
+						// Now that the values are known for the sample range for this row, convert
+						// those value into indices into pixel data so we can update the data.
 						for (var channel = 0; channel < numChannels; channel++)
 						{
 							// Somewhat kludgy, but because we start rendering the waveform before all the
@@ -610,11 +633,11 @@ namespace StepManiaEditor
 							// Don't draw any dense values if we are only processing one sample.
 							if (numSamplesUsedThisLoop > 1)
 							{
-								// Compute root mean square.
-								var rms = Math.Sqrt(sumOfSquaresPerChannel[channel] * (1.0f / numSamplesUsedThisLoop));
-								if (rms > 1.0)
-									rms = 1.0f;
-								var densePercentage = rms;
+								var factor = ((totalDistancePerChannel[channel] / numSamplesUsedThisLoop)
+								              / totalWidthPerChannel) * DenseScale;
+								if (factor > 1.0f)
+									factor = 1.0f;
+								var densePercentage = factor;
 								denseRange = range * densePercentage;
 								denseMinX = (ushort)(minX + (ushort)((range - denseRange) * 0.5f));
 								denseMaxX = (ushort)(denseMinX + denseRange);

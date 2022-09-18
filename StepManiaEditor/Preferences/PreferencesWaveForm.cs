@@ -17,6 +17,7 @@ namespace StepManiaEditor
 		public static readonly Vector3 DefaultWaveFormSparseColor = new Vector3(0.0f, 0.350f, 0.164f);
 		public const float DefaultWaveFormMaxXPercentagePerChannel = 0.9f;
 		public const int DefaultWaveFormLoadingMaxParallelism = 8;
+		public const float DefaultDenseScale = 6.0f;
 
 		// Preferences.
 		[JsonInclude] public bool ShowWaveFormPreferencesWindow = false;
@@ -28,6 +29,7 @@ namespace StepManiaEditor
 		[JsonInclude] public Vector3 WaveFormSparseColor = DefaultWaveFormSparseColor;
 		[JsonInclude] public float WaveFormMaxXPercentagePerChannel = DefaultWaveFormMaxXPercentagePerChannel;
 		[JsonInclude] public int WaveFormLoadingMaxParallelism = DefaultWaveFormLoadingMaxParallelism;
+		[JsonInclude] public float DenseScale = DefaultDenseScale;
 
 		public bool IsUsingDefaults()
 		{
@@ -38,7 +40,8 @@ namespace StepManiaEditor
 			       && WaveFormDenseColor.Equals(DefaultWaveFormDenseColor)
 			       && WaveFormSparseColor.Equals(DefaultWaveFormSparseColor)
 			       && WaveFormMaxXPercentagePerChannel.FloatEquals(DefaultWaveFormMaxXPercentagePerChannel)
-			       && WaveFormLoadingMaxParallelism == DefaultWaveFormLoadingMaxParallelism;
+			       && WaveFormLoadingMaxParallelism == DefaultWaveFormLoadingMaxParallelism
+			       && DenseScale.FloatEquals(DefaultDenseScale);
 		}
 
 		public void RestoreDefaults()
@@ -63,6 +66,7 @@ namespace StepManiaEditor
 		private readonly Vector3 PreviousWaveFormSparseColor;
 		private readonly float PreviousWaveFormMaxXPercentagePerChannel;
 		private readonly int PreviousWaveFormLoadingMaxParallelism;
+		private readonly float PreviousDenseScale;
 
 		public ActionRestoreWaveFormPreferenceDefaults()
 		{
@@ -75,6 +79,7 @@ namespace StepManiaEditor
 			PreviousWaveFormSparseColor = p.WaveFormSparseColor;
 			PreviousWaveFormMaxXPercentagePerChannel = p.WaveFormMaxXPercentagePerChannel;
 			PreviousWaveFormLoadingMaxParallelism = p.WaveFormLoadingMaxParallelism;
+			PreviousDenseScale = p.DenseScale;
 		}
 
 		public override string ToString()
@@ -93,6 +98,7 @@ namespace StepManiaEditor
 			p.WaveFormSparseColor = PreferencesWaveForm.DefaultWaveFormSparseColor;
 			p.WaveFormMaxXPercentagePerChannel = PreferencesWaveForm.DefaultWaveFormMaxXPercentagePerChannel;
 			p.WaveFormLoadingMaxParallelism = PreferencesWaveForm.DefaultWaveFormLoadingMaxParallelism;
+			p.DenseScale = PreferencesWaveForm.DefaultDenseScale;
 		}
 
 		public override void Undo()
@@ -106,6 +112,7 @@ namespace StepManiaEditor
 			p.WaveFormSparseColor = PreviousWaveFormSparseColor;
 			p.WaveFormMaxXPercentagePerChannel = PreviousWaveFormMaxXPercentagePerChannel;
 			p.WaveFormLoadingMaxParallelism = PreviousWaveFormLoadingMaxParallelism;
+			p.DenseScale = PreviousDenseScale;
 		}
 	}
 }

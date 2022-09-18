@@ -56,8 +56,12 @@ namespace StepManiaEditor
 				ImGuiLayoutUtils.DrawRowColorEdit3(true, "Dense Color", p,
 					nameof(PreferencesWaveForm.WaveFormDenseColor), ImGuiColorEditFlags.NoAlpha,
 					"Color for the dense area of the waveform." +
-					"\nFor each y pixel in the waveform, the dense area represents the root mean square" +
-					"\nof all samples at that pixel.");
+					"\nFor each y pixel in the waveform, the dense area represents the total magnitude of" +
+					"\nof the wave's travel during the samples at that pixel.");
+
+				ImGuiLayoutUtils.DrawRowSliderFloat(true, "Dense Region Scale", p,
+					nameof(PreferencesWaveForm.DenseScale),
+					0.0f, 10.0f, "Scale of the dense region of the waveform.");
 
 				ImGuiLayoutUtils.DrawRowEnum<SparseColorOption>(true, "Sparse Color", p, nameof(PreferencesWaveForm.WaveFormSparseColorOption),
 					"How to color the sparse area of the waveform." +

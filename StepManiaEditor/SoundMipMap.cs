@@ -18,41 +18,33 @@ namespace StepManiaEditor
 	{
 		/// <summary>
 		/// Data stored at one mip level.
-		/// An array of SampleDataPerChannel where each SampleDataPerChannel entry represents data
-		/// for a range of underlying audio samples.
+		/// An array of 32 bit uints where each uint represents data for a range of underlying audio samples.
+		/// Each uint holds three values which can be get and set using the public static methods of this class:
+		///  - A minimum value representing the lowest value of the underlying samples.
+		///  - A maximum value representing the highest value of the underlying samples.
+		///  - A distance value representing the sum of the deltas between each underlying sample from its
+		///    previous sample divided by the number of samples. This is stored as a ratio rather than a
+		///    sum in order to require less memory.
+		/// All values are in the range of [0-R) where R is the total x pixel range.
 		/// At each mip level, the number of samples represented by each SampleDataPerChannel entry
-		/// is 2 to the power of the mip level. For example at mip level 0 each SampleDataPerChannel
+		/// is 2 to the power of the mip level. For example at mip level 0 each uint
 		/// entry corresponds to 1 sample. At mip level 1 it is 2 samples, at 2 it is 4, etc.
 		/// </summary>
 		public class MipLevel
 		{
 			/// <summary>
-			/// Data combined from one or more underlying samples of audio data.
+			/// 9 bits of storage for each of the two range values.
 			/// </summary>
-			public struct SampleDataPerChannel
-			{
-				/// <summary>
-				/// Minimum x value of samples. Range is from 0 to the provided range to
-				/// CreateMipMapAsync divided by the number of channels.
-				/// </summary>
-				public ushort MinX;
-				/// <summary>
-				/// Maximum x value of samples. Range is from 0 to the provided range to
-				/// CreateMipMapAsync divided by the number of channels.
-				/// </summary>
-				public ushort MaxX;
-				/// <summary>
-				/// Sum of the squares of the samples where each sample is represented as
-				/// a floating point value from -1.0f to 1.0f. Used to visualize root mean
-				/// square.
-				/// </summary>
-				public float SumOfSquares;
-			}
+			public const int MaximumRange = 0x1FF;
+			/// <summary>
+			/// 14 bits of storage for the distance/samples value.
+			/// </summary>
+			public const int MaximumDistanceRange = 0x3FFF;
 
 			/// <summary>
-			/// Array of SampleDataPerChannel. Channels are interleaved.
+			/// All data at this mip level.
 			/// </summary>
-			public readonly SampleDataPerChannel[] Data;
+			public readonly uint[] Data;
 
 			/// <summary>
 			/// Constructor. Will allocate data and set appropriate defaults to start filling.
@@ -62,18 +54,43 @@ namespace StepManiaEditor
 			public MipLevel(uint numSamples, uint numChannels)
 			{
 				var len = numSamples * numChannels;
-				Data = new SampleDataPerChannel[len];
+				Data = new uint[len];
+
+				// Set the min to the maximum value that can be stored in 9 bits: 0x1FF.
+				// Set the max to the minimum value: 0x0.
+				// Set the distance to the minimum value: 0x0.
 				for (var i = 0; i < len; i++)
-				{
-					Data[i].MinX = ushort.MaxValue;
-				}
+					Data[i] = 0x1FF;
+			}
+
+			public static ushort GetMin(uint sampleData)
+			{
+				return (ushort)(sampleData & 0x1FF);
+			}
+			public static void SetMin(ref uint sampleData, ushort min)
+			{
+				sampleData = (sampleData & 0xFFFFFE00) | min;
+			}
+
+			public static ushort GetMax(uint sampleData)
+			{
+				return (ushort)((sampleData & 0x3FE00) >> 9);
+			}
+			public static void SetMax(ref uint sampleData, ushort max)
+			{
+				sampleData = (sampleData & 0xFFFC01FF) | ((uint)max << 9);
+			}
+
+			public static ushort GetDistanceOverSamples(uint sampleData)
+			{
+				return (ushort)((sampleData & 0xFFFC0000) >> 18);
+			}
+			public static void SetDistanceOverSamples(ref uint sampleData, ushort d)
+			{
+				sampleData = (sampleData & 0x3FFFF) | ((uint)d << 18);
 			}
 		}
 
-		/// <summary>
-		/// SoundManager.
-		/// </summary>
-		private readonly SoundManager SoundManager;
 		/// <summary>
 		/// MipLevel array containing all data.
 		/// </summary>
@@ -113,15 +130,6 @@ namespace StepManiaEditor
 		/// a new song. As this data can be multiple GBs, we want to avoid that.
 		/// </summary>
 		private readonly object MipLevelsLock = new object();
-
-		/// <summary>
-		/// Constructor.
-		/// </summary>
-		/// <param name="soundManager">SoundManager.</param>
-		public SoundMipMap(SoundManager soundManager)
-		{
-			SoundManager = soundManager;
-		}
 
 		/// <summary>
 		/// Public method for externally locking MipLevels.
@@ -303,6 +311,31 @@ namespace StepManiaEditor
 				var totalNumSamples = length / bytesPerSample;
 				var bytesPerChannelPerSample = (uint)(bits >> 3);
 
+				var highestValuePerChannel = xRangePerChannel - 1;
+				if (highestValuePerChannel > MipLevel.MaximumRange)
+				{
+					Logger.Warn($"Provided range {xRange} ({xRangePerChannel} per channel) is too high. Maximum supported pixels per channel is {MipLevel.MaximumRange + 1}.");
+					return false;
+				}
+
+				// Determine how many mip levels encompass sample ranges that are small enough that they are guaranteed
+				// to not overflow 14 bits of storage. We can fill these in the first pass.
+				// For the values which could be too large we will fill them by summing the two values from the
+				// previous mip level in a second pass.
+				var numFirstPassMipLevels = 0;
+				var d = MipLevel.MaximumDistanceRange / xRangePerChannel;
+				while (d > 0)
+				{
+					numFirstPassMipLevels++;
+					d >>= 1;
+				}
+				// The values being stored are distance deltas. In practice these deltas are very small compared to the
+				// actual range the samples can cover. For example, music won't have samples that alternate from 0.0 one sample
+				// to 1.0 the next, and back. Because we can reasonably expect these deltas to be small we can increase
+				// the number of levels we fill on the first pass. This saves some time filling and reduces compounding rounding
+				// errors.
+				numFirstPassMipLevels += 1;
+
 				// Determine the number of mip levels needed.
 				var numMipLevels = 0;
 				var samplesPerIndex = 1;
@@ -367,46 +400,92 @@ namespace StepManiaEditor
 							highestMipLevelToFillPerTask,
 							xRangePerChannel,
 							format,
+							numFirstPassMipLevels,
 							token));
 				}
 				await Task.WhenAll(tasks);
 
 				token.ThrowIfCancellationRequested();
 
-				// Fill remaining mip levels that weren't filled by the above tasks.
-				for (var mipLevelIndex = highestMipLevelToFillPerTask + 1; mipLevelIndex < numMipLevels; mipLevelIndex++)
+				// Fill remaining data  that wasn't filled by the above tasks.
+				var startIndex = Math.Min(highestMipLevelToFillPerTask + 1, numFirstPassMipLevels);
+				for (var mipLevelIndex = startIndex; mipLevelIndex < numMipLevels; mipLevelIndex++)
 				{
 					var mipDataNumSamples = MipLevels[mipLevelIndex].Data.Length / numChannels;
 					var previousMipLevelIndex = mipLevelIndex - 1;
+					var needsToFillMinAndMax = startIndex >= highestMipLevelToFillPerTask + 1;
 
-					for (var mipSampleIndex = 0; mipSampleIndex < mipDataNumSamples; mipSampleIndex++)
+					// We need to fill the min and max values and the distance tracking values.
+					// This assumes that the number of mip levels needing distance tracking values filled is larger
+					// than the number of mip levels needing mip levels filled, but in practice that is always true
+					// as the sound data is large.
+					if (needsToFillMinAndMax)
 					{
-						for (var channel = 0; channel < NumChannels; channel++)
+						for (var mipSampleIndex = 0; mipSampleIndex < mipDataNumSamples; mipSampleIndex++)
 						{
-							var relativeSampleIndex = mipSampleIndex * numChannels + channel;
-							var previousRelativeSampleIndex = ((mipSampleIndex * numChannels) << 1) + channel;
-
-							// We want to combine values from the corresponding two samples from the previous, more dense
-							// mip level data. First, just take the first sample.
-							var previousMin = MipLevels[previousMipLevelIndex].Data[previousRelativeSampleIndex].MinX;
-							var previousMax = MipLevels[previousMipLevelIndex].Data[previousRelativeSampleIndex].MaxX;
-							var previousSum = MipLevels[previousMipLevelIndex].Data[previousRelativeSampleIndex].SumOfSquares;
-
-							// Then combine it with the second sample, if there is one.
-							var secondPreviousRelativeSampleIndex = previousRelativeSampleIndex + numChannels;
-							if (secondPreviousRelativeSampleIndex < MipLevels[previousMipLevelIndex].Data.Length)
+							for (var channel = 0; channel < NumChannels; channel++)
 							{
-								if (previousMin > MipLevels[previousMipLevelIndex].Data[secondPreviousRelativeSampleIndex].MinX)
-									previousMin = MipLevels[previousMipLevelIndex].Data[secondPreviousRelativeSampleIndex].MinX;
-								if (previousMax < MipLevels[previousMipLevelIndex].Data[secondPreviousRelativeSampleIndex].MaxX)
-									previousMax = MipLevels[previousMipLevelIndex].Data[secondPreviousRelativeSampleIndex].MaxX;
-								previousSum += MipLevels[previousMipLevelIndex].Data[secondPreviousRelativeSampleIndex].SumOfSquares;
-							}
+								var relativeSampleIndex = mipSampleIndex * numChannels + channel;
+								var previousRelativeSampleIndex = ((mipSampleIndex * numChannels) << 1) + channel;
 
-							// Update the data at this mip level index based on the combined samples.
-							MipLevels[mipLevelIndex].Data[relativeSampleIndex].MinX = previousMin;
-							MipLevels[mipLevelIndex].Data[relativeSampleIndex].MaxX = previousMax;
-							MipLevels[mipLevelIndex].Data[relativeSampleIndex].SumOfSquares = previousSum;
+								// We want to combine values from the corresponding two samples from the previous, more dense
+								// mip level data. First, just take the first sample.
+								var previousMin = MipLevel.GetMin(MipLevels[previousMipLevelIndex].Data[previousRelativeSampleIndex]);
+								var previousMax = MipLevel.GetMax(MipLevels[previousMipLevelIndex].Data[previousRelativeSampleIndex]);
+								var previousDistance = (float)MipLevel.GetDistanceOverSamples(MipLevels[previousMipLevelIndex].Data[previousRelativeSampleIndex]);
+
+								// Then combine it with the second sample, if there is one.
+								var secondPreviousRelativeSampleIndex = previousRelativeSampleIndex + numChannels;
+								if (secondPreviousRelativeSampleIndex < MipLevels[previousMipLevelIndex].Data.Length)
+								{
+									var s2 = MipLevels[previousMipLevelIndex].Data[secondPreviousRelativeSampleIndex];
+									var s2Min = MipLevel.GetMin(s2);
+									var s2Max = MipLevel.GetMin(s2);
+
+									if (previousMin > s2Min)
+										previousMin = s2Min;
+									if (previousMax < s2Max)
+										previousMax = s2Max;
+									previousDistance += MipLevel.GetDistanceOverSamples(s2);
+								}
+
+								// Update the data at this mip level index based on the combined samples.
+								uint v = 0;
+								MipLevel.SetMin(ref v, previousMin);
+								MipLevel.SetMax(ref v, previousMax);
+								MipLevel.SetDistanceOverSamples(ref v, (ushort)(previousDistance * 0.5f + 0.5f));
+								MipLevels[mipLevelIndex].Data[relativeSampleIndex] = v;
+							}
+						}
+					}
+
+					// We only need to fill the distance tracking values.
+					else
+					{
+						for (var mipSampleIndex = 0; mipSampleIndex < mipDataNumSamples; mipSampleIndex++)
+						{
+							for (var channel = 0; channel < NumChannels; channel++)
+							{
+								var relativeSampleIndex = mipSampleIndex * numChannels + channel;
+								var previousRelativeSampleIndex = ((mipSampleIndex * numChannels) << 1) + channel;
+
+								// We want to combine values from the corresponding two samples from the previous, more dense
+								// mip level data. First, just take the first sample.
+								var previousDistance = (float)MipLevel.GetDistanceOverSamples(MipLevels[previousMipLevelIndex].Data[previousRelativeSampleIndex]);
+
+								// Then combine it with the second sample, if there is one.
+								var secondPreviousRelativeSampleIndex = previousRelativeSampleIndex + numChannels;
+								if (secondPreviousRelativeSampleIndex < MipLevels[previousMipLevelIndex].Data.Length)
+								{
+									var s2 = MipLevels[previousMipLevelIndex].Data[secondPreviousRelativeSampleIndex];
+									previousDistance += MipLevel.GetDistanceOverSamples(s2);
+								}
+
+								// Update the data at this mip level index based on the combined samples.
+								var v = MipLevels[mipLevelIndex].Data[relativeSampleIndex];
+								MipLevel.SetDistanceOverSamples(ref v, (ushort)(previousDistance * 0.5f + 0.5f));
+								MipLevels[mipLevelIndex].Data[relativeSampleIndex] = v;
+							}
 						}
 					}
 
@@ -453,6 +532,7 @@ namespace StepManiaEditor
 			int numMipLevels,
 			int xRangePerChannel,
 			SOUND_FORMAT format,
+			int numMipLevelsToFillDistance,
 			CancellationToken token)
 		{
 			var ptr = (byte*)intPtr.ToPointer();
@@ -463,64 +543,119 @@ namespace StepManiaEditor
 			const float invPcm24Max = 1.0f / 8388607;
 			const float invPcm32Max = 1.0f / int.MaxValue;
 
+			ushort maxValuePerChannel = (ushort)(xRangePerChannel - 1);
+
 			// Loop over every sample for every channel.
 			var sampleIndex = startSample;
-			var value = 0.0f;
+
+			// Get a function for parsing samples.
+			// In practice this more performant than using the switch in the loop below.
+			Func<long, float> parseSample;
+			switch (format)
+			{
+				case SOUND_FORMAT.PCM8:
+				{
+					parseSample = i => ptr[i] * invPcm8Max;
+					break;
+				}
+				case SOUND_FORMAT.PCM16:
+				{
+					parseSample = i => ((short)ptr[i]
+					                    + (short)(ptr[i + 1] << 8)) * invPcm16Max;
+					break;
+				}
+				case SOUND_FORMAT.PCM24:
+				{
+					parseSample = i => (((int)(ptr[i] << 8)
+					                     + (int)(ptr[i + 1] << 16)
+					                     + (int)(ptr[i + 2] << 24)) >> 8) * invPcm24Max;
+					break;
+				}
+				case SOUND_FORMAT.PCM32:
+				{
+					parseSample = i => ((int)ptr[i]
+					                    + (int)(ptr[i + 1] << 8)
+					                    + (int)(ptr[i + 2] << 16)
+					                    + (int)(ptr[i + 3] << 24)) * invPcm32Max;
+					break;
+				}
+				case SOUND_FORMAT.PCMFLOAT:
+				{
+					parseSample = i => ((float*)ptr)[i >> 2];
+					break;
+				}
+				default:
+					return;
+			}
+
+			// Set the first previous tracking values.
+			var previousValues = new float[NumChannels];
+			if (sampleIndex == 0)
+			{
+				for (var channel = 0; channel < NumChannels; channel++)
+				{
+					previousValues[channel] = 0.5f;
+				}
+			}
+			else
+			{
+				for (var channel = 0; channel < NumChannels; channel++)
+				{
+					var byteIndex = (sampleIndex - 1) * bytesPerSample + channel * bytesPerChannelPerSample;
+					previousValues[channel] = parseSample(byteIndex);
+				}
+			}
+			
+			// Loop over every sample and fill.
 			while (sampleIndex < endSample)
 			{
 				for (var channel = 0; channel < NumChannels; channel++)
 				{
 					var byteIndex = sampleIndex * bytesPerSample + channel * bytesPerChannelPerSample;
-
-					switch (format)
-					{
-						case SOUND_FORMAT.PCM8:
-							{
-								value = ptr[byteIndex] * invPcm8Max;
-								break;
-							}
-						case SOUND_FORMAT.PCM16:
-							{
-								value = ((short)ptr[byteIndex]
-								         + (short)(ptr[byteIndex + 1] << 8)) * invPcm16Max;
-								break;
-							}
-						case SOUND_FORMAT.PCM24:
-							{
-								value = (((int)(ptr[byteIndex] << 8)
-								          + (int)(ptr[byteIndex + 1] << 16)
-								          + (int)(ptr[byteIndex + 2] << 24)) >> 8) * invPcm24Max;
-								break;
-							}
-						case SOUND_FORMAT.PCM32:
-							{
-								value = ((int)ptr[byteIndex]
-								         + (int)(ptr[byteIndex + 1] << 8)
-								         + (int)(ptr[byteIndex + 2] << 16)
-								         + (int)(ptr[byteIndex + 3] << 24)) * invPcm32Max;
-								break;
-							}
-						case SOUND_FORMAT.PCMFLOAT:
-							{
-								value = ((float*)ptr)[byteIndex >> 2];
-								break;
-							}
-					}
+					var value = parseSample(byteIndex);
 
 					// Determine values for mip data.
-					var xValueForChannelSample = (ushort)((xRangePerChannel - 1) * (value + 1.0f) * 0.5f);
-					var square = value * value;
+					var xValueForChannelSample = (ushort)(maxValuePerChannel * (value + 1.0f) * 0.5f);
+					if (xValueForChannelSample > maxValuePerChannel)
+						xValueForChannelSample = maxValuePerChannel;
+					var distance = Math.Abs(value - previousValues[channel]);
+					var distanceScaled = (ushort)(distance * maxValuePerChannel);
 
 					// Update mip data.
-					for (var mipLevelIndex = 0; mipLevelIndex < numMipLevels; mipLevelIndex++)
+					var numSamplesPerMipLevel = 1;
+					for (var mipLevelIndex = 0; mipLevelIndex < numMipLevels; mipLevelIndex++, numSamplesPerMipLevel <<= 1)
 					{
+						// Always fill the min and max values.
 						var relativeSampleIndex = (sampleIndex >> mipLevelIndex) * NumChannels + channel;
-						if (MipLevels[mipLevelIndex].Data[relativeSampleIndex].MinX > xValueForChannelSample)
-							MipLevels[mipLevelIndex].Data[relativeSampleIndex].MinX = xValueForChannelSample;
-						if (MipLevels[mipLevelIndex].Data[relativeSampleIndex].MaxX < xValueForChannelSample)
-							MipLevels[mipLevelIndex].Data[relativeSampleIndex].MaxX = xValueForChannelSample;
-						MipLevels[mipLevelIndex].Data[relativeSampleIndex].SumOfSquares += square;
+						ref var v = ref MipLevels[mipLevelIndex].Data[relativeSampleIndex];
+						if (MipLevel.GetMin(v) > xValueForChannelSample)
+							MipLevel.SetMin(ref v, xValueForChannelSample);
+						if (MipLevel.GetMax(v) < xValueForChannelSample)
+							MipLevel.SetMax(ref v, xValueForChannelSample);
+
+						// At mip level 0 we don't need to do any modulo operations for performing the final divide.
+						if (mipLevelIndex == 0)
+						{
+							var d = (ushort)(MipLevel.GetDistanceOverSamples(v) + distanceScaled);
+							MipLevel.SetDistanceOverSamples(ref v, d);
+						}
+
+						// At other mip levels, accumulate a sum and then divide it once we have summed all samples.
+						else if (mipLevelIndex < numMipLevelsToFillDistance)
+						{
+							// Add the distance.
+							var d = (ushort)(MipLevel.GetDistanceOverSamples(v) + distanceScaled);
+							MipLevel.SetDistanceOverSamples(ref v, d);
+
+							// If this is the last sample index for the chunk, divide and finalize.
+							if (sampleIndex % numSamplesPerMipLevel == numSamplesPerMipLevel - 1)
+							{
+								MipLevel.SetDistanceOverSamples(ref v, (ushort)(((float)d / numSamplesPerMipLevel) + 0.5f));
+							}
+						}
 					}
+
+					previousValues[channel] = value;
 				}
 
 				sampleIndex++;

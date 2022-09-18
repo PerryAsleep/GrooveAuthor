@@ -88,6 +88,7 @@ namespace StepManiaEditor
 		public class SnapData
 		{
 			public int Rows;
+			public string Texture;
 		}
 		private SnapData[] SnapLevels;
 		private int SnapIndex = 0;
@@ -174,6 +175,7 @@ namespace StepManiaEditor
 
 		// Debug
 		private bool ParallelizeUpdateLoop = false;
+		private bool RenderChart = true;
 		private double UpdateTimeTotal;
 		private double UpdateTimeWaveForm;
 		private double UpdateTimeMiniMap;
@@ -260,13 +262,16 @@ namespace StepManiaEditor
 			// Set up snap levels for all valid denominators.
 			SnapLevels = new SnapData[SMCommon.ValidDenominators.Length + 1];
 			SnapLevels[0] = new SnapData { Rows = 0 };
-			for (int denominatorIndex = 0; denominatorIndex < SMCommon.ValidDenominators.Length; denominatorIndex++)
+			for (var denominatorIndex = 0; denominatorIndex < SMCommon.ValidDenominators.Length; denominatorIndex++)
 			{
 				SnapLevels[denominatorIndex + 1] = new SnapData
 				{
-					Rows = SMCommon.MaxValidDenominator / SMCommon.ValidDenominators[denominatorIndex]
+					Rows = SMCommon.MaxValidDenominator / SMCommon.ValidDenominators[denominatorIndex],
+					Texture = ArrowGraphicManager.GetSnapIndicatorTexture(SMCommon.ValidDenominators[denominatorIndex])
 				};
 			}
+
+			UpdateWindowTitle();
 		}
 
 		protected override void Initialize()
@@ -337,6 +342,7 @@ namespace StepManiaEditor
 			foreach (var textureId in ArrowGraphicManager.GetAllTextureIds())
 				TextureAtlas.AddTexture(textureId, Content.Load<Texture2D>(textureId), true);
 
+			// Generate and add measure marker texture.
 			var measureMarkerTexture = new Texture2D(GraphicsDevice, DefaultArrowWidth, 1);
 			var textureData = new uint[DefaultArrowWidth];
 			for (var i = 0; i < DefaultArrowWidth; i++)
@@ -344,6 +350,7 @@ namespace StepManiaEditor
 			measureMarkerTexture.SetData(textureData);
 			TextureAtlas.AddTexture(TextureIdMeasureMarker, measureMarkerTexture, true);
 
+			// Generate and add beat marker texture.
 			var beatMarkerTexture = new Texture2D(GraphicsDevice, DefaultArrowWidth, 1);
 			for (var i = 0; i < DefaultArrowWidth; i++)
 				textureData[i] = 0xFF7F7F7F;
@@ -561,6 +568,18 @@ namespace StepManiaEditor
 			{
 				ProcessInputForMiniMap(mouseState);
 
+
+				if (KeyCommandManager.IsKeyDown(Keys.OemPlus))
+				{
+					Zoom *= 1.0001;
+					DesiredZoom = Zoom;
+				}
+				if (KeyCommandManager.IsKeyDown(Keys.OemMinus))
+				{
+					Zoom /= 1.0001;
+					DesiredZoom = Zoom;
+				}
+
 				//mouseState.
 
 				// TODO: wtf are these values
@@ -735,9 +754,13 @@ namespace StepManiaEditor
 
 			DrawWaveForm();
 			DrawMiniMap();
-			DrawReceptors();
-			DrawChartEvents();
-			DrawReceptorForegroundEffects();
+			if (RenderChart)
+			{
+				DrawReceptors();
+				DrawSnapIndicators();
+				DrawChartEvents();
+				DrawReceptorForegroundEffects();
+			}
 			SpriteBatch.End();
 
 			DrawGui(gameTime);
@@ -760,6 +783,35 @@ namespace StepManiaEditor
 
 			foreach(var receptor in Receptors)
 				receptor.Draw(FocalPoint, Zoom, TextureAtlas, SpriteBatch);
+		}
+
+		private void DrawSnapIndicators()
+		{
+			if (ActiveChart == null || ArrowGraphicManager == null || Receptors == null)
+				return;
+			var snapTextureId = SnapLevels[SnapIndex].Texture;
+			if (string.IsNullOrEmpty(snapTextureId))
+				return;
+			var (receptorTextureId, _) = ArrowGraphicManager.GetReceptorTexture(0);
+			var (receptorTextureWidth, _) = TextureAtlas.GetDimensions(receptorTextureId);
+			var zoom = Zoom;
+			if (zoom > 1.0)
+				zoom = 1.0;
+			var receptorLeftEdge = FocalPoint.X - (ActiveChart.NumInputs * 0.5 * receptorTextureWidth * zoom);
+
+			var (snapTextureWidth, snapTextureHeight) = TextureAtlas.GetDimensions(snapTextureId);
+			var leftX = receptorLeftEdge - snapTextureWidth * 0.5 * zoom;
+			var y = FocalPoint.Y;
+
+			TextureAtlas.Draw(
+				snapTextureId,
+				SpriteBatch,
+				new Vector2((float)leftX, y),
+				new Vector2((float)(snapTextureWidth * 0.5), (float)(snapTextureHeight * 0.5)),
+				Color.White,
+				(float)zoom,
+				0.0f,
+				SpriteEffects.None);
 		}
 
 		private void DrawReceptorForegroundEffects()
@@ -796,6 +848,7 @@ namespace StepManiaEditor
 			// Update the WaveFormRenderer.
 			WaveFormRenderer.SetFocalPoint(FocalPoint);
 			WaveFormRenderer.SetXPerChannelScale(pWave.WaveFormMaxXPercentagePerChannel);
+			WaveFormRenderer.SetDenseScale(pWave.DenseScale);
 			WaveFormRenderer.SetColors(
 				pWave.WaveFormDenseColor.X, pWave.WaveFormDenseColor.Y, pWave.WaveFormDenseColor.Z,
 				sparseColor.X, sparseColor.Y, sparseColor.Z);
@@ -1488,6 +1541,8 @@ namespace StepManiaEditor
 			currentRow = currentRateEvent.LastTimeSignature.IntegerPosition +
 			             beatRelativeToTimeSignatureStart * rowsPerBeat;
 
+			var markerWidth = ActiveChart.NumInputs * DefaultArrowWidth * sizeZoom;
+
 			while (true)
 			{
 				// When changing time signatures we don't want to render the same row twice.
@@ -1555,7 +1610,7 @@ namespace StepManiaEditor
 					VisibleMarkers.Add(new EditorMarkerEvent(
 						x,
 						y,
-						ActiveChart.NumInputs * DefaultArrowWidth * sizeZoom,
+						markerWidth,
 						1,
 						sizeZoom,
 						measureMarker,
@@ -2250,6 +2305,7 @@ namespace StepManiaEditor
 			ImGui.Begin("Debug");
 			{
 				ImGui.Checkbox("Parallelize Update Loop", ref ParallelizeUpdateLoop);
+				ImGui.Checkbox("Render Chart", ref RenderChart);
 				ImGui.Text($"Update Time:       {UpdateTimeTotal:F6} seconds");
 				ImGui.Text($"  Waveform:        {UpdateTimeWaveForm:F6} seconds");
 				ImGui.Text($"  Mini Map:        {UpdateTimeMiniMap:F6} seconds");
@@ -2259,6 +2315,12 @@ namespace StepManiaEditor
 				ImGui.Text($"Total FPS:         {(1.0f / (UpdateTimeTotal + DrawTimeTotal)):F6}");
 				ImGui.Text($"Actual Time:       {1.0f / ImGui.GetIO().Framerate:F6} seconds");
 				ImGui.Text($"Actual FPS:        {ImGui.GetIO().Framerate:F6}");
+
+				if (ImGui.Button("Reload Song"))
+				{
+					StopPreview();
+					MusicManager.LoadMusicAsync(GetFullPathToMusicFile(), GetSongTime, true);
+				}
 
 				if (ImGui.Button("Save Time and Zoom"))
 				{
@@ -2499,6 +2561,7 @@ namespace StepManiaEditor
 				}
 				Receptors = receptors;
 				LaneEditStates = laneEditStates;
+				UpdateWindowTitle();
 				SetZoom(1.0, true);
 
 				// Start loading music for this Chart.
@@ -2638,7 +2701,26 @@ namespace StepManiaEditor
 			ArrowGraphicManager = null;
 			Receptors = null;
 			NextAutoPlayNotes = null;
+			UpdateWindowTitle();
 			ActionQueue.Instance.Clear();
+		}
+
+		private void UpdateWindowTitle()
+		{
+			var hasUnsavedChanges = false; // TODO
+			var appName = System.Reflection.Assembly.GetExecutingAssembly().GetName().Name;
+			if (ActiveChart != null)
+			{
+				if (!string.IsNullOrEmpty(ActiveChart.EditorSong.FileName))
+				{
+					Window.Title = ActiveChart.EditorSong.FileName + " - " + appName;
+					return;
+				}
+
+				Window.Title = "New File - " + appName;
+				return;
+			}
+			Window.Title = appName;
 		}
 
 		#endregion Loading
