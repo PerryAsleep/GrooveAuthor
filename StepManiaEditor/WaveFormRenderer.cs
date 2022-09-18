@@ -120,7 +120,7 @@ namespace StepManiaEditor
 		/// <summary>
 		/// X scale to apply to the dense region.
 		/// </summary>
-		public float DenseScale = 6.0f;
+		private float DenseScale = 6.0f;
 
 		/// <summary>
 		/// Constructor.
