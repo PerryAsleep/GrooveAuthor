@@ -404,18 +404,6 @@ namespace StepManiaEditor
 		/// <param name="disabled">Whether or not the element should be disabled.</param>
 		public static void Text(string text, float width, bool disabled = false)
 		{
-			// Record original spacing and padding so we can edit it and restore it.
-			var originalItemSpacingX = ImGui.GetStyle().ItemSpacing.X;
-			var originalItemSpacingY = ImGui.GetStyle().ItemSpacing.Y;
-			var originalFramePaddingX = ImGui.GetStyle().FramePadding.X;
-			var originalFramePaddingY = ImGui.GetStyle().FramePadding.Y;
-
-			// Set the padding and spacing so we can draw a table with precise dimensions.
-			ImGui.GetStyle().ItemSpacing.X = 0;
-			ImGui.GetStyle().ItemSpacing.Y = 0;
-			ImGui.GetStyle().FramePadding.X = 0;
-			ImGui.GetStyle().FramePadding.Y = 0;
-
 			// Wrap the text in Table in order to control the size precisely.
 			if (ImGui.BeginTable(text, 1, ImGuiTableFlags.None, new System.Numerics.Vector2(width, 0), width))
 			{
@@ -428,12 +416,6 @@ namespace StepManiaEditor
 					ImGui.Text(text);
 				ImGui.EndTable();
 			}
-
-			// Restore the padding and spacing values.
-			ImGui.GetStyle().FramePadding.X = originalFramePaddingX;
-			ImGui.GetStyle().FramePadding.Y = originalFramePaddingY;
-			ImGui.GetStyle().ItemSpacing.X = originalItemSpacingX;
-			ImGui.GetStyle().ItemSpacing.Y = originalItemSpacingY;
 		}
 
 		public static bool SliderUInt(string text, ref uint value, uint min, uint max, string format, ImGuiSliderFlags flags)
