@@ -49,17 +49,22 @@ namespace StepManiaEditor
 
 				ImGui.Separator();
 
+				var format = LogWindowDateStrings[Preferences.Instance.LogWindowDateDisplay];
+
 				var flags = Preferences.Instance.LogWindowLineWrap ? ImGuiWindowFlags.None : ImGuiWindowFlags.HorizontalScrollbar;
 				ImGui.BeginChild("LogMessages", new System.Numerics.Vector2(), false, flags);
 				{
-					foreach (var message in logBuffer)
+					var node = logBuffer.First;
+					while (node != null)
 					{
+						var message = node.Value;
+
 						if (message.Level < Preferences.Instance.LogWindowLevel)
 							continue;
 
 						if (Preferences.Instance.LogWindowDateDisplay != 0)
 						{
-							ImGui.Text(message.Time.ToString(LogWindowDateStrings[Preferences.Instance.LogWindowDateDisplay]));
+							ImGui.Text(message.Time.ToString(format));
 							ImGui.SameLine();
 						}
 
@@ -68,6 +73,8 @@ namespace StepManiaEditor
 						ImGui.TextColored(LogWindowLevelColors[(int)message.Level], message.Message);
 						if (Preferences.Instance.LogWindowLineWrap)
 							ImGui.PopTextWrapPos();
+
+						node = node.Next;
 					}
 				}
 				ImGui.EndChild();
