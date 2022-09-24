@@ -814,6 +814,40 @@ namespace StepManiaEditor
 
 		#endregion Color Edit 3
 
+		#region Color Edit 4
+
+		public static void DrawRowColorEdit4(
+			bool undoable,
+			string title,
+			object o,
+			string fieldName,
+			ImGuiColorEditFlags flags,
+			string help = null)
+		{
+			DrawRowTitleAndAdvanceColumn(title);
+			DrawColorEdit4(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, flags, help);
+		}
+
+		private static void DrawColorEdit4(
+			bool undoable,
+			string title,
+			object o,
+			string fieldName,
+			float width,
+			ImGuiColorEditFlags flags,
+			string help = null)
+		{
+			(bool, Vector4) Func(Vector4 v)
+			{
+				var r = ImGui.ColorEdit4(GetElementTitle(title, fieldName), ref v, flags);
+				return (r, v);
+			}
+
+			DrawLiveEditValue<Vector4>(undoable, title, o, fieldName, width, Func, Vector4Compare, help);
+		}
+
+		#endregion Color Edit 4
+
 		#region Display Tempo
 
 		/// <summary>
@@ -1248,6 +1282,11 @@ namespace StepManiaEditor
 		}
 
 		private static bool Vector3Compare(Vector3 a, Vector3 b)
+		{
+			return a == b;
+		}
+
+		private static bool Vector4Compare(Vector4 a, Vector4 b)
 		{
 			return a == b;
 		}

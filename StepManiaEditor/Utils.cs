@@ -161,6 +161,14 @@ namespace StepManiaEditor
 				(byte)((ABGR & 0x000000FF) >> 8) / (float)byte.MaxValue);
 		}
 
+		public static uint ToABGR(float r, float g, float b, float a)
+		{
+			return (((uint)(byte)(a * byte.MaxValue)) << 24)
+				+ (((uint)(byte)(b * byte.MaxValue)) << 16)
+				+ (((uint)(byte)(g * byte.MaxValue)) << 8)
+				+ ((byte)(r * byte.MaxValue));
+		}
+
 		public static Vector2 GetDrawPos(
 			SpriteFont font,
 			string text,

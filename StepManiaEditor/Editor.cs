@@ -123,6 +123,9 @@ namespace StepManiaEditor
 
 		private TextureAtlas TextureAtlas;
 
+		private Effect FxaaEffect;
+		private RenderTarget2D WaveformRenderTarget;
+
 		private CancellationTokenSource LoadSongCancellationTokenSource;
 		private Task LoadSongTask;
 
@@ -217,6 +220,7 @@ namespace StepManiaEditor
 			MusicManager = new MusicManager(SoundManager);
 
 			Graphics = new GraphicsDeviceManager(this);
+			Graphics.GraphicsProfile = GraphicsProfile.HiDef;
 
 			KeyCommandManager = new KeyCommandManager();
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.Z }, OnUndo, true));
@@ -309,7 +313,14 @@ namespace StepManiaEditor
 			WaveFormRenderer = new WaveFormRenderer(GraphicsDevice, WaveFormTextureWidth, MaxScreenHeight);
 			WaveFormRenderer.SetXPerChannelScale(p.PreferencesWaveForm.WaveFormMaxXPercentagePerChannel);
 			WaveFormRenderer.SetSoundMipMap(MusicManager.GetMusicMipMap());
-			WaveFormRenderer.SetFocalPoint(FocalPoint);
+			WaveFormRenderer.SetFocalPointY((int)FocalPoint.Y);
+			WaveformRenderTarget = new RenderTarget2D(
+				GraphicsDevice,
+				WaveFormTextureWidth,
+				(int)MaxScreenHeight,
+				false,
+				GraphicsDevice.PresentationParameters.BackBufferFormat,
+				DepthFormat.Depth24);
 
 			MiniMap = new MiniMap(GraphicsDevice, new Rectangle(0, 0, 0, 0));
 			MiniMap.SetSelectMode(p.PreferencesMiniMap.MiniMapSelectMode);
@@ -367,6 +378,8 @@ namespace StepManiaEditor
 					Preferences.Instance.RecentFiles[0].LastChartType,
 					Preferences.Instance.RecentFiles[0].LastChartDifficultyType);
 			}
+
+			FxaaEffect = Content.Load<Effect>("fxaa");
 
 			base.LoadContent();
 		}
@@ -748,11 +761,12 @@ namespace StepManiaEditor
 
 			GraphicsDevice.Clear(Color.Black);
 
-			SpriteBatch.Begin(SpriteSortMode.Deferred, BlendState.NonPremultiplied);
+			DrawWaveForm();
 
 			ImGui.PushFont(ImGuiFont);
 
-			DrawWaveForm();
+			SpriteBatch.Begin(SpriteSortMode.Deferred, BlendState.NonPremultiplied);
+
 			DrawMiniMap();
 			if (RenderChart)
 			{
@@ -846,7 +860,7 @@ namespace StepManiaEditor
 			}
 
 			// Update the WaveFormRenderer.
-			WaveFormRenderer.SetFocalPoint(FocalPoint);
+			WaveFormRenderer.SetFocalPointY((int)FocalPoint.Y);
 			WaveFormRenderer.SetXPerChannelScale(pWave.WaveFormMaxXPercentagePerChannel);
 			WaveFormRenderer.SetDenseScale(pWave.DenseScale);
 			WaveFormRenderer.SetColors(
@@ -858,10 +872,41 @@ namespace StepManiaEditor
 
 		private void DrawWaveForm()
 		{
-			if (Preferences.Instance.PreferencesWaveForm.ShowWaveForm)
+			var p = Preferences.Instance.PreferencesWaveForm;
+			if (!p.ShowWaveForm)
+				return;
+
+			var x = (int)FocalPoint.X - (WaveFormTextureWidth >> 1);
+
+			// No antialiasing, just draw the waveform.
+			if (!p.AntiAlias)
 			{
-				WaveFormRenderer.Draw(SpriteBatch);
+				SpriteBatch.Begin();
+				WaveFormRenderer.Draw(SpriteBatch, x, 0);
+				SpriteBatch.End();
+				return;
 			}
+
+			// Anti-aliasing. Render the waveform to a render target to run FXAA on.
+			GraphicsDevice.SetRenderTarget(WaveformRenderTarget);
+			SpriteBatch.Begin();
+			WaveFormRenderer.Draw(SpriteBatch, 0, 0);
+			SpriteBatch.End();
+			GraphicsDevice.SetRenderTarget(null);
+
+			// Configure FXAA.
+			FxaaEffect.CurrentTechnique = FxaaEffect.Techniques["fxaa"];
+			FxaaEffect.Parameters["fxaaQualitySubpix"].SetValue(p.AntiAliasSubpix);
+			FxaaEffect.Parameters["fxaaQualityEdgeThreshold"].SetValue(p.AntiAliasEdgeThreshold);
+			FxaaEffect.Parameters["fxaaQualityEdgeThresholdMin"].SetValue(p.AntiAliasEdgeThresholdMin);
+			FxaaEffect.Parameters["inverseRenderTargetWidth"].SetValue(1.0f / WaveformRenderTarget.Width);
+			FxaaEffect.Parameters["inverseRenderTargetHeight"].SetValue(1.0f / WaveformRenderTarget.Height);
+			FxaaEffect.Parameters["renderTargetTexture"].SetValue(WaveformRenderTarget);
+
+			// Draw the render target with FXAA.
+			SpriteBatch.Begin(SpriteSortMode.Deferred, null, null, null, null, FxaaEffect);
+			SpriteBatch.Draw((Texture2D)WaveformRenderTarget, new Rectangle(x, 0, WaveformRenderTarget.Width, WaveformRenderTarget.Height), Color.White);
+			SpriteBatch.End();
 		}
 
 		/// <summary>

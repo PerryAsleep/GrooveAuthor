@@ -13,6 +13,12 @@
 
 #---------------------------------- Content ---------------------------------#
 
+#begin fxaa.fx
+/importer:EffectImporter
+/processor:EffectProcessor
+/processorParam:DebugMode=Auto
+/build:fxaa.fx
+
 #begin itg-center-1-12.png
 /importer:TextureImporter
 /processor:TextureProcessor
@@ -109,18 +115,6 @@
 /processorParam:TextureFormat=Color
 /build:itg-center-1-8.png
 
-#begin itg-center-receptor.png
-/importer:TextureImporter
-/processor:TextureProcessor
-/processorParam:ColorKeyColor=255,0,255,255
-/processorParam:ColorKeyEnabled=True
-/processorParam:GenerateMipmaps=False
-/processorParam:PremultiplyAlpha=True
-/processorParam:ResizeToPowerOfTwo=False
-/processorParam:MakeSquare=False
-/processorParam:TextureFormat=Color
-/build:itg-center-receptor.png
-
 #begin itg-center-receptor-glow.png
 /importer:TextureImporter
 /processor:TextureProcessor
@@ -144,6 +138,18 @@
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
 /build:itg-center-receptor-held.png
+
+#begin itg-center-receptor.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:itg-center-receptor.png
 
 #begin itg-down-1-12.png
 /importer:TextureImporter
@@ -241,18 +247,6 @@
 /processorParam:TextureFormat=Color
 /build:itg-down-1-8.png
 
-#begin itg-down-receptor.png
-/importer:TextureImporter
-/processor:TextureProcessor
-/processorParam:ColorKeyColor=255,0,255,255
-/processorParam:ColorKeyEnabled=True
-/processorParam:GenerateMipmaps=False
-/processorParam:PremultiplyAlpha=True
-/processorParam:ResizeToPowerOfTwo=False
-/processorParam:MakeSquare=False
-/processorParam:TextureFormat=Color
-/build:itg-down-receptor.png
-
 #begin itg-down-receptor-glow.png
 /importer:TextureImporter
 /processor:TextureProcessor
@@ -276,6 +270,18 @@
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
 /build:itg-down-receptor-held.png
+
+#begin itg-down-receptor.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:itg-down-receptor.png
 
 #begin itg-hold-body-active.png
 /importer:TextureImporter
@@ -709,18 +715,6 @@
 /processorParam:TextureFormat=Color
 /build:itg-solo-1-8.png
 
-#begin itg-solo-receptor.png
-/importer:TextureImporter
-/processor:TextureProcessor
-/processorParam:ColorKeyColor=255,0,255,255
-/processorParam:ColorKeyEnabled=True
-/processorParam:GenerateMipmaps=False
-/processorParam:PremultiplyAlpha=True
-/processorParam:ResizeToPowerOfTwo=False
-/processorParam:MakeSquare=False
-/processorParam:TextureFormat=Color
-/build:itg-solo-receptor.png
-
 #begin itg-solo-receptor-glow.png
 /importer:TextureImporter
 /processor:TextureProcessor
@@ -745,6 +739,18 @@
 /processorParam:TextureFormat=Color
 /build:itg-solo-receptor-held.png
 
+#begin itg-solo-receptor.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:itg-solo-receptor.png
+
 #begin mine.png
 /importer:TextureImporter
 /processor:TextureProcessor
@@ -763,30 +769,6 @@
 /processorParam:PremultiplyAlpha=True
 /processorParam:TextureFormat=Compressed
 /build:mplus1code-medium.spritefont
-
-#begin piu-center.png
-/importer:TextureImporter
-/processor:TextureProcessor
-/processorParam:ColorKeyColor=255,0,255,255
-/processorParam:ColorKeyEnabled=True
-/processorParam:GenerateMipmaps=False
-/processorParam:PremultiplyAlpha=True
-/processorParam:ResizeToPowerOfTwo=False
-/processorParam:MakeSquare=False
-/processorParam:TextureFormat=Color
-/build:piu-center.png
-
-#begin piu-center-receptor.png
-/importer:TextureImporter
-/processor:TextureProcessor
-/processorParam:ColorKeyColor=255,0,255,255
-/processorParam:ColorKeyEnabled=True
-/processorParam:GenerateMipmaps=False
-/processorParam:PremultiplyAlpha=True
-/processorParam:ResizeToPowerOfTwo=False
-/processorParam:MakeSquare=False
-/processorParam:TextureFormat=Color
-/build:piu-center-receptor.png
 
 #begin piu-center-receptor-glow.png
 /importer:TextureImporter
@@ -812,6 +794,30 @@
 /processorParam:TextureFormat=Color
 /build:piu-center-receptor-held.png
 
+#begin piu-center-receptor.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:piu-center-receptor.png
+
+#begin piu-center.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:piu-center.png
+
 #begin piu-diagonal-blue.png
 /importer:TextureImporter
 /processor:TextureProcessor
@@ -823,18 +829,6 @@
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
 /build:piu-diagonal-blue.png
-
-#begin piu-diagonal-receptor.png
-/importer:TextureImporter
-/processor:TextureProcessor
-/processorParam:ColorKeyColor=255,0,255,255
-/processorParam:ColorKeyEnabled=True
-/processorParam:GenerateMipmaps=False
-/processorParam:PremultiplyAlpha=True
-/processorParam:ResizeToPowerOfTwo=False
-/processorParam:MakeSquare=False
-/processorParam:TextureFormat=Color
-/build:piu-diagonal-receptor.png
 
 #begin piu-diagonal-receptor-glow.png
 /importer:TextureImporter
@@ -859,6 +853,18 @@
 /processorParam:MakeSquare=False
 /processorParam:TextureFormat=Color
 /build:piu-diagonal-receptor-held.png
+
+#begin piu-diagonal-receptor.png
+/importer:TextureImporter
+/processor:TextureProcessor
+/processorParam:ColorKeyColor=255,0,255,255
+/processorParam:ColorKeyEnabled=True
+/processorParam:GenerateMipmaps=False
+/processorParam:PremultiplyAlpha=True
+/processorParam:ResizeToPowerOfTwo=False
+/processorParam:MakeSquare=False
+/processorParam:TextureFormat=Color
+/build:piu-diagonal-receptor.png
 
 #begin piu-diagonal-red.png
 /importer:TextureImporter

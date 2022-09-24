@@ -10,7 +10,7 @@ namespace StepManiaEditor
 	{
 		// Default values.
 		public const bool DefaultShowWaveForm = true;
-		public const bool DefaultWaveFormScaleXWhenZooming = true;
+		public const bool DefaultWaveFormScaleXWhenZooming = false;
 		public const UIWaveFormPreferences.SparseColorOption DefaultWaveFormSparseColorOption = UIWaveFormPreferences.SparseColorOption.DarkerDenseColor;
 		public const float DefaultWaveFormSparseColorScale = 0.8f;
 		public static readonly Vector3 DefaultWaveFormDenseColor = new Vector3(0.0f, 0.389f, 0.183f);
@@ -18,6 +18,10 @@ namespace StepManiaEditor
 		public const float DefaultWaveFormMaxXPercentagePerChannel = 0.9f;
 		public const int DefaultWaveFormLoadingMaxParallelism = 8;
 		public const float DefaultDenseScale = 6.0f;
+		public const bool DefaultAntiAlias = false;
+		public const float DefaultAntiAliasSubpix = 0.2f;
+		public const float DefaultAntiAliasEdgeThreshold = 0.166f;
+		public const float DefaultAntiAliasEdgeThresholdMin = 0.0833f;
 
 		// Preferences.
 		[JsonInclude] public bool ShowWaveFormPreferencesWindow = false;
@@ -30,6 +34,10 @@ namespace StepManiaEditor
 		[JsonInclude] public float WaveFormMaxXPercentagePerChannel = DefaultWaveFormMaxXPercentagePerChannel;
 		[JsonInclude] public int WaveFormLoadingMaxParallelism = DefaultWaveFormLoadingMaxParallelism;
 		[JsonInclude] public float DenseScale = DefaultDenseScale;
+		[JsonInclude] public bool AntiAlias = DefaultAntiAlias;
+		[JsonInclude] public float AntiAliasSubpix = DefaultAntiAliasSubpix;
+		[JsonInclude] public float AntiAliasEdgeThreshold = DefaultAntiAliasEdgeThreshold;
+		[JsonInclude] public float AntiAliasEdgeThresholdMin = DefaultAntiAliasEdgeThresholdMin;
 
 		public bool IsUsingDefaults()
 		{
@@ -41,7 +49,11 @@ namespace StepManiaEditor
 			       && WaveFormSparseColor.Equals(DefaultWaveFormSparseColor)
 			       && WaveFormMaxXPercentagePerChannel.FloatEquals(DefaultWaveFormMaxXPercentagePerChannel)
 			       && WaveFormLoadingMaxParallelism == DefaultWaveFormLoadingMaxParallelism
-			       && DenseScale.FloatEquals(DefaultDenseScale);
+			       && DenseScale.FloatEquals(DefaultDenseScale)
+				   && AntiAlias == DefaultAntiAlias
+				   && AntiAliasSubpix.FloatEquals(DefaultAntiAliasSubpix)
+				   && AntiAliasEdgeThreshold.FloatEquals(DefaultAntiAliasEdgeThreshold)
+				   && AntiAliasEdgeThresholdMin.FloatEquals(DefaultAntiAliasEdgeThresholdMin);
 		}
 
 		public void RestoreDefaults()
@@ -67,6 +79,10 @@ namespace StepManiaEditor
 		private readonly float PreviousWaveFormMaxXPercentagePerChannel;
 		private readonly int PreviousWaveFormLoadingMaxParallelism;
 		private readonly float PreviousDenseScale;
+		private readonly bool PreviousAntiAlias;
+		private readonly float PreviousAntiAliasSubpix;
+		private readonly float PreviousAntiAliasEdgeThreshold;
+		private readonly float PreviousAntiAliasEdgeThresholdMin;
 
 		public ActionRestoreWaveFormPreferenceDefaults()
 		{
@@ -80,6 +96,10 @@ namespace StepManiaEditor
 			PreviousWaveFormMaxXPercentagePerChannel = p.WaveFormMaxXPercentagePerChannel;
 			PreviousWaveFormLoadingMaxParallelism = p.WaveFormLoadingMaxParallelism;
 			PreviousDenseScale = p.DenseScale;
+			PreviousAntiAlias = p.AntiAlias;
+			PreviousAntiAliasSubpix = p.AntiAliasSubpix;
+			PreviousAntiAliasEdgeThreshold = p.AntiAliasEdgeThreshold;
+			PreviousAntiAliasEdgeThresholdMin = p.AntiAliasEdgeThresholdMin;
 		}
 
 		public override string ToString()
@@ -99,6 +119,10 @@ namespace StepManiaEditor
 			p.WaveFormMaxXPercentagePerChannel = PreferencesWaveForm.DefaultWaveFormMaxXPercentagePerChannel;
 			p.WaveFormLoadingMaxParallelism = PreferencesWaveForm.DefaultWaveFormLoadingMaxParallelism;
 			p.DenseScale = PreferencesWaveForm.DefaultDenseScale;
+			p.AntiAlias = PreferencesWaveForm.DefaultAntiAlias;
+			p.AntiAliasSubpix = PreferencesWaveForm.DefaultAntiAliasSubpix;
+			p.AntiAliasEdgeThreshold = PreferencesWaveForm.DefaultAntiAliasEdgeThreshold;
+			p.AntiAliasEdgeThresholdMin = PreferencesWaveForm.DefaultAntiAliasEdgeThresholdMin;
 		}
 
 		public override void Undo()
@@ -113,6 +137,10 @@ namespace StepManiaEditor
 			p.WaveFormMaxXPercentagePerChannel = PreviousWaveFormMaxXPercentagePerChannel;
 			p.WaveFormLoadingMaxParallelism = PreviousWaveFormLoadingMaxParallelism;
 			p.DenseScale = PreviousDenseScale;
+			p.AntiAlias = PreviousAntiAlias;
+			p.AntiAliasSubpix = PreviousAntiAliasSubpix;
+			p.AntiAliasEdgeThreshold = PreviousAntiAliasEdgeThreshold;
+			p.AntiAliasEdgeThresholdMin = PreviousAntiAliasEdgeThresholdMin;
 		}
 	}
 }

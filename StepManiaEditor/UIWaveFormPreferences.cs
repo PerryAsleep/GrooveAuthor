@@ -107,6 +107,36 @@ namespace StepManiaEditor
 			}
 
 			ImGui.Separator();
+			if (ImGuiLayoutUtils.BeginTable("Waveform Antialiasing", 120))
+			{
+				ImGuiLayoutUtils.DrawRowCheckbox("Antialias", ref p.AntiAlias,
+					"Whether or not to use FXAA.");
+				
+				ImGuiLayoutUtils.DrawRowSliderFloat(true, "Subpix", p, nameof(PreferencesWaveForm.AntiAliasSubpix), 0.0f, 1.0f,
+					"Amount of sub-pixel aliasing removal."+
+					"\nThis can effect sharpness." +
+					"\n   1.00 - upper limit (softer)" +
+					"\n   0.75 - default amount of filtering" +
+					"\n   0.50 - lower limit (sharper, less sub-pixel aliasing removal)" +
+					"\n   0.25 - almost off" +
+					"\n   0.00 - completely off");
+				ImGuiLayoutUtils.DrawRowSliderFloat(true, "Edge Threshold", p, nameof(PreferencesWaveForm.AntiAliasEdgeThreshold), 0.0f, 1.0f,
+					"The minimum amount of local contrast required to apply algorithm." +
+					"\n   0.333 - too little (faster)" +
+					"\n   0.250 - low quality" +
+					"\n   0.166 - default" +
+					"\n   0.125 - high quality " +
+					"\n   0.063 - overkill (slower)");
+				ImGuiLayoutUtils.DrawRowSliderFloat(true, "Edge Threshold Min", p, nameof(PreferencesWaveForm.AntiAliasEdgeThresholdMin), 0.0f, 1.0f,
+					"Trims the algorithm from processing darks." +
+					"\n   0.0833 - upper limit (default, the start of visible unfiltered edges)" +
+					"\n   0.0625 - high quality (faster)" +
+					"\n   0.0312 - visible limit (slower)");
+
+				ImGuiLayoutUtils.EndTable();
+			}
+
+			ImGui.Separator();
 			if (ImGuiLayoutUtils.BeginTable("Waveform Restore", 120))
 			{
 				if (ImGuiLayoutUtils.DrawRowButton("Restore Defaults", "Restore Defaults",

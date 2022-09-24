@@ -47,13 +47,11 @@ namespace StepManiaEditor
 		/// </summary>
 		private readonly uint Height;
 		/// <summary>
-		/// The focal point for orienting the waveform and controlling zooming.
+		/// The y focal point for orienting the waveform and controlling zooming.
 		/// Units are in pixels and are in screen space.
-		/// The underlying texture is rendered at an offset that takes the x value of the FocalPoint into account.
-		/// The underlying texture is rendered at a y offset of 0, with the FocalPoint's y value taken into
-		/// account when generating the waveform on the texture.
+		/// The sound time provided in UpdateTexture is the time at this focal point position.
 		/// </summary>
-		private Vector2 FocalPoint;
+		private int FocalPointY;
 		/// <summary>
 		/// Scale in X to apply to each channel.
 		/// </summary>
@@ -191,7 +189,6 @@ namespace StepManiaEditor
 		/// <param name="sb">Sparse blue value as a float between 0.0f and 1.0f.</param>
 		public void SetColors(float dr, float dg, float db, float sr, float sg, float sb)
 		{
-			// TODO: Reevaluate if 565 format is needed.
 			var diff = false;
 			var colorDense = Utils.ToBGR565(dr, dg, db);
 			if (colorDense != ColorDense)
@@ -241,15 +238,15 @@ namespace StepManiaEditor
 		}
 
 		/// <summary>
-		/// Sets the FocalPoint to the given value.
+		/// Sets the FocalPoint Y value to the given value.
 		/// Values are expected to be pixels in screen space.
 		/// </summary>
-		/// <param name="focalPoint">Vector representing the focal point.</param>
-		public void SetFocalPoint(Vector2 focalPoint)
+		/// <param name="focalPointY">Focal point y value.</param>
+		public void SetFocalPointY(int focalPointY)
 		{
-			if (FocalPoint == focalPoint)
+			if (FocalPointY == focalPointY)
 				return;
-			FocalPoint = focalPoint;
+			FocalPointY = focalPointY;
 			InvalidateLastFrameData();
 		}
 
@@ -275,12 +272,12 @@ namespace StepManiaEditor
 		/// Renders the waveform.
 		/// </summary>
 		/// <param name="spriteBatch">SpriteBatch to use for rendering the texture.</param>
-		/// <param name="x">Optional x offset to draw at.</param>
-		/// <param name="y">Optional y offset to draw at.</param>
+		/// <param name="x">X position to draw at.</param>
+		/// <param name="y">Y position to draw at.</param>
 		public void Draw(SpriteBatch spriteBatch, int x = 0, int y = 0)
 		{
 			// Draw the current texture.
-			spriteBatch.Draw(Textures[TextureIndex], new Vector2(x + FocalPoint.X - (Width >> 1), y), null, Color.White);
+			spriteBatch.Draw(Textures[TextureIndex], new Vector2(x, y), null, Color.White);
 			// Advance to the next texture index for the next frame.
 			TextureIndex = (TextureIndex + 1) % NumTextures;
 		}
@@ -356,7 +353,7 @@ namespace StepManiaEditor
 					// together when rendering to prevent jittering artifacts and to allow reusing portions of the
 					// previous frame's buffer. To accomplish this we need to quantize the sample indices we use per
 					// pixel to samples which fall on consistent integer boundaries that match the samples per pixel.
-					var startSampleOffset = (FocalPoint.Y * samplesPerPixel * -1);
+					var startSampleOffset = (FocalPointY * samplesPerPixel * -1);
 					var startSampleDouble = soundTimeSeconds * sampleRate + startSampleOffset;
 					var quantizedStartSampleIndex = (long)(startSampleDouble / samplesPerPixel);
 					var quantizedEndSampleIndex = quantizedStartSampleIndex + Height;
