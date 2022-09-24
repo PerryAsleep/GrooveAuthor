@@ -690,7 +690,7 @@ namespace StepManiaEditor
 				var chartEvent = rae.GetEvent();
 				if (chartEvent is Tempo tc)
 				{
-					var rowsSincePrevious = chartEvent.IntegerPosition - previousEvent.Row;
+					var rowsSincePrevious = Math.Max(0, chartEvent.IntegerPosition - previousEvent.RowForFollowingEvents);
 					var secondsSincePrevious = rowsSincePrevious * previousEvent.SecondsPerRow;
 
 					var newSecondsPerRow = 60.0 / tc.TempoBPM / (double)SMCommon.MaxValidDenominator;
@@ -735,7 +735,7 @@ namespace StepManiaEditor
 				}
 				else if (chartEvent is Stop stop)
 				{
-					var rowsSincePrevious = chartEvent.IntegerPosition - previousEvent.Row;
+					var rowsSincePrevious = Math.Max(0, chartEvent.IntegerPosition - previousEvent.RowForFollowingEvents);
 					var secondsSincePrevious = rowsSincePrevious * previousEvent.SecondsPerRow;
 
 					rae.Row = chartEvent.IntegerPosition;
@@ -754,7 +754,7 @@ namespace StepManiaEditor
 				}
 				else if (chartEvent is Warp warp)
 				{
-					var rowsSincePrevious = chartEvent.IntegerPosition - previousEvent.Row;
+					var rowsSincePrevious = Math.Max(0, chartEvent.IntegerPosition - previousEvent.RowForFollowingEvents);
 					var secondsSincePrevious = rowsSincePrevious * previousEvent.SecondsPerRow;
 
 					rae.Row = chartEvent.IntegerPosition;
@@ -772,7 +772,7 @@ namespace StepManiaEditor
 				}
 				else if (chartEvent is ScrollRate scrollRate)
 				{
-					var rowsSincePrevious = chartEvent.IntegerPosition - previousEvent.Row;
+					var rowsSincePrevious = Math.Max(0, chartEvent.IntegerPosition - previousEvent.RowForFollowingEvents);
 					var secondsSincePrevious = rowsSincePrevious * previousEvent.SecondsPerRow;
 
 					// Update any events which precede the first tempo so they can have accurate rates.
@@ -802,7 +802,7 @@ namespace StepManiaEditor
 				}
 				else if (chartEvent is TimeSignature timeSignature)
 				{
-					var rowsSincePrevious = chartEvent.IntegerPosition - previousEvent.Row;
+					var rowsSincePrevious = Math.Max(0, chartEvent.IntegerPosition - previousEvent.RowForFollowingEvents);
 					var secondsSincePrevious = rowsSincePrevious * previousEvent.SecondsPerRow;
 
 					rae.Row = chartEvent.IntegerPosition;
@@ -855,11 +855,8 @@ namespace StepManiaEditor
 			var rateEvent = GetActiveRateAlteringEventForTime(chartTime, false);
 			if (rateEvent == null)
 				return false;
-			
-			if (chartTime >= rateEvent.SongTime && chartTime < rateEvent.SongTimeForFollowingEvents)
-				chartPosition = rateEvent.Row;
-			else
-				chartPosition = rateEvent.Row + rateEvent.RowsPerSecond * (chartTime - rateEvent.SongTimeForFollowingEvents);
+
+			chartPosition = rateEvent.RowForFollowingEvents + rateEvent.RowsPerSecond * Math.Max(0.0, chartTime - rateEvent.SongTimeForFollowingEvents);
 			return true;
 		}
 
@@ -889,7 +886,8 @@ namespace StepManiaEditor
 			var rateEvent = GetActiveRateAlteringEventForPosition(chartPosition, false);
 			if (rateEvent == null)
 				return false;
-			chartTime = rateEvent.SongTimeForFollowingEvents + rateEvent.SecondsPerRow * (chartPosition - rateEvent.Row);
+
+			chartTime = rateEvent.SongTimeForFollowingEvents + rateEvent.SecondsPerRow * Math.Max(0.0, chartPosition - rateEvent.RowForFollowingEvents);
 			return true;
 		}
 
