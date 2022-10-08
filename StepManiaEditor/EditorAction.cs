@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Reflection;
 using Fumen.ChartDefinition;
+using Fumen.Converters;
 
 namespace StepManiaEditor
 {
@@ -555,6 +556,35 @@ namespace StepManiaEditor
 		{
 			HoldStart.GetEditorChart().AddEvent(HoldStart);
 			HoldStart.GetEditorChart().AddEvent(HoldStart.GetHoldEndNote());
+		}
+	}
+
+	public class ActionSelectChart : EditorAction
+	{
+		private Editor Editor;
+		private EditorChart Chart;
+		private EditorChart PreviousChart;
+
+		public ActionSelectChart(Editor editor, EditorChart chart)
+		{
+			Editor = editor;
+			PreviousChart = Editor.GetActiveChart();
+			Chart = chart;
+		}
+
+		public override string ToString()
+		{
+			return $"Select {Utils.GetPrettyEnumString(Chart.ChartType)} {Utils.GetPrettyEnumString(Chart.ChartDifficultyType)} Chart.";
+		}
+
+		public override void Do()
+		{
+			Editor.OnChartSelected(Chart, false);
+		}
+
+		public override void Undo()
+		{
+			Editor.OnChartSelected(PreviousChart, false);
 		}
 	}
 }

@@ -7,6 +7,7 @@ using Fumen.Converters;
 using Microsoft.Xna.Framework.Graphics;
 using static StepManiaEditor.Utils;
 using static Fumen.Utils;
+using static Fumen.Converters.SMCommon;
 
 namespace StepManiaEditor
 {
@@ -393,6 +394,16 @@ namespace StepManiaEditor
 				{
 					editorChart.CopyDisplayTempo(displayTempo);
 				}
+			}
+
+			UpdateChartSort();
+		}
+
+		private void UpdateChartSort()
+		{
+			foreach (var kvp in Charts)
+			{
+				kvp.Value.Sort(new ChartComparer());
 			}
 		}
 
@@ -1185,5 +1196,95 @@ namespace StepManiaEditor
 		// * as the Song's timing. No other changes are required. */
 		//steps_tag_handlers["ATTACKS"] = &SetStepsAttacks;
 
+	}
+
+	/// <summary>
+	/// Custom Comparer for Charts.
+	/// </summary>
+	public class ChartComparer : IComparer<EditorChart>
+	{
+		private static readonly Dictionary<SMCommon.ChartType, int> ChartTypeOrder = new Dictionary<SMCommon.ChartType, int>
+		{
+			{ SMCommon.ChartType.dance_single, 0 },
+			{ SMCommon.ChartType.dance_double, 1 },
+			{ SMCommon.ChartType.dance_couple, 2 },
+			{ SMCommon.ChartType.dance_routine, 3 },
+			{ SMCommon.ChartType.dance_solo, 4 },
+			{ SMCommon.ChartType.dance_threepanel, 5 },
+
+			{ SMCommon.ChartType.pump_single, 6 },
+			{ SMCommon.ChartType.pump_halfdouble, 7 },
+			{ SMCommon.ChartType.pump_double, 8 },
+			{ SMCommon.ChartType.pump_couple, 9 },
+			{ SMCommon.ChartType.pump_routine, 10 },
+
+			{ SMCommon.ChartType.smx_beginner, 11 },
+			{ SMCommon.ChartType.smx_single, 12 },
+			{ SMCommon.ChartType.smx_dual, 13 },
+			{ SMCommon.ChartType.smx_full, 14 },
+			{ SMCommon.ChartType.smx_team, 15 },
+		};
+
+		private static int StringCompare(string s1, string s2)
+		{
+			var s1Null = string.IsNullOrEmpty(s1);
+			var s2Null = string.IsNullOrEmpty(s2);
+			if (s1Null != s2Null)
+				return s1Null ? 1 : -1;
+			if (s1Null)
+				return 0;
+			return s1.CompareTo(s2);
+		}
+
+
+		public static int Compare(EditorChart c1, EditorChart c2)
+		{
+			if (null == c1 && null == c2)
+				return 0;
+			if (null == c1)
+				return 1;
+			if (null == c2)
+				return -1;
+
+			// Compare by ChartType
+			var comparison = 0;
+			var c1HasCharTypeOrder = ChartTypeOrder.TryGetValue(c1.ChartType, out int c1Order);
+			var c2HasCharTypeOrder = ChartTypeOrder.TryGetValue(c2.ChartType, out int c2Order);
+			if (c1HasCharTypeOrder != c2HasCharTypeOrder)
+			{
+				return c1HasCharTypeOrder ? -1 : 1;
+			}
+			if (c1HasCharTypeOrder)
+			{
+				comparison = c1Order - c2Order;
+				if (comparison != 0)
+					return comparison;
+			}
+
+			// Compare by DifficultyType
+			comparison = c1.ChartDifficultyType - c2.ChartDifficultyType;
+			if (comparison != 0)
+				return comparison;
+
+			// Compare by Rating
+			comparison = c1.Rating - c2.Rating;
+			if (comparison != 0)
+				return comparison;
+
+			comparison = StringCompare(c1.Name, c2.Name);
+			if (comparison != 0)
+				return comparison;
+
+			comparison = StringCompare(c1.Description, c2.Description);
+			if (comparison != 0)
+				return comparison;
+
+			return c1.EditorEvents.Count - c2.EditorEvents.Count;
+		}
+
+		int IComparer<EditorChart>.Compare(EditorChart c1, EditorChart c2)
+		{
+			return Compare(c1, c2);
+		}
 	}
 }

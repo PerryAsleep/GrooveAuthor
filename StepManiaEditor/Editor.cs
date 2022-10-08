@@ -19,6 +19,8 @@ using ButtonState = Microsoft.Xna.Framework.Input.ButtonState;
 using Keys = Microsoft.Xna.Framework.Input.Keys;
 using Path = Fumen.Path;
 using Vector2 = Microsoft.Xna.Framework.Vector2;
+using static Fumen.Converters.SMCommon;
+using System.Text;
 
 namespace StepManiaEditor
 {
@@ -103,6 +105,21 @@ namespace StepManiaEditor
 		{
 			SMCommon.ChartType.dance_single,
 			SMCommon.ChartType.dance_double,
+			//dance_couple,
+			//dance_routine,
+			SMCommon.ChartType.dance_solo,
+			SMCommon.ChartType.dance_threepanel,
+
+			SMCommon.ChartType.pump_single,
+			SMCommon.ChartType.pump_halfdouble,
+			SMCommon.ChartType.pump_double,
+			//pump_couple,
+			//pump_routine,
+			SMCommon.ChartType.smx_beginner,
+			SMCommon.ChartType.smx_single,
+			SMCommon.ChartType.smx_dual,
+			SMCommon.ChartType.smx_full,
+			//SMCommon.ChartType.smx_team,
 		};
 
 		private GraphicsDeviceManager Graphics;
@@ -115,6 +132,7 @@ namespace StepManiaEditor
 		private ArrowGraphicManager ArrowGraphicManager;
 		private UISongProperties UISongProperties;
 		private UIChartProperties UIChartProperties;
+		private UIChartList UIChartList;
 		private UIWaveFormPreferences UIWaveFormPreferences;
 		private UIScrollPreferences UIScrollPreferences;
 		private UIMiniMapPreferences UIMiniMapPreferences;
@@ -329,6 +347,7 @@ namespace StepManiaEditor
 
 			UISongProperties = new UISongProperties(this, GraphicsDevice, ImGuiRenderer);
 			UIChartProperties = new UIChartProperties(this);
+			UIChartList = new UIChartList(this);
 			UIWaveFormPreferences = new UIWaveFormPreferences(this, MusicManager);
 			UIScrollPreferences = new UIScrollPreferences();
 			UIMiniMapPreferences = new UIMiniMapPreferences(this);
@@ -2237,6 +2256,7 @@ namespace StepManiaEditor
 
 			UISongProperties.Draw(EditorSong);
 			UIChartProperties.Draw(ActiveChart);
+			UIChartList.Draw(ActiveChart);
 			
 			UIChartPosition.Draw(
 				(int)FocalPoint.X,
@@ -2322,6 +2342,8 @@ namespace StepManiaEditor
 						p.ShowSongPropertiesWindow = true;
 					if (ImGui.MenuItem("Chart Properties"))
 						p.ShowChartPropertiesWindow = true;
+					if (ImGui.MenuItem("Chart List"))
+						p.ShowChartListWindow = true;
 
 					ImGui.Separator();
 					if (ImGui.MenuItem("Waveform Preferences"))
@@ -2521,6 +2543,7 @@ namespace StepManiaEditor
 				UnloadSongResources();
 
 				// Start an asynchronous series of operations to load the song.
+				EditorChart newActiveChart = null;
 				LoadSongCancellationTokenSource = new CancellationTokenSource();
 				LoadSongTask = Task.Run(async () =>
 				{
@@ -2553,7 +2576,7 @@ namespace StepManiaEditor
 							ImGuiRenderer);
 
 						// Select the best Chart to make active.
-						ActiveChart = SelectBestChart(EditorSong, chartType, chartDifficultyType);
+						newActiveChart = SelectBestChart(EditorSong, chartType, chartDifficultyType);
 						LoadSongCancellationTokenSource.Token.ThrowIfCancellationRequested();
 					}
 					catch (OperationCanceledException)
@@ -2592,26 +2615,12 @@ namespace StepManiaEditor
 				}
 
 				// Find a better spot for this
-				Position.ActiveChart = ActiveChart;
 				Position.ChartPosition = 0.0;
 				DesiredSongTime = Position.SongTime;
-				ArrowGraphicManager = ArrowGraphicManager.CreateArrowGraphicManager(chartType);
-				var laneEditStates = new LaneEditState[ActiveChart.NumInputs];
-				var receptors = new Receptor[ActiveChart.NumInputs];
-				NextAutoPlayNotes = new EditorEvent[ActiveChart.NumInputs];
-				for (var i = 0; i < ActiveChart.NumInputs; i++)
-				{
-					laneEditStates[i] = new LaneEditState();
-					receptors[i] = new Receptor(i, ArrowGraphicManager, ActiveChart);
-				}
-				Receptors = receptors;
-				LaneEditStates = laneEditStates;
-				UpdateWindowTitle();
-				SetZoom(1.0, true);
 
-				// Start loading music for this Chart.
-				OnSongMusicChanged();
-				OnSongMusicPreviewChanged();
+				OnChartSelected(newActiveChart, false);
+
+				SetZoom(1.0, true);
 			}
 			catch (Exception e)
 			{
@@ -2754,18 +2763,24 @@ namespace StepManiaEditor
 		{
 			var hasUnsavedChanges = false; // TODO
 			var appName = System.Reflection.Assembly.GetExecutingAssembly().GetName().Name;
-			if (ActiveChart != null)
+			var sb = new StringBuilder();
+			var title = "New File";
+			if (ActiveChart != null && !string.IsNullOrEmpty(ActiveChart.EditorSong.FileName))
 			{
-				if (!string.IsNullOrEmpty(ActiveChart.EditorSong.FileName))
-				{
-					Window.Title = ActiveChart.EditorSong.FileName + " - " + appName;
-					return;
-				}
-
-				Window.Title = "New File - " + appName;
-				return;
+				title = ActiveChart.EditorSong.FileName;
 			}
-			Window.Title = appName;
+			sb.Append(title);
+			if (hasUnsavedChanges)
+			{
+				sb.Append(" * ");
+			}
+			if (ActiveChart != null)
+			{ 
+				sb.Append($" [{GetPrettyEnumString(ActiveChart.ChartType)} - {GetPrettyEnumString(ActiveChart.ChartDifficultyType)}]");
+			}
+			sb.Append(" - ");
+			sb.Append(appName);
+			Window.Title = sb.ToString();
 		}
 
 		#endregion Loading
@@ -3429,6 +3444,58 @@ namespace StepManiaEditor
 		private double GetSongTime()
 		{
 			return Position.SongTime;
+		}
+
+		public EditorChart GetActiveChart()
+		{
+			return ActiveChart;
+		}
+
+		public void OnChartSelected(EditorChart chart, bool undoable = true)
+		{
+			if (ActiveChart == chart)
+				return;
+
+			// If the active chart is being changed as an undoable action, enqueue the action and return.
+			// The ActionSelectChart will invoke this method again with undoable set to false.
+			if (undoable)
+			{
+				ActionQueue.Instance.Do(new ActionSelectChart(this, chart));
+				return;
+			}
+
+			ActiveChart = chart;
+
+			// Update the recent file entry for the current song so that tracks the selected cha
+			var p = Preferences.Instance;
+			if (p.RecentFiles.Count > 0 && p.RecentFiles[0].FileName == EditorSong.FileName)
+			{
+				p.RecentFiles[0].LastChartType = ActiveChart.ChartType;
+				p.RecentFiles[0].LastChartDifficultyType = ActiveChart.ChartDifficultyType;
+			}
+
+			// The Position needs to know about the active chart for doing time and row calculations.
+			Position.ActiveChart = ActiveChart;
+
+			// The receptors and arrow graphics depend on the active chart.
+			ArrowGraphicManager = ArrowGraphicManager.CreateArrowGraphicManager(ActiveChart.ChartType);
+			var laneEditStates = new LaneEditState[ActiveChart.NumInputs];
+			var receptors = new Receptor[ActiveChart.NumInputs];
+			NextAutoPlayNotes = new EditorEvent[ActiveChart.NumInputs];
+			for (var i = 0; i < ActiveChart.NumInputs; i++)
+			{
+				laneEditStates[i] = new LaneEditState();
+				receptors[i] = new Receptor(i, ArrowGraphicManager, ActiveChart);
+			}
+			Receptors = receptors;
+			LaneEditStates = laneEditStates;
+
+			// Window title depends on the active chart.
+			UpdateWindowTitle();
+
+			// Start loading music for this Chart.
+			OnSongMusicChanged();
+			OnSongMusicPreviewChanged();
 		}
 	}
 }

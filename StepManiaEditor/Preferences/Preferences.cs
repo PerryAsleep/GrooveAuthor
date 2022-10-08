@@ -77,6 +77,7 @@ namespace StepManiaEditor
 		// Misc
 		[JsonInclude] public bool ShowSongPropertiesWindow = false;
 		[JsonInclude] public bool ShowChartPropertiesWindow = false;
+		[JsonInclude] public bool ShowChartListWindow = false;
 		[JsonInclude] public string OpenFileDialogInitialDirectory = @"C:\Games\StepMania 5\Songs\";
 		[JsonInclude] public List<SavedSongInformation> RecentFiles = new List<SavedSongInformation>();
 

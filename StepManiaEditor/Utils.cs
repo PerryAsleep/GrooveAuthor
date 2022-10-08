@@ -29,6 +29,13 @@ namespace StepManiaEditor
 		public const uint UIFakesColorABGR = 0x8A29467A;			// dark orange
 		public const uint UILabelColorABGR = 0x8A68297A;			// pink
 
+		public const uint UIDifficultyBeginnerColorABGR = 0xFF858013;   // blue
+		public const uint UIDifficultyEasyColorABGR = 0xFF138185;       // orange
+		public const uint UIDifficultyMediumColorABGR = 0xFF371385;     // red
+		public const uint UIDifficultyHardColorABGR = 0xFF138531;       // green
+		public const uint UIDifficultyChallengeColorABGR = 0xFF85135F;  // purple
+		public const uint UIDifficultyEditColorABGR = 0xFF606060;       // grey
+
 		public const int DefaultArrowWidth = 128;
 
 		public const int WaveFormTextureWidth = DefaultArrowWidth * 8;
@@ -201,6 +208,20 @@ namespace StepManiaEditor
 			return new Vector2(x, y);
 		}
 
+		public static uint GetColorForDifficultyType(SMCommon.ChartDifficultyType difficulty)
+		{
+			switch (difficulty)
+			{
+				case SMCommon.ChartDifficultyType.Beginner: return UIDifficultyBeginnerColorABGR;
+				case SMCommon.ChartDifficultyType.Easy: return UIDifficultyEasyColorABGR;
+				case SMCommon.ChartDifficultyType.Medium: return UIDifficultyMediumColorABGR;
+				case SMCommon.ChartDifficultyType.Hard: return UIDifficultyHardColorABGR;
+				case SMCommon.ChartDifficultyType.Challenge: return UIDifficultyChallengeColorABGR;
+				case SMCommon.ChartDifficultyType.Edit: return UIDifficultyEditColorABGR;
+			}
+			return UIDifficultyEditColorABGR;
+		}
+
 		#region ImGui Helpers
 
 		[DllImport("msvcrt.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl)]
@@ -304,6 +325,13 @@ namespace StepManiaEditor
 			}
 
 			return (ret, originalValues);
+		}
+
+		public static string GetPrettyEnumString<T>(T value)
+		{
+			var strings = GetCachedEnumStrings<T>();
+			var intValue = (int)(object)value;
+			return strings[intValue];
 		}
 
 		private static string[] GetCachedEnumStrings<T>()
