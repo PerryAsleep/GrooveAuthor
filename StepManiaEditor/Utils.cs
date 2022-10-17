@@ -29,12 +29,12 @@ namespace StepManiaEditor
 		public const uint UIFakesColorABGR = 0x8A29467A;			// dark orange
 		public const uint UILabelColorABGR = 0x8A68297A;			// pink
 
-		public const uint UIDifficultyBeginnerColorABGR = 0xFF858013;   // blue
-		public const uint UIDifficultyEasyColorABGR = 0xFF138185;       // orange
-		public const uint UIDifficultyMediumColorABGR = 0xFF371385;     // red
-		public const uint UIDifficultyHardColorABGR = 0xFF138531;       // green
-		public const uint UIDifficultyChallengeColorABGR = 0xFF85135F;  // purple
-		public const uint UIDifficultyEditColorABGR = 0xFF606060;       // grey
+		public const uint UIDifficultyBeginnerColorABGR = 0xFF808040;
+		public const uint UIDifficultyEasyColorABGR = 0xFF4D804D;
+		public const uint UIDifficultyMediumColorABGR = 0xFF408080;
+		public const uint UIDifficultyHardColorABGR = 0xFF404080;
+		public const uint UIDifficultyChallengeColorABGR = 0xFF804080;
+		public const uint UIDifficultyEditColorABGR = 0xFF807D7B;
 
 		public const int DefaultArrowWidth = 128;
 
