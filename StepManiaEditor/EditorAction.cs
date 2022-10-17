@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using Fumen.ChartDefinition;
 using Fumen.Converters;
+using static Fumen.Converters.SMCommon;
 
 namespace StepManiaEditor
 {
@@ -585,6 +586,65 @@ namespace StepManiaEditor
 		public override void Undo()
 		{
 			Editor.OnChartSelected(PreviousChart, false);
+		}
+	}
+
+	public class ActionAddChart : EditorAction
+	{
+		private Editor Editor;
+		private ChartType ChartType;
+		private EditorChart AddedChart;
+		private EditorChart PreivouslyActiveChart;
+
+		public ActionAddChart(Editor editor, ChartType chartType)
+		{
+			Editor = editor;
+			ChartType = chartType;
+		}
+
+		public override string ToString()
+		{
+			return $"Add {Utils.GetPrettyEnumString(ChartType)} Chart.";
+		}
+
+		public override void Do()
+		{
+			PreivouslyActiveChart = Editor.GetActiveChart();
+			AddedChart = Editor.AddChart(ChartType, true);
+		}
+
+		public override void Undo()
+		{
+			Editor.DeleteChart(AddedChart, PreivouslyActiveChart);
+		}
+	}
+
+	public class ActionDeleteChart : EditorAction
+	{
+		private Editor Editor;
+		private EditorChart Chart;
+		private bool DeletedActiveChart;
+
+		public ActionDeleteChart(Editor editor, EditorChart chart)
+		{
+			Editor = editor;
+			Chart = chart;
+		}
+
+		public override string ToString()
+		{
+			return $"Delete {Utils.GetPrettyEnumString(Chart.ChartType)} Chart.";
+		}
+
+		public override void Do()
+		{
+			DeletedActiveChart = Editor.GetActiveChart() == Chart;
+			Editor.DeleteChart(Chart, null);
+		}
+
+		public override void Undo()
+		{
+			Editor.AddChart(Chart, DeletedActiveChart);
 		}
 	}
 }

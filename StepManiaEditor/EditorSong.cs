@@ -8,6 +8,7 @@ using Microsoft.Xna.Framework.Graphics;
 using static StepManiaEditor.Utils;
 using static Fumen.Utils;
 using static Fumen.Converters.SMCommon;
+using System.Runtime.InteropServices;
 
 namespace StepManiaEditor
 {
@@ -118,7 +119,9 @@ namespace StepManiaEditor
 
 		public DisplayTempo()
 		{
-
+			Mode = DisplayTempoMode.Actual;
+			SpecifiedTempoMin = 0.0;
+			SpecifiedTempoMax = 0.0;
 		}
 
 		public DisplayTempo(DisplayTempoMode mode, double min, double max)
@@ -178,7 +181,7 @@ namespace StepManiaEditor
 
 			if (!parsed)
 			{
-				Logger.Warn($"Failed to parse {SMCommon.TagDisplayBPM} value: '{displayTempoString}'.");
+				Logger.Warn($"Failed to parse {TagDisplayBPM} value: '{displayTempoString}'.");
 			}
 		}
 
@@ -190,8 +193,8 @@ namespace StepManiaEditor
 					return "*";
 				case DisplayTempoMode.Specified:
 					if (!SpecifiedTempoMin.DoubleEquals(SpecifiedTempoMax))
-						return $"{SpecifiedTempoMin.ToString(SMCommon.SMDoubleFormat)}:{SpecifiedTempoMax.ToString(SMCommon.SMDoubleFormat)}";
-					return SpecifiedTempoMin.ToString(SMCommon.SMDoubleFormat);
+						return $"{SpecifiedTempoMin.ToString(SMDoubleFormat)}:{SpecifiedTempoMax.ToString(SMDoubleFormat)}";
+					return SpecifiedTempoMin.ToString(SMDoubleFormat);
 				case DisplayTempoMode.Actual:
 					return "";
 			}
@@ -205,7 +208,7 @@ namespace StepManiaEditor
 
 		private Extras OriginalSongExtras;
 
-		public Dictionary<SMCommon.ChartType, List<EditorChart>> Charts = new Dictionary<SMCommon.ChartType, List<EditorChart>>();
+		public Dictionary<ChartType, List<EditorChart>> Charts = new Dictionary<ChartType, List<EditorChart>>();
 		public List<Chart> UnsupportedCharts = new List<Chart>();
 
 		public string FileDirectory;
@@ -242,7 +245,7 @@ namespace StepManiaEditor
 			set
 			{
 				MusicPathInternal = value ?? "";
-				Editor.OnSongMusicChanged();
+				Editor.OnSongMusicChanged(this);
 			}
 		}
 
@@ -254,7 +257,7 @@ namespace StepManiaEditor
 			set
 			{
 				MusicPreviewPathInternal = value ?? "";
-				Editor.OnSongMusicPreviewChanged();
+				Editor.OnSongMusicPreviewChanged(this);
 			}
 		}
 
@@ -265,7 +268,7 @@ namespace StepManiaEditor
 			set
 			{
 				MusicOffsetInternal = value;
-				Editor.OnMusicOffsetChanged();
+				Editor.OnSongMusicOffsetChanged(this);
 			}
 		}
 
@@ -316,42 +319,42 @@ namespace StepManiaEditor
 			Artist = song.Artist ?? "";
 			ArtistTransliteration = song.ArtistTransliteration ?? "";
 			Genre = song.Genre ?? "";
-			song.Extras.TryGetExtra(SMCommon.TagOrigin, out Origin, true);
+			song.Extras.TryGetExtra(TagOrigin, out Origin, true);
 			Origin ??= "";
-			song.Extras.TryGetExtra(SMCommon.TagCredit, out Credit, true);
+			song.Extras.TryGetExtra(TagCredit, out Credit, true);
 			Credit ??= "";
 
 			Banner = new EditorImageData(FileDirectory, graphicsDevice, imGuiRenderer, BannerWidth, BannerHeight,
 				song.SongSelectImage);
 			string tempStr;
-			song.Extras.TryGetExtra(SMCommon.TagBackground, out tempStr, true);
+			song.Extras.TryGetExtra(TagBackground, out tempStr, true);
 			Background = new EditorImageData(tempStr);
-			song.Extras.TryGetExtra(SMCommon.TagJacket, out tempStr, true);
+			song.Extras.TryGetExtra(TagJacket, out tempStr, true);
 			Jacket = new EditorImageData(tempStr);
-			song.Extras.TryGetExtra(SMCommon.TagCDImage, out tempStr, true);
+			song.Extras.TryGetExtra(TagCDImage, out tempStr, true);
 			CDImage = new EditorImageData(tempStr);
-			song.Extras.TryGetExtra(SMCommon.TagDiscImage, out tempStr, true);
+			song.Extras.TryGetExtra(TagDiscImage, out tempStr, true);
 			DiscImage = new EditorImageData(tempStr);
-			song.Extras.TryGetExtra(SMCommon.TagCDTitle, out tempStr, true);
+			song.Extras.TryGetExtra(TagCDTitle, out tempStr, true);
 			CDTitle = new EditorImageData(FileDirectory, graphicsDevice, imGuiRenderer, CDTitleWidth, CDTitleHeight, tempStr);
 
-			song.Extras.TryGetExtra(SMCommon.TagLyricsPath, out LyricsPath, true);
+			song.Extras.TryGetExtra(TagLyricsPath, out LyricsPath, true);
 			LyricsPath ??= "";
-			song.Extras.TryGetExtra(SMCommon.TagPreviewVid, out PreviewVideoPath, true);
+			song.Extras.TryGetExtra(TagPreviewVid, out PreviewVideoPath, true);
 			PreviewVideoPath ??= "";
 
-			song.Extras.TryGetExtra(SMCommon.TagMusic, out string musicPath, true);
+			song.Extras.TryGetExtra(TagMusic, out string musicPath, true);
 			MusicPath = musicPath;
 
 			MusicPreviewPath = song.PreviewMusicFile ?? "";
-			song.Extras.TryGetExtra(SMCommon.TagOffset, out double musicOffset, true);
+			song.Extras.TryGetExtra(TagOffset, out double musicOffset, true);
 			MusicOffset = musicOffset;
-			song.Extras.TryGetExtra(SMCommon.TagLastSecondHint, out LastSecondHint, true);
+			song.Extras.TryGetExtra(TagLastSecondHint, out LastSecondHint, true);
 			if (LastSecondHint <= 0.0)
 			{
 				// TODO: When the last beat hint is set we need to use the song's timing data
 				// to determine the last second hint.
-				if (song.Extras.TryGetExtra(SMCommon.TagLastBeatHint, out double lastBeatHint, true))
+				if (song.Extras.TryGetExtra(TagLastBeatHint, out double lastBeatHint, true))
 				{
 				}
 			}
@@ -359,21 +362,21 @@ namespace StepManiaEditor
 			SampleStart = song.PreviewSampleStart;
 			SampleLength = song.PreviewSampleLength;
 
-			var hasDisplayTempo = song.Extras.TryGetExtra(SMCommon.TagDisplayBPM, out object _, true);
+			var hasDisplayTempo = song.Extras.TryGetExtra(TagDisplayBPM, out object _, true);
 			DisplayTempo displayTempo = null;
 			if (hasDisplayTempo)
 			{
 				displayTempo = new DisplayTempo();
-				displayTempo.FromString(SMCommon.GetDisplayBPMStringFromSourceExtrasList(song.Extras, null));
+				displayTempo.FromString(GetDisplayBPMStringFromSourceExtrasList(song.Extras, null));
 			}
 
-			song.Extras.TryGetExtra(SMCommon.TagSelectable, out string selectableString, true);
+			song.Extras.TryGetExtra(TagSelectable, out string selectableString, true);
 			if (!string.IsNullOrEmpty(selectableString))
 			{
 				if (!Enum.TryParse(selectableString, true, out Selectable))
 				{
 					Selectable = Selectable.YES;
-					Logger.Warn($"Failed to parse Song {SMCommon.TagSelectable} value: '{selectableString}'.");
+					Logger.Warn($"Failed to parse Song {TagSelectable} value: '{selectableString}'.");
 				}
 			}
 
@@ -399,7 +402,36 @@ namespace StepManiaEditor
 			UpdateChartSort();
 		}
 
-		private void UpdateChartSort()
+		public EditorChart AddChart(ChartType chartType)
+		{
+			var chart = new EditorChart(Editor, this, chartType);
+			if (!Charts.ContainsKey(chartType))
+				Charts.Add(chartType, new List<EditorChart>());
+			Charts[chartType].Add(chart);
+			UpdateChartSort();
+			return chart;
+		}
+
+		public EditorChart AddChart(EditorChart chart)
+		{
+			if (!Charts.ContainsKey(chart.ChartType))
+				Charts.Add(chart.ChartType, new List<EditorChart>());
+			Charts[chart.ChartType].Add(chart);
+			UpdateChartSort();
+			return chart;
+		}
+
+		public void DeleteChart(EditorChart chart)
+		{
+			if (!Charts.ContainsKey(chart.ChartType))
+				return;
+			Charts[chart.ChartType].Remove(chart);
+			if (Charts[chart.ChartType].Count == 0)
+				Charts.Remove(chart.ChartType);
+			UpdateChartSort();
+		}
+
+		public void UpdateChartSort()
 		{
 			foreach (var kvp in Charts)
 			{
@@ -413,6 +445,58 @@ namespace StepManiaEditor
 			FileName = System.IO.Path.GetFileName(fullFilePath);
 			FileDirectory = System.IO.Path.GetDirectoryName(fullFilePath);
 			FileFormat = FileFormat.GetFileFormatByExtension(System.IO.Path.GetExtension(fullFilePath));
+		}
+
+		public double GetBestChartStartingTempo()
+		{
+			var histogram = new Dictionary<double, int>();
+			foreach(var kvp in Charts)
+			{
+				foreach(var chart in kvp.Value)
+				{
+					var tempo = chart.GetStartingTempo();
+					if (histogram.TryGetValue(tempo, out var count))
+					{
+						histogram[tempo] = count + 1;
+					}
+					else
+					{
+						histogram.Add(tempo, 1);
+					}
+				}
+			}
+			if (histogram.Count > 0)
+			{
+				return histogram.Aggregate((x, y) => x.Value > y.Value ? x : y).Key;
+			}
+
+			return EditorChart.DefaultTempo;
+		}
+
+		public Fraction GetBestChartStartingTimeSignature()
+		{
+			var histogram = new Dictionary<Fraction, int>();
+			foreach (var kvp in Charts)
+			{
+				foreach (var chart in kvp.Value)
+				{
+					var timeSignature = chart.GetStartingTimeSignature();
+					if (histogram.TryGetValue(timeSignature, out var count))
+					{
+						histogram[timeSignature] = count + 1;
+					}
+					else
+					{
+						histogram.Add(timeSignature, 1);
+					}
+				}
+			}
+			if (histogram.Count > 0)
+			{
+				return histogram.Aggregate((x, y) => x.Value > y.Value ? x : y).Key;
+			}
+
+			return EditorChart.DefaultTimeSignature;
 		}
 
 		public Song SaveToSong()
@@ -429,29 +513,29 @@ namespace StepManiaEditor
 			song.Artist = Artist;
 			song.ArtistTransliteration = ArtistTransliteration;
 			song.Genre = Genre;
-			song.Extras.AddDestExtra(SMCommon.TagOrigin, Origin, true);
-			song.Extras.AddDestExtra(SMCommon.TagCredit, Credit, true);
+			song.Extras.AddDestExtra(TagOrigin, Origin, true);
+			song.Extras.AddDestExtra(TagCredit, Credit, true);
 			song.SongSelectImage = Banner.Path;
-			song.Extras.AddDestExtra(SMCommon.TagBackground, Background.Path, true);
-			song.Extras.AddDestExtra(SMCommon.TagJacket, Jacket.Path, true);
-			song.Extras.AddDestExtra(SMCommon.TagCDImage, CDImage.Path, true);
-			song.Extras.AddDestExtra(SMCommon.TagDiscImage, DiscImage.Path, true);
-			song.Extras.AddDestExtra(SMCommon.TagCDTitle, CDTitle.Path, true);
-			song.Extras.AddDestExtra(SMCommon.TagLyricsPath, LyricsPath, true);
-			song.Extras.AddDestExtra(SMCommon.TagPreviewVid, PreviewVideoPath, true);
+			song.Extras.AddDestExtra(TagBackground, Background.Path, true);
+			song.Extras.AddDestExtra(TagJacket, Jacket.Path, true);
+			song.Extras.AddDestExtra(TagCDImage, CDImage.Path, true);
+			song.Extras.AddDestExtra(TagDiscImage, DiscImage.Path, true);
+			song.Extras.AddDestExtra(TagCDTitle, CDTitle.Path, true);
+			song.Extras.AddDestExtra(TagLyricsPath, LyricsPath, true);
+			song.Extras.AddDestExtra(TagPreviewVid, PreviewVideoPath, true);
 
-			song.Extras.AddDestExtra(SMCommon.TagMusic, MusicPath, true);
+			song.Extras.AddDestExtra(TagMusic, MusicPath, true);
 			song.PreviewMusicFile = MusicPreviewPath;
-			song.Extras.AddDestExtra(SMCommon.TagOffset, MusicOffset, true);
-			song.Extras.AddDestExtra(SMCommon.TagLastSecondHint, LastSecondHint, true);
+			song.Extras.AddDestExtra(TagOffset, MusicOffset, true);
+			song.Extras.AddDestExtra(TagLastSecondHint, LastSecondHint, true);
 			song.PreviewSampleStart = SampleStart;
 			song.PreviewSampleLength = SampleLength;
 
 			// Do not add the display BPM.
 			// We want to use the charts' display BPMs.
-			//song.Extras.AddDestExtra(SMCommon.TagDisplayBPM, DisplayTempo.ToString(), true);
+			//song.Extras.AddDestExtra(TagDisplayBPM, DisplayTempo.ToString(), true);
 
-			song.Extras.AddDestExtra(SMCommon.TagSelectable, Selectable.ToString(), true);
+			song.Extras.AddDestExtra(TagSelectable, Selectable.ToString(), true);
 
 			foreach (var editorChartsForChartType in Charts)
 			{
@@ -471,16 +555,65 @@ namespace StepManiaEditor
 
 	public class EditorChart
 	{
+		public static double DefaultTempo = 120.0;
+		public static Fraction DefaultTimeSignature = new Fraction(4, 4);
+		public static double DefaultScrollRate = 1.0;
+		public static int DefaultTickCount = 4;
+		public static int DefaultHitMultiplier = 1;
+		public static int DefaultMissMultiplier = 1;
+		public static int DefaultRating = 1;
+
 		private Editor Editor;
 		private Extras OriginalChartExtras;
 
 		public EditorSong EditorSong;
 
-		public SMCommon.ChartType ChartType;
-		public SMCommon.ChartDifficultyType ChartDifficultyType;
-		public int Rating;
-		public string Name;
-		public string Description;
+		public readonly ChartType ChartType;
+
+		private ChartDifficultyType ChartDifficultyTypeInternal;
+		public ChartDifficultyType ChartDifficultyType
+		{
+			get => ChartDifficultyTypeInternal;
+			set
+			{
+				ChartDifficultyTypeInternal = value;
+				Editor.OnChartDifficultyTypeChanged(this);
+			}
+		}
+
+		private int RatingInternal;
+		public int Rating
+		{
+			get => RatingInternal;
+			set
+			{
+				RatingInternal = value;
+				Editor.OnChartRatingChanged(this);
+			}
+		}
+
+		private string NameInternal;
+		public string Name
+		{
+			get => NameInternal;
+			set
+			{
+				NameInternal = value;
+				Editor.OnChartNameChanged(this);
+			}
+		}
+
+		private string DescriptionInternal;
+		public string Description
+		{
+			get => DescriptionInternal;
+			set
+			{
+				DescriptionInternal = value;
+				Editor.OnChartDescriptionChanged(this);
+			}
+		}
+
 		public string Style;
 		public string Credit;
 
@@ -491,7 +624,7 @@ namespace StepManiaEditor
 			set
 			{
 				MusicPathInternal = value ?? "";
-				Editor.OnSongMusicChanged();
+				Editor.OnChartMusicChanged(this);
 			}
 		}
 
@@ -502,7 +635,7 @@ namespace StepManiaEditor
 			set
 			{
 				UsesChartMusicOffsetInternal = value;
-				Editor.OnMusicOffsetChanged();
+				Editor.OnChartMusicOffsetChanged(this);
 			}
 		}
 
@@ -513,7 +646,7 @@ namespace StepManiaEditor
 			set
 			{
 				MusicOffsetInternal = value;
-				Editor.OnMusicOffsetChanged();
+				Editor.OnChartMusicOffsetChanged(this);
 			}
 		}
 
@@ -541,22 +674,23 @@ namespace StepManiaEditor
 			OriginalChartExtras = chart.Extras;
 			EditorSong = editorSong;
 
-			SMCommon.TryGetChartType(chart.Type, out ChartType);
-			Enum.TryParse(chart.DifficultyType, out ChartDifficultyType);
+			TryGetChartType(chart.Type, out ChartType);
+			if (Enum.TryParse(chart.DifficultyType, out ChartDifficultyType parsedChartDifficultyType))
+				ChartDifficultyType = parsedChartDifficultyType;
 			Rating = (int)chart.DifficultyRating;
 
-			NumInputs = SMCommon.Properties[(int)ChartType].NumInputs;
-			NumPlayers = SMCommon.Properties[(int)ChartType].NumPlayers;
+			NumInputs = Properties[(int)ChartType].NumInputs;
+			NumPlayers = Properties[(int)ChartType].NumPlayers;
 
-			chart.Extras.TryGetExtra(SMCommon.TagChartName, out Name, true);
-			Name ??= "";
+			chart.Extras.TryGetExtra(TagChartName, out string parsedName, true);
+			Name = parsedName == null ? "" : parsedName;
 			Description = chart.Description ?? "";
-			chart.Extras.TryGetExtra(SMCommon.TagChartStyle, out Style, true);	// Pad or Keyboard
+			chart.Extras.TryGetExtra(TagChartStyle, out Style, true);	// Pad or Keyboard
 			Style ??= "";
 			Credit = chart.Author ?? "";
-			chart.Extras.TryGetExtra(SMCommon.TagMusic, out string musicPath, true);
+			chart.Extras.TryGetExtra(TagMusic, out string musicPath, true);
 			MusicPath = musicPath;
-			UsesChartMusicOffset = chart.Extras.TryGetExtra(SMCommon.TagOffset, out double musicOffset, true);
+			UsesChartMusicOffset = chart.Extras.TryGetExtra(TagOffset, out double musicOffset, true);
 			if (UsesChartMusicOffset)
 				MusicOffset = musicOffset;
 
@@ -567,23 +701,78 @@ namespace StepManiaEditor
 			SetUpEditorEvents(chart);
 		}
 
+		public EditorChart(Editor editor, EditorSong editorSong, ChartType chartType)
+		{
+			Editor = editor;
+			EditorSong = editorSong;
+			ChartType = chartType;
+
+			NumInputs = Properties[(int)ChartType].NumInputs;
+			NumPlayers = Properties[(int)ChartType].NumPlayers;
+
+			Name = "";
+			Description = "";
+			Style = "";
+			Credit = "";
+			MusicPath = "";
+			UsesChartMusicOffset = false;
+			HasDisplayTempoFromChart = false;
+
+			Rating = DefaultRating;
+
+			var tempChart = new Chart();
+			var tempLayer = new Layer();
+			tempLayer.Events.Add(new TimeSignature(editorSong.GetBestChartStartingTimeSignature())
+			{
+				IntegerPosition = 0,
+				MetricPosition = new MetricPosition(0, 0),
+			});
+			tempLayer.Events.Add(new Tempo(editorSong.GetBestChartStartingTempo())
+			{
+				IntegerPosition = 0,
+				MetricPosition = new MetricPosition(0, 0),
+			});
+			tempLayer.Events.Add(new ScrollRate(DefaultScrollRate)
+			{
+				IntegerPosition = 0,
+				MetricPosition = new MetricPosition(0, 0),
+			});
+			tempLayer.Events.Add(new ScrollRateInterpolation(DefaultScrollRate, 0, 0L, false)
+			{
+				IntegerPosition = 0,
+				MetricPosition = new MetricPosition(0, 0),
+			});
+			tempLayer.Events.Add(new TickCount(DefaultTickCount)
+			{
+				IntegerPosition = 0,
+				MetricPosition = new MetricPosition(0, 0),
+			});
+			tempLayer.Events.Add(new Multipliers(DefaultHitMultiplier, DefaultMissMultiplier)
+			{
+				IntegerPosition = 0,
+				MetricPosition = new MetricPosition(0, 0),
+			});
+			tempChart.Layers.Add(tempLayer);
+			SetUpEditorEvents(tempChart);
+		}
+
 		public Chart SaveToChart()
 		{
 			Chart chart = new Chart();
 			chart.Extras = new Extras(OriginalChartExtras);
 
-			chart.Type = SMCommon.ChartTypeString(ChartType);
+			chart.Type = ChartTypeString(ChartType);
 			chart.DifficultyType = ChartDifficultyType.ToString();
 			chart.NumInputs = NumInputs;
 			chart.NumPlayers = NumPlayers;
 			chart.DifficultyRating = Rating;
-			chart.Extras.AddDestExtra(SMCommon.TagChartName, Name);
+			chart.Extras.AddDestExtra(TagChartName, Name);
 			chart.Description = Description;
-			chart.Extras.AddDestExtra(SMCommon.TagChartStyle, Style);
+			chart.Extras.AddDestExtra(TagChartStyle, Style);
 			chart.Author = Credit;
-			chart.Extras.AddDestExtra(SMCommon.TagMusic, MusicPath);
+			chart.Extras.AddDestExtra(TagMusic, MusicPath);
 			if (UsesChartMusicOffset)
-				chart.Extras.AddDestExtra(SMCommon.TagOffset, MusicOffset);
+				chart.Extras.AddDestExtra(TagOffset, MusicOffset);
 			//TODO: Else use song?
 			chart.Tempo = DisplayTempo.ToString();
 
@@ -592,7 +781,7 @@ namespace StepManiaEditor
 			{
 				layer.Events.Add(editorEvent.GetEvent());
 			}
-			layer.Events.Sort(new SMCommon.SMEventComparer());
+			layer.Events.Sort(new SMEventComparer());
 			chart.Layers.Add(layer);
 
 			return chart;
@@ -704,7 +893,7 @@ namespace StepManiaEditor
 					var rowsSincePrevious = Math.Max(0, chartEvent.IntegerPosition - previousEvent.RowForFollowingEvents);
 					var secondsSincePrevious = rowsSincePrevious * previousEvent.SecondsPerRow;
 
-					var newSecondsPerRow = 60.0 / tc.TempoBPM / (double)SMCommon.MaxValidDenominator;
+					var newSecondsPerRow = 60.0 / tc.TempoBPM / (double)MaxValidDenominator;
 					var newRowsPerSecond = 1.0 / newSecondsPerRow;
 
 					// Update any events which precede the first tempo so they can have accurate rates.
@@ -858,7 +1047,7 @@ namespace StepManiaEditor
 
 		private void UpdateNotePositions()
 		{
-			SMCommon.SetEventTimeMicrosAndMetricPositionsFromRows(EditorEvents.Select(e => e.GetEvent()));
+			SetEventTimeMicrosAndMetricPositionsFromRows(EditorEvents.Select(e => e.GetEvent()));
 		}
 
 		public bool TryGetChartPositionFromTime(double chartTime, ref double chartPosition)
@@ -1181,6 +1370,18 @@ namespace StepManiaEditor
 			return 0;
 		}
 
+		public double GetStartingTempo()
+		{
+			var rae = GetActiveRateAlteringEventForPosition(0.0);
+			return rae?.Tempo ?? DefaultTempo;
+		}
+
+		public Fraction GetStartingTimeSignature()
+		{
+			var rae = GetActiveRateAlteringEventForPosition(0.0);
+			return rae?.LastTimeSignature.Signature ?? DefaultTimeSignature;
+		}
+
 		//steps_tag_handlers["BPMS"] = &SetStepsBPMs;
 		//steps_tag_handlers["STOPS"] = &SetStepsStops;
 		//steps_tag_handlers["DELAYS"] = &SetStepsDelays;
@@ -1203,26 +1404,26 @@ namespace StepManiaEditor
 	/// </summary>
 	public class ChartComparer : IComparer<EditorChart>
 	{
-		private static readonly Dictionary<SMCommon.ChartType, int> ChartTypeOrder = new Dictionary<SMCommon.ChartType, int>
+		private static readonly Dictionary<ChartType, int> ChartTypeOrder = new Dictionary<ChartType, int>
 		{
-			{ SMCommon.ChartType.dance_single, 0 },
-			{ SMCommon.ChartType.dance_double, 1 },
-			{ SMCommon.ChartType.dance_couple, 2 },
-			{ SMCommon.ChartType.dance_routine, 3 },
-			{ SMCommon.ChartType.dance_solo, 4 },
-			{ SMCommon.ChartType.dance_threepanel, 5 },
+			{ ChartType.dance_single, 0 },
+			{ ChartType.dance_double, 1 },
+			{ ChartType.dance_couple, 2 },
+			{ ChartType.dance_routine, 3 },
+			{ ChartType.dance_solo, 4 },
+			{ ChartType.dance_threepanel, 5 },
 
-			{ SMCommon.ChartType.pump_single, 6 },
-			{ SMCommon.ChartType.pump_halfdouble, 7 },
-			{ SMCommon.ChartType.pump_double, 8 },
-			{ SMCommon.ChartType.pump_couple, 9 },
-			{ SMCommon.ChartType.pump_routine, 10 },
+			{ ChartType.pump_single, 6 },
+			{ ChartType.pump_halfdouble, 7 },
+			{ ChartType.pump_double, 8 },
+			{ ChartType.pump_couple, 9 },
+			{ ChartType.pump_routine, 10 },
 
-			{ SMCommon.ChartType.smx_beginner, 11 },
-			{ SMCommon.ChartType.smx_single, 12 },
-			{ SMCommon.ChartType.smx_dual, 13 },
-			{ SMCommon.ChartType.smx_full, 14 },
-			{ SMCommon.ChartType.smx_team, 15 },
+			{ ChartType.smx_beginner, 11 },
+			{ ChartType.smx_single, 12 },
+			{ ChartType.smx_dual, 13 },
+			{ ChartType.smx_full, 14 },
+			{ ChartType.smx_team, 15 },
 		};
 
 		private static int StringCompare(string s1, string s2)
@@ -1235,7 +1436,6 @@ namespace StepManiaEditor
 				return 0;
 			return s1.CompareTo(s2);
 		}
-
 
 		public static int Compare(EditorChart c1, EditorChart c2)
 		{
@@ -1279,6 +1479,7 @@ namespace StepManiaEditor
 			if (comparison != 0)
 				return comparison;
 
+			// TODO: This should use note count not event count.
 			return c1.EditorEvents.Count - c2.EditorEvents.Count;
 		}
 

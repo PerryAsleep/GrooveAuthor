@@ -98,28 +98,28 @@ namespace StepManiaEditor
 		private Vector2 FocalPoint;
 
 		private string PendingOpenFileName;
-		private SMCommon.ChartType PendingOpenFileChartType;
-		private SMCommon.ChartDifficultyType PendingOpenFileChartDifficultyType;
+		private ChartType PendingOpenFileChartType;
+		private ChartDifficultyType PendingOpenFileChartDifficultyType;
 
-		private static readonly SMCommon.ChartType[] SupportedChartTypes = new[]
+		public static readonly ChartType[] SupportedChartTypes = new[]
 		{
-			SMCommon.ChartType.dance_single,
-			SMCommon.ChartType.dance_double,
+			ChartType.dance_single,
+			ChartType.dance_double,
 			//dance_couple,
 			//dance_routine,
-			SMCommon.ChartType.dance_solo,
-			SMCommon.ChartType.dance_threepanel,
+			ChartType.dance_solo,
+			ChartType.dance_threepanel,
 
-			SMCommon.ChartType.pump_single,
-			SMCommon.ChartType.pump_halfdouble,
-			SMCommon.ChartType.pump_double,
+			ChartType.pump_single,
+			ChartType.pump_halfdouble,
+			ChartType.pump_double,
 			//pump_couple,
 			//pump_routine,
-			SMCommon.ChartType.smx_beginner,
-			SMCommon.ChartType.smx_single,
-			SMCommon.ChartType.smx_dual,
-			SMCommon.ChartType.smx_full,
-			//SMCommon.ChartType.smx_team,
+			ChartType.smx_beginner,
+			ChartType.smx_single,
+			ChartType.smx_dual,
+			ChartType.smx_full,
+			//ChartType.smx_team,
 		};
 
 		private GraphicsDeviceManager Graphics;
@@ -147,8 +147,8 @@ namespace StepManiaEditor
 		private CancellationTokenSource LoadSongCancellationTokenSource;
 		private Task LoadSongTask;
 
-		private Dictionary<SMCommon.ChartType, PadData> PadDataByChartType = new Dictionary<SMCommon.ChartType, PadData>();
-		private Dictionary<SMCommon.ChartType, StepGraph> StepGraphByChartType = new Dictionary<SMCommon.ChartType, StepGraph>();
+		private Dictionary<ChartType, PadData> PadDataByChartType = new Dictionary<ChartType, PadData>();
+		private Dictionary<ChartType, StepGraph> StepGraphByChartType = new Dictionary<ChartType, StepGraph>();
 
 		private double PlaybackStartTime;
 		private Stopwatch PlaybackStopwatch;
@@ -231,9 +231,7 @@ namespace StepManiaEditor
 			Preferences.Load();
 
 			Position = new EditorPosition(OnPositionChanged);
-
 			FocalPoint = new Vector2(Preferences.Instance.WindowWidth >> 1, 100 + (DefaultArrowWidth >> 1));
-
 			SoundManager = new SoundManager();
 			MusicManager = new MusicManager(SoundManager);
 
@@ -282,14 +280,14 @@ namespace StepManiaEditor
 			Graphics.SynchronizeWithVerticalRetrace = true;
 
 			// Set up snap levels for all valid denominators.
-			SnapLevels = new SnapData[SMCommon.ValidDenominators.Length + 1];
+			SnapLevels = new SnapData[ValidDenominators.Length + 1];
 			SnapLevels[0] = new SnapData { Rows = 0 };
-			for (var denominatorIndex = 0; denominatorIndex < SMCommon.ValidDenominators.Length; denominatorIndex++)
+			for (var denominatorIndex = 0; denominatorIndex < ValidDenominators.Length; denominatorIndex++)
 			{
 				SnapLevels[denominatorIndex + 1] = new SnapData
 				{
-					Rows = SMCommon.MaxValidDenominator / SMCommon.ValidDenominators[denominatorIndex],
-					Texture = ArrowGraphicManager.GetSnapIndicatorTexture(SMCommon.ValidDenominators[denominatorIndex])
+					Rows = MaxValidDenominator / ValidDenominators[denominatorIndex],
+					Texture = ArrowGraphicManager.GetSnapIndicatorTexture(ValidDenominators[denominatorIndex])
 				};
 			}
 
@@ -1594,7 +1592,7 @@ namespace StepManiaEditor
 
 			// Based on the current rate altering event, determine the beat spacing and snap the current row to a beat.
 			var beatsPerMeasure = currentRateEvent.LastTimeSignature.Signature.Numerator;
-			var rowsPerBeat = (SMCommon.MaxValidDenominator * SMCommon.NumBeatsPerMeasure * beatsPerMeasure)
+			var rowsPerBeat = (MaxValidDenominator * NumBeatsPerMeasure * beatsPerMeasure)
 			                  / currentRateEvent.LastTimeSignature.Signature.Denominator / beatsPerMeasure;
 
 			// Determine which integer measure and beat we are on. Clamped due to warps.
@@ -2430,7 +2428,7 @@ namespace StepManiaEditor
 		/// <returns>
 		/// True if no errors were generated and false otherwise.
 		/// </returns>
-		private async Task<bool> LoadPadDataAndCreateStepGraph(SMCommon.ChartType chartType)
+		private async Task<bool> LoadPadDataAndCreateStepGraph(ChartType chartType)
 		{
 			if (PadDataByChartType.ContainsKey(chartType))
 				return true;
@@ -2466,9 +2464,9 @@ namespace StepManiaEditor
 		/// </summary>
 		/// <param name="chartType">ChartType to load PadData for.</param>
 		/// <returns>Loaded PadData or null if any errors were generated.</returns>
-		private static async Task<PadData> LoadPadData(SMCommon.ChartType chartType)
+		private static async Task<PadData> LoadPadData(ChartType chartType)
 		{
-			var chartTypeString = SMCommon.ChartTypeString(chartType);
+			var chartTypeString = ChartTypeString(chartType);
 			var fileName = $"{chartTypeString}.json";
 			Logger.Info($"Loading PadData from {fileName}.");
 			var padData = await PadData.LoadPadData(chartTypeString, fileName);
@@ -2510,8 +2508,8 @@ namespace StepManiaEditor
 		/// <param name="chartDifficultyType">Desired DifficultyType to default to once open.</param>
 		private async void OpenSongFileAsync(
 			string fileName,
-			SMCommon.ChartType chartType,
-			SMCommon.ChartDifficultyType chartDifficultyType)
+			ChartType chartType,
+			ChartDifficultyType chartDifficultyType)
 		{
 			try
 			{
@@ -2635,7 +2633,7 @@ namespace StepManiaEditor
 		/// <param name="preferredChartType">The preferred ChartType (StepMania StepsType) to use.</param>
 		/// <param name="preferredChartDifficultyType">The preferred DifficultyType to use.</param>
 		/// <returns>Best Chart to use or null if no Charts exist.</returns>
-		private EditorChart SelectBestChart(EditorSong song, SMCommon.ChartType preferredChartType, SMCommon.ChartDifficultyType preferredChartDifficultyType)
+		private EditorChart SelectBestChart(EditorSong song, ChartType preferredChartType, ChartDifficultyType preferredChartDifficultyType)
 		{
 			if (song.Charts.Count == 0)
 				return null;
@@ -2653,12 +2651,12 @@ namespace StepManiaEditor
 
 			var orderedDifficultyTypes = new[]
 			{
-				SMCommon.ChartDifficultyType.Challenge,
-				SMCommon.ChartDifficultyType.Hard,
-				SMCommon.ChartDifficultyType.Medium,
-				SMCommon.ChartDifficultyType.Easy,
-				SMCommon.ChartDifficultyType.Beginner,
-				SMCommon.ChartDifficultyType.Edit,
+				ChartDifficultyType.Challenge,
+				ChartDifficultyType.Hard,
+				ChartDifficultyType.Medium,
+				ChartDifficultyType.Easy,
+				ChartDifficultyType.Beginner,
+				ChartDifficultyType.Edit,
 			};
 
 			// If the preferred chart doesn't exist, try to choose the highest difficulty type
@@ -2676,16 +2674,16 @@ namespace StepManiaEditor
 			}
 
 			// No charts of the specified type exist. Try the next best type.
-			SMCommon.ChartType nextBestChartType = SMCommon.ChartType.dance_single;
+			ChartType nextBestChartType = ChartType.dance_single;
 			var hasNextBestChartType = true;
-			if (preferredChartType == SMCommon.ChartType.dance_single)
-				nextBestChartType = SMCommon.ChartType.dance_double;
-			else if (preferredChartType == SMCommon.ChartType.dance_double)
-				nextBestChartType = SMCommon.ChartType.dance_single;
-			else if (preferredChartType == SMCommon.ChartType.pump_single)
-				nextBestChartType = SMCommon.ChartType.pump_double;
-			else if (preferredChartType == SMCommon.ChartType.pump_double)
-				nextBestChartType = SMCommon.ChartType.pump_single;
+			if (preferredChartType == ChartType.dance_single)
+				nextBestChartType = ChartType.dance_double;
+			else if (preferredChartType == ChartType.dance_double)
+				nextBestChartType = ChartType.dance_single;
+			else if (preferredChartType == ChartType.pump_single)
+				nextBestChartType = ChartType.pump_double;
+			else if (preferredChartType == ChartType.pump_double)
+				nextBestChartType = ChartType.pump_single;
 			else
 				hasNextBestChartType = false;
 			if (hasNextBestChartType)
@@ -2787,7 +2785,7 @@ namespace StepManiaEditor
 
 		public bool IsChartSupported(Chart chart)
 		{
-			if (!SMCommon.TryGetChartType(chart.Type, out var chartType))
+			if (!TryGetChartType(chart.Type, out var chartType))
 				return false;
 			var typeSupported = false;
 			foreach (var supportedType in SupportedChartTypes)
@@ -2802,7 +2800,7 @@ namespace StepManiaEditor
 			if (!typeSupported)
 				return false;
 
-			if (!Enum.TryParse<SMCommon.ChartDifficultyType>(chart.DifficultyType, out _))
+			if (!Enum.TryParse<ChartDifficultyType>(chart.DifficultyType, out _))
 				return false;
 
 			return true;
@@ -2817,7 +2815,7 @@ namespace StepManiaEditor
 			if (SnapLevels[SnapIndex].Rows == 0)
 				Logger.Info("Snap off");
 			else
-				Logger.Info($"Snap to 1/{SMCommon.MaxValidDenominator / SnapLevels[SnapIndex].Rows * 4}");
+				Logger.Info($"Snap to 1/{MaxValidDenominator / SnapLevels[SnapIndex].Rows * 4}");
 		}
 
 		private void OnIncreaseSnap()
@@ -2829,7 +2827,7 @@ namespace StepManiaEditor
 			if (SnapLevels[SnapIndex].Rows == 0)
 				Logger.Info("Snap off");
 			else
-				Logger.Info($"Snap to 1/{SMCommon.MaxValidDenominator / SnapLevels[SnapIndex].Rows * 4}");
+				Logger.Info($"Snap to 1/{MaxValidDenominator / SnapLevels[SnapIndex].Rows * 4}");
 		}
 
 		private void OnMoveUp()
@@ -2875,7 +2873,7 @@ namespace StepManiaEditor
 			if (rate == null)
 				return;
 			var sig = rate.LastTimeSignature.Signature;
-			var rows = sig.Numerator * (SMCommon.MaxValidDenominator * SMCommon.NumBeatsPerMeasure / sig.Denominator);
+			var rows = sig.Numerator * (MaxValidDenominator * NumBeatsPerMeasure / sig.Denominator);
 			Position.ChartPosition -= rows;
 
 			UpdateAutoPlayFromScrolling();
@@ -2887,7 +2885,7 @@ namespace StepManiaEditor
 			if (rate == null)
 				return;
 			var sig = rate.LastTimeSignature.Signature;
-			var rows = sig.Numerator * (SMCommon.MaxValidDenominator * SMCommon.NumBeatsPerMeasure / sig.Denominator);
+			var rows = sig.Numerator * (MaxValidDenominator * NumBeatsPerMeasure / sig.Denominator);
 			Position.ChartPosition += rows;
 
 			UpdateAutoPlayFromScrolling();
@@ -3001,7 +2999,7 @@ namespace StepManiaEditor
 						Lane = lane,
 						IntegerPosition = row,
 						TimeMicros = ToMicros(Position.ChartTime),
-						SourceType = SMCommon.NoteChars[(int)SMCommon.NoteType.Mine].ToString()
+						SourceType = NoteChars[(int)NoteType.Mine].ToString()
 					}, true));
 				}
 				else
@@ -3090,7 +3088,7 @@ namespace StepManiaEditor
 						else
 						{
 							// Move the hold up by a 16th.
-							var newHoldEndRow = row - (SMCommon.MaxValidDenominator / 4);
+							var newHoldEndRow = row - (MaxValidDenominator / 4);
 
 							// If the hold would have a non-positive length, delete it and replace it with a tap.
 							if (newHoldEndRow <= holdStart.GetRow())
@@ -3255,12 +3253,12 @@ namespace StepManiaEditor
 
 		private void OnUndo()
 		{
-			var action = ActionQueue.Instance.Undo();
+			ActionQueue.Instance.Undo();
 		}
 
 		private void OnRedo()
 		{
-			var action = ActionQueue.Instance.Redo();
+			ActionQueue.Instance.Redo();
 		}
 
 		private void OnEscape()
@@ -3423,19 +3421,61 @@ namespace StepManiaEditor
 			return PlayingPreview;
 		}
 
-		public void OnSongMusicChanged()
+		public void OnSongMusicChanged(EditorSong song)
+		{
+			if (ActiveChart == null || song != ActiveChart.EditorSong)
+				return;
+			OnMusicChangedInternal();
+		}
+
+		public void OnSongMusicPreviewChanged(EditorSong song)
+		{
+			if (ActiveChart == null || song != ActiveChart.EditorSong)
+				return;
+			OnMusicPreviewChangedInternal();
+		}
+
+		public void OnSongMusicOffsetChanged(EditorSong song)
+		{
+			if (ActiveChart == null || song != ActiveChart.EditorSong)
+				return;
+			OnMusicOffsetChangedInternal();
+		}
+
+		public void OnChartMusicChanged(EditorChart chart)
+		{
+			if (ActiveChart == null || chart != ActiveChart)
+				return;
+			OnMusicChangedInternal();
+		}
+
+		public void OnChartMusicPreviewChanged(EditorChart chart)
+		{
+			if (ActiveChart == null || chart != ActiveChart)
+				return;
+			OnMusicPreviewChangedInternal();
+		}
+
+		public void OnChartMusicOffsetChanged(EditorChart chart)
+		{
+			if (ActiveChart == null || chart != ActiveChart)
+				return;
+			OnMusicOffsetChangedInternal();
+		}
+
+		private void OnMusicChangedInternal()
 		{
 			StopPreview();
 			MusicManager.LoadMusicAsync(GetFullPathToMusicFile(), GetSongTime);
 		}
 
-		public void OnSongMusicPreviewChanged()
+		private void OnMusicPreviewChangedInternal()
 		{
 			StopPreview();
 			MusicManager.LoadMusicPreviewAsync(GetFullPathToMusicPreviewFile());
 		}
 
-		public void OnMusicOffsetChanged()
+		private void OnMusicOffsetChangedInternal()
 		{
 			// Re-set the position to recompute the chart and song times.
 			Position.ChartPosition = Position.ChartPosition;
@@ -3451,9 +3491,37 @@ namespace StepManiaEditor
 			return ActiveChart;
 		}
 
+		public void OnChartDifficultyTypeChanged(EditorChart chart)
+		{
+			if (ActiveChart == null || chart != ActiveChart)
+				return;
+			ActiveChart.EditorSong.UpdateChartSort();
+		}
+
+		public void OnChartRatingChanged(EditorChart chart)
+		{
+			if (ActiveChart == null || chart != ActiveChart)
+				return;
+			ActiveChart.EditorSong.UpdateChartSort();
+		}
+
+		public void OnChartNameChanged(EditorChart chart)
+		{
+			if (ActiveChart == null || chart != ActiveChart)
+				return;
+			ActiveChart.EditorSong.UpdateChartSort();
+		}
+
+		public void OnChartDescriptionChanged(EditorChart chart)
+		{
+			if (ActiveChart == null || chart != ActiveChart)
+				return;
+			ActiveChart.EditorSong.UpdateChartSort();
+		}
+
 		public void OnChartSelected(EditorChart chart, bool undoable = true)
 		{
-			if (ActiveChart == chart)
+			if (EditorSong == null || ActiveChart == chart)
 				return;
 
 			// If the active chart is being changed as an undoable action, enqueue the action and return.
@@ -3468,7 +3536,7 @@ namespace StepManiaEditor
 
 			// Update the recent file entry for the current song so that tracks the selected cha
 			var p = Preferences.Instance;
-			if (p.RecentFiles.Count > 0 && p.RecentFiles[0].FileName == EditorSong.FileName)
+			if (p.RecentFiles.Count > 0 && p.RecentFiles[0].FileName == EditorSong.FileFullPath)
 			{
 				p.RecentFiles[0].LastChartType = ActiveChart.ChartType;
 				p.RecentFiles[0].LastChartDifficultyType = ActiveChart.ChartDifficultyType;
@@ -3494,8 +3562,42 @@ namespace StepManiaEditor
 			UpdateWindowTitle();
 
 			// Start loading music for this Chart.
-			OnSongMusicChanged();
-			OnSongMusicPreviewChanged();
+			OnChartMusicChanged(ActiveChart);
+			OnChartMusicPreviewChanged(ActiveChart);
+		}
+
+		public EditorChart AddChart(ChartType chartType, bool selectNewChart)
+		{
+			if (EditorSong == null)
+				return null;
+			var chart = EditorSong.AddChart(chartType);
+			if (selectNewChart)
+				OnChartSelected(chart, false);
+			return chart;
+		}
+
+		public EditorChart AddChart(EditorChart chart, bool selectNewChart)
+		{
+			if (EditorSong == null)
+				return null;
+			EditorSong.AddChart(chart);
+			if (selectNewChart)
+				OnChartSelected(chart, false);
+			return chart;
+		}
+
+		public void DeleteChart(EditorChart chart, EditorChart chartToSelect)
+		{
+			if (EditorSong == null)
+				return;
+			EditorSong.DeleteChart(chart);
+			if (chartToSelect != null)
+				OnChartSelected(chartToSelect, false);
+			else if (ActiveChart == chart)
+			{
+				var newActiveChart = SelectBestChart(EditorSong, ActiveChart.ChartType, ActiveChart.ChartDifficultyType);
+				OnChartSelected(newActiveChart, false);
+			}
 		}
 	}
 }

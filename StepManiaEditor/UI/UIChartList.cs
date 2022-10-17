@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Numerics;
+using Fumen.ChartDefinition;
 using Fumen.Converters;
 using ImGuiNET;
 
@@ -14,18 +15,21 @@ namespace StepManiaEditor
 			Editor = editor;
 		}
 
-		private void DrawChartRow(EditorChart chart, bool active)
+		private void DrawChartRow(EditorChart chart, int index, bool active)
 		{
 			ImGui.TableNextRow();
 
+			var color = Utils.GetColorForDifficultyType(chart.ChartDifficultyType);
+
 			ImGui.TableSetColumnIndex(0);
-			ImGui.TableSetBgColor(ImGuiTableBgTarget.CellBg, Utils.GetColorForDifficultyType(chart.ChartDifficultyType));
-			if (ImGui.Selectable(chart.ChartDifficultyType.ToString(), active, ImGuiSelectableFlags.SpanAllColumns))
+			ImGui.TableSetBgColor(ImGuiTableBgTarget.CellBg, color);
+			if (ImGui.Selectable($"{chart.ChartDifficultyType}##{index}", active, ImGuiSelectableFlags.SpanAllColumns))
 			{
 				Editor.OnChartSelected(chart);
 			}
 
 			ImGui.TableSetColumnIndex(1);
+			ImGui.TableSetBgColor(ImGuiTableBgTarget.CellBg, color);
 			ImGui.Text(chart.Rating.ToString());
 
 			ImGui.TableSetColumnIndex(2);
@@ -70,8 +74,9 @@ namespace StepManiaEditor
 						ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100);
 					}
 
+					var index = 0;
 					foreach (var chart in kvp.Value)
-						DrawChartRow(chart, chart == editorChart);
+						DrawChartRow(chart, index++, chart == editorChart);
 
 					numCharts++;
 				}
@@ -91,8 +96,22 @@ namespace StepManiaEditor
 			{
 				if (ImGuiLayoutUtils.DrawRowButton("Add Chart", "Add Chart"))
 				{
-
+					ImGui.OpenPopup("AddChartPopup");
 				}
+				if (ImGui.BeginPopup("AddChartPopup"))
+				{
+					ImGui.Text("Type");
+					ImGui.Separator();
+					foreach (var chartType in Editor.SupportedChartTypes)
+					{
+						if(ImGui.Selectable(Utils.GetPrettyEnumString(chartType)))
+						{
+							ActionQueue.Instance.Do(new ActionAddChart(Editor, chartType));
+						}
+					}
+					ImGui.EndPopup();
+				}
+
 				ImGuiLayoutUtils.EndTable();
 			}
 
