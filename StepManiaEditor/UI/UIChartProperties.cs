@@ -67,7 +67,7 @@ namespace StepManiaEditor
 			if (ImGuiLayoutUtils.BeginTable("ChartMusicTable", 100))
 			{
 				ImGuiLayoutUtils.DrawRowFileBrowse("Music", EditorChart, nameof(EditorChart.MusicPath), BrowseMusicFile, ClearMusicFile,
-					"(Uncommon) The audio file to use this chart, overriding the song music." +
+					"(Uncommon) The audio file to use for this chart, overriding the song music." +
 					"\nIn most cases all charts use the same music and it is defined at the song level.");
 				
 				ImGuiLayoutUtils.DrawRowDragDoubleWithEnabledCheckbox(true, "Music Offset", EditorChart, nameof(EditorChart.MusicOffset), nameof(EditorChart.UsesChartMusicOffset),
