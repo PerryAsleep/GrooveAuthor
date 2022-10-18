@@ -1306,6 +1306,19 @@ namespace StepManiaEditor
 						else
 							interpolatedScrollRate = interpolatedRateEvent.GetInterpolatedScrollRateFromRow(chartPosition);
 					}
+					else
+					{
+						interpolatedScrollRateEnumerator = ActiveChart.InterpolatedScrollRateEvents.FindLeastFollowing(ratePosEventForChecking, true);
+						if (interpolatedScrollRateEnumerator != null)
+						{
+							interpolatedScrollRateEnumerator.MoveNext();
+							var interpolatedRateEvent = interpolatedScrollRateEnumerator.Current;
+							if (interpolatedRateEvent.InterpolatesByTime())
+								interpolatedScrollRate = interpolatedRateEvent.GetInterpolatedScrollRateFromTime(time);
+							else
+								interpolatedScrollRate = interpolatedRateEvent.GetInterpolatedScrollRateFromRow(chartPosition);
+						}
+					}
 
 					// Now, scroll up to the top of the screen so we can start processing events going downwards.
 					// We know what time / pos we are drawing at the receptors, but not the rate to get to that time from the top
@@ -2612,11 +2625,11 @@ namespace StepManiaEditor
 						p.RecentFiles.Count - pOptions.RecentFilesHistorySize);
 				}
 
-				// Find a better spot for this
+				OnChartSelected(newActiveChart, false);
+
+				// Find a better spot for this.
 				Position.ChartPosition = 0.0;
 				DesiredSongTime = Position.SongTime;
-
-				OnChartSelected(newActiveChart, false);
 
 				SetZoom(1.0, true);
 			}

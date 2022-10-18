@@ -834,7 +834,10 @@ namespace StepManiaEditor
 					{
 						irae.Row = scrollRateInterpolation.IntegerPosition;
 						irae.SongTime = scrollRateInterpolation.TimeMicros;
-						irae.PreviousScrollRate = lastScrollRateInterpolationValue;
+						// For the first scroll rate event, set the previous rate to the first rate so we use the
+						// first scroll rate when consider positions and times before 0.0. See also
+						// OnInterpolatedRateAlteringEventModified.
+						irae.PreviousScrollRate = firstInterpolatedScrollRate ? scrollRateInterpolation.Rate : lastScrollRateInterpolationValue;
 						irae.CanBeDeleted = !firstInterpolatedScrollRate;
 						interpolatedScrollRateEvents.Insert(irae);
 						lastScrollRateInterpolationValue = scrollRateInterpolation.Rate;
@@ -1056,7 +1059,12 @@ namespace StepManiaEditor
 			if (rateEvent == null)
 				return false;
 
-			chartPosition = rateEvent.RowForFollowingEvents + rateEvent.RowsPerSecond * Math.Max(0.0, chartTime - rateEvent.SongTimeForFollowingEvents);
+			// Cap the relative time to 0.0 so warps function properly, except when the chart time is
+			// before 0.0.
+			var relativeTime = chartTime - rateEvent.SongTimeForFollowingEvents;
+			if (chartTime > 0.0 && relativeTime < 0.0)
+				relativeTime = 0.0;
+			chartPosition = rateEvent.RowForFollowingEvents + rateEvent.RowsPerSecond * relativeTime;
 			return true;
 		}
 
@@ -1087,7 +1095,12 @@ namespace StepManiaEditor
 			if (rateEvent == null)
 				return false;
 
-			chartTime = rateEvent.SongTimeForFollowingEvents + rateEvent.SecondsPerRow * Math.Max(0.0, chartPosition - rateEvent.RowForFollowingEvents);
+			// Cap the relative position to 0.0 so warps function properly, except when the chart time is
+			// before 0.0.
+			var relativePosition = chartPosition - rateEvent.RowForFollowingEvents;
+			if (chartPosition > 0.0 && relativePosition < 0)
+				relativePosition = 0.0;
+			chartTime = rateEvent.SongTimeForFollowingEvents + rateEvent.SecondsPerRow * relativePosition;
 			return true;
 		}
 
@@ -1255,6 +1268,17 @@ namespace StepManiaEditor
 			if (e != null)
 			{
 				e.MoveNext();
+
+				// If this is the first event, set its PreviousScrollRate as well so when we consider times
+				// and positions before 0.0 we use the first scroll rate.
+				// See also SetUpEditorEvents.
+				var first = !e.MovePrev();
+				e.MoveNext();
+				if (first)
+				{
+					e.Current.PreviousScrollRate = irae.ScrollRateInterpolationEvent.Rate;
+				}
+
 				if (e.MoveNext())
 				{
 					var next = e.Current;
