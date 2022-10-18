@@ -3,6 +3,7 @@ using System.Numerics;
 using Fumen.ChartDefinition;
 using Fumen.Converters;
 using ImGuiNET;
+using static Fumen.Converters.SMCommon;
 
 namespace StepManiaEditor
 {
@@ -15,8 +16,9 @@ namespace StepManiaEditor
 			Editor = editor;
 		}
 
-		private void DrawChartRow(EditorChart chart, int index, bool active)
+		private bool DrawChartRow(EditorChart chart, int index, bool active)
 		{
+			var deleteChart = false;
 			ImGui.TableNextRow();
 
 			var color = Utils.GetColorForDifficultyType(chart.ChartDifficultyType);
@@ -27,6 +29,10 @@ namespace StepManiaEditor
 			{
 				Editor.OnChartSelected(chart);
 			}
+			if(ImGui.IsItemClicked(ImGuiMouseButton.Right))
+			{
+				ImGui.OpenPopup($"ChartRightClickPopup##{index}");
+			}
 
 			ImGui.TableSetColumnIndex(1);
 			ImGui.TableSetBgColor(ImGuiTableBgTarget.CellBg, color);
@@ -34,6 +40,17 @@ namespace StepManiaEditor
 
 			ImGui.TableSetColumnIndex(2);
 			ImGui.Text(chart.Description);
+
+			if (ImGui.BeginPopup($"ChartRightClickPopup##{index}"))
+			{
+				if (ImGui.Selectable($"Delete {chart.ChartDifficultyType} Chart"))
+				{
+					deleteChart = true;
+				}
+				ImGui.EndPopup();
+			}
+
+			return deleteChart;
 		}
 
 		public void Draw(EditorChart editorChart)
@@ -75,8 +92,15 @@ namespace StepManiaEditor
 					}
 
 					var index = 0;
+					EditorChart pendingDeleteChart = null;
 					foreach (var chart in kvp.Value)
-						DrawChartRow(chart, index++, chart == editorChart);
+						if (DrawChartRow(chart, index++, chart == editorChart))
+							pendingDeleteChart = chart;
+
+					if (pendingDeleteChart != null)
+					{
+						ActionQueue.Instance.Do(new ActionDeleteChart(Editor, pendingDeleteChart));
+					}
 
 					numCharts++;
 				}
