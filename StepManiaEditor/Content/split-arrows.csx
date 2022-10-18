@@ -84,10 +84,6 @@ public static void Main()
 		"piu-hold-center",
 		"piu-roll-red",
 		"mine",
-		"itg-hold-solo-start-active",
-		"itg-hold-solo-start-inactive",
-		"itg-roll-solo-start-active",
-		"itg-roll-solo-start-inactive",
 	};
 	ProcessFiles(fileNames, 9, 0, 0, 128, 128, 0);
 
@@ -103,6 +99,15 @@ public static void Main()
 		"snap-1-64",
 	};
 	ProcessFiles(snapFileNames, 4, 648, 1032, 40, 40, 8);
+
+	var holdStartFileNames = new string[]
+	{
+		"itg-hold-solo-start-active",
+		"itg-hold-solo-start-inactive",
+		"itg-roll-solo-start-active",
+		"itg-roll-solo-start-inactive",
+	};
+	ProcessFiles(holdStartFileNames, 4, 128, 1060, 128, 28, 0);
 }
 
 static void ProcessFiles(string[] fileNames, int numCols, int startX, int startY, int w, int h, int padding)
