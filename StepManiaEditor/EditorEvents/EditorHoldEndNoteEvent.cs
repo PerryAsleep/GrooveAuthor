@@ -72,15 +72,22 @@ namespace StepManiaEditor
 			var active = NextDrawActive && Preferences.Instance.PreferencesAnimations.AutoPlayLightHolds;
 			var activeAndCutoff = NextDrawActive && Preferences.Instance.PreferencesAnimations.AutoPlayHideArrows;
 
-			var (bodyTextureId, bodyMirrored) = roll ?
+			// The hold body texture is a tiled texture that starts at the end of the hold and ends at the arrow.
+			var (holdBodyTextureId, holdBodyMirrored) = roll ?
 				arrowGraphicManager.GetRollBodyTexture(LaneHoldEndNote.IntegerPosition, LaneHoldEndNote.Lane, active) :
 				arrowGraphicManager.GetHoldBodyTexture(LaneHoldEndNote.IntegerPosition, LaneHoldEndNote.Lane, active);
-			var (capTextureId, capMirrored) = roll ?
+			// The hold cap texture is a texture that is drawn once at the end of the hold.
+			var (holdCapTextureId, holdCapMirrored) = roll ?
 				arrowGraphicManager.GetRollEndTexture(LaneHoldEndNote.IntegerPosition, LaneHoldEndNote.Lane, active) :
 				arrowGraphicManager.GetHoldEndTexture(LaneHoldEndNote.IntegerPosition, LaneHoldEndNote.Lane, active);
+			// The hold start texture is only used to extend the start of the hold upward into the arrow for certain
+			// arrow graphics which wouldn't otherwise mask the hold start, like solo diagonals.
+			var (holdBodyStartTexture, holdBodyStartMirror) = roll ?
+				arrowGraphicManager.GetRollStartTexture(GetHoldStartNote().GetRow(), GetLane(), NextDrawActive) :
+				arrowGraphicManager.GetHoldStartTexture(GetHoldStartNote().GetRow(), GetLane(), NextDrawActive);
 
-			var (_, capH) = textureAtlas.GetDimensions(capTextureId);
-			var (bodyTexW, bodyTexH) = textureAtlas.GetDimensions(bodyTextureId);
+			var (_, capH) = textureAtlas.GetDimensions(holdCapTextureId);
+			var (bodyTexW, bodyTexH) = textureAtlas.GetDimensions(holdBodyTextureId);
 
 			// Determine the Y value and height to use.
 			// If the note is active, we should bring down the top to the cutoff point.
@@ -99,11 +106,11 @@ namespace StepManiaEditor
 			var x = (int)(GetX() + 0.5);
 			var w = (int)(GetW() + 0.5);
 
-			var spriteEffects = capMirrored ? SpriteEffects.FlipHorizontally : SpriteEffects.None;
+			var spriteEffects = holdCapMirrored ? SpriteEffects.FlipHorizontally : SpriteEffects.None;
 
 			// Draw the cap, if it is visible.
 			if (y > -capH && y < ScreenHeight)
-				textureAtlas.Draw(capTextureId, spriteBatch, new Rectangle(x, y, w, capH), 0.0f, alpha, spriteEffects);
+				textureAtlas.Draw(holdCapTextureId, spriteBatch, new Rectangle(x, y, w, capH), 0.0f, alpha, spriteEffects);
 
 			// Adjust the starting y value so we don't needlessly loop when zoomed in and a large
 			// area of the hold is off the screen.
@@ -112,8 +119,9 @@ namespace StepManiaEditor
 				y -= ((y - (int)ScreenHeight) / capH) * capH;
 			}
 
-			// Draw the body.
-			spriteEffects = bodyMirrored ? SpriteEffects.FlipHorizontally : SpriteEffects.None;
+			// Draw the body by looping up from the bottom, ensuring that each tiled body texture aligns
+			// perfectly with the previous one.
+			spriteEffects = holdBodyMirrored ? SpriteEffects.FlipHorizontally : SpriteEffects.None;
 			while (y >= minY)
 			{
 				var h = Math.Min(bodyTileH, y - minY);
@@ -125,41 +133,38 @@ namespace StepManiaEditor
 				if (h < bodyTileH)
 				{
 					var sourceH = (int)(bodyTexH * ((double)h / bodyTileH));
-					textureAtlas.Draw(bodyTextureId, spriteBatch, new Rectangle(0, bodyTexH - sourceH, bodyTexW, sourceH), new Rectangle(x, y, w, h), 0.0f, alpha, spriteEffects);
+					textureAtlas.Draw(holdBodyTextureId, spriteBatch, new Rectangle(0, bodyTexH - sourceH, bodyTexW, sourceH), new Rectangle(x, y, w, h), 0.0f, alpha, spriteEffects);
 				}
 				else
 				{
-					textureAtlas.Draw(bodyTextureId, spriteBatch, new Rectangle(x, y, w, h), 0.0f, alpha, spriteEffects);
+					textureAtlas.Draw(holdBodyTextureId, spriteBatch, new Rectangle(x, y, w, h), 0.0f, alpha, spriteEffects);
 				}
-			}
-
-			var (holdStartTexture, holdStartMirror) = arrowGraphicManager.GetHoldStartTexture(GetHoldStartNote().GetRow(), GetLane(), NextDrawActive);
-			var holdStartY = 0.0;
-			if (holdStartTexture != null || activeAndCutoff)
-			{
-				var (startTexture, _) = arrowGraphicManager.GetArrowTexture(GetHoldStartNote().GetRow(), GetLane());
-				var (_, startHeight) = textureAtlas.GetDimensions(startTexture);
-				holdStartY = noteY - (startHeight * 0.5 * GetScale());
 			}
 
 			// Some arrows, like solo diagonals need a hold start graphic to fill the gap at the top of the hold
 			// between the arrow midpoint and the widest part of the arrow.
-			if (holdStartTexture != null)
+			if (holdBodyStartTexture != null)
 			{
+				// It is assumed there is no height padding baked into this texture.
+				var (_, holdBodyStartHeight) = textureAtlas.GetDimensions(holdBodyStartTexture);
+				var holdBodyStartH = (int)(holdBodyStartHeight * GetScale());
+
 				textureAtlas.Draw(
-					holdStartTexture,
+					holdBodyStartTexture,
 					spriteBatch,
-					new Vector2((float)GetX(), (float)holdStartY),
-					GetScale(),
+					new Rectangle(x, minY - holdBodyStartH, w, holdBodyStartH),
 					0.0f,
 					alpha,
-					holdStartMirror ? SpriteEffects.FlipHorizontally : SpriteEffects.None);
+					holdBodyStartMirror ? SpriteEffects.FlipHorizontally : SpriteEffects.None);
 			}
 
 			// If active, draw the hold start note on top of the receptors.
 			// The actual hold start note will not draw since it is above the receptors.
 			if (activeAndCutoff)
 			{
+				var (startArrowTexture, _) = arrowGraphicManager.GetArrowTexture(GetHoldStartNote().GetRow(), GetLane());
+				var (_, startArrowHeight) = textureAtlas.GetDimensions(startArrowTexture);
+				var holdStartY = noteY - (startArrowHeight * 0.5 * GetScale());
 				GetHoldStartNote().DrawAtY(textureAtlas, spriteBatch, arrowGraphicManager, holdStartY);
 			}
 
