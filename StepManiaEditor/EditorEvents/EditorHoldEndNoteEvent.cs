@@ -77,7 +77,7 @@ namespace StepManiaEditor
 				arrowGraphicManager.GetRollBodyTexture(LaneHoldEndNote.IntegerPosition, LaneHoldEndNote.Lane, active) :
 				arrowGraphicManager.GetHoldBodyTexture(LaneHoldEndNote.IntegerPosition, LaneHoldEndNote.Lane, active);
 			// The hold cap texture is a texture that is drawn once at the end of the hold.
-			var (holdCapTextureId, holdCapMirrored) = roll ?
+			var (holdCapTextureId, holdCapRotation) = roll ?
 				arrowGraphicManager.GetRollEndTexture(LaneHoldEndNote.IntegerPosition, LaneHoldEndNote.Lane, active) :
 				arrowGraphicManager.GetHoldEndTexture(LaneHoldEndNote.IntegerPosition, LaneHoldEndNote.Lane, active);
 			// The hold start texture is only used to extend the start of the hold upward into the arrow for certain
@@ -106,11 +106,10 @@ namespace StepManiaEditor
 			var x = (int)(GetX() + 0.5);
 			var w = (int)(GetW() + 0.5);
 
-			var spriteEffects = holdCapMirrored ? SpriteEffects.FlipHorizontally : SpriteEffects.None;
-
-			// Draw the cap, if it is visible.
-			if (y > -capH && y < ScreenHeight)
-				textureAtlas.Draw(holdCapTextureId, spriteBatch, new Rectangle(x, y, w, capH), 0.0f, alpha, spriteEffects);
+			// Record the cap position for drawing later.
+			var capY = y;
+			if (arrowGraphicManager.AreHoldCapsCentered())
+				capY -= (int)(capH * 0.5f);
 
 			// Adjust the starting y value so we don't needlessly loop when zoomed in and a large
 			// area of the hold is off the screen.
@@ -121,7 +120,7 @@ namespace StepManiaEditor
 
 			// Draw the body by looping up from the bottom, ensuring that each tiled body texture aligns
 			// perfectly with the previous one.
-			spriteEffects = holdBodyMirrored ? SpriteEffects.FlipHorizontally : SpriteEffects.None;
+			var spriteEffects = holdBodyMirrored ? SpriteEffects.FlipHorizontally : SpriteEffects.None;
 			while (y >= minY)
 			{
 				var h = Math.Min(bodyTileH, y - minY);
@@ -157,6 +156,11 @@ namespace StepManiaEditor
 					alpha,
 					holdBodyStartMirror ? SpriteEffects.FlipHorizontally : SpriteEffects.None);
 			}
+
+			// Draw the cap, if it is visible.
+			// The cap should be drawn after the body as some caps render on top of the body.
+			if (capY > -capH && capY < ScreenHeight)
+				textureAtlas.Draw(holdCapTextureId, spriteBatch, new Rectangle(x, capY, w, capH), holdCapRotation, alpha, SpriteEffects.None);
 
 			// If active, draw the hold start note on top of the receptors.
 			// The actual hold start note will not draw since it is above the receptors.

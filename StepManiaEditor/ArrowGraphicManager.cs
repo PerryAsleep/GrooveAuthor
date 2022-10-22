@@ -92,11 +92,12 @@ namespace StepManiaEditor
 
 				// TODO
 				case SMCommon.ChartType.pump_single:
-				case SMCommon.ChartType.pump_halfdouble:
 				case SMCommon.ChartType.pump_double:
 				case SMCommon.ChartType.pump_couple:
 				case SMCommon.ChartType.pump_routine:
-					break;
+					return new ArrowGraphicManagerPIUSingleOrDouble();
+				case SMCommon.ChartType.pump_halfdouble:
+					return new ArrowGraphicManagerPIUSingleHalfDouble();
 
 				default:
 					return null;
@@ -104,6 +105,8 @@ namespace StepManiaEditor
 
 			return null;
 		}
+
+		public abstract bool AreHoldCapsCentered();
 
 		public abstract (string, float) GetReceptorTexture(int lane);
 		public abstract (string, float) GetReceptorGlowTexture(int lane);
@@ -113,14 +116,17 @@ namespace StepManiaEditor
 
 		public abstract (string, bool) GetHoldStartTexture(int integerPosition, int lane, bool held);
 		public abstract (string, bool) GetHoldBodyTexture(int integerPosition, int lane, bool held);
-		public abstract (string, bool) GetHoldEndTexture(int integerPosition, int lane, bool held);
+		public abstract (string, float) GetHoldEndTexture(int integerPosition, int lane, bool held);
 		public abstract (string, bool) GetRollStartTexture(int integerPosition, int lane, bool held);
 		public abstract (string, bool) GetRollBodyTexture(int integerPosition, int lane, bool held);
-		public abstract (string, bool) GetRollEndTexture(int integerPosition, int lane, bool held);
+		public abstract (string, float) GetRollEndTexture(int integerPosition, int lane, bool held);
 
+		public static uint GetArrowColorABGRForSubdivision(int subdivision)
+		{
+			return ArrowGraphicManagerDance.GetDanceArrowColorABGRForSubdivision(subdivision);
+		}
 
 		public abstract uint GetArrowColorABGR(int integerPosition, int lane);
-		public abstract uint GetArrowColorABGRForSubdivision(int subdivision);
 		public abstract ushort GetArrowColorBGR565(int integerPosition, int lane);
 		public abstract uint GetHoldColorABGR(int integerPosition, int lane);
 		public abstract ushort GetHoldColorBGR565(int integerPosition, int lane);
@@ -384,12 +390,17 @@ namespace StepManiaEditor
 			return allTextures;
 		}
 
+		public override bool AreHoldCapsCentered()
+		{
+			return false;
+		}
+
 		public override uint GetArrowColorABGR(int integerPosition, int lane)
 		{
 			return ArrowColorABGRByRow[integerPosition % SMCommon.MaxValidDenominator];
 		}
 
-		public override uint GetArrowColorABGRForSubdivision(int subdivision)
+		public static uint GetDanceArrowColorABGRForSubdivision(int subdivision)
 		{
 			return ArrowColorABGRBySubdivision[subdivision];
 		}
@@ -455,9 +466,9 @@ namespace StepManiaEditor
 			return (held ? HoldTexturesActive.Body.DownArrow : HoldTexturesInactive.Body.DownArrow, false);
 		}
 
-		public override (string, bool) GetHoldEndTexture(int integerPosition, int lane, bool held)
+		public override (string, float) GetHoldEndTexture(int integerPosition, int lane, bool held)
 		{
-			return (held ? HoldTexturesActive.End.DownArrow : HoldTexturesInactive.End.DownArrow, false);
+			return (held ? HoldTexturesActive.End.DownArrow : HoldTexturesInactive.End.DownArrow, 0.0f);
 		}
 
 		public override (string, bool) GetHoldStartTexture(int integerPosition, int lane, bool held)
@@ -470,9 +481,9 @@ namespace StepManiaEditor
 			return (held ? RollTexturesActive.Body.DownArrow : RollTexturesInactive.Body.DownArrow, false);
 		}
 
-		public override (string, bool) GetRollEndTexture(int integerPosition, int lane, bool held)
+		public override (string, float) GetRollEndTexture(int integerPosition, int lane, bool held)
 		{
-			return (held ? RollTexturesActive.End.DownArrow : RollTexturesInactive.End.DownArrow, false);
+			return (held ? RollTexturesActive.End.DownArrow : RollTexturesInactive.End.DownArrow, 0.0f);
 		}
 
 		public override (string, bool) GetRollStartTexture(int integerPosition, int lane, bool held)
@@ -528,10 +539,10 @@ namespace StepManiaEditor
 			return (held ? HoldTexturesActive.Body.UpLeftArrow : HoldTexturesInactive.Body.UpLeftArrow, false);
 		}
 
-		public override (string, bool) GetHoldEndTexture(int integerPosition, int lane, bool held)
+		public override (string, float) GetHoldEndTexture(int integerPosition, int lane, bool held)
 		{
 			// Always use the narrower diagonal hold graphics in solo.
-			return (held ? HoldTexturesActive.End.UpLeftArrow : HoldTexturesInactive.End.UpLeftArrow, false);
+			return (held ? HoldTexturesActive.End.UpLeftArrow : HoldTexturesInactive.End.UpLeftArrow, 0.0f);
 		}
 
 		public override (string, bool) GetHoldStartTexture(int integerPosition, int lane, bool held)
@@ -551,10 +562,10 @@ namespace StepManiaEditor
 			return (held ? RollTexturesActive.Body.UpLeftArrow : RollTexturesInactive.Body.UpLeftArrow, false);
 		}
 
-		public override (string, bool) GetRollEndTexture(int integerPosition, int lane, bool held)
+		public override (string, float) GetRollEndTexture(int integerPosition, int lane, bool held)
 		{
 			// Always use the narrower diagonal hold graphics in solo.
-			return (held ? RollTexturesActive.End.UpLeftArrow : RollTexturesInactive.End.UpLeftArrow, false);
+			return (held ? RollTexturesActive.End.UpLeftArrow : RollTexturesInactive.End.UpLeftArrow, 0.0f);
 		}
 
 		public override (string, bool) GetRollStartTexture(int integerPosition, int lane, bool held)
@@ -657,9 +668,9 @@ namespace StepManiaEditor
 			return (held ? HoldTexturesActive.Body.CenterArrow : HoldTexturesInactive.Body.CenterArrow, false);
 		}
 
-		public override (string, bool) GetHoldEndTexture(int integerPosition, int lane, bool held)
+		public override (string, float) GetHoldEndTexture(int integerPosition, int lane, bool held)
 		{
-			return (held ? HoldTexturesActive.End.CenterArrow : HoldTexturesInactive.End.CenterArrow, false);
+			return (held ? HoldTexturesActive.End.CenterArrow : HoldTexturesInactive.End.CenterArrow, 0.0f);
 		}
 
 		public override (string, bool) GetHoldStartTexture(int integerPosition, int lane, bool held)
@@ -672,9 +683,9 @@ namespace StepManiaEditor
 			return (held ? RollTexturesActive.Body.CenterArrow : RollTexturesInactive.Body.CenterArrow, false);
 		}
 
-		public override (string, bool) GetRollEndTexture(int integerPosition, int lane, bool held)
+		public override (string, float) GetRollEndTexture(int integerPosition, int lane, bool held)
 		{
-			return (held ? RollTexturesActive.End.CenterArrow : RollTexturesInactive.End.CenterArrow, false);
+			return (held ? RollTexturesActive.End.CenterArrow : RollTexturesInactive.End.CenterArrow, 0.0f);
 		}
 
 		public override (string, bool) GetRollStartTexture(int integerPosition, int lane, bool held)
@@ -747,19 +758,6 @@ namespace StepManiaEditor
 
 	public abstract class ArrowGraphicManagerPIU : ArrowGraphicManager
 	{
-		protected struct ShapeTextures
-		{
-			public string Diagonal;
-			public string Center;
-		}
-
-		protected struct ColorTextures
-		{
-			public string Red;
-			public string Yellow;
-			public string Blue;
-		}
-
 		protected static readonly uint ArrowColorRedABGR;
 		protected static readonly ushort ArrowColorRedBGR565;
 		protected static readonly uint ArrowColorBlueABGR;
@@ -781,51 +779,91 @@ namespace StepManiaEditor
 		protected static readonly uint RollColorYellowABGR;
 		protected static readonly ushort RollColorYellowBGR565;
 
-		protected static readonly ShapeTextures ReceptorTextures;
-		protected static readonly ShapeTextures ReceptorGlowTextures;
-		protected static readonly ShapeTextures ReceptorHeldTextures;
+		protected static readonly float[] ArrowRotationsColored =
+		{
+			0.0f,					// DL
+			0.0f,					// UL
+			0.0f,					// C
+			(float)Math.PI * 0.5f,	// UR
+			(float)Math.PI * 1.5f,	// DR
+		};
+		protected static readonly float[] ArrowRotations =
+		{
+			(float)Math.PI * 1.5f,	// DL
+			0.0f,					// UL
+			0.0f,					// C
+			(float)Math.PI * 0.5f,	// UR
+			(float)Math.PI,			// DR
+		};
 
-		protected static readonly ColorTextures ArrowTextures;
-		protected static readonly ColorTextures HoldTextures;
-		protected static readonly ColorTextures RollTextures;
+		protected static readonly string[] ReceptorTextures =
+		{
+			"piu-diagonal-receptor",	// DL
+			"piu-diagonal-receptor",	// UL
+			"piu-center-receptor",		// C
+			"piu-diagonal-receptor",	// UR
+			"piu-diagonal-receptor",	// DR
+		};
+		protected static readonly string[] ReceptorGlowTextures =
+		{
+			"piu-diagonal-receptor-glow",	// DL
+			"piu-diagonal-receptor-glow",	// UL
+			"piu-center-receptor-glow",		// C
+			"piu-diagonal-receptor-glow",	// UR
+			"piu-diagonal-receptor-glow",	// DR
+		};
+		protected static readonly string[] ReceptorHeldTextures =
+		{
+			"piu-diagonal-receptor-held",	// DL
+			"piu-diagonal-receptor-held",	// UL
+			"piu-center-receptor-held",		// C
+			"piu-diagonal-receptor-held",	// UR
+			"piu-diagonal-receptor-held",	// DR
+		};
+		protected static readonly string[] ArrowTextures =
+		{
+			"piu-diagonal-blue",	// DL
+			"piu-diagonal-red",		// UL
+			"piu-center",			// C
+			"piu-diagonal-red",		// UR
+			"piu-diagonal-blue",	// DR
+		};
+		protected static readonly string[] HoldTextures =
+		{
+			"piu-hold-blue",	// DL
+			"piu-hold-red",		// UL
+			"piu-hold-center",	// C
+			"piu-hold-red",		// UR
+			"piu-hold-blue",	// DR
+		};
+		protected static readonly string[] RollTextures =
+		{
+			"piu-roll-blue",	// DL
+			"piu-roll-red",		// UL
+			"piu-roll-center",	// C
+			"piu-roll-red",		// UR
+			"piu-roll-blue",	// DR
+		};
+		protected static readonly bool[] HoldMirrored =
+		{
+			false,	// DL
+			false,	// UL
+			false,	// C
+			true,	// UR
+			true,	// DR
+		};
+
+		protected static readonly uint[] ArrowColorsABGR;
+		protected static readonly ushort[] ArrowColorsBGR565;
+		protected static readonly uint[] HoldColorsABGR;
+		protected static readonly ushort[] HoldColorsBGR565;
+		protected static readonly uint[] RollColorsABGR;
+		protected static readonly ushort[] RollColorsBGR565;
+
+		protected int StartArrowIndex = 0;
 
 		static ArrowGraphicManagerPIU()
 		{
-			ReceptorTextures = new ShapeTextures
-			{
-				Center = "piu-center-receptor",
-				Diagonal = "piu-diagonal-receptor"
-			};
-			ReceptorGlowTextures = new ShapeTextures
-			{
-				Center = "piu-center-receptor-glow",
-				Diagonal = "piu-diagonal-receptor-glow"
-			};
-			ReceptorHeldTextures = new ShapeTextures
-			{
-				Center = "piu-center-receptor-held",
-				Diagonal = "piu-diagonal-receptor-held"
-			};
-
-			ArrowTextures = new ColorTextures
-			{
-				Red = "piu-diagonal-red",
-				Yellow = "piu-center",
-				Blue = "piu-diagonal-blue",
-			};
-			HoldTextures = new ColorTextures
-			{
-				Red = "piu-hold-red",
-				Yellow = "piu-hold-center",
-				Blue = "piu-hold-blue",
-			};
-			RollTextures = new ColorTextures
-			{
-				Red = "piu-roll-red",
-				Yellow = "piu-roll-center",
-				Blue = "piu-roll-blue",
-			};
-
 			ArrowColorRedABGR = ColorABGRMultiply(0xFF371BB3, ColorMultiplier);
 			ArrowColorRedBGR565 = ToBGR565(ArrowColorRedABGR);
 			ArrowColorBlueABGR = ColorABGRMultiply(0xFFB3401B, ColorMultiplier);
@@ -846,125 +884,193 @@ namespace StepManiaEditor
 			RollColorBlueBGR565 = ToBGR565(RollColorBlueABGR);
 			RollColorYellowABGR = ColorABGRMultiply(0xFF2FABB5, ColorMultiplier);
 			RollColorYellowBGR565 = ToBGR565(RollColorYellowABGR);
+
+			ArrowColorsABGR = new uint[]
+			{
+				ArrowColorBlueABGR,
+				ArrowColorRedABGR,
+				ArrowColorYellowABGR,
+				ArrowColorRedABGR,
+				ArrowColorBlueABGR,
+			};
+			ArrowColorsBGR565 = new ushort[]
+			{
+				ArrowColorBlueBGR565,
+				ArrowColorRedBGR565,
+				ArrowColorYellowBGR565,
+				ArrowColorRedBGR565,
+				ArrowColorBlueBGR565,
+			};
+			HoldColorsABGR = new uint[]
+			{
+				HoldColorBlueABGR,
+				HoldColorRedABGR,
+				HoldColorYellowABGR,
+				HoldColorRedABGR,
+				HoldColorBlueABGR,
+			};
+			HoldColorsBGR565 = new ushort[]
+			{
+				HoldColorBlueBGR565,
+				HoldColorRedBGR565,
+				HoldColorYellowBGR565,
+				HoldColorRedBGR565,
+				HoldColorBlueBGR565,
+			};
+			RollColorsABGR = new uint[]
+			{
+				RollColorBlueABGR,
+				RollColorRedABGR,
+				RollColorYellowABGR,
+				RollColorRedABGR,
+				RollColorBlueABGR,
+			};
+			RollColorsBGR565 = new ushort[]
+			{
+				RollColorBlueBGR565,
+				RollColorRedBGR565,
+				RollColorYellowBGR565,
+				RollColorRedBGR565,
+				RollColorBlueBGR565,
+			};
 		}
 
 		public static HashSet<string> GetAllTextures()
 		{
 			var allTextures = new HashSet<string>();
 
-			void AddShapeTextures(ShapeTextures t)
+			void AddTextures(string[] textures)
 			{
-				if (t.Center != null)
-					allTextures.Add(t.Center);
-				if (t.Diagonal != null)
-					allTextures.Add(t.Diagonal);
-			}
-			void AddColorTextures(ColorTextures t)
-			{
-				if (t.Red != null)
-					allTextures.Add(t.Red);
-				if (t.Yellow != null)
-					allTextures.Add(t.Yellow);
-				if (t.Blue != null)
-					allTextures.Add(t.Blue);
+				foreach (var t in textures)
+					allTextures.Add(t);
 			}
 
-			AddShapeTextures(ReceptorTextures);
-			AddShapeTextures(ReceptorGlowTextures);
-			AddShapeTextures(ReceptorHeldTextures);
-			AddColorTextures(ArrowTextures);
-			AddColorTextures(HoldTextures);
-			AddColorTextures(RollTextures);
+			AddTextures(ReceptorTextures);
+			AddTextures(ReceptorGlowTextures);
+			AddTextures(ReceptorHeldTextures);
+			AddTextures(ArrowTextures);
+			AddTextures(HoldTextures);
+			AddTextures(RollTextures);
 
 			return allTextures;
 		}
-	}
 
-	public class ArrowGraphicManagerPIUSingle : ArrowGraphicManagerPIU
-	{
+		protected int GetTextureIndex(int lane)
+		{
+			return (lane + StartArrowIndex) % 5;
+		}
+
+		public override bool AreHoldCapsCentered()
+		{
+			return true;
+		}
+
 		public override (string, float) GetReceptorTexture(int lane)
 		{
-			throw new NotImplementedException();
+			var i = GetTextureIndex(lane);
+			return (ReceptorTextures[i], ArrowRotations[i]);
 		}
 
 		public override (string, float) GetReceptorGlowTexture(int lane)
 		{
-			throw new NotImplementedException();
+			var i = GetTextureIndex(lane);
+			return (ReceptorGlowTextures[i], ArrowRotations[i]);
 		}
 
 		public override (string, float) GetReceptorHeldTexture(int lane)
 		{
-			throw new NotImplementedException();
+			var i = GetTextureIndex(lane);
+			return (ReceptorHeldTextures[i], ArrowRotations[i]);
 		}
 
 		public override (string, float) GetArrowTexture(int integerPosition, int lane)
 		{
-			throw new NotImplementedException();
+			var i = GetTextureIndex(lane);
+			return (ArrowTextures[i], ArrowRotationsColored[i]);
 		}
 
 		public override (string, bool) GetHoldStartTexture(int integerPosition, int lane, bool held)
 		{
-			throw new NotImplementedException();
+			return (null, false);
 		}
 
 		public override (string, bool) GetHoldBodyTexture(int integerPosition, int lane, bool held)
 		{
-			throw new NotImplementedException();
+			var i = GetTextureIndex(lane);
+			return (HoldTextures[i], HoldMirrored[i]);
 		}
 
-		public override (string, bool) GetHoldEndTexture(int integerPosition, int lane, bool held)
+		public override (string, float) GetHoldEndTexture(int integerPosition, int lane, bool held)
 		{
-			throw new NotImplementedException();
+			return GetArrowTexture(integerPosition, lane);
 		}
 
 		public override (string, bool) GetRollStartTexture(int integerPosition, int lane, bool held)
 		{
-			throw new NotImplementedException();
+			return (null, false);
 		}
 
 		public override (string, bool) GetRollBodyTexture(int integerPosition, int lane, bool held)
 		{
-			throw new NotImplementedException();
+			var i = GetTextureIndex(lane);
+			return (RollTextures[i], HoldMirrored[i]);
 		}
 
-		public override (string, bool) GetRollEndTexture(int integerPosition, int lane, bool held)
+		public override (string, float) GetRollEndTexture(int integerPosition, int lane, bool held)
 		{
-			throw new NotImplementedException();
+			return GetArrowTexture(integerPosition, lane);
 		}
 
 		public override uint GetArrowColorABGR(int integerPosition, int lane)
 		{
-			throw new NotImplementedException();
-		}
-
-		public override uint GetArrowColorABGRForSubdivision(int subdivision)
-		{
-			throw new NotImplementedException();
+			var i = GetTextureIndex(lane);
+			return ArrowColorsABGR[i];
 		}
 
 		public override ushort GetArrowColorBGR565(int integerPosition, int lane)
 		{
-			throw new NotImplementedException();
+			var i = GetTextureIndex(lane);
+			return ArrowColorsBGR565[i];
 		}
 
 		public override uint GetHoldColorABGR(int integerPosition, int lane)
 		{
-			throw new NotImplementedException();
+			var i = GetTextureIndex(lane);
+			return HoldColorsABGR[i];
 		}
 
 		public override ushort GetHoldColorBGR565(int integerPosition, int lane)
 		{
-			throw new NotImplementedException();
+			var i = GetTextureIndex(lane);
+			return HoldColorsBGR565[i];
 		}
 
 		public override uint GetRollColorABGR(int integerPosition, int lane)
 		{
-			throw new NotImplementedException();
+			var i = GetTextureIndex(lane);
+			return RollColorsABGR[i];
 		}
 
 		public override ushort GetRollColorBGR565(int integerPosition, int lane)
 		{
-			throw new NotImplementedException();
+			var i = GetTextureIndex(lane);
+			return RollColorsBGR565[i];
+		}
+	}
+
+	public class ArrowGraphicManagerPIUSingleOrDouble : ArrowGraphicManagerPIU
+	{
+		public ArrowGraphicManagerPIUSingleOrDouble()
+		{
+			StartArrowIndex = 0;
+		}
+	}
+
+	public class ArrowGraphicManagerPIUSingleHalfDouble : ArrowGraphicManagerPIU
+	{
+		public ArrowGraphicManagerPIUSingleHalfDouble()
+		{
+			StartArrowIndex = 2;
 		}
 	}
 }
