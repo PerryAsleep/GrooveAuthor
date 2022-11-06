@@ -36,7 +36,7 @@ namespace StepManiaEditor
 		public const uint UIDifficultyChallengeColorABGR = 0xFF804080;
 		public const uint UIDifficultyEditColorABGR = 0xFF807D7B;
 
-		public const int DefaultArrowWidth = 128;
+		public const int MarkerTextureWidth = 128;
 
 		public const int WaveFormTextureWidth = 1024;
 

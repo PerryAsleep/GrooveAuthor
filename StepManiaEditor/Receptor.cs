@@ -379,6 +379,14 @@ namespace StepManiaEditor
 		{
 			if (arrowGraphicManager == null || activeChart == null)
 				return false;
+			var bounds = GetBounds(focalPoint, zoom, textureAtlas, arrowGraphicManager, activeChart);
+			return x >= bounds.Item1 && x <= bounds.Item1 + bounds.Item3 && y >= bounds.Item2 && y <= bounds.Item2 + bounds.Item4;
+		}
+
+		public static (int, int, int, int) GetBounds(Vector2 focalPoint, double zoom, TextureAtlas textureAtlas, ArrowGraphicManager arrowGraphicManager, EditorChart activeChart)
+		{
+			if (arrowGraphicManager == null || activeChart == null)
+				return (0, 0, 0, 0);
 
 			if (zoom > 1.0)
 				zoom = 1.0;
@@ -388,12 +396,11 @@ namespace StepManiaEditor
 			var (textureWidth, textureHeight) = textureAtlas.GetDimensions(textureId);
 			var arrowWidth = textureWidth * zoom;
 			var arrowHeight = textureHeight * zoom;
-			var xMin = focalPoint.X - (numArrows * arrowWidth * 0.5f);
-			var xMax = focalPoint.X + (numArrows * arrowWidth * 0.5f);
-			var yMin = focalPoint.Y - arrowHeight * 0.5f;
-			var yMax = focalPoint.Y + arrowHeight * 0.5f;
-
-			return x >= xMin && x <= xMax && y >= yMin && y <= yMax;
+			return (
+				(int)(focalPoint.X - (numArrows * arrowWidth * 0.5f)),
+				(int)(focalPoint.Y - arrowHeight * 0.5f),
+				(int)(arrowWidth * numArrows),
+				(int)arrowHeight);
 		}
 	}
 }
