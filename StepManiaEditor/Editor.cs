@@ -198,7 +198,9 @@ namespace StepManiaEditor
 		private ImFontPtr ImGuiFont;
 		private SpriteFont MonogameFont_MPlus1Code_Medium;
 
-		private Cursor CurrentCursor = Cursors.Default;
+		// Cursor
+		private Cursor CurrentDesiredCursor = Cursors.Default;
+		private Cursor PreviousDesiredCursor = Cursors.Default;
 
 		// Debug
 		private bool ParallelizeUpdateLoop = false;
@@ -601,7 +603,7 @@ namespace StepManiaEditor
 		private void ProcessInput(GameTime gameTime)
 		{
 			var inFocus = IsApplicationFocused();
-			CurrentCursor = Cursors.Default;
+			CurrentDesiredCursor = Cursors.Default;
 
 			// ImGui needs to update it's frame even the app is not in focus.
 			// There may be a way to decouple input processing and advancing the frame, but for now
@@ -638,7 +640,7 @@ namespace StepManiaEditor
 			// Update cursor based on whether the receptors could be grabbed.
 			var inReceptorArea = Receptor.IsInReceptorArea(mouseState.Position.X, mouseState.Position.Y, GetFocalPoint(), Zoom, TextureAtlas, ArrowGraphicManager, ActiveChart);
 			if (inReceptorArea)
-				CurrentCursor = Cursors.SizeAll;
+				CurrentDesiredCursor = Cursors.SizeAll;
 
 			// Receptor movement.
 			var pressedThisFrame = mouseState.LeftButton == ButtonState.Pressed && PreviousMouseState.LeftButton == ButtonState.Released;
@@ -691,6 +693,16 @@ namespace StepManiaEditor
 					Preferences.Instance.PreferencesReceptors.PositionY = newY;
 				}
 			}
+
+			// Setting the cursor every frame prevents it from changing to support normal application
+			// behavior like indicating resizability at the edges of the window. But not setting every frame
+			// causes it to go back to the Default. Set it every frame only if it setting it to something
+			// other than the Default.
+			if (CurrentDesiredCursor != PreviousDesiredCursor || CurrentDesiredCursor != Cursors.Default)
+			{
+				Cursor.Current = CurrentDesiredCursor;
+			}
+			PreviousDesiredCursor = CurrentDesiredCursor;
 
 			if (KeyCommandManager.IsKeyDown(Keys.OemPlus))
 			{
@@ -868,8 +880,6 @@ namespace StepManiaEditor
 		{
 			var stopWatch = new Stopwatch();
 			stopWatch.Start();
-
-			Cursor.Current = CurrentCursor;
 
 			GraphicsDevice.Clear(Color.Black);
 
