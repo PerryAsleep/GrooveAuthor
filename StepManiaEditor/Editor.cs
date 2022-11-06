@@ -94,8 +94,12 @@ namespace StepManiaEditor
 		}
 		private SnapData[] SnapLevels;
 		private int SnapIndex = 0;
-		
-		private Vector2 FocalPoint;
+
+		private MouseState PreviousMouseState;
+
+		private bool MovingFocalPoint;
+		private Vector2 FocalPointAtMoveStart = new Vector2();
+		private Vector2 FocalPointMoveOffset = new Vector2();
 
 		private string PendingOpenFileName;
 		private ChartType PendingOpenFileChartType;
@@ -136,7 +140,7 @@ namespace StepManiaEditor
 		private UIWaveFormPreferences UIWaveFormPreferences;
 		private UIScrollPreferences UIScrollPreferences;
 		private UIMiniMapPreferences UIMiniMapPreferences;
-		private UIAnimationsPreferences UIAnimationsPreferences;
+		private UIReceptorPreferences UIReceptorPreferences;
 		private UIOptions UIOptions;
 
 		private TextureAtlas TextureAtlas;
@@ -194,6 +198,8 @@ namespace StepManiaEditor
 		private ImFontPtr ImGuiFont;
 		private SpriteFont MonogameFont_MPlus1Code_Medium;
 
+		private Cursor CurrentCursor = Cursors.Default;
+
 		// Debug
 		private bool ParallelizeUpdateLoop = false;
 		private bool RenderChart = true;
@@ -228,10 +234,9 @@ namespace StepManiaEditor
 			});
 
 			// Load Preferences synchronously so they can be used immediately.
-			Preferences.Load();
+			Preferences.Load(this);
 
 			Position = new EditorPosition(OnPositionChanged);
-			FocalPoint = new Vector2(Preferences.Instance.WindowWidth >> 1, 100 + (DefaultArrowWidth >> 1));
 			SoundManager = new SoundManager();
 			MusicManager = new MusicManager(SoundManager);
 
@@ -324,12 +329,14 @@ namespace StepManiaEditor
 				MaxScreenHeight = Math.Max(MaxScreenHeight, (uint)adapter.CurrentDisplayMode.Height);
 			}
 
+			p.PreferencesReceptors.ClampViewportPositions();
+
 			EditorHoldEndNoteEvent.SetScreenHeight(MaxScreenHeight);
 
 			WaveFormRenderer = new WaveFormRenderer(GraphicsDevice, WaveFormTextureWidth, MaxScreenHeight);
 			WaveFormRenderer.SetXPerChannelScale(p.PreferencesWaveForm.WaveFormMaxXPercentagePerChannel);
 			WaveFormRenderer.SetSoundMipMap(MusicManager.GetMusicMipMap());
-			WaveFormRenderer.SetFocalPointY((int)FocalPoint.Y);
+			WaveFormRenderer.SetFocalPointY(GetFocalPointY());
 			WaveformRenderTarget = new RenderTarget2D(
 				GraphicsDevice,
 				WaveFormTextureWidth,
@@ -349,7 +356,7 @@ namespace StepManiaEditor
 			UIWaveFormPreferences = new UIWaveFormPreferences(this, MusicManager);
 			UIScrollPreferences = new UIScrollPreferences();
 			UIMiniMapPreferences = new UIMiniMapPreferences(this);
-			UIAnimationsPreferences = new UIAnimationsPreferences();
+			UIReceptorPreferences = new UIReceptorPreferences(this);
 			UIOptions = new UIOptions();
 
 			base.Initialize();
@@ -404,19 +411,48 @@ namespace StepManiaEditor
 		public void OnResize(object sender, EventArgs e)
 		{
 			var maximized = ((Form)Control.FromHandle(Window.Handle)).WindowState == FormWindowState.Maximized;
+			var w = GetViewportWidth();
+			var h = GetViewportHeight();
 
 			// Update window preferences.
 			if (!maximized)
 			{
-				Preferences.Instance.WindowWidth = Graphics.GraphicsDevice.Viewport.Width;
-				Preferences.Instance.WindowHeight = Graphics.GraphicsDevice.Viewport.Height;
+				Preferences.Instance.WindowWidth = w;
+				Preferences.Instance.WindowHeight = h;
 			}
 
 			Preferences.Instance.WindowFullScreen = Graphics.IsFullScreen;
 			Preferences.Instance.WindowMaximized = maximized;
 
-			// Update FocalPoint.
-			FocalPoint.X = Graphics.GraphicsDevice.Viewport.Width >> 1;
+			// Update focal point.
+			Preferences.Instance.PreferencesReceptors.ClampViewportPositions();
+		}
+
+		public int GetViewportWidth()
+		{
+			return Graphics.GraphicsDevice.Viewport.Width;
+		}
+
+		public int GetViewportHeight()
+		{
+			return Graphics.GraphicsDevice.Viewport.Height;
+		}
+
+		public int GetFocalPointX()
+		{
+			if (Preferences.Instance.PreferencesReceptors.CenterHorizontally)
+				return GetViewportWidth() >> 1;
+			return Preferences.Instance.PreferencesReceptors.PositionX;
+		}
+
+		public int GetFocalPointY()
+		{
+			return Preferences.Instance.PreferencesReceptors.PositionY;
+		}
+
+		public Vector2 GetFocalPoint()
+		{
+			return new Vector2(GetFocalPointX(), GetFocalPointY());
 		}
 
 		protected override void Update(GameTime gameTime)
@@ -565,6 +601,7 @@ namespace StepManiaEditor
 		private void ProcessInput(GameTime gameTime)
 		{
 			var inFocus = IsApplicationFocused();
+			CurrentCursor = Cursors.Default;
 
 			// ImGui needs to update it's frame even the app is not in focus.
 			// There may be a way to decouple input processing and advancing the frame, but for now
@@ -593,117 +630,173 @@ namespace StepManiaEditor
 				// Update our last tracked mouse scroll value even if imGui captured it so that
 				// once we start capturing input again we don't process a scroll.
 				MouseScrollValue = newMouseScrollValue;
+				return;
 			}
-			else
+
+			ProcessInputForMiniMap(mouseState);
+
+			// Update cursor based on whether the receptors could be grabbed.
+			var inReceptorArea = Receptor.IsInReceptorArea(mouseState.Position.X, mouseState.Position.Y, GetFocalPoint(), Zoom, TextureAtlas, ArrowGraphicManager, ActiveChart);
+			if (inReceptorArea)
+				CurrentCursor = Cursors.SizeAll;
+
+			// Receptor movement.
+			var pressedThisFrame = mouseState.LeftButton == ButtonState.Pressed && PreviousMouseState.LeftButton == ButtonState.Released;
+			if (pressedThisFrame)
 			{
-				ProcessInputForMiniMap(mouseState);
-
-
-				if (KeyCommandManager.IsKeyDown(Keys.OemPlus))
+				if (!MovingFocalPoint)
 				{
-					Zoom *= 1.0001;
-					DesiredZoom = Zoom;
-				}
-				if (KeyCommandManager.IsKeyDown(Keys.OemMinus))
-				{
-					Zoom /= 1.0001;
-					DesiredZoom = Zoom;
-				}
-
-				//mouseState.
-
-				// TODO: wtf are these values
-				if (scrollShouldZoom)
-				{
-					if (MouseScrollValue < newMouseScrollValue)
+					if (inReceptorArea)
 					{
-						DesiredZoom *= 1.2;
-						ZoomInterpolationTimeStart = gameTime.TotalGameTime.TotalSeconds;
-						ZoomAtStartOfInterpolation = Zoom;
-						MouseScrollValue = newMouseScrollValue;
+						MovingFocalPoint = true;
+						FocalPointAtMoveStart = new Vector2(GetFocalPointX(), GetFocalPointY());
+						FocalPointMoveOffset = new Vector2(mouseState.Position.X - GetFocalPointX(), mouseState.Position.Y - GetFocalPointY());
 					}
+				}
+			}
+			if (mouseState.LeftButton == ButtonState.Released)
+			{
+				if (MovingFocalPoint)
+				{
+					MovingFocalPoint = false;
+					FocalPointMoveOffset = new Vector2();
+					ActionQueue.Instance.EnqueueWithoutDoing(new ActionMoveFocalPoint(
+						(int)FocalPointAtMoveStart.X,
+						(int)FocalPointAtMoveStart.Y,
+						Preferences.Instance.PreferencesReceptors.PositionX,
+						Preferences.Instance.PreferencesReceptors.PositionY));
+				}
+			}
+			if (MovingFocalPoint)
+			{
+				var newX = mouseState.Position.X - (int)FocalPointMoveOffset.X;
+				var newY = mouseState.Position.Y - (int)FocalPointMoveOffset.Y;
 
-					if (MouseScrollValue > newMouseScrollValue)
+				if (KeyCommandManager.IsKeyDown(Keys.LeftShift))
+				{
+					if (Math.Abs(newX - FocalPointAtMoveStart.X) > Math.Abs(newY - FocalPointAtMoveStart.Y))
 					{
-						DesiredZoom /= 1.2;
-						ZoomInterpolationTimeStart = gameTime.TotalGameTime.TotalSeconds;
-						ZoomAtStartOfInterpolation = Zoom;
-						MouseScrollValue = newMouseScrollValue;
+						Preferences.Instance.PreferencesReceptors.PositionX = newX;
+						Preferences.Instance.PreferencesReceptors.PositionY = (int)FocalPointAtMoveStart.Y;
+					}
+					else
+					{
+						Preferences.Instance.PreferencesReceptors.PositionX = (int)FocalPointAtMoveStart.X;
+						Preferences.Instance.PreferencesReceptors.PositionY = newY;
 					}
 				}
 				else
 				{
-					if (MouseScrollValue < newMouseScrollValue)
-					{
-						var delta = 0.25 * (1.0 / Zoom);
-						if (Playing)
-						{
-							PlaybackStartTime -= delta;
-							Position.SongTime = PlaybackStartTime + PlaybackStopwatch.Elapsed.TotalSeconds;
-
-							if (pScroll.StopPlaybackWhenScrolling)
-							{
-								StopPlayback();
-							}
-							else
-							{
-								MusicManager.SetMusicTimeInSeconds(Position.SongTime);
-							}
-							UpdateAutoPlayFromScrolling();
-						}
-						else
-						{
-							if (SnapLevels[SnapIndex].Rows == 0)
-							{
-								DesiredSongTime -= delta;
-								SongTimeInterpolationTimeStart = gameTime.TotalGameTime.TotalSeconds;
-								SongTimeAtStartOfInterpolation = Position.SongTime;
-							}
-							else
-							{
-								OnMoveUp();
-							}
-						}
-
-						MouseScrollValue = newMouseScrollValue;
-					}
-
-					if (MouseScrollValue > newMouseScrollValue)
-					{
-						var delta = 0.25 * (1.0 / Zoom);
-						if (Playing)
-						{
-							PlaybackStartTime += delta;
-							Position.SongTime = PlaybackStartTime + PlaybackStopwatch.Elapsed.TotalSeconds;
-
-							if (pScroll.StopPlaybackWhenScrolling)
-							{
-								StopPlayback();
-							}
-							else
-							{
-								MusicManager.SetMusicTimeInSeconds(Position.SongTime);
-							}
-							UpdateAutoPlayFromScrolling();
-						}
-						else
-						{
-							if (SnapLevels[SnapIndex].Rows == 0)
-							{
-								DesiredSongTime += delta;
-								SongTimeInterpolationTimeStart = gameTime.TotalGameTime.TotalSeconds;
-								SongTimeAtStartOfInterpolation = Position.SongTime;
-							}
-							else
-							{
-								OnMoveDown();
-							}
-						}
-
-						MouseScrollValue = newMouseScrollValue;
-					}
+					Preferences.Instance.PreferencesReceptors.PositionX = newX;
+					Preferences.Instance.PreferencesReceptors.PositionY = newY;
 				}
 			}
+
+			if (KeyCommandManager.IsKeyDown(Keys.OemPlus))
+			{
+				Zoom *= 1.0001;
+				DesiredZoom = Zoom;
+			}
+			if (KeyCommandManager.IsKeyDown(Keys.OemMinus))
+			{
+				Zoom /= 1.0001;
+				DesiredZoom = Zoom;
+			}
+
+			// Scrolling
+			// TODO: wtf are these values
+			if (scrollShouldZoom)
+			{
+				if (MouseScrollValue < newMouseScrollValue)
+				{
+					DesiredZoom *= 1.2;
+					ZoomInterpolationTimeStart = gameTime.TotalGameTime.TotalSeconds;
+					ZoomAtStartOfInterpolation = Zoom;
+					MouseScrollValue = newMouseScrollValue;
+				}
+
+				if (MouseScrollValue > newMouseScrollValue)
+				{
+					DesiredZoom /= 1.2;
+					ZoomInterpolationTimeStart = gameTime.TotalGameTime.TotalSeconds;
+					ZoomAtStartOfInterpolation = Zoom;
+					MouseScrollValue = newMouseScrollValue;
+				}
+			}
+			else
+			{
+				if (MouseScrollValue < newMouseScrollValue)
+				{
+					var delta = 0.25 * (1.0 / Zoom);
+					if (Playing)
+					{
+						PlaybackStartTime -= delta;
+						Position.SongTime = PlaybackStartTime + PlaybackStopwatch.Elapsed.TotalSeconds;
+
+						if (pScroll.StopPlaybackWhenScrolling)
+						{
+							StopPlayback();
+						}
+						else
+						{
+							MusicManager.SetMusicTimeInSeconds(Position.SongTime);
+						}
+						UpdateAutoPlayFromScrolling();
+					}
+					else
+					{
+						if (SnapLevels[SnapIndex].Rows == 0)
+						{
+							DesiredSongTime -= delta;
+							SongTimeInterpolationTimeStart = gameTime.TotalGameTime.TotalSeconds;
+							SongTimeAtStartOfInterpolation = Position.SongTime;
+						}
+						else
+						{
+							OnMoveUp();
+						}
+					}
+
+					MouseScrollValue = newMouseScrollValue;
+				}
+
+				if (MouseScrollValue > newMouseScrollValue)
+				{
+					var delta = 0.25 * (1.0 / Zoom);
+					if (Playing)
+					{
+						PlaybackStartTime += delta;
+						Position.SongTime = PlaybackStartTime + PlaybackStopwatch.Elapsed.TotalSeconds;
+
+						if (pScroll.StopPlaybackWhenScrolling)
+						{
+							StopPlayback();
+						}
+						else
+						{
+							MusicManager.SetMusicTimeInSeconds(Position.SongTime);
+						}
+						UpdateAutoPlayFromScrolling();
+					}
+					else
+					{
+						if (SnapLevels[SnapIndex].Rows == 0)
+						{
+							DesiredSongTime += delta;
+							SongTimeInterpolationTimeStart = gameTime.TotalGameTime.TotalSeconds;
+							SongTimeAtStartOfInterpolation = Position.SongTime;
+						}
+						else
+						{
+							OnMoveDown();
+						}
+					}
+
+					MouseScrollValue = newMouseScrollValue;
+				}
+			}
+
+			PreviousMouseState = mouseState;
 		}
 
 		private void StartPlayback()
@@ -776,6 +869,8 @@ namespace StepManiaEditor
 			var stopWatch = new Stopwatch();
 			stopWatch.Start();
 
+			Cursor.Current = CurrentCursor;
+
 			GraphicsDevice.Clear(Color.Black);
 
 			DrawWaveForm();
@@ -799,8 +894,6 @@ namespace StepManiaEditor
 			ImGui.PopFont();
 			ImGuiRenderer.AfterLayout();
 
-			//SpriteBatch.End();
-
 			base.Draw(gameTime);
 
 			stopWatch.Stop();
@@ -813,7 +906,7 @@ namespace StepManiaEditor
 				return;
 
 			foreach(var receptor in Receptors)
-				receptor.Draw(FocalPoint, Zoom, TextureAtlas, SpriteBatch);
+				receptor.Draw(GetFocalPoint(), Zoom, TextureAtlas, SpriteBatch);
 		}
 
 		private void DrawSnapIndicators()
@@ -828,11 +921,11 @@ namespace StepManiaEditor
 			var zoom = Zoom;
 			if (zoom > 1.0)
 				zoom = 1.0;
-			var receptorLeftEdge = FocalPoint.X - (ActiveChart.NumInputs * 0.5 * receptorTextureWidth * zoom);
+			var receptorLeftEdge = GetFocalPointX() - (ActiveChart.NumInputs * 0.5 * receptorTextureWidth * zoom);
 
 			var (snapTextureWidth, snapTextureHeight) = TextureAtlas.GetDimensions(snapTextureId);
 			var leftX = receptorLeftEdge - snapTextureWidth * 0.5 * zoom;
-			var y = FocalPoint.Y;
+			var y = GetFocalPointY();
 
 			TextureAtlas.Draw(
 				snapTextureId,
@@ -851,7 +944,7 @@ namespace StepManiaEditor
 				return;
 
 			foreach (var receptor in Receptors)
-				receptor.DrawForegroundEffects(FocalPoint, Zoom, TextureAtlas, SpriteBatch);
+				receptor.DrawForegroundEffects(GetFocalPoint(), Zoom, TextureAtlas, SpriteBatch);
 		}
 
 		private void UpdateWaveFormRenderer()
@@ -877,7 +970,7 @@ namespace StepManiaEditor
 			}
 
 			// Update the WaveFormRenderer.
-			WaveFormRenderer.SetFocalPointY((int)FocalPoint.Y);
+			WaveFormRenderer.SetFocalPointY(GetFocalPointY());
 			WaveFormRenderer.SetXPerChannelScale(pWave.WaveFormMaxXPercentagePerChannel);
 			WaveFormRenderer.SetDenseScale(pWave.DenseScale);
 			WaveFormRenderer.SetColors(
@@ -893,7 +986,7 @@ namespace StepManiaEditor
 			if (!p.ShowWaveForm)
 				return;
 
-			var x = (int)FocalPoint.X - (WaveFormTextureWidth >> 1);
+			var x = GetFocalPointX() - (WaveFormTextureWidth >> 1);
 
 			// No antialiasing, just draw the waveform.
 			if (!p.AntiAlias)
@@ -991,7 +1084,7 @@ namespace StepManiaEditor
 			List<EditorEvent> holdBodyEvents = new List<EditorEvent>();
 			List<EditorEvent> noteEvents = new List<EditorEvent>();
 
-			var screenHeight = Graphics.GraphicsDevice.Viewport.Height;
+			var screenHeight = GetViewportHeight();
 
 			var spacingZoom = Zoom;
 			var sizeZoom = Zoom;
@@ -1001,9 +1094,11 @@ namespace StepManiaEditor
 			var (holdCapTexture, _) = ArrowGraphicManager.GetHoldEndTexture(0, 0, false);
 			var (_, holdCapTextureHeight) = TextureAtlas.GetDimensions(holdCapTexture);
 			var holdCapHeight = holdCapTextureHeight * sizeZoom;
+			var focalPointX = GetFocalPointX();
+			var focalPointY = GetFocalPointY();
 
 			var numArrows = ActiveChart.NumInputs;
-			var xStart = FocalPoint.X - (numArrows * arrowSize * 0.5);
+			var xStart = focalPointX - (numArrows * arrowSize * 0.5);
 
 			// Set up the MiscEventWidgetLayoutManager
 			var miscEventAlpha = (float)Interpolation.Lerp(1.0, 0.0, MiscEventScaleToStartingFading, MiscEventMinScale, sizeZoom);
@@ -1013,7 +1108,7 @@ namespace StepManiaEditor
 			                     - widgetStartPadding
 			                     + EditorMarkerEvent.GetNumberRelativeAnchorPos(sizeZoom)
 			                     - EditorMarkerEvent.GetNumberAlpha(sizeZoom) * widgetMeasureNumberFudge;
-			var rMiscWidgetPos = FocalPoint.X
+			var rMiscWidgetPos = focalPointX
 			                     + (numArrows * arrowSize * 0.5) + widgetStartPadding;
 			MiscEventWidgetLayoutManager.BeginFrame(lMiscWidgetPos, rMiscWidgetPos);
 
@@ -1027,7 +1122,7 @@ namespace StepManiaEditor
 
 					var pps = pScroll.TimeBasedPixelsPerSecond * spacingZoom;
 					var time = Position.ChartTime;
-					var timeAtTopOfScreen = time - (FocalPoint.Y / pps);
+					var timeAtTopOfScreen = time - (focalPointY / pps);
 					double chartPosition = 0.0;
 					if (!ActiveChart.TryGetChartPositionFromTime(timeAtTopOfScreen, ref chartPosition))
 						return;
@@ -1147,7 +1242,7 @@ namespace StepManiaEditor
 				{
 					var chartPosition = Position.ChartPosition;
 					var ppr = pScroll.RowBasedPixelsPerRow * spacingZoom;
-					var chartPositionAtTopOfScreen = chartPosition - (FocalPoint.Y / ppr);
+					var chartPositionAtTopOfScreen = chartPosition - (focalPointY / ppr);
 
 					// Update WaveForm scroll scroll rate
 					{
@@ -1332,12 +1427,12 @@ namespace StepManiaEditor
 						return;
 
 					// Scan upwards to find the earliest rate altering event that should be used to start rendering.
-					var previousRateEventPixelPosition = (double)FocalPoint.Y;
+					var previousRateEventPixelPosition = (double)focalPointY;
 					var previousRateEventRow = chartPosition;
 					var pps = 1.0;
 					var ppr = 1.0;
 					EditorRateAlteringEvent rateEvent = null;
-					while (previousRateEventPixelPosition > 0.0 && rateEnumerator.MovePrev())
+					while (previousRateEventPixelPosition >= 0.0 && rateEnumerator.MovePrev())
 					{
 						// On the rate altering event which is active for the current chart position,
 						// Record the pixels per second to use for the WaveForm.
@@ -1666,7 +1761,7 @@ namespace StepManiaEditor
 				}
 
 				// If advancing moved beyond the end of the screen then we are done.
-				if (y > Graphics.GraphicsDevice.Viewport.Height)
+				if (y > GetViewportHeight())
 				{
 					return true;
 				}
@@ -1794,6 +1889,7 @@ namespace StepManiaEditor
 		{
 			var pScroll = Preferences.Instance.PreferencesScroll;
 			var pMiniMap = Preferences.Instance.PreferencesMiniMap;
+			var focalPointY = GetFocalPointY();
 
 			var mouseDownThisFrame = mouseState.LeftButton == ButtonState.Pressed &&
 			                         PreviousMiniMapMouseState.LeftButton != ButtonState.Pressed;
@@ -1834,13 +1930,13 @@ namespace StepManiaEditor
 					case SpacingMode.ConstantTime:
 					{
 						Position.ChartTime =
-							editorPosition + (FocalPoint.Y / (pScroll.TimeBasedPixelsPerSecond * Zoom));
+							editorPosition + (focalPointY / (pScroll.TimeBasedPixelsPerSecond * Zoom));
 						break;
 					}
 					case SpacingMode.ConstantRow:
 					{
 						Position.ChartPosition =
-							editorPosition + (FocalPoint.Y / (pScroll.RowBasedPixelsPerRow * Zoom));
+							editorPosition + (focalPointY / (pScroll.RowBasedPixelsPerRow * Zoom));
 						break;
 					}
 				}
@@ -1860,6 +1956,7 @@ namespace StepManiaEditor
 		private void UpdateMiniMapBounds()
 		{
 			var p = Preferences.Instance;
+			var focalPointX = GetFocalPointX();
 			var x = 0;
 			var zoom = Math.Min(1.0, Zoom);
 			switch (p.PreferencesMiniMap.MiniMapPosition)
@@ -1871,25 +1968,25 @@ namespace StepManiaEditor
 				}
 				case MiniMap.Position.RightOfChartArea:
 				{
-					x = (int)(FocalPoint.X + (WaveFormTextureWidth >> 1) + (int)p.PreferencesMiniMap.MiniMapXPadding);
+					x = (int)(focalPointX + (WaveFormTextureWidth >> 1) + (int)p.PreferencesMiniMap.MiniMapXPadding);
 					break;
 				}
 				case MiniMap.Position.MountedToWaveForm:
 				{
 					if (p.PreferencesWaveForm.WaveFormScaleXWhenZooming)
 					{
-						x = (int)(FocalPoint.X + (WaveFormTextureWidth >> 1) * zoom + (int)p.PreferencesMiniMap.MiniMapXPadding);
+						x = (int)(focalPointX + (WaveFormTextureWidth >> 1) * zoom + (int)p.PreferencesMiniMap.MiniMapXPadding);
 					}
 					else
 					{
-						x = (int)(FocalPoint.X + (WaveFormTextureWidth >> 1) + (int)p.PreferencesMiniMap.MiniMapXPadding);
+						x = (int)(focalPointX + (WaveFormTextureWidth >> 1) + (int)p.PreferencesMiniMap.MiniMapXPadding);
 					}
 
 					break;
 				}
 				case MiniMap.Position.MountedToChart:
 				{
-					x = (int)(FocalPoint.X + ((ActiveChart.NumInputs * DefaultArrowWidth) >> 1) * zoom + (int)p.PreferencesMiniMap.MiniMapXPadding);
+					x = (int)(focalPointX + ((ActiveChart.NumInputs * DefaultArrowWidth) >> 1) * zoom + (int)p.PreferencesMiniMap.MiniMapXPadding);
 					break;
 				}
 			}
@@ -1936,13 +2033,13 @@ namespace StepManiaEditor
 			{
 				case SpacingMode.ConstantTime:
 				{
-					var screenHeight = Graphics.GraphicsDevice.Viewport.Height;
+					var screenHeight = GetViewportHeight();
 					var spacingZoom = Zoom;
 					var pps = pScroll.TimeBasedPixelsPerSecond * spacingZoom;
 					var time = Position.ChartTime;
 
 					// Editor Area. The visible time range.
-					var editorAreaTimeStart = time - (FocalPoint.Y / pps);
+					var editorAreaTimeStart = time - (GetFocalPointY() / pps);
 					var editorAreaTimeEnd = editorAreaTimeStart + (screenHeight / pps);
 					var editorAreaTimeRange = editorAreaTimeEnd - editorAreaTimeStart;
 
@@ -2029,14 +2126,14 @@ namespace StepManiaEditor
 
 				case SpacingMode.ConstantRow:
 				{
-					var screenHeight = Graphics.GraphicsDevice.Viewport.Height;
+					var screenHeight = GetViewportHeight();
 
 					var chartPosition = Position.ChartPosition;
 					var spacingZoom = Zoom;
 					var ppr = pScroll.RowBasedPixelsPerRow * spacingZoom;
 
 					// Editor Area. The visible row range.
-					var editorAreaRowStart = chartPosition - (FocalPoint.Y / ppr);
+					var editorAreaRowStart = chartPosition - (GetFocalPointY() / ppr);
 					var editorAreaRowEnd = editorAreaRowStart + (screenHeight / ppr);
 					var editorAreaRowRange = editorAreaRowEnd - editorAreaRowStart;
 
@@ -2214,7 +2311,7 @@ namespace StepManiaEditor
 				if (Playing)
 				{
 					// Skip events entirely above the receptors.
-					if (Preferences.Instance.PreferencesAnimations.AutoPlayHideArrows
+					if (Preferences.Instance.PreferencesReceptors.AutoPlayHideArrows
 						&& visibleEvent.GetChartTime() < Position.ChartTime
 					    && (visibleEvent is EditorTapNoteEvent
 					        || visibleEvent is EditorHoldStartNoteEvent 
@@ -2227,7 +2324,7 @@ namespace StepManiaEditor
 						if (Playing && hen.GetChartTime() > Position.ChartTime
 						            && hen.GetHoldStartNote().GetChartTime() < Position.ChartTime)
 						{
-							hen.SetNextDrawActive(true, FocalPoint.Y);
+							hen.SetNextDrawActive(true, GetFocalPointY());
 						}
 					}
 				}
@@ -2262,7 +2359,7 @@ namespace StepManiaEditor
 			UIScrollPreferences.Draw();
 			UIWaveFormPreferences.Draw();
 			UIMiniMapPreferences.Draw();
-			UIAnimationsPreferences.Draw();
+			UIReceptorPreferences.Draw();
 			UIOptions.Draw();
 
 			UISongProperties.Draw(EditorSong);
@@ -2270,7 +2367,7 @@ namespace StepManiaEditor
 			UIChartList.Draw(ActiveChart);
 			
 			UIChartPosition.Draw(
-				(int)FocalPoint.X,
+				GetFocalPointX(),
 				Graphics.PreferredBackBufferHeight - ChartPositionUIYPAddingFromBottom - (int)(UIChartPosition.Height * 0.5),
 				Position,
 				SnapLevels[SnapIndex],
@@ -2363,8 +2460,8 @@ namespace StepManiaEditor
 						p.PreferencesScroll.ShowScrollControlPreferencesWindow = true;
 					if (ImGui.MenuItem("Mini Map Preferences"))
 						p.PreferencesMiniMap.ShowMiniMapPreferencesWindow = true;
-					if (ImGui.MenuItem("Animation Preferences"))
-						p.PreferencesAnimations.ShowAnimationsPreferencesWindow = true;
+					if (ImGui.MenuItem("Receptor Preferences"))
+						p.PreferencesReceptors.ShowReceptorPreferencesWindow = true;
 
 					ImGui.Separator();
 					if (ImGui.MenuItem("Log"))
@@ -3278,6 +3375,13 @@ namespace StepManiaEditor
 		{
 			if (CancelLaneInput())
 				return;
+			if (MovingFocalPoint)
+			{
+				MovingFocalPoint = false;
+				Preferences.Instance.PreferencesReceptors.PositionX = (int)FocalPointAtMoveStart.X;
+				Preferences.Instance.PreferencesReceptors.PositionY = (int)FocalPointAtMoveStart.Y;
+				return;
+			}
 			if (IsPlayingPreview())
 				StopPreview();
 			else if (Playing)

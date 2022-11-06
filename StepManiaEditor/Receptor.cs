@@ -262,7 +262,7 @@ namespace StepManiaEditor
 		private void UpdateBeatBrightness(bool playing, double chartPosition)
 		{
 			BeatBrightness = BeatAnimEndBrightness;
-			if (playing && Preferences.Instance.PreferencesAnimations.PulseReceptorsWithTempo)
+			if (playing && Preferences.Instance.PreferencesReceptors.PulseReceptorsWithTempo)
 			{
 				if (chartPosition < 0.0)
 					chartPosition += ((int)((-chartPosition) / SMCommon.MaxValidDenominator) + 1) * SMCommon.MaxValidDenominator;
@@ -273,8 +273,8 @@ namespace StepManiaEditor
 
 		private bool IsHeldForRimAnimation()
 		{
-			return (Preferences.Instance.PreferencesAnimations.TapRimEffect && Held)
-			       || (Preferences.Instance.PreferencesAnimations.AutoPlayRimEffect && AutoplayHeld);
+			return (Preferences.Instance.PreferencesReceptors.TapRimEffect && Held)
+			       || (Preferences.Instance.PreferencesReceptors.AutoPlayRimEffect && AutoplayHeld);
 		}
 
 		/// <summary>
@@ -284,12 +284,12 @@ namespace StepManiaEditor
 		{
 			Held = true;
 
-			if (Preferences.Instance.PreferencesAnimations.TapShrinkEffect)
+			if (Preferences.Instance.PreferencesReceptors.TapShrinkEffect)
 			{
 				StartTapAnimation();
 			}
 
-			if (Preferences.Instance.PreferencesAnimations.TapRimEffect)
+			if (Preferences.Instance.PreferencesReceptors.TapRimEffect)
 			{
 				if (IsHeldForRimAnimation())
 					RimAlpha = 1.0f;
@@ -304,7 +304,7 @@ namespace StepManiaEditor
 			var wasHeld = IsHeldForRimAnimation();
 			Held = false;
 
-			if (Preferences.Instance.PreferencesAnimations.TapRimEffect)
+			if (Preferences.Instance.PreferencesReceptors.TapRimEffect)
 			{
 				if (wasHeld && !IsHeldForRimAnimation())
 					StartRimAnimation();
@@ -318,17 +318,17 @@ namespace StepManiaEditor
 		{
 			AutoplayHeld = true;
 
-			if (Preferences.Instance.PreferencesAnimations.AutoPlayRimEffect)
+			if (Preferences.Instance.PreferencesReceptors.AutoPlayRimEffect)
 			{
 				if (IsHeldForRimAnimation())
 					RimAlpha = 1.0f;
 			}
 
-			if (Preferences.Instance.PreferencesAnimations.AutoPlayShrinkEffect)
+			if (Preferences.Instance.PreferencesReceptors.AutoPlayShrinkEffect)
 				StartTapAnimation(timeDelta);
 
 			// Autoplay inputs occur on note hits, so we should start the glow animation.
-			if (Preferences.Instance.PreferencesAnimations.AutoPlayGlowEffect)
+			if (Preferences.Instance.PreferencesReceptors.AutoPlayGlowEffect)
 				StartGlowAnimation(timeDelta);
 		}
 
@@ -340,14 +340,14 @@ namespace StepManiaEditor
 			var wasHeld = IsHeldForRimAnimation();
 			AutoplayHeld = false;
 
-			if (Preferences.Instance.PreferencesAnimations.AutoPlayRimEffect)
+			if (Preferences.Instance.PreferencesReceptors.AutoPlayRimEffect)
 			{
 				if (wasHeld && !IsHeldForRimAnimation())
 					StartRimAnimation(timeDelta);
 			}
 
 			// The glow effect should also play on release.
-			if (Preferences.Instance.PreferencesAnimations.AutoPlayGlowEffect)
+			if (Preferences.Instance.PreferencesReceptors.AutoPlayGlowEffect)
 			{
 				StartGlowAnimation(timeDelta);
 			}
@@ -361,7 +361,7 @@ namespace StepManiaEditor
 			var wasHeld = IsHeldForRimAnimation();
 			AutoplayHeld = false;
 
-			if (Preferences.Instance.PreferencesAnimations.AutoPlayRimEffect)
+			if (Preferences.Instance.PreferencesReceptors.AutoPlayRimEffect)
 			{
 				if (wasHeld && !IsHeldForRimAnimation())
 					StartRimAnimation();
@@ -373,6 +373,27 @@ namespace StepManiaEditor
 		public bool IsAutoplayHeld()
 		{
 			return AutoplayHeld;
+		}
+
+		public static bool IsInReceptorArea(int x, int y, Vector2 focalPoint, double zoom, TextureAtlas textureAtlas, ArrowGraphicManager arrowGraphicManager, EditorChart activeChart)
+		{
+			if (arrowGraphicManager == null || activeChart == null)
+				return false;
+
+			if (zoom > 1.0)
+				zoom = 1.0;
+
+			var numArrows = activeChart.NumInputs;
+			var (textureId, _) = arrowGraphicManager.GetReceptorTexture(0);
+			var (textureWidth, textureHeight) = textureAtlas.GetDimensions(textureId);
+			var arrowWidth = textureWidth * zoom;
+			var arrowHeight = textureHeight * zoom;
+			var xMin = focalPoint.X - (numArrows * arrowWidth * 0.5f);
+			var xMax = focalPoint.X + (numArrows * arrowWidth * 0.5f);
+			var yMin = focalPoint.Y - arrowHeight * 0.5f;
+			var yMax = focalPoint.Y + arrowHeight * 0.5f;
+
+			return x >= xMin && x <= xMax && y >= yMin && y <= yMax;
 		}
 	}
 }

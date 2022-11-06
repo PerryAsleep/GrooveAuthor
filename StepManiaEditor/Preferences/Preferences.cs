@@ -46,6 +46,7 @@ namespace StepManiaEditor
 		/// Static Config instance.
 		/// </summary>
 		public static Preferences Instance { get; private set; } = new Preferences();
+		private Editor Editor;
 
 		// Window preferences
 		[JsonInclude] public int WindowWidth = 1920;
@@ -66,7 +67,7 @@ namespace StepManiaEditor
 		[JsonInclude] public PreferencesOptions PreferencesOptions = new PreferencesOptions();
 
 		// Animations preferences
-		[JsonInclude] public PreferencesAnimations PreferencesAnimations = new PreferencesAnimations();
+		[JsonInclude] public PreferencesReceptors PreferencesReceptors = new PreferencesReceptors();
 
 		// Log preferences
 		[JsonInclude] public bool ShowLogWindow = true;
@@ -96,6 +97,7 @@ namespace StepManiaEditor
 
 		private void PostLoad()
 		{
+			PreferencesReceptors.SetEditor(Editor);
 			PreferencesOptions.PostLoad();
 		}
 
@@ -108,7 +110,7 @@ namespace StepManiaEditor
 		/// Loads the Preferences from the preferences json file.
 		/// </summary>
 		/// <returns>Preferences Instance.</returns>
-		public static async Task<Preferences> LoadAsync()
+		public static async Task<Preferences> LoadAsync(Editor editor)
 		{
 			Logger.Info($"Loading {FileName}...");
 
@@ -117,6 +119,7 @@ namespace StepManiaEditor
 				using (FileStream openStream = File.OpenRead(Fumen.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, FileName)))
 				{
 					Instance = await JsonSerializer.DeserializeAsync<Preferences>(openStream, SerializationOptions);
+					Instance.Editor = editor;
 					Instance.PostLoad();
 				}
 			}
@@ -134,7 +137,7 @@ namespace StepManiaEditor
 		/// Loads the Preferences from the preferences json file.
 		/// </summary>
 		/// <returns>Preferences Instance.</returns>
-		public static Preferences Load()
+		public static Preferences Load(Editor editor)
 		{
 			Logger.Info($"Loading {FileName}...");
 
@@ -143,6 +146,7 @@ namespace StepManiaEditor
 				using (FileStream openStream = File.OpenRead(Fumen.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, FileName)))
 				{
 					Instance = JsonSerializer.Deserialize<Preferences>(openStream, SerializationOptions);
+					Instance.Editor = editor;
 					Instance.PostLoad();
 				}
 			}

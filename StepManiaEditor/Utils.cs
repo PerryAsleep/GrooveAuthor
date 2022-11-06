@@ -38,7 +38,7 @@ namespace StepManiaEditor
 
 		public const int DefaultArrowWidth = 128;
 
-		public const int WaveFormTextureWidth = DefaultArrowWidth * 8;
+		public const int WaveFormTextureWidth = 1024;
 
 		public const float BeatMarkerScaleToStartingFading = 0.15f;
 		public const float BeatMarkerMinScale = 0.10f;

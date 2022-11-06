@@ -361,6 +361,36 @@ namespace StepManiaEditor
 
 		#region Drag Int
 
+		public static void DrawRowDragInt2(
+			bool undoable,
+			string title,
+			object o,
+			string fieldName1,
+			string fieldName2,
+			bool field1Enabled = true,
+			bool field2Enabled = true,
+			string help = null,
+			float speed = 1.0f,
+			string format = "%i",
+			int min1 = int.MinValue,
+			int max1 = int.MaxValue,
+			int min2 = int.MinValue,
+			int max2 = int.MaxValue)
+		{
+			DrawRowTitleAndAdvanceColumn(title);
+			if (!field1Enabled)
+				Utils.PushDisabled();
+			DrawDragInt(undoable, "", o, fieldName1, ImGui.GetContentRegionAvail().X * 0.5f, help, speed, format, min1, max1);
+			if (!field1Enabled)
+				Utils.PopDisabled();
+			ImGui.SameLine();
+			if (!field2Enabled)
+				Utils.PushDisabled();
+			DrawDragInt(undoable, "", o, fieldName2, ImGui.GetContentRegionAvail().X, "", speed, format, min2, max2);
+			if (!field2Enabled)
+				Utils.PopDisabled();
+		}
+
 		public static bool DrawRowDragInt(
 			string title,
 			ref int value,

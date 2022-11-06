@@ -69,8 +69,8 @@ namespace StepManiaEditor
 			var roll = IsRoll();
 			var alpha = IsBeingEdited() ? ActiveEditEventAlpha : 1.0f;
 
-			var active = NextDrawActive && Preferences.Instance.PreferencesAnimations.AutoPlayLightHolds;
-			var activeAndCutoff = NextDrawActive && Preferences.Instance.PreferencesAnimations.AutoPlayHideArrows;
+			var active = NextDrawActive && Preferences.Instance.PreferencesReceptors.AutoPlayLightHolds;
+			var activeAndCutoff = NextDrawActive && Preferences.Instance.PreferencesReceptors.AutoPlayHideArrows;
 
 			// The hold body texture is a tiled texture that starts at the end of the hold and ends at the arrow.
 			var (holdBodyTextureId, holdBodyMirrored) = roll ?
