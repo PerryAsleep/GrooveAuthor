@@ -22,11 +22,12 @@ namespace StepManiaEditor
 	///    editor area and the full area.
 	///
 	/// Expected Usage:
-	/// Configure with SetNumLanes, SetLaneSpacing, and UpdateBounds.
-	/// Each frame call UpdateBegin, followed by AddHold/AddNote/AddMine as needed. Finally call UpdateEnd.
-	/// Call Draw to render.
-	/// For input processing call MouseDown, MouseMove, and MouseUp.
-	/// To get the position from the MiniMap call GetEditorPosition.
+	///  Configure with SetNumLanes, SetLaneSpacing, and UpdateBounds.
+	///  Each frame call UpdateBegin, followed by AddHold/AddNote/AddMine as needed. Finally call UpdateEnd.
+	///  Alternatively, call UpdateNoChart if there is no data to display.
+	///  Call Draw to render.
+	///  For input processing call MouseDown, MouseMove, and MouseUp.
+	///  To get the position from the MiniMap call GetEditorPosition.
 	/// </summary>
 	public class MiniMap
 	{
@@ -717,6 +718,17 @@ namespace StepManiaEditor
 			}
 
 			return AddResult.InRange;
+		}
+
+		/// <summary>
+		/// Called to update the MiniMap when there is no Chart to draw data from.
+		/// </summary>
+		public void UpdateNoChart()
+		{
+			if (Bounds.Height <= 0 || Bounds.Width <= 0)
+				return;
+			Array.Copy(ClearData, ColorData, Bounds.Width * Bounds.Height);
+			Textures[TextureIndex].SetData(ColorData);
 		}
 
 		/// <summary>
