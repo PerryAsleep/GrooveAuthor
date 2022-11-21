@@ -144,6 +144,11 @@ namespace StepManiaEditor
 			PreviousPositionY = p.PositionY;
 		}
 
+		public override bool AffectsFile()
+		{
+			return false;
+		}
+
 		public override string ToString()
 		{
 			return "Restore animation default preferences.";

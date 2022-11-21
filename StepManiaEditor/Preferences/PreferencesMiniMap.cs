@@ -94,6 +94,11 @@ namespace StepManiaEditor
 			PreviousMiniMapVisibleRowRange = p.MiniMapVisibleRowRange;
 		}
 
+		public override bool AffectsFile()
+		{
+			return false;
+		}
+
 		public override string ToString()
 		{
 			return "Restore Mini Map default preferences.";

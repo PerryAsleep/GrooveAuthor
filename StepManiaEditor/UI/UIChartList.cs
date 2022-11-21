@@ -53,7 +53,7 @@ namespace StepManiaEditor
 			return deleteChart;
 		}
 
-		public void Draw(EditorChart editorChart)
+		public void Draw(EditorSong editorSong, EditorChart editorChart)
 		{
 			if (!Preferences.Instance.ShowChartListWindow)
 				return;
@@ -61,7 +61,7 @@ namespace StepManiaEditor
 			ImGui.SetNextWindowSize(new Vector2(0, 0), ImGuiCond.FirstUseEver);
 			ImGui.Begin("Chart List", ref Preferences.Instance.ShowChartListWindow, ImGuiWindowFlags.NoScrollbar);
 
-			if (editorChart == null)
+			if (editorSong == null)
 			{
 				Utils.PushDisabled();
 			}
@@ -139,7 +139,7 @@ namespace StepManiaEditor
 				ImGuiLayoutUtils.EndTable();
 			}
 
-			if (editorChart == null)
+			if (editorSong == null)
 			{
 				Utils.PopDisabled();
 			}

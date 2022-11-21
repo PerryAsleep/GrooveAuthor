@@ -73,6 +73,11 @@ namespace StepManiaEditor
 			PreviousStopPlaybackWhenScrolling = p.StopPlaybackWhenScrolling;
 		}
 
+		public override bool AffectsFile()
+		{
+			return false;
+		}
+
 		public override string ToString()
 		{
 			return "Restore scroll default preferences.";

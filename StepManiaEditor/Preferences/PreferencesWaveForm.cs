@@ -102,6 +102,11 @@ namespace StepManiaEditor
 			PreviousAntiAliasEdgeThresholdMin = p.AntiAliasEdgeThresholdMin;
 		}
 
+		public override bool AffectsFile()
+		{
+			return false;
+		}
+
 		public override string ToString()
 		{
 			return "Restore Waveform default preferences.";

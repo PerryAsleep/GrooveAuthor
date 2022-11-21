@@ -38,21 +38,21 @@ namespace StepManiaEditor
 			{
 				// The notes in the chart only make sense for one ChartType. Do not allow changing the ChartType.
 				Utils.PushDisabled();
-				ImGuiLayoutUtils.DrawRowEnum<SMCommon.ChartType>(true, "Type", EditorChart, nameof(EditorChart.ChartType),
+				ImGuiLayoutUtils.DrawRowEnum<SMCommon.ChartType>(true, "Type", EditorChart, nameof(EditorChart.ChartType), true,
 					"Chart type.");
 				Utils.PopDisabled();
 
-				ImGuiLayoutUtils.DrawRowEnum<SMCommon.ChartDifficultyType>(true, "Difficulty", EditorChart, nameof(EditorChart.ChartDifficultyType),
+				ImGuiLayoutUtils.DrawRowEnum<SMCommon.ChartDifficultyType>(true, "Difficulty", EditorChart, nameof(EditorChart.ChartDifficultyType), true,
 					"Chart difficulty type.");
-				ImGuiLayoutUtils.DrawRowInputInt(true, "Rating", EditorChart, nameof(EditorChart.Rating),
+				ImGuiLayoutUtils.DrawRowInputInt(true, "Rating", EditorChart, nameof(EditorChart.Rating), true,
 					"Chart rating.", 1);
-				ImGuiLayoutUtils.DrawRowTextInput(true, "Name", EditorChart, nameof(EditorChart.Name),
+				ImGuiLayoutUtils.DrawRowTextInput(true, "Name", EditorChart, nameof(EditorChart.Name), true,
 					"Chart name.");
-				ImGuiLayoutUtils.DrawRowTextInput(true, "Description", EditorChart, nameof(EditorChart.Description),
+				ImGuiLayoutUtils.DrawRowTextInput(true, "Description", EditorChart, nameof(EditorChart.Description), true,
 					"Chart description.");
-				ImGuiLayoutUtils.DrawRowTextInput(true, "Credit", EditorChart, nameof(EditorChart.Credit),
+				ImGuiLayoutUtils.DrawRowTextInput(true, "Credit", EditorChart, nameof(EditorChart.Credit), true,
 					"Who this chart should be credited to.");
-				ImGuiLayoutUtils.DrawRowTextInput(true, "Style", EditorChart, nameof(EditorChart.Style),
+				ImGuiLayoutUtils.DrawRowTextInput(true, "Style", EditorChart, nameof(EditorChart.Style), true,
 					"(Uncommon) Originally meant to denote \"Pad\" versus \"Keyboard\" charts.");
 
 				if (EditorChart != null)
@@ -66,11 +66,11 @@ namespace StepManiaEditor
 			ImGui.Separator();
 			if (ImGuiLayoutUtils.BeginTable("ChartMusicTable", 100))
 			{
-				ImGuiLayoutUtils.DrawRowFileBrowse("Music", EditorChart, nameof(EditorChart.MusicPath), BrowseMusicFile, ClearMusicFile,
+				ImGuiLayoutUtils.DrawRowFileBrowse("Music", EditorChart, nameof(EditorChart.MusicPath), BrowseMusicFile, ClearMusicFile, true,
 					"(Uncommon) The audio file to use for this chart, overriding the song music." +
 					"\nIn most cases all charts use the same music and it is defined at the song level.");
 				
-				ImGuiLayoutUtils.DrawRowDragDoubleWithEnabledCheckbox(true, "Music Offset", EditorChart, nameof(EditorChart.MusicOffset), nameof(EditorChart.UsesChartMusicOffset),
+				ImGuiLayoutUtils.DrawRowDragDoubleWithEnabledCheckbox(true, "Music Offset", EditorChart, nameof(EditorChart.MusicOffset), nameof(EditorChart.UsesChartMusicOffset), true,
 					"(Uncommon) The music offset from the start of the chart." +
 					"\nIn most cases all charts use the same music offset and it is defined at the song level.",
 					0.0001f, "%.6f seconds");
@@ -90,13 +90,13 @@ namespace StepManiaEditor
 				EditorChart.MusicPath,
 				Utils.FileOpenFilterForAudio("Music", true));
 			if (relativePath != null && relativePath != EditorChart.MusicPath)
-				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorChart, nameof(EditorChart.MusicPath), relativePath));
+				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorChart, nameof(EditorChart.MusicPath), relativePath, true));
 		}
 
 		private static void ClearMusicFile()
 		{
 			if (!string.IsNullOrEmpty(EditorChart.MusicPath))
-				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorChart, nameof(EditorChart.MusicPath), ""));
+				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorChart, nameof(EditorChart.MusicPath), "", true));
 		}
 	}
 }

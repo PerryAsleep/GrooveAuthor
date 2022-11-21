@@ -27,10 +27,10 @@ namespace StepManiaEditor
 			ImGui.Text("Position");
 			if (ImGuiLayoutUtils.BeginTable("Receptor Placement", 120))
 			{
-				ImGuiLayoutUtils.DrawRowCheckbox(true, "Center Horizontally", p, nameof(PreferencesReceptors.CenterHorizontally),
+				ImGuiLayoutUtils.DrawRowCheckbox(true, "Center Horizontally", p, nameof(PreferencesReceptors.CenterHorizontally), false,
 					"Whether to keep the receptors centered horizontally in the window.");
 
-				ImGuiLayoutUtils.DrawRowDragInt2(true, "Position", p, nameof(PreferencesReceptors.PositionX), nameof(PreferencesReceptors.PositionY), !p.CenterHorizontally, true,
+				ImGuiLayoutUtils.DrawRowDragInt2(true, "Position", p, nameof(PreferencesReceptors.PositionX), nameof(PreferencesReceptors.PositionY), false, !p.CenterHorizontally, true,
 					"Position of the receptors."
 					+ "\nThe receptors can also be moved by dragging them with the left mouse button."
 					+ "\nHold shift while dragging to limit movement to one dimension.", 1.0f, "%i", 0, Editor.GetViewportWidth() - 1, 0, Editor.GetViewportHeight() - 1);
@@ -41,7 +41,7 @@ namespace StepManiaEditor
 			ImGui.Text("Animation Misc");
 			if (ImGuiLayoutUtils.BeginTable("Receptor Animation Misc", 120))
 			{
-				ImGuiLayoutUtils.DrawRowCheckbox(true, "Pulse Receptors", p, nameof(PreferencesReceptors.PulseReceptorsWithTempo),
+				ImGuiLayoutUtils.DrawRowCheckbox(true, "Pulse Receptors", p, nameof(PreferencesReceptors.PulseReceptorsWithTempo), false,
 					"Whether to pulse the receptors to the chart tempo.");
 				ImGuiLayoutUtils.EndTable();
 			}
@@ -50,15 +50,15 @@ namespace StepManiaEditor
 			ImGui.Text("Autoplay Animations");
 			if (ImGuiLayoutUtils.BeginTable("Receptor Animation Autoplay", 120))
 			{
-				ImGuiLayoutUtils.DrawRowCheckbox(true, "Hide Arrows", p, nameof(PreferencesReceptors.AutoPlayHideArrows),
+				ImGuiLayoutUtils.DrawRowCheckbox(true, "Hide Arrows", p, nameof(PreferencesReceptors.AutoPlayHideArrows), false,
 					"When playing, whether to hide the arrows after they pass the receptors.");
-				ImGuiLayoutUtils.DrawRowCheckbox(true, "Light Holds", p, nameof(PreferencesReceptors.AutoPlayLightHolds),
+				ImGuiLayoutUtils.DrawRowCheckbox(true, "Light Holds", p, nameof(PreferencesReceptors.AutoPlayLightHolds), false,
 					"When playing, whether to highlight hold and roll notes when they would be active.");
-				ImGuiLayoutUtils.DrawRowCheckbox(true, "Rim Effect", p, nameof(PreferencesReceptors.AutoPlayRimEffect),
+				ImGuiLayoutUtils.DrawRowCheckbox(true, "Rim Effect", p, nameof(PreferencesReceptors.AutoPlayRimEffect), false,
 					"When playing, whether to show a rim effect on the receptors from simulated input.");
-				ImGuiLayoutUtils.DrawRowCheckbox(true, "Glow Effect", p, nameof(PreferencesReceptors.AutoPlayGlowEffect),
+				ImGuiLayoutUtils.DrawRowCheckbox(true, "Glow Effect", p, nameof(PreferencesReceptors.AutoPlayGlowEffect), false,
 					"When playing, whether to show a glow effect on the receptors from simulated input.");
-				ImGuiLayoutUtils.DrawRowCheckbox(true, "Shrink Effect", p, nameof(PreferencesReceptors.AutoPlayShrinkEffect),
+				ImGuiLayoutUtils.DrawRowCheckbox(true, "Shrink Effect", p, nameof(PreferencesReceptors.AutoPlayShrinkEffect), false,
 					"When playing, whether to shrink the receptors from simulated input.");
 				ImGuiLayoutUtils.EndTable();
 			}
@@ -67,9 +67,9 @@ namespace StepManiaEditor
 			ImGui.Text("Input Animations");
 			if (ImGuiLayoutUtils.BeginTable("Receptor Animation Input", 120))
 			{
-				ImGuiLayoutUtils.DrawRowCheckbox(true, "Rim Effect", p, nameof(PreferencesReceptors.TapRimEffect),
+				ImGuiLayoutUtils.DrawRowCheckbox(true, "Rim Effect", p, nameof(PreferencesReceptors.TapRimEffect), false,
 					"When tapping an arrow, whether to show a rim effect on the receptors.");
-				ImGuiLayoutUtils.DrawRowCheckbox(true, "Shrink Effect", p, nameof(PreferencesReceptors.TapShrinkEffect),
+				ImGuiLayoutUtils.DrawRowCheckbox(true, "Shrink Effect", p, nameof(PreferencesReceptors.TapShrinkEffect), false,
 					"When tapping an arrow, whether to shrink the receptors.");
 				ImGuiLayoutUtils.EndTable();
 			}

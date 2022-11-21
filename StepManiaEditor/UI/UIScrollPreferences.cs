@@ -20,12 +20,12 @@ namespace StepManiaEditor
 
 			if (ImGuiLayoutUtils.BeginTable("Scroll", 120))
 			{
-				ImGuiLayoutUtils.DrawRowEnum<Editor.ScrollMode>(true, "Scroll Mode", p, nameof(PreferencesScroll.ScrollMode),
+				ImGuiLayoutUtils.DrawRowEnum<Editor.ScrollMode>(true, "Scroll Mode", p, nameof(PreferencesScroll.ScrollMode), false,
 					"The Scroll Mode to use when editing. When playing the Scroll Mode is always Time."
 					+ "\nTime: Scrolling moves time."
 					+ "\nRow:  Scrolling moves rows.");
 
-				ImGuiLayoutUtils.DrawRowEnum<Editor.SpacingMode>(true, "Spacing Mode", p, nameof(PreferencesScroll.SpacingMode),
+				ImGuiLayoutUtils.DrawRowEnum<Editor.SpacingMode>(true, "Spacing Mode", p, nameof(PreferencesScroll.SpacingMode), false,
 					"How events in the Chart should be spaced when rendering."
 					+ "\nConstant Time: Events are spaced by their time."
 					+ "\n               Equivalent to a CMOD when scrolling by time."
@@ -35,7 +35,7 @@ namespace StepManiaEditor
 					+ "\nVariable:      Spacing is based on tempo and is affected by all rate altering events."
 					+ "\n               Equivalent to a XMOD when scrolling by time.");
 
-				ImGuiLayoutUtils.DrawRowEnum<Editor.WaveFormScrollMode>(true, "Waveform Scroll Mode", p, nameof(PreferencesScroll.RowBasedWaveFormScrollMode),
+				ImGuiLayoutUtils.DrawRowEnum<Editor.WaveFormScrollMode>(true, "Waveform Scroll Mode", p, nameof(PreferencesScroll.RowBasedWaveFormScrollMode), false,
 					"How the wave form should scroll when the Chart does not scroll with Constant Time."
 					+ "\nCurrent Tempo:          The wave form will match the current tempo, ignoring rate changes."
 					+ "\n                        Best option for Charts which have legitimate musical tempo changes."
@@ -71,6 +71,7 @@ namespace StepManiaEditor
 					1.0f,
 					100000.0f,
 					PreferencesScroll.DefaultTimeBasedPixelsPerSecond,
+					false,
 					"Speed in pixels per second at default zoom level.",
 					"%.3f",
 					ImGuiSliderFlags.Logarithmic);
@@ -89,6 +90,7 @@ namespace StepManiaEditor
 					1.0f,
 					100000.0f,
 					PreferencesScroll.DefaultRowBasedPixelsPerRow,
+					false,
 					$"Spacing in pixels per row at default zoom level. A row is 1/{SMCommon.MaxValidDenominator} of a {SMCommon.NumBeatsPerMeasure}/{SMCommon.NumBeatsPerMeasure} beat.",
 					"%.3f",
 					ImGuiSliderFlags.Logarithmic);
@@ -107,6 +109,7 @@ namespace StepManiaEditor
 					1.0f,
 					100000.0f,
 					PreferencesScroll.DefaultVariablePixelsPerSecondAtDefaultBPM,
+					false,
 					$"Speed in pixels per second at default zoom level at {PreferencesScroll.DefaultVariableSpeedBPM} BPM.",
 					"%.3f",
 					ImGuiSliderFlags.Logarithmic);

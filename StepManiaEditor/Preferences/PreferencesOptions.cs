@@ -116,6 +116,11 @@ namespace StepManiaEditor
 			PreviousOpenLastOpenedFileOnLaunch = p.OpenLastOpenedFileOnLaunch;
 		}
 
+		public override bool AffectsFile()
+		{
+			return false;
+		}
+
 		public override string ToString()
 		{
 			return "Restore option default preferences.";

@@ -21,6 +21,8 @@ using Path = Fumen.Path;
 using Vector2 = Microsoft.Xna.Framework.Vector2;
 using static Fumen.Converters.SMCommon;
 using System.Text;
+using static StepManiaEditor.MiniMap;
+using System.Media;
 
 namespace StepManiaEditor
 {
@@ -105,6 +107,11 @@ namespace StepManiaEditor
 		private ChartType PendingOpenFileChartType;
 		private ChartDifficultyType PendingOpenFileChartDifficultyType;
 
+		private bool UnsavedChangesLastFrame = false;
+		private bool ShowSavePopup = false;
+		private Action PostSaveFunction = null;
+		private int OpenRecentIndex = 0;
+
 		public static readonly ChartType[] SupportedChartTypes = new[]
 		{
 			ChartType.dance_single,
@@ -157,7 +164,7 @@ namespace StepManiaEditor
 		private double PlaybackStartTime;
 		private Stopwatch PlaybackStopwatch;
 		
-		private EditorSong EditorSong;
+		private EditorSong ActiveSong;
 		private EditorChart ActiveChart;
 
 		private List<EditorEvent> VisibleEvents = new List<EditorEvent>();
@@ -250,10 +257,10 @@ namespace StepManiaEditor
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.Z }, OnRedo, true));
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.Y }, OnRedo, true));
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.O }, OnOpen, false));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.S }, OnSaveAs, false));
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.S }, OnSave, false));
-			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.E }, OnExport, false));
-			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.E }, OnExportAs, false));
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.N }, OnNew, false));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.R }, OnReload, false));
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Space }, OnTogglePlayback, false));
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.P }, OnTogglePlayPreview, false));
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Escape }, OnEscape, false));
@@ -313,6 +320,8 @@ namespace StepManiaEditor
 			{
 				((Form)Control.FromHandle(Window.Handle)).WindowState = FormWindowState.Maximized;
 			}
+
+			((Form)Form.FromHandle(Window.Handle)).FormClosing += ClosingForm;
 
 			ImGuiRenderer = new ImGuiRenderer(this);
 			// TODO: Load font from install directory
@@ -400,9 +409,8 @@ namespace StepManiaEditor
 			if (Preferences.Instance.PreferencesOptions.OpenLastOpenedFileOnLaunch
 			    && Preferences.Instance.RecentFiles.Count > 0)
 			{
-				OpenSongFileAsync(Preferences.Instance.RecentFiles[0].FileName,
-					Preferences.Instance.RecentFiles[0].LastChartType,
-					Preferences.Instance.RecentFiles[0].LastChartDifficultyType);
+				OpenRecentIndex = 0;
+				OnOpenRecentFile();
 			}
 
 			FxaaEffect = Content.Load<Effect>("fxaa");
@@ -497,8 +505,8 @@ namespace StepManiaEditor
 
 			var pOptions = Preferences.Instance.PreferencesOptions;
 			MusicManager.SetPreviewParameters(
-				EditorSong?.SampleStart ?? 0.0,
-				EditorSong?.SampleLength ?? 0.0,
+				ActiveSong?.SampleStart ?? 0.0,
+				ActiveSong?.SampleLength ?? 0.0,
 				pOptions.PreviewFadeInTime,
 				pOptions.PreviewFadeOutTime);
 
@@ -592,6 +600,13 @@ namespace StepManiaEditor
 				{
 					receptor.Update(Playing, Position.ChartPosition);
 				}
+			}
+
+			var hasUnsavedChanges = ActionQueue.Instance.HasUnsavedChanges();
+			if (UnsavedChangesLastFrame != hasUnsavedChanges)
+			{
+				UnsavedChangesLastFrame = hasUnsavedChanges;
+				UpdateWindowTitle();
 			}
 
 			base.Update(gameTime);
@@ -1038,11 +1053,7 @@ namespace StepManiaEditor
 		/// This is a common pattern when knowing a position or a time and wanting to find the first event to
 		/// start enumerator over for rendering.
 		/// </remarks>
-		/// <typeparam name="T">Type of data in the tree.</typeparam>
-		/// <typeparam name="U">Type of data to compare against for finding.</typeparam>
 		/// <param name="tree">RedBlackTree to search.</param>
-		/// <param name="data">Value to use for comparisons.</param>
-		/// <param name="comparer">Comparer function.</param>
 		/// <returns>Enumerator to best value or null if a value could not be found.</returns>
 		private RedBlackTree<EditorEvent>.Enumerator FindBest(RedBlackTree<EditorEvent> tree, int row)
 		{
@@ -2035,7 +2046,10 @@ namespace StepManiaEditor
 				return;
 
 			if (ActiveChart == null || ActiveChart.EditorEvents == null || ArrowGraphicManager == null)
+			{
+				MiniMap.UpdateNoChart();
 				return;
+			}
 
 			UpdateMiniMapBounds();
 			UpdateMiniMapLaneSpacing();
@@ -2158,10 +2172,10 @@ namespace StepManiaEditor
 					if (lastEvent.MoveNext())
 						maxRowFromChart = lastEvent.Current.GetEvent().IntegerPosition;
 
-					if (EditorSong.LastSecondHint > 0.0)
+					if (ActiveSong.LastSecondHint > 0.0)
 					{
 						var lastSecondChartPosition = 0.0;
-						if (ActiveChart.TryGetChartPositionFromTime(EditorSong.LastSecondHint, ref lastSecondChartPosition))
+						if (ActiveChart.TryGetChartPositionFromTime(ActiveSong.LastSecondHint, ref lastSecondChartPosition))
 						{
 							maxRowFromChart = Math.Max(lastSecondChartPosition, maxRowFromChart);
 						}
@@ -2377,9 +2391,9 @@ namespace StepManiaEditor
 			UIReceptorPreferences.Draw();
 			UIOptions.Draw();
 
-			UISongProperties.Draw(EditorSong);
+			UISongProperties.Draw(ActiveSong);
 			UIChartProperties.Draw(ActiveChart);
-			UIChartList.Draw(ActiveChart);
+			UIChartList.Draw(ActiveSong, ActiveChart);
 			
 			UIChartPosition.Draw(
 				GetFocalPointX(),
@@ -2387,6 +2401,15 @@ namespace StepManiaEditor
 				Position,
 				SnapLevels[SnapIndex],
 				ArrowGraphicManager);
+
+			if (ShowSavePopup)
+			{
+				ShowSavePopup = false;
+				SystemSounds.Exclamation.Play();
+				ImGui.OpenPopup(GetSavePopupTitle());
+			}
+
+			DrawUnsavedChangesPopup();
 		}
 
 		private void DrawMainMenuUI()
@@ -2396,60 +2419,74 @@ namespace StepManiaEditor
 			{
 				if (ImGui.BeginMenu("File"))
 				{
-					if (ImGui.MenuItem("Open", "Ctrl+O"))
+					if (ImGui.MenuItem("New Song", "Ctrl+N"))
 					{
-						OpenSongFile();
+						OnNew();
+					}
+					if (ImGui.BeginMenu("New Chart", ActiveSong != null))
+					{
+						foreach (var chartType in SupportedChartTypes)
+						{
+							if (ImGui.Selectable(GetPrettyEnumString(chartType)))
+							{
+								ActionQueue.Instance.Do(new ActionAddChart(this, chartType));
+							}
+						}
+						ImGui.EndMenu();
 					}
 
+					ImGui.Separator();
+					if (ImGui.MenuItem("Open", "Ctrl+O"))
+					{
+						OnOpen();
+					}
 					if (ImGui.BeginMenu("Open Recent", p.RecentFiles.Count > 0))
 					{
-						foreach (var recentFile in p.RecentFiles)
+						for (var i = 0; i < p.RecentFiles.Count; i++)
 						{
+							var recentFile = p.RecentFiles[i];
 							var fileNameWithPath = recentFile.FileName;
 							var fileName = System.IO.Path.GetFileName(fileNameWithPath);
 							if (ImGui.MenuItem(fileName))
 							{
-								OpenSongFileAsync(fileNameWithPath,
-									recentFile.LastChartType,
-									recentFile.LastChartDifficultyType);
+								OpenRecentIndex = i;
+								OnOpenRecentFile();
 							}
 						}
 
 						ImGui.EndMenu();
 					}
 
-					if (ImGui.MenuItem("Reload", "Ctrl+R", false,
-						    EditorSong != null && p.RecentFiles.Count > 0))
+					if (ImGui.MenuItem("Reload", "Ctrl+R", false, ActiveSong != null && p.RecentFiles.Count > 0))
 					{
-						// TODO: Need to make sure this right, also need to hook up key command.
-						OpenSongFileAsync(p.RecentFiles[0].FileName,
-							p.RecentFiles[0].LastChartType,
-							p.RecentFiles[0].LastChartDifficultyType);
+						OnReload();
 					}
 
-					var editorFileName = EditorSong?.FileName;
+					ImGui.Separator();
+					var editorFileName = ActiveSong?.FileName;
 					if (!string.IsNullOrEmpty(editorFileName))
 					{
-						if (ImGui.MenuItem($"Export {editorFileName}", "Ctrl+E"))
+						if (ImGui.MenuItem($"Save {editorFileName}", "Ctrl+S"))
 						{
-							OnExport();
+							OnSave();
 						}
 					}
 					else
 					{
-						if (ImGui.MenuItem("Export", "Ctrl+E", false, EditorSong != null))
+						if (ImGui.MenuItem("Save", "Ctrl+S", false, ActiveSong != null))
 						{
-							OnExport();
+							OnSave();
 						}
 					}
-					if (ImGui.MenuItem("Export As...", "Ctrl+Shift+E", false, EditorSong != null))
+					if (ImGui.MenuItem("Save As...", "Ctrl+Shift+S", false, ActiveSong != null))
 					{
-						OnExportAs();
+						OnSaveAs();
 					}
 
+					ImGui.Separator();
 					if (ImGui.MenuItem("Exit", "Alt+F4"))
 					{
-						Exit();
+						OnExit();
 					}
 
 					ImGui.EndMenu();
@@ -2489,6 +2526,52 @@ namespace StepManiaEditor
 				ImGui.EndMainMenuBar();
 			}
 		}
+
+		private string GetSavePopupTitle()
+		{
+			var appName = System.Reflection.Assembly.GetExecutingAssembly().GetName().Name;
+			return $"{appName}##save";
+		}
+
+		private void DrawUnsavedChangesPopup()
+		{
+			if (ImGui.BeginPopupModal(GetSavePopupTitle()))
+			{
+				if (!string.IsNullOrEmpty(ActiveSong.Title))
+					ImGui.Text($"Do you want to save the changes you made to {ActiveSong.Title}?\nYour changes will be lost if you don't save them.");
+				else
+					ImGui.Text($"Do you want to save your changes?\nYour changes will be lost if you don't save them.");
+				
+				ImGui.Separator();
+				if (ImGui.Button("Save"))
+				{
+					if (CanSaveWithoutLocationPrompt())
+					{
+						OnSave();
+					}
+					else
+					{
+						OnSaveAs();
+					}
+					ImGui.CloseCurrentPopup();
+				}
+				ImGui.SameLine();
+				if (ImGui.Button("Don't Save"))
+				{
+					TryInvokePostSaveFunction();
+					ImGui.CloseCurrentPopup();
+				}
+				ImGui.SetItemDefaultFocus();
+				ImGui.SameLine();
+				if (ImGui.Button("Cancel"))
+				{
+					ImGui.CloseCurrentPopup();
+				}
+
+				ImGui.EndPopup();
+			}
+		}
+
 
 		private void DrawDebugUI()
 		{
@@ -2691,7 +2774,7 @@ namespace StepManiaEditor
 						Logger.Info($"Loaded {fileName}");
 
 						LoadSongCancellationTokenSource.Token.ThrowIfCancellationRequested();
-						EditorSong = new EditorSong(
+						ActiveSong = new EditorSong(
 							this,
 							fileName,
 							song,
@@ -2699,7 +2782,7 @@ namespace StepManiaEditor
 							ImGuiRenderer);
 
 						// Select the best Chart to make active.
-						newActiveChart = SelectBestChart(EditorSong, chartType, chartDifficultyType);
+						newActiveChart = SelectBestChart(ActiveSong, chartType, chartDifficultyType);
 						LoadSongCancellationTokenSource.Token.ThrowIfCancellationRequested();
 					}
 					catch (OperationCanceledException)
@@ -2714,28 +2797,13 @@ namespace StepManiaEditor
 					}
 				}, LoadSongCancellationTokenSource.Token);
 				await LoadSongTask;
-				if (EditorSong == null)
+				if (ActiveSong == null)
 				{
 					return;
 				}
 
 				// Insert a new entry at the top of the saved recent files.
-				var p = Preferences.Instance;
-				var pOptions = p.PreferencesOptions;
-				var savedSongInfo = new Preferences.SavedSongInformation
-				{
-					FileName = fileName,
-					LastChartType = ActiveChart?.ChartType ?? pOptions.DefaultStepsType,
-					LastChartDifficultyType = ActiveChart?.ChartDifficultyType ?? pOptions.DefaultDifficultyType,
-				};
-				p.RecentFiles.RemoveAll(info => info.FileName == fileName);
-				p.RecentFiles.Insert(0, savedSongInfo);
-				if (p.RecentFiles.Count > pOptions.RecentFilesHistorySize)
-				{
-					p.RecentFiles.RemoveRange(
-						pOptions.RecentFilesHistorySize,
-						p.RecentFiles.Count - pOptions.RecentFilesHistorySize);
-				}
+				UpdateRecentFilesForActiveSong();
 
 				OnChartSelected(newActiveChart, false);
 
@@ -2750,6 +2818,31 @@ namespace StepManiaEditor
 				Logger.Error($"Failed to load {fileName}. {e}");
 			}
 		}
+
+		private void UpdateRecentFilesForActiveSong()
+		{
+			if (ActiveSong == null || string.IsNullOrEmpty(ActiveSong.FileFullPath))
+				return;
+
+			var p = Preferences.Instance;
+			var pOptions = p.PreferencesOptions;
+			var savedSongInfo = new Preferences.SavedSongInformation
+			{
+				FileName = ActiveSong.FileFullPath,
+				LastChartType = ActiveChart?.ChartType ?? pOptions.DefaultStepsType,
+				LastChartDifficultyType = ActiveChart?.ChartDifficultyType ?? pOptions.DefaultDifficultyType,
+			};
+			p.RecentFiles.RemoveAll(info => info.FileName == ActiveSong.FileFullPath);
+			p.RecentFiles.Insert(0, savedSongInfo);
+			if (p.RecentFiles.Count > pOptions.RecentFilesHistorySize)
+			{
+				p.RecentFiles.RemoveRange(
+					pOptions.RecentFilesHistorySize,
+					p.RecentFiles.Count - pOptions.RecentFilesHistorySize);
+			}
+		}
+		
+
 
 		/// <summary>
 		/// Helper method when loading a Song to select the best Chart to be the active Chart.
@@ -2844,14 +2937,14 @@ namespace StepManiaEditor
 
 			// If the active chart does not have a music file defined, fall back to use the song's music file.
 			if (string.IsNullOrEmpty(musicFile))
-				musicFile = EditorSong?.MusicPath;
+				musicFile = ActiveSong?.MusicPath;
 
 			return GetFullPathToSongResource(musicFile);
 		}
 
 		private string GetFullPathToMusicPreviewFile()
 		{
-			return GetFullPathToSongResource(EditorSong?.MusicPreviewPath);
+			return GetFullPathToSongResource(ActiveSong?.MusicPreviewPath);
 		}
 
 		private string GetFullPathToSongResource(string relativeFile)
@@ -2864,7 +2957,7 @@ namespace StepManiaEditor
 				if (System.IO.Path.IsPathRooted(relativeFile))
 					fullPath = relativeFile;
 				else
-					fullPath = Path.Combine(EditorSong.FileDirectory, relativeFile);
+					fullPath = Path.Combine(ActiveSong.FileDirectory, relativeFile);
 			}
 
 			return fullPath;
@@ -2873,8 +2966,9 @@ namespace StepManiaEditor
 		private void UnloadSongResources()
 		{
 			LaneEditStates = Array.Empty<LaneEditState>();
-			EditorSong = null;
+			ActiveSong = null;
 			ActiveChart = null;
+			Position.ActiveChart = null;
 			ArrowGraphicManager = null;
 			Receptors = null;
 			NextAutoPlayNotes = null;
@@ -2884,13 +2978,13 @@ namespace StepManiaEditor
 
 		private void UpdateWindowTitle()
 		{
-			var hasUnsavedChanges = false; // TODO
+			var hasUnsavedChanges = ActionQueue.Instance.HasUnsavedChanges();
 			var appName = System.Reflection.Assembly.GetExecutingAssembly().GetName().Name;
 			var sb = new StringBuilder();
 			var title = "New File";
-			if (ActiveChart != null && !string.IsNullOrEmpty(ActiveChart.EditorSong.FileName))
+			if (ActiveSong != null && !string.IsNullOrEmpty(ActiveSong.FileName))
 			{
-				title = ActiveChart.EditorSong.FileName;
+				title = ActiveSong.FileName;
 			}
 			sb.Append(title);
 			if (hasUnsavedChanges)
@@ -3041,6 +3135,9 @@ namespace StepManiaEditor
 
 		private void OnShiftDown()
 		{
+			if (LaneEditStates == null)
+				return;
+
 			foreach (var laneEditState in LaneEditStates)
 			{
 				if (laneEditState.IsActive() && laneEditState.GetEventBeingEdited() != null)
@@ -3052,6 +3149,9 @@ namespace StepManiaEditor
 
 		private void OnShiftUp()
 		{
+			if (LaneEditStates == null)
+				return;
+
 			foreach (var laneEditState in LaneEditStates)
 			{
 				if (laneEditState.IsActive() && laneEditState.GetEventBeingEdited() != null)
@@ -3322,6 +3422,9 @@ namespace StepManiaEditor
 
 		private void UpdateLaneEditStatesFromPosition()
 		{
+			if (LaneEditStates == null)
+				return;
+
 			var row = Math.Max(0, Position.GetNearestRow());
 			for (var lane = 0; lane < LaneEditStates.Length; lane++)
 			{
@@ -3403,66 +3506,148 @@ namespace StepManiaEditor
 				StopPlayback();
 		}
 
+		public void ClosingForm(object sender, System.ComponentModel.CancelEventArgs e)
+		{
+			if (ActionQueue.Instance.HasUnsavedChanges())
+			{
+				e.Cancel = true;
+				PostSaveFunction = OnExitNoSave;
+				ShowSavePopup = true;
+			}
+		}
+
+		private void OnExit()
+		{
+			if (ActionQueue.Instance.HasUnsavedChanges())
+			{
+				PostSaveFunction = OnExitNoSave;
+				ShowSavePopup = true;
+			}
+			else
+			{
+				OnExitNoSave();
+			}
+		}
+
+		private void OnExitNoSave()
+		{
+			Exit();
+		}
+
 		private void OnOpen()
 		{
-			OpenSongFile();
+			if (ActionQueue.Instance.HasUnsavedChanges())
+			{
+				PostSaveFunction = OpenSongFile;
+				ShowSavePopup = true;
+			}
+			else
+			{
+				OpenSongFile();
+			}
+		}
+
+		private void OnReload()
+		{
+			OpenRecentIndex = 0;
+			OnOpenRecentFile();
+		}
+
+		private void OnOpenRecentFile()
+		{
+			var p = Preferences.Instance;
+			if (OpenRecentIndex >= p.RecentFiles.Count)
+				return;
+
+			if (ActionQueue.Instance.HasUnsavedChanges())
+			{
+				PostSaveFunction = OpenRecentFile;
+				ShowSavePopup = true;
+			}
+			else
+			{
+				OpenRecentFile();
+			}
+		}
+
+		private void OpenRecentFile()
+		{
+			var p = Preferences.Instance;
+			if (OpenRecentIndex >= p.RecentFiles.Count)
+				return;
+
+			OpenSongFileAsync(p.RecentFiles[OpenRecentIndex].FileName,
+							p.RecentFiles[OpenRecentIndex].LastChartType,
+							p.RecentFiles[OpenRecentIndex].LastChartDifficultyType);
 		}
 
 		private void OnNew()
 		{
-			// Prompt for saving first.
-
-		}
-		private void OnSave()
-		{
-			// TODO: Export vs Save
-			if (EditorSong != null)
+			if (ActionQueue.Instance.HasUnsavedChanges())
 			{
-				var song = EditorSong.SaveToSong();
-
-				//var saveFile = Fumen.Path.GetWin32FileSystemFullPath(Fumen.Path.Combine(songArgs.SaveDir, songArgs.FileInfo.Name));
-				//var config = new SMWriterBase.SMWriterBaseConfig
-				//{
-				//	FilePath = saveFile,
-				//	Song = song,
-				//	MeasureSpacingBehavior = SMWriterBase.MeasureSpacingBehavior.UseLeastCommonMultiple,
-				//	PropertyEmissionBehavior = SMWriterBase.PropertyEmissionBehavior.Stepmania,
-				//};
-				//var fileFormat = FileFormat.GetFileFormatByExtension(songArgs.FileInfo.Extension);
-				//switch (fileFormat.Type)
-				//{
-				//	case FileFormatType.SM:
-				//		new SMWriter(config).Save();
-				//		break;
-				//	case FileFormatType.SSC:
-				//		new SSCWriter(config).Save();
-				//		break;
-				//	default:
-				//		LogError("Unsupported file format. Cannot save.", songArgs.FileInfo, songArgs.RelativePath);
-				//		break;
-				//}
+				PostSaveFunction = OnNewNoSave;
+				ShowSavePopup = true;
+			}
+			else
+			{
+				OnNewNoSave();
 			}
 		}
 
-		private void OnExport()
+		private void OnNewNoSave()
 		{
-			if (EditorSong == null)
-				return;
-
-			if (EditorSong.FileFormat == null)
-				return;
-
-			Export(EditorSong.FileFormat.Type, EditorSong.FileFullPath, EditorSong);
+			UnloadSongResources();
+			StopPlayback();
+			ActiveSong = new EditorSong(this, GraphicsDevice, ImGuiRenderer);
+			Position.ChartPosition = 0.0;
+			DesiredSongTime = Position.SongTime;
+			SetZoom(1.0, true);
 		}
 
-		private void OnExportAs()
+		private void TryInvokePostSaveFunction()
 		{
-			if (EditorSong == null)
+			if (PostSaveFunction != null)
+				PostSaveFunction();
+			PostSaveFunction = null;
+		}
+
+		private bool CanSaveWithoutLocationPrompt()
+		{
+			if (ActiveSong == null)
+				return false;
+
+			if (ActiveSong.FileFormat == null)
+				return false;
+
+			if (string.IsNullOrEmpty(ActiveSong.FileFullPath))
+				return false;
+
+			return true;
+		}
+
+		private void OnSave()
+		{
+			if (!CanSaveWithoutLocationPrompt())
+			{
+				OnSaveAs();
+				return;
+			}
+			Save(ActiveSong.FileFormat.Type, ActiveSong.FileFullPath, ActiveSong);
+		}
+
+		private void OnSaveAs()
+		{
+			if (ActiveSong == null)
 				return;
 
 			SaveFileDialog saveFileDialog1 = new SaveFileDialog();
 			saveFileDialog1.Filter = "SSC File|*.ssc|SM File|*.sm";
-			saveFileDialog1.Title = "Export As...";
+			saveFileDialog1.Title = "Save As...";
+			saveFileDialog1.FilterIndex = 0;
+			if (ActiveSong.FileFormat != null && ActiveSong.FileFormat.Type == FileFormatType.SM)
+			{
+				saveFileDialog1.FilterIndex = 2;
+			}
 			if (saveFileDialog1.ShowDialog() != DialogResult.OK)
 				return;
 			
@@ -3472,10 +3657,10 @@ namespace StepManiaEditor
 			if (fileFormat == null)
 				return;
 
-			Export(fileFormat.Type, fullPath, EditorSong);
+			Save(fileFormat.Type, fullPath, ActiveSong);
 		}
 
-		private void Export(FileFormatType fileType, string fullPath, EditorSong editorSong)
+		private void Save(FileFormatType fileType, string fullPath, EditorSong editorSong)
 		{
 			// TODO: Check for incompatible features with SM format.
 			if (fileType == FileFormatType.SM)
@@ -3484,11 +3669,11 @@ namespace StepManiaEditor
 			}
 
 			// Temp hack to not overwrite original file.
-			var start = fullPath.Substring(0, fullPath.LastIndexOf('.'));
-			var end = fullPath.Substring(fullPath.LastIndexOf('.'));
-			fullPath = $"{start}-exported{end}";
+			//var start = fullPath.Substring(0, fullPath.LastIndexOf('.'));
+			//var end = fullPath.Substring(fullPath.LastIndexOf('.'));
+			//fullPath = $"{start}-exported{end}";
 
-			var song = EditorSong.SaveToSong();
+			var song = ActiveSong.SaveToSong();
 			var config = new SMWriterBase.SMWriterBaseConfig
 			{
 				FilePath = fullPath,
@@ -3509,8 +3694,14 @@ namespace StepManiaEditor
 					break;
 			}
 
-			// Update the EditorSong's file path information.
+			// Update the ActiveSong's file path information.
 			editorSong.SetFullFilePath(fullPath);
+			UpdateWindowTitle();
+			UpdateRecentFilesForActiveSong();
+
+			ActionQueue.Instance.OnSaved();
+
+			TryInvokePostSaveFunction();
 		}
 
 		private void OnTogglePlayback()
@@ -3555,8 +3746,6 @@ namespace StepManiaEditor
 
 		public void OnSongMusicChanged(EditorSong song)
 		{
-			if (ActiveChart == null || song != ActiveChart.EditorSong)
-				return;
 			OnMusicChangedInternal();
 		}
 
@@ -3653,7 +3842,7 @@ namespace StepManiaEditor
 
 		public void OnChartSelected(EditorChart chart, bool undoable = true)
 		{
-			if (EditorSong == null || ActiveChart == chart)
+			if (ActiveSong == null || ActiveChart == chart)
 				return;
 
 			// If the active chart is being changed as an undoable action, enqueue the action and return.
@@ -3666,29 +3855,38 @@ namespace StepManiaEditor
 
 			ActiveChart = chart;
 
-			// Update the recent file entry for the current song so that tracks the selected cha
-			var p = Preferences.Instance;
-			if (p.RecentFiles.Count > 0 && p.RecentFiles[0].FileName == EditorSong.FileFullPath)
+			if (ActiveChart != null)
 			{
-				p.RecentFiles[0].LastChartType = ActiveChart.ChartType;
-				p.RecentFiles[0].LastChartDifficultyType = ActiveChart.ChartDifficultyType;
+				// Update the recent file entry for the current song so that tracks the selected chart
+				var p = Preferences.Instance;
+				if (p.RecentFiles.Count > 0 && p.RecentFiles[0].FileName == ActiveSong.FileFullPath)
+				{
+					p.RecentFiles[0].LastChartType = ActiveChart.ChartType;
+					p.RecentFiles[0].LastChartDifficultyType = ActiveChart.ChartDifficultyType;
+				}
+
+				// The Position needs to know about the active chart for doing time and row calculations.
+				Position.ActiveChart = ActiveChart;
+
+				// The receptors and arrow graphics depend on the active chart.
+				ArrowGraphicManager = ArrowGraphicManager.CreateArrowGraphicManager(ActiveChart.ChartType);
+				var laneEditStates = new LaneEditState[ActiveChart.NumInputs];
+				var receptors = new Receptor[ActiveChart.NumInputs];
+				NextAutoPlayNotes = new EditorEvent[ActiveChart.NumInputs];
+				for (var i = 0; i < ActiveChart.NumInputs; i++)
+				{
+					laneEditStates[i] = new LaneEditState();
+					receptors[i] = new Receptor(i, ArrowGraphicManager, ActiveChart);
+				}
+				Receptors = receptors;
+				LaneEditStates = laneEditStates;
 			}
-
-			// The Position needs to know about the active chart for doing time and row calculations.
-			Position.ActiveChart = ActiveChart;
-
-			// The receptors and arrow graphics depend on the active chart.
-			ArrowGraphicManager = ArrowGraphicManager.CreateArrowGraphicManager(ActiveChart.ChartType);
-			var laneEditStates = new LaneEditState[ActiveChart.NumInputs];
-			var receptors = new Receptor[ActiveChart.NumInputs];
-			NextAutoPlayNotes = new EditorEvent[ActiveChart.NumInputs];
-			for (var i = 0; i < ActiveChart.NumInputs; i++)
+			else
 			{
-				laneEditStates[i] = new LaneEditState();
-				receptors[i] = new Receptor(i, ArrowGraphicManager, ActiveChart);
+				ArrowGraphicManager = null;
+				Receptors = null;
+				LaneEditStates = null;
 			}
-			Receptors = receptors;
-			LaneEditStates = laneEditStates;
 
 			// Window title depends on the active chart.
 			UpdateWindowTitle();
@@ -3700,9 +3898,9 @@ namespace StepManiaEditor
 
 		public EditorChart AddChart(ChartType chartType, bool selectNewChart)
 		{
-			if (EditorSong == null)
+			if (ActiveSong == null)
 				return null;
-			var chart = EditorSong.AddChart(chartType);
+			var chart = ActiveSong.AddChart(chartType);
 			if (selectNewChart)
 				OnChartSelected(chart, false);
 			return chart;
@@ -3710,9 +3908,9 @@ namespace StepManiaEditor
 
 		public EditorChart AddChart(EditorChart chart, bool selectNewChart)
 		{
-			if (EditorSong == null)
+			if (ActiveSong == null)
 				return null;
-			EditorSong.AddChart(chart);
+			ActiveSong.AddChart(chart);
 			if (selectNewChart)
 				OnChartSelected(chart, false);
 			return chart;
@@ -3720,14 +3918,14 @@ namespace StepManiaEditor
 
 		public void DeleteChart(EditorChart chart, EditorChart chartToSelect)
 		{
-			if (EditorSong == null)
+			if (ActiveSong == null)
 				return;
-			EditorSong.DeleteChart(chart);
+			ActiveSong.DeleteChart(chart);
 			if (chartToSelect != null)
 				OnChartSelected(chartToSelect, false);
 			else if (ActiveChart == chart)
 			{
-				var newActiveChart = SelectBestChart(EditorSong, ActiveChart.ChartType, ActiveChart.ChartDifficultyType);
+				var newActiveChart = SelectBestChart(ActiveSong, ActiveChart.ChartType, ActiveChart.ChartDifficultyType);
 				OnChartSelected(newActiveChart, false);
 			}
 		}

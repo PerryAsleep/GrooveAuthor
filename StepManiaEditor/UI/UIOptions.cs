@@ -20,13 +20,13 @@ namespace StepManiaEditor
 			if (ImGuiLayoutUtils.BeginTable("Options Step Type", 160))
 			{
 				ImGuiLayoutUtils.DrawRowSelectableTree<SMCommon.ChartType>(true, "Startup Pad Data", p,
-					nameof(PreferencesOptions.StartupChartTypesBools),
+					nameof(PreferencesOptions.StartupChartTypesBools), false,
 					"Pad data will be loaded for the selected charts when the application starts." +
 					"\nPad data is used to generate patterns and convert charts from one type to another.");
 
-				ImGuiLayoutUtils.DrawRowEnum<SMCommon.ChartType>(true, "Default Type", p, nameof(PreferencesOptions.DefaultStepsType),
+				ImGuiLayoutUtils.DrawRowEnum<SMCommon.ChartType>(true, "Default Type", p, nameof(PreferencesOptions.DefaultStepsType), false,
 					"When opening a song the default chart type will be used for selecting an initial chart.");
-				ImGuiLayoutUtils.DrawRowEnum<SMCommon.ChartDifficultyType>(true, "Default Difficulty", p, nameof(PreferencesOptions.DefaultDifficultyType),
+				ImGuiLayoutUtils.DrawRowEnum<SMCommon.ChartDifficultyType>(true, "Default Difficulty", p, nameof(PreferencesOptions.DefaultDifficultyType), false,
 					"When opening a song the default difficulty will be used for selecting an initial chart.");
 
 				ImGuiLayoutUtils.EndTable();
@@ -35,10 +35,10 @@ namespace StepManiaEditor
 			ImGui.Separator();
 			if (ImGuiLayoutUtils.BeginTable("Options File History", 160))
 			{
-				ImGuiLayoutUtils.DrawRowCheckbox(true, "Open Last File On Launch", p, nameof(PreferencesOptions.OpenLastOpenedFileOnLaunch),
+				ImGuiLayoutUtils.DrawRowCheckbox(true, "Open Last File On Launch", p, nameof(PreferencesOptions.OpenLastOpenedFileOnLaunch), false,
 					"Whether or not to open the last opened file when launching the application.");
 				ImGuiLayoutUtils.DrawRowSliderInt(true, "File History Size", p,
-					nameof(PreferencesOptions.RecentFilesHistorySize), 0, 50,
+					nameof(PreferencesOptions.RecentFilesHistorySize), 0, 50, false,
 					"Number of files to remember in the history used for opening recent files.");
 
 				ImGuiLayoutUtils.EndTable();
@@ -47,9 +47,9 @@ namespace StepManiaEditor
 			ImGui.Separator();
 			if (ImGuiLayoutUtils.BeginTable("Options Preview", 160))
 			{
-				ImGuiLayoutUtils.DrawRowDragDouble(true, "Preview Fade In", p, nameof(PreferencesOptions.PreviewFadeInTime),
+				ImGuiLayoutUtils.DrawRowDragDouble(true, "Preview Fade In", p, nameof(PreferencesOptions.PreviewFadeInTime), false,
 					"Time over which the preview should fade in when previewing the song.", 0.001f, "%.3f seconds", 0.0);
-				ImGuiLayoutUtils.DrawRowDragDouble(true, "Preview Fade Out", p, nameof(PreferencesOptions.PreviewFadeOutTime),
+				ImGuiLayoutUtils.DrawRowDragDouble(true, "Preview Fade Out", p, nameof(PreferencesOptions.PreviewFadeOutTime), false,
 					"Time over which the preview should fade out when previewing the song.", 0.001f, "%.3f seconds", 0.0);
 				ImGuiLayoutUtils.EndTable();
 			}

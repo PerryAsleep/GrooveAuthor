@@ -216,16 +216,16 @@ namespace StepManiaEditor
 		public string FileFullPath;
 		public FileFormat FileFormat;
 
-		public string Title;
-		public string TitleTransliteration;
-		public string Subtitle;
-		public string SubtitleTransliteration;
-		public string Artist;
-		public string ArtistTransliteration;
+		public string Title = "";
+		public string TitleTransliteration = "";
+		public string Subtitle = "";
+		public string SubtitleTransliteration = "";
+		public string Artist = "";
+		public string ArtistTransliteration = "";
 
-		public string Genre;
-		public string Origin;
-		public string Credit;
+		public string Genre = "";
+		public string Origin = "";
+		public string Credit = "";
 
 		public EditorImageData Banner;
 		public EditorImageData Background;
@@ -234,10 +234,10 @@ namespace StepManiaEditor
 		public EditorImageData DiscImage;
 		public EditorImageData CDTitle;
 
-		public string LyricsPath;
-		public string PreviewVideoPath;
+		public string LyricsPath = "";
+		public string PreviewVideoPath = "";
 
-		private string MusicPathInternal;
+		private string MusicPathInternal = "";
 
 		public string MusicPath
 		{
@@ -249,7 +249,7 @@ namespace StepManiaEditor
 			}
 		}
 
-		private string MusicPreviewPathInternal;
+		private string MusicPreviewPathInternal = "";
 
 		public string MusicPreviewPath
 		{
@@ -297,6 +297,16 @@ namespace StepManiaEditor
 			ImGuiRenderer imGuiRenderer)
 		{
 			Editor = editor;
+
+			Banner = new EditorImageData(FileDirectory, graphicsDevice, imGuiRenderer, BannerWidth, BannerHeight, null);
+			Background = new EditorImageData(null);
+			Jacket = new EditorImageData(null);
+			CDImage = new EditorImageData(null);
+			DiscImage = new EditorImageData(null);
+			CDTitle = new EditorImageData(FileDirectory, graphicsDevice, imGuiRenderer, CDTitleWidth, CDTitleHeight, null);
+
+			MusicPath = "";
+			MusicPreviewPath = "";
 		}
 
 		public EditorSong(

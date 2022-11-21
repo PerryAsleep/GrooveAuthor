@@ -3,11 +3,7 @@ using System.Collections.Generic;
 using System.Reflection;
 using ImGuiNET;
 using System.Numerics;
-using System.Runtime.InteropServices;
-using System.Text;
-using Fumen;
 using Fumen.ChartDefinition;
-using Fumen.Converters;
 
 namespace StepManiaEditor
 {
@@ -71,10 +67,10 @@ namespace StepManiaEditor
 			return DrawCheckbox(title, ref value, ImGui.GetContentRegionAvail().X, help);
 		}
 
-		public static bool DrawRowCheckbox(bool undoable, string title, object o, string fieldName, string help = null)
+		public static bool DrawRowCheckbox(bool undoable, string title, object o, string fieldName, bool affectsFile, string help = null)
 		{
 			DrawRowTitleAndAdvanceColumn(title);
-			return DrawCheckbox(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, help);
+			return DrawCheckbox(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, affectsFile, help);
 		}
 
 		private static bool DrawCheckbox(
@@ -93,6 +89,7 @@ namespace StepManiaEditor
 			object o,
 			string fieldName,
 			float width,
+			bool affectsFile,
 			string help = null)
 		{
 			ImGui.SetNextItemWidth(DrawHelp(help, width));
@@ -103,7 +100,7 @@ namespace StepManiaEditor
 			{
 				if (undoable)
 				{
-					ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyValue<bool>(o, fieldName, value));
+					ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyValue<bool>(o, fieldName, value, affectsFile));
 				}
 				else
 				{
@@ -141,24 +138,24 @@ namespace StepManiaEditor
 			ImGui.InputTextWithHint(GetElementTitle(title), title, ref value, 256);
 		}
 
-		public static void DrawRowTextInput(bool undoable, string title, object o, string fieldName, string help = null)
+		public static void DrawRowTextInput(bool undoable, string title, object o, string fieldName, bool affectsFile, string help = null)
 		{
 			DrawRowTitleAndAdvanceColumn(title);
-			DrawTextInput(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, help);
+			DrawTextInput(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, affectsFile, help);
 		}
 
 		public static void DrawRowTextInputWithTransliteration(bool undoable, string title, object o, string fieldName,
-			string transliterationFieldName, string help = null)
+			string transliterationFieldName, bool affectsFile, string help = null)
 		{
 			DrawRowTitleAndAdvanceColumn(title);
-			DrawTextInput(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X * 0.5f, help);
+			DrawTextInput(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X * 0.5f, affectsFile, help);
 			ImGui.SameLine();
-			DrawTextInput(undoable, "Transliteration", o, transliterationFieldName, ImGui.GetContentRegionAvail().X,
+			DrawTextInput(undoable, "Transliteration", o, transliterationFieldName, ImGui.GetContentRegionAvail().X, affectsFile,
 				"Optional text to use when sorting by this value.\nStepMania sorts values lexicographically, preferring transliterations.");
 		}
 
 		private static void DrawTextInput(bool undoable, string title, object o, string fieldName, float width,
-			string help = null)
+			bool affectsFile, string help = null)
 		{
 			(bool, string) Func(string v)
 			{
@@ -167,7 +164,7 @@ namespace StepManiaEditor
 				return (r, v);
 			}
 
-			DrawCachedEditReference<string>(undoable, title, o, fieldName, width, Func, StringCompare, null, help);
+			DrawCachedEditReference<string>(undoable, title, o, fieldName, width, affectsFile, Func, StringCompare, null, help);
 		}
 
 		#endregion Text Input
@@ -175,7 +172,7 @@ namespace StepManiaEditor
 		#region Time Signature
 
 		private static void DrawTimeSignatureInput(bool undoable, string title, object o, string fieldName, float width,
-			string help = null)
+			bool affectsFile, string help = null)
 		{
 			(bool, string) Func(string v)
 			{
@@ -190,7 +187,7 @@ namespace StepManiaEditor
 				return valid;
 			}
 
-			DrawCachedEditReference<string>(undoable, title, o, fieldName, width, Func, StringCompare, ValidationFunc, help);
+			DrawCachedEditReference<string>(undoable, title, o, fieldName, width, affectsFile, Func, StringCompare, ValidationFunc, help);
 		}
 
 		#endregion Time Signature
@@ -198,7 +195,7 @@ namespace StepManiaEditor
 		#region Multipliers
 
 		private static void DrawMultipliersInput(bool undoable, string title, object o, string fieldName, float width,
-			string help = null)
+			bool affectsFile, string help = null)
 		{
 			(bool, string) Func(string v)
 			{
@@ -213,7 +210,7 @@ namespace StepManiaEditor
 				return valid;
 			}
 
-			DrawCachedEditReference<string>(undoable, title, o, fieldName, width, Func, StringCompare, ValidationFunc, help);
+			DrawCachedEditReference<string>(undoable, title, o, fieldName, width, affectsFile, Func, StringCompare, ValidationFunc, help);
 		}
 
 		#endregion Multipliers
@@ -221,7 +218,7 @@ namespace StepManiaEditor
 		#region Label
 
 		private static void DrawLabelInput(bool undoable, string title, object o, string fieldName, float width,
-			string help = null)
+			bool affectsFile, string help = null)
 		{
 			(bool, string) Func(string v)
 			{
@@ -236,7 +233,7 @@ namespace StepManiaEditor
 				return true;
 			}
 
-			DrawCachedEditReference<string>(undoable, title, o, fieldName, width, Func, StringCompare, ValidationFunc, help);
+			DrawCachedEditReference<string>(undoable, title, o, fieldName, width, affectsFile, Func, StringCompare, ValidationFunc, help);
 		}
 
 		#endregion Label
@@ -244,7 +241,7 @@ namespace StepManiaEditor
 		#region Scroll Rate Interpolation
 
 		private static void DrawScrollRateInterpolationInput(bool undoable, string title, object o, string fieldName, float width,
-			string help = null)
+			bool affectsFile, string help = null)
 		{
 			(bool, string) Func(string v)
 			{
@@ -259,7 +256,7 @@ namespace StepManiaEditor
 				return valid;
 			}
 
-			DrawCachedEditReference<string>(undoable, title, o, fieldName, width, Func, StringCompare, ValidationFunc, help);
+			DrawCachedEditReference<string>(undoable, title, o, fieldName, width, affectsFile, Func, StringCompare, ValidationFunc, help);
 		}
 
 		#endregion Scroll Rate Interpolation
@@ -267,14 +264,14 @@ namespace StepManiaEditor
 		#region File Browse
 
 		public static void DrawRowFileBrowse(
-			string title, object o, string fieldName, Action browseAction, Action clearAction, string help = null)
+			string title, object o, string fieldName, Action browseAction, Action clearAction, bool affectsFile, string help = null)
 		{
 			DrawRowTitleAndAdvanceColumn(title);
 
 			// Display the text input but do not allow edits to it.
 			Utils.PushDisabled();
 			DrawTextInput(false, title, o, fieldName,
-				Math.Max(1.0f, ImGui.GetContentRegionAvail().X - 70.0f - ImGui.GetStyle().ItemSpacing.X * 2), help);
+				Math.Max(1.0f, ImGui.GetContentRegionAvail().X - 70.0f - ImGui.GetStyle().ItemSpacing.X * 2), affectsFile, help);
 			Utils.PopDisabled();
 
 			ImGui.SameLine();
@@ -292,14 +289,14 @@ namespace StepManiaEditor
 
 		public static void DrawRowAutoFileBrowse(
 			string title, object o, string fieldName, Action autoAction, Action browseAction, Action clearAction,
-			string help = null)
+			bool affectsFile, string help = null)
 		{
 			DrawRowTitleAndAdvanceColumn(title);
 
 			// Display the text input but do not allow edits to it.
 			Utils.PushDisabled();
 			DrawTextInput(false, title, o, fieldName,
-				Math.Max(1.0f, ImGui.GetContentRegionAvail().X - 120.0f - ImGui.GetStyle().ItemSpacing.X * 3), help);
+				Math.Max(1.0f, ImGui.GetContentRegionAvail().X - 120.0f - ImGui.GetStyle().ItemSpacing.X * 3), affectsFile, help);
 			Utils.PopDisabled();
 
 			ImGui.SameLine();
@@ -330,12 +327,13 @@ namespace StepManiaEditor
 			string title,
 			object o,
 			string fieldName,
+			bool affectsFile,
 			string help = null,
 			int min = int.MinValue,
 			int max = int.MaxValue)
 		{
 			DrawRowTitleAndAdvanceColumn(title);
-			DrawInputInt(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, help, min, max);
+			DrawInputInt(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, affectsFile, help, min, max);
 		}
 
 		private static void DrawInputInt(
@@ -344,6 +342,7 @@ namespace StepManiaEditor
 			object o,
 			string fieldName,
 			float width,
+			bool affectsFile,
 			string help = null,
 			int min = int.MinValue,
 			int max = int.MaxValue)
@@ -354,7 +353,7 @@ namespace StepManiaEditor
 				return (r, v);
 			}
 
-			DrawLiveEditValue<int>(undoable, title, o, fieldName, width, Func, IntCompare, help);
+			DrawLiveEditValue<int>(undoable, title, o, fieldName, width, affectsFile, Func, IntCompare, help);
 		}
 
 		#endregion Input Int
@@ -367,6 +366,7 @@ namespace StepManiaEditor
 			object o,
 			string fieldName1,
 			string fieldName2,
+			bool affectsFile,
 			bool field1Enabled = true,
 			bool field2Enabled = true,
 			string help = null,
@@ -380,13 +380,13 @@ namespace StepManiaEditor
 			DrawRowTitleAndAdvanceColumn(title);
 			if (!field1Enabled)
 				Utils.PushDisabled();
-			DrawDragInt(undoable, "", o, fieldName1, ImGui.GetContentRegionAvail().X * 0.5f, help, speed, format, min1, max1);
+			DrawDragInt(undoable, "", o, fieldName1, ImGui.GetContentRegionAvail().X * 0.5f, affectsFile, help, speed, format, min1, max1);
 			if (!field1Enabled)
 				Utils.PopDisabled();
 			ImGui.SameLine();
 			if (!field2Enabled)
 				Utils.PushDisabled();
-			DrawDragInt(undoable, "", o, fieldName2, ImGui.GetContentRegionAvail().X, "", speed, format, min2, max2);
+			DrawDragInt(undoable, "", o, fieldName2, ImGui.GetContentRegionAvail().X, affectsFile, "", speed, format, min2, max2);
 			if (!field2Enabled)
 				Utils.PopDisabled();
 		}
@@ -425,6 +425,7 @@ namespace StepManiaEditor
 			string title,
 			object o,
 			string fieldName,
+			bool affectsFile,
 			string help = null,
 			float speed = 1.0f,
 			string format = "%i",
@@ -432,7 +433,7 @@ namespace StepManiaEditor
 			int max = int.MaxValue)
 		{
 			DrawRowTitleAndAdvanceColumn(title);
-			return DrawDragInt(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, help, speed, format, min, max);
+			return DrawDragInt(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, affectsFile, help, speed, format, min, max);
 		}
 
 		private static bool DrawDragInt(
@@ -441,6 +442,7 @@ namespace StepManiaEditor
 			object o,
 			string fieldName,
 			float width,
+			bool affectsFile,
 			string help,
 			float speed,
 			string format,
@@ -453,7 +455,7 @@ namespace StepManiaEditor
 				return (r, v);
 			}
 
-			return DrawLiveEditValue<int>(undoable, title, o, fieldName, width, Func, IntCompare, help);
+			return DrawLiveEditValue<int>(undoable, title, o, fieldName, width, affectsFile, Func, IntCompare, help);
 		}
 
 		#endregion Drag Int
@@ -467,10 +469,11 @@ namespace StepManiaEditor
 			string fieldName,
 			int min,
 			int max,
+			bool affectsFile,
 			string help = null)
 		{
 			DrawRowTitleAndAdvanceColumn(title);
-			return DrawSliderInt(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, min, max, help);
+			return DrawSliderInt(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, min, max, affectsFile, help);
 		}
 
 		private static bool DrawSliderInt(
@@ -481,6 +484,7 @@ namespace StepManiaEditor
 			float width,
 			int min,
 			int max,
+			bool affectsFile,
 			string help = null)
 		{
 			(bool, int) Func(int v)
@@ -489,7 +493,7 @@ namespace StepManiaEditor
 				return (r, v);
 			}
 
-			return DrawLiveEditValue<int>(undoable, title, o, fieldName, width, Func, IntCompare, help);
+			return DrawLiveEditValue<int>(undoable, title, o, fieldName, width, affectsFile, Func, IntCompare, help);
 		}
 
 		#endregion Slider Int
@@ -503,12 +507,13 @@ namespace StepManiaEditor
 			string fieldName,
 			uint min,
 			uint max,
+			bool affectsFile,
 			string format = null,
 			ImGuiSliderFlags flags = ImGuiSliderFlags.None,
 			string help = null)
 		{
 			DrawRowTitleAndAdvanceColumn(title);
-			return DrawSliderUInt(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, min, max, format, flags, help);
+			return DrawSliderUInt(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, min, max, affectsFile, format, flags, help);
 		}
 
 		private static bool DrawSliderUInt(
@@ -519,6 +524,7 @@ namespace StepManiaEditor
 			float width,
 			uint min,
 			uint max,
+			bool affectsFile,
 			string format = null,
 			ImGuiSliderFlags flags = ImGuiSliderFlags.None,
 			string help = null)
@@ -529,7 +535,7 @@ namespace StepManiaEditor
 				return (r, v);
 			}
 
-			return DrawLiveEditValue<uint>(undoable, title, o, fieldName, width, Func, UIntCompare, help);
+			return DrawLiveEditValue<uint>(undoable, title, o, fieldName, width, affectsFile, Func, UIntCompare, help);
 		}
 
 		#endregion Slider UInt
@@ -543,12 +549,13 @@ namespace StepManiaEditor
 			string fieldName,
 			float min,
 			float max,
+			bool affectsFile,
 			string help = null,
 			string format = "%.3f",
 			ImGuiSliderFlags flags = ImGuiSliderFlags.None)
 		{
 			DrawRowTitleAndAdvanceColumn(title);
-			return DrawSliderFloat(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, min, max, help, format, flags);
+			return DrawSliderFloat(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, min, max, affectsFile, help, format, flags);
 		}
 
 		private static bool DrawSliderFloat(
@@ -559,6 +566,7 @@ namespace StepManiaEditor
 			float width,
 			float min,
 			float max,
+			bool affectsFile,
 			string help = null,
 			string format = "%.3f",
 			ImGuiSliderFlags flags = ImGuiSliderFlags.None)
@@ -569,7 +577,7 @@ namespace StepManiaEditor
 				return (r, v);
 			}
 
-			return DrawLiveEditValue<float>(undoable, title, o, fieldName, width, Func, FloatCompare, help);
+			return DrawLiveEditValue<float>(undoable, title, o, fieldName, width, affectsFile, Func, FloatCompare, help);
 		}
 
 		public static void DrawRowSliderFloatWithReset(
@@ -580,6 +588,7 @@ namespace StepManiaEditor
 			float min,
 			float max,
 			float resetValue,
+			bool affectsFile,
 			string help = null,
 			string format = "%.3f",
 			ImGuiSliderFlags flags = ImGuiSliderFlags.None)
@@ -588,7 +597,7 @@ namespace StepManiaEditor
 
 			// Slider
 			DrawSliderFloat(undoable, title, o, fieldName,
-				ImGui.GetContentRegionAvail().X - 50.0f - ImGui.GetStyle().ItemSpacing.X, min, max, help, format, flags);
+				ImGui.GetContentRegionAvail().X - 50.0f - ImGui.GetStyle().ItemSpacing.X, min, max, affectsFile, help, format, flags);
 
 			// Reset
 			ImGui.SameLine();
@@ -598,7 +607,7 @@ namespace StepManiaEditor
 				if (!resetValue.FloatEquals(value))
 				{
 					if (undoable)
-						ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyValue<float>(o, fieldName, resetValue));
+						ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyValue<float>(o, fieldName, resetValue, affectsFile));
 					else
 						SetFieldOrPropertyToValue(o, fieldName, resetValue);
 				}
@@ -643,6 +652,7 @@ namespace StepManiaEditor
 			string title,
 			object o,
 			string fieldName,
+			bool affectsFile,
 			string help = null,
 			float speed = 0.0001f,
 			string format = "%.6f",
@@ -650,7 +660,7 @@ namespace StepManiaEditor
 			double max = double.MaxValue)
 		{
 			DrawRowTitleAndAdvanceColumn(title);
-			return DrawDragDouble(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, help, speed, format, min, max);
+			return DrawDragDouble(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, help, speed, format, affectsFile, min, max);
 		}
 
 		public static void DrawRowDragDoubleWithEnabledCheckbox(
@@ -659,6 +669,7 @@ namespace StepManiaEditor
 			object o,
 			string fieldName,
 			string enabledFieldName,
+			bool affectsFile,
 			string help = null,
 			float speed = 0.0001f,
 			string format = "%.6f",
@@ -674,7 +685,7 @@ namespace StepManiaEditor
 			var controlWidth = ImGui.GetContentRegionAvail().X - 20.0f - ImGui.GetStyle().ItemSpacing.X;
 
 			// Draw the checkbox for enabling the other control.
-			if (DrawCheckbox(false, title + "check", o, enabledFieldName, 20.0f, help))
+			if (DrawCheckbox(false, title + "check", o, enabledFieldName, 20.0f, affectsFile, help))
 			{
 				if (undoable)
 				{
@@ -686,9 +697,9 @@ namespace StepManiaEditor
 					{
 						var multiple = new ActionMultiple();
 						multiple.EnqueueAndDo(new ActionSetObjectFieldOrPropertyValue<double>(o,
-							fieldName, 0.0, GetValueFromFieldOrProperty<double>(o, fieldName)));
+							fieldName, 0.0, GetValueFromFieldOrProperty<double>(o, fieldName), affectsFile));
 						multiple.EnqueueAndDo(new ActionSetObjectFieldOrPropertyValue<bool>(o,
-							enabledFieldName, enabled, !enabled));
+							enabledFieldName, enabled, !enabled, affectsFile));
 						ActionQueue.Instance.EnqueueWithoutDoing(multiple);
 					}
 
@@ -697,7 +708,7 @@ namespace StepManiaEditor
 					{
 						ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyValue<bool>(
 							o,
-							enabledFieldName, enabled, !enabled));
+							enabledFieldName, enabled, !enabled, affectsFile));
 					}
 				}
 			}
@@ -708,7 +719,7 @@ namespace StepManiaEditor
 
 			// Control for the double value.
 			ImGui.SameLine();
-			DrawDragDouble(undoable, title, o, fieldName, controlWidth, null, speed, format, min, max);
+			DrawDragDouble(undoable, title, o, fieldName, controlWidth, null, speed, format, affectsFile, min, max);
 
 			if (!enabled)
 				Utils.PopDisabled();
@@ -723,6 +734,7 @@ namespace StepManiaEditor
 			string help,
 			float speed,
 			string format,
+			bool affectsFile,
 			double min = double.MinValue,
 			double max = double.MaxValue)
 		{
@@ -732,29 +744,29 @@ namespace StepManiaEditor
 				return (r, v);
 			}
 
-			return DrawLiveEditValue<double>(undoable, title, o, fieldName, width, Func, DoubleCompare, help);
+			return DrawLiveEditValue<double>(undoable, title, o, fieldName, width, affectsFile, Func, DoubleCompare, help);
 		}
 
 		#endregion Drag Double
 
 		#region Enum
 
-		public static bool DrawRowEnum<T>(bool undoable, string title, object o, string fieldName, string help = null)
+		public static bool DrawRowEnum<T>(bool undoable, string title, object o, string fieldName, bool affectsFile, string help = null)
 			where T : struct, Enum
 		{
 			DrawRowTitleAndAdvanceColumn(title);
-			return DrawEnum<T>(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, null, help);
+			return DrawEnum<T>(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, null, affectsFile, help);
 		}
 
 		public static bool DrawRowEnum<T>(bool undoable, string title, object o, string fieldName, T[] allowedValues,
-			string help = null) where T : struct, Enum
+			bool affectsFile, string help = null) where T : struct, Enum
 		{
 			DrawRowTitleAndAdvanceColumn(title);
-			return DrawEnum<T>(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, allowedValues, help);
+			return DrawEnum<T>(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, allowedValues, affectsFile, help);
 		}
 
 		public static bool DrawEnum<T>(bool undoable, string title, object o, string fieldName, float width, T[] allowedValues,
-			string help = null) where T : struct, Enum
+			bool affectsFile, string help = null) where T : struct, Enum
 		{
 			var value = GetValueFromFieldOrProperty<T>(o, fieldName);
 
@@ -772,7 +784,7 @@ namespace StepManiaEditor
 				if (!newValue.Equals(value))
 				{
 					if (undoable)
-						ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyValue<T>(o, fieldName, newValue, value));
+						ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyValue<T>(o, fieldName, newValue, value, affectsFile));
 					else
 						SetFieldOrPropertyToValue<T>(o, fieldName, newValue);
 				}
@@ -785,15 +797,15 @@ namespace StepManiaEditor
 
 		#region Selectable
 
-		public static bool DrawRowSelectableTree<T>(bool undoable, string title, object o, string fieldName, string help = null)
+		public static bool DrawRowSelectableTree<T>(bool undoable, string title, object o, string fieldName, bool affectsFile, string help = null)
 			where T : Enum
 		{
 			DrawRowTitleAndAdvanceColumn(title);
-			return DrawSelectableTree<T>(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, help);
+			return DrawSelectableTree<T>(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, affectsFile, help);
 		}
 
 		public static bool DrawSelectableTree<T>(bool undoable, string title, object o, string fieldName, float width,
-			string help = null) where T : Enum
+			bool affectsFile, string help = null) where T : Enum
 		{
 			var value = GetValueFromFieldOrProperty<bool[]>(o, fieldName);
 
@@ -803,7 +815,7 @@ namespace StepManiaEditor
 			(var ret, var originalValues) = Utils.SelectableTree<T>(title, ref value);
 			if (ret && undoable)
 				ActionQueue.Instance.Do(
-					new ActionSetObjectFieldOrPropertyReference<bool[]>(o, fieldName, (bool[])value.Clone(), originalValues));
+					new ActionSetObjectFieldOrPropertyReference<bool[]>(o, fieldName, (bool[])value.Clone(), originalValues, affectsFile));
 
 			return ret;
 		}
@@ -818,10 +830,11 @@ namespace StepManiaEditor
 			object o,
 			string fieldName,
 			ImGuiColorEditFlags flags,
+			bool affectsFile,
 			string help = null)
 		{
 			DrawRowTitleAndAdvanceColumn(title);
-			DrawColorEdit3(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, flags, help);
+			DrawColorEdit3(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, flags, affectsFile, help);
 		}
 
 		private static void DrawColorEdit3(
@@ -831,6 +844,7 @@ namespace StepManiaEditor
 			string fieldName,
 			float width,
 			ImGuiColorEditFlags flags,
+			bool affectsFile,
 			string help = null)
 		{
 			(bool, Vector3) Func(Vector3 v)
@@ -839,7 +853,7 @@ namespace StepManiaEditor
 				return (r, v);
 			}
 
-			DrawLiveEditValue<Vector3>(undoable, title, o, fieldName, width, Func, Vector3Compare, help);
+			DrawLiveEditValue<Vector3>(undoable, title, o, fieldName, width, affectsFile, Func, Vector3Compare, help);
 		}
 
 		#endregion Color Edit 3
@@ -852,10 +866,11 @@ namespace StepManiaEditor
 			object o,
 			string fieldName,
 			ImGuiColorEditFlags flags,
+			bool affectsFile,
 			string help = null)
 		{
 			DrawRowTitleAndAdvanceColumn(title);
-			DrawColorEdit4(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, flags, help);
+			DrawColorEdit4(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, flags, affectsFile, help);
 		}
 
 		private static void DrawColorEdit4(
@@ -865,6 +880,7 @@ namespace StepManiaEditor
 			string fieldName,
 			float width,
 			ImGuiColorEditFlags flags,
+			bool affectsFile,
 			string help = null)
 		{
 			(bool, Vector4) Func(Vector4 v)
@@ -873,7 +889,7 @@ namespace StepManiaEditor
 				return (r, v);
 			}
 
-			DrawLiveEditValue<Vector4>(undoable, title, o, fieldName, width, Func, Vector4Compare, help);
+			DrawLiveEditValue<Vector4>(undoable, title, o, fieldName, width, affectsFile, Func, Vector4Compare, help);
 		}
 
 		#endregion Color Edit 4
@@ -903,7 +919,7 @@ namespace StepManiaEditor
 			var splitTempoWidth = Math.Max(1.0f, (ImGui.GetContentRegionAvail().X - enumWidth - toWidth - spacing * 3.0f) * 0.5f);
 
 			// Draw an enum for choosing the DisplayTempoMode.
-			DrawEnum<DisplayTempoMode>(undoable, "", displayTempo, nameof(DisplayTempo.Mode), enumWidth, null,
+			DrawEnum<DisplayTempoMode>(undoable, "", displayTempo, nameof(DisplayTempo.Mode), enumWidth, null, true,
 				"How the tempo for this chart should be displayed." +
 				"\nRandom:    The actual tempo will be hidden and replaced with a random display." +
 				"\nSpecified: A specified tempo or tempo range will be displayed." +
@@ -932,7 +948,7 @@ namespace StepManiaEditor
 					ImGui.SameLine();
 					ImGui.SetNextItemWidth(splitTempoWidth);
 					DrawDragDouble(undoable, "", displayTempo, nameof(DisplayTempo.SpecifiedTempoMin), splitTempoWidth, null,
-						0.001f, "%.6f");
+						0.001f, "%.6f", true);
 
 					// "to" text to split the min and max.
 					ImGui.SameLine();
@@ -940,7 +956,7 @@ namespace StepManiaEditor
 
 					// Checkbox for whether or not to use a distinct max.
 					ImGui.SameLine();
-					if (DrawCheckbox(false, "", displayTempo, nameof(DisplayTempo.ShouldAllowEditsOfMax), 10.0f))
+					if (DrawCheckbox(false, "", displayTempo, nameof(DisplayTempo.ShouldAllowEditsOfMax), 10.0f, true))
 					{
 						if (undoable)
 						{
@@ -964,7 +980,7 @@ namespace StepManiaEditor
 					ImGui.SetNextItemWidth(splitTempoWidth);
 					DrawDragDouble(undoable, "", displayTempo, nameof(DisplayTempo.SpecifiedTempoMax),
 						ImGui.GetContentRegionAvail().X, null,
-						0.001f, "%.6f");
+						0.001f, "%.6f", true);
 
 					// Pop the disabled setting if we pushed it before.
 					if (!displayTempo.ShouldAllowEditsOfMax)
@@ -1045,7 +1061,7 @@ namespace StepManiaEditor
 		{
 			void Func(float elementWidth)
 			{
-				DrawDragInt(true, $"##{id}", e, fieldName, elementWidth, "", speed, format, min, max);
+				DrawDragInt(true, $"##{id}", e, fieldName, elementWidth, true, "", speed, format, min, max);
 			}
 
 			MiscEditorEventWidget(id, e, x, y, width, colorABGR, selected, canBeDeleted, alpha, help, Func);
@@ -1075,7 +1091,7 @@ namespace StepManiaEditor
 		{
 			void Func(float elementWidth)
 			{
-				DrawDragDouble(true, $"##{id}", e, fieldName, elementWidth, "", speed, format, min, max);
+				DrawDragDouble(true, $"##{id}", e, fieldName, elementWidth, "", speed, format, true, min, max);
 			}
 
 			MiscEditorEventWidget(id, e, x, y, width, colorABGR, selected, canBeDeleted, alpha, help, Func);
@@ -1104,7 +1120,7 @@ namespace StepManiaEditor
 		{
 			void Func(float elementWidth)
 			{
-				DrawTimeSignatureInput(true, $"##{id}", e, fieldName, elementWidth);
+				DrawTimeSignatureInput(true, $"##{id}", e, fieldName, elementWidth, true);
 			}
 
 			MiscEditorEventWidget(id, e, x, y, width, colorABGR, selected, canBeDeleted, alpha, help, Func);
@@ -1125,7 +1141,7 @@ namespace StepManiaEditor
 		{
 			void Func(float elementWidth)
 			{
-				DrawMultipliersInput(true, $"##{id}", e, fieldName, elementWidth);
+				DrawMultipliersInput(true, $"##{id}", e, fieldName, elementWidth, true);
 			}
 
 			MiscEditorEventWidget(id, e, x, y, width, colorABGR, selected, canBeDeleted, alpha, help, Func);
@@ -1146,7 +1162,7 @@ namespace StepManiaEditor
 		{
 			void Func(float elementWidth)
 			{
-				DrawLabelInput(true, $"##{id}", e, fieldName, elementWidth);
+				DrawLabelInput(true, $"##{id}", e, fieldName, elementWidth, true);
 			}
 
 			MiscEditorEventWidget(id, e, x, y, width, colorABGR, selected, canBeDeleted, alpha, help, Func);
@@ -1167,7 +1183,7 @@ namespace StepManiaEditor
 		{
 			void Func(float elementWidth)
 			{
-				DrawScrollRateInterpolationInput(true, $"##{id}", e, fieldName, elementWidth);
+				DrawScrollRateInterpolationInput(true, $"##{id}", e, fieldName, elementWidth, true);
 			}
 
 			MiscEditorEventWidget(id, e, x, y, width, colorABGR, selected, canBeDeleted, alpha, help, Func);
@@ -1416,6 +1432,7 @@ namespace StepManiaEditor
 			object o,
 			string fieldName,
 			float width,
+			bool affectsFile,
 			Func<T, (bool, T)> imGuiFunc,
 			Func<T, T, bool> compareFunc,
 			Func<T, bool> validationFunc = null,
@@ -1451,7 +1468,7 @@ namespace StepManiaEditor
 				&& !compareFunc(cachedValue, value))
 			{
 				if (undoable)
-					ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<T>(o, fieldName, (T)cachedValue.Clone()));
+					ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<T>(o, fieldName, (T)cachedValue.Clone(), affectsFile));
 				else
 					SetFieldOrPropertyToValue(o, fieldName, cachedValue);
 				value = cachedValue;
@@ -1496,6 +1513,7 @@ namespace StepManiaEditor
 			object o,
 			string fieldName,
 			float width,
+			bool affectsFile,
 			Func<T, (bool, T)> imGuiFunc,
 			Func<T, T, bool> compareFunc,
 			string help = null) where T : struct
@@ -1532,7 +1550,7 @@ namespace StepManiaEditor
 				if (ImGui.IsItemDeactivatedAfterEdit() && o != null && !compareFunc(value, GetCachedValue<T>(cacheKey)))
 				{
 					ActionQueue.Instance.Do(
-						new ActionSetObjectFieldOrPropertyValue<T>(o, fieldName, value, GetCachedValue<T>(cacheKey)));
+						new ActionSetObjectFieldOrPropertyValue<T>(o, fieldName, value, GetCachedValue<T>(cacheKey), affectsFile));
 				}
 			}
 

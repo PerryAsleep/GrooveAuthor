@@ -6,6 +6,14 @@ namespace StepManiaEditor
 	/// <summary>
 	/// Data structure to enqueue EditorActions, and undo and redo those actions
 	/// in the order they were enqueued.
+	/// 
+	/// Expected Usage:
+	///  Call Do or EnqueueWithoutDoing to add an action to the queue.
+	///  Call Undo and Redo as needed.
+	///  Call Clear to reset the queue.
+	///  Call OnSaved when the underlying file is saved so that the ActionQueue can
+	///   report whether or not there are unsaved changes in the queue.
+	///  Call HasUnsavedChanges to determine if there are unsaved changes in the queue.
 	/// </summary>
 	public class ActionQueue
 	{
@@ -25,6 +33,17 @@ namespace StepManiaEditor
 		private int MaxRedoIndex = -1;
 
 		/// <summary>
+		/// The index at the last time the file was saved.
+		/// </summary>
+		private int LastSavedIndex = -1;
+
+		/// <summary>
+		/// Flag for recording when redo history is lost and the history contains actions
+		/// which affect the save file.
+		/// </summary>
+		private bool LostSavedChanges = false;
+
+		/// <summary>
 		/// List of EditorActions for undo and redo.
 		/// This list may be longer than the actual set of EditorActions which can
 		/// be redone in situations where actions are undone and then new actions
@@ -37,6 +56,48 @@ namespace StepManiaEditor
 		private ActionQueue()
 		{
 
+		}
+
+		/// <summary>
+		/// Returns whether or not there are unsaved changes based on the actions performed
+		/// since the last time the underlying file was saved.
+		/// </summary>
+		public bool HasUnsavedChanges()
+		{
+			if (LostSavedChanges)
+				return true;
+			return AreUnsavedChangesPresentBetweenIndexes(LastSavedIndex, Index);
+		}
+
+		/// <summary>
+		/// Helper to determine if there are differences to the underlying file between actions
+		/// at the given indexes.
+		/// </summary>
+		private bool AreUnsavedChangesPresentBetweenIndexes(int indexA, int indexB)
+		{
+			if (indexA == indexB)
+				return false;
+
+			var numActionsAffectingFileA = 0;
+			var numActionsAffectingFileB = 0;
+
+			if (indexA + 1 >= 0 && indexA < MaxRedoIndex)
+				numActionsAffectingFileA = Actions[indexA + 1].GetTotalNumActionsAffectingFile();
+			if (indexB + 1 >= 0 && indexB < MaxRedoIndex)
+				numActionsAffectingFileB = Actions[indexB + 1].GetTotalNumActionsAffectingFile();
+
+			var numUnsavedChanges = numActionsAffectingFileB - numActionsAffectingFileA;
+			return numUnsavedChanges != 0;
+		}
+
+		/// <summary>
+		/// Called when the underlying file is saved.
+		/// </summary>
+		public void OnSaved()
+		{
+			// Update state for tracking unsaved changes.
+			LastSavedIndex = Index;
+			LostSavedChanges = false;
 		}
 
 		/// <summary>
@@ -59,6 +120,11 @@ namespace StepManiaEditor
 		{
 			Logger.Info(editorAction.ToString());
 
+			if (Index >= 0)
+			{
+				editorAction.SetNumPreviousActionsAffectingFile(Actions[Index].GetTotalNumActionsAffectingFile());
+			}
+
 			// Add the action to the list, overwriting any old future action.
 			if (Index == Actions.Count - 1)
 				Actions.Add(editorAction);
@@ -68,6 +134,16 @@ namespace StepManiaEditor
 
 			// When an action is added, even if there were future actions now they can
 			// no longer be redone.
+			if (MaxRedoIndex >= Index)
+			{
+				// If bringing back the MaxRedoHistory will lose changes which affect the file,
+				// set a flag that we have unsaved changes.
+				if (AreUnsavedChangesPresentBetweenIndexes(MaxRedoIndex, Index))
+				{
+					LostSavedChanges = true;
+					LastSavedIndex = -1;
+				}
+			}
 			MaxRedoIndex = Index;
 		}
 
@@ -78,6 +154,8 @@ namespace StepManiaEditor
 		{
 			Index = -1;
 			MaxRedoIndex = -1;
+			LastSavedIndex = -1;
+			LostSavedChanges = false;
 		}
 
 		/// <summary>

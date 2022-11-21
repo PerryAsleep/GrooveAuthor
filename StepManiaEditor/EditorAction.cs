@@ -2,7 +2,6 @@
 using System.Collections.Generic;
 using System.Reflection;
 using Fumen.ChartDefinition;
-using Fumen.Converters;
 using static Fumen.Converters.SMCommon;
 
 namespace StepManiaEditor
@@ -13,8 +12,46 @@ namespace StepManiaEditor
 	/// </summary>
 	public abstract class EditorAction
 	{
+		/// <summary>
+		/// Do the action.
+		/// </summary>
 		public abstract void Do();
+
+		/// <summary>
+		/// Undo the action.
+		/// </summary>
 		public abstract void Undo();
+
+		/// <summary>
+		/// Returns whether or not this action represents a change to the underlying file.
+		/// Used by ActionQueue to determine if there are unsaved changes.
+		/// </summary>
+		public abstract bool AffectsFile();
+
+		/// <summary>
+		/// Returns how many actions up to and including this action affect the underlying file.
+		/// Used by ActionQueue to determine if there are unsaved changes.
+		/// </summary>
+		/// <returns></returns>
+		public int GetTotalNumActionsAffectingFile()
+		{
+			return NumPreviousActionsAffectingFile + (AffectsFile() ? 1 : 0);
+		}
+
+		/// <summary>
+		/// Sets the number of previous actions which affect the underlying file.
+		/// Used by ActionQueue to determine if there are unsaved changes.
+		/// </summary>
+		public void SetNumPreviousActionsAffectingFile(int actions)
+		{
+			NumPreviousActionsAffectingFile = actions;
+		}
+
+		/// <summary>
+		/// Number of previous actions which affect the underlying file.
+		/// Used by ActionQueue to determine if there are unsaved changes.
+		/// </summary>
+		protected int NumPreviousActionsAffectingFile = 0;
 	}
 
 	/// <summary>
@@ -32,6 +69,7 @@ namespace StepManiaEditor
 		private readonly bool IsField;
 		private readonly FieldInfo FieldInfo;
 		private readonly PropertyInfo PropertyInfo;
+		private readonly bool DoesAffectFile;
 
 		/// <summary>
 		/// Constructor with a given value to set.
@@ -40,7 +78,7 @@ namespace StepManiaEditor
 		/// <param name="o">Object to modify.</param>
 		/// <param name="fieldOrPropertyName">Name of Field or Property on the object to modify.</param>
 		/// <param name="value">New value to set.</param>
-		public ActionSetObjectFieldOrPropertyValue(object o, string fieldOrPropertyName, T value)
+		public ActionSetObjectFieldOrPropertyValue(object o, string fieldOrPropertyName, T value, bool affectsFile)
 		{
 			O = o;
 			Value = value;
@@ -52,6 +90,8 @@ namespace StepManiaEditor
 				PropertyInfo = O.GetType().GetProperty(FieldOrPropertyName, BindingFlags.Public | BindingFlags.Instance);
 
 			PreviousValue = IsField ? (T)FieldInfo.GetValue(O) : (T)PropertyInfo.GetValue(O);
+
+			DoesAffectFile = affectsFile;
 		}
 
 		/// <summary>
@@ -64,7 +104,7 @@ namespace StepManiaEditor
 		/// <param name="fieldOrPropertyName"></param>
 		/// <param name="value"></param>
 		/// <param name="previousValue"></param>
-		public ActionSetObjectFieldOrPropertyValue(object o, string fieldOrPropertyName, T value, T previousValue)
+		public ActionSetObjectFieldOrPropertyValue(object o, string fieldOrPropertyName, T value, T previousValue, bool affectsFile)
 		{
 			O = o;
 			Value = value;
@@ -76,6 +116,13 @@ namespace StepManiaEditor
 				PropertyInfo = O.GetType().GetProperty(FieldOrPropertyName, BindingFlags.Public | BindingFlags.Instance);
 
 			PreviousValue = previousValue;
+
+			DoesAffectFile = affectsFile;
+		}
+
+		public override bool AffectsFile()
+		{
+			return DoesAffectFile;
 		}
 
 		public override string ToString()
@@ -118,6 +165,7 @@ namespace StepManiaEditor
 		private readonly bool IsField;
 		private readonly FieldInfo FieldInfo;
 		private readonly PropertyInfo PropertyInfo;
+		private readonly bool DoesAffectFile;
 
 		/// <summary>
 		/// Constructor with a given value to set.
@@ -127,7 +175,7 @@ namespace StepManiaEditor
 		/// <param name="o">Object to modify.</param>
 		/// <param name="fieldOrPropertyName">Name of Field or Property on the object to modify.</param>
 		/// <param name="value">New value to set.</param>
-		public ActionSetObjectFieldOrPropertyReference(object o, string fieldOrPropertyName, T value)
+		public ActionSetObjectFieldOrPropertyReference(object o, string fieldOrPropertyName, T value, bool affectsFile)
 		{
 			O = o;
 			Value = value;
@@ -141,6 +189,8 @@ namespace StepManiaEditor
 			// Clone the previous value.
 			PreviousValue = IsField ? (T)FieldInfo.GetValue(O) : (T)PropertyInfo.GetValue(O);
 			PreviousValue = (T)PreviousValue.Clone();
+
+			DoesAffectFile = affectsFile;
 		}
 
 		/// <summary>
@@ -153,7 +203,7 @@ namespace StepManiaEditor
 		/// <param name="fieldOrPropertyName"></param>
 		/// <param name="value"></param>
 		/// <param name="previousValue"></param>
-		public ActionSetObjectFieldOrPropertyReference(object o, string fieldOrPropertyName, T value, T previousValue)
+		public ActionSetObjectFieldOrPropertyReference(object o, string fieldOrPropertyName, T value, T previousValue, bool affectsFile)
 		{
 			O = o;
 			Value = value;
@@ -165,6 +215,13 @@ namespace StepManiaEditor
 				PropertyInfo = O.GetType().GetProperty(FieldOrPropertyName, BindingFlags.Public | BindingFlags.Instance);
 
 			PreviousValue = previousValue;
+
+			DoesAffectFile = affectsFile;
+		}
+
+		public override bool AffectsFile()
+		{
+			return DoesAffectFile;
 		}
 
 		public override string ToString()
@@ -210,6 +267,11 @@ namespace StepManiaEditor
 			PreviousValueSet = Extras.TryGetSourceExtra(ExtrasKey, out PreviousValue);
 		}
 
+		public override bool AffectsFile()
+		{
+			return true;
+		}
+
 		public override string ToString()
 		{
 			return $"Set {LogType} {ExtrasKey} '{PreviousValue}' > '{Value}'.";
@@ -246,6 +308,11 @@ namespace StepManiaEditor
 			DisplayTempo = displayTempo;
 			PreviousMax = DisplayTempo.SpecifiedTempoMax;
 			Allow = allow;
+		}
+
+		public override bool AffectsFile()
+		{
+			return true;
 		}
 
 		public override string ToString()
@@ -298,6 +365,16 @@ namespace StepManiaEditor
 			return Actions;
 		}
 
+		public override bool AffectsFile()
+		{
+			foreach (var action in Actions)
+			{
+				if (action.AffectsFile())
+					return true;
+			}
+			return false;
+		}
+
 		public override string ToString()
 		{
 			return string.Join(' ', Actions);
@@ -347,6 +424,11 @@ namespace StepManiaEditor
 			EditorEvent.SetIsBeingEdited(isBeingEdited);
 		}
 
+		public override bool AffectsFile()
+		{
+			return true;
+		}
+
 		public override string ToString()
 		{
 			// TODO: Nice strings
@@ -371,6 +453,11 @@ namespace StepManiaEditor
 		public ActionDeleteEditorEvent(EditorEvent editorEvent)
 		{
 			EditorEvent = editorEvent;
+		}
+
+		public override bool AffectsFile()
+		{
+			return true;
 		}
 
 		public override string ToString()
@@ -411,6 +498,11 @@ namespace StepManiaEditor
 				TimeMicros = Fumen.Utils.ToMicros(newHoldEndTime)
 			});
 			NewHoldEnd.SetHoldStartNote(HoldStart);
+		}
+
+		public override bool AffectsFile()
+		{
+			return true;
 		}
 
 		public override string ToString()
@@ -466,7 +558,6 @@ namespace StepManiaEditor
 			HoldEnd.SetHoldStartNote(HoldStart);
 		}
 
-
 		public EditorHoldStartNoteEvent GetHoldStartEvent()
 		{
 			return HoldStart;
@@ -482,6 +573,11 @@ namespace StepManiaEditor
 		{
 			HoldStart.SetIsBeingEdited(isBeingEdited);
 			HoldEnd.SetIsBeingEdited(isBeingEdited);
+		}
+
+		public override bool AffectsFile()
+		{
+			return true;
 		}
 
 		public override string ToString()
@@ -514,6 +610,11 @@ namespace StepManiaEditor
 			Roll = roll;
 		}
 
+		public override bool AffectsFile()
+		{
+			return true;
+		}
+
 		public override string ToString()
 		{
 			var originalType = Roll ? "hold" : "roll";
@@ -540,7 +641,12 @@ namespace StepManiaEditor
 		{
 			HoldStart = holdStart;
 		}
-		
+
+		public override bool AffectsFile()
+		{
+			return true;
+		}
+
 		public override string ToString()
 		{
 			var typeStr = HoldStart.IsRoll() ? "roll" : "hold";
@@ -573,6 +679,11 @@ namespace StepManiaEditor
 			Chart = chart;
 		}
 
+		public override bool AffectsFile()
+		{
+			return false;
+		}
+
 		public override string ToString()
 		{
 			return $"Select {Utils.GetPrettyEnumString(Chart.ChartType)} {Utils.GetPrettyEnumString(Chart.ChartDifficultyType)} Chart.";
@@ -602,6 +713,11 @@ namespace StepManiaEditor
 			ChartType = chartType;
 		}
 
+		public override bool AffectsFile()
+		{
+			return true;
+		}
+
 		public override string ToString()
 		{
 			return $"Add {Utils.GetPrettyEnumString(ChartType)} Chart.";
@@ -610,7 +726,15 @@ namespace StepManiaEditor
 		public override void Do()
 		{
 			PreivouslyActiveChart = Editor.GetActiveChart();
-			AddedChart = Editor.AddChart(ChartType, true);
+			
+			// Through undoing and redoing we may add the same chart multiple times.
+			// Other actions like ActionAddEditorEvent reference specific charts.
+			// For those actions to work as expected we should restore the same chart instance
+			// rather than creating a new one when undoing and redoing.
+			if (AddedChart != null)
+				Editor.AddChart(AddedChart, true);
+			else
+				AddedChart = Editor.AddChart(ChartType, true);
 		}
 
 		public override void Undo()
@@ -629,6 +753,11 @@ namespace StepManiaEditor
 		{
 			Editor = editor;
 			Chart = chart;
+		}
+
+		public override bool AffectsFile()
+		{
+			return true;
 		}
 
 		public override string ToString()
@@ -661,6 +790,11 @@ namespace StepManiaEditor
 			PreviousY = previousY;
 			NewX = newX;
 			NewY = newY;
+		}
+
+		public override bool AffectsFile()
+		{
+			return false;
 		}
 
 		public override string ToString()
