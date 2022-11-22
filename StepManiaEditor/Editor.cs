@@ -324,12 +324,10 @@ namespace StepManiaEditor
 			((Form)Form.FromHandle(Window.Handle)).FormClosing += ClosingForm;
 
 			ImGuiRenderer = new ImGuiRenderer(this);
-			// TODO: Load font from install directory
-			ImGuiFont = ImGui.GetIO().Fonts.AddFontFromFileTTF(
-				@"C:\Users\perry\Projects\Fumen\StepManiaEditor\Content\Mplus1Code-Medium.ttf",
-				15,
-				null,
-				ImGui.GetIO().Fonts.GetGlyphRangesJapanese());
+			var programPath = System.Reflection.Assembly.GetEntryAssembly().Location;
+			var programDir = System.IO.Path.GetDirectoryName(programPath);
+			var mPlusFontPath = Path.Combine(programDir, @"Content\Mplus1Code-Medium.ttf");
+			ImGuiFont = ImGui.GetIO().Fonts.AddFontFromFileTTF(mPlusFontPath, 15, null, ImGui.GetIO().Fonts.GetGlyphRangesJapanese());
 			ImGuiRenderer.RebuildFontAtlas();
 			ImGuiLayoutUtils.SetFont(ImGuiFont);
 

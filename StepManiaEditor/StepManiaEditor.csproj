@@ -47,6 +47,15 @@
     <Resource Include="fmod\lib\x64\fmod_vc.lib" />
   </ItemGroup>
   <ItemGroup>
+    <None Update="Content\Mplus1Code-Bold.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Content\Mplus1Code-Medium.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="Content\Mplus1Code-Regular.ttf">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Update="fmod\lib\x64\fmod.dll">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
