@@ -41,12 +41,6 @@
     <ProjectReference Include="..\StepManiaLibrary\StepManiaLibrary.csproj" />
   </ItemGroup>
   <ItemGroup>
-    <Resource Include="fmod\lib\x64\fmod.dll" />
-    <Resource Include="fmod\lib\x64\fmodL.dll" />
-    <Resource Include="fmod\lib\x64\fmodL_vc.lib" />
-    <Resource Include="fmod\lib\x64\fmod_vc.lib" />
-  </ItemGroup>
-  <ItemGroup>
     <None Update="Content\Mplus1Code-Bold.ttf">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
@@ -57,20 +51,23 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
     <None Update="fmod\lib\x64\fmod.dll">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </None>
     <None Update="fmod\lib\x64\fmodL.dll">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </None>
     <None Update="fmod\lib\x64\fmodL_vc.lib">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </None>
     <None Update="fmod\lib\x64\fmod_vc.lib">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
     </None>
   </ItemGroup>
   <Target Name="RestoreDotnetTools" BeforeTargets="Restore">
     <Message Text="Restoring dotnet tools" Importance="High" />
     <Exec Command="dotnet tool restore" />
+  </Target>
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="call $(ProjectDir)build.bat &quot;$(ProjectDir)&quot; &quot;$(TargetDir)&quot;" />
   </Target>
 </Project>
