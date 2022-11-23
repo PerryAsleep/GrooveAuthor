@@ -21,8 +21,9 @@ using Path = Fumen.Path;
 using Vector2 = Microsoft.Xna.Framework.Vector2;
 using static Fumen.Converters.SMCommon;
 using System.Text;
-using static StepManiaEditor.MiniMap;
 using System.Media;
+using System.IO;
+using System.Linq;
 
 namespace StepManiaEditor
 {
@@ -226,21 +227,8 @@ namespace StepManiaEditor
 
 		public Editor()
 		{
-			var logFileName = "StepManiaChartEditor " + DateTime.Now.ToString("yyyy-MM-dd HH-mm-ss") + ".log";
-			Logger.StartUp(new Logger.Config
-			{
-				WriteToConsole = false,
-
-				WriteToFile = true,
-				LogFilePath = Path.Combine(@"C:\Users\perry\Projects\Fumen\Logs", logFileName),
-				LogFileFlushIntervalSeconds = 20,
-				LogFileBufferSizeBytes = 10240,
-
-				WriteToBuffer = true,
-				BufferSize = 1024,
-				BufferLock = LogBufferLock,
-				Buffer = LogBuffer
-			});
+			// Create a logger first so we can log any startup messages.
+			CreateLogger();
 
 			// Load Preferences synchronously so they can be used immediately.
 			Preferences.Load(this);
@@ -306,6 +294,90 @@ namespace StepManiaEditor
 			}
 
 			UpdateWindowTitle();
+		}
+
+		private void CreateLogger()
+		{
+			var programPath = System.Reflection.Assembly.GetEntryAssembly().Location;
+			var programDir = System.IO.Path.GetDirectoryName(programPath);
+			var appName = System.Reflection.Assembly.GetExecutingAssembly().GetName().Name;
+			var logDirectory = Path.Combine(programDir, "logs");
+
+			var canLogToFile = true;
+			var logToFileError = "";
+			try
+			{
+				// Make a log directory if one doesn't exist.
+				Directory.CreateDirectory(logDirectory);
+
+				// Start the logger and write to disk as well as the internal buffer to display.
+				var logFileName = appName + " " + DateTime.Now.ToString("yyyy-MM-dd HH-mm-ss") + ".log";
+				var logFilePath = Path.Combine(logDirectory, logFileName);
+				Logger.StartUp(new Logger.Config
+				{
+					WriteToConsole = false,
+
+					WriteToFile = true,
+					LogFilePath = logFilePath,
+					LogFileFlushIntervalSeconds = 20,
+					LogFileBufferSizeBytes = 10240,
+
+					WriteToBuffer = true,
+					BufferSize = 1024,
+					BufferLock = LogBufferLock,
+					Buffer = LogBuffer
+				});
+			}
+			catch (Exception e)
+			{
+				canLogToFile = false;
+				logToFileError = e.ToString();
+			}
+
+			// If we can't log to a file just log to the internal buffer.
+			if (!canLogToFile)
+			{
+				Logger.StartUp(new Logger.Config
+				{
+					WriteToConsole = false,
+					WriteToFile = false,
+
+					WriteToBuffer = true,
+					BufferSize = 1024,
+					BufferLock = LogBufferLock,
+					Buffer = LogBuffer
+				});
+
+				// Log an error that we were enable to log to a file.
+				Logger.Error($"Unable to log to disk. {logToFileError}");
+			}
+
+			// Clean up old log files.
+			try
+			{
+				var files = Directory.GetFiles(logDirectory);
+				var allLogFiles = new List<FileInfo>();
+				foreach (var file in files)
+				{
+					var fi = new FileInfo(file);
+					if (fi.Extension != ".log")
+						continue;
+					allLogFiles.Add(fi);
+				}
+				if (allLogFiles.Count > MaxLogFiles)
+				{
+					allLogFiles = allLogFiles.OrderByDescending(fi => fi.CreationTime).ToList();
+					allLogFiles.RemoveRange(0, MaxLogFiles);
+					foreach (var fi in allLogFiles)
+					{
+						System.IO.File.Delete(fi.FullName);
+					}
+				}
+			}
+			catch (Exception e)
+			{
+				Logger.Warn($"Unable to clean up old log files. {e}");
+			}
 		}
 
 		protected override void Initialize()

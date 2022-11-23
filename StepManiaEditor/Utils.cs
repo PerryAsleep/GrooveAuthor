@@ -16,6 +16,8 @@ namespace StepManiaEditor
 	{
 		// TODO: Rename / Reorganize. Currently dumping a lot of rendering-related constants in here.
 
+		public const int MaxLogFiles = 10;
+
 		public const uint UITempoColorABGR = 0x8A297A79;			// yellow
 		public const uint UITimeSignatureColorABGR = 0x8A297A29;	// green
 		public const uint UIStopColorABGR = 0x8A29297A;				// red
