@@ -18,6 +18,7 @@ namespace StepManiaEditor
 	/// Expected usage:
 	///  Call LoadAsync or UnloadAsync to load or unload the texture.
 	///  Call Draw or DrawButton once per frame as needed to draw the texture through ImGui.
+	///  Call DrawTexture once per frame as needed to draw the texture through Monogame.
 	/// </summary>
 	public class EditorTexture : IDisposable
 	{
@@ -28,8 +29,11 @@ namespace StepManiaEditor
 		private Task LoadTask;
 
 		private string FilePath;
+		private bool CacheTextureColor;
 		private Texture2D TextureMonogame;
 		private Texture2D NewTexture;
+		private uint TextureColor;
+		private uint NewTextureColor;
 		private IntPtr TextureImGui;
 		private bool Bound;
 		private bool NewTextureReady;
@@ -50,13 +54,15 @@ namespace StepManiaEditor
 			GraphicsDevice graphicsDevice,
 			ImGuiRenderer imGuiRenderer,
 			uint width,
-			uint height)
+			uint height,
+			bool cacheTextureColor)
 		{
 			ImGuiId = id++.ToString();
 			GraphicsDevice = graphicsDevice;
 			ImGuiRenderer = imGuiRenderer;
 			Width = width;
 			Height = height;
+			CacheTextureColor = cacheTextureColor;
 		}
 
 		/// <summary>
@@ -68,7 +74,8 @@ namespace StepManiaEditor
 			ImGuiRenderer imGuiRenderer,
 			uint width,
 			uint height,
-			string filePath)
+			string filePath,
+			bool cacheTextureColor)
 		{
 			ImGuiId = id++.ToString();
 			GraphicsDevice = graphicsDevice;
@@ -77,6 +84,7 @@ namespace StepManiaEditor
 			Height = height;
 			NewTextureReady = false;
 			NewTexture = null;
+			CacheTextureColor = cacheTextureColor;
 			LoadAsync(filePath);
 		}
 
@@ -113,6 +121,25 @@ namespace StepManiaEditor
 		}
 
 		/// <summary>
+		/// Returns whether or not this texture is bound and ready to render.
+		/// </summary>
+		public bool IsBound()
+		{
+			CheckForSwappingToNewTexture();
+			return Bound;
+		}
+
+		/// <summary>
+		/// Gets the average color of the underlying texture.
+		/// Will return black if this EditorTexture was configured to not cache the texture color.
+		/// </summary>
+		/// <returns></returns>
+		public uint GetTextureColor()
+		{
+			return TextureColor;
+		}
+
+		/// <summary>
 		/// Load the texture from the image located at the specified path.
 		/// </summary>
 		public async void LoadAsync(string filePath)
@@ -132,6 +159,7 @@ namespace StepManiaEditor
 
 			filePath = FilePath;
 			Texture2D newTexture = null;
+			uint newTextureColor = 0;
 
 			LoadCancellationTokenSource = new CancellationTokenSource();
 			LoadTask = Task.Run(() =>
@@ -153,6 +181,10 @@ namespace StepManiaEditor
 						Logger.Error($"Failed to load texture from \"{filePath}\". {e}");
 						newTexture = null;
 					}
+					if (CacheTextureColor && newTexture != null)
+					{
+						newTextureColor = Utils.GetTextureColor(newTexture);
+					}
 				}
 				catch (OperationCanceledException)
 				{
@@ -173,6 +205,7 @@ namespace StepManiaEditor
 			lock (TextureSwapLock)
 			{
 				NewTexture = newTexture;
+				NewTextureColor = newTextureColor;
 				NewTextureReady = true;
 			}
 		}
@@ -214,6 +247,7 @@ namespace StepManiaEditor
 					TextureImGui = ImGuiRenderer.BindTexture(TextureMonogame);
 					Bound = true;
 				}
+				TextureColor = NewTextureColor;
 				NewTexture = null;
 			}
 		}
@@ -252,6 +286,26 @@ namespace StepManiaEditor
 				return (false, false);
 
 			return (true, Utils.DrawButton(ImGuiId, TextureImGui, TextureMonogame, Width, Height, mode));
+		}
+
+		/// <summary>
+		/// Draws the texture through the given SpriteBatch.
+		/// </summary>
+		/// <param name="spriteBatch">SpriteBatch to use for drawing the texture.</param>
+		/// <param name="x">X position to draw the texture.</param>
+		/// <param name="y">Y position to draw the texture.</param>
+		/// <param name="w">Width of area to draw the texture.</param>
+		/// <param name="h">Height of are to draw the texture.</param>
+		/// <param name="mode">TextureLayoutMode for how to layout this texture.</param>
+		public void DrawTexture(SpriteBatch spriteBatch, int x, int y, uint w, uint h, Utils.TextureLayoutMode mode = Utils.TextureLayoutMode.Box)
+		{
+			// Prior to drawing, check if there is a newly loaded texture to swap to.
+			CheckForSwappingToNewTexture();
+
+			if (!Bound)
+				return;
+
+			Utils.DrawTexture(spriteBatch, TextureMonogame, x, y, w, h, mode);
 		}
 	}
 }

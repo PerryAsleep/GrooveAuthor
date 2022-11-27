@@ -178,6 +178,14 @@ namespace StepManiaEditor
 				+ ((byte)(r * byte.MaxValue));
 		}
 
+		public static (float, float, float, float) ToFloats(uint ABGR)
+		{
+			return ((byte)((ABGR & 0xFF000000) >> 24) / (float)byte.MaxValue,
+				(byte)((ABGR & 0x00FF0000) >> 16) / (float)byte.MaxValue,
+				(byte)((ABGR & 0x0000FF00) >> 8) / (float)byte.MaxValue,
+				(byte)((ABGR & 0x000000FF)) / (float)byte.MaxValue);
+		}
+
 		public static Vector2 GetDrawPos(
 			SpriteFont font,
 			string text,
@@ -223,6 +231,153 @@ namespace StepManiaEditor
 			}
 			return UIDifficultyEditColorABGR;
 		}
+
+		/// <summary>
+		/// Gets the average color of the given texture.
+		/// The average color is calculated from the texture's HSV values.
+		/// Hue is averaged.
+		/// Value and saturation are averaged with root mean square.
+		/// </summary>
+		public static uint GetTextureColor(Texture2D texture)
+		{
+			var colorData = GetABGRColorData(texture);
+			double hueXSum = 0.0f;
+			double hueYSum = 0.0f;
+			double saturationSumOfSquares = 0.0f;
+			double valueSumOfSquares = 0.0f;
+			float r, g, b, a, h, s, v;
+			double hx, hy;
+			foreach (var color in colorData)
+			{
+				// Convert the color to HSV values.
+				(a, g, b, r) = ToFloats(color);
+				(h, s, v) = RgbToHsv(r, g, b);
+
+				saturationSumOfSquares += (s * s);
+				valueSumOfSquares += (v * v);
+
+				// Hue values are angles around a circle. We need to determine the average x and y
+				// and then compute the average angle from those values.
+				hx = Math.Cos(h);
+				hy = Math.Sin(h);
+				hueXSum += hx;
+				hueYSum += hy;
+			}
+
+			// Determine the average hue by determining the angle of the average hue x and y values.
+			hx = (hueXSum / colorData.Length);
+			hy = (hueYSum / colorData.Length);
+			double avgHue = Math.Atan2(hy, hx);
+			if (avgHue < 0.0)
+				avgHue = 2.0 * Math.PI + avgHue;
+
+			// Convert back to RGB.
+			(r, g, b) = HsvToRgb(
+				(float)avgHue,
+				(float)Math.Sqrt(saturationSumOfSquares / colorData.Length),
+				(float)Math.Sqrt(valueSumOfSquares / colorData.Length));
+
+			return ToABGR(r, g, b, 1.0f);
+		}
+
+		public static uint[] GetABGRColorData(Texture2D texture)
+		{
+			var data = new uint[texture.Width * texture.Height];
+			switch (texture.Format)
+			{
+				case SurfaceFormat.Color:
+				{
+					texture.GetData(data);
+					break;
+				}
+				default:
+					break;
+			}
+			return data;
+		}
+
+		/// <summary>
+		/// Given a color represented by red, green, and blue floating point values ranging from 0.0f to 1.0f,
+		/// return the hue, saturation, and value of the color.
+		/// Hue is represented as a degree in radians between 0.0 and 2*pi.
+		/// For pure grey colors the returned hue will be 0.0.
+		/// </summary>
+		public static (float, float, float) RgbToHsv(float r, float g, float b)
+		{
+			float h = 0.0f, s, v;
+			var min = Math.Min(Math.Min(r, g), b);
+			var max = Math.Max(Math.Max(r, g), b);
+			
+			v = max;
+			s = max.FloatEquals(0.0f) ? 0.0f : (max - min) / max;
+			if (!s.FloatEquals(0.0f))
+			{
+				var d = max - min;
+				if (r.FloatEquals(max))
+				{
+					h = (g - b) / d;
+				}
+				else if (g.FloatEquals(max))
+				{
+					h = 2 + (b - r) / d;
+				}
+				else
+				{
+					h = 4 + (r - g) / d;
+				}
+				h *= (float)(Math.PI / 3.0f);
+				if (h < 0.0f)
+				{
+					h += (float)(2.0f * Math.PI);
+				}
+			}
+
+			return (h, s, v);
+		}
+
+		/// <summary>
+		/// Given a color represented by hue, saturation, and value return the red, blue, and green
+		/// values of the color. The saturation and value parameters are expected to be in the range
+		/// of 0.0 to 1.0. The hue value is expected to be between 0.0 and 2*pi. The returned color
+		/// values will be between 0.0 and 1.0.
+		/// </summary>
+		public static (float, float, float) HsvToRgb(float h, float s, float v)
+		{
+			float r, g, b;
+
+			if (s.FloatEquals(0.0f))
+			{
+				r = v;
+				g = v;
+				b = v;
+			}
+			else
+			{
+				if (h.FloatEquals((float)(Math.PI * 2.0f)))
+					h = 0.0f;
+				else
+					h = (float)((h * 3.0f)/Math.PI);
+				var sextant = (float)Math.Floor(h);
+				var f = h - sextant;
+				var p = v * (1.0f - s);
+				var q = v * (1.0f - (s * f));
+				var t = v * (1.0f - (s * (1.0f - f)));
+				switch (sextant)
+				{
+					default:
+					case 0: r = v; g = t; b = p; break;
+					case 1: r = q; g = v; b = p; break;
+					case 2: r = p; g = v; b = t; break;
+					case 3: r = p; g = q; b = v; break;
+					case 4: r = t; g = p; b = v; break;
+					case 5: r = v; g = p; b = q; break;
+				}
+
+			}
+
+			return (r, g, b);
+		}
+
 
 		#region ImGui Helpers
 
@@ -617,135 +772,7 @@ namespace StepManiaEditor
 			var totalWidth = width + originalFramePaddingX * 2.0f;
 			var totalHeight = height + originalFramePaddingY * 2.0f;
 
-			// The offset in pixels from within the total dimensions to draw the image.
-			var xOffset = 0.0f;
-			var yOffset = 0.0f;
-
-			// The size of the image to draw.
-			var size = new System.Numerics.Vector2(width, height);
-			
-			// The UV coordinates for drawing the texture on the image.
-			var uv0 = new System.Numerics.Vector2(0.0f, 0.0f);
-			var uv1 = new System.Numerics.Vector2(1.0f, 1.0f);
-
-			switch (mode)
-			{
-				// Maintain the original size of the texture.
-				// Crop and offset as needed.
-				case TextureLayoutMode.OriginalSize:
-				{
-					// If the texture is wider than the destination area then adjust the UV X values
-					// so that we crop the texture.
-					if (textureMonogame.Width > width)
-					{
-						xOffset = 0.0f;
-						size.X = width;
-						uv0.X = (textureMonogame.Width - width) * 0.5f / textureMonogame.Width;
-						uv1.X = 1.0f - uv0.X;
-					}
-					// If the destination area is wider than the texture, then set the X offset value
-					// so that we center the texture in X within the destination area.
-					else if (textureMonogame.Width < width)
-					{
-						xOffset = (width - textureMonogame.Width) * 0.5f;
-						size.X = textureMonogame.Width;
-						uv0.X = 0.0f;
-						uv1.X = 1.0f;
-					}
-
-					// If the texture is taller than the destination area then adjust the UV Y values
-					// so that we crop the texture.
-					if (textureMonogame.Height > height)
-					{
-						yOffset = 0.0f;
-						size.Y = height;
-						uv0.Y = (textureMonogame.Height - height) * 0.5f / textureMonogame.Height;
-						uv1.Y = 1.0f - uv0.Y;
-					}
-					// If the destination area is taller than the texture, then set the Y offset value
-					// so that we center the texture in Y within the destination area.
-					else if (textureMonogame.Height < height)
-					{
-						yOffset = (height - textureMonogame.Height) * 0.5f;
-						size.Y = textureMonogame.Height;
-						uv0.Y = 0.0f;
-						uv1.Y = 1.0f;
-					}
-
-					break;
-				}
-				
-				// Stretch the texture to exactly fill the destination area.
-				// The parameters are already set for rendering in this mode.
-				case TextureLayoutMode.Stretch:
-				{
-					break;
-				}
-
-				// Scale the texture uniformly such that it fills the entire destination area.
-				// Crop the dimension which goes beyond the destination area as needed.
-				case TextureLayoutMode.Fill:
-				{
-					var textureAspectRatio = (float)textureMonogame.Width / textureMonogame.Height;
-					var destinationAspectRatio = (float)width / height;
-
-					// If the texture is wider than the destination area, crop the left and right.
-					if (textureAspectRatio > destinationAspectRatio)
-					{
-						// Crop left and right.
-						var scaledTextureW = textureMonogame.Width * ((float)height / textureMonogame.Height);
-						uv0.X = (scaledTextureW - height) * 0.5f / scaledTextureW;
-						uv1.X = 1.0f - uv0.X;
-
-						// Fill Y.
-						uv0.Y = 0.0f;
-						uv1.Y = 1.0f;
-					}
-
-					// If the texture is taller than the destination area, crop the top and bottom.
-					else if (textureAspectRatio < destinationAspectRatio)
-					{
-						// Fill X.
-						uv0.X = 0.0f;
-						uv1.X = 1.0f;
-
-						// Crop top and bottom.
-						var scaledTextureH = textureMonogame.Height * ((float)width / textureMonogame.Width);
-						uv0.Y = (scaledTextureH - width) * 0.5f / scaledTextureH;
-						uv1.Y = 1.0f - uv0.Y;
-					}
-
-					break;
-				}
-
-				// Scale the texture uniformly such that it fills the destination area without going over
-				// in either dimension.
-				case TextureLayoutMode.Box:
-				{
-					var textureAspectRatio = (float)textureMonogame.Width / textureMonogame.Height;
-					var destinationAspectRatio = (float)width / height;
-
-					// If the texture is wider than the destination area, letterbox.
-					if (textureAspectRatio > destinationAspectRatio)
-					{
-						var scale = (float)width / textureMonogame.Width;
-						size.X = textureMonogame.Width * scale;
-						size.Y = textureMonogame.Height * scale;
-						yOffset = (height - textureMonogame.Height * scale) * 0.5f;
-					}
-
-					// If the texture is taller than the destination area, pillarbox.
-					else if (textureAspectRatio < destinationAspectRatio)
-					{
-						var scale = (float)height / textureMonogame.Height;
-						size.X = textureMonogame.Width * scale;
-						size.Y = textureMonogame.Height * scale;
-						xOffset = (width - textureMonogame.Width * scale) * 0.5f;
-					}
-
-					break;
-				}
-			}
+			var (xOffset, yOffset, size, uv0, uv1) = GetTextureUVs(textureMonogame, width, height, mode);
 
 			// Set the padding and spacing so we can draw dummy boxes to offset the image.
 			ImGui.GetStyle().ItemSpacing.X = 0;
@@ -799,6 +826,162 @@ namespace StepManiaEditor
 		}
 
 		#endregion ImGui Helpers
+
+		#region Texture Helpers
+
+		private static (float xOffset, float yOffset, System.Numerics.Vector2 size, System.Numerics.Vector2 uv0, System.Numerics.Vector2 uv1) GetTextureUVs(
+			Texture2D texture, uint width, uint height, TextureLayoutMode mode)
+		{
+			float xOffset = 0.0f;
+			float yOffset = 0.0f;
+
+			// The size of the image to draw.
+			var size = new System.Numerics.Vector2(width, height);
+
+			// The UV coordinates for drawing the texture on the image.
+			var uv0 = new System.Numerics.Vector2(0.0f, 0.0f);
+			var uv1 = new System.Numerics.Vector2(1.0f, 1.0f);
+
+			switch (mode)
+			{
+				// Maintain the original size of the texture.
+				// Crop and offset as needed.
+				case TextureLayoutMode.OriginalSize:
+				{
+					// If the texture is wider than the destination area then adjust the UV X values
+					// so that we crop the texture.
+					if (texture.Width > width)
+					{
+						xOffset = 0.0f;
+						size.X = width;
+						uv0.X = (texture.Width - width) * 0.5f / texture.Width;
+						uv1.X = 1.0f - uv0.X;
+					}
+					// If the destination area is wider than the texture, then set the X offset value
+					// so that we center the texture in X within the destination area.
+					else if (texture.Width < width)
+					{
+						xOffset = (width - texture.Width) * 0.5f;
+						size.X = texture.Width;
+						uv0.X = 0.0f;
+						uv1.X = 1.0f;
+					}
+
+					// If the texture is taller than the destination area then adjust the UV Y values
+					// so that we crop the texture.
+					if (texture.Height > height)
+					{
+						yOffset = 0.0f;
+						size.Y = height;
+						uv0.Y = (texture.Height - height) * 0.5f / texture.Height;
+						uv1.Y = 1.0f - uv0.Y;
+					}
+					// If the destination area is taller than the texture, then set the Y offset value
+					// so that we center the texture in Y within the destination area.
+					else if (texture.Height < height)
+					{
+						yOffset = (height - texture.Height) * 0.5f;
+						size.Y = texture.Height;
+						uv0.Y = 0.0f;
+						uv1.Y = 1.0f;
+					}
+
+					break;
+				}
+
+				// Stretch the texture to exactly fill the destination area.
+				// The parameters are already set for rendering in this mode.
+				case TextureLayoutMode.Stretch:
+				{
+					break;
+				}
+
+				// Scale the texture uniformly such that it fills the entire destination area.
+				// Crop the dimension which goes beyond the destination area as needed.
+				case TextureLayoutMode.Fill:
+				{
+					var textureAspectRatio = (float)texture.Width / texture.Height;
+					var destinationAspectRatio = (float)width / height;
+
+					// If the texture is wider than the destination area, crop the left and right.
+					if (textureAspectRatio > destinationAspectRatio)
+					{
+						// Crop left and right.
+						var scaledTextureW = texture.Width * ((float)height / texture.Height);
+						uv0.X = (scaledTextureW - height) * 0.5f / scaledTextureW;
+						uv1.X = 1.0f - uv0.X;
+
+						// Fill Y.
+						uv0.Y = 0.0f;
+						uv1.Y = 1.0f;
+					}
+
+					// If the texture is taller than the destination area, crop the top and bottom.
+					else if (textureAspectRatio < destinationAspectRatio)
+					{
+						// Fill X.
+						uv0.X = 0.0f;
+						uv1.X = 1.0f;
+
+						// Crop top and bottom.
+						var scaledTextureH = texture.Height * ((float)width / texture.Width);
+						uv0.Y = (scaledTextureH - width) * 0.5f / scaledTextureH;
+						uv1.Y = 1.0f - uv0.Y;
+					}
+
+					break;
+				}
+
+				// Scale the texture uniformly such that it fills the destination area without going over
+				// in either dimension.
+				case TextureLayoutMode.Box:
+				{
+					var textureAspectRatio = (float)texture.Width / texture.Height;
+					var destinationAspectRatio = (float)width / height;
+
+					// If the texture is wider than the destination area, letterbox.
+					if (textureAspectRatio > destinationAspectRatio)
+					{
+						var scale = (float)width / texture.Width;
+						size.X = texture.Width * scale;
+						size.Y = texture.Height * scale;
+						yOffset = (height - texture.Height * scale) * 0.5f;
+					}
+
+					// If the texture is taller than the destination area, pillarbox.
+					else if (textureAspectRatio < destinationAspectRatio)
+					{
+						var scale = (float)height / texture.Height;
+						size.X = texture.Width * scale;
+						size.Y = texture.Height * scale;
+						xOffset = (width - texture.Width * scale) * 0.5f;
+					}
+
+					break;
+				}
+			}
+
+			return (xOffset, yOffset, size, uv0, uv1);
+		}
+
+		public static void DrawTexture(
+			SpriteBatch spriteBatch,
+			Texture2D texture,
+			int x,
+			int y,
+			uint width,
+			uint height,
+			TextureLayoutMode mode)
+		{
+			var (xOffset, yOffset, size, uv0, uv1) = GetTextureUVs(texture, width, height, mode);
+
+			var destRect = new Rectangle((int)(x + xOffset), (int)(y + yOffset), (int)size.X, (int)size.Y);
+			var sourceRect = new Rectangle((int)(uv0.X * texture.Width), (int)(uv0.Y * texture.Height), (int)(uv1.X * texture.Width), (int)(uv1.Y * texture.Height));
+
+			spriteBatch.Draw(texture, destRect, sourceRect, Color.White);
+		}
+
+		#endregion Texture Helpers
 
 		#region File Open Helpers
 

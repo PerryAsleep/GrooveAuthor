@@ -79,10 +79,11 @@ namespace StepManiaEditor
 			ImGuiRenderer imGuiRenderer,
 			uint width,
 			uint height,
-			string path)
+			string path,
+			bool cacheTextureColor)
 		{
 			FileDirectory = fileDirectory;
-			Texture = new EditorTexture(graphicsDevice, imGuiRenderer, width, height);
+			Texture = new EditorTexture(graphicsDevice, imGuiRenderer, width, height, cacheTextureColor);
 			Path = path;
 		}
 
@@ -298,12 +299,12 @@ namespace StepManiaEditor
 		{
 			Editor = editor;
 
-			Banner = new EditorImageData(FileDirectory, graphicsDevice, imGuiRenderer, BannerWidth, BannerHeight, null);
-			Background = new EditorImageData(null);
+			Banner = new EditorImageData(FileDirectory, graphicsDevice, imGuiRenderer, BannerWidth, BannerHeight, null, false);
+			Background = new EditorImageData(FileDirectory, graphicsDevice, imGuiRenderer, BackgroundWidth, BackgroundHeight, null, true);
 			Jacket = new EditorImageData(null);
 			CDImage = new EditorImageData(null);
 			DiscImage = new EditorImageData(null);
-			CDTitle = new EditorImageData(FileDirectory, graphicsDevice, imGuiRenderer, CDTitleWidth, CDTitleHeight, null);
+			CDTitle = new EditorImageData(FileDirectory, graphicsDevice, imGuiRenderer, CDTitleWidth, CDTitleHeight, null, false);
 
 			MusicPath = "";
 			MusicPreviewPath = "";
@@ -334,11 +335,10 @@ namespace StepManiaEditor
 			song.Extras.TryGetExtra(TagCredit, out Credit, true);
 			Credit ??= "";
 
-			Banner = new EditorImageData(FileDirectory, graphicsDevice, imGuiRenderer, BannerWidth, BannerHeight,
-				song.SongSelectImage);
+			Banner = new EditorImageData(FileDirectory, graphicsDevice, imGuiRenderer, BannerWidth, BannerHeight, song.SongSelectImage, false);
 			string tempStr;
 			song.Extras.TryGetExtra(TagBackground, out tempStr, true);
-			Background = new EditorImageData(tempStr);
+			Background = new EditorImageData(FileDirectory, graphicsDevice, imGuiRenderer, BackgroundWidth, BackgroundHeight, tempStr, true);
 			song.Extras.TryGetExtra(TagJacket, out tempStr, true);
 			Jacket = new EditorImageData(tempStr);
 			song.Extras.TryGetExtra(TagCDImage, out tempStr, true);
@@ -346,7 +346,7 @@ namespace StepManiaEditor
 			song.Extras.TryGetExtra(TagDiscImage, out tempStr, true);
 			DiscImage = new EditorImageData(tempStr);
 			song.Extras.TryGetExtra(TagCDTitle, out tempStr, true);
-			CDTitle = new EditorImageData(FileDirectory, graphicsDevice, imGuiRenderer, CDTitleWidth, CDTitleHeight, tempStr);
+			CDTitle = new EditorImageData(FileDirectory, graphicsDevice, imGuiRenderer, CDTitleWidth, CDTitleHeight, tempStr, false);
 
 			song.Extras.TryGetExtra(TagLyricsPath, out LyricsPath, true);
 			LyricsPath ??= "";

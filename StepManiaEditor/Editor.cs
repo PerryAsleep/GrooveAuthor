@@ -966,7 +966,7 @@ namespace StepManiaEditor
 			var stopWatch = new Stopwatch();
 			stopWatch.Start();
 
-			GraphicsDevice.Clear(Color.Black);
+			DrawBackground();
 
 			DrawWaveForm();
 
@@ -993,6 +993,26 @@ namespace StepManiaEditor
 
 			stopWatch.Stop();
 			DrawTimeTotal = stopWatch.Elapsed.TotalSeconds;
+		}
+
+		private void DrawBackground()
+		{
+			// If there is no background image, just clear with black and return.
+			if (!(ActiveSong?.Background?.GetTexture()?.IsBound() ?? false))
+			{
+				GraphicsDevice.Clear(Color.Black);
+				return;
+			}
+
+			// If we have a background texture, clear with the average color of the texture.
+			var color = ActiveSong.Background.GetTexture().GetTextureColor();
+			var (a, g, b, r) = ToFloats(color);
+			GraphicsDevice.Clear(new Color(r, g, b, a));
+
+			// Draw the background texture.
+			SpriteBatch.Begin();
+			ActiveSong.Background.GetTexture().DrawTexture(SpriteBatch, 0, 0, (uint)GetViewportWidth(), (uint)GetViewportHeight(), TextureLayoutMode.Box);
+			SpriteBatch.End();
 		}
 
 		private void DrawReceptors()
