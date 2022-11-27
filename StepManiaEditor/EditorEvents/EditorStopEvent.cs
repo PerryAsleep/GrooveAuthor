@@ -66,7 +66,7 @@ namespace StepManiaEditor
 				this,
 				nameof(DoubleValue),
 				(int)GetX(), (int)GetY(), (int)GetW(),
-				Utils.UIStopColorABGR,
+				Utils.UIStopColorRGBA,
 				false,
 				CanBeDeleted,
 				Speed,

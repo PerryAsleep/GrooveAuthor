@@ -66,7 +66,7 @@ namespace StepManiaEditor
 				this,
 				nameof(IntValue),
 				(int)GetX(), (int)GetY(), (int)GetW(),
-				Utils.UIWarpColorABGR,
+				Utils.UIWarpColorRGBA,
 				false,
 				CanBeDeleted,
 				Speed,

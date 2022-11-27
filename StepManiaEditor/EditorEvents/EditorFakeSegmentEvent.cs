@@ -63,7 +63,7 @@ namespace StepManiaEditor
 				this,
 				nameof(DoubleValue),
 				(int)GetX(), (int)GetY(), (int)GetW(),
-				Utils.UIFakesColorABGR,
+				Utils.UIFakesColorRGBA,
 				false,
 				true,
 				Speed,

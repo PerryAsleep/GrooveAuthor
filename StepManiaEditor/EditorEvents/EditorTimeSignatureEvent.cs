@@ -83,7 +83,7 @@ namespace StepManiaEditor
 				this,
 				nameof(StringValue),
 				(int)GetX(), (int)GetY(), (int)GetW(),
-				Utils.UITimeSignatureColorABGR,
+				Utils.UITimeSignatureColorRGBA,
 				false,
 				CanBeDeleted,
 				GetAlpha(),

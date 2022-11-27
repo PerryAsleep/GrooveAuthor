@@ -18,25 +18,25 @@ namespace StepManiaEditor
 
 		public const int MaxLogFiles = 10;
 
-		public const uint UITempoColorABGR = 0x8A297A79;			// yellow
-		public const uint UITimeSignatureColorABGR = 0x8A297A29;	// green
-		public const uint UIStopColorABGR = 0x8A29297A;				// red
-		public const uint UIDelayColorABGR = 0x8A295E7A;			// light orange
-		public const uint UIWarpColorABGR = 0x8A7A7929;				// cyan
-		public const uint UIScrollsColorABGR = 0x8A7A2929;			// blue
-		public const uint UISpeedsColorABGR = 0x8A7A294D;			// purple
+		public const uint UITempoColorRGBA = 0x8A297A79;			// yellow
+		public const uint UITimeSignatureColorRGBA = 0x8A297A29;	// green
+		public const uint UIStopColorRGBA = 0x8A29297A;				// red
+		public const uint UIDelayColorRGBA = 0x8A295E7A;			// light orange
+		public const uint UIWarpColorRGBA = 0x8A7A7929;				// cyan
+		public const uint UIScrollsColorRGBA = 0x8A7A2929;			// blue
+		public const uint UISpeedsColorRGBA = 0x8A7A294D;			// purple
 
-		public const uint UITicksColorABGR = 0x8A295E7A;			// orange
-		public const uint UIMultipliersColorABGR = 0x8A297A63;		// lime
-		public const uint UIFakesColorABGR = 0x8A29467A;			// dark orange
-		public const uint UILabelColorABGR = 0x8A68297A;			// pink
+		public const uint UITicksColorRGBA = 0x8A295E7A;			// orange
+		public const uint UIMultipliersColorRGBA = 0x8A297A63;		// lime
+		public const uint UIFakesColorRGBA = 0x8A29467A;			// dark orange
+		public const uint UILabelColorRGBA = 0x8A68297A;			// pink
 
-		public const uint UIDifficultyBeginnerColorABGR = 0xFF808040;
-		public const uint UIDifficultyEasyColorABGR = 0xFF4D804D;
-		public const uint UIDifficultyMediumColorABGR = 0xFF408080;
-		public const uint UIDifficultyHardColorABGR = 0xFF404080;
-		public const uint UIDifficultyChallengeColorABGR = 0xFF804080;
-		public const uint UIDifficultyEditColorABGR = 0xFF807D7B;
+		public const uint UIDifficultyBeginnerColorRGBA = 0xFF808040;
+		public const uint UIDifficultyEasyColorRGBA = 0xFF4D804D;
+		public const uint UIDifficultyMediumColorRGBA = 0xFF408080;
+		public const uint UIDifficultyHardColorRGBA = 0xFF404080;
+		public const uint UIDifficultyChallengeColorRGBA = 0xFF804080;
+		public const uint UIDifficultyEditColorRGBA = 0xFF807D7B;
 
 		public const int MarkerTextureWidth = 128;
 
@@ -126,7 +126,7 @@ namespace StepManiaEditor
 			Box
 		}
 
-		public static uint ColorABGRInterpolate(uint startColor, uint endColor, float endPercent)
+		public static uint ColorRGBAInterpolate(uint startColor, uint endColor, float endPercent)
 		{
 			var startPercent = 1.0f - endPercent;
 			return (uint)((startColor & 0xFF) * startPercent + (endColor & 0xFF) * endPercent)
@@ -135,7 +135,7 @@ namespace StepManiaEditor
 			       | ((uint)(((startColor >> 24) & 0xFF) * startPercent + ((endColor >> 24) & 0xFF) * endPercent) << 24);
 		}
 
-		public static uint ColorABGRInterpolateBGR(uint startColor, uint endColor, float endPercent)
+		public static uint ColorRGBAInterpolateBGR(uint startColor, uint endColor, float endPercent)
 		{
 			var startPercent = 1.0f - endPercent;
 			return (uint)((startColor & 0xFF) * startPercent + (endColor & 0xFF) * endPercent)
@@ -144,7 +144,7 @@ namespace StepManiaEditor
 			       | (endColor & 0xFF000000);
 		}
 
-		public static uint ColorABGRMultiply(uint color, float multiplier)
+		public static uint ColorRGBAMultiply(uint color, float multiplier)
 		{
 			return (uint)(Math.Min((color & 0xFF) * multiplier, byte.MaxValue))
 			       | ((uint)Math.Min(((color >> 8) & 0xFF) * multiplier, byte.MaxValue) << 8)
@@ -162,15 +162,15 @@ namespace StepManiaEditor
 			return ToBGR565((float)c.R / byte.MaxValue, (float)c.G / byte.MaxValue, (float)c.B / byte.MaxValue);
 		}
 
-		public static ushort ToBGR565(uint ABGR)
+		public static ushort ToBGR565(uint RGBA)
 		{
 			return ToBGR565(
-				(byte)((ABGR & 0x00FF0000) >> 24) / (float)byte.MaxValue,
-				(byte)((ABGR & 0x0000FF00) >> 16) / (float)byte.MaxValue,
-				(byte)((ABGR & 0x000000FF) >> 8) / (float)byte.MaxValue);
+				(byte)((RGBA & 0x00FF0000) >> 16) / (float)byte.MaxValue,
+				(byte)((RGBA & 0x0000FF00) >> 8) / (float)byte.MaxValue,
+				(byte)(RGBA & 0x000000FF) / (float)byte.MaxValue);
 		}
 
-		public static uint ToABGR(float r, float g, float b, float a)
+		public static uint ToRGBA(float r, float g, float b, float a)
 		{
 			return (((uint)(byte)(a * byte.MaxValue)) << 24)
 				+ (((uint)(byte)(b * byte.MaxValue)) << 16)
@@ -178,12 +178,12 @@ namespace StepManiaEditor
 				+ ((byte)(r * byte.MaxValue));
 		}
 
-		public static (float, float, float, float) ToFloats(uint ABGR)
+		public static (float, float, float, float) ToFloats(uint RGBA)
 		{
-			return ((byte)((ABGR & 0xFF000000) >> 24) / (float)byte.MaxValue,
-				(byte)((ABGR & 0x00FF0000) >> 16) / (float)byte.MaxValue,
-				(byte)((ABGR & 0x0000FF00) >> 8) / (float)byte.MaxValue,
-				(byte)((ABGR & 0x000000FF)) / (float)byte.MaxValue);
+			return ((byte)(RGBA & 0x000000FF) / (float)byte.MaxValue,
+				(byte)((RGBA & 0x0000FF00) >> 8) / (float)byte.MaxValue,
+				(byte)((RGBA & 0x00FF0000) >> 16) / (float)byte.MaxValue,
+				(byte)((RGBA & 0xFF000000) >> 24) / (float)byte.MaxValue);
 		}
 
 		public static Vector2 GetDrawPos(
@@ -222,14 +222,14 @@ namespace StepManiaEditor
 		{
 			switch (difficulty)
 			{
-				case SMCommon.ChartDifficultyType.Beginner: return UIDifficultyBeginnerColorABGR;
-				case SMCommon.ChartDifficultyType.Easy: return UIDifficultyEasyColorABGR;
-				case SMCommon.ChartDifficultyType.Medium: return UIDifficultyMediumColorABGR;
-				case SMCommon.ChartDifficultyType.Hard: return UIDifficultyHardColorABGR;
-				case SMCommon.ChartDifficultyType.Challenge: return UIDifficultyChallengeColorABGR;
-				case SMCommon.ChartDifficultyType.Edit: return UIDifficultyEditColorABGR;
+				case SMCommon.ChartDifficultyType.Beginner: return UIDifficultyBeginnerColorRGBA;
+				case SMCommon.ChartDifficultyType.Easy: return UIDifficultyEasyColorRGBA;
+				case SMCommon.ChartDifficultyType.Medium: return UIDifficultyMediumColorRGBA;
+				case SMCommon.ChartDifficultyType.Hard: return UIDifficultyHardColorRGBA;
+				case SMCommon.ChartDifficultyType.Challenge: return UIDifficultyChallengeColorRGBA;
+				case SMCommon.ChartDifficultyType.Edit: return UIDifficultyEditColorRGBA;
 			}
-			return UIDifficultyEditColorABGR;
+			return UIDifficultyEditColorRGBA;
 		}
 
 		/// <summary>
@@ -240,7 +240,7 @@ namespace StepManiaEditor
 		/// </summary>
 		public static uint GetTextureColor(Texture2D texture)
 		{
-			var colorData = GetABGRColorData(texture);
+			var colorData = GetRGBAColorData(texture);
 			double hueXSum = 0.0f;
 			double hueYSum = 0.0f;
 			double saturationSumOfSquares = 0.0f;
@@ -250,7 +250,7 @@ namespace StepManiaEditor
 			foreach (var color in colorData)
 			{
 				// Convert the color to HSV values.
-				(a, g, b, r) = ToFloats(color);
+				(r, g, b, a) = ToFloats(color);
 				(h, s, v) = RgbToHsv(r, g, b);
 
 				saturationSumOfSquares += (s * s);
@@ -277,10 +277,10 @@ namespace StepManiaEditor
 				(float)Math.Sqrt(saturationSumOfSquares / colorData.Length),
 				(float)Math.Sqrt(valueSumOfSquares / colorData.Length));
 
-			return ToABGR(r, g, b, 1.0f);
+			return ToRGBA(r, g, b, 1.0f);
 		}
 
-		public static uint[] GetABGRColorData(Texture2D texture)
+		public static uint[] GetRGBAColorData(Texture2D texture)
 		{
 			var data = new uint[texture.Width * texture.Height];
 			switch (texture.Format)

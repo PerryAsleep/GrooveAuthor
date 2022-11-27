@@ -101,32 +101,32 @@ namespace StepManiaEditor
 		private const int RimWidth = 1;
 		
 		/// <summary>
-		/// ABGR color of the chart background.
+		/// RGBA color of the chart background.
 		/// </summary>
 		private static uint BackgroundColor = 0xFF1E1E1E;
 		/// <summary>
-		/// ABGR color of the rim border.
+		/// RGBA color of the rim border.
 		/// </summary>
 		private static uint RimColor = 0xFFFFFFFF;
 		/// <summary>
-		/// ABGR color of the line separating the areas outside of the Chart content from
+		/// RGBA color of the line separating the areas outside of the Chart content from
 		/// the area representing the Chart content.
 		/// </summary>
 		private static uint ContentMarkerColor = 0xFFFFFFFF;
 		/// <summary>
-		/// ABGR color of the area outside of the Chart content.
+		/// RGBA color of the area outside of the Chart content.
 		/// </summary>
 		private static uint OutsideContentRangeColor = 0xFF020202;
 		/// <summary>
-		/// ABGR color of the normal editor area.
+		/// RGBA color of the normal editor area.
 		/// </summary>
 		private static uint EditorAreaColor = 0xFF303030;
 		/// <summary>
-		/// ABGR color of the editor area when the mouse is over it but it is not being held.
+		/// RGBA color of the editor area when the mouse is over it but it is not being held.
 		/// </summary>
 		private static uint EditorAreaMouseOverColor = 0xFF373737;
 		/// <summary>
-		/// ABGR color of the editor area when it is being held.
+		/// RGBA color of the editor area when it is being held.
 		/// </summary>
 		private static uint EditorAreaSelectedColor = 0xFF3E3E3E;
 
@@ -139,7 +139,7 @@ namespace StepManiaEditor
 		/// </summary>
 		private int TextureIndex;
 		/// <summary>
-		/// ABGR color data to set on the texture after updating each frame.
+		/// RGBA color data to set on the texture after updating each frame.
 		/// </summary>
 		private uint[] ColorData;
 		/// <summary>
@@ -320,7 +320,6 @@ namespace StepManiaEditor
 			Textures = new Texture2D[NumTextures];
 			for (var i = 0; i < NumTextures; i++)
 			{
-				// The documentation for SurfaceFormat.Color claims it is ARGB but it is actually ABGR.
 				Textures[i] = new Texture2D(graphicsDevice, bounds.Width, bounds.Height, false, SurfaceFormat.Color);
 			}
 
@@ -587,7 +586,7 @@ namespace StepManiaEditor
 			return AddShortNote(
 				GetYPixelRelativeToBounds(position),
 				LaneXPositions[chartEvent.Lane],
-				ArrowGraphicManager.GetArrowColorABGR(chartEvent.IntegerPosition, chartEvent.Lane));
+				ArrowGraphicManager.GetArrowColorRGBA(chartEvent.IntegerPosition, chartEvent.Lane));
 		}
 
 		/// <summary>
@@ -601,7 +600,7 @@ namespace StepManiaEditor
 			return AddShortNote(
 				GetYPixelRelativeToBounds(position),
 				LaneXPositions[chartEvent.Lane],
-				ArrowGraphicManager.GetMineColorABGR());
+				ArrowGraphicManager.GetMineColorRGBA());
 		}
 
 		/// <summary>
@@ -637,14 +636,14 @@ namespace StepManiaEditor
 
 			var percent = 1.0 - (y - yInt);
 
-			var c1 = Utils.ColorABGRInterpolateBGR(ColorData[yInt * Bounds.Width + x], color, (float)percent);
+			var c1 = Utils.ColorRGBAInterpolateBGR(ColorData[yInt * Bounds.Width + x], color, (float)percent);
 			for (var i = x; i < x + w; i++)
 				ColorData[yInt * Bounds.Width + i] = c1;
 
 			yInt++;
 			if (yInt < Bounds.Height - RimWidth)
 			{
-				var c2 = Utils.ColorABGRInterpolateBGR(ColorData[yInt * Bounds.Width + x], color, (float)(1.0 - percent));
+				var c2 = Utils.ColorRGBAInterpolateBGR(ColorData[yInt * Bounds.Width + x], color, (float)(1.0 - percent));
 				for (var i = x; i < x + w; i++)
 					ColorData[yInt * Bounds.Width + i] = c2;
 			}
@@ -666,8 +665,8 @@ namespace StepManiaEditor
 			var yEnd = GetYPixelRelativeToBounds(endPosition) + 1.0;
 
 			var x = LaneXPositions[start.Lane];
-			var bodyColor = roll ? ArrowGraphicManager.GetRollColorABGR(start.IntegerPosition, start.Lane) : ArrowGraphicManager.GetHoldColorABGR(start.IntegerPosition, start.Lane);
-			var headColor = ArrowGraphicManager.GetArrowColorABGR(start.IntegerPosition, start.Lane);
+			var bodyColor = roll ? ArrowGraphicManager.GetRollColorRGBA(start.IntegerPosition, start.Lane) : ArrowGraphicManager.GetHoldColorRGBA(start.IntegerPosition, start.Lane);
+			var headColor = ArrowGraphicManager.GetArrowColorRGBA(start.IntegerPosition, start.Lane);
 
 			var w = (uint)Math.Min(Bounds.Width - (RimWidth << 1), NoteWidth);
 
@@ -699,15 +698,15 @@ namespace StepManiaEditor
 					var spaceToWorkWith = 1.0;
 					if (yEnd < y + 1.0)
 						spaceToWorkWith = yEnd - y;
-					noteColor = Utils.ColorABGRInterpolateBGR(bodyColor, headColor, (float)((yStart - (int)yStart) / spaceToWorkWith));
+					noteColor = Utils.ColorRGBAInterpolateBGR(bodyColor, headColor, (float)((yStart - (int)yStart) / spaceToWorkWith));
 				}
 
 				// Blend the note color with the background color.
 				var color = noteColor;
 				if (i == 0)
-					color = Utils.ColorABGRInterpolateBGR(noteColor, ColorData[y * Bounds.Width + x], (float)(yStart - (int)yStart));
+					color = Utils.ColorRGBAInterpolateBGR(noteColor, ColorData[y * Bounds.Width + x], (float)(yStart - (int)yStart));
 				else if (y + 1 >= yEnd)
-					color = Utils.ColorABGRInterpolateBGR(noteColor, ColorData[y * Bounds.Width + x], (float)(1.0 - (yEnd - y)));
+					color = Utils.ColorRGBAInterpolateBGR(noteColor, ColorData[y * Bounds.Width + x], (float)(1.0 - (yEnd - y)));
 
 				// Set the color.
 				for (var j = x; j < x + w; j++)
@@ -785,7 +784,7 @@ namespace StepManiaEditor
 			}
 			if (yEndInt >= RimWidth && yEndInt < Bounds.Height - RimWidth)
 			{
-				var blendColor = Utils.ColorABGRInterpolateBGR(OutsideContentRangeColor, BackgroundColor, (float)(1.0 - (yEnd - yEndInt)));
+				var blendColor = Utils.ColorRGBAInterpolateBGR(OutsideContentRangeColor, BackgroundColor, (float)(1.0 - (yEnd - yEndInt)));
 				for (var x = RimWidth; x < Bounds.Width - RimWidth; x++)
 				{
 					ColorData[yEndInt * Bounds.Width + x] = blendColor;
@@ -799,7 +798,7 @@ namespace StepManiaEditor
 			yEndInt = Bounds.Height - RimWidth;
 			if (yStartInt < yEndInt)
 			{
-				var blendColor = Utils.ColorABGRInterpolateBGR(OutsideContentRangeColor, BackgroundColor, (float)(yStart - yStartInt));
+				var blendColor = Utils.ColorRGBAInterpolateBGR(OutsideContentRangeColor, BackgroundColor, (float)(yStart - yStartInt));
 				for (var x = RimWidth; x < Bounds.Width - RimWidth; x++)
 				{
 					ColorData[yStartInt * Bounds.Width + x] = blendColor;
@@ -832,7 +831,7 @@ namespace StepManiaEditor
 			}
 			if (yStartInt >= RimWidth && yStartInt < Bounds.Height - RimWidth)
 			{
-				var blendColor = Utils.ColorABGRInterpolateBGR(editorColor, ColorData[yStartInt * Bounds.Width + RimWidth], (float)(editorStartYPixel - yStartInt));
+				var blendColor = Utils.ColorRGBAInterpolateBGR(editorColor, ColorData[yStartInt * Bounds.Width + RimWidth], (float)(editorStartYPixel - yStartInt));
 				for (var x = RimWidth; x < Bounds.Width - RimWidth; x++)
 				{
 					ColorData[yStartInt * Bounds.Width + x] = blendColor;
@@ -840,7 +839,7 @@ namespace StepManiaEditor
 			}
 			if (yEndInt >= RimWidth && yEndInt < Bounds.Height - RimWidth)
 			{
-				var blendColor = Utils.ColorABGRInterpolateBGR(editorColor, ColorData[yEndInt * Bounds.Width + RimWidth], (float)(1.0 - (editorEndYPixel - yEndInt)));
+				var blendColor = Utils.ColorRGBAInterpolateBGR(editorColor, ColorData[yEndInt * Bounds.Width + RimWidth], (float)(1.0 - (editorEndYPixel - yEndInt)));
 				for (var x = RimWidth; x < Bounds.Width - RimWidth; x++)
 				{
 					ColorData[yEndInt * Bounds.Width + x] = blendColor;

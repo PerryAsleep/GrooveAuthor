@@ -79,7 +79,7 @@ namespace StepManiaEditor
 				this,
 				nameof(StringValue),
 				(int)GetX(), (int)GetY(), (int)GetW(),
-				Utils.UILabelColorABGR,
+				Utils.UILabelColorRGBA,
 				false,
 				true,
 				GetAlpha(),

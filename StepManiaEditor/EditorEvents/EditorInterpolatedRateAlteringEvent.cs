@@ -193,7 +193,7 @@ namespace StepManiaEditor
 				this,
 				nameof(StringValue),
 				(int)GetX(), (int)GetY(), (int)GetW(),
-				Utils.UISpeedsColorABGR,
+				Utils.UISpeedsColorRGBA,
 				false,
 				CanBeDeleted,
 				GetAlpha(),

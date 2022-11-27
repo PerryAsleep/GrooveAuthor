@@ -87,7 +87,7 @@ namespace StepManiaEditor
 				this,
 				nameof(StringValue),
 				(int)GetX(), (int)GetY(), (int)GetW(),
-				Utils.UIMultipliersColorABGR,
+				Utils.UIMultipliersColorRGBA,
 				false,
 				CanBeDeleted,
 				GetAlpha(),

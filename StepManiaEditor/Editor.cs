@@ -1006,7 +1006,7 @@ namespace StepManiaEditor
 
 			// If we have a background texture, clear with the average color of the texture.
 			var color = ActiveSong.Background.GetTexture().GetTextureColor();
-			var (a, g, b, r) = ToFloats(color);
+			var (r, g, b, a) = ToFloats(color);
 			GraphicsDevice.Clear(new Color(r, g, b, a));
 
 			// Draw the background texture.

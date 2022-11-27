@@ -1049,7 +1049,7 @@ namespace StepManiaEditor
 			int x,
 			int y,
 			int width,
-			uint colorABGR,
+			uint colorRGBA,
 			bool selected,
 			bool canBeDeleted,
 			float speed,
@@ -1064,7 +1064,7 @@ namespace StepManiaEditor
 				DrawDragInt(true, $"##{id}", e, fieldName, elementWidth, true, "", speed, format, min, max);
 			}
 
-			MiscEditorEventWidget(id, e, x, y, width, colorABGR, selected, canBeDeleted, alpha, help, Func);
+			MiscEditorEventWidget(id, e, x, y, width, colorRGBA, selected, canBeDeleted, alpha, help, Func);
 		}
 
 		public static double GetMiscEditorEventDragDoubleWidgetWidth(double d, string format)
@@ -1079,7 +1079,7 @@ namespace StepManiaEditor
 			int x,
 			int y,
 			int width,
-			uint colorABGR,
+			uint colorRGBA,
 			bool selected,
 			bool canBeDeleted,
 			float speed,
@@ -1094,7 +1094,7 @@ namespace StepManiaEditor
 				DrawDragDouble(true, $"##{id}", e, fieldName, elementWidth, "", speed, format, true, min, max);
 			}
 
-			MiscEditorEventWidget(id, e, x, y, width, colorABGR, selected, canBeDeleted, alpha, help, Func);
+			MiscEditorEventWidget(id, e, x, y, width, colorRGBA, selected, canBeDeleted, alpha, help, Func);
 		}
 
 		public static double GetMiscEditorEventStringWidth(string s)
@@ -1112,7 +1112,7 @@ namespace StepManiaEditor
 			int x,
 			int y,
 			int width,
-			uint colorABGR,
+			uint colorRGBA,
 			bool selected,
 			bool canBeDeleted,
 			float alpha,
@@ -1123,7 +1123,7 @@ namespace StepManiaEditor
 				DrawTimeSignatureInput(true, $"##{id}", e, fieldName, elementWidth, true);
 			}
 
-			MiscEditorEventWidget(id, e, x, y, width, colorABGR, selected, canBeDeleted, alpha, help, Func);
+			MiscEditorEventWidget(id, e, x, y, width, colorRGBA, selected, canBeDeleted, alpha, help, Func);
 		}
 
 		public static void MiscEditorEventMultipliersWidget(
@@ -1133,7 +1133,7 @@ namespace StepManiaEditor
 			int x,
 			int y,
 			int width,
-			uint colorABGR,
+			uint colorRGBA,
 			bool selected,
 			bool canBeDeleted,
 			float alpha,
@@ -1144,7 +1144,7 @@ namespace StepManiaEditor
 				DrawMultipliersInput(true, $"##{id}", e, fieldName, elementWidth, true);
 			}
 
-			MiscEditorEventWidget(id, e, x, y, width, colorABGR, selected, canBeDeleted, alpha, help, Func);
+			MiscEditorEventWidget(id, e, x, y, width, colorRGBA, selected, canBeDeleted, alpha, help, Func);
 		}
 
 		public static void MiscEditorEventLabelWidget(
@@ -1154,7 +1154,7 @@ namespace StepManiaEditor
 			int x,
 			int y,
 			int width,
-			uint colorABGR,
+			uint colorRGBA,
 			bool selected,
 			bool canBeDeleted,
 			float alpha,
@@ -1165,7 +1165,7 @@ namespace StepManiaEditor
 				DrawLabelInput(true, $"##{id}", e, fieldName, elementWidth, true);
 			}
 
-			MiscEditorEventWidget(id, e, x, y, width, colorABGR, selected, canBeDeleted, alpha, help, Func);
+			MiscEditorEventWidget(id, e, x, y, width, colorRGBA, selected, canBeDeleted, alpha, help, Func);
 		}
 
 		public static void MiscEditorEventScrollRateInterpolationInputWidget(
@@ -1175,7 +1175,7 @@ namespace StepManiaEditor
 			int x,
 			int y,
 			int width,
-			uint colorABGR,
+			uint colorRGBA,
 			bool selected,
 			bool canBeDeleted,
 			float alpha,
@@ -1186,7 +1186,7 @@ namespace StepManiaEditor
 				DrawScrollRateInterpolationInput(true, $"##{id}", e, fieldName, elementWidth, true);
 			}
 
-			MiscEditorEventWidget(id, e, x, y, width, colorABGR, selected, canBeDeleted, alpha, help, Func);
+			MiscEditorEventWidget(id, e, x, y, width, colorRGBA, selected, canBeDeleted, alpha, help, Func);
 		}
 
 		private static void MiscEditorEventWidget(
@@ -1195,7 +1195,7 @@ namespace StepManiaEditor
 			int x,
 			int y,
 			int width,
-			uint colorABGR,
+			uint colorRGBA,
 			bool selected,
 			bool canBeDeleted,
 			float alpha,
@@ -1214,7 +1214,7 @@ namespace StepManiaEditor
 			}
 
 			// Color the frame background to help differentiate controls.
-			ImGui.PushStyleColor(ImGuiCol.FrameBg, colorABGR);
+			ImGui.PushStyleColor(ImGuiCol.FrameBg, colorRGBA);
 			colorPushCount += 1;
 
 			// If fading out, multiply key window elements by the alpha value.

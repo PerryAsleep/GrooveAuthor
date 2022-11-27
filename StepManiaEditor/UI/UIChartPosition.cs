@@ -95,7 +95,7 @@ namespace StepManiaEditor
 			}
 			else
 			{
-				Segments[SnapValueIndex].Color = ArrowGraphicManager.GetArrowColorABGRForSubdivision(SMCommon.MaxValidDenominator / snapData.Rows);
+				Segments[SnapValueIndex].Color = ArrowGraphicManager.GetArrowColorRGBAForSubdivision(SMCommon.MaxValidDenominator / snapData.Rows);
 				Segments[SnapValueIndex].Text = $"1/{(SMCommon.MaxValidDenominator / snapData.Rows) * SMCommon.NumBeatsPerMeasure} ";
 			}
 			Segments[SongTimeValueIndex].Text = $"{FormatTime(position.SongTime)} ";

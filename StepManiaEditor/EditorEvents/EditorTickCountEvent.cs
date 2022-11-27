@@ -64,7 +64,7 @@ namespace StepManiaEditor
 				this,
 				nameof(IntValue),
 				(int)GetX(), (int)GetY(), (int)GetW(),
-				Utils.UITicksColorABGR,
+				Utils.UITicksColorRGBA,
 				false,
 				CanBeDeleted,
 				Speed,

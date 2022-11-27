@@ -44,9 +44,9 @@ namespace StepManiaEditor
 					uint b = colorData[Y * W + X + 1];
 					uint c = colorData[(Y + 1) * W + X];
 					uint d = colorData[(Y + 1) * W + X + 1];
-					newColorData[y * w + x] = Utils.ColorABGRInterpolate(
-						Utils.ColorABGRInterpolate(a, b, 0.5f),
-						Utils.ColorABGRInterpolate(c, d, 0.5f), 0.5f);
+					newColorData[y * w + x] = Utils.ColorRGBAInterpolate(
+						Utils.ColorRGBAInterpolate(a, b, 0.5f),
+						Utils.ColorRGBAInterpolate(c, d, 0.5f), 0.5f);
 				}
 			}
 			newTexture.SetData(newColorData);
