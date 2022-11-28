@@ -1271,7 +1271,15 @@ FxaaFloat4 FxaaPixelShader(
     #if (FXAA_DISCARD == 1)
         return FxaaTexTop(tex, posM);
     #else
-        return FxaaFloat4(FxaaTexTop(tex, posM).xyz, lumaM);
+        // Begin Fumen modification
+        // When using green as luma we should not modify the alpha channel.
+        #if (FXAA_GREEN_AS_LUMA == 1)
+            return FxaaFloat4(FxaaTexTop(tex, posM).xyz, rgbyM.w);
+        #else
+            return FxaaFloat4(FxaaTexTop(tex, posM).xyz, lumaM);
+        #endif
+        // return FxaaFloat4(FxaaTexTop(tex, posM).xyz, lumaM);
+        // End Fumen modification
     #endif
 }
 /*==========================================================================*/

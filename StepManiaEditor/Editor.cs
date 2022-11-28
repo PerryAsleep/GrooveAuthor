@@ -154,7 +154,8 @@ namespace StepManiaEditor
 		private TextureAtlas TextureAtlas;
 
 		private Effect FxaaEffect;
-		private RenderTarget2D WaveformRenderTarget;
+		private Effect WaveformColorEffect;
+		private RenderTarget2D[] WaveformRenderTargets;
 
 		private CancellationTokenSource LoadSongCancellationTokenSource;
 		private Task LoadSongTask;
@@ -415,16 +416,22 @@ namespace StepManiaEditor
 			EditorHoldEndNoteEvent.SetScreenHeight(MaxScreenHeight);
 
 			WaveFormRenderer = new WaveFormRenderer(GraphicsDevice, WaveFormTextureWidth, MaxScreenHeight);
+			WaveFormRenderer.SetColors(WaveFormColorDense, WaveFormColorSparse);
 			WaveFormRenderer.SetXPerChannelScale(p.PreferencesWaveForm.WaveFormMaxXPercentagePerChannel);
 			WaveFormRenderer.SetSoundMipMap(MusicManager.GetMusicMipMap());
 			WaveFormRenderer.SetFocalPointY(GetFocalPointY());
-			WaveformRenderTarget = new RenderTarget2D(
-				GraphicsDevice,
-				WaveFormTextureWidth,
-				(int)MaxScreenHeight,
-				false,
-				GraphicsDevice.PresentationParameters.BackBufferFormat,
-				DepthFormat.Depth24);
+
+			WaveformRenderTargets = new RenderTarget2D[2];
+			for (int i = 0; i < 2; i++)
+			{
+				WaveformRenderTargets[i] = new RenderTarget2D(
+					GraphicsDevice,
+					WaveFormTextureWidth,
+					(int)MaxScreenHeight,
+					false,
+					GraphicsDevice.PresentationParameters.BackBufferFormat,
+					DepthFormat.Depth24);
+			}
 
 			MiniMap = new MiniMap(GraphicsDevice, new Rectangle(0, 0, 0, 0));
 			MiniMap.SetSelectMode(p.PreferencesMiniMap.MiniMapSelectMode);
@@ -484,6 +491,7 @@ namespace StepManiaEditor
 			}
 
 			FxaaEffect = Content.Load<Effect>("fxaa");
+			WaveformColorEffect = Content.Load<Effect>("waveform-color");
 
 			base.LoadContent();
 		}
@@ -966,6 +974,9 @@ namespace StepManiaEditor
 			var stopWatch = new Stopwatch();
 			stopWatch.Start();
 
+			// Draw anything which rendering to custom render targets first.
+			PreDrawToRenderTargets();
+
 			DrawBackground();
 
 			DrawWaveForm();
@@ -993,6 +1004,66 @@ namespace StepManiaEditor
 
 			stopWatch.Stop();
 			DrawTimeTotal = stopWatch.Elapsed.TotalSeconds;
+		}
+
+		/// <summary>
+		/// Performs all draw calls to custom render targets.
+		/// After performing all renders, sets the render target to the backbuffer for the final draws.
+		/// </summary>
+		private void PreDrawToRenderTargets()
+		{
+			GraphicsDevice.Clear(Color.Transparent);
+			PreDrawWaveFormToRenderTargets();
+			GraphicsDevice.SetRenderTarget(null);
+		}
+
+		/// <summary>
+		/// Draws to the waveform custom render targets.
+		/// This renders the waveform to WaveformRenderTargets[0] then renders a recoloring pass
+		/// to WaveformRenderTargets[1]. DrawWaveForm will finish rendering WaveformRenderTargets[1]
+		/// to the backbuffer.
+		/// </summary>
+		private void PreDrawWaveFormToRenderTargets()
+		{
+			var p = Preferences.Instance.PreferencesWaveForm;
+			if (!p.ShowWaveForm)
+				return;
+
+			// Draw the waveform to the first render target.
+			GraphicsDevice.SetRenderTarget(WaveformRenderTargets[0]);
+			GraphicsDevice.Clear(Color.Transparent);
+			SpriteBatch.Begin();
+			WaveFormRenderer.Draw(SpriteBatch, 0, 0);
+			SpriteBatch.End();
+
+			// Determine the sparse color.
+			var sparseColor = p.WaveFormSparseColor;
+			switch (p.WaveFormSparseColorOption)
+			{
+				case UIWaveFormPreferences.SparseColorOption.DarkerDenseColor:
+					sparseColor.X = p.WaveFormDenseColor.X * p.WaveFormSparseColorScale;
+					sparseColor.Y = p.WaveFormDenseColor.Y * p.WaveFormSparseColorScale;
+					sparseColor.Z = p.WaveFormDenseColor.Z * p.WaveFormSparseColorScale;
+					sparseColor.W = p.WaveFormDenseColor.W;
+					break;
+				case UIWaveFormPreferences.SparseColorOption.SameAsDenseColor:
+					sparseColor = p.WaveFormDenseColor;
+					break;
+			}
+
+			// Configure the shader to recolor the waveform.
+			WaveformColorEffect.CurrentTechnique = WaveformColorEffect.Techniques["color"];
+			WaveformColorEffect.Parameters["bgColor"].SetValue(p.WaveFormBackgroundColor);
+			WaveformColorEffect.Parameters["denseColor"].SetValue(p.WaveFormDenseColor);
+			WaveformColorEffect.Parameters["sparseColor"].SetValue(sparseColor);
+
+			// Draw the recolored waveform to the second render target.
+			GraphicsDevice.SetRenderTarget(WaveformRenderTargets[1]);
+			GraphicsDevice.Clear(Color.Transparent);
+			SpriteBatch.Begin(SpriteSortMode.Deferred, null, null, null, null, WaveformColorEffect);
+			WaveformColorEffect.CurrentTechnique.Passes[0].Apply();
+			SpriteBatch.Draw((Texture2D)WaveformRenderTargets[0], new Rectangle(0, 0, WaveformRenderTargets[0].Width, WaveformRenderTargets[0].Height), Color.White);
+			SpriteBatch.End();
 		}
 
 		private void DrawBackground()
@@ -1070,27 +1141,10 @@ namespace StepManiaEditor
 			if (!pWave.ShowWaveForm)
 				return;
 
-			// Determine the sparse color.
-			var sparseColor = pWave.WaveFormSparseColor;
-			switch (pWave.WaveFormSparseColorOption)
-			{
-				case UIWaveFormPreferences.SparseColorOption.DarkerDenseColor:
-					sparseColor.X = pWave.WaveFormDenseColor.X * pWave.WaveFormSparseColorScale;
-					sparseColor.Y = pWave.WaveFormDenseColor.Y * pWave.WaveFormSparseColorScale;
-					sparseColor.Z = pWave.WaveFormDenseColor.Z * pWave.WaveFormSparseColorScale;
-					break;
-				case UIWaveFormPreferences.SparseColorOption.SameAsDenseColor:
-					sparseColor = pWave.WaveFormDenseColor;
-					break;
-			}
-
 			// Update the WaveFormRenderer.
 			WaveFormRenderer.SetFocalPointY(GetFocalPointY());
 			WaveFormRenderer.SetXPerChannelScale(pWave.WaveFormMaxXPercentagePerChannel);
 			WaveFormRenderer.SetDenseScale(pWave.DenseScale);
-			WaveFormRenderer.SetColors(
-				pWave.WaveFormDenseColor.X, pWave.WaveFormDenseColor.Y, pWave.WaveFormDenseColor.Z,
-				sparseColor.X, sparseColor.Y, sparseColor.Z);
 			WaveFormRenderer.SetScaleXWhenZooming(pWave.WaveFormScaleXWhenZooming);
 			WaveFormRenderer.Update(Position.SongTime, Zoom, WaveFormPPS);
 		}
@@ -1103,35 +1157,32 @@ namespace StepManiaEditor
 
 			var x = GetFocalPointX() - (WaveFormTextureWidth >> 1);
 
-			// No antialiasing, just draw the waveform.
-			if (!p.AntiAlias)
+			// At this point WaveformRenderTargets[1] contains the recolored waveform.
+			// We now draw that to the backbuffer with an optional antialiasing pass.
+
+			if (p.AntiAlias)
 			{
-				SpriteBatch.Begin();
-				WaveFormRenderer.Draw(SpriteBatch, x, 0);
+				// Configure FXAA.
+				FxaaEffect.CurrentTechnique = FxaaEffect.Techniques["fxaa"];
+				FxaaEffect.Parameters["fxaaQualitySubpix"].SetValue(p.AntiAliasSubpix);
+				FxaaEffect.Parameters["fxaaQualityEdgeThreshold"].SetValue(p.AntiAliasEdgeThreshold);
+				FxaaEffect.Parameters["fxaaQualityEdgeThresholdMin"].SetValue(p.AntiAliasEdgeThresholdMin);
+				FxaaEffect.Parameters["inverseRenderTargetWidth"].SetValue(1.0f / WaveformRenderTargets[1].Width);
+				FxaaEffect.Parameters["inverseRenderTargetHeight"].SetValue(1.0f / WaveformRenderTargets[1].Height);
+				FxaaEffect.Parameters["renderTargetTexture"].SetValue(WaveformRenderTargets[1]);
+
+				// Draw the recolored waveform with antialiasing to the back buffer.
+				SpriteBatch.Begin(SpriteSortMode.Deferred, null, null, null, null, FxaaEffect);
+				SpriteBatch.Draw(WaveformRenderTargets[1], new Rectangle(x, 0, WaveformRenderTargets[1].Width, WaveformRenderTargets[1].Height), Color.White);
 				SpriteBatch.End();
-				return;
 			}
-
-			// Anti-aliasing. Render the waveform to a render target to run FXAA on.
-			GraphicsDevice.SetRenderTarget(WaveformRenderTarget);
-			SpriteBatch.Begin();
-			WaveFormRenderer.Draw(SpriteBatch, 0, 0);
-			SpriteBatch.End();
-			GraphicsDevice.SetRenderTarget(null);
-
-			// Configure FXAA.
-			FxaaEffect.CurrentTechnique = FxaaEffect.Techniques["fxaa"];
-			FxaaEffect.Parameters["fxaaQualitySubpix"].SetValue(p.AntiAliasSubpix);
-			FxaaEffect.Parameters["fxaaQualityEdgeThreshold"].SetValue(p.AntiAliasEdgeThreshold);
-			FxaaEffect.Parameters["fxaaQualityEdgeThresholdMin"].SetValue(p.AntiAliasEdgeThresholdMin);
-			FxaaEffect.Parameters["inverseRenderTargetWidth"].SetValue(1.0f / WaveformRenderTarget.Width);
-			FxaaEffect.Parameters["inverseRenderTargetHeight"].SetValue(1.0f / WaveformRenderTarget.Height);
-			FxaaEffect.Parameters["renderTargetTexture"].SetValue(WaveformRenderTarget);
-
-			// Draw the render target with FXAA.
-			SpriteBatch.Begin(SpriteSortMode.Deferred, null, null, null, null, FxaaEffect);
-			SpriteBatch.Draw((Texture2D)WaveformRenderTarget, new Rectangle(x, 0, WaveformRenderTarget.Width, WaveformRenderTarget.Height), Color.White);
-			SpriteBatch.End();
+			else
+			{
+				// Draw the recolored waveform to the back buffer.
+				SpriteBatch.Begin();
+				SpriteBatch.Draw(WaveformRenderTargets[1], new Rectangle(x, 0, WaveformRenderTargets[1].Width, WaveformRenderTargets[1].Height), Color.White);
+				SpriteBatch.End();
+			}
 		}
 
 		/// <summary>

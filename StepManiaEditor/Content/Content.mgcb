@@ -1046,3 +1046,9 @@
 /processorParam:TextureFormat=Color
 /build:snap-1-8.png
 
+#begin waveform-color.fx
+/importer:EffectImporter
+/processor:EffectProcessor
+/processorParam:DebugMode=Auto
+/build:waveform-color.fx
+

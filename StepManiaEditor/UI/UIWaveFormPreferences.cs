@@ -53,8 +53,12 @@ namespace StepManiaEditor
 					nameof(PreferencesWaveForm.WaveFormMaxXPercentagePerChannel),
 					0.0f, 1.0f, false, "Width scale of each channel in the waveform.");
 
-				ImGuiLayoutUtils.DrawRowColorEdit3(true, "Dense Color", p,
-					nameof(PreferencesWaveForm.WaveFormDenseColor), ImGuiColorEditFlags.NoAlpha, false,
+				ImGuiLayoutUtils.DrawRowColorEdit4(true, "Background Color", p,
+					nameof(PreferencesWaveForm.WaveFormBackgroundColor), ImGuiColorEditFlags.AlphaPreviewHalf | ImGuiColorEditFlags.AlphaBar, false,
+					"Color for the background of the waveform.");
+
+				ImGuiLayoutUtils.DrawRowColorEdit4(true, "Dense Color", p,
+					nameof(PreferencesWaveForm.WaveFormDenseColor), ImGuiColorEditFlags.AlphaPreviewHalf | ImGuiColorEditFlags.AlphaBar, false,
 					"Color for the dense area of the waveform." +
 					"\nFor each y pixel in the waveform, the dense area represents the total magnitude of" +
 					"\nof the wave's travel during the samples at that pixel.");
@@ -84,8 +88,8 @@ namespace StepManiaEditor
 					}
 					case SparseColorOption.UniqueColor:
 					{
-						ImGuiLayoutUtils.DrawRowColorEdit3(true, "Sparse Color", p,
-							nameof(PreferencesWaveForm.WaveFormSparseColor), ImGuiColorEditFlags.NoAlpha, false,
+						ImGuiLayoutUtils.DrawRowColorEdit4(true, "Sparse Color", p,
+							nameof(PreferencesWaveForm.WaveFormSparseColor), ImGuiColorEditFlags.AlphaPreviewHalf | ImGuiColorEditFlags.AlphaBar, false,
 							"Color for the sparse area of the waveform." +
 							"\nFor each y pixel in the waveform, the sparse area represents the range of all" +
 							"\nsamples at that pixel.");

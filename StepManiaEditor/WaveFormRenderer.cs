@@ -181,16 +181,11 @@ namespace StepManiaEditor
 		/// <summary>
 		/// Set the dense and sparse colors of the waveform.
 		/// </summary>
-		/// <param name="dr">Dense red value as a float between 0.0f and 1.0f.</param>
-		/// <param name="dg">Dense green value as a float between 0.0f and 1.0f.</param>
-		/// <param name="db">Dense blue value as a float between 0.0f and 1.0f.</param>
-		/// <param name="sr">Sparse red value as a float between 0.0f and 1.0f.</param>
-		/// <param name="sg">Sparse green value as a float between 0.0f and 1.0f.</param>
-		/// <param name="sb">Sparse blue value as a float between 0.0f and 1.0f.</param>
-		public void SetColors(float dr, float dg, float db, float sr, float sg, float sb)
+		/// <param name="colorDense">Dense color in BGR565 format.</param>
+		/// <param name="colorSparse">Sparse color in BGR565 format.</param>
+		public void SetColors(ushort colorDense, ushort colorSparse)
 		{
 			var diff = false;
-			var colorDense = Utils.ToBGR565(dr, dg, db);
 			if (colorDense != ColorDense)
 			{
 				ColorDense = colorDense;
@@ -201,7 +196,6 @@ namespace StepManiaEditor
 				diff = true;
 			}
 
-			var colorSparse = Utils.ToBGR565(sr, sg, sb);
 			if (colorSparse != ColorSparse)
 			{
 				ColorSparse = colorSparse;

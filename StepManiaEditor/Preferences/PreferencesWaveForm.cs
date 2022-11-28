@@ -13,12 +13,13 @@ namespace StepManiaEditor
 		public const bool DefaultWaveFormScaleXWhenZooming = false;
 		public const UIWaveFormPreferences.SparseColorOption DefaultWaveFormSparseColorOption = UIWaveFormPreferences.SparseColorOption.DarkerDenseColor;
 		public const float DefaultWaveFormSparseColorScale = 0.8f;
-		public static readonly Vector3 DefaultWaveFormDenseColor = new Vector3(0.0f, 0.389f, 0.183f);
-		public static readonly Vector3 DefaultWaveFormSparseColor = new Vector3(0.0f, 0.350f, 0.164f);
+		public static readonly Vector4 DefaultWaveFormDenseColor = new Vector4(0.0f, 0.389f, 0.183f, 0.8f);
+		public static readonly Vector4 DefaultWaveFormSparseColor = new Vector4(0.0f, 0.350f, 0.164f, 0.8f);
+		public static readonly Vector4 DefaultWaveFormBackgroundColor = new Vector4(0.0f, 0.0f, 0.0f, 0.8f);
 		public const float DefaultWaveFormMaxXPercentagePerChannel = 0.9f;
 		public const int DefaultWaveFormLoadingMaxParallelism = 8;
 		public const float DefaultDenseScale = 6.0f;
-		public const bool DefaultAntiAlias = false;
+		public const bool DefaultAntiAlias = true;
 		public const float DefaultAntiAliasSubpix = 0.2f;
 		public const float DefaultAntiAliasEdgeThreshold = 0.166f;
 		public const float DefaultAntiAliasEdgeThresholdMin = 0.0833f;
@@ -29,8 +30,9 @@ namespace StepManiaEditor
 		[JsonInclude] public bool WaveFormScaleXWhenZooming = DefaultWaveFormScaleXWhenZooming;
 		[JsonInclude] public UIWaveFormPreferences.SparseColorOption WaveFormSparseColorOption = DefaultWaveFormSparseColorOption;
 		[JsonInclude] public float WaveFormSparseColorScale = DefaultWaveFormSparseColorScale;
-		[JsonInclude] public Vector3 WaveFormDenseColor = DefaultWaveFormDenseColor;
-		[JsonInclude] public Vector3 WaveFormSparseColor = DefaultWaveFormSparseColor;
+		[JsonInclude] public Vector4 WaveFormDenseColor = DefaultWaveFormDenseColor;
+		[JsonInclude] public Vector4 WaveFormSparseColor = DefaultWaveFormSparseColor;
+		[JsonInclude] public Vector4 WaveFormBackgroundColor = DefaultWaveFormBackgroundColor;
 		[JsonInclude] public float WaveFormMaxXPercentagePerChannel = DefaultWaveFormMaxXPercentagePerChannel;
 		[JsonInclude] public int WaveFormLoadingMaxParallelism = DefaultWaveFormLoadingMaxParallelism;
 		[JsonInclude] public float DenseScale = DefaultDenseScale;
@@ -47,7 +49,8 @@ namespace StepManiaEditor
 			       && WaveFormSparseColorScale.FloatEquals(DefaultWaveFormSparseColorScale)
 			       && WaveFormDenseColor.Equals(DefaultWaveFormDenseColor)
 			       && WaveFormSparseColor.Equals(DefaultWaveFormSparseColor)
-			       && WaveFormMaxXPercentagePerChannel.FloatEquals(DefaultWaveFormMaxXPercentagePerChannel)
+				   && WaveFormBackgroundColor.Equals(DefaultWaveFormBackgroundColor)
+				   && WaveFormMaxXPercentagePerChannel.FloatEquals(DefaultWaveFormMaxXPercentagePerChannel)
 			       && WaveFormLoadingMaxParallelism == DefaultWaveFormLoadingMaxParallelism
 			       && DenseScale.FloatEquals(DefaultDenseScale)
 				   && AntiAlias == DefaultAntiAlias
@@ -74,8 +77,9 @@ namespace StepManiaEditor
 		private readonly bool PreviousWaveFormScaleXWhenZooming;
 		private readonly UIWaveFormPreferences.SparseColorOption PreviousWaveFormSparseColorOption;
 		private readonly float PreviousWaveFormSparseColorScale;
-		private readonly Vector3 PreviousWaveFormDenseColor;
-		private readonly Vector3 PreviousWaveFormSparseColor;
+		private readonly Vector4 PreviousWaveFormDenseColor;
+		private readonly Vector4 PreviousWaveFormSparseColor;
+		private readonly Vector4 PreviousWaveFormBackgroundColor;
 		private readonly float PreviousWaveFormMaxXPercentagePerChannel;
 		private readonly int PreviousWaveFormLoadingMaxParallelism;
 		private readonly float PreviousDenseScale;
@@ -93,6 +97,7 @@ namespace StepManiaEditor
 			PreviousWaveFormSparseColorScale = p.WaveFormSparseColorScale;
 			PreviousWaveFormDenseColor = p.WaveFormDenseColor;
 			PreviousWaveFormSparseColor = p.WaveFormSparseColor;
+			PreviousWaveFormBackgroundColor = p.WaveFormBackgroundColor;
 			PreviousWaveFormMaxXPercentagePerChannel = p.WaveFormMaxXPercentagePerChannel;
 			PreviousWaveFormLoadingMaxParallelism = p.WaveFormLoadingMaxParallelism;
 			PreviousDenseScale = p.DenseScale;
@@ -121,6 +126,7 @@ namespace StepManiaEditor
 			p.WaveFormSparseColorScale = PreferencesWaveForm.DefaultWaveFormSparseColorScale;
 			p.WaveFormDenseColor = PreferencesWaveForm.DefaultWaveFormDenseColor;
 			p.WaveFormSparseColor = PreferencesWaveForm.DefaultWaveFormSparseColor;
+			p.WaveFormBackgroundColor = PreferencesWaveForm.DefaultWaveFormBackgroundColor;
 			p.WaveFormMaxXPercentagePerChannel = PreferencesWaveForm.DefaultWaveFormMaxXPercentagePerChannel;
 			p.WaveFormLoadingMaxParallelism = PreferencesWaveForm.DefaultWaveFormLoadingMaxParallelism;
 			p.DenseScale = PreferencesWaveForm.DefaultDenseScale;
@@ -139,6 +145,7 @@ namespace StepManiaEditor
 			p.WaveFormSparseColorScale = PreviousWaveFormSparseColorScale;
 			p.WaveFormDenseColor = PreviousWaveFormDenseColor;
 			p.WaveFormSparseColor = PreviousWaveFormSparseColor;
+			p.WaveFormBackgroundColor = PreviousWaveFormBackgroundColor;
 			p.WaveFormMaxXPercentagePerChannel = PreviousWaveFormMaxXPercentagePerChannel;
 			p.WaveFormLoadingMaxParallelism = PreviousWaveFormLoadingMaxParallelism;
 			p.DenseScale = PreviousDenseScale;
