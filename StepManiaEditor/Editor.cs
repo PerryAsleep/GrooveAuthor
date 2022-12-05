@@ -30,30 +30,13 @@ namespace StepManiaEditor
 	public class Editor : Game
 	{
 		/// <summary>
-		/// How to control the position of the Chart when scrolling.
-		/// </summary>
-		public enum ScrollMode
-		{
-			/// <summary>
-			/// Scrolling moves time.
-			/// This is the mode used playing the song.
-			/// </summary>
-			Time,
-
-			/// <summary>
-			/// Scrolling moves rows.
-			/// </summary>
-			Row,
-		}
-
-		/// <summary>
 		/// How to space Chart Events when rendering.
 		/// </summary>
 		public enum SpacingMode
 		{
 			/// <summary>
 			/// Spacing between notes is based on time.
-			/// Using a Time ScrollMode with a ConstantTime SpacingMode is effectively a CMOD.
+			/// When playing, this is effectively a CMOD.
 			/// </summary>
 			ConstantTime,
 
@@ -64,7 +47,7 @@ namespace StepManiaEditor
 
 			/// <summary>
 			/// Spacing between nodes varies based on rate altering Events in the Chart.
-			/// Using TimeBased ScrollMode with a Variable SpacingMode is effectively an XMOD.
+			/// When playing, this is effectively an XMOD.
 			/// </summary>
 			Variable,
 		}
@@ -171,6 +154,7 @@ namespace StepManiaEditor
 
 		private List<EditorEvent> VisibleEvents = new List<EditorEvent>();
 		private List<EditorMarkerEvent> VisibleMarkers = new List<EditorMarkerEvent>();
+		private List<IRegion> VisibleRegions = new List<IRegion>();
 		private Receptor[] Receptors = null;
 
 		private EditorEvent[] NextAutoPlayNotes = null;
@@ -413,7 +397,7 @@ namespace StepManiaEditor
 
 			p.PreferencesReceptors.ClampViewportPositions();
 
-			EditorHoldEndNoteEvent.SetScreenHeight(MaxScreenHeight);
+			EditorEvent.SetScreenHeight(MaxScreenHeight);
 
 			WaveFormRenderer = new WaveFormRenderer(GraphicsDevice, WaveFormTextureWidth, MaxScreenHeight);
 			WaveFormRenderer.SetColors(WaveFormColorDense, WaveFormColorSparse);
@@ -479,6 +463,13 @@ namespace StepManiaEditor
 				textureData[i] = 0xFF7F7F7F;
 			beatMarkerTexture.SetData(textureData);
 			TextureAtlas.AddTexture(TextureIdBeatMarker, beatMarkerTexture, true);
+
+			// Generate and add generic region rect texture.
+			var regionRectTexture = new Texture2D(GraphicsDevice, 1, 1);
+			textureData = new uint[1];
+			textureData[0] = 0xFFFFFFFF;
+			regionRectTexture.SetData(textureData);
+			TextureAtlas.AddTexture(TextureIdRegionRect, regionRectTexture, true);
 
 			InitPadDataAndStepGraphsAsync();
 
@@ -969,6 +960,8 @@ namespace StepManiaEditor
 			}
 		}
 
+		#region Drawing
+
 		protected override void Draw(GameTime gameTime)
 		{
 			var stopWatch = new Stopwatch();
@@ -988,6 +981,8 @@ namespace StepManiaEditor
 			DrawMiniMap();
 			if (RenderChart)
 			{
+				DrawMeasureMarkers();
+				DrawRegions();
 				DrawReceptors();
 				DrawSnapIndicators();
 				DrawChartEvents();
@@ -1185,8 +1180,380 @@ namespace StepManiaEditor
 			}
 		}
 
+		private void DrawMeasureMarkers()
+		{
+			foreach (var visibleMarker in VisibleMarkers)
+			{
+				visibleMarker.Draw(TextureAtlas, SpriteBatch, MonogameFont_MPlus1Code_Medium);
+			}
+		}
+
+		private void DrawRegions()
+		{
+			foreach (var visibleRegion in VisibleRegions)
+			{
+				visibleRegion.DrawRegion(TextureAtlas, SpriteBatch, GetViewportHeight());
+			}
+		}
+
+		private void DrawChartEvents()
+		{
+			var eventsBeingEdited = new List<EditorEvent>();
+
+			foreach (var visibleEvent in VisibleEvents)
+			{
+				// Capture events being edited to draw after all events not being edited.
+				if (visibleEvent.IsBeingEdited())
+				{
+					eventsBeingEdited.Add(visibleEvent);
+					continue;
+				}
+
+				if (Playing)
+				{
+					// Skip events entirely above the receptors.
+					if (Preferences.Instance.PreferencesReceptors.AutoPlayHideArrows
+						&& visibleEvent.GetChartTime() < Position.ChartTime
+						&& (visibleEvent is EditorTapNoteEvent
+							|| visibleEvent is EditorHoldStartNoteEvent
+							|| visibleEvent is EditorHoldEndNoteEvent))
+						continue;
+
+					// Cut off hold end notes which intersect the receptors.
+					if (visibleEvent is EditorHoldEndNoteEvent hen)
+					{
+						if (Playing && hen.GetChartTime() > Position.ChartTime
+									&& hen.GetHoldStartNote().GetChartTime() < Position.ChartTime)
+						{
+							hen.SetNextDrawActive(true, GetFocalPointY());
+						}
+					}
+				}
+
+				// Draw the event.
+				visibleEvent.Draw(TextureAtlas, SpriteBatch, ArrowGraphicManager);
+			}
+
+			// Draw events being edited.
+			foreach (var visibleEvent in eventsBeingEdited)
+			{
+				visibleEvent.Draw(TextureAtlas, SpriteBatch, ArrowGraphicManager);
+			}
+		}
+
+		#endregion Drawing
+
+		#region Chart Update
+
 		/// <summary>
-		/// Given a RedBlackTree and a value, find the greatest preceding value.
+		/// Sets VisibleEvents, VisibleMarkers, and VisibleRegions to lists of all the currently visible
+		/// objects based on the current EditorPosition and the SpacingMode.
+		/// </summary>
+		/// <remarks>
+		/// Sets the WaveFormPPS.
+		/// </remarks>
+		private void UpdateChartEvents()
+		{
+			// TODO: Crash when switching songs from doubles to singles.
+
+			VisibleEvents.Clear();
+			VisibleMarkers.Clear();
+			VisibleRegions.Clear();
+
+			if (ActiveChart == null || ActiveChart.EditorEvents == null || ArrowGraphicManager == null)
+				return;
+
+			List<EditorEvent> holdBodyEvents = new List<EditorEvent>();
+			List<EditorEvent> noteEvents = new List<EditorEvent>();
+
+			var screenHeight = GetViewportHeight();
+			var focalPointX = GetFocalPointX();
+			var focalPointY = GetFocalPointY();
+			var numArrows = ActiveChart.NumInputs;
+
+			// Objects are spaced one to one with the zoom level.
+			var spacingZoom = Zoom;
+
+			// The sizing of objects only shrinks.
+			// When zooming in we only zoom the spacing, not the scale of objects.
+			var sizeZoom = Zoom;
+			if (sizeZoom > 1.0)
+				sizeZoom = 1.0;
+
+			// Determine graphic dimensions based on the zoom level.
+			var (arrowTexture, _) = ArrowGraphicManager.GetArrowTexture(0, 0);
+			double arrowW, arrowH;
+			(arrowW, arrowH) = TextureAtlas.GetDimensions(arrowTexture);
+			arrowW *= sizeZoom;
+			arrowH *= sizeZoom;
+			var (holdCapTexture, _) = ArrowGraphicManager.GetHoldEndTexture(0, 0, false);
+			var (_, holdCapTextureHeight) = TextureAtlas.GetDimensions(holdCapTexture);
+			var holdCapHeight = holdCapTextureHeight * sizeZoom;
+
+			// Determine the starting x and y position in screen space.
+			// Y extended slightly above the top of the screen so that we start drawing arrows
+			// before their midpoints.
+			var startPosX = focalPointX - (numArrows * arrowW * 0.5);
+			var startPosY = 0.0 - Math.Max(holdCapHeight, arrowH * 0.5);
+
+			// Set up the MiscEventWidgetLayoutManager.
+			var miscEventAlpha = (float)Interpolation.Lerp(1.0, 0.0, MiscEventScaleToStartingFading, MiscEventMinScale, sizeZoom);
+			const int widgetStartPadding = 10;
+			const int widgetMeasureNumberFudge = 10;
+			var lMiscWidgetPos = startPosX
+								 - widgetStartPadding
+			                     + EditorMarkerEvent.GetNumberRelativeAnchorPos(sizeZoom)
+			                     - EditorMarkerEvent.GetNumberAlpha(sizeZoom) * widgetMeasureNumberFudge;
+			var rMiscWidgetPos = focalPointX
+			                     + (numArrows * arrowW * 0.5) + widgetStartPadding;
+			MiscEventWidgetLayoutManager.BeginFrame(lMiscWidgetPos, rMiscWidgetPos);
+
+			// TODO: Fix Negative Scrolls resulting in cutting off notes prematurely.
+			// If a chart has negative scrolls then we technically need to render notes which come before
+			// the chart position at the top of the screen.
+			// More likely the most visible problem will be at the bottom of the screen where if we
+			// were to detect the first note which falls below the bottom it would prevent us from
+			// finding the next set of notes which might need to be rendered because they appear 
+			// above.
+
+			// Get the current time and position.
+			var time = Position.ChartTime;
+			double chartPosition = 0.0;
+			if (!ActiveChart.TryGetChartPositionFromTime(time, ref chartPosition))
+				return;
+
+			// Find the interpolated scroll rate to use as a multiplier.
+			// The interpolated scroll rate to use is the value at the current exact time.
+			var interpolatedScrollRate = GetInterpolatedScrollRate(time, chartPosition);
+
+			// Now, scroll up to the top of the screen so we can start processing events going downwards.
+			// We know what time / pos we are drawing at the receptors, but not the rate to get to that time from the top
+			// of the screen.
+			// We need to find the greatest preceding rate event, and continue until it is beyond the start of the screen.
+			// Then we need to find the greatest preceding notes by scanning upwards.
+			// Once we find that note, we start iterating downwards while also keeping track of the rate events along the way.
+
+			var rateEnumerator = FindBest(ActiveChart.RateAlteringEventsByRow, (int)chartPosition);
+			if (rateEnumerator == null)
+				return;
+
+			// Scan upwards to find the earliest rate altering event that should be used to start rendering.
+			var previousRateEventY = (double)focalPointY;
+			var previousRateEventRow = chartPosition;
+			var previousRateEventTime = time;
+			var pps = 1.0;
+			var ppr = 1.0;
+			EditorRateAlteringEvent rateEvent = null;
+			while (previousRateEventY >= startPosY && rateEnumerator.MovePrev())
+			{
+				// On the rate altering event which is active for the current chart position,
+				// Record the pixels per second to use for the WaveForm.
+				if (rateEvent == null)
+					SetWaveFormPps(rateEnumerator.Current, interpolatedScrollRate);
+
+				rateEvent = rateEnumerator.Current;
+				(pps, ppr) = GetPpsAndPpr(rateEvent, interpolatedScrollRate, spacingZoom);
+				
+				switch (Preferences.Instance.PreferencesScroll.SpacingMode)
+				{
+					case SpacingMode.ConstantTime:
+					default:
+						previousRateEventY = previousRateEventY - (previousRateEventTime - rateEvent.ChartTime) * pps;
+						break;
+					case SpacingMode.Variable:
+					case SpacingMode.ConstantRow:
+						previousRateEventY = previousRateEventY - (previousRateEventRow - rateEvent.Row) * ppr;
+						break;
+				}
+
+				previousRateEventRow = rateEvent.Row;
+				previousRateEventTime = rateEvent.ChartTime;
+			}
+
+			// Now we know the position of first rate altering event to use.
+			// We can now determine the chart time and position at the top of the screen.
+			double chartPositionAtTopOfScreen = 0.0, chartTimeAtTopOfScreen = 0.0;
+			switch (Preferences.Instance.PreferencesScroll.SpacingMode)
+			{
+				case SpacingMode.ConstantTime:
+				default:
+					chartTimeAtTopOfScreen = rateEvent.ChartTime + (startPosY - previousRateEventY) / pps;
+					ActiveChart.TryGetChartPositionFromTime(chartTimeAtTopOfScreen, ref chartPositionAtTopOfScreen);
+					break;
+				case SpacingMode.Variable:
+				case SpacingMode.ConstantRow:
+					chartPositionAtTopOfScreen = rateEvent.Row + (startPosY - previousRateEventY) / ppr;
+					ActiveChart.TryGetTimeFromChartPosition(chartPositionAtTopOfScreen, ref chartTimeAtTopOfScreen);
+					break;
+			}
+
+			var beatMarkerRow = (int)chartPositionAtTopOfScreen;
+			var beatMarkerLastRecordedRow = -1;
+
+			// Now that we know the position at the start of the screen we can find the first event to start rendering.
+			var enumerator = FindBest(ActiveChart.EditorEvents, (int)chartPositionAtTopOfScreen);
+			if (enumerator == null)
+				return;
+
+			// Scan backwards until we have checked every lane for a long note which may
+			// be extending through the given start row. We cannot add the end events yet because
+			// we do not know at what position they will end until we scan down.
+			var holdEndNotesNeedingToBeAdded = new EditorHoldEndNoteEvent[ActiveChart.NumInputs];
+			var holdStartNotes = ScanBackwardsForHolds(enumerator, chartPositionAtTopOfScreen);
+			foreach (var hsn in holdStartNotes)
+			{
+				// This is technically incorrect.
+				// We are using the rate altering event active at the screen, but there could be more
+				// rate altering events between the top of the screen and the start of the hold.
+				hsn.SetDimensions(
+					startPosX + hsn.GetLane() * arrowW,
+					GetY(hsn, pps, ppr, previousRateEventY, rateEvent) - (arrowH * 0.5),
+					arrowW,
+					arrowH,
+					sizeZoom);
+				noteEvents.Add(hsn);
+
+				holdEndNotesNeedingToBeAdded[hsn.GetLane()] = hsn.GetHoldEndNote();
+			}
+
+			// Regions which start before the top of the screen.
+			var regionsNeedingToBeAdded = new List<IRegion>();
+			var regions = ScanBackwardsForRegions(chartPositionAtTopOfScreen, chartTimeAtTopOfScreen);
+			foreach (var region in regions)
+				AddRegion(region, ref regionsNeedingToBeAdded, pps, ppr, previousRateEventY, rateEvent, startPosX, numArrows * arrowW);
+
+			var hasNextRateEvent = rateEnumerator.MoveNext();
+			EditorRateAlteringEvent nextRateEvent = hasNextRateEvent ? rateEnumerator.Current : null;
+
+			// Check to see if any regions needing to be added will complete before the next rate altering event.
+			CheckForCompletingRegions(ref regionsNeedingToBeAdded, pps, ppr, previousRateEventY, rateEvent, nextRateEvent);
+
+			// Now we can scan forward
+			while (enumerator.MoveNext())
+			{
+				var e = enumerator.Current;
+
+				// Check to see if we have crossed into a new rate altering event section
+				if (nextRateEvent != null && e.GetEvent() == nextRateEvent.GetEvent())
+				{
+					// Add a misc widget for this rate event.
+					var rateEventY = GetY(e, pps, ppr, previousRateEventY, rateEvent);
+					nextRateEvent.SetAlpha(miscEventAlpha);
+					MiscEventWidgetLayoutManager.PositionEvent(nextRateEvent, rateEventY);
+					noteEvents.Add(nextRateEvent);
+
+					// Add a region for this event if appropriate.
+					if (nextRateEvent is IRegion region)
+						AddRegion(region, ref regionsNeedingToBeAdded, pps, ppr, previousRateEventY, rateEvent, startPosX, numArrows * arrowW);
+
+					// Update beat markers for the section for the previous rate event.
+					UpdateBeatMarkers(rateEvent, ref beatMarkerRow, ref beatMarkerLastRecordedRow, nextRateEvent, startPosX, sizeZoom, pps, ppr, previousRateEventY);
+
+					// Update rate parameters.
+					rateEvent = nextRateEvent;
+					(pps, ppr) = GetPpsAndPpr(rateEvent, interpolatedScrollRate, spacingZoom);
+					previousRateEventY = rateEventY;
+
+					// Advance next rate altering event.
+					hasNextRateEvent = rateEnumerator.MoveNext();
+					nextRateEvent = hasNextRateEvent ? rateEnumerator.Current : null;
+
+					// Check to see if any regions needing to be added will complete before the next rate altering event.
+					CheckForCompletingRegions(ref regionsNeedingToBeAdded, pps, ppr, previousRateEventY, rateEvent, nextRateEvent);
+					continue;
+				}
+
+				// Determine y position.
+				var y = GetY(e, pps, ppr, previousRateEventY, rateEvent);
+				var arrowY = y - (arrowH * 0.5);
+				if (arrowY > screenHeight)
+					break;
+
+				// Record note.
+				if (e is EditorTapNoteEvent
+					|| e is EditorHoldStartNoteEvent
+					|| e is EditorHoldEndNoteEvent
+					|| e is EditorMineNoteEvent)
+				{
+					var noteY = arrowY;
+					var noteH = arrowH;
+
+					if (e is EditorHoldEndNoteEvent hen)
+					{
+						var start = hen.GetHoldStartNote();
+						var endY = y + holdCapHeight;
+
+						noteY = start.GetY() + arrowH * 0.5f;
+						noteH = endY - (start.GetY() + (arrowH * 0.5f));
+
+						holdBodyEvents.Add(e);
+
+						// Remove from holdEndNotesNeedingToBeAdded.
+						holdEndNotesNeedingToBeAdded[e.GetLane()] = null;
+					}
+					else if (e is EditorHoldStartNoteEvent hsn)
+					{
+						// Record that there is in an in-progress hold that will need to be ended.
+						holdEndNotesNeedingToBeAdded[e.GetLane()] = hsn.GetHoldEndNote();
+						noteEvents.Add(e);
+					}
+					else
+					{
+						noteEvents.Add(e);
+					}
+
+					e.SetDimensions(startPosX + e.GetLane() * arrowW, noteY, arrowW, noteH, sizeZoom);
+				}
+				else
+				{
+					e.SetAlpha(miscEventAlpha);
+					MiscEventWidgetLayoutManager.PositionEvent(e, y);
+					noteEvents.Add(e);
+
+					// Add a region for this even if appropriate.
+					if (e is IRegion region)
+						AddRegion(region, ref regionsNeedingToBeAdded, pps, ppr, previousRateEventY, rateEvent, startPosX, numArrows * arrowW);
+				}
+
+				if (noteEvents.Count + holdBodyEvents.Count > MaxEventsToDraw)
+					break;
+			}
+
+			// Now we need to wrap up any holds which started before the top of the screen and still are not yet complete.
+			// We do not need to scan forward for more rate events.
+			foreach (var holdEndNote in holdEndNotesNeedingToBeAdded)
+			{
+				if (holdEndNote == null)
+					continue;
+
+				var start = holdEndNote.GetHoldStartNote();
+				var endY = GetY(holdEndNote, pps, ppr, previousRateEventY, rateEvent) + holdCapHeight;
+				var noteH = endY - (start.GetY() + (arrowH * 0.5f));
+
+				holdEndNote.SetDimensions(
+					startPosX + holdEndNote.GetLane() * arrowW,
+					start.GetY() + arrowH * 0.5,
+					arrowW,
+					noteH,
+					sizeZoom);
+
+				holdBodyEvents.Add(holdEndNote);
+			}
+
+			// We also need to update beat markers beyond the final note.
+			UpdateBeatMarkers(rateEvent, ref beatMarkerRow, ref beatMarkerLastRecordedRow, nextRateEvent, startPosX, sizeZoom, pps, ppr, previousRateEventY);
+
+			// We also need to complete regions which end beyond the bounds of the screen.
+			// We do not need to scan forward for more rate mods.
+			CheckForCompletingRegions(ref regionsNeedingToBeAdded, pps, ppr, previousRateEventY, rateEvent, null);
+
+			// Store the notes and holds so we can render them.
+			VisibleEvents.AddRange(holdBodyEvents);
+			VisibleEvents.AddRange(noteEvents);
+		}
+
+		/// <summary>
+		/// Given a RedBlackTree<EditorEvent> and a value, find the greatest preceding value.
 		/// If no value precedes the given value, instead find the least value that follows or is
 		/// equal to the given value.
 		/// </summary>
@@ -1195,6 +1562,7 @@ namespace StepManiaEditor
 		/// start enumerator over for rendering.
 		/// </remarks>
 		/// <param name="tree">RedBlackTree to search.</param>
+		/// <remarks>Helper for UpdateChartEvents.</remarks>
 		/// <returns>Enumerator to best value or null if a value could not be found.</returns>
 		private RedBlackTree<EditorEvent>.Enumerator FindBest(RedBlackTree<EditorEvent> tree, int row)
 		{
@@ -1211,6 +1579,18 @@ namespace StepManiaEditor
 			return enumerator;
 		}
 
+		/// <summary>
+		/// Given a RedBlackTree<EditorRateAlteringEvent> and a value, find the greatest preceding value.
+		/// If no value precedes the given value, instead find the least value that follows or is
+		/// equal to the given value.
+		/// </summary>
+		/// <remarks>
+		/// This is a common pattern when knowing a position or a time and wanting to find the first event to
+		/// start enumerator over for rendering.
+		/// </remarks>
+		/// <param name="tree">RedBlackTree to search.</param>
+		/// <remarks>Helper for UpdateChartEvents.</remarks>
+		/// <returns>Enumerator to best value or null if a value could not be found.</returns>
 		private RedBlackTree<EditorRateAlteringEvent>.Enumerator FindBest(RedBlackTree<EditorRateAlteringEvent> tree, int row)
 		{
 			var pos = new EditorDummyRateAlteringEvent(ActiveChart, null)
@@ -1224,340 +1604,140 @@ namespace StepManiaEditor
 		}
 
 		/// <summary>
-		/// Sets VisibleEvents and VisibleMarkers to lists of all the currently visible objects
-		/// based on the current time or position and the SpacingMode.
+		/// Sets the pixels per second to use on the WaveFormRenderer.
 		/// </summary>
-		/// <remarks>
-		/// Sets the WaveFormPPS.
-		/// </remarks>
-		private void UpdateChartEvents()
+		/// <param name="rateEvent">Current rate altering event.</param>
+		/// <param name="interpolatedScrollRate">Current interpolated scroll rate.</param>
+		/// <remarks>Helper for UpdateChartEvents.</remarks>
+		void SetWaveFormPps(EditorRateAlteringEvent rateEvent, double interpolatedScrollRate)
 		{
-			// TODO: Cleanup
-			// TODO: Crash when switching songs from doubles to singles.
-
-			VisibleEvents.Clear();
-			VisibleMarkers.Clear();
-
-			if (ActiveChart == null || ActiveChart.EditorEvents == null || ArrowGraphicManager == null)
-				return;
-
 			var pScroll = Preferences.Instance.PreferencesScroll;
-
-			List<EditorEvent> holdBodyEvents = new List<EditorEvent>();
-			List<EditorEvent> noteEvents = new List<EditorEvent>();
-
-			var screenHeight = GetViewportHeight();
-
-			var spacingZoom = Zoom;
-			var sizeZoom = Zoom;
-			if (sizeZoom > 1.0)
-				sizeZoom = 1.0;
-			var (arrowTexture, _) = ArrowGraphicManager.GetArrowTexture(0, 0);
-			double arrowW, arrowH;
-			(arrowW, arrowH) = TextureAtlas.GetDimensions(arrowTexture);
-			arrowW *= sizeZoom;
-			arrowH *= sizeZoom;
-			var (holdCapTexture, _) = ArrowGraphicManager.GetHoldEndTexture(0, 0, false);
-			var (_, holdCapTextureHeight) = TextureAtlas.GetDimensions(holdCapTexture);
-			var holdCapHeight = holdCapTextureHeight * sizeZoom;
-			var focalPointX = GetFocalPointX();
-			var focalPointY = GetFocalPointY();
-
-			var numArrows = ActiveChart.NumInputs;
-			var xStart = focalPointX - (numArrows * arrowW * 0.5);
-
-			// Set up the MiscEventWidgetLayoutManager
-			var miscEventAlpha = (float)Interpolation.Lerp(1.0, 0.0, MiscEventScaleToStartingFading, MiscEventMinScale, sizeZoom);
-			const int widgetStartPadding = 10;
-			const int widgetMeasureNumberFudge = 10;
-			var lMiscWidgetPos = xStart
-			                     - widgetStartPadding
-			                     + EditorMarkerEvent.GetNumberRelativeAnchorPos(sizeZoom)
-			                     - EditorMarkerEvent.GetNumberAlpha(sizeZoom) * widgetMeasureNumberFudge;
-			var rMiscWidgetPos = focalPointX
-			                     + (numArrows * arrowW * 0.5) + widgetStartPadding;
-			MiscEventWidgetLayoutManager.BeginFrame(lMiscWidgetPos, rMiscWidgetPos);
-
-			// TODO: Common(?) code for determining song time by chart position or vice versa based on scroll mode
-
 			switch (pScroll.SpacingMode)
 			{
 				case SpacingMode.ConstantTime:
-				{
 					WaveFormPPS = pScroll.TimeBasedPixelsPerSecond;
-
-					var pps = pScroll.TimeBasedPixelsPerSecond * spacingZoom;
-					var time = Position.ChartTime;
-					var timeAtTopOfScreen = time - (focalPointY / pps);
-					double chartPosition = 0.0;
-					if (!ActiveChart.TryGetChartPositionFromTime(timeAtTopOfScreen, ref chartPosition))
-						return;
-
-					// Beat markers.
-					if (sizeZoom >= MeasureMarkerMinScale)
-					{
-						// Find the first rate altering event to use.
-						var rateEnumerator = FindBest(ActiveChart.RateAlteringEventsByRow, (int)chartPosition);
-						if (rateEnumerator == null)
-							return;
-						rateEnumerator.MoveNext();
-
-						// Record the current and next rate altering event.
-						var currentRateEvent = rateEnumerator.Current;
-						EditorRateAlteringEvent nextRateEvent = null;
-						if (rateEnumerator.MoveNext())
-							nextRateEvent = rateEnumerator.Current;
-						var currentRow = (int)chartPosition;
-						var lastRecordedRow = -1;
-
-						// Update beat markers for every rate section until we have hit the bottom of the screen.
-						while (!UpdateBeatMarkers(
-							       currentRateEvent,
-							       ref currentRow,
-							       ref lastRecordedRow,
-							       nextRateEvent,
-							       xStart,
-							       sizeZoom,
-							       pps,
-							       timeAtTopOfScreen))
-						{
-							currentRateEvent = rateEnumerator.Current;
-							nextRateEvent = null;
-							if (rateEnumerator.MoveNext())
-								nextRateEvent = rateEnumerator.Current;
-						}
-					}
-
-					var enumerator = FindBest(ActiveChart.EditorEvents, (int)chartPosition);
-					if (enumerator == null)
-						return;
-
-					// Scan backwards until we have checked every lane for a long note which may
-					// be extending through the given start row.
-					var holdStartNotes = ScanBackwardsForHolds(enumerator, chartPosition);
-					foreach (var hsn in holdStartNotes)
-					{
-						var startY = (ToSeconds(hsn.GetEvent().TimeMicros) - timeAtTopOfScreen) * pps;
-
-						hsn.SetDimensions(
-							xStart + hsn.GetLane() * arrowW,
-							startY - (arrowH * 0.5),
-							arrowW,
-							arrowH,
-							sizeZoom);
-						noteEvents.Add(hsn);
-
-						var end = hsn.GetHoldEndNote();
-						end.SetDimensions(
-							xStart + end.GetLane() * arrowW,
-							(ToSeconds(hsn.GetEvent().TimeMicros) - timeAtTopOfScreen) * pps,
-							arrowW,
-							((ToSeconds(end.GetEvent().TimeMicros) - timeAtTopOfScreen) * pps) - startY + holdCapHeight,
-							sizeZoom);
-						holdBodyEvents.Add(end);
-					}
-
-					// Scan forward and add notes.
-					while (enumerator.MoveNext())
-					{
-						var e = enumerator.Current;
-						var y = (ToSeconds(e.GetEvent().TimeMicros) - timeAtTopOfScreen) * pps;
-						var arrowY = y - (arrowH * 0.5);
-
-						if (arrowY > screenHeight)
-							break;
-
-						if (e is EditorHoldEndNoteEvent)
-							continue;
-
-						if (e is EditorTapNoteEvent
-						    || e is EditorMineNoteEvent
-						    || e is EditorHoldStartNoteEvent)
-						{
-							e.SetDimensions(xStart + e.GetLane() * arrowW, arrowY, arrowW, arrowH, sizeZoom);
-
-							if (e is EditorHoldStartNoteEvent hsn)
-							{
-								var endY = (ToSeconds(e.GetEvent().TimeMicros) - timeAtTopOfScreen) * pps;
-								var end = hsn.GetHoldEndNote();
-								holdBodyEvents.Add(end);
-								end.SetDimensions(
-									xStart + end.GetLane() * arrowW,
-									endY,
-									arrowW,
-									((ToSeconds(end.GetEvent().TimeMicros) - timeAtTopOfScreen) * pps) - endY + holdCapHeight,
-									sizeZoom);
-							}
-						}
-						else
-						{
-							e.SetAlpha(miscEventAlpha);
-							MiscEventWidgetLayoutManager.PositionEvent(e, y);
-						}
-
-						noteEvents.Add(e);
-
-						if (noteEvents.Count + holdBodyEvents.Count > MaxEventsToDraw)
-							break;
-					}
-
 					break;
-				}
-
 				case SpacingMode.ConstantRow:
-				{
-					var chartPosition = Position.ChartPosition;
-					var ppr = pScroll.RowBasedPixelsPerRow * spacingZoom;
-					var chartPositionAtTopOfScreen = chartPosition - (focalPointY / ppr);
-
-					// Update WaveForm scroll scroll rate
-					{
-						var rateEnumerator = FindBest(ActiveChart.RateAlteringEventsByRow, (int)chartPosition);
-						if (rateEnumerator != null)
-						{
-							rateEnumerator.MoveNext();
-							var pps = pScroll.RowBasedPixelsPerRow * rateEnumerator.Current.RowsPerSecond;
-							WaveFormPPS = pps;
-							if (pScroll.RowBasedWaveFormScrollMode == WaveFormScrollMode.MostCommonTempo)
-							{
-								WaveFormPPS *= (ActiveChart.MostCommonTempo / rateEnumerator.Current.Tempo);
-							}
-						}
-					}
-
-					// Beat markers.
-					if (sizeZoom >= MeasureMarkerMinScale)
-					{
-						// Find the first rate altering event to use.
-						var rateEnumerator = FindBest(ActiveChart.RateAlteringEventsByRow, (int)chartPositionAtTopOfScreen);
-						if (rateEnumerator == null)
-							return;
-						rateEnumerator.MoveNext();
-
-						// Record the current and next rate altering event.
-						var currentRateEvent = rateEnumerator.Current;
-						EditorRateAlteringEvent nextRateEvent = null;
-						if (rateEnumerator.MoveNext())
-							nextRateEvent = rateEnumerator.Current;
-						var currentRow = (int)chartPositionAtTopOfScreen;
-						var lastRecordedRow = -1;
-
-						// Update beat markers for every rate section until we have hit the bottom of the screen.
-						while (!UpdateBeatMarkers(
-							       currentRateEvent,
-							       ref currentRow,
-							       ref lastRecordedRow,
-							       nextRateEvent,
-							       xStart,
-							       sizeZoom,
-							       ppr,
-							       chartPositionAtTopOfScreen * ppr))
-						{
-							currentRateEvent = rateEnumerator.Current;
-							nextRateEvent = null;
-							if (rateEnumerator.MoveNext())
-								nextRateEvent = rateEnumerator.Current;
-						}
-					}
-
-					var enumerator = FindBest(ActiveChart.EditorEvents, (int)chartPositionAtTopOfScreen);
-					if (enumerator == null)
-						return;
-
-					// Scan backwards until we have checked every lane for a long note which may
-					// be extending through the given start row.
-					var holdStartNotes = ScanBackwardsForHolds(enumerator, chartPositionAtTopOfScreen);
-					foreach (var hsn in holdStartNotes)
-					{
-						hsn.SetDimensions(
-							xStart + hsn.GetLane() * arrowW,
-							(hsn.GetRow() - chartPositionAtTopOfScreen) * ppr - (arrowH * 0.5),
-							arrowW,
-							arrowH,
-							sizeZoom);
-
-						var end = hsn.GetHoldEndNote();
-						var endY = (hsn.GetRow() - chartPositionAtTopOfScreen) * ppr;
-						end.SetDimensions(
-							xStart + end.GetLane() * arrowW,
-							endY,
-							arrowW,
-							((end.GetRow() - chartPositionAtTopOfScreen) * ppr) - endY + holdCapHeight,
-							sizeZoom);
-						holdBodyEvents.Add(end);
-					}
-
-					// Scan forward and add notes.
-					while (enumerator.MoveNext())
-					{
-						var e = enumerator.Current;
-						var y = (e.GetRow() - chartPositionAtTopOfScreen) * ppr;
-						var arrowY = y - (arrowH * 0.5);
-						if (arrowY > screenHeight)
-							break;
-
-						if (e is EditorHoldEndNoteEvent)
-							continue;
-
-						if (e is EditorTapNoteEvent
-						    || e is EditorMineNoteEvent
-						    || e is EditorHoldStartNoteEvent)
-						{
-							e.SetDimensions(xStart + e.GetLane() * arrowW, arrowY, arrowW, arrowH, sizeZoom);
-
-							if (e is EditorHoldStartNoteEvent hsn)
-							{
-								var end = hsn.GetHoldEndNote();
-								var endY = (e.GetRow() - chartPositionAtTopOfScreen) * ppr;
-								end.SetDimensions(
-									xStart + end.GetLane() * arrowW,
-									endY,
-									arrowW,
-									((end.GetRow() - chartPositionAtTopOfScreen) * ppr) - endY + holdCapHeight,
-									sizeZoom);
-								holdBodyEvents.Add(end);
-							}
-						}
-						else
-						{
-							e.SetAlpha(miscEventAlpha);
-							MiscEventWidgetLayoutManager.PositionEvent(e, y);
-						}
-
-						noteEvents.Add(e);
-
-						if (noteEvents.Count + holdBodyEvents.Count > MaxEventsToDraw)
-							break;
-					}
-
+					WaveFormPPS = pScroll.RowBasedPixelsPerRow * rateEvent.RowsPerSecond;
+					if (pScroll.RowBasedWaveFormScrollMode == WaveFormScrollMode.MostCommonTempo)
+						WaveFormPPS *= (ActiveChart.MostCommonTempo / rateEvent.Tempo);
 					break;
-				}
-
 				case SpacingMode.Variable:
-				{
-					// TODO: Fix Negative Scrolls resulting in cutting off notes prematurely.
-					// If a chart has negative scrolls then we technically need to render notes which come before
-					// the chart position at the top of the screen.
-					// More likely the most visible problem will be at the bottom of the screen where if we
-					// were to detect the first note which falls below the bottom it would prevent us from
-					// finding the next set of notes which might need to be rendered because they appear 
-					// above.
-
-					var time = Position.ChartTime;
-					double chartPosition = 0.0;
-					if (!ActiveChart.TryGetChartPositionFromTime(time, ref chartPosition))
-						return;
-					var ratePosEventForChecking = new EditorInterpolatedRateAlteringEvent(ActiveChart, null)
+					var tempo = ActiveChart.MostCommonTempo;
+					if (pScroll.RowBasedWaveFormScrollMode != WaveFormScrollMode.MostCommonTempo)
+						tempo = rateEvent.Tempo;
+					var useRate = pScroll.RowBasedWaveFormScrollMode ==
+									WaveFormScrollMode.CurrentTempoAndRate;
+					WaveFormPPS = pScroll.VariablePixelsPerSecondAtDefaultBPM
+									* (tempo / PreferencesScroll.DefaultVariablePixelsPerSecondAtDefaultBPM);
+					if (useRate)
 					{
-						Row = chartPosition,
-						SongTime = time
-					};
+						var rate = rateEvent.ScrollRate * interpolatedScrollRate;
+						if (rate <= 0.0)
+							rate = 1.0;
+						WaveFormPPS *= rate;
+					}
+					break;
+			}
+		}
 
-					// Find the interpolated scroll rate to use as a multiplier.
-					// The interpolated scroll rate to use is the value at the current exact time.
-					var interpolatedScrollRate = 1.0;
-					var interpolatedScrollRateEnumerator =
-						ActiveChart.InterpolatedScrollRateEvents.FindGreatestPreceding(ratePosEventForChecking);
+		/// <summary>
+		/// Gets the position in screen space of a given event.
+		/// </summary>
+		/// <param name="e">Event to get the position of.</param>
+		/// <param name="pps">Pixels per second.</param>
+		/// <param name="ppr">Pixels per row.</param>
+		/// <param name="previousRateEventY">Position in screen space of the previous rate altering event.</param>
+		/// <param name="previousRateEvent">The previous rate altering event.</param>
+		/// <remarks>Helper for UpdateChartEvents.</remarks>
+		/// <returns>Y position in screen space of the start of the given event.</returns>
+		private double GetY(EditorEvent e, double pps, double ppr, double previousRateEventY, EditorRateAlteringEvent previousRateEvent)
+		{
+			return GetY(e, pps, ppr, previousRateEventY, previousRateEvent.ChartTime, previousRateEvent.Row);
+		}
+
+		/// <summary>
+		/// Gets the position in screen space of a given event.
+		/// </summary>
+		/// <param name="e">Event to get the position of.</param>
+		/// <param name="pps">Pixels per second.</param>
+		/// <param name="ppr">Pixels per row.</param>
+		/// <param name="anchorY">
+		/// Position in screen space of another event to use for relative positioning.
+		/// In most cases this is the previous rate altering event.
+		/// </param>
+		/// <param name="anchorChartTime">The chart time of the anchor event.</param>
+		/// <param name="anchorRow">The row of the achor event.</param>
+		/// <remarks>Helper for UpdateChartEvents.</remarks>
+		/// <returns>Y position in screen space of the start of the given event.</returns>
+		private double GetY(EditorEvent e, double pps, double ppr, double anchorY, double anchorChartTime, double anchorRow)
+		{
+			switch (Preferences.Instance.PreferencesScroll.SpacingMode)
+			{
+				case SpacingMode.ConstantTime:
+				default:
+					return anchorY + (e.GetChartTime() - anchorChartTime) * pps;
+				case SpacingMode.Variable:
+				case SpacingMode.ConstantRow:
+					return anchorY + (e.GetRow() - anchorRow) * ppr;
+			}
+		}
+
+		/// <summary>
+		/// Gets the position in screen space of the start of a given region.
+		/// </summary>
+		/// <param name="region">Region to get the position of.</param>
+		/// <param name="pps">Pixels per second.</param>
+		/// <param name="ppr">Pixels per row.</param>
+		/// <param name="anchorY">
+		/// Position in screen space of another event to use for relative positioning.
+		/// In most cases this is the previous rate altering event.
+		/// </param>
+		/// <param name="anchorChartTime">The chart time of the anchor event.</param>
+		/// <param name="anchorRow">The row of the achor event.</param>
+		/// <remarks>Helper for UpdateChartEvents.</remarks>
+		/// <returns>Y position in screen space of the start of the given region.</returns>
+		private double GetRegionY(IRegion region, double pps, double ppr, double anchorY, double anchorChartTime, double anchorRow)
+		{
+			if (region.AreRegionUnitsTime())
+				return anchorY + (region.GetRegionPosition() - anchorChartTime) * pps;
+			return anchorY + (region.GetRegionPosition() - anchorRow) * ppr;
+		}
+
+		/// <summary>
+		/// Gets the interpolated scroll rate to use for the given Chart time and position.
+		/// </summary>
+		/// <param name="time">Chart time.</param>
+		/// <param name="chartPosition">Chart position.</param>
+		/// <remarks>Helper for UpdateChartEvents.</remarks>
+		/// <returns>Interpolated scroll rate.</returns>
+		private double GetInterpolatedScrollRate(double time, double chartPosition)
+		{
+			// Find the interpolated scroll rate to use as a multiplier.
+			// The interpolated scroll rate to use is the value at the current exact time.
+			var interpolatedScrollRate = 1.0;
+			if (Preferences.Instance.PreferencesScroll.SpacingMode == SpacingMode.Variable)
+			{
+				var ratePosEventForChecking = new EditorInterpolatedRateAlteringEvent(ActiveChart, null)
+				{
+					Row = chartPosition,
+					SongTime = time
+				};
+
+				var interpolatedScrollRateEnumerator =
+					ActiveChart.InterpolatedScrollRateEvents.FindGreatestPreceding(ratePosEventForChecking);
+				if (interpolatedScrollRateEnumerator != null)
+				{
+					interpolatedScrollRateEnumerator.MoveNext();
+					var interpolatedRateEvent = interpolatedScrollRateEnumerator.Current;
+					if (interpolatedRateEvent.InterpolatesByTime())
+						interpolatedScrollRate = interpolatedRateEvent.GetInterpolatedScrollRateFromTime(time);
+					else
+						interpolatedScrollRate = interpolatedRateEvent.GetInterpolatedScrollRateFromRow(chartPosition);
+				}
+				else
+				{
+					interpolatedScrollRateEnumerator = ActiveChart.InterpolatedScrollRateEvents.FindLeastFollowing(ratePosEventForChecking, true);
 					if (interpolatedScrollRateEnumerator != null)
 					{
 						interpolatedScrollRateEnumerator.MoveNext();
@@ -1567,253 +1747,160 @@ namespace StepManiaEditor
 						else
 							interpolatedScrollRate = interpolatedRateEvent.GetInterpolatedScrollRateFromRow(chartPosition);
 					}
-					else
-					{
-						interpolatedScrollRateEnumerator = ActiveChart.InterpolatedScrollRateEvents.FindLeastFollowing(ratePosEventForChecking, true);
-						if (interpolatedScrollRateEnumerator != null)
-						{
-							interpolatedScrollRateEnumerator.MoveNext();
-							var interpolatedRateEvent = interpolatedScrollRateEnumerator.Current;
-							if (interpolatedRateEvent.InterpolatesByTime())
-								interpolatedScrollRate = interpolatedRateEvent.GetInterpolatedScrollRateFromTime(time);
-							else
-								interpolatedScrollRate = interpolatedRateEvent.GetInterpolatedScrollRateFromRow(chartPosition);
-						}
-					}
-
-					// Now, scroll up to the top of the screen so we can start processing events going downwards.
-					// We know what time / pos we are drawing at the receptors, but not the rate to get to that time from the top
-					// of the screen.
-					// We need to find the greatest preceding rate event, and continue until it is beyond the start of the screen.
-					// Then we need to find the greatest preceding notes by scanning upwards.
-					// Once we find that note, we start iterating downwards while also keeping track of the rate events along the way.
-
-					var rateEnumerator = FindBest(ActiveChart.RateAlteringEventsByRow, (int)chartPosition);
-					if (rateEnumerator == null)
-						return;
-
-					// Scan upwards to find the earliest rate altering event that should be used to start rendering.
-					var previousRateEventPixelPosition = (double)focalPointY;
-					var previousRateEventRow = chartPosition;
-					var pps = 1.0;
-					var ppr = 1.0;
-					EditorRateAlteringEvent rateEvent = null;
-					while (previousRateEventPixelPosition >= 0.0 && rateEnumerator.MovePrev())
-					{
-						// On the rate altering event which is active for the current chart position,
-						// Record the pixels per second to use for the WaveForm.
-						if (rateEvent == null)
-						{
-							var tempo = ActiveChart.MostCommonTempo;
-							if (pScroll.RowBasedWaveFormScrollMode != WaveFormScrollMode.MostCommonTempo)
-								tempo = rateEnumerator.Current.Tempo;
-							var useRate = pScroll.RowBasedWaveFormScrollMode ==
-							              WaveFormScrollMode.CurrentTempoAndRate;
-							WaveFormPPS = pScroll.VariablePixelsPerSecondAtDefaultBPM
-							              * (tempo / PreferencesScroll.DefaultVariablePixelsPerSecondAtDefaultBPM);
-							if (useRate)
-							{
-								var rate = rateEnumerator.Current.ScrollRate * interpolatedScrollRate;
-								if (rate <= 0.0)
-									rate = 1.0;
-								WaveFormPPS *= rate;
-							}
-						}
-
-						rateEvent = rateEnumerator.Current;
-						var scrollRateForThisSection = rateEvent.ScrollRate * interpolatedScrollRate;
-						pps = pScroll.VariablePixelsPerSecondAtDefaultBPM
-						      * (rateEvent.Tempo / PreferencesScroll.DefaultVariablePixelsPerSecondAtDefaultBPM)
-						      * scrollRateForThisSection
-						      * spacingZoom;
-						ppr = pps * rateEvent.SecondsPerRow;
-						var rateEventPositionInPixels =
-							previousRateEventPixelPosition - ((previousRateEventRow - rateEvent.Row) * ppr);
-						previousRateEventPixelPosition = rateEventPositionInPixels;
-						previousRateEventRow = rateEvent.Row;
-					}
-
-					// Now we know the position of first rate altering event to use.
-					// We can now determine the chart position at the top of the screen
-					var pixelPositionAtTopOfScreen = 0.0;
-					var chartPositionAtTopOfScreen =
-						rateEvent.Row + (pixelPositionAtTopOfScreen - previousRateEventPixelPosition) *
-						rateEvent.RowsPerSecond / pps;
-
-					var beatMarkerRow = (int)chartPositionAtTopOfScreen;
-					var beatMarkerLastRecordedRow = -1;
-
-					// Now that we know the position at the start of the screen we can find the first event to start rendering.
-					var enumerator = FindBest(ActiveChart.EditorEvents, (int)chartPositionAtTopOfScreen);
-					if (enumerator == null)
-						return;
-
-					// Scan backwards until we have checked every lane for a long note which may
-					// be extending through the given start row. We cannot add the end events yet because
-					// we do not know at what position they will end until we scan down.
-					var holdEndNotesNeedingToBeAdded = new EditorHoldEndNoteEvent[ActiveChart.NumInputs];
-					var holdStartNotes = ScanBackwardsForHolds(enumerator, chartPositionAtTopOfScreen);
-					foreach (var hsn in holdStartNotes)
-					{
-						hsn.SetDimensions(
-							xStart + hsn.GetLane() * arrowW,
-							(hsn.GetEvent().IntegerPosition - chartPositionAtTopOfScreen) * ppr - (arrowH * 0.5),
-							arrowW,
-							arrowH,
-							sizeZoom);
-						noteEvents.Add(hsn);
-
-						holdEndNotesNeedingToBeAdded[hsn.GetLane()] = hsn.GetHoldEndNote();
-					}
-
-					var hasNextRateEvent = rateEnumerator.MoveNext();
-					EditorRateAlteringEvent nextRateEvent = hasNextRateEvent ? rateEnumerator.Current : null;
-
-					// Now we can scan forward
-					while (enumerator.MoveNext())
-					{
-						var e = enumerator.Current;
-
-						// Check to see if we have crossed into a new rate altering event section
-						if (nextRateEvent != null && e.GetEvent() == nextRateEvent.GetEvent())
-						{
-							// Add a misc widget for this rate event.
-							var rateEventY = previousRateEventPixelPosition + (e.GetEvent().IntegerPosition - rateEvent.Row) * ppr;
-							nextRateEvent.SetAlpha(miscEventAlpha);
-							MiscEventWidgetLayoutManager.PositionEvent(nextRateEvent, rateEventY);
-							noteEvents.Add(nextRateEvent);
-
-							// Update beat markers for the section for the previous rate event.
-							UpdateBeatMarkers(
-								rateEvent,
-								ref beatMarkerRow,
-								ref beatMarkerLastRecordedRow,
-								nextRateEvent,
-								xStart,
-								sizeZoom,
-								ppr,
-								previousRateEventPixelPosition);
-
-							// Update rate parameters.
-							rateEvent = nextRateEvent;
-							var previousPPR = ppr;
-							var scrollRateForThisSection = rateEvent.ScrollRate * interpolatedScrollRate;
-							pps = pScroll.VariablePixelsPerSecondAtDefaultBPM
-							      * (rateEvent.Tempo / PreferencesScroll.DefaultVariablePixelsPerSecondAtDefaultBPM)
-							      * scrollRateForThisSection
-							      * spacingZoom;
-							ppr = pps * rateEvent.SecondsPerRow;
-							var rateEventPositionInPixels = previousRateEventPixelPosition +
-							                                ((rateEvent.Row - previousRateEventRow) * previousPPR);
-							previousRateEventPixelPosition = rateEventPositionInPixels;
-							previousRateEventRow = rateEvent.Row;
-
-							// Advance next rate altering event.
-							hasNextRateEvent = rateEnumerator.MoveNext();
-							nextRateEvent = hasNextRateEvent ? rateEnumerator.Current : null;
-							continue;
-						}
-
-						// Determine y position.
-						var y = previousRateEventPixelPosition + (e.GetEvent().IntegerPosition - rateEvent.Row) * ppr;
-						var arrowY = y - (arrowH * 0.5);
-						if (arrowY > screenHeight)
-							break;
-
-						// Record note.
-						if (e is EditorTapNoteEvent
-						    || e is EditorHoldStartNoteEvent
-						    || e is EditorHoldEndNoteEvent
-						    || e is EditorMineNoteEvent)
-						{
-							var noteY = arrowY;
-							var noteH = arrowH;
-
-							if (e is EditorHoldEndNoteEvent hen)
-							{
-								var start = hen.GetHoldStartNote();
-								var endY = previousRateEventPixelPosition
-								           + (e.GetEvent().IntegerPosition - rateEvent.Row) * ppr
-								           + holdCapHeight;
-
-								noteY = start.GetY() + arrowH * 0.5f;
-								noteH = endY - (start.GetY() + (arrowH * 0.5f));
-
-								holdBodyEvents.Add(e);
-
-								// Remove from holdEndNotesNeedingToBeAdded.
-								holdEndNotesNeedingToBeAdded[e.GetLane()] = null;
-							}
-							else if (e is EditorHoldStartNoteEvent hsn)
-							{
-								// Record that there is in an in-progress hold that will need to be ended.
-								holdEndNotesNeedingToBeAdded[e.GetLane()] = hsn.GetHoldEndNote();
-								noteEvents.Add(e);
-							}
-							else
-							{
-								noteEvents.Add(e);
-							}
-
-							e.SetDimensions(xStart + e.GetLane() * arrowW, noteY, arrowW, noteH, sizeZoom);
-						}
-						else
-						{
-							e.SetAlpha(miscEventAlpha);
-							MiscEventWidgetLayoutManager.PositionEvent(e, y);
-							noteEvents.Add(e);
-						}
-
-						if (noteEvents.Count + holdBodyEvents.Count > MaxEventsToDraw)
-							break;
-					}
-
-					// Now we need to wrap up any holds which started before the top of the screen and still are not yet complete.
-					// We do not need to scan forward for more rate events.
-					foreach (var holdEndNote in holdEndNotesNeedingToBeAdded)
-					{
-						if (holdEndNote == null)
-							continue;
-
-						var start = holdEndNote.GetHoldStartNote();
-						var endY = previousRateEventPixelPosition
-						           + (holdEndNote.GetEvent().IntegerPosition - rateEvent.Row) * ppr
-						           + holdCapHeight;
-						var noteH = endY - (start.GetY() + (arrowH * 0.5f));
-
-						holdEndNote.SetDimensions(
-							xStart + holdEndNote.GetLane() * arrowW,
-							start.GetY() + arrowH * 0.5,
-							arrowW,
-							noteH,
-							sizeZoom);
-
-						holdBodyEvents.Add(holdEndNote);
-					}
-
-					// Also, wrap up any beats.
-					UpdateBeatMarkers(
-						rateEvent,
-						ref beatMarkerRow,
-						ref beatMarkerLastRecordedRow,
-						nextRateEvent,
-						xStart,
-						sizeZoom,
-						ppr,
-						previousRateEventPixelPosition);
-
-					break;
 				}
 			}
 
-			VisibleEvents.AddRange(holdBodyEvents);
-			VisibleEvents.AddRange(noteEvents);
+			return interpolatedScrollRate;
+		}
+
+		/// <summary>
+		/// Gets the pixels per second and pixels per row for the given rate altering event.
+		/// </summary>
+		/// <param name="rateEvent">The rate altering event.</param>
+		/// <param name="interpolatedScrollRate">The current interpolated scroll rate value.</param>
+		/// <param name="spacingZoom">The current spacing level based on the zoom level.</param>
+		/// <remarks>Helper for UpdateChartEvents.</remarks>
+		/// <returns>Pixels per second and pixels per row.</returns>
+		private (double, double) GetPpsAndPpr(EditorRateAlteringEvent rateEvent, double interpolatedScrollRate, double spacingZoom)
+		{
+			double pps = 1.0, ppr = 1.0;
+			var pScroll = Preferences.Instance.PreferencesScroll;
+			switch (pScroll.SpacingMode)
+			{
+				case SpacingMode.ConstantTime:
+					pps = pScroll.TimeBasedPixelsPerSecond * spacingZoom;
+					ppr = pps * rateEvent.SecondsPerRow;
+					break;
+				case SpacingMode.ConstantRow:
+					ppr = pScroll.RowBasedPixelsPerRow * spacingZoom;
+					pps = ppr * rateEvent.RowsPerSecond;
+					break;
+				case SpacingMode.Variable:
+					var scrollRateForThisSection = rateEvent.ScrollRate * interpolatedScrollRate;
+					pps = pScroll.VariablePixelsPerSecondAtDefaultBPM
+							* (rateEvent.Tempo / PreferencesScroll.DefaultVariablePixelsPerSecondAtDefaultBPM)
+							* scrollRateForThisSection
+							* spacingZoom;
+					ppr = pps * rateEvent.SecondsPerRow;
+					break;
+			}
+			return (pps, ppr);
+		}
+
+		/// <summary>
+		/// Given a chart position, scans backwards for hold notes which begin earlier and end later.
+		/// </summary>
+		/// <param name="enumerator">Enumerator to use for scanning backwards.</param>
+		/// <param name="chartPosition">Chart position to use for checking.</param>
+		/// <remarks>Helper for UpdateChartEvents.</remarks>
+		/// <returns>List of EditorHoldStartNotes.</returns>
+		private List<EditorHoldStartNoteEvent> ScanBackwardsForHolds(RedBlackTree<EditorEvent>.Enumerator enumerator,
+			double chartPosition)
+		{
+			var lanesChecked = new bool[ActiveChart.NumInputs];
+			var numLanesChecked = 0;
+			var holds = new List<EditorHoldStartNoteEvent>();
+			var current = new RedBlackTree<EditorEvent>.Enumerator(enumerator);
+			while (current.MovePrev() && numLanesChecked < ActiveChart.NumInputs)
+			{
+				var e = current.Current;
+				var lane = e.GetLane();
+				if (lane >= 0)
+				{
+					if (!lanesChecked[lane])
+					{
+						lanesChecked[lane] = true;
+						numLanesChecked++;
+
+						if (e.GetRow() + e.GetLength() > chartPosition)
+						{
+							if (e is EditorHoldStartNoteEvent hsn)
+							{
+								holds.Add(hsn);
+							}
+						}
+					}
+				}
+			}
+
+			foreach (var editState in LaneEditStates)
+			{
+				if (!editState.IsActive())
+					continue;
+				if (!(editState.GetEventBeingEdited() is EditorHoldStartNoteEvent hsn))
+					continue;
+				if (hsn.GetRow() < chartPosition && hsn.GetRow() + hsn.GetLength() > chartPosition)
+					holds.Add(hsn);
+			}
+
+			return holds;
+		}
+
+		private List<IRegion> ScanBackwardsForRegions(double chartPosition, double chartTime)
+		{
+			var row = (int)chartPosition;
+			var regions = new List<IRegion>();
+			var stop = ActiveChart.GetStopEventOverlapping(row, chartTime);
+			if (stop != null)
+				regions.Add(stop);
+			var delay = ActiveChart.GetDelayEventOverlapping(row, chartTime);
+			if (delay != null)
+				regions.Add(delay);
+			var fake = ActiveChart.GetFakeSegmentEventOverlapping(row, chartTime);
+			if (fake != null)
+				regions.Add(fake);
+			var warp = ActiveChart.GetWarpEventOverlapping(row, chartTime);
+			if (warp != null)
+				regions.Add(warp);
+			return regions;
+		}
+
+		private void AddRegion(IRegion region, ref List<IRegion> regionsNeedingToBeAdded, double pps, double ppr, double previousRateEventY, EditorRateAlteringEvent rateEvent, double x, double w)
+		{
+			if (region == null || !region.IsVisible(Preferences.Instance.PreferencesScroll.SpacingMode))
+				return;
+			if (regionsNeedingToBeAdded.Contains(region))
+				return;
+			region.RegionX = x;
+			region.RegionY = GetRegionY(region, pps, ppr, previousRateEventY, rateEvent.GetChartTime(), rateEvent.GetRow());
+			region.RegionW = w;
+			regionsNeedingToBeAdded.Add(region);
+		}
+
+		private void CheckForCompletingRegions(ref List<IRegion> regionsNeedingToBeAdded, double pps, double ppr, double previousRateEventY, EditorRateAlteringEvent previousRateEvent, EditorRateAlteringEvent nextRateEvent)
+		{
+			var remainingRegionsNeededToBeAdded = new List<IRegion>();
+			foreach (var region in regionsNeedingToBeAdded)
+			{
+				var regionEnd = region.GetRegionPosition() + region.GetRegionDuration();
+				if (region.AreRegionUnitsTime())
+				{
+					if (nextRateEvent == null || nextRateEvent.GetChartTime() > regionEnd)
+					{
+						var regionEndY = previousRateEventY + (regionEnd - previousRateEvent.GetChartTime()) * pps;
+						region.RegionH = regionEndY - region.RegionY;
+						VisibleRegions.Add(region);
+						continue;
+					}
+				}
+				else
+				{
+					if (nextRateEvent == null || nextRateEvent.GetRow() > regionEnd)
+					{
+						var regionEndY = previousRateEventY + (regionEnd - previousRateEvent.GetRow()) * ppr;
+						region.RegionH = regionEndY - region.RegionY;
+						VisibleRegions.Add(region);
+						continue;
+					}
+				}
+				remainingRegionsNeededToBeAdded.Add(region);
+			}
+			regionsNeedingToBeAdded = remainingRegionsNeededToBeAdded;
 		}
 
 		/// <summary>
 		/// Helper method to update beat marker events.
 		/// Adds new MarkerEvents to VisibleMarkers.
-		/// Almost all of the logic for updating beat marker placement is independent of SpacingMode.
 		/// Expected to be called in a loop over EditorRateAlteringEvents which encompass the visible area.
 		/// </summary>
 		/// <param name="currentRateEvent">
@@ -1837,30 +1924,25 @@ namespace StepManiaEditor
 		/// </param>
 		/// <param name="x">X position in pixels to set on the MarkerEvents.</param>
 		/// <param name="sizeZoom">Current zoom level to use for setting the width and scale of the MarkerEvents.</param>
-		/// <param name="spacingRate">
-		///	For ConstantTime this rate is pixels per second.
-		/// For ConstantRow this rate is is pixels per row.
-		/// For Variable this rate is is pixels per row.
-		/// </param>
-		/// <param name="spacingBaseValue">
-		///	For ConstantTime this value is the time at the top of the screen.
-		/// For ConstantRow this value is the pixel position of row at the top of the screen.
-		/// For Variable this value is the pixel position of the previous rate altering event.
-		/// </param>
-		private bool UpdateBeatMarkers(
+		/// <param name="pps">Pixels per second.</param>
+		/// <param name="ppr">Pixels per row.</param>
+		/// <param name="previousRateEventY">Y position of previous rate altering event.</param>
+		/// <remarks>Helper for UpdateChartEvents.</remarks>
+		private void UpdateBeatMarkers(
 			EditorRateAlteringEvent currentRateEvent,
 			ref int currentRow,
 			ref int lastRecordedRow,
 			EditorRateAlteringEvent nextRateEvent,
 			double x,
 			double sizeZoom,
-			double spacingRate,
-			double spacingBaseValue)
+			double pps,
+			double ppr,
+			double previousRateEventY)
 		{
 			if (sizeZoom < MeasureMarkerMinScale)
-				return true;
+				return;
 			if (VisibleMarkers.Count >= MaxMarkersToDraw)
-				return true;
+				return;
 
 			var pScroll = Preferences.Instance.PreferencesScroll;
 
@@ -1893,28 +1975,20 @@ namespace StepManiaEditor
 				var rowRelativeToLastRateChangeEvent = Math.Max(0, currentRow - currentRateEvent.RowForFollowingEvents);
 				rowRelativeToLastRateChangeEvent = Math.Max(0, rowRelativeToLastRateChangeEvent);
 				var y = 0.0;
+
 				switch (pScroll.SpacingMode)
 				{
 					case SpacingMode.ConstantTime:
 					{
-						// Y is the time of the row times the pixels per second, shifted by the time at the top of the screen.
-						var beatTime = currentRateEvent.SongTimeForFollowingEvents +
-						               rowRelativeToLastRateChangeEvent * currentRateEvent.SecondsPerRow;
-						y = (beatTime - spacingBaseValue) * spacingRate;
+						var absoluteBeatTime = currentRateEvent.ChartTimeForFollowingEvents + rowRelativeToLastRateChangeEvent * currentRateEvent.SecondsPerRow;
+						y = previousRateEventY + (absoluteBeatTime - currentRateEvent.ChartTime) * pps;
 						break;
 					}
 
 					case SpacingMode.ConstantRow:
-					{
-						// Y is the current row times the pixels per row minus the pixel position at the top of the screen
-						y = currentRow * spacingRate - spacingBaseValue;
-						break;
-					}
-
 					case SpacingMode.Variable:
 					{
-						// Y is the previous rate event's pixel position plus the relative row times the pixels per row.
-						y = spacingBaseValue + rowRelativeToLastRateChangeEvent * spacingRate;
+						y = previousRateEventY + rowRelativeToLastRateChangeEvent * ppr;
 						break;
 					}
 				}
@@ -1923,14 +1997,12 @@ namespace StepManiaEditor
 				if (nextRateEvent != null && currentRow > nextRateEvent.Row)
 				{
 					currentRow = (int)nextRateEvent.Row;
-					return false;
+					return;
 				}
 
 				// If advancing moved beyond the end of the screen then we are done.
 				if (y > GetViewportHeight())
-				{
-					return true;
-				}
+					return;
 
 				// Determine if this marker is a measure marker instead of a beat marker.
 				rowRelativeToTimeSignatureStart =
@@ -1942,26 +2014,19 @@ namespace StepManiaEditor
 
 				// Record the marker.
 				if (measureMarker || sizeZoom > BeatMarkerMinScale)
-				{
-					VisibleMarkers.Add(new EditorMarkerEvent(
-						x,
-						y,
-						markerWidth,
-						1,
-						sizeZoom,
-						measureMarker,
-						measure));
-				}
+					VisibleMarkers.Add(new EditorMarkerEvent(x, y, markerWidth, 1, sizeZoom, measureMarker, measure));
 
 				lastRecordedRow = currentRow;
 
 				if (VisibleMarkers.Count >= MaxMarkersToDraw)
-					return true;
+					return;
 
 				// Advance one beat.
 				currentRow += rowsPerBeat;
 			}
 		}
+
+		#endregion Chart Update
 
 		#region Autoplay
 
@@ -2411,105 +2476,6 @@ namespace StepManiaEditor
 		}
 
 		#endregion MiniMap
-
-		/// <summary>
-		/// Given a chart position, scans backwards for hold notes which begin earlier and end later.
-		/// </summary>
-		/// <param name="enumerator">Enumerator to use for scanning backwards.</param>
-		/// <param name="chartPosition">Chart position to use for checking.</param>
-		/// <returns>List of EditorHoldStartNotes.</returns>
-		private List<EditorHoldStartNoteEvent> ScanBackwardsForHolds(RedBlackTree<EditorEvent>.Enumerator enumerator,
-			double chartPosition)
-		{
-			var lanesChecked = new bool[ActiveChart.NumInputs];
-			var numLanesChecked = 0;
-			var holds = new List<EditorHoldStartNoteEvent>();
-			var current = new RedBlackTree<EditorEvent>.Enumerator(enumerator);
-			while (current.MovePrev() && numLanesChecked < ActiveChart.NumInputs)
-			{
-				var e = current.Current;
-				var lane = e.GetLane();
-				if (lane >= 0)
-				{
-					if (!lanesChecked[lane])
-					{
-						lanesChecked[lane] = true;
-						numLanesChecked++;
-
-						if (e.GetRow() + e.GetLength() > chartPosition)
-						{
-							if (e is EditorHoldStartNoteEvent hsn)
-							{
-								holds.Add(hsn);
-							}
-						}
-					}
-				}
-			}
-
-			foreach (var editState in LaneEditStates)
-			{
-				if (!editState.IsActive())
-					continue;
-				if (!(editState.GetEventBeingEdited() is EditorHoldStartNoteEvent hsn))
-					continue;
-				if (hsn.GetRow() < chartPosition && hsn.GetRow() + hsn.GetLength() > chartPosition)
-					holds.Add(hsn);
-			}
-
-			return holds;
-		}
-
-		private void DrawChartEvents()
-		{
-			var eventsBeingEdited = new List<EditorEvent>();
-			// Draw the measure and beat markers.
-			foreach (var visibleMarker in VisibleMarkers)
-			{
-				visibleMarker.Draw(TextureAtlas, SpriteBatch, MonogameFont_MPlus1Code_Medium);
-			}
-
-			foreach (var visibleEvent in VisibleEvents)
-			{
-				// Capture events being edited to draw after all events not being edited.
-				if (visibleEvent.IsBeingEdited())
-				{
-					eventsBeingEdited.Add(visibleEvent);
-					continue;
-				}
-
-				if (Playing)
-				{
-					// Skip events entirely above the receptors.
-					if (Preferences.Instance.PreferencesReceptors.AutoPlayHideArrows
-						&& visibleEvent.GetChartTime() < Position.ChartTime
-					    && (visibleEvent is EditorTapNoteEvent
-					        || visibleEvent is EditorHoldStartNoteEvent 
-					        || visibleEvent is EditorHoldEndNoteEvent))
-						continue;
-
-					// Cut off hold end notes which intersect the receptors.
-					if (visibleEvent is EditorHoldEndNoteEvent hen)
-					{
-						if (Playing && hen.GetChartTime() > Position.ChartTime
-						            && hen.GetHoldStartNote().GetChartTime() < Position.ChartTime)
-						{
-							hen.SetNextDrawActive(true, GetFocalPointY());
-						}
-					}
-				}
-				
-				// Draw the event.
-				visibleEvent.Draw(TextureAtlas, SpriteBatch, ArrowGraphicManager);
-			}
-
-			// Draw events being edited.
-			foreach (var visibleEvent in eventsBeingEdited)
-			{
-				visibleEvent.Draw(TextureAtlas, SpriteBatch, ArrowGraphicManager);
-			}
-		}
-
 
 		#region Gui Rendering
 

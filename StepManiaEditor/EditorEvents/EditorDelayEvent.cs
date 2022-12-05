@@ -1,11 +1,14 @@
 ﻿using Fumen.ChartDefinition;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using static Fumen.Utils;
+using static StepManiaEditor.Editor;
+using static StepManiaEditor.Utils;
 
 
 namespace StepManiaEditor
 {
-	public class EditorDelayEvent : EditorRateAlteringEvent
+	public class EditorDelayEvent : EditorRateAlteringEvent, IRegion
 	{
 		public static readonly string WidgetHelp =
 			"Delay.\n" +
@@ -19,6 +22,18 @@ namespace StepManiaEditor
 
 		public Stop StopEvent;
 		private bool WidthDirty;
+
+		#region IRegion Implementation
+		public double RegionX { get; set; }
+		public double RegionY { get; set; }
+		public double RegionW { get; set; }
+		public double RegionH { get; set; }
+		public double GetRegionPosition() { return ToSeconds(ChartEvent.TimeMicros); }
+		public double GetRegionDuration() { return DoubleValue; }
+		public bool AreRegionUnitsTime() { return true; }
+		public bool IsVisible(SpacingMode mode) { return mode == SpacingMode.ConstantTime; }
+		public Color GetRegionColor() { return DelayRegionColor; }
+		#endregion IRegion Implementation
 
 		public double DoubleValue
 		{

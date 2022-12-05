@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Fumen.ChartDefinition;
 using Fumen.Converters;
 using Microsoft.Xna.Framework.Graphics;
@@ -19,6 +20,8 @@ namespace StepManiaEditor
 
 		protected readonly Event ChartEvent;
 		protected readonly EditorChart EditorChart;
+
+		protected static uint ScreenHeight;
 
 		public static EditorEvent CreateEvent(EditorChart editorChart, Event chartEvent)
 		{
@@ -72,6 +75,11 @@ namespace StepManiaEditor
 			EditorChart = editorChart;
 			ChartEvent = chartEvent;
 			BeingEdited = beingEdited;
+		}
+
+		public static void SetScreenHeight(uint screenHeight)
+		{
+			ScreenHeight = screenHeight;
 		}
 
 		/// <summary>
@@ -202,6 +210,34 @@ namespace StepManiaEditor
 		protected string GetImGuiId()
 		{
 			return $"{ChartEvent.GetType()}{GetLane()}{ChartEvent.IntegerPosition}";
+		}
+
+		private class SortChartTimeHelper : IComparer<EditorEvent>
+		{
+			int IComparer<EditorEvent>.Compare(EditorEvent e1, EditorEvent e2)
+			{
+				var c = e1.GetChartTime().CompareTo(e2.GetChartTime());
+				return c != 0 ? c : e1.CompareTo(e2);
+			}
+		}
+
+		public static IComparer<EditorEvent> SortChartTime()
+		{
+			return new SortChartTimeHelper();
+		}
+
+		private class SortRowHelper : IComparer<EditorEvent>
+		{
+			int IComparer<EditorEvent>.Compare(EditorEvent e1, EditorEvent e2)
+			{
+				var c = e1.GetRow().CompareTo(e2.GetRow());
+				return c != 0 ? c : e1.CompareTo(e2);
+			}
+		}
+
+		public static IComparer<EditorEvent> SortRow()
+		{
+			return new SortRowHelper();
 		}
 
 		public virtual int CompareTo(EditorEvent other)

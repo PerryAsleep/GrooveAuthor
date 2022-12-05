@@ -1,10 +1,13 @@
 ﻿using Fumen.ChartDefinition;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using static Fumen.Utils;
+using static StepManiaEditor.Editor;
+using static StepManiaEditor.Utils;
 
 namespace StepManiaEditor
 {
-	public class EditorFakeSegmentEvent : EditorEvent
+	public class EditorFakeSegmentEvent : EditorEvent, IRegion
 	{
 		public static readonly string WidgetHelp =
 			"Fake region.\n" +
@@ -16,6 +19,18 @@ namespace StepManiaEditor
 
 		public FakeSegment FakeSegmentEvent;
 		private bool WidthDirty;
+
+		#region IRegion Implementation
+		public double RegionX { get; set; }
+		public double RegionY { get; set; }
+		public double RegionW { get; set; }
+		public double RegionH { get; set; }
+		public double GetRegionPosition() { return ToSeconds(ChartEvent.TimeMicros); }
+		public double GetRegionDuration() { return DoubleValue; }
+		public bool AreRegionUnitsTime() { return true; }
+		public bool IsVisible(SpacingMode mode) { return true; }
+		public Color GetRegionColor() { return FakeRegionColor; }
+		#endregion IRegion Implementation
 
 		public double DoubleValue
 		{

@@ -10,7 +10,6 @@ namespace StepManiaEditor
 	{
 		private EditorHoldStartNoteEvent EditorHoldStartNoteEvent;
 		private readonly LaneHoldEndNote LaneHoldEndNote;
-		private static uint ScreenHeight;
 
 		/// <summary>
 		/// Whether or not this hold should be considered active for rendering.
@@ -26,11 +25,6 @@ namespace StepManiaEditor
 		public EditorHoldEndNoteEvent(EditorChart editorChart, LaneHoldEndNote chartEvent, bool isBeingEdited) : base(editorChart, chartEvent, isBeingEdited)
 		{
 			LaneHoldEndNote = chartEvent;
-		}
-
-		public static void SetScreenHeight(uint screenHeight)
-		{
-			ScreenHeight = screenHeight;
 		}
 
 		public void SetHoldStartNote(EditorHoldStartNoteEvent editorHoldStartNoteEvent)

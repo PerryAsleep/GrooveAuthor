@@ -10,7 +10,6 @@ namespace StepManiaEditor
 		public const float DefaultVariableSpeedBPM = 120.0f;
 		
 		// Default values.
-		public const Editor.ScrollMode DefaultScrollMode = Editor.ScrollMode.Time;
 		public const Editor.SpacingMode DefaultSpacingMode = Editor.SpacingMode.ConstantTime;
 		public const float DefaultTimeBasedPixelsPerSecond = 300.0f;
 		public const float DefaultRowBasedPixelsPerRow = 6.0f;
@@ -20,7 +19,6 @@ namespace StepManiaEditor
 
 		// Preferences.
 		[JsonInclude] public bool ShowScrollControlPreferencesWindow = true;
-		[JsonInclude] public Editor.ScrollMode ScrollMode = DefaultScrollMode;
 		[JsonInclude] public Editor.SpacingMode SpacingMode = DefaultSpacingMode;
 		[JsonInclude] public float TimeBasedPixelsPerSecond = DefaultTimeBasedPixelsPerSecond;
 		[JsonInclude] public float RowBasedPixelsPerRow = DefaultRowBasedPixelsPerRow;
@@ -30,8 +28,7 @@ namespace StepManiaEditor
 
 		public bool IsUsingDefaults()
 		{
-			return ScrollMode == DefaultScrollMode
-			       && SpacingMode == DefaultSpacingMode
+			return SpacingMode == DefaultSpacingMode
 			       && TimeBasedPixelsPerSecond.FloatEquals(DefaultTimeBasedPixelsPerSecond)
 			       && RowBasedPixelsPerRow.FloatEquals(DefaultRowBasedPixelsPerRow)
 			       && VariablePixelsPerSecondAtDefaultBPM.FloatEquals(DefaultVariablePixelsPerSecondAtDefaultBPM)
@@ -53,7 +50,6 @@ namespace StepManiaEditor
 	/// </summary>
 	public class ActionRestoreScrollPreferenceDefaults : EditorAction
 	{
-		private readonly Editor.ScrollMode PreviousScrollMode;
 		private readonly Editor.SpacingMode PreviousSpacingMode;
 		private readonly float PreviousTimeBasedPixelsPerSecond;
 		private readonly float PreviousRowBasedPixelsPerRow;
@@ -64,7 +60,6 @@ namespace StepManiaEditor
 		public ActionRestoreScrollPreferenceDefaults()
 		{
 			var p = Preferences.Instance.PreferencesScroll;
-			PreviousScrollMode = p.ScrollMode;
 			PreviousSpacingMode = p.SpacingMode;
 			PreviousTimeBasedPixelsPerSecond = p.TimeBasedPixelsPerSecond;
 			PreviousRowBasedPixelsPerRow = p.RowBasedPixelsPerRow;
@@ -86,7 +81,6 @@ namespace StepManiaEditor
 		public override void Do()
 		{
 			var p = Preferences.Instance.PreferencesScroll;
-			p.ScrollMode = PreferencesScroll.DefaultScrollMode;
 			p.SpacingMode = PreferencesScroll.DefaultSpacingMode;
 			p.TimeBasedPixelsPerSecond = PreferencesScroll.DefaultTimeBasedPixelsPerSecond;
 			p.RowBasedPixelsPerRow = PreferencesScroll.DefaultRowBasedPixelsPerRow;
@@ -98,7 +92,6 @@ namespace StepManiaEditor
 		public override void Undo()
 		{
 			var p = Preferences.Instance.PreferencesScroll;
-			p.ScrollMode = PreviousScrollMode;
 			p.SpacingMode = PreviousSpacingMode;
 			p.TimeBasedPixelsPerSecond = PreviousTimeBasedPixelsPerSecond;
 			p.RowBasedPixelsPerRow = PreviousRowBasedPixelsPerRow;

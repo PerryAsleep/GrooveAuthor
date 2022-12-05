@@ -1,10 +1,14 @@
 ﻿using Fumen.ChartDefinition;
 using Fumen.Converters;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using static StepManiaEditor.Editor;
+using static StepManiaEditor.Utils;
+
 
 namespace StepManiaEditor
 {
-	public class EditorWarpEvent : EditorRateAlteringEvent
+	public class EditorWarpEvent : EditorRateAlteringEvent, IRegion
 	{
 		public static readonly string WidgetHelp =
 			"Warp.\n" +
@@ -19,6 +23,18 @@ namespace StepManiaEditor
 
 		public Warp WarpEvent;
 		private bool WidthDirty;
+
+		#region IRegion Implementation
+		public double RegionX { get; set; }
+		public double RegionY { get; set; }
+		public double RegionW { get; set; }
+		public double RegionH { get; set; }
+		public double GetRegionPosition() { return GetRow(); }
+		public double GetRegionDuration() { return IntValue; }
+		public bool AreRegionUnitsTime() { return false; }
+		public bool IsVisible(SpacingMode mode) { return mode != SpacingMode.ConstantTime; }
+		public Color GetRegionColor() { return WarpRegionColor; }
+		#endregion IRegion Implementation
 
 		public int IntValue
 		{

@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using Fumen.ChartDefinition;
 using Fumen.Converters;
 
@@ -12,15 +11,15 @@ namespace StepManiaEditor
 		/// </summary>
 		public double Row;
 		/// <summary>
-		/// SongTime of this rate altering event.
+		/// ChartTime of this rate altering event.
 		/// </summary>
-		public double SongTime;
+		public double ChartTime;
 
 		/// <summary>
 		/// SongTime to use for events which follow this event.
 		/// Some events (Stops) cause this value to differ from this Event's SongTime.
 		/// </summary>
-		public double SongTimeForFollowingEvents;
+		public double ChartTimeForFollowingEvents;
 		/// <summary>
 		/// Row to use for events which follow this event.
 		/// Some events (Warps) cause this value to differ from this Event's Row.
@@ -44,32 +43,14 @@ namespace StepManiaEditor
 		{
 		}
 
-		private class SortSongTimeHelper : IComparer<EditorRateAlteringEvent>
+		public override int GetRow()
 		{
-			int IComparer<EditorRateAlteringEvent>.Compare(EditorRateAlteringEvent e1, EditorRateAlteringEvent e2)
-			{
-				var c = e1.SongTime.CompareTo(e2.SongTime);
-				return c != 0 ? c : e1.CompareTo(e2);
-			}
+			return (int)Row;
 		}
 
-		public static IComparer<EditorRateAlteringEvent> SortSongTime()
+		public override double GetChartTime()
 		{
-			return new SortSongTimeHelper();
-		}
-
-		private class SortRowHelper : IComparer<EditorRateAlteringEvent>
-		{
-			int IComparer<EditorRateAlteringEvent>.Compare(EditorRateAlteringEvent e1, EditorRateAlteringEvent e2)
-			{
-				var c = e1.Row.CompareTo(e2.Row);
-				return c != 0 ? c : e1.CompareTo(e2);
-			}
-		}
-
-		public static IComparer<EditorRateAlteringEvent> SortRow()
-		{
-			return new SortRowHelper();
+			return ChartTime;
 		}
 
 		public int CompareTo(EditorRateAlteringEvent other)
@@ -77,7 +58,7 @@ namespace StepManiaEditor
 			var comparison = Row.CompareTo(other.Row);
 			if (comparison != 0)
 				return comparison;
-			comparison = SongTime.CompareTo(other.SongTime);
+			comparison = ChartTime.CompareTo(other.ChartTime);
 			if (comparison != 0)
 				return comparison;
 			return SMCommon.SMEventComparer.Compare(ChartEvent, other.ChartEvent);

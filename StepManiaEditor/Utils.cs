@@ -84,6 +84,12 @@ namespace StepManiaEditor
 
 		public const string TextureIdMeasureMarker = "measure_marker";
 		public const string TextureIdBeatMarker = "beat_marker";
+		public const string TextureIdRegionRect = "region_rect";
+
+		public static Color StopRegionColor = new Color(0x7A, 0x29, 0x29, 0x7F);
+		public static Color DelayRegionColor = new Color(0x7A, 0x5E, 0x29, 0x7F);
+		public static Color FakeRegionColor = new Color(0x7A, 0x46, 0x29, 0x7F);
+		public static Color WarpRegionColor = new Color(0x29, 0x79, 0x7A, 0x7F);
 
 		public static readonly string[] ExpectedAudioFormats = { "mp3", "oga", "ogg", "wav" };
 		public static readonly string[] ExpectedImageFormats = { "bmp", "gif", "jpeg", "jpg", "png", "tif", "tiff", "webp" };
