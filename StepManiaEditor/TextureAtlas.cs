@@ -280,10 +280,34 @@ namespace StepManiaEditor
 						new Rectangle(0, 0, 1, node.TextureRect.Height),
 						Color.White);
 
+					// Top left padding.
+					sb.Draw(node.Texture,
+						new Rectangle(node.TextureRect.X - 1, node.TextureRect.Y - 1, 1, 1),
+						new Rectangle(0, 0, 1, 1),
+						Color.White);
+
+					// Bottom left padding.
+					sb.Draw(node.Texture,
+						new Rectangle(node.TextureRect.X - 1, node.TextureRect.Y + node.TextureRect.Height, 1, 1),
+						new Rectangle(0, node.TextureRect.Height - 1, 1, 1),
+						Color.White);
+
 					// Right padding.
 					sb.Draw(node.Texture,
 						new Rectangle(node.TextureRect.X + node.TextureRect.Width, node.TextureRect.Y, 1, node.TextureRect.Height),
 						new Rectangle(node.TextureRect.Width - 1, 0, 1, node.TextureRect.Height),
+						Color.White);
+
+					// Top right padding.
+					sb.Draw(node.Texture,
+						new Rectangle(node.TextureRect.X + node.TextureRect.Width, node.TextureRect.Y - 1, 1, 1),
+						new Rectangle(node.TextureRect.Width - 1, 0, 1, 1),
+						Color.White);
+
+					// Bottom right padding.
+					sb.Draw(node.Texture,
+						new Rectangle(node.TextureRect.X + node.TextureRect.Width, node.TextureRect.Y + node.TextureRect.Height, 1, 1),
+						new Rectangle(node.TextureRect.Width - 1, node.TextureRect.Height - 1, 1, 1),
 						Color.White);
 
 					// Top padding.
@@ -355,6 +379,17 @@ namespace StepManiaEditor
 			}
 
 			spriteBatch.Draw(Atlas, destinationRectangle, node.TextureRect, new Color(1.0f, 1.0f, 1.0f, alpha));
+		}
+
+		public void Draw(string textureId, SpriteBatch spriteBatch, Rectangle destinationRectangle, Color color)
+		{
+			if (!GetNode(textureId, destinationRectangle, out var node, out _))
+			{
+				Logger.Warn($"Failed to draw packed texture identified by \"{textureId}\". No texture with that id found.");
+				return;
+			}
+
+			spriteBatch.Draw(Atlas, destinationRectangle, node.TextureRect, color);
 		}
 
 		public void Draw(string textureId, SpriteBatch spriteBatch, Rectangle destinationRectangle, float rotation, float alpha)
