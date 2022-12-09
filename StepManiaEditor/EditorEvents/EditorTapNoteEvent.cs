@@ -33,8 +33,8 @@ namespace StepManiaEditor
 			textureAtlas.Draw(
 				textureId,
 				spriteBatch,
-				new Vector2((float)GetX(), (float)GetY()),
-				GetScale(),
+				new Vector2((float)X, (float)Y),
+				Scale,
 				rot,
 				alpha);
 		}

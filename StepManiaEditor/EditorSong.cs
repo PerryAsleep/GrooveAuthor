@@ -209,6 +209,8 @@ namespace StepManiaEditor
 
 		private Extras OriginalSongExtras;
 
+		public EditorPreviewRegionEvent PreviewEvent;
+
 		public Dictionary<ChartType, List<EditorChart>> Charts = new Dictionary<ChartType, List<EditorChart>>();
 		public List<Chart> UnsupportedCharts = new List<Chart>();
 
@@ -298,6 +300,7 @@ namespace StepManiaEditor
 			ImGuiRenderer imGuiRenderer)
 		{
 			Editor = editor;
+			PreviewEvent = new EditorPreviewRegionEvent(this);
 
 			Banner = new EditorImageData(FileDirectory, graphicsDevice, imGuiRenderer, BannerWidth, BannerHeight, null, false);
 			Background = new EditorImageData(FileDirectory, graphicsDevice, imGuiRenderer, BackgroundWidth, BackgroundHeight, null, true);
@@ -318,6 +321,7 @@ namespace StepManiaEditor
 			ImGuiRenderer imGuiRenderer)
 		{
 			Editor = editor;
+			PreviewEvent = new EditorPreviewRegionEvent(this);
 
 			SetFullFilePath(fullFilePath);
 			
@@ -507,6 +511,11 @@ namespace StepManiaEditor
 			}
 
 			return EditorChart.DefaultTimeSignature;
+		}
+
+		public bool IsUsingSongForPreview()
+		{
+			return string.IsNullOrEmpty(MusicPreviewPath);
 		}
 
 		public Song SaveToSong()

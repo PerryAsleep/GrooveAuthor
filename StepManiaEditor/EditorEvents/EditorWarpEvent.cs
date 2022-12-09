@@ -5,7 +5,6 @@ using Microsoft.Xna.Framework.Graphics;
 using static StepManiaEditor.Editor;
 using static StepManiaEditor.Utils;
 
-
 namespace StepManiaEditor
 {
 	public class EditorWarpEvent : EditorRateAlteringEvent, IRegion
@@ -57,14 +56,22 @@ namespace StepManiaEditor
 		/// loading the chart for example, this could crash. By lazily setting it we avoid this
 		/// problem as long as we assume the caller of GetW() happens on the main thread.
 		/// </remarks>
-		public override double GetW()
+		private double _W;
+		public override double W
 		{
-			if (WidthDirty)
+			get
 			{
-				SetW(ImGuiLayoutUtils.GetMiscEditorEventDragIntWidgetWidth(IntValue, Format));
-				WidthDirty = false;
+				if (WidthDirty)
+				{
+					_W = ImGuiLayoutUtils.GetMiscEditorEventDragIntWidgetWidth(IntValue, Format);
+					WidthDirty = false;
+				}
+				return _W;
 			}
-			return base.GetW();
+			set
+			{
+				_W = value;
+			}
 		}
 
 		public EditorWarpEvent(EditorChart editorChart, Warp chartEvent) : base(editorChart, chartEvent)
@@ -75,19 +82,19 @@ namespace StepManiaEditor
 
 		public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)
 		{
-			if (GetAlpha() <= 0.0f)
+			if (Alpha <= 0.0f)
 				return;
 			ImGuiLayoutUtils.MiscEditorEventDragIntWidget(
 				GetImGuiId(),
 				this,
 				nameof(IntValue),
-				(int)GetX(), (int)GetY(), (int)GetW(),
+				(int)X, (int)Y, (int)W,
 				Utils.UIWarpColorRGBA,
 				false,
 				CanBeDeleted,
 				Speed,
 				Format,
-				GetAlpha(),
+				Alpha,
 				WidgetHelp,
 				0);
 		}

@@ -4,13 +4,13 @@ using System.Collections.Generic;
 namespace StepManiaEditor
 {
 	/// <summary>
-	/// Class to help position the miscellaneous, non-note, EditorEvent widgets.
+	/// Class to help position the miscellaneous, non-note, IPlaceable widgets.
 	/// These widgets are adjacent to the chart and there may be more than one present for
 	/// a single row. This class helps sort them per row and reposition as needed.
 	///
 	/// Expected Usage:
 	///  Call BeginFrame at the start of each frame.
-	///  Call PositionEvent once per each each visible miscellaneous EditorEvent per frame.
+	///  Call PositionEvent once per each each visible miscellaneous IPlaceable per frame.
 	/// </summary>
 	public class MiscEventWidgetLayoutManager
 	{
@@ -25,20 +25,19 @@ namespace StepManiaEditor
 		/// </summary>
 		private static readonly List<Type> RightTypes;
 		/// <summary>
-		/// WidgetData for every type of EditorEvent this class manages.
+		/// WidgetData for every type of IPlaceable object this class manages.
 		/// </summary>
 		private static readonly Dictionary<Type, WidgetData> Data;
 
 		/// <summary>
-		/// EditorEvents on the current row being position on the left.
+		/// IPlaceable objects being positioned on the left.
 		/// </summary>
-		private static readonly Dictionary<Type, EditorEvent> CurrentLeftEvents = new Dictionary<Type, EditorEvent>();
+		private static readonly Dictionary<double, Dictionary<Type, IPlaceable>> CurrentFrameLeftEvents = new Dictionary<double, Dictionary<Type, IPlaceable>>();
 		/// <summary>
-		/// EditorEvents on the current row being position on the right.
+		/// IPlaceable objects being positioned on the right.
 		/// </summary>
-		private static readonly Dictionary<Type, EditorEvent> CurrentRightEvents = new Dictionary<Type, EditorEvent>();
+		private static readonly Dictionary<double, Dictionary<Type, IPlaceable>> CurrentFrameRightEvents = new Dictionary<double, Dictionary<Type, IPlaceable>>();
 
-		private static int LastRow;
 		private static double LeftAnchorPos;
 		private static double RightAnchorPos;
 
@@ -65,6 +64,7 @@ namespace StepManiaEditor
 				{ typeof(EditorMultipliersEvent), new WidgetData() },
 				{ typeof(EditorFakeSegmentEvent), new WidgetData() },
 				{ typeof(EditorLabelEvent), new WidgetData() },
+				{ typeof(EditorPreviewRegionEvent), new WidgetData() },
 			};
 
 			LeftTypes = new List<Type>
@@ -79,6 +79,7 @@ namespace StepManiaEditor
 			};
 			RightTypes = new List<Type>
 			{
+				typeof(EditorPreviewRegionEvent),
 				typeof(EditorTempoEvent),
 				typeof(EditorScrollRateEvent),
 				typeof(EditorInterpolatedRateAlteringEvent),
@@ -94,31 +95,36 @@ namespace StepManiaEditor
 
 		public static void BeginFrame(double leftAnchorPos, double rightAnchorPos)
 		{
-			LastRow = 0;
 			LeftAnchorPos = leftAnchorPos;
 			RightAnchorPos = rightAnchorPos;
-			CurrentLeftEvents.Clear();
-			CurrentRightEvents.Clear();
+			CurrentFrameLeftEvents.Clear();
+			CurrentFrameRightEvents.Clear();
 		}
 
 		/// <summary>
-		/// Positions the given EditorEvent by setting its X and Y values.
-		/// Assumes that all EditorEvents being position through this class have their W values
+		/// Positions the given IPlaceable by setting its X and Y values.
+		/// Assumes that all IPlaceables being positioned through this class have their W values
 		/// already set correctly.
 		/// </summary>
-		/// <param name="e">EditorEvent to position.</param>
+		/// <param name="e">IPlaceable object to position.</param>
 		/// <param name="rowY">Y position of the row of this event.</param>
-		public static void PositionEvent(EditorEvent e, double rowY)
+		public static void PositionEvent(IPlaceable e, double rowY)
 		{
 			// Adjust y so that the widget is centered in y.
 			var y = rowY - ImGuiLayoutUtils.GetMiscEditorEventHeight(true) * 0.5;
 
-			// If this event is for a new row, clear the event lists so we no longer
-			// reposition anything
-			if (e.GetRow() != LastRow)
+			// Get the current frame events for this position.
+			Dictionary<Type, IPlaceable> leftEvents;
+			if (!CurrentFrameLeftEvents.TryGetValue(y, out leftEvents))
 			{
-				CurrentLeftEvents.Clear();
-				CurrentRightEvents.Clear();
+				leftEvents = new Dictionary<Type, IPlaceable>();
+				CurrentFrameLeftEvents[y] = leftEvents;
+			}
+			Dictionary<Type, IPlaceable> rightEvents;
+			if (!CurrentFrameRightEvents.TryGetValue(y, out rightEvents))
+			{
+				rightEvents = new Dictionary<Type, IPlaceable>();
+				CurrentFrameRightEvents[y] = rightEvents;
 			}
 
 			var t = e.GetType();
@@ -129,25 +135,25 @@ namespace StepManiaEditor
 				var order = widgetData.LeftOrder;
 				if (order >= 0)
 				{
-					var x = LeftAnchorPos - e.GetW();
+					var x = LeftAnchorPos - e.W;
 					for (var i = 0; i < LeftTypes.Count; i++)
 					{
-						if (!CurrentLeftEvents.ContainsKey(LeftTypes[i]))
+						if (!leftEvents.ContainsKey(LeftTypes[i]))
 							continue;
 
 						// Shift this widget to the left of existing widgets on this row
 						// which should precede it.
 						if (i < order)
-							x -= (CurrentLeftEvents[LeftTypes[i]].GetW() + ElementPadding);
+							x -= (leftEvents[LeftTypes[i]].W + ElementPadding);
 						// Shift widgets after this widget further to the left.
 						else if (i > order)
-							CurrentLeftEvents[LeftTypes[i]]
-								.SetX(CurrentLeftEvents[LeftTypes[i]].GetX() - (e.GetW() + ElementPadding));
+							leftEvents[LeftTypes[i]].X = leftEvents[LeftTypes[i]].X - (e.W + ElementPadding);
 					}
 
 					// Set position of this widget and record it.
-					e.SetPosition(x, y);
-					CurrentLeftEvents[t] = e;
+					e.X = x;
+					e.Y = y;
+					leftEvents[t] = e;
 				}
 
 				// Check for adding this event's widget to the right.
@@ -157,26 +163,24 @@ namespace StepManiaEditor
 					var x = RightAnchorPos;
 					for (var i = 0; i < RightTypes.Count; i++)
 					{
-						if (!CurrentRightEvents.ContainsKey(RightTypes[i]))
+						if (!rightEvents.ContainsKey(RightTypes[i]))
 							continue;
 
 						// Shift this widget to the right of existing widgets on this row
 						// which should precede it.
 						if (i < order)
-							x += (CurrentRightEvents[RightTypes[i]].GetW() + ElementPadding);
+							x += (rightEvents[RightTypes[i]].W + ElementPadding);
 						// Shift widgets after this widget further to the right.
 						else if (i > order)
-							CurrentRightEvents[RightTypes[i]]
-								.SetX(CurrentRightEvents[RightTypes[i]].GetX() + (e.GetW() + ElementPadding));
+							rightEvents[RightTypes[i]].X = rightEvents[RightTypes[i]].X + (e.W + ElementPadding);
 					}
 
 					// Set position of this widget and record it.
-					e.SetPosition(x, y);
-					CurrentRightEvents[t] = e;
+					e.X = x;
+					e.Y = y;
+					rightEvents[t] = e;
 				}
 			}
-
-			LastRow = e.GetRow();
 		}
 	}
 }

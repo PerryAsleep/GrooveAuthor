@@ -26,14 +26,16 @@ namespace StepManiaEditor
 		{
 			var y = RegionY;
 			var h = RegionH;
+			if (y > screenHeight || y + h < 0)
+				return;
 			if (y < 0)
 			{
 				y = 0;
 				h += RegionY;
 			}
-			if (h > screenHeight)
+			if (y + h > screenHeight)
 			{
-				h = screenHeight;
+				h = screenHeight - y;
 			}
 			// TODO: round?
 			textureAtlas.Draw(TextureIdRegionRect, spriteBatch, new Rectangle((int)RegionX, (int)y, (int)RegionW, (int)h), color);

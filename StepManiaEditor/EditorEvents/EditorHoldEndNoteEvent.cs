@@ -85,20 +85,20 @@ namespace StepManiaEditor
 
 			// Determine the Y value and height to use.
 			// If the note is active, we should bring down the top to the cutoff point.
-			var noteY = GetY();
-			var noteH = GetH();
+			var noteY = Y;
+			var noteH = H;
 			if (activeAndCutoff)
 			{
 				noteH -= (NextDrawActiveYCutoffPoint - noteY);
 				noteY = NextDrawActiveYCutoffPoint;
 			}
 
-			capH = (int)(capH * GetScale() + 0.5);
-			var bodyTileH = (int)(bodyTexH * GetScale() + 0.5);
+			capH = (int)(capH * Scale + 0.5);
+			var bodyTileH = (int)(bodyTexH * Scale + 0.5);
 			var y = (int)(noteY + noteH + 0.5) - capH;
 			var minY = (int)(noteY + 0.5);
-			var x = (int)(GetX() + 0.5);
-			var w = (int)(GetW() + 0.5);
+			var x = (int)(X + 0.5);
+			var w = (int)(W + 0.5);
 
 			// Record the cap position for drawing later.
 			var capY = y;
@@ -140,7 +140,7 @@ namespace StepManiaEditor
 			{
 				// It is assumed there is no height padding baked into this texture.
 				var (_, holdBodyStartHeight) = textureAtlas.GetDimensions(holdBodyStartTexture);
-				var holdBodyStartH = (int)(holdBodyStartHeight * GetScale());
+				var holdBodyStartH = (int)(holdBodyStartHeight * Scale);
 
 				textureAtlas.Draw(
 					holdBodyStartTexture,
@@ -162,7 +162,7 @@ namespace StepManiaEditor
 			{
 				var (startArrowTexture, _) = arrowGraphicManager.GetArrowTexture(GetHoldStartNote().GetRow(), GetLane());
 				var (_, startArrowHeight) = textureAtlas.GetDimensions(startArrowTexture);
-				var holdStartY = noteY - (startArrowHeight * 0.5 * GetScale());
+				var holdStartY = noteY - (startArrowHeight * 0.5 * Scale);
 				GetHoldStartNote().DrawAtY(textureAtlas, spriteBatch, arrowGraphicManager, holdStartY);
 			}
 

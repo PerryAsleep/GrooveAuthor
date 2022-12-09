@@ -30,8 +30,8 @@ namespace StepManiaEditor
 			textureAtlas.Draw(
 				ArrowGraphicManager.GetMineTexture(GetRow(), LaneNote.Lane),
 				spriteBatch,
-				new Vector2((float)GetX(), (float)GetY()),
-				GetScale(),
+				new Vector2((float)X, (float)Y),
+				Scale,
 				0.0f,
 				alpha);
 		}

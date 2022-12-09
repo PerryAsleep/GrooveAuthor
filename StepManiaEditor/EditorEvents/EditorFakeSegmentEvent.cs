@@ -53,14 +53,22 @@ namespace StepManiaEditor
 		/// loading the chart for example, this could crash. By lazily setting it we avoid this
 		/// problem as long as we assume the caller of GetW() happens on the main thread.
 		/// </remarks>
-		public override double GetW()
+		private double _W;
+		public override double W
 		{
-			if (WidthDirty)
+			get
 			{
-				SetW(ImGuiLayoutUtils.GetMiscEditorEventDragDoubleWidgetWidth(DoubleValue, Format));
-				WidthDirty = false;
+				if (WidthDirty)
+				{
+					_W = ImGuiLayoutUtils.GetMiscEditorEventDragDoubleWidgetWidth(DoubleValue, Format);
+					WidthDirty = false;
+				}
+				return _W;
 			}
-			return base.GetW();
+			set
+			{
+				_W = value;
+			}
 		}
 
 		public EditorFakeSegmentEvent(EditorChart editorChart, FakeSegment chartEvent) : base(editorChart, chartEvent)
@@ -71,19 +79,19 @@ namespace StepManiaEditor
 
 		public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)
 		{
-			if (GetAlpha() <= 0.0f)
+			if (Alpha <= 0.0f)
 				return;
 			ImGuiLayoutUtils.MiscEditorEventDragDoubleWidget(
 				GetImGuiId(),
 				this,
 				nameof(DoubleValue),
-				(int)GetX(), (int)GetY(), (int)GetW(),
+				(int)X, (int)Y, (int)W,
 				Utils.UIFakesColorRGBA,
 				false,
 				true,
 				Speed,
 				Format,
-				GetAlpha(),
+				Alpha,
 				WidgetHelp,
 				0.0);
 		}

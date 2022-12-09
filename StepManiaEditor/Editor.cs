@@ -155,6 +155,7 @@ namespace StepManiaEditor
 		private List<EditorEvent> VisibleEvents = new List<EditorEvent>();
 		private List<EditorMarkerEvent> VisibleMarkers = new List<EditorMarkerEvent>();
 		private List<IRegion> VisibleRegions = new List<IRegion>();
+		private EditorPreviewRegionEvent VisiblePreview = null;
 		private Receptor[] Receptors = null;
 
 		private EditorEvent[] NextAutoPlayNotes = null;
@@ -1200,6 +1201,12 @@ namespace StepManiaEditor
 		{
 			var eventsBeingEdited = new List<EditorEvent>();
 
+			// Draw the preview if it is visible.
+			// This will only draw the miscellaneous editor event for the preview.
+			// The region will be drawn by DrawRegions.
+			if (VisiblePreview != null)
+				VisiblePreview.Draw();
+
 			foreach (var visibleEvent in VisibleEvents)
 			{
 				// Capture events being edited to draw after all events not being edited.
@@ -1246,7 +1253,7 @@ namespace StepManiaEditor
 		#region Chart Update
 
 		/// <summary>
-		/// Sets VisibleEvents, VisibleMarkers, and VisibleRegions to lists of all the currently visible
+		/// Sets VisibleEvents, VisibleMarkers, VisibleRegions, and VisiblePreview to store the currently visible
 		/// objects based on the current EditorPosition and the SpacingMode.
 		/// </summary>
 		/// <remarks>
@@ -1256,9 +1263,11 @@ namespace StepManiaEditor
 		{
 			// TODO: Crash when switching songs from doubles to singles.
 
+			// Clear the current state of visible events
 			VisibleEvents.Clear();
 			VisibleMarkers.Clear();
 			VisibleRegions.Clear();
+			VisiblePreview = null;
 
 			if (ActiveChart == null || ActiveChart.EditorEvents == null || ArrowGraphicManager == null)
 				return;
@@ -1416,14 +1425,22 @@ namespace StepManiaEditor
 				holdEndNotesNeedingToBeAdded[hsn.GetLane()] = hsn.GetHoldEndNote();
 			}
 
-			// Regions which start before the top of the screen.
+			var hasNextRateEvent = rateEnumerator.MoveNext();
+			EditorRateAlteringEvent nextRateEvent = hasNextRateEvent ? rateEnumerator.Current : null;
+
 			var regionsNeedingToBeAdded = new List<IRegion>();
+
+			// Check for adding the preview if it extends through the top of the screen.
+			if (DoesPreviewExtendThroughChartTime(chartTimeAtTopOfScreen))
+				AddPreviewEvent(ref regionsNeedingToBeAdded, pps, ppr, previousRateEventY, rateEvent, startPosX, numArrows * arrowW, startPosY, miscEventAlpha);
+			// The preview event may also begin during the current rate section but start after the start of the screen.
+			// This will capture the preview even if starts after the bottom of the screen, which is not a problem.
+			CheckForAddingPreviewEvent(ref regionsNeedingToBeAdded, pps, ppr, previousRateEventY, rateEvent, nextRateEvent, startPosX, numArrows * arrowW, startPosY, miscEventAlpha);
+
+			// Check for adding regions which extend through the top of the screen.
 			var regions = ScanBackwardsForRegions(chartPositionAtTopOfScreen, chartTimeAtTopOfScreen);
 			foreach (var region in regions)
 				AddRegion(region, ref regionsNeedingToBeAdded, pps, ppr, previousRateEventY, rateEvent, startPosX, numArrows * arrowW);
-
-			var hasNextRateEvent = rateEnumerator.MoveNext();
-			EditorRateAlteringEvent nextRateEvent = hasNextRateEvent ? rateEnumerator.Current : null;
 
 			// Check to see if any regions needing to be added will complete before the next rate altering event.
 			CheckForCompletingRegions(ref regionsNeedingToBeAdded, pps, ppr, previousRateEventY, rateEvent, nextRateEvent);
@@ -1438,7 +1455,7 @@ namespace StepManiaEditor
 				{
 					// Add a misc widget for this rate event.
 					var rateEventY = GetY(e, pps, ppr, previousRateEventY, rateEvent);
-					nextRateEvent.SetAlpha(miscEventAlpha);
+					nextRateEvent.Alpha = miscEventAlpha;
 					MiscEventWidgetLayoutManager.PositionEvent(nextRateEvent, rateEventY);
 					noteEvents.Add(nextRateEvent);
 
@@ -1458,6 +1475,10 @@ namespace StepManiaEditor
 					hasNextRateEvent = rateEnumerator.MoveNext();
 					nextRateEvent = hasNextRateEvent ? rateEnumerator.Current : null;
 
+					// Add the preview if it starts within this new rate altering event.
+					// This will capture the preview even if starts after the bottom of the screen, which is not a problem.
+					CheckForAddingPreviewEvent(ref regionsNeedingToBeAdded, pps, ppr, previousRateEventY, rateEvent, nextRateEvent, startPosX, numArrows * arrowW, startPosY, miscEventAlpha);
+
 					// Check to see if any regions needing to be added will complete before the next rate altering event.
 					CheckForCompletingRegions(ref regionsNeedingToBeAdded, pps, ppr, previousRateEventY, rateEvent, nextRateEvent);
 					continue;
@@ -1470,10 +1491,7 @@ namespace StepManiaEditor
 					break;
 
 				// Record note.
-				if (e is EditorTapNoteEvent
-					|| e is EditorHoldStartNoteEvent
-					|| e is EditorHoldEndNoteEvent
-					|| e is EditorMineNoteEvent)
+				if (e is EditorTapNoteEvent || e is EditorHoldStartNoteEvent || e is EditorHoldEndNoteEvent || e is EditorMineNoteEvent)
 				{
 					var noteY = arrowY;
 					var noteH = arrowH;
@@ -1483,8 +1501,8 @@ namespace StepManiaEditor
 						var start = hen.GetHoldStartNote();
 						var endY = y + holdCapHeight;
 
-						noteY = start.GetY() + arrowH * 0.5f;
-						noteH = endY - (start.GetY() + (arrowH * 0.5f));
+						noteY = start.Y + arrowH * 0.5f;
+						noteH = endY - (start.Y + (arrowH * 0.5f));
 
 						holdBodyEvents.Add(e);
 
@@ -1506,11 +1524,11 @@ namespace StepManiaEditor
 				}
 				else
 				{
-					e.SetAlpha(miscEventAlpha);
+					e.Alpha = miscEventAlpha;
 					MiscEventWidgetLayoutManager.PositionEvent(e, y);
 					noteEvents.Add(e);
 
-					// Add a region for this even if appropriate.
+					// Add a region for this event if appropriate.
 					if (e is IRegion region)
 						AddRegion(region, ref regionsNeedingToBeAdded, pps, ppr, previousRateEventY, rateEvent, startPosX, numArrows * arrowW);
 				}
@@ -1528,11 +1546,11 @@ namespace StepManiaEditor
 
 				var start = holdEndNote.GetHoldStartNote();
 				var endY = GetY(holdEndNote, pps, ppr, previousRateEventY, rateEvent) + holdCapHeight;
-				var noteH = endY - (start.GetY() + (arrowH * 0.5f));
+				var noteH = endY - (start.Y + (arrowH * 0.5f));
 
 				holdEndNote.SetDimensions(
 					startPosX + holdEndNote.GetLane() * arrowW,
-					start.GetY() + arrowH * 0.5,
+					start.Y + arrowH * 0.5,
 					arrowW,
 					noteH,
 					sizeZoom);
@@ -1853,6 +1871,56 @@ namespace StepManiaEditor
 			if (warp != null)
 				regions.Add(warp);
 			return regions;
+		}
+
+		private bool DoesPreviewExtendThroughChartTime(double chartTime)
+		{
+			if (!ActiveSong.IsUsingSongForPreview())
+				return false;
+
+			var previewStartChartTime = ActiveSong.PreviewEvent.GetRegionPosition();
+			return previewStartChartTime < chartTime && previewStartChartTime + ActiveSong.PreviewEvent.GetRegionDuration() >= chartTime;
+		}
+
+		private void CheckForAddingPreviewEvent(
+			ref List<IRegion> regionsNeedingToBeAdded,
+			double pps,
+			double ppr,
+			double previousRateEventY,
+			EditorRateAlteringEvent previousRateEvent,
+			EditorRateAlteringEvent nextRateEvent,
+			double x,
+			double w,
+			double startPosY,
+			float miscEventAlpha)
+		{
+			if (VisiblePreview != null || !ActiveSong.IsUsingSongForPreview())
+				return;
+			
+			// Check if the preview time falls within the current rate altering event range.
+			var previewTime = ActiveSong.PreviewEvent.GetRegionPosition();
+			if (previewTime >= previousRateEvent.GetChartTime()
+				&& (nextRateEvent == null || previewTime < nextRateEvent.GetChartTime()))
+			{
+				AddPreviewEvent(ref regionsNeedingToBeAdded, pps, ppr, previousRateEventY, previousRateEvent, x, w, startPosY, miscEventAlpha);
+			}
+		}
+
+		private void AddPreviewEvent(ref List<IRegion> regionsNeedingToBeAdded, double pps, double ppr, double previousRateEventY, EditorRateAlteringEvent previousRateEvent, double x, double w, double startPosY, float miscEventAlpha)
+		{
+			VisiblePreview = ActiveSong.PreviewEvent;
+
+			// Start a region for the preview.
+			var y = GetRegionY(VisiblePreview, pps, ppr, previousRateEventY, previousRateEvent.GetChartTime(), previousRateEvent.GetRow());
+			VisiblePreview.RegionX = x;
+			VisiblePreview.RegionY = y;
+			VisiblePreview.RegionW = w;
+			regionsNeedingToBeAdded.Add(VisiblePreview);
+
+			// The preview also uses a misc event widget.
+			VisiblePreview.ShouldDrawMiscEvent = y > startPosY;
+			VisiblePreview.Alpha = miscEventAlpha;
+			MiscEventWidgetLayoutManager.PositionEvent(ActiveSong.PreviewEvent, y);
 		}
 
 		private void AddRegion(IRegion region, ref List<IRegion> regionsNeedingToBeAdded, double pps, double ppr, double previousRateEventY, EditorRateAlteringEvent rateEvent, double x, double w)
@@ -3962,6 +4030,13 @@ namespace StepManiaEditor
 
 			ActiveChart = chart;
 
+			// The Position needs to know about the active chart for doing time and row calculations.
+			Position.ActiveChart = ActiveChart;
+
+			// The preview event region needs to know about the active chart since rendering the preview
+			// with rate altering events from the chart requires knowing the chart's music offset.
+			ActiveSong.PreviewEvent.ActiveChart = ActiveChart;
+
 			if (ActiveChart != null)
 			{
 				// Update the recent file entry for the current song so that tracks the selected chart
@@ -3971,9 +4046,6 @@ namespace StepManiaEditor
 					p.RecentFiles[0].LastChartType = ActiveChart.ChartType;
 					p.RecentFiles[0].LastChartDifficultyType = ActiveChart.ChartDifficultyType;
 				}
-
-				// The Position needs to know about the active chart for doing time and row calculations.
-				Position.ActiveChart = ActiveChart;
 
 				// The receptors and arrow graphics depend on the active chart.
 				ArrowGraphicManager = ArrowGraphicManager.CreateArrowGraphicManager(ActiveChart.ChartType);

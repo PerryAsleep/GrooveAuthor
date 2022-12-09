@@ -44,14 +44,22 @@ namespace StepManiaEditor
 		/// loading the chart for example, this could crash. By lazily setting it we avoid this
 		/// problem as long as we assume the caller of GetW() happens on the main thread.
 		/// </remarks>
-		public override double GetW()
+		private double _W;
+		public override double W
 		{
-			if (WidthDirty)
+			get
 			{
-				SetW(ImGuiLayoutUtils.GetMiscEditorEventStringWidth(StringValue));
-				WidthDirty = false;
+				if (WidthDirty)
+				{
+					_W = ImGuiLayoutUtils.GetMiscEditorEventStringWidth(StringValue);
+					WidthDirty = false;
+				}
+				return _W;
 			}
-			return base.GetW();
+			set
+			{
+				_W = value;
+			}
 		}
 
 		public static (bool, Fraction) IsValidTimeSignatureString(string v)
@@ -76,17 +84,17 @@ namespace StepManiaEditor
 
 		public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)
 		{
-			if (GetAlpha() <= 0.0f)
+			if (Alpha <= 0.0f)
 				return;
 			ImGuiLayoutUtils.MiscEditorEventTimeSignatureWidget(
 				GetImGuiId(),
 				this,
 				nameof(StringValue),
-				(int)GetX(), (int)GetY(), (int)GetW(),
+				(int)X, (int)Y, (int)W,
 				Utils.UITimeSignatureColorRGBA,
 				false,
 				CanBeDeleted,
-				GetAlpha(),
+				Alpha,
 				WidgetHelp);
 		}
 	}

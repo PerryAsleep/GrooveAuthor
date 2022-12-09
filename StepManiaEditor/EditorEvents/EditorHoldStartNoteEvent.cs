@@ -58,7 +58,7 @@ namespace StepManiaEditor
 
 		public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)
 		{
-			DrawAtY(textureAtlas, spriteBatch, arrowGraphicManager, GetY());
+			DrawAtY(textureAtlas, spriteBatch, arrowGraphicManager, Y);
 		}
 
 		public void DrawAtY(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager, double y)
@@ -69,8 +69,8 @@ namespace StepManiaEditor
 			textureAtlas.Draw(
 				holdTexture,
 				spriteBatch,
-				new Vector2((float)GetX(), (float)y),
-				GetScale(),
+				new Vector2((float)X, (float)y),
+				Scale,
 				holdRot,
 				alpha);
 		}

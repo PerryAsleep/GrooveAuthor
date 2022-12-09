@@ -1097,6 +1097,32 @@ namespace StepManiaEditor
 			MiscEditorEventWidget(id, e, x, y, width, colorRGBA, selected, canBeDeleted, alpha, help, Func);
 		}
 
+		public static void MiscEditorEventPreviewDragDoubleWidget(
+			string id,
+			object o,
+			string fieldName,
+			int x,
+			int y,
+			int width,
+			uint colorRGBA,
+			bool selected,
+			float speed,
+			string format,
+			float alpha,
+			string help,
+			double min = double.MinValue,
+			double max = double.MaxValue)
+		{
+			void Func(float elementWidth)
+			{
+				DrawDragDouble(true, $"##{id}", o, fieldName, elementWidth, "", speed, format, true, min, max);
+			}
+
+			// MiscEditorEventWidget requires an EditorEvent for enqueuing delete events.
+			// There is no EditorEvent for the preview, but it can also not be deleted, so pass in null.
+			MiscEditorEventWidget(id, null, x, y, width, colorRGBA, selected, false, alpha, help, Func);
+		}
+
 		public static double GetMiscEditorEventStringWidth(string s)
 		{
 			ImGui.PushFont(ImGuiFont);

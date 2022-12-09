@@ -6,17 +6,21 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace StepManiaEditor
 {
-	public abstract class EditorEvent : IComparable<EditorEvent>
+	public abstract class EditorEvent : IComparable<EditorEvent>, IPlaceable
 	{
 		// Foot, expression, etc.
 
-		private double X;
-		private double Y;
-		private double W;
-		private double H;
-		private double Scale = 1.0;
-		private float Alpha = 1.0f;
 		private bool BeingEdited = false;
+
+		#region IPlaceable
+		public virtual double X { get; set; }
+		public virtual double Y { get; set; }
+		public virtual double W { get; set; }
+		public virtual double H { get; set; }
+		#endregion IPlaceable
+
+		public virtual float Alpha { get; set; } = 1.0f;
+		public virtual double Scale { get; set; } = 1.0;
 
 		protected readonly Event ChartEvent;
 		protected readonly EditorChart EditorChart;
@@ -115,61 +119,6 @@ namespace StepManiaEditor
 			Y = y;
 		}
 
-		public virtual void SetX(double x)
-		{
-			X = x;
-		}
-
-		public virtual void SetY(double y)
-		{
-			Y = y;
-		}
-
-		public virtual void SetW(double w)
-		{
-			W = w;
-		}
-
-		public virtual void SetH(double h)
-		{
-			H = h;
-		}
-
-		public virtual void SetAlpha(float a)
-		{
-			Alpha = a;
-		}
-
-		public virtual double GetX()
-		{
-			return X;
-		}
-
-		public virtual double GetY()
-		{
-			return Y;
-		}
-
-		public virtual double GetW()
-		{
-			return W;
-		}
-
-		public virtual double GetH()
-		{
-			return H;
-		}
-
-		public double GetScale()
-		{
-			return Scale;
-		}
-
-		public float GetAlpha()
-		{
-			return Alpha;
-		}
-
 		public bool IsBeingEdited()
 		{
 			return BeingEdited;
@@ -187,6 +136,8 @@ namespace StepManiaEditor
 
 		public virtual int GetLane()
 		{
+			if (ChartEvent == null)
+				return -1;
 			if (ChartEvent is LaneNote ln)
 				return ln.Lane;
 			return -1;
@@ -194,11 +145,13 @@ namespace StepManiaEditor
 
 		public virtual int GetRow()
 		{
-			return ChartEvent.IntegerPosition;
+			return ChartEvent?.IntegerPosition ?? 0;
 		}
 
 		public virtual double GetChartTime()
 		{
+			if (ChartEvent == null)
+				return 0.0;
 			return Fumen.Utils.ToSeconds(ChartEvent.TimeMicros);
 		}
 

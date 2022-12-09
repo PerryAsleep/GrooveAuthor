@@ -31,6 +31,8 @@ namespace StepManiaEditor
 		public const uint UIFakesColorRGBA = 0x8A29467A;			// dark orange
 		public const uint UILabelColorRGBA = 0x8A68297A;			// pink
 
+		public const uint UIPreviewColorRGBA = 0x8A7A7A7A;          // grey
+
 		public const uint UIDifficultyBeginnerColorRGBA = 0xFF808040;
 		public const uint UIDifficultyEasyColorRGBA = 0xFF4D804D;
 		public const uint UIDifficultyMediumColorRGBA = 0xFF408080;
@@ -90,6 +92,7 @@ namespace StepManiaEditor
 		public static Color DelayRegionColor = new Color(0x7A, 0x5E, 0x29, 0x7F);
 		public static Color FakeRegionColor = new Color(0x7A, 0x46, 0x29, 0x7F);
 		public static Color WarpRegionColor = new Color(0x29, 0x79, 0x7A, 0x7F);
+		public static Color PreviewRegionColor = new Color(0x7A, 0x7A, 0x7A, 0x7F);
 
 		public static readonly string[] ExpectedAudioFormats = { "mp3", "oga", "ogg", "wav" };
 		public static readonly string[] ExpectedImageFormats = { "bmp", "gif", "jpeg", "jpg", "png", "tif", "tiff", "webp" };
