@@ -102,8 +102,6 @@ namespace StepManiaEditor
 				default:
 					return null;
 			}
-
-			return null;
 		}
 
 		public abstract bool AreHoldCapsCentered();
