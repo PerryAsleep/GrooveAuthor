@@ -915,7 +915,7 @@ namespace StepManiaEditor
 		/// <param name="screenX">X coordinate in screen space.</param>
 		/// <param name="screenY">Y coordinate in screen space.</param>
 		/// <returns>Whether or not the screen position is within the MiniMap bounds.</returns>
-		private bool IsScreenPositionInMiniMapBounds(int screenX, int screenY)
+		public bool IsScreenPositionInMiniMapBounds(int screenX, int screenY)
 		{
 			return (screenX >= Bounds.X && screenX <= Bounds.X + Bounds.Width && screenY >= Bounds.Y && screenY <= Bounds.Y + Bounds.Height);
 		}

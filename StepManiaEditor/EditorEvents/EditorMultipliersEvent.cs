@@ -6,10 +6,13 @@ namespace StepManiaEditor
 {
 	class EditorMultipliersEvent : EditorEvent
 	{
+		public static readonly string EventShortDescription =
+			"Multipliers represent hit and miss multiplier values to apply to combo.";
 		public static readonly string WidgetHelp =
 			"Combo Multipliers.\n" +
 			"Expected format: \"<hit multiplier>x/<miss multiplier>x\". e.g. \"1x/1x\"\n" +
-			"Multipliers must be non-negative integer values.";
+			"Multipliers must be non-negative integer values.\n"
+			+ EventShortDescription;
 
 		public Multipliers MultipliersEvent;
 		private bool WidthDirty;

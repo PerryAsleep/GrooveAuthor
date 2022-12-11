@@ -6,10 +6,12 @@ namespace StepManiaEditor
 {
 	public class EditorLabelEvent : EditorEvent
 	{
-		public static readonly string WidgetHelp =
-			"Label.\n" +
+		public static readonly string EventShortDescription =
 			"Arbitrary text used to label sections of the chart.\n" +
 			"Labels are not visible during gameplay.";
+		public static readonly string WidgetHelp =
+			"Label.\n" +
+			EventShortDescription;
 
 		public Label LabelEvent;
 		private bool WidthDirty;

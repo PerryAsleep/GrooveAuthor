@@ -24,6 +24,15 @@ namespace StepManiaEditor
 			ImGui.SetNextWindowSize(new Vector2(0, 0), ImGuiCond.FirstUseEver);
 			ImGui.Begin("MiniMap Preferences", ref p.ShowMiniMapPreferencesWindow, ImGuiWindowFlags.NoScrollbar);
 
+			DrawContents();
+
+			ImGui.End();
+		}
+
+		public void DrawContents()
+		{
+			var p = Preferences.Instance.PreferencesMiniMap;
+
 			if (ImGuiLayoutUtils.BeginTable("Show MiniMap", 120))
 			{
 				ImGuiLayoutUtils.DrawRowCheckbox(true, "Show Mini Map", p, nameof(PreferencesMiniMap.ShowMiniMap), false,
@@ -91,14 +100,12 @@ namespace StepManiaEditor
 			if (ImGuiLayoutUtils.BeginTable("MiniMap Restore", 120))
 			{
 				if (ImGuiLayoutUtils.DrawRowButton("Restore Defaults", "Restore Defaults",
-					    "Restore all mini map preferences to their default values."))
+						"Restore all mini map preferences to their default values."))
 				{
 					p.RestoreDefaults();
 				}
 				ImGuiLayoutUtils.EndTable();
 			}
-
-			ImGui.End();
 		}
 	}
 }

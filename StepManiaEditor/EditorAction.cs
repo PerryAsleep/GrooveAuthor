@@ -450,6 +450,13 @@ namespace StepManiaEditor
 	{
 		private readonly EditorEvent EditorEvent;
 
+		/// <summary>
+		/// Deleting an event may result in other events also being deleted.
+		/// We store all deleted events as a result of the requested delete so
+		/// that when we redo the action we can restore them all.
+		/// </summary>
+		private List<EditorEvent> AllDeletedEvents = new List<EditorEvent>();
+
 		public ActionDeleteEditorEvent(EditorEvent editorEvent)
 		{
 			EditorEvent = editorEvent;
@@ -468,12 +475,12 @@ namespace StepManiaEditor
 
 		public override void Do()
 		{
-			EditorEvent.GetEditorChart().DeleteEvent(EditorEvent);
+			AllDeletedEvents = EditorEvent.GetEditorChart().DeleteEvent(EditorEvent);
 		}
 
 		public override void Undo()
-		{  
-			EditorEvent.GetEditorChart().AddEvent(EditorEvent);
+		{
+			EditorEvent.GetEditorChart().AddEvents(AllDeletedEvents);
 		}
 	}
 

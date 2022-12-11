@@ -24,6 +24,15 @@ namespace StepManiaEditor
 			ImGui.SetNextWindowSize(new Vector2(0, 0), ImGuiCond.FirstUseEver);
 			ImGui.Begin("Receptor Preferences", ref p.ShowReceptorPreferencesWindow, ImGuiWindowFlags.NoScrollbar);
 
+			DrawContents();
+
+			ImGui.End();
+		}
+
+		public void DrawContents()
+		{
+			var p = Preferences.Instance.PreferencesReceptors;
+
 			ImGui.Text("Position");
 			if (ImGuiLayoutUtils.BeginTable("Receptor Placement", 120))
 			{
@@ -78,14 +87,12 @@ namespace StepManiaEditor
 			if (ImGuiLayoutUtils.BeginTable("Receptor Animation Restore", 120))
 			{
 				if (ImGuiLayoutUtils.DrawRowButton("Restore Defaults", "Restore Defaults",
-					    "Restore all animation preferences to their default values."))
+						"Restore all animation preferences to their default values."))
 				{
 					p.RestoreDefaults();
 				}
 				ImGuiLayoutUtils.EndTable();
 			}
-
-			ImGui.End();
 		}
 	}
 }

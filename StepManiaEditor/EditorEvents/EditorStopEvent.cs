@@ -9,13 +9,15 @@ namespace StepManiaEditor
 {
 	public class EditorStopEvent : EditorRateAlteringEvent, IRegion
 	{
-		public static readonly string WidgetHelp =
-			"Stop.\n" +
+		public static readonly string EventShortDescription =
 			"Stops pause the chart playback and occur after notes at the same position.\n" +
-			"Expected format: \"<time>s\". e.g. \"1.0s\"\n" +
 			"Stop and delay lengths are in seconds.\n" +
 			"Negative stop values result in the chart immediately advancing forward in time during gameplay.\n" +
 			"The recommended method for accomplishing this effect is to use a warp.";
+		public static readonly string WidgetHelp =
+			"Stop.\n" +
+			"Expected format: \"<time>s\". e.g. \"1.0s\"\n" +
+			EventShortDescription;
 		private const string Format = "%.9gs";
 		private const float Speed = 0.01f;
 
@@ -96,6 +98,44 @@ namespace StepManiaEditor
 				Format,
 				Alpha,
 				WidgetHelp);
+		}
+	}
+
+	/// <summary>
+	/// Dummy EditorStopEvent to use when needing to search for EditorStopEvents
+	/// in data structures which require comparing to an input event.
+	/// </summary>
+	public class EditorDummyStopEvent : EditorStopEvent
+	{
+		private int Row;
+		private double ChartTime;
+
+		public EditorDummyStopEvent(EditorChart editorChart, int row, double chartTime) : base(editorChart, null)
+		{
+			Row = row;
+			ChartTime = chartTime;
+		}
+
+		public override int GetRow()
+		{
+			return Row;
+		}
+		public override double GetChartTime()
+		{
+			return ChartTime;
+		}
+
+		public override void SetRow(int row)
+		{
+			Row = row;
+		}
+		public override void SetTimeMicros(long timeMicros)
+		{
+			ChartTime = ToSeconds(timeMicros);
+		}
+		public override void SetChartTime(double chartTime)
+		{
+			ChartTime = chartTime;
 		}
 	}
 }

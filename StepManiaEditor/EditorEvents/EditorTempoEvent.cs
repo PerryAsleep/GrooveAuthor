@@ -6,11 +6,13 @@ namespace StepManiaEditor
 {
 	public class EditorTempoEvent : EditorRateAlteringEvent
 	{
+		public static readonly string EventShortDescription =
+			"Tempo in beats per minute.\n" +
+			$"StepMania defines a beat as {SMCommon.MaxValidDenominator} rows.";
 		public static readonly string WidgetHelp =
 			"Tempo.\n" +
-			"Tempo in beats per minute.\n" +
 			"Expected format: \"<value>bpm\". e.g. \"120.0bpm\".\n" +
-			$"StepMania defines a beat as {SMCommon.MaxValidDenominator} rows.";
+			EventShortDescription;
 			// TODO: 0.0 and negative tempo handling
 		private const string Format = "%.9gbpm";
 		private const float Speed = 0.25f;

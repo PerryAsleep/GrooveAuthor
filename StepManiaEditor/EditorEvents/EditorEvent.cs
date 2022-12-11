@@ -27,6 +27,8 @@ namespace StepManiaEditor
 
 		protected static uint ScreenHeight;
 
+		public bool CanBeDeleted;
+
 		public static EditorEvent CreateEvent(EditorChart editorChart, Event chartEvent)
 		{
 			// Intentional modification of DestType to preserve StepMania types like mines.
@@ -79,6 +81,19 @@ namespace StepManiaEditor
 			EditorChart = editorChart;
 			ChartEvent = chartEvent;
 			BeingEdited = beingEdited;
+		}
+
+		public virtual void SetRow(int row)
+		{
+			ChartEvent.IntegerPosition = row;
+		}
+		public virtual void SetTimeMicros(long timeMicros)
+		{
+			ChartEvent.TimeMicros = timeMicros;
+		}
+		public virtual void SetChartTime(double chartTime)
+		{
+			ChartEvent.TimeMicros = Fumen.Utils.ToMicros(chartTime);
 		}
 
 		public static void SetScreenHeight(uint screenHeight)

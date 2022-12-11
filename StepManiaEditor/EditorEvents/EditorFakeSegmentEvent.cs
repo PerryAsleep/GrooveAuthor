@@ -9,13 +9,15 @@ namespace StepManiaEditor
 {
 	public class EditorFakeSegmentEvent : EditorEvent, IRegion
 	{
+		public static readonly string EventShortDescription =
+			"Notes that occur during a fake region are not counted.";
 		public static readonly string WidgetHelp =
-			"Fake region.\n" +
-			"Notes that occur during a fake region are not counted.\n" +
+			"Fake Region.\n" +
+			EventShortDescription + "\n" +
 			"Expected format: \"<time>s\". e.g. \"1.0s\"\n" +
 			"Fake region lengths are in seconds and must be non-negative.";
 		private const string Format = "%.9gs";
-		private const float Speed = 1.0f;
+		private const float Speed = 0.01f;
 
 		public FakeSegment FakeSegmentEvent;
 		private bool WidthDirty;

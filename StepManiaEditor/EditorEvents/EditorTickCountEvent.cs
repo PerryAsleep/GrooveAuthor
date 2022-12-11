@@ -6,18 +6,19 @@ namespace StepManiaEditor
 {
 	public class EditorTickCountEvent : EditorEvent
 	{
+		public static readonly string EventShortDescription =
+			"Ticks represents the number of times per beat that hold notes should contribute towards\n" +
+			$"combo. StepMania defines a beat as {SMCommon.MaxValidDenominator} rows.";
 		public static readonly string WidgetHelp =
 			"Ticks.\n" +
 			"Expected format: \"<ticks>ticks\". e.g. \"4ticks\"\n" +
 			"Tick value must be non-negative.\n" +
-			"This value represents the number of times per beat that hold notes should contribute towards\n" +
-			$"combo. StepMania defines a beat as {SMCommon.MaxValidDenominator} rows.";
+			EventShortDescription;
 		private const string Format = "%iticks";
 		private const float Speed = 0.1f;
 
 		public TickCount TickCountEvent;
 		private bool WidthDirty;
-		public bool CanBeDeleted;
 
 		public int IntValue
 		{

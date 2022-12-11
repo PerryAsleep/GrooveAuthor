@@ -33,6 +33,15 @@ namespace StepManiaEditor
 			ImGui.SetNextWindowSize(new Vector2(0, 0), ImGuiCond.FirstUseEver);
 			ImGui.Begin("Waveform Preferences", ref p.ShowWaveFormPreferencesWindow, ImGuiWindowFlags.NoScrollbar);
 
+			DrawContents();
+
+			ImGui.End();
+		}
+
+		public void DrawContents()
+		{
+			var p = Preferences.Instance.PreferencesWaveForm;
+
 			if (ImGuiLayoutUtils.BeginTable("Show Waveform", 120))
 			{
 				ImGuiLayoutUtils.DrawRowCheckbox(true, "Show Waveform", p, nameof(PreferencesWaveForm.ShowWaveForm), false,
@@ -75,34 +84,34 @@ namespace StepManiaEditor
 				switch (p.WaveFormSparseColorOption)
 				{
 					case SparseColorOption.DarkerDenseColor:
-					{
-						ImGuiLayoutUtils.DrawRowSliderFloat(true, "Sparse Color Scale", p,
-							nameof(PreferencesWaveForm.WaveFormSparseColorScale),
-							0.0f, 1.0f, false,
-							"Treat the sparse color as the dense color darkened by this percentage.");
-						break;
-					}
+						{
+							ImGuiLayoutUtils.DrawRowSliderFloat(true, "Sparse Color Scale", p,
+								nameof(PreferencesWaveForm.WaveFormSparseColorScale),
+								0.0f, 1.0f, false,
+								"Treat the sparse color as the dense color darkened by this percentage.");
+							break;
+						}
 					case SparseColorOption.SameAsDenseColor:
-					{
-						break;
-					}
+						{
+							break;
+						}
 					case SparseColorOption.UniqueColor:
-					{
-						ImGuiLayoutUtils.DrawRowColorEdit4(true, "Sparse Color", p,
-							nameof(PreferencesWaveForm.WaveFormSparseColor), ImGuiColorEditFlags.AlphaPreviewHalf | ImGuiColorEditFlags.AlphaBar, false,
-							"Color for the sparse area of the waveform." +
-							"\nFor each y pixel in the waveform, the sparse area represents the range of all" +
-							"\nsamples at that pixel.");
-						break;
-					}
+						{
+							ImGuiLayoutUtils.DrawRowColorEdit4(true, "Sparse Color", p,
+								nameof(PreferencesWaveForm.WaveFormSparseColor), ImGuiColorEditFlags.AlphaPreviewHalf | ImGuiColorEditFlags.AlphaBar, false,
+								"Color for the sparse area of the waveform." +
+								"\nFor each y pixel in the waveform, the sparse area represents the range of all" +
+								"\nsamples at that pixel.");
+							break;
+						}
 				}
 
 				if (ImGuiLayoutUtils.DrawRowSliderInt(true, "Loading Parallelism", p,
-					    nameof(PreferencesWaveForm.WaveFormLoadingMaxParallelism), 1, 128, false,
+						nameof(PreferencesWaveForm.WaveFormLoadingMaxParallelism), 1, 128, false,
 						"Number of threads to use for loading the waveform." +
-					    "\nSetting this to a low value will result in slower waveform loads." +
-					    "\nSetting this to a high value will result in faster waveform up loads up to the point your" +
-					    "\nCPU is saturated, at which point performance will degrade."))
+						"\nSetting this to a low value will result in slower waveform loads." +
+						"\nSetting this to a high value will result in faster waveform up loads up to the point your" +
+						"\nCPU is saturated, at which point performance will degrade."))
 				{
 					MusicManager.GetMusicMipMap().SetLoadParallelism(p.WaveFormLoadingMaxParallelism);
 				}
@@ -115,7 +124,7 @@ namespace StepManiaEditor
 			{
 				ImGuiLayoutUtils.DrawRowCheckbox("Antialias", ref p.AntiAlias,
 					"Whether or not to use FXAA.");
-				
+
 				ImGuiLayoutUtils.DrawRowSliderFloat(true, "Subpix", p, nameof(PreferencesWaveForm.AntiAliasSubpix), 0.0f, 1.0f, false,
 					"Amount of sub-pixel aliasing removal." +
 					"\nThis can effect sharpness." +
@@ -144,14 +153,12 @@ namespace StepManiaEditor
 			if (ImGuiLayoutUtils.BeginTable("Waveform Restore", 120))
 			{
 				if (ImGuiLayoutUtils.DrawRowButton("Restore Defaults", "Restore Defaults",
-					    "Restore all waveform preferences to their default values."))
+						"Restore all waveform preferences to their default values."))
 				{
 					p.RestoreDefaults();
 				}
 				ImGuiLayoutUtils.EndTable();
 			}
-
-			ImGui.End();
 		}
 	}
 }

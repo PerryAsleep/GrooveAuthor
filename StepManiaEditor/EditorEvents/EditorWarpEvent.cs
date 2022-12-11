@@ -9,14 +9,16 @@ namespace StepManiaEditor
 {
 	public class EditorWarpEvent : EditorRateAlteringEvent, IRegion
 	{
-		public static readonly string WidgetHelp =
-			"Warp.\n" +
-			"Expected format: \"<length>rows\". e.g. \"48rows\"\n" +
-			"Length must be non-negative.\n" +
+		public static readonly string EventShortDescription =
 			"A warp will instantly advance the chart forward by the specified number of rows.\n" +
 			"This is the preferred method of achieving this effect rather than using negative\n" +
 			"stops or tempos. Warp durations are specified in rows where one beat in StepMania is\n" +
 			$"{SMCommon.MaxValidDenominator} rows.";
+		public static readonly string WidgetHelp =
+			"Warp.\n" +
+			"Expected format: \"<length>rows\". e.g. \"48rows\"\n" +
+			"Length must be non-negative.\n" +
+			EventShortDescription;
 		private const string Format = "%irows";
 		private const float Speed = 1.0f;
 
@@ -97,6 +99,44 @@ namespace StepManiaEditor
 				Alpha,
 				WidgetHelp,
 				0);
+		}
+	}
+
+	/// <summary>
+	/// Dummy EditorWarpEvent to use when needing to search for EditorWarpEvents
+	/// in data structures which require comparing to an input event.
+	/// </summary>
+	public class EditorDummyWarpEvent : EditorWarpEvent
+	{
+		private int Row;
+		private double ChartTime;
+
+		public EditorDummyWarpEvent(EditorChart editorChart, int row, double chartTime) : base(editorChart, null)
+		{
+			Row = row;
+			ChartTime = chartTime;
+		}
+
+		public override int GetRow()
+		{
+			return Row;
+		}
+		public override double GetChartTime()
+		{
+			return ChartTime;
+		}
+
+		public override void SetRow(int row)
+		{
+			Row = row;
+		}
+		public override void SetTimeMicros(long timeMicros)
+		{
+			ChartTime = Fumen.Utils.ToSeconds(timeMicros);
+		}
+		public override void SetChartTime(double chartTime)
+		{
+			ChartTime = chartTime;
 		}
 	}
 }

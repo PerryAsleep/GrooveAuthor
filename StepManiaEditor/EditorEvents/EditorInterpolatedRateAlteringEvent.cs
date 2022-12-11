@@ -1,19 +1,14 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text.RegularExpressions;
+﻿using System.Text.RegularExpressions;
 using Fumen;
 using Fumen.ChartDefinition;
-using Fumen.Converters;
 using Microsoft.Xna.Framework.Graphics;
 using static Fumen.Utils;
 
 namespace StepManiaEditor
 {
-	public class EditorInterpolatedRateAlteringEvent : EditorEvent, IComparable<EditorInterpolatedRateAlteringEvent>
+	public class EditorInterpolatedRateAlteringEvent : EditorEvent
 	{
-		public static readonly string WidgetHelp =
-			"Interpolated scroll rate.\n" +
-			"Expected format: \"<rate>x/<length>rows\" or \"<rate>x/<length>s\". e.g. \"2.0x/48rows\".\n" +
+		public static readonly string EventShortDescription =
 			"StepMania refers to these events as \"speeds\".\n" +
 			"These events change the scroll rate smoothly over a specified period of time from the previous\n" +
 			"interpolated scroll rate value to the newly specified value.\n" +
@@ -21,19 +16,13 @@ namespace StepManiaEditor
 			"Unlike non-interpolated scroll rate changes, the player cannot see the effects of interpolated\n" +
 			"scroll rate changes before they begin.\n" +
 			"Interpolated scroll rate changes and non-interpolated scroll rate changes are independent.";
-
-		/// <summary>
-		/// Row of this rate altering event.
-		/// </summary>
-		public double Row;
-		/// <summary>
-		/// SongTime of this rate altering event.
-		/// </summary>
-		public double SongTime;
+		public static readonly string WidgetHelp =
+			"Interpolated Scroll Rate.\n" +
+			"Expected format: \"<rate>x/<length>rows\" or \"<rate>x/<length>s\". e.g. \"2.0x/48rows\".\n" +
+			EventShortDescription;
 
 		public double PreviousScrollRate = 1.0;
 
-		public bool CanBeDeleted;
 		private bool WidthDirty;
 		public ScrollRateInterpolation ScrollRateInterpolationEvent;
 
@@ -124,8 +113,7 @@ namespace StepManiaEditor
 		public EditorInterpolatedRateAlteringEvent(EditorChart editorChart, ScrollRateInterpolation chartEvent) : base(editorChart, chartEvent)
 		{
 			ScrollRateInterpolationEvent = chartEvent;
-			if (ScrollRateInterpolationEvent != null)
-				WidthDirty = true;
+			WidthDirty = true;
 		}
 
 		public bool InterpolatesByTime()
@@ -133,14 +121,15 @@ namespace StepManiaEditor
 			return ScrollRateInterpolationEvent.PreferPeriodAsTimeMicros;
 		}
 
-		public double GetInterpolatedScrollRateFromTime(double time)
+		public double GetInterpolatedScrollRateFromTime(double chartTime)
 		{
+			var eventChartTime = GetChartTime();
 			return Interpolation.Lerp(
 				PreviousScrollRate,
 				ScrollRateInterpolationEvent.Rate,
-				SongTime,
-				SongTime + ToSeconds(ScrollRateInterpolationEvent.PeriodTimeMicros),
-				time);
+				eventChartTime,
+				eventChartTime + ToSeconds(ScrollRateInterpolationEvent.PeriodTimeMicros),
+				chartTime);
 		}
 
 		public double GetInterpolatedScrollRateFromRow(double row)
@@ -148,48 +137,9 @@ namespace StepManiaEditor
 			return Interpolation.Lerp(
 				PreviousScrollRate,
 				ScrollRateInterpolationEvent.Rate,
-				Row,
-				Row + ScrollRateInterpolationEvent.PeriodLengthIntegerPosition,
+				GetRow(),
+				GetRow() + ScrollRateInterpolationEvent.PeriodLengthIntegerPosition,
 				row);
-		}
-
-		private class SortSongTimeHelper : IComparer<EditorInterpolatedRateAlteringEvent>
-		{
-			int IComparer<EditorInterpolatedRateAlteringEvent>.Compare(EditorInterpolatedRateAlteringEvent e1, EditorInterpolatedRateAlteringEvent e2)
-			{
-				var c = e1.SongTime.CompareTo(e2.SongTime);
-				return c != 0 ? c : e1.CompareTo(e2);
-			}
-		}
-
-		public static IComparer<EditorInterpolatedRateAlteringEvent> SortSongTime()
-		{
-			return new SortSongTimeHelper();
-		}
-
-		private class SortRowHelper : IComparer<EditorInterpolatedRateAlteringEvent>
-		{
-			int IComparer<EditorInterpolatedRateAlteringEvent>.Compare(EditorInterpolatedRateAlteringEvent e1, EditorInterpolatedRateAlteringEvent e2)
-			{
-				var c = e1.Row.CompareTo(e2.Row);
-				return c != 0 ? c : e1.CompareTo(e2);
-			}
-		}
-
-		public static IComparer<EditorInterpolatedRateAlteringEvent> SortRow()
-		{
-			return new SortRowHelper();
-		}
-
-		public int CompareTo(EditorInterpolatedRateAlteringEvent other)
-		{
-			var comparison = Row.CompareTo(other.Row);
-			if (comparison != 0)
-				return comparison;
-			comparison = SongTime.CompareTo(other.SongTime);
-			if (comparison != 0)
-				return comparison;
-			return SMCommon.SMEventComparer.Compare(ChartEvent, other.ChartEvent);
 		}
 
 		public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)

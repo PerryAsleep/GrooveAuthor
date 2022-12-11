@@ -87,6 +87,9 @@ namespace StepManiaEditor
 		private Vector2 FocalPointAtMoveStart = new Vector2();
 		private Vector2 FocalPointMoveOffset = new Vector2();
 
+		private bool RightClickThisFrame;
+		private Vector2 RightClickPosition = new Vector2();
+
 		private string PendingOpenFileName;
 		private ChartType PendingOpenFileChartType;
 		private ChartDifficultyType PendingOpenFileChartDifficultyType;
@@ -779,6 +782,12 @@ namespace StepManiaEditor
 				}
 			}
 
+			RightClickThisFrame = mouseState.RightButton == ButtonState.Released && PreviousMouseState.RightButton == ButtonState.Pressed;
+			if (RightClickThisFrame)
+			{
+				RightClickPosition = new Vector2(mouseState.Position.X, mouseState.Position.Y);
+			}
+
 			// Setting the cursor every frame prevents it from changing to support normal application
 			// behavior like indicating resizability at the edges of the window. But not setting every frame
 			// causes it to go back to the Default. Set it every frame only if it setting it to something
@@ -1342,7 +1351,7 @@ namespace StepManiaEditor
 			// Then we need to find the greatest preceding notes by scanning upwards.
 			// Once we find that note, we start iterating downwards while also keeping track of the rate events along the way.
 
-			var rateEnumerator = FindBest(ActiveChart.RateAlteringEventsByRow, (int)chartPosition);
+			var rateEnumerator = FindBest(ActiveChart.RateAlteringEventsByRow, (int)chartPosition, time);
 			if (rateEnumerator == null)
 				return;
 
@@ -1367,16 +1376,16 @@ namespace StepManiaEditor
 				{
 					case SpacingMode.ConstantTime:
 					default:
-						previousRateEventY = previousRateEventY - (previousRateEventTime - rateEvent.ChartTime) * pps;
+						previousRateEventY = previousRateEventY - (previousRateEventTime - rateEvent.GetChartTime()) * pps;
 						break;
 					case SpacingMode.Variable:
 					case SpacingMode.ConstantRow:
-						previousRateEventY = previousRateEventY - (previousRateEventRow - rateEvent.Row) * ppr;
+						previousRateEventY = previousRateEventY - (previousRateEventRow - rateEvent.GetRow()) * ppr;
 						break;
 				}
 
-				previousRateEventRow = rateEvent.Row;
-				previousRateEventTime = rateEvent.ChartTime;
+				previousRateEventRow = rateEvent.GetRow();
+				previousRateEventTime = rateEvent.GetChartTime();
 			}
 
 			// Now we know the position of first rate altering event to use.
@@ -1386,12 +1395,12 @@ namespace StepManiaEditor
 			{
 				case SpacingMode.ConstantTime:
 				default:
-					chartTimeAtTopOfScreen = rateEvent.ChartTime + (startPosY - previousRateEventY) / pps;
+					chartTimeAtTopOfScreen = rateEvent.GetChartTime() + (startPosY - previousRateEventY) / pps;
 					ActiveChart.TryGetChartPositionFromTime(chartTimeAtTopOfScreen, ref chartPositionAtTopOfScreen);
 					break;
 				case SpacingMode.Variable:
 				case SpacingMode.ConstantRow:
-					chartPositionAtTopOfScreen = rateEvent.Row + (startPosY - previousRateEventY) / ppr;
+					chartPositionAtTopOfScreen = rateEvent.GetRow() + (startPosY - previousRateEventY) / ppr;
 					ActiveChart.TryGetTimeFromChartPosition(chartPositionAtTopOfScreen, ref chartTimeAtTopOfScreen);
 					break;
 			}
@@ -1609,12 +1618,9 @@ namespace StepManiaEditor
 		/// <param name="tree">RedBlackTree to search.</param>
 		/// <remarks>Helper for UpdateChartEvents.</remarks>
 		/// <returns>Enumerator to best value or null if a value could not be found.</returns>
-		private RedBlackTree<EditorRateAlteringEvent>.Enumerator FindBest(RedBlackTree<EditorRateAlteringEvent> tree, int row)
+		private RedBlackTree<EditorRateAlteringEvent>.Enumerator FindBest(RedBlackTree<EditorRateAlteringEvent> tree, int row, double chartTime)
 		{
-			var pos = new EditorDummyRateAlteringEvent(ActiveChart, null)
-			{
-				Row = row
-			};
+			var pos = new EditorDummyRateAlteringEvent(ActiveChart, row, chartTime);
 			var enumerator = tree.FindGreatestPreceding(pos, false);
 			if (enumerator == null)
 				enumerator = tree.FindLeastFollowing(pos, true);
@@ -1671,7 +1677,7 @@ namespace StepManiaEditor
 		/// <returns>Y position in screen space of the start of the given event.</returns>
 		private double GetY(EditorEvent e, double pps, double ppr, double previousRateEventY, EditorRateAlteringEvent previousRateEvent)
 		{
-			return GetY(e, pps, ppr, previousRateEventY, previousRateEvent.ChartTime, previousRateEvent.Row);
+			return GetY(e, pps, ppr, previousRateEventY, previousRateEvent.GetChartTime(), previousRateEvent.GetRow());
 		}
 
 		/// <summary>
@@ -1725,22 +1731,23 @@ namespace StepManiaEditor
 		/// <summary>
 		/// Gets the interpolated scroll rate to use for the given Chart time and position.
 		/// </summary>
-		/// <param name="time">Chart time.</param>
+		/// <param name="chartTime">Chart time.</param>
 		/// <param name="chartPosition">Chart position.</param>
 		/// <remarks>Helper for UpdateChartEvents.</remarks>
 		/// <returns>Interpolated scroll rate.</returns>
-		private double GetInterpolatedScrollRate(double time, double chartPosition)
+		private double GetInterpolatedScrollRate(double chartTime, double chartPosition)
 		{
 			// Find the interpolated scroll rate to use as a multiplier.
 			// The interpolated scroll rate to use is the value at the current exact time.
 			var interpolatedScrollRate = 1.0;
 			if (Preferences.Instance.PreferencesScroll.SpacingMode == SpacingMode.Variable)
 			{
-				var ratePosEventForChecking = new EditorInterpolatedRateAlteringEvent(ActiveChart, null)
-				{
-					Row = chartPosition,
-					SongTime = time
-				};
+				var ratePosEventForChecking = new EditorInterpolatedRateAlteringEvent(ActiveChart,
+					new ScrollRateInterpolation(0.0, 0, 0L, false)
+					{
+						IntegerPosition = (int)chartPosition,
+						TimeMicros = ToMicros(chartTime),
+					});
 
 				var interpolatedScrollRateEnumerator =
 					ActiveChart.InterpolatedScrollRateEvents.FindGreatestPreceding(ratePosEventForChecking);
@@ -1749,7 +1756,7 @@ namespace StepManiaEditor
 					interpolatedScrollRateEnumerator.MoveNext();
 					var interpolatedRateEvent = interpolatedScrollRateEnumerator.Current;
 					if (interpolatedRateEvent.InterpolatesByTime())
-						interpolatedScrollRate = interpolatedRateEvent.GetInterpolatedScrollRateFromTime(time);
+						interpolatedScrollRate = interpolatedRateEvent.GetInterpolatedScrollRateFromTime(chartTime);
 					else
 						interpolatedScrollRate = interpolatedRateEvent.GetInterpolatedScrollRateFromRow(chartPosition);
 				}
@@ -1761,7 +1768,7 @@ namespace StepManiaEditor
 						interpolatedScrollRateEnumerator.MoveNext();
 						var interpolatedRateEvent = interpolatedScrollRateEnumerator.Current;
 						if (interpolatedRateEvent.InterpolatesByTime())
-							interpolatedScrollRate = interpolatedRateEvent.GetInterpolatedScrollRateFromTime(time);
+							interpolatedScrollRate = interpolatedRateEvent.GetInterpolatedScrollRateFromTime(chartTime);
 						else
 							interpolatedScrollRate = interpolatedRateEvent.GetInterpolatedScrollRateFromRow(chartPosition);
 					}
@@ -2049,7 +2056,7 @@ namespace StepManiaEditor
 					case SpacingMode.ConstantTime:
 					{
 						var absoluteBeatTime = currentRateEvent.ChartTimeForFollowingEvents + rowRelativeToLastRateChangeEvent * currentRateEvent.SecondsPerRow;
-						y = previousRateEventY + (absoluteBeatTime - currentRateEvent.ChartTime) * pps;
+						y = previousRateEventY + (absoluteBeatTime - currentRateEvent.GetChartTime()) * pps;
 						break;
 					}
 
@@ -2062,9 +2069,9 @@ namespace StepManiaEditor
 				}
 
 				// If advancing this beat forward moved us over the next rate altering event boundary, loop again.
-				if (nextRateEvent != null && currentRow > nextRateEvent.Row)
+				if (nextRateEvent != null && currentRow > nextRateEvent.GetRow())
 				{
-					currentRow = (int)nextRateEvent.Row;
+					currentRow = nextRateEvent.GetRow();
 					return;
 				}
 
@@ -2584,6 +2591,13 @@ namespace StepManiaEditor
 				ImGui.OpenPopup(GetSavePopupTitle());
 			}
 
+			if (RightClickThisFrame)
+			{
+				ImGui.OpenPopup("RightClickPopup");
+				RightClickThisFrame = false;
+			}
+			DrawRightClickMenu((int)RightClickPosition.X, (int)RightClickPosition.Y);
+
 			DrawUnsavedChangesPopup();
 		}
 
@@ -2600,13 +2614,7 @@ namespace StepManiaEditor
 					}
 					if (ImGui.BeginMenu("New Chart", ActiveSong != null))
 					{
-						foreach (var chartType in SupportedChartTypes)
-						{
-							if (ImGui.Selectable(GetPrettyEnumString(chartType)))
-							{
-								ActionQueue.Instance.Do(new ActionAddChart(this, chartType));
-							}
-						}
+						DrawNewChartSelectableList();
 						ImGui.EndMenu();
 					}
 
@@ -2700,6 +2708,213 @@ namespace StepManiaEditor
 
 				ImGui.EndMainMenuBar();
 			}
+		}
+
+		private void DrawNewChartSelectableList()
+		{
+			foreach (var chartType in SupportedChartTypes)
+			{
+				if (ImGui.Selectable(GetPrettyEnumString(chartType)))
+				{
+					ActionQueue.Instance.Do(new ActionAddChart(this, chartType));
+				}
+			}
+		}
+
+		private void DrawRightClickMenu(int x, int y)
+		{
+			if (ImGui.BeginPopup("RightClickPopup"))
+			{
+				if (ActiveSong == null)
+				{
+					if (ImGui.MenuItem("New Song", "Ctrl+N"))
+					{
+						OnNew();
+					}
+				}
+
+				var isInMiniMapArea = Preferences.Instance.PreferencesMiniMap.ShowMiniMap
+					&& MiniMap.IsScreenPositionInMiniMapBounds(x, y);
+				var isInWaveFormArea = Preferences.Instance.PreferencesWaveForm.ShowWaveForm
+					&& x >= (GetFocalPointX() - (WaveFormTextureWidth >> 1))
+					&& x <= (GetFocalPointX() + (WaveFormTextureWidth >> 1));
+				var isInReceptorArea = Receptor.IsInReceptorArea(x, y, GetFocalPoint(), Zoom, TextureAtlas, ArrowGraphicManager, ActiveChart);
+
+				if (isInMiniMapArea)
+				{
+					if (ImGui.BeginMenu("Mini Map Preferences"))
+					{
+						UIMiniMapPreferences.DrawContents();
+						ImGui.EndMenu();
+					}
+				}
+				else if (isInReceptorArea)
+				{
+					if (ImGui.BeginMenu("Receptor Preferences"))
+					{
+						UIReceptorPreferences.DrawContents();
+						ImGui.EndMenu();
+					}
+				}
+				else if (isInWaveFormArea)
+				{
+					if (ImGui.BeginMenu("Waveform Preferences"))
+					{
+						UIWaveFormPreferences.DrawContents();
+						ImGui.EndMenu();
+					}
+				}
+
+				var row = Math.Max(0, Position.GetNearestRow());
+				if (ActiveChart != null)
+				{
+					if (ImGui.BeginMenu("Add"))
+					{
+						var nearestMeasureBoundaryRow = ActiveChart.GetNearestMeasureBoundaryRow(row);
+						var eventsAtNearestMeasureBoundary = ActiveChart.GetEventsAtRow(nearestMeasureBoundaryRow);
+
+						var events = ActiveChart.GetEventsAtRow(row);
+						bool hasTempoEvent = false;
+						bool hasInterpolatedScrollRateEvent = false;
+						bool hasScrollRateEvent = false;
+						bool hasStopEvent = false;
+						bool hasDelayEvent = false;
+						bool hasWarpEvent = false;
+						bool hasFakeEvent = false;
+						bool hasTickCountEvent = false;
+						bool hasMultipliersEvent = false;
+						bool hasTimeSignatureEvent = false;
+						bool hasLabelEvent = false;
+
+						foreach (var currentEvent in events)
+						{
+							if (currentEvent is EditorTempoEvent)
+								hasTempoEvent = true;
+							else if (currentEvent is EditorInterpolatedRateAlteringEvent)
+								hasInterpolatedScrollRateEvent = true;
+							else if (currentEvent is EditorScrollRateEvent)
+								hasScrollRateEvent = true;
+							else if (currentEvent is EditorStopEvent)
+								hasStopEvent = true;
+							else if (currentEvent is EditorDelayEvent)
+								hasDelayEvent = true;
+							else if (currentEvent is EditorWarpEvent)
+								hasWarpEvent = true;
+							else if (currentEvent is EditorFakeSegmentEvent)
+								hasFakeEvent = true;
+							else if (currentEvent is EditorTickCountEvent)
+								hasTickCountEvent = true;
+							else if (currentEvent is EditorMultipliersEvent)
+								hasMultipliersEvent = true;
+							// Skipping time signatures as we only place them on measure boundaries
+							//else if (currentEvent is EditorTimeSignatureEvent)
+							//	hasTimeSignatureEvent = true;
+							else if (currentEvent is EditorLabelEvent)
+								hasLabelEvent = true;
+						}
+						foreach (var currentEvent in eventsAtNearestMeasureBoundary)
+						{
+							if (currentEvent is EditorTimeSignatureEvent)
+								hasTimeSignatureEvent = true;
+						}
+
+						double chartTime = 0.0;
+						ActiveChart.TryGetTimeFromChartPosition(row, ref chartTime);
+
+						double nearestMeasureChartTime = 0.0;
+						ActiveChart.TryGetTimeFromChartPosition(nearestMeasureBoundaryRow, ref nearestMeasureChartTime);
+
+						var currentRateAlteringEvent = ActiveChart.GetActiveRateAlteringEventForPosition(row);
+
+						DrawAddEventMenuItem("Tempo", !hasTempoEvent, UITempoColorRGBA, EditorTempoEvent.EventShortDescription, row, chartTime, () =>
+						{
+							return new EditorTempoEvent(ActiveChart, new Tempo(currentRateAlteringEvent?.Tempo ?? EditorChart.DefaultTempo));
+						});
+
+						ImGui.Separator();
+						DrawAddEventMenuItem("Interpolated Scroll Rate", !hasInterpolatedScrollRateEvent, UISpeedsColorRGBA, EditorInterpolatedRateAlteringEvent.EventShortDescription, row, chartTime, () =>
+						{
+							return new EditorInterpolatedRateAlteringEvent(ActiveChart, new ScrollRateInterpolation(EditorChart.DefaultScrollRate, MaxValidDenominator, 0L, false));
+						});
+						DrawAddEventMenuItem("Scroll Rate", !hasScrollRateEvent, UIScrollsColorRGBA, EditorScrollRateEvent.EventShortDescription, row, chartTime, () =>
+						{
+							return new EditorScrollRateEvent(ActiveChart, new ScrollRate(EditorChart.DefaultScrollRate));
+						});
+
+						ImGui.Separator();
+						DrawAddEventMenuItem("Stop", !hasStopEvent, UIStopColorRGBA, EditorStopEvent.EventShortDescription, row, chartTime, () =>
+						{
+							var stopLength = ToMicros(currentRateAlteringEvent.SecondsPerRow * MaxValidDenominator);
+							return new EditorStopEvent(ActiveChart, new Stop(stopLength, false));
+						});
+						DrawAddEventMenuItem("Delay", !hasDelayEvent, UIDelayColorRGBA, EditorDelayEvent.EventShortDescription, row, chartTime, () =>
+						{
+							var stopLength = ToMicros(currentRateAlteringEvent.SecondsPerRow * MaxValidDenominator);
+							return new EditorDelayEvent(ActiveChart, new Stop(stopLength, true));
+						});
+						DrawAddEventMenuItem("Warp", !hasWarpEvent, UIWarpColorRGBA, EditorWarpEvent.EventShortDescription, row, chartTime, () =>
+						{
+							return new EditorWarpEvent(ActiveChart, new Warp(MaxValidDenominator));
+						});
+
+						ImGui.Separator();
+						DrawAddEventMenuItem("Fake Region", !hasFakeEvent, UIFakesColorRGBA, EditorFakeSegmentEvent.EventShortDescription, row, chartTime, () =>
+						{
+							var fakeLength = ToMicros(currentRateAlteringEvent.SecondsPerRow * MaxValidDenominator);
+							return new EditorFakeSegmentEvent(ActiveChart, new FakeSegment(fakeLength));
+						});
+						DrawAddEventMenuItem("Ticks", !hasTickCountEvent, UITicksColorRGBA, EditorTickCountEvent.EventShortDescription, row, chartTime, () =>
+						{
+							return new EditorTickCountEvent(ActiveChart, new TickCount(EditorChart.DefaultTickCount));
+						});
+						DrawAddEventMenuItem("Combo Multipliers", !hasMultipliersEvent, UIMultipliersColorRGBA, EditorMultipliersEvent.EventShortDescription, row, chartTime, () =>
+						{
+							return new EditorMultipliersEvent(ActiveChart, new Multipliers(EditorChart.DefaultHitMultiplier, EditorChart.DefaultMissMultiplier));
+						});
+						DrawAddEventMenuItem("Time Signature", !hasTimeSignatureEvent, UITimeSignatureColorRGBA, EditorTimeSignatureEvent.EventShortDescription, nearestMeasureBoundaryRow, nearestMeasureChartTime, () =>
+						{
+							return new EditorTimeSignatureEvent(ActiveChart, new TimeSignature(EditorChart.DefaultTimeSignature));
+						}, true);
+						DrawAddEventMenuItem("Label", !hasLabelEvent, UILabelColorRGBA, EditorLabelEvent.EventShortDescription, row, chartTime, () =>
+						{
+							return new EditorLabelEvent(ActiveChart, new Fumen.ChartDefinition.Label("New Label"));
+						});
+
+						ImGui.EndMenu();
+					}
+				}
+
+				if (ActiveSong != null)
+				{
+					if (ImGui.BeginMenu("New Chart"))
+					{
+						DrawNewChartSelectableList();
+						ImGui.EndMenu();
+					}
+				}
+
+				ImGui.EndPopup();
+			}
+		}
+
+		private void DrawAddEventMenuItem(string name, bool enabled, uint color, string toolTipText, int row, double chartTime, Func<EditorEvent> createEventFunc, bool onlyOnePerMeasure = false)
+		{
+			if (MenuItemWithColor(name, enabled, color))
+			{
+				var newEvent = createEventFunc();
+				newEvent.SetRow(row);
+				newEvent.SetChartTime(chartTime);
+				newEvent.CanBeDeleted = true;
+				ActionQueue.Instance.Do(new ActionAddEditorEvent(newEvent));
+			}
+			if (!enabled)
+			{
+				if (onlyOnePerMeasure)
+					toolTipText += $"\n\nOnly one {name} event can be specified per measure.\nThere is already a {name} specified on the measure at row {row}.";
+				else
+					toolTipText += $"\n\nOnly one {name} event can be specified per row.\nThere is already a {name} specified on row {row}.";
+			}
+			ToolTip(toolTipText);
 		}
 
 		private string GetSavePopupTitle()
@@ -3392,13 +3607,16 @@ namespace StepManiaEditor
 			// Otherwise, set the state to be editing a tap or a mine.
 			else
 			{
+				double chartTime = 0.0;
+				ActiveChart.TryGetTimeFromChartPosition(row, ref chartTime);
+
 				if (KeyCommandManager.IsKeyDown(Keys.LeftShift))
 				{
 					LaneEditStates[lane].SetEditingTapOrMine(new EditorMineNoteEvent(ActiveChart, new LaneNote
 					{
 						Lane = lane,
 						IntegerPosition = row,
-						TimeMicros = ToMicros(Position.ChartTime),
+						TimeMicros = ToMicros(chartTime),
 						SourceType = NoteChars[(int)NoteType.Mine].ToString()
 					}, true));
 				}
@@ -3408,7 +3626,7 @@ namespace StepManiaEditor
 					{
 						Lane = lane,
 						IntegerPosition = row,
-						TimeMicros = ToMicros(Position.ChartTime),
+						TimeMicros = ToMicros(chartTime),
 					}, true));
 				}
 			}
