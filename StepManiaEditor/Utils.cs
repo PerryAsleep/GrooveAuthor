@@ -594,11 +594,25 @@ namespace StepManiaEditor
 			return sb.ToString();
 		}
 
+		/// <summary>
+		/// Draws "(?)" Text via ImGui with a Tooltip configured to show when the text is hovered.
+		/// </summary>
+		/// <param name="text">Text to draw in the Tooltip.</param>
 		public static void HelpMarker(string text)
 		{
 			PushEnabled();
 			Text("(?)", HelpWidth, true);
-			if (ImGui.IsItemHovered())
+			ToolTip(text);
+			PopEnabled();
+		}
+
+		/// <summary>
+		/// Draws an ImGui Tooltip with the given text if the current item is hovered.
+		/// </summary>
+		/// <param name="text">Text to draw in the Tooltip.</param>
+		public static void ToolTip(string text)
+		{
+			if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
 			{
 				ImGui.BeginTooltip();
 				ImGui.PushTextWrapPos(ImGui.GetFontSize() * 80.0f);
@@ -606,11 +620,30 @@ namespace StepManiaEditor
 				ImGui.PopTextWrapPos();
 				ImGui.EndTooltip();
 			}
-			PopEnabled();
 		}
 
 		/// <summary>
-		/// Draws an ImGUi Text element with a specified width.
+		/// Draws an ImGui MenuItem with a given background color.
+		/// </summary>
+		/// <param name="label">Label text for the MenuItem.</param>
+		/// <param name="enabled">Whether or not the MenuItem is enabled.</param>
+		/// <param name="color">The color to draw behind the MenuItem.</param>
+		/// <returns>Whether the MenuItem was selected.</returns>
+		public static bool MenuItemWithColor(string label, bool enabled, uint color)
+		{
+			var min = ImGui.GetCursorScreenPos();
+			min.X -= ImGui.GetStyle().FramePadding.X;
+			min.Y -= (int)(ImGui.GetStyle().ItemSpacing.Y * 0.5);
+			var max = new System.Numerics.Vector2(
+				min.X + ImGui.GetContentRegionAvail().X + ImGui.GetStyle().FramePadding.X * 2,
+				min.Y + ImGui.GetFrameHeight() + ImGui.GetStyle().ItemSpacing.Y - ImGui.GetStyle().FramePadding.Y * 2);
+			ImGui.GetWindowDrawList().AddRectFilled(min, max, color);
+
+			return ImGui.MenuItem(label, enabled);
+		}
+
+		/// <summary>
+		/// Draws an ImGui Text element with a specified width.
 		/// </summary>
 		/// <param name="text">Text to display in the ImGUi Text element.</param>
 		/// <param name="width">Width of the element.</param>
