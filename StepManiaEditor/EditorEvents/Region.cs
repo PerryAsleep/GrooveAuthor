@@ -6,43 +6,69 @@ using static StepManiaEditor.Utils;
 namespace StepManiaEditor
 {
 	/// <summary>
-	/// Interface for defining and drawing a rectangle region on screen where the y position
-	/// is based on time or row.
+	/// Interface for defining and drawing a rectangle region on screen.
 	/// </summary>
-	public interface IRegion
+	internal interface IRegion
 	{
-		public double RegionX { get; set; }
-		public double RegionY { get; set; }
-		public double RegionW { get; set; }
-		public double RegionH { get; set; }
-
-		public double GetRegionPosition();
-		public double GetRegionDuration();
-		public bool AreRegionUnitsTime();
-		public bool IsVisible(SpacingMode mode);
+		public double GetRegionX();
+		public double GetRegionY();
+		public double GetRegionW();
+		public double GetRegionH();
 		public Color GetRegionColor();
 
 		public void DrawRegionImpl(TextureAtlas textureAtlas, SpriteBatch spriteBatch, int screenHeight, Color color)
 		{
-			var y = RegionY;
-			var h = RegionH;
+			var x = GetRegionX();
+			var w = GetRegionW();
+			if (w < 0)
+			{
+				x += w;
+				w = -w;
+			}
+
+			var y = GetRegionY();
+			var h = GetRegionH();
+			if (h < 0)
+			{
+				y += h;
+				h = -h;
+			}
+
 			if (y > screenHeight || y + h < 0)
 				return;
 			if (y < 0)
 			{
+				h += y;
 				y = 0;
-				h += RegionY;
 			}
 			if (y + h > screenHeight)
 			{
 				h = screenHeight - y;
 			}
+
 			// TODO: round?
-			textureAtlas.Draw(TextureIdRegionRect, spriteBatch, new Rectangle((int)RegionX, (int)y, (int)RegionW, (int)h), color);
+			textureAtlas.Draw(TextureIdRegionRect, spriteBatch, new Rectangle((int)x, (int)y, (int)w, (int)h), color);
 		}
 	}
 
-	public static class RegionExtensions
+	/// <summary>
+	/// Interface for defining and drawing a rectangle region on screen where the y position
+	/// is based on time or row.
+	/// </summary>
+	internal interface IChartRegion : IRegion
+	{
+		public void SetRegionX(double x);
+		public void SetRegionY(double y);
+		public void SetRegionW(double w);
+		public void SetRegionH(double h);
+
+		public double GetRegionPosition();
+		public double GetRegionDuration();
+		public bool AreRegionUnitsTime();
+		public bool IsVisible(SpacingMode mode);
+	}
+
+	internal static class RegionExtensions
 	{
 		public static void DrawRegion(this IRegion region, TextureAtlas textureAtlas, SpriteBatch spriteBatch, int screenHeight)
 		{

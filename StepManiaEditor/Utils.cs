@@ -94,6 +94,8 @@ namespace StepManiaEditor
 		public static Color WarpRegionColor = new Color(0x29, 0x79, 0x7A, 0x7F);
 		public static Color PreviewRegionColor = new Color(0x7A, 0x7A, 0x7A, 0x7F);
 
+		public static Color SelectionRegionColor = new Color(0xB8, 0xB4, 0x3E, 0x7F);
+
 		public static readonly string[] ExpectedAudioFormats = { "mp3", "oga", "ogg", "wav" };
 		public static readonly string[] ExpectedImageFormats = { "bmp", "gif", "jpeg", "jpg", "png", "tif", "tiff", "webp" };
 		public static readonly string[] ExpectedVideoFormats = { "avi", "f4v", "flv", "mkv", "mp4", "mpeg", "mpg", "mov", "ogv", "webm", "wmv" };

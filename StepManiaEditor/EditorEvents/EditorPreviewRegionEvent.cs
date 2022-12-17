@@ -9,7 +9,7 @@ namespace StepManiaEditor
 	/// The preview is rendered as an IRegion and also as a miscellaneous editor event widget.
 	/// The preview does not correspond to an EditorEvent in a chart.
 	/// </summary>
-	public class EditorPreviewRegionEvent : IRegion, IPlaceable
+	public class EditorPreviewRegionEvent : IChartRegion, IPlaceable
 	{
 		/// <summary>
 		/// The EditorSong.
@@ -31,17 +31,22 @@ namespace StepManiaEditor
 		public bool ShouldDrawMiscEvent;
 		public float Alpha = 1.0f;
 
-		#region IRegion Implementation
-		public double RegionX { get; set; }
-		public double RegionY { get; set; }
-		public double RegionW { get; set; }
-		public double RegionH { get; set; }
+		#region IChartRegion Implementation
+		private double RegionX, RegionY, RegionW, RegionH;
+		public double GetRegionX() { return RegionX; }
+		public double GetRegionY() { return RegionY; }
+		public double GetRegionW() { return RegionW; }
+		public double GetRegionH() { return RegionH; }
+		public void SetRegionX(double x) { RegionX = x; }
+		public void SetRegionY(double y) { RegionY = y; }
+		public void SetRegionW(double w) { RegionW = w; }
+		public void SetRegionH(double h) { RegionH = h; }
 		public double GetRegionPosition() { return EditorSong.SampleStart + (ActiveChart?.GetMusicOffset() ?? 0.0); }
 		public double GetRegionDuration() { return EditorSong.SampleLength; }
 		public bool AreRegionUnitsTime() { return true; }
 		public bool IsVisible(SpacingMode mode) { return true; }
 		public Color GetRegionColor() { return PreviewRegionColor; }
-		#endregion IRegion Implementation
+		#endregion IChartRegion Implementation
 
 		#region IPlaceable
 		public double X { get; set; }

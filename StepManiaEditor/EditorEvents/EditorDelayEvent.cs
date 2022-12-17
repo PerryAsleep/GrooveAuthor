@@ -8,7 +8,7 @@ using static StepManiaEditor.Utils;
 
 namespace StepManiaEditor
 {
-	public class EditorDelayEvent : EditorRateAlteringEvent, IRegion
+	public class EditorDelayEvent : EditorRateAlteringEvent, IChartRegion
 	{
 		public static readonly string EventShortDescription =
 			"Delays pause the chart playback and occur before notes at the same position.\n" +
@@ -25,17 +25,22 @@ namespace StepManiaEditor
 		public Stop StopEvent;
 		private bool WidthDirty;
 
-		#region IRegion Implementation
-		public double RegionX { get; set; }
-		public double RegionY { get; set; }
-		public double RegionW { get; set; }
-		public double RegionH { get; set; }
+		#region IChartRegion Implementation
+		private double RegionX, RegionY, RegionW, RegionH;
+		public double GetRegionX() { return RegionX; }
+		public double GetRegionY() { return RegionY; }
+		public double GetRegionW() { return RegionW; }
+		public double GetRegionH() { return RegionH; }
+		public void SetRegionX(double x) { RegionX = x; }
+		public void SetRegionY(double y) { RegionY = y; }
+		public void SetRegionW(double w) { RegionW = w; }
+		public void SetRegionH(double h) { RegionH = h; }
 		public double GetRegionPosition() { return ToSeconds(ChartEvent.TimeMicros); }
 		public double GetRegionDuration() { return DoubleValue; }
 		public bool AreRegionUnitsTime() { return true; }
 		public bool IsVisible(SpacingMode mode) { return mode == SpacingMode.ConstantTime; }
 		public Color GetRegionColor() { return DelayRegionColor; }
-		#endregion IRegion Implementation
+		#endregion IChartRegion Implementation
 
 		public double DoubleValue
 		{

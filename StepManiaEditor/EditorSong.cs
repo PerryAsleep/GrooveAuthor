@@ -8,7 +8,6 @@ using Microsoft.Xna.Framework.Graphics;
 using static StepManiaEditor.Utils;
 using static Fumen.Utils;
 using static Fumen.Converters.SMCommon;
-using System.Runtime.InteropServices;
 
 namespace StepManiaEditor
 {

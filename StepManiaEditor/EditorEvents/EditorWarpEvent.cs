@@ -7,7 +7,7 @@ using static StepManiaEditor.Utils;
 
 namespace StepManiaEditor
 {
-	public class EditorWarpEvent : EditorRateAlteringEvent, IRegion
+	public class EditorWarpEvent : EditorRateAlteringEvent, IChartRegion
 	{
 		public static readonly string EventShortDescription =
 			"A warp will instantly advance the chart forward by the specified number of rows.\n" +
@@ -25,17 +25,22 @@ namespace StepManiaEditor
 		public Warp WarpEvent;
 		private bool WidthDirty;
 
-		#region IRegion Implementation
-		public double RegionX { get; set; }
-		public double RegionY { get; set; }
-		public double RegionW { get; set; }
-		public double RegionH { get; set; }
+		#region IChartRegion Implementation
+		private double RegionX, RegionY, RegionW, RegionH;
+		public double GetRegionX() { return RegionX; }
+		public double GetRegionY() { return RegionY; }
+		public double GetRegionW() { return RegionW; }
+		public double GetRegionH() { return RegionH; }
+		public void SetRegionX(double x) { RegionX = x; }
+		public void SetRegionY(double y) { RegionY = y; }
+		public void SetRegionW(double w) { RegionW = w; }
+		public void SetRegionH(double h) { RegionH = h; }
 		public double GetRegionPosition() { return GetRow(); }
 		public double GetRegionDuration() { return IntValue; }
 		public bool AreRegionUnitsTime() { return false; }
 		public bool IsVisible(SpacingMode mode) { return mode != SpacingMode.ConstantTime; }
 		public Color GetRegionColor() { return WarpRegionColor; }
-		#endregion IRegion Implementation
+		#endregion IChartRegion Implementation
 
 		public int IntValue
 		{

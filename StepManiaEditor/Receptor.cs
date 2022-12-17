@@ -85,15 +85,13 @@ namespace StepManiaEditor
 		/// <param name="zoom">The current zoom level.</param>
 		/// <param name="textureAtlas">TextureAtlas containing receptor images.</param>
 		/// <param name="spriteBatch">SpriteBatch to use for rendering.</param>
-		public void Draw(Vector2 focalPoint, double zoom, TextureAtlas textureAtlas, SpriteBatch spriteBatch)
+		public void Draw(Vector2 focalPoint, double sizeZoom, TextureAtlas textureAtlas, SpriteBatch spriteBatch)
 		{
 			// Determine positioning information needed for drawing.
 			var numArrows = ActiveChart.NumInputs;
 			var (textureId, rot) = ArrowGraphicManager.GetReceptorTexture(Lane);
 			var (textureWidth, textureHeight) = textureAtlas.GetDimensions(textureId);
-			if (zoom > 1.0)
-				zoom = 1.0;
-			var arrowWidth = textureWidth * zoom;
+			var arrowWidth = textureWidth * sizeZoom;
 			var xStart = focalPoint.X - (numArrows * arrowWidth * 0.5f);
 
 			// Draw receptor texture.
@@ -103,7 +101,7 @@ namespace StepManiaEditor
 				new Vector2((float)(xStart + (Lane + 0.5f) * arrowWidth), focalPoint.Y),
 				new Vector2(textureWidth * 0.5f, textureHeight * 0.5f),
 				new Color(BeatBrightness, BeatBrightness, BeatBrightness, 1.0f),
-				(float)(zoom * TapScale),
+				(float)(sizeZoom * TapScale),
 				rot,
 				SpriteEffects.None);
 		}
@@ -115,15 +113,13 @@ namespace StepManiaEditor
 		/// <param name="zoom">The current zoom level.</param>
 		/// <param name="textureAtlas">TextureAtlas containing receptor images.</param>
 		/// <param name="spriteBatch">SpriteBatch to use for rendering.</param>
-		public void DrawForegroundEffects(Vector2 focalPoint, double zoom, TextureAtlas textureAtlas, SpriteBatch spriteBatch)
+		public void DrawForegroundEffects(Vector2 focalPoint, double sizeZoom, TextureAtlas textureAtlas, SpriteBatch spriteBatch)
 		{
 			// Determine positioning information needed for drawing.
 			var numArrows = ActiveChart.NumInputs;
 			var (textureId, _) = ArrowGraphicManager.GetReceptorTexture(Lane);
 			var (textureWidth, _) = textureAtlas.GetDimensions(textureId);
-			if (zoom > 1.0)
-				zoom = 1.0;
-			var arrowWidth = textureWidth * zoom;
+			var arrowWidth = textureWidth * sizeZoom;
 			var xStart = focalPoint.X - (numArrows * arrowWidth * 0.5f);
 
 			// Draw rim texture.
@@ -138,7 +134,7 @@ namespace StepManiaEditor
 					new Vector2((float)(xStart + (Lane + 0.5f) * arrowWidth), focalPoint.Y),
 					new Vector2(rimTextureWidth * 0.5f, rimTextureHeight * 0.5f),
 					new Color(1.0f, 1.0f, 1.0f, RimAlpha),
-					(float)(zoom * RimScale),
+					(float)(sizeZoom * RimScale),
 					rimRot,
 					SpriteEffects.None);
 			}
@@ -155,7 +151,7 @@ namespace StepManiaEditor
 					new Vector2((float)(xStart + (Lane + 0.5f) * arrowWidth), focalPoint.Y),
 					new Vector2(glowTextureWidth * 0.5f, glowTextureHeight * 0.5f),
 					new Color(1.0f, 1.0f, 1.0f, GlowAlpha),
-					(float)(zoom),
+					(float)(sizeZoom),
 					glowRot,
 					SpriteEffects.None);
 			}
@@ -375,27 +371,24 @@ namespace StepManiaEditor
 			return AutoplayHeld;
 		}
 
-		public static bool IsInReceptorArea(int x, int y, Vector2 focalPoint, double zoom, TextureAtlas textureAtlas, ArrowGraphicManager arrowGraphicManager, EditorChart activeChart)
+		public static bool IsInReceptorArea(int x, int y, Vector2 focalPoint, double sizeZoom, TextureAtlas textureAtlas, ArrowGraphicManager arrowGraphicManager, EditorChart activeChart)
 		{
 			if (arrowGraphicManager == null || activeChart == null)
 				return false;
-			var bounds = GetBounds(focalPoint, zoom, textureAtlas, arrowGraphicManager, activeChart);
+			var bounds = GetBounds(focalPoint, sizeZoom, textureAtlas, arrowGraphicManager, activeChart);
 			return x >= bounds.Item1 && x <= bounds.Item1 + bounds.Item3 && y >= bounds.Item2 && y <= bounds.Item2 + bounds.Item4;
 		}
 
-		public static (int, int, int, int) GetBounds(Vector2 focalPoint, double zoom, TextureAtlas textureAtlas, ArrowGraphicManager arrowGraphicManager, EditorChart activeChart)
+		public static (int, int, int, int) GetBounds(Vector2 focalPoint, double sizeZoom, TextureAtlas textureAtlas, ArrowGraphicManager arrowGraphicManager, EditorChart activeChart)
 		{
 			if (arrowGraphicManager == null || activeChart == null)
 				return (0, 0, 0, 0);
 
-			if (zoom > 1.0)
-				zoom = 1.0;
-
 			var numArrows = activeChart.NumInputs;
 			var (textureId, _) = arrowGraphicManager.GetReceptorTexture(0);
 			var (textureWidth, textureHeight) = textureAtlas.GetDimensions(textureId);
-			var arrowWidth = textureWidth * zoom;
-			var arrowHeight = textureHeight * zoom;
+			var arrowWidth = textureWidth * sizeZoom;
+			var arrowHeight = textureHeight * sizeZoom;
 			return (
 				(int)(focalPoint.X - (numArrows * arrowWidth * 0.5f)),
 				(int)(focalPoint.Y - arrowHeight * 0.5f),
