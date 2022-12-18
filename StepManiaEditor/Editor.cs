@@ -161,6 +161,7 @@ namespace StepManiaEditor
 		private EditorPreviewRegionEvent VisiblePreview = null;
 		private SelectedRegion SelectedRegion = new SelectedRegion();
 		private Receptor[] Receptors = null;
+		private EventSpacingHelper SpacingHelper;
 
 		private EditorEvent[] NextAutoPlayNotes = null;
 
@@ -1402,6 +1403,9 @@ namespace StepManiaEditor
 			if (ActiveChart == null || ActiveChart.EditorEvents == null || ArrowGraphicManager == null)
 				return;
 
+			// Get an EventSpacingHelper to perform y calculations.
+			SpacingHelper = EventSpacingHelper.GetSpacingHelper(ActiveChart);
+
 			List<EditorEvent> holdBodyEvents = new List<EditorEvent>();
 			List<EditorEvent> noteEvents = new List<EditorEvent>();
 
@@ -1474,8 +1478,6 @@ namespace StepManiaEditor
 			var previousRateEventY = (double)focalPointY;
 			var previousRateEventRow = chartPosition;
 			var previousRateEventTime = time;
-			var pps = 1.0;
-			var ppr = 1.0;
 			EditorRateAlteringEvent rateEvent = null;
 			while (previousRateEventY >= startPosY && rateEnumerator.MovePrev())
 			{
@@ -1485,40 +1487,16 @@ namespace StepManiaEditor
 					SetWaveFormPps(rateEnumerator.Current, interpolatedScrollRate);
 
 				rateEvent = rateEnumerator.Current;
-				(pps, ppr) = GetPpsAndPpr(rateEvent, interpolatedScrollRate, spacingZoom);
-
-				switch (Preferences.Instance.PreferencesScroll.SpacingMode)
-				{
-					case SpacingMode.ConstantTime:
-					default:
-						previousRateEventY = previousRateEventY - (previousRateEventTime - rateEvent.GetChartTime()) * pps;
-						break;
-					case SpacingMode.Variable:
-					case SpacingMode.ConstantRow:
-						previousRateEventY = previousRateEventY - (previousRateEventRow - rateEvent.GetRow()) * ppr;
-						break;
-				}
-
+				SpacingHelper.UpdatePpsAndPpr(rateEvent, interpolatedScrollRate, spacingZoom);
+				previousRateEventY = SpacingHelper.GetYPreceding(previousRateEventTime, previousRateEventRow, previousRateEventY, rateEvent.GetChartTime(), rateEvent.GetRow());
 				previousRateEventRow = rateEvent.GetRow();
 				previousRateEventTime = rateEvent.GetChartTime();
 			}
 
 			// Now we know the position of first rate altering event to use.
 			// We can now determine the chart time and position at the top of the screen.
-			double chartPositionAtTopOfScreen = 0.0, chartTimeAtTopOfScreen = 0.0;
-			switch (Preferences.Instance.PreferencesScroll.SpacingMode)
-			{
-				case SpacingMode.ConstantTime:
-				default:
-					chartTimeAtTopOfScreen = rateEvent.GetChartTime() + (startPosY - previousRateEventY) / pps;
-					ActiveChart.TryGetChartPositionFromTime(chartTimeAtTopOfScreen, ref chartPositionAtTopOfScreen);
-					break;
-				case SpacingMode.Variable:
-				case SpacingMode.ConstantRow:
-					chartPositionAtTopOfScreen = rateEvent.GetRow() + (startPosY - previousRateEventY) / ppr;
-					ActiveChart.TryGetTimeFromChartPosition(chartPositionAtTopOfScreen, ref chartTimeAtTopOfScreen);
-					break;
-			}
+			var (chartTimeAtTopOfScreen, chartPositionAtTopOfScreen) =
+				SpacingHelper.GetChartTimeAndRow(startPosY, previousRateEventY, rateEvent.GetChartTime(), rateEvent.GetRow());
 
 			var beatMarkerRow = (int)chartPositionAtTopOfScreen;
 			var beatMarkerLastRecordedRow = -1;
@@ -1540,7 +1518,7 @@ namespace StepManiaEditor
 				// rate altering events between the top of the screen and the start of the hold.
 				hsn.SetDimensions(
 					startPosX + hsn.GetLane() * arrowW,
-					GetY(hsn, pps, ppr, previousRateEventY, rateEvent) - (arrowH * 0.5),
+					SpacingHelper.GetY(hsn, previousRateEventY, rateEvent) - (arrowH * 0.5),
 					arrowW,
 					arrowH,
 					sizeZoom);
@@ -1555,7 +1533,7 @@ namespace StepManiaEditor
 			var regionsNeedingToBeAdded = new List<IChartRegion>();
 
 			// Start any regions including the preview and the selected region.
-			StartRegions(ref regionsNeedingToBeAdded, pps, ppr, previousRateEventY, rateEvent, nextRateEvent, startPosX, numArrows * arrowW, chartTimeAtTopOfScreen, chartPositionAtTopOfScreen, startPosY, miscEventAlpha);
+			StartRegions(ref regionsNeedingToBeAdded, previousRateEventY, rateEvent, nextRateEvent, startPosX, numArrows * arrowW, chartTimeAtTopOfScreen, chartPositionAtTopOfScreen, startPosY, miscEventAlpha);
 
 			// Now we can scan forward
 			while (enumerator.MoveNext())
@@ -1566,21 +1544,21 @@ namespace StepManiaEditor
 				if (nextRateEvent != null && e.GetEvent() == nextRateEvent.GetEvent())
 				{
 					// Add a misc widget for this rate event.
-					var rateEventY = GetY(e, pps, ppr, previousRateEventY, rateEvent);
+					var rateEventY = SpacingHelper.GetY(e, previousRateEventY, rateEvent);
 					nextRateEvent.Alpha = miscEventAlpha;
 					MiscEventWidgetLayoutManager.PositionEvent(nextRateEvent, rateEventY);
 					noteEvents.Add(nextRateEvent);
 
 					// Add a region for this event if appropriate.
 					if (nextRateEvent is IChartRegion region)
-						AddRegion(region, ref regionsNeedingToBeAdded, pps, ppr, previousRateEventY, rateEvent, startPosX, numArrows * arrowW);
+						AddRegion(region, ref regionsNeedingToBeAdded, previousRateEventY, rateEvent, startPosX, numArrows * arrowW);
 
 					// Update beat markers for the section for the previous rate event.
-					UpdateBeatMarkers(rateEvent, ref beatMarkerRow, ref beatMarkerLastRecordedRow, nextRateEvent, startPosX, sizeZoom, pps, ppr, previousRateEventY);
+					UpdateBeatMarkers(rateEvent, ref beatMarkerRow, ref beatMarkerLastRecordedRow, nextRateEvent, startPosX, sizeZoom, previousRateEventY);
 
 					// Update rate parameters.
 					rateEvent = nextRateEvent;
-					(pps, ppr) = GetPpsAndPpr(rateEvent, interpolatedScrollRate, spacingZoom);
+					SpacingHelper.UpdatePpsAndPpr(rateEvent, interpolatedScrollRate, spacingZoom);
 					previousRateEventY = rateEventY;
 
 					// Advance next rate altering event.
@@ -1588,13 +1566,13 @@ namespace StepManiaEditor
 					nextRateEvent = hasNextRateEvent ? rateEnumerator.Current : null;
 
 					// Update any regions needing to be updated based on the new rate altering event.
-					UpdateRegions(ref regionsNeedingToBeAdded, pps, ppr, previousRateEventY, rateEvent, nextRateEvent, startPosX, numArrows * arrowW, startPosY, miscEventAlpha);
+					UpdateRegions(ref regionsNeedingToBeAdded, previousRateEventY, rateEvent, nextRateEvent, startPosX, numArrows * arrowW, startPosY, miscEventAlpha);
 					
 					continue;
 				}
 
 				// Determine y position.
-				var y = GetY(e, pps, ppr, previousRateEventY, rateEvent);
+				var y = SpacingHelper.GetY(e, previousRateEventY, rateEvent);
 				var arrowY = y - (arrowH * 0.5);
 				if (arrowY > screenHeight)
 					break;
@@ -1639,7 +1617,7 @@ namespace StepManiaEditor
 
 					// Add a region for this event if appropriate.
 					if (e is IChartRegion region)
-						AddRegion(region, ref regionsNeedingToBeAdded, pps, ppr, previousRateEventY, rateEvent, startPosX, numArrows * arrowW);
+						AddRegion(region, ref regionsNeedingToBeAdded, previousRateEventY, rateEvent, startPosX, numArrows * arrowW);
 				}
 
 				if (noteEvents.Count + holdBodyEvents.Count > MaxEventsToDraw)
@@ -1654,7 +1632,7 @@ namespace StepManiaEditor
 					continue;
 
 				var start = holdEndNote.GetHoldStartNote();
-				var endY = GetY(holdEndNote, pps, ppr, previousRateEventY, rateEvent) + holdCapHeight;
+				var endY = SpacingHelper.GetY(holdEndNote, previousRateEventY, rateEvent) + holdCapHeight;
 				var noteH = endY - (start.Y + (arrowH * 0.5f));
 
 				holdEndNote.SetDimensions(
@@ -1668,10 +1646,10 @@ namespace StepManiaEditor
 			}
 
 			// We also need to update beat markers beyond the final note.
-			UpdateBeatMarkers(rateEvent, ref beatMarkerRow, ref beatMarkerLastRecordedRow, nextRateEvent, startPosX, sizeZoom, pps, ppr, previousRateEventY);
+			UpdateBeatMarkers(rateEvent, ref beatMarkerRow, ref beatMarkerLastRecordedRow, nextRateEvent, startPosX, sizeZoom, previousRateEventY);
 
 			// We also need to complete regions which end beyond the bounds of the screen.
-			EndRegions(ref regionsNeedingToBeAdded, pps, ppr, previousRateEventY, rateEvent);
+			EndRegions(ref regionsNeedingToBeAdded, previousRateEventY, rateEvent);
 
 			// Store the notes and holds so we can render them.
 			VisibleEvents.AddRange(holdBodyEvents);
@@ -1765,82 +1743,6 @@ namespace StepManiaEditor
 		}
 
 		/// <summary>
-		/// Gets the Y position in screen space of a given event.
-		/// </summary>
-		/// <param name="e">Event to get the position of.</param>
-		/// <param name="pps">Pixels per second.</param>
-		/// <param name="ppr">Pixels per row.</param>
-		/// <param name="previousRateEventY">Position in screen space of the previous rate altering event.</param>
-		/// <param name="previousRateEvent">The previous rate altering event.</param>
-		/// <remarks>Helper for UpdateChartEvents.</remarks>
-		/// <returns>Y position in screen space of the start of the given event.</returns>
-		private double GetY(EditorEvent e, double pps, double ppr, double previousRateEventY, EditorRateAlteringEvent previousRateEvent)
-		{
-			return GetY(e, pps, ppr, previousRateEventY, previousRateEvent.GetChartTime(), previousRateEvent.GetRow());
-		}
-
-		/// <summary>
-		/// Gets the Y position in screen space of a given event.
-		/// </summary>
-		/// <param name="e">Event to get the position of.</param>
-		/// <param name="pps">Pixels per second.</param>
-		/// <param name="ppr">Pixels per row.</param>
-		/// <param name="anchorY">
-		/// Position in screen space of another event to use for relative positioning.
-		/// In most cases this is the previous rate altering event.
-		/// </param>
-		/// <param name="anchorChartTime">The chart time of the anchor event.</param>
-		/// <param name="anchorRow">The row of the achor event.</param>
-		/// <remarks>Helper for UpdateChartEvents.</remarks>
-		/// <returns>Y position in screen space of the start of the given event.</returns>
-		private double GetY(EditorEvent e, double pps, double ppr, double anchorY, double anchorChartTime, double anchorRow)
-		{
-			switch (Preferences.Instance.PreferencesScroll.SpacingMode)
-			{
-				case SpacingMode.ConstantTime:
-				default:
-					return anchorY + (e.GetChartTime() - anchorChartTime) * pps;
-				case SpacingMode.Variable:
-				case SpacingMode.ConstantRow:
-					return anchorY + (e.GetRow() - anchorRow) * ppr;
-			}
-		}
-
-		private double GetY(double chartTime, double chartRow, double pps, double ppr, double anchorY, double anchorChartTime, double anchorRow)
-		{
-			switch (Preferences.Instance.PreferencesScroll.SpacingMode)
-			{
-				case SpacingMode.ConstantTime:
-				default:
-					return anchorY + (chartTime - anchorChartTime) * pps;
-				case SpacingMode.Variable:
-				case SpacingMode.ConstantRow:
-					return anchorY + (chartRow - anchorRow) * ppr;
-			}
-		}
-
-		/// <summary>
-		/// Gets the position in screen space of the start of a given region.
-		/// </summary>
-		/// <param name="region">Region to get the position of.</param>
-		/// <param name="pps">Pixels per second.</param>
-		/// <param name="ppr">Pixels per row.</param>
-		/// <param name="anchorY">
-		/// Position in screen space of another event to use for relative positioning.
-		/// In most cases this is the previous rate altering event.
-		/// </param>
-		/// <param name="anchorChartTime">The chart time of the anchor event.</param>
-		/// <param name="anchorRow">The row of the achor event.</param>
-		/// <remarks>Helper for UpdateChartEvents.</remarks>
-		/// <returns>Y position in screen space of the start of the given region.</returns>
-		private double GetRegionY(IChartRegion region, double pps, double ppr, double anchorY, double anchorChartTime, double anchorRow)
-		{
-			if (region.AreRegionUnitsTime())
-				return anchorY + (region.GetRegionPosition() - anchorChartTime) * pps;
-			return anchorY + (region.GetRegionPosition() - anchorRow) * ppr;
-		}
-
-		/// <summary>
 		/// Gets the interpolated scroll rate to use for the given Chart time and position.
 		/// </summary>
 		/// <param name="chartTime">Chart time.</param>
@@ -1888,40 +1790,6 @@ namespace StepManiaEditor
 			}
 
 			return interpolatedScrollRate;
-		}
-
-		/// <summary>
-		/// Gets the pixels per second and pixels per row for the given rate altering event.
-		/// </summary>
-		/// <param name="rateEvent">The rate altering event.</param>
-		/// <param name="interpolatedScrollRate">The current interpolated scroll rate value.</param>
-		/// <param name="spacingZoom">The current spacing level based on the zoom level.</param>
-		/// <remarks>Helper for UpdateChartEvents.</remarks>
-		/// <returns>Pixels per second and pixels per row.</returns>
-		private (double, double) GetPpsAndPpr(EditorRateAlteringEvent rateEvent, double interpolatedScrollRate, double spacingZoom)
-		{
-			double pps = 1.0, ppr = 1.0;
-			var pScroll = Preferences.Instance.PreferencesScroll;
-			switch (pScroll.SpacingMode)
-			{
-				case SpacingMode.ConstantTime:
-					pps = pScroll.TimeBasedPixelsPerSecond * spacingZoom;
-					ppr = pps * rateEvent.SecondsPerRow;
-					break;
-				case SpacingMode.ConstantRow:
-					ppr = pScroll.RowBasedPixelsPerRow * spacingZoom;
-					pps = ppr * rateEvent.RowsPerSecond;
-					break;
-				case SpacingMode.Variable:
-					var scrollRateForThisSection = rateEvent.ScrollRate * interpolatedScrollRate;
-					pps = pScroll.VariablePixelsPerSecondAtDefaultBPM
-							* (rateEvent.Tempo / PreferencesScroll.DefaultVariablePixelsPerSecondAtDefaultBPM)
-							* scrollRateForThisSection
-							* spacingZoom;
-					ppr = pps * rateEvent.SecondsPerRow;
-					break;
-			}
-			return (pps, ppr);
 		}
 
 		/// <summary>
@@ -2003,8 +1871,6 @@ namespace StepManiaEditor
 
 		private void CheckForAddingPreviewEvent(
 			ref List<IChartRegion> regionsNeedingToBeAdded,
-			double pps,
-			double ppr,
 			double previousRateEventY,
 			EditorRateAlteringEvent previousRateEvent,
 			EditorRateAlteringEvent nextRateEvent,
@@ -2021,16 +1887,16 @@ namespace StepManiaEditor
 			if (previewTime >= previousRateEvent.GetChartTime()
 				&& (nextRateEvent == null || previewTime < nextRateEvent.GetChartTime()))
 			{
-				AddPreviewEvent(ref regionsNeedingToBeAdded, pps, ppr, previousRateEventY, previousRateEvent, x, w, startPosY, miscEventAlpha);
+				AddPreviewEvent(ref regionsNeedingToBeAdded, previousRateEventY, previousRateEvent, x, w, startPosY, miscEventAlpha);
 			}
 		}
 
-		private void AddPreviewEvent(ref List<IChartRegion> regionsNeedingToBeAdded, double pps, double ppr, double previousRateEventY, EditorRateAlteringEvent previousRateEvent, double x, double w, double startPosY, float miscEventAlpha)
+		private void AddPreviewEvent(ref List<IChartRegion> regionsNeedingToBeAdded, double previousRateEventY, EditorRateAlteringEvent previousRateEvent, double x, double w, double startPosY, float miscEventAlpha)
 		{
 			VisiblePreview = ActiveSong.PreviewEvent;
 
 			// Start a region for the preview.
-			var y = GetRegionY(VisiblePreview, pps, ppr, previousRateEventY, previousRateEvent.GetChartTime(), previousRateEvent.GetRow());
+			var y = SpacingHelper.GetRegionY(VisiblePreview, previousRateEventY, previousRateEvent.GetChartTime(), previousRateEvent.GetRow());
 			VisiblePreview.SetRegionX(x);
 			VisiblePreview.SetRegionY(y);
 			VisiblePreview.SetRegionW(w);
@@ -2042,55 +1908,38 @@ namespace StepManiaEditor
 			MiscEventWidgetLayoutManager.PositionEvent(ActiveSong.PreviewEvent, y);
 		}
 
-		private void AddRegion(IChartRegion region, ref List<IChartRegion> regionsNeedingToBeAdded, double pps, double ppr, double previousRateEventY, EditorRateAlteringEvent rateEvent, double x, double w)
+		private void AddRegion(IChartRegion region, ref List<IChartRegion> regionsNeedingToBeAdded, double previousRateEventY, EditorRateAlteringEvent rateEvent, double x, double w)
 		{
 			if (region == null || !region.IsVisible(Preferences.Instance.PreferencesScroll.SpacingMode))
 				return;
 			if (regionsNeedingToBeAdded.Contains(region))
 				return;
 			region.SetRegionX(x);
-			region.SetRegionY(GetRegionY(region, pps, ppr, previousRateEventY, rateEvent.GetChartTime(), rateEvent.GetRow()));
+			region.SetRegionY(SpacingHelper.GetRegionY(region, previousRateEventY, rateEvent.GetChartTime(), rateEvent.GetRow()));
 			region.SetRegionW(w);
 			regionsNeedingToBeAdded.Add(region);
 		}
 
-		private void CheckForCompletingRegions(ref List<IChartRegion> regionsNeedingToBeAdded, double pps, double ppr, double previousRateEventY, EditorRateAlteringEvent previousRateEvent, EditorRateAlteringEvent nextRateEvent)
+		private void CheckForCompletingRegions(ref List<IChartRegion> regionsNeedingToBeAdded, double previousRateEventY, EditorRateAlteringEvent previousRateEvent, EditorRateAlteringEvent nextRateEvent)
 		{
 			var remainingRegionsNeededToBeAdded = new List<IChartRegion>();
 			foreach (var region in regionsNeedingToBeAdded)
 			{
 				var regionEnd = region.GetRegionPosition() + region.GetRegionDuration();
-				if (region.AreRegionUnitsTime())
+				if (nextRateEvent == null ||
+					((region.AreRegionUnitsTime() && nextRateEvent.GetChartTime() > regionEnd)
+					|| (!region.AreRegionUnitsTime() && nextRateEvent.GetRow() > regionEnd)))
 				{
-					if (nextRateEvent == null || nextRateEvent.GetChartTime() > regionEnd)
-					{
-						var regionEndY = previousRateEventY + (regionEnd - previousRateEvent.GetChartTime()) * pps;
-						region.SetRegionH(regionEndY - region.GetRegionY());
-						VisibleRegions.Add(region);
-						continue;
-					}
-				}
-				else
-				{
-					if (nextRateEvent == null || nextRateEvent.GetRow() > regionEnd)
-					{
-						var regionEndY = previousRateEventY + (regionEnd - previousRateEvent.GetRow()) * ppr;
-						region.SetRegionH(regionEndY - region.GetRegionY());
-						VisibleRegions.Add(region);
-						continue;
-					}
+					region.SetRegionH(SpacingHelper.GetRegionH(region, previousRateEventY, previousRateEvent));
+					VisibleRegions.Add(region);
+					continue;
 				}
 				remainingRegionsNeededToBeAdded.Add(region);
 			}
 			regionsNeedingToBeAdded = remainingRegionsNeededToBeAdded;
 		}
 
-		private void CheckForUpdatingSelectedRegionStartY(
-			double pps,
-			double ppr,
-			double previousRateEventY,
-			EditorRateAlteringEvent rateEvent,
-			EditorRateAlteringEvent nextRateEvent)
+		private void CheckForUpdatingSelectedRegionStartY(double previousRateEventY, EditorRateAlteringEvent rateEvent, EditorRateAlteringEvent nextRateEvent)
 		{
 			if (!SelectedRegion.IsActive() || SelectedRegion.HasStartYBeenUpdatedThisFrame())
 				return;
@@ -2103,7 +1952,7 @@ namespace StepManiaEditor
 							|| nextRateEvent == null
 							|| SelectedRegion.GetStartChartTime() < nextRateEvent.GetChartTime())
 						{
-							SelectedRegion.UpdatePerFrameDerivedStartY(GetY(SelectedRegion.GetStartChartTime(), SelectedRegion.GetStartChartPosition(), pps, ppr, previousRateEventY, rateEvent.GetChartTime(), rateEvent.GetRow()));
+							SelectedRegion.UpdatePerFrameDerivedStartY(SpacingHelper.GetY(SelectedRegion.GetStartChartTime(), SelectedRegion.GetStartChartPosition(), previousRateEventY, rateEvent.GetChartTime(), rateEvent.GetRow()));
 						}
 						break;
 					}
@@ -2114,12 +1963,7 @@ namespace StepManiaEditor
 							|| nextRateEvent == null
 							|| SelectedRegion.GetStartChartPosition() < nextRateEvent.GetRow())
 						{
-							var newY = GetY(SelectedRegion.GetStartChartTime(), SelectedRegion.GetStartChartPosition(), pps, ppr, previousRateEventY, rateEvent.GetChartTime(), rateEvent.GetRow());
-							if (newY > 4000)
-							{
-								newY = GetY(SelectedRegion.GetStartChartTime(), SelectedRegion.GetStartChartPosition(), pps, ppr, previousRateEventY, rateEvent.GetChartTime(), rateEvent.GetRow());
-							}
-							SelectedRegion.UpdatePerFrameDerivedStartY(GetY(SelectedRegion.GetStartChartTime(), SelectedRegion.GetStartChartPosition(), pps, ppr, previousRateEventY, rateEvent.GetChartTime(), rateEvent.GetRow()));
+							SelectedRegion.UpdatePerFrameDerivedStartY(SpacingHelper.GetY(SelectedRegion.GetStartChartTime(), SelectedRegion.GetStartChartPosition(), previousRateEventY, rateEvent.GetChartTime(), rateEvent.GetRow()));
 						}
 						break;
 					}
@@ -2127,8 +1971,6 @@ namespace StepManiaEditor
 		}
 
 		private void CheckForUpdatingSelectedRegionCurrentValues(
-			double pps,
-			double ppr,
 			double previousRateEventY,
 			EditorRateAlteringEvent rateEvent,
 			EditorRateAlteringEvent nextRateEvent)
@@ -2138,9 +1980,8 @@ namespace StepManiaEditor
 
 			if (SelectedRegion.GetCurrentY() < previousRateEventY || nextRateEvent == null)
 			{
-				var chartTime = rateEvent.GetChartTime() + (SelectedRegion.GetCurrentY() - previousRateEventY) / pps;
-				var chartPosition = rateEvent.GetRow() + (SelectedRegion.GetCurrentY() - previousRateEventY) / ppr;
-
+				var (chartTime, chartPosition) = SpacingHelper.GetChartTimeAndRow(
+					SelectedRegion.GetCurrentY(), previousRateEventY, rateEvent.GetChartTime(), rateEvent.GetRow());
 				SelectedRegion.UpdatePerFrameDerivedChartTimeAndPosition(chartTime, chartPosition);
 			}
 		}
@@ -2154,8 +1995,6 @@ namespace StepManiaEditor
 		/// <remarks>Helper for UpdateChartEvents.</remarks>
 		private void StartRegions(
 			ref List<IChartRegion> regionsNeedingToBeAdded,
-			double pps,
-			double ppr,
 			double previousRateEventY,
 			EditorRateAlteringEvent rateEvent,
 			EditorRateAlteringEvent nextRateEvent,
@@ -2168,22 +2007,22 @@ namespace StepManiaEditor
 		{
 			// Check for adding the preview if it extends through the top of the screen.
 			if (DoesPreviewExtendThroughChartTime(chartTimeAtTopOfScreen))
-				AddPreviewEvent(ref regionsNeedingToBeAdded, pps, ppr, previousRateEventY, rateEvent, chartRegionX, chartRegionW, startPosY, miscEventAlpha);
+				AddPreviewEvent(ref regionsNeedingToBeAdded, previousRateEventY, rateEvent, chartRegionX, chartRegionW, startPosY, miscEventAlpha);
 			// The preview event may also begin during the current rate section but start after the start of the screen.
 			// This will capture the preview even if starts after the bottom of the screen, which is not a problem.
-			CheckForAddingPreviewEvent(ref regionsNeedingToBeAdded, pps, ppr, previousRateEventY, rateEvent, nextRateEvent, chartRegionX, chartRegionW, startPosY, miscEventAlpha);
+			CheckForAddingPreviewEvent(ref regionsNeedingToBeAdded, previousRateEventY, rateEvent, nextRateEvent, chartRegionX, chartRegionW, startPosY, miscEventAlpha);
 
 			// Check for adding regions which extend through the top of the screen.
 			var regions = ScanBackwardsForRegions(chartPositionAtTopOfScreen, chartTimeAtTopOfScreen);
 			foreach (var region in regions)
-				AddRegion(region, ref regionsNeedingToBeAdded, pps, ppr, previousRateEventY, rateEvent, chartRegionX, chartRegionW);
+				AddRegion(region, ref regionsNeedingToBeAdded, previousRateEventY, rateEvent, chartRegionX, chartRegionW);
 
 			// Check to see if any regions needing to be added will complete before the next rate altering event.
-			CheckForCompletingRegions(ref regionsNeedingToBeAdded, pps, ppr, previousRateEventY, rateEvent, nextRateEvent);
+			CheckForCompletingRegions(ref regionsNeedingToBeAdded, previousRateEventY, rateEvent, nextRateEvent);
 
 			// Check for updating the SelectedRegion.
-			CheckForUpdatingSelectedRegionStartY(pps, ppr, previousRateEventY, rateEvent, nextRateEvent);
-			CheckForUpdatingSelectedRegionCurrentValues(pps, ppr, previousRateEventY, rateEvent, nextRateEvent);
+			CheckForUpdatingSelectedRegionStartY(previousRateEventY, rateEvent, nextRateEvent);
+			CheckForUpdatingSelectedRegionCurrentValues(previousRateEventY, rateEvent, nextRateEvent);
 		}
 
 		/// <summary>
@@ -2195,8 +2034,6 @@ namespace StepManiaEditor
 		/// <remarks>Helper for UpdateChartEvents.</remarks>
 		private void UpdateRegions(
 			ref List<IChartRegion> regionsNeedingToBeAdded,
-			double pps,
-			double ppr,
 			double previousRateEventY,
 			EditorRateAlteringEvent rateEvent,
 			EditorRateAlteringEvent nextRateEvent,
@@ -2207,14 +2044,14 @@ namespace StepManiaEditor
 		{
 			// Add the preview if it starts within this new rate altering event.
 			// This will capture the preview even if starts after the bottom of the screen, which is not a problem.
-			CheckForAddingPreviewEvent(ref regionsNeedingToBeAdded, pps, ppr, previousRateEventY, rateEvent, nextRateEvent, chartRegionX, chartRegionW, startPosY, miscEventAlpha);
+			CheckForAddingPreviewEvent(ref regionsNeedingToBeAdded, previousRateEventY, rateEvent, nextRateEvent, chartRegionX, chartRegionW, startPosY, miscEventAlpha);
 
 			// Check to see if any regions needing to be added will complete before the next rate altering event.
-			CheckForCompletingRegions(ref regionsNeedingToBeAdded, pps, ppr, previousRateEventY, rateEvent, nextRateEvent);
+			CheckForCompletingRegions(ref regionsNeedingToBeAdded, previousRateEventY, rateEvent, nextRateEvent);
 
 			// Check for updating the SelectedRegion.
-			CheckForUpdatingSelectedRegionStartY(pps, ppr, previousRateEventY, rateEvent, nextRateEvent);
-			CheckForUpdatingSelectedRegionCurrentValues(pps, ppr, previousRateEventY, rateEvent, nextRateEvent);
+			CheckForUpdatingSelectedRegionStartY(previousRateEventY, rateEvent, nextRateEvent);
+			CheckForUpdatingSelectedRegionCurrentValues(previousRateEventY, rateEvent, nextRateEvent);
 		}
 
 		/// <summary>
@@ -2225,19 +2062,17 @@ namespace StepManiaEditor
 		/// <remarks>Helper for UpdateChartEvents.</remarks>
 		private void EndRegions(
 			ref List<IChartRegion> regionsNeedingToBeAdded,
-			double pps,
-			double ppr,
 			double previousRateEventY,
 			EditorRateAlteringEvent rateEvent)
 		{
 			// We do not need to scan forward for more rate mods.
 			EditorRateAlteringEvent nextRateEvent = null;
 
-			CheckForCompletingRegions(ref regionsNeedingToBeAdded, pps, ppr, previousRateEventY, rateEvent, nextRateEvent);
+			CheckForCompletingRegions(ref regionsNeedingToBeAdded, previousRateEventY, rateEvent, nextRateEvent);
 
 			// Check for updating the SelectedRegion.
-			CheckForUpdatingSelectedRegionStartY(pps, ppr, previousRateEventY, rateEvent, nextRateEvent);
-			CheckForUpdatingSelectedRegionCurrentValues(pps, ppr, previousRateEventY, rateEvent, nextRateEvent);
+			CheckForUpdatingSelectedRegionStartY(previousRateEventY, rateEvent, nextRateEvent);
+			CheckForUpdatingSelectedRegionCurrentValues(previousRateEventY, rateEvent, nextRateEvent);
 		}
 
 		/// <summary>
@@ -2266,8 +2101,6 @@ namespace StepManiaEditor
 		/// </param>
 		/// <param name="x">X position in pixels to set on the MarkerEvents.</param>
 		/// <param name="sizeZoom">Current zoom level to use for setting the width and scale of the MarkerEvents.</param>
-		/// <param name="pps">Pixels per second.</param>
-		/// <param name="ppr">Pixels per row.</param>
 		/// <param name="previousRateEventY">Y position of previous rate altering event.</param>
 		/// <remarks>Helper for UpdateChartEvents.</remarks>
 		private void UpdateBeatMarkers(
@@ -2277,16 +2110,12 @@ namespace StepManiaEditor
 			EditorRateAlteringEvent nextRateEvent,
 			double x,
 			double sizeZoom,
-			double pps,
-			double ppr,
 			double previousRateEventY)
 		{
 			if (sizeZoom < MeasureMarkerMinScale)
 				return;
 			if (VisibleMarkers.Count >= MaxMarkersToDraw)
 				return;
-
-			var pScroll = Preferences.Instance.PreferencesScroll;
 
 			// Based on the current rate altering event, determine the beat spacing and snap the current row to a beat.
 			var beatsPerMeasure = currentRateEvent.LastTimeSignature.Signature.Numerator;
@@ -2316,24 +2145,9 @@ namespace StepManiaEditor
 				// Clamp due to warps.
 				var rowRelativeToLastRateChangeEvent = Math.Max(0, currentRow - currentRateEvent.RowForFollowingEvents);
 				rowRelativeToLastRateChangeEvent = Math.Max(0, rowRelativeToLastRateChangeEvent);
-				var y = 0.0;
-
-				switch (pScroll.SpacingMode)
-				{
-					case SpacingMode.ConstantTime:
-					{
-						var absoluteBeatTime = currentRateEvent.ChartTimeForFollowingEvents + rowRelativeToLastRateChangeEvent * currentRateEvent.SecondsPerRow;
-						y = previousRateEventY + (absoluteBeatTime - currentRateEvent.GetChartTime()) * pps;
-						break;
-					}
-
-					case SpacingMode.ConstantRow:
-					case SpacingMode.Variable:
-					{
-						y = previousRateEventY + rowRelativeToLastRateChangeEvent * ppr;
-						break;
-					}
-				}
+				var absoluteBeatTime = currentRateEvent.ChartTimeForFollowingEvents + rowRelativeToLastRateChangeEvent * currentRateEvent.SecondsPerRow;
+				var relativeBeatTime = absoluteBeatTime - currentRateEvent.GetChartTime();
+				var y = SpacingHelper.GetY(relativeBeatTime, rowRelativeToLastRateChangeEvent, previousRateEventY);
 
 				// If advancing this beat forward moved us over the next rate altering event boundary, loop again.
 				if (nextRateEvent != null && currentRow > nextRateEvent.GetRow())
@@ -2367,6 +2181,7 @@ namespace StepManiaEditor
 				currentRow += rowsPerBeat;
 			}
 		}
+
 		/// <summary>
 		/// Given a y position in screen space, return the corresponding chart time and row.
 		/// This is O(log(N)) time complexity on the number of rate altering events in the chart
@@ -2379,6 +2194,9 @@ namespace StepManiaEditor
 		{
 			if (ActiveChart == null)
 				return (0.0, 0.0);
+
+			// Set up a spacing helper with isolated state for searching for the time and row.
+			var spacingHelper = EventSpacingHelper.GetSpacingHelper(ActiveChart);
 
 			double desiredY = desiredScreenY;
 
@@ -2403,8 +2221,8 @@ namespace StepManiaEditor
 			var spacingZoom = GetSpacingZoom();
 
 			// Determine the active rate event's position and rate information.
-			var (pps, ppr) = GetPpsAndPpr(rateEnumerator.Current, interpolatedScrollRate, spacingZoom);
-			var rateEventY = GetY(rateEnumerator.Current, pps, ppr, focalPointY, focalPointChartTime, focalPointChartPosition);
+			spacingHelper.UpdatePpsAndPpr(rateEnumerator.Current, interpolatedScrollRate, spacingZoom);
+			var rateEventY = spacingHelper.GetY(rateEnumerator.Current, focalPointY, focalPointChartTime, focalPointChartPosition);
 			var rateChartTime = rateEnumerator.Current.GetChartTime();
 			var rateRow = rateEnumerator.Current.GetRow();
 
@@ -2418,17 +2236,12 @@ namespace StepManiaEditor
 					// then this is the rate event we should use for determining the chart time and row of the
 					// desired position.
 					if (rateEventY <= desiredY || !rateEnumerator.MovePrev())
-					{
-						return (rateChartTime + (desiredY - rateEventY) / pps,
-							rateRow + (desiredY - rateEventY) / ppr);
-					}
+						return spacingHelper.GetChartTimeAndRow(desiredY, rateEventY, rateChartTime, rateRow);
 
 					// Otherwise, now that we have advance the rate enumerator to its preceding event, we can
 					// update the the current rate event variables to check again next loop.
-					var previousPps = pps;
-					var previousPpr = ppr;
-					(pps, ppr) = GetPpsAndPpr(rateEnumerator.Current, interpolatedScrollRate, spacingZoom);
-					rateEventY = GetY(rateEnumerator.Current, previousPps, previousPpr, rateEventY, rateChartTime, rateRow);
+					spacingHelper.UpdatePpsAndPpr(rateEnumerator.Current, interpolatedScrollRate, spacingZoom);
+					rateEventY = spacingHelper.GetY(rateEnumerator.Current, rateEventY, rateChartTime, rateRow);
 					rateChartTime = rateEnumerator.Current.GetChartTime();
 					rateRow = rateEnumerator.Current.GetRow();
 				}
@@ -2441,26 +2254,18 @@ namespace StepManiaEditor
 					// If there is no following rate event then the current rate event should be used for
 					// determining the chart time and row of the desired position.
 					if (!rateEnumerator.MoveNext())
-					{
-						return (rateChartTime + (desiredY - rateEventY) / pps,
-							rateRow + (desiredY - rateEventY) / ppr);
-					}
+						return spacingHelper.GetChartTimeAndRow(desiredY, rateEventY, rateChartTime, rateRow);
 
 					// Otherwise, we need to determine the position of the next rate event. If it is beyond
 					// the desired position then we have gone to far and we need to use the previous rate
 					// information to determine the chart time and row of the desired position.
-					var previousPps = pps;
-					var previousPpr = ppr;
-					(pps, ppr) = GetPpsAndPpr(rateEnumerator.Current, interpolatedScrollRate, spacingZoom);
-					rateEventY = GetY(rateEnumerator.Current, previousPps, previousPpr, rateEventY, rateChartTime, rateRow);
+					rateEventY = spacingHelper.GetY(rateEnumerator.Current, rateEventY, rateChartTime, rateRow);
+					spacingHelper.UpdatePpsAndPpr(rateEnumerator.Current, interpolatedScrollRate, spacingZoom);
 					rateChartTime = rateEnumerator.Current.GetChartTime();
 					rateRow = rateEnumerator.Current.GetRow();
 
 					if (rateEventY >= desiredY)
-					{
-						return (rateChartTime + (desiredY - rateEventY) / previousPps,
-							rateRow + (desiredY - rateEventY) / previousPpr);
-					}
+						return spacingHelper.GetChartTimeAndRowFromPreviousRate(desiredY, rateEventY, rateChartTime, rateRow);
 				}
 			}
 
