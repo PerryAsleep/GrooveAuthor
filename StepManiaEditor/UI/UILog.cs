@@ -60,7 +60,10 @@ namespace StepManiaEditor
 						var message = node.Value;
 
 						if (message.Level < Preferences.Instance.LogWindowLevel)
+						{
+							node = node.Next;
 							continue;
+						}
 
 						if (Preferences.Instance.LogWindowDateDisplay != 0)
 						{
