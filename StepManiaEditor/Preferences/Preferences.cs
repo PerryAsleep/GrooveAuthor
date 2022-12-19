@@ -12,7 +12,7 @@ namespace StepManiaEditor
 	/// <summary>
 	/// Miscellaneous preferences to save to disk.
 	/// </summary>
-	public class Preferences
+	internal sealed class Preferences
 	{
 		/// <summary>
 		/// File to use for deserializing Preferences.

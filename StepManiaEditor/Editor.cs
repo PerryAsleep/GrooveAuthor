@@ -2793,6 +2793,11 @@ namespace StepManiaEditor
 						OnReload();
 					}
 
+					if (ImGui.MenuItem("Close", "", false, ActiveSong != null))
+					{
+						OnClose();
+					}
+
 					ImGui.Separator();
 					var editorFileName = ActiveSong?.FileName;
 					if (!string.IsNullOrEmpty(editorFileName))
@@ -3503,6 +3508,8 @@ namespace StepManiaEditor
 
 		private void UnloadSongResources()
 		{
+			StopPlayback();
+			MusicManager.UnloadAsync();
 			LaneEditStates = Array.Empty<LaneEditState>();
 			ActiveSong = null;
 			ActiveChart = null;
@@ -4139,8 +4146,28 @@ namespace StepManiaEditor
 		private void OnNewNoSave()
 		{
 			UnloadSongResources();
-			StopPlayback();
 			ActiveSong = new EditorSong(this, GraphicsDevice, ImGuiRenderer);
+			Position.ChartPosition = 0.0;
+			DesiredSongTime = Position.SongTime;
+			SetZoom(1.0, true);
+		}
+
+		private void OnClose()
+		{
+			if (ActionQueue.Instance.HasUnsavedChanges())
+			{
+				PostSaveFunction = OnCloseNoSave;
+				ShowSavePopup = true;
+			}
+			else
+			{
+				OnCloseNoSave();
+			}
+		}
+
+		private void OnCloseNoSave()
+		{
+			UnloadSongResources();
 			Position.ChartPosition = 0.0;
 			DesiredSongTime = Position.SongTime;
 			SetZoom(1.0, true);

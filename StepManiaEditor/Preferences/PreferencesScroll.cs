@@ -5,7 +5,7 @@ namespace StepManiaEditor
 	/// <summary>
 	/// Preferences for scrolling.
 	/// </summary>
-	public class PreferencesScroll
+	internal sealed class PreferencesScroll
 	{
 		public const float DefaultVariableSpeedBPM = 120.0f;
 		

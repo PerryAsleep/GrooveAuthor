@@ -5,7 +5,7 @@ using Fumen.Converters;
 
 namespace StepManiaEditor
 {
-	public class PreferencesOptions
+	internal sealed class PreferencesOptions
 	{
 		// Default values.
 		public const int DefaultRecentFilesHistorySize = 10;

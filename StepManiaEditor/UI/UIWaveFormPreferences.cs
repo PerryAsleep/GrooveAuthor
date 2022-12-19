@@ -6,7 +6,7 @@ namespace StepManiaEditor
 	/// <summary>
 	/// Class for drawing WaveForm preferences UI.
 	/// </summary>
-	public class UIWaveFormPreferences
+	internal sealed class UIWaveFormPreferences
 	{
 		public enum SparseColorOption
 		{

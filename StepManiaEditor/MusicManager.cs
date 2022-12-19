@@ -29,7 +29,7 @@ namespace StepManiaEditor
 	///  Call StartPlayback and StopPlayback to start and stop playing the music.
 	///  Call StartPreviewPlayback and StopPreviewPlayback to start and stop playing the preview.
 	/// </summary>
-	public class MusicManager
+	internal sealed class MusicManager
 	{
 		/// <summary>
 		/// Common data to the music and preview Sounds that MusicManager manages.
@@ -172,6 +172,12 @@ namespace StepManiaEditor
 		public SoundMipMap GetMusicMipMap()
 		{
 			return MusicData.MipMap;
+		}
+
+		public void UnloadAsync()
+		{
+			LoadSoundAsync(PreviewData, null);
+			LoadSoundAsync(MusicData, null);
 		}
 
 		/// <summary>

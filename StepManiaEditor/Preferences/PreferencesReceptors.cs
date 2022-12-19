@@ -7,7 +7,7 @@ namespace StepManiaEditor
 	/// <summary>
 	/// Preferences for receptors.
 	/// </summary>
-	public class PreferencesReceptors
+	internal sealed class PreferencesReceptors
 	{
 		private Editor Editor;
 

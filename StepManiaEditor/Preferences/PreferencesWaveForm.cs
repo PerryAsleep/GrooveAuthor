@@ -6,7 +6,7 @@ namespace StepManiaEditor
 	/// <summary>
 	/// Preferences for the WaveForm.
 	/// </summary>
-	public class PreferencesWaveForm
+	internal sealed class PreferencesWaveForm
 	{
 		// Default values.
 		public const bool DefaultShowWaveForm = true;

@@ -6,7 +6,7 @@ namespace StepManiaEditor
 	/// <summary>
 	/// Preferences for the MiniMap.
 	/// </summary>
-	public class PreferencesMiniMap
+	internal sealed class PreferencesMiniMap
 	{
 		public static readonly Editor.SpacingMode[] MiniMapVariableSpacingModes = { Editor.SpacingMode.ConstantTime, Editor.SpacingMode.ConstantRow };
 
