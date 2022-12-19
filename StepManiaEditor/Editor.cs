@@ -81,14 +81,12 @@ namespace StepManiaEditor
 		private SnapData[] SnapLevels;
 		private int SnapIndex = 0;
 
-		private MouseState PreviousMouseState;
+		private EditorMouseState EditorMouseState = new EditorMouseState();
+		private bool CanShowRightClickPopupThisFrame = false;
 
 		private bool MovingFocalPoint;
 		private Vector2 FocalPointAtMoveStart = new Vector2();
 		private Vector2 FocalPointMoveOffset = new Vector2();
-
-		private bool RightClickThisFrame;
-		private Vector2 RightClickPosition = new Vector2();
 
 		private string PendingOpenFileName;
 		private ChartType PendingOpenFileChartType;
@@ -136,6 +134,7 @@ namespace StepManiaEditor
 		private UIMiniMapPreferences UIMiniMapPreferences;
 		private UIReceptorPreferences UIReceptorPreferences;
 		private UIOptions UIOptions;
+		private UIChartPosition UIChartPosition;
 
 		private TextureAtlas TextureAtlas;
 
@@ -178,6 +177,8 @@ namespace StepManiaEditor
 		private LaneEditState[] LaneEditStates;
 
 		// Zoom controls
+		public const double MinZoom = 0.000001;
+		public const double MaxZoom = 1000000.0;
 		private double ZoomInterpolationTimeStart = 0.0;
 		private double Zoom = 1.0;
 		private double ZoomAtStartOfInterpolation = 1.0;
@@ -188,8 +189,6 @@ namespace StepManiaEditor
 		private bool PlayingPreview = false;
 		private bool MiniMapCapturingMouse = false;
 		private bool StartPlayingWhenMiniMapDone = false;
-		private MouseState PreviousMiniMapMouseState;
-		private int MouseScrollValue = 0;
 
 		private uint MaxScreenHeight;
 
@@ -436,6 +435,7 @@ namespace StepManiaEditor
 			UIMiniMapPreferences = new UIMiniMapPreferences(this);
 			UIReceptorPreferences = new UIReceptorPreferences(this);
 			UIOptions = new UIOptions();
+			UIChartPosition = new UIChartPosition(this);
 
 			base.Initialize();
 		}
@@ -699,7 +699,9 @@ namespace StepManiaEditor
 		private void ProcessInput(GameTime gameTime)
 		{
 			var inFocus = IsApplicationFocused();
+
 			CurrentDesiredCursor = Cursors.Default;
+			CanShowRightClickPopupThisFrame = false;
 
 			// ImGui needs to update its frame even the app is not in focus.
 			// There may be a way to decouple input processing and advancing the frame, but for now
@@ -717,7 +719,9 @@ namespace StepManiaEditor
 				KeyCommandManager.Update(gameTime.TotalGameTime.TotalSeconds);
 
 			// Process Mouse Input.
-			var mouseState = Mouse.GetState();
+			var state = Mouse.GetState();
+			var (mouseChartTime, mouseChartPosition) = FindChartTimeAndRowForScreenY(state.Y);
+			EditorMouseState.UpdateMouseState(state, mouseChartTime, mouseChartPosition);
 
 			// Early out if ImGui is using the mouse.
 			if (imGuiWantMouse)
@@ -725,16 +729,12 @@ namespace StepManiaEditor
 				// ImGui may want the mouse on a release when we are selecting. Stop selecting in that case.
 				if (SelectedRegion.IsActive())
 					FinishSelectedRegion();
-
-				// Update our last tracked mouse scroll value even if imGui captured it so that
-				// once we start capturing input again we don't process a scroll.
-				MouseScrollValue = mouseState.ScrollWheelValue;
 				return;
 			}
 
 			var inReceptorArea = Receptor.IsInReceptorArea(
-				mouseState.Position.X,
-				mouseState.Position.Y,
+				EditorMouseState.X(),
+				EditorMouseState.Y(),
 				GetFocalPoint(),
 				GetSizeZoom(),
 				TextureAtlas,
@@ -743,12 +743,12 @@ namespace StepManiaEditor
 
 			// Process input for the mini map.
 			if (!SelectedRegion.IsActive() && !MovingFocalPoint)
-				ProcessInputForMiniMap(mouseState);
+				ProcessInputForMiniMap();
 
 			// Process input for grabbing the receptors and moving the focal point.
 			if (!SelectedRegion.IsActive() && !MiniMapCapturingMouse)
 			{
-				ProcessInputForMovingFocalPoint(mouseState, inReceptorArea);
+				ProcessInputForMovingFocalPoint(inReceptorArea);
 				// Update cursor based on whether the receptors could be grabbed.
 				if (inReceptorArea)
 					CurrentDesiredCursor = Cursors.SizeAll;
@@ -756,15 +756,10 @@ namespace StepManiaEditor
 
 			// Process input for selecting a region.
 			if (!MiniMapCapturingMouse && !MovingFocalPoint)
-				ProcessInputForSelectedRegion(mouseState);
+				ProcessInputForSelectedRegion();
 
-			// Process right clicking. We just store the position so we can use it when updating ImGui.
-			if (!MiniMapCapturingMouse && !MovingFocalPoint && !MovingFocalPoint)
-			{
-				RightClickThisFrame = mouseState.RightButton == ButtonState.Released && PreviousMouseState.RightButton == ButtonState.Pressed;
-				if (RightClickThisFrame)
-					RightClickPosition = new Vector2(mouseState.Position.X, mouseState.Position.Y);
-			}
+			// Process right click popup eligibility.
+			CanShowRightClickPopupThisFrame = (!MiniMapCapturingMouse && !MovingFocalPoint && !MovingFocalPoint);
 
 			// Setting the cursor every frame prevents it from changing to support normal application
 			// behavior like indicating resizability at the edges of the window. But not setting every frame
@@ -777,31 +772,28 @@ namespace StepManiaEditor
 			PreviousDesiredCursor = CurrentDesiredCursor;
 
 			// Process input for scrolling and zooming.
-			ProcessInputForScrollingAndZooming(gameTime, mouseState);
-
-			PreviousMouseState = mouseState;
+			ProcessInputForScrollingAndZooming(gameTime);
 		}
 
 		/// <summary>
 		/// Processes input for moving the focal point with the mouse.
 		/// </summary>
 		/// <remarks>Helper for ProcessInput.</remarks>
-		private void ProcessInputForMovingFocalPoint(MouseState mouseState, bool inReceptorArea)
+		private void ProcessInputForMovingFocalPoint(bool inReceptorArea)
 		{
 			// Begin moving focal point.
-			var pressedThisFrame = mouseState.LeftButton == ButtonState.Pressed && PreviousMouseState.LeftButton == ButtonState.Released;
-			if (pressedThisFrame && inReceptorArea)
+			if (EditorMouseState.LeftClickDownThisFrame() && inReceptorArea)
 			{
 				MovingFocalPoint = true;
 				FocalPointAtMoveStart = new Vector2(GetFocalPointX(), GetFocalPointY());
-				FocalPointMoveOffset = new Vector2(mouseState.Position.X - GetFocalPointX(), mouseState.Position.Y - GetFocalPointY());
+				FocalPointMoveOffset = new Vector2(EditorMouseState.X() - GetFocalPointX(), EditorMouseState.Y() - GetFocalPointY());
 			}
 
 			// Move focal point.
 			if (MovingFocalPoint)
 			{
-				var newX = mouseState.Position.X - (int)FocalPointMoveOffset.X;
-				var newY = mouseState.Position.Y - (int)FocalPointMoveOffset.Y;
+				var newX = EditorMouseState.X() - (int)FocalPointMoveOffset.X;
+				var newY = EditorMouseState.Y() - (int)FocalPointMoveOffset.Y;
 
 				if (KeyCommandManager.IsKeyDown(Keys.LeftShift))
 				{
@@ -824,7 +816,7 @@ namespace StepManiaEditor
 			}
 
 			// Stop moving focal point.
-			if (mouseState.LeftButton == ButtonState.Released && MovingFocalPoint)
+			if (EditorMouseState.LeftReleased() && MovingFocalPoint)
 			{
 				MovingFocalPoint = false;
 				FocalPointMoveOffset = new Vector2();
@@ -840,28 +832,26 @@ namespace StepManiaEditor
 		/// Processes input for selecting regions with the mouse.
 		/// </summary>
 		/// <remarks>Helper for ProcessInput.</remarks>
-		private void ProcessInputForSelectedRegion(MouseState mouseState)
+		private void ProcessInputForSelectedRegion()
 		{
-			var pressedThisFrame = mouseState.LeftButton == ButtonState.Pressed && PreviousMouseState.LeftButton == ButtonState.Released;
-			
 			// Starting a selection.
-			if (pressedThisFrame)
+			if (EditorMouseState.LeftClickDownThisFrame())
 			{
-				var y = mouseState.Position.Y;
+				var y = EditorMouseState.Y();
 				var (chartTime, chartPosition) = FindChartTimeAndRowForScreenY(y);
-				var xInChartSpace = (mouseState.Position.X - GetFocalPointX()) / GetSizeZoom();
+				var xInChartSpace = (EditorMouseState.X() - GetFocalPointX()) / GetSizeZoom();
 				SelectedRegion.Start(xInChartSpace, y, chartTime, chartPosition, GetSizeZoom(), GetFocalPointX());
 			}
 
 			// Dragging a selection.
-			if (mouseState.LeftButton == ButtonState.Pressed && SelectedRegion.IsActive())
+			if (EditorMouseState.LeftDown() && SelectedRegion.IsActive())
 			{
-				var xInChartSpace = (mouseState.Position.X - GetFocalPointX()) / GetSizeZoom();
-				SelectedRegion.UpdatePerFrameValues(xInChartSpace, mouseState.Position.Y, GetSizeZoom(), GetFocalPointX());
+				var xInChartSpace = (EditorMouseState.X() - GetFocalPointX()) / GetSizeZoom();
+				SelectedRegion.UpdatePerFrameValues(xInChartSpace, EditorMouseState.Y(), GetSizeZoom(), GetFocalPointX());
 			}
 
 			// Releasing a selection.
-			if (mouseState.LeftButton == ButtonState.Released && SelectedRegion.IsActive())
+			if (EditorMouseState.LeftReleased() && SelectedRegion.IsActive())
 			{
 				FinishSelectedRegion();
 			}
@@ -882,47 +872,43 @@ namespace StepManiaEditor
 		/// Processes input for scrolling and zooming.
 		/// </summary>
 		/// <remarks>Helper for ProcessInput.</remarks>
-		private void ProcessInputForScrollingAndZooming(GameTime gameTime, MouseState mouseState)
+		private void ProcessInputForScrollingAndZooming(GameTime gameTime)
 		{
 			var pScroll = Preferences.Instance.PreferencesScroll;
-			var newMouseScrollValue = mouseState.ScrollWheelValue;
+			var scrollDelta = EditorMouseState.ScrollDeltaSinceLastFrame();
 			var scrollShouldZoom = KeyCommandManager.IsKeyDown(Keys.LeftControl);
 
 			// Hack.
 			if (KeyCommandManager.IsKeyDown(Keys.OemPlus))
 			{
-				Zoom *= 1.0001;
-				DesiredZoom = Zoom;
+				SetZoom(Zoom * 1.0001, true);
 			}
 			if (KeyCommandManager.IsKeyDown(Keys.OemMinus))
 			{
-				Zoom /= 1.0001;
-				DesiredZoom = Zoom;
+				SetZoom(Zoom / 1.0001, true);
 			}
 
 			// Scrolling
 			// TODO: wtf are these values
 			if (scrollShouldZoom)
 			{
-				if (MouseScrollValue < newMouseScrollValue)
+				if (scrollDelta > 0)
 				{
-					DesiredZoom *= 1.2;
+					SetDesiredZoom(DesiredZoom * 1.2);
 					ZoomInterpolationTimeStart = gameTime.TotalGameTime.TotalSeconds;
 					ZoomAtStartOfInterpolation = Zoom;
-					MouseScrollValue = newMouseScrollValue;
 				}
 
-				if (MouseScrollValue > newMouseScrollValue)
+				if (scrollDelta < 0)
 				{
-					DesiredZoom /= 1.2;
+					SetDesiredZoom(DesiredZoom / 1.2);
 					ZoomInterpolationTimeStart = gameTime.TotalGameTime.TotalSeconds;
 					ZoomAtStartOfInterpolation = Zoom;
-					MouseScrollValue = newMouseScrollValue;
 				}
 			}
 			else
 			{
-				if (MouseScrollValue < newMouseScrollValue)
+				if (scrollDelta > 0)
 				{
 					var delta = 0.25 * (1.0 / Zoom);
 					if (Playing)
@@ -953,11 +939,9 @@ namespace StepManiaEditor
 							OnMoveUp();
 						}
 					}
-
-					MouseScrollValue = newMouseScrollValue;
 				}
 
-				if (MouseScrollValue > newMouseScrollValue)
+				if (scrollDelta < 0)
 				{
 					var delta = 0.25 * (1.0 / Zoom);
 					if (Playing)
@@ -988,8 +972,6 @@ namespace StepManiaEditor
 							OnMoveDown();
 						}
 					}
-
-					MouseScrollValue = newMouseScrollValue;
 				}
 			}
 		}
@@ -1052,13 +1034,16 @@ namespace StepManiaEditor
 			}
 		}
 
-		private void SetZoom(double zoom, bool setDesiredZoom)
+		public void SetZoom(double zoom, bool setDesiredZoom)
 		{
-			Zoom = zoom;
+			Zoom = Math.Clamp(zoom, MinZoom, MaxZoom);
 			if (setDesiredZoom)
-			{
-				DesiredZoom = zoom;
-			}
+				SetDesiredZoom(Zoom);
+		}
+
+		public void SetDesiredZoom(double desiredZoom)
+		{
+			DesiredZoom = Math.Clamp(desiredZoom, MinZoom, MaxZoom);
 		}
 
 		/// <summary>
@@ -2190,7 +2175,7 @@ namespace StepManiaEditor
 		/// </summary>
 		/// <param name="desiredScreenY">Y position in screen space.</param>
 		/// <returns>Tuple where the first value is the chart time and the second is the row.</returns>
-		(double, double) FindChartTimeAndRowForScreenY(int desiredScreenY)
+		private (double, double) FindChartTimeAndRowForScreenY(int desiredScreenY)
 		{
 			if (ActiveChart == null)
 				return (0.0, 0.0);
@@ -2363,28 +2348,24 @@ namespace StepManiaEditor
 
 		#region MiniMap
 
-		private void ProcessInputForMiniMap(MouseState mouseState)
+		private void ProcessInputForMiniMap()
 		{
 			var pScroll = Preferences.Instance.PreferencesScroll;
 			var pMiniMap = Preferences.Instance.PreferencesMiniMap;
 			var focalPointY = GetFocalPointY();
 
-			var mouseDownThisFrame = mouseState.LeftButton == ButtonState.Pressed &&
-			                         PreviousMiniMapMouseState.LeftButton != ButtonState.Pressed;
-			var mouseUpThisFrame = mouseState.LeftButton != ButtonState.Pressed &&
-			                       PreviousMiniMapMouseState.LeftButton == ButtonState.Pressed;
 			var miniMapCapturingMouseLastFrame = MiniMapCapturingMouse;
 
 			var miniMapNeedsMouseThisFrame = false;
-			if (mouseDownThisFrame)
+			if (EditorMouseState.LeftClickDownThisFrame())
 			{
-				miniMapNeedsMouseThisFrame = MiniMap.MouseDown(mouseState.X, mouseState.Y);
+				miniMapNeedsMouseThisFrame = MiniMap.MouseDown(EditorMouseState.X(), EditorMouseState.Y());
 			}
 
-			MiniMap.MouseMove(mouseState.X, mouseState.Y);
-			if (mouseUpThisFrame)
+			MiniMap.MouseMove(EditorMouseState.X(), EditorMouseState.Y());
+			if (EditorMouseState.LeftClickUpThisFrame() || (MiniMapCapturingMouse && EditorMouseState.LeftReleased()))
 			{
-				MiniMap.MouseUp(mouseState.X, mouseState.Y);
+				MiniMap.MouseUp(EditorMouseState.X(), EditorMouseState.Y());
 			}
 
 			MiniMapCapturingMouse = MiniMap.WantsMouse();
@@ -2394,7 +2375,7 @@ namespace StepManiaEditor
 			if (MiniMapCapturingMouse)
 			{
 				// When moving the MiniMap, pause or stop playback.
-				if (mouseDownThisFrame && Playing)
+				if (EditorMouseState.LeftClickDownThisFrame() && Playing)
 				{
 					// Set a flag to unpause playback unless the preference is to completely stop when scrolling.
 					StartPlayingWhenMiniMapDone = !pMiniMap.MiniMapStopPlaybackWhenScrolling;
@@ -2427,8 +2408,6 @@ namespace StepManiaEditor
 				StartPlayingWhenMiniMapDone = false;
 				StartPlayback();
 			}
-
-			PreviousMiniMapMouseState = mouseState;
 		}
 
 		private void UpdateMiniMapBounds()
@@ -2752,9 +2731,7 @@ namespace StepManiaEditor
 			UIChartPosition.Draw(
 				GetFocalPointX(),
 				Graphics.PreferredBackBufferHeight - ChartPositionUIYPAddingFromBottom - (int)(UIChartPosition.Height * 0.5),
-				Position,
-				SnapLevels[SnapIndex],
-				ArrowGraphicManager);
+				SnapLevels[SnapIndex]);
 
 			if (ShowSavePopup)
 			{
@@ -2763,12 +2740,11 @@ namespace StepManiaEditor
 				ImGui.OpenPopup(GetSavePopupTitle());
 			}
 
-			if (RightClickThisFrame)
+			if (CanShowRightClickPopupThisFrame && EditorMouseState.RightClickUpThisFrame())
 			{
 				ImGui.OpenPopup("RightClickPopup");
-				RightClickThisFrame = false;
 			}
-			DrawRightClickMenu((int)RightClickPosition.X, (int)RightClickPosition.Y);
+			DrawRightClickMenu((int)EditorMouseState.LastRightClickUpPosition.X, (int)EditorMouseState.LastRightClickUpPosition.Y);
 
 			DrawUnsavedChangesPopup();
 		}
@@ -3534,6 +3510,7 @@ namespace StepManiaEditor
 			ArrowGraphicManager = null;
 			Receptors = null;
 			NextAutoPlayNotes = null;
+			EditorMouseState.SetActiveChart(null);
 			UpdateWindowTitle();
 			ActionQueue.Instance.Clear();
 		}
@@ -4372,6 +4349,16 @@ namespace StepManiaEditor
 			return Position.SongTime;
 		}
 
+		internal EditorPosition GetPosition()
+		{
+			return Position;
+		}
+
+		internal EditorMouseState GetMouseState()
+		{
+			return EditorMouseState;
+		}
+
 		public EditorChart GetActiveChart()
 		{
 			return ActiveChart;
@@ -4422,6 +4409,7 @@ namespace StepManiaEditor
 
 			// The Position needs to know about the active chart for doing time and row calculations.
 			Position.ActiveChart = ActiveChart;
+			EditorMouseState.SetActiveChart(ActiveChart);
 
 			// The preview event region needs to know about the active chart since rendering the preview
 			// with rate altering events from the chart requires knowing the chart's music offset.

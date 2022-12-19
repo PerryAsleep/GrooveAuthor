@@ -7,7 +7,7 @@ using Fumen.ChartDefinition;
 
 namespace StepManiaEditor
 {
-	public class ImGuiLayoutUtils
+	internal sealed class ImGuiLayoutUtils
 	{
 		/// <summary>
 		/// Cache of values being edited through ImGui controls.
@@ -38,6 +38,20 @@ namespace StepManiaEditor
 			{
 				ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, titleColumnWidth);
 				ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100);
+			}
+
+			return ret;
+		}
+
+		public static bool BeginTable(string title, float titleColumnWidth, float contentColumnWidth)
+		{
+			CacheKeyPrefix = title ?? "";
+			var ret = ImGui.BeginTable(title, 2, ImGuiTableFlags.None,
+				new Vector2(titleColumnWidth + contentColumnWidth, -1.0f));
+			if (ret)
+			{
+				ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, titleColumnWidth);
+				ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, contentColumnWidth);
 			}
 
 			return ret;
@@ -615,6 +629,144 @@ namespace StepManiaEditor
 		}
 
 		#endregion Slider Float
+
+		#region Drag Float
+
+		public static bool DrawRowDragFloat(
+			string title,
+			ref float value,
+			string help = null,
+			float speed = 0.0001f,
+			string format = "%.6f",
+			float min = float.MinValue,
+			float max = float.MaxValue,
+			ImGuiSliderFlags flags = ImGuiSliderFlags.None)
+		{
+			DrawRowTitleAndAdvanceColumn(title);
+			return DrawDragFloat(title, ref value, ImGui.GetContentRegionAvail().X, help, speed, format, min, max, flags);
+		}
+
+		private static bool DrawDragFloat(
+			string title,
+			ref float value,
+			float width,
+			string help,
+			float speed,
+			string format,
+			float min = float.MinValue,
+			float max = float.MaxValue,
+			ImGuiSliderFlags flags = ImGuiSliderFlags.None)
+		{
+			var helpText = string.IsNullOrEmpty(help) ? null : help + DragHelpText;
+			var itemWidth = DrawHelp(helpText, width);
+			ImGui.SetNextItemWidth(itemWidth);
+			return ImGui.DragFloat(GetElementTitle(title), ref value, speed, min, max, format, flags);
+		}
+
+		public static bool DrawRowDragFloat(
+			bool undoable,
+			string title,
+			object o,
+			string fieldName,
+			bool affectsFile,
+			string help = null,
+			float speed = 0.0001f,
+			string format = "%.6f",
+			float min = float.MinValue,
+			float max = float.MaxValue,
+			ImGuiSliderFlags flags = ImGuiSliderFlags.None)
+		{
+			DrawRowTitleAndAdvanceColumn(title);
+			return DrawDragFloat(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, help, speed, format, affectsFile, min, max, flags);
+		}
+
+		public static void DrawRowDragFloatWithEnabledCheckbox(
+			bool undoable,
+			string title,
+			object o,
+			string fieldName,
+			string enabledFieldName,
+			bool affectsFile,
+			string help = null,
+			float speed = 0.0001f,
+			string format = "%.6f",
+			float min = float.MinValue,
+			float max = float.MaxValue,
+			ImGuiSliderFlags flags = ImGuiSliderFlags.None)
+		{
+			title ??= "";
+
+			DrawRowTitleAndAdvanceColumn(title);
+
+			bool enabled;
+
+			var controlWidth = ImGui.GetContentRegionAvail().X - 20.0f - ImGui.GetStyle().ItemSpacing.X;
+
+			// Draw the checkbox for enabling the other control.
+			if (DrawCheckbox(false, title + "check", o, enabledFieldName, 20.0f, affectsFile, help))
+			{
+				if (undoable)
+				{
+					enabled = GetValueFromFieldOrProperty<bool>(o, enabledFieldName);
+
+					// If disabling the checkbox enqueue an action for undoing both the bool
+					// and the setting of the float value to 0.
+					if (!enabled)
+					{
+						var multiple = new ActionMultiple();
+						multiple.EnqueueAndDo(new ActionSetObjectFieldOrPropertyValue<float>(o,
+							fieldName, 0.0f, GetValueFromFieldOrProperty<float>(o, fieldName), affectsFile));
+						multiple.EnqueueAndDo(new ActionSetObjectFieldOrPropertyValue<bool>(o,
+							enabledFieldName, enabled, !enabled, affectsFile));
+						ActionQueue.Instance.EnqueueWithoutDoing(multiple);
+					}
+
+					// If enabling the checkbox we only need to enqueue an action for the checkbox bool.
+					else
+					{
+						ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyValue<bool>(
+							o,
+							enabledFieldName, enabled, !enabled, affectsFile));
+					}
+				}
+			}
+
+			enabled = GetValueFromFieldOrProperty<bool>(o, enabledFieldName);
+			if (!enabled)
+				Utils.PushDisabled();
+
+			// Control for the float value.
+			ImGui.SameLine();
+			DrawDragFloat(undoable, title, o, fieldName, controlWidth, null, speed, format, affectsFile, min, max, flags);
+
+			if (!enabled)
+				Utils.PopDisabled();
+		}
+
+		private static bool DrawDragFloat(
+			bool undoable,
+			string title,
+			object o,
+			string fieldName,
+			float width,
+			string help,
+			float speed,
+			string format,
+			bool affectsFile,
+			float min = float.MinValue,
+			float max = float.MaxValue,
+			ImGuiSliderFlags flags = ImGuiSliderFlags.None)
+		{
+			(bool, float) Func(float v)
+			{
+				var r = ImGui.DragFloat(GetElementTitle(title, fieldName), ref v, speed, min, max, format, flags);
+				return (r, v);
+			}
+
+			return DrawLiveEditValue<float>(undoable, title, o, fieldName, width, affectsFile, Func, FloatCompare, help);
+		}
+
+		#endregion Drag Float
 
 		#region Drag Drouble
 

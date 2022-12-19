@@ -7,7 +7,7 @@ namespace StepManiaEditor
 	/// <summary>
 	/// Class for drawing scroll preferences UI.
 	/// </summary>
-	public class UIScrollPreferences
+	internal sealed class UIScrollPreferences
 	{
 		public void Draw()
 		{
@@ -20,15 +20,7 @@ namespace StepManiaEditor
 
 			if (ImGuiLayoutUtils.BeginTable("Scroll", 120))
 			{
-				ImGuiLayoutUtils.DrawRowEnum<Editor.SpacingMode>(true, "Spacing Mode", p, nameof(PreferencesScroll.SpacingMode), false,
-					"How events in the Chart should be spaced when rendering."
-					+ "\nConstant Time: Events are spaced by their time."
-					+ "\n               Equivalent to a CMOD when playing."
-					+ "\nConstant Row:  Spacing is based on row and rows are treated as always the same distance apart."
-					+ "\n               Scroll rate modifiers are ignored."
-					+ "\n               Other rate altering events like stops and tempo changes affect the scroll rate."
-					+ "\nVariable:      Spacing is based on tempo and is affected by all rate altering events."
-					+ "\n               Equivalent to a XMOD when playing.");
+				DrawSpacingModeRow("Spacing Mode");
 
 				ImGuiLayoutUtils.DrawRowEnum<Editor.WaveFormScrollMode>(true, "Waveform Scroll Mode", p, nameof(PreferencesScroll.RowBasedWaveFormScrollMode), false,
 					"How the wave form should scroll when the Chart does not scroll with Constant Time."
@@ -123,6 +115,19 @@ namespace StepManiaEditor
 			}
 
 			ImGui.End();
+		}
+
+		public static void DrawSpacingModeRow(string title)
+		{
+			ImGuiLayoutUtils.DrawRowEnum<Editor.SpacingMode>(true, title, Preferences.Instance.PreferencesScroll, nameof(PreferencesScroll.SpacingMode), false,
+						"How events in the Chart should be spaced when rendering."
+						+ "\nConstant Time: Events are spaced by their time."
+						+ "\n               Equivalent to a CMOD when playing."
+						+ "\nConstant Row:  Spacing is based on row and rows are treated as always the same distance apart."
+						+ "\n               Scroll rate modifiers are ignored."
+						+ "\n               Other rate altering events like stops and tempo changes affect the scroll rate."
+						+ "\nVariable:      Spacing is based on tempo and is affected by all rate altering events."
+						+ "\n               Equivalent to a XMOD when playing.");
 		}
 	}
 }

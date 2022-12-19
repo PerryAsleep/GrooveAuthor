@@ -9,7 +9,7 @@ namespace StepManiaEditor
 	///  - ChartPosition is the integer / row position of the current position.
 	/// The position can be updated by updating any of these values and the others will update accordingly.
 	/// </summary>
-	public class EditorPosition
+	internal sealed class EditorPosition
 	{
 		public EditorChart ActiveChart;
 		private readonly Action OnPositionChanged;
@@ -23,7 +23,7 @@ namespace StepManiaEditor
 				SongTimeInternal = value;
 				ChartTimeInternal = SongTimeInternal + (ActiveChart?.GetMusicOffset() ?? 0.0);
 				ActiveChart?.TryGetChartPositionFromTime(ChartTimeInternal, ref ChartPositionInternal);
-				OnPositionChanged();
+				OnPositionChanged?.Invoke();
 			}
 		}
 
@@ -36,7 +36,7 @@ namespace StepManiaEditor
 				ChartTimeInternal = value;
 				ActiveChart?.TryGetChartPositionFromTime(ChartTimeInternal, ref ChartPositionInternal);
 				SongTimeInternal = ChartTimeInternal - (ActiveChart?.GetMusicOffset() ?? 0.0);
-				OnPositionChanged();
+				OnPositionChanged?.Invoke();
 			}
 		}
 
@@ -49,7 +49,7 @@ namespace StepManiaEditor
 				ChartPositionInternal = value;
 				ActiveChart?.TryGetTimeFromChartPosition(ChartPositionInternal, ref ChartTimeInternal);
 				SongTimeInternal = ChartTimeInternal - (ActiveChart?.GetMusicOffset() ?? 0.0);
-				OnPositionChanged();
+				OnPositionChanged?.Invoke();
 			}
 		}
 

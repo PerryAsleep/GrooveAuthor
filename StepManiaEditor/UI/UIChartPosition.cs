@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Numerics;
-using System.Text;
 using Fumen.Converters;
 using ImGuiNET;
 
@@ -9,50 +8,29 @@ namespace StepManiaEditor
 	/// <summary>
 	/// Class for drawing information about the current Position within the current Chart.
 	/// </summary>
-	class UIChartPosition
+	internal sealed class UIChartPosition
 	{
-		private struct TextSegment
-		{
-			public string Text;
-			public uint Color;
-		}
-
-		private const uint White = 0xFFFFFFFF;
-		private const uint Grey = 0xFF777777;
+		private const uint ColorTextWhite = 0xFFFFFFFF;
+		private const uint ColorTextGrey = 0xFF777777;
+		private const uint ColorBgDarkGrey = 0xF0222222;
 
 		public const int Width = 800;
-		public const int Height = 32;
+		public const int Height = 63;
 
-		private static TextSegment[] Segments;
-		private static readonly int SnapValueIndex;
-		private static readonly int SongTimeValueIndex;
-		private static readonly int ChartTimeValueIndex;
-		private static readonly int MeasureValueIndex;
-		private static readonly int BeatValueIndex;
-		private static readonly int RowValueIndex;
+		private const int TableNameColWidth = 37;
+		private const int TablePositionColWidth = 73;
+		private const int TableSongTimeColWidth = 104;
+		private const int TableChartTimeColWidth = 104;
+		private const int TableMeasureColWidth = 61;
+		private const int TableBeatColWidth = 67;
+		private const int TableRowColWidth = 78;
+		private const int TableWidth = 588;
+		private const int TableHeight = 46;
 
-		static UIChartPosition()
+		private Editor Editor;
+		public UIChartPosition(Editor editor)
 		{
-			Segments = new TextSegment[12];
-			var i = 0;
-			Segments[i++] = new TextSegment() { Color = Grey, Text = "Snap: " };
-			SnapValueIndex = i;
-			Segments[i++] = new TextSegment() { Color = White, Text = "None " };
-			Segments[i++] = new TextSegment() { Color = Grey, Text = "Song Time: " };
-			SongTimeValueIndex = i;
-			Segments[i++] = new TextSegment() { Color = White, Text = "0.0 " };
-			Segments[i++] = new TextSegment() { Color = Grey, Text = "Chart Time: " };
-			ChartTimeValueIndex = i;
-			Segments[i++] = new TextSegment() { Color = White, Text = "0.0 " };
-			Segments[i++] = new TextSegment() { Color = Grey, Text = "Measure: " };
-			MeasureValueIndex = i;
-			Segments[i++] = new TextSegment() { Color = White, Text = "0.0 " };
-			Segments[i++] = new TextSegment() { Color = Grey, Text = "Beat: " };
-			BeatValueIndex = i;
-			Segments[i++] = new TextSegment() { Color = White, Text = "0.0 " };
-			Segments[i++] = new TextSegment() { Color = Grey, Text = "Row: " };
-			RowValueIndex = i;
-			Segments[i++] = new TextSegment() { Color = White, Text = "0 " };
+			Editor = editor;
 		}
 
 		/// <summary>
@@ -60,24 +38,17 @@ namespace StepManiaEditor
 		/// </summary>
 		/// <param name="x">Desired X position of the center of the window.</param>
 		/// <param name="y">Desired Y position of the center of the window.</param>
-		/// <param name="position">EditorPosition.</param>
 		/// <param name="snapData">SnapData.</param>
-		/// <param name="arrowGraphicManager">ArrowGraphicManager to use for coloring position information.</param>
-		public static void Draw(int x, int y, EditorPosition position, Editor.SnapData snapData, ArrowGraphicManager arrowGraphicManager)
+		public void Draw(int x, int y, Editor.SnapData snapData)
 		{
 			ImGui.SetNextWindowPos(new Vector2(x - Width / 2, y - Height / 2));
 			ImGui.SetNextWindowSize(new Vector2(Width, Height));
 
-			var originalWindowPaddingX = ImGui.GetStyle().WindowPadding.X;
-			var originalInnerItemSpacingX = ImGui.GetStyle().ItemInnerSpacing.X;
-			var originalItemSpacingX = ImGui.GetStyle().ItemSpacing.X;
-			var originalFramePaddingX = ImGui.GetStyle().FramePadding.X;
-
-			// Set the padding and spacing so we can draw a table with precise dimensions.
-			ImGui.GetStyle().WindowPadding.X = 0;
-			ImGui.GetStyle().ItemInnerSpacing.X = 0;
-			ImGui.GetStyle().ItemSpacing.X = 0;
-			ImGui.GetStyle().FramePadding.X = 0;
+			// Remove the cell and frame padding.
+			var originalCellPaddingY = ImGui.GetStyle().CellPadding.Y;
+			var originalFramePaddingY = ImGui.GetStyle().FramePadding.Y;
+			ImGui.GetStyle().CellPadding.Y = 0;
+			ImGui.GetStyle().FramePadding.Y = 0;
 
 			ImGui.Begin("UIChartPosition",
 				ImGuiWindowFlags.NoMove
@@ -87,49 +58,164 @@ namespace StepManiaEditor
 				| ImGuiWindowFlags.NoBringToFrontOnFocus
 				| ImGuiWindowFlags.NoFocusOnAppearing);
 
-			// Update the text values.
-			if (snapData.Rows == 0)
+			// Draw the left table with the spacing, zoom, and snap display.
+			var preTableWidth = Width - TableWidth - ImGui.GetStyle().WindowPadding.X * 2 - ImGui.GetStyle().ItemSpacing.X;
+			if (ImGuiLayoutUtils.BeginTable("UIChartMiscTable", 40, preTableWidth - 40))
 			{
-				Segments[SnapValueIndex].Color = White;
-				Segments[SnapValueIndex].Text = "None ";
-			}
-			else
-			{
-				Segments[SnapValueIndex].Color = ArrowGraphicManager.GetArrowColorRGBAForSubdivision(SMCommon.MaxValidDenominator / snapData.Rows);
-				Segments[SnapValueIndex].Text = $"1/{(SMCommon.MaxValidDenominator / snapData.Rows) * SMCommon.NumBeatsPerMeasure} ";
-			}
-			Segments[SongTimeValueIndex].Text = $"{FormatTime(position.SongTime)} ";
-			Segments[ChartTimeValueIndex].Text = $"{FormatTime(position.ChartTime)} ";
-			Segments[MeasureValueIndex].Text = $"{GetMeasure(position):N3} ";
-			Segments[BeatValueIndex].Text = $"{(position.ChartPosition / SMCommon.MaxValidDenominator):N3} ";
-			Segments[RowValueIndex].Text = $"{position.ChartPosition:N3} ";
+				// Spacing mode.
+				UIScrollPreferences.DrawSpacingModeRow("Spacing");
 
-			// Compute total width and create a dummy element to center all the text.
-			var sb = new StringBuilder();
-			foreach (var segment in Segments)
-			{
-				sb.Append(segment.Text);
-			}
-			var textWidth = ImGui.CalcTextSize(sb.ToString()).X;
-			ImGui.Dummy(new Vector2((Width - textWidth) * 0.5f, 1));
-			ImGui.SameLine();
+				// Zoom level.
+				// TODO: Use a double for this control.
+				// ImGUI.NET does not currently support passing ImGuiSliderFlags to double controls.
+				// Casting to a float to allow use of ImGuiSliderFlags.Logarithmic.
+				var zoom = (float)Editor.GetSpacingZoom();
+				var originalZoom = zoom;
+				ImGuiLayoutUtils.DrawRowDragFloat("Zoom", ref zoom, "Chart zoom level.", 100.0f, "%.6f", (float)Editor.MinZoom, (float)Editor.MaxZoom, ImGuiSliderFlags.Logarithmic);
+				if (!zoom.FloatEquals(originalZoom))
+				{
+					Editor.SetZoom(zoom, true);
+				}
 
-			// Draw each segment.
-			foreach (var segment in Segments)
-			{
-				ImGui.PushStyleColor(ImGuiCol.Text, segment.Color);
-				ImGui.Text(segment.Text);
-				ImGui.SameLine();
+				// Snap level.
+				ImGuiLayoutUtils.DrawRowTitleAndAdvanceColumn("Snap");
+				ImGui.SetNextItemWidth(ImGuiLayoutUtils.DrawHelp("Current note type being snapped to.\nUse the left and right arrow keys to change the snap.", ImGui.GetContentRegionAvail().X));
+				if (snapData.Rows == 0)
+				{
+					ImGui.PushStyleColor(ImGuiCol.Text, ColorTextWhite);
+					ImGui.Text("None");
+				}
+				else
+				{
+					ImGui.PushStyleColor(ImGuiCol.Text, ArrowGraphicManager.GetArrowColorRGBAForSubdivision(SMCommon.MaxValidDenominator / snapData.Rows));
+					ImGui.Text($"1/{(SMCommon.MaxValidDenominator / snapData.Rows) * SMCommon.NumBeatsPerMeasure}");
+				}
 				ImGui.PopStyleColor();
+
+				ImGuiLayoutUtils.EndTable();
 			}
+			
+			// Draw the right rable with position information.
+			ImGui.SameLine();
+			DrawPositionTable();
 
 			ImGui.End();
 
-			// Restore the padding and spacing values.
-			ImGui.GetStyle().WindowPadding.X = originalWindowPaddingX;
+			// Restore the cell and frame padding.
+			ImGui.GetStyle().FramePadding.Y = originalFramePaddingY;
+			ImGui.GetStyle().CellPadding.Y = originalCellPaddingY;
+		}
+
+		private void DrawPositionTable()
+		{
+			var originalInnerItemSpacingX = ImGui.GetStyle().ItemInnerSpacing.X;
+			var originalItemSpacingX = ImGui.GetStyle().ItemSpacing.X;
+			ImGui.GetStyle().ItemInnerSpacing.X = 0;
+			ImGui.GetStyle().ItemSpacing.X = 0;
+
+			if (ImGui.BeginTable("UIChartPositionTable", 7,
+				ImGuiTableFlags.Borders, new Vector2(TableWidth, TableHeight)))
+			{
+				ImGui.TableSetupColumn("UIChartPositionTableC1", ImGuiTableColumnFlags.WidthFixed, TableNameColWidth);
+				ImGui.TableSetupColumn("UIChartPositionTableC2", ImGuiTableColumnFlags.WidthFixed, TablePositionColWidth);
+				ImGui.TableSetupColumn("UIChartPositionTableC3", ImGuiTableColumnFlags.WidthFixed, TableSongTimeColWidth);
+				ImGui.TableSetupColumn("UIChartPositionTableC4", ImGuiTableColumnFlags.WidthFixed, TableChartTimeColWidth);
+				ImGui.TableSetupColumn("UIChartPositionTableC5", ImGuiTableColumnFlags.WidthFixed, TableMeasureColWidth);
+				ImGui.TableSetupColumn("UIChartPositionTableC6", ImGuiTableColumnFlags.WidthFixed, TableBeatColWidth);
+				ImGui.TableSetupColumn("UIChartPositionTableC7", ImGuiTableColumnFlags.WidthFixed, TableRowColWidth);
+
+				// Header
+				DrawPositionTableHeader();
+
+				// Chart Position
+				DrawPositionTableRow("Chart", Editor.GetFocalPointX(), Editor.GetFocalPointY(), Editor.GetPosition());
+
+				// Cursor Position
+				var mouseState = Editor.GetMouseState();
+				DrawPositionTableRow("Cursor", mouseState.X(), mouseState.Y(), mouseState.GetEditorPosition());
+
+				ImGui.EndTable();
+			}
+
 			ImGui.GetStyle().ItemInnerSpacing.X = originalInnerItemSpacingX;
-			ImGui.GetStyle().FramePadding.X = originalFramePaddingX;
 			ImGui.GetStyle().ItemSpacing.X = originalItemSpacingX;
+		}
+
+		private static void DrawPositionTableHeader()
+		{
+			ImGui.TableNextRow();
+
+			var colIndex = 0;
+			DrawPositionTableHeaderCell(TableNameColWidth, "", ref colIndex);
+			DrawPositionTableHeaderCell(TablePositionColWidth, "Position", ref colIndex);
+			DrawPositionTableHeaderCell(TableSongTimeColWidth, "Song Time", ref colIndex);
+			DrawPositionTableHeaderCell(TableChartTimeColWidth, "Chart Time", ref colIndex);
+			DrawPositionTableHeaderCell(TableMeasureColWidth, "Measure", ref colIndex);
+			DrawPositionTableHeaderCell(TableBeatColWidth, "Beat", ref colIndex);
+			DrawPositionTableHeaderCell(TableRowColWidth, "Row", ref colIndex);
+		}
+
+		private static void DrawPositionTableHeaderCell(int width, string text, ref int index)
+		{
+			ImGui.TableSetColumnIndex(index++);
+			if (index > 1)
+				ImGui.TableSetBgColor(ImGuiTableBgTarget.CellBg, ColorBgDarkGrey);
+
+			var textWidth = ImGui.CalcTextSize(text).X;
+			if (width - textWidth > 0)
+			{
+				ImGui.Dummy(new Vector2(width - textWidth, 1));
+				ImGui.SameLine();
+			}
+
+			ImGui.Text(text);
+		}
+
+		private static void DrawPositionTableRow(string label, int x, int y, EditorPosition position)
+		{
+			ImGui.TableNextRow();
+			int colIndex = 0;
+			
+			ImGui.TableSetColumnIndex(colIndex++);
+			ImGui.Text(label);
+
+			DrawPositionTableCell(TablePositionColWidth, $"({x}, {y})", ref colIndex);
+			DrawPositionTableCell(TableSongTimeColWidth, $"{FormatTime(position.SongTime)}", ref colIndex);
+			DrawPositionTableCell(TableChartTimeColWidth, $"{FormatTime(position.ChartTime)}", ref colIndex);
+			DrawPositionTableCell(TableMeasureColWidth, $"{GetMeasure(position):N3}", ref colIndex);
+			DrawPositionTableCell(TableBeatColWidth, $"{(position.ChartPosition / SMCommon.MaxValidDenominator):N3}", ref colIndex);
+			DrawPositionTableCell(TableRowColWidth, $"{position.ChartPosition:N3}", ref colIndex);
+		}
+
+		private static void DrawPositionTableCell(int width, string text, ref int index)
+		{
+			ImGui.TableSetColumnIndex(index++);
+
+			var textWidth = ImGui.CalcTextSize(text).X;
+			if (width - textWidth > 0)
+			{
+				ImGui.Dummy(new Vector2(width - textWidth, 1));
+				ImGui.SameLine();
+			}
+
+			var delimiters = new char[] { '.', ':' };
+			var delimIndex = text.LastIndexOfAny(delimiters);
+			if (delimIndex < 0)
+			{
+				ImGui.Text(text);
+			}
+			else
+			{
+				var firstText = text.Substring(0, delimIndex);
+				var secondText = text.Substring(delimIndex);
+
+				ImGui.Text(firstText);
+				ImGui.SameLine();
+
+				ImGui.PushStyleColor(ImGuiCol.Text, ColorTextGrey);
+				ImGui.Text(secondText);
+				ImGui.PopStyleColor();
+			}
 		}
 
 		private static double GetMeasure(EditorPosition position)
