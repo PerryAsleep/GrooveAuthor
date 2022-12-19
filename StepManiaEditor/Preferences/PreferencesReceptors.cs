@@ -21,6 +21,7 @@ namespace StepManiaEditor
 		public const bool DefaultTapShrinkEffect = true;
 		public const bool DefaultPulseReceptorsWithTempo = true;
 		public const bool DefaultCenterHorizontally = true;
+		public const bool DefaultLockPosition = false;
 		public const int DefaultPositionX = 960;
 		public const int DefaultPositionY = 100;
 
@@ -35,7 +36,8 @@ namespace StepManiaEditor
 		[JsonInclude] public bool TapShrinkEffect = DefaultTapShrinkEffect;
 		[JsonInclude] public bool PulseReceptorsWithTempo = DefaultPulseReceptorsWithTempo;
 		[JsonInclude] public bool CenterHorizontally = DefaultCenterHorizontally;
-		
+		[JsonInclude] public bool LockPosition = DefaultLockPosition;
+
 		[JsonInclude] public int PositionX
 		{
 			get
@@ -99,7 +101,8 @@ namespace StepManiaEditor
 				   && PulseReceptorsWithTempo == DefaultPulseReceptorsWithTempo
 				   && CenterHorizontally == DefaultCenterHorizontally
 				   && PositionX == DefaultPositionX
-				   && PositionY == DefaultPositionY;
+				   && PositionY == DefaultPositionY
+				   && LockPosition == DefaultLockPosition;
 		}
 
 		public void RestoreDefaults()
@@ -125,6 +128,7 @@ namespace StepManiaEditor
 		private readonly bool PreviousTapShrinkEffect;
 		private readonly bool PreviousPulseReceptorsWithTempo;
 		private readonly bool PreviousCenterHorizontally;
+		private readonly bool PreviousLockPosition;
 		private readonly int PreviousPositionX;
 		private readonly int PreviousPositionY;
 
@@ -140,6 +144,7 @@ namespace StepManiaEditor
 			PreviousTapShrinkEffect = p.TapShrinkEffect;
 			PreviousPulseReceptorsWithTempo = p.PulseReceptorsWithTempo;
 			PreviousCenterHorizontally = p.CenterHorizontally;
+			PreviousLockPosition = p.LockPosition;
 			PreviousPositionX = p.PositionX;
 			PreviousPositionY = p.PositionY;
 		}
@@ -167,6 +172,7 @@ namespace StepManiaEditor
 			p.TapShrinkEffect = PreferencesReceptors.DefaultTapShrinkEffect;
 			p.PulseReceptorsWithTempo = PreferencesReceptors.DefaultPulseReceptorsWithTempo;
 			p.CenterHorizontally = PreferencesReceptors.DefaultCenterHorizontally;
+			p.LockPosition = PreferencesReceptors.DefaultLockPosition;
 			p.PositionX = PreferencesReceptors.DefaultPositionX;
 			p.PositionY = PreferencesReceptors.DefaultPositionY;
 		}
@@ -183,6 +189,7 @@ namespace StepManiaEditor
 			p.TapShrinkEffect = PreviousTapShrinkEffect;
 			p.PulseReceptorsWithTempo = PreviousPulseReceptorsWithTempo;
 			p.CenterHorizontally = PreviousCenterHorizontally;
+			p.LockPosition = PreviousLockPosition;
 			p.PositionX = PreviousPositionX;
 			p.PositionY = PreviousPositionY;
 		}

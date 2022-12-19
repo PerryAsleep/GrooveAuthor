@@ -750,7 +750,7 @@ namespace StepManiaEditor
 			{
 				ProcessInputForMovingFocalPoint(inReceptorArea);
 				// Update cursor based on whether the receptors could be grabbed.
-				if (inReceptorArea)
+				if (inReceptorArea && !Preferences.Instance.PreferencesReceptors.LockPosition)
 					CurrentDesiredCursor = Cursors.SizeAll;
 			}
 
@@ -782,7 +782,9 @@ namespace StepManiaEditor
 		private void ProcessInputForMovingFocalPoint(bool inReceptorArea)
 		{
 			// Begin moving focal point.
-			if (EditorMouseState.LeftClickDownThisFrame() && inReceptorArea)
+			if (EditorMouseState.LeftClickDownThisFrame()
+				&& inReceptorArea
+				&& !Preferences.Instance.PreferencesReceptors.LockPosition)
 			{
 				MovingFocalPoint = true;
 				FocalPointAtMoveStart = new Vector2(GetFocalPointX(), GetFocalPointY());

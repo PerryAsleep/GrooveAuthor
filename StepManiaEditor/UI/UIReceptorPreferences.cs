@@ -36,6 +36,10 @@ namespace StepManiaEditor
 			ImGui.Text("Position");
 			if (ImGuiLayoutUtils.BeginTable("Receptor Placement", 120))
 			{
+				var pushDisabled = p.LockPosition;
+				if(pushDisabled)
+					Utils.PushDisabled();
+
 				ImGuiLayoutUtils.DrawRowCheckbox(true, "Center Horizontally", p, nameof(PreferencesReceptors.CenterHorizontally), false,
 					"Whether to keep the receptors centered horizontally in the window.");
 
@@ -43,6 +47,13 @@ namespace StepManiaEditor
 					"Position of the receptors."
 					+ "\nThe receptors can also be moved by dragging them with the left mouse button."
 					+ "\nHold shift while dragging to limit movement to one dimension.", 1.0f, "%i", 0, Editor.GetViewportWidth() - 1, 0, Editor.GetViewportHeight() - 1);
+
+				if (pushDisabled)
+					Utils.PopDisabled();
+
+				ImGuiLayoutUtils.DrawRowCheckbox(true, "Lock Position", p, nameof(PreferencesReceptors.LockPosition), false,
+					"Whether to lock the receptors to the current position and prevent position changes.");
+
 				ImGuiLayoutUtils.EndTable();
 			}
 
