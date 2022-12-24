@@ -12,7 +12,7 @@ namespace StepManiaEditor
 	///  Call BeginFrame at the start of each frame.
 	///  Call PositionEvent once per each each visible miscellaneous IPlaceable per frame.
 	/// </summary>
-	public class MiscEventWidgetLayoutManager
+	internal sealed class MiscEventWidgetLayoutManager
 	{
 		/// <summary>
 		/// Ordered list of all the types of events to the left of the chart.

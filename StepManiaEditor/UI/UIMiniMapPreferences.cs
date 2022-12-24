@@ -6,7 +6,7 @@ namespace StepManiaEditor
 	/// <summary>
 	/// Class for drawing MiniMap preferences UI.
 	/// </summary>
-	public class UIMiniMapPreferences
+	internal sealed class UIMiniMapPreferences
 	{
 		private Editor Editor;
 

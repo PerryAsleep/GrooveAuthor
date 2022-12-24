@@ -5,7 +5,7 @@ using static StepManiaEditor.Utils;
 
 namespace StepManiaEditor
 {
-	public class EditorTapNoteEvent : EditorEvent
+	internal sealed class EditorTapNoteEvent : EditorEvent
 	{
 		private readonly LaneTapNote LaneTapNote;
 
@@ -26,7 +26,7 @@ namespace StepManiaEditor
 
 		public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)
 		{
-			var (textureId, rot) = arrowGraphicManager.GetArrowTexture(LaneTapNote.IntegerPosition, LaneTapNote.Lane);
+			var (textureId, rot) = arrowGraphicManager.GetArrowTexture(LaneTapNote.IntegerPosition, LaneTapNote.Lane, IsSelected());
 			
 			var alpha = IsBeingEdited() ? ActiveEditEventAlpha : 1.0f;
 

@@ -4,7 +4,7 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace StepManiaEditor
 {
-	public class EditorTickCountEvent : EditorEvent
+	internal sealed class EditorTickCountEvent : EditorEvent
 	{
 		public static readonly string EventShortDescription =
 			"Ticks represents the number of times per beat that hold notes should contribute towards\n" +

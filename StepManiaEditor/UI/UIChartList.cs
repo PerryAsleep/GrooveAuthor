@@ -7,7 +7,7 @@ using static Fumen.Converters.SMCommon;
 
 namespace StepManiaEditor
 {
-	public class UIChartList
+	internal sealed class UIChartList
 	{
 		Editor Editor;
 

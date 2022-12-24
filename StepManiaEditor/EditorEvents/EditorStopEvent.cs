@@ -7,7 +7,7 @@ using static StepManiaEditor.Utils;
 
 namespace StepManiaEditor
 {
-	public class EditorStopEvent : EditorRateAlteringEvent, IChartRegion
+	internal class EditorStopEvent : EditorRateAlteringEvent, IChartRegion
 	{
 		public static readonly string EventShortDescription =
 			"Stops pause the chart playback and occur after notes at the same position.\n" +
@@ -110,7 +110,7 @@ namespace StepManiaEditor
 	/// Dummy EditorStopEvent to use when needing to search for EditorStopEvents
 	/// in data structures which require comparing to an input event.
 	/// </summary>
-	public class EditorDummyStopEvent : EditorStopEvent
+	internal sealed class EditorDummyStopEvent : EditorStopEvent
 	{
 		private int Row;
 		private double ChartTime;
@@ -119,6 +119,7 @@ namespace StepManiaEditor
 		{
 			Row = row;
 			ChartTime = chartTime;
+			IsDummyEvent = true;
 		}
 
 		public override int GetRow()

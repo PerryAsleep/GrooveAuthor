@@ -15,7 +15,7 @@ namespace StepManiaEditor
 	///   report whether or not there are unsaved changes in the queue.
 	///  Call HasUnsavedChanges to determine if there are unsaved changes in the queue.
 	/// </summary>
-	public class ActionQueue
+	internal sealed class ActionQueue
 	{
 		/// <summary>
 		/// Index of the current action.

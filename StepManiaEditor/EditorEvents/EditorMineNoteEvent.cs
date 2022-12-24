@@ -5,7 +5,7 @@ using static StepManiaEditor.Utils;
 
 namespace StepManiaEditor
 {
-	public class EditorMineNoteEvent : EditorEvent
+	internal sealed class EditorMineNoteEvent : EditorEvent
 	{
 		private readonly LaneNote LaneNote;
 
@@ -28,7 +28,7 @@ namespace StepManiaEditor
 		{
 			var alpha = IsBeingEdited() ? ActiveEditEventAlpha : 1.0f;
 			textureAtlas.Draw(
-				ArrowGraphicManager.GetMineTexture(GetRow(), LaneNote.Lane),
+				ArrowGraphicManager.GetMineTexture(GetRow(), LaneNote.Lane, IsSelected()),
 				spriteBatch,
 				new Vector2((float)X, (float)Y),
 				Scale,

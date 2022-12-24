@@ -1,13 +1,15 @@
 ﻿using System;
+using System.Collections.Generic;
 using Fumen.ChartDefinition;
 using Fumen.Converters;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using static System.ComponentModel.Design.ObjectSelectorEditor;
 using static StepManiaEditor.Utils;
 
 namespace StepManiaEditor
 {
-	public class EditorHoldStartNoteEvent : EditorEvent
+	internal sealed class EditorHoldStartNoteEvent : EditorEvent
 	{
 		private readonly LaneHoldStartNote LaneHoldStartNote;
 		private EditorHoldEndNoteEvent EditorHoldEndNoteEvent;
@@ -56,6 +58,19 @@ namespace StepManiaEditor
 			LaneHoldStartNote.SourceType = Roll ? SMCommon.NoteChars[(int)SMCommon.NoteType.RollStart].ToString() : string.Empty;
 		}
 
+		public override bool DoesPointIntersect(double x, double y)
+		{
+			// Include the hold body when considering intersections.
+			var endPoint = EditorHoldEndNoteEvent.Y + EditorHoldEndNoteEvent.H;
+			return x >= X && x <= X + W && y >= Y && y <= endPoint;
+		}
+
+		public override List<EditorEvent> GetEventsSelectedTogether()
+		{
+			// Always select both the start and end together.
+			return new List<EditorEvent>() { this, EditorHoldEndNoteEvent };
+		}
+
 		public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)
 		{
 			DrawAtY(textureAtlas, spriteBatch, arrowGraphicManager, Y);
@@ -65,7 +80,7 @@ namespace StepManiaEditor
 		{
 			var alpha = IsBeingEdited() ? ActiveEditEventAlpha : 1.0f;
 
-			var (holdTexture, holdRot) = arrowGraphicManager.GetArrowTexture(LaneHoldStartNote.IntegerPosition, GetLane());
+			var (holdTexture, holdRot) = arrowGraphicManager.GetArrowTexture(LaneHoldStartNote.IntegerPosition, GetLane(), IsSelected());
 			textureAtlas.Draw(
 				holdTexture,
 				spriteBatch,

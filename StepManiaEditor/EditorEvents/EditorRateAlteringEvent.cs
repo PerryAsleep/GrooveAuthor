@@ -4,7 +4,7 @@ using Fumen.Converters;
 
 namespace StepManiaEditor
 {
-	public abstract class EditorRateAlteringEvent : EditorEvent, IComparable<EditorRateAlteringEvent>
+	internal abstract class EditorRateAlteringEvent : EditorEvent, IComparable<EditorRateAlteringEvent>
 	{
 		/// <summary>
 		/// ChartTime to use for events which follow this event.
@@ -57,7 +57,7 @@ namespace StepManiaEditor
 	/// Dummy EditorRateAlteringEvent to use when needing to search for EditorRateAlteringEvent
 	/// in data structures which require comparing to an input event.
 	/// </summary>
-	public class EditorDummyRateAlteringEvent : EditorRateAlteringEvent
+	internal sealed class EditorDummyRateAlteringEvent : EditorRateAlteringEvent
 	{
 		private int Row;
 		private double ChartTime;
@@ -66,6 +66,7 @@ namespace StepManiaEditor
 		{
 			Row = row;
 			ChartTime = chartTime;
+			IsDummyEvent = true;
 		}
 
 		public override int GetRow()

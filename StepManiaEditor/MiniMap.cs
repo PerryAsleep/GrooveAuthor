@@ -29,7 +29,7 @@ namespace StepManiaEditor
 	///  For input processing call MouseDown, MouseMove, and MouseUp.
 	///  To get the position from the MiniMap call GetEditorPosition.
 	/// </summary>
-	public class MiniMap
+	internal sealed class MiniMap
 	{
 		/// <summary>
 		/// Behavior when selecting the MiniMap with the mouse.

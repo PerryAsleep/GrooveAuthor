@@ -6,7 +6,7 @@ namespace StepManiaEditor
 	/// <summary>
 	/// Class for drawing receptor preferences UI.
 	/// </summary>
-	public class UIReceptorPreferences
+	internal sealed class UIReceptorPreferences
 	{
 		private readonly Editor Editor;
 

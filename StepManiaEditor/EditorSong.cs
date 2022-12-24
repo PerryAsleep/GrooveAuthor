@@ -11,7 +11,7 @@ using static Fumen.Converters.SMCommon;
 
 namespace StepManiaEditor
 {
-	public enum Selectable
+	internal enum Selectable
 	{
 		YES,
 		NO,
@@ -20,7 +20,7 @@ namespace StepManiaEditor
 		OMES
 	}
 
-	public enum DisplayTempoMode
+	internal enum DisplayTempoMode
 	{
 		Random,
 		Specified,
@@ -31,7 +31,7 @@ namespace StepManiaEditor
 	/// Small class to hold a Texture for a song or chart property that
 	/// represents a file path to an image asset.
 	/// </summary>
-	public class EditorImageData
+	internal sealed class EditorImageData
 	{
 		private string FileDirectory;
 		private EditorTexture Texture;
@@ -92,7 +92,7 @@ namespace StepManiaEditor
 		}
 	}
 
-	public class EditorChartTimingData
+	internal class EditorChartTimingData
 	{
 		//song_tag_handlers["STOPS"]= &SetSongStops;
 		//song_tag_handlers["DELAYS"]= &SetSongDelays;
@@ -107,7 +107,7 @@ namespace StepManiaEditor
 		//song_tag_handlers["FAKES"]= &SetSongFakes;
 	}
 
-	public class DisplayTempo
+	internal sealed class DisplayTempo
 	{
 		public DisplayTempoMode Mode;
 		public double SpecifiedTempoMin;
@@ -202,7 +202,7 @@ namespace StepManiaEditor
 		}
 	}
 
-	public class EditorSong
+	internal sealed class EditorSong
 	{
 		private Editor Editor;
 
@@ -571,7 +571,7 @@ namespace StepManiaEditor
 		}
 	}
 
-	public class EditorChart
+	internal sealed class EditorChart
 	{
 		public static double DefaultTempo = 120.0;
 		public static Fraction DefaultTimeSignature = new Fraction(4, 4);
@@ -673,7 +673,7 @@ namespace StepManiaEditor
 
 		// TODO: RADARVALUES?
 
-		public RedBlackTree<EditorEvent> EditorEvents;
+		public EventTree EditorEvents;
 		public RedBlackTree<EditorRateAlteringEvent> RateAlteringEventsBySongTime;
 		public RedBlackTree<EditorRateAlteringEvent> RateAlteringEventsByRow;
 		public RedBlackTree<EditorInterpolatedRateAlteringEvent> InterpolatedScrollRateEvents;
@@ -815,7 +815,7 @@ namespace StepManiaEditor
 
 		private void SetUpEditorEvents(Chart chart)
 		{
-			var editorEvents = new RedBlackTree<EditorEvent>();
+			var editorEvents = new EventTree(this);
 			var rateAlteringEventsByChartTime = new RedBlackTree<EditorRateAlteringEvent>(EditorEvent.SortChartTime());
 			var rateAlteringEventsByRow = new RedBlackTree<EditorRateAlteringEvent>(EditorEvent.SortRow());
 			var interpolatedScrollRateEvents = new RedBlackTree<EditorInterpolatedRateAlteringEvent>();
@@ -1163,11 +1163,7 @@ namespace StepManiaEditor
 			if (FakesByRow == null)
 				return null;
 
-			var enumerator = FakesByRow.FindGreatestPreceding(new EditorFakeSegmentEvent(this, new FakeSegment(0)
-			{
-				IntegerPosition = row,
-				TimeMicros = ToMicros(chartTime)
-			}));
+			var enumerator = FakesByRow.FindGreatestPreceding(new EditorDummyFakeSegmentEvent(this, row, chartTime));
 			if (enumerator == null)
 				return null;
 			enumerator.MoveNext();
@@ -1246,49 +1242,6 @@ namespace StepManiaEditor
 			return enumerator.Current;
 		}
 
-		public EditorEvent FindNoteAt(int row, int lane, bool ignoreNotesBeingEdited)
-		{
-			var pos = new EditorTapNoteEvent(this, new LaneTapNote
-			{
-				Lane = lane,
-				IntegerPosition = row
-			});
-
-			// Find the greatest preceding event, including events equal to the given position.
-			var best = EditorEvents.FindGreatestPreceding(pos, true);
-			if (best == null)
-				return null;
-			
-			// Scan forward to the last note in the row to make sure we consider all notes this row.
-			while (best.MoveNext())
-			{
-				if (best.Current.GetRow() > row)
-				{
-					best.MovePrev();
-					break;
-				}
-			}
-			if (best.Current == null)
-				best.MovePrev();
-
-			// Scan backwards finding a note in the given lane and row, or a hold
-			// which starts before the given now but ends at or after it.
-			do
-			{
-				if (best.Current.GetLane() != lane)
-					continue;
-				if (ignoreNotesBeingEdited && best.Current.IsBeingEdited())
-					continue;
-				if (best.Current.GetRow() == row)
-					return best.Current;
-				if (!(best.Current is EditorHoldStartNoteEvent hsn))
-					return null;
-				return hsn.GetHoldEndNote().GetRow() >= row ? best.Current : null;
-			} while (best.MovePrev());
-
-			return null;
-		}
-
 		public int GetNearestMeasureBoundaryRow(int row)
 		{
 			var rae = GetActiveRateAlteringEventForPosition(row);
@@ -1309,27 +1262,6 @@ namespace StepManiaEditor
 			if (row - previousMeasureRow < nextMeasureRow - row)
 				return previousMeasureRow;
 			return nextMeasureRow;
-		}
-
-		public List<EditorEvent> GetEventsAtRow(int row)
-		{
-			var events = new List<EditorEvent>();
-
-			var pos = new EditorTapNoteEvent(this, new LaneTapNote
-			{
-				Lane = 0,
-				IntegerPosition = row
-			});
-
-			var enumerator = EditorEvents.FindGreatestPreceding(pos, true);
-			if (enumerator == null)
-				return events;
-			while(enumerator.MovePrev() && enumerator.Current.GetRow() == row)
-			{
-				events.Add(enumerator.Current);
-			}
-
-			return events;
 		}
 
 		/// <summary>
@@ -1673,7 +1605,7 @@ namespace StepManiaEditor
 	/// <summary>
 	/// Custom Comparer for Charts.
 	/// </summary>
-	public class ChartComparer : IComparer<EditorChart>
+	internal sealed class ChartComparer : IComparer<EditorChart>
 	{
 		private static readonly Dictionary<ChartType, int> ChartTypeOrder = new Dictionary<ChartType, int>
 		{

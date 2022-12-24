@@ -93,7 +93,7 @@ namespace StepManiaEditor
 	/// <summary>
 	/// Action to restore Options preferences to their default values.
 	/// </summary>
-	public class ActionRestoreOptionPreferenceDefaults : EditorAction
+	internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 	{
 		private readonly int PreviousRecentFilesHistorySize;
 		private readonly SMCommon.ChartType PreviousDefaultStepsType;

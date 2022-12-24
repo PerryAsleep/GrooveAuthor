@@ -9,7 +9,7 @@ namespace StepManiaEditor
 	/// The preview is rendered as an IRegion and also as a miscellaneous editor event widget.
 	/// The preview does not correspond to an EditorEvent in a chart.
 	/// </summary>
-	public class EditorPreviewRegionEvent : IChartRegion, IPlaceable
+	internal sealed class EditorPreviewRegionEvent : IChartRegion, IPlaceable
 	{
 		/// <summary>
 		/// The EditorSong.

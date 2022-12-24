@@ -7,7 +7,7 @@ namespace StepManiaEditor
 	/// <summary>
 	/// State for one lane when editing a note.
 	/// </summary>
-	public class LaneEditState
+	internal sealed class LaneEditState
 	{
 		/// <summary>
 		/// Whether or not a note in the lane is being actively edited.

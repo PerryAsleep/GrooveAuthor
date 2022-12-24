@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using Fumen.ChartDefinition;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -6,7 +7,7 @@ using static StepManiaEditor.Utils;
 
 namespace StepManiaEditor
 {
-	public class EditorHoldEndNoteEvent : EditorEvent
+	internal sealed class EditorHoldEndNoteEvent : EditorEvent
 	{
 		private EditorHoldStartNoteEvent EditorHoldStartNoteEvent;
 		private readonly LaneHoldEndNote LaneHoldEndNote;
@@ -58,6 +59,19 @@ namespace StepManiaEditor
 			NextDrawActiveYCutoffPoint = y;
 		}
 
+		public override bool DoesPointIntersect(double x, double y)
+		{
+			// Hold intersections involve the start and end. Checking either
+			// should return the same thing. Leverage the hold start logic.
+			return EditorHoldStartNoteEvent.DoesPointIntersect(x, y);
+		}
+
+		public override List<EditorEvent> GetEventsSelectedTogether()
+		{
+			// Always select both the start and end together.
+			return new List<EditorEvent>() { EditorHoldStartNoteEvent, this };
+		}
+
 		public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)
 		{
 			var roll = IsRoll();
@@ -67,18 +81,19 @@ namespace StepManiaEditor
 			var activeAndCutoff = NextDrawActive && Preferences.Instance.PreferencesReceptors.AutoPlayHideArrows;
 
 			// The hold body texture is a tiled texture that starts at the end of the hold and ends at the arrow.
+			var selected = IsSelected();
 			var (holdBodyTextureId, holdBodyMirrored) = roll ?
-				arrowGraphicManager.GetRollBodyTexture(LaneHoldEndNote.IntegerPosition, LaneHoldEndNote.Lane, active) :
-				arrowGraphicManager.GetHoldBodyTexture(LaneHoldEndNote.IntegerPosition, LaneHoldEndNote.Lane, active);
+				arrowGraphicManager.GetRollBodyTexture(LaneHoldEndNote.IntegerPosition, LaneHoldEndNote.Lane, active, selected) :
+				arrowGraphicManager.GetHoldBodyTexture(LaneHoldEndNote.IntegerPosition, LaneHoldEndNote.Lane, active, selected);
 			// The hold cap texture is a texture that is drawn once at the end of the hold.
 			var (holdCapTextureId, holdCapRotation) = roll ?
-				arrowGraphicManager.GetRollEndTexture(LaneHoldEndNote.IntegerPosition, LaneHoldEndNote.Lane, active) :
-				arrowGraphicManager.GetHoldEndTexture(LaneHoldEndNote.IntegerPosition, LaneHoldEndNote.Lane, active);
+				arrowGraphicManager.GetRollEndTexture(LaneHoldEndNote.IntegerPosition, LaneHoldEndNote.Lane, active, selected) :
+				arrowGraphicManager.GetHoldEndTexture(LaneHoldEndNote.IntegerPosition, LaneHoldEndNote.Lane, active, selected);
 			// The hold start texture is only used to extend the start of the hold upward into the arrow for certain
 			// arrow graphics which wouldn't otherwise mask the hold start, like solo diagonals.
 			var (holdBodyStartTexture, holdBodyStartMirror) = roll ?
-				arrowGraphicManager.GetRollStartTexture(GetHoldStartNote().GetRow(), GetLane(), NextDrawActive) :
-				arrowGraphicManager.GetHoldStartTexture(GetHoldStartNote().GetRow(), GetLane(), NextDrawActive);
+				arrowGraphicManager.GetRollStartTexture(GetHoldStartNote().GetRow(), GetLane(), NextDrawActive, selected) :
+				arrowGraphicManager.GetHoldStartTexture(GetHoldStartNote().GetRow(), GetLane(), NextDrawActive, selected);
 
 			var (_, capH) = textureAtlas.GetDimensions(holdCapTextureId);
 			var (bodyTexW, bodyTexH) = textureAtlas.GetDimensions(holdBodyTextureId);
@@ -160,7 +175,7 @@ namespace StepManiaEditor
 			// The actual hold start note will not draw since it is above the receptors.
 			if (activeAndCutoff)
 			{
-				var (startArrowTexture, _) = arrowGraphicManager.GetArrowTexture(GetHoldStartNote().GetRow(), GetLane());
+				var (startArrowTexture, _) = arrowGraphicManager.GetArrowTexture(GetHoldStartNote().GetRow(), GetLane(), selected);
 				var (_, startArrowHeight) = textureAtlas.GetDimensions(startArrowTexture);
 				var holdStartY = noteY - (startArrowHeight * 0.5 * Scale);
 				GetHoldStartNote().DrawAtY(textureAtlas, spriteBatch, arrowGraphicManager, holdStartY);

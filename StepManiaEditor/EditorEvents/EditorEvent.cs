@@ -6,11 +6,9 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace StepManiaEditor
 {
-	public abstract class EditorEvent : IComparable<EditorEvent>, IPlaceable
+	internal abstract class EditorEvent : IComparable<EditorEvent>, IPlaceable
 	{
 		// Foot, expression, etc.
-
-		private bool BeingEdited = false;
 
 		#region IPlaceable
 		public virtual double X { get; set; }
@@ -27,7 +25,25 @@ namespace StepManiaEditor
 
 		protected static uint ScreenHeight;
 
+		/// <summary>
+		/// Whether or not this EditorEvent can be deleted from its EditorChart.
+		/// </summary>
 		public bool CanBeDeleted;
+		/// <summary>
+		/// Whether or not this EditorEvent is currently selected by the user.
+		/// </summary>
+		private bool Selected;
+		/// <summary>
+		/// Whether or not this EditorEvent is in a temporary state where it is being edited
+		/// but not actually committed to the EditorChart yet.
+		/// </summary>
+		private bool BeingEdited = false;
+		/// <summary>
+		/// Whether or not this is a dummy EditorEvent. Dummy events used for comparing against
+		/// other EditorEvents in sorted data structures. Dummy eventsd always sort before other
+		/// events that would otherwise be equal.
+		/// </summary>
+		protected bool IsDummyEvent;
 
 		public static EditorEvent CreateEvent(EditorChart editorChart, Event chartEvent)
 		{
@@ -68,6 +84,14 @@ namespace StepManiaEditor
 				return new EditorFakeSegmentEvent(editorChart, fs);
 
 			return null;
+		}
+
+		public static EditorEvent CreateDummyEvent(EditorChart editorChart, Event chartEvent)
+		{
+			var newEvent = CreateEvent(editorChart, chartEvent);
+			if (newEvent != null)
+				newEvent.IsDummyEvent = true;
+			return newEvent;
 		}
 
 		protected EditorEvent(EditorChart editorChart, Event chartEvent)
@@ -213,6 +237,9 @@ namespace StepManiaEditor
 			var comparison = SMCommon.SMEventComparer.Compare(ChartEvent, other.ChartEvent);
 			if (comparison != 0)
 				return comparison;
+			// Dummy events come before other events at the same location.
+			if (IsDummyEvent != other.IsDummyEvent)
+				return IsDummyEvent ? -1 : 1;
 			// Events being edited come after events not being edited.
 			// This sort order is being relied on in EditorChart.FindNoteAt.
 			if (IsBeingEdited() != other.IsBeingEdited())
@@ -220,9 +247,31 @@ namespace StepManiaEditor
 			return 0;
 		}
 
-		public virtual bool InSelection(double x, double y, double w, double h)
+		public virtual bool DoesPointIntersect(double x, double y)
 		{
-			return X < x + w && X + W > x && Y < y + h && Y + H > y;
+			return x >= X && x <= X + W && y >= Y && y <= Y + H;
+		}
+
+		public bool IsSelected()
+		{
+			return Selected;
+		}
+
+		public virtual List<EditorEvent> GetEventsSelectedTogether()
+		{
+			return new List<EditorEvent>() { this };
+		}
+
+		public void Select()
+		{
+			foreach (var e in GetEventsSelectedTogether())
+				e.Selected = true;
+		}
+
+		public void DeSelect()
+		{
+			foreach (var e in GetEventsSelectedTogether())
+				e.Selected = false;
 		}
 
 		public virtual void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)

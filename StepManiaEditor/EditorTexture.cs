@@ -183,7 +183,7 @@ namespace StepManiaEditor
 					}
 					if (CacheTextureColor && newTexture != null)
 					{
-						newTextureColor = Utils.GetTextureColor(newTexture);
+						newTextureColor = TextureUtils.GetTextureColor(newTexture);
 					}
 				}
 				catch (OperationCanceledException)

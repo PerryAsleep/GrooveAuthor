@@ -8,7 +8,7 @@ using static StepManiaEditor.Utils;
 
 namespace StepManiaEditor
 {
-	public class EditorDelayEvent : EditorRateAlteringEvent, IChartRegion
+	internal class EditorDelayEvent : EditorRateAlteringEvent, IChartRegion
 	{
 		public static readonly string EventShortDescription =
 			"Delays pause the chart playback and occur before notes at the same position.\n" +
@@ -111,7 +111,7 @@ namespace StepManiaEditor
 	/// Dummy EditorDelayEvent to use when needing to search for EditorDelayEvents
 	/// in data structures which require comparing to an input event.
 	/// </summary>
-	public class EditorDummyDelayEvent : EditorDelayEvent
+	internal sealed class EditorDummyDelayEvent : EditorDelayEvent
 	{
 		private int Row;
 		private double ChartTime;
@@ -120,6 +120,7 @@ namespace StepManiaEditor
 		{
 			Row = row;
 			ChartTime = chartTime;
+			IsDummyEvent = true;
 		}
 
 		public override int GetRow()

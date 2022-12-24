@@ -71,7 +71,7 @@ namespace StepManiaEditor
 	/// <summary>
 	/// Action to restore WaveForm preferences to their default values.
 	/// </summary>
-	public class ActionRestoreWaveFormPreferenceDefaults : EditorAction
+	internal sealed class ActionRestoreWaveFormPreferenceDefaults : EditorAction
 	{
 		private readonly bool PreviousShowWaveForm;
 		private readonly bool PreviousWaveFormScaleXWhenZooming;

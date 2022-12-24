@@ -5,7 +5,7 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace StepManiaEditor
 {
-	public class EditorTimeSignatureEvent : EditorRateAlteringEvent
+	internal sealed class EditorTimeSignatureEvent : EditorRateAlteringEvent
 	{
 		public static readonly string EventShortDescription =
 			"StepMania ignores time signatures during gameplay. They are a convenience for visualizing measures in the editor.\n" +

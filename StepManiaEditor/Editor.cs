@@ -24,10 +24,11 @@ using System.Text;
 using System.Media;
 using System.IO;
 using System.Linq;
+using static System.ComponentModel.Design.ObjectSelectorEditor;
 
 namespace StepManiaEditor
 {
-	public class Editor : Game
+	internal sealed class Editor : Game
 	{
 		/// <summary>
 		/// How to space Chart Events when rendering.
@@ -159,6 +160,8 @@ namespace StepManiaEditor
 		private List<IChartRegion> VisibleRegions = new List<IChartRegion>();
 		private EditorPreviewRegionEvent VisiblePreview = null;
 		private SelectedRegion SelectedRegion = new SelectedRegion();
+		private HashSet<EditorEvent> SelectedEvents = new HashSet<EditorEvent>();
+		private EditorEvent LastSelectedEvent;
 		private Receptor[] Receptors = null;
 		private EventSpacingHelper SpacingHelper;
 
@@ -239,6 +242,7 @@ namespace StepManiaEditor
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.S }, OnSave, false));
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.N }, OnNew, false));
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.R }, OnReload, false));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.A }, OnSelectAll, false));
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Space }, OnTogglePlayback, false));
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.P }, OnTogglePlayPreview, false));
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Escape }, OnEscape, false));
@@ -453,7 +457,16 @@ namespace StepManiaEditor
 
 			// Load textures from disk and add them to the Texture Atlas.
 			foreach (var textureId in ArrowGraphicManager.GetAllTextureIds())
-				TextureAtlas.AddTexture(textureId, Content.Load<Texture2D>(textureId), true);
+			{
+				var texture = Content.Load<Texture2D>(textureId);
+				TextureAtlas.AddTexture(textureId, texture, true);
+
+				texture = ArrowGraphicManager.GenerateSelectedTexture(GraphicsDevice, texture);
+				if (texture != null)
+				{
+					TextureAtlas.AddTexture(ArrowGraphicManager.GetSelectedTextureId(textureId), texture, true);
+				}
+			}
 
 			// Generate and add measure marker texture.
 			var measureMarkerTexture = new Texture2D(GraphicsDevice, MarkerTextureWidth, 1);
@@ -703,6 +716,8 @@ namespace StepManiaEditor
 			CurrentDesiredCursor = Cursors.Default;
 			CanShowRightClickPopupThisFrame = false;
 
+			SelectedRegion.UpdateTime(gameTime.TotalGameTime.TotalSeconds);
+
 			// ImGui needs to update its frame even the app is not in focus.
 			// There may be a way to decouple input processing and advancing the frame, but for now
 			// use the ImGuiRenderer.Update method and give it a flag so it knows to not process input.
@@ -756,7 +771,7 @@ namespace StepManiaEditor
 
 			// Process input for selecting a region.
 			if (!MiniMapCapturingMouse && !MovingFocalPoint)
-				ProcessInputForSelectedRegion();
+				ProcessInputForSelectedRegion(gameTime);
 
 			// Process right click popup eligibility.
 			CanShowRightClickPopupThisFrame = (!MiniMapCapturingMouse && !MovingFocalPoint && !MovingFocalPoint);
@@ -834,7 +849,7 @@ namespace StepManiaEditor
 		/// Processes input for selecting regions with the mouse.
 		/// </summary>
 		/// <remarks>Helper for ProcessInput.</remarks>
-		private void ProcessInputForSelectedRegion()
+		private void ProcessInputForSelectedRegion(GameTime gameTime)
 		{
 			// Starting a selection.
 			if (EditorMouseState.LeftClickDownThisFrame())
@@ -842,7 +857,14 @@ namespace StepManiaEditor
 				var y = EditorMouseState.Y();
 				var (chartTime, chartPosition) = FindChartTimeAndRowForScreenY(y);
 				var xInChartSpace = (EditorMouseState.X() - GetFocalPointX()) / GetSizeZoom();
-				SelectedRegion.Start(xInChartSpace, y, chartTime, chartPosition, GetSizeZoom(), GetFocalPointX());
+				SelectedRegion.Start(
+					xInChartSpace,
+					y,
+					chartTime,
+					chartPosition,
+					GetSizeZoom(),
+					GetFocalPointX(),
+					gameTime.TotalGameTime.TotalSeconds);
 			}
 
 			// Dragging a selection.
@@ -857,17 +879,6 @@ namespace StepManiaEditor
 			{
 				FinishSelectedRegion();
 			}
-		}
-
-
-		/// <summary>
-		/// Finishes selecting a region with the mouse.
-		/// </summary>
-		/// <remarks>Helper for ProcessInput.</remarks>
-		private void FinishSelectedRegion()
-		{
-			// TODO: Select things.
-			SelectedRegion.Stop();
 		}
 
 		/// <summary>
@@ -1097,6 +1108,7 @@ namespace StepManiaEditor
 				DrawReceptorForegroundEffects();
 				DrawSelectedRegion();
 			}
+
 			SpriteBatch.End();
 
 			DrawGui(gameTime);
@@ -1405,12 +1417,12 @@ namespace StepManiaEditor
 			var sizeZoom = GetSizeZoom();
 
 			// Determine graphic dimensions based on the zoom level.
-			var (arrowTexture, _) = ArrowGraphicManager.GetArrowTexture(0, 0);
+			var (arrowTexture, _) = ArrowGraphicManager.GetArrowTexture(0, 0, false);
 			double arrowW, arrowH;
 			(arrowW, arrowH) = TextureAtlas.GetDimensions(arrowTexture);
 			arrowW *= sizeZoom;
 			arrowH *= sizeZoom;
-			var (holdCapTexture, _) = ArrowGraphicManager.GetHoldEndTexture(0, 0, false);
+			var (holdCapTexture, _) = ArrowGraphicManager.GetHoldEndTexture(0, 0, false, false);
 			var (_, holdCapTextureHeight) = TextureAtlas.GetDimensions(holdCapTexture);
 			var holdCapHeight = holdCapTextureHeight * sizeZoom;
 
@@ -1489,7 +1501,7 @@ namespace StepManiaEditor
 			var beatMarkerLastRecordedRow = -1;
 
 			// Now that we know the position at the start of the screen we can find the first event to start rendering.
-			var enumerator = FindBest(ActiveChart.EditorEvents, (int)chartPositionAtTopOfScreen);
+			var enumerator = ActiveChart.EditorEvents.FindBest(chartPositionAtTopOfScreen);
 			if (enumerator == null)
 				return;
 
@@ -1576,7 +1588,7 @@ namespace StepManiaEditor
 						var endY = y + holdCapHeight;
 
 						noteY = start.Y + arrowH * 0.5f;
-						noteH = endY - (start.Y + (arrowH * 0.5f));
+						noteH = endY - noteY;
 
 						holdBodyEvents.Add(e);
 
@@ -1643,32 +1655,6 @@ namespace StepManiaEditor
 			VisibleEvents.AddRange(noteEvents);
 		}
 
-		/// <summary>
-		/// Given a RedBlackTree<EditorEvent> and a value, find the greatest preceding value.
-		/// If no value precedes the given value, instead find the least value that follows or is
-		/// equal to the given value.
-		/// </summary>
-		/// <remarks>
-		/// This is a common pattern when knowing a position or a time and wanting to find the first event to
-		/// start enumerator over for rendering.
-		/// </remarks>
-		/// <param name="tree">RedBlackTree to search.</param>
-		/// <remarks>Helper for UpdateChartEvents.</remarks>
-		/// <returns>Enumerator to best value or null if a value could not be found.</returns>
-		private RedBlackTree<EditorEvent>.Enumerator FindBest(RedBlackTree<EditorEvent> tree, int row)
-		{
-			// This is a bit hacky. Leveraging TimeSignature events being the first event by row in
-			// in SMEventComparer
-			var pos = new EditorTimeSignatureEvent(ActiveChart, new TimeSignature(new Fraction(4, 4))
-			{
-				IntegerPosition = row
-			});
-
-			var enumerator = tree.FindGreatestPreceding(pos, false);
-			if (enumerator == null)
-				enumerator = tree.FindLeastFollowing(pos, true);
-			return enumerator;
-		}
 
 		/// <summary>
 		/// Given a RedBlackTree<EditorRateAlteringEvent> and a value, find the greatest preceding value.
@@ -2530,7 +2516,7 @@ namespace StepManiaEditor
 					double chartPosition = 0.0;
 					if (!ActiveChart.TryGetChartPositionFromTime(MiniMap.GetMiniMapAreaStart(), ref chartPosition))
 						break;
-					var enumerator = FindBest(ActiveChart.EditorEvents, (int)chartPosition);
+					var enumerator = ActiveChart.EditorEvents.FindBest(chartPosition);
 					if (enumerator == null)
 						break;
 
@@ -2634,7 +2620,7 @@ namespace StepManiaEditor
 
 					// Add notes
 					chartPosition = MiniMap.GetMiniMapAreaStart();
-					var enumerator = FindBest(ActiveChart.EditorEvents, (int)chartPosition);
+					var enumerator = ActiveChart.EditorEvents.FindBest(chartPosition);
 					if (enumerator == null)
 						break;
 
@@ -2926,9 +2912,9 @@ namespace StepManiaEditor
 					if (ImGui.BeginMenu("Add"))
 					{
 						var nearestMeasureBoundaryRow = ActiveChart.GetNearestMeasureBoundaryRow(row);
-						var eventsAtNearestMeasureBoundary = ActiveChart.GetEventsAtRow(nearestMeasureBoundaryRow);
+						var eventsAtNearestMeasureBoundary = ActiveChart.EditorEvents.FindEventsAtRow(nearestMeasureBoundaryRow);
 
-						var events = ActiveChart.GetEventsAtRow(row);
+						var events = ActiveChart.EditorEvents.FindEventsAtRow(row);
 						bool hasTempoEvent = false;
 						bool hasInterpolatedScrollRateEvent = false;
 						bool hasScrollRateEvent = false;
@@ -3513,6 +3499,7 @@ namespace StepManiaEditor
 			StopPlayback();
 			MusicManager.UnloadAsync();
 			LaneEditStates = Array.Empty<LaneEditState>();
+			ClearSelectedEvents();
 			ActiveSong = null;
 			ActiveChart = null;
 			Position.ActiveChart = null;
@@ -3522,6 +3509,36 @@ namespace StepManiaEditor
 			EditorMouseState.SetActiveChart(null);
 			UpdateWindowTitle();
 			ActionQueue.Instance.Clear();
+		}
+
+		private void SelectEvent(EditorEvent e, bool setLastSelected)
+		{
+			if (setLastSelected)
+				LastSelectedEvent = e;
+			if (e.IsSelected())
+				return;
+			e.Select();
+			foreach (var selectedEvent in e.GetEventsSelectedTogether())
+				SelectedEvents.Add(selectedEvent);
+		}
+
+		private void DeSelectEvent(EditorEvent e)
+		{
+			if (!e.IsSelected())
+				return;
+			if (LastSelectedEvent == e)
+				LastSelectedEvent = null;
+			e.DeSelect();
+			foreach (var selectedEvent in e.GetEventsSelectedTogether())
+				SelectedEvents.Remove(selectedEvent);
+		}
+
+		private void ClearSelectedEvents()
+		{
+			foreach (var selectedEvent in SelectedEvents)
+				selectedEvent.DeSelect();
+			SelectedEvents.Clear();
+			LastSelectedEvent = null;
 		}
 
 		private void UpdateWindowTitle()
@@ -3549,6 +3566,183 @@ namespace StepManiaEditor
 		}
 
 		#endregion Loading
+
+		#region Selection
+
+		public void OnSelectAll()
+		{
+			// TODO: Implement.
+		}
+
+		/// <summary>
+		/// Finishes selecting a region with the mouse.
+		/// </summary>
+		private void FinishSelectedRegion()
+		{
+			if (ActiveChart == null)
+			{
+				SelectedRegion.Stop();
+				return;
+			}
+
+			// Collect the newly selected notes.
+			var newlySelectedEvents = new List<EditorEvent>();
+
+			// For clicking, we want to select only one note. The latest note whose bounding rect
+			// overlaps with the point that was clicked. The events are sorted but we cannot binary
+			// search them because we only want to consider events which are in the same lane as
+			// the click. A binary search won't consider every event so we may miss an event which
+			// overlaps the click. However, the visible events list is limited in size such that it
+			// small enough to iterate through when updating and rendering. A click happens rarely,
+			// and when it does happen it happens at most once per frame, so iterating when clicking
+			// is performant enough.
+			var isClick = SelectedRegion.IsClick();
+			if (isClick)
+			{
+				var (x, y) = SelectedRegion.GetCurrentPosition();
+				EditorEvent best = null;
+				foreach (var visibleEvent in VisibleEvents)
+				{
+					// Skip hold end notes. Visible events is sorted for rendering and they are rendered
+					// first. We will capture clicking holds by the hold start notes.
+					if (visibleEvent is EditorHoldEndNoteEvent)
+						continue;
+					if (visibleEvent.Y > y)
+						break;
+					if (visibleEvent.DoesPointIntersect(x, y))
+						best = visibleEvent;
+				}
+
+				if (best != null)
+					newlySelectedEvents.Add(best);
+			}
+
+			// A region was selected, collect all notes in the selected region.
+			else
+			{
+				var (arrowTexture, _) = ArrowGraphicManager.GetArrowTexture(0, 0, false);
+				double arrowW, arrowH;
+				(arrowW, arrowH) = TextureAtlas.GetDimensions(arrowTexture);
+				var lanesWidth = ActiveChart.NumInputs * arrowW;
+				var (minChartX, maxChartX) = SelectedRegion.GetSelectedXChartSpaceRange();
+				var minLane = (int)Math.Floor((minChartX + lanesWidth * 0.5) / arrowW);
+				var maxLane = (int)Math.Floor((maxChartX + lanesWidth * 0.5) / arrowW);
+
+				if (Preferences.Instance.PreferencesScroll.SpacingMode == SpacingMode.ConstantTime)
+				{
+					var (minTime, maxTime) = SelectedRegion.GetSelectedChartTimeRange();
+					var enumerator = ActiveChart.EditorEvents.FindFirstAfterChartTime(minTime);
+
+					while (enumerator.MoveNext())
+					{
+						if (enumerator.Current.GetChartTime() > maxTime)
+							break;
+						if (!(enumerator.Current is EditorTapNoteEvent
+							|| enumerator.Current is EditorMineNoteEvent
+							|| enumerator.Current is EditorHoldStartNoteEvent))
+							continue;
+						var lane = enumerator.Current.GetLane();
+						if (lane < minLane || lane > maxLane)
+							continue;
+						newlySelectedEvents.Add(enumerator.Current);
+					}
+				}
+				else
+				{
+					// TODO: Variable is reporting incorrect ranges during scroll rate modifications.
+					var (minPosition, maxPosition) = SelectedRegion.GetSelectedChartPositionRange();
+					var enumerator = ActiveChart.EditorEvents.FindFirstAfterChartPosition(minPosition);
+
+					while (enumerator.MoveNext())
+					{
+						if (enumerator.Current.GetRow() > maxPosition)
+							break;
+						if (!(enumerator.Current is EditorTapNoteEvent
+							|| enumerator.Current is EditorMineNoteEvent
+							|| enumerator.Current is EditorHoldStartNoteEvent))
+							continue;
+						var lane = enumerator.Current.GetLane();
+						if (lane < minLane || lane > maxLane)
+							continue;
+						newlySelectedEvents.Add(enumerator.Current);
+					}
+				}
+			}
+
+			var ctrl = KeyCommandManager.IsKeyDown(Keys.LeftControl);
+			var shift = KeyCommandManager.IsKeyDown(Keys.LeftShift);
+
+			// If holding shift, select everything from the previously selected note
+			// to the newly selected notes, in addition to the newly selected notes.
+			if (shift)
+			{
+				if (LastSelectedEvent != null && newlySelectedEvents.Count > 0)
+				{
+					EventTree.Enumerator enumerator;
+					EditorEvent end;
+					var firstNewNote = newlySelectedEvents[0];
+					if (firstNewNote.CompareTo(LastSelectedEvent) < 0)
+					{
+						enumerator = ActiveChart.EditorEvents.Find(firstNewNote);
+						end = LastSelectedEvent;
+					}
+					else
+					{
+						enumerator = ActiveChart.EditorEvents.Find(LastSelectedEvent);
+						end = firstNewNote;
+					}
+					if (enumerator != null)
+					{
+						bool last;
+						while (enumerator.MoveNext())
+						{
+							last = enumerator.Current == end;
+							if (enumerator.Current is EditorTapNoteEvent
+								|| enumerator.Current is EditorMineNoteEvent
+								|| enumerator.Current is EditorHoldStartNoteEvent)
+							{
+								SelectEvent(enumerator.Current, last);
+							}
+							if (last)
+								break;
+						}
+					}
+				}
+
+				// Select the newly selected notes.
+				for (var i = 0; i < newlySelectedEvents.Count; i++)
+				{
+					SelectEvent(newlySelectedEvents[i], i == newlySelectedEvents.Count - 1);
+				}
+			}
+
+			// If holding control, toggle the selected notes.
+			else if (ctrl)
+			{
+				for (var i = 0; i < newlySelectedEvents.Count; i++)
+				{
+					if (newlySelectedEvents[i].IsSelected())
+						DeSelectEvent(newlySelectedEvents[i]);
+					else
+						SelectEvent(newlySelectedEvents[i], i == newlySelectedEvents.Count - 1);
+				}
+			}
+
+			// If holding no modifier key, deselect everything and select the newly
+			// selected notes.
+			else
+			{
+				ClearSelectedEvents();
+				for (var i = 0; i < newlySelectedEvents.Count; i++)
+				{
+					SelectEvent(newlySelectedEvents[i], i == newlySelectedEvents.Count - 1);
+				}
+			}
+
+			SelectedRegion.Stop();
+		}
+
+		#endregion Selection
 
 		public bool IsChartSupported(Chart chart)
 		{
@@ -3735,7 +3929,7 @@ namespace StepManiaEditor
 			// If there is a tap, mine, or hold start at this location, delete it now.
 			// Deleting immediately feels more responsive than deleting on the input up event.
 			EditorAction deleteAction = null;
-			var existingEvent = ActiveChart.FindNoteAt(row, lane, true);
+			var existingEvent = ActiveChart.EditorEvents.FindNoteAt(row, lane, true);
 			if (existingEvent is EditorMineNoteEvent || existingEvent is EditorTapNoteEvent)
 				deleteAction = new ActionDeleteEditorEvent(existingEvent);
 			else if (existingEvent is EditorHoldStartNoteEvent hsn && hsn.GetRow() == row)
@@ -3810,7 +4004,7 @@ namespace StepManiaEditor
 			}
 
 			var row = LaneEditStates[lane].GetEventBeingEdited().GetRow();
-			var existingEvent = ActiveChart.FindNoteAt(row, lane, true);
+			var existingEvent = ActiveChart.EditorEvents.FindNoteAt(row, lane, true);
 
 			var newNoteIsMine = LaneEditStates[lane].GetEventBeingEdited() is EditorMineNoteEvent;
 			var newNoteIsTap = LaneEditStates[lane].GetEventBeingEdited() is EditorTapNoteEvent;
@@ -3935,7 +4129,7 @@ namespace StepManiaEditor
 					row = hsnStart.GetRow();
 					length = editHsn.GetHoldEndNote().GetRow() - hsnStart.GetRow();
 				}
-				existingEvent = ActiveChart.FindNoteAt(row + length, lane, true);
+				existingEvent = ActiveChart.EditorEvents.FindNoteAt(row + length, lane, true);
 				if (existingEvent != null
 				    && existingEvent is EditorHoldStartNoteEvent hsnEnd
 				    && hsnEnd.GetRow() <= row + length
@@ -3946,7 +4140,7 @@ namespace StepManiaEditor
 				}
 
 				// For any event in the same lane within the region of the new hold, delete them.
-				var e = FindBest(ActiveChart.EditorEvents, row);
+				var e = ActiveChart.EditorEvents.FindBest(row);
 				if (e != null)
 				{
 					while (e.MoveNext() && e.Current.GetRow() <= row + length)

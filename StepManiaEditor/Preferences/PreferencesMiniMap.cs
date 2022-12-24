@@ -64,7 +64,7 @@ namespace StepManiaEditor
 	/// <summary>
 	/// Action to restore Mini Map preferences to their default values.
 	/// </summary>
-	public class ActionRestoreMiniMapPreferenceDefaults : EditorAction
+	internal sealed class ActionRestoreMiniMapPreferenceDefaults : EditorAction
 	{
 		private readonly bool PreviousShowMiniMap;
 		private readonly MiniMap.SelectMode PreviousMiniMapSelectMode;

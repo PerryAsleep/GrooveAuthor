@@ -7,7 +7,7 @@ namespace StepManiaEditor
 	/// <summary>
 	/// Class for drawing Chart properties UI.
 	/// </summary>
-	public class UIChartProperties
+	internal sealed class UIChartProperties
 	{
 		private readonly Editor Editor;
 		private readonly DisplayTempo DummyDisplayTempo;

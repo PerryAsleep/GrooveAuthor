@@ -1,5 +1,6 @@
 ﻿using Microsoft.Xna.Framework;
 using static StepManiaEditor.Utils;
+using static System.Math;
 
 namespace StepManiaEditor
 {
@@ -15,6 +16,7 @@ namespace StepManiaEditor
 	/// Expected Usage:
 	///  Call Start() to start a selection.
 	///  Per frame call the following functions. They are split to simplify the Editor update loop.
+	///   UpdateTime()
 	///   UpdatePerFrameValues()
 	///   UpdatePerFrameDerivedStartY()
 	///   UpdatePerFrameDerivedChartTimeAndPosition()
@@ -38,8 +40,12 @@ namespace StepManiaEditor
 		private bool Active;
 		private bool StartYHasBeenUpdatedThisFrame;
 		private bool CurrentValuesHaveBeenUpdatedThisFrame;
+		// Time tracking.
+		private double StartTime;
+		private double CurrentTime;
 		// Pixel space values.
 		private double StartY;
+		private double StartYUnmodified;
 		private double StartX;
 		private double CurrentY;
 		private double CurrentX;
@@ -51,12 +57,58 @@ namespace StepManiaEditor
 		private double CurrentChartPosition;
 		// Starting x value.
 		private double StartXInChartSpace;
+		// Current x value.
+		private double CurrentXInChartSpace;
 
 		public double GetStartChartTime() { return StartChartTime; }
 		public double GetCurrentChartTime() { return CurrentChartTime; }
 		public double GetStartChartPosition() { return StartChartPosition; }
 		public double GetCurrentChartPosition() { return CurrentChartPosition; }
+		public double GetStartXInChartSpace() { return StartXInChartSpace; }
+		public double GetCurrentXInChartSpace() { return CurrentXInChartSpace;}
+
 		public double GetCurrentY() { return CurrentY; }
+
+		public (double, double) GetSelectedXChartSpaceRange()
+		{
+			if (StartXInChartSpace <= CurrentXInChartSpace)
+				return (StartXInChartSpace, CurrentXInChartSpace);
+			return (CurrentXInChartSpace, StartXInChartSpace);
+		}
+
+		public (double, double) GetSelectedChartTimeRange()
+		{
+			if (StartChartTime <= CurrentChartTime)
+				return (StartChartTime, CurrentChartTime);
+			return (CurrentChartTime, StartChartTime);
+		}
+
+		public (double, double) GetSelectedChartPositionRange()
+		{
+			if (StartChartPosition <= CurrentChartPosition)
+				return (StartChartPosition, CurrentChartPosition);
+			return (CurrentChartPosition, StartChartPosition);
+		}
+
+		public (double, double) GetCurrentPosition()
+		{
+			return (CurrentX, CurrentY);
+		}
+
+		public bool IsClick()
+		{
+			// Allow some movement to still count as clicks if it happens quickly.
+			var dx = Round(CurrentX) - Round(StartX);
+			var dy = Round(CurrentY) - Round(StartYUnmodified);
+			var d = Sqrt(dx * dx + dy * dy);
+			if (d <= 2.0)
+				return true;
+			if (d <= 5.0)
+				return CurrentTime - StartTime < 0.25;
+			if (d <= 10.0)
+				return CurrentTime - StartTime < 0.10;
+			return false;
+		}
 
 		public void ClearPerFrameData()
 		{
@@ -72,10 +124,20 @@ namespace StepManiaEditor
 		/// Start a selction with the cursor.
 		/// Sets the starting x and y values.
 		/// </summary>
-		public void Start(double xInChartSpace, double y, double chartTime, double chartPosition, double xScale, double focalPointX)
+		public void Start(
+			double xInChartSpace,
+			double y,
+			double chartTime,
+			double chartPosition,
+			double xScale,
+			double focalPointX,
+			double time)
 		{
 			StartXInChartSpace = xInChartSpace;
+			CurrentXInChartSpace = xInChartSpace;
+			StartTime = time;
 			StartY = y;
+			StartYUnmodified = y;
 			StartChartTime = chartTime;
 			StartChartPosition = chartPosition;
 			CurrentChartTime = chartTime;
@@ -91,9 +153,10 @@ namespace StepManiaEditor
 		/// </summary>
 		public void UpdatePerFrameValues(double currentXInChartSpace, double currentY, double xScale, double focalPointX)
 		{
+			CurrentXInChartSpace = currentXInChartSpace;
 			CurrentY = currentY;
 			StartX = XPosToScreenSpace(StartXInChartSpace, focalPointX, xScale);
-			CurrentX = XPosToScreenSpace(currentXInChartSpace, focalPointX, xScale);
+			CurrentX = XPosToScreenSpace(CurrentXInChartSpace, focalPointX, xScale);
 		}
 
 		/// <summary>
@@ -119,6 +182,16 @@ namespace StepManiaEditor
 		}
 
 		/// <summary>
+		/// Updates the current time being tracked by the region for determining whether the region was
+		/// a click or a drag.
+		/// </summary>
+		public void UpdateTime(double time)
+		{
+			if (Active)
+				CurrentTime = time;
+		}
+
+		/// <summary>
 		/// Stop the selection.
 		/// </summary>
 		public void Stop()
@@ -131,7 +204,10 @@ namespace StepManiaEditor
 			Active = false;
 			StartYHasBeenUpdatedThisFrame = false;
 			CurrentValuesHaveBeenUpdatedThisFrame = false;
+			StartTime = 0.0;
+			CurrentTime = 0.0;
 			StartY = 0.0;
+			StartYUnmodified = 0.0;
 			StartX = 0.0;
 			StartChartTime = 0.0;
 			StartChartPosition = 0.0;
@@ -140,6 +216,7 @@ namespace StepManiaEditor
 			CurrentChartTime = 0.0;
 			CurrentChartPosition = 0.0;
 			StartXInChartSpace = 0.0;
+			CurrentXInChartSpace = 0.0;
 		}
 
 		private double XPosToScreenSpace(double xInChartSpace, double focalPointX, double xScale)

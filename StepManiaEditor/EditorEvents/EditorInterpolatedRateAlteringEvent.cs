@@ -6,7 +6,7 @@ using static Fumen.Utils;
 
 namespace StepManiaEditor
 {
-	public class EditorInterpolatedRateAlteringEvent : EditorEvent
+	internal sealed class EditorInterpolatedRateAlteringEvent : EditorEvent
 	{
 		public static readonly string EventShortDescription =
 			"StepMania refers to these events as \"speeds\".\n" +

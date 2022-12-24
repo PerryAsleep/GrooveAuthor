@@ -48,7 +48,7 @@ namespace StepManiaEditor
 	/// <summary>
 	/// Action to restore WaveForm preferences to their default values.
 	/// </summary>
-	public class ActionRestoreScrollPreferenceDefaults : EditorAction
+	internal sealed class ActionRestoreScrollPreferenceDefaults : EditorAction
 	{
 		private readonly Editor.SpacingMode PreviousSpacingMode;
 		private readonly float PreviousTimeBasedPixelsPerSecond;

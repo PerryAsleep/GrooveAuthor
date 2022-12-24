@@ -4,7 +4,7 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace StepManiaEditor
 {
-	public class EditorLabelEvent : EditorEvent
+	internal sealed class EditorLabelEvent : EditorEvent
 	{
 		public static readonly string EventShortDescription =
 			"Arbitrary text used to label sections of the chart.\n" +

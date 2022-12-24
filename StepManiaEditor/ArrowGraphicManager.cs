@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using Fumen;
 using Fumen.Converters;
+using Microsoft.Xna.Framework.Graphics;
 using static StepManiaEditor.Utils;
 
 namespace StepManiaEditor
@@ -9,9 +10,10 @@ namespace StepManiaEditor
 	/// <summary>
 	/// Class for managing access to textures and colors for arrows based on Chart type.
 	/// </summary>
-	public abstract class ArrowGraphicManager
+	internal abstract class ArrowGraphicManager
 	{
 		protected const float ColorMultiplier = 1.5f;
+		protected const float SelectedColorMultiplier = 3.0f;
 
 		private static readonly uint MineColorRGBA;
 		private static readonly ushort MineColorBGR565;
@@ -64,6 +66,38 @@ namespace StepManiaEditor
 			return allTextures;
 		}
 
+		public static string GetSelectedTextureId(string textureId)
+		{
+			if (string.IsNullOrEmpty(textureId))
+				return null;
+			return $"{textureId}-selected";
+		}
+
+		protected static string GetTextureId(string textureId, bool selected)
+		{
+			return selected ? GetSelectedTextureId(textureId) : textureId;
+		}
+
+		public static Texture2D GenerateSelectedTexture(GraphicsDevice graphicsDevice, Texture2D input)
+		{
+			var w = input.Width;
+			var h = input.Height;
+
+			Texture2D newTexture = new Texture2D(graphicsDevice, w, h);
+
+			var n = w * h;
+			var colorData = new uint[n];
+			var newColorData = new uint[n];
+			input.GetData(colorData);
+			for (var i = 0; i < n; i++)
+			{
+				newColorData[i] = ColorRGBAMultiply(colorData[i], SelectedColorMultiplier);
+			}
+
+			newTexture.SetData(newColorData);
+			return newTexture;
+		}
+
 		/// <summary>
 		/// Factory method for creating a new ArrowGraphicManager appropriate for the given ChartType.
 		/// </summary>
@@ -110,14 +144,14 @@ namespace StepManiaEditor
 		public abstract (string, float) GetReceptorGlowTexture(int lane);
 		public abstract (string, float) GetReceptorHeldTexture(int lane);
 
-		public abstract (string, float) GetArrowTexture(int integerPosition, int lane);
+		public abstract (string, float) GetArrowTexture(int integerPosition, int lane, bool selected);
 
-		public abstract (string, bool) GetHoldStartTexture(int integerPosition, int lane, bool held);
-		public abstract (string, bool) GetHoldBodyTexture(int integerPosition, int lane, bool held);
-		public abstract (string, float) GetHoldEndTexture(int integerPosition, int lane, bool held);
-		public abstract (string, bool) GetRollStartTexture(int integerPosition, int lane, bool held);
-		public abstract (string, bool) GetRollBodyTexture(int integerPosition, int lane, bool held);
-		public abstract (string, float) GetRollEndTexture(int integerPosition, int lane, bool held);
+		public abstract (string, bool) GetHoldStartTexture(int integerPosition, int lane, bool held, bool selected);
+		public abstract (string, bool) GetHoldBodyTexture(int integerPosition, int lane, bool held, bool selected);
+		public abstract (string, float) GetHoldEndTexture(int integerPosition, int lane, bool held, bool selected);
+		public abstract (string, bool) GetRollStartTexture(int integerPosition, int lane, bool held, bool selected);
+		public abstract (string, bool) GetRollBodyTexture(int integerPosition, int lane, bool held, bool selected);
+		public abstract (string, float) GetRollEndTexture(int integerPosition, int lane, bool held, bool selected);
 
 		public static uint GetArrowColorRGBAForSubdivision(int subdivision)
 		{
@@ -141,9 +175,9 @@ namespace StepManiaEditor
 			return MineColorBGR565;
 		}
 
-		public static string GetMineTexture(int integerPosition, int lane)
+		public static string GetMineTexture(int integerPosition, int lane, bool selected)
 		{
-			return TextureIdMine;
+			return GetTextureId(TextureIdMine, selected);
 		}
 
 		public static string GetSnapIndicatorTexture(int subdivision)
@@ -156,7 +190,7 @@ namespace StepManiaEditor
 		}
 	}
 
-	public abstract class ArrowGraphicManagerDance : ArrowGraphicManager
+	internal abstract class ArrowGraphicManagerDance : ArrowGraphicManager
 	{
 		protected struct UniqueDanceTextures
 		{
@@ -429,7 +463,7 @@ namespace StepManiaEditor
 		}
 	}
 
-	public class ArrowGraphicManagerDanceSingleOrDouble : ArrowGraphicManagerDance
+	internal sealed class ArrowGraphicManagerDanceSingleOrDouble : ArrowGraphicManagerDance
 	{
 		private static readonly float[] ArrowRotations =
 		{
@@ -439,9 +473,9 @@ namespace StepManiaEditor
 			(float)Math.PI * 1.5f,	// R
 		};
 
-		public override (string, float) GetArrowTexture(int integerPosition, int lane)
+		public override (string, float) GetArrowTexture(int integerPosition, int lane, bool selected)
 		{
-			return (ArrowTextureByRow[integerPosition % SMCommon.MaxValidDenominator].DownArrow, ArrowRotations[lane % 4]);
+			return (GetTextureId(ArrowTextureByRow[integerPosition % SMCommon.MaxValidDenominator].DownArrow, selected), ArrowRotations[lane % 4]);
 		}
 
 		public override (string, float) GetReceptorGlowTexture(int lane)
@@ -459,49 +493,49 @@ namespace StepManiaEditor
 			return (ReceptorTextures.DownArrow, ArrowRotations[lane % 4]);
 		}
 
-		public override (string, bool) GetHoldBodyTexture(int integerPosition, int lane, bool held)
+		public override (string, bool) GetHoldBodyTexture(int integerPosition, int lane, bool held, bool selected)
 		{
-			return (held ? HoldTexturesActive.Body.DownArrow : HoldTexturesInactive.Body.DownArrow, false);
+			return (GetTextureId(held ? HoldTexturesActive.Body.DownArrow : HoldTexturesInactive.Body.DownArrow, selected), false);
 		}
 
-		public override (string, float) GetHoldEndTexture(int integerPosition, int lane, bool held)
+		public override (string, float) GetHoldEndTexture(int integerPosition, int lane, bool held, bool selected)
 		{
-			return (held ? HoldTexturesActive.End.DownArrow : HoldTexturesInactive.End.DownArrow, 0.0f);
+			return (GetTextureId(held ? HoldTexturesActive.End.DownArrow : HoldTexturesInactive.End.DownArrow, selected), 0.0f);
 		}
 
-		public override (string, bool) GetHoldStartTexture(int integerPosition, int lane, bool held)
+		public override (string, bool) GetHoldStartTexture(int integerPosition, int lane, bool held, bool selected)
 		{
-			return (held ? HoldTexturesActive.Start.DownArrow : HoldTexturesInactive.Start.DownArrow, false);
+			return (GetTextureId(held ? HoldTexturesActive.Start.DownArrow : HoldTexturesInactive.Start.DownArrow, selected), false);
 		}
 
-		public override (string, bool) GetRollBodyTexture(int integerPosition, int lane, bool held)
+		public override (string, bool) GetRollBodyTexture(int integerPosition, int lane, bool held, bool selected)
 		{
-			return (held ? RollTexturesActive.Body.DownArrow : RollTexturesInactive.Body.DownArrow, false);
+			return (GetTextureId(held ? RollTexturesActive.Body.DownArrow : RollTexturesInactive.Body.DownArrow, selected), false);
 		}
 
-		public override (string, float) GetRollEndTexture(int integerPosition, int lane, bool held)
+		public override (string, float) GetRollEndTexture(int integerPosition, int lane, bool held, bool selected)
 		{
-			return (held ? RollTexturesActive.End.DownArrow : RollTexturesInactive.End.DownArrow, 0.0f);
+			return (GetTextureId(held ? RollTexturesActive.End.DownArrow : RollTexturesInactive.End.DownArrow, selected), 0.0f);
 		}
 
-		public override (string, bool) GetRollStartTexture(int integerPosition, int lane, bool held)
+		public override (string, bool) GetRollStartTexture(int integerPosition, int lane, bool held, bool selected)
 		{
-			return (held ? RollTexturesActive.Start.DownArrow : RollTexturesInactive.Start.DownArrow, false);
+			return (GetTextureId(held ? RollTexturesActive.Start.DownArrow : RollTexturesInactive.Start.DownArrow, selected), false);
 		}
 	}
 
-	public abstract class ArrowGraphicManagerDanceSoloBase : ArrowGraphicManagerDance
+	internal abstract class ArrowGraphicManagerDanceSoloBase : ArrowGraphicManagerDance
 	{
 		protected abstract bool ShouldUseUpLeftArrow(int lane);
 		protected abstract float GetRotation(int lane);
 
-		public override (string, float) GetArrowTexture(int integerPosition, int lane)
+		public override (string, float) GetArrowTexture(int integerPosition, int lane, bool selected)
 		{
 			if (ShouldUseUpLeftArrow(lane))
 			{
-				return (ArrowTextureByRow[integerPosition % SMCommon.MaxValidDenominator].UpLeftArrow, GetRotation(lane));
+				return (GetTextureId(ArrowTextureByRow[integerPosition % SMCommon.MaxValidDenominator].UpLeftArrow, selected), GetRotation(lane));
 			}
-			return (ArrowTextureByRow[integerPosition % SMCommon.MaxValidDenominator].DownArrow, GetRotation(lane));
+			return (GetTextureId(ArrowTextureByRow[integerPosition % SMCommon.MaxValidDenominator].DownArrow, selected), GetRotation(lane));
 		}
 
 		public override (string, float) GetReceptorGlowTexture(int lane)
@@ -531,54 +565,54 @@ namespace StepManiaEditor
 			return (ReceptorTextures.DownArrow, GetRotation(lane));
 		}
 
-		public override (string, bool) GetHoldBodyTexture(int integerPosition, int lane, bool held)
+		public override (string, bool) GetHoldBodyTexture(int integerPosition, int lane, bool held, bool selected)
 		{
 			// Always use the narrower diagonal hold graphics in solo.
-			return (held ? HoldTexturesActive.Body.UpLeftArrow : HoldTexturesInactive.Body.UpLeftArrow, false);
+			return (GetTextureId(held ? HoldTexturesActive.Body.UpLeftArrow : HoldTexturesInactive.Body.UpLeftArrow, selected), false);
 		}
 
-		public override (string, float) GetHoldEndTexture(int integerPosition, int lane, bool held)
+		public override (string, float) GetHoldEndTexture(int integerPosition, int lane, bool held, bool selected)
 		{
 			// Always use the narrower diagonal hold graphics in solo.
-			return (held ? HoldTexturesActive.End.UpLeftArrow : HoldTexturesInactive.End.UpLeftArrow, 0.0f);
+			return (GetTextureId(held ? HoldTexturesActive.End.UpLeftArrow : HoldTexturesInactive.End.UpLeftArrow, selected), 0.0f);
 		}
 
-		public override (string, bool) GetHoldStartTexture(int integerPosition, int lane, bool held)
+		public override (string, bool) GetHoldStartTexture(int integerPosition, int lane, bool held, bool selected)
 		{
 			// Always use the narrower diagonal hold graphics in solo.
 			// But only use the start graphic for diagonal arrows since they have a gap needing to be filled.
 			if (ShouldUseUpLeftArrow(lane))
 			{
-				return (held ? HoldTexturesActive.Start.UpLeftArrow : HoldTexturesInactive.Start.UpLeftArrow, false);
+				return (GetTextureId(held ? HoldTexturesActive.Start.UpLeftArrow : HoldTexturesInactive.Start.UpLeftArrow, selected), false);
 			}
-			return (held ? HoldTexturesActive.Start.DownArrow : HoldTexturesInactive.Start.DownArrow, false);
+			return (GetTextureId(held ? HoldTexturesActive.Start.DownArrow : HoldTexturesInactive.Start.DownArrow, selected), false);
 		}
 
-		public override (string, bool) GetRollBodyTexture(int integerPosition, int lane, bool held)
+		public override (string, bool) GetRollBodyTexture(int integerPosition, int lane, bool held, bool selected)
 		{
 			// Always use the narrower diagonal hold graphics in solo.
-			return (held ? RollTexturesActive.Body.UpLeftArrow : RollTexturesInactive.Body.UpLeftArrow, false);
+			return (GetTextureId(held ? RollTexturesActive.Body.UpLeftArrow : RollTexturesInactive.Body.UpLeftArrow, selected), false);
 		}
 
-		public override (string, float) GetRollEndTexture(int integerPosition, int lane, bool held)
+		public override (string, float) GetRollEndTexture(int integerPosition, int lane, bool held, bool selected)
 		{
 			// Always use the narrower diagonal hold graphics in solo.
-			return (held ? RollTexturesActive.End.UpLeftArrow : RollTexturesInactive.End.UpLeftArrow, 0.0f);
+			return (GetTextureId(held ? RollTexturesActive.End.UpLeftArrow : RollTexturesInactive.End.UpLeftArrow, selected), 0.0f);
 		}
 
-		public override (string, bool) GetRollStartTexture(int integerPosition, int lane, bool held)
+		public override (string, bool) GetRollStartTexture(int integerPosition, int lane, bool held, bool selected)
 		{
 			// Always use the narrower diagonal hold graphics in solo.
 			// But only use the start graphic for diagonal arrows since they have a gap needing to be filled.
 			if (ShouldUseUpLeftArrow(lane))
 			{
-				return (held ? RollTexturesActive.Start.UpLeftArrow : RollTexturesInactive.Start.UpLeftArrow, false);
+				return (GetTextureId(held ? RollTexturesActive.Start.UpLeftArrow : RollTexturesInactive.Start.UpLeftArrow, selected), false);
 			}
-			return (held ? RollTexturesActive.Start.DownArrow : RollTexturesInactive.Start.DownArrow, false);
+			return (GetTextureId(held ? RollTexturesActive.Start.DownArrow : RollTexturesInactive.Start.DownArrow, selected), false);
 		}
 	}
 
-	public class ArrowGraphicManagerDanceSolo : ArrowGraphicManagerDanceSoloBase
+	internal sealed class ArrowGraphicManagerDanceSolo : ArrowGraphicManagerDanceSoloBase
 	{
 		private static readonly float[] ArrowRotations =
 		{
@@ -601,7 +635,7 @@ namespace StepManiaEditor
 		}
 	}
 
-	public class ArrowGraphicManagerDanceThreePanel : ArrowGraphicManagerDanceSoloBase
+	internal sealed class ArrowGraphicManagerDanceThreePanel : ArrowGraphicManagerDanceSoloBase
 	{
 		private static readonly float[] ArrowRotations =
 		{
@@ -620,18 +654,18 @@ namespace StepManiaEditor
 		}
 	}
 
-	public abstract class ArrowGraphicManagerDanceSMX : ArrowGraphicManagerDance
+	internal abstract class ArrowGraphicManagerDanceSMX : ArrowGraphicManagerDance
 	{
 		protected abstract bool ShouldUseCenterArrow(int lane);
 		protected abstract float GetRotation(int lane);
 
-		public override (string, float) GetArrowTexture(int integerPosition, int lane)
+		public override (string, float) GetArrowTexture(int integerPosition, int lane, bool selected)
 		{
 			if (ShouldUseCenterArrow(lane))
 			{
-				return (ArrowTextureByRow[integerPosition % SMCommon.MaxValidDenominator].CenterArrow, GetRotation(lane));
+				return (GetTextureId(ArrowTextureByRow[integerPosition % SMCommon.MaxValidDenominator].CenterArrow, selected), GetRotation(lane));
 			}
-			return (ArrowTextureByRow[integerPosition % SMCommon.MaxValidDenominator].DownArrow, GetRotation(lane));
+			return (GetTextureId(ArrowTextureByRow[integerPosition % SMCommon.MaxValidDenominator].DownArrow, selected), GetRotation(lane));
 		}
 
 		public override (string, float) GetReceptorGlowTexture(int lane)
@@ -661,38 +695,38 @@ namespace StepManiaEditor
 			return (ReceptorTextures.DownArrow, GetRotation(lane));
 		}
 
-		public override (string, bool) GetHoldBodyTexture(int integerPosition, int lane, bool held)
+		public override (string, bool) GetHoldBodyTexture(int integerPosition, int lane, bool held, bool selected)
 		{
-			return (held ? HoldTexturesActive.Body.CenterArrow : HoldTexturesInactive.Body.CenterArrow, false);
+			return (GetTextureId(held ? HoldTexturesActive.Body.CenterArrow : HoldTexturesInactive.Body.CenterArrow, selected), false);
 		}
 
-		public override (string, float) GetHoldEndTexture(int integerPosition, int lane, bool held)
+		public override (string, float) GetHoldEndTexture(int integerPosition, int lane, bool held, bool selected)
 		{
-			return (held ? HoldTexturesActive.End.CenterArrow : HoldTexturesInactive.End.CenterArrow, 0.0f);
+			return (GetTextureId(held ? HoldTexturesActive.End.CenterArrow : HoldTexturesInactive.End.CenterArrow, selected), 0.0f);
 		}
 
-		public override (string, bool) GetHoldStartTexture(int integerPosition, int lane, bool held)
+		public override (string, bool) GetHoldStartTexture(int integerPosition, int lane, bool held, bool selected)
 		{
-			return (held ? HoldTexturesActive.Start.CenterArrow : HoldTexturesInactive.Start.CenterArrow, false);
+			return (GetTextureId(held ? HoldTexturesActive.Start.CenterArrow : HoldTexturesInactive.Start.CenterArrow, selected), false);
 		}
 
-		public override (string, bool) GetRollBodyTexture(int integerPosition, int lane, bool held)
+		public override (string, bool) GetRollBodyTexture(int integerPosition, int lane, bool held, bool selected)
 		{
-			return (held ? RollTexturesActive.Body.CenterArrow : RollTexturesInactive.Body.CenterArrow, false);
+			return (GetTextureId(held ? RollTexturesActive.Body.CenterArrow : RollTexturesInactive.Body.CenterArrow, selected), false);
 		}
 
-		public override (string, float) GetRollEndTexture(int integerPosition, int lane, bool held)
+		public override (string, float) GetRollEndTexture(int integerPosition, int lane, bool held, bool selected)
 		{
-			return (held ? RollTexturesActive.End.CenterArrow : RollTexturesInactive.End.CenterArrow, 0.0f);
+			return (GetTextureId(held ? RollTexturesActive.End.CenterArrow : RollTexturesInactive.End.CenterArrow, selected), 0.0f);
 		}
 
-		public override (string, bool) GetRollStartTexture(int integerPosition, int lane, bool held)
+		public override (string, bool) GetRollStartTexture(int integerPosition, int lane, bool held, bool selected)
 		{
-			return (held ? RollTexturesActive.Start.CenterArrow : RollTexturesInactive.Start.CenterArrow, false);
+			return (GetTextureId(held ? RollTexturesActive.Start.CenterArrow : RollTexturesInactive.Start.CenterArrow, selected), false);
 		}
 	}
 
-	public class ArrowGraphicManagerDanceSMXBeginner : ArrowGraphicManagerDanceSMX
+	internal sealed class ArrowGraphicManagerDanceSMXBeginner : ArrowGraphicManagerDanceSMX
 	{
 		private static readonly float[] ArrowRotations =
 		{
@@ -711,7 +745,7 @@ namespace StepManiaEditor
 		}
 	}
 
-	public class ArrowGraphicManagerDanceSMXSingleOrFull : ArrowGraphicManagerDanceSMX
+	internal sealed class ArrowGraphicManagerDanceSMXSingleOrFull : ArrowGraphicManagerDanceSMX
 	{
 		private static readonly float[] ArrowRotations =
 		{
@@ -732,7 +766,7 @@ namespace StepManiaEditor
 		}
 	}
 
-	public class ArrowGraphicManagerDanceSMXDual : ArrowGraphicManagerDanceSMX
+	internal sealed class ArrowGraphicManagerDanceSMXDual : ArrowGraphicManagerDanceSMX
 	{
 		private static readonly float[] ArrowRotations =
 		{
@@ -754,7 +788,7 @@ namespace StepManiaEditor
 		}
 	}
 
-	public abstract class ArrowGraphicManagerPIU : ArrowGraphicManager
+	internal abstract class ArrowGraphicManagerPIU : ArrowGraphicManager
 	{
 		protected static readonly uint ArrowColorRedRGBA;
 		protected static readonly ushort ArrowColorRedBGR565;
@@ -981,42 +1015,42 @@ namespace StepManiaEditor
 			return (ReceptorHeldTextures[i], ArrowRotations[i]);
 		}
 
-		public override (string, float) GetArrowTexture(int integerPosition, int lane)
+		public override (string, float) GetArrowTexture(int integerPosition, int lane, bool selected)
 		{
 			var i = GetTextureIndex(lane);
-			return (ArrowTextures[i], ArrowRotationsColored[i]);
+			return (GetTextureId(ArrowTextures[i], selected), ArrowRotationsColored[i]);
 		}
 
-		public override (string, bool) GetHoldStartTexture(int integerPosition, int lane, bool held)
+		public override (string, bool) GetHoldStartTexture(int integerPosition, int lane, bool held, bool selected)
 		{
 			return (null, false);
 		}
 
-		public override (string, bool) GetHoldBodyTexture(int integerPosition, int lane, bool held)
+		public override (string, bool) GetHoldBodyTexture(int integerPosition, int lane, bool held, bool selected)
 		{
 			var i = GetTextureIndex(lane);
 			return (HoldTextures[i], HoldMirrored[i]);
 		}
 
-		public override (string, float) GetHoldEndTexture(int integerPosition, int lane, bool held)
+		public override (string, float) GetHoldEndTexture(int integerPosition, int lane, bool held, bool selected)
 		{
-			return GetArrowTexture(integerPosition, lane);
+			return GetArrowTexture(integerPosition, lane, selected);
 		}
 
-		public override (string, bool) GetRollStartTexture(int integerPosition, int lane, bool held)
+		public override (string, bool) GetRollStartTexture(int integerPosition, int lane, bool held, bool selected)
 		{
 			return (null, false);
 		}
 
-		public override (string, bool) GetRollBodyTexture(int integerPosition, int lane, bool held)
+		public override (string, bool) GetRollBodyTexture(int integerPosition, int lane, bool held, bool selected)
 		{
 			var i = GetTextureIndex(lane);
-			return (RollTextures[i], HoldMirrored[i]);
+			return (GetTextureId(RollTextures[i], selected), HoldMirrored[i]);
 		}
 
-		public override (string, float) GetRollEndTexture(int integerPosition, int lane, bool held)
+		public override (string, float) GetRollEndTexture(int integerPosition, int lane, bool held, bool selected)
 		{
-			return GetArrowTexture(integerPosition, lane);
+			return GetArrowTexture(integerPosition, lane, selected);
 		}
 
 		public override uint GetArrowColorRGBA(int integerPosition, int lane)
@@ -1056,7 +1090,7 @@ namespace StepManiaEditor
 		}
 	}
 
-	public class ArrowGraphicManagerPIUSingleOrDouble : ArrowGraphicManagerPIU
+	internal sealed class ArrowGraphicManagerPIUSingleOrDouble : ArrowGraphicManagerPIU
 	{
 		public ArrowGraphicManagerPIUSingleOrDouble()
 		{
@@ -1064,7 +1098,7 @@ namespace StepManiaEditor
 		}
 	}
 
-	public class ArrowGraphicManagerPIUSingleHalfDouble : ArrowGraphicManagerPIU
+	internal sealed class ArrowGraphicManagerPIUSingleHalfDouble : ArrowGraphicManagerPIU
 	{
 		public ArrowGraphicManagerPIUSingleHalfDouble()
 		{

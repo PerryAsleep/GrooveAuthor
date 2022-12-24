@@ -3,7 +3,7 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace StepManiaEditor
 {
-	public class EditorScrollRateEvent : EditorRateAlteringEvent
+	internal sealed class EditorScrollRateEvent : EditorRateAlteringEvent
 	{
 		public static readonly string EventShortDescription =
 			"StepMania refers to these events as \"scrolls\".\n" +

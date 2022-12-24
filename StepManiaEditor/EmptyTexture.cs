@@ -6,7 +6,7 @@ namespace StepManiaEditor
 	/// <summary>
 	/// A MonoGame Texture to render via ImGui representing an unloaded, empty texture with a checkerboard pattern.
 	/// </summary>
-	class EmptyTexture : IDisposable
+	internal sealed class EmptyTexture : IDisposable
 	{
 		private const int CheckerDimension = 32;
 		private const uint DarkColor = 0xFF1E1E1E;
@@ -43,7 +43,7 @@ namespace StepManiaEditor
 			GC.SuppressFinalize(this);
 		}
 
-		protected virtual void Dispose(bool disposing)
+		private void Dispose(bool disposing)
 		{
 			if (Disposed)
 				return;

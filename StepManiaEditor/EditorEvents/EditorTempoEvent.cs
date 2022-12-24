@@ -4,7 +4,7 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace StepManiaEditor
 {
-	public class EditorTempoEvent : EditorRateAlteringEvent
+	internal sealed class EditorTempoEvent : EditorRateAlteringEvent
 	{
 		public static readonly string EventShortDescription =
 			"Tempo in beats per minute.\n" +

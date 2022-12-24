@@ -117,7 +117,7 @@ namespace StepManiaEditor
 	/// <summary>
 	/// Action to restore animation preferences to their default values.
 	/// </summary>
-	public class ActionRestoreAnimationsPreferenceDefaults : EditorAction
+	internal sealed class ActionRestoreAnimationsPreferenceDefaults : EditorAction
 	{
 		private readonly bool PreviousAutoPlayHideArrows;
 		private readonly bool PreviousAutoPlayLightHolds;

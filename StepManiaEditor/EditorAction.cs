@@ -10,7 +10,7 @@ namespace StepManiaEditor
 	/// An action that can be done and undone.
 	/// Meant to be used by ActionQueue.
 	/// </summary>
-	public abstract class EditorAction
+	internal abstract class EditorAction
 	{
 		/// <summary>
 		/// Do the action.
@@ -60,7 +60,7 @@ namespace StepManiaEditor
 	/// <typeparam name="T">
 	/// Reference type of object field or property.
 	/// </typeparam>
-	public class ActionSetObjectFieldOrPropertyValue<T> : EditorAction where T : struct
+	internal sealed class ActionSetObjectFieldOrPropertyValue<T> : EditorAction where T : struct
 	{
 		private readonly T Value;
 		private readonly T PreviousValue;
@@ -156,7 +156,7 @@ namespace StepManiaEditor
 	/// Reference type of object field or property.
 	/// Must be Cloneable to ensure save undo and redo operations.
 	/// </typeparam>
-	public class ActionSetObjectFieldOrPropertyReference<T> : EditorAction where T : class, ICloneable
+	internal sealed class ActionSetObjectFieldOrPropertyReference<T> : EditorAction where T : class, ICloneable
 	{
 		private readonly T Value;
 		private readonly T PreviousValue;
@@ -248,8 +248,7 @@ namespace StepManiaEditor
 		}
 	}
 
-
-	public class ActionSetExtrasValue<T> : EditorAction
+	internal sealed class ActionSetExtrasValue<T> : EditorAction
 	{
 		private readonly T Value;
 		private readonly T PreviousValue;
@@ -297,7 +296,7 @@ namespace StepManiaEditor
 	/// If they were different before setting ShouldAllowEditsOfMax to true, then undoing
 	/// that change should restore the max tempo back to what it was previously.
 	/// </summary>
-	public class ActionSetDisplayTempoAllowEditsOfMax : EditorAction
+	internal sealed class ActionSetDisplayTempoAllowEditsOfMax : EditorAction
 	{
 		private readonly DisplayTempo DisplayTempo;
 		private readonly double PreviousMax;
@@ -335,7 +334,7 @@ namespace StepManiaEditor
 		}
 	}
 
-	public class ActionMultiple : EditorAction
+	internal sealed class ActionMultiple : EditorAction
 	{
 		private readonly List<EditorAction> Actions;
 
@@ -402,8 +401,8 @@ namespace StepManiaEditor
 			Actions.Clear();
 		}
 	}
-	
-	public class ActionAddEditorEvent : EditorAction
+
+	internal sealed class ActionAddEditorEvent : EditorAction
 	{
 		private EditorEvent EditorEvent;
 
@@ -446,7 +445,7 @@ namespace StepManiaEditor
 		}
 	}
 
-	public class ActionDeleteEditorEvent : EditorAction
+	internal sealed class ActionDeleteEditorEvent : EditorAction
 	{
 		private readonly EditorEvent EditorEvent;
 
@@ -484,7 +483,7 @@ namespace StepManiaEditor
 		}
 	}
 
-	public class ActionChangeHoldLength : EditorAction
+	internal sealed class ActionChangeHoldLength : EditorAction
 	{
 		private EditorHoldStartNoteEvent HoldStart;
 		private EditorHoldEndNoteEvent HoldEnd;
@@ -533,7 +532,7 @@ namespace StepManiaEditor
 		}
 	}
 
-	public class ActionAddHoldEvent : EditorAction
+	internal sealed class ActionAddHoldEvent : EditorAction
 	{
 		private EditorHoldStartNoteEvent HoldStart;
 		private EditorHoldEndNoteEvent HoldEnd;
@@ -606,7 +605,7 @@ namespace StepManiaEditor
 		}
 	}
 
-	public class ActionChangeHoldType : EditorAction
+	internal sealed class ActionChangeHoldType : EditorAction
 	{
 		private bool Roll;
 		private EditorHoldStartNoteEvent HoldStart;
@@ -640,7 +639,7 @@ namespace StepManiaEditor
 		}
 	}
 
-	public class ActionDeleteHoldEvent : EditorAction
+	internal sealed class ActionDeleteHoldEvent : EditorAction
 	{
 		private EditorHoldStartNoteEvent HoldStart;
 
@@ -673,7 +672,7 @@ namespace StepManiaEditor
 		}
 	}
 
-	public class ActionSelectChart : EditorAction
+	internal sealed class ActionSelectChart : EditorAction
 	{
 		private Editor Editor;
 		private EditorChart Chart;
@@ -707,7 +706,7 @@ namespace StepManiaEditor
 		}
 	}
 
-	public class ActionAddChart : EditorAction
+	internal sealed class ActionAddChart : EditorAction
 	{
 		private Editor Editor;
 		private ChartType ChartType;
@@ -750,7 +749,7 @@ namespace StepManiaEditor
 		}
 	}
 
-	public class ActionDeleteChart : EditorAction
+	internal sealed class ActionDeleteChart : EditorAction
 	{
 		private Editor Editor;
 		private EditorChart Chart;
@@ -784,7 +783,7 @@ namespace StepManiaEditor
 		}
 	}
 
-	public class ActionMoveFocalPoint : EditorAction
+	internal sealed class ActionMoveFocalPoint : EditorAction
 	{
 		private int PreviousX;
 		private int PreviousY;

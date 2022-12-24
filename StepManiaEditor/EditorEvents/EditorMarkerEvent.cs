@@ -5,7 +5,7 @@ using static StepManiaEditor.Utils;
 
 namespace StepManiaEditor
 {
-	public class EditorMarkerEvent
+	internal sealed class EditorMarkerEvent
 	{
 		private readonly double X;
 		private readonly double Y;

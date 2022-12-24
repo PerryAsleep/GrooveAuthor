@@ -8,7 +8,7 @@ namespace StepManiaEditor
 	/// <summary>
 	/// Class for managing the arrow receptors and playing various receptor animations.
 	/// </summary>
-	public class Receptor
+	internal sealed class Receptor
 	{
 		// Animation parameters for scaling the receptor when tapped.
 		private const float TapAnimMidScale = 0.9f;

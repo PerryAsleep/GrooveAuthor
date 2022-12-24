@@ -13,7 +13,7 @@ namespace StepManiaEditor
 	/// <summary>
 	/// Class for drawing Song properties UI.
 	/// </summary>
-	public class UISongProperties
+	internal sealed class UISongProperties
 	{
 		private static EditorSong EditorSong;
 

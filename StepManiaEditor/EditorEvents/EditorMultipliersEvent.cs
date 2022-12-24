@@ -4,7 +4,7 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace StepManiaEditor
 {
-	class EditorMultipliersEvent : EditorEvent
+	internal sealed class EditorMultipliersEvent : EditorEvent
 	{
 		public static readonly string EventShortDescription =
 			"Multipliers represent hit and miss multiplier values to apply to combo.";
@@ -16,7 +16,6 @@ namespace StepManiaEditor
 
 		public Multipliers MultipliersEvent;
 		private bool WidthDirty;
-		public bool CanBeDeleted;
 
 		public string StringValue
 		{
