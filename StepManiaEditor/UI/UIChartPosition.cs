@@ -180,11 +180,11 @@ namespace StepManiaEditor
 			ImGui.Text(label);
 
 			DrawPositionTableCell(TablePositionColWidth, $"({x}, {y})", ref colIndex);
-			DrawPositionTableCell(TableSongTimeColWidth, $"{FormatTime(position.SongTime)}", ref colIndex);
-			DrawPositionTableCell(TableChartTimeColWidth, $"{FormatTime(position.ChartTime)}", ref colIndex);
-			DrawPositionTableCell(TableMeasureColWidth, $"{GetMeasure(position):N3}", ref colIndex);
-			DrawPositionTableCell(TableBeatColWidth, $"{(position.ChartPosition / SMCommon.MaxValidDenominator):N3}", ref colIndex);
-			DrawPositionTableCell(TableRowColWidth, $"{position.ChartPosition:N3}", ref colIndex);
+			DrawPositionTableCell(TableSongTimeColWidth, FormatTime(position.SongTime), ref colIndex);
+			DrawPositionTableCell(TableChartTimeColWidth, FormatTime(position.ChartTime), ref colIndex);
+			DrawPositionTableCell(TableMeasureColWidth, FormatDouble(GetMeasure(position)), ref colIndex);
+			DrawPositionTableCell(TableBeatColWidth, FormatDouble(position.ChartPosition / SMCommon.MaxValidDenominator), ref colIndex);
+			DrawPositionTableCell(TableRowColWidth, FormatDouble(position.ChartPosition), ref colIndex);
 		}
 
 		private static void DrawPositionTableCell(int width, string text, ref int index)
@@ -231,18 +231,49 @@ namespace StepManiaEditor
 			return measures;
 		}
 
+		private static string FormatDouble(double value)
+		{
+			if (value == double.NegativeInfinity)
+			{
+				return "-Infinity";
+			}
+			if (value == double.PositiveInfinity)
+			{
+				return "Infinity";
+			}
+			if (value == double.NaN)
+			{
+				return "NaN";
+			}
+			return $"{value:N3}";
+		}
+
 		private static string FormatTime(double seconds)
 		{
 			const string formatMinutes = @"mm\:ss\:ffffff";
 			const string formatHours = @"hh\:mm\:ss\:ffffff";
 			const string formatDays = @"d\.hh\:mm\:ss\:ffffff";
 
+			if (seconds < TimeSpan.MinValue.TotalSeconds || seconds == double.NegativeInfinity)
+			{
+				return "-Infinity";
+			}
+			if (seconds > TimeSpan.MaxValue.TotalSeconds || seconds == double.PositiveInfinity)
+			{
+				return "Infinity";
+			}
+			if (seconds == double.NaN)
+			{
+				return "NaN";
+			}
+
 			var formatString = formatMinutes;
-			if (seconds >= 86400.0)
+			var abs = Math.Abs(seconds);
+			if (abs >= 86400.0)
 			{
 				formatString = formatDays;
 			}
-			else if (seconds >= 3600.0)
+			else if (abs >= 3600.0)
 			{
 				formatString = formatHours;
 			}
