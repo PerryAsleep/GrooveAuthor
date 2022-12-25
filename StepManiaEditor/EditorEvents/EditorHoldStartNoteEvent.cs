@@ -71,6 +71,9 @@ namespace StepManiaEditor
 			return new List<EditorEvent>() { this, EditorHoldEndNoteEvent };
 		}
 
+		public override bool IsSelectableWithoutModifiers() { return true; }
+		public override bool IsSelectableWithModifiers() { return false; }
+
 		public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)
 		{
 			DrawAtY(textureAtlas, spriteBatch, arrowGraphicManager, Y);

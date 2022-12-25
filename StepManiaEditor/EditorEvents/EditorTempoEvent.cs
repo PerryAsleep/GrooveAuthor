@@ -69,6 +69,9 @@ namespace StepManiaEditor
 			}
 		}
 
+		public override bool IsSelectableWithoutModifiers() { return false; }
+		public override bool IsSelectableWithModifiers() { return true; }
+
 		public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)
 		{
 			if (Alpha <= 0.0f)
@@ -79,7 +82,7 @@ namespace StepManiaEditor
 				nameof(DoubleValue),
 				(int)X, (int)Y, (int)W,
 				Utils.UITempoColorRGBA,
-				false,
+				IsSelected(),
 				CanBeDeleted,
 				Speed,
 				Format,

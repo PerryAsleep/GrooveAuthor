@@ -24,6 +24,9 @@ namespace StepManiaEditor
 			return LaneTapNote.Lane;
 		}
 
+		public override bool IsSelectableWithoutModifiers() { return true; }
+		public override bool IsSelectableWithModifiers() { return false; }
+
 		public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)
 		{
 			var (textureId, rot) = arrowGraphicManager.GetArrowTexture(LaneTapNote.IntegerPosition, LaneTapNote.Lane, IsSelected());

@@ -90,5 +90,8 @@ namespace StepManiaEditor
 		{
 			ChartTime = chartTime;
 		}
+
+		public override bool IsSelectableWithoutModifiers() { return false; }
+		public override bool IsSelectableWithModifiers() { return false; }
 	}
 }

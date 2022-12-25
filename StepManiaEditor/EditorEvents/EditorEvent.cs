@@ -252,6 +252,10 @@ namespace StepManiaEditor
 			return x >= X && x <= X + W && y >= Y && y <= Y + H;
 		}
 
+		public abstract bool IsSelectableWithoutModifiers();
+		public abstract bool IsSelectableWithModifiers();
+
+
 		public bool IsSelected()
 		{
 			return Selected;

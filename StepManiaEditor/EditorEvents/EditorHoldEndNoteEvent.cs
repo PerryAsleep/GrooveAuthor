@@ -72,6 +72,9 @@ namespace StepManiaEditor
 			return new List<EditorEvent>() { EditorHoldStartNoteEvent, this };
 		}
 
+		public override bool IsSelectableWithoutModifiers() { return false; }
+		public override bool IsSelectableWithModifiers() { return false; }
+
 		public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)
 		{
 			var roll = IsRoll();

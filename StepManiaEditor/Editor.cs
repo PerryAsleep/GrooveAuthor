@@ -243,6 +243,8 @@ namespace StepManiaEditor
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.N }, OnNew, false));
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.R }, OnReload, false));
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.A }, OnSelectAll, false));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftAlt, Keys.A }, OnSelectAllAlt, false));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.A }, OnSelectAllShift, false));
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Space }, OnTogglePlayback, false));
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.P }, OnTogglePlayPreview, false));
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Escape }, OnEscape, false));
@@ -3571,7 +3573,35 @@ namespace StepManiaEditor
 
 		public void OnSelectAll()
 		{
-			// TODO: Implement.
+			OnSelectAllImpl((EditorEvent e) => { return e.IsSelectableWithoutModifiers(); });
+		}
+
+		public void OnSelectAllAlt()
+		{
+			OnSelectAllImpl((EditorEvent e) => { return e.IsSelectableWithModifiers(); });
+		}
+
+		public void OnSelectAllShift()
+		{
+			OnSelectAllImpl((EditorEvent e) => { return e.IsSelectableWithoutModifiers() || e.IsSelectableWithModifiers(); });
+		}
+
+		private void OnSelectAllImpl(Func<EditorEvent, bool> isSelectable)
+		{
+			if (ActiveChart == null)
+				return;
+
+			EditorEvent lastEvent = null;
+			foreach (var editorEvent in ActiveChart.EditorEvents)
+			{
+				if (isSelectable(editorEvent))
+				{
+					SelectEvent(editorEvent, false);
+					lastEvent = editorEvent;
+				}
+			}
+			if (lastEvent != null)
+				SelectEvent(lastEvent, true);
 		}
 
 		/// <summary>
@@ -3587,6 +3617,11 @@ namespace StepManiaEditor
 
 			// Collect the newly selected notes.
 			var newlySelectedEvents = new List<EditorEvent>();
+
+			var alt = KeyCommandManager.IsKeyDown(Keys.LeftAlt);
+			Func<EditorEvent, bool> isSelectable = alt ?
+				((EditorEvent e) => { return e.IsSelectableWithModifiers(); })
+				: ((EditorEvent e) => { return e.IsSelectableWithoutModifiers(); });
 
 			// For clicking, we want to select only one note. The latest note whose bounding rect
 			// overlaps with the point that was clicked. The events are sorted but we cannot binary
@@ -3628,6 +3663,8 @@ namespace StepManiaEditor
 				var minLane = (int)Math.Floor((minChartX + lanesWidth * 0.5) / arrowW);
 				var maxLane = (int)Math.Floor((maxChartX + lanesWidth * 0.5) / arrowW);
 
+				// TODO: Selecting misc events isn't working as intended.
+
 				if (Preferences.Instance.PreferencesScroll.SpacingMode == SpacingMode.ConstantTime)
 				{
 					var (minTime, maxTime) = SelectedRegion.GetSelectedChartTimeRange();
@@ -3637,9 +3674,7 @@ namespace StepManiaEditor
 					{
 						if (enumerator.Current.GetChartTime() > maxTime)
 							break;
-						if (!(enumerator.Current is EditorTapNoteEvent
-							|| enumerator.Current is EditorMineNoteEvent
-							|| enumerator.Current is EditorHoldStartNoteEvent))
+						if (!isSelectable(enumerator.Current))
 							continue;
 						var lane = enumerator.Current.GetLane();
 						if (lane < minLane || lane > maxLane)
@@ -3657,9 +3692,7 @@ namespace StepManiaEditor
 					{
 						if (enumerator.Current.GetRow() > maxPosition)
 							break;
-						if (!(enumerator.Current is EditorTapNoteEvent
-							|| enumerator.Current is EditorMineNoteEvent
-							|| enumerator.Current is EditorHoldStartNoteEvent))
+						if (!isSelectable(enumerator.Current))
 							continue;
 						var lane = enumerator.Current.GetLane();
 						if (lane < minLane || lane > maxLane)
@@ -3697,9 +3730,7 @@ namespace StepManiaEditor
 						while (enumerator.MoveNext())
 						{
 							last = enumerator.Current == end;
-							if (enumerator.Current is EditorTapNoteEvent
-								|| enumerator.Current is EditorMineNoteEvent
-								|| enumerator.Current is EditorHoldStartNoteEvent)
+							if (isSelectable(enumerator.Current))
 							{
 								SelectEvent(enumerator.Current, last);
 							}
@@ -4249,6 +4280,8 @@ namespace StepManiaEditor
 				StopPreview();
 			else if (Playing)
 				StopPlayback();
+			else if (SelectedEvents.Count > 0)
+				ClearSelectedEvents();
 		}
 
 		public void ClosingForm(object sender, System.ComponentModel.CancelEventArgs e)
