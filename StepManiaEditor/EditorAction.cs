@@ -445,9 +445,9 @@ namespace StepManiaEditor
 		}
 	}
 
-	internal sealed class ActionDeleteEditorEvent : EditorAction
+	internal sealed class ActionDeleteEditorEvents : EditorAction
 	{
-		private readonly EditorEvent EditorEvent;
+		private readonly List<EditorEvent> EditorEvents = new List<EditorEvent>();
 
 		/// <summary>
 		/// Deleting an event may result in other events also being deleted.
@@ -456,9 +456,17 @@ namespace StepManiaEditor
 		/// </summary>
 		private List<EditorEvent> AllDeletedEvents = new List<EditorEvent>();
 
-		public ActionDeleteEditorEvent(EditorEvent editorEvent)
+		public ActionDeleteEditorEvents(EditorEvent editorEvent)
 		{
-			EditorEvent = editorEvent;
+			EditorEvents.Add(editorEvent);
+		}
+
+		public ActionDeleteEditorEvents(List<EditorEvent> editorEvents, bool copy)
+		{
+			if (copy)
+				EditorEvents.AddRange(editorEvents);
+			else
+				EditorEvents = editorEvents;
 		}
 
 		public override bool AffectsFile()
@@ -469,17 +477,22 @@ namespace StepManiaEditor
 		public override string ToString()
 		{
 			// TODO: Nice strings
-			return $"Delete {EditorEvent.GetType()}.";
+			var count = EditorEvents.Count;
+			if (count == 1)
+			{
+				return $"Delete {EditorEvents[0].GetType()}.";
+			}
+			return $"Delete {count} events.";
 		}
 
 		public override void Do()
 		{
-			AllDeletedEvents = EditorEvent.GetEditorChart().DeleteEvent(EditorEvent);
+			AllDeletedEvents = EditorEvents[0].GetEditorChart().DeleteEvents(EditorEvents);
 		}
 
 		public override void Undo()
 		{
-			EditorEvent.GetEditorChart().AddEvents(AllDeletedEvents);
+			EditorEvents[0].GetEditorChart().AddEvents(AllDeletedEvents);
 		}
 	}
 

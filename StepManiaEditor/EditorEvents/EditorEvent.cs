@@ -28,7 +28,7 @@ namespace StepManiaEditor
 		/// <summary>
 		/// Whether or not this EditorEvent can be deleted from its EditorChart.
 		/// </summary>
-		public bool CanBeDeleted;
+		public bool CanBeDeleted = true;
 		/// <summary>
 		/// Whether or not this EditorEvent is currently selected by the user.
 		/// </summary>

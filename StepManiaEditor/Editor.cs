@@ -256,6 +256,7 @@ namespace StepManiaEditor
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.PageDown }, OnMoveToNextMeasure, true, null, true));
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Home }, OnMoveToChartStart, false, null, true));
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.End }, OnMoveToChartEnd, false, null, true));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Delete }, OnDelete, false, null, true));
 
 			var arrowInputKeys = new[] { Keys.D1, Keys.D2, Keys.D3, Keys.D4, Keys.D5, Keys.D6, Keys.D7, Keys.D8, Keys.D9, Keys.D0 };
 			var index = 0;
@@ -3047,7 +3048,6 @@ namespace StepManiaEditor
 				var newEvent = createEventFunc();
 				newEvent.SetRow(row);
 				newEvent.SetChartTime(chartTime);
-				newEvent.CanBeDeleted = true;
 				ActionQueue.Instance.Do(new ActionAddEditorEvent(newEvent));
 			}
 			if (!enabled)
@@ -3571,6 +3571,22 @@ namespace StepManiaEditor
 
 		#region Selection
 
+		public void OnDelete()
+		{
+			if (ActiveChart == null || SelectedEvents.Count < 1)
+				return;
+			var eventsToDelete = new List<EditorEvent>();
+			foreach(var editorEvent in SelectedEvents)
+			{
+				if (!editorEvent.CanBeDeleted)
+					continue;
+				eventsToDelete.Add(editorEvent);
+			}
+			if (eventsToDelete.Count == 0)
+				return;
+			ActionQueue.Instance.Do(new ActionDeleteEditorEvents(eventsToDelete, false));
+		}
+
 		public void OnSelectAll()
 		{
 			OnSelectAllImpl((EditorEvent e) => { return e.IsSelectableWithoutModifiers(); });
@@ -3962,7 +3978,7 @@ namespace StepManiaEditor
 			EditorAction deleteAction = null;
 			var existingEvent = ActiveChart.EditorEvents.FindNoteAt(row, lane, true);
 			if (existingEvent is EditorMineNoteEvent || existingEvent is EditorTapNoteEvent)
-				deleteAction = new ActionDeleteEditorEvent(existingEvent);
+				deleteAction = new ActionDeleteEditorEvents(existingEvent);
 			else if (existingEvent is EditorHoldStartNoteEvent hsn && hsn.GetRow() == row)
 				deleteAction = new ActionDeleteHoldEvent(hsn);
 			if (deleteAction != null)
@@ -4056,7 +4072,7 @@ namespace StepManiaEditor
 						{
 							LaneEditStates[lane].SetEditingTapOrMine(LaneEditStates[lane].GetEventBeingEdited(), new List<EditorAction>
 							{
-								new ActionDeleteEditorEvent(existingEvent)
+								new ActionDeleteEditorEvents(existingEvent)
 							});
 						}
 
@@ -4064,7 +4080,7 @@ namespace StepManiaEditor
 						else
 						{
 							LaneEditStates[lane].Clear(true);
-							ActionQueue.Instance.Do(new ActionDeleteEditorEvent(existingEvent));
+							ActionQueue.Instance.Do(new ActionDeleteEditorEvents(existingEvent));
 							return;
 						}
 					}
@@ -4183,7 +4199,7 @@ namespace StepManiaEditor
 						if (e.Current.IsBeingEdited())
 							continue;
 						if (e.Current is EditorTapNoteEvent || e.Current is EditorMineNoteEvent)
-							deleteActions.Add(new ActionDeleteEditorEvent(e.Current));
+							deleteActions.Add(new ActionDeleteEditorEvents(e.Current));
 						else if (e.Current is EditorHoldStartNoteEvent innerHsn && innerHsn.GetRow() + innerHsn.GetLength() <= row + length)
 							deleteActions.Add(new ActionDeleteHoldEvent(innerHsn));
 					}

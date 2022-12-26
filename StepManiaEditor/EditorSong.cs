@@ -1401,7 +1401,7 @@ namespace StepManiaEditor
 		/// </summary>
 		/// <param name="editorEvents">List of all EditorEvents to delete.</param>
 		/// <returns>List of all deleted EditorEvents</returns>
-		private List<EditorEvent> DeleteEvents(List<EditorEvent> editorEvents)
+		public List<EditorEvent> DeleteEvents(List<EditorEvent> editorEvents)
 		{
 			List<EditorEvent> allDeletedEvents = new List<EditorEvent>();
 			allDeletedEvents.AddRange(editorEvents);

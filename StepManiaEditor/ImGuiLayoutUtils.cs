@@ -1449,7 +1449,7 @@ namespace StepManiaEditor
 			if (!canBeDeleted)
 				Utils.PushDisabled();
 			if (ImGui.Button($"X##{id}", new Vector2(Utils.CloseWidth, 0.0f)))
-				ActionQueue.Instance.Do(new ActionDeleteEditorEvent(e));
+				ActionQueue.Instance.Do(new ActionDeleteEditorEvents(e));
 			if (!canBeDeleted)
 				Utils.PopDisabled();
 
