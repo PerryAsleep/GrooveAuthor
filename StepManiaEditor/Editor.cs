@@ -1955,7 +1955,9 @@ namespace StepManiaEditor
 			if (!SelectedRegion.IsActive() || SelectedRegion.HaveCurrentValuesBeenUpdatedThisFrame())
 				return;
 
-			if (SelectedRegion.GetCurrentY() < previousRateEventY || nextRateEvent == null)
+			if (SelectedRegion.GetCurrentY() < previousRateEventY
+				|| nextRateEvent == null
+				|| SelectedRegion.GetCurrentY() < SpacingHelper.GetY(nextRateEvent, previousRateEventY, rateEvent))
 			{
 				var (chartTime, chartPosition) = SpacingHelper.GetChartTimeAndRow(
 					SelectedRegion.GetCurrentY(), previousRateEventY, rateEvent.GetChartTime(), rateEvent.GetRow());
@@ -3701,7 +3703,6 @@ namespace StepManiaEditor
 				}
 				else
 				{
-					// TODO: Variable is reporting incorrect ranges during scroll rate modifications.
 					var (minPosition, maxPosition) = SelectedRegion.GetSelectedChartPositionRange();
 					var enumerator = ActiveChart.EditorEvents.FindFirstAfterChartPosition(minPosition);
 
