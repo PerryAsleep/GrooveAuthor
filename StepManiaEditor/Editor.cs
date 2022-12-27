@@ -1429,6 +1429,8 @@ namespace StepManiaEditor
 			var (holdCapTexture, _) = ArrowGraphicManager.GetHoldEndTexture(0, 0, false, false);
 			var (_, holdCapTextureHeight) = TextureAtlas.GetDimensions(holdCapTexture);
 			var holdCapHeight = holdCapTextureHeight * sizeZoom;
+			if (ArrowGraphicManager.AreHoldCapsCentered())
+				holdCapHeight *= 0.5;
 
 			// Determine the starting x and y position in screen space.
 			// Y extended slightly above the top of the screen so that we start drawing arrows
@@ -3516,6 +3518,34 @@ namespace StepManiaEditor
 			ActionQueue.Instance.Clear();
 		}
 
+		private void UpdateWindowTitle()
+		{
+			var hasUnsavedChanges = ActionQueue.Instance.HasUnsavedChanges();
+			var appName = System.Reflection.Assembly.GetExecutingAssembly().GetName().Name;
+			var sb = new StringBuilder();
+			var title = "New File";
+			if (ActiveSong != null && !string.IsNullOrEmpty(ActiveSong.FileName))
+			{
+				title = ActiveSong.FileName;
+			}
+			sb.Append(title);
+			if (hasUnsavedChanges)
+			{
+				sb.Append(" * ");
+			}
+			if (ActiveChart != null)
+			{ 
+				sb.Append($" [{GetPrettyEnumString(ActiveChart.ChartType)} - {GetPrettyEnumString(ActiveChart.ChartDifficultyType)}]");
+			}
+			sb.Append(" - ");
+			sb.Append(appName);
+			Window.Title = sb.ToString();
+		}
+
+		#endregion Loading
+
+		#region Selection
+
 		private void SelectEvent(EditorEvent e, bool setLastSelected)
 		{
 			if (setLastSelected)
@@ -3545,34 +3575,6 @@ namespace StepManiaEditor
 			SelectedEvents.Clear();
 			LastSelectedEvent = null;
 		}
-
-		private void UpdateWindowTitle()
-		{
-			var hasUnsavedChanges = ActionQueue.Instance.HasUnsavedChanges();
-			var appName = System.Reflection.Assembly.GetExecutingAssembly().GetName().Name;
-			var sb = new StringBuilder();
-			var title = "New File";
-			if (ActiveSong != null && !string.IsNullOrEmpty(ActiveSong.FileName))
-			{
-				title = ActiveSong.FileName;
-			}
-			sb.Append(title);
-			if (hasUnsavedChanges)
-			{
-				sb.Append(" * ");
-			}
-			if (ActiveChart != null)
-			{ 
-				sb.Append($" [{GetPrettyEnumString(ActiveChart.ChartType)} - {GetPrettyEnumString(ActiveChart.ChartDifficultyType)}]");
-			}
-			sb.Append(" - ");
-			sb.Append(appName);
-			Window.Title = sb.ToString();
-		}
-
-		#endregion Loading
-
-		#region Selection
 
 		public void OnDelete()
 		{

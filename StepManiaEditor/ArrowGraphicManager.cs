@@ -1029,7 +1029,7 @@ namespace StepManiaEditor
 		public override (string, bool) GetHoldBodyTexture(int integerPosition, int lane, bool held, bool selected)
 		{
 			var i = GetTextureIndex(lane);
-			return (HoldTextures[i], HoldMirrored[i]);
+			return (GetTextureId(HoldTextures[i], selected), HoldMirrored[i]);
 		}
 
 		public override (string, float) GetHoldEndTexture(int integerPosition, int lane, bool held, bool selected)

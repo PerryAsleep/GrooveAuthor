@@ -48,44 +48,64 @@ public static void Main()
 		"piu-center",
 		"piu-diagonal-blue",
 		"itg-hold-body-inactive",
-		"itg-hold-end-inactive",
+		null,//"itg-hold-end-inactive",
 		"itg-hold-center-body-inactive",
-		"itg-hold-center-end-inactive",
+		null,//"itg-hold-center-end-inactive",
 		"itg-hold-solo-body-inactive",
-		"itg-hold-solo-end-inactive",
+		null,//"itg-hold-solo-end-inactive",
 		"piu-diagonal-receptor",
 		"piu-center-receptor",
 		"piu-hold-blue",
 		"itg-roll-body-inactive",
-		"itg-roll-end-inactive",
+		null,//"itg-roll-end-inactive",
 		"itg-roll-center-body-inactive",
-		"itg-roll-center-end-inactive",
+		null,//"itg-roll-center-end-inactive",
 		"itg-roll-solo-body-inactive",
-		"itg-roll-solo-end-inactive",
+		null,//"itg-roll-solo-end-inactive",
 		"piu-diagonal-receptor-held",
 		"piu-center-receptor-held",
 		"piu-roll-blue",
 		"itg-hold-body-active",
-		"itg-hold-end-active",
+		null,//"itg-hold-end-active",
 		"itg-hold-center-body-active",
-		"itg-hold-center-end-active",
+		null,//"itg-hold-center-end-active",
 		"itg-hold-solo-body-active",
-		"itg-hold-solo-end-active",
+		null,//"itg-hold-solo-end-active",
 		"piu-diagonal-receptor-glow",
 		"piu-center-receptor-glow",
 		"piu-hold-red",
 		"itg-roll-body-active",
-		"itg-roll-end-active",
+		null,//"itg-roll-end-active",
 		"itg-roll-center-body-active",
-		"itg-roll-center-end-active",
+		null,//"itg-roll-center-end-active",
 		"itg-roll-solo-body-active",
-		"itg-roll-solo-end-active",
+		null,//"itg-roll-solo-end-active",
 		"piu-roll-center",
 		"piu-hold-center",
 		"piu-roll-red",
 		"mine",
 	};
 	ProcessFiles(fileNames, 9, 0, 0, 128, 128, 0);
+
+	// Process hold end caps trimmed to their exact height.
+	// This is done because we use the texture size for determining if a click lands on a hold.
+	// Most arrows are big enough in the 128x128 frames, but the hold ends are much shorter.
+	// TODO: read color data to trim height.
+	var capHeight = 57;
+	var capHeightCenter = 43;
+	var capHeightSolo = 45;
+	ProcessFiles(new string[]{"itg-hold-end-inactive"}, 1, 128, 512, 128, capHeight, 0);
+	ProcessFiles(new string[]{"itg-hold-center-end-inactive"}, 1, 384, 512, 128, capHeightCenter, 0);
+	ProcessFiles(new string[]{"itg-hold-solo-end-inactive"}, 1, 640, 512, 128, capHeightSolo, 0);
+	ProcessFiles(new string[]{"itg-roll-end-inactive"}, 1, 128, 640, 128, capHeight, 0);
+	ProcessFiles(new string[]{"itg-roll-center-end-inactive"}, 1, 384, 640, 128, capHeightCenter, 0);
+	ProcessFiles(new string[]{"itg-roll-solo-end-inactive"}, 1, 640, 640, 128, capHeightSolo, 0);
+	ProcessFiles(new string[]{"itg-hold-end-active"}, 1, 128, 768, 128, capHeight, 0);
+	ProcessFiles(new string[]{"itg-hold-center-end-active"}, 1, 384, 768, 128, capHeightCenter, 0);
+	ProcessFiles(new string[]{"itg-hold-solo-end-active"}, 1, 640, 768, 128, capHeightSolo, 0);
+	ProcessFiles(new string[]{"itg-roll-end-active"}, 1, 128, 896, 128, capHeight, 0);
+	ProcessFiles(new string[]{"itg-roll-center-end-active"}, 1, 384, 896, 128, capHeightCenter, 0);
+	ProcessFiles(new string[]{"itg-roll-solo-end-active"}, 1, 640, 896, 128, capHeightSolo, 0);
 
 	var snapFileNames = new string[]
 	{
@@ -120,22 +140,25 @@ static void ProcessFiles(string[] fileNames, int numCols, int startX, int startY
 		var x = startX + (w + padding) * (i % numCols);
 		var y = startY + (h + padding) * (i / numCols);
 
-		try
+		if (!string.IsNullOrEmpty(fileName))
 		{
-			ProcessStartInfo startInfo = new ProcessStartInfo();
-			startInfo.FileName = "magick.exe";
-			startInfo.CreateNoWindow = true;
-			startInfo.WindowStyle = ProcessWindowStyle.Hidden;
-			startInfo.Arguments = $"{pngAsset} -crop {w}x{h}+{x}+{y} +repage PNG32:{fileNames[i]}.png";
-
-			using (Process exeProcess = Process.Start(startInfo))
+			try
 			{
-				exeProcess.WaitForExit();
+				ProcessStartInfo startInfo = new ProcessStartInfo();
+				startInfo.FileName = "magick.exe";
+				startInfo.CreateNoWindow = true;
+				startInfo.WindowStyle = ProcessWindowStyle.Hidden;
+				startInfo.Arguments = $"{pngAsset} -crop {w}x{h}+{x}+{y} +repage PNG32:{fileNames[i]}.png";
+
+				using (Process exeProcess = Process.Start(startInfo))
+				{
+					exeProcess.WaitForExit();
+				}
 			}
-		}
-		catch
-		{
-			// Nop
+			catch
+			{
+				// Nop
+			}
 		}
 
 		i++;

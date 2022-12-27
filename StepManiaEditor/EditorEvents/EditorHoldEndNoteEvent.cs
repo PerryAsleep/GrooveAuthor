@@ -121,7 +121,7 @@ namespace StepManiaEditor
 			// Record the cap position for drawing later.
 			var capY = y;
 			if (arrowGraphicManager.AreHoldCapsCentered())
-				capY -= (int)(capH * 0.5f);
+				y += (int)(capH * 0.5f);
 
 			// Adjust the starting y value so we don't needlessly loop when zoomed in and a large
 			// area of the hold is off the screen.
@@ -139,7 +139,7 @@ namespace StepManiaEditor
 				if (h == 0)
 					break;
 				y -= h;
-				if (y < -capH)
+				if (y < -bodyTileH)
 					break;
 				if (h < bodyTileH)
 				{
