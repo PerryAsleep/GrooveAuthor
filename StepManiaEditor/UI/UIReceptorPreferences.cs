@@ -1,5 +1,6 @@
 ﻿using System.Numerics;
 using ImGuiNET;
+using static StepManiaEditor.Utils;
 
 namespace StepManiaEditor
 {
@@ -10,6 +11,7 @@ namespace StepManiaEditor
 	{
 		private readonly Editor Editor;
 
+		private static readonly int TitleColumnWidth = UiScaled(120);
 		public UIReceptorPreferences(Editor editor)
 		{
 			Editor = editor;
@@ -22,10 +24,8 @@ namespace StepManiaEditor
 				return;
 
 			ImGui.SetNextWindowSize(new Vector2(0, 0), ImGuiCond.FirstUseEver);
-			ImGui.Begin("Receptor Preferences", ref p.ShowReceptorPreferencesWindow, ImGuiWindowFlags.NoScrollbar);
-
-			DrawContents();
-
+			if (ImGui.Begin("Receptor Preferences", ref p.ShowReceptorPreferencesWindow, ImGuiWindowFlags.NoScrollbar))
+				DrawContents();
 			ImGui.End();
 		}
 
@@ -34,11 +34,11 @@ namespace StepManiaEditor
 			var p = Preferences.Instance.PreferencesReceptors;
 
 			ImGui.Text("Position");
-			if (ImGuiLayoutUtils.BeginTable("Receptor Placement", 120))
+			if (ImGuiLayoutUtils.BeginTable("Receptor Placement", TitleColumnWidth))
 			{
 				var pushDisabled = p.LockPosition;
 				if(pushDisabled)
-					Utils.PushDisabled();
+					PushDisabled();
 
 				ImGuiLayoutUtils.DrawRowCheckbox(true, "Center Horizontally", p, nameof(PreferencesReceptors.CenterHorizontally), false,
 					"Whether to keep the receptors centered horizontally in the window.");
@@ -49,7 +49,7 @@ namespace StepManiaEditor
 					+ "\nHold shift while dragging to limit movement to one dimension.", 1.0f, "%i", 0, Editor.GetViewportWidth() - 1, 0, Editor.GetViewportHeight() - 1);
 
 				if (pushDisabled)
-					Utils.PopDisabled();
+					PopDisabled();
 
 				ImGuiLayoutUtils.DrawRowCheckbox(true, "Lock Position", p, nameof(PreferencesReceptors.LockPosition), false,
 					"Whether to lock the receptors to the current position and prevent position changes.");
@@ -59,7 +59,7 @@ namespace StepManiaEditor
 
 			ImGui.Separator();
 			ImGui.Text("Animation Misc");
-			if (ImGuiLayoutUtils.BeginTable("Receptor Animation Misc", 120))
+			if (ImGuiLayoutUtils.BeginTable("Receptor Animation Misc", TitleColumnWidth))
 			{
 				ImGuiLayoutUtils.DrawRowCheckbox(true, "Pulse Receptors", p, nameof(PreferencesReceptors.PulseReceptorsWithTempo), false,
 					"Whether to pulse the receptors to the chart tempo.");
@@ -68,7 +68,7 @@ namespace StepManiaEditor
 
 			ImGui.Separator();
 			ImGui.Text("Autoplay Animations");
-			if (ImGuiLayoutUtils.BeginTable("Receptor Animation Autoplay", 120))
+			if (ImGuiLayoutUtils.BeginTable("Receptor Animation Autoplay", TitleColumnWidth))
 			{
 				ImGuiLayoutUtils.DrawRowCheckbox(true, "Hide Arrows", p, nameof(PreferencesReceptors.AutoPlayHideArrows), false,
 					"When playing, whether to hide the arrows after they pass the receptors.");
@@ -85,7 +85,7 @@ namespace StepManiaEditor
 
 			ImGui.Separator();
 			ImGui.Text("Input Animations");
-			if (ImGuiLayoutUtils.BeginTable("Receptor Animation Input", 120))
+			if (ImGuiLayoutUtils.BeginTable("Receptor Animation Input", TitleColumnWidth))
 			{
 				ImGuiLayoutUtils.DrawRowCheckbox(true, "Rim Effect", p, nameof(PreferencesReceptors.TapRimEffect), false,
 					"When tapping an arrow, whether to show a rim effect on the receptors.");
@@ -95,7 +95,7 @@ namespace StepManiaEditor
 			}
 
 			ImGui.Separator();
-			if (ImGuiLayoutUtils.BeginTable("Receptor Animation Restore", 120))
+			if (ImGuiLayoutUtils.BeginTable("Receptor Animation Restore", TitleColumnWidth))
 			{
 				if (ImGuiLayoutUtils.DrawRowButton("Restore Defaults", "Restore Defaults",
 						"Restore all animation preferences to their default values."))

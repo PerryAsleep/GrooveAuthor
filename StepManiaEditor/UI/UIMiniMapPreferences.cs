@@ -1,5 +1,6 @@
 ﻿using System.Numerics;
 using ImGuiNET;
+using static StepManiaEditor.Utils;
 
 namespace StepManiaEditor
 {
@@ -8,11 +9,10 @@ namespace StepManiaEditor
 	/// </summary>
 	internal sealed class UIMiniMapPreferences
 	{
-		private Editor Editor;
+		private static readonly int TitleColumnWidth = UiScaled(120);
 
-		public UIMiniMapPreferences(Editor editor)
+		public UIMiniMapPreferences()
 		{
-			Editor = editor;
 		}
 
 		public void Draw()
@@ -22,10 +22,8 @@ namespace StepManiaEditor
 				return;
 
 			ImGui.SetNextWindowSize(new Vector2(0, 0), ImGuiCond.FirstUseEver);
-			ImGui.Begin("MiniMap Preferences", ref p.ShowMiniMapPreferencesWindow, ImGuiWindowFlags.NoScrollbar);
-
-			DrawContents();
-
+			if (ImGui.Begin("MiniMap Preferences", ref p.ShowMiniMapPreferencesWindow, ImGuiWindowFlags.NoScrollbar))
+				DrawContents();
 			ImGui.End();
 		}
 
@@ -33,7 +31,7 @@ namespace StepManiaEditor
 		{
 			var p = Preferences.Instance.PreferencesMiniMap;
 
-			if (ImGuiLayoutUtils.BeginTable("Show MiniMap", 120))
+			if (ImGuiLayoutUtils.BeginTable("Show MiniMap", TitleColumnWidth))
 			{
 				ImGuiLayoutUtils.DrawRowCheckbox(true, "Show Mini Map", p, nameof(PreferencesMiniMap.ShowMiniMap), false,
 					"Whether to show the mini map." +
@@ -42,7 +40,7 @@ namespace StepManiaEditor
 			}
 
 			ImGui.Separator();
-			if (ImGuiLayoutUtils.BeginTable("MiniMap Layout", 120))
+			if (ImGuiLayoutUtils.BeginTable("MiniMap Layout", TitleColumnWidth))
 			{
 				ImGuiLayoutUtils.DrawRowEnum<MiniMap.Position>(true, "Position", p, nameof(PreferencesMiniMap.MiniMapPosition), false,
 					"Where the mini map should be located.");
@@ -67,7 +65,7 @@ namespace StepManiaEditor
 			}
 
 			ImGui.Separator();
-			if (ImGuiLayoutUtils.BeginTable("MiniMap Selection", 120))
+			if (ImGuiLayoutUtils.BeginTable("MiniMap Selection", TitleColumnWidth))
 			{
 				ImGuiLayoutUtils.DrawRowEnum<MiniMap.SelectMode>(true, "Select Mode", p, nameof(PreferencesMiniMap.MiniMapSelectMode), false,
 					"How the editor should move when selecting an area outside of the editor range in the mini map."
@@ -80,9 +78,9 @@ namespace StepManiaEditor
 			}
 
 			ImGui.Separator();
-			if (ImGuiLayoutUtils.BeginTable("MiniMap Spacing", 120))
+			if (ImGuiLayoutUtils.BeginTable("MiniMap Spacing", TitleColumnWidth))
 			{
-				ImGuiLayoutUtils.DrawRowEnum<Editor.SpacingMode>(true, "Variable Mode", p, nameof(PreferencesMiniMap.MiniMapSpacingModeForVariable), PreferencesMiniMap.MiniMapVariableSpacingModes, false,
+				ImGuiLayoutUtils.DrawRowEnum(true, "Variable Mode", p, nameof(PreferencesMiniMap.MiniMapSpacingModeForVariable), PreferencesMiniMap.MiniMapVariableSpacingModes, false,
 					"The Spacing Mode the MiniMap should use when the Scroll Spacing Mode is Variable.");
 
 				ImGuiLayoutUtils.DrawRowSliderUInt(true, "Constant Time Range", p, nameof(PreferencesMiniMap.MiniMapVisibleTimeRange), 30, 300, false,
@@ -97,7 +95,7 @@ namespace StepManiaEditor
 			}
 
 			ImGui.Separator();
-			if (ImGuiLayoutUtils.BeginTable("MiniMap Restore", 120))
+			if (ImGuiLayoutUtils.BeginTable("MiniMap Restore", TitleColumnWidth))
 			{
 				if (ImGuiLayoutUtils.DrawRowButton("Restore Defaults", "Restore Defaults",
 						"Restore all mini map preferences to their default values."))

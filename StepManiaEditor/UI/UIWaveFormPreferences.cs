@@ -1,5 +1,6 @@
 ﻿using System.Numerics;
 using ImGuiNET;
+using static StepManiaEditor.Utils;
 
 namespace StepManiaEditor
 {
@@ -15,12 +16,12 @@ namespace StepManiaEditor
 			UniqueColor
 		}
 
-		private readonly Editor Editor;
+		private static readonly int TitleColumnWidth = UiScaled(120);
+
 		private readonly MusicManager MusicManager;
 
-		public UIWaveFormPreferences(Editor editor, MusicManager musicManager)
+		public UIWaveFormPreferences(MusicManager musicManager)
 		{
-			Editor = editor;
 			MusicManager = musicManager;
 		}
 
@@ -31,10 +32,8 @@ namespace StepManiaEditor
 				return;
 
 			ImGui.SetNextWindowSize(new Vector2(0, 0), ImGuiCond.FirstUseEver);
-			ImGui.Begin("Waveform Preferences", ref p.ShowWaveFormPreferencesWindow, ImGuiWindowFlags.NoScrollbar);
-
-			DrawContents();
-
+			if (ImGui.Begin("Waveform Preferences", ref p.ShowWaveFormPreferencesWindow, ImGuiWindowFlags.NoScrollbar))
+				DrawContents();
 			ImGui.End();
 		}
 
@@ -42,7 +41,7 @@ namespace StepManiaEditor
 		{
 			var p = Preferences.Instance.PreferencesWaveForm;
 
-			if (ImGuiLayoutUtils.BeginTable("Show Waveform", 120))
+			if (ImGuiLayoutUtils.BeginTable("Show Waveform", TitleColumnWidth))
 			{
 				ImGuiLayoutUtils.DrawRowCheckbox(true, "Show Waveform", p, nameof(PreferencesWaveForm.ShowWaveForm), false,
 					"Whether to show the waveform." +
@@ -51,7 +50,7 @@ namespace StepManiaEditor
 			}
 
 			ImGui.Separator();
-			if (ImGuiLayoutUtils.BeginTable("Waveform", 120))
+			if (ImGuiLayoutUtils.BeginTable("Waveform", TitleColumnWidth))
 			{
 				ImGuiLayoutUtils.DrawRowCheckbox(true, "Scale Width", p,
 					nameof(PreferencesWaveForm.WaveFormScaleXWhenZooming), false,
@@ -120,7 +119,7 @@ namespace StepManiaEditor
 			}
 
 			ImGui.Separator();
-			if (ImGuiLayoutUtils.BeginTable("Waveform Antialiasing", 120))
+			if (ImGuiLayoutUtils.BeginTable("Waveform Antialiasing", TitleColumnWidth))
 			{
 				ImGuiLayoutUtils.DrawRowCheckbox("Antialias", ref p.AntiAlias,
 					"Whether or not to use FXAA.");
@@ -150,7 +149,7 @@ namespace StepManiaEditor
 			}
 
 			ImGui.Separator();
-			if (ImGuiLayoutUtils.BeginTable("Waveform Restore", 120))
+			if (ImGuiLayoutUtils.BeginTable("Waveform Restore", TitleColumnWidth))
 			{
 				if (ImGuiLayoutUtils.DrawRowButton("Restore Defaults", "Restore Defaults",
 						"Restore all waveform preferences to their default values."))

@@ -1,15 +1,16 @@
-﻿using System.Collections.Generic;
-using System.Numerics;
-using Fumen.ChartDefinition;
-using Fumen.Converters;
+﻿using System.Numerics;
 using ImGuiNET;
-using static Fumen.Converters.SMCommon;
+using static StepManiaEditor.Utils;
 
 namespace StepManiaEditor
 {
 	internal sealed class UIChartList
 	{
 		Editor Editor;
+
+		private static readonly int TypeWidth = UiScaled(60);
+		private static readonly int RatingWidth = UiScaled(16);
+		private static readonly int AddChartWidth = UiScaled(86);
 
 		public UIChartList(Editor editor)
 		{
@@ -21,7 +22,7 @@ namespace StepManiaEditor
 			var deleteChart = false;
 			ImGui.TableNextRow();
 
-			var color = Utils.GetColorForDifficultyType(chart.ChartDifficultyType);
+			var color = GetColorForDifficultyType(chart.ChartDifficultyType);
 
 			ImGui.TableSetColumnIndex(0);
 			ImGui.TableSetBgColor(ImGuiTableBgTarget.CellBg, color);
@@ -59,90 +60,92 @@ namespace StepManiaEditor
 				return;
 
 			ImGui.SetNextWindowSize(new Vector2(0, 0), ImGuiCond.FirstUseEver);
-			ImGui.Begin("Chart List", ref Preferences.Instance.ShowChartListWindow, ImGuiWindowFlags.NoScrollbar);
-
-			if (editorSong == null)
+			if (ImGui.Begin("Chart List", ref Preferences.Instance.ShowChartListWindow, ImGuiWindowFlags.NoScrollbar))
 			{
-				Utils.PushDisabled();
-			}
-
-			var numCharts = 0;
-			if (editorChart != null)
-			{
-				var song = editorChart.EditorSong;
-				foreach (var kvp in song.Charts)
+				if (editorSong == null)
 				{
-					var chartType = kvp.Key;
-	
+					PushDisabled();
+				}
+
+				var numCharts = 0;
+				if (editorChart != null)
+				{
+					var song = editorChart.EditorSong;
+					foreach (var kvp in song.Charts)
+					{
+						var chartType = kvp.Key;
+
+						if (numCharts > 0)
+						{
+							ImGui.EndTable();
+							ImGui.Separator();
+						}
+
+						ImGui.Text(GetPrettyEnumString(chartType));
+
+						var ret = ImGui.BeginTable($"{chartType}Charts", 3,
+							ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders);
+						if (ret)
+						{
+							ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, TypeWidth);
+							ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, RatingWidth);
+							ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100);
+						}
+
+						var index = 0;
+						EditorChart pendingDeleteChart = null;
+						foreach (var chart in kvp.Value)
+							if (DrawChartRow(chart, index++, chart == editorChart))
+								pendingDeleteChart = chart;
+
+						if (pendingDeleteChart != null)
+						{
+							ActionQueue.Instance.Do(new ActionDeleteChart(Editor, pendingDeleteChart));
+						}
+
+						numCharts++;
+					}
 					if (numCharts > 0)
 					{
 						ImGui.EndTable();
+					}
+				}
+
+				if (numCharts == 0)
+				{
+					ImGui.Text("No Charts");
+				}
+
+				ImGui.Separator();
+				if (ImGuiLayoutUtils.BeginTable("ChartAddTable", AddChartWidth))
+				{
+					if (ImGuiLayoutUtils.DrawRowButton("Add Chart", "Add Chart"))
+					{
+						ImGui.OpenPopup("AddChartPopup");
+					}
+					if (ImGui.BeginPopup("AddChartPopup"))
+					{
+						ImGui.Text("Type");
 						ImGui.Separator();
-					}
-
-					ImGui.Text(Utils.GetPrettyEnumString(chartType));
-
-					var ret = ImGui.BeginTable($"{chartType}Charts", 3,
-						ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders);
-					if (ret)
-					{
-						ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, 60);
-						ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, 16);
-						ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100);
-					}
-
-					var index = 0;
-					EditorChart pendingDeleteChart = null;
-					foreach (var chart in kvp.Value)
-						if (DrawChartRow(chart, index++, chart == editorChart))
-							pendingDeleteChart = chart;
-
-					if (pendingDeleteChart != null)
-					{
-						ActionQueue.Instance.Do(new ActionDeleteChart(Editor, pendingDeleteChart));
-					}
-
-					numCharts++;
-				}
-				if (numCharts > 0)
-				{
-					ImGui.EndTable();
-				}
-			}
-
-			if (numCharts == 0)
-			{
-				ImGui.Text("No Charts");
-			}
-				
-			ImGui.Separator();
-			if (ImGuiLayoutUtils.BeginTable("ChartAddTable", 100))
-			{
-				if (ImGuiLayoutUtils.DrawRowButton("Add Chart", "Add Chart"))
-				{
-					ImGui.OpenPopup("AddChartPopup");
-				}
-				if (ImGui.BeginPopup("AddChartPopup"))
-				{
-					ImGui.Text("Type");
-					ImGui.Separator();
-					foreach (var chartType in Editor.SupportedChartTypes)
-					{
-						if(ImGui.Selectable(Utils.GetPrettyEnumString(chartType)))
+						foreach (var chartType in Editor.SupportedChartTypes)
 						{
-							ActionQueue.Instance.Do(new ActionAddChart(Editor, chartType));
+							if (ImGui.Selectable(GetPrettyEnumString(chartType)))
+							{
+								ActionQueue.Instance.Do(new ActionAddChart(Editor, chartType));
+							}
 						}
+						ImGui.EndPopup();
 					}
-					ImGui.EndPopup();
+
+					ImGuiLayoutUtils.EndTable();
 				}
 
-				ImGuiLayoutUtils.EndTable();
+				if (editorSong == null)
+				{
+					PopDisabled();
+				}
 			}
-
-			if (editorSong == null)
-			{
-				Utils.PopDisabled();
-			}
+			ImGui.End();
 		}
 	}
 }

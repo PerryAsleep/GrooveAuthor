@@ -7,6 +7,7 @@ using System.Windows.Forms;
 using Fumen;
 using Fumen.Converters;
 using ImGuiNET;
+using Microsoft.Win32;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
@@ -52,7 +53,6 @@ namespace StepManiaEditor
 		public const ushort WaveFormColorDense = 0x7E0;
 
 		public const int MarkerTextureWidth = 128;
-
 		public const int WaveFormTextureWidth = 1024;
 
 		public const float BeatMarkerScaleToStartingFading = 0.15f;
@@ -66,23 +66,24 @@ namespace StepManiaEditor
 
 		public const float ActiveEditEventAlpha = 0.8f;
 
-		public const float HelpWidth = 18.0f;
-		public const int CloseWidth = 18;
-
-		public const int BackgroundWidth = 640;
-		public const int BackgroundHeight = 480;
-		public const int BannerWidth = 418;
-		public const int BannerHeight = 164;
-		public const int CDTitleWidth = 164;
-		public const int CDTitleHeight = 164;
-
 		public const int MaxMarkersToDraw = 256;
 		public const int MaxEventsToDraw = 2048;
 
 		public const int MiniMapMaxNotesToDraw = 6144;
-		public const int MiniMapYPaddingFromTop = 30;		// This takes into account a 20 pixel padding for the main menu bar.
-		public const int MiniMapYPaddingFromBottom = 10;
-		public const int ChartPositionUIYPAddingFromBottom = 10;
+
+		// UI positioning values affected by DPI scaling.
+		private static double DpiScale = 0.0;
+		private const int HelpWidth = 18;
+		private const int CloseWidth = 18;
+		private const int MiniMapYPaddingFromTop = 30; // This takes into account a 20 pixel padding for the main menu bar.
+		private const int MiniMapYPaddingFromBottom = 10;
+		private const int ChartPositionUIYPAddingFromBottom = 10;
+		private const int CDTitleWidth = 164;
+		private const int CDTitleHeight = 164;
+		private const int BackgroundWidth = 640;
+		private const int BackgroundHeight = 480;
+		private const int BannerWidth = 418;
+		private const int BannerHeight = 164;
 
 		public const string TextureIdMeasureMarker = "measure_marker";
 		public const string TextureIdBeatMarker = "beat_marker";
@@ -456,7 +457,7 @@ namespace StepManiaEditor
 		public static void HelpMarker(string text)
 		{
 			PushEnabled();
-			Text("(?)", HelpWidth, true);
+			Text("(?)", GetHelpWidth(), true);
 			ToolTip(text);
 			PopEnabled();
 		}
@@ -1009,6 +1010,48 @@ namespace StepManiaEditor
 		private static extern int GetWindowThreadProcessId(IntPtr handle, out int processId);
 
 		#endregion Application Focus
+
+		#region UI Position and DPI Scaling
+
+		public static double GetDpiScale()
+		{
+			// Cache the DPI scale value so queries to the value are consistent for the lifetime
+			// of the application. Some DPI scaling parameters are used only in initialization and
+			// others are used per frame.
+			if (DpiScale != 0.0)
+				return DpiScale;
+			try
+			{
+				var dpi = int.Parse((string)Registry.GetValue(
+					@"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\ThemeManager",
+					"LastLoadedDPI", "96"));
+				DpiScale = dpi / 96.0;
+			}
+			catch(Exception)
+			{
+				DpiScale = 1.0;
+			}
+			return DpiScale;
+		}
+
+		public static int UiScaled(int value) { return (int)(value * GetDpiScale()); }
+		public static int GetHelpWidth() { return UiScaled(HelpWidth); }
+		public static int GetCloseWidth() { return UiScaled(CloseWidth); }
+		public static int GetMiniMapYPaddingFromTop() { return UiScaled(MiniMapYPaddingFromTop); }
+		public static int GetMiniMapYPaddingFromBottom() { return UiScaled(MiniMapYPaddingFromBottom); }
+		public static int GetChartPositionUIYPAddingFromBottom() { return UiScaled(ChartPositionUIYPAddingFromBottom); }
+		public static int GetBackgroundWidth() { return UiScaled(BackgroundWidth); }
+		public static int GetBackgroundHeight() { return UiScaled(BackgroundHeight); }
+		public static int GetBannerWidth() { return UiScaled(BannerWidth); }
+		public static int GetBannerHeight() { return UiScaled(BannerHeight); }
+		public static int GetCDTitleWidth() { return UiScaled(CDTitleWidth); }
+		public static int GetCDTitleHeight() { return UiScaled(CDTitleHeight); }
+		public static int GetUnscaledBackgroundWidth() { return BackgroundWidth; }
+		public static int GetUnscaledBackgroundHeight() { return BackgroundHeight; }
+		public static int GetUnscaledBannerWidth() { return BannerWidth; }
+		public static int GetUnscaledBannerHeight() { return BannerHeight; }
+
+		#endregion UI Position and DPI Scaling
 	}
 
 	public static class EditorExtensions

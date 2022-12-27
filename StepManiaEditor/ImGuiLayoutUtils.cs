@@ -25,6 +25,13 @@ namespace StepManiaEditor
 
 		private static ImFontPtr ImGuiFont;
 
+		private static readonly float FileBrowseXwidth = Utils.UiScaled(20);
+		private static readonly float FileBrowseBrowseWidth = Utils.UiScaled(50);
+		private static readonly float FileBrowseAutoWidth = Utils.UiScaled(50);
+		private static readonly float DisplayTempoEnumWidth = Utils.UiScaled(120);
+		private static readonly float DisplayTempoToWidth = Utils.UiScaled(14);
+		private static readonly float SliderResetWidth = Utils.UiScaled(50);
+
 		public static void SetFont(ImFontPtr font)
 		{
 			ImGuiFont = font;
@@ -285,17 +292,17 @@ namespace StepManiaEditor
 			// Display the text input but do not allow edits to it.
 			Utils.PushDisabled();
 			DrawTextInput(false, title, o, fieldName,
-				Math.Max(1.0f, ImGui.GetContentRegionAvail().X - 70.0f - ImGui.GetStyle().ItemSpacing.X * 2), affectsFile, help);
+				Math.Max(1.0f, ImGui.GetContentRegionAvail().X - (FileBrowseXwidth + FileBrowseBrowseWidth) - ImGui.GetStyle().ItemSpacing.X * 2), affectsFile, help);
 			Utils.PopDisabled();
 
 			ImGui.SameLine();
-			if (ImGui.Button($"X{GetElementTitle(title, fieldName)}", new Vector2(20.0f, 0.0f)))
+			if (ImGui.Button($"X{GetElementTitle(title, fieldName)}", new Vector2(FileBrowseXwidth, 0.0f)))
 			{
 				clearAction();
 			}
 
 			ImGui.SameLine();
-			if (ImGui.Button($"Browse{GetElementTitle(title, fieldName)}", new Vector2(50.0f, 0.0f)))
+			if (ImGui.Button($"Browse{GetElementTitle(title, fieldName)}", new Vector2(FileBrowseBrowseWidth, 0.0f)))
 			{
 				browseAction();
 			}
@@ -310,23 +317,23 @@ namespace StepManiaEditor
 			// Display the text input but do not allow edits to it.
 			Utils.PushDisabled();
 			DrawTextInput(false, title, o, fieldName,
-				Math.Max(1.0f, ImGui.GetContentRegionAvail().X - 120.0f - ImGui.GetStyle().ItemSpacing.X * 3), affectsFile, help);
+				Math.Max(1.0f, ImGui.GetContentRegionAvail().X - (FileBrowseXwidth + FileBrowseAutoWidth + FileBrowseBrowseWidth) - ImGui.GetStyle().ItemSpacing.X * 3), affectsFile, help);
 			Utils.PopDisabled();
 
 			ImGui.SameLine();
-			if (ImGui.Button($"X{GetElementTitle(title, fieldName)}", new Vector2(20.0f, 0.0f)))
+			if (ImGui.Button($"X{GetElementTitle(title, fieldName)}", new Vector2(FileBrowseXwidth, 0.0f)))
 			{
 				clearAction();
 			}
 
 			ImGui.SameLine();
-			if (ImGui.Button($"Auto{GetElementTitle(title, fieldName)}", new Vector2(50.0f, 0.0f)))
+			if (ImGui.Button($"Auto{GetElementTitle(title, fieldName)}", new Vector2(FileBrowseAutoWidth, 0.0f)))
 			{
 				autoAction();
 			}
 
 			ImGui.SameLine();
-			if (ImGui.Button($"Browse{GetElementTitle(title, fieldName)}", new Vector2(50.0f, 0.0f)))
+			if (ImGui.Button($"Browse{GetElementTitle(title, fieldName)}", new Vector2(FileBrowseBrowseWidth, 0.0f)))
 			{
 				browseAction();
 			}
@@ -611,11 +618,11 @@ namespace StepManiaEditor
 
 			// Slider
 			DrawSliderFloat(undoable, title, o, fieldName,
-				ImGui.GetContentRegionAvail().X - 50.0f - ImGui.GetStyle().ItemSpacing.X, min, max, affectsFile, help, format, flags);
+				ImGui.GetContentRegionAvail().X - SliderResetWidth - ImGui.GetStyle().ItemSpacing.X, min, max, affectsFile, help, format, flags);
 
 			// Reset
 			ImGui.SameLine();
-			if (ImGui.Button($"Reset{GetElementTitle(title, fieldName)}", new Vector2(50.0f, 0.0f)))
+			if (ImGui.Button($"Reset{GetElementTitle(title, fieldName)}", new Vector2(SliderResetWidth, 0.0f)))
 			{
 				var value = GetValueFromFieldOrProperty<float>(o, fieldName);
 				if (!resetValue.FloatEquals(value))
@@ -1063,15 +1070,13 @@ namespace StepManiaEditor
 		{
 			DrawRowTitleAndAdvanceColumn("Display Tempo");
 
-			const float enumWidth = 120.0f;
-			const float toWidth = 14.0f;
 			var spacing = ImGui.GetStyle().ItemSpacing.X;
 
-			var tempoControlWidth = ImGui.GetContentRegionAvail().X - enumWidth - spacing;
-			var splitTempoWidth = Math.Max(1.0f, (ImGui.GetContentRegionAvail().X - enumWidth - toWidth - spacing * 3.0f) * 0.5f);
+			var tempoControlWidth = ImGui.GetContentRegionAvail().X - DisplayTempoEnumWidth - spacing;
+			var splitTempoWidth = Math.Max(1.0f, (ImGui.GetContentRegionAvail().X - DisplayTempoEnumWidth - DisplayTempoToWidth - spacing * 3.0f) * 0.5f);
 
 			// Draw an enum for choosing the DisplayTempoMode.
-			DrawEnum<DisplayTempoMode>(undoable, "", displayTempo, nameof(DisplayTempo.Mode), enumWidth, null, true,
+			DrawEnum<DisplayTempoMode>(undoable, "", displayTempo, nameof(DisplayTempo.Mode), DisplayTempoEnumWidth, null, true,
 				"How the tempo for this chart should be displayed." +
 				"\nRandom:    The actual tempo will be hidden and replaced with a random display." +
 				"\nSpecified: A specified tempo or tempo range will be displayed." +
@@ -1104,7 +1109,7 @@ namespace StepManiaEditor
 
 					// "to" text to split the min and max.
 					ImGui.SameLine();
-					Utils.Text("to", toWidth);
+					Utils.Text("to", DisplayTempoToWidth);
 
 					// Checkbox for whether or not to use a distinct max.
 					ImGui.SameLine();
@@ -1184,9 +1189,12 @@ namespace StepManiaEditor
 
 		#region Misc Editor Events
 
-		public static double GetMiscEditorEventHeight(bool withBorder = false)
+		public static double GetMiscEditorEventHeight()
 		{
-			return ImGui.GetStyle().FramePadding.Y * 2 + ImGui.GetFontSize() + (withBorder ? 2 : 0);
+			ImGui.PushFont(ImGuiFont);
+			var h = ImGui.GetStyle().FramePadding.Y * 2 + ImGui.GetFontSize() + 2;
+			ImGui.PopFont();
+			return h;
 		}
 
 		public static double GetMiscEditorEventDragIntWidgetWidth(int i, string format)
@@ -1278,7 +1286,7 @@ namespace StepManiaEditor
 		public static double GetMiscEditorEventStringWidth(string s)
 		{
 			ImGui.PushFont(ImGuiFont);
-			var width = ImGui.CalcTextSize(s).X + Utils.CloseWidth;
+			var width = ImGui.CalcTextSize(s).X + Utils.GetCloseWidth();
 			ImGui.PopFont();
 			return width;
 		}
@@ -1406,7 +1414,7 @@ namespace StepManiaEditor
 				colorPushCount += 5;
 			}
 			
-			var height = (int)GetMiscEditorEventHeight(true);
+			var height = (int)GetMiscEditorEventHeight();
 
 			// Record window size and padding values so we can edit and restore them.
 			var originalWindowPaddingX = ImGui.GetStyle().WindowPadding.X;
@@ -1427,32 +1435,32 @@ namespace StepManiaEditor
 			// Start the window.
 			ImGui.SetNextWindowPos(new Vector2(x, y));
 			ImGui.SetNextWindowSize(new Vector2(width, height));
-			ImGui.Begin($"##Widget{id}",
+			if (ImGui.Begin($"##Widget{id}",
 				ImGuiWindowFlags.NoMove
 				| ImGuiWindowFlags.NoDecoration
 				| ImGuiWindowFlags.NoSavedSettings
 				| ImGuiWindowFlags.NoDocking
 				| ImGuiWindowFlags.NoBringToFrontOnFocus
-				| ImGuiWindowFlags.NoFocusOnAppearing);
+				| ImGuiWindowFlags.NoFocusOnAppearing))
+			{
+				var elementWidth = width - Utils.GetCloseWidth();
 
-			var elementWidth = width - Utils.CloseWidth;
+				// Draw the control.
+				func(elementWidth);
 
-			// Draw the control.
-			func(elementWidth);
+				// Record whether or not we should draw help text.
+				if (!string.IsNullOrEmpty(help) && ImGui.IsItemHovered())
+					drawHelp = true;
 
-			// Record whether or not we should draw help text.
-			if (!string.IsNullOrEmpty(help) && ImGui.IsItemHovered())
-				drawHelp = true;
-
-			// Delete button
-			ImGui.SameLine();
-			if (!canBeDeleted)
-				Utils.PushDisabled();
-			if (ImGui.Button($"X##{id}", new Vector2(Utils.CloseWidth, 0.0f)))
-				ActionQueue.Instance.Do(new ActionDeleteEditorEvents(e));
-			if (!canBeDeleted)
-				Utils.PopDisabled();
-
+				// Delete button
+				ImGui.SameLine();
+				if (!canBeDeleted)
+					Utils.PushDisabled();
+				if (ImGui.Button($"X##{id}", new Vector2(Utils.GetCloseWidth(), 0.0f)))
+					ActionQueue.Instance.Do(new ActionDeleteEditorEvents(e));
+				if (!canBeDeleted)
+					Utils.PopDisabled();
+			}
 			ImGui.End();
 
 			// Restore window size and padding values.
@@ -1587,8 +1595,8 @@ namespace StepManiaEditor
 		public static float DrawHelp(string help, float width)
 		{
 			var hasHelp = !string.IsNullOrEmpty(help);
-			var remainderWidth = hasHelp ? Math.Max(1.0f, width - Utils.HelpWidth - ImGui.GetStyle().ItemSpacing.X) : width;
-			//var remainderWidth = Math.Max(1.0f, width - Utils.HelpWidth - ImGui.GetStyle().ItemSpacing.X);
+			var remainderWidth = hasHelp ? Math.Max(1.0f, width - Utils.GetHelpWidth() - ImGui.GetStyle().ItemSpacing.X) : width;
+			//var remainderWidth = Math.Max(1.0f, width - Utils.GetHelpWidth() - ImGui.GetStyle().ItemSpacing.X);
 
 			if (hasHelp)
 			{

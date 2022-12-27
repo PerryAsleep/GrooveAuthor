@@ -15,7 +15,6 @@ using static Fumen.Utils;
 using StepManiaLibrary;
 using static StepManiaLibrary.Constants;
 using static StepManiaEditor.Utils;
-using ButtonState = Microsoft.Xna.Framework.Input.ButtonState;
 using Keys = Microsoft.Xna.Framework.Input.Keys;
 using Path = Fumen.Path;
 using Vector2 = Microsoft.Xna.Framework.Vector2;
@@ -24,7 +23,6 @@ using System.Text;
 using System.Media;
 using System.IO;
 using System.Linq;
-using static System.ComponentModel.Design.ObjectSelectorEditor;
 
 namespace StepManiaEditor
 {
@@ -392,13 +390,16 @@ namespace StepManiaEditor
 
 			((Form)Form.FromHandle(Window.Handle)).FormClosing += ClosingForm;
 
+			var guiScale = GetDpiScale();
 			ImGuiRenderer = new ImGuiRenderer(this);
 			var programPath = System.Reflection.Assembly.GetEntryAssembly().Location;
 			var programDir = System.IO.Path.GetDirectoryName(programPath);
 			var mPlusFontPath = Path.Combine(programDir, @"Content\Mplus1Code-Medium.ttf");
-			ImGuiFont = ImGui.GetIO().Fonts.AddFontFromFileTTF(mPlusFontPath, 15, null, ImGui.GetIO().Fonts.GetGlyphRangesJapanese());
+			ImGuiFont = ImGui.GetIO().Fonts.AddFontFromFileTTF(mPlusFontPath, (int)(15 * guiScale), null, ImGui.GetIO().Fonts.GetGlyphRangesJapanese());
 			ImGuiRenderer.RebuildFontAtlas();
 			ImGuiLayoutUtils.SetFont(ImGuiFont);
+			if (!guiScale.DoubleEquals(1.0))
+				ImGui.GetStyle().ScaleAllSizes((float)guiScale);
 
 			MonogameFont_MPlus1Code_Medium = Content.Load<SpriteFont>("mplus1code-medium");
 
@@ -435,11 +436,11 @@ namespace StepManiaEditor
 			TextureAtlas = new TextureAtlas(GraphicsDevice, 2048, 2048, 1);
 
 			UISongProperties = new UISongProperties(this, GraphicsDevice, ImGuiRenderer);
-			UIChartProperties = new UIChartProperties(this);
+			UIChartProperties = new UIChartProperties();
 			UIChartList = new UIChartList(this);
-			UIWaveFormPreferences = new UIWaveFormPreferences(this, MusicManager);
+			UIWaveFormPreferences = new UIWaveFormPreferences(MusicManager);
 			UIScrollPreferences = new UIScrollPreferences();
-			UIMiniMapPreferences = new UIMiniMapPreferences(this);
+			UIMiniMapPreferences = new UIMiniMapPreferences();
 			UIReceptorPreferences = new UIReceptorPreferences(this);
 			UIOptions = new UIOptions();
 			UIChartPosition = new UIChartPosition(this);
@@ -2440,11 +2441,11 @@ namespace StepManiaEditor
 				}
 			}
 
-			var h = Math.Max(0, Graphics.PreferredBackBufferHeight - MiniMapYPaddingFromTop - MiniMapYPaddingFromBottom);
+			var h = Math.Max(0, Graphics.PreferredBackBufferHeight - GetMiniMapYPaddingFromTop() - GetMiniMapYPaddingFromBottom());
 
 			MiniMap.UpdateBounds(
 				GraphicsDevice,
-				new Rectangle(x, MiniMapYPaddingFromTop, (int)p.PreferencesMiniMap.MiniMapWidth, h));
+				new Rectangle(x, GetMiniMapYPaddingFromTop(), (int)p.PreferencesMiniMap.MiniMapWidth, h));
 		}
 
 		private void UpdateMiniMapLaneSpacing()
@@ -2721,7 +2722,7 @@ namespace StepManiaEditor
 			
 			UIChartPosition.Draw(
 				GetFocalPointX(),
-				Graphics.PreferredBackBufferHeight - ChartPositionUIYPAddingFromBottom - (int)(UIChartPosition.Height * 0.5),
+				Graphics.PreferredBackBufferHeight - GetChartPositionUIYPAddingFromBottom() - (int)(UIChartPosition.Height * 0.5),
 				SnapLevels[SnapIndex]);
 
 			if (ShowSavePopup)
@@ -3108,7 +3109,7 @@ namespace StepManiaEditor
 
 		private void DrawDebugUI()
 		{
-			ImGui.Begin("Debug");
+			if (ImGui.Begin("Debug"))
 			{
 				ImGui.Checkbox("Parallelize Update Loop", ref ParallelizeUpdateLoop);
 				ImGui.Checkbox("Render Chart", ref RenderChart);

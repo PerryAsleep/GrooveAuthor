@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using static StepManiaEditor.Utils;
 
 namespace StepManiaEditor
 {
@@ -41,7 +42,7 @@ namespace StepManiaEditor
 		private static double LeftAnchorPos;
 		private static double RightAnchorPos;
 
-		private const int ElementPadding = 2;
+		private static readonly int ElementPadding = UiScaled(2);
 
 		private class WidgetData
 		{
@@ -111,7 +112,7 @@ namespace StepManiaEditor
 		public static void PositionEvent(IPlaceable e, double rowY)
 		{
 			// Adjust y so that the widget is centered in y.
-			var y = rowY - ImGuiLayoutUtils.GetMiscEditorEventHeight(true) * 0.5;
+			var y = rowY - ImGuiLayoutUtils.GetMiscEditorEventHeight() * 0.5;
 
 			// Get the current frame events for this position.
 			Dictionary<Type, IPlaceable> leftEvents;

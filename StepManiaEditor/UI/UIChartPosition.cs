@@ -2,6 +2,7 @@
 using System.Numerics;
 using Fumen.Converters;
 using ImGuiNET;
+using static StepManiaEditor.Utils;
 
 namespace StepManiaEditor
 {
@@ -14,18 +15,18 @@ namespace StepManiaEditor
 		private const uint ColorTextGrey = 0xFF777777;
 		private const uint ColorBgDarkGrey = 0xF0222222;
 
-		public const int Width = 800;
-		public const int Height = 63;
-
-		private const int TableNameColWidth = 37;
-		private const int TablePositionColWidth = 73;
-		private const int TableSongTimeColWidth = 104;
-		private const int TableChartTimeColWidth = 104;
-		private const int TableMeasureColWidth = 61;
-		private const int TableBeatColWidth = 67;
-		private const int TableRowColWidth = 78;
-		private const int TableWidth = 588;
-		private const int TableHeight = 46;
+		public static readonly int Width = UiScaled(800);
+		public static readonly int Height = UiScaled(63);
+		private static readonly int MiscTableTitleColumnWidth = UiScaled(40);
+		private static readonly int TableNameColWidth = UiScaled(37);
+		private static readonly int TablePositionColWidth = UiScaled(73);
+		private static readonly int TableSongTimeColWidth = UiScaled(104);
+		private static readonly int TableChartTimeColWidth = UiScaled(104);
+		private static readonly int TableMeasureColWidth = UiScaled(61);
+		private static readonly int TableBeatColWidth = UiScaled(67);
+		private static readonly int TableRowColWidth = UiScaled(78);
+		private static readonly int TableWidth = UiScaled(588);
+		private static readonly int TableHeight = UiScaled(46);
 
 		private Editor Editor;
 		public UIChartPosition(Editor editor)
@@ -50,55 +51,55 @@ namespace StepManiaEditor
 			ImGui.GetStyle().CellPadding.Y = 0;
 			ImGui.GetStyle().FramePadding.Y = 0;
 
-			ImGui.Begin("UIChartPosition",
+			if (ImGui.Begin("UIChartPosition",
 				ImGuiWindowFlags.NoMove
 				| ImGuiWindowFlags.NoDecoration
 				| ImGuiWindowFlags.NoSavedSettings
 				| ImGuiWindowFlags.NoDocking
 				| ImGuiWindowFlags.NoBringToFrontOnFocus
-				| ImGuiWindowFlags.NoFocusOnAppearing);
-
-			// Draw the left table with the spacing, zoom, and snap display.
-			var preTableWidth = Width - TableWidth - ImGui.GetStyle().WindowPadding.X * 2 - ImGui.GetStyle().ItemSpacing.X;
-			if (ImGuiLayoutUtils.BeginTable("UIChartMiscTable", 40, preTableWidth - 40))
+				| ImGuiWindowFlags.NoFocusOnAppearing))
 			{
-				// Spacing mode.
-				UIScrollPreferences.DrawSpacingModeRow("Spacing");
-
-				// Zoom level.
-				// TODO: Use a double for this control.
-				// ImGUI.NET does not currently support passing ImGuiSliderFlags to double controls.
-				// Casting to a float to allow use of ImGuiSliderFlags.Logarithmic.
-				var zoom = (float)Editor.GetSpacingZoom();
-				var originalZoom = zoom;
-				ImGuiLayoutUtils.DrawRowDragFloat("Zoom", ref zoom, "Chart zoom level.", 100.0f, "%.6f", (float)Editor.MinZoom, (float)Editor.MaxZoom, ImGuiSliderFlags.Logarithmic);
-				if (!zoom.FloatEquals(originalZoom))
+				// Draw the left table with the spacing, zoom, and snap display.
+				var preTableWidth = Width - TableWidth - ImGui.GetStyle().WindowPadding.X * 2 - ImGui.GetStyle().ItemSpacing.X;
+				if (ImGuiLayoutUtils.BeginTable("UIChartMiscTable", MiscTableTitleColumnWidth, preTableWidth - MiscTableTitleColumnWidth))
 				{
-					Editor.SetZoom(zoom, true);
+					// Spacing mode.
+					UIScrollPreferences.DrawSpacingModeRow("Spacing");
+
+					// Zoom level.
+					// TODO: Use a double for this control.
+					// ImGUI.NET does not currently support passing ImGuiSliderFlags to double controls.
+					// Casting to a float to allow use of ImGuiSliderFlags.Logarithmic.
+					var zoom = (float)Editor.GetSpacingZoom();
+					var originalZoom = zoom;
+					ImGuiLayoutUtils.DrawRowDragFloat("Zoom", ref zoom, "Chart zoom level.", 100.0f, "%.6f", (float)Editor.MinZoom, (float)Editor.MaxZoom, ImGuiSliderFlags.Logarithmic);
+					if (!zoom.FloatEquals(originalZoom))
+					{
+						Editor.SetZoom(zoom, true);
+					}
+
+					// Snap level.
+					ImGuiLayoutUtils.DrawRowTitleAndAdvanceColumn("Snap");
+					ImGui.SetNextItemWidth(ImGuiLayoutUtils.DrawHelp("Current note type being snapped to.\nUse the left and right arrow keys to change the snap.", ImGui.GetContentRegionAvail().X));
+					if (snapData.Rows == 0)
+					{
+						ImGui.PushStyleColor(ImGuiCol.Text, ColorTextWhite);
+						ImGui.Text("None");
+					}
+					else
+					{
+						ImGui.PushStyleColor(ImGuiCol.Text, ArrowGraphicManager.GetArrowColorRGBAForSubdivision(SMCommon.MaxValidDenominator / snapData.Rows));
+						ImGui.Text($"1/{(SMCommon.MaxValidDenominator / snapData.Rows) * SMCommon.NumBeatsPerMeasure}");
+					}
+					ImGui.PopStyleColor();
+
+					ImGuiLayoutUtils.EndTable();
 				}
 
-				// Snap level.
-				ImGuiLayoutUtils.DrawRowTitleAndAdvanceColumn("Snap");
-				ImGui.SetNextItemWidth(ImGuiLayoutUtils.DrawHelp("Current note type being snapped to.\nUse the left and right arrow keys to change the snap.", ImGui.GetContentRegionAvail().X));
-				if (snapData.Rows == 0)
-				{
-					ImGui.PushStyleColor(ImGuiCol.Text, ColorTextWhite);
-					ImGui.Text("None");
-				}
-				else
-				{
-					ImGui.PushStyleColor(ImGuiCol.Text, ArrowGraphicManager.GetArrowColorRGBAForSubdivision(SMCommon.MaxValidDenominator / snapData.Rows));
-					ImGui.Text($"1/{(SMCommon.MaxValidDenominator / snapData.Rows) * SMCommon.NumBeatsPerMeasure}");
-				}
-				ImGui.PopStyleColor();
-
-				ImGuiLayoutUtils.EndTable();
+				// Draw the right rable with position information.
+				ImGui.SameLine();
+				DrawPositionTable();
 			}
-			
-			// Draw the right rable with position information.
-			ImGui.SameLine();
-			DrawPositionTable();
-
 			ImGui.End();
 
 			// Restore the cell and frame padding.

@@ -1,4 +1,5 @@
-﻿using Microsoft.Xna.Framework;
+﻿using Fumen;
+using Microsoft.Xna.Framework;
 using static StepManiaEditor.Utils;
 using static System.Math;
 
