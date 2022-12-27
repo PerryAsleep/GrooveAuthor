@@ -3590,6 +3590,11 @@ namespace StepManiaEditor
 			ActionQueue.Instance.Do(new ActionDeleteEditorEvents(eventsToDelete, false));
 		}
 
+		public void OnEventsDeleted()
+		{
+			ClearSelectedEvents();
+		}
+
 		public void OnSelectAll()
 		{
 			OnSelectAllImpl((EditorEvent e) => { return e.IsSelectableWithoutModifiers(); });

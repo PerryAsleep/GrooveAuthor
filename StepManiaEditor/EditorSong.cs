@@ -1470,6 +1470,8 @@ namespace StepManiaEditor
 				UpdateNotePositions();
 			}
 
+			Editor.OnEventsDeleted();
+
 			return allDeletedEvents;
 		}
 
