@@ -1115,7 +1115,7 @@ namespace StepManiaEditor
 
 		public bool TryGetChartPositionFromTime(double chartTime, ref double chartPosition)
 		{
-			var rateEvent = GetActiveRateAlteringEventForTime(chartTime, false);
+			var rateEvent = FindActiveRateAlteringEventForTime(chartTime, false);
 			if (rateEvent == null)
 				return false;
 
@@ -1188,7 +1188,7 @@ namespace StepManiaEditor
 			return null;
 		}
 
-		public EditorRateAlteringEvent GetActiveRateAlteringEventForTime(double chartTime, bool allowEqualTo = true)
+		public EditorRateAlteringEvent FindActiveRateAlteringEventForTime(double chartTime, bool allowEqualTo = true)
 		{
 			if (RateAlteringEventsBySongTime == null)
 				return null;
@@ -1210,7 +1210,7 @@ namespace StepManiaEditor
 
 		public bool TryGetTimeFromChartPosition(double chartPosition, ref double chartTime)
 		{
-			var rateEvent = GetActiveRateAlteringEventForPosition(chartPosition, false);
+			var rateEvent = FindActiveRateAlteringEventForPosition(chartPosition, false);
 			if (rateEvent == null)
 				return false;
 
@@ -1223,7 +1223,7 @@ namespace StepManiaEditor
 			return true;
 		}
 
-		public EditorRateAlteringEvent GetActiveRateAlteringEventForPosition(double chartPosition, bool allowEqualTo = true)
+		public EditorRateAlteringEvent FindActiveRateAlteringEventForPosition(double chartPosition, bool allowEqualTo = true)
 		{
 			if (RateAlteringEventsByRow == null)
 				return null;
@@ -1244,7 +1244,7 @@ namespace StepManiaEditor
 
 		public int GetNearestMeasureBoundaryRow(int row)
 		{
-			var rae = GetActiveRateAlteringEventForPosition(row);
+			var rae = FindActiveRateAlteringEventForPosition(row);
 			if (rae == null)
 				return 0;
 			return GetNearestMeasureBoundaryRow(rae.LastTimeSignature, row);
@@ -1577,13 +1577,13 @@ namespace StepManiaEditor
 
 		public double GetStartingTempo()
 		{
-			var rae = GetActiveRateAlteringEventForPosition(0.0);
+			var rae = FindActiveRateAlteringEventForPosition(0.0);
 			return rae?.Tempo ?? DefaultTempo;
 		}
 
 		public Fraction GetStartingTimeSignature()
 		{
-			var rae = GetActiveRateAlteringEventForPosition(0.0);
+			var rae = FindActiveRateAlteringEventForPosition(0.0);
 			return rae?.LastTimeSignature.Signature ?? DefaultTimeSignature;
 		}
 

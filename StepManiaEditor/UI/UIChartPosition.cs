@@ -221,7 +221,7 @@ namespace StepManiaEditor
 
 		private static double GetMeasure(EditorPosition position)
 		{
-			var rateEvent = position.ActiveChart?.GetActiveRateAlteringEventForPosition(position.ChartPosition);
+			var rateEvent = position.ActiveChart?.FindActiveRateAlteringEventForPosition(position.ChartPosition);
 			if (rateEvent == null)
 				return 0.0;
 			var timeSigEvent = rateEvent.LastTimeSignature;

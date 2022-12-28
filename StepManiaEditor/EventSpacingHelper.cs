@@ -57,6 +57,18 @@ namespace StepManiaEditor
 		}
 
 		/// <summary>
+		/// Returns the current pixels per second value set in UpdatePpsAndPpr.
+		/// </summary>
+		/// <returns>Current pixels per second value.</returns>
+		public double GetPps() { return Pps; }
+
+		/// <summary>
+		/// Returns the current pixels per row value set in UpdatePpsAndPpr.
+		/// </summary>
+		/// <returns>Current pixels per row value.</returns>
+		public double GetPpr() { return Ppr; }
+
+		/// <summary>
 		/// Update the current pps and ppr values based on the given EditorRateAlteringEvent.
 		/// </summary>
 		/// <param name="rateEvent">The EditorRateAlteringEvent to use for determing the pps and ppr values.</param>

@@ -31,7 +31,7 @@ namespace StepManiaEditor
 		/// <returns>Enumerator to best value or null if a value could not be found.</returns>
 		public Enumerator FindBest(double chartPosition)
 		{
-			var pos = EditorEvent.CreateDummyEvent(Chart, CreateDummyFirstEventForRow((int)chartPosition));
+			var pos = EditorEvent.CreateDummyEvent(Chart, CreateDummyFirstEventForRow((int)chartPosition), chartPosition);
 			var enumerator = FindGreatestPreceding(pos, false);
 			if (enumerator == null)
 				enumerator = FindLeastFollowing(pos, true);
@@ -65,13 +65,13 @@ namespace StepManiaEditor
 
 		public Enumerator FindFirstAfterChartPosition(double chartPosition)
 		{
-			var pos = EditorEvent.CreateEvent(Chart, CreateDummyFirstEventForRow((int)chartPosition));
+			var pos = EditorEvent.CreateDummyEvent(Chart, CreateDummyFirstEventForRow((int)chartPosition), chartPosition);
 			return FindLeastFollowing(pos, false);
 		}
 
 		public EditorEvent FindNoteAt(int row, int lane, bool ignoreNotesBeingEdited)
 		{
-			var pos = EditorEvent.CreateDummyEvent(Chart, CreateDummyFirstEventForRow(row));
+			var pos = EditorEvent.CreateDummyEvent(Chart, CreateDummyFirstEventForRow(row), row);
 
 			// Find the greatest preceding event.
 			var best = FindGreatestPreceding(pos);

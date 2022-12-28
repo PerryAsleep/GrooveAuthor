@@ -44,7 +44,18 @@ namespace StepManiaEditor
 		/// events that would otherwise be equal.
 		/// </summary>
 		protected bool IsDummyEvent;
+		/// <summary>
+		/// The ChartPosition for dummy EditorEvents as a double as they are often generated from
+		/// precise positions which do not fall on integer boundaries.
+		/// </summary>
+		protected double DummyChartPosition;
 
+		/// <summary>
+		/// Creates an EditorEvent from the given Event for the given EditorChart.
+		/// </summary>
+		/// <param name="editorChart">The EditorChart owning this EditorEvent.</param>
+		/// <param name="chartEvent">Event backing this EditorEvent.</param>
+		/// <returns>New EditorEvent.</returns>
 		public static EditorEvent CreateEvent(EditorChart editorChart, Event chartEvent)
 		{
 			// Intentional modification of DestType to preserve StepMania types like mines.
@@ -86,11 +97,26 @@ namespace StepManiaEditor
 			return null;
 		}
 
-		public static EditorEvent CreateDummyEvent(EditorChart editorChart, Event chartEvent)
+		/// <summary>
+		/// Creates a dummy EditorEvent used for comparing against other EditorEvents in sorted data structures.
+		/// </summary>
+		/// <param name="editorChart">
+		/// The EditorChart owning this EditorEvent. It is expected that dummy EditorEvents aren't are not
+		/// present in the events owned by the EditorChart.
+		/// </param>
+		/// <param name="chartEvent">
+		/// Dummy Event backing this EditorEvent.
+		/// See SMCommon CreateDummyFirstEventForRow.</param>
+		/// <param name="chartPosition">Chart position of this event as a double.</param>
+		/// <returns>New dummy EditorEvent.</returns>
+		public static EditorEvent CreateDummyEvent(EditorChart editorChart, Event chartEvent, double chartPosition)
 		{
 			var newEvent = CreateEvent(editorChart, chartEvent);
 			if (newEvent != null)
+			{
 				newEvent.IsDummyEvent = true;
+				newEvent.DummyChartPosition = chartPosition;
+			}
 			return newEvent;
 		}
 
@@ -232,9 +258,29 @@ namespace StepManiaEditor
 			return new SortRowHelper();
 		}
 
+		/// <summary>
+		/// Private method to get the row as a double to use when comparing two EditorEvents.
+		/// If this event has a dummy DummyChartPosition set, it will be returned. Otherwise,
+		/// the integer row will be returned.
+		/// </summary>
+		/// <returns>The row as a double for use by CompareTo.</returns>
+		private double GetRowAsDouble()
+		{
+			if (DummyChartPosition != 0.0)
+				return DummyChartPosition;
+			return GetRow();
+		}
+
 		public virtual int CompareTo(EditorEvent other)
 		{
-			var comparison = SMCommon.SMEventComparer.Compare(ChartEvent, other.ChartEvent);
+			// Sort by position as a double first.
+			// EditorEvents only have integer positions but we often need to compare against
+			// dummy events with precise double row positions.
+			var comparison = GetRowAsDouble().CompareTo(other.GetRowAsDouble());
+			if (comparison != 0)
+				return comparison;
+
+			comparison = SMCommon.SMEventComparer.Compare(ChartEvent, other.ChartEvent);
 			if (comparison != 0)
 				return comparison;
 			// Dummy events come before other events at the same location.

@@ -2973,7 +2973,7 @@ namespace StepManiaEditor
 						double nearestMeasureChartTime = 0.0;
 						ActiveChart.TryGetTimeFromChartPosition(nearestMeasureBoundaryRow, ref nearestMeasureChartTime);
 
-						var currentRateAlteringEvent = ActiveChart.GetActiveRateAlteringEventForPosition(row);
+						var currentRateAlteringEvent = ActiveChart.FindActiveRateAlteringEventForPosition(row);
 
 						DrawAddEventMenuItem("Tempo", !hasTempoEvent, UITempoColorRGBA, EditorTempoEvent.EventShortDescription, row, chartTime, () =>
 						{
@@ -3649,6 +3649,11 @@ namespace StepManiaEditor
 				((EditorEvent e) => { return e.IsSelectableWithModifiers(); })
 				: ((EditorEvent e) => { return e.IsSelectableWithoutModifiers(); });
 
+			var (arrowTexture, _) = ArrowGraphicManager.GetArrowTexture(0, 0, false);
+			double arrowWidthUnscaled, arrowHeightUnscaled;
+			(arrowWidthUnscaled, arrowHeightUnscaled) = TextureAtlas.GetDimensions(arrowTexture);
+			var halfArrowH = arrowHeightUnscaled * GetSizeZoom() * 0.5;
+
 			// For clicking, we want to select only one note. The latest note whose bounding rect
 			// overlaps with the point that was clicked. The events are sorted but we cannot binary
 			// search them because we only want to consider events which are in the same lane as
@@ -3668,7 +3673,10 @@ namespace StepManiaEditor
 					// first. We will capture clicking holds by the hold start notes.
 					if (visibleEvent is EditorHoldEndNoteEvent)
 						continue;
-					if (visibleEvent.Y > y)
+					// Early out if we have searched beyond the selected y. Add an extra half arrow
+					// height to this check so that short miscellaneous events do not cause us to
+					// early out prematurealy.
+					if (visibleEvent.Y > y + halfArrowH)
 						break;
 					if (visibleEvent.DoesPointIntersect(x, y))
 						best = visibleEvent;
@@ -3681,19 +3689,23 @@ namespace StepManiaEditor
 			// A region was selected, collect all notes in the selected region.
 			else
 			{
-				var (arrowTexture, _) = ArrowGraphicManager.GetArrowTexture(0, 0, false);
-				double arrowW, arrowH;
-				(arrowW, arrowH) = TextureAtlas.GetDimensions(arrowTexture);
-				var lanesWidth = ActiveChart.NumInputs * arrowW;
+				var lanesWidth = ActiveChart.NumInputs * arrowWidthUnscaled;
 				var (minChartX, maxChartX) = SelectedRegion.GetSelectedXChartSpaceRange();
-				var minLane = (int)Math.Floor((minChartX + lanesWidth * 0.5) / arrowW);
-				var maxLane = (int)Math.Floor((maxChartX + lanesWidth * 0.5) / arrowW);
+				var minLane = (int)Math.Floor((minChartX + lanesWidth * 0.5) / arrowWidthUnscaled);
+				var maxLane = (int)Math.Floor((maxChartX + lanesWidth * 0.5) / arrowWidthUnscaled);
 
 				// TODO: Selecting misc events isn't working as intended.
 
 				if (Preferences.Instance.PreferencesScroll.SpacingMode == SpacingMode.ConstantTime)
 				{
 					var (minTime, maxTime) = SelectedRegion.GetSelectedChartTimeRange();
+
+					// Extend the time to capture the tops and bottoms of arrows.
+					// This is an approximation as there may be rate altering events during the range
+					// between the arrow's center and its edges.
+					minTime -= GetTimeRangeOfYPixelDurationAtTime(minTime, halfArrowH);
+					maxTime += GetTimeRangeOfYPixelDurationAtTime(maxTime, halfArrowH);
+
 					var enumerator = ActiveChart.EditorEvents.FindFirstAfterChartTime(minTime);
 
 					while (enumerator.MoveNext())
@@ -3711,6 +3723,13 @@ namespace StepManiaEditor
 				else
 				{
 					var (minPosition, maxPosition) = SelectedRegion.GetSelectedChartPositionRange();
+
+					// Extend the position to capture the tops and bottoms of arrows.
+					// This is an approximation as there may be rate altering events during the range
+					// between the arrow's center and its edges.
+					minPosition -= GetPositionRangeOfYPixelDurationAtTime(minPosition, halfArrowH);
+					maxPosition += GetPositionRangeOfYPixelDurationAtTime(maxPosition, halfArrowH);
+
 					var enumerator = ActiveChart.EditorEvents.FindFirstAfterChartPosition(minPosition);
 
 					while (enumerator.MoveNext())
@@ -3796,6 +3815,62 @@ namespace StepManiaEditor
 			}
 
 			SelectedRegion.Stop();
+		}
+
+		/// <summary>
+		/// Given a duration in pixel space in y, returns that duration as time based on the
+		/// rate altering event present at the given time. Note that this duration is an
+		/// approximation as the given pixel range may cover multiple rate altering events
+		/// and only the rate altering event present at the given time is considered.
+		/// </summary>
+		/// <param name="time">Time to use for determining the current rate.</param>
+		/// <param name="duration">Y duration in pixels,</param>
+		/// <returns>Duration in time.</returns>
+		/// <remarks>
+		/// Helper for FinishSelectedRegion. Used to approximate the time of arrow tops and bottoms
+		/// from their centers.
+		/// </remarks>
+		private double GetTimeRangeOfYPixelDurationAtTime(double time, double duration)
+		{
+			var currentTime = Position.ChartTime;
+			double currentPosition = 0.0;
+			if (!ActiveChart.TryGetChartPositionFromTime(currentTime, ref currentPosition))
+				return 0.0;
+			var interpolatedScrollRate = GetInterpolatedScrollRate(currentTime, currentPosition);
+
+			var rae = ActiveChart.FindActiveRateAlteringEventForTime(time);
+			var spacingHelper = EventSpacingHelper.GetSpacingHelper(ActiveChart);
+			spacingHelper.UpdatePpsAndPpr(rae, interpolatedScrollRate, GetSpacingZoom());
+
+			return duration / spacingHelper.GetPps();
+		}
+
+		/// <summary>
+		/// Given a duration in pixel space in y, returns that duration as rows based on the
+		/// rate altering event present at the given time. Note that this duration is an
+		/// approximation as the given pixel range may cover multiple rate altering events
+		/// and only the rate altering event present at the given position is considered.
+		/// </summary>
+		/// <param name="position">Chart position to use for determining the current rate.</param>
+		/// <param name="duration">Y duration in pixels,</param>
+		/// <returns>Duration in rows.</returns>
+		/// <remarks>
+		/// Helper for FinishSelectedRegion. Used to approximate the row of arrow tops and bottoms
+		/// from their centers.
+		/// </remarks>
+		private double GetPositionRangeOfYPixelDurationAtTime(double position, double duration)
+		{
+			var currentPosition = Position.ChartPosition;
+			double currentTime = 0.0;
+			if (!ActiveChart.TryGetTimeFromChartPosition(currentPosition, ref currentTime))
+				return 0.0;
+			var interpolatedScrollRate = GetInterpolatedScrollRate(currentTime, currentPosition);
+
+			var rae = ActiveChart.FindActiveRateAlteringEventForPosition(position);
+			var spacingHelper = EventSpacingHelper.GetSpacingHelper(ActiveChart);
+			spacingHelper.UpdatePpsAndPpr(rae, interpolatedScrollRate, GetSpacingZoom());
+
+			return duration / spacingHelper.GetPpr();
 		}
 
 		#endregion Selection
@@ -3886,7 +3961,7 @@ namespace StepManiaEditor
 
 		private void OnMoveToPreviousMeasure()
 		{
-			var rate = ActiveChart?.GetActiveRateAlteringEventForPosition(Position.ChartPosition);
+			var rate = ActiveChart?.FindActiveRateAlteringEventForPosition(Position.ChartPosition);
 			if (rate == null)
 				return;
 			var sig = rate.LastTimeSignature.Signature;
@@ -3898,7 +3973,7 @@ namespace StepManiaEditor
 
 		private void OnMoveToNextMeasure()
 		{
-			var rate = ActiveChart?.GetActiveRateAlteringEventForPosition(Position.ChartPosition);
+			var rate = ActiveChart?.FindActiveRateAlteringEventForPosition(Position.ChartPosition);
 			if (rate == null)
 				return;
 			var sig = rate.LastTimeSignature.Signature;
