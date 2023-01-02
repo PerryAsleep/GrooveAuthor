@@ -103,7 +103,14 @@ namespace StepManiaEditor
 		/// <returns>Chart time of the given position.</returns>
 		public double GetChartTimeFromPosition(double chartPosition)
 		{
-			return GetChartTime() + Math.Max(0.0, Math.Max(0.0, chartPosition - (GetRow() + WarpRowsRemaining)) * SecondsPerRow + StopTimeRemaining);
+			// Only cap values if the position isn't before 0
+			var relativePosition = chartPosition - (GetRow() + WarpRowsRemaining);
+			if (chartPosition >= 0.0)
+				relativePosition = Math.Max(0.0, relativePosition);
+			var relativeTime = relativePosition * SecondsPerRow + StopTimeRemaining;
+			if (chartPosition >= 0.0)
+				relativeTime = Math.Max(0.0, relativeTime);
+			return GetChartTime() + relativeTime;
 		}
 
 		/// <summary>
@@ -113,7 +120,11 @@ namespace StepManiaEditor
 		/// <returns>Chart position of the given time.</returns>
 		public double GetChartPositionFromTime(double chartTime)
 		{
-			return GetRow() + Math.Max(0.0, chartTime - (GetChartTime() + StopTimeRemaining)) * RowsPerSecond + WarpRowsRemaining;
+			// Only cap values if the time isn't before 0.0
+			var relativeTime = chartTime - (GetChartTime() + StopTimeRemaining);
+			if (chartTime >= 0.0)
+				relativeTime = Math.Max(0.0, relativeTime);
+			return GetRow() + relativeTime * RowsPerSecond + WarpRowsRemaining;
 		}
 
 		#region IComparable
