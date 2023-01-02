@@ -24,6 +24,7 @@ namespace StepManiaEditor
 			return LaneNote.Lane;
 		}
 
+		public override bool IsMiscEvent() { return false; }
 		public override bool IsSelectableWithoutModifiers() { return true; }
 		public override bool IsSelectableWithModifiers() { return false; }
 

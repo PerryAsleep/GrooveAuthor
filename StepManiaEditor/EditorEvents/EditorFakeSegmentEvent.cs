@@ -84,6 +84,7 @@ namespace StepManiaEditor
 			WidthDirty = true;
 		}
 
+		public override bool IsMiscEvent() { return true; }
 		public override bool IsSelectableWithoutModifiers() { return false; }
 		public override bool IsSelectableWithModifiers() { return true; }
 
@@ -132,14 +133,6 @@ namespace StepManiaEditor
 			return ChartTime;
 		}
 
-		public override void SetRow(int row)
-		{
-			Row = row;
-		}
-		public override void SetTimeMicros(long timeMicros)
-		{
-			ChartTime = ToSeconds(timeMicros);
-		}
 		public override void SetChartTime(double chartTime)
 		{
 			ChartTime = chartTime;

@@ -8,6 +8,8 @@ using Microsoft.Xna.Framework.Graphics;
 using static StepManiaEditor.Utils;
 using static Fumen.Utils;
 using static Fumen.Converters.SMCommon;
+using FMOD;
+using static System.Diagnostics.Debug;
 
 namespace StepManiaEditor
 {
@@ -208,8 +210,6 @@ namespace StepManiaEditor
 
 		private Extras OriginalSongExtras;
 
-		public EditorPreviewRegionEvent PreviewEvent;
-
 		public Dictionary<ChartType, List<EditorChart>> Charts = new Dictionary<ChartType, List<EditorChart>>();
 		public List<Chart> UnsupportedCharts = new List<Chart>();
 
@@ -269,7 +269,9 @@ namespace StepManiaEditor
 			get => MusicOffsetInternal;
 			set
 			{
+				DeletePreviewEvents();
 				MusicOffsetInternal = value;
+				AddPreviewEvents();
 				Editor.OnSongMusicOffsetChanged(this);
 			}
 		}
@@ -285,9 +287,25 @@ namespace StepManiaEditor
 		//KEYSOUNDS
 		//ATTACKS
 
+		private double LastSecondHintInternal;
 		public double LastSecondHint;
 
-		public double SampleStart;
+
+		private double SampleStartInternal;
+		public double SampleStart
+		{
+			get => SampleStartInternal;
+			set
+			{
+				if (!SampleStartInternal.DoubleEquals(value))
+				{
+					DeletePreviewEvents();
+					SampleStartInternal = value;
+					AddPreviewEvents();
+				}
+				SampleStartInternal = value;
+			}
+		}
 		public double SampleLength;
 
 		public Selectable Selectable = Selectable.YES;
@@ -299,7 +317,6 @@ namespace StepManiaEditor
 			ImGuiRenderer imGuiRenderer)
 		{
 			Editor = editor;
-			PreviewEvent = new EditorPreviewRegionEvent(this);
 
 			Banner = new EditorImageData(FileDirectory, graphicsDevice, imGuiRenderer, (uint)GetBannerWidth(), (uint)GetBannerHeight(), null, false);
 			Background = new EditorImageData(FileDirectory, graphicsDevice, imGuiRenderer, (uint)GetBackgroundWidth(), (uint)GetBackgroundHeight(), null, true);
@@ -320,7 +337,6 @@ namespace StepManiaEditor
 			ImGuiRenderer imGuiRenderer)
 		{
 			Editor = editor;
-			PreviewEvent = new EditorPreviewRegionEvent(this);
 
 			SetFullFilePath(fullFilePath);
 			
@@ -517,6 +533,28 @@ namespace StepManiaEditor
 			return string.IsNullOrEmpty(MusicPreviewPath);
 		}
 
+		private void DeletePreviewEvents()
+		{
+			foreach (var kvp in Charts)
+			{
+				foreach (var chart in kvp.Value)
+				{
+					chart.DeletePreviewEvent();
+				}
+			}
+		}
+
+		private void AddPreviewEvents()
+		{
+			foreach (var kvp in Charts)
+			{
+				foreach (var chart in kvp.Value)
+				{
+					chart.AddPreviewEvent();
+				}
+			}
+		}
+
 		public Song SaveToSong()
 		{
 			Song song = new Song();
@@ -646,14 +684,19 @@ namespace StepManiaEditor
 			}
 		}
 
-		public bool UsesChartMusicOffsetInternal;
+		private bool UsesChartMusicOffsetInternal;
 		public bool UsesChartMusicOffset
 		{
 			get => UsesChartMusicOffsetInternal;
 			set
 			{
-				UsesChartMusicOffsetInternal = value;
-				Editor.OnChartMusicOffsetChanged(this);
+				if (UsesChartMusicOffsetInternal != value)
+				{
+					DeletePreviewEvent();
+					UsesChartMusicOffsetInternal = value;
+					AddPreviewEvent();
+					Editor.OnChartMusicOffsetChanged(this);
+				}
 			}
 		}
 
@@ -663,8 +706,13 @@ namespace StepManiaEditor
 			get => MusicOffsetInternal;
 			set
 			{
-				MusicOffsetInternal = value;
-				Editor.OnChartMusicOffsetChanged(this);
+				if (MusicOffsetInternal != value)
+				{
+					DeletePreviewEvent();
+					MusicOffsetInternal = value;
+					AddPreviewEvent();
+					Editor.OnChartMusicOffsetChanged(this);
+				}
 			}
 		}
 
@@ -674,13 +722,14 @@ namespace StepManiaEditor
 		// TODO: RADARVALUES?
 
 		public EventTree EditorEvents;
-		public RedBlackTree<EditorRateAlteringEvent> RateAlteringEventsBySongTime;
-		public RedBlackTree<EditorRateAlteringEvent> RateAlteringEventsByRow;
+		public EventTree MiscEvents;
+		public RateAlteringEventTree RateAlteringEvents;
 		public RedBlackTree<EditorInterpolatedRateAlteringEvent> InterpolatedScrollRateEvents;
-		private RedBlackTree<EditorStopEvent> StopsByRow;
-		private RedBlackTree<EditorDelayEvent> DelaysByRow;
-		private RedBlackTree<EditorFakeSegmentEvent> FakesByRow;
-		private RedBlackTree<EditorWarpEvent> WarpsByRow;
+		private RedBlackTree<EditorStopEvent> Stops;
+		private RedBlackTree<EditorDelayEvent> Delays;
+		private RedBlackTree<EditorFakeSegmentEvent> Fakes;
+		private RedBlackTree<EditorWarpEvent> Warps;
+		private EditorPreviewRegionEvent PreviewEvent;
 
 		public double MostCommonTempo;
 		public double MinTempo;
@@ -711,9 +760,9 @@ namespace StepManiaEditor
 			Credit = chart.Author ?? "";
 			chart.Extras.TryGetExtra(TagMusic, out string musicPath, true);
 			MusicPath = musicPath;
-			UsesChartMusicOffset = chart.Extras.TryGetExtra(TagOffset, out double musicOffset, true);
+			UsesChartMusicOffsetInternal = chart.Extras.TryGetExtra(TagOffset, out double musicOffset, true);
 			if (UsesChartMusicOffset)
-				MusicOffset = musicOffset;
+				MusicOffsetInternal = musicOffset;
 
 			HasDisplayTempoFromChart = !string.IsNullOrEmpty(chart.Tempo);
 			DisplayTempo.FromString(chart.Tempo);
@@ -816,13 +865,13 @@ namespace StepManiaEditor
 		private void SetUpEditorEvents(Chart chart)
 		{
 			var editorEvents = new EventTree(this);
-			var rateAlteringEventsByChartTime = new RedBlackTree<EditorRateAlteringEvent>(EditorEvent.SortChartTime());
-			var rateAlteringEventsByRow = new RedBlackTree<EditorRateAlteringEvent>(EditorEvent.SortRow());
+			var rateAlteringEvents = new RateAlteringEventTree(this);
 			var interpolatedScrollRateEvents = new RedBlackTree<EditorInterpolatedRateAlteringEvent>();
-			var stopsByRow = new RedBlackTree<EditorStopEvent>(EditorEvent.SortRow());
-			var delaysByRow = new RedBlackTree<EditorDelayEvent>(EditorEvent.SortRow());
-			var fakesByRow = new RedBlackTree<EditorFakeSegmentEvent>(EditorEvent.SortRow());
-			var warpsByRow = new RedBlackTree<EditorWarpEvent>(EditorEvent.SortRow());
+			var stops = new RedBlackTree<EditorStopEvent>();
+			var delays = new RedBlackTree<EditorDelayEvent>();
+			var fakes = new RedBlackTree<EditorFakeSegmentEvent>();
+			var warps = new RedBlackTree<EditorWarpEvent>();
+			var miscEvents = new EventTree(this);
 
 			var lastHoldStarts = new EditorHoldStartNoteEvent[NumInputs];
 			var lastScrollRateInterpolationValue = 1.0;
@@ -850,24 +899,23 @@ namespace StepManiaEditor
 				}
 				else if (editorEvent is EditorFakeSegmentEvent fse)
 				{
-					fakesByRow.Insert(fse);
+					fakes.Insert(fse);
 				}
 				else if (editorEvent is EditorRateAlteringEvent rae)
 				{
-					rateAlteringEventsByChartTime.Insert(rae);
-					rateAlteringEventsByRow.Insert(rae);
+					rateAlteringEvents.Insert(rae);
 
 					if (rae is EditorStopEvent se)
 					{
-						stopsByRow.Insert(se);
+						stops.Insert(se);
 					}
 					else if (rae is EditorDelayEvent de)
 					{
-						delaysByRow.Insert(de);
+						delays.Insert(de);
 					}
 					else if (rae is EditorWarpEvent we)
 					{
-						warpsByRow.Insert(we);
+						warps.Insert(we);
 					}
 				}
 				else if (editorEvent is EditorInterpolatedRateAlteringEvent irae)
@@ -895,18 +943,24 @@ namespace StepManiaEditor
 					me.CanBeDeleted = !firstMultipliersEvent;
 					firstMultipliersEvent = false;
 				}
+
+				if (editorEvent.IsMiscEvent())
+					miscEvents.Insert(editorEvent);
 			}
 
 			EditorEvents = editorEvents;
-			RateAlteringEventsBySongTime = rateAlteringEventsByChartTime;
-			RateAlteringEventsByRow = rateAlteringEventsByRow;
+			RateAlteringEvents = rateAlteringEvents;
 			InterpolatedScrollRateEvents = interpolatedScrollRateEvents;
-			StopsByRow = stopsByRow;
-			DelaysByRow = delaysByRow;
-			FakesByRow = fakesByRow;
-			WarpsByRow = warpsByRow;
+			Stops = stops;
+			Delays = delays;
+			Fakes = fakes;
+			Warps = warps;
+			MiscEvents = miscEvents;
 
 			CleanRateAlteringEvents();
+
+			// Create events that are not derived from the Chart's Events.
+			AddPreviewEvent();
 		}
 
 		/// <summary>
@@ -926,26 +980,51 @@ namespace StepManiaEditor
 			var lastTempoChangeTime = 0L;
 			var minTempo = double.MaxValue;
 			var maxTempo = double.MinValue;
+			
+			var warpRowsRemaining = 0;
+			var stopTimeRemaining = 0.0;
+			var canBeDeleted = true;
+			var lastRowsPerSecond = 1.0;
+			var lastSecondsPerRow = 1.0;
 
-			EditorRateAlteringEvent previousEvent = new EditorDummyRateAlteringEvent(this, 0, 0.0)
+			EditorRateAlteringEvent previousEvent = null;
+			var firstEnumerator = RateAlteringEvents.First();
+			if (firstEnumerator != null)
 			{
-				RowsPerSecond = 0.0,
-				SecondsPerRow = 0.0
-			};
+				firstEnumerator.MoveNext();
+				previousEvent = firstEnumerator.Current;
+			}
 
 			List<EditorRateAlteringEvent> previousEvents = new List<EditorRateAlteringEvent>();
 			List<EditorEvent> invalidTimeSignatures = new List<EditorEvent>();
 
-			foreach (var rae in RateAlteringEventsByRow)
+			// TODO: Check handling of negative Tempo warps.
+
+			foreach (var rae in RateAlteringEvents)
 			{
 				var chartEvent = rae.GetEvent();
+
+				// Adjust warp rows remaining.
+				warpRowsRemaining = Math.Max(0, warpRowsRemaining - (chartEvent.IntegerPosition - previousEvent.GetRow()));
+				// Adjust stop timing remaining.
+				if (stopTimeRemaining != 0.0)
+				{
+					// In most cases with a non zero stop time remaining, the stop time remaining is positive.
+					// In those cases, the following events have already been adjusted such that their time
+					// takes into account the stop time, and they should have 0.0 for their stop time remaining.
+					// For negative stops however, we need to keep incrementing the stop time remaining until it
+					// hits 0.0. To do this we need to add the time which would have elapsed between the last
+					// event and this event if there were no stop. This is derived from their row difference
+					// and the seconds per row.
+					var rowsSincePrevious = chartEvent.IntegerPosition - previousEvent.GetRow();
+					var stopTimeSincePrevious = rowsSincePrevious * lastSecondsPerRow;
+					stopTimeRemaining = Math.Min(0.0, stopTimeRemaining + stopTimeSincePrevious);
+				}
+
 				if (chartEvent is Tempo tc)
 				{
-					var rowsSincePrevious = Math.Max(0, chartEvent.IntegerPosition - previousEvent.RowForFollowingEvents);
-					var secondsSincePrevious = rowsSincePrevious * previousEvent.SecondsPerRow;
-
-					var newSecondsPerRow = 60.0 / tc.TempoBPM / (double)MaxValidDenominator;
-					var newRowsPerSecond = 1.0 / newSecondsPerRow;
+					lastSecondsPerRow = 60.0 / tc.TempoBPM / MaxValidDenominator;
+					lastRowsPerSecond = 1.0 / lastSecondsPerRow;
 
 					// Update any events which precede the first tempo so they can have accurate rates.
 					// This is useful for determining spacing prior to the first event
@@ -953,24 +1032,14 @@ namespace StepManiaEditor
 					{
 						foreach (var previousRateAlteringEvent in previousEvents)
 						{
-							previousRateAlteringEvent.RowsPerSecond = newRowsPerSecond;
-							previousRateAlteringEvent.SecondsPerRow = newSecondsPerRow;
-							previousRateAlteringEvent.Tempo = tc.TempoBPM;
+							previousRateAlteringEvent.UpdateTempo(tc.TempoBPM, lastRowsPerSecond, lastSecondsPerRow);
 						}
 					}
 
 					minTempo = Math.Min(minTempo, tc.TempoBPM);
 					maxTempo = Math.Max(maxTempo, tc.TempoBPM);
 
-					rae.RowForFollowingEvents = chartEvent.IntegerPosition;
-					rae.SetChartTime(previousEvent.ChartTimeForFollowingEvents + secondsSincePrevious);
-					rae.ChartTimeForFollowingEvents = previousEvent.ChartTimeForFollowingEvents + secondsSincePrevious;
-					rae.RowsPerSecond = newRowsPerSecond;
-					rae.SecondsPerRow = newSecondsPerRow;
-					rae.ScrollRate = lastScrollRate;
-					rae.Tempo = tc.TempoBPM;
-					rae.LastTimeSignature = lastTimeSignature;
-					rae.CanBeDeleted = !firstTempo;
+					canBeDeleted = !firstTempo;
 
 					if (!firstTempo)
 					{
@@ -985,43 +1054,20 @@ namespace StepManiaEditor
 				}
 				else if (chartEvent is Stop stop)
 				{
-					var rowsSincePrevious = Math.Max(0, chartEvent.IntegerPosition - previousEvent.RowForFollowingEvents);
-					var secondsSincePrevious = rowsSincePrevious * previousEvent.SecondsPerRow;
-
-					rae.RowForFollowingEvents = chartEvent.IntegerPosition;
-					rae.SetChartTime(previousEvent.ChartTimeForFollowingEvents + secondsSincePrevious);
-					rae.ChartTimeForFollowingEvents = previousEvent.ChartTimeForFollowingEvents + secondsSincePrevious +
-													 ToSeconds(stop.LengthMicros);
-					rae.RowsPerSecond = previousEvent.RowsPerSecond;
-					rae.SecondsPerRow = previousEvent.SecondsPerRow;
-					rae.ScrollRate = lastScrollRate;
-					rae.Tempo = lastTempo;
-					rae.LastTimeSignature = lastTimeSignature;
-					rae.CanBeDeleted = true;
-
-					previousEvent = rae;
+					// Add to the stop time rather than replace it because overlapping
+					// negative stops stack in Stepmania.
+					stopTimeRemaining += ToSeconds(stop.LengthMicros);
+					canBeDeleted = true;
 				}
 				else if (chartEvent is Warp warp)
 				{
-					var rowsSincePrevious = Math.Max(0, chartEvent.IntegerPosition - previousEvent.RowForFollowingEvents);
-					var secondsSincePrevious = rowsSincePrevious * previousEvent.SecondsPerRow;
-
-					rae.RowForFollowingEvents = chartEvent.IntegerPosition + warp.LengthIntegerPosition;
-					rae.SetChartTime(previousEvent.ChartTimeForFollowingEvents + secondsSincePrevious);
-					rae.ChartTimeForFollowingEvents = previousEvent.ChartTimeForFollowingEvents + secondsSincePrevious;
-					rae.RowsPerSecond = previousEvent.RowsPerSecond;
-					rae.SecondsPerRow = previousEvent.SecondsPerRow;
-					rae.ScrollRate = lastScrollRate;
-					rae.Tempo = lastTempo;
-					rae.LastTimeSignature = lastTimeSignature;
-					rae.CanBeDeleted = true;
-
-					previousEvent = rae;
+					// Intentionally do not stack warps to match Stepmania behavior.
+					warpRowsRemaining = Math.Max(warpRowsRemaining, warp.LengthIntegerPosition);
+					canBeDeleted = true;
 				}
 				else if (chartEvent is ScrollRate scrollRate)
 				{
-					var rowsSincePrevious = Math.Max(0, chartEvent.IntegerPosition - previousEvent.RowForFollowingEvents);
-					var secondsSincePrevious = rowsSincePrevious * previousEvent.SecondsPerRow;
+					lastScrollRate = scrollRate.Rate;
 
 					// Update any events which precede the first tempo so they can have accurate rates.
 					// This is useful for determining spacing prior to the first event
@@ -1029,22 +1075,12 @@ namespace StepManiaEditor
 					{
 						foreach (var previousRateAlteringEvent in previousEvents)
 						{
-							previousRateAlteringEvent.ScrollRate = scrollRate.Rate;
+							previousRateAlteringEvent.UpdateScrollRate(lastScrollRate);
 						}
 					}
 
-					rae.RowForFollowingEvents = chartEvent.IntegerPosition;
-					rae.SetChartTime(previousEvent.ChartTimeForFollowingEvents + secondsSincePrevious);
-					rae.ChartTimeForFollowingEvents = previousEvent.ChartTimeForFollowingEvents + secondsSincePrevious;
-					rae.RowsPerSecond = previousEvent.RowsPerSecond;
-					rae.SecondsPerRow = previousEvent.SecondsPerRow;
-					rae.ScrollRate = scrollRate.Rate;
-					rae.Tempo = lastTempo;
-					rae.LastTimeSignature = lastTimeSignature;
-					rae.CanBeDeleted = !firstScrollRate;
+					canBeDeleted = !firstScrollRate;
 
-					previousEvent = rae;
-					lastScrollRate = scrollRate.Rate;
 					firstScrollRate = false;
 				}
 				else if (chartEvent is TimeSignature timeSignature)
@@ -1059,23 +1095,23 @@ namespace StepManiaEditor
 						continue;
 					}
 
-					var rowsSincePrevious = Math.Max(0, chartEvent.IntegerPosition - previousEvent.RowForFollowingEvents);
-					var secondsSincePrevious = rowsSincePrevious * previousEvent.SecondsPerRow;
-
-					rae.RowForFollowingEvents = chartEvent.IntegerPosition;
-					rae.SetChartTime(previousEvent.ChartTimeForFollowingEvents + secondsSincePrevious);
-					rae.ChartTimeForFollowingEvents = previousEvent.ChartTimeForFollowingEvents + secondsSincePrevious;
-					rae.RowsPerSecond = previousEvent.RowsPerSecond;
-					rae.SecondsPerRow = previousEvent.SecondsPerRow;
-					rae.ScrollRate = lastScrollRate;
-					rae.Tempo = lastTempo;
-					rae.LastTimeSignature = timeSignature;
-					rae.CanBeDeleted = !firstTimeSignature;
+					canBeDeleted = !firstTimeSignature;
 
 					lastTimeSignature = timeSignature;
 					firstTimeSignature = false;
 				}
 
+				rae.Init(
+					warpRowsRemaining,
+					stopTimeRemaining,
+					lastScrollRate,
+					lastTempo,
+					lastRowsPerSecond,
+					lastSecondsPerRow,
+					lastTimeSignature,
+					canBeDeleted);
+
+				previousEvent = rae;
 				previousEvents.Add(rae);
 			}
 
@@ -1108,9 +1144,48 @@ namespace StepManiaEditor
 			return invalidTimeSignatures;
 		}
 
-		private void UpdateNotePositions()
+		private List<EditorEvent> UpdateEventTimingData()
 		{
+			// First, delete any events which do not correspond to Stepmania chart events.
+			// These events may sort to a different relative position based on rate altering
+			// event changes. For example, if a stop is extended, that may change the position
+			// of the preview since it always occurs at an absolute, with a derived position.
+			// We will re-add these events after updating the normal events.
+			DeletePreviewEvent();
+
+			// Now, update all time values for all normal notes that correspond to Stepmania chart
+			// events. Any of these events, even when added or removed, cannot change the relative
+			// order of other such events. As such, we do not need to sort EditorEvents again.
 			SetEventTimeMicrosAndMetricPositionsFromRows(EditorEvents.Select(e => e.GetEvent()));
+			
+			// Now, update all the rate altering events using the updated times. It is possible that
+			// this may result in some events being deleted. The only time this can happen is when
+			// deleting a time signature that then invalidates a future time signature. This will
+			// not invalidate note times or positions.
+			var deletedEvents = CleanRateAlteringEvents();
+
+			// Finally, re-add any events we deleted above. When re-adding them, we will derive
+			// their positions again using the update timing information.
+			AddPreviewEvent();
+
+			return deletedEvents;
+		}
+
+		public void DeletePreviewEvent()
+		{
+			if (PreviewEvent != null)
+				DeleteEvent(PreviewEvent);
+		}
+
+		public void AddPreviewEvent()
+		{
+			if (!EditorSong.IsUsingSongForPreview())
+				return;
+			double previewChartTime = EditorSong.SampleStart + GetMusicOffset();
+			double chartPosition = 0.0;
+			TryGetChartPositionFromTime(previewChartTime, ref chartPosition);
+			PreviewEvent = new EditorPreviewRegionEvent(this, chartPosition);
+			AddEvent(PreviewEvent);
 		}
 
 		public bool TryGetChartPositionFromTime(double chartTime, ref double chartPosition)
@@ -1118,22 +1193,36 @@ namespace StepManiaEditor
 			var rateEvent = FindActiveRateAlteringEventForTime(chartTime, false);
 			if (rateEvent == null)
 				return false;
-
-			// Cap the relative time to 0.0 so warps function properly, except when the chart time is
-			// before 0.0.
-			var relativeTime = chartTime - rateEvent.ChartTimeForFollowingEvents;
-			if (chartTime > 0.0 && relativeTime < 0.0)
-				relativeTime = 0.0;
-			chartPosition = rateEvent.RowForFollowingEvents + rateEvent.RowsPerSecond * relativeTime;
+			chartPosition = rateEvent.GetChartPositionFromTime(chartTime);
 			return true;
 		}
 
-		public EditorStopEvent GetStopEventOverlapping(int row, double chartTime)
+		public List<IChartRegion> GetRegionsOverlapping(int row, double chartTime)
 		{
-			if (StopsByRow == null)
+			var regions = new List<IChartRegion>();
+			var stop = GetStopEventOverlapping(row, chartTime);
+			if (stop != null)
+				regions.Add(stop);
+			var delay = GetDelayEventOverlapping(row, chartTime);
+			if (delay != null)
+				regions.Add(delay);
+			var fake = GetFakeSegmentEventOverlapping(row, chartTime);
+			if (fake != null)
+				regions.Add(fake);
+			var warp = GetWarpEventOverlapping(row, chartTime);
+			if (warp != null)
+				regions.Add(warp);
+			if (PreviewEvent.GetChartTime() <= chartTime && PreviewEvent.GetChartTime() + PreviewEvent.GetRegionDuration() >= chartTime)
+				regions.Add(PreviewEvent);
+			return regions;
+		}
+
+		private EditorStopEvent GetStopEventOverlapping(int row, double chartTime)
+		{
+			if (Stops == null)
 				return null;
 
-			var enumerator = StopsByRow.FindGreatestPreceding(new EditorDummyStopEvent(this, row, chartTime));
+			var enumerator = Stops.FindGreatestPreceding(new EditorDummyStopEvent(this, row, chartTime));
 			if (enumerator == null)
 				return null;
 			enumerator.MoveNext();
@@ -1143,12 +1232,12 @@ namespace StepManiaEditor
 			return null;
 		}
 
-		public EditorDelayEvent GetDelayEventOverlapping(int row, double chartTime)
+		private EditorDelayEvent GetDelayEventOverlapping(int row, double chartTime)
 		{
-			if (DelaysByRow == null)
+			if (Delays == null)
 				return null;
 
-			var enumerator = DelaysByRow.FindGreatestPreceding(new EditorDummyDelayEvent(this, row, chartTime));
+			var enumerator = Delays.FindGreatestPreceding(new EditorDummyDelayEvent(this, row, chartTime));
 			if (enumerator == null)
 				return null;
 			enumerator.MoveNext();
@@ -1158,12 +1247,12 @@ namespace StepManiaEditor
 			return null;
 		}
 
-		public EditorFakeSegmentEvent GetFakeSegmentEventOverlapping(int row, double chartTime)
+		private EditorFakeSegmentEvent GetFakeSegmentEventOverlapping(int row, double chartTime)
 		{
-			if (FakesByRow == null)
+			if (Fakes == null)
 				return null;
 
-			var enumerator = FakesByRow.FindGreatestPreceding(new EditorDummyFakeSegmentEvent(this, row, chartTime));
+			var enumerator = Fakes.FindGreatestPreceding(new EditorDummyFakeSegmentEvent(this, row, chartTime));
 			if (enumerator == null)
 				return null;
 			enumerator.MoveNext();
@@ -1173,12 +1262,12 @@ namespace StepManiaEditor
 			return null;
 		}
 
-		public EditorWarpEvent GetWarpEventOverlapping(int row, double chartTime)
+		private EditorWarpEvent GetWarpEventOverlapping(int row, double chartTime)
 		{
-			if (WarpsByRow == null)
+			if (Warps == null)
 				return null;
 
-			var enumerator = WarpsByRow.FindGreatestPreceding(new EditorDummyWarpEvent(this, row, chartTime));
+			var enumerator = Warps.FindGreatestPreceding(new EditorDummyWarpEvent(this, row, chartTime));
 			if (enumerator == null)
 				return null;
 			enumerator.MoveNext();
@@ -1190,15 +1279,15 @@ namespace StepManiaEditor
 
 		public EditorRateAlteringEvent FindActiveRateAlteringEventForTime(double chartTime, bool allowEqualTo = true)
 		{
-			if (RateAlteringEventsBySongTime == null)
+			if (RateAlteringEvents == null)
 				return null;
 
 			// Given the current song time, get the greatest preceding event which alters the rate of rows to time.
-			var enumerator = RateAlteringEventsBySongTime.FindGreatestPreceding(
-				new EditorDummyRateAlteringEvent(this, 0, chartTime), allowEqualTo);
+			var enumerator = RateAlteringEvents.FindGreatestPreceding(
+				new EditorDummyRateAlteringEventWithTime(this, chartTime), allowEqualTo);
 			// If there is no preceding event (e.g. SongTime is negative), use the first event.
 			if (enumerator == null)
-				enumerator = RateAlteringEventsBySongTime.GetRedBlackTreeEnumerator();
+				enumerator = RateAlteringEvents.GetRedBlackTreeEnumerator();
 			// If there is still no event then the Chart is misconfigured as it must have at least a Tempo event.
 			if (enumerator == null)
 				return null;
@@ -1213,27 +1302,21 @@ namespace StepManiaEditor
 			var rateEvent = FindActiveRateAlteringEventForPosition(chartPosition, false);
 			if (rateEvent == null)
 				return false;
-
-			// Cap the relative position to 0.0 so warps function properly, except when the chart time is
-			// before 0.0.
-			var relativePosition = chartPosition - rateEvent.RowForFollowingEvents;
-			if (chartPosition > 0.0 && relativePosition < 0)
-				relativePosition = 0.0;
-			chartTime = rateEvent.ChartTimeForFollowingEvents + rateEvent.SecondsPerRow * relativePosition;
+			chartTime = rateEvent.GetChartTimeFromPosition(chartPosition);
 			return true;
 		}
 
 		public EditorRateAlteringEvent FindActiveRateAlteringEventForPosition(double chartPosition, bool allowEqualTo = true)
 		{
-			if (RateAlteringEventsByRow == null)
+			if (RateAlteringEvents == null)
 				return null;
 
 			// Given the current song time, get the greatest preceding event which alters the rate of rows to time.
-			var enumerator = RateAlteringEventsByRow.FindGreatestPreceding(
-				new EditorDummyRateAlteringEvent(this, (int)chartPosition, 0.0), allowEqualTo);
+			var enumerator = RateAlteringEvents.FindGreatestPreceding(
+				new EditorDummyRateAlteringEventWithRow(this, chartPosition), allowEqualTo);
 			// If there is no preceding event (e.g. ChartPosition is negative), use the first event.
 			if (enumerator == null)
-				enumerator = RateAlteringEventsByRow.GetRedBlackTreeEnumerator();
+				enumerator = RateAlteringEvents.GetRedBlackTreeEnumerator();
 			// If there is still no event then the Chart is misconfigured as it must have at least a Tempo event.
 			if (enumerator == null)
 				return null;
@@ -1247,7 +1330,7 @@ namespace StepManiaEditor
 			var rae = FindActiveRateAlteringEventForPosition(row);
 			if (rae == null)
 				return 0;
-			return GetNearestMeasureBoundaryRow(rae.LastTimeSignature, row);
+			return GetNearestMeasureBoundaryRow(rae.GetTimeSignature(), row);
 		}
 
 		private int GetNearestMeasureBoundaryRow(TimeSignature lastTimeSignature, int row)
@@ -1352,11 +1435,32 @@ namespace StepManiaEditor
 			return nextNotes;
 		}
 
+		/// <summary>
+		/// Called when an EditorStopEvent's length is modified.
+		/// </summary>
+		public void OnStopLengthModified(EditorStopEvent stop, long newLengthMicros)
+		{
+			// Unfortunately, Stepmania treats negative stops as occurring after notes at the same position
+			// and positive notes as occuring before notes at the same position. This means that altering the
+			// sign will alter how notes are sorted, which means we need to remove the stop and re-add it in
+			// order for the EventTree to sort properly.
+			var signChanged = (stop.StopEvent.LengthMicros < 0) != (newLengthMicros < 0);
+			if (signChanged)
+				DeleteEvent(stop);
+			stop.StopEvent.LengthMicros = newLengthMicros;
+			if (signChanged)
+				AddEvent(stop);
+
+			// Handle updating timing data.
+			UpdateEventTimingData();
+		}
+
+		/// <summary>
+		/// Called when an EditorRateAlteringEvent's properties are modified.
+		/// </summary>
 		public void OnRateAlteringEventModified(EditorRateAlteringEvent rae)
 		{
-			// TODO: Can this be optimized?
-			CleanRateAlteringEvents();
-			UpdateNotePositions();
+			UpdateEventTimingData();
 		}
 
 		public void OnInterpolatedRateAlteringEventModified(EditorInterpolatedRateAlteringEvent irae)
@@ -1406,32 +1510,46 @@ namespace StepManiaEditor
 			List<EditorEvent> allDeletedEvents = new List<EditorEvent>();
 			allDeletedEvents.AddRange(editorEvents);
 
+			var deleted = false;
 			var rateDirty = false;
 			foreach (var editorEvent in editorEvents)
 			{
-				EditorEvents.Delete(editorEvent);
+				deleted = EditorEvents.Delete(editorEvent);
+				if (!deleted)
+				{
+					Assert(deleted);
+				}
+
+				if (editorEvent.IsMiscEvent())
+				{
+					deleted = MiscEvents.Delete(editorEvent);
+					Assert(deleted);
+				}
 
 				if (editorEvent is EditorFakeSegmentEvent fse)
 				{
-					FakesByRow.Delete(fse);
+					deleted = Fakes.Delete(fse);
+					Assert(deleted);
 				}
 
 				else if (editorEvent is EditorRateAlteringEvent rae)
 				{
-					RateAlteringEventsByRow.Delete(rae);
-					RateAlteringEventsBySongTime.Delete(rae);
+					RateAlteringEvents.Delete(rae);
 
 					if (rae is EditorStopEvent se)
 					{
-						StopsByRow.Delete(se);
+						deleted = Stops.Delete(se);
+						Assert(deleted);
 					}
 					else if (rae is EditorDelayEvent de)
 					{
-						DelaysByRow.Delete(de);
+						deleted = Delays.Delete(de);
+						Assert(deleted);
 					}
 					else if (rae is EditorWarpEvent we)
 					{
-						WarpsByRow.Delete(we);
+						deleted = Warps.Delete(we);
+						Assert(deleted);
 					}
 
 					rateDirty = true;
@@ -1465,9 +1583,7 @@ namespace StepManiaEditor
 
 			if (rateDirty)
 			{
-				// TODO: Can this be optimized?
-				allDeletedEvents.AddRange(CleanRateAlteringEvents());
-				UpdateNotePositions();
+				allDeletedEvents.AddRange(UpdateEventTimingData());
 			}
 
 			Editor.OnEventsDeleted();
@@ -1486,28 +1602,29 @@ namespace StepManiaEditor
 			foreach (var editorEvent in editorEvents)
 			{
 				EditorEvents.Insert(editorEvent);
+				if (editorEvent.IsMiscEvent())
+					MiscEvents.Insert(editorEvent);
 
 				if (editorEvent is EditorFakeSegmentEvent fse)
 				{
-					FakesByRow.Insert(fse);
+					Fakes.Insert(fse);
 				}
 
 				else if (editorEvent is EditorRateAlteringEvent rae)
 				{
-					RateAlteringEventsByRow.Insert(rae);
-					RateAlteringEventsBySongTime.Insert(rae);
+					RateAlteringEvents.Insert(rae);
 
 					if (rae is EditorStopEvent se)
 					{
-						StopsByRow.Insert(se);
+						Stops.Insert(se);
 					}
 					else if (rae is EditorDelayEvent de)
 					{
-						DelaysByRow.Insert(de);
+						Delays.Insert(de);
 					}
 					else if (rae is EditorWarpEvent we)
 					{
-						WarpsByRow.Insert(we);
+						Warps.Insert(we);
 					}
 
 					rateDirty = true;
@@ -1537,9 +1654,7 @@ namespace StepManiaEditor
 			}
 			if (rateDirty)
 			{
-				// TODO: Can this be optimized?
-				CleanRateAlteringEvents();
-				UpdateNotePositions();
+				UpdateEventTimingData();
 			}
 		}
 
@@ -1578,13 +1693,13 @@ namespace StepManiaEditor
 		public double GetStartingTempo()
 		{
 			var rae = FindActiveRateAlteringEventForPosition(0.0);
-			return rae?.Tempo ?? DefaultTempo;
+			return rae?.GetTempo() ?? DefaultTempo;
 		}
 
 		public Fraction GetStartingTimeSignature()
 		{
 			var rae = FindActiveRateAlteringEventForPosition(0.0);
-			return rae?.LastTimeSignature.Signature ?? DefaultTimeSignature;
+			return rae?.GetTimeSignature().Signature ?? DefaultTimeSignature;
 		}
 
 		//steps_tag_handlers["BPMS"] = &SetStepsBPMs;
@@ -1601,7 +1716,6 @@ namespace StepManiaEditor
 		///* If this is called, the chart does not use the same attacks
 		// * as the Song's timing. No other changes are required. */
 		//steps_tag_handlers["ATTACKS"] = &SetStepsAttacks;
-
 	}
 
 	/// <summary>

@@ -1,25 +1,17 @@
 ﻿using Microsoft.Xna.Framework;
 using static StepManiaEditor.Editor;
 using static StepManiaEditor.Utils;
+using Microsoft.Xna.Framework.Graphics;
 
 namespace StepManiaEditor
 {
 	/// <summary>
 	/// Class for rendering the song/chart preview.
 	/// The preview is rendered as an IRegion and also as a miscellaneous editor event widget.
-	/// The preview does not correspond to an EditorEvent in a chart.
+	/// The preview does not correspond to an Event in a Chart.
 	/// </summary>
-	internal sealed class EditorPreviewRegionEvent : IChartRegion, IPlaceable
+	internal sealed class EditorPreviewRegionEvent : EditorEvent, IChartRegion
 	{
-		/// <summary>
-		/// The EditorSong.
-		/// </summary>
-		private EditorSong EditorSong;
-		/// <summary>
-		/// The active EditorChart. The EditorChart affects the music offset, which affects the preview time.
-		/// </summary>
-		public EditorChart ActiveChart;
-
 		public static readonly string WidgetHelp =
 			"Preview.\n" +
 			"Expected format: \"<length>s\". e.g. \"1.0s\"\n" +
@@ -27,9 +19,6 @@ namespace StepManiaEditor
 			"The Preview time and length can also be set in the Song Properties window.";
 		private const string Format = "%.9gs";
 		private const float Speed = 0.01f;
-
-		public bool ShouldDrawMiscEvent;
-		public float Alpha = 1.0f;
 
 		#region IChartRegion Implementation
 		private double RegionX, RegionY, RegionW, RegionH;
@@ -41,17 +30,12 @@ namespace StepManiaEditor
 		public void SetRegionY(double y) { RegionY = y; }
 		public void SetRegionW(double w) { RegionW = w; }
 		public void SetRegionH(double h) { RegionH = h; }
-		public double GetRegionPosition() { return EditorSong.SampleStart + (ActiveChart?.GetMusicOffset() ?? 0.0); }
-		public double GetRegionDuration() { return EditorSong.SampleLength; }
+		public double GetRegionPosition() { return GetChartTime(); }
+		public double GetRegionDuration() { return EditorChart.EditorSong.SampleLength; }
 		public bool AreRegionUnitsTime() { return true; }
 		public bool IsVisible(SpacingMode mode) { return true; }
 		public Color GetRegionColor() { return PreviewRegionColor; }
 		#endregion IChartRegion Implementation
-
-		#region IPlaceable
-		public double X { get; set; }
-		public double Y { get; set; }
-		public double H { get; set; }
 
 		/// <remarks>
 		/// This lazily updates the width if it is dirty.
@@ -61,7 +45,7 @@ namespace StepManiaEditor
 		/// problem as long as we assume the caller of GetW() happens on the main thread.
 		/// </remarks>
 		private double _W;
-		public double W
+		public override double W
 		{
 			get
 			{
@@ -77,33 +61,39 @@ namespace StepManiaEditor
 				_W = value;
 			}
 		}
-		#endregion IPlaceable
 
 		private bool WidthDirty;
 
 		public double DoubleValue
 		{
-			get => EditorSong.SampleLength;
+			get => EditorChart.EditorSong.SampleLength;
 			set
 			{
-				if (!EditorSong.SampleLength.DoubleEquals(value) && value >= 0.0)
+				if (!EditorChart.EditorSong.SampleLength.DoubleEquals(value) && value >= 0.0)
 				{
-					EditorSong.SampleLength = value;
+					EditorChart.EditorSong.SampleLength = value;
 					WidthDirty = true;
 				}
 			}
 		}
 
-		public EditorPreviewRegionEvent(EditorSong editorSong)
+		public EditorPreviewRegionEvent(EditorChart editorChart, double chartPosition) : base(editorChart, null)
 		{
-			EditorSong = editorSong;
 			WidthDirty = true;
+			ChartPosition = chartPosition;
 		}
 
-		public void Draw()
+		public override double GetChartTime()
 		{
-			if (!ShouldDrawMiscEvent)
-				return;
+			return EditorChart.EditorSong.SampleStart + EditorChart.GetMusicOffset();
+		}
+
+		public override bool IsMiscEvent() { return true; }
+		public override bool IsSelectableWithoutModifiers() { return false; }
+		public override bool IsSelectableWithModifiers() { return true; }
+
+		public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)
+		{
 			ImGuiLayoutUtils.MiscEditorEventPreviewDragDoubleWidget(
 				"PreviewWidget",
 				this,

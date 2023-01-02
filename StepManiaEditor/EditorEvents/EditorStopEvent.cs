@@ -37,7 +37,13 @@ namespace StepManiaEditor
 		public double GetRegionPosition() { return ToSeconds(ChartEvent.TimeMicros); }
 		public double GetRegionDuration() { return DoubleValue; }
 		public bool AreRegionUnitsTime() { return true; }
-		public bool IsVisible(SpacingMode mode) { return mode == SpacingMode.ConstantTime; }
+		public bool IsVisible(SpacingMode mode)
+		{
+			// Do not draw negative stop regions. It looks incorrect to have the region begin
+			// before the negative stop starts.
+			return mode == SpacingMode.ConstantTime
+				&& GetRegionDuration() > 0.0;
+		}
 		public Color GetRegionColor() { return StopRegionColor; }
 		#endregion IChartRegion Implementation
 
@@ -49,9 +55,8 @@ namespace StepManiaEditor
 				var newMicros = ToMicrosRounded(value);
 				if (StopEvent.LengthMicros != newMicros)
 				{
-					StopEvent.LengthMicros = newMicros;
+					EditorChart.OnStopLengthModified(this, newMicros);
 					WidthDirty = true;
-					EditorChart.OnRateAlteringEventModified(this);
 				}
 			}
 		}
@@ -87,6 +92,7 @@ namespace StepManiaEditor
 			WidthDirty = true;
 		}
 
+		public override bool IsMiscEvent() { return true; }
 		public override bool IsSelectableWithoutModifiers() { return false; }
 		public override bool IsSelectableWithModifiers() { return true; }
 
@@ -134,14 +140,6 @@ namespace StepManiaEditor
 			return ChartTime;
 		}
 
-		public override void SetRow(int row)
-		{
-			Row = row;
-		}
-		public override void SetTimeMicros(long timeMicros)
-		{
-			ChartTime = ToSeconds(timeMicros);
-		}
 		public override void SetChartTime(double chartTime)
 		{
 			ChartTime = chartTime;

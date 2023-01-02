@@ -5,13 +5,13 @@ using static StepManiaEditor.Utils;
 namespace StepManiaEditor
 {
 	/// <summary>
-	/// Class to help position the miscellaneous, non-note, IPlaceable widgets.
+	/// Class to help position the miscellaneous, non-note, EditorEvent widgets.
 	/// These widgets are adjacent to the chart and there may be more than one present for
 	/// a single row. This class helps sort them per row and reposition as needed.
 	///
 	/// Expected Usage:
 	///  Call BeginFrame at the start of each frame.
-	///  Call PositionEvent once per each each visible miscellaneous IPlaceable per frame.
+	///  Call PositionEvent once per each each visible miscellaneous EditorEvent per frame.
 	/// </summary>
 	internal sealed class MiscEventWidgetLayoutManager
 	{
@@ -26,18 +26,18 @@ namespace StepManiaEditor
 		/// </summary>
 		private static readonly List<Type> RightTypes;
 		/// <summary>
-		/// WidgetData for every type of IPlaceable object this class manages.
+		/// WidgetData for every type of EditorEvent this class manages.
 		/// </summary>
 		private static readonly Dictionary<Type, WidgetData> Data;
 
 		/// <summary>
-		/// IPlaceable objects being positioned on the left.
+		/// EditorEvents being positioned on the left.
 		/// </summary>
-		private static readonly Dictionary<double, Dictionary<Type, IPlaceable>> CurrentFrameLeftEvents = new Dictionary<double, Dictionary<Type, IPlaceable>>();
+		private static readonly Dictionary<double, Dictionary<Type, EditorEvent>> CurrentFrameLeftEvents = new Dictionary<double, Dictionary<Type, EditorEvent>>();
 		/// <summary>
-		/// IPlaceable objects being positioned on the right.
+		/// EditorEvents being positioned on the right.
 		/// </summary>
-		private static readonly Dictionary<double, Dictionary<Type, IPlaceable>> CurrentFrameRightEvents = new Dictionary<double, Dictionary<Type, IPlaceable>>();
+		private static readonly Dictionary<double, Dictionary<Type, EditorEvent>> CurrentFrameRightEvents = new Dictionary<double, Dictionary<Type, EditorEvent>>();
 
 		private static double LeftAnchorPos;
 		private static double RightAnchorPos;
@@ -87,7 +87,6 @@ namespace StepManiaEditor
 				typeof(EditorFakeSegmentEvent),
 			};
 
-
 			for (var i = 0; i < LeftTypes.Count; i++)
 				Data[LeftTypes[i]].LeftOrder = i;
 			for (var i = 0; i < RightTypes.Count; i++)
@@ -103,33 +102,45 @@ namespace StepManiaEditor
 		}
 
 		/// <summary>
-		/// Positions the given IPlaceable by setting its X and Y values.
-		/// Assumes that all IPlaceables being positioned through this class have their W values
+		/// Positions the given EditorEvent by setting its X and Y values.
+		/// Assumes that all EditorEvents being positioned through this class have their W values
 		/// already set correctly.
 		/// </summary>
-		/// <param name="e">IPlaceable object to position.</param>
+		/// <param name="e">EditorEvent object to position.</param>
 		/// <param name="rowY">Y position of the row of this event.</param>
-		public static void PositionEvent(IPlaceable e, double rowY)
+		public static void PositionEvent(EditorEvent e, double rowY)
 		{
-			// Adjust y so that the widget is centered in y.
-			var y = rowY - ImGuiLayoutUtils.GetMiscEditorEventHeight() * 0.5;
+			if (PositionEvent(e))
+				e.Y = rowY - ImGuiLayoutUtils.GetMiscEditorEventHeight() * 0.5;
+		}
 
+		/// <summary>
+		/// Positions the given EditorEvent by setting its X value.
+		/// Assumes that all EditorEvents being positioned through this class have their W values
+		/// already set correctly.
+		/// </summary>
+		/// <param name="e">EditorEvent object to position.</param>
+		public static bool PositionEvent(EditorEvent e)
+		{
 			// Get the current frame events for this position.
-			Dictionary<Type, IPlaceable> leftEvents;
-			if (!CurrentFrameLeftEvents.TryGetValue(y, out leftEvents))
+			var positionKey = Preferences.Instance.PreferencesScroll.SpacingMode == Editor.SpacingMode.ConstantTime ?
+				e.GetChartTime() : e.GetChartPosition();
+			Dictionary<Type, EditorEvent> leftEvents;
+			if (!CurrentFrameLeftEvents.TryGetValue(positionKey, out leftEvents))
 			{
-				leftEvents = new Dictionary<Type, IPlaceable>();
-				CurrentFrameLeftEvents[y] = leftEvents;
+				leftEvents = new Dictionary<Type, EditorEvent>();
+				CurrentFrameLeftEvents[positionKey] = leftEvents;
 			}
-			Dictionary<Type, IPlaceable> rightEvents;
-			if (!CurrentFrameRightEvents.TryGetValue(y, out rightEvents))
+			Dictionary<Type, EditorEvent> rightEvents;
+			if (!CurrentFrameRightEvents.TryGetValue(positionKey, out rightEvents))
 			{
-				rightEvents = new Dictionary<Type, IPlaceable>();
-				CurrentFrameRightEvents[y] = rightEvents;
+				rightEvents = new Dictionary<Type, EditorEvent>();
+				CurrentFrameRightEvents[positionKey] = rightEvents;
 			}
 
 			var t = e.GetType();
-			
+			var added = false;
+
 			if (Data.TryGetValue(t, out var widgetData))
 			{
 				// Check for adding this event's widget to the left.
@@ -153,8 +164,8 @@ namespace StepManiaEditor
 
 					// Set position of this widget and record it.
 					e.X = x;
-					e.Y = y;
 					leftEvents[t] = e;
+					added = true;
 				}
 
 				// Check for adding this event's widget to the right.
@@ -178,10 +189,12 @@ namespace StepManiaEditor
 
 					// Set position of this widget and record it.
 					e.X = x;
-					e.Y = y;
 					rightEvents[t] = e;
+					added = true;
 				}
 			}
+
+			return added;
 		}
 	}
 }

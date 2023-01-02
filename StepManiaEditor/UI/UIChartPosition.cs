@@ -224,7 +224,7 @@ namespace StepManiaEditor
 			var rateEvent = position.ActiveChart?.FindActiveRateAlteringEventForPosition(position.ChartPosition);
 			if (rateEvent == null)
 				return 0.0;
-			var timeSigEvent = rateEvent.LastTimeSignature;
+			var timeSigEvent = rateEvent.GetTimeSignature();
 			var rowDifference = position.ChartPosition - timeSigEvent.IntegerPosition;
 			var rowsPerMeasure = timeSigEvent.Signature.Numerator * (SMCommon.MaxValidDenominator * SMCommon.NumBeatsPerMeasure / timeSigEvent.Signature.Denominator);
 			var measures = rowDifference / rowsPerMeasure;

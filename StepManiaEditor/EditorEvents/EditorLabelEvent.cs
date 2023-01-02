@@ -80,6 +80,7 @@ namespace StepManiaEditor
 			WidthDirty = true;
 		}
 
+		public override bool IsMiscEvent() { return true; }
 		public override bool IsSelectableWithoutModifiers() { return false; }
 		public override bool IsSelectableWithModifiers() { return true; }
 

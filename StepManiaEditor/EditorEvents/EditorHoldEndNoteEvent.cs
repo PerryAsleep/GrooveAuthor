@@ -72,6 +72,7 @@ namespace StepManiaEditor
 			return new List<EditorEvent>() { EditorHoldStartNoteEvent, this };
 		}
 
+		public override bool IsMiscEvent() { return false; }
 		public override bool IsSelectableWithoutModifiers() { return false; }
 		public override bool IsSelectableWithModifiers() { return false; }
 

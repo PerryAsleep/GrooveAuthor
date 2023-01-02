@@ -19,18 +19,14 @@ namespace StepManiaEditor
 		}
 
 		/// <summary>
-		/// Given a RedBlackTree<EditorEvent> and a value, find the greatest preceding value.
-		/// If no value precedes the given value, instead find the least value that follows or is
-		/// equal to the given value.
+		/// Find the EditorEvent that is the greatest event which precedes the given chart position.
+		/// If no EditorEvent precedes the given chart position, instead find the EditorEvent that
+		/// is the least event which follows or is equal to the given chart posisiton.
 		/// </summary>
-		/// <remarks>
-		/// This is a common pattern when knowing a position or a time and wanting to find the first event to
-		/// start enumerator over for rendering.
-		/// </remarks>
-		/// <remarks>Helper for UpdateChartEvents.</remarks>
 		/// <returns>Enumerator to best value or null if a value could not be found.</returns>
-		public Enumerator FindBest(double chartPosition)
+		public Enumerator FindBestByPosition(double chartPosition)
 		{
+			// The dummy event will not equal any other event in the tree when compared to it.
 			var pos = EditorEvent.CreateDummyEvent(Chart, CreateDummyFirstEventForRow((int)chartPosition), chartPosition);
 			var enumerator = FindGreatestPreceding(pos, false);
 			if (enumerator == null)
@@ -48,25 +44,23 @@ namespace StepManiaEditor
 			// Find the greatest preceding or least following event by row.
 			// Many rows may occur at the same time, so no matter how we choose an enumerator by row
 			// we will need to check the time. Leverage the FindBest() logic, then check the time.
-			var enumerator = FindBest(chartPosition);
+			var enumerator = FindBestByPosition(chartPosition);
 			if (enumerator == null)
 				return null;
 
-			// The enumerator may be before or after the given time. If it is after the given time,
-			// we can move backwards until we are before, then move forward once to get the appropriate event.
-			while (enumerator.MovePrev() && enumerator.Current.GetChartTime() >= chartTime) { }
-			while (enumerator.MoveNext() && enumerator.Current.GetChartTime() < chartTime) { }
-
-			// Unset the enumerator so callers receive the enumerator in a state consistent with
-			// other operations which return an enumerator.
-			enumerator.Unset();
+			EnsureGreaterThanTime(enumerator, chartTime);
 			return enumerator;
 		}
 
 		public Enumerator FindFirstAfterChartPosition(double chartPosition)
 		{
 			var pos = EditorEvent.CreateDummyEvent(Chart, CreateDummyFirstEventForRow((int)chartPosition), chartPosition);
-			return FindLeastFollowing(pos, false);
+			var enumerator = FindLeastFollowing(pos, false);
+			if (enumerator == null)
+				return null;
+
+			EnsureGreaterThanPosition(enumerator, chartPosition);
+			return enumerator;
 		}
 
 		public EditorEvent FindNoteAt(int row, int lane, bool ignoreNotesBeingEdited)
@@ -111,7 +105,7 @@ namespace StepManiaEditor
 		public List<EditorEvent> FindEventsAtRow(int row)
 		{
 			var events = new List<EditorEvent>();
-			var enumerator = FindBest(row);
+			var enumerator = FindBestByPosition(row);
 			if (enumerator == null)
 				return events;
 			while (enumerator.MoveNext() && enumerator.Current.GetRow() <= row)
@@ -121,6 +115,55 @@ namespace StepManiaEditor
 			}
 
 			return events;
+		}
+
+		private static void EnsureLessThanTime(Enumerator e, double chartTime)
+		{
+			while (e.MoveNext() && e.Current.GetChartTime() < chartTime) { }
+			while (e.MovePrev() && e.Current.GetChartTime() >= chartTime) { }
+			e.Unset();
+		}
+		private static void EnsureLessThanOrEqualToTime(Enumerator e, double chartTime)
+		{
+			while (e.MoveNext() && e.Current.GetChartTime() <= chartTime) { }
+			while (e.MovePrev() && e.Current.GetChartTime() > chartTime) { }
+			e.Unset();
+		}
+		private static void EnsureGreaterThanTime(Enumerator e, double chartTime)
+		{
+			while (e.MovePrev() && e.Current.GetChartTime() > chartTime) { }
+			while (e.MoveNext() && e.Current.GetChartTime() <= chartTime) { }
+			e.Unset();
+		}
+		private static void EnsureGreaterThanOrEqualToTime(Enumerator e, double chartTime)
+		{
+			while (e.MovePrev() && e.Current.GetChartTime() >= chartTime) { }
+			while (e.MoveNext() && e.Current.GetChartTime() < chartTime) { }
+			e.Unset();
+		}
+		private static void EnsureLessThanPosition(Enumerator e, double chartPosition)
+		{
+			while (e.MoveNext() && e.Current.GetChartPosition() < chartPosition) { }
+			while (e.MovePrev() && e.Current.GetChartPosition() >= chartPosition) { }
+			e.Unset();
+		}
+		private static void EnsureLessThanOrEqualToPosition(Enumerator e, double chartPosition)
+		{
+			while (e.MoveNext() && e.Current.GetChartPosition() <= chartPosition) { }
+			while (e.MovePrev() && e.Current.GetChartPosition() > chartPosition) { }
+			e.Unset();
+		}
+		private static void EnsureGreaterThanPosition(Enumerator e, double chartPosition)
+		{
+			while (e.MovePrev() && e.Current.GetChartPosition() > chartPosition) { }
+			while (e.MoveNext() && e.Current.GetChartPosition() <= chartPosition) { }
+			e.Unset();
+		}
+		private static void EnsureGreaterThanOrEqualToPosition(Enumerator e, double chartPosition)
+		{
+			while (e.MovePrev() && e.Current.GetChartPosition() >= chartPosition) { }
+			while (e.MoveNext() && e.Current.GetChartPosition() < chartPosition) { }
+			e.Unset();
 		}
 	}
 }

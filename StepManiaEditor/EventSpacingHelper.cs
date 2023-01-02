@@ -1,4 +1,6 @@
 ﻿
+using System;
+
 namespace StepManiaEditor
 {
 	/// <summary>
@@ -26,6 +28,10 @@ namespace StepManiaEditor
 		/// The active EditorChart.
 		/// </summary>
 		protected EditorChart ActiveChart;
+		/// <summary>
+		/// Current EditorRateAlteringEvent.
+		/// </summary>
+		protected EditorRateAlteringEvent RateAlteringEvent;
 
 		/// <summary>
 		/// Factory method for creating an EventSpacingHelper appropriate for the current
@@ -80,17 +86,17 @@ namespace StepManiaEditor
 			PreviousPps = Pps;
 			PreviousPpr = Ppr;
 			// Update the current values.
-			InternalUpdatePpsAndPpr(rateEvent, interpolatedScrollRate, spacingZoom);
+			RateAlteringEvent = rateEvent;
+			InternalUpdatePpsAndPpr(interpolatedScrollRate, spacingZoom);
 		}
 
 		/// <summary>
 		/// Update the current pps and ppr values based on the given EditorRateAlteringEvent.
 		/// Protected method for derived classes to implement.
 		/// </summary>
-		/// <param name="rateEvent">The EditorRateAlteringEvent to use for determing the pps and ppr values.</param>
 		/// <param name="interpolatedScrollRate">The current interpolated scroll rate value.</param>
-		/// <param name="rateEvent">The current spacing zoom value.</param>
-		protected abstract void InternalUpdatePpsAndPpr(EditorRateAlteringEvent rateEvent, double interpolatedScrollRate, double spacingZoom);
+		/// <param name="spacingZoom">The current spacing zoom value.</param>
+		protected abstract void InternalUpdatePpsAndPpr(double interpolatedScrollRate, double spacingZoom);
 
 		/// <summary>
 		/// Returns whether or not the current scroll rate is negative.
@@ -135,9 +141,8 @@ namespace StepManiaEditor
 		/// </summary>
 		/// <param name="e">Event to get the position of.</param>
 		/// <param name="previousRateEventY">Position in screen space of the previous rate altering event.</param>
-		/// <param name="previousRateEvent">The previous rate altering event.</param>
 		/// <returns>Y position in screen space of the given event.</returns>
-		public abstract double GetY(EditorEvent e, double previousRateEventY, EditorRateAlteringEvent previousRateEvent);
+		public abstract double GetY(EditorEvent e, double previousRateEventY);
 
 		/// <summary>
 		/// Gets the Y position in screen space of a given event.
@@ -198,42 +203,34 @@ namespace StepManiaEditor
 		public abstract double GetY(double relativeTime, double relativeRow, double anchorY);
 
 		/// <summary>
+		/// Gets the Y position in screen space of a given row.
+		/// </summary>
+		/// <param name="row">The row to determine the Y position of.</param>
+		/// <param name="previousRateEventY">Position in screen space of the previous rate altering event.</param>
+		/// <remarks>Expects UpdatePpsAndPpr to have been called to set the current pps and ppr.</remarks>
+		/// <returns>Y position in screen space of the given row.</returns>
+		public abstract double GetYForRow(double row, double previousRateEventY);
+
+		/// <summary>
 		/// Gets the position in screen space of the start of a given region.
 		/// </summary>
-		/// <param name="region">Region to get the position of.</param>
-		/// <param name="anchorY">
-		/// Position in screen space of another event to use for relative positioning.
-		/// In most cases this is the previous rate altering event.
-		/// </param>
-		/// <param name="anchorChartTime">The chart time of the anchor event.</param>
-		/// <param name="anchorRow">The row of the achor event.</param>
+		/// <param name="region">Region to get the height of.</param>
+		/// <param name="previousRateEventY">Position in screen space of the previous rate altering event.</param>
 		/// <remarks>Expects UpdatePpsAndPpr to have been called to set the current pps and ppr.</remarks>
 		/// <returns>Y position in screen space of the start of the given region.</returns>
-		public double GetRegionY(IChartRegion region, double anchorY, double anchorChartTime, double anchorRow)
-		{
-			if (region.AreRegionUnitsTime())
-				return anchorY + (region.GetRegionPosition() - anchorChartTime) * Pps;
-			return anchorY + (region.GetRegionPosition() - anchorRow) * Ppr;
-		}
+		public abstract double GetRegionY(IChartRegion region, double previousRateEventY);
 
 		/// <summary>
 		/// Gets the height in screen space of a given region.
 		/// </summary>
 		/// <param name="region">Region to get the height of.</param>
 		/// <param name="previousRateEventY">Position in screen space of the previous rate altering event.</param>
-		/// <param name="previousRateEvent">The previous rate altering event.</param>
 		/// <remarks>
 		/// Expects UpdatePpsAndPpr to have been called to set the current pps and ppr.
 		/// Expects GetRegionY() to report the correct value for the region's y value.
 		/// </remarks>
 		/// <returns>Height in screen space of the given region.</returns>
-		public double GetRegionH(IChartRegion region, double previousRateEventY, EditorRateAlteringEvent previousRateEvent)
-		{
-			var regionEnd = region.GetRegionPosition() + region.GetRegionDuration();
-			if (region.AreRegionUnitsTime())
-				return (previousRateEventY + (regionEnd - previousRateEvent.GetChartTime()) * Pps) - region.GetRegionY();
-			return (previousRateEventY + (regionEnd - previousRateEvent.GetRow()) * Ppr) - region.GetRegionY();
-		}
+		public abstract double GetRegionH(IChartRegion region, double previousRateEventY);
 	}
 
 	/// <summary>
@@ -247,11 +244,8 @@ namespace StepManiaEditor
 		{
 			// Determine the chart time based on a screen space delta and the pixels per second.
 			var chartTime = anchorChartTime + (y - anchorY) / Pps;
-			// When deriving the chart position from time we need to take into account that rate
-			// altering events may result in a range of positions equating to one time (e.g. during
-			// a stop). Leverage the active EditorChart to determine the position from the time.
-			var chartPosition = 0.0;
-			ActiveChart.TryGetChartPositionFromTime(chartTime, ref chartPosition);
+			// Derive the position from the time.
+			var chartPosition = RateAlteringEvent.GetChartPositionFromTime(chartTime);
 			return (chartTime, chartPosition);
 		}
 
@@ -259,23 +253,20 @@ namespace StepManiaEditor
 		{
 			// Determine the chart time based on a screen space delta and the pixels per second.
 			var chartTime = anchorChartTime + (y - anchorY) / PreviousPps;
-			// When deriving the chart position from time we need to take into account that rate
-			// altering events may result in a range of positions equating to one time (e.g. during
-			// a stop). Leverage the active EditorChart to determine the position from the time.
-			var chartPosition = 0.0;
-			ActiveChart.TryGetChartPositionFromTime(chartTime, ref chartPosition);
+			// Derive the position from the time.
+			var chartPosition = RateAlteringEvent.GetChartPositionFromTime(chartTime);
 			return (chartTime, chartPosition);
 		}
 
-		protected override void InternalUpdatePpsAndPpr(EditorRateAlteringEvent rateEvent, double interpolatedScrollRate, double spacingZoom)
+		protected override void InternalUpdatePpsAndPpr(double interpolatedScrollRate, double spacingZoom)
 		{
 			Pps = Preferences.Instance.PreferencesScroll.TimeBasedPixelsPerSecond * spacingZoom;
-			Ppr = Pps * rateEvent.SecondsPerRow;
+			Ppr = Pps * RateAlteringEvent.GetSecondsPerRow();
 		}
 
-		public override double GetY(EditorEvent e, double previousRateEventY, EditorRateAlteringEvent previousRateEvent)
+		public override double GetY(EditorEvent e, double previousRateEventY)
 		{
-			return previousRateEventY + (e.GetChartTime() - previousRateEvent.GetChartTime()) * Pps;
+			return previousRateEventY + (e.GetChartTime() - RateAlteringEvent.GetChartTime()) * Pps;
 		}
 
 		public override double GetY(EditorEvent e, double anchorY, double anchorChartTime, double anchorRow)
@@ -297,6 +288,31 @@ namespace StepManiaEditor
 		{
 			return anchorY - (chartTime - anchorChartTime) * Pps;
 		}
+
+		public override double GetRegionY(IChartRegion region, double previousRateEventY)
+		{
+			var delta = region.AreRegionUnitsTime() ?
+				region.GetRegionPosition() - RateAlteringEvent.GetChartTime()
+				: RateAlteringEvent.GetChartTimeFromPosition(region.GetRegionPosition()) - RateAlteringEvent.GetChartTime();
+			delta = Math.Max(0.0, delta);
+			return previousRateEventY + delta * Pps;
+		}
+
+		public override double GetRegionH(IChartRegion region, double previousRateEventY)
+		{
+			var regionEnd = region.GetRegionPosition() + region.GetRegionDuration();
+			var delta = region.AreRegionUnitsTime() ?
+				regionEnd - RateAlteringEvent.GetChartTime()
+				: RateAlteringEvent.GetChartTimeFromPosition(regionEnd) - RateAlteringEvent.GetChartTime();
+			delta = Math.Max(0.0, delta);
+			return previousRateEventY + delta * Pps - region.GetRegionY();
+		}
+
+		public override double GetYForRow(double row, double previousRateEventY)
+		{
+			var time = RateAlteringEvent.GetChartTimeFromPosition(row);
+			return previousRateEventY + (time - RateAlteringEvent.GetChartTime()) * Pps;
+		}
 	}
 
 	/// <summary>
@@ -310,11 +326,8 @@ namespace StepManiaEditor
 		{
 			// Determine the chart position based on a screen space delta and the pixels per row.
 			var chartPosition = anchorRow + (y - anchorY) / Ppr;
-			// When deriving the chart time from positionwe need to take into account that rate
-			// altering events may result in a range of times equating to one position (e.g. during
-			// a warp). Leverage the active EditorChart to determine the time from the position.
-			var chartTime = 0.0;
-			ActiveChart.TryGetTimeFromChartPosition(chartPosition, ref chartTime);
+			// Derive the time from the position.
+			var chartTime = RateAlteringEvent.GetChartTimeFromPosition(chartPosition);
 			return (chartTime, chartPosition);
 		}
 
@@ -322,22 +335,19 @@ namespace StepManiaEditor
 		{
 			// Determine the chart position based on a screen space delta and the pixels per row.
 			var chartPosition = anchorRow + (y - anchorY) / PreviousPpr;
-			// When deriving the chart time from positionwe need to take into account that rate
-			// altering events may result in a range of times equating to one position (e.g. during
-			// a warp). Leverage the active EditorChart to determine the time from the position.
-			var chartTime = 0.0;
-			ActiveChart.TryGetTimeFromChartPosition(chartPosition, ref chartTime);
+			// Derive the time from the position.
+			var chartTime = RateAlteringEvent.GetChartTimeFromPosition(chartPosition);
 			return (chartTime, chartPosition);
 		}
 
-		public override double GetY(EditorEvent e, double previousRateEventY, EditorRateAlteringEvent previousRateEvent)
+		public override double GetY(EditorEvent e, double previousRateEventY)
 		{
-			return previousRateEventY + (e.GetRow() - previousRateEvent.GetRow()) * Ppr;
+			return previousRateEventY + (e.GetChartPosition() - RateAlteringEvent.GetChartPosition()) * Ppr;
 		}
 
 		public override double GetY(EditorEvent e, double anchorY, double anchorChartTime, double anchorRow)
 		{
-			return anchorY + (e.GetRow() - anchorRow) * Ppr;
+			return anchorY + (e.GetChartPosition() - anchorRow) * Ppr;
 		}
 
 		public override double GetY(double relativeTime, double relativeRow, double anchorY)
@@ -354,6 +364,30 @@ namespace StepManiaEditor
 		{
 			return anchorY - (chartRow - anchorRow) * Ppr;
 		}
+
+		public override double GetRegionY(IChartRegion region, double previousRateEventY)
+		{
+			var delta = region.AreRegionUnitsTime() ?
+				RateAlteringEvent.GetChartPositionFromTime(region.GetRegionPosition()) - RateAlteringEvent.GetRow()
+				: region.GetRegionPosition() - RateAlteringEvent.GetRow();
+			delta = Math.Max(0.0, delta);
+			return previousRateEventY + delta * Ppr;
+		}
+
+		public override double GetRegionH(IChartRegion region, double previousRateEventY)
+		{
+			var regionEnd = region.GetRegionPosition() + region.GetRegionDuration();
+			var delta = region.AreRegionUnitsTime() ?
+				RateAlteringEvent.GetChartPositionFromTime(regionEnd) - RateAlteringEvent.GetRow()
+				: regionEnd - RateAlteringEvent.GetRow();
+			delta = Math.Max(0.0, delta);
+			return previousRateEventY + delta * Ppr - region.GetRegionY();
+		}
+
+		public override double GetYForRow(double row, double previousRateEventY)
+		{
+			return previousRateEventY + (row - RateAlteringEvent.GetRow()) * Ppr;
+		}
 	}
 
 	/// <summary>
@@ -363,10 +397,10 @@ namespace StepManiaEditor
 	{
 		public EventSpacingHelperConstantRow(EditorChart activeChart) : base(activeChart) { }
 
-		protected override void InternalUpdatePpsAndPpr(EditorRateAlteringEvent rateEvent, double interpolatedScrollRate, double spacingZoom)
+		protected override void InternalUpdatePpsAndPpr(double interpolatedScrollRate, double spacingZoom)
 		{
 			Ppr = Preferences.Instance.PreferencesScroll.RowBasedPixelsPerRow * spacingZoom;
-			Pps = Ppr * rateEvent.RowsPerSecond;
+			Pps = Ppr * RateAlteringEvent.GetRowsPerSecond();
 		}
 	}
 
@@ -377,14 +411,14 @@ namespace StepManiaEditor
 	{
 		public EventSpacingHelperVariable(EditorChart activeChart) : base(activeChart) { }
 
-		protected override void InternalUpdatePpsAndPpr(EditorRateAlteringEvent rateEvent, double interpolatedScrollRate, double spacingZoom)
+		protected override void InternalUpdatePpsAndPpr(double interpolatedScrollRate, double spacingZoom)
 		{
-			var scrollRateForThisSection = rateEvent.ScrollRate * interpolatedScrollRate;
+			var scrollRateForThisSection = RateAlteringEvent.GetScrollRate() * interpolatedScrollRate;
 			Pps = Preferences.Instance.PreferencesScroll.VariablePixelsPerSecondAtDefaultBPM
-					* (rateEvent.Tempo / PreferencesScroll.DefaultVariablePixelsPerSecondAtDefaultBPM)
+					* (RateAlteringEvent.GetTempo() / PreferencesScroll.DefaultVariablePixelsPerSecondAtDefaultBPM)
 					* scrollRateForThisSection
 					* spacingZoom;
-			Ppr = Pps * rateEvent.SecondsPerRow;
+			Ppr = Pps * RateAlteringEvent.GetSecondsPerRow();
 		}
 	}
 }

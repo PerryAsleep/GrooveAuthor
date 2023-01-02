@@ -156,7 +156,6 @@ namespace StepManiaEditor
 		private List<EditorEvent> VisibleEvents = new List<EditorEvent>();
 		private List<EditorMarkerEvent> VisibleMarkers = new List<EditorMarkerEvent>();
 		private List<IChartRegion> VisibleRegions = new List<IChartRegion>();
-		private EditorPreviewRegionEvent VisiblePreview = null;
 		private SelectedRegion SelectedRegion = new SelectedRegion();
 		private HashSet<EditorEvent> SelectedEvents = new HashSet<EditorEvent>();
 		private EditorEvent LastSelectedEvent;
@@ -1333,12 +1332,6 @@ namespace StepManiaEditor
 		{
 			var eventsBeingEdited = new List<EditorEvent>();
 
-			// Draw the preview if it is visible.
-			// This will only draw the miscellaneous editor event for the preview.
-			// The region will be drawn by DrawRegions.
-			if (VisiblePreview != null)
-				VisiblePreview.Draw();
-
 			foreach (var visibleEvent in VisibleEvents)
 			{
 				// Capture events being edited to draw after all events not being edited.
@@ -1385,7 +1378,7 @@ namespace StepManiaEditor
 		#region Chart Update
 
 		/// <summary>
-		/// Sets VisibleEvents, VisibleMarkers, VisibleRegions, and VisiblePreview to store the currently visible
+		/// Sets VisibleEvents, VisibleMarkers, and VisibleRegions to store the currently visible
 		/// objects based on the current EditorPosition and the SpacingMode.
 		/// Updates SelectedRegion.
 		/// </summary>
@@ -1400,7 +1393,6 @@ namespace StepManiaEditor
 			VisibleEvents.Clear();
 			VisibleMarkers.Clear();
 			VisibleRegions.Clear();
-			VisiblePreview = null;
 			SelectedRegion.ClearPerFrameData();
 
 			if (ActiveChart == null || ActiveChart.EditorEvents == null || ArrowGraphicManager == null)
@@ -1421,11 +1413,7 @@ namespace StepManiaEditor
 			var sizeZoom = GetSizeZoom();
 
 			// Determine graphic dimensions based on the zoom level.
-			var (arrowTexture, _) = ArrowGraphicManager.GetArrowTexture(0, 0, false);
-			double arrowW, arrowH;
-			(arrowW, arrowH) = TextureAtlas.GetDimensions(arrowTexture);
-			arrowW *= sizeZoom;
-			arrowH *= sizeZoom;
+			var (arrowW, arrowH) = GetArrowDimensions();
 			var (holdCapTexture, _) = ArrowGraphicManager.GetHoldEndTexture(0, 0, false, false);
 			var (_, holdCapTextureHeight) = TextureAtlas.GetDimensions(holdCapTexture);
 			var holdCapHeight = holdCapTextureHeight * sizeZoom;
@@ -1440,15 +1428,7 @@ namespace StepManiaEditor
 
 			// Set up the MiscEventWidgetLayoutManager.
 			var miscEventAlpha = (float)Interpolation.Lerp(1.0, 0.0, MiscEventScaleToStartingFading, MiscEventMinScale, sizeZoom);
-			const int widgetStartPadding = 10;
-			const int widgetMeasureNumberFudge = 10;
-			var lMiscWidgetPos = startPosX
-								 - widgetStartPadding
-								 + EditorMarkerEvent.GetNumberRelativeAnchorPos(sizeZoom)
-								 - EditorMarkerEvent.GetNumberAlpha(sizeZoom) * widgetMeasureNumberFudge;
-			var rMiscWidgetPos = focalPointX
-								 + (numArrows * arrowW * 0.5) + widgetStartPadding;
-			MiscEventWidgetLayoutManager.BeginFrame(lMiscWidgetPos, rMiscWidgetPos);
+			BeginMiscEventWidgetLayoutManagerFrame();
 
 			// TODO: Fix Negative Scrolls resulting in cutting off notes prematurely.
 			// If a chart has negative scrolls then we technically need to render notes which come before
@@ -1475,7 +1455,7 @@ namespace StepManiaEditor
 			// Then we need to find the greatest preceding notes by scanning upwards.
 			// Once we find that note, we start iterating downwards while also keeping track of the rate events along the way.
 
-			var rateEnumerator = FindBest(ActiveChart.RateAlteringEventsByRow, (int)chartPosition, time);
+			var rateEnumerator = ActiveChart.RateAlteringEvents.FindBestByTime(time);
 			if (rateEnumerator == null)
 				return;
 
@@ -1507,7 +1487,7 @@ namespace StepManiaEditor
 			var beatMarkerLastRecordedRow = -1;
 
 			// Now that we know the position at the start of the screen we can find the first event to start rendering.
-			var enumerator = ActiveChart.EditorEvents.FindBest(chartPositionAtTopOfScreen);
+			var enumerator = ActiveChart.EditorEvents.FindBestByPosition(chartPositionAtTopOfScreen);
 			if (enumerator == null)
 				return;
 
@@ -1523,7 +1503,7 @@ namespace StepManiaEditor
 				// rate altering events between the top of the screen and the start of the hold.
 				hsn.SetDimensions(
 					startPosX + hsn.GetLane() * arrowW,
-					SpacingHelper.GetY(hsn, previousRateEventY, rateEvent) - (arrowH * 0.5),
+					SpacingHelper.GetY(hsn, previousRateEventY) - (arrowH * 0.5),
 					arrowW,
 					arrowH,
 					sizeZoom);
@@ -1536,9 +1516,10 @@ namespace StepManiaEditor
 			EditorRateAlteringEvent nextRateEvent = hasNextRateEvent ? rateEnumerator.Current : null;
 
 			var regionsNeedingToBeAdded = new List<IChartRegion>();
+			HashSet<IChartRegion> addedRegions = new HashSet<IChartRegion>();
 
-			// Start any regions including the preview and the selected region.
-			StartRegions(ref regionsNeedingToBeAdded, previousRateEventY, rateEvent, nextRateEvent, startPosX, numArrows * arrowW, chartTimeAtTopOfScreen, chartPositionAtTopOfScreen, startPosY, miscEventAlpha);
+			// Start any regions including the selected region.
+			StartRegions(ref regionsNeedingToBeAdded, ref addedRegions, previousRateEventY, rateEvent, nextRateEvent, startPosX, numArrows * arrowW, chartTimeAtTopOfScreen, chartPositionAtTopOfScreen);
 
 			// Now we can scan forward
 			while (enumerator.MoveNext())
@@ -1549,14 +1530,14 @@ namespace StepManiaEditor
 				if (nextRateEvent != null && e.GetEvent() == nextRateEvent.GetEvent())
 				{
 					// Add a misc widget for this rate event.
-					var rateEventY = SpacingHelper.GetY(e, previousRateEventY, rateEvent);
+					var rateEventY = SpacingHelper.GetY(e, previousRateEventY);
 					nextRateEvent.Alpha = miscEventAlpha;
 					MiscEventWidgetLayoutManager.PositionEvent(nextRateEvent, rateEventY);
 					noteEvents.Add(nextRateEvent);
 
 					// Add a region for this event if appropriate.
 					if (nextRateEvent is IChartRegion region)
-						AddRegion(region, ref regionsNeedingToBeAdded, previousRateEventY, rateEvent, startPosX, numArrows * arrowW);
+						AddRegion(region, ref regionsNeedingToBeAdded, ref addedRegions, previousRateEventY, nextRateEvent, startPosX, numArrows * arrowW);
 
 					// Update beat markers for the section for the previous rate event.
 					UpdateBeatMarkers(rateEvent, ref beatMarkerRow, ref beatMarkerLastRecordedRow, nextRateEvent, startPosX, sizeZoom, previousRateEventY);
@@ -1571,15 +1552,20 @@ namespace StepManiaEditor
 					nextRateEvent = hasNextRateEvent ? rateEnumerator.Current : null;
 
 					// Update any regions needing to be updated based on the new rate altering event.
-					UpdateRegions(ref regionsNeedingToBeAdded, previousRateEventY, rateEvent, nextRateEvent, startPosX, numArrows * arrowW, startPosY, miscEventAlpha);
+					UpdateRegions(ref regionsNeedingToBeAdded, ref addedRegions, previousRateEventY, rateEvent, nextRateEvent);
 					
 					continue;
 				}
 
 				// Determine y position.
-				var y = SpacingHelper.GetY(e, previousRateEventY, rateEvent);
+				var y = SpacingHelper.GetY(e, previousRateEventY);
 				var arrowY = y - (arrowH * 0.5);
-				if (arrowY > screenHeight)
+
+				// If we have advanced beyond the end of the screen we can finish.
+				// An exception to this rule is if the current scroll rate is negative. We do not
+				// want to end processing on a negative region, particularly for regions which end
+				// beyond the end of the screen.
+				if (arrowY > screenHeight && !SpacingHelper.IsScrollRateNegative())
 					break;
 
 				// Record note.
@@ -1622,7 +1608,7 @@ namespace StepManiaEditor
 
 					// Add a region for this event if appropriate.
 					if (e is IChartRegion region)
-						AddRegion(region, ref regionsNeedingToBeAdded, previousRateEventY, rateEvent, startPosX, numArrows * arrowW);
+						AddRegion(region, ref regionsNeedingToBeAdded, ref addedRegions, previousRateEventY, nextRateEvent, startPosX, numArrows * arrowW);
 				}
 
 				if (noteEvents.Count + holdBodyEvents.Count > MaxEventsToDraw)
@@ -1637,7 +1623,7 @@ namespace StepManiaEditor
 					continue;
 
 				var start = holdEndNote.GetHoldStartNote();
-				var endY = SpacingHelper.GetY(holdEndNote, previousRateEventY, rateEvent) + holdCapHeight;
+				var endY = SpacingHelper.GetY(holdEndNote, previousRateEventY) + holdCapHeight;
 				var noteH = endY - (start.Y + (arrowH * 0.5f));
 
 				holdEndNote.SetDimensions(
@@ -1654,33 +1640,45 @@ namespace StepManiaEditor
 			UpdateBeatMarkers(rateEvent, ref beatMarkerRow, ref beatMarkerLastRecordedRow, nextRateEvent, startPosX, sizeZoom, previousRateEventY);
 
 			// We also need to complete regions which end beyond the bounds of the screen.
-			EndRegions(ref regionsNeedingToBeAdded, previousRateEventY, rateEvent);
+			EndRegions(ref regionsNeedingToBeAdded, ref addedRegions, previousRateEventY, rateEvent);
 
 			// Store the notes and holds so we can render them.
 			VisibleEvents.AddRange(holdBodyEvents);
 			VisibleEvents.AddRange(noteEvents);
 		}
 
-
-		/// <summary>
-		/// Given a RedBlackTree<EditorRateAlteringEvent> and a value, find the greatest preceding value.
-		/// If no value precedes the given value, instead find the least value that follows or is
-		/// equal to the given value.
-		/// </summary>
-		/// <remarks>
-		/// This is a common pattern when knowing a position or a time and wanting to find the first event to
-		/// start enumerator over for rendering.
-		/// </remarks>
-		/// <param name="tree">RedBlackTree to search.</param>
-		/// <remarks>Helper for UpdateChartEvents.</remarks>
-		/// <returns>Enumerator to best value or null if a value could not be found.</returns>
-		private RedBlackTree<EditorRateAlteringEvent>.Enumerator FindBest(RedBlackTree<EditorRateAlteringEvent> tree, int row, double chartTime)
+		private (double, double) GetArrowDimensions(bool scaled = true)
 		{
-			var pos = new EditorDummyRateAlteringEvent(ActiveChart, row, chartTime);
-			var enumerator = tree.FindGreatestPreceding(pos, false);
-			if (enumerator == null)
-				enumerator = tree.FindLeastFollowing(pos, true);
-			return enumerator;
+			var (arrowTexture, _) = ArrowGraphicManager.GetArrowTexture(0, 0, false);
+			double arrowW, arrowH;
+			(arrowW, arrowH) = TextureAtlas.GetDimensions(arrowTexture);
+			if (scaled)
+			{
+				var sizeZoom = GetSizeZoom();
+				arrowW *= sizeZoom;
+				arrowH *= sizeZoom;
+			}
+			return (arrowW, arrowH);
+		}
+
+
+		private void BeginMiscEventWidgetLayoutManagerFrame()
+		{
+			const int widgetStartPadding = 10;
+			const int widgetMeasureNumberFudge = 10;
+			
+			var (arrowW, _) = GetArrowDimensions(true);
+
+			var focalPointX = GetFocalPointX();
+			var startPosX = focalPointX - (ActiveChart.NumInputs * arrowW * 0.5);
+			var endXPos = focalPointX + (ActiveChart.NumInputs * arrowW * 0.5);
+
+			var lMiscWidgetPos = startPosX
+								 - widgetStartPadding
+								 + EditorMarkerEvent.GetNumberRelativeAnchorPos(GetSizeZoom())
+								 - EditorMarkerEvent.GetNumberAlpha(GetSizeZoom()) * widgetMeasureNumberFudge;
+			var rMiscWidgetPos = endXPos + widgetStartPadding;
+			MiscEventWidgetLayoutManager.BeginFrame(lMiscWidgetPos, rMiscWidgetPos);
 		}
 
 		/// <summary>
@@ -1689,7 +1687,7 @@ namespace StepManiaEditor
 		/// <param name="rateEvent">Current rate altering event.</param>
 		/// <param name="interpolatedScrollRate">Current interpolated scroll rate.</param>
 		/// <remarks>Helper for UpdateChartEvents.</remarks>
-		void SetWaveFormPps(EditorRateAlteringEvent rateEvent, double interpolatedScrollRate)
+		private void SetWaveFormPps(EditorRateAlteringEvent rateEvent, double interpolatedScrollRate)
 		{
 			var pScroll = Preferences.Instance.PreferencesScroll;
 			switch (pScroll.SpacingMode)
@@ -1698,27 +1696,49 @@ namespace StepManiaEditor
 					WaveFormPPS = pScroll.TimeBasedPixelsPerSecond;
 					break;
 				case SpacingMode.ConstantRow:
-					WaveFormPPS = pScroll.RowBasedPixelsPerRow * rateEvent.RowsPerSecond;
+					WaveFormPPS = pScroll.RowBasedPixelsPerRow * rateEvent.GetRowsPerSecond();
 					if (pScroll.RowBasedWaveFormScrollMode == WaveFormScrollMode.MostCommonTempo)
-						WaveFormPPS *= (ActiveChart.MostCommonTempo / rateEvent.Tempo);
+						WaveFormPPS *= (ActiveChart.MostCommonTempo / rateEvent.GetTempo());
 					break;
 				case SpacingMode.Variable:
 					var tempo = ActiveChart.MostCommonTempo;
 					if (pScroll.RowBasedWaveFormScrollMode != WaveFormScrollMode.MostCommonTempo)
-						tempo = rateEvent.Tempo;
+						tempo = rateEvent.GetTempo();
 					var useRate = pScroll.RowBasedWaveFormScrollMode ==
 									WaveFormScrollMode.CurrentTempoAndRate;
 					WaveFormPPS = pScroll.VariablePixelsPerSecondAtDefaultBPM
 									* (tempo / PreferencesScroll.DefaultVariablePixelsPerSecondAtDefaultBPM);
 					if (useRate)
 					{
-						var rate = rateEvent.ScrollRate * interpolatedScrollRate;
+						var rate = rateEvent.GetScrollRate() * interpolatedScrollRate;
 						if (rate <= 0.0)
 							rate = 1.0;
 						WaveFormPPS *= rate;
 					}
 					break;
 			}
+		}
+
+		private double GetCurrentInterpolatedScrollRateFromTime()
+		{
+			if (ActiveChart == null)
+				return 1.0;
+			var time = Position.ChartTime;
+			var chartPosition = 0.0;
+			if (!ActiveChart.TryGetChartPositionFromTime(time, ref chartPosition))
+				return 1.0;
+			return GetInterpolatedScrollRate(time, chartPosition);
+		}
+
+		private double GetCurrentInterpolatedScrollRateFromPosition()
+		{
+			if (ActiveChart == null)
+				return 1.0;
+			var chartPosition = Position.ChartPosition;
+			var time = 0.0;
+			if (!ActiveChart.TryGetTimeFromChartPosition(chartPosition, ref time))
+				return 1.0;
+			return GetInterpolatedScrollRate(time, chartPosition);
 		}
 
 		/// <summary>
@@ -1820,86 +1840,33 @@ namespace StepManiaEditor
 			return holds;
 		}
 
-		private List<IChartRegion> ScanBackwardsForRegions(double chartPosition, double chartTime)
-		{
-			var row = (int)chartPosition;
-			var regions = new List<IChartRegion>();
-			var stop = ActiveChart.GetStopEventOverlapping(row, chartTime);
-			if (stop != null)
-				regions.Add(stop);
-			var delay = ActiveChart.GetDelayEventOverlapping(row, chartTime);
-			if (delay != null)
-				regions.Add(delay);
-			var fake = ActiveChart.GetFakeSegmentEventOverlapping(row, chartTime);
-			if (fake != null)
-				regions.Add(fake);
-			var warp = ActiveChart.GetWarpEventOverlapping(row, chartTime);
-			if (warp != null)
-				regions.Add(warp);
-			return regions;
-		}
-
-		private bool DoesPreviewExtendThroughChartTime(double chartTime)
-		{
-			if (!ActiveSong.IsUsingSongForPreview())
-				return false;
-
-			var previewStartChartTime = ActiveSong.PreviewEvent.GetRegionPosition();
-			return previewStartChartTime < chartTime && previewStartChartTime + ActiveSong.PreviewEvent.GetRegionDuration() >= chartTime;
-		}
-
-		private void CheckForAddingPreviewEvent(
+		private void AddRegion(
+			IChartRegion region,
 			ref List<IChartRegion> regionsNeedingToBeAdded,
+			ref HashSet<IChartRegion> addedRegions,
 			double previousRateEventY,
-			EditorRateAlteringEvent previousRateEvent,
 			EditorRateAlteringEvent nextRateEvent,
 			double x,
-			double w,
-			double startPosY,
-			float miscEventAlpha)
-		{
-			if (VisiblePreview != null || !ActiveSong.IsUsingSongForPreview())
-				return;
-
-			// Check if the preview time falls within the current rate altering event range.
-			var previewTime = ActiveSong.PreviewEvent.GetRegionPosition();
-			if (previewTime >= previousRateEvent.GetChartTime()
-				&& (nextRateEvent == null || previewTime < nextRateEvent.GetChartTime()))
-			{
-				AddPreviewEvent(ref regionsNeedingToBeAdded, previousRateEventY, previousRateEvent, x, w, startPosY, miscEventAlpha);
-			}
-		}
-
-		private void AddPreviewEvent(ref List<IChartRegion> regionsNeedingToBeAdded, double previousRateEventY, EditorRateAlteringEvent previousRateEvent, double x, double w, double startPosY, float miscEventAlpha)
-		{
-			VisiblePreview = ActiveSong.PreviewEvent;
-
-			// Start a region for the preview.
-			var y = SpacingHelper.GetRegionY(VisiblePreview, previousRateEventY, previousRateEvent.GetChartTime(), previousRateEvent.GetRow());
-			VisiblePreview.SetRegionX(x);
-			VisiblePreview.SetRegionY(y);
-			VisiblePreview.SetRegionW(w);
-			regionsNeedingToBeAdded.Add(VisiblePreview);
-
-			// The preview also uses a misc event widget.
-			VisiblePreview.ShouldDrawMiscEvent = y > startPosY;
-			VisiblePreview.Alpha = miscEventAlpha;
-			MiscEventWidgetLayoutManager.PositionEvent(ActiveSong.PreviewEvent, y);
-		}
-
-		private void AddRegion(IChartRegion region, ref List<IChartRegion> regionsNeedingToBeAdded, double previousRateEventY, EditorRateAlteringEvent rateEvent, double x, double w)
+			double w)
 		{
 			if (region == null || !region.IsVisible(Preferences.Instance.PreferencesScroll.SpacingMode))
 				return;
-			if (regionsNeedingToBeAdded.Contains(region))
+			if (regionsNeedingToBeAdded.Contains(region) || addedRegions.Contains(region))
 				return;
 			region.SetRegionX(x);
-			region.SetRegionY(SpacingHelper.GetRegionY(region, previousRateEventY, rateEvent.GetChartTime(), rateEvent.GetRow()));
+			region.SetRegionY(SpacingHelper.GetRegionY(region, previousRateEventY));
 			region.SetRegionW(w);
 			regionsNeedingToBeAdded.Add(region);
+
+			// This region may also complete during this rate altering event.
+			CheckForCompletingRegions(ref regionsNeedingToBeAdded, ref addedRegions, previousRateEventY, nextRateEvent);
 		}
 
-		private void CheckForCompletingRegions(ref List<IChartRegion> regionsNeedingToBeAdded, double previousRateEventY, EditorRateAlteringEvent previousRateEvent, EditorRateAlteringEvent nextRateEvent)
+		private void CheckForCompletingRegions(
+			ref List<IChartRegion> regionsNeedingToBeAdded,
+			ref HashSet<IChartRegion> addedRegions,
+			double previousRateEventY,
+			EditorRateAlteringEvent nextRateEvent)
 		{
 			var remainingRegionsNeededToBeAdded = new List<IChartRegion>();
 			foreach (var region in regionsNeedingToBeAdded)
@@ -1909,8 +1876,9 @@ namespace StepManiaEditor
 					((region.AreRegionUnitsTime() && nextRateEvent.GetChartTime() > regionEnd)
 					|| (!region.AreRegionUnitsTime() && nextRateEvent.GetRow() > regionEnd)))
 				{
-					region.SetRegionH(SpacingHelper.GetRegionH(region, previousRateEventY, previousRateEvent));
+					region.SetRegionH(SpacingHelper.GetRegionH(region, previousRateEventY));
 					VisibleRegions.Add(region);
+					addedRegions.Add(region);
 					continue;
 				}
 				remainingRegionsNeededToBeAdded.Add(region);
@@ -1959,7 +1927,7 @@ namespace StepManiaEditor
 
 			if (SelectedRegion.GetCurrentY() < previousRateEventY
 				|| nextRateEvent == null
-				|| SelectedRegion.GetCurrentY() < SpacingHelper.GetY(nextRateEvent, previousRateEventY, rateEvent))
+				|| SelectedRegion.GetCurrentY() < SpacingHelper.GetY(nextRateEvent, previousRateEventY))
 			{
 				var (chartTime, chartPosition) = SpacingHelper.GetChartTimeAndRow(
 					SelectedRegion.GetCurrentY(), previousRateEventY, rateEvent.GetChartTime(), rateEvent.GetRow());
@@ -1976,30 +1944,22 @@ namespace StepManiaEditor
 		/// <remarks>Helper for UpdateChartEvents.</remarks>
 		private void StartRegions(
 			ref List<IChartRegion> regionsNeedingToBeAdded,
+			ref HashSet<IChartRegion> addedRegions,
 			double previousRateEventY,
 			EditorRateAlteringEvent rateEvent,
 			EditorRateAlteringEvent nextRateEvent,
 			double chartRegionX,
 			double chartRegionW,
 			double chartTimeAtTopOfScreen,
-			double chartPositionAtTopOfScreen,
-			double startPosY,
-			float miscEventAlpha)
+			double chartPositionAtTopOfScreen)
 		{
-			// Check for adding the preview if it extends through the top of the screen.
-			if (DoesPreviewExtendThroughChartTime(chartTimeAtTopOfScreen))
-				AddPreviewEvent(ref regionsNeedingToBeAdded, previousRateEventY, rateEvent, chartRegionX, chartRegionW, startPosY, miscEventAlpha);
-			// The preview event may also begin during the current rate section but start after the start of the screen.
-			// This will capture the preview even if starts after the bottom of the screen, which is not a problem.
-			CheckForAddingPreviewEvent(ref regionsNeedingToBeAdded, previousRateEventY, rateEvent, nextRateEvent, chartRegionX, chartRegionW, startPosY, miscEventAlpha);
-
 			// Check for adding regions which extend through the top of the screen.
-			var regions = ScanBackwardsForRegions(chartPositionAtTopOfScreen, chartTimeAtTopOfScreen);
+			var regions = ActiveChart.GetRegionsOverlapping((int)chartPositionAtTopOfScreen, chartTimeAtTopOfScreen);
 			foreach (var region in regions)
-				AddRegion(region, ref regionsNeedingToBeAdded, previousRateEventY, rateEvent, chartRegionX, chartRegionW);
+				AddRegion(region, ref regionsNeedingToBeAdded, ref addedRegions, previousRateEventY, nextRateEvent, chartRegionX, chartRegionW);
 
 			// Check to see if any regions needing to be added will complete before the next rate altering event.
-			CheckForCompletingRegions(ref regionsNeedingToBeAdded, previousRateEventY, rateEvent, nextRateEvent);
+			CheckForCompletingRegions(ref regionsNeedingToBeAdded, ref addedRegions, previousRateEventY, nextRateEvent);
 
 			// Check for updating the SelectedRegion.
 			CheckForUpdatingSelectedRegionStartY(previousRateEventY, rateEvent, nextRateEvent);
@@ -2015,20 +1975,13 @@ namespace StepManiaEditor
 		/// <remarks>Helper for UpdateChartEvents.</remarks>
 		private void UpdateRegions(
 			ref List<IChartRegion> regionsNeedingToBeAdded,
+			ref HashSet<IChartRegion> addedRegions,
 			double previousRateEventY,
 			EditorRateAlteringEvent rateEvent,
-			EditorRateAlteringEvent nextRateEvent,
-			double chartRegionX,
-			double chartRegionW,
-			double startPosY,
-			float miscEventAlpha)
+			EditorRateAlteringEvent nextRateEvent)
 		{
-			// Add the preview if it starts within this new rate altering event.
-			// This will capture the preview even if starts after the bottom of the screen, which is not a problem.
-			CheckForAddingPreviewEvent(ref regionsNeedingToBeAdded, previousRateEventY, rateEvent, nextRateEvent, chartRegionX, chartRegionW, startPosY, miscEventAlpha);
-
 			// Check to see if any regions needing to be added will complete before the next rate altering event.
-			CheckForCompletingRegions(ref regionsNeedingToBeAdded, previousRateEventY, rateEvent, nextRateEvent);
+			CheckForCompletingRegions(ref regionsNeedingToBeAdded, ref addedRegions, previousRateEventY, nextRateEvent);
 
 			// Check for updating the SelectedRegion.
 			CheckForUpdatingSelectedRegionStartY(previousRateEventY, rateEvent, nextRateEvent);
@@ -2043,13 +1996,14 @@ namespace StepManiaEditor
 		/// <remarks>Helper for UpdateChartEvents.</remarks>
 		private void EndRegions(
 			ref List<IChartRegion> regionsNeedingToBeAdded,
+			ref HashSet<IChartRegion> addedRegions,
 			double previousRateEventY,
 			EditorRateAlteringEvent rateEvent)
 		{
 			// We do not need to scan forward for more rate mods.
 			EditorRateAlteringEvent nextRateEvent = null;
 
-			CheckForCompletingRegions(ref regionsNeedingToBeAdded, previousRateEventY, rateEvent, nextRateEvent);
+			CheckForCompletingRegions(ref regionsNeedingToBeAdded, ref addedRegions, previousRateEventY, nextRateEvent);
 
 			// Check for updating the SelectedRegion.
 			CheckForUpdatingSelectedRegionStartY(previousRateEventY, rateEvent, nextRateEvent);
@@ -2098,37 +2052,35 @@ namespace StepManiaEditor
 			if (VisibleMarkers.Count >= MaxMarkersToDraw)
 				return;
 
+			var ts = currentRateEvent.GetTimeSignature();
+
 			// Based on the current rate altering event, determine the beat spacing and snap the current row to a beat.
-			var beatsPerMeasure = currentRateEvent.LastTimeSignature.Signature.Numerator;
+			var beatsPerMeasure = ts.Signature.Numerator;
 			var rowsPerBeat = (MaxValidDenominator * NumBeatsPerMeasure * beatsPerMeasure)
-			                  / currentRateEvent.LastTimeSignature.Signature.Denominator / beatsPerMeasure;
+			                  / ts.Signature.Denominator / beatsPerMeasure;
 
 			// Determine which integer measure and beat we are on. Clamped due to warps.
-			var rowRelativeToTimeSignatureStart = Math.Max(0,
-				currentRow - currentRateEvent.LastTimeSignature.IntegerPosition);
+			var rowRelativeToTimeSignatureStart = Math.Max(0, currentRow - ts.IntegerPosition);
 			// We need to snap the row forward since we are starting with a row that might not be on a beat boundary.
 			var beatRelativeToTimeSignatureStart = rowRelativeToTimeSignatureStart / rowsPerBeat;
-			currentRow = currentRateEvent.LastTimeSignature.IntegerPosition +
-			             beatRelativeToTimeSignatureStart * rowsPerBeat;
+			currentRow = ts.IntegerPosition + beatRelativeToTimeSignatureStart * rowsPerBeat;
 
 			var markerWidth = ActiveChart.NumInputs * MarkerTextureWidth * sizeZoom;
 
 			while (true)
 			{
-				// When changing time signatures we don't want to render the same row twice.
-				if (currentRow == lastRecordedRow)
+				// When changing time signatures we don't want to render the same row twice,
+				// so advance if we have already processed this row.
+				// Also check to ensure that the current row is within range for the current rate event.
+				// In some edge cases it may not be. For example, when we have finished but the last
+				// rate altering event is negative so we consider one more rate altering event.
+				if (currentRow == lastRecordedRow || currentRow < currentRateEvent.GetRow())
 				{
 					currentRow += rowsPerBeat;
 					continue;
 				}
 
-				// Determine the y position of this marker.
-				// Clamp due to warps.
-				var rowRelativeToLastRateChangeEvent = Math.Max(0, currentRow - currentRateEvent.RowForFollowingEvents);
-				rowRelativeToLastRateChangeEvent = Math.Max(0, rowRelativeToLastRateChangeEvent);
-				var absoluteBeatTime = currentRateEvent.ChartTimeForFollowingEvents + rowRelativeToLastRateChangeEvent * currentRateEvent.SecondsPerRow;
-				var relativeBeatTime = absoluteBeatTime - currentRateEvent.GetChartTime();
-				var y = SpacingHelper.GetY(relativeBeatTime, rowRelativeToLastRateChangeEvent, previousRateEventY);
+				var y = SpacingHelper.GetYForRow(currentRow, previousRateEventY);
 
 				// If advancing this beat forward moved us over the next rate altering event boundary, loop again.
 				if (nextRateEvent != null && currentRow > nextRateEvent.GetRow())
@@ -2142,12 +2094,10 @@ namespace StepManiaEditor
 					return;
 
 				// Determine if this marker is a measure marker instead of a beat marker.
-				rowRelativeToTimeSignatureStart =
-					currentRow - currentRateEvent.LastTimeSignature.IntegerPosition;
+				rowRelativeToTimeSignatureStart = currentRow - ts.IntegerPosition;
 				beatRelativeToTimeSignatureStart = rowRelativeToTimeSignatureStart / rowsPerBeat;
 				var measureMarker = beatRelativeToTimeSignatureStart % beatsPerMeasure == 0;
-				var measure = currentRateEvent.LastTimeSignature.MetricPosition.Measure +
-				              (beatRelativeToTimeSignatureStart / beatsPerMeasure);
+				var measure = ts.MetricPosition.Measure + (beatRelativeToTimeSignatureStart / beatsPerMeasure);
 
 				// Record the marker.
 				if (measureMarker || sizeZoom > BeatMarkerMinScale)
@@ -2193,7 +2143,7 @@ namespace StepManiaEditor
 				return (0.0, 0.0);
 			var focalPointY = (double)GetFocalPointY();
 
-			var rateEnumerator = FindBest(ActiveChart.RateAlteringEventsByRow, (int)focalPointChartPosition, focalPointChartTime);
+			var rateEnumerator = ActiveChart.RateAlteringEvents.FindBestByTime(focalPointChartTime);
 			if (rateEnumerator == null)
 				return (0.0, 0.0);
 			rateEnumerator.MoveNext();
@@ -2524,7 +2474,7 @@ namespace StepManiaEditor
 					double chartPosition = 0.0;
 					if (!ActiveChart.TryGetChartPositionFromTime(MiniMap.GetMiniMapAreaStart(), ref chartPosition))
 						break;
-					var enumerator = ActiveChart.EditorEvents.FindBest(chartPosition);
+					var enumerator = ActiveChart.EditorEvents.FindBestByPosition(chartPosition);
 					if (enumerator == null)
 						break;
 
@@ -2628,7 +2578,7 @@ namespace StepManiaEditor
 
 					// Add notes
 					chartPosition = MiniMap.GetMiniMapAreaStart();
-					var enumerator = ActiveChart.EditorEvents.FindBest(chartPosition);
+					var enumerator = ActiveChart.EditorEvents.FindBestByPosition(chartPosition);
 					if (enumerator == null)
 						break;
 
@@ -2974,59 +2924,104 @@ namespace StepManiaEditor
 						ActiveChart.TryGetTimeFromChartPosition(nearestMeasureBoundaryRow, ref nearestMeasureChartTime);
 
 						var currentRateAlteringEvent = ActiveChart.FindActiveRateAlteringEventForPosition(row);
+						var timeMicros = ToMicrosRounded(chartTime);
 
-						DrawAddEventMenuItem("Tempo", !hasTempoEvent, UITempoColorRGBA, EditorTempoEvent.EventShortDescription, row, chartTime, () =>
+						DrawAddEventMenuItem("Tempo", !hasTempoEvent, UITempoColorRGBA, EditorTempoEvent.EventShortDescription, row, () =>
 						{
-							return new EditorTempoEvent(ActiveChart, new Tempo(currentRateAlteringEvent?.Tempo ?? EditorChart.DefaultTempo));
-						});
-
-						ImGui.Separator();
-						DrawAddEventMenuItem("Interpolated Scroll Rate", !hasInterpolatedScrollRateEvent, UISpeedsColorRGBA, EditorInterpolatedRateAlteringEvent.EventShortDescription, row, chartTime, () =>
-						{
-							return new EditorInterpolatedRateAlteringEvent(ActiveChart, new ScrollRateInterpolation(EditorChart.DefaultScrollRate, MaxValidDenominator, 0L, false));
-						});
-						DrawAddEventMenuItem("Scroll Rate", !hasScrollRateEvent, UIScrollsColorRGBA, EditorScrollRateEvent.EventShortDescription, row, chartTime, () =>
-						{
-							return new EditorScrollRateEvent(ActiveChart, new ScrollRate(EditorChart.DefaultScrollRate));
+							return new EditorTempoEvent(ActiveChart, new Tempo(currentRateAlteringEvent?.GetTempo() ?? EditorChart.DefaultTempo)
+							{
+								IntegerPosition = row,
+								TimeMicros = timeMicros,
+							});
 						});
 
 						ImGui.Separator();
-						DrawAddEventMenuItem("Stop", !hasStopEvent, UIStopColorRGBA, EditorStopEvent.EventShortDescription, row, chartTime, () =>
+						DrawAddEventMenuItem("Interpolated Scroll Rate", !hasInterpolatedScrollRateEvent, UISpeedsColorRGBA, EditorInterpolatedRateAlteringEvent.EventShortDescription, row, () =>
 						{
-							var stopLength = ToMicros(currentRateAlteringEvent.SecondsPerRow * MaxValidDenominator);
-							return new EditorStopEvent(ActiveChart, new Stop(stopLength, false));
+							return new EditorInterpolatedRateAlteringEvent(ActiveChart, new ScrollRateInterpolation(EditorChart.DefaultScrollRate, MaxValidDenominator, 0L, false)
+							{
+								IntegerPosition = row,
+								TimeMicros = timeMicros,
+							});
 						});
-						DrawAddEventMenuItem("Delay", !hasDelayEvent, UIDelayColorRGBA, EditorDelayEvent.EventShortDescription, row, chartTime, () =>
+						DrawAddEventMenuItem("Scroll Rate", !hasScrollRateEvent, UIScrollsColorRGBA, EditorScrollRateEvent.EventShortDescription, row, () =>
 						{
-							var stopLength = ToMicros(currentRateAlteringEvent.SecondsPerRow * MaxValidDenominator);
-							return new EditorDelayEvent(ActiveChart, new Stop(stopLength, true));
-						});
-						DrawAddEventMenuItem("Warp", !hasWarpEvent, UIWarpColorRGBA, EditorWarpEvent.EventShortDescription, row, chartTime, () =>
-						{
-							return new EditorWarpEvent(ActiveChart, new Warp(MaxValidDenominator));
+							return new EditorScrollRateEvent(ActiveChart, new ScrollRate(EditorChart.DefaultScrollRate)
+							{
+								IntegerPosition = row,
+								TimeMicros = timeMicros,
+							});
 						});
 
 						ImGui.Separator();
-						DrawAddEventMenuItem("Fake Region", !hasFakeEvent, UIFakesColorRGBA, EditorFakeSegmentEvent.EventShortDescription, row, chartTime, () =>
+						DrawAddEventMenuItem("Stop", !hasStopEvent, UIStopColorRGBA, EditorStopEvent.EventShortDescription, row, () =>
 						{
-							var fakeLength = ToMicros(currentRateAlteringEvent.SecondsPerRow * MaxValidDenominator);
-							return new EditorFakeSegmentEvent(ActiveChart, new FakeSegment(fakeLength));
+							var stopLength = ToMicrosRounded(currentRateAlteringEvent.GetSecondsPerRow() * MaxValidDenominator);
+							return new EditorStopEvent(ActiveChart, new Stop(stopLength, false)
+							{
+								IntegerPosition = row,
+								TimeMicros = timeMicros,
+							});
 						});
-						DrawAddEventMenuItem("Ticks", !hasTickCountEvent, UITicksColorRGBA, EditorTickCountEvent.EventShortDescription, row, chartTime, () =>
+						DrawAddEventMenuItem("Delay", !hasDelayEvent, UIDelayColorRGBA, EditorDelayEvent.EventShortDescription, row, () =>
 						{
-							return new EditorTickCountEvent(ActiveChart, new TickCount(EditorChart.DefaultTickCount));
+							var stopLength = ToMicrosRounded(currentRateAlteringEvent.GetSecondsPerRow() * MaxValidDenominator);
+							return new EditorDelayEvent(ActiveChart, new Stop(stopLength, true)
+							{
+								IntegerPosition = row,
+								TimeMicros = timeMicros,
+							});
 						});
-						DrawAddEventMenuItem("Combo Multipliers", !hasMultipliersEvent, UIMultipliersColorRGBA, EditorMultipliersEvent.EventShortDescription, row, chartTime, () =>
+						DrawAddEventMenuItem("Warp", !hasWarpEvent, UIWarpColorRGBA, EditorWarpEvent.EventShortDescription, row, () =>
 						{
-							return new EditorMultipliersEvent(ActiveChart, new Multipliers(EditorChart.DefaultHitMultiplier, EditorChart.DefaultMissMultiplier));
+							return new EditorWarpEvent(ActiveChart, new Warp(MaxValidDenominator)
+							{
+								IntegerPosition = row,
+								TimeMicros = timeMicros,
+							});
 						});
-						DrawAddEventMenuItem("Time Signature", !hasTimeSignatureEvent, UITimeSignatureColorRGBA, EditorTimeSignatureEvent.EventShortDescription, nearestMeasureBoundaryRow, nearestMeasureChartTime, () =>
+
+						ImGui.Separator();
+						DrawAddEventMenuItem("Fake Region", !hasFakeEvent, UIFakesColorRGBA, EditorFakeSegmentEvent.EventShortDescription, row, () =>
 						{
-							return new EditorTimeSignatureEvent(ActiveChart, new TimeSignature(EditorChart.DefaultTimeSignature));
+							var fakeLength = ToMicros(currentRateAlteringEvent.GetSecondsPerRow() * MaxValidDenominator);
+							return new EditorFakeSegmentEvent(ActiveChart, new FakeSegment(fakeLength)
+							{
+								IntegerPosition = row,
+								TimeMicros = timeMicros,
+							});
+						});
+						DrawAddEventMenuItem("Ticks", !hasTickCountEvent, UITicksColorRGBA, EditorTickCountEvent.EventShortDescription, row, () =>
+						{
+							return new EditorTickCountEvent(ActiveChart, new TickCount(EditorChart.DefaultTickCount)
+							{
+								IntegerPosition = row,
+								TimeMicros = timeMicros,
+							});
+						});
+						DrawAddEventMenuItem("Combo Multipliers", !hasMultipliersEvent, UIMultipliersColorRGBA, EditorMultipliersEvent.EventShortDescription, row, () =>
+						{
+							return new EditorMultipliersEvent(ActiveChart, new Multipliers(EditorChart.DefaultHitMultiplier, EditorChart.DefaultMissMultiplier)
+							{
+								IntegerPosition = row,
+								TimeMicros = timeMicros,
+							});
+						});
+						DrawAddEventMenuItem("Time Signature", !hasTimeSignatureEvent, UITimeSignatureColorRGBA, EditorTimeSignatureEvent.EventShortDescription, nearestMeasureBoundaryRow, () =>
+						{
+							return new EditorTimeSignatureEvent(ActiveChart, new TimeSignature(EditorChart.DefaultTimeSignature)
+							{
+								IntegerPosition = nearestMeasureBoundaryRow,
+								TimeMicros = ToMicrosRounded(nearestMeasureChartTime),
+							});
 						}, true);
-						DrawAddEventMenuItem("Label", !hasLabelEvent, UILabelColorRGBA, EditorLabelEvent.EventShortDescription, row, chartTime, () =>
+						DrawAddEventMenuItem("Label", !hasLabelEvent, UILabelColorRGBA, EditorLabelEvent.EventShortDescription, row, () =>
 						{
-							return new EditorLabelEvent(ActiveChart, new Fumen.ChartDefinition.Label("New Label"));
+							return new EditorLabelEvent(ActiveChart, new Fumen.ChartDefinition.Label("New Label")
+							{
+								IntegerPosition = row,
+								TimeMicros = timeMicros,
+							});
 						});
 
 						ImGui.EndMenu();
@@ -3046,14 +3041,11 @@ namespace StepManiaEditor
 			}
 		}
 
-		private void DrawAddEventMenuItem(string name, bool enabled, uint color, string toolTipText, int row, double chartTime, Func<EditorEvent> createEventFunc, bool onlyOnePerMeasure = false)
+		private void DrawAddEventMenuItem(string name, bool enabled, uint color, string toolTipText, int row, Func<EditorEvent> createEventFunc, bool onlyOnePerMeasure = false)
 		{
 			if (MenuItemWithColor(name, enabled, color))
 			{
-				var newEvent = createEventFunc();
-				newEvent.SetRow(row);
-				newEvent.SetChartTime(chartTime);
-				ActionQueue.Instance.Do(new ActionAddEditorEvent(newEvent));
+				ActionQueue.Instance.Do(new ActionAddEditorEvent(createEventFunc()));
 			}
 			if (!enabled)
 			{
@@ -3557,13 +3549,13 @@ namespace StepManiaEditor
 				SelectedEvents.Add(selectedEvent);
 		}
 
-		private void DeSelectEvent(EditorEvent e)
+		private void DeselectEvent(EditorEvent e)
 		{
 			if (!e.IsSelected())
 				return;
 			if (LastSelectedEvent == e)
 				LastSelectedEvent = null;
-			e.DeSelect();
+			e.Deselect();
 			foreach (var selectedEvent in e.GetEventsSelectedTogether())
 				SelectedEvents.Remove(selectedEvent);
 		}
@@ -3571,7 +3563,7 @@ namespace StepManiaEditor
 		private void ClearSelectedEvents()
 		{
 			foreach (var selectedEvent in SelectedEvents)
-				selectedEvent.DeSelect();
+				selectedEvent.Deselect();
 			SelectedEvents.Clear();
 			LastSelectedEvent = null;
 		}
@@ -3649,10 +3641,10 @@ namespace StepManiaEditor
 				((EditorEvent e) => { return e.IsSelectableWithModifiers(); })
 				: ((EditorEvent e) => { return e.IsSelectableWithoutModifiers(); });
 
-			var (arrowTexture, _) = ArrowGraphicManager.GetArrowTexture(0, 0, false);
-			double arrowWidthUnscaled, arrowHeightUnscaled;
-			(arrowWidthUnscaled, arrowHeightUnscaled) = TextureAtlas.GetDimensions(arrowTexture);
+			var spacingZoom = GetSpacingZoom();
+			var (arrowWidthUnscaled, arrowHeightUnscaled) = GetArrowDimensions(false);
 			var halfArrowH = arrowHeightUnscaled * GetSizeZoom() * 0.5;
+			var halfMiscEventH = ImGuiLayoutUtils.GetMiscEditorEventHeight() * 0.5;
 
 			// For clicking, we want to select only one note. The latest note whose bounding rect
 			// overlaps with the point that was clicked. The events are sorted but we cannot binary
@@ -3693,55 +3685,147 @@ namespace StepManiaEditor
 				var (minChartX, maxChartX) = SelectedRegion.GetSelectedXChartSpaceRange();
 				var minLane = (int)Math.Floor((minChartX + lanesWidth * 0.5) / arrowWidthUnscaled);
 				var maxLane = (int)Math.Floor((maxChartX + lanesWidth * 0.5) / arrowWidthUnscaled);
+				var fullyOutsideLanes = maxLane < 0 || minLane >= ActiveChart.NumInputs;
+				var partiallyOutsideLanes = !fullyOutsideLanes && (minLane < 0 || maxLane >= ActiveChart.NumInputs);
+				var selectMiscEvents = alt || fullyOutsideLanes;
 
-				// TODO: Selecting misc events isn't working as intended.
-
+				// Select by time.
 				if (Preferences.Instance.PreferencesScroll.SpacingMode == SpacingMode.ConstantTime)
 				{
 					var (minTime, maxTime) = SelectedRegion.GetSelectedChartTimeRange();
 
-					// Extend the time to capture the tops and bottoms of arrows.
-					// This is an approximation as there may be rate altering events during the range
-					// between the arrow's center and its edges.
-					minTime -= GetTimeRangeOfYPixelDurationAtTime(minTime, halfArrowH);
-					maxTime += GetTimeRangeOfYPixelDurationAtTime(maxTime, halfArrowH);
-
-					var enumerator = ActiveChart.EditorEvents.FindFirstAfterChartTime(minTime);
-
-					while (enumerator.MoveNext())
+					// Select notes.
+					if (!selectMiscEvents)
 					{
-						if (enumerator.Current.GetChartTime() > maxTime)
-							break;
-						if (!isSelectable(enumerator.Current))
-							continue;
-						var lane = enumerator.Current.GetLane();
-						if (lane < minLane || lane > maxLane)
-							continue;
-						newlySelectedEvents.Add(enumerator.Current);
+						// Extend the range to capture the tops and bottoms of arrows.
+						// This is an approximation as there may be rate altering events during the range.
+						var adjustedMinTime = minTime - GetTimeRangeOfYPixelDurationAtTime(minTime, halfArrowH);
+						var adjustedMaxTime = maxTime + GetTimeRangeOfYPixelDurationAtTime(maxTime, halfArrowH);
+
+						var enumerator = ActiveChart.EditorEvents.FindFirstAfterChartTime(adjustedMinTime);
+						while (enumerator.MoveNext())
+						{
+							if (enumerator.Current.GetChartTime() > adjustedMaxTime)
+								break;
+							if (!isSelectable(enumerator.Current))
+								continue;
+							var lane = enumerator.Current.GetLane();
+							if (lane < minLane || lane > maxLane)
+								continue;
+							newlySelectedEvents.Add(enumerator.Current);
+						}
+
+						// If nothing was selected and the selection was partially outside of the lanes, treat it as
+						// an attempt to select misc events.
+						if (newlySelectedEvents.Count() == 0 && partiallyOutsideLanes)
+							selectMiscEvents = true;
+					}
+
+					// Select misc. events.
+					if (selectMiscEvents)
+					{
+						// Extend the range to capture the tops and bottoms of misc events.
+						// This is an approximation as there may be rate altering events during the range.
+						var adjustedMinTime = minTime - GetTimeRangeOfYPixelDurationAtTime(minTime, halfMiscEventH);
+						var adjustedMaxTime = maxTime + GetTimeRangeOfYPixelDurationAtTime(maxTime, halfMiscEventH);
+
+						// Collect potential misc events.
+						var potentialEvents = new List<EditorEvent>();
+
+						// Loop over the misc events in the selected time range and determine their positions.
+						BeginMiscEventWidgetLayoutManagerFrame();
+						double minPosition = 0.0;
+						ActiveChart.TryGetChartPositionFromTime(adjustedMinTime, ref minPosition);
+						var enumerator = ActiveChart.MiscEvents.FindBestByPosition(minPosition);
+						while (enumerator != null && enumerator.MoveNext())
+						{
+							var rae = enumerator.Current;
+							if (rae.GetChartTime() > adjustedMaxTime)
+								break;
+							MiscEventWidgetLayoutManager.PositionEvent(rae);
+							potentialEvents.Add(rae);
+						}
+
+						// Now that we know the x positions of the potential misc events, check each
+						// event to see if it overlaps the selected region and add it to newlySelectedEvents.
+						var (xStart, xEnd) = SelectedRegion.GetSelectedXRange();
+						foreach (var potentialEvent in potentialEvents)
+						{
+							if (!(potentialEvent.GetChartTime() >= adjustedMinTime && potentialEvent.GetChartTime() <= adjustedMaxTime))
+								continue;
+							if (!(potentialEvent.X < xEnd && potentialEvent.X + potentialEvent.W > xStart))
+								continue;
+							newlySelectedEvents.Add(potentialEvent);
+						}
 					}
 				}
+
+				// Select by chart position.
 				else
 				{
 					var (minPosition, maxPosition) = SelectedRegion.GetSelectedChartPositionRange();
 
-					// Extend the position to capture the tops and bottoms of arrows.
-					// This is an approximation as there may be rate altering events during the range
-					// between the arrow's center and its edges.
-					minPosition -= GetPositionRangeOfYPixelDurationAtTime(minPosition, halfArrowH);
-					maxPosition += GetPositionRangeOfYPixelDurationAtTime(maxPosition, halfArrowH);
-
-					var enumerator = ActiveChart.EditorEvents.FindFirstAfterChartPosition(minPosition);
-
-					while (enumerator.MoveNext())
+					// Select notes.
+					if (!selectMiscEvents)
 					{
-						if (enumerator.Current.GetRow() > maxPosition)
-							break;
-						if (!isSelectable(enumerator.Current))
-							continue;
-						var lane = enumerator.Current.GetLane();
-						if (lane < minLane || lane > maxLane)
-							continue;
-						newlySelectedEvents.Add(enumerator.Current);
+						// Extend the range to capture the tops and bottoms of arrows.
+						// This is an approximation as there may be rate altering events during the range.
+						var adjustedMinPosition = minPosition - GetPositionRangeOfYPixelDurationAtTime(minPosition, halfArrowH);
+						var adjustedMaxPosition = maxPosition + GetPositionRangeOfYPixelDurationAtTime(maxPosition, halfArrowH);
+
+						var enumerator = ActiveChart.EditorEvents.FindFirstAfterChartPosition(adjustedMinPosition);
+						while (enumerator.MoveNext())
+						{
+							if (enumerator.Current.GetRow() > adjustedMaxPosition)
+								break;
+							if (!isSelectable(enumerator.Current))
+								continue;
+							var lane = enumerator.Current.GetLane();
+							if (lane < minLane || lane > maxLane)
+								continue;
+							newlySelectedEvents.Add(enumerator.Current);
+						}
+
+						// If nothing was selected and the selection was partially outside of the lanes, treat it as
+						// an attempt to select misc events.
+						if (newlySelectedEvents.Count() == 0 && partiallyOutsideLanes)
+							selectMiscEvents = true;
+					}
+
+					// Select misc. events.
+					if (selectMiscEvents)
+					{
+						// Extend the range to capture the tops and bottoms of misc events.
+						// This is an approximation as there may be rate altering events during the range.
+						var adjustedMinPosition = minPosition - GetPositionRangeOfYPixelDurationAtTime(minPosition, halfMiscEventH);
+						var adjustedMaxPosition = maxPosition + GetPositionRangeOfYPixelDurationAtTime(maxPosition, halfMiscEventH);
+
+						// Collect potential misc events.
+						var potentialEvents = new List<EditorEvent>();
+
+						// Loop over the misc events in the selected time range and determine their positions.
+						BeginMiscEventWidgetLayoutManagerFrame();
+						var enumerator = ActiveChart.MiscEvents.FindBestByPosition(adjustedMinPosition);
+						while (enumerator != null && enumerator.MoveNext())
+						{
+							var rae = enumerator.Current;
+							if (rae.GetRow() > adjustedMaxPosition)
+								break;
+							MiscEventWidgetLayoutManager.PositionEvent(rae);
+							potentialEvents.Add(rae);
+						}
+
+						// Now that we know the x positions of the potential misc events, check each
+						// event to see if it overlaps the selected region and add it to newlySelectedEvents.
+						var (xStart, xEnd) = SelectedRegion.GetSelectedXRange();
+						foreach (var potentialEvent in potentialEvents)
+						{
+							if (!(potentialEvent.GetRow() >= adjustedMinPosition && potentialEvent.GetRow() <= adjustedMaxPosition))
+								continue;
+							if (!(potentialEvent.X < xEnd && potentialEvent.X + potentialEvent.W > xStart))
+								continue;
+							newlySelectedEvents.Add(potentialEvent);
+						}
 					}
 				}
 			}
@@ -3797,7 +3881,7 @@ namespace StepManiaEditor
 				for (var i = 0; i < newlySelectedEvents.Count; i++)
 				{
 					if (newlySelectedEvents[i].IsSelected())
-						DeSelectEvent(newlySelectedEvents[i]);
+						DeselectEvent(newlySelectedEvents[i]);
 					else
 						SelectEvent(newlySelectedEvents[i], i == newlySelectedEvents.Count - 1);
 				}
@@ -3832,15 +3916,9 @@ namespace StepManiaEditor
 		/// </remarks>
 		private double GetTimeRangeOfYPixelDurationAtTime(double time, double duration)
 		{
-			var currentTime = Position.ChartTime;
-			double currentPosition = 0.0;
-			if (!ActiveChart.TryGetChartPositionFromTime(currentTime, ref currentPosition))
-				return 0.0;
-			var interpolatedScrollRate = GetInterpolatedScrollRate(currentTime, currentPosition);
-
 			var rae = ActiveChart.FindActiveRateAlteringEventForTime(time);
 			var spacingHelper = EventSpacingHelper.GetSpacingHelper(ActiveChart);
-			spacingHelper.UpdatePpsAndPpr(rae, interpolatedScrollRate, GetSpacingZoom());
+			spacingHelper.UpdatePpsAndPpr(rae, GetCurrentInterpolatedScrollRateFromTime(), GetSpacingZoom());
 
 			return duration / spacingHelper.GetPps();
 		}
@@ -3860,15 +3938,9 @@ namespace StepManiaEditor
 		/// </remarks>
 		private double GetPositionRangeOfYPixelDurationAtTime(double position, double duration)
 		{
-			var currentPosition = Position.ChartPosition;
-			double currentTime = 0.0;
-			if (!ActiveChart.TryGetTimeFromChartPosition(currentPosition, ref currentTime))
-				return 0.0;
-			var interpolatedScrollRate = GetInterpolatedScrollRate(currentTime, currentPosition);
-
 			var rae = ActiveChart.FindActiveRateAlteringEventForPosition(position);
 			var spacingHelper = EventSpacingHelper.GetSpacingHelper(ActiveChart);
-			spacingHelper.UpdatePpsAndPpr(rae, interpolatedScrollRate, GetSpacingZoom());
+			spacingHelper.UpdatePpsAndPpr(rae, GetCurrentInterpolatedScrollRateFromPosition(), GetSpacingZoom());
 
 			return duration / spacingHelper.GetPpr();
 		}
@@ -3964,7 +4036,7 @@ namespace StepManiaEditor
 			var rate = ActiveChart?.FindActiveRateAlteringEventForPosition(Position.ChartPosition);
 			if (rate == null)
 				return;
-			var sig = rate.LastTimeSignature.Signature;
+			var sig = rate.GetTimeSignature().Signature;
 			var rows = sig.Numerator * (MaxValidDenominator * NumBeatsPerMeasure / sig.Denominator);
 			Position.ChartPosition -= rows;
 
@@ -3976,7 +4048,7 @@ namespace StepManiaEditor
 			var rate = ActiveChart?.FindActiveRateAlteringEventForPosition(Position.ChartPosition);
 			if (rate == null)
 				return;
-			var sig = rate.LastTimeSignature.Signature;
+			var sig = rate.GetTimeSignature().Signature;
 			var rows = sig.Numerator * (MaxValidDenominator * NumBeatsPerMeasure / sig.Denominator);
 			Position.ChartPosition += rows;
 
@@ -4271,7 +4343,7 @@ namespace StepManiaEditor
 				}
 
 				// For any event in the same lane within the region of the new hold, delete them.
-				var e = ActiveChart.EditorEvents.FindBest(row);
+				var e = ActiveChart.EditorEvents.FindBestByPosition(row);
 				if (e != null)
 				{
 					while (e.MoveNext() && e.Current.GetRow() <= row + length)
@@ -4578,6 +4650,8 @@ namespace StepManiaEditor
 				Song = song,
 				MeasureSpacingBehavior = SMWriterBase.MeasureSpacingBehavior.UseLeastCommonMultiple,
 				PropertyEmissionBehavior = SMWriterBase.PropertyEmissionBehavior.Stepmania,
+				// HACK:
+				FallbackChart = song.Charts.Count > 0 ? song.Charts[0] : null,
 			};
 			switch (fileType)
 			{
@@ -4766,10 +4840,6 @@ namespace StepManiaEditor
 			// The Position needs to know about the active chart for doing time and row calculations.
 			Position.ActiveChart = ActiveChart;
 			EditorMouseState.SetActiveChart(ActiveChart);
-
-			// The preview event region needs to know about the active chart since rendering the preview
-			// with rate altering events from the chart requires knowing the chart's music offset.
-			ActiveSong.PreviewEvent.ActiveChart = ActiveChart;
 
 			if (ActiveChart != null)
 			{

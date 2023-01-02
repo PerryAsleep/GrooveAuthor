@@ -77,6 +77,13 @@ namespace StepManiaEditor
 			return (CurrentXInChartSpace, StartXInChartSpace);
 		}
 
+		public (double, double) GetSelectedXRange()
+		{
+			if (StartX <= CurrentX)
+				return (StartX, CurrentX);
+			return (CurrentX, StartX);
+		}
+
 		public (double, double) GetSelectedChartTimeRange()
 		{
 			if (StartChartTime <= CurrentChartTime)

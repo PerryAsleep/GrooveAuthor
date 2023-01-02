@@ -1,96 +1,171 @@
 ﻿using System;
 using Fumen.ChartDefinition;
-using Fumen.Converters;
 
 namespace StepManiaEditor
 {
+	/// <summary>
+	/// An EditorEvent which can alter the scroll rate or spacing of the chart.
+	/// </summary>
 	internal abstract class EditorRateAlteringEvent : EditorEvent, IComparable<EditorRateAlteringEvent>
 	{
 		/// <summary>
-		/// ChartTime to use for events which follow this event.
-		/// Some events (Stops) cause this value to differ from this Event's ChartTime.
+		/// How many rows after this event are in a warp region.
+		/// Any event on a row in a warp region has a time that equals the end of the warp.
+		/// Warps cause rows to be skipped.
 		/// </summary>
-		public double ChartTimeForFollowingEvents;
+		private double WarpRowsRemaining;
 		/// <summary>
-		/// Row to use for events which follow this event.
-		/// Some events (Warps) cause this value to differ from this Event's Row.
+		/// How much time in seconds after this event are in a stop region.
+		/// For normal stops, this will be a positive number. For negative stops which function
+		/// similarly to warps, it will be negative.
 		/// </summary>
-		public int RowForFollowingEvents;
+		private double StopTimeRemaining;
 		/// <summary>
 		/// Current constant scroll rate multiplier during this event. Defaults to 1.
 		/// </summary>
-		public double ScrollRate;
+		private double ScrollRate;
 		/// <summary>
 		/// Current tempo during this event.
 		/// </summary>
-		public double Tempo;
+		private double Tempo;
 		/// <summary>
 		/// The rate that the chart should scroll after this event in rows per second.
 		/// </summary>
-		public double RowsPerSecond;
+		private double RowsPerSecond;
 		/// <summary>
-		/// The rate that the chart shoulc scroll after this event in seconds per row.
+		/// The rate that the chart should scroll after this event in seconds per row.
 		/// </summary>
-		public double SecondsPerRow;
+		private double SecondsPerRow;
 		/// <summary>
 		/// The most recent TimeSignature event that precedes this event.
 		/// </summary>
-		public TimeSignature LastTimeSignature;
+		private TimeSignature LastTimeSignature;
 
 		protected EditorRateAlteringEvent(EditorChart editorChart, Event chartEvent) : base(editorChart, chartEvent)
 		{
 		}
 
+		/// <summary>
+		/// Initiliaze rate altering event values.
+		/// </summary>
+		public void Init(
+			int warpRowsRemaining,
+			double stopTimeRemaining,
+			double scrollRate,
+			double tempo,
+			double rowsPerSecond,
+			double secondsPerRow,
+			TimeSignature lastTimeSignature,
+			bool canBeDeleted)
+		{
+			WarpRowsRemaining = warpRowsRemaining;
+			StopTimeRemaining = stopTimeRemaining;
+			ScrollRate = scrollRate;
+			Tempo = tempo;
+			RowsPerSecond = rowsPerSecond;
+			SecondsPerRow = secondsPerRow;
+			LastTimeSignature = lastTimeSignature;
+			CanBeDeleted = canBeDeleted;
+		}
+
+		/// <summary>
+		/// Updates this event's tempo.
+		/// When intializing rate altering events some events' tempos may not be known
+		/// until a future event defines the first tempo.
+		/// </summary>
+		public void UpdateTempo(double tempo, double rowsPerSecond, double secondsPerRow)
+		{
+			Tempo = tempo;
+			RowsPerSecond = rowsPerSecond;
+			SecondsPerRow = secondsPerRow;
+		}
+
+		/// <summary>
+		/// Updates this event's scroll rate.
+		/// When intializing rate altering events some events' scroll rates may not be known
+		/// until a future event defines the first rate.
+		/// </summary>
+		public void UpdateScrollRate(double scrollRate)
+		{
+			ScrollRate = scrollRate;
+		}
+
+		public double GetScrollRate() { return ScrollRate; }
+		public double GetTempo() { return Tempo; }
+		public double GetRowsPerSecond() { return RowsPerSecond; }
+		public double GetSecondsPerRow() { return SecondsPerRow; }
+		public TimeSignature GetTimeSignature() { return LastTimeSignature; }
+
+		/// <summary>
+		/// Given a chart position which occurs at or after this event, return the chart time at that position.
+		/// </summary>
+		/// <param name="chartPosition">Chart position to get the time of.</param>
+		/// <returns>Chart time of the given position.</returns>
+		public double GetChartTimeFromPosition(double chartPosition)
+		{
+			return GetChartTime() + Math.Max(0.0, Math.Max(0.0, chartPosition - (GetRow() + WarpRowsRemaining)) * SecondsPerRow + StopTimeRemaining);
+		}
+
+		/// <summary>
+		/// Given a chart time which occurs at or after this event, return the chart position at that time.
+		/// </summary>
+		/// <param name="chartTime">Chart time to get the position of.</param>
+		/// <returns>Chart position of the given time.</returns>
+		public double GetChartPositionFromTime(double chartTime)
+		{
+			return GetRow() + Math.Max(0.0, chartTime - (GetChartTime() + StopTimeRemaining)) * RowsPerSecond + WarpRowsRemaining;
+		}
+
+		#region IComparable
 		public int CompareTo(EditorRateAlteringEvent other)
 		{
-			var comparison = GetRow().CompareTo(other.GetRow());
-			if (comparison != 0)
-				return comparison;
-			comparison = GetChartTime().CompareTo(other.GetChartTime());
-			if (comparison != 0)
-				return comparison;
-			return SMCommon.SMEventComparer.Compare(ChartEvent, other.ChartEvent);
+			return ((EditorEvent)this).CompareTo(other);
 		}
+		#endregion IComparable
 	}
 
 	/// <summary>
 	/// Dummy EditorRateAlteringEvent to use when needing to search for EditorRateAlteringEvent
-	/// in data structures which require comparing to an input event.
+	/// in data structures which require comparing to an input time.
 	/// </summary>
-	internal sealed class EditorDummyRateAlteringEvent : EditorRateAlteringEvent
+	internal sealed class EditorDummyRateAlteringEventWithTime : EditorRateAlteringEvent
 	{
-		private int Row;
 		private double ChartTime;
 
-		public EditorDummyRateAlteringEvent(EditorChart editorChart, int row, double chartTime) : base(editorChart, null)
+		public EditorDummyRateAlteringEventWithTime(EditorChart editorChart, double chartTime) : base(editorChart, null)
 		{
-			Row = row;
 			ChartTime = chartTime;
 			IsDummyEvent = true;
 		}
 
-		public override int GetRow()
-		{
-			return Row;
-		}
 		public override double GetChartTime()
 		{
 			return ChartTime;
 		}
 
-		public override void SetRow(int row)
-		{
-			Row = row;
-		}
-		public override void SetTimeMicros(long timeMicros)
-		{
-			ChartTime = Fumen.Utils.ToSeconds(timeMicros);
-		}
 		public override void SetChartTime(double chartTime)
 		{
 			ChartTime = chartTime;
 		}
 
+		public override bool IsMiscEvent() { return false; }
+		public override bool IsSelectableWithoutModifiers() { return false; }
+		public override bool IsSelectableWithModifiers() { return false; }
+	}
+
+	/// <summary>
+	/// Dummy EditorRateAlteringEvent to use when needing to search for EditorRateAlteringEvent
+	/// in data structures which require comparing to an input row.
+	/// </summary>
+	internal sealed class EditorDummyRateAlteringEventWithRow : EditorRateAlteringEvent
+	{
+		public EditorDummyRateAlteringEventWithRow(EditorChart editorChart, double row) : base(editorChart, null)
+		{
+			ChartPosition = row;
+			IsDummyEvent = true;
+		}
+
+		public override bool IsMiscEvent() { return false; }
 		public override bool IsSelectableWithoutModifiers() { return false; }
 		public override bool IsSelectableWithModifiers() { return false; }
 	}
