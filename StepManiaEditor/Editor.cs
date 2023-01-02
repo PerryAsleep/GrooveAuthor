@@ -1487,6 +1487,7 @@ namespace StepManiaEditor
 
 			var beatMarkerRow = (int)chartPositionAtTopOfScreen;
 			var beatMarkerLastRecordedRow = -1;
+			var numRateAlteringEventsProcessed = 1;
 
 			// Now that we know the position at the start of the screen we can find the first event to start rendering.
 			var enumerator = ActiveChart.EditorEvents.FindBestByPosition(chartPositionAtTopOfScreen);
@@ -1524,6 +1525,7 @@ namespace StepManiaEditor
 			StartRegions(ref regionsNeedingToBeAdded, ref addedRegions, previousRateEventY, rateEvent, nextRateEvent, startPosX, numArrows * arrowW, chartTimeAtTopOfScreen, chartPositionAtTopOfScreen);
 
 			// Now we can scan forward
+			var reachedEndOfScreen = false;
 			while (enumerator.MoveNext())
 			{
 				var e = enumerator.Current;
@@ -1555,7 +1557,8 @@ namespace StepManiaEditor
 
 					// Update any regions needing to be updated based on the new rate altering event.
 					UpdateRegions(ref regionsNeedingToBeAdded, ref addedRegions, previousRateEventY, rateEvent, nextRateEvent);
-					
+
+					numRateAlteringEventsProcessed++;
 					continue;
 				}
 
@@ -1568,7 +1571,10 @@ namespace StepManiaEditor
 				// want to end processing on a negative region, particularly for regions which end
 				// beyond the end of the screen.
 				if (arrowY > screenHeight && !SpacingHelper.IsScrollRateNegative())
+				{
+					reachedEndOfScreen = true;
 					break;
+				}
 
 				// Record note.
 				if (e is EditorTapNoteEvent || e is EditorHoldStartNoteEvent || e is EditorHoldEndNoteEvent || e is EditorMineNoteEvent)
@@ -1614,6 +1620,7 @@ namespace StepManiaEditor
 						AddRegion(region, ref regionsNeedingToBeAdded, ref addedRegions, previousRateEventY, nextRateEvent, startPosX, numArrows * arrowW);
 				}
 
+				// If we have collected the maximum number of events per frame, stop processing.
 				if (noteEvents.Count + holdBodyEvents.Count > MaxEventsToDraw)
 					break;
 			}
@@ -1643,7 +1650,31 @@ namespace StepManiaEditor
 			// We also need to update beat markers beyond the final note.
 			UpdateBeatMarkers(rateEvent, ref beatMarkerRow, ref beatMarkerLastRecordedRow, nextRateEvent, startPosX, sizeZoom, previousRateEventY);
 
-			// We also need to complete regions which end beyond the bounds of the screen.
+			// If the user is selecting a region and is zoomed out so far that we processed the maximum number of notes
+			// per frame without finding both ends of the seleced region, then keep iterating through rate altering events
+			// to try and complete the selected region.
+			if (!reachedEndOfScreen && SelectedRegion.IsActive())
+			{
+				while (nextRateEvent != null
+					&& (!SelectedRegion .HasStartYBeenUpdatedThisFrame() || !SelectedRegion.HaveCurrentValuesBeenUpdatedThisFrame())
+					&& numRateAlteringEventsProcessed < MaxRateAlteringEventsToProcessPerFrame)
+				{
+					var rateEventY = SpacingHelper.GetY(nextRateEvent, previousRateEventY);
+					rateEvent = nextRateEvent;
+					SpacingHelper.UpdatePpsAndPpr(rateEvent, interpolatedScrollRate, spacingZoom);
+					previousRateEventY = rateEventY;
+
+					// Advance to the next rate altering event.
+					hasNextRateEvent = rateEnumerator.MoveNext();
+					nextRateEvent = hasNextRateEvent ? rateEnumerator.Current : null;
+
+					// Update any regions needing to be updated based on the new rate altering event.
+					UpdateRegions(ref regionsNeedingToBeAdded, ref addedRegions, previousRateEventY, rateEvent, nextRateEvent);
+					numRateAlteringEventsProcessed++;
+				}
+			}
+
+			// Normal case of needing to complete regions which end beyond the bounds of the screen.
 			EndRegions(ref regionsNeedingToBeAdded, ref addedRegions, previousRateEventY, rateEvent);
 
 			// Store the notes and holds so we can render them.

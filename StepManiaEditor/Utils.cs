@@ -71,6 +71,7 @@ namespace StepManiaEditor
 
 		public const int MaxMarkersToDraw = 256;
 		public const int MaxEventsToDraw = 2048;
+		public const int MaxRateAlteringEventsToProcessPerFrame = 256;
 
 		public const int MiniMapMaxNotesToDraw = 6144;
 
