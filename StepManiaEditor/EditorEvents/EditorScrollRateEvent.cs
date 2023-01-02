@@ -60,7 +60,7 @@ namespace StepManiaEditor
 			}
 		}
 
-		public EditorScrollRateEvent(EditorChart editorChart, ScrollRate chartEvent) : base(editorChart, chartEvent)
+		public EditorScrollRateEvent(EventConfig config, ScrollRate chartEvent) : base(config)
 		{
 			ScrollRateEvent = chartEvent;
 			WidthDirty = true;

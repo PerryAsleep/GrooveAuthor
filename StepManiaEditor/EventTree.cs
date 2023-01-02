@@ -26,8 +26,7 @@ namespace StepManiaEditor
 		/// <returns>Enumerator to best value or null if a value could not be found.</returns>
 		public Enumerator FindBestByPosition(double chartPosition)
 		{
-			// The dummy event will not equal any other event in the tree when compared to it.
-			var pos = EditorEvent.CreateDummyEvent(Chart, CreateDummyFirstEventForRow((int)chartPosition), chartPosition);
+			var pos = EditorEvent.CreateEvent(CreateDummyConfig(chartPosition));
 			var enumerator = FindGreatestPreceding(pos, false);
 			if (enumerator == null)
 				enumerator = FindLeastFollowing(pos, true);
@@ -54,7 +53,7 @@ namespace StepManiaEditor
 
 		public Enumerator FindFirstAfterChartPosition(double chartPosition)
 		{
-			var pos = EditorEvent.CreateDummyEvent(Chart, CreateDummyFirstEventForRow((int)chartPosition), chartPosition);
+			var pos = EditorEvent.CreateEvent(CreateDummyConfig(chartPosition));
 			var enumerator = FindLeastFollowing(pos, false);
 			if (enumerator == null)
 				return null;
@@ -65,7 +64,7 @@ namespace StepManiaEditor
 
 		public EditorEvent FindNoteAt(int row, int lane, bool ignoreNotesBeingEdited)
 		{
-			var pos = EditorEvent.CreateDummyEvent(Chart, CreateDummyFirstEventForRow(row), row);
+			var pos = EditorEvent.CreateEvent(CreateDummyConfig(row));
 
 			// Find the greatest preceding event.
 			var best = FindGreatestPreceding(pos);
@@ -115,6 +114,19 @@ namespace StepManiaEditor
 			}
 
 			return events;
+		}
+
+		private EditorEvent.EventConfig CreateDummyConfig(double chartPosition)
+		{
+			// The dummy event will not equal any other event in the tree when compared to it.
+			return new EditorEvent.EventConfig
+			{
+				EditorChart = Chart,
+				ChartEvent = CreateDummyFirstEventForRow((int)chartPosition),
+				ChartPosition = chartPosition,
+				UseDoubleChartPosition = true,
+				IsDummyEvent = true
+			};
 		}
 
 		private static void EnsureLessThanTime(Enumerator e, double chartTime)

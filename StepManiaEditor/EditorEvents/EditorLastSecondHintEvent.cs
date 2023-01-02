@@ -8,7 +8,8 @@ namespace StepManiaEditor
 {
 	internal sealed class EditorLastSecondHintEvent : EditorEvent
 	{
-		public EditorLastSecondHintEvent(EditorChart editorChart) : base(editorChart, null)
+		public EditorLastSecondHintEvent(EditorChart editorChart, double chartPosition)
+			: base(new EventConfig { EditorChart = editorChart, ChartPosition = chartPosition, UseDoubleChartPosition = true })
 		{
 
 		}

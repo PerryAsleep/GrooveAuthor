@@ -33,7 +33,7 @@ namespace StepManiaEditor
 			}
 		}
 
-		public EditorTickCountEvent(EditorChart editorChart, TickCount chartEvent) : base(editorChart, chartEvent)
+		public EditorTickCountEvent(EventConfig config, TickCount chartEvent) : base(config)
 		{
 			TickCountEvent = chartEvent;
 			WidthDirty = true;

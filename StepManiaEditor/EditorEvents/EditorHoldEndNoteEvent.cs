@@ -18,12 +18,7 @@ namespace StepManiaEditor
 		private bool NextDrawActive;
 		private double NextDrawActiveYCutoffPoint;
 
-		public EditorHoldEndNoteEvent(EditorChart editorChart, LaneHoldEndNote chartEvent) : base(editorChart, chartEvent)
-		{
-			LaneHoldEndNote = chartEvent;
-		}
-
-		public EditorHoldEndNoteEvent(EditorChart editorChart, LaneHoldEndNote chartEvent, bool isBeingEdited) : base(editorChart, chartEvent, isBeingEdited)
+		public EditorHoldEndNoteEvent(EventConfig config, LaneHoldEndNote chartEvent) : base(config)
 		{
 			LaneHoldEndNote = chartEvent;
 		}

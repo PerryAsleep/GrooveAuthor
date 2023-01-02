@@ -1,10 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using Fumen.ChartDefinition;
 using Fumen.Converters;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using static System.ComponentModel.Design.ObjectSelectorEditor;
 using static StepManiaEditor.Utils;
 
 namespace StepManiaEditor
@@ -15,13 +13,7 @@ namespace StepManiaEditor
 		private EditorHoldEndNoteEvent EditorHoldEndNoteEvent;
 		private bool Roll;
 
-		public EditorHoldStartNoteEvent(EditorChart editorChart, LaneHoldStartNote chartEvent) : base(editorChart, chartEvent)
-		{
-			LaneHoldStartNote = chartEvent;
-			Roll = LaneHoldStartNote.SourceType == SMCommon.NoteChars[(int)SMCommon.NoteType.RollStart].ToString();
-		}
-
-		public EditorHoldStartNoteEvent(EditorChart editorChart, LaneHoldStartNote chartEvent, bool isBeingEdited) : base(editorChart, chartEvent, isBeingEdited)
+		public EditorHoldStartNoteEvent(EventConfig config, LaneHoldStartNote chartEvent) : base(config)
 		{
 			LaneHoldStartNote = chartEvent;
 			Roll = LaneHoldStartNote.SourceType == SMCommon.NoteChars[(int)SMCommon.NoteType.RollStart].ToString();

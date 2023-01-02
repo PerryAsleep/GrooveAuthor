@@ -510,12 +510,18 @@ namespace StepManiaEditor
 
 			HoldStart = holdStart;
 			HoldEnd = holdStart.GetHoldEndNote();
-			NewHoldEnd = new EditorHoldEndNoteEvent(HoldStart.GetEditorChart(), new LaneHoldEndNote()
+			var holdEndNote = new LaneHoldEndNote()
 			{
 				Lane = HoldStart.GetLane(),
 				IntegerPosition = HoldStart.GetRow() + length,
 				TimeMicros = Fumen.Utils.ToMicros(newHoldEndTime)
-			});
+			};
+			var config = new EditorEvent.EventConfig
+			{
+				EditorChart = HoldStart.GetEditorChart(),
+				ChartEvent = holdEndNote
+			};
+			NewHoldEnd = new EditorHoldEndNoteEvent(config, holdEndNote);
 			NewHoldEnd.SetHoldStartNote(HoldStart);
 		}
 
@@ -560,7 +566,13 @@ namespace StepManiaEditor
 				IntegerPosition = row,
 				TimeMicros = Fumen.Utils.ToMicros(holdStartTime)
 			};
-			HoldStart = new EditorHoldStartNoteEvent(chart, holdStartNote, isBeingEdited);
+			var config = new EditorEvent.EventConfig
+			{
+				EditorChart = chart,
+				ChartEvent = holdStartNote,
+				IsBeingEdited = isBeingEdited
+			};
+			HoldStart = new EditorHoldStartNoteEvent(config, holdStartNote);
 			HoldStart.SetIsRoll(roll);
 
 			var holdEndTime = 0.0;
@@ -571,7 +583,13 @@ namespace StepManiaEditor
 				IntegerPosition = row + length,
 				TimeMicros = Fumen.Utils.ToMicros(holdEndTime)
 			};
-			HoldEnd = new EditorHoldEndNoteEvent(chart, holdEndNote, isBeingEdited);
+			config = new EditorEvent.EventConfig
+			{
+				EditorChart = chart,
+				ChartEvent = holdEndNote,
+				IsBeingEdited = isBeingEdited
+			};
+			HoldEnd = new EditorHoldEndNoteEvent(config, holdEndNote);
 
 			HoldStart.SetHoldEndNote(HoldEnd);
 			HoldEnd.SetHoldStartNote(HoldStart);

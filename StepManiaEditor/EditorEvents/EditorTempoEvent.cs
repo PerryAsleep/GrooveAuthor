@@ -38,7 +38,7 @@ namespace StepManiaEditor
 			}
 		}
 
-		public EditorTempoEvent(EditorChart editorChart, Tempo chartEvent) : base(editorChart, chartEvent)
+		public EditorTempoEvent(EventConfig config, Tempo chartEvent) : base(config)
 		{
 			TempoEvent = chartEvent;
 			WidthDirty = true;

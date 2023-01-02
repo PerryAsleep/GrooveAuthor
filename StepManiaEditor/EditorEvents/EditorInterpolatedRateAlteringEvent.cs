@@ -110,7 +110,7 @@ namespace StepManiaEditor
 			}
 		}
 
-		public EditorInterpolatedRateAlteringEvent(EditorChart editorChart, ScrollRateInterpolation chartEvent) : base(editorChart, chartEvent)
+		public EditorInterpolatedRateAlteringEvent(EventConfig config, ScrollRateInterpolation chartEvent) : base(config)
 		{
 			ScrollRateInterpolationEvent = chartEvent;
 			WidthDirty = true;

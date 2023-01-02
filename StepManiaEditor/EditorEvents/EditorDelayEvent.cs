@@ -88,7 +88,7 @@ namespace StepManiaEditor
 			}
 		}
 
-		public EditorDelayEvent(EditorChart editorChart, Stop chartEvent) : base(editorChart, chartEvent)
+		public EditorDelayEvent(EventConfig config, Stop chartEvent) : base(config)
 		{
 			StopEvent = chartEvent;
 			WidthDirty = true;
@@ -126,11 +126,11 @@ namespace StepManiaEditor
 		private int Row;
 		private double ChartTime;
 
-		public EditorDummyDelayEvent(EditorChart editorChart, int row, double chartTime) : base(editorChart, null)
+		public EditorDummyDelayEvent(EditorChart editorChart, int row, double chartTime)
+			: base(new EventConfig { EditorChart = editorChart, IsDummyEvent = true, ChartPosition = row, UseDoubleChartPosition = true }, null)
 		{
 			Row = row;
 			ChartTime = chartTime;
-			IsDummyEvent = true;
 		}
 
 		public override int GetRow()
@@ -140,11 +140,6 @@ namespace StepManiaEditor
 		public override double GetChartTime()
 		{
 			return ChartTime;
-		}
-
-		public override void SetChartTime(double chartTime)
-		{
-			ChartTime = chartTime;
 		}
 	}
 }

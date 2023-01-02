@@ -9,12 +9,7 @@ namespace StepManiaEditor
 	{
 		private readonly LaneNote LaneNote;
 
-		public EditorMineNoteEvent(EditorChart editorChart, LaneNote chartEvent) : base(editorChart, chartEvent)
-		{
-			LaneNote = chartEvent;
-		}
-
-		public EditorMineNoteEvent(EditorChart editorChart, LaneNote chartEvent, bool isBeingEdited) : base(editorChart, chartEvent, isBeingEdited)
+		public EditorMineNoteEvent(EventConfig config, LaneNote chartEvent) : base(config)
 		{
 			LaneNote = chartEvent;
 		}

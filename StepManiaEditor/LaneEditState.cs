@@ -142,22 +142,34 @@ namespace StepManiaEditor
 			{
 				if (up)
 				{
-					EventBeingEdited = new EditorTapNoteEvent(EventBeingEdited.GetEditorChart(), new LaneTapNote
+					var config = new EditorEvent.EventConfig
 					{
-						Lane = EventBeingEdited.GetLane(),
-						IntegerPosition = EventBeingEdited.GetEvent().IntegerPosition,
-						TimeMicros = EventBeingEdited.GetEvent().TimeMicros
-					}, true);
+						EditorChart = EventBeingEdited.GetEditorChart(),
+						ChartEvent = new LaneTapNote
+						{
+							Lane = EventBeingEdited.GetLane(),
+							IntegerPosition = EventBeingEdited.GetEvent().IntegerPosition,
+							TimeMicros = EventBeingEdited.GetEvent().TimeMicros
+						},
+						IsBeingEdited = true
+					};
+					EventBeingEdited = EditorEvent.CreateEvent(config);
 				}
 				else
 				{
-					EventBeingEdited = new EditorMineNoteEvent(EventBeingEdited.GetEditorChart(), new LaneNote
+					var config = new EditorEvent.EventConfig
 					{
-						Lane = EventBeingEdited.GetLane(),
-						IntegerPosition = EventBeingEdited.GetEvent().IntegerPosition,
-						TimeMicros = EventBeingEdited.GetEvent().TimeMicros,
-						SourceType = SMCommon.NoteChars[(int)SMCommon.NoteType.Mine].ToString()
-					}, true);
+						EditorChart = EventBeingEdited.GetEditorChart(),
+						ChartEvent = new LaneNote
+						{
+							Lane = EventBeingEdited.GetLane(),
+							IntegerPosition = EventBeingEdited.GetEvent().IntegerPosition,
+							TimeMicros = EventBeingEdited.GetEvent().TimeMicros,
+							SourceType = SMCommon.NoteChars[(int)SMCommon.NoteType.Mine].ToString()
+						},
+						IsBeingEdited = true
+					};
+					EventBeingEdited = EditorEvent.CreateEvent(config);
 				}
 
 				foreach (var editorAction in Actions.GetActions())

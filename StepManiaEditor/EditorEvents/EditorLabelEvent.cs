@@ -74,7 +74,7 @@ namespace StepManiaEditor
 			return (true, v);
 		}
 
-		public EditorLabelEvent(EditorChart editorChart, Label chartEvent) : base(editorChart, chartEvent)
+		public EditorLabelEvent(EventConfig config, Label chartEvent) : base(config)
 		{
 			LabelEvent = chartEvent;
 			WidthDirty = true;

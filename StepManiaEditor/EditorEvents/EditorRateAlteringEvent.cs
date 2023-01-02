@@ -41,7 +41,7 @@ namespace StepManiaEditor
 		/// </summary>
 		private TimeSignature LastTimeSignature;
 
-		protected EditorRateAlteringEvent(EditorChart editorChart, Event chartEvent) : base(editorChart, chartEvent)
+		protected EditorRateAlteringEvent(EventConfig config) : base(config)
 		{
 		}
 
@@ -132,20 +132,15 @@ namespace StepManiaEditor
 	{
 		private double ChartTime;
 
-		public EditorDummyRateAlteringEventWithTime(EditorChart editorChart, double chartTime) : base(editorChart, null)
+		public EditorDummyRateAlteringEventWithTime(EditorChart editorChart, double chartTime)
+			: base(new EventConfig { EditorChart = editorChart, IsDummyEvent = true })
 		{
 			ChartTime = chartTime;
-			IsDummyEvent = true;
 		}
 
 		public override double GetChartTime()
 		{
 			return ChartTime;
-		}
-
-		public override void SetChartTime(double chartTime)
-		{
-			ChartTime = chartTime;
 		}
 
 		public override bool IsMiscEvent() { return false; }
@@ -159,10 +154,9 @@ namespace StepManiaEditor
 	/// </summary>
 	internal sealed class EditorDummyRateAlteringEventWithRow : EditorRateAlteringEvent
 	{
-		public EditorDummyRateAlteringEventWithRow(EditorChart editorChart, double row) : base(editorChart, null)
+		public EditorDummyRateAlteringEventWithRow(EditorChart editorChart, double row)
+			: base(new EventConfig { EditorChart = editorChart, IsDummyEvent = true, ChartPosition = row, UseDoubleChartPosition = true })
 		{
-			ChartPosition = row;
-			IsDummyEvent = true;
 		}
 
 		public override bool IsMiscEvent() { return false; }

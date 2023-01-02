@@ -287,7 +287,8 @@ namespace StepManiaEditor
 			{
 				var chartEvent = chart.Layers[0].Events[eventIndex];
 
-				var editorEvent = EditorEvent.CreateEvent(this, chartEvent);
+				var config = new EditorEvent.EventConfig { EditorChart = this, ChartEvent = chartEvent };
+				var editorEvent = EditorEvent.CreateEvent(config);
 				if (editorEvent != null)
 					editorEvents.Insert(editorEvent);
 
@@ -760,15 +761,7 @@ namespace StepManiaEditor
 			var nextNotes = new EditorEvent[NumInputs];
 			var numFound = 0;
 
-			// Get an enumerator to the next note.
-			var pos = new EditorTapNoteEvent(this, new LaneTapNote
-			{
-				Lane = 0,
-				IntegerPosition = (int)chartPosition
-			});
-			var enumerator = EditorEvents.FindLeastFollowing(pos, true);
-			if (enumerator == null)
-				enumerator = EditorEvents.FindGreatestPreceding(pos);
+			var enumerator = EditorEvents.FindBestByPosition(chartPosition);
 			if (enumerator == null)
 				return nextNotes;
 
@@ -804,15 +797,7 @@ namespace StepManiaEditor
 			var nextNotes = new EditorEvent[NumInputs];
 			var numFound = 0;
 
-			// Get an enumerator to the next note.
-			var pos = new EditorTapNoteEvent(this, new LaneTapNote
-			{
-				Lane = 0,
-				IntegerPosition = (int)chartPosition
-			});
-			var enumerator = EditorEvents.FindGreatestPreceding(pos, true);
-			if (enumerator == null)
-				enumerator = EditorEvents.FindLeastFollowing(pos);
+			var enumerator = EditorEvents.FindBestByPosition(chartPosition);
 			if (enumerator == null)
 				return nextNotes;
 

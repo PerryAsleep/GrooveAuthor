@@ -77,7 +77,7 @@ namespace StepManiaEditor
 			return (true, f);
 		}
 
-		public EditorTimeSignatureEvent(EditorChart editorChart, TimeSignature chartEvent) : base(editorChart, chartEvent)
+		public EditorTimeSignatureEvent(EventConfig config, TimeSignature chartEvent) : base(config)
 		{
 			TimeSignatureEvent = chartEvent;
 			WidthDirty = true;

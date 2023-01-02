@@ -1755,12 +1755,13 @@ namespace StepManiaEditor
 			var interpolatedScrollRate = 1.0;
 			if (Preferences.Instance.PreferencesScroll.SpacingMode == SpacingMode.Variable)
 			{
-				var ratePosEventForChecking = new EditorInterpolatedRateAlteringEvent(ActiveChart,
-					new ScrollRateInterpolation(0.0, 0, 0L, false)
-					{
-						IntegerPosition = (int)chartPosition,
-						TimeMicros = ToMicros(chartTime),
-					});
+				var sriEvent = new ScrollRateInterpolation(0.0, 0, 0L, false)
+				{
+					IntegerPosition = (int)chartPosition,
+					TimeMicros = ToMicros(chartTime),
+				};
+				var ratePosEventForChecking = new EditorInterpolatedRateAlteringEvent(
+					new EditorEvent.EventConfig { EditorChart = ActiveChart, ChartEvent = sriEvent }, sriEvent);
 
 				var interpolatedScrollRateEnumerator =
 					ActiveChart.InterpolatedScrollRateEvents.FindGreatestPreceding(ratePosEventForChecking);
@@ -2928,28 +2929,40 @@ namespace StepManiaEditor
 
 						DrawAddEventMenuItem("Tempo", !hasTempoEvent, UITempoColorRGBA, EditorTempoEvent.EventShortDescription, row, () =>
 						{
-							return new EditorTempoEvent(ActiveChart, new Tempo(currentRateAlteringEvent?.GetTempo() ?? EditorChart.DefaultTempo)
+							return EditorEvent.CreateEvent(new EditorEvent.EventConfig
 							{
-								IntegerPosition = row,
-								TimeMicros = timeMicros,
+								EditorChart = ActiveChart,
+								ChartEvent = new Tempo(currentRateAlteringEvent?.GetTempo() ?? EditorChart.DefaultTempo)
+								{
+									IntegerPosition = row,
+									TimeMicros = timeMicros,
+								}
 							});
 						});
 
 						ImGui.Separator();
 						DrawAddEventMenuItem("Interpolated Scroll Rate", !hasInterpolatedScrollRateEvent, UISpeedsColorRGBA, EditorInterpolatedRateAlteringEvent.EventShortDescription, row, () =>
 						{
-							return new EditorInterpolatedRateAlteringEvent(ActiveChart, new ScrollRateInterpolation(EditorChart.DefaultScrollRate, MaxValidDenominator, 0L, false)
+							return EditorEvent.CreateEvent(new EditorEvent.EventConfig
 							{
-								IntegerPosition = row,
-								TimeMicros = timeMicros,
+								EditorChart = ActiveChart,
+								ChartEvent = new ScrollRateInterpolation(EditorChart.DefaultScrollRate, MaxValidDenominator, 0L, false)
+								{
+									IntegerPosition = row,
+									TimeMicros = timeMicros,
+								}
 							});
 						});
 						DrawAddEventMenuItem("Scroll Rate", !hasScrollRateEvent, UIScrollsColorRGBA, EditorScrollRateEvent.EventShortDescription, row, () =>
 						{
-							return new EditorScrollRateEvent(ActiveChart, new ScrollRate(EditorChart.DefaultScrollRate)
+							return EditorEvent.CreateEvent(new EditorEvent.EventConfig
 							{
-								IntegerPosition = row,
-								TimeMicros = timeMicros,
+								EditorChart = ActiveChart,
+								ChartEvent = new ScrollRate(EditorChart.DefaultScrollRate)
+								{
+									IntegerPosition = row,
+									TimeMicros = timeMicros,
+								}
 							});
 						});
 
@@ -2957,27 +2970,39 @@ namespace StepManiaEditor
 						DrawAddEventMenuItem("Stop", !hasStopEvent, UIStopColorRGBA, EditorStopEvent.EventShortDescription, row, () =>
 						{
 							var stopLength = ToMicrosRounded(currentRateAlteringEvent.GetSecondsPerRow() * MaxValidDenominator);
-							return new EditorStopEvent(ActiveChart, new Stop(stopLength, false)
+							return EditorEvent.CreateEvent(new EditorEvent.EventConfig
 							{
-								IntegerPosition = row,
-								TimeMicros = timeMicros,
+								EditorChart = ActiveChart,
+								ChartEvent = new Stop(stopLength, false)
+								{
+									IntegerPosition = row,
+									TimeMicros = timeMicros,
+								}
 							});
 						});
 						DrawAddEventMenuItem("Delay", !hasDelayEvent, UIDelayColorRGBA, EditorDelayEvent.EventShortDescription, row, () =>
 						{
 							var stopLength = ToMicrosRounded(currentRateAlteringEvent.GetSecondsPerRow() * MaxValidDenominator);
-							return new EditorDelayEvent(ActiveChart, new Stop(stopLength, true)
+							return EditorEvent.CreateEvent(new EditorEvent.EventConfig
 							{
-								IntegerPosition = row,
-								TimeMicros = timeMicros,
+								EditorChart = ActiveChart,
+								ChartEvent = new Stop(stopLength, true)
+								{
+									IntegerPosition = row,
+									TimeMicros = timeMicros,
+								}
 							});
 						});
 						DrawAddEventMenuItem("Warp", !hasWarpEvent, UIWarpColorRGBA, EditorWarpEvent.EventShortDescription, row, () =>
 						{
-							return new EditorWarpEvent(ActiveChart, new Warp(MaxValidDenominator)
+							return EditorEvent.CreateEvent(new EditorEvent.EventConfig
 							{
-								IntegerPosition = row,
-								TimeMicros = timeMicros,
+								EditorChart = ActiveChart,
+								ChartEvent = new Warp(MaxValidDenominator)
+								{
+									IntegerPosition = row,
+									TimeMicros = timeMicros,
+								}
 							});
 						});
 
@@ -2985,42 +3010,62 @@ namespace StepManiaEditor
 						DrawAddEventMenuItem("Fake Region", !hasFakeEvent, UIFakesColorRGBA, EditorFakeSegmentEvent.EventShortDescription, row, () =>
 						{
 							var fakeLength = ToMicros(currentRateAlteringEvent.GetSecondsPerRow() * MaxValidDenominator);
-							return new EditorFakeSegmentEvent(ActiveChart, new FakeSegment(fakeLength)
+							return EditorEvent.CreateEvent(new EditorEvent.EventConfig
 							{
-								IntegerPosition = row,
-								TimeMicros = timeMicros,
+								EditorChart = ActiveChart,
+								ChartEvent = new FakeSegment(fakeLength)
+								{
+									IntegerPosition = row,
+									TimeMicros = timeMicros,
+								}
 							});
 						});
 						DrawAddEventMenuItem("Ticks", !hasTickCountEvent, UITicksColorRGBA, EditorTickCountEvent.EventShortDescription, row, () =>
 						{
-							return new EditorTickCountEvent(ActiveChart, new TickCount(EditorChart.DefaultTickCount)
+							return EditorEvent.CreateEvent(new EditorEvent.EventConfig
 							{
-								IntegerPosition = row,
-								TimeMicros = timeMicros,
+								EditorChart = ActiveChart,
+								ChartEvent = new TickCount(EditorChart.DefaultTickCount)
+								{
+									IntegerPosition = row,
+									TimeMicros = timeMicros,
+								}
 							});
 						});
 						DrawAddEventMenuItem("Combo Multipliers", !hasMultipliersEvent, UIMultipliersColorRGBA, EditorMultipliersEvent.EventShortDescription, row, () =>
 						{
-							return new EditorMultipliersEvent(ActiveChart, new Multipliers(EditorChart.DefaultHitMultiplier, EditorChart.DefaultMissMultiplier)
+							return EditorEvent.CreateEvent(new EditorEvent.EventConfig
 							{
-								IntegerPosition = row,
-								TimeMicros = timeMicros,
+								EditorChart = ActiveChart,
+								ChartEvent = new Multipliers(EditorChart.DefaultHitMultiplier, EditorChart.DefaultMissMultiplier)
+								{
+									IntegerPosition = row,
+									TimeMicros = timeMicros,
+								}
 							});
 						});
 						DrawAddEventMenuItem("Time Signature", !hasTimeSignatureEvent, UITimeSignatureColorRGBA, EditorTimeSignatureEvent.EventShortDescription, nearestMeasureBoundaryRow, () =>
 						{
-							return new EditorTimeSignatureEvent(ActiveChart, new TimeSignature(EditorChart.DefaultTimeSignature)
+							return EditorEvent.CreateEvent(new EditorEvent.EventConfig
 							{
-								IntegerPosition = nearestMeasureBoundaryRow,
-								TimeMicros = ToMicrosRounded(nearestMeasureChartTime),
+								EditorChart = ActiveChart,
+								ChartEvent = new TimeSignature(EditorChart.DefaultTimeSignature)
+								{
+									IntegerPosition = nearestMeasureBoundaryRow,
+									TimeMicros = ToMicrosRounded(nearestMeasureChartTime),
+								}
 							});
 						}, true);
 						DrawAddEventMenuItem("Label", !hasLabelEvent, UILabelColorRGBA, EditorLabelEvent.EventShortDescription, row, () =>
 						{
-							return new EditorLabelEvent(ActiveChart, new Fumen.ChartDefinition.Label("New Label")
+							return EditorEvent.CreateEvent(new EditorEvent.EventConfig
 							{
-								IntegerPosition = row,
-								TimeMicros = timeMicros,
+								EditorChart = ActiveChart,
+								ChartEvent = new Fumen.ChartDefinition.Label("New Label")
+								{
+									IntegerPosition = row,
+									TimeMicros = timeMicros,
+								}
 							});
 						});
 
@@ -4167,22 +4212,34 @@ namespace StepManiaEditor
 
 				if (KeyCommandManager.IsKeyDown(Keys.LeftShift))
 				{
-					LaneEditStates[lane].SetEditingTapOrMine(new EditorMineNoteEvent(ActiveChart, new LaneNote
+					var config = new EditorEvent.EventConfig
 					{
-						Lane = lane,
-						IntegerPosition = row,
-						TimeMicros = ToMicros(chartTime),
-						SourceType = NoteChars[(int)NoteType.Mine].ToString()
-					}, true));
+						EditorChart = ActiveChart,
+						ChartEvent = new LaneNote
+						{
+							Lane = lane,
+							IntegerPosition = row,
+							TimeMicros = ToMicros(chartTime),
+							SourceType = NoteChars[(int)NoteType.Mine].ToString()
+						},
+						IsBeingEdited = true
+					};
+					LaneEditStates[lane].SetEditingTapOrMine(EditorEvent.CreateEvent(config));
 				}
 				else
 				{
-					LaneEditStates[lane].SetEditingTapOrMine(new EditorTapNoteEvent(ActiveChart, new LaneTapNote
+					var config = new EditorEvent.EventConfig
 					{
-						Lane = lane,
-						IntegerPosition = row,
-						TimeMicros = ToMicros(chartTime),
-					}, true));
+						EditorChart = ActiveChart,
+						ChartEvent = new LaneTapNote
+						{
+							Lane = lane,
+							IntegerPosition = row,
+							TimeMicros = ToMicros(chartTime),
+						},
+						IsBeingEdited = true
+					};
+					LaneEditStates[lane].SetEditingTapOrMine(EditorEvent.CreateEvent(config));
 				}
 			}
 		}
@@ -4267,12 +4324,18 @@ namespace StepManiaEditor
 							if (newHoldEndRow <= holdStart.GetRow())
 							{
 								var deleteHold = new ActionDeleteHoldEvent(holdStart);
-								var insertNewNoteAtHoldStart = new ActionAddEditorEvent(new EditorTapNoteEvent(ActiveChart, new LaneTapNote
+
+								var config = new EditorEvent.EventConfig
 								{
-									Lane = lane,
-									IntegerPosition = holdStart.GetEvent().IntegerPosition,
-									TimeMicros = holdStart.GetEvent().TimeMicros,
-								}));
+									EditorChart = ActiveChart,
+									ChartEvent = new LaneTapNote
+									{
+										Lane = lane,
+										IntegerPosition = holdStart.GetEvent().IntegerPosition,
+										TimeMicros = holdStart.GetEvent().TimeMicros,
+									}
+								};
+								var insertNewNoteAtHoldStart = new ActionAddEditorEvent(EditorEvent.CreateEvent(config));
 
 								LaneEditStates[lane].SetEditingTapOrMine(LaneEditStates[lane].GetEventBeingEdited(), new List<EditorAction>
 								{

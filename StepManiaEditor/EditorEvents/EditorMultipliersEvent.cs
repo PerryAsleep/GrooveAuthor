@@ -82,7 +82,7 @@ namespace StepManiaEditor
 			return $"{MultipliersEvent.HitMultiplier}x/{MultipliersEvent.MissMultiplier}x";
 		}
 
-		public EditorMultipliersEvent(EditorChart editorChart, Multipliers chartEvent) : base(editorChart, chartEvent)
+		public EditorMultipliersEvent(EventConfig config, Multipliers chartEvent) : base(config)
 		{
 			MultipliersEvent = chartEvent;
 			WidthDirty = true;

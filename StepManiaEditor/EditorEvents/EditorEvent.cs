@@ -6,26 +6,36 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace StepManiaEditor
 {
+	/// <summary>
+	/// Representation of an event in a chart for the Editor.
+	/// EditorEvents can have their screen-space position set, and render themselves through the Draw() method.
+	/// Most, but not all EditorEvents contain one underlying Event from the Stepmania chart.
+	/// Each frame the Editor will update positions of EditorEvents that are on screen, and then Draw them.
+	/// As such, the positions on an EditorEvent may be stale or unset if it was not on screen recently.
+	/// </summary>
 	internal abstract class EditorEvent : IComparable<EditorEvent>
 	{
-		// Foot, expression, etc.
-
-		public virtual double X { get; set; }
-		public virtual double Y { get; set; }
-		public virtual double W { get; set; }
-		public virtual double H { get; set; }
-
-		public virtual float Alpha { get; set; } = 1.0f;
-		public virtual double Scale { get; set; } = 1.0;
+		/// <summary>
+		/// Configuration struct for constructing a new EditorEvent.
+		/// </summary>
+		internal struct EventConfig
+		{
+			public EditorChart EditorChart;
+			public Event ChartEvent;
+			public bool UseDoubleChartPosition;
+			public double ChartPosition;
+			public bool IsDummyEvent;
+			public bool IsBeingEdited;
+		}
 
 		/// <summary>
 		/// The underlying Event for this EditorEvent. Most EditorEvents have an Event, but some do not.
 		/// </summary>
 		protected readonly Event ChartEvent;
+		/// <summary>
+		/// The EditorChart which owns this EditorEvent.
+		/// </summary>
 		protected readonly EditorChart EditorChart;
-
-		protected static uint ScreenHeight;
-
 		/// <summary>
 		/// Whether or not this EditorEvent can be deleted from its EditorChart.
 		/// </summary>
@@ -41,174 +51,119 @@ namespace StepManiaEditor
 		private bool BeingEdited = false;
 		/// <summary>
 		/// Whether or not this is a dummy EditorEvent. Dummy events used for comparing against
-		/// other EditorEvents in sorted data structures. Dummy eventsd always sort before other
+		/// other EditorEvents in sorted data structures. Dummy events always sort before other
 		/// events that would otherwise be equal.
 		/// </summary>
-		protected bool IsDummyEvent;
+		protected readonly bool IsDummyEvent;
 		/// <summary>
 		/// The ChartPosition as a double. EditorEvents with a ChartEvent are expected to have
 		/// integer values for their ChartPosition/Row/IntegerPosition. EditorEvents created
 		/// from properties which only include time values may have non-integer ChartPosition
 		/// values.
 		/// </summary>
-		protected double ChartPosition; // TODO: Readonly
+		protected readonly double ChartPosition;
 
-		/// <summary>
-		/// Creates an EditorEvent from the given Event for the given EditorChart.
-		/// </summary>
-		/// <param name="editorChart">The EditorChart owning this EditorEvent.</param>
-		/// <param name="chartEvent">Event backing this EditorEvent.</param>
-		/// <returns>New EditorEvent.</returns>
-		public static EditorEvent CreateEvent(EditorChart editorChart, Event chartEvent)
-		{
-			// Intentional modification of DestType to preserve StepMania types like mines.
-			chartEvent.DestType = chartEvent.SourceType;
-
-			EditorEvent newEvent = null;
-
-			if (chartEvent is LaneTapNote ltn)
-				newEvent = new EditorTapNoteEvent(editorChart, ltn);
-			if (chartEvent is LaneHoldStartNote lhsn)
-				newEvent = new EditorHoldStartNoteEvent(editorChart, lhsn);
-			if (chartEvent is LaneHoldEndNote lhen)
-				newEvent = new EditorHoldEndNoteEvent(editorChart, lhen);
-			if (chartEvent is LaneNote ln && ln.SourceType == SMCommon.NoteChars[(int)SMCommon.NoteType.Mine].ToString())
-				newEvent = new EditorMineNoteEvent(editorChart, ln);
-			if (chartEvent is TimeSignature ts)
-				newEvent = new EditorTimeSignatureEvent(editorChart, ts);
-			if (chartEvent is Tempo t)
-				newEvent = new EditorTempoEvent(editorChart, t);
-			if (chartEvent is Stop s)
-				newEvent = s.IsDelay ? new EditorDelayEvent(editorChart, s) : new EditorStopEvent(editorChart, s);
-			if (chartEvent is Warp w)
-				newEvent = new EditorWarpEvent(editorChart, w);
-			if (chartEvent is ScrollRate sr)
-				newEvent = new EditorScrollRateEvent(editorChart, sr);
-			if (chartEvent is ScrollRateInterpolation sri)
-				newEvent = new EditorInterpolatedRateAlteringEvent(editorChart, sri);
-			if (chartEvent is TickCount tc)
-				newEvent = new EditorTickCountEvent(editorChart, tc);
-			if (chartEvent is Multipliers m)
-				newEvent = new EditorMultipliersEvent(editorChart, m);
-			if (chartEvent is Label l)
-				newEvent = new EditorLabelEvent(editorChart, l);
-			if (chartEvent is FakeSegment fs)
-				newEvent = new EditorFakeSegmentEvent(editorChart, fs);
-
-			if (newEvent != null)
-				newEvent.ChartPosition = chartEvent.IntegerPosition;
-
-			return newEvent;
-		}
-
-		/// <summary>
-		/// Creates a dummy EditorEvent used for comparing against other EditorEvents in sorted data structures.
-		/// </summary>
-		/// <param name="editorChart">
-		/// The EditorChart owning this EditorEvent. It is expected that dummy EditorEvents aren't are not
-		/// present in the events owned by the EditorChart.
-		/// </param>
-		/// <param name="chartEvent">
-		/// Dummy Event backing this EditorEvent.
-		/// See SMCommon CreateDummyFirstEventForRow.</param>
-		/// <param name="chartPosition">Chart position of this event as a double.</param>
-		/// <returns>New dummy EditorEvent.</returns>
-		public static EditorEvent CreateDummyEvent(EditorChart editorChart, Event chartEvent, double chartPosition)
-		{
-			var newEvent = CreateEvent(editorChart, chartEvent);
-			if (newEvent != null)
-			{
-				// TODO: These fields should not be settable and should part of the constructor.
-				newEvent.IsDummyEvent = true;
-				newEvent.ChartPosition = chartPosition;
-				var chartTime = 0.0;
-				editorChart.TryGetTimeFromChartPosition(chartPosition, ref chartTime);
-				newEvent.SetChartTime(chartTime);
-			}
-			return newEvent;
-		}
-
-		protected EditorEvent(EditorChart editorChart, Event chartEvent)
-		{
-			EditorChart = editorChart;
-			ChartEvent = chartEvent;
-			if (ChartEvent != null)
-				ChartPosition = chartEvent.IntegerPosition;
-		}
-
-		protected EditorEvent(EditorChart editorChart, Event chartEvent, bool beingEdited)
-		{
-			EditorChart = editorChart;
-			ChartEvent = chartEvent;
-			BeingEdited = beingEdited;
-			if (ChartEvent != null)
-				ChartPosition = chartEvent.IntegerPosition;
-		}
-
-		public abstract bool IsMiscEvent();
-
-		// TODO: Is this doing anything in practice? I think we should remove it.
-		public virtual void SetChartTime(double chartTime)
-		{
-			if (ChartEvent != null)
-			{
-				ChartEvent.TimeMicros = Fumen.Utils.ToMicrosRounded(chartTime);
-			}
-		}
-
+		protected static uint ScreenHeight;
 		public static void SetScreenHeight(uint screenHeight)
 		{
 			ScreenHeight = screenHeight;
 		}
 
 		/// <summary>
-		/// Set this carefully. This changes how events are sorted.
-		/// This cannot be changed while this event is in a sorted list without resorting.
+		/// Creates an EditorEvent from the given EventConfig.
 		/// </summary>
-		/// <returns></returns>
-		public void SetIsBeingEdited(bool beingEdited)
+		/// <param name="config">EventConfig struct for configuring the EditorEvent.</param>
+		/// <returns>New EditorEvent.</returns>
+		public static EditorEvent CreateEvent(EventConfig config)
 		{
-			BeingEdited = beingEdited;
+			EditorEvent newEvent = null;
+
+			if (config.ChartEvent != null)
+			{
+				// Intentional modification of DestType to preserve StepMania types like mines.
+				config.ChartEvent.DestType = config.ChartEvent.SourceType;
+
+				if (config.ChartEvent is LaneTapNote ltn)
+					newEvent = new EditorTapNoteEvent(config, ltn);
+				else if (config.ChartEvent is LaneHoldStartNote lhsn)
+					newEvent = new EditorHoldStartNoteEvent(config, lhsn);
+				else if (config.ChartEvent is LaneHoldEndNote lhen)
+					newEvent = new EditorHoldEndNoteEvent(config, lhen);
+				else if (config.ChartEvent is LaneNote ln && ln.SourceType == SMCommon.NoteChars[(int)SMCommon.NoteType.Mine].ToString())
+					newEvent = new EditorMineNoteEvent(config, ln);
+				else if (config.ChartEvent is TimeSignature ts)
+					newEvent = new EditorTimeSignatureEvent(config, ts);
+				else if (config.ChartEvent is Tempo t)
+					newEvent = new EditorTempoEvent(config, t);
+				else if (config.ChartEvent is Stop s)
+					newEvent = s.IsDelay ? new EditorDelayEvent(config, s) : new EditorStopEvent(config, s);
+				else if (config.ChartEvent is Warp w)
+					newEvent = new EditorWarpEvent(config, w);
+				else if (config.ChartEvent is ScrollRate sr)
+					newEvent = new EditorScrollRateEvent(config, sr);
+				else if (config.ChartEvent is ScrollRateInterpolation sri)
+					newEvent = new EditorInterpolatedRateAlteringEvent(config, sri);
+				else if (config.ChartEvent is TickCount tc)
+					newEvent = new EditorTickCountEvent(config, tc);
+				else if (config.ChartEvent is Multipliers m)
+					newEvent = new EditorMultipliersEvent(config, m);
+				else if (config.ChartEvent is Label l)
+					newEvent = new EditorLabelEvent(config, l);
+				else if (config.ChartEvent is FakeSegment fs)
+					newEvent = new EditorFakeSegmentEvent(config, fs);
+			}
+
+			return newEvent;
 		}
 
-		public virtual void SetDimensions(double x, double y, double w, double h, double scale)
+		/// <summary>
+		/// Constuctor.
+		/// </summary>
+		/// <param name="config">EventConfig for configuring this EditorEvent.</param>
+		protected EditorEvent(EventConfig config)
 		{
-			X = x;
-			Y = y;
-			W = w;
-			H = h;
-			Scale = scale;
+			EditorChart = config.EditorChart;
+			ChartEvent = config.ChartEvent;
+			IsDummyEvent = config.IsDummyEvent;
+			BeingEdited = config.IsBeingEdited;
+			if (config.UseDoubleChartPosition)
+				ChartPosition = config.ChartPosition;
+			else if (ChartEvent != null)
+				ChartPosition = ChartEvent.IntegerPosition;
 		}
 
-		public virtual void SetDimensions(double x, double y, double w, double h)
-		{
-			X = x;
-			Y = y;
-			W = w;
-			H = h;
-		}
+		/// <summary>
+		/// Returns whether or not this event draws with a misc. ImGui event that is positioned through
+		/// MiscEventWidgetLayoutManager.
+		/// </summary>
+		/// <returns>
+		/// Whether or not this event draws with a misc. ImGui event that is positioned through
+		/// MiscEventWidgetLayoutManager.
+		/// </returns>
+		public abstract bool IsMiscEvent();
 
-		public virtual void SetPosition(double x, double y)
-		{
-			X = x;
-			Y = y;
-		}
-
-		public bool IsBeingEdited()
-		{
-			return BeingEdited;
-		}
-
+		/// <summary>
+		/// Gets the EditorChart that owns this EditorEvent.
+		/// </summary>
+		/// <returns>The EditorChart that owns this EditorEvent.</returns>
 		public EditorChart GetEditorChart()
 		{
 			return EditorChart;
 		}
 
+		/// <summary>
+		/// Gets the underlying Event for this EditorEvent. This may be null.
+		/// </summary>
+		/// <returns>The underlying Event for this EditorEvent.</returns>
 		public Event GetEvent()
 		{
 			return ChartEvent;
 		}
 
+		/// <summary>
+		/// Gets the lane of the event. Notes have lanes. Many events have no lane.
+		/// </summary>
+		/// <returns>The lane of the event or -1 if if this event has no lane.</returns>
 		public virtual int GetLane()
 		{
 			if (ChartEvent == null)
@@ -236,6 +191,10 @@ namespace StepManiaEditor
 			return ChartPosition;
 		}
 
+		/// <summary>
+		/// Gets the chart time of the event in seconds.
+		/// </summary>
+		/// <returns>Chart time of the event in seconds.</returns>
 		public virtual double GetChartTime()
 		{
 			if (ChartEvent == null)
@@ -252,9 +211,34 @@ namespace StepManiaEditor
 			return 0;
 		}
 
+		/// <summary>
+		/// Gets a unique identifier for this event to use for ImGui widgets that draw this event.
+		/// </summary>
+		/// <returns>Unique identifier for this event to use for ImGui widgets that draw this event.</returns>
 		protected string GetImGuiId()
 		{
 			return $"{ChartEvent.GetType()}{GetLane()}{ChartEvent.IntegerPosition}";
+		}
+
+		/// <summary>
+		/// Sets whether or not this event is being edited.
+		/// </summary>
+		/// <remarks>
+		/// Set this carefully. This changes how events are sorted.
+		/// This cannot be changed while this event is in a sorted list without resorting.
+		/// </remarks>
+		public void SetIsBeingEdited(bool beingEdited)
+		{
+			BeingEdited = beingEdited;
+		}
+
+		/// <summary>
+		/// Returns whether or not this event is being edited.
+		/// </summary>
+		/// <returns>Whether or not this event is being edited.</returns>
+		public bool IsBeingEdited()
+		{
+			return BeingEdited;
 		}
 
 		#region IComparable
@@ -387,8 +371,43 @@ namespace StepManiaEditor
 
 		#endregion Selection
 
+		#region Positioning and Drawing
+
+		public virtual double X { get; set; }
+		public virtual double Y { get; set; }
+		public virtual double W { get; set; }
+		public virtual double H { get; set; }
+
+		public virtual float Alpha { get; set; } = 1.0f;
+		public virtual double Scale { get; set; } = 1.0;
+
+		public virtual void SetDimensions(double x, double y, double w, double h, double scale)
+		{
+			X = x;
+			Y = y;
+			W = w;
+			H = h;
+			Scale = scale;
+		}
+
+		public virtual void SetDimensions(double x, double y, double w, double h)
+		{
+			X = x;
+			Y = y;
+			W = w;
+			H = h;
+		}
+
+		public virtual void SetPosition(double x, double y)
+		{
+			X = x;
+			Y = y;
+		}
+
 		public virtual void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)
 		{
 		}
+
+		#endregion Positioning and Drawing
 	}
 }

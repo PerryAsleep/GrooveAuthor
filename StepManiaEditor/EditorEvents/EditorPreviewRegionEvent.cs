@@ -77,10 +77,10 @@ namespace StepManiaEditor
 			}
 		}
 
-		public EditorPreviewRegionEvent(EditorChart editorChart, double chartPosition) : base(editorChart, null)
+		public EditorPreviewRegionEvent(EditorChart editorChart, double chartPosition)
+			: base(new EventConfig { EditorChart = editorChart, ChartPosition = chartPosition, UseDoubleChartPosition = true })
 		{
 			WidthDirty = true;
-			ChartPosition = chartPosition;
 		}
 
 		public override double GetChartTime()
