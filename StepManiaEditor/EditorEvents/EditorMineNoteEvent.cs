@@ -25,7 +25,9 @@ namespace StepManiaEditor
 
 		public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)
 		{
-			var alpha = IsBeingEdited() ? ActiveEditEventAlpha : 1.0f;
+			var alpha = IsBeingEdited() ? ActiveEditEventAlpha : Alpha;
+			if (alpha <= 0.0f)
+				return;
 			textureAtlas.Draw(
 				ArrowGraphicManager.GetMineTexture(GetRow(), LaneNote.Lane, IsSelected()),
 				spriteBatch,

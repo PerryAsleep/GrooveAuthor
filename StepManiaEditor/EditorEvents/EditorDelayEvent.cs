@@ -45,7 +45,7 @@ namespace StepManiaEditor
 			return mode == SpacingMode.ConstantTime
 				&& GetRegionDuration() > 0.0;
 		}
-		public Color GetRegionColor() { return DelayRegionColor; }
+		public Color GetRegionColor() { return IRegion.GetColor(DelayRegionColor, Alpha); }
 		#endregion IChartRegion Implementation
 
 		public double DoubleValue

@@ -34,7 +34,7 @@ namespace StepManiaEditor
 		public double GetRegionDuration() { return EditorChart.EditorSong.SampleLength; }
 		public bool AreRegionUnitsTime() { return true; }
 		public bool IsVisible(SpacingMode mode) { return true; }
-		public Color GetRegionColor() { return PreviewRegionColor; }
+		public Color GetRegionColor() { return IRegion.GetColor(PreviewRegionColor, Alpha); }
 		#endregion IChartRegion Implementation
 
 		/// <remarks>

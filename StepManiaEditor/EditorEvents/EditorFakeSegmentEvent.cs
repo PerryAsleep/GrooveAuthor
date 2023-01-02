@@ -36,7 +36,7 @@ namespace StepManiaEditor
 		public double GetRegionDuration() { return DoubleValue; }
 		public bool AreRegionUnitsTime() { return true; }
 		public bool IsVisible(SpacingMode mode) { return true; }
-		public Color GetRegionColor() { return FakeRegionColor; }
+		public Color GetRegionColor() { return IRegion.GetColor(FakeRegionColor, Alpha); }
 		#endregion IChartRegion Implementation
 
 		public double DoubleValue

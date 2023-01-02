@@ -24,11 +24,11 @@ namespace StepManiaEditor
 		public override bool IsSelectableWithModifiers() { return false; }
 
 		public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)
-		{
+		{	
+			var alpha = IsBeingEdited() ? ActiveEditEventAlpha : Alpha;
+			if (alpha <= 0.0f)
+				return;
 			var (textureId, rot) = arrowGraphicManager.GetArrowTexture(LaneTapNote.IntegerPosition, LaneTapNote.Lane, IsSelected());
-			
-			var alpha = IsBeingEdited() ? ActiveEditEventAlpha : 1.0f;
-
 			textureAtlas.Draw(
 				textureId,
 				spriteBatch,

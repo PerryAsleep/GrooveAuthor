@@ -74,7 +74,13 @@ namespace StepManiaEditor
 		public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)
 		{
 			var roll = IsRoll();
-			var alpha = IsBeingEdited() ? ActiveEditEventAlpha : 1.0f;
+			var alpha = IsBeingEdited() ? ActiveEditEventAlpha : Alpha;
+			if (alpha <= 0.0f)
+			{
+				NextDrawActive = false;
+				NextDrawActiveYCutoffPoint = 0.0;
+				return;
+			}
 
 			var active = NextDrawActive && Preferences.Instance.PreferencesReceptors.AutoPlayLightHolds;
 			var activeAndCutoff = NextDrawActive && Preferences.Instance.PreferencesReceptors.AutoPlayHideArrows;

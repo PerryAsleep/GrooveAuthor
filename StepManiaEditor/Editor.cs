@@ -1426,8 +1426,10 @@ namespace StepManiaEditor
 			var startPosX = focalPointX - (numArrows * arrowW * 0.5);
 			var startPosY = 0.0 - Math.Max(holdCapHeight, arrowH * 0.5);
 
+			var noteAlpha = (float)Interpolation.Lerp(1.0, 0.0, NoteScaleToStartFading, NoteMinScale, sizeZoom);
+
 			// Set up the MiscEventWidgetLayoutManager.
-			var miscEventAlpha = (float)Interpolation.Lerp(1.0, 0.0, MiscEventScaleToStartingFading, MiscEventMinScale, sizeZoom);
+			var miscEventAlpha = (float)Interpolation.Lerp(1.0, 0.0, MiscEventScaleToStartFading, MiscEventMinScale, sizeZoom);
 			BeginMiscEventWidgetLayoutManagerFrame();
 
 			// TODO: Fix Negative Scrolls resulting in cutting off notes prematurely.
@@ -1599,6 +1601,7 @@ namespace StepManiaEditor
 					}
 
 					e.SetDimensions(startPosX + e.GetLane() * arrowW, noteY, arrowW, noteH, sizeZoom);
+					e.Alpha = noteAlpha;
 				}
 				else
 				{
@@ -1632,6 +1635,7 @@ namespace StepManiaEditor
 					arrowW,
 					noteH,
 					sizeZoom);
+				holdEndNote.Alpha = noteAlpha;
 
 				holdBodyEvents.Add(holdEndNote);
 			}

@@ -61,8 +61,11 @@ namespace StepManiaEditor
 		public const float MeasureMarkerMinScale = 0.05f;
 		public const float MeasureNumberScaleToStartFading = 0.20f;
 		public const float MeasureNumberMinScale = 0.10f;
-		public const float MiscEventScaleToStartingFading = 0.05f;
+		public const float MiscEventScaleToStartFading = 0.05f;
 		public const float MiscEventMinScale = 0.04f;
+
+		public const float NoteScaleToStartFading = 0.02f;
+		public const float NoteMinScale = 0.01f;
 
 		public const float ActiveEditEventAlpha = 0.8f;
 

@@ -74,8 +74,9 @@ namespace StepManiaEditor
 
 		public void DrawAtY(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager, double y)
 		{
-			var alpha = IsBeingEdited() ? ActiveEditEventAlpha : 1.0f;
-
+			var alpha = IsBeingEdited() ? ActiveEditEventAlpha : Alpha;
+			if (alpha <= 0.0f)
+				return;
 			var (holdTexture, holdRot) = arrowGraphicManager.GetArrowTexture(LaneHoldStartNote.IntegerPosition, GetLane(), IsSelected());
 			textureAtlas.Draw(
 				holdTexture,

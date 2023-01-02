@@ -1,5 +1,6 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Graphics.PackedVector;
 using static StepManiaEditor.Editor;
 using static StepManiaEditor.Utils;
 
@@ -48,6 +49,14 @@ namespace StepManiaEditor
 
 			// TODO: round?
 			textureAtlas.Draw(TextureIdRegionRect, spriteBatch, new Rectangle((int)x, (int)y, (int)w, (int)h), color);
+		}
+
+		public static Color GetColor(Color color, float alpha)
+		{
+			if (alpha >= 1.0f)
+				return color;
+			alpha = System.Math.Clamp(alpha * ((float)color.A / byte.MaxValue), 0.0f, 1.0f);
+			return new Color((float)color.R / byte.MaxValue, (float)color.G / byte.MaxValue, (float)color.B / byte.MaxValue, alpha);
 		}
 	}
 
