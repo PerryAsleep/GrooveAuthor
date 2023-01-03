@@ -4933,6 +4933,7 @@ namespace StepManiaEditor
 				return;
 			}
 
+			ClearSelectedEvents();
 			ActiveChart = chart;
 
 			// The Position needs to know about the active chart for doing time and row calculations.
