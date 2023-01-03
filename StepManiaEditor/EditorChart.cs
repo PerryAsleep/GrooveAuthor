@@ -1064,7 +1064,20 @@ namespace StepManiaEditor
 			var lastEvent = EditorEvents.Last();
 			var endTime = 0.0;
 			if (lastEvent.MoveNext())
-				endTime = ToSeconds(lastEvent.Current.GetEvent().TimeMicros);
+			{
+				// Do not include the preview as counting towards the song ending.
+				if (lastEvent.Current is EditorPreviewRegionEvent)
+				{
+					if (lastEvent.MovePrev())
+					{
+						endTime = lastEvent.Current.GetChartTime();
+					}
+				}
+				else
+				{
+					endTime = lastEvent.Current.GetChartTime();
+				}
+			}
 			endTime = Math.Max(endTime, EditorSong.LastSecondHint);
 			if (withOffset)
 				endTime -= GetMusicOffset();
