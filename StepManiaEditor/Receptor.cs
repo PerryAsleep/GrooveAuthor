@@ -1,4 +1,5 @@
 ﻿using System.Diagnostics;
+using Fumen;
 using Fumen.Converters;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -79,14 +80,28 @@ namespace StepManiaEditor
 		}
 
 		/// <summary>
+		/// Gets the alpha of the receptors to use based on the zoom level.
+		/// </summary>
+		/// <param name="sizeZoom">The current zoom level.</param>
+		/// <returns>The alpha to use for rendering the receptors.</returns>
+		public static float GetAlpha(double sizeZoom)
+		{
+			return (float)Interpolation.Lerp(1.0, 0.0, Utils.NoteScaleToStartFading, Utils.NoteMinScale, sizeZoom);
+		}
+
+		/// <summary>
 		/// Draws the receptor without any foreground effects.
 		/// </summary>
 		/// <param name="focalPoint">The focal point of the receptor group.</param>
-		/// <param name="zoom">The current zoom level.</param>
+		/// <param name="sizeZoom">The current zoom level.</param>
 		/// <param name="textureAtlas">TextureAtlas containing receptor images.</param>
 		/// <param name="spriteBatch">SpriteBatch to use for rendering.</param>
 		public void Draw(Vector2 focalPoint, double sizeZoom, TextureAtlas textureAtlas, SpriteBatch spriteBatch)
 		{
+			var alpha = GetAlpha(sizeZoom);
+			if (alpha <= 0.0f)
+				return;
+
 			// Determine positioning information needed for drawing.
 			var numArrows = ActiveChart.NumInputs;
 			var (textureId, rot) = ArrowGraphicManager.GetReceptorTexture(Lane);
@@ -100,7 +115,7 @@ namespace StepManiaEditor
 				spriteBatch,
 				new Vector2((float)(xStart + (Lane + 0.5f) * arrowWidth), focalPoint.Y),
 				new Vector2(textureWidth * 0.5f, textureHeight * 0.5f),
-				new Color(BeatBrightness, BeatBrightness, BeatBrightness, 1.0f),
+				new Color(BeatBrightness, BeatBrightness, BeatBrightness, alpha),
 				(float)(sizeZoom * TapScale),
 				rot,
 				SpriteEffects.None);
@@ -115,6 +130,10 @@ namespace StepManiaEditor
 		/// <param name="spriteBatch">SpriteBatch to use for rendering.</param>
 		public void DrawForegroundEffects(Vector2 focalPoint, double sizeZoom, TextureAtlas textureAtlas, SpriteBatch spriteBatch)
 		{
+			var alpha = GetAlpha(sizeZoom);
+			if (alpha <= 0.0f)
+				return;
+
 			// Determine positioning information needed for drawing.
 			var numArrows = ActiveChart.NumInputs;
 			var (textureId, _) = ArrowGraphicManager.GetReceptorTexture(Lane);
@@ -133,7 +152,7 @@ namespace StepManiaEditor
 					spriteBatch,
 					new Vector2((float)(xStart + (Lane + 0.5f) * arrowWidth), focalPoint.Y),
 					new Vector2(rimTextureWidth * 0.5f, rimTextureHeight * 0.5f),
-					new Color(1.0f, 1.0f, 1.0f, RimAlpha),
+					new Color(1.0f, 1.0f, 1.0f, RimAlpha * alpha),
 					(float)(sizeZoom * RimScale),
 					rimRot,
 					SpriteEffects.None);
@@ -150,7 +169,7 @@ namespace StepManiaEditor
 					spriteBatch,
 					new Vector2((float)(xStart + (Lane + 0.5f) * arrowWidth), focalPoint.Y),
 					new Vector2(glowTextureWidth * 0.5f, glowTextureHeight * 0.5f),
-					new Color(1.0f, 1.0f, 1.0f, GlowAlpha),
+					new Color(1.0f, 1.0f, 1.0f, GlowAlpha * alpha),
 					(float)(sizeZoom),
 					glowRot,
 					SpriteEffects.None);
@@ -209,10 +228,10 @@ namespace StepManiaEditor
 			// Animate.
 			if (t < TapAnimScaleDownTime)
 			{
-				TapScale = Fumen.Interpolation.Lerp(TapAnimEndScale, TapAnimMidScale, 0.0f, TapAnimScaleDownTime, t);
+				TapScale = Interpolation.Lerp(TapAnimEndScale, TapAnimMidScale, 0.0f, TapAnimScaleDownTime, t);
 				return;
 			}
-			TapScale = Fumen.Interpolation.Lerp(TapAnimMidScale, TapAnimEndScale, 0.0f, TapAnimScaleUpTime, t - TapAnimScaleDownTime);
+			TapScale = Interpolation.Lerp(TapAnimMidScale, TapAnimEndScale, 0.0f, TapAnimScaleUpTime, t - TapAnimScaleDownTime);
 		}
 
 		private void UpdateRimAnimation()
@@ -232,8 +251,8 @@ namespace StepManiaEditor
 			}
 
 			// Animate.
-			RimAlpha = Fumen.Interpolation.Lerp(1.0f, 0.0f, 0.0f, RimAnimTimeEnd, t);
-			RimScale = Fumen.Interpolation.Lerp(1.0f, RimAnimEndScale, 0.0f, RimAnimTimeEnd, t);
+			RimAlpha = Interpolation.Lerp(1.0f, 0.0f, 0.0f, RimAnimTimeEnd, t);
+			RimScale = Interpolation.Lerp(1.0f, RimAnimEndScale, 0.0f, RimAnimTimeEnd, t);
 		}
 
 		private void UpdateGlowAnimation()
@@ -252,7 +271,7 @@ namespace StepManiaEditor
 			}
 
 			// Animate.
-			GlowAlpha = Fumen.Interpolation.Lerp(1.0f, 0.0f, 0.0f, GlowAnimTimeEnd, t);
+			GlowAlpha = Interpolation.Lerp(1.0f, 0.0f, 0.0f, GlowAnimTimeEnd, t);
 		}
 
 		private void UpdateBeatBrightness(bool playing, double chartPosition)
@@ -263,7 +282,7 @@ namespace StepManiaEditor
 				if (chartPosition < 0.0)
 					chartPosition += ((int)((-chartPosition) / SMCommon.MaxValidDenominator) + 1) * SMCommon.MaxValidDenominator;
 				var percentageBetweenBeats = (float)((chartPosition % SMCommon.MaxValidDenominator) / SMCommon.MaxValidDenominator);
-				BeatBrightness = Fumen.Interpolation.Lerp(BeatAnimStartBrightness, BeatAnimEndBrightness, 0.0f, BeatAnimTimeEnd, percentageBetweenBeats);
+				BeatBrightness = Interpolation.Lerp(BeatAnimStartBrightness, BeatAnimEndBrightness, 0.0f, BeatAnimTimeEnd, percentageBetweenBeats);
 			}
 		}
 
