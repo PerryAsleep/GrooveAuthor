@@ -88,7 +88,7 @@ namespace StepManiaEditor
 					}
 					else
 					{
-						ImGui.PushStyleColor(ImGuiCol.Text, ArrowGraphicManager.GetArrowColorRGBAForSubdivision(SMCommon.MaxValidDenominator / snapData.Rows));
+						ImGui.PushStyleColor(ImGuiCol.Text, ArrowGraphicManager.GetArrowColorForSubdivision(SMCommon.MaxValidDenominator / snapData.Rows));
 						ImGui.Text($"1/{(SMCommon.MaxValidDenominator / snapData.Rows) * SMCommon.NumBeatsPerMeasure}");
 					}
 					ImGui.PopStyleColor();

@@ -12,18 +12,69 @@ namespace StepManiaEditor
 	/// </summary>
 	internal abstract class ArrowGraphicManager
 	{
-		protected const float ColorMultiplier = 1.5f;
+		/// <summary>
+		/// Set of colors to use for an arrow in various contexts.
+		/// </summary>
+		protected struct ArrowColorSet
+		{
+			/// <summary>
+			/// Brightness multiplier for the normal color.
+			/// </summary>
+			private const float ColorMultiplier = 1.5f;
+
+			/// <summary>
+			/// Brightness multiplier for the selected color.
+			/// It is intention this is large and will result in whites for many colors.
+			/// This is typically used in contexts where the colored area is small so differntiating
+			/// between a selected and unselected note is more important than differentiating between
+			/// individual note colors.
+			/// </summary>
+			private const float SelectedColorMultiplier = 8.0f;
+
+			/// <summary>
+			/// RGBA Color.
+			/// </summary>
+			public uint Color;
+			/// <summary>
+			/// RGBA Selected color.
+			/// </summary>
+			public uint SelectedColor;
+			/// <summary>
+			/// BGR565 Color.
+			/// </summary>
+			public ushort ColorBgr565;
+
+			/// <summary>
+			/// Constructor taking a base color from which to generate the color set.
+			/// </summary>
+			/// <param name="color">Base color.</param>
+			public ArrowColorSet(uint color)
+			{
+				Color = ColorRGBAMultiply(color, ColorMultiplier);
+				SelectedColor = ColorRGBAMultiply(color, SelectedColorMultiplier);
+				ColorBgr565 = ToBGR565(Color);
+			}
+
+			public uint GetColor(bool selected)
+			{
+				return selected ? SelectedColor : Color;
+			}
+
+			public ushort GetColorBgr565()
+			{
+				return ColorBgr565;
+			}
+		}
 
 		// Selected texture variant parameters.
-		private const float SelectedColorMultiplier = 2.0f;
+		private const float SelectionColorMultiplier = 2.0f;
 		private const int SelectionRimSize = 8; // See also capHeightPadding in split-arrows.csx.
 		private const int SelectionMaskDimension = SelectionRimSize * 2 + 1; // +1 to ensure odd number so the mask is centered.
 		private const uint SelectionHighlightColorBlack = 0xFF000000;
 		private const uint SelectionHighlightColorWhite = 0xFFFFFFFF;
 		private static float[] SelectionDistances = new float[SelectionMaskDimension * SelectionMaskDimension];
 
-		private static readonly uint MineColorRGBA;
-		private static readonly ushort MineColorBGR565;
+		private static readonly ArrowColorSet MineColor;
 
 		private static readonly string TextureIdMine = "mine";
 
@@ -31,8 +82,7 @@ namespace StepManiaEditor
 
 		static ArrowGraphicManager()
 		{
-			MineColorRGBA = ColorRGBAMultiply(0xFFB7B7B7, ColorMultiplier); // light grey
-			MineColorBGR565 = ToBGR565(MineColorRGBA);
+			MineColor = new ArrowColorSet(0xFFB7B7B7); // light grey
 
 			SnapTextureByBeatSubdivision = new Dictionary<int, string>
 			{
@@ -126,14 +176,14 @@ namespace StepManiaEditor
 					// Fully opaque: Copy the brightened source color.
 					if (color >> 24 == 0x000000FF)
 					{
-						newColorData[i] = ColorRGBAMultiply(colorData[i], SelectedColorMultiplier);
+						newColorData[i] = ColorRGBAMultiply(colorData[i], SelectionColorMultiplier);
 					}
 
 					// Partially transparent: Blend the brightened source color over the highlight bg color.
 					else if (color >> 24 != 0)
 					{
 						float alpha = ((float)(color >> 24)) / byte.MaxValue;
-						var sourceColor = ColorRGBAMultiply(colorData[i], SelectedColorMultiplier);
+						var sourceColor = ColorRGBAMultiply(colorData[i], SelectionColorMultiplier);
 						newColorData[i] = ColorRGBAInterpolateBGR(sourceColor, SelectionHighlightColorWhite, alpha);
 					}
 
@@ -266,26 +316,26 @@ namespace StepManiaEditor
 		public abstract (string, bool) GetRollBodyTexture(int integerPosition, int lane, bool held, bool selected);
 		public abstract (string, float) GetRollEndTexture(int integerPosition, int lane, bool held, bool selected);
 
-		public static uint GetArrowColorRGBAForSubdivision(int subdivision)
+		public static uint GetArrowColorForSubdivision(int subdivision)
 		{
-			return ArrowGraphicManagerDance.GetDanceArrowColorRGBAForSubdivision(subdivision);
+			return ArrowGraphicManagerDance.GetDanceArrowColorForSubdivision(subdivision);
 		}
 
-		public abstract uint GetArrowColorRGBA(int integerPosition, int lane);
-		public abstract ushort GetArrowColorBGR565(int integerPosition, int lane);
-		public abstract uint GetHoldColorRGBA(int integerPosition, int lane);
-		public abstract ushort GetHoldColorBGR565(int integerPosition, int lane);
-		public abstract uint GetRollColorRGBA(int integerPosition, int lane);
-		public abstract ushort GetRollColorBGR565(int integerPosition, int lane);
+		public abstract uint GetArrowColor(int integerPosition, int lane, bool selected);
+		public abstract ushort GetArrowColorBGR565(int integerPosition, int lane, bool selected);
+		public abstract uint GetHoldColor(int integerPosition, int lane, bool selected);
+		public abstract ushort GetHoldColorBGR565(int integerPosition, int lane, bool selected);
+		public abstract uint GetRollColor(int integerPosition, int lane, bool selected);
+		public abstract ushort GetRollColorBGR565(int integerPosition, int lane, bool selected);
 
-		public static uint GetMineColorRGBA()
+		public static uint GetMineColor(bool selected)
 		{
-			return MineColorRGBA;
+			return MineColor.GetColor(selected);
 		}
 
 		public static ushort GetMineColorBGR565()
 		{
-			return MineColorBGR565;
+			return MineColor.GetColorBgr565();
 		}
 
 		public static string GetMineTexture(int integerPosition, int lane, bool selected)
@@ -330,13 +380,10 @@ namespace StepManiaEditor
 		protected static readonly UniqueDanceTextures ReceptorGlowTextures;
 		protected static readonly UniqueDanceTextures ReceptorHeldTextures;
 
-		protected static readonly Dictionary<int, uint> ArrowColorRGBABySubdivision;
-		protected static readonly uint[] ArrowColorRGBAByRow;
-		protected static readonly ushort[] ArrowColorBGR565ByRow;
-		protected static readonly uint HoldColorRGBA;
-		protected static readonly ushort HoldColorBGR565;
-		protected static readonly uint RollColorRGBA;
-		protected static readonly ushort RollColorBGR565;
+		protected static readonly Dictionary<int, ArrowColorSet> ArrowColorBySubdivision;
+		protected static readonly ArrowColorSet[] ArrowColorByRow;
+		protected static readonly ArrowColorSet HoldColor;
+		protected static readonly ArrowColorSet RollColor;
 
 		static ArrowGraphicManagerDance()
 		{
@@ -466,34 +513,30 @@ namespace StepManiaEditor
 				UpLeftArrow = "itg-solo-receptor-held",
 			};
 
-			ArrowColorRGBABySubdivision = new Dictionary<int, uint>
+			ArrowColorBySubdivision = new Dictionary<int, ArrowColorSet>
 			{
-				{ 1, ColorRGBAMultiply(0xFF1818B6, ColorMultiplier) }, // Red
-				{ 2, ColorRGBAMultiply(0xFFB63518, ColorMultiplier) }, // Blue
-				{ 3, ColorRGBAMultiply(0xFF37AD36, ColorMultiplier) }, // Green
-				{ 4, ColorRGBAMultiply(0xFF16CAD1, ColorMultiplier) }, // Yellow
-				{ 6, ColorRGBAMultiply(0xFFB61884, ColorMultiplier) }, // Purple
-				{ 8, ColorRGBAMultiply(0xFF98B618, ColorMultiplier) }, // Cyan
-				{ 12, ColorRGBAMultiply(0xFF8018B6, ColorMultiplier) }, // Pink
-				{ 16, ColorRGBAMultiply(0xFF586F4F, ColorMultiplier) }, // Pale Grey Green
-				{ 48, ColorRGBAMultiply(0xFF586F4F, ColorMultiplier) }, // Pale Grey Green
+				{ 1, new ArrowColorSet(0xFF1818B6) }, // Red
+				{ 2, new ArrowColorSet(0xFFB63518) }, // Blue
+				{ 3, new ArrowColorSet(0xFF37AD36) }, // Green
+				{ 4, new ArrowColorSet(0xFF16CAD1) }, // Yellow
+				{ 6, new ArrowColorSet(0xFFB61884) }, // Purple
+				{ 8, new ArrowColorSet(0xFF98B618) }, // Cyan
+				{ 12, new ArrowColorSet(0xFF8018B6) }, // Pink
+				{ 16, new ArrowColorSet(0xFF586F4F) }, // Pale Grey Green
+				{ 48, new ArrowColorSet(0xFF586F4F) }, // Pale Grey Green
 			};
-			ArrowColorRGBAByRow = new uint[SMCommon.MaxValidDenominator];
-			ArrowColorBGR565ByRow = new ushort[SMCommon.MaxValidDenominator];
+			ArrowColorByRow = new ArrowColorSet[SMCommon.MaxValidDenominator];
 			for (var i = 0; i < SMCommon.MaxValidDenominator; i++)
 			{
 				var key = new Fraction(i, SMCommon.MaxValidDenominator).Reduce().Denominator;
 
-				if (!ArrowColorRGBABySubdivision.ContainsKey(key))
+				if (!ArrowColorBySubdivision.ContainsKey(key))
 					key = 16;
-				ArrowColorRGBAByRow[i] = ArrowColorRGBABySubdivision[key];
-				ArrowColorBGR565ByRow[i] = ToBGR565(ArrowColorRGBAByRow[i]);
+				ArrowColorByRow[i] = ArrowColorBySubdivision[key];
 			}
 			
-			HoldColorRGBA = ColorRGBAMultiply(0xFF696969, ColorMultiplier); // Grey
-			HoldColorBGR565 = ToBGR565(HoldColorRGBA);
-			RollColorRGBA = ColorRGBAMultiply(0xFF2264A6, ColorMultiplier); // Orange
-			RollColorBGR565 = ToBGR565(RollColorRGBA);
+			HoldColor = new ArrowColorSet(0xFF696969); // Grey
+			RollColor = new ArrowColorSet(0xFF2264A6); // Orange
 		}
 
 		public static HashSet<string> GetAllTextures()
@@ -540,39 +583,39 @@ namespace StepManiaEditor
 			return false;
 		}
 
-		public override uint GetArrowColorRGBA(int integerPosition, int lane)
+		public override uint GetArrowColor(int integerPosition, int lane, bool selected)
 		{
-			return ArrowColorRGBAByRow[integerPosition % SMCommon.MaxValidDenominator];
+			return ArrowColorByRow[integerPosition % SMCommon.MaxValidDenominator].GetColor(selected);
 		}
 
-		public static uint GetDanceArrowColorRGBAForSubdivision(int subdivision)
+		public static uint GetDanceArrowColorForSubdivision(int subdivision)
 		{
-			return ArrowColorRGBABySubdivision[subdivision];
+			return ArrowColorBySubdivision[subdivision].GetColor(false);
 		}
 
-		public override ushort GetArrowColorBGR565(int integerPosition, int lane)
+		public override ushort GetArrowColorBGR565(int integerPosition, int lane, bool selected)
 		{
-			return ArrowColorBGR565ByRow[integerPosition % SMCommon.MaxValidDenominator];
+			return ArrowColorByRow[integerPosition % SMCommon.MaxValidDenominator].GetColorBgr565();
 		}
 		
-		public override uint GetHoldColorRGBA(int integerPosition, int lane)
+		public override uint GetHoldColor(int integerPosition, int lane, bool selected)
 		{
-			return HoldColorRGBA;
+			return HoldColor.GetColor(selected);
 		}
 
-		public override ushort GetHoldColorBGR565(int integerPosition, int lane)
+		public override ushort GetHoldColorBGR565(int integerPosition, int lane, bool selected)
 		{
-			return HoldColorBGR565;
+			return HoldColor.GetColorBgr565();
 		}
 
-		public override uint GetRollColorRGBA(int integerPosition, int lane)
+		public override uint GetRollColor(int integerPosition, int lane, bool selected)
 		{
-			return RollColorRGBA;
+			return RollColor.GetColor(selected);
 		}
 
-		public override ushort GetRollColorBGR565(int integerPosition, int lane)
+		public override ushort GetRollColorBGR565(int integerPosition, int lane, bool selected)
 		{
-			return RollColorBGR565;
+			return RollColor.GetColorBgr565();
 		}
 	}
 
@@ -903,26 +946,17 @@ namespace StepManiaEditor
 
 	internal abstract class ArrowGraphicManagerPIU : ArrowGraphicManager
 	{
-		protected static readonly uint ArrowColorRedRGBA;
-		protected static readonly ushort ArrowColorRedBGR565;
-		protected static readonly uint ArrowColorBlueRGBA;
-		protected static readonly ushort ArrowColorBlueBGR565;
-		protected static readonly uint ArrowColorYellowRGBA;
-		protected static readonly ushort ArrowColorYellowBGR565;
+		protected static readonly ArrowColorSet ArrowColorRed;
+		protected static readonly ArrowColorSet ArrowColorBlue;
+		protected static readonly ArrowColorSet ArrowColorYellow;
 
-		protected static readonly uint HoldColorRedRGBA;
-		protected static readonly ushort HoldColorRedBGR565;
-		protected static readonly uint HoldColorBlueRGBA;
-		protected static readonly ushort HoldColorBlueBGR565;
-		protected static readonly uint HoldColorYellowRGBA;
-		protected static readonly ushort HoldColorYellowBGR565;
+		protected static readonly ArrowColorSet HoldColorRed;
+		protected static readonly ArrowColorSet HoldColorBlue;
+		protected static readonly ArrowColorSet HoldColorYellow;
 
-		protected static readonly uint RollColorRedRGBA;
-		protected static readonly ushort RollColorRedBGR565;
-		protected static readonly uint RollColorBlueRGBA;
-		protected static readonly ushort RollColorBlueBGR565;
-		protected static readonly uint RollColorYellowRGBA;
-		protected static readonly ushort RollColorYellowBGR565;
+		protected static readonly ArrowColorSet RollColorRed;
+		protected static readonly ArrowColorSet RollColorBlue;
+		protected static readonly ArrowColorSet RollColorYellow;
 
 		protected static readonly float[] ArrowRotationsColored =
 		{
@@ -998,85 +1032,49 @@ namespace StepManiaEditor
 			true,	// DR
 		};
 
-		protected static readonly uint[] ArrowColorsRGBA;
-		protected static readonly ushort[] ArrowColorsBGR565;
-		protected static readonly uint[] HoldColorsRGBA;
-		protected static readonly ushort[] HoldColorsBGR565;
-		protected static readonly uint[] RollColorsRGBA;
-		protected static readonly ushort[] RollColorsBGR565;
+		protected static readonly ArrowColorSet[] ArrowColors;
+		protected static readonly ArrowColorSet[] HoldColors;
+		protected static readonly ArrowColorSet[] RollColors;
 
 		protected int StartArrowIndex = 0;
 
 		static ArrowGraphicManagerPIU()
 		{
-			ArrowColorRedRGBA = ColorRGBAMultiply(0xFF371BB3, ColorMultiplier);
-			ArrowColorRedBGR565 = ToBGR565(ArrowColorRedRGBA);
-			ArrowColorBlueRGBA = ColorRGBAMultiply(0xFFB3401B, ColorMultiplier);
-			ArrowColorBlueBGR565 = ToBGR565(ArrowColorBlueRGBA);
-			ArrowColorYellowRGBA = ColorRGBAMultiply(0xFF00EAFF, ColorMultiplier);
-			ArrowColorYellowBGR565 = ToBGR565(ArrowColorYellowRGBA);
+			ArrowColorRed = new ArrowColorSet(0xFF371BB3);
+			ArrowColorBlue = new ArrowColorSet(0xFFB3401B);
+			ArrowColorYellow = new ArrowColorSet(0xFF00EAFF);
 
-			HoldColorRedRGBA = ColorRGBAMultiply(0xFF5039B2, ColorMultiplier);
-			HoldColorRedBGR565 = ToBGR565(HoldColorRedRGBA);
-			HoldColorBlueRGBA = ColorRGBAMultiply(0xFFB35639, ColorMultiplier);
-			HoldColorBlueBGR565 = ToBGR565(HoldColorBlueRGBA);
-			HoldColorYellowRGBA = ColorRGBAMultiply(0xFF6BF3FF, ColorMultiplier);
-			HoldColorYellowBGR565 = ToBGR565(HoldColorYellowRGBA);
+			HoldColorRed = new ArrowColorSet(0xFF5039B2);
+			HoldColorBlue = new ArrowColorSet(0xFFB35639);
+			HoldColorYellow = new ArrowColorSet(0xFF6BF3FF);
 
-			RollColorRedRGBA = ColorRGBAMultiply(0xFF6B54F8, ColorMultiplier);
-			RollColorRedBGR565 = ToBGR565(RollColorRedRGBA);
-			RollColorBlueRGBA = ColorRGBAMultiply(0xFFB38C1B, ColorMultiplier);
-			RollColorBlueBGR565 = ToBGR565(RollColorBlueRGBA);
-			RollColorYellowRGBA = ColorRGBAMultiply(0xFF2FABB5, ColorMultiplier);
-			RollColorYellowBGR565 = ToBGR565(RollColorYellowRGBA);
+			RollColorRed = new ArrowColorSet(0xFF6B54F8);
+			RollColorBlue = new ArrowColorSet(0xFFB38C1B);
+			RollColorYellow = new ArrowColorSet(0xFF2FABB5);
 
-			ArrowColorsRGBA = new uint[]
+			ArrowColors = new ArrowColorSet[]
 			{
-				ArrowColorBlueRGBA,
-				ArrowColorRedRGBA,
-				ArrowColorYellowRGBA,
-				ArrowColorRedRGBA,
-				ArrowColorBlueRGBA,
+				ArrowColorBlue,
+				ArrowColorRed,
+				ArrowColorYellow,
+				ArrowColorRed,
+				ArrowColorBlue,
 			};
-			ArrowColorsBGR565 = new ushort[]
+			HoldColors = new ArrowColorSet[]
 			{
-				ArrowColorBlueBGR565,
-				ArrowColorRedBGR565,
-				ArrowColorYellowBGR565,
-				ArrowColorRedBGR565,
-				ArrowColorBlueBGR565,
+				HoldColorBlue,
+				HoldColorRed,
+				HoldColorYellow,
+				HoldColorRed,
+				HoldColorBlue,
 			};
-			HoldColorsRGBA = new uint[]
+			RollColors = new ArrowColorSet[]
 			{
-				HoldColorBlueRGBA,
-				HoldColorRedRGBA,
-				HoldColorYellowRGBA,
-				HoldColorRedRGBA,
-				HoldColorBlueRGBA,
-			};
-			HoldColorsBGR565 = new ushort[]
-			{
-				HoldColorBlueBGR565,
-				HoldColorRedBGR565,
-				HoldColorYellowBGR565,
-				HoldColorRedBGR565,
-				HoldColorBlueBGR565,
-			};
-			RollColorsRGBA = new uint[]
-			{
-				RollColorBlueRGBA,
-				RollColorRedRGBA,
-				RollColorYellowRGBA,
-				RollColorRedRGBA,
-				RollColorBlueRGBA,
-			};
-			RollColorsBGR565 = new ushort[]
-			{
-				RollColorBlueBGR565,
-				RollColorRedBGR565,
-				RollColorYellowBGR565,
-				RollColorRedBGR565,
-				RollColorBlueBGR565,
+				RollColorBlue,
+				RollColorRed,
+				RollColorYellow,
+				RollColorRed,
+				RollColorBlue,
 			};
 		}
 
@@ -1166,40 +1164,40 @@ namespace StepManiaEditor
 			return GetArrowTexture(integerPosition, lane, selected);
 		}
 
-		public override uint GetArrowColorRGBA(int integerPosition, int lane)
+		public override uint GetArrowColor(int integerPosition, int lane, bool selected)
 		{
 			var i = GetTextureIndex(lane);
-			return ArrowColorsRGBA[i];
+			return ArrowColors[i].GetColor(selected);
 		}
 
-		public override ushort GetArrowColorBGR565(int integerPosition, int lane)
+		public override ushort GetArrowColorBGR565(int integerPosition, int lane, bool selected)
 		{
 			var i = GetTextureIndex(lane);
-			return ArrowColorsBGR565[i];
+			return ArrowColors[i].GetColorBgr565();
 		}
 
-		public override uint GetHoldColorRGBA(int integerPosition, int lane)
+		public override uint GetHoldColor(int integerPosition, int lane, bool selected)
 		{
 			var i = GetTextureIndex(lane);
-			return HoldColorsRGBA[i];
+			return HoldColors[i].GetColor(selected);
 		}
 
-		public override ushort GetHoldColorBGR565(int integerPosition, int lane)
+		public override ushort GetHoldColorBGR565(int integerPosition, int lane, bool selected)
 		{
 			var i = GetTextureIndex(lane);
-			return HoldColorsBGR565[i];
+			return HoldColors[i].GetColorBgr565();
 		}
 
-		public override uint GetRollColorRGBA(int integerPosition, int lane)
+		public override uint GetRollColor(int integerPosition, int lane, bool selected)
 		{
 			var i = GetTextureIndex(lane);
-			return RollColorsRGBA[i];
+			return RollColors[i].GetColor(selected);
 		}
 
-		public override ushort GetRollColorBGR565(int integerPosition, int lane)
+		public override ushort GetRollColorBGR565(int integerPosition, int lane, bool selected)
 		{
 			var i = GetTextureIndex(lane);
-			return RollColorsBGR565[i];
+			return RollColors[i].GetColorBgr565();
 		}
 	}
 

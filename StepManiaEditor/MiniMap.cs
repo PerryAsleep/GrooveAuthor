@@ -580,13 +580,14 @@ namespace StepManiaEditor
 		/// </summary>
 		/// <param name="chartEvent">LaneNote to add.</param>
 		/// <param name="position">Position in Chart space. Can be time, row, or variable.</param>
+		/// <param name="selected">Whether or not the note is selected.</param>
 		/// <returns>AddResult describing if the note was added.</returns>
-		public AddResult AddNote(LaneNote chartEvent, double position)
+		public AddResult AddNote(LaneNote chartEvent, double position, bool selected)
 		{
 			return AddShortNote(
 				GetYPixelRelativeToBounds(position),
 				LaneXPositions[chartEvent.Lane],
-				ArrowGraphicManager.GetArrowColorRGBA(chartEvent.IntegerPosition, chartEvent.Lane));
+				ArrowGraphicManager.GetArrowColor(chartEvent.IntegerPosition, chartEvent.Lane, selected));
 		}
 
 		/// <summary>
@@ -594,13 +595,14 @@ namespace StepManiaEditor
 		/// </summary>
 		/// <param name="chartEvent">LaneNote to add.</param>
 		/// <param name="position">Position in Chart space. Can be time, row, or variable.</param>
+		/// <param name="selected">Whether or not the mine is selected.</param>
 		/// <returns>AddResult describing if the note was added.</returns>
-		public AddResult AddMine(LaneNote chartEvent, double position)
+		public AddResult AddMine(LaneNote chartEvent, double position, bool selected)
 		{
 			return AddShortNote(
 				GetYPixelRelativeToBounds(position),
 				LaneXPositions[chartEvent.Lane],
-				ArrowGraphicManager.GetMineColorRGBA());
+				ArrowGraphicManager.GetMineColor(selected));
 		}
 
 		/// <summary>
@@ -658,15 +660,18 @@ namespace StepManiaEditor
 		/// <param name="startPosition">Start position of the hold in Chart space. Can be time, row, or variable.</param>
 		/// <param name="endPosition">End position of the hold in Chart space. Can be time, row, or variable.</param>
 		/// <param name="roll">Whether or not the hold is a roll.</param>
+		/// <param name="selected">Whether or not the hold is selected.</param>
 		/// <returns>AddResult describing if the hold was added.</returns>
-		public AddResult AddHold(LaneHoldStartNote start, double startPosition, double endPosition, bool roll)
+		public AddResult AddHold(LaneHoldStartNote start, double startPosition, double endPosition, bool roll, bool selected)
 		{
 			var yStart = GetYPixelRelativeToBounds(startPosition);
 			var yEnd = GetYPixelRelativeToBounds(endPosition) + 1.0;
 
 			var x = LaneXPositions[start.Lane];
-			var bodyColor = roll ? ArrowGraphicManager.GetRollColorRGBA(start.IntegerPosition, start.Lane) : ArrowGraphicManager.GetHoldColorRGBA(start.IntegerPosition, start.Lane);
-			var headColor = ArrowGraphicManager.GetArrowColorRGBA(start.IntegerPosition, start.Lane);
+			var bodyColor = roll ?
+				ArrowGraphicManager.GetRollColor(start.IntegerPosition, start.Lane, selected)
+				: ArrowGraphicManager.GetHoldColor(start.IntegerPosition, start.Lane, selected);
+			var headColor = ArrowGraphicManager.GetArrowColor(start.IntegerPosition, start.Lane, selected);
 
 			var w = (uint)Math.Min(Bounds.Width - (RimWidth << 1), NoteWidth);
 

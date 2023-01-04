@@ -2523,9 +2523,10 @@ namespace StepManiaEditor
 					{
 						MiniMap.AddHold(
 							(LaneHoldStartNote)hsn.GetEvent(),
-							ToSeconds(hsn.GetEvent().TimeMicros),
-							ToSeconds(hsn.GetHoldEndNote().GetEvent().TimeMicros),
-							hsn.IsRoll());
+							hsn.GetChartTime(),
+							hsn.GetHoldEndNote().GetChartTime(),
+							hsn.IsRoll(),
+							hsn.IsSelected());
 						numNotesAdded++;
 					}
 
@@ -2538,25 +2539,26 @@ namespace StepManiaEditor
 						if (e is EditorTapNoteEvent)
 						{
 							numNotesAdded++;
-							if (MiniMap.AddNote((LaneNote)e.GetEvent(), ToSeconds(e.GetEvent().TimeMicros)) ==
-							    MiniMap.AddResult.BelowBottom)
+							if (MiniMap.AddNote((LaneNote)e.GetEvent(), e.GetChartTime(), e.IsSelected()) ==
+								MiniMap.AddResult.BelowBottom)
 								break;
 						}
 						else if (e is EditorMineNoteEvent)
 						{
 							numNotesAdded++;
-							if (MiniMap.AddMine((LaneNote)e.GetEvent(), ToSeconds(e.GetEvent().TimeMicros)) ==
-							    MiniMap.AddResult.BelowBottom)
+							if (MiniMap.AddMine((LaneNote)e.GetEvent(), e.GetChartTime(), e.IsSelected()) ==
+								MiniMap.AddResult.BelowBottom)
 								break;
 						}
 						else if (e is EditorHoldStartNoteEvent hsn)
 						{
 							numNotesAdded++;
 							if (MiniMap.AddHold(
-								    (LaneHoldStartNote)e.GetEvent(),
-								    ToSeconds(e.GetEvent().TimeMicros),
-								    ToSeconds(hsn.GetHoldEndNote().GetEvent().TimeMicros),
-								    hsn.IsRoll()) == MiniMap.AddResult.BelowBottom)
+								(LaneHoldStartNote)hsn.GetEvent(),
+								hsn.GetChartTime(),
+								hsn.GetHoldEndNote().GetChartTime(),
+								hsn.IsRoll(),
+								hsn.IsSelected()) == MiniMap.AddResult.BelowBottom)
 								break;
 						}
 
@@ -2627,9 +2629,10 @@ namespace StepManiaEditor
 					{
 						MiniMap.AddHold(
 							(LaneHoldStartNote)hsn.GetEvent(),
-							hsn.GetEvent().IntegerPosition,
-							hsn.GetHoldEndNote().GetEvent().IntegerPosition,
-							hsn.IsRoll());
+							hsn.GetChartPosition(),
+							hsn.GetHoldEndNote().GetChartPosition(),
+							hsn.IsRoll(),
+							hsn.IsSelected());
 						numNotesAdded++;
 					}
 
@@ -2642,25 +2645,26 @@ namespace StepManiaEditor
 						if (e is EditorTapNoteEvent)
 						{
 							numNotesAdded++;
-							if (MiniMap.AddNote((LaneNote)e.GetEvent(), e.GetEvent().IntegerPosition) ==
-							    MiniMap.AddResult.BelowBottom)
+							if (MiniMap.AddNote((LaneNote)e.GetEvent(), e.GetChartPosition(), e.IsSelected()) ==
+								MiniMap.AddResult.BelowBottom)
 								break;
 						}
 						else if (e is EditorMineNoteEvent)
 						{
 							numNotesAdded++;
-							if (MiniMap.AddMine((LaneNote)e.GetEvent(), e.GetEvent().IntegerPosition) ==
-							    MiniMap.AddResult.BelowBottom)
+							if (MiniMap.AddMine((LaneNote)e.GetEvent(), e.GetChartPosition(), e.IsSelected()) ==
+								MiniMap.AddResult.BelowBottom)
 								break;
 						}
 						else if (e is EditorHoldStartNoteEvent hsn)
 						{
 							numNotesAdded++;
 							if (MiniMap.AddHold(
-								    (LaneHoldStartNote)e.GetEvent(),
-								    e.GetEvent().IntegerPosition,
-								    hsn.GetHoldEndNote().GetEvent().IntegerPosition,
-								    hsn.IsRoll()) == MiniMap.AddResult.BelowBottom)
+								(LaneHoldStartNote)hsn.GetEvent(),
+								hsn.GetChartPosition(),
+								hsn.GetHoldEndNote().GetChartPosition(),
+								hsn.IsRoll(),
+								hsn.IsSelected()) == MiniMap.AddResult.BelowBottom)
 								break;
 						}
 
