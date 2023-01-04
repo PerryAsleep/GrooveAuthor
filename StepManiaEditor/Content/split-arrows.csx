@@ -91,9 +91,13 @@ public static void Main()
 	// This is done because we use the texture size for determining if a click lands on a hold.
 	// Most arrows are big enough in the 128x128 frames, but the hold ends are much shorter.
 	// TODO: read color data to trim height.
-	var capHeight = 57;
-	var capHeightCenter = 43;
-	var capHeightSolo = 45;
+
+	// Padding to account for programmatically generated selection rims. This is also defined in
+	// ArrowGraphicManager as SelectionRimSize.
+	var capHeightPadding = 8;
+	var capHeight = 57 + capHeightPadding;
+	var capHeightCenter = 43 + capHeightPadding;
+	var capHeightSolo = 45 + capHeightPadding;
 	ProcessFiles(new string[]{"itg-hold-end-inactive"}, 1, 128, 512, 128, capHeight, 0);
 	ProcessFiles(new string[]{"itg-hold-center-end-inactive"}, 1, 384, 512, 128, capHeightCenter, 0);
 	ProcessFiles(new string[]{"itg-hold-solo-end-inactive"}, 1, 640, 512, 128, capHeightSolo, 0);

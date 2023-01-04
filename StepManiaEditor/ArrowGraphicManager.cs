@@ -13,7 +13,14 @@ namespace StepManiaEditor
 	internal abstract class ArrowGraphicManager
 	{
 		protected const float ColorMultiplier = 1.5f;
-		protected const float SelectedColorMultiplier = 3.0f;
+
+		// Selected texture variant parameters.
+		private const float SelectedColorMultiplier = 2.0f;
+		private const int SelectionRimSize = 8; // See also capHeightPadding in split-arrows.csx.
+		private const int SelectionMaskDimension = SelectionRimSize * 2 + 1; // +1 to ensure odd number so the mask is centered.
+		private const uint SelectionHighlightColorBlack = 0xFF000000;
+		private const uint SelectionHighlightColorWhite = 0xFFFFFFFF;
+		private static float[] SelectionDistances = new float[SelectionMaskDimension * SelectionMaskDimension];
 
 		private static readonly uint MineColorRGBA;
 		private static readonly ushort MineColorBGR565;
@@ -38,6 +45,16 @@ namespace StepManiaEditor
 				{12, "snap-1-48"},
 				{16, "snap-1-64"},
 			};
+
+			// Calculate distances between pixels as a grid to use for generating a rim on selected textures.
+			for (int y = 0; y < SelectionMaskDimension; y++)
+			{
+				for (int x = 0; x < SelectionMaskDimension; x++)
+				{
+					var i = y * SelectionMaskDimension + x;
+					SelectionDistances[i] = (float)Math.Sqrt((x - SelectionRimSize) * (x - SelectionRimSize) + (y - SelectionRimSize) * (y - SelectionRimSize));
+				}
+			}
 		}
 
 		/// <summary>
@@ -78,6 +95,16 @@ namespace StepManiaEditor
 			return selected ? GetSelectedTextureId(textureId) : textureId;
 		}
 
+		/// <summary>
+		/// Creates a new texture that looks like a selected variation of the given texture.
+		/// In practice this brightens the given texture and adds a highlighted rim around it.
+		/// The created texture will have the same dimensions as the input texture. It is assumed
+		/// that there will be enough padding built into the source texture such that the rim will
+		/// fit without being cut off.
+		/// </summary>
+		/// <param name="graphicsDevice">GraphicsDevice to use for creating the new texture.</param>
+		/// <param name="input">The texture to generate a selected variant of.</param>
+		/// <returns>New texture.</returns>
 		public static Texture2D GenerateSelectedTexture(GraphicsDevice graphicsDevice, Texture2D input)
 		{
 			var w = input.Width;
@@ -89,9 +116,95 @@ namespace StepManiaEditor
 			var colorData = new uint[n];
 			var newColorData = new uint[n];
 			input.GetData(colorData);
-			for (var i = 0; i < n; i++)
+			for (int y = 0; y < h; y++)
 			{
-				newColorData[i] = ColorRGBAMultiply(colorData[i], SelectedColorMultiplier);
+				for (int x = 0; x < w; x++)
+				{
+					var i = y * w + x;
+					var color = colorData[i];
+
+					// Fully opaque: Copy the brightened source color.
+					if (color >> 24 == 0x000000FF)
+					{
+						newColorData[i] = ColorRGBAMultiply(colorData[i], SelectedColorMultiplier);
+					}
+
+					// Partially transparent: Blend the brightened source color over the highlight bg color.
+					else if (color >> 24 != 0)
+					{
+						float alpha = ((float)(color >> 24)) / byte.MaxValue;
+						var sourceColor = ColorRGBAMultiply(colorData[i], SelectedColorMultiplier);
+						newColorData[i] = ColorRGBAInterpolateBGR(sourceColor, SelectionHighlightColorWhite, alpha);
+					}
+
+					// Fully transparent: Generate a highlight bg color rim around the opaque area.
+					else
+					{
+						// Determine the largest source alpha in the mask centered on this pixel.
+						var alpha = 0.0f;
+						var distance = (float)SelectionMaskDimension;
+						for (int sy = y - SelectionRimSize, my = 0; sy <= y + SelectionRimSize; sy++, my++)
+						{
+							for (int sx = x - SelectionRimSize, mx = 0; sx <= x + SelectionRimSize; sx++, mx++)
+							{
+								var mi = my * SelectionMaskDimension + mx;
+								if (SelectionDistances[mi] > SelectionRimSize || sx < 0 || sy < 0 || sx >= w || sy >= h)
+									continue;
+								var sColor = colorData[sy * w + sx];
+								var sAlpha = (float)(sColor >> 24) / byte.MaxValue;
+								if (sAlpha > alpha)
+									alpha = sAlpha;
+
+								if (sAlpha > 0.0f)
+								{
+									// Adjust the distance based on the alpha value. More transparent values
+									// appear further away than more opaque values.
+									var adjustedDistance = Math.Max(0.0f, SelectionDistances[mi] - 1.0f + (1.0f - sAlpha));
+									if (adjustedDistance < distance)
+										distance = adjustedDistance;
+								}
+							}
+						}
+
+						// Use the distance to blend between two colors.
+						// The logic below adds a white highlight with a black line through it.
+						// This looks decent with the current arrow art that has white outlines as the
+						// white from the arrow art blends into the white from the selection. The
+						// cutoffs in the blending logic below are taking into account that the arrows
+						// have a 2 pixel white rim in order to center the black line.
+						var percent = Math.Clamp(distance / SelectionRimSize, 0.0f, 1.0f);
+						uint rimColor;
+						const float firstCutoff = 0.10f;
+						const float secondCutoff = 0.25f;
+						const float thirdCutoff = 0.60f;
+
+						// Solid white.
+						if (percent < firstCutoff)
+						{
+							rimColor = SelectionHighlightColorWhite;
+						}
+						// Blend from white to black.
+						else if (percent < secondCutoff)
+						{
+							percent = (percent - firstCutoff) / (secondCutoff - firstCutoff);
+							rimColor = ColorRGBAInterpolateBGR(SelectionHighlightColorWhite, SelectionHighlightColorBlack, percent);
+						}
+						// Blend from black to white.
+						else if (percent < thirdCutoff)
+						{
+							percent = (percent - secondCutoff) / (thirdCutoff - secondCutoff);
+							rimColor = ColorRGBAInterpolateBGR(SelectionHighlightColorBlack, SelectionHighlightColorWhite, percent);
+						}
+						// Solid white.
+						else
+						{
+							rimColor = SelectionHighlightColorWhite;
+						}
+
+						// Apply that alpha to the selection highlight color and use that.
+						newColorData[i] = (rimColor & 0x00FFFFFF) | (((uint)(alpha * byte.MaxValue)) << 24);
+					}
+				}
 			}
 
 			newTexture.SetData(newColorData);
