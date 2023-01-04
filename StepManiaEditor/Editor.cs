@@ -1401,7 +1401,6 @@ namespace StepManiaEditor
 			// Get an EventSpacingHelper to perform y calculations.
 			SpacingHelper = EventSpacingHelper.GetSpacingHelper(ActiveChart);
 
-			List<EditorEvent> holdBodyEvents = new List<EditorEvent>();
 			List<EditorEvent> noteEvents = new List<EditorEvent>();
 
 			var screenHeight = GetViewportHeight();
@@ -1497,7 +1496,7 @@ namespace StepManiaEditor
 			// Scan backwards until we have checked every lane for a long note which may
 			// be extending through the given start row. We cannot add the end events yet because
 			// we do not know at what position they will end until we scan down.
-			var holdEndNotesNeedingToBeAdded = new EditorHoldEndNoteEvent[ActiveChart.NumInputs];
+			var holdEndNotesNeedingToBeCompleted = new EditorHoldEndNoteEvent[ActiveChart.NumInputs];
 			var holdStartNotes = ScanBackwardsForHolds(enumerator, chartPositionAtTopOfScreen);
 			foreach (var hsn in holdStartNotes)
 			{
@@ -1510,9 +1509,10 @@ namespace StepManiaEditor
 					arrowW,
 					arrowH,
 					sizeZoom);
+				noteEvents.Add(hsn.GetHoldEndNote());
 				noteEvents.Add(hsn);
 
-				holdEndNotesNeedingToBeAdded[hsn.GetLane()] = hsn.GetHoldEndNote();
+				holdEndNotesNeedingToBeCompleted[hsn.GetLane()] = hsn.GetHoldEndNote();
 			}
 
 			var hasNextRateEvent = rateEnumerator.MoveNext();
@@ -1590,15 +1590,14 @@ namespace StepManiaEditor
 						noteY = start.Y + arrowH * 0.5f;
 						noteH = endY - noteY;
 
-						holdBodyEvents.Add(e);
-
-						// Remove from holdEndNotesNeedingToBeAdded.
-						holdEndNotesNeedingToBeAdded[e.GetLane()] = null;
+						// Remove from holdEndNotesNeedingToBeCompleted.
+						holdEndNotesNeedingToBeCompleted[e.GetLane()] = null;
 					}
 					else if (e is EditorHoldStartNoteEvent hsn)
 					{
 						// Record that there is in an in-progress hold that will need to be ended.
-						holdEndNotesNeedingToBeAdded[e.GetLane()] = hsn.GetHoldEndNote();
+						holdEndNotesNeedingToBeCompleted[e.GetLane()] = hsn.GetHoldEndNote();
+						noteEvents.Add(hsn.GetHoldEndNote());
 						noteEvents.Add(e);
 					}
 					else
@@ -1621,14 +1620,16 @@ namespace StepManiaEditor
 				}
 
 				// If we have collected the maximum number of events per frame, stop processing.
-				if (noteEvents.Count + holdBodyEvents.Count > MaxEventsToDraw)
+				if (noteEvents.Count > MaxEventsToDraw)
 					break;
 			}
 
 			// Now we need to wrap up any holds which started before the top of the screen and still are not yet complete.
 			// We do not need to scan forward for more rate events.
-			foreach (var holdEndNote in holdEndNotesNeedingToBeAdded)
+			for (var i = 0; i < numArrows; i++)
 			{
+				var holdEndNote = holdEndNotesNeedingToBeCompleted[i];
+
 				if (holdEndNote == null)
 					continue;
 
@@ -1644,7 +1645,7 @@ namespace StepManiaEditor
 					sizeZoom);
 				holdEndNote.Alpha = noteAlpha;
 
-				holdBodyEvents.Add(holdEndNote);
+				holdEndNotesNeedingToBeCompleted[i] = null;
 			}
 
 			// We also need to update beat markers beyond the final note.
@@ -1678,7 +1679,6 @@ namespace StepManiaEditor
 			EndRegions(ref regionsNeedingToBeAdded, ref addedRegions, previousRateEventY, rateEvent);
 
 			// Store the notes and holds so we can render them.
-			VisibleEvents.AddRange(holdBodyEvents);
 			VisibleEvents.AddRange(noteEvents);
 		}
 
