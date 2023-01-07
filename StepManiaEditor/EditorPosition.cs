@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Fumen;
+using System;
 
 namespace StepManiaEditor
 {
@@ -53,6 +54,20 @@ namespace StepManiaEditor
 			}
 		}
 
+		private double SongTimeInterpolationTimeStart;
+		private double SongTimeAtStartOfInterpolation;
+		private double DesiredSongTime;
+
+		private double ChartPositionInterpolationTimeStart;
+		private double ChartPositionAtStartOfInterpolation;
+		private double DesiredChartPosition;
+
+		public EditorPosition(Action onPositionChanged)
+		{
+			Reset();
+			OnPositionChanged = onPositionChanged;
+		}
+
 		public int GetNearestRow()
 		{
 			var row = (int)ChartPosition;
@@ -61,9 +76,81 @@ namespace StepManiaEditor
 			return row;
 		}
 
-		public EditorPosition(Action onPositionChanged)
+		public void FinishInterpolating()
 		{
-			OnPositionChanged = onPositionChanged;
+			ChartPosition = DesiredChartPosition;
+			SongTime = DesiredSongTime;
+		}
+
+		public void CancelInterpolating()
+		{
+			SetDesiredPositionToCurrent();
+		}
+
+		public void SetDesiredPositionToCurrent()
+		{
+			DesiredChartPosition = ChartPosition;
+			DesiredSongTime = SongTime;
+		}
+
+		public void Reset()
+		{
+			ChartPosition = 0.0;
+			CancelInterpolating();
+		}
+
+		public void BeginSongTimeInterpolation(double timeNow, double songTimeDelta)
+		{
+			SongTimeInterpolationTimeStart = timeNow;
+			DesiredSongTime += songTimeDelta;
+			SongTimeAtStartOfInterpolation = SongTime;
+		}
+
+		public void BeginChartPositionInterpolation(double timeNow, double chartPositionDelta)
+		{
+			ChartPositionInterpolationTimeStart = timeNow;
+			DesiredChartPosition += chartPositionDelta;
+			ChartPositionAtStartOfInterpolation = ChartPosition;
+		}
+
+		public bool IsInterpolatingSongTime()
+		{
+			return !SongTime.DoubleEquals(DesiredSongTime);
+		}
+
+		public bool IsInterpolatingChartPosition()
+		{
+			return !ChartPosition.DoubleEquals(DesiredChartPosition);
+		}
+
+		public void UpdateSongTimeInterpolation(double timeNow)
+		{
+			var interpolationTime = Preferences.Instance.PreferencesScroll.ScrollInterpolationDuration;
+			if (IsInterpolatingSongTime())
+			{
+				SongTime = Interpolation.Lerp(
+					SongTimeAtStartOfInterpolation,
+					DesiredSongTime,
+					SongTimeInterpolationTimeStart,
+					SongTimeInterpolationTimeStart + interpolationTime,
+					timeNow);
+				DesiredChartPosition = ChartPosition;
+			}
+		}
+
+		public void UpdateChartPositionInterpolation(double timeNow)
+		{
+			var interpolationTime = Preferences.Instance.PreferencesScroll.ScrollInterpolationDuration;
+			if (IsInterpolatingChartPosition())
+			{
+				ChartPosition = Interpolation.Lerp(
+					ChartPositionAtStartOfInterpolation,
+					DesiredChartPosition,
+					ChartPositionInterpolationTimeStart,
+					ChartPositionInterpolationTimeStart + interpolationTime,
+					timeNow);
+				DesiredSongTime = SongTime;
+			}
 		}
 	}
 }

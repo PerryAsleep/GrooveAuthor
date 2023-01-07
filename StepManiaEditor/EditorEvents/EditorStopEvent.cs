@@ -7,7 +7,7 @@ using static StepManiaEditor.Utils;
 
 namespace StepManiaEditor
 {
-	internal class EditorStopEvent : EditorRateAlteringEvent, IChartRegion
+	internal sealed class EditorStopEvent : EditorRateAlteringEvent, IChartRegion
 	{
 		public static readonly string EventShortDescription =
 			"Stops pause the chart playback and occur after notes at the same position.\n" +
@@ -112,32 +112,6 @@ namespace StepManiaEditor
 				Format,
 				Alpha,
 				WidgetHelp);
-		}
-	}
-
-	/// <summary>
-	/// Dummy EditorStopEvent to use when needing to search for EditorStopEvents
-	/// in data structures which require comparing to an input event.
-	/// </summary>
-	internal sealed class EditorDummyStopEvent : EditorStopEvent
-	{
-		private int Row;
-		private double ChartTime;
-
-		public EditorDummyStopEvent(EditorChart editorChart, int row, double chartTime)
-			: base(new EventConfig { EditorChart = editorChart, IsDummyEvent = true, ChartPosition = row, UseDoubleChartPosition = true }, null)
-		{
-			Row = row;
-			ChartTime = chartTime;
-		}
-
-		public override int GetRow()
-		{
-			return Row;
-		}
-		public override double GetChartTime()
-		{
-			return ChartTime;
 		}
 	}
 }

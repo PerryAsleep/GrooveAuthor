@@ -7,7 +7,7 @@ using static StepManiaEditor.Utils;
 
 namespace StepManiaEditor
 {
-	internal class EditorFakeSegmentEvent : EditorEvent, IChartRegion
+	internal sealed class EditorFakeSegmentEvent : EditorEvent, IChartRegion
 	{
 		public static readonly string EventShortDescription =
 			"Notes that occur during a fake region are not counted.";
@@ -105,32 +105,6 @@ namespace StepManiaEditor
 				Alpha,
 				WidgetHelp,
 				0.0);
-		}
-	}
-
-	/// <summary>
-	/// Dummy EditorFakeSegmentEvent to use when needing to search for EditorFakeSegmentEvent
-	/// in data structures which require comparing to an input event.
-	/// </summary>
-	internal sealed class EditorDummyFakeSegmentEvent : EditorFakeSegmentEvent
-	{
-		private int Row;
-		private double ChartTime;
-
-		public EditorDummyFakeSegmentEvent(EditorChart editorChart, int row, double chartTime)
-			: base(new EventConfig { EditorChart = editorChart, IsDummyEvent = true, ChartPosition = row, UseDoubleChartPosition = true }, null)
-		{
-			Row = row;
-			ChartTime = chartTime;
-		}
-
-		public override int GetRow()
-		{
-			return Row;
-		}
-		public override double GetChartTime()
-		{
-			return ChartTime;
 		}
 	}
 }

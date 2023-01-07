@@ -5,10 +5,9 @@ using static Fumen.Utils;
 using static StepManiaEditor.Editor;
 using static StepManiaEditor.Utils;
 
-
 namespace StepManiaEditor
 {
-	internal class EditorDelayEvent : EditorRateAlteringEvent, IChartRegion
+	internal sealed class EditorDelayEvent : EditorRateAlteringEvent, IChartRegion
 	{
 		public static readonly string EventShortDescription =
 			"Delays pause the chart playback and occur before notes at the same position.\n" +
@@ -114,32 +113,6 @@ namespace StepManiaEditor
 				Format,
 				Alpha,
 				WidgetHelp);
-		}
-	}
-
-	/// <summary>
-	/// Dummy EditorDelayEvent to use when needing to search for EditorDelayEvents
-	/// in data structures which require comparing to an input event.
-	/// </summary>
-	internal sealed class EditorDummyDelayEvent : EditorDelayEvent
-	{
-		private int Row;
-		private double ChartTime;
-
-		public EditorDummyDelayEvent(EditorChart editorChart, int row, double chartTime)
-			: base(new EventConfig { EditorChart = editorChart, IsDummyEvent = true, ChartPosition = row, UseDoubleChartPosition = true }, null)
-		{
-			Row = row;
-			ChartTime = chartTime;
-		}
-
-		public override int GetRow()
-		{
-			return Row;
-		}
-		public override double GetChartTime()
-		{
-			return ChartTime;
 		}
 	}
 }

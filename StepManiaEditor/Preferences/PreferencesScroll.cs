@@ -16,6 +16,10 @@ namespace StepManiaEditor
 		public const float DefaultVariablePixelsPerSecondAtDefaultBPM = 300.0f;
 		public const Editor.WaveFormScrollMode DefaultRowBasedWaveFormScrollMode = Editor.WaveFormScrollMode.MostCommonTempo;
 		public const bool DefaultStopPlaybackWhenScrolling = false;
+		public const double DefaultZoomMultiplier = 1.2;
+		public const double DefaultScrollWheelTime = 0.25;
+		public const int DefaultScrollWheelRows = 48;
+		public const double DefaultScrollInterpolationDuration = 0.1;
 
 		// Preferences.
 		[JsonInclude] public bool ShowScrollControlPreferencesWindow = true;
@@ -25,6 +29,10 @@ namespace StepManiaEditor
 		[JsonInclude] public float VariablePixelsPerSecondAtDefaultBPM = DefaultVariablePixelsPerSecondAtDefaultBPM;
 		[JsonInclude] public Editor.WaveFormScrollMode RowBasedWaveFormScrollMode = DefaultRowBasedWaveFormScrollMode;
 		[JsonInclude] public bool StopPlaybackWhenScrolling = DefaultStopPlaybackWhenScrolling;
+		[JsonInclude] public double ZoomMultiplier = DefaultZoomMultiplier;
+		[JsonInclude] public double ScrollWheelTime = DefaultScrollWheelTime;
+		[JsonInclude] public int ScrollWheelRows = DefaultScrollWheelRows;
+		[JsonInclude] public double ScrollInterpolationDuration = DefaultScrollInterpolationDuration;
 
 		public bool IsUsingDefaults()
 		{
@@ -33,7 +41,11 @@ namespace StepManiaEditor
 			       && RowBasedPixelsPerRow.FloatEquals(DefaultRowBasedPixelsPerRow)
 			       && VariablePixelsPerSecondAtDefaultBPM.FloatEquals(DefaultVariablePixelsPerSecondAtDefaultBPM)
 			       && RowBasedWaveFormScrollMode == DefaultRowBasedWaveFormScrollMode
-			       && StopPlaybackWhenScrolling == DefaultStopPlaybackWhenScrolling;
+			       && StopPlaybackWhenScrolling == DefaultStopPlaybackWhenScrolling
+				   && ZoomMultiplier.DoubleEquals(DefaultZoomMultiplier)
+				   && ScrollWheelTime.DoubleEquals(DefaultScrollWheelTime)
+				   && ScrollWheelRows == DefaultScrollWheelRows
+				   && ScrollInterpolationDuration.DoubleEquals(DefaultScrollInterpolationDuration);
 	}
 
 		public void RestoreDefaults()
@@ -56,6 +68,10 @@ namespace StepManiaEditor
 		private readonly float PreviousVariablePixelsPerSecondAtDefaultBPM;
 		private readonly Editor.WaveFormScrollMode PreviousRowBasedWaveFormScrollMode;
 		private readonly bool PreviousStopPlaybackWhenScrolling;
+		private readonly double PreviousZoomMultiplier;
+		private readonly double PreviousScrollWheelTime;
+		private readonly int PreviousScrollWheelRows;
+		private readonly double PreviousScrollInterpolationDuration;
 
 		public ActionRestoreScrollPreferenceDefaults()
 		{
@@ -66,6 +82,10 @@ namespace StepManiaEditor
 			PreviousVariablePixelsPerSecondAtDefaultBPM = p.VariablePixelsPerSecondAtDefaultBPM;
 			PreviousRowBasedWaveFormScrollMode = p.RowBasedWaveFormScrollMode;
 			PreviousStopPlaybackWhenScrolling = p.StopPlaybackWhenScrolling;
+			PreviousZoomMultiplier = p.ZoomMultiplier;
+			PreviousScrollWheelTime = p.ScrollWheelTime;
+			PreviousScrollWheelRows = p.ScrollWheelRows;
+			PreviousScrollInterpolationDuration  = p.ScrollInterpolationDuration;
 		}
 
 		public override bool AffectsFile()
@@ -87,6 +107,10 @@ namespace StepManiaEditor
 			p.VariablePixelsPerSecondAtDefaultBPM = PreferencesScroll.DefaultVariablePixelsPerSecondAtDefaultBPM;
 			p.RowBasedWaveFormScrollMode = PreferencesScroll.DefaultRowBasedWaveFormScrollMode;
 			p.StopPlaybackWhenScrolling = PreferencesScroll.DefaultStopPlaybackWhenScrolling;
+			p.ZoomMultiplier = PreferencesScroll.DefaultZoomMultiplier;
+			p.ScrollWheelTime = PreferencesScroll.DefaultScrollWheelTime;
+			p.ScrollWheelRows = PreferencesScroll.DefaultScrollWheelRows;
+			p.ScrollInterpolationDuration = PreferencesScroll.DefaultScrollInterpolationDuration;
 		}
 
 		public override void Undo()
@@ -98,6 +122,10 @@ namespace StepManiaEditor
 			p.VariablePixelsPerSecondAtDefaultBPM = PreviousVariablePixelsPerSecondAtDefaultBPM;
 			p.RowBasedWaveFormScrollMode = PreviousRowBasedWaveFormScrollMode;
 			p.StopPlaybackWhenScrolling = PreviousStopPlaybackWhenScrolling;
+			p.ZoomMultiplier = PreviousZoomMultiplier;
+			p.ScrollWheelTime = PreviousScrollWheelTime;
+			p.ScrollWheelRows = PreviousScrollWheelRows;
+			p.ScrollInterpolationDuration = PreviousScrollInterpolationDuration;
 		}
 	}
 }

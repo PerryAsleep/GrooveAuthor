@@ -7,7 +7,7 @@ using static StepManiaEditor.Utils;
 
 namespace StepManiaEditor
 {
-	internal class EditorWarpEvent : EditorRateAlteringEvent, IChartRegion
+	internal sealed class EditorWarpEvent : EditorRateAlteringEvent, IChartRegion
 	{
 		public static readonly string EventShortDescription =
 			"A warp will instantly advance the chart forward by the specified number of rows.\n" +
@@ -108,32 +108,6 @@ namespace StepManiaEditor
 				Alpha,
 				WidgetHelp,
 				0);
-		}
-	}
-
-	/// <summary>
-	/// Dummy EditorWarpEvent to use when needing to search for EditorWarpEvents
-	/// in data structures which require comparing to an input event.
-	/// </summary>
-	internal sealed class EditorDummyWarpEvent : EditorWarpEvent
-	{
-		private int Row;
-		private double ChartTime;
-
-		public EditorDummyWarpEvent(EditorChart editorChart, int row, double chartTime)
-			: base(new EventConfig { EditorChart = editorChart, IsDummyEvent = true, ChartPosition = row, UseDoubleChartPosition = true }, null)
-		{
-			Row = row;
-			ChartTime = chartTime;
-		}
-
-		public override int GetRow()
-		{
-			return Row;
-		}
-		public override double GetChartTime()
-		{
-			return ChartTime;
 		}
 	}
 }

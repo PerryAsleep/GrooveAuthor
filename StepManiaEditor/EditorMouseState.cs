@@ -77,6 +77,12 @@ namespace StepManiaEditor
 		{
 			return CurrentMouseState.ScrollWheelValue - PreviousMouseState.ScrollWheelValue;
 		}
+		public static int GetDefaultScrollDetentValue()
+		{
+			// 120 units is the default scroll amount reported by a mouse per detent on Windows.
+			// See WHEEL_DELTA and https://learn.microsoft.com/en-us/windows/win32/inputdev/wm-mousewheel
+			return 120;
+		}
 
 		public bool LeftClickDownThisFrame()
 		{

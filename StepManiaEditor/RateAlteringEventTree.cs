@@ -16,6 +16,13 @@ namespace StepManiaEditor
 			Chart = chart;
 		}
 
+		public Enumerator FindBest(EditorPosition p)
+		{
+			if (Preferences.Instance.PreferencesScroll.SpacingMode == Editor.SpacingMode.ConstantTime)
+				return FindBestByTime(p.ChartTime);
+			return FindBestByPosition(p.ChartPosition);
+		}
+
 		/// <summary>
 		/// Find the EditorRateAlteringEvent that is the greatest event which precedes the given time.
 		/// If no EditorRateAlteringEvent precedes the given time, instead find the EditorRateAlteringEvent

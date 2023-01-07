@@ -169,9 +169,6 @@ namespace StepManiaEditor
 		// Movement controls.
 		private EditorPosition Position;
 		private bool UpdatingSongTimeDirectly;
-		private double SongTimeInterpolationTimeStart = 0.0;
-		private double SongTimeAtStartOfInterpolation = 0.0;
-		private double DesiredSongTime = 0.0;
 
 		// Note controls
 		private LaneEditState[] LaneEditStates;
@@ -561,25 +558,26 @@ namespace StepManiaEditor
 			var stopWatch = new Stopwatch();
 			stopWatch.Start();
 
-			ProcessInput(gameTime);
+			double currentTime = gameTime.TotalGameTime.TotalSeconds;
+
+			ProcessInput(gameTime, currentTime);
 
 			TextureAtlas.Update();
 
 			if (!Playing)
 			{
-				if (!Position.SongTime.DoubleEquals(DesiredSongTime))
+				if (Position.IsInterpolatingChartPosition())
 				{
 					UpdatingSongTimeDirectly = true;
-
-					Position.SongTime = Interpolation.Lerp(
-						SongTimeAtStartOfInterpolation,
-						DesiredSongTime,
-						SongTimeInterpolationTimeStart,
-						SongTimeInterpolationTimeStart + 0.1,
-						gameTime.TotalGameTime.TotalSeconds);
-
+					Position.UpdateChartPositionInterpolation(currentTime);
 					MusicManager.SetMusicTimeInSeconds(Position.SongTime);
-
+					UpdatingSongTimeDirectly = false;
+				}
+				if (Position.IsInterpolatingSongTime())
+				{
+					UpdatingSongTimeDirectly = true;
+					Position.UpdateSongTimeInterpolation(currentTime);
+					MusicManager.SetMusicTimeInSeconds(Position.SongTime);
 					UpdatingSongTimeDirectly = false;
 				}
 			}
@@ -590,8 +588,8 @@ namespace StepManiaEditor
 					ZoomAtStartOfInterpolation,
 					DesiredZoom,
 					ZoomInterpolationTimeStart,
-					ZoomInterpolationTimeStart + 0.1,
-					gameTime.TotalGameTime.TotalSeconds), false);
+					ZoomInterpolationTimeStart + Preferences.Instance.PreferencesScroll.ScrollInterpolationDuration,
+					currentTime), false);
 			}
 
 			var pOptions = Preferences.Instance.PreferencesOptions;
@@ -634,7 +632,7 @@ namespace StepManiaEditor
 					}
 				}
 
-				DesiredSongTime = Position.SongTime;
+				Position.SetDesiredPositionToCurrent();
 
 				UpdatingSongTimeDirectly = false;
 			}
@@ -711,15 +709,16 @@ namespace StepManiaEditor
 		/// <summary>
 		/// Process keyboard and mouse input.
 		/// </summary>
-		/// <param name="gameTime">Current GameTime.</param>
-		private void ProcessInput(GameTime gameTime)
+		/// <param name="gameTime">Current GameTime. Needed for ImGui.</param>
+		/// <param name="currentTime">Current time in seconds.</param>
+		private void ProcessInput(GameTime gameTime, double currentTime)
 		{
 			var inFocus = IsApplicationFocused();
 
 			CurrentDesiredCursor = Cursors.Default;
 			CanShowRightClickPopupThisFrame = false;
 
-			SelectedRegion.UpdateTime(gameTime.TotalGameTime.TotalSeconds);
+			SelectedRegion.UpdateTime(currentTime);
 
 			// ImGui needs to update its frame even the app is not in focus.
 			// There may be a way to decouple input processing and advancing the frame, but for now
@@ -734,7 +733,7 @@ namespace StepManiaEditor
 			if (imGuiWantKeyboard)
 				KeyCommandManager.CancelAllCommands();
 			else
-				KeyCommandManager.Update(gameTime.TotalGameTime.TotalSeconds);
+				KeyCommandManager.Update(currentTime);
 
 			// Process Mouse Input.
 			var state = Mouse.GetState();
@@ -774,7 +773,7 @@ namespace StepManiaEditor
 
 			// Process input for selecting a region.
 			if (!MiniMapCapturingMouse && !MovingFocalPoint)
-				ProcessInputForSelectedRegion(gameTime);
+				ProcessInputForSelectedRegion(currentTime);
 
 			// Process right click popup eligibility.
 			CanShowRightClickPopupThisFrame = (!MiniMapCapturingMouse && !MovingFocalPoint && !MovingFocalPoint);
@@ -790,7 +789,7 @@ namespace StepManiaEditor
 			PreviousDesiredCursor = CurrentDesiredCursor;
 
 			// Process input for scrolling and zooming.
-			ProcessInputForScrollingAndZooming(gameTime);
+			ProcessInputForScrollingAndZooming(currentTime);
 		}
 
 		/// <summary>
@@ -852,7 +851,7 @@ namespace StepManiaEditor
 		/// Processes input for selecting regions with the mouse.
 		/// </summary>
 		/// <remarks>Helper for ProcessInput.</remarks>
-		private void ProcessInputForSelectedRegion(GameTime gameTime)
+		private void ProcessInputForSelectedRegion(double currentTime)
 		{
 			// Starting a selection.
 			if (EditorMouseState.LeftClickDownThisFrame())
@@ -867,7 +866,7 @@ namespace StepManiaEditor
 					chartPosition,
 					GetSizeZoom(),
 					GetFocalPointX(),
-					gameTime.TotalGameTime.TotalSeconds);
+					currentTime);
 			}
 
 			// Dragging a selection.
@@ -888,10 +887,10 @@ namespace StepManiaEditor
 		/// Processes input for scrolling and zooming.
 		/// </summary>
 		/// <remarks>Helper for ProcessInput.</remarks>
-		private void ProcessInputForScrollingAndZooming(GameTime gameTime)
+		private void ProcessInputForScrollingAndZooming(double currentTime)
 		{
 			var pScroll = Preferences.Instance.PreferencesScroll;
-			var scrollDelta = EditorMouseState.ScrollDeltaSinceLastFrame();
+			float scrollDelta = (float)EditorMouseState.ScrollDeltaSinceLastFrame() / EditorMouseState.GetDefaultScrollDetentValue();
 			var scrollShouldZoom = KeyCommandManager.IsKeyDown(Keys.LeftControl);
 
 			// Hack.
@@ -904,32 +903,28 @@ namespace StepManiaEditor
 				SetZoom(Zoom / 1.0001, true);
 			}
 
-			// Scrolling
-			// TODO: wtf are these values
-			if (scrollShouldZoom)
+			// Scrolling.
+			if(!scrollDelta.FloatEquals(0.0f))
 			{
-				if (scrollDelta > 0)
+				// Adjust zoom.
+				if (scrollShouldZoom)
 				{
-					SetDesiredZoom(DesiredZoom * 1.2);
-					ZoomInterpolationTimeStart = gameTime.TotalGameTime.TotalSeconds;
+					if (scrollDelta > 0.0f)
+						SetDesiredZoom(DesiredZoom * (pScroll.ZoomMultiplier * scrollDelta));
+					else
+						SetDesiredZoom(DesiredZoom / (pScroll.ZoomMultiplier * -scrollDelta));
+					ZoomInterpolationTimeStart = currentTime;
 					ZoomAtStartOfInterpolation = Zoom;
 				}
 
-				if (scrollDelta < 0)
+				// Adjust position.
+				else
 				{
-					SetDesiredZoom(DesiredZoom / 1.2);
-					ZoomInterpolationTimeStart = gameTime.TotalGameTime.TotalSeconds;
-					ZoomAtStartOfInterpolation = Zoom;
-				}
-			}
-			else
-			{
-				if (scrollDelta > 0)
-				{
-					var delta = 0.25 * (1.0 / Zoom);
+					var timeDelta = (pScroll.ScrollWheelTime / Zoom) * (scrollDelta > 0.0f ? -1.0f : 1.0f);
+					var rowDelta = (pScroll.ScrollWheelRows / Zoom) * (scrollDelta > 0.0f ? -1.0f : 1.0f);
 					if (Playing)
 					{
-						PlaybackStartTime -= delta;
+						PlaybackStartTime += timeDelta;
 						Position.SongTime = PlaybackStartTime + PlaybackStopwatch.Elapsed.TotalSeconds;
 
 						if (pScroll.StopPlaybackWhenScrolling)
@@ -946,46 +941,17 @@ namespace StepManiaEditor
 					{
 						if (SnapLevels[SnapIndex].Rows == 0)
 						{
-							DesiredSongTime -= delta;
-							SongTimeInterpolationTimeStart = gameTime.TotalGameTime.TotalSeconds;
-							SongTimeAtStartOfInterpolation = Position.SongTime;
+							if (pScroll.SpacingMode == SpacingMode.ConstantTime)
+								Position.BeginSongTimeInterpolation(currentTime, timeDelta);
+							else
+								Position.BeginChartPositionInterpolation(currentTime, rowDelta);
 						}
 						else
 						{
-							OnMoveUp();
-						}
-					}
-				}
-
-				if (scrollDelta < 0)
-				{
-					var delta = 0.25 * (1.0 / Zoom);
-					if (Playing)
-					{
-						PlaybackStartTime += delta;
-						Position.SongTime = PlaybackStartTime + PlaybackStopwatch.Elapsed.TotalSeconds;
-
-						if (pScroll.StopPlaybackWhenScrolling)
-						{
-							StopPlayback();
-						}
-						else
-						{
-							MusicManager.SetMusicTimeInSeconds(Position.SongTime);
-						}
-						UpdateAutoPlayFromScrolling();
-					}
-					else
-					{
-						if (SnapLevels[SnapIndex].Rows == 0)
-						{
-							DesiredSongTime += delta;
-							SongTimeInterpolationTimeStart = gameTime.TotalGameTime.TotalSeconds;
-							SongTimeAtStartOfInterpolation = Position.SongTime;
-						}
-						else
-						{
-							OnMoveDown();
+							if (scrollDelta > 0.0f)
+								OnMoveUp();
+							else
+								OnMoveDown();
 						}
 					}
 				}
@@ -1038,7 +1004,7 @@ namespace StepManiaEditor
 			if (!UpdatingSongTimeDirectly)
 			{
 				var songTime = Position.SongTime;
-				DesiredSongTime = songTime;
+				Position.SetDesiredPositionToCurrent();
 				MusicManager.SetMusicTimeInSeconds(songTime);
 
 				if (Playing)
@@ -1440,14 +1406,11 @@ namespace StepManiaEditor
 			// above.
 
 			// Get the current time and position.
-			var time = Position.ChartTime;
-			double chartPosition = 0.0;
-			if (!ActiveChart.TryGetChartPositionFromTime(time, ref chartPosition))
-				return;
+			double time = Position.ChartTime;
+			double chartPosition = Position.ChartPosition;
 
 			// Find the interpolated scroll rate to use as a multiplier.
-			// The interpolated scroll rate to use is the value at the current exact time.
-			var interpolatedScrollRate = GetInterpolatedScrollRate(time, chartPosition);
+			var interpolatedScrollRate = GetCurrentInterpolatedScrollRate();
 
 			// Now, scroll up to the top of the screen so we can start processing events going downwards.
 			// We know what time / pos we are drawing at the receptors, but not the rate to get to that time from the top
@@ -1456,7 +1419,7 @@ namespace StepManiaEditor
 			// Then we need to find the greatest preceding notes by scanning upwards.
 			// Once we find that note, we start iterating downwards while also keeping track of the rate events along the way.
 
-			var rateEnumerator = ActiveChart.RateAlteringEvents.FindBestByTime(time);
+			var rateEnumerator = ActiveChart.RateAlteringEvents.FindBest(Position);
 			if (rateEnumerator == null)
 				return;
 
@@ -1754,36 +1717,12 @@ namespace StepManiaEditor
 			}
 		}
 
-		private double GetCurrentInterpolatedScrollRateFromTime()
-		{
-			if (ActiveChart == null)
-				return 1.0;
-			var time = Position.ChartTime;
-			var chartPosition = 0.0;
-			if (!ActiveChart.TryGetChartPositionFromTime(time, ref chartPosition))
-				return 1.0;
-			return GetInterpolatedScrollRate(time, chartPosition);
-		}
-
-		private double GetCurrentInterpolatedScrollRateFromPosition()
-		{
-			if (ActiveChart == null)
-				return 1.0;
-			var chartPosition = Position.ChartPosition;
-			var time = 0.0;
-			if (!ActiveChart.TryGetTimeFromChartPosition(chartPosition, ref time))
-				return 1.0;
-			return GetInterpolatedScrollRate(time, chartPosition);
-		}
-
 		/// <summary>
-		/// Gets the interpolated scroll rate to use for the given Chart time and position.
+		/// Gets the current interpolated scroll rate to use for the active Chart.
 		/// </summary>
-		/// <param name="chartTime">Chart time.</param>
-		/// <param name="chartPosition">Chart position.</param>
 		/// <remarks>Helper for UpdateChartEvents.</remarks>
 		/// <returns>Interpolated scroll rate.</returns>
-		private double GetInterpolatedScrollRate(double chartTime, double chartPosition)
+		private double GetCurrentInterpolatedScrollRate()
 		{
 			// Find the interpolated scroll rate to use as a multiplier.
 			// The interpolated scroll rate to use is the value at the current exact time.
@@ -1792,8 +1731,8 @@ namespace StepManiaEditor
 			{
 				var sriEvent = new ScrollRateInterpolation(0.0, 0, 0L, false)
 				{
-					IntegerPosition = (int)chartPosition,
-					TimeMicros = ToMicros(chartTime),
+					IntegerPosition = (int)Position.ChartPosition,
+					TimeMicros = ToMicros(Position.ChartTime),
 				};
 				var ratePosEventForChecking = new EditorInterpolatedRateAlteringEvent(
 					new EditorEvent.EventConfig { EditorChart = ActiveChart, ChartEvent = sriEvent }, sriEvent);
@@ -1805,9 +1744,9 @@ namespace StepManiaEditor
 					interpolatedScrollRateEnumerator.MoveNext();
 					var interpolatedRateEvent = interpolatedScrollRateEnumerator.Current;
 					if (interpolatedRateEvent.InterpolatesByTime())
-						interpolatedScrollRate = interpolatedRateEvent.GetInterpolatedScrollRateFromTime(chartTime);
+						interpolatedScrollRate = interpolatedRateEvent.GetInterpolatedScrollRateFromTime(Position.ChartTime);
 					else
-						interpolatedScrollRate = interpolatedRateEvent.GetInterpolatedScrollRateFromRow(chartPosition);
+						interpolatedScrollRate = interpolatedRateEvent.GetInterpolatedScrollRateFromRow(Position.ChartPosition);
 				}
 				else
 				{
@@ -1817,9 +1756,9 @@ namespace StepManiaEditor
 						interpolatedScrollRateEnumerator.MoveNext();
 						var interpolatedRateEvent = interpolatedScrollRateEnumerator.Current;
 						if (interpolatedRateEvent.InterpolatesByTime())
-							interpolatedScrollRate = interpolatedRateEvent.GetInterpolatedScrollRateFromTime(chartTime);
+							interpolatedScrollRate = interpolatedRateEvent.GetInterpolatedScrollRateFromTime(Position.ChartTime);
 						else
-							interpolatedScrollRate = interpolatedRateEvent.GetInterpolatedScrollRateFromRow(chartPosition);
+							interpolatedScrollRate = interpolatedRateEvent.GetInterpolatedScrollRateFromRow(Position.ChartPosition);
 					}
 				}
 			}
@@ -1990,7 +1929,7 @@ namespace StepManiaEditor
 			double chartPositionAtTopOfScreen)
 		{
 			// Check for adding regions which extend through the top of the screen.
-			var regions = ActiveChart.GetRegionsOverlapping((int)chartPositionAtTopOfScreen, chartTimeAtTopOfScreen);
+			var regions = ActiveChart.GetRegionsOverlapping(chartPositionAtTopOfScreen, chartTimeAtTopOfScreen);
 			foreach (var region in regions)
 				AddRegion(region, ref regionsNeedingToBeAdded, ref addedRegions, previousRateEventY, nextRateEvent, chartRegionX, chartRegionW);
 
@@ -2174,17 +2113,14 @@ namespace StepManiaEditor
 			// desired Y position's chart time and chart position from rate event's screen Y position and its rate
 			// information.
 			var focalPointChartTime = Position.ChartTime;
-			double focalPointChartPosition = 0.0;
-			if (!ActiveChart.TryGetChartPositionFromTime(focalPointChartTime, ref focalPointChartPosition))
-				return (0.0, 0.0);
+			double focalPointChartPosition = Position.ChartPosition;
 			var focalPointY = (double)GetFocalPointY();
-
-			var rateEnumerator = ActiveChart.RateAlteringEvents.FindBestByTime(focalPointChartTime);
+			var rateEnumerator = ActiveChart.RateAlteringEvents.FindBest(Position);
 			if (rateEnumerator == null)
 				return (0.0, 0.0);
 			rateEnumerator.MoveNext();
 
-			var interpolatedScrollRate = GetInterpolatedScrollRate(focalPointChartTime, focalPointChartPosition);
+			var interpolatedScrollRate = GetCurrentInterpolatedScrollRate();
 			var spacingZoom = GetSpacingZoom();
 
 			// Determine the active rate event's position and rate information.
@@ -3422,8 +3358,7 @@ namespace StepManiaEditor
 				OnChartSelected(newActiveChart, false);
 
 				// Find a better spot for this.
-				Position.ChartPosition = 0.0;
-				DesiredSongTime = Position.SongTime;
+				Position.Reset();
 
 				SetZoom(1.0, true);
 			}
@@ -3858,7 +3793,7 @@ namespace StepManiaEditor
 						var adjustedMaxPosition = maxPosition + GetPositionRangeOfYPixelDurationAtTime(maxPosition, halfArrowH);
 
 						var enumerator = ActiveChart.EditorEvents.FindFirstAfterChartPosition(adjustedMinPosition);
-						while (enumerator.MoveNext())
+						while (enumerator != null && enumerator.MoveNext())
 						{
 							if (enumerator.Current.GetRow() > adjustedMaxPosition)
 								break;
@@ -4002,7 +3937,7 @@ namespace StepManiaEditor
 		{
 			var rae = ActiveChart.FindActiveRateAlteringEventForTime(time);
 			var spacingHelper = EventSpacingHelper.GetSpacingHelper(ActiveChart);
-			spacingHelper.UpdatePpsAndPpr(rae, GetCurrentInterpolatedScrollRateFromTime(), GetSpacingZoom());
+			spacingHelper.UpdatePpsAndPpr(rae, GetCurrentInterpolatedScrollRate(), GetSpacingZoom());
 
 			return duration / spacingHelper.GetPps();
 		}
@@ -4024,7 +3959,7 @@ namespace StepManiaEditor
 		{
 			var rae = ActiveChart.FindActiveRateAlteringEventForPosition(position);
 			var spacingHelper = EventSpacingHelper.GetSpacingHelper(ActiveChart);
-			spacingHelper.UpdatePpsAndPpr(rae, GetCurrentInterpolatedScrollRateFromPosition(), GetSpacingZoom());
+			spacingHelper.UpdatePpsAndPpr(rae, GetCurrentInterpolatedScrollRate(), GetSpacingZoom());
 
 			return duration / spacingHelper.GetPpr();
 		}
@@ -4650,8 +4585,7 @@ namespace StepManiaEditor
 		{
 			UnloadSongResources();
 			ActiveSong = new EditorSong(this, GraphicsDevice, ImGuiRenderer);
-			Position.ChartPosition = 0.0;
-			DesiredSongTime = Position.SongTime;
+			Position.Reset();
 			SetZoom(1.0, true);
 		}
 
@@ -4671,8 +4605,7 @@ namespace StepManiaEditor
 		private void OnCloseNoSave()
 		{
 			UnloadSongResources();
-			Position.ChartPosition = 0.0;
-			DesiredSongTime = Position.SongTime;
+			Position.Reset();
 			SetZoom(1.0, true);
 		}
 

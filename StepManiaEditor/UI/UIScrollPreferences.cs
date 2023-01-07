@@ -43,8 +43,16 @@ namespace StepManiaEditor
 				}
 
 				ImGui.Separator();
-				if (ImGuiLayoutUtils.BeginTable("Scroll Stop", TitleColumnWidth))
+				if (ImGuiLayoutUtils.BeginTable("Scroll Wheel", TitleColumnWidth))
 				{
+					ImGuiLayoutUtils.DrawRowDragDouble(true, "Scroll Time Value", p, nameof(p.ScrollWheelTime), false,
+						"When spacing by time, how much time should be advanced by the scroll wheel in seconds at the default zoom level.", 0.001f, "%.6fs", 0.0, 10.0);
+					ImGuiLayoutUtils.DrawRowDragInt(true, "Scroll Row Value", p, nameof(p.ScrollWheelRows), false,
+						"When spacing by rows, how many rows should be advanced by the scroll wheel at the default zoom level.", 1.0f, "%i", 0, 384);
+					ImGuiLayoutUtils.DrawRowDragDouble(true, "Scroll Zoom Factor", p, nameof(p.ZoomMultiplier), false,
+						"How much to zoom in or out when using the scroll wheel to alter the zoom level.", 0.0001f, "%.6f", 1.0, 4.0);
+					ImGuiLayoutUtils.DrawRowDragDouble(true, "Scroll Anim Time", p, nameof(p.ScrollInterpolationDuration), false,
+						"The amount of time in seconds to spend animating from one position to another when scrolling with the scroll wheel.", 0.0001f, "%.6f", 0.0, 1.0);
 					ImGuiLayoutUtils.DrawRowCheckbox("Stop On Scroll", ref p.StopPlaybackWhenScrolling,
 						"Stop song playback when manually scrolling the chart.");
 					ImGuiLayoutUtils.EndTable();

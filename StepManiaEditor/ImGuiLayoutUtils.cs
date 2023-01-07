@@ -80,6 +80,11 @@ namespace StepManiaEditor
 			ImGui.TableSetColumnIndex(1);
 		}
 
+		private static string GetDragHelpText(string helpText)
+		{
+			return string.IsNullOrEmpty(helpText) ? null : helpText + DragHelpText;
+		}
+
 		#region Checkbox
 
 		public static bool DrawRowCheckbox(string title, ref bool value, string help = null)
@@ -435,8 +440,7 @@ namespace StepManiaEditor
 			int min = int.MinValue,
 			int max = int.MaxValue)
 		{
-			var helpText = string.IsNullOrEmpty(help) ? null : help + DragHelpText;
-			var itemWidth = DrawHelp(helpText, width);
+			var itemWidth = DrawHelp(GetDragHelpText(help), width);
 			ImGui.SetNextItemWidth(itemWidth);
 			return Utils.DragInt(ref value, GetElementTitle(title), speed, format, min, max);
 		}
@@ -476,7 +480,7 @@ namespace StepManiaEditor
 				return (r, v);
 			}
 
-			return DrawLiveEditValue<int>(undoable, title, o, fieldName, width, affectsFile, Func, IntCompare, help);
+			return DrawLiveEditValue<int>(undoable, title, o, fieldName, width, affectsFile, Func, IntCompare, GetDragHelpText(help));
 		}
 
 		#endregion Drag Int
@@ -664,8 +668,7 @@ namespace StepManiaEditor
 			float max = float.MaxValue,
 			ImGuiSliderFlags flags = ImGuiSliderFlags.None)
 		{
-			var helpText = string.IsNullOrEmpty(help) ? null : help + DragHelpText;
-			var itemWidth = DrawHelp(helpText, width);
+			var itemWidth = DrawHelp(GetDragHelpText(help), width);
 			ImGui.SetNextItemWidth(itemWidth);
 			return ImGui.DragFloat(GetElementTitle(title), ref value, speed, min, max, format, flags);
 		}
@@ -710,7 +713,7 @@ namespace StepManiaEditor
 			var controlWidth = ImGui.GetContentRegionAvail().X - 20.0f - ImGui.GetStyle().ItemSpacing.X;
 
 			// Draw the checkbox for enabling the other control.
-			if (DrawCheckbox(false, title + "check", o, enabledFieldName, 20.0f, affectsFile, help))
+			if (DrawCheckbox(false, title + "check", o, enabledFieldName, 20.0f, affectsFile, GetDragHelpText(help)))
 			{
 				if (undoable)
 				{
@@ -770,7 +773,7 @@ namespace StepManiaEditor
 				return (r, v);
 			}
 
-			return DrawLiveEditValue<float>(undoable, title, o, fieldName, width, affectsFile, Func, FloatCompare, help);
+			return DrawLiveEditValue<float>(undoable, title, o, fieldName, width, affectsFile, Func, FloatCompare, GetDragHelpText(help));
 		}
 
 		#endregion Drag Float
@@ -800,8 +803,7 @@ namespace StepManiaEditor
 			double min = double.MinValue,
 			double max = double.MaxValue)
 		{
-			var helpText = string.IsNullOrEmpty(help) ? null : help + DragHelpText;
-			var itemWidth = DrawHelp(helpText, width);
+			var itemWidth = DrawHelp(GetDragHelpText(help), width);
 			ImGui.SetNextItemWidth(itemWidth);
 			return Utils.DragDouble(ref value, GetElementTitle(title), speed, format, min, max);
 		}
@@ -844,7 +846,7 @@ namespace StepManiaEditor
 			var controlWidth = ImGui.GetContentRegionAvail().X - 20.0f - ImGui.GetStyle().ItemSpacing.X;
 
 			// Draw the checkbox for enabling the other control.
-			if (DrawCheckbox(false, title + "check", o, enabledFieldName, 20.0f, affectsFile, help))
+			if (DrawCheckbox(false, title + "check", o, enabledFieldName, 20.0f, affectsFile, GetDragHelpText(help)))
 			{
 				if (undoable)
 				{
@@ -903,7 +905,7 @@ namespace StepManiaEditor
 				return (r, v);
 			}
 
-			return DrawLiveEditValue<double>(undoable, title, o, fieldName, width, affectsFile, Func, DoubleCompare, help);
+			return DrawLiveEditValue<double>(undoable, title, o, fieldName, width, affectsFile, Func, DoubleCompare, GetDragHelpText(help));
 		}
 
 		#endregion Drag Double

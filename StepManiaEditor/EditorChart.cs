@@ -129,10 +129,10 @@ namespace StepManiaEditor
 		public EventTree MiscEvents;
 		public RateAlteringEventTree RateAlteringEvents;
 		public RedBlackTree<EditorInterpolatedRateAlteringEvent> InterpolatedScrollRateEvents;
-		private RedBlackTree<EditorStopEvent> Stops;
-		private RedBlackTree<EditorDelayEvent> Delays;
-		private RedBlackTree<EditorFakeSegmentEvent> Fakes;
-		private RedBlackTree<EditorWarpEvent> Warps;
+		private EventTree Stops;
+		private EventTree Delays;
+		private EventTree Fakes;
+		private EventTree Warps;
 		private EditorPreviewRegionEvent PreviewEvent;
 
 		public double MostCommonTempo;
@@ -271,10 +271,10 @@ namespace StepManiaEditor
 			var editorEvents = new EventTree(this);
 			var rateAlteringEvents = new RateAlteringEventTree(this);
 			var interpolatedScrollRateEvents = new RedBlackTree<EditorInterpolatedRateAlteringEvent>();
-			var stops = new RedBlackTree<EditorStopEvent>();
-			var delays = new RedBlackTree<EditorDelayEvent>();
-			var fakes = new RedBlackTree<EditorFakeSegmentEvent>();
-			var warps = new RedBlackTree<EditorWarpEvent>();
+			var stops = new EventTree(this);
+			var delays = new EventTree(this);
+			var fakes = new EventTree(this);
+			var warps = new EventTree(this);
 			var miscEvents = new EventTree(this);
 
 			var lastHoldStarts = new EditorHoldStartNoteEvent[NumInputs];
@@ -602,19 +602,19 @@ namespace StepManiaEditor
 			return true;
 		}
 
-		public List<IChartRegion> GetRegionsOverlapping(int row, double chartTime)
+		public List<IChartRegion> GetRegionsOverlapping(double chartPosition, double chartTime)
 		{
 			var regions = new List<IChartRegion>();
-			var stop = GetStopEventOverlapping(row, chartTime);
+			var stop = GetStopEventOverlapping(chartPosition, chartTime);
 			if (stop != null)
 				regions.Add(stop);
-			var delay = GetDelayEventOverlapping(row, chartTime);
+			var delay = GetDelayEventOverlapping(chartPosition, chartTime);
 			if (delay != null)
 				regions.Add(delay);
-			var fake = GetFakeSegmentEventOverlapping(row, chartTime);
+			var fake = GetFakeSegmentEventOverlapping(chartPosition, chartTime);
 			if (fake != null)
 				regions.Add(fake);
-			var warp = GetWarpEventOverlapping(row, chartTime);
+			var warp = GetWarpEventOverlapping(chartPosition, chartTime);
 			if (warp != null)
 				regions.Add(warp);
 			if (PreviewEvent.GetChartTime() <= chartTime && PreviewEvent.GetChartTime() + PreviewEvent.GetRegionDuration() >= chartTime)
@@ -622,62 +622,66 @@ namespace StepManiaEditor
 			return regions;
 		}
 
-		private EditorStopEvent GetStopEventOverlapping(int row, double chartTime)
+		private EditorStopEvent GetStopEventOverlapping(double chartPosition, double chartTime)
 		{
 			if (Stops == null)
 				return null;
-
-			var enumerator = Stops.FindGreatestPreceding(new EditorDummyStopEvent(this, row, chartTime));
+			Stops.FindBestByPosition(chartPosition);
+			var enumerator = Stops.FindBestByPosition(chartPosition);
 			if (enumerator == null)
 				return null;
 			enumerator.MoveNext();
-			if (enumerator.Current.GetChartTime() + enumerator.Current.DoubleValue >= chartTime)
-				return enumerator.Current;
+			if (enumerator.Current.GetChartTime() <= chartTime
+				 && enumerator.Current.GetChartTime() + ((EditorStopEvent)enumerator.Current).DoubleValue >= chartTime)
+				return ((EditorStopEvent)enumerator.Current);
 
 			return null;
 		}
 
-		private EditorDelayEvent GetDelayEventOverlapping(int row, double chartTime)
+		private EditorDelayEvent GetDelayEventOverlapping(double chartPosition, double chartTime)
 		{
 			if (Delays == null)
 				return null;
-
-			var enumerator = Delays.FindGreatestPreceding(new EditorDummyDelayEvent(this, row, chartTime));
+			Delays.FindBestByPosition(chartPosition);
+			var enumerator = Delays.FindBestByPosition(chartPosition);
 			if (enumerator == null)
 				return null;
 			enumerator.MoveNext();
-			if (enumerator.Current.GetChartTime() + enumerator.Current.DoubleValue >= chartTime)
-				return enumerator.Current;
+			if (enumerator.Current.GetChartTime() <= chartTime
+				 && enumerator.Current.GetChartTime() + ((EditorDelayEvent)enumerator.Current).DoubleValue >= chartTime)
+				return ((EditorDelayEvent)enumerator.Current);
 
 			return null;
 		}
 
-		private EditorFakeSegmentEvent GetFakeSegmentEventOverlapping(int row, double chartTime)
+		private EditorFakeSegmentEvent GetFakeSegmentEventOverlapping(double chartPosition, double chartTime)
 		{
 			if (Fakes == null)
 				return null;
 
-			var enumerator = Fakes.FindGreatestPreceding(new EditorDummyFakeSegmentEvent(this, row, chartTime));
+			var enumerator = Fakes.FindBestByPosition(chartPosition);
 			if (enumerator == null)
 				return null;
 			enumerator.MoveNext();
-			if (enumerator.Current.GetChartTime() + enumerator.Current.DoubleValue >= chartTime)
-				return enumerator.Current;
+			if (enumerator.Current.GetChartTime() <= chartTime
+				 && enumerator.Current.GetChartTime() + ((EditorFakeSegmentEvent)enumerator.Current).DoubleValue >= chartTime)
+				return ((EditorFakeSegmentEvent)enumerator.Current);
 
 			return null;
 		}
 
-		private EditorWarpEvent GetWarpEventOverlapping(int row, double chartTime)
+		private EditorWarpEvent GetWarpEventOverlapping(double chartPosition, double chartTime)
 		{
 			if (Warps == null)
 				return null;
 
-			var enumerator = Warps.FindGreatestPreceding(new EditorDummyWarpEvent(this, row, chartTime));
+			var enumerator = Warps.FindBestByPosition(chartPosition);
 			if (enumerator == null)
 				return null;
 			enumerator.MoveNext();
-			if (enumerator.Current.GetRow() + enumerator.Current.IntValue >= row)
-				return enumerator.Current;
+			if (enumerator.Current.GetRow() <= chartPosition
+				 && enumerator.Current.GetRow() + ((EditorWarpEvent)enumerator.Current).IntValue >= chartPosition)
+				return ((EditorWarpEvent)enumerator.Current);
 
 			return null;
 		}
