@@ -60,6 +60,9 @@ namespace StepManiaEditor
 		// Scroll control preferences
 		[JsonInclude] public PreferencesScroll PreferencesScroll = new PreferencesScroll();
 
+		// Selection preferences
+		[JsonInclude] public PreferencesSelection PreferencesSelection = new PreferencesSelection();
+
 		// MiniMap preferences
 		[JsonInclude] public PreferencesMiniMap PreferencesMiniMap = new PreferencesMiniMap();
 

@@ -130,6 +130,7 @@ namespace StepManiaEditor
 		private UIChartList UIChartList;
 		private UIWaveFormPreferences UIWaveFormPreferences;
 		private UIScrollPreferences UIScrollPreferences;
+		private UISelectionPreferences UISelectionPreferences;
 		private UIMiniMapPreferences UIMiniMapPreferences;
 		private UIReceptorPreferences UIReceptorPreferences;
 		private UIOptions UIOptions;
@@ -436,6 +437,7 @@ namespace StepManiaEditor
 			UIChartList = new UIChartList(this);
 			UIWaveFormPreferences = new UIWaveFormPreferences(MusicManager);
 			UIScrollPreferences = new UIScrollPreferences();
+			UISelectionPreferences = new UISelectionPreferences();
 			UIMiniMapPreferences = new UIMiniMapPreferences();
 			UIReceptorPreferences = new UIReceptorPreferences(this);
 			UIOptions = new UIOptions();
@@ -2641,6 +2643,7 @@ namespace StepManiaEditor
 
 			UILog.Draw(LogBuffer, LogBufferLock);
 			UIScrollPreferences.Draw();
+			UISelectionPreferences.Draw();
 			UIWaveFormPreferences.Draw();
 			UIMiniMapPreferences.Draw();
 			UIReceptorPreferences.Draw();
@@ -2764,10 +2767,14 @@ namespace StepManiaEditor
 						p.ShowChartListWindow = true;
 
 					ImGui.Separator();
-					if (ImGui.MenuItem("Waveform Preferences"))
-						p.PreferencesWaveForm.ShowWaveFormPreferencesWindow = true;
 					if (ImGui.MenuItem("Scroll Preferences"))
 						p.PreferencesScroll.ShowScrollControlPreferencesWindow = true;
+					if (ImGui.MenuItem("Selection Preferences"))
+						p.PreferencesSelection.ShowSelectionControlPreferencesWindow = true;
+
+					ImGui.Separator();
+					if (ImGui.MenuItem("Waveform Preferences"))
+						p.PreferencesWaveForm.ShowWaveFormPreferencesWindow = true;
 					if (ImGui.MenuItem("Mini Map Preferences"))
 						p.PreferencesMiniMap.ShowMiniMapPreferencesWindow = true;
 					if (ImGui.MenuItem("Receptor Preferences"))
@@ -3700,10 +3707,8 @@ namespace StepManiaEditor
 			// A region was selected, collect all notes in the selected region.
 			else
 			{
-				var lanesWidth = ActiveChart.NumInputs * arrowWidthUnscaled;
-				var (minChartX, maxChartX) = SelectedRegion.GetSelectedXChartSpaceRange();
-				var minLane = (int)Math.Floor((minChartX + lanesWidth * 0.5) / arrowWidthUnscaled);
-				var maxLane = (int)Math.Floor((maxChartX + lanesWidth * 0.5) / arrowWidthUnscaled);
+				var (minLane, maxLane) = GetSelectedLanes();
+				
 				var fullyOutsideLanes = maxLane < 0 || minLane >= ActiveChart.NumInputs;
 				var partiallyOutsideLanes = !fullyOutsideLanes && (minLane < 0 || maxLane >= ActiveChart.NumInputs);
 				var selectMiscEvents = alt || fullyOutsideLanes;
@@ -3716,22 +3721,23 @@ namespace StepManiaEditor
 					// Select notes.
 					if (!selectMiscEvents)
 					{
-						// Extend the range to capture the tops and bottoms of arrows.
-						// This is an approximation as there may be rate altering events during the range.
-						var adjustedMinTime = minTime - GetTimeRangeOfYPixelDurationAtTime(minTime, halfArrowH);
-						var adjustedMaxTime = maxTime + GetTimeRangeOfYPixelDurationAtTime(maxTime, halfArrowH);
-
-						var enumerator = ActiveChart.EditorEvents.FindFirstAfterChartTime(adjustedMinTime);
-						while (enumerator.MoveNext())
+						// Adjust the time to account for the selection preference for how much of an event should be
+						// within the selected region.
+						var (adjustedMinTime, adjustedMaxTime) = AdjustSelectionTimeRange(minTime, maxTime, halfArrowH);
+						if (adjustedMinTime < adjustedMaxTime)
 						{
-							if (enumerator.Current.GetChartTime() > adjustedMaxTime)
-								break;
-							if (!isSelectable(enumerator.Current))
-								continue;
-							var lane = enumerator.Current.GetLane();
-							if (lane < minLane || lane > maxLane)
-								continue;
-							newlySelectedEvents.Add(enumerator.Current);
+							var enumerator = ActiveChart.EditorEvents.FindFirstAfterChartTime(adjustedMinTime);
+							while (enumerator.MoveNext())
+							{
+								if (enumerator.Current.GetChartTime() > adjustedMaxTime)
+									break;
+								if (!isSelectable(enumerator.Current))
+									continue;
+								var lane = enumerator.Current.GetLane();
+								if (lane < minLane || lane > maxLane)
+									continue;
+								newlySelectedEvents.Add(enumerator.Current);
+							}
 						}
 
 						// If nothing was selected and the selection was partially outside of the lanes, treat it as
@@ -3743,10 +3749,9 @@ namespace StepManiaEditor
 					// Select misc. events.
 					if (selectMiscEvents)
 					{
-						// Extend the range to capture the tops and bottoms of misc events.
-						// This is an approximation as there may be rate altering events during the range.
-						var adjustedMinTime = minTime - GetTimeRangeOfYPixelDurationAtTime(minTime, halfMiscEventH);
-						var adjustedMaxTime = maxTime + GetTimeRangeOfYPixelDurationAtTime(maxTime, halfMiscEventH);
+						// Adjust the time to account for the selection preference for how much of an event should be
+						// within the selected region.
+						var (adjustedMinTime, adjustedMaxTime) = AdjustSelectionTimeRange(minTime, maxTime, halfMiscEventH);
 
 						// Collect potential misc events.
 						var potentialEvents = new List<EditorEvent>();
@@ -3772,7 +3777,7 @@ namespace StepManiaEditor
 						{
 							if (!(potentialEvent.GetChartTime() >= adjustedMinTime && potentialEvent.GetChartTime() <= adjustedMaxTime))
 								continue;
-							if (!(potentialEvent.X < xEnd && potentialEvent.X + potentialEvent.W > xStart))
+							if (!DoesMiscEventFallWithinRange(potentialEvent, xStart, xEnd))
 								continue;
 							newlySelectedEvents.Add(potentialEvent);
 						}
@@ -3787,22 +3792,23 @@ namespace StepManiaEditor
 					// Select notes.
 					if (!selectMiscEvents)
 					{
-						// Extend the range to capture the tops and bottoms of arrows.
-						// This is an approximation as there may be rate altering events during the range.
-						var adjustedMinPosition = minPosition - GetPositionRangeOfYPixelDurationAtTime(minPosition, halfArrowH);
-						var adjustedMaxPosition = maxPosition + GetPositionRangeOfYPixelDurationAtTime(maxPosition, halfArrowH);
-
-						var enumerator = ActiveChart.EditorEvents.FindFirstAfterChartPosition(adjustedMinPosition);
-						while (enumerator != null && enumerator.MoveNext())
+						// Adjust the position to account for the selection preference for how much of an event should be
+						// within the selected region.
+						var (adjustedMinPosition, adjustedMaxPosition) = AdjustSelectionPositionRange(minPosition, maxPosition, halfArrowH);
+						if (adjustedMinPosition < adjustedMaxPosition)
 						{
-							if (enumerator.Current.GetRow() > adjustedMaxPosition)
-								break;
-							if (!isSelectable(enumerator.Current))
-								continue;
-							var lane = enumerator.Current.GetLane();
-							if (lane < minLane || lane > maxLane)
-								continue;
-							newlySelectedEvents.Add(enumerator.Current);
+							var enumerator = ActiveChart.EditorEvents.FindFirstAfterChartPosition(adjustedMinPosition);
+							while (enumerator != null && enumerator.MoveNext())
+							{
+								if (enumerator.Current.GetRow() > adjustedMaxPosition)
+									break;
+								if (!isSelectable(enumerator.Current))
+									continue;
+								var lane = enumerator.Current.GetLane();
+								if (lane < minLane || lane > maxLane)
+									continue;
+								newlySelectedEvents.Add(enumerator.Current);
+							}
 						}
 
 						// If nothing was selected and the selection was partially outside of the lanes, treat it as
@@ -3814,10 +3820,9 @@ namespace StepManiaEditor
 					// Select misc. events.
 					if (selectMiscEvents)
 					{
-						// Extend the range to capture the tops and bottoms of misc events.
-						// This is an approximation as there may be rate altering events during the range.
-						var adjustedMinPosition = minPosition - GetPositionRangeOfYPixelDurationAtTime(minPosition, halfMiscEventH);
-						var adjustedMaxPosition = maxPosition + GetPositionRangeOfYPixelDurationAtTime(maxPosition, halfMiscEventH);
+						// Adjust the position to account for the selection preference for how much of an event should be
+						// within the selected region.
+						var (adjustedMinPosition, adjustedMaxPosition) = AdjustSelectionPositionRange(minPosition, maxPosition, halfMiscEventH);
 
 						// Collect potential misc events.
 						var potentialEvents = new List<EditorEvent>();
@@ -3841,7 +3846,7 @@ namespace StepManiaEditor
 						{
 							if (!(potentialEvent.GetRow() >= adjustedMinPosition && potentialEvent.GetRow() <= adjustedMaxPosition))
 								continue;
-							if (!(potentialEvent.X < xEnd && potentialEvent.X + potentialEvent.W > xStart))
+							if (!DoesMiscEventFallWithinRange(potentialEvent, xStart, xEnd))
 								continue;
 							newlySelectedEvents.Add(potentialEvent);
 						}
@@ -3874,12 +3879,20 @@ namespace StepManiaEditor
 					if (enumerator != null)
 					{
 						bool last;
+						bool checkLane = Preferences.Instance.PreferencesSelection.RegionMode == PreferencesSelection.SelectionRegionMode.TimeOrPositionAndLane;
+						var minLane = Math.Min(newlySelectedEvents[0].GetLane(), Math.Min(LastSelectedEvent.GetLane(), newlySelectedEvents[newlySelectedEvents.Count - 1].GetLane()));
+						var maxLane = Math.Max(newlySelectedEvents[0].GetLane(), Math.Max(LastSelectedEvent.GetLane(), newlySelectedEvents[newlySelectedEvents.Count - 1].GetLane()));
+
 						while (enumerator.MoveNext())
 						{
 							last = enumerator.Current == end;
 							if (isSelectable(enumerator.Current))
 							{
-								SelectEvent(enumerator.Current, last);
+								if (!checkLane || (
+									checkLane && enumerator.Current.GetLane() >= minLane && enumerator.Current.GetLane() <= maxLane))
+								{
+									SelectEvent(enumerator.Current, last);
+								}
 							}
 							if (last)
 								break;
@@ -3921,6 +3934,113 @@ namespace StepManiaEditor
 		}
 
 		/// <summary>
+		/// Gets the min and max lanes encompassed by the SelectedRegion based on the current selection preferences.
+		/// </summary>
+		/// <returns>Min and max lanes from the SelectedRegion.</returns>
+		/// <remarks>Helper for FinishSelectedRegion.</remarks>
+		private (int, int) GetSelectedLanes()
+		{
+			var (arrowWidthUnscaled, _) = GetArrowDimensions(false);
+			var lanesWidth = ActiveChart.NumInputs * arrowWidthUnscaled;
+			var (minChartX, maxChartX) = SelectedRegion.GetSelectedXChartSpaceRange();
+
+			// Determine the min and max lanes to consider for selection based on the preference for how notes should be considered.
+			int minLane, maxLane;
+			switch (Preferences.Instance.PreferencesSelection.Mode)
+			{
+				case PreferencesSelection.SelectionMode.OverlapAny:
+					minLane = (int)Math.Floor((minChartX + lanesWidth * 0.5) / arrowWidthUnscaled);
+					maxLane = (int)Math.Floor((maxChartX + lanesWidth * 0.5) / arrowWidthUnscaled);
+					break;
+				case PreferencesSelection.SelectionMode.OverlapCenter:
+				default:
+					minLane = (int)Math.Floor((minChartX + lanesWidth * 0.5 + arrowWidthUnscaled * 0.5) / arrowWidthUnscaled);
+					maxLane = (int)Math.Floor((maxChartX + lanesWidth * 0.5 - arrowWidthUnscaled * 0.5) / arrowWidthUnscaled);
+					break;
+				case PreferencesSelection.SelectionMode.OverlapAll:
+					minLane = (int)Math.Ceiling((minChartX + lanesWidth * 0.5) / arrowWidthUnscaled);
+					maxLane = (int)Math.Floor((maxChartX + lanesWidth * 0.5) / arrowWidthUnscaled) - 1;
+					break;
+
+			}
+			return (minLane, maxLane);
+		}
+
+		/// <summary>
+		/// Given a time range defined by the given min and max time, returns an adjusted min and max time that
+		/// are expanded by the given distance value. The diven distance value is typically half the height of
+		/// an event that should be captured by a selection, like half of an arrow height or half of a misc.
+		/// event height.
+		/// </summary>
+		/// <returns>Adjusted min and max time.</returns>
+		/// <remarks>Helper for FinishSelectedRegion.</remarks>
+		private (double, double) AdjustSelectionTimeRange(double minTime, double maxTime, double halfHeight)
+		{
+			switch(Preferences.Instance.PreferencesSelection.Mode)
+			{
+				case PreferencesSelection.SelectionMode.OverlapAny:
+					// This is an approximation as there may be rate altering events during the range.
+					return (minTime - GetTimeRangeOfYPixelDurationAtTime(minTime, halfHeight),
+						maxTime + GetTimeRangeOfYPixelDurationAtTime(maxTime, halfHeight));
+				case PreferencesSelection.SelectionMode.OverlapAll:
+					// This is an approximation as there may be rate altering events during the range.
+					return (minTime + GetTimeRangeOfYPixelDurationAtTime(minTime, halfHeight),
+						maxTime - GetTimeRangeOfYPixelDurationAtTime(maxTime, halfHeight));
+				case PreferencesSelection.SelectionMode.OverlapCenter:
+				default:
+					return (minTime, maxTime);
+			}
+		}
+
+		/// <summary>
+		/// Given a position range defined by the given min and max position, returns an adjusted min and max
+		/// position that are expanded by the given distance value. The diven distance value is typically half
+		/// the height of an event that should be captured by a selection, like half of an arrow height or half
+		/// of a misc. event height.
+		/// </summary>
+		/// <returns>Adjusted min and max position.</returns>
+		/// <remarks>Helper for FinishSelectedRegion.</remarks>
+		private (double, double) AdjustSelectionPositionRange(double minPosition, double maxPosition, double halfHeight)
+		{
+			switch (Preferences.Instance.PreferencesSelection.Mode)
+			{
+				case PreferencesSelection.SelectionMode.OverlapAny:
+					// This is an approximation as there may be rate altering events during the range.
+					return (minPosition - GetPositionRangeOfYPixelDurationAtPosition(minPosition, halfHeight),
+						maxPosition + GetPositionRangeOfYPixelDurationAtPosition(maxPosition, halfHeight));
+				case PreferencesSelection.SelectionMode.OverlapAll:
+					// This is an approximation as there may be rate altering events during the range.
+					return (minPosition + GetPositionRangeOfYPixelDurationAtPosition(minPosition, halfHeight),
+						maxPosition - GetPositionRangeOfYPixelDurationAtPosition(maxPosition, halfHeight));
+				case PreferencesSelection.SelectionMode.OverlapCenter:
+				default:
+					return (minPosition, maxPosition);
+			}
+		}
+
+		/// <summary>
+		/// Returns whether the given EditorEvent is eligible to be selected based on its x values by checking
+		/// if the range defined by if fallse within the given start and end x values, taking into account the
+		/// current selection preferences.
+		/// </summary>
+		/// <returns>Whether the given EditorEvent falls within the given range.</returns>
+		/// <remarks>Helper for FinishSelectedRegion.</remarks>
+		private bool DoesMiscEventFallWithinRange(EditorEvent editorEvent, double xStart, double xEnd)
+		{
+			switch (Preferences.Instance.PreferencesSelection.Mode)
+			{
+				case PreferencesSelection.SelectionMode.OverlapAny:
+					return editorEvent.X <= xEnd && editorEvent.X + editorEvent.W >= xStart;
+				case PreferencesSelection.SelectionMode.OverlapAll:
+					return editorEvent.X >= xStart && editorEvent.X + editorEvent.W <= xEnd;
+				case PreferencesSelection.SelectionMode.OverlapCenter:
+				default:
+					return editorEvent.X + (editorEvent.W * 0.5) >= xStart && editorEvent.X + (editorEvent.W * 0.5) <= xEnd;
+			}
+
+		}
+
+		/// <summary>
 		/// Given a duration in pixel space in y, returns that duration as time based on the
 		/// rate altering event present at the given time. Note that this duration is an
 		/// approximation as the given pixel range may cover multiple rate altering events
@@ -3955,7 +4075,7 @@ namespace StepManiaEditor
 		/// Helper for FinishSelectedRegion. Used to approximate the row of arrow tops and bottoms
 		/// from their centers.
 		/// </remarks>
-		private double GetPositionRangeOfYPixelDurationAtTime(double position, double duration)
+		private double GetPositionRangeOfYPixelDurationAtPosition(double position, double duration)
 		{
 			var rae = ActiveChart.FindActiveRateAlteringEventForPosition(position);
 			var spacingHelper = EventSpacingHelper.GetSpacingHelper(ActiveChart);
