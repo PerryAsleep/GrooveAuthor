@@ -12,7 +12,7 @@ namespace StepManiaEditor
 		// Default values.
 		public const Editor.SpacingMode DefaultSpacingMode = Editor.SpacingMode.ConstantTime;
 		public const float DefaultTimeBasedPixelsPerSecond = 300.0f;
-		public const float DefaultRowBasedPixelsPerRow = 6.0f;
+		public const float DefaultRowBasedPixelsPerRow = 2.0f;
 		public const float DefaultVariablePixelsPerSecondAtDefaultBPM = 300.0f;
 		public const Editor.WaveFormScrollMode DefaultRowBasedWaveFormScrollMode = Editor.WaveFormScrollMode.MostCommonTempo;
 		public const bool DefaultStopPlaybackWhenScrolling = false;
@@ -58,7 +58,7 @@ namespace StepManiaEditor
 	}
 
 	/// <summary>
-	/// Action to restore WaveForm preferences to their default values.
+	/// Action to restore scroll preferences to their default values.
 	/// </summary>
 	internal sealed class ActionRestoreScrollPreferenceDefaults : EditorAction
 	{
