@@ -312,7 +312,7 @@ namespace StepManiaEditor
 		/// Draws a TreeNode in ImGui with Selectable elements for each value in the
 		/// Enum specified by the given type parameter T.
 		/// </summary>
-		/// <typeparam name="T">Enum type for drawing elements.</typeparam>
+		/// <typeparam name="T">Enum type of choices in the tree.</typeparam>
 		/// <param name="label">Label for the TreeNode.</param>
 		/// <param name="values">
 		/// Array of booleans represented the selected state of each value in the Enum.
@@ -334,6 +334,64 @@ namespace StepManiaEditor
 			{
 				foreach (var enumString in strings)
 				{
+					if (ImGui.Selectable(enumString, values[index]))
+					{
+						if (!ret)
+						{
+							originalValues = (bool[])values.Clone();
+						}
+						ret = true;
+
+						// Unset other selections if not holding control.
+						if (!ImGui.GetIO().KeyCtrl)
+						{
+							for (var i = 0; i < values.Length; i++)
+							{
+								values[i] = false;
+							}
+						}
+
+						// Toggle selected element.
+						values[index] = !values[index];
+					}
+
+					index++;
+				}
+
+				ImGui.TreePop();
+			}
+
+			return (ret, originalValues);
+		}
+
+		/// <summary>
+		/// Draws a TreeNode in ImGui with Selectable elements for each value in the
+		/// given validChoices.
+		/// </summary>
+		/// <typeparam name="T">Enum type of choices in the tree.</typeparam>
+		/// <param name="label">Label for the TreeNode.</param>
+		/// <param name="validChoices">Choices to draw in the tree.</param>
+		/// <param name="values">
+		/// Array of booleans represented the selected state of each value in the Enum.
+		/// Assumed to be the same length as the validChoices param.
+		/// </param>
+		/// <returns>
+		/// Tuple. First value is whether any Selectable was changed.
+		/// Second value is an array of bools represented the previous state. This is only
+		/// set if the state changes. This is meant is a convenience for undo/redo so the
+		/// caller can avoid creating a before state unnecessarily.
+		/// </returns>
+		public static (bool, bool[]) SelectableTree<T>(string label, T[] validChoices, ref bool[] values) where T : Enum
+		{
+			var strings = GetCachedEnumStrings<T>();
+			var index = 0;
+			var ret = false;
+			bool[] originalValues = null;
+			if (ImGui.TreeNode(label))
+			{
+				foreach(var choice in validChoices)
+				{
+					var enumString = strings[(int)(object)choice];
 					if (ImGui.Selectable(enumString, values[index]))
 					{
 						if (!ret)

@@ -981,6 +981,29 @@ namespace StepManiaEditor
 			return ret;
 		}
 
+		public static bool DrawRowSelectableTree<T>(bool undoable, string title, object o, string fieldName, bool affectsFile, T[] validChoices, string help = null)
+			where T : Enum
+		{
+			DrawRowTitleAndAdvanceColumn(title);
+			return DrawSelectableTree<T>(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, affectsFile, validChoices, help);
+		}
+
+		public static bool DrawSelectableTree<T>(bool undoable, string title, object o, string fieldName, float width,
+			bool affectsFile, T[] validChoices, string help = null) where T : Enum
+		{
+			var value = GetValueFromFieldOrProperty<bool[]>(o, fieldName);
+
+			var itemWidth = DrawHelp(help, width);
+			ImGui.SetNextItemWidth(itemWidth);
+
+			(var ret, var originalValues) = Utils.SelectableTree<T>(title, validChoices, ref value);
+			if (ret && undoable)
+				ActionQueue.Instance.Do(
+					new ActionSetObjectFieldOrPropertyReference<bool[]>(o, fieldName, (bool[])value.Clone(), originalValues, affectsFile));
+
+			return ret;
+		}
+
 		#endregion Selectable
 
 		#region Color Edit 3
