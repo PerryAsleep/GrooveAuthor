@@ -2,7 +2,9 @@
 using System.Collections.Generic;
 using System.Reflection;
 using Fumen.ChartDefinition;
+using StepManiaLibrary;
 using static Fumen.Converters.SMCommon;
+using static System.Diagnostics.Debug;
 
 namespace StepManiaEditor
 {
@@ -514,7 +516,7 @@ namespace StepManiaEditor
 			{
 				Lane = HoldStart.GetLane(),
 				IntegerPosition = HoldStart.GetRow() + length,
-				TimeMicros = Fumen.Utils.ToMicros(newHoldEndTime)
+				TimeMicros = Fumen.Utils.ToMicrosRounded(newHoldEndTime)
 			};
 			var config = new EditorEvent.EventConfig
 			{
@@ -558,41 +560,9 @@ namespace StepManiaEditor
 
 		public ActionAddHoldEvent(EditorChart chart, int lane, int row, int length, bool roll, bool isBeingEdited)
 		{
-			var holdStartTime = 0.0;
-			chart.TryGetTimeFromChartPosition(row, ref holdStartTime);
-			var holdStartNote = new LaneHoldStartNote()
-			{
-				Lane = lane,
-				IntegerPosition = row,
-				TimeMicros = Fumen.Utils.ToMicros(holdStartTime)
-			};
-			var config = new EditorEvent.EventConfig
-			{
-				EditorChart = chart,
-				ChartEvent = holdStartNote,
-				IsBeingEdited = isBeingEdited
-			};
-			HoldStart = new EditorHoldStartNoteEvent(config, holdStartNote);
-			HoldStart.SetIsRoll(roll);
-
-			var holdEndTime = 0.0;
-			chart.TryGetTimeFromChartPosition(row + length, ref holdEndTime);
-			var holdEndNote = new LaneHoldEndNote()
-			{
-				Lane = lane,
-				IntegerPosition = row + length,
-				TimeMicros = Fumen.Utils.ToMicros(holdEndTime)
-			};
-			config = new EditorEvent.EventConfig
-			{
-				EditorChart = chart,
-				ChartEvent = holdEndNote,
-				IsBeingEdited = isBeingEdited
-			};
-			HoldEnd = new EditorHoldEndNoteEvent(config, holdEndNote);
-
-			HoldStart.SetHoldEndNote(HoldEnd);
-			HoldEnd.SetHoldStartNote(HoldStart);
+			(HoldStart, HoldEnd) = EditorHoldStartNoteEvent.CreateHold(chart, lane, row, length, roll);
+			HoldStart.SetIsBeingEdited(isBeingEdited);
+			HoldEnd.SetIsBeingEdited(isBeingEdited);
 		}
 
 		public EditorHoldStartNoteEvent GetHoldStartEvent()
@@ -849,6 +819,216 @@ namespace StepManiaEditor
 		{
 			Preferences.Instance.PreferencesReceptors.PositionX = PreviousX;
 			Preferences.Instance.PreferencesReceptors.PositionY = PreviousY;
+		}
+	}
+
+	internal abstract class ActionTransformSelection : EditorAction
+	{
+		private Editor Editor;
+		private EditorChart Chart;
+		private List<EditorEvent> OriginalEvents;
+		private List<EditorEvent> DeletedFromAlteration;
+		private List<EditorEvent> AddedFromAlteration;
+
+		public ActionTransformSelection(Editor editor, EditorChart chart, IEnumerable<EditorEvent> events)
+		{
+			Editor = editor;
+			Chart = chart;
+
+			// Copy the given events.
+			var padData = Editor.GetPadData(Chart.ChartType);
+			OriginalEvents = new List<EditorEvent>();
+			if (padData != null)
+			{
+				foreach (var chartEvent in events)
+				{
+					if (!CanTransform(chartEvent, padData))
+						continue;
+					OriginalEvents.Add(chartEvent);
+				}
+				OriginalEvents.Sort();
+			}
+		}
+
+		public override bool AffectsFile()
+		{
+			return true;
+		}
+
+		protected abstract bool CanTransform(EditorEvent e, PadData padData);
+		protected abstract void DoTransform(EditorEvent e, PadData padData);
+		protected abstract void UndoTransform(EditorEvent e, PadData padData);
+
+		public override void Do()
+		{
+			var padData = Editor.GetPadData(Chart.ChartType);
+			if (padData == null)
+				return;
+
+			// When starting a transformation let the Editor know.
+			Editor.OnNoteTransformationBegin();
+
+			// Remove all events to be transformed.
+			var allDeletedEvents = Chart.DeleteEvents(OriginalEvents);
+			Assert(allDeletedEvents.Count == OriginalEvents.Count);
+
+			// Transform events.
+			foreach (var editorEvent in OriginalEvents)
+				DoTransform(editorEvent, padData);
+
+			// Add the events back, storing the side effects.
+			(AddedFromAlteration, DeletedFromAlteration) = Chart.ForceAddEvents(OriginalEvents);
+
+			// Notify the Editor the transformation is complete.
+			Editor.OnNoteTransformationEnd();
+		}
+
+		public override void Undo()
+		{
+			// When starting a transformation let the Editor know.
+			Editor.OnNoteTransformationBegin();
+
+			// Remove the transformed events.
+			var allDeletedEvents = Chart.DeleteEvents(OriginalEvents);
+			Assert(allDeletedEvents.Count == OriginalEvents.Count);
+
+			// While the transformed events are removed, delete the events which
+			// were added as a side effect.
+			if (AddedFromAlteration.Count > 0)
+			{
+				allDeletedEvents = Chart.DeleteEvents(AddedFromAlteration);
+				Assert(allDeletedEvents.Count == AddedFromAlteration.Count);
+			}
+
+			// While the transformed events are removed, add the events which
+			// were deleted as a side effect.
+			if (DeletedFromAlteration.Count > 0)
+			{
+				Chart.AddEvents(DeletedFromAlteration);
+			}
+
+			// Undo the transformation on each event.
+			var padData = Editor.GetPadData(Chart.ChartType);
+			foreach (var editorEvent in OriginalEvents)
+				UndoTransform(editorEvent, padData);
+
+			// Add the events back.
+			Chart.AddEvents(OriginalEvents);
+
+			// Notify the Editor the transformation is complete.
+			Editor.OnNoteTransformationEnd();
+		}
+	}
+
+	internal sealed class ActionMirrorSelection : ActionTransformSelection
+	{
+		public ActionMirrorSelection(Editor editor, EditorChart chart, IEnumerable<EditorEvent> events)
+			: base(editor, chart, events)
+		{	
+		}
+
+		public override string ToString()
+		{
+			return $"Mirror Notes.";
+		}
+
+		protected override bool CanTransform(EditorEvent e, PadData padData)
+		{
+			var lane = e.GetLane();
+			if (lane == Constants.InvalidArrowIndex)
+				return false;
+			if (padData.ArrowData[lane].MirroredLane == Constants.InvalidArrowIndex)
+				return false;
+			if (lane == padData.ArrowData[lane].MirroredLane)
+				return false;
+			return true;
+		}
+
+		protected override void DoTransform(EditorEvent e, PadData padData)
+		{
+			e.SetLane(padData.ArrowData[e.GetLane()].MirroredLane);
+		}
+
+		protected override void UndoTransform(EditorEvent e, PadData padData)
+		{
+			DoTransform(e, padData);
+		}
+
+	}
+
+	internal sealed class ActionFlipSelection : ActionTransformSelection
+	{
+
+		public ActionFlipSelection(Editor editor, EditorChart chart, IEnumerable<EditorEvent> events)
+			: base(editor, chart, events)
+		{
+		}
+
+		public override string ToString()
+		{
+			return $"Flip Notes.";
+		}
+
+		protected override bool CanTransform(EditorEvent e, PadData padData)
+		{
+			var lane = e.GetLane();
+			if (lane == Constants.InvalidArrowIndex)
+				return false;
+			if (padData.ArrowData[lane].FlippedLane == Constants.InvalidArrowIndex)
+				return false;
+			if (lane == padData.ArrowData[lane].FlippedLane)
+				return false;
+			return true;
+		}
+
+		protected override void DoTransform(EditorEvent e, PadData padData)
+		{
+			e.SetLane(padData.ArrowData[e.GetLane()].FlippedLane);
+		}
+
+		protected override void UndoTransform(EditorEvent e, PadData padData)
+		{
+			DoTransform(e, padData);
+		}
+	}
+
+	internal sealed class ActionMirrorAndFlipSelection : ActionTransformSelection
+	{
+		
+		public ActionMirrorAndFlipSelection(Editor editor, EditorChart chart, IEnumerable<EditorEvent> events)
+			: base(editor, chart, events)
+		{
+		}
+
+		public override string ToString()
+		{
+			return $"Mirror and Flip Notes.";
+		}
+
+		protected override bool CanTransform(EditorEvent e, PadData padData)
+		{
+			var lane = e.GetLane();
+			if (lane == Constants.InvalidArrowIndex)
+				return false;
+			var transformedLane = padData.ArrowData[lane].MirroredLane;
+			if (transformedLane == Constants.InvalidArrowIndex)
+				return false;
+			transformedLane = padData.ArrowData[transformedLane].FlippedLane;
+			if (transformedLane == Constants.InvalidArrowIndex)
+				return false;
+			if (lane == transformedLane)
+				return false;
+			return true;
+		}
+
+		protected override void DoTransform(EditorEvent e, PadData padData)
+		{
+			e.SetLane(padData.ArrowData[padData.ArrowData[e.GetLane()].MirroredLane].FlippedLane);
+		}
+
+		protected override void UndoTransform(EditorEvent e, PadData padData)
+		{
+			DoTransform(e, padData);
 		}
 	}
 }

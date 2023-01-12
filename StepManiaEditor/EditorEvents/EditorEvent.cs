@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using Fumen.ChartDefinition;
 using Fumen.Converters;
 using Microsoft.Xna.Framework.Graphics;
+using static StepManiaLibrary.Constants;
+using static System.Diagnostics.Debug;
 
 namespace StepManiaEditor
 {
@@ -163,14 +165,29 @@ namespace StepManiaEditor
 		/// <summary>
 		/// Gets the lane of the event. Notes have lanes. Many events have no lane.
 		/// </summary>
-		/// <returns>The lane of the event or -1 if if this event has no lane.</returns>
+		/// <returns>The lane of the event or InvalidArrowIndex if if this event has no lane.</returns>
 		public virtual int GetLane()
 		{
 			if (ChartEvent == null)
-				return -1;
+				return InvalidArrowIndex;
 			if (ChartEvent is LaneNote ln)
 				return ln.Lane;
-			return -1;
+			return InvalidArrowIndex;
+		}
+
+		/// <summary>
+		/// Sets the lane of the event. Asserts that this Event is for a LaneNote.
+		/// </summary>
+		/// <remarks>
+		/// Set this carefully. This changes how events are sorted.
+		/// This cannot be changed while this event is in a sorted list without resorting.
+		/// </remarks>
+		public virtual void SetLane(int lane)
+		{
+			Assert(lane >= 0 && lane < EditorChart.NumInputs);
+			Assert(ChartEvent is LaneNote);
+			if (ChartEvent is LaneNote ln)
+				ln.Lane = lane;
 		}
 
 		/// <summary>
@@ -187,7 +204,7 @@ namespace StepManiaEditor
 		/// </summary>
 		/// <returns>Double row.</returns>
 		public virtual double GetChartPosition()
-		{
+		{	
 			return ChartPosition;
 		}
 

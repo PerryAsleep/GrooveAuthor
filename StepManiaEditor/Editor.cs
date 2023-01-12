@@ -160,6 +160,7 @@ namespace StepManiaEditor
 		private SelectedRegion SelectedRegion = new SelectedRegion();
 		private HashSet<EditorEvent> SelectedEvents = new HashSet<EditorEvent>();
 		private EditorEvent LastSelectedEvent;
+		private bool TransformingNotes = false;
 		private Receptor[] Receptors = null;
 		private EventSpacingHelper SpacingHelper;
 
@@ -385,7 +386,12 @@ namespace StepManiaEditor
 				((Form)Control.FromHandle(Window.Handle)).WindowState = FormWindowState.Maximized;
 			}
 
-			((Form)Form.FromHandle(Window.Handle)).FormClosing += ClosingForm;
+			var form = ((Form)Form.FromHandle(Window.Handle));
+			form.FormClosing += ClosingForm;
+
+			form.AllowDrop = true;
+			form.DragEnter += DragEnter;
+			form.DragDrop += DragDrop;
 
 			var guiScale = GetDpiScale();
 			ImGuiRenderer = new ImGuiRenderer(this);
@@ -2822,6 +2828,26 @@ namespace StepManiaEditor
 					&& x <= (GetFocalPointX() + (WaveFormTextureWidth >> 1));
 				var isInReceptorArea = Receptor.IsInReceptorArea(x, y, GetFocalPoint(), GetSizeZoom(), TextureAtlas, ArrowGraphicManager, ActiveChart);
 
+				if (SelectedEvents.Count > 0)
+				{
+					if (ImGui.BeginMenu("Selection"))
+					{
+						if (ImGui.Selectable("Mirror"))
+						{
+							ActionQueue.Instance.Do(new ActionMirrorSelection(this, ActiveChart, SelectedEvents));
+						}
+						if (ImGui.Selectable("Flip"))
+						{
+							ActionQueue.Instance.Do(new ActionFlipSelection(this, ActiveChart, SelectedEvents));
+						}
+						if (ImGui.Selectable("Mirror and Flip"))
+						{
+							 ActionQueue.Instance.Do(new ActionMirrorAndFlipSelection(this, ActiveChart, SelectedEvents));
+						}
+						ImGui.EndMenu();
+					}
+				}
+
 				if (isInMiniMapArea)
 				{
 					if (ImGui.BeginMenu("Mini Map Preferences"))
@@ -3177,14 +3203,69 @@ namespace StepManiaEditor
 		/// </summary>
 		private async void InitPadDataAndStepGraphsAsync()
 		{
-			var pOptions = Preferences.Instance.PreferencesOptions;
-			var tasks = new Task<bool>[pOptions.StartupChartTypes.Length];
-			for (var i = 0; i < pOptions.StartupChartTypes.Length; i++)
+			foreach (var chartType in SupportedChartTypes)
 			{
-				tasks[i] = LoadPadDataAndCreateStepGraph(pOptions.StartupChartTypes[i]);
+				PadDataByChartType[chartType] = null;
+				StepGraphByChartType[chartType] = null;
 			}
 
-			await Task.WhenAll(tasks);
+			// Attempt to load pad data for all supported chart types.
+			var padDataTasks = new Task<PadData>[SupportedChartTypes.Length];
+			for (var i = 0; i < SupportedChartTypes.Length; i++)
+			{
+				PadDataByChartType[SupportedChartTypes[i]] = null;
+				padDataTasks[i] = LoadPadData(SupportedChartTypes[i]);
+			}
+			await Task.WhenAll(padDataTasks);
+			for (var i = 0; i < SupportedChartTypes.Length; i++)
+			{
+				PadDataByChartType[SupportedChartTypes[i]] = padDataTasks[i].Result;
+			}
+
+			// Create StepGraphs
+			var pOptions = Preferences.Instance.PreferencesOptions;
+			var validStepGraphTypes = new HashSet<ChartType>();
+			for (var i = 0; i < pOptions.StartupChartTypes.Length; i++)
+			{
+				var chartType = pOptions.StartupChartTypes[i];
+				if (PadDataByChartType.TryGetValue(chartType, out var padData) && padData != null)
+					validStepGraphTypes.Add(chartType);
+			}
+			if (validStepGraphTypes.Count > 0)
+			{
+				var stepGraphTasks = new Task<bool>[validStepGraphTypes.Count];
+				var index = 0;
+				foreach (var stepGraphType in validStepGraphTypes)
+				{
+					stepGraphTasks[index++] = CreateStepGraph(stepGraphType);
+				}
+				await Task.WhenAll(stepGraphTasks);
+			}
+		}
+
+		/// <summary>
+		/// Loads PadData for the given ChartType.
+		/// </summary>
+		/// <param name="chartType">ChartType to load PadData for.</param>
+		/// <returns>Loaded PadData or null if any errors were generated.</returns>
+		private static async Task<PadData> LoadPadData(ChartType chartType)
+		{
+			var chartTypeString = ChartTypeString(chartType);
+			var fileName = $"{chartTypeString}.json";
+
+			var fullFileName = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, fileName);
+			if (!File.Exists(fullFileName))
+			{
+				Logger.Warn($"Could not find PadData file {fileName}.");
+				return null;
+			}
+
+			Logger.Info($"Loading PadData from {fileName}.");
+			var padData = await PadData.LoadPadData(chartTypeString, fileName);
+			if (padData == null)
+				return null;
+			Logger.Info($"Finished loading {chartTypeString} PadData.");
+			return padData;
 		}
 
 		/// <summary>
@@ -3193,23 +3274,8 @@ namespace StepManiaEditor
 		/// <returns>
 		/// True if no errors were generated and false otherwise.
 		/// </returns>
-		private async Task<bool> LoadPadDataAndCreateStepGraph(ChartType chartType)
+		private async Task<bool> CreateStepGraph(ChartType chartType)
 		{
-			if (PadDataByChartType.ContainsKey(chartType))
-				return true;
-
-			PadDataByChartType[chartType] = null;
-			StepGraphByChartType[chartType] = null;
-
-			// Load the PadData.
-			PadDataByChartType[chartType] = await LoadPadData(chartType);
-			if (PadDataByChartType[chartType] == null)
-			{
-				PadDataByChartType.Remove(chartType);
-				StepGraphByChartType.Remove(chartType);
-				return false;
-			}
-
 			// Create the StepGraph.
 			await Task.Run(() =>
 			{
@@ -3222,23 +3288,6 @@ namespace StepManiaEditor
 			});
 
 			return true;
-		}
-
-		/// <summary>
-		/// Loads PadData for the given ChartType.
-		/// </summary>
-		/// <param name="chartType">ChartType to load PadData for.</param>
-		/// <returns>Loaded PadData or null if any errors were generated.</returns>
-		private static async Task<PadData> LoadPadData(ChartType chartType)
-		{
-			var chartTypeString = ChartTypeString(chartType);
-			var fileName = $"{chartTypeString}.json";
-			Logger.Info($"Loading PadData from {fileName}.");
-			var padData = await PadData.LoadPadData(chartTypeString, fileName);
-			if (padData == null)
-				return null;
-			Logger.Info($"Finished loading {chartTypeString} PadData.");
-			return padData;
 		}
 
 		/// <summary>
@@ -3564,6 +3613,17 @@ namespace StepManiaEditor
 
 		#region Selection
 
+		public void OnNoteTransformationBegin()
+		{
+			TransformingNotes = true;
+		}
+
+		public void OnNoteTransformationEnd()
+		{
+			TransformingNotes = false;
+			CheckAndDeselectDeletedEvents();
+		}
+
 		private void SelectEvent(EditorEvent e, bool setLastSelected)
 		{
 			if (setLastSelected)
@@ -3610,9 +3670,38 @@ namespace StepManiaEditor
 			ActionQueue.Instance.Do(new ActionDeleteEditorEvents(eventsToDelete, false));
 		}
 
-		public void OnEventsDeleted()
+		public void OnEventsDeleted(List<EditorEvent> deletedEvents)
 		{
-			ClearSelectedEvents();
+			if (SelectedEvents.Count == 0)
+				return;
+			
+			// When transforming notes we expect selected notes to be moved which requires
+			// deleting them, then modifying them, and then re-adding them. We don't want
+			// to deselect notes when they are moving.
+			if (TransformingNotes)
+				return;
+
+			// If a selected note was deleted, deselect it.
+			foreach (var deletedEvent in deletedEvents)
+			{
+				if (SelectedEvents.Contains(deletedEvent))
+					DeselectEvent(deletedEvent);
+			}
+		}
+
+		private void CheckAndDeselectDeletedEvents()
+		{
+			if (SelectedEvents.Count == 0)
+				return;
+
+			var deletedSelectedEvents = new List<EditorEvent>();
+			foreach (var selectedEvent in SelectedEvents)
+			{
+				if (ActiveChart.EditorEvents.Find(selectedEvent) == null)
+					deletedSelectedEvents.Add(selectedEvent);
+			}
+			foreach (var deletedSelectedEvent in deletedSelectedEvents)
+				DeselectEvent(deletedSelectedEvent);
 		}
 
 		public void OnSelectAll()
@@ -5067,6 +5156,26 @@ namespace StepManiaEditor
 				var newActiveChart = SelectBestChart(ActiveSong, ActiveChart.ChartType, ActiveChart.ChartDifficultyType);
 				OnChartSelected(newActiveChart, false);
 			}
+		}
+
+		public PadData GetPadData(ChartType chartType)
+		{
+			if (PadDataByChartType.TryGetValue(chartType, out var padData))
+				return padData;
+			return null;
+		}
+
+		public void DragEnter(object sender, DragEventArgs e)
+		{
+			if (e.Data.GetDataPresent(DataFormats.FileDrop))
+				e.Effect = DragDropEffects.Copy;
+		}
+
+		public void DragDrop(object sender, DragEventArgs e)
+		{
+			string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
+			foreach (string file in files)
+				Logger.Info(file);
 		}
 	}
 }

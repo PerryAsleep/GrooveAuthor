@@ -2,6 +2,7 @@
 using System.Linq;
 using System.Text.Json.Serialization;
 using Fumen.Converters;
+using static Fumen.Converters.SMCommon;
 
 namespace StepManiaEditor
 {
@@ -56,16 +57,16 @@ namespace StepManiaEditor
 		public void PostLoad()
 		{
 			// Set up StartupChartTypesBools from StartupChartTypes.
-			StartupChartTypesBools = new bool[Enum.GetNames(typeof(SMCommon.ChartType)).Length];
-			DefaultStartupChartTypesBools = new bool[Enum.GetNames(typeof(SMCommon.ChartType)).Length];
+			StartupChartTypesBools = new bool[Editor.SupportedChartTypes.Length];
+			DefaultStartupChartTypesBools = new bool[Editor.SupportedChartTypes.Length];
 			foreach (var chartType in StartupChartTypes)
 			{
-				StartupChartTypesBools[(int)chartType] = true;
+				StartupChartTypesBools[FindSupportedChartTypeIndex(chartType)] = true;
 			}
 
 			foreach (var chartType in DefaultStartupChartTypes)
 			{
-				DefaultStartupChartTypesBools[(int)chartType] = true;
+				DefaultStartupChartTypesBools[FindSupportedChartTypeIndex(chartType)] = true;
 			}
 		}
 
@@ -84,9 +85,21 @@ namespace StepManiaEditor
 			{
 				if (StartupChartTypesBools[i])
 				{
-					StartupChartTypes[count++] = (SMCommon.ChartType)i;
+					StartupChartTypes[count++] = Editor.SupportedChartTypes[i];
 				}
 			}
+		}
+
+		private int FindSupportedChartTypeIndex(ChartType chartType)
+		{
+			for (int i = 0; i < Editor.SupportedChartTypes.Length; i++)
+			{
+				if (Editor.SupportedChartTypes[i] == chartType)
+				{
+					return i;
+				}
+			}
+			return 0;
 		}
 	}
 

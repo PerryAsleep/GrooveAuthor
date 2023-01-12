@@ -23,10 +23,10 @@ namespace StepManiaEditor
 
 				if (ImGuiLayoutUtils.BeginTable("Options Step Type", TitleColumnWidth))
 				{
-					ImGuiLayoutUtils.DrawRowSelectableTree<SMCommon.ChartType>(true, "Startup Pad Data", p,
-						nameof(PreferencesOptions.StartupChartTypesBools), false,
-						"Pad data will be loaded for the selected charts when the application starts." +
-						"\nPad data is used to generate patterns and convert charts from one type to another.");
+					ImGuiLayoutUtils.DrawRowSelectableTree<SMCommon.ChartType>(true, "Startup Step Graphs", p,
+						nameof(PreferencesOptions.StartupChartTypesBools), false, Editor.SupportedChartTypes,
+						"Step graphs will be created for the selected charts when the application starts." +
+						"\nStep graphs are used to generate patterns and convert charts from one type to another.");
 
 					ImGuiLayoutUtils.DrawRowEnum<SMCommon.ChartType>(true, "Default Type", p, nameof(PreferencesOptions.DefaultStepsType), false,
 						"When opening a song the default chart type will be used for selecting an initial chart.");

@@ -6,6 +6,7 @@ using Fumen.ChartDefinition;
 using static Fumen.Utils;
 using static Fumen.Converters.SMCommon;
 using static System.Diagnostics.Debug;
+using static StepManiaLibrary.Constants;
 
 namespace StepManiaEditor
 {
@@ -908,10 +909,7 @@ namespace StepManiaEditor
 			foreach (var editorEvent in editorEvents)
 			{
 				deleted = EditorEvents.Delete(editorEvent);
-				if (!deleted)
-				{
-					Assert(deleted);
-				}
+				Assert(deleted);
 
 				if (editorEvent.IsMiscEvent())
 				{
@@ -979,16 +977,32 @@ namespace StepManiaEditor
 				allDeletedEvents.AddRange(UpdateEventTimingData());
 			}
 
-			Editor.OnEventsDeleted();
+			Editor.OnEventsDeleted(allDeletedEvents);
 
 			return allDeletedEvents;
 		}
 
+		/// <summary>
+		/// Adds the given EditorEvent to the chart.
+		/// Performs no checking that the given event is valid for the chart.
+		/// For example, two tap notes cannot exist at the same time in the same line.
+		/// This method will not prevent this from occurring.
+		/// This method will ensure the timing data for all notes is correct.
+		/// </summary>
+		/// <param name="editorEvent">EditorEvent to add.</param>
 		public void AddEvent(EditorEvent editorEvent)
 		{
 			AddEvents(new List<EditorEvent> { editorEvent });
 		}
 
+		/// <summary>
+		/// Adds the given EditorEvents to the chart.
+		/// Performs no checking that the given events are valid for the chart.
+		/// For example, two tap notes cannot exist at the same time in the same lane.
+		/// This method will not prevent this from occurring.
+		/// This method will ensure the timing data for all notes is correct.
+		/// </summary>
+		/// <param name="editorEvents">EditorEvents to add.</param>
 		public void AddEvents(List<EditorEvent> editorEvents)
 		{
 			var rateDirty = false;
@@ -1049,6 +1063,146 @@ namespace StepManiaEditor
 			{
 				UpdateEventTimingData();
 			}
+		}
+
+		/// <summary>
+		/// Adds the given events and ensures the chart is in a consistent state afterwards
+		/// by forcibly removing any events which conflict with the events to be added. This
+		/// may result in modifications like shortening holds or converting a hold to a tap
+		/// which require deleting and then adding a modified event or events. Any events
+		/// which were deleted or added as side effects of adding the given events will be
+		/// returned.
+		/// This method expects that the given events are valid with respect to each other
+		/// (for example, no overlapping taps in the the given events).
+		/// </summary>
+		/// <param name="events">Events to add.</param>
+		/// <returns>
+		/// Tuple where the first element is a list of events which were added as a side effect
+		/// of adding the given events and the second element is a list of events which were
+		/// deleted as a side effect of adding the given events.
+		/// </returns>
+		public (List<EditorEvent>, List<EditorEvent>) ForceAddEvents(List<EditorEvent> events)
+		{
+			var sideEffectAddedEvents = new List<EditorEvent>();
+			var sideEffectDeletedEvents = new List<EditorEvent>();
+
+			// TODO: When adding rate altering events in this way, do not update timing data per note.
+			// Wait and do it once at the end.
+
+			// TODO: When pasting time signatures some kind of validation needs to happen.
+
+			foreach (var editorEvent in events)
+			{
+				// Holds are handled through hold starts.
+				if (editorEvent is EditorHoldEndNoteEvent)
+				{
+					AddEvent(editorEvent);
+					continue;
+				}
+
+				var row = editorEvent.GetRow();
+				var lane = editorEvent.GetLane();
+				var len = editorEvent.GetLength();
+
+				// If this event is a tap, delete any note which starts at the same time in the same lane.
+				if (lane != InvalidArrowIndex)
+				{
+					var existingNote = EditorEvents.FindNoteAt(row, lane, true);
+
+					// If there is a note at this position, or extending through this position.
+					if (existingNote != null)
+					{
+						// If the existing note is at the same row as the new note, delete it.
+						if (existingNote.GetRow() == row)
+						{
+							sideEffectDeletedEvents.AddRange(DeleteEvent(existingNote));
+						}
+
+						// The existing note is a hold which extends through the new note.
+						else if (existingNote.GetRow() < row && existingNote.GetRow() + existingNote.GetLength() >= row)
+						{
+							var existingHsn = (EditorHoldStartNoteEvent)existingNote;
+							var existingHen = existingHsn.GetHoldEndNote();
+
+							// Reduce the length.
+							var newExistingHoldEndRow = editorEvent.GetRow() - (MaxValidDenominator / 4);
+
+							// In either case below, delete the exisiting hold note and replace it with a new hold or a tap.
+							sideEffectDeletedEvents.AddRange(DeleteEvent(existingHsn));
+							sideEffectDeletedEvents.AddRange(DeleteEvent(existingHen));
+
+							// If the reduction in length is below the min length for a hold, replace it with a tap.
+							if (newExistingHoldEndRow <= existingNote.GetRow())
+							{
+								var replacementEvent = EditorEvent.CreateEvent(new EditorEvent.EventConfig
+								{
+									ChartEvent = new LaneTapNote()
+									{
+										Lane = lane,
+										IntegerPosition = existingNote.GetRow(),
+										TimeMicros = existingNote.GetEvent().TimeMicros,
+									},
+									EditorChart = this
+								});
+								AddEvent(replacementEvent);
+								sideEffectAddedEvents.Add(replacementEvent);
+							}
+
+							// Otherwise, reduce the length by deleting the old hold and adding a new hold.
+							else
+							{
+								var (replacementStart, replacementEnd) = EditorHoldStartNoteEvent.CreateHold(
+									this, lane, existingNote.GetRow(), newExistingHoldEndRow - existingNote.GetRow(), existingHsn.IsRoll());
+								AddEvent(replacementStart);
+								sideEffectAddedEvents.Add(replacementStart);
+								AddEvent(replacementEnd);
+								sideEffectAddedEvents.Add(replacementEnd);
+							}
+						}
+					}
+
+					// If this event is a hold note, delete any note which overlaps the hold.
+					if (len > 0)
+					{
+						var enumerator = EditorEvents.FindBestByPosition(row);
+						var overlappedNotes = new List<EditorEvent>();
+						while (enumerator != null && enumerator.MoveNext())
+						{
+							var c = enumerator.Current;
+							if (c.GetRow() < row)
+								continue;
+							if (c.GetRow() > row + len)
+								break;
+							if (c.GetLane() != lane)
+								continue;
+							if (c is EditorHoldEndNoteEvent)
+								continue;
+							overlappedNotes.Add(c);
+							if (c is EditorHoldStartNoteEvent cHsn)
+								overlappedNotes.Add(cHsn.GetHoldEndNote());
+						}
+						if (overlappedNotes.Count > 0)
+							sideEffectDeletedEvents.AddRange(DeleteEvents(overlappedNotes));
+					}
+				}
+
+				// Misc event with no lane.
+				else
+				{
+					// If the same kind of event exists at this row, delete it.
+					// TODO: Will this work with the double comparisons on time and position?
+					var enumerator = EditorEvents.Find(editorEvent);
+					if (enumerator != null && enumerator.MoveNext())
+					{
+						sideEffectDeletedEvents.AddRange(DeleteEvent(enumerator.Current));
+					}
+				}
+
+				// Now that all conflicting notes are deleted or adjusted, add this note.
+				AddEvent(editorEvent);
+			}
+
+			return (sideEffectAddedEvents, sideEffectDeletedEvents);
 		}
 
 		public double GetStartTime(bool withOffset)
