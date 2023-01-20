@@ -4,6 +4,7 @@ using System.Reflection;
 using ImGuiNET;
 using System.Numerics;
 using Fumen.ChartDefinition;
+using static Fumen.FumenExtensions;
 
 namespace StepManiaEditor
 {

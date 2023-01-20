@@ -98,7 +98,7 @@ namespace StepManiaEditor
 				(int)X, (int)Y, (int)W,
 				Utils.UITimeSignatureColorRGBA,
 				IsSelected(),
-				CanBeDeleted,
+				CanBeDeleted(),
 				Alpha,
 				WidgetHelp);
 		}

@@ -246,13 +246,20 @@ namespace StepManiaEditor
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Escape }, OnEscape, false));
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Left }, OnDecreaseSnap, true));
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Right }, OnIncreaseSnap, true));
-			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Up }, OnMoveUp, true, null, true));
-			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Down }, OnMoveDown, true, null, true));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Up }, OnMoveUp, true, null, false));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Down }, OnMoveDown, true, null, false));
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.PageUp }, OnMoveToPreviousMeasure, true, null, true));
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.PageDown }, OnMoveToNextMeasure, true, null, true));
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Home }, OnMoveToChartStart, false, null, true));
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.End }, OnMoveToChartEnd, false, null, true));
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Delete }, OnDelete, false, null, true));
+
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.LeftAlt, Keys.Left }, OnShiftSelectedNotesLeft, true));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.Left }, OnShiftSelectedNotesLeftAndWrap, true));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.LeftAlt, Keys.Right }, OnShiftSelectedNotesRight, true));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.Right }, OnShiftSelectedNotesRightAndWrap, true));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.Up }, OnShiftSelectedNotesEarlier, true));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.Down }, OnShiftSelectedNotesLater, true));
 
 			var arrowInputKeys = new[] { Keys.D1, Keys.D2, Keys.D3, Keys.D4, Keys.D5, Keys.D6, Keys.D7, Keys.D8, Keys.D9, Keys.D0 };
 			var index = 0;
@@ -1737,10 +1744,10 @@ namespace StepManiaEditor
 			var interpolatedScrollRate = 1.0;
 			if (Preferences.Instance.PreferencesScroll.SpacingMode == SpacingMode.Variable)
 			{
-				var sriEvent = new ScrollRateInterpolation(0.0, 0, 0L, false)
+				var sriEvent = new ScrollRateInterpolation(0.0, 0, 0.0, false)
 				{
 					IntegerPosition = (int)Position.ChartPosition,
-					TimeMicros = ToMicros(Position.ChartTime),
+					TimeSeconds = Position.ChartTime,
 				};
 				var ratePosEventForChecking = new EditorInterpolatedRateAlteringEvent(
 					new EditorEvent.EventConfig { EditorChart = ActiveChart, ChartEvent = sriEvent }, sriEvent);
@@ -2844,6 +2851,38 @@ namespace StepManiaEditor
 						{
 							 ActionQueue.Instance.Do(new ActionMirrorAndFlipSelection(this, ActiveChart, SelectedEvents));
 						}
+						if (ImGui.Selectable("Shift Right"))
+						{
+							OnShiftSelectedNotesRight();
+						}
+						if (ImGui.Selectable("Shift Right and Wrap"))
+						{
+							OnShiftSelectedNotesRightAndWrap();
+						}
+						if (ImGui.Selectable("Shift Left"))
+						{
+							OnShiftSelectedNotesLeft();
+						}
+						if (ImGui.Selectable("Shift Left and Wrap"))
+						{
+							OnShiftSelectedNotesLeftAndWrap();
+						}
+
+						var shiftAmount = "1 Measure";
+						var rows = SnapLevels[SnapIndex].Rows;
+						if (rows == 0)
+							rows = MaxValidDenominator;
+						shiftAmount = $"1/{(MaxValidDenominator / rows) * SMCommon.NumBeatsPerMeasure}";
+
+						if (ImGui.Selectable($"Shift Earlier ({shiftAmount})"))
+						{
+							OnShiftSelectedNotesEarlier();
+						}
+						if (ImGui.Selectable($"Shift Later ({shiftAmount})"))
+						{
+							OnShiftSelectedNotesLater();
+						}
+
 						ImGui.EndMenu();
 					}
 				}
@@ -2933,7 +2972,6 @@ namespace StepManiaEditor
 						ActiveChart.TryGetTimeFromChartPosition(nearestMeasureBoundaryRow, ref nearestMeasureChartTime);
 
 						var currentRateAlteringEvent = ActiveChart.FindActiveRateAlteringEventForPosition(row);
-						var timeMicros = ToMicrosRounded(chartTime);
 
 						DrawAddEventMenuItem("Tempo", !hasTempoEvent, UITempoColorRGBA, EditorTempoEvent.EventShortDescription, row, () =>
 						{
@@ -2943,7 +2981,7 @@ namespace StepManiaEditor
 								ChartEvent = new Tempo(currentRateAlteringEvent?.GetTempo() ?? EditorChart.DefaultTempo)
 								{
 									IntegerPosition = row,
-									TimeMicros = timeMicros,
+									TimeSeconds = chartTime,
 								}
 							});
 						});
@@ -2954,10 +2992,10 @@ namespace StepManiaEditor
 							return EditorEvent.CreateEvent(new EditorEvent.EventConfig
 							{
 								EditorChart = ActiveChart,
-								ChartEvent = new ScrollRateInterpolation(EditorChart.DefaultScrollRate, MaxValidDenominator, 0L, false)
+								ChartEvent = new ScrollRateInterpolation(EditorChart.DefaultScrollRate, MaxValidDenominator, 0.0, false)
 								{
 									IntegerPosition = row,
-									TimeMicros = timeMicros,
+									TimeSeconds = chartTime,
 								}
 							});
 						});
@@ -2969,7 +3007,7 @@ namespace StepManiaEditor
 								ChartEvent = new ScrollRate(EditorChart.DefaultScrollRate)
 								{
 									IntegerPosition = row,
-									TimeMicros = timeMicros,
+									TimeSeconds = chartTime,
 								}
 							});
 						});
@@ -2977,27 +3015,27 @@ namespace StepManiaEditor
 						ImGui.Separator();
 						DrawAddEventMenuItem("Stop", !hasStopEvent, UIStopColorRGBA, EditorStopEvent.EventShortDescription, row, () =>
 						{
-							var stopLength = ToMicrosRounded(currentRateAlteringEvent.GetSecondsPerRow() * MaxValidDenominator);
+							var stopLength = currentRateAlteringEvent.GetSecondsPerRow() * MaxValidDenominator;
 							return EditorEvent.CreateEvent(new EditorEvent.EventConfig
 							{
 								EditorChart = ActiveChart,
 								ChartEvent = new Stop(stopLength, false)
 								{
 									IntegerPosition = row,
-									TimeMicros = timeMicros,
+									TimeSeconds = chartTime,
 								}
 							});
 						});
 						DrawAddEventMenuItem("Delay", !hasDelayEvent, UIDelayColorRGBA, EditorDelayEvent.EventShortDescription, row, () =>
 						{
-							var stopLength = ToMicrosRounded(currentRateAlteringEvent.GetSecondsPerRow() * MaxValidDenominator);
+							var stopLength = currentRateAlteringEvent.GetSecondsPerRow() * MaxValidDenominator;
 							return EditorEvent.CreateEvent(new EditorEvent.EventConfig
 							{
 								EditorChart = ActiveChart,
 								ChartEvent = new Stop(stopLength, true)
 								{
 									IntegerPosition = row,
-									TimeMicros = timeMicros,
+									TimeSeconds = chartTime,
 								}
 							});
 						});
@@ -3009,7 +3047,7 @@ namespace StepManiaEditor
 								ChartEvent = new Warp(MaxValidDenominator)
 								{
 									IntegerPosition = row,
-									TimeMicros = timeMicros,
+									TimeSeconds = chartTime,
 								}
 							});
 						});
@@ -3017,14 +3055,14 @@ namespace StepManiaEditor
 						ImGui.Separator();
 						DrawAddEventMenuItem("Fake Region", !hasFakeEvent, UIFakesColorRGBA, EditorFakeSegmentEvent.EventShortDescription, row, () =>
 						{
-							var fakeLength = ToMicros(currentRateAlteringEvent.GetSecondsPerRow() * MaxValidDenominator);
+							var fakeLength = currentRateAlteringEvent.GetSecondsPerRow() * MaxValidDenominator;
 							return EditorEvent.CreateEvent(new EditorEvent.EventConfig
 							{
 								EditorChart = ActiveChart,
 								ChartEvent = new FakeSegment(fakeLength)
 								{
 									IntegerPosition = row,
-									TimeMicros = timeMicros,
+									TimeSeconds = chartTime,
 								}
 							});
 						});
@@ -3036,7 +3074,7 @@ namespace StepManiaEditor
 								ChartEvent = new TickCount(EditorChart.DefaultTickCount)
 								{
 									IntegerPosition = row,
-									TimeMicros = timeMicros,
+									TimeSeconds = chartTime,
 								}
 							});
 						});
@@ -3048,7 +3086,7 @@ namespace StepManiaEditor
 								ChartEvent = new Multipliers(EditorChart.DefaultHitMultiplier, EditorChart.DefaultMissMultiplier)
 								{
 									IntegerPosition = row,
-									TimeMicros = timeMicros,
+									TimeSeconds = chartTime,
 								}
 							});
 						});
@@ -3060,7 +3098,7 @@ namespace StepManiaEditor
 								ChartEvent = new TimeSignature(EditorChart.DefaultTimeSignature)
 								{
 									IntegerPosition = nearestMeasureBoundaryRow,
-									TimeMicros = ToMicrosRounded(nearestMeasureChartTime),
+									TimeSeconds = nearestMeasureChartTime,
 								}
 							});
 						}, true);
@@ -3072,7 +3110,7 @@ namespace StepManiaEditor
 								ChartEvent = new Fumen.ChartDefinition.Label("New Label")
 								{
 									IntegerPosition = row,
-									TimeMicros = timeMicros,
+									TimeSeconds = chartTime,
 								}
 							});
 						});
@@ -3618,10 +3656,19 @@ namespace StepManiaEditor
 			TransformingNotes = true;
 		}
 
-		public void OnNoteTransformationEnd()
+		public void OnNoteTransformationEnd(List<EditorEvent> transformedEvents)
 		{
 			TransformingNotes = false;
-			CheckAndDeselectDeletedEvents();
+
+			// When a transformation ends, set the selection to the transformed notes.
+			// Technically this will deselect notes if the user performed a transfrom
+			// on a set of events where not all were eligible to be transformed. For
+			// example, if they selected all events (including rate altering events)
+			// and then mirroed the selection, this would deselect the rate altering
+			// events. However, this logic also guarantees that after a transform,
+			// including transforms initiated from undo and redo, the selection contains
+			// the modified notes.
+			SetSelectEvents(transformedEvents);
 		}
 
 		private void SelectEvent(EditorEvent e, bool setLastSelected)
@@ -3661,7 +3708,7 @@ namespace StepManiaEditor
 			var eventsToDelete = new List<EditorEvent>();
 			foreach(var editorEvent in SelectedEvents)
 			{
-				if (!editorEvent.CanBeDeleted)
+				if (!editorEvent.CanBeDeleted())
 					continue;
 				eventsToDelete.Add(editorEvent);
 			}
@@ -3689,19 +3736,11 @@ namespace StepManiaEditor
 			}
 		}
 
-		private void CheckAndDeselectDeletedEvents()
+		private void SetSelectEvents(List<EditorEvent> selectedEvents)
 		{
-			if (SelectedEvents.Count == 0)
-				return;
-
-			var deletedSelectedEvents = new List<EditorEvent>();
-			foreach (var selectedEvent in SelectedEvents)
-			{
-				if (ActiveChart.EditorEvents.Find(selectedEvent) == null)
-					deletedSelectedEvents.Add(selectedEvent);
-			}
-			foreach (var deletedSelectedEvent in deletedSelectedEvents)
-				DeselectEvent(deletedSelectedEvent);
+			ClearSelectedEvents();
+			foreach (var selectedEvent in selectedEvents)
+				SelectEvent(selectedEvent, true);
 		}
 
 		public void OnSelectAll()
@@ -3852,11 +3891,13 @@ namespace StepManiaEditor
 						var enumerator = ActiveChart.MiscEvents.FindBestByPosition(minPosition);
 						while (enumerator != null && enumerator.MoveNext())
 						{
-							var rae = enumerator.Current;
-							if (rae.GetChartTime() > adjustedMaxTime)
+							var miscEvent = enumerator.Current;
+							if (miscEvent.GetChartTime() > adjustedMaxTime)
 								break;
-							MiscEventWidgetLayoutManager.PositionEvent(rae);
-							potentialEvents.Add(rae);
+							if (!miscEvent.IsSelectableWithModifiers())
+								continue;
+							MiscEventWidgetLayoutManager.PositionEvent(miscEvent);
+							potentialEvents.Add(miscEvent);
 						}
 
 						// Now that we know the x positions of the potential misc events, check each
@@ -3921,11 +3962,13 @@ namespace StepManiaEditor
 						var enumerator = ActiveChart.MiscEvents.FindBestByPosition(adjustedMinPosition);
 						while (enumerator != null && enumerator.MoveNext())
 						{
-							var rae = enumerator.Current;
-							if (rae.GetRow() > adjustedMaxPosition)
+							var miscEvent = enumerator.Current;
+							if (miscEvent.GetRow() > adjustedMaxPosition)
 								break;
-							MiscEventWidgetLayoutManager.PositionEvent(rae);
-							potentialEvents.Add(rae);
+							if (!miscEvent.IsSelectableWithModifiers())
+								continue;
+							MiscEventWidgetLayoutManager.PositionEvent(miscEvent);
+							potentialEvents.Add(miscEvent);
 						}
 
 						// Now that we know the x positions of the potential misc events, check each
@@ -4173,6 +4216,37 @@ namespace StepManiaEditor
 			return duration / spacingHelper.GetPpr();
 		}
 
+		private void OnShiftSelectedNotesLeft()
+		{
+			ActionQueue.Instance.Do(new ActionShiftSelectionLane(this, ActiveChart, SelectedEvents, false, false));
+		}
+		private void OnShiftSelectedNotesLeftAndWrap()
+		{
+			ActionQueue.Instance.Do(new ActionShiftSelectionLane(this, ActiveChart, SelectedEvents, false, true));
+		}
+		private void OnShiftSelectedNotesRight()
+		{
+			ActionQueue.Instance.Do(new ActionShiftSelectionLane(this, ActiveChart, SelectedEvents, true, false));
+		}
+		private void OnShiftSelectedNotesRightAndWrap()
+		{
+			ActionQueue.Instance.Do(new ActionShiftSelectionLane(this, ActiveChart, SelectedEvents, true, true));
+		}
+		private void OnShiftSelectedNotesEarlier()
+		{
+			var rows = SnapLevels[SnapIndex].Rows;
+			if (rows == 0)
+				rows = MaxValidDenominator;
+			ActionQueue.Instance.Do(new ActionShiftSelectionRow(this, ActiveChart, SelectedEvents, -rows));
+		}
+		private void OnShiftSelectedNotesLater()
+		{
+			var rows = SnapLevels[SnapIndex].Rows;
+			if (rows == 0)
+				rows = MaxValidDenominator;
+			ActionQueue.Instance.Do(new ActionShiftSelectionRow(this, ActiveChart, SelectedEvents, rows));
+		}
+
 		#endregion Selection
 
 		public bool IsChartSupported(Chart chart)
@@ -4402,7 +4476,7 @@ namespace StepManiaEditor
 						{
 							Lane = lane,
 							IntegerPosition = row,
-							TimeMicros = ToMicros(chartTime),
+							TimeSeconds = chartTime,
 							SourceType = NoteChars[(int)NoteType.Mine].ToString()
 						},
 						IsBeingEdited = true
@@ -4418,7 +4492,7 @@ namespace StepManiaEditor
 						{
 							Lane = lane,
 							IntegerPosition = row,
-							TimeMicros = ToMicros(chartTime),
+							TimeSeconds = chartTime,
 						},
 						IsBeingEdited = true
 					};
@@ -4515,7 +4589,7 @@ namespace StepManiaEditor
 									{
 										Lane = lane,
 										IntegerPosition = holdStart.GetEvent().IntegerPosition,
-										TimeMicros = holdStart.GetEvent().TimeMicros,
+										TimeSeconds = holdStart.GetEvent().TimeSeconds,
 									}
 								};
 								var insertNewNoteAtHoldStart = new ActionAddEditorEvent(EditorEvent.CreateEvent(config));

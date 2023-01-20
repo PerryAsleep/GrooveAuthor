@@ -149,7 +149,7 @@ namespace StepManiaEditor
 						{
 							Lane = EventBeingEdited.GetLane(),
 							IntegerPosition = EventBeingEdited.GetEvent().IntegerPosition,
-							TimeMicros = EventBeingEdited.GetEvent().TimeMicros
+							TimeSeconds = EventBeingEdited.GetEvent().TimeSeconds
 						},
 						IsBeingEdited = true
 					};
@@ -164,7 +164,7 @@ namespace StepManiaEditor
 						{
 							Lane = EventBeingEdited.GetLane(),
 							IntegerPosition = EventBeingEdited.GetEvent().IntegerPosition,
-							TimeMicros = EventBeingEdited.GetEvent().TimeMicros,
+							TimeSeconds = EventBeingEdited.GetEvent().TimeSeconds,
 							SourceType = SMCommon.NoteChars[(int)SMCommon.NoteType.Mine].ToString()
 						},
 						IsBeingEdited = true

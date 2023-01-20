@@ -56,7 +56,7 @@ namespace StepManiaEditor
 			double rowsPerSecond,
 			double secondsPerRow,
 			TimeSignature lastTimeSignature,
-			bool canBeDeleted)
+			bool isPositionImmutable)
 		{
 			WarpRowsRemaining = warpRowsRemaining;
 			StopTimeRemaining = stopTimeRemaining;
@@ -65,7 +65,7 @@ namespace StepManiaEditor
 			RowsPerSecond = rowsPerSecond;
 			SecondsPerRow = secondsPerRow;
 			LastTimeSignature = lastTimeSignature;
-			CanBeDeleted = canBeDeleted;
+			IsPositionImmutable = isPositionImmutable;
 		}
 
 		/// <summary>
@@ -103,6 +103,16 @@ namespace StepManiaEditor
 		/// <returns>Chart time of the given position.</returns>
 		public double GetChartTimeFromPosition(double chartPosition)
 		{
+			// Note that this math matches the math used in SetEventTimeAndMetricPositionsFromRows.
+			// This is important as we expect the time of an event computed here and in SMCommon to
+			// be equal. Specifically the times calculated by both functions should return true when
+			// compared by DoubleEquals. This is important because when rate altering events are added
+			// or removed we use the SMCommon SetEventTimeAndMetricPositionsFromRows function to recalculate
+			// the times for all events. If those times were to shift as part of that recalculation then
+			// the events may compare differently and any data structure holding the events that relies
+			// on comparisions (like a RedBlackTree) would then fail to find events.
+			// See also EditorEvent.CompareTo.
+
 			// Only cap values if the position isn't before 0
 			var relativePosition = chartPosition - (GetRow() + WarpRowsRemaining);
 			if (chartPosition >= 0.0)

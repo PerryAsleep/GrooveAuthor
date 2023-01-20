@@ -5,6 +5,7 @@ using Fumen.Converters;
 using Microsoft.Xna.Framework.Graphics;
 using static StepManiaLibrary.Constants;
 using static System.Diagnostics.Debug;
+using static Fumen.FumenExtensions;
 
 namespace StepManiaEditor
 {
@@ -39,9 +40,10 @@ namespace StepManiaEditor
 		/// </summary>
 		protected readonly EditorChart EditorChart;
 		/// <summary>
-		/// Whether or not this EditorEvent can be deleted from its EditorChart.
+		/// Whether or not this EditorEvent has an immutable position.
+		/// Certain events, like the first tempo and time signature cannot be deleted or moved.
 		/// </summary>
-		public bool CanBeDeleted = true;
+		public bool IsPositionImmutable = false;
 		/// <summary>
 		/// Whether or not this EditorEvent is currently selected by the user.
 		/// </summary>
@@ -63,7 +65,7 @@ namespace StepManiaEditor
 		/// from properties which only include time values may have non-integer ChartPosition
 		/// values.
 		/// </summary>
-		protected readonly double ChartPosition;
+		protected double ChartPosition;
 
 		protected static uint ScreenHeight;
 		public static void SetScreenHeight(uint screenHeight)
@@ -135,6 +137,25 @@ namespace StepManiaEditor
 		}
 
 		/// <summary>
+		/// Whether or not this Event can be deleted. Events with immutable positons cannot be deleted.
+		/// </summary>
+		/// <returns>Whether or not this Event can be deleted.</returns>
+		public bool CanBeDeleted()
+		{
+			return !IsPositionImmutable;
+		}
+
+		/// <summary>
+		/// Whether or not this Event can be re-positioned.
+		/// Events with immutable positons cannot be re-positioned.
+		/// </summary>
+		/// <returns>Whether or not this Event can be re-positioned.</returns>
+		public bool CanBeRepositioned()
+		{
+			return !IsPositionImmutable;
+		}
+
+		/// <summary>
 		/// Returns whether or not this event draws with a misc. ImGui event that is positioned through
 		/// MiscEventWidgetLayoutManager.
 		/// </summary>
@@ -191,6 +212,40 @@ namespace StepManiaEditor
 		}
 
 		/// <summary>
+		/// Sets a new row position for this event.
+		/// This also updates the event's time.
+		/// </summary>
+		/// <param name="row">New row to set.</param>
+		/// <remarks>
+		/// Set this carefully. This changes how events are sorted.
+		/// This cannot be changed while this event is in a sorted list without resorting.
+		/// </remarks>
+		public virtual void SetNewPosition(int row)
+		{
+			ChartPosition = row;
+			if (ChartEvent != null)
+				ChartEvent.IntegerPosition = row;
+			ResetTimeBasedOnRow();
+		}
+
+		/// <summary>
+		/// Updates the chart time of the event to match its row.
+		/// This also updates the event's time.
+		/// </summary>
+		/// <remarks>
+		/// Call this carefully. This changes how events are sorted.
+		/// This cannot be changed while this event is in a sorted list without resorting.
+		/// </remarks>
+		public void ResetTimeBasedOnRow()
+		{
+			if (ChartEvent == null)
+				return;
+			var chartTime = 0.0;
+			EditorChart.TryGetTimeFromChartPosition(GetRow(), ref chartTime);
+			ChartEvent.TimeSeconds = chartTime;
+		}
+
+		/// <summary>
 		/// Gets the row/ChartPosition as an integer.
 		/// </summary>
 		/// <returns>Integer row.</returns>
@@ -216,7 +271,7 @@ namespace StepManiaEditor
 		{
 			if (ChartEvent == null)
 				return 0.0;
-			return Fumen.Utils.ToSeconds(ChartEvent.TimeMicros);
+			return ChartEvent.TimeSeconds;
 		}
 
 		/// <summary>
@@ -296,9 +351,11 @@ namespace StepManiaEditor
 			// EditorEvents with no Event backing them have rows which are inferred from their times.
 			// In some situations (e.g. during a Stop time range), this can cause these event's to have
 			// a row which occurs much earlier than other events in the "same" row.
-			comparison = GetChartTime().CompareTo(other.GetChartTime());
-			if (comparison != 0)
-				return comparison;
+			// This comparison relies on time values not changing unexpectedly.
+			// See SMCommon.SetEventTimeAndMetricPositionsFromRows and
+			// EditorRateAlteringEvent.GetChartTimeFromPosition for time calculations.
+			if (!GetChartTime().DoubleEquals(other.GetChartTime()))
+				return GetChartTime() - other.GetChartTime() > 0.0 ? 1 : -1;
 
 			// Sort by types which only exist in the editor and aren't represented as Events
 			// in Stepmania, like the preview and the last second hint.

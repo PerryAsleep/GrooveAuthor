@@ -1,4 +1,5 @@
 ﻿using System.Text.Json.Serialization;
+using static Fumen.FumenExtensions;
 
 namespace StepManiaEditor
 {

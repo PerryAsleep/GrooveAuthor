@@ -1115,17 +1115,4 @@ namespace StepManiaEditor
 
 		#endregion UI Position and DPI Scaling
 	}
-
-	public static class EditorExtensions
-	{
-		public static bool FloatEquals(this float f, float other)
-		{
-			return f - float.Epsilon <= other && f + float.Epsilon >= other;
-		}
-
-		public static bool DoubleEquals(this double d, double other)
-		{
-			return d - double.Epsilon <= other && d + double.Epsilon >= other;
-		}
-	}
 }

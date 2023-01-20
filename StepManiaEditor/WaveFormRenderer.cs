@@ -2,6 +2,7 @@
 using Microsoft.Xna.Framework.Graphics;
 using Color = Microsoft.Xna.Framework.Color;
 using Vector2 = Microsoft.Xna.Framework.Vector2;
+using static Fumen.FumenExtensions;
 
 namespace StepManiaEditor
 {

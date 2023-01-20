@@ -30,10 +30,9 @@ namespace StepManiaEditor
 		{
 			get
 			{
-				if (ScrollRateInterpolationEvent.PreferPeriodAsTimeMicros)
+				if (ScrollRateInterpolationEvent.PreferPeriodAsTime)
 				{
-					var len = ToSeconds(ScrollRateInterpolationEvent.PeriodTimeMicros);
-					return $"{ScrollRateInterpolationEvent.Rate}x/{len:G9}s";
+					return $"{ScrollRateInterpolationEvent.Rate}x/{ScrollRateInterpolationEvent.PeriodTimeSeconds:G9}s";
 				}
 				else
 				{
@@ -47,42 +46,42 @@ namespace StepManiaEditor
 				{
 					ScrollRateInterpolationEvent.Rate = rate;
 					ScrollRateInterpolationEvent.PeriodLengthIntegerPosition = periodInt;
-					ScrollRateInterpolationEvent.PeriodTimeMicros = periodTime;
-					ScrollRateInterpolationEvent.PreferPeriodAsTimeMicros = preferTime;
+					ScrollRateInterpolationEvent.PeriodTimeSeconds = periodTime;
+					ScrollRateInterpolationEvent.PreferPeriodAsTime = preferTime;
 					WidthDirty = true;
 					EditorChart.OnInterpolatedRateAlteringEventModified(this);
 				}
 			}
 		}
 
-		public static (bool, double, int, long, bool) IsValidScrollRateInterpolationString(string v)
+		public static (bool, double, int, double, bool) IsValidScrollRateInterpolationString(string v)
 		{
-			double rate = 0.0;
-			int periodIntegerPosition = 0;
-			long periodTimeMicros = 0L;
-			bool preferPeriodAsTimeMicros = false;
+			var rate = 0.0;
+			var periodIntegerPosition = 0;
+			var periodTime = 0.0;
+			var preferPeriodAsTime = false;
 
 			var match = Regex.Match(v, @"^(\d+\.?\d*|\d*\.?\d+)x/(\d+\.?\d*|\d*\.?\d+)(s|rows)$");
 			if (!match.Success)
-				return (false, rate, periodIntegerPosition, periodTimeMicros, preferPeriodAsTimeMicros);
+				return (false, rate, periodIntegerPosition, periodTime, preferPeriodAsTime);
 			if (match.Groups.Count != 4)
-				return (false, rate, periodIntegerPosition, periodTimeMicros, preferPeriodAsTimeMicros);
+				return (false, rate, periodIntegerPosition, periodTime, preferPeriodAsTime);
 			if (!double.TryParse(match.Groups[1].Captures[0].Value, out rate))
-				return (false, rate, periodIntegerPosition, periodTimeMicros, preferPeriodAsTimeMicros);
+				return (false, rate, periodIntegerPosition, periodTime, preferPeriodAsTime);
 			if (match.Groups[3].Captures[0].Value == "s")
-				preferPeriodAsTimeMicros = true;
-			if (preferPeriodAsTimeMicros)
+				preferPeriodAsTime = true;
+			if (preferPeriodAsTime)
 			{
 				if (!double.TryParse(match.Groups[2].Captures[0].Value, out var periodSeconds))
-					return (false, rate, periodIntegerPosition, periodTimeMicros, preferPeriodAsTimeMicros);
-				periodTimeMicros = ToMicros(periodSeconds);
+					return (false, rate, periodIntegerPosition, periodTime, preferPeriodAsTime);
+				periodTime = periodSeconds;
 			}
 			else
 			{
 				if (!int.TryParse(match.Groups[2].Captures[0].Value, out periodIntegerPosition))
-					return (false, rate, periodIntegerPosition, periodTimeMicros, preferPeriodAsTimeMicros);
+					return (false, rate, periodIntegerPosition, periodTime, preferPeriodAsTime);
 			}
-			return (true, rate, periodIntegerPosition, periodTimeMicros, preferPeriodAsTimeMicros);
+			return (true, rate, periodIntegerPosition, periodTime, preferPeriodAsTime);
 		}
 
 		/// <remarks>
@@ -118,7 +117,7 @@ namespace StepManiaEditor
 
 		public bool InterpolatesByTime()
 		{
-			return ScrollRateInterpolationEvent.PreferPeriodAsTimeMicros;
+			return ScrollRateInterpolationEvent.PreferPeriodAsTime;
 		}
 
 		public double GetInterpolatedScrollRateFromTime(double chartTime)
@@ -128,7 +127,7 @@ namespace StepManiaEditor
 				PreviousScrollRate,
 				ScrollRateInterpolationEvent.Rate,
 				eventChartTime,
-				eventChartTime + ToSeconds(ScrollRateInterpolationEvent.PeriodTimeMicros),
+				eventChartTime + ScrollRateInterpolationEvent.PeriodTimeSeconds,
 				chartTime);
 		}
 
@@ -157,7 +156,7 @@ namespace StepManiaEditor
 				(int)X, (int)Y, (int)W,
 				Utils.UISpeedsColorRGBA,
 				IsSelected(),
-				CanBeDeleted,
+				CanBeDeleted(),
 				Alpha,
 				WidgetHelp);
 		}

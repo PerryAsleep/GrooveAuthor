@@ -79,7 +79,7 @@ namespace StepManiaEditor
 				(int)X, (int)Y, (int)W,
 				Utils.UITicksColorRGBA,
 				IsSelected(),
-				CanBeDeleted,
+				CanBeDeleted(),
 				Speed,
 				Format,
 				Alpha,

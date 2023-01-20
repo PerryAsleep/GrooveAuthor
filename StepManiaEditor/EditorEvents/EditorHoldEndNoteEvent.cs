@@ -38,6 +38,31 @@ namespace StepManiaEditor
 			return LaneHoldEndNote.Lane;
 		}
 
+		public override void SetLane(int lane)
+		{
+			if (lane == GetLane())
+				return;
+			base.SetLane(lane);
+
+			// Keep the hold start and end in sync.
+			EditorHoldStartNoteEvent.SetLane(lane);
+		}
+
+		public override void SetNewPosition(int row)
+		{
+			var len = EditorHoldStartNoteEvent.GetLength();
+			base.SetNewPosition(row);
+
+			if (len != EditorHoldStartNoteEvent.GetLength())
+				EditorHoldStartNoteEvent.UpdatePositionToMaintainLength(len);
+		}
+
+		public void UpdatePositionToMaintainLength(int length)
+		{
+			var row = EditorHoldStartNoteEvent.GetRow() + length;
+			base.SetNewPosition(row);
+		}
+
 		public bool IsRoll()
 		{
 			return EditorHoldStartNoteEvent.IsRoll();

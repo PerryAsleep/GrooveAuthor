@@ -1,7 +1,7 @@
 ﻿using Fumen.ChartDefinition;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using static Fumen.Utils;
+using static Fumen.FumenExtensions;
 using static StepManiaEditor.Editor;
 using static StepManiaEditor.Utils;
 
@@ -32,7 +32,7 @@ namespace StepManiaEditor
 		public void SetRegionY(double y) { RegionY = y; }
 		public void SetRegionW(double w) { RegionW = w; }
 		public void SetRegionH(double h) { RegionH = h; }
-		public double GetRegionPosition() { return ToSeconds(ChartEvent.TimeMicros); }
+		public double GetRegionPosition() { return ChartEvent.TimeSeconds; }
 		public double GetRegionDuration() { return DoubleValue; }
 		public bool AreRegionUnitsTime() { return true; }
 		public bool IsVisible(SpacingMode mode) { return true; }
@@ -41,13 +41,12 @@ namespace StepManiaEditor
 
 		public double DoubleValue
 		{
-			get => ToSeconds(FakeSegmentEvent.LengthMicros);
+			get => FakeSegmentEvent.LengthSeconds;
 			set
 			{
-				var newMicros = ToMicrosRounded(value);
-				if (FakeSegmentEvent.LengthMicros != newMicros)
+				if (!FakeSegmentEvent.LengthSeconds.DoubleEquals(value))
 				{
-					FakeSegmentEvent.LengthMicros = newMicros;
+					FakeSegmentEvent.LengthSeconds = value;
 					WidthDirty = true;
 				}
 			}

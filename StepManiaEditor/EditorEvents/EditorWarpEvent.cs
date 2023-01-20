@@ -102,7 +102,7 @@ namespace StepManiaEditor
 				(int)X, (int)Y, (int)W,
 				Utils.UIWarpColorRGBA,
 				IsSelected(),
-				CanBeDeleted,
+				CanBeDeleted(),
 				Speed,
 				Format,
 				Alpha,

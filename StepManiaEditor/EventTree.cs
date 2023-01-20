@@ -1,6 +1,9 @@
 ﻿using Fumen;
 using static Fumen.Converters.SMCommon;
 using System.Collections.Generic;
+using static System.Diagnostics.Debug;
+using System.Diagnostics;
+using static StepManiaLibrary.Constants;
 
 namespace StepManiaEditor
 {
@@ -12,6 +15,16 @@ namespace StepManiaEditor
 	internal class EventTree : RedBlackTree<EditorEvent>
 	{
 		private EditorChart Chart;
+
+		/// <summary>
+		/// Debug flag for checking the tree to ensure events are sorted as expected.
+		/// When set, lists will be generated from the tree for easy debugger inspection.
+		/// </summary>
+		private bool DebugEditorEventSort = false;
+		/// <summary>
+		/// List just for looking the previous state of the sorted tree in the debugger.
+		/// </summary>
+		private List<EditorEvent> PreviousList = new List<EditorEvent>();
 
 		public EventTree(EditorChart chart)
 		{
@@ -114,6 +127,92 @@ namespace StepManiaEditor
 			}
 
 			return events;
+		}
+
+		public new void Insert(EditorEvent data)
+		{
+			Validate();
+			base.Insert(data);
+			Validate();
+		}
+
+		public new bool Delete(EditorEvent data)
+		{
+			Validate();
+			var ret = base.Delete(data);
+			Validate();
+			return ret;
+		}
+
+		/// <summary>
+		/// Debug validation method to assert that the tree is consistent.
+		/// The editor can alter event timing, which requires removing events from the tree,
+		/// altering the events (and handling any side effects) and re-adding the events. This
+		/// method can help ensure when adding new edit operations that they function as
+		/// expected. Ideally those operations should be covered by unit tests.
+		/// </summary>
+		[Conditional("DEBUG")]
+		public void Validate()
+		{
+			if (!DebugEditorEventSort)
+				return;
+
+			var enumerator = First();
+			var list = new List<EditorEvent>();
+			while(enumerator != null && enumerator.MoveNext())
+			{
+				list.Add(enumerator.Current);
+			}
+
+			var previousRow = 0;
+			var laneNotes = new EditorEvent[Chart.NumInputs];
+			var eventsByTypeAtCurrentRow = new HashSet<System.Type>();
+			for (int i = 0; i < list.Count; i++)
+			{
+				// Ensure events are sorted as expected.
+				if (i > 0)
+				{
+					var previousBeforeThis = list[i - 1].CompareTo(list[i]) < 0;
+					var thisAfterPrevious = list[i].CompareTo(list[i - 1]) > 0;
+					Assert(previousBeforeThis && thisAfterPrevious);
+				}
+				if (i < list.Count - 1)
+				{
+					var thisBeforeNext = list[i].CompareTo(list[i + 1]) < 0;
+					var nextAfterThis = list[i + 1].CompareTo(list[i]) > 0;
+					Assert(thisBeforeNext && nextAfterThis);
+				}
+
+				// Ensure rows never decrease.
+				var row = list[i].GetRow();
+				Assert(row >= previousRow);
+
+				// Update row tracking variables.
+				if (row != previousRow)
+				{
+					for (var l = 0; l < Chart.NumInputs; l++)
+						laneNotes[l] = null;
+					eventsByTypeAtCurrentRow.Clear();
+				}
+
+				// Ensure there aren't two events at the same row and lane.
+				var lane = list[i].GetLane();
+				if (lane != InvalidArrowIndex)
+				{
+					Assert(laneNotes[lane] == null);
+					laneNotes[lane] = list[i];
+				}
+				// Ensure there aren't two non-lane events at the same row with the same type.
+				else
+				{
+					Assert(!eventsByTypeAtCurrentRow.Contains(list[i].GetType()));
+					eventsByTypeAtCurrentRow.Add(list[i].GetType());
+				}
+
+				previousRow = row;
+			}
+
+			PreviousList = list;
 		}
 
 		private EditorEvent.EventConfig CreateDummyConfig(double chartPosition)

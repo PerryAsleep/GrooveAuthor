@@ -1,6 +1,7 @@
 ﻿using Fumen.ChartDefinition;
 using Fumen.Converters;
 using Microsoft.Xna.Framework.Graphics;
+using static Fumen.FumenExtensions;
 
 namespace StepManiaEditor
 {
@@ -84,7 +85,7 @@ namespace StepManiaEditor
 				(int)X, (int)Y, (int)W,
 				Utils.UITempoColorRGBA,
 				IsSelected(),
-				CanBeDeleted,
+				CanBeDeleted(),
 				Speed,
 				Format,
 				Alpha,

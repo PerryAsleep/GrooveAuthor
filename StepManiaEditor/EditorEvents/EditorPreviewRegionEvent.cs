@@ -1,6 +1,7 @@
 ﻿using Microsoft.Xna.Framework;
 using static StepManiaEditor.Editor;
 using static StepManiaEditor.Utils;
+using static Fumen.FumenExtensions;
 using Microsoft.Xna.Framework.Graphics;
 
 namespace StepManiaEditor
@@ -81,16 +82,19 @@ namespace StepManiaEditor
 			: base(new EventConfig { EditorChart = editorChart, ChartPosition = chartPosition, UseDoubleChartPosition = true })
 		{
 			WidthDirty = true;
+			IsPositionImmutable = true;
 		}
 
+		private double HackChartTime = 0.0;
 		public override double GetChartTime()
 		{
+			HackChartTime = EditorChart.EditorSong.SampleStart + EditorChart.GetMusicOffset();
 			return EditorChart.EditorSong.SampleStart + EditorChart.GetMusicOffset();
 		}
 
 		public override bool IsMiscEvent() { return true; }
 		public override bool IsSelectableWithoutModifiers() { return false; }
-		public override bool IsSelectableWithModifiers() { return true; }
+		public override bool IsSelectableWithModifiers() { return false; }
 
 		public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)
 		{
@@ -100,7 +104,7 @@ namespace StepManiaEditor
 				nameof(DoubleValue),
 				(int)X, (int)Y, (int)W,
 				Utils.UIPreviewColorRGBA,
-				false,
+				IsSelected(),
 				Speed,
 				Format,
 				Alpha,

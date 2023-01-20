@@ -3,6 +3,7 @@ using System.Linq;
 using System.Text.Json.Serialization;
 using Fumen.Converters;
 using static Fumen.Converters.SMCommon;
+using static Fumen.FumenExtensions;
 
 namespace StepManiaEditor
 {
