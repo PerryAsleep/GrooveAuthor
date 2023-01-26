@@ -123,7 +123,7 @@ namespace StepManiaEditor
 			}
 
 			var addHoldEvent = new ActionAddHoldEvent(activeChart, lane, row, length, roll, true);
-			EventBeingEdited = addHoldEvent.GetHoldStartEvent();
+			EventBeingEdited = addHoldEvent.GetHoldEvent();
 			Actions.EnqueueAndDo(addHoldEvent);
 			Active = true;
 			StartingRow = startingRow;
@@ -145,12 +145,12 @@ namespace StepManiaEditor
 					var config = new EditorEvent.EventConfig
 					{
 						EditorChart = EventBeingEdited.GetEditorChart(),
-						ChartEvent = new LaneTapNote
+						ChartEvents = new List<Event> { new LaneTapNote
 						{
 							Lane = EventBeingEdited.GetLane(),
-							IntegerPosition = EventBeingEdited.GetEvent().IntegerPosition,
-							TimeSeconds = EventBeingEdited.GetEvent().TimeSeconds
-						},
+							IntegerPosition = EventBeingEdited.GetRow(),
+							TimeSeconds = EventBeingEdited.GetChartTime()
+						} },
 						IsBeingEdited = true
 					};
 					EventBeingEdited = EditorEvent.CreateEvent(config);
@@ -160,13 +160,13 @@ namespace StepManiaEditor
 					var config = new EditorEvent.EventConfig
 					{
 						EditorChart = EventBeingEdited.GetEditorChart(),
-						ChartEvent = new LaneNote
+						ChartEvents = new List<Event> { new LaneNote
 						{
 							Lane = EventBeingEdited.GetLane(),
-							IntegerPosition = EventBeingEdited.GetEvent().IntegerPosition,
-							TimeSeconds = EventBeingEdited.GetEvent().TimeSeconds,
+							IntegerPosition = EventBeingEdited.GetRow(),
+							TimeSeconds = EventBeingEdited.GetChartTime(),
 							SourceType = SMCommon.NoteChars[(int)SMCommon.NoteType.Mine].ToString()
-						},
+						} },
 						IsBeingEdited = true
 					};
 					EventBeingEdited = EditorEvent.CreateEvent(config);
@@ -182,7 +182,7 @@ namespace StepManiaEditor
 			}
 
 			// Switch between a hold and roll.
-			else if (EventBeingEdited is EditorHoldStartNoteEvent)
+			else if (EventBeingEdited is EditorHoldNoteEvent)
 			{
 				foreach (var editorAction in Actions.GetActions())
 				{

@@ -24,7 +24,7 @@ namespace StepManiaEditor
 		internal struct EventConfig
 		{
 			public EditorChart EditorChart;
-			public Event ChartEvent;
+			public List<Event> ChartEvents;
 			public bool UseDoubleChartPosition;
 			public double ChartPosition;
 			public bool IsDummyEvent;
@@ -32,7 +32,10 @@ namespace StepManiaEditor
 		}
 
 		/// <summary>
-		/// The underlying Event for this EditorEvent. Most EditorEvents have an Event, but some do not.
+		/// The underlying Event for this EditorEvent.
+		/// Most EditorEvents have one Event.
+		/// Holds have two Events. For Holds this is LaneHoldStartNote. 
+		/// Some events have no Events.
 		/// </summary>
 		protected readonly Event ChartEvent;
 		/// <summary>
@@ -82,41 +85,51 @@ namespace StepManiaEditor
 		{
 			EditorEvent newEvent = null;
 
-			if (config.ChartEvent != null)
+			if (config.ChartEvents != null)
 			{
 				// Intentional modification of DestType to preserve StepMania types like mines.
-				config.ChartEvent.DestType = config.ChartEvent.SourceType;
+				foreach (var chartEvent in config.ChartEvents)
+					chartEvent.DestType = chartEvent.SourceType;
 
-				if (config.ChartEvent is LaneTapNote ltn)
-					newEvent = new EditorTapNoteEvent(config, ltn);
-				else if (config.ChartEvent is LaneHoldStartNote lhsn)
-					newEvent = new EditorHoldStartNoteEvent(config, lhsn);
-				else if (config.ChartEvent is LaneHoldEndNote lhen)
-					newEvent = new EditorHoldEndNoteEvent(config, lhen);
-				else if (config.ChartEvent is LaneNote ln && ln.SourceType == SMCommon.NoteChars[(int)SMCommon.NoteType.Mine].ToString())
-					newEvent = new EditorMineNoteEvent(config, ln);
-				else if (config.ChartEvent is TimeSignature ts)
-					newEvent = new EditorTimeSignatureEvent(config, ts);
-				else if (config.ChartEvent is Tempo t)
-					newEvent = new EditorTempoEvent(config, t);
-				else if (config.ChartEvent is Stop s)
-					newEvent = s.IsDelay ? new EditorDelayEvent(config, s) : new EditorStopEvent(config, s);
-				else if (config.ChartEvent is Warp w)
-					newEvent = new EditorWarpEvent(config, w);
-				else if (config.ChartEvent is ScrollRate sr)
-					newEvent = new EditorScrollRateEvent(config, sr);
-				else if (config.ChartEvent is ScrollRateInterpolation sri)
-					newEvent = new EditorInterpolatedRateAlteringEvent(config, sri);
-				else if (config.ChartEvent is TickCount tc)
-					newEvent = new EditorTickCountEvent(config, tc);
-				else if (config.ChartEvent is Multipliers m)
-					newEvent = new EditorMultipliersEvent(config, m);
-				else if (config.ChartEvent is Label l)
-					newEvent = new EditorLabelEvent(config, l);
-				else if (config.ChartEvent is FakeSegment fs)
-					newEvent = new EditorFakeSegmentEvent(config, fs);
+				if (config.ChartEvents.Count == 2)
+				{
+					if (config.ChartEvents[0] is LaneHoldStartNote lhsn
+						&& config.ChartEvents[1] is LaneHoldEndNote lhen)
+					{
+						newEvent = new EditorHoldNoteEvent(config, lhsn, lhen);
+					}
+				}
+				else if (config.ChartEvents.Count == 1)
+				{
+					var chartEvent = config.ChartEvents[0];
+					if (chartEvent is LaneTapNote ltn)
+						newEvent = new EditorTapNoteEvent(config, ltn);
+					else if (chartEvent is LaneNote ln && ln.SourceType == SMCommon.NoteChars[(int)SMCommon.NoteType.Mine].ToString())
+						newEvent = new EditorMineNoteEvent(config, ln);
+					else if (chartEvent is TimeSignature ts)
+						newEvent = new EditorTimeSignatureEvent(config, ts);
+					else if (chartEvent is Tempo t)
+						newEvent = new EditorTempoEvent(config, t);
+					else if (chartEvent is Stop s)
+						newEvent = s.IsDelay ? new EditorDelayEvent(config, s) : new EditorStopEvent(config, s);
+					else if (chartEvent is Warp w)
+						newEvent = new EditorWarpEvent(config, w);
+					else if (chartEvent is ScrollRate sr)
+						newEvent = new EditorScrollRateEvent(config, sr);
+					else if (chartEvent is ScrollRateInterpolation sri)
+						newEvent = new EditorInterpolatedRateAlteringEvent(config, sri);
+					else if (chartEvent is TickCount tc)
+						newEvent = new EditorTickCountEvent(config, tc);
+					else if (chartEvent is Multipliers m)
+						newEvent = new EditorMultipliersEvent(config, m);
+					else if (chartEvent is Label l)
+						newEvent = new EditorLabelEvent(config, l);
+					else if (chartEvent is FakeSegment fs)
+						newEvent = new EditorFakeSegmentEvent(config, fs);
+				}
 			}
 
+			Assert(newEvent != null);
 			return newEvent;
 		}
 
@@ -127,13 +140,42 @@ namespace StepManiaEditor
 		protected EditorEvent(EventConfig config)
 		{
 			EditorChart = config.EditorChart;
-			ChartEvent = config.ChartEvent;
+			if (config.ChartEvents != null && config.ChartEvents.Count > 0)
+				ChartEvent = config.ChartEvents[0];
 			IsDummyEvent = config.IsDummyEvent;
 			BeingEdited = config.IsBeingEdited;
 			if (config.UseDoubleChartPosition)
 				ChartPosition = config.ChartPosition;
 			else if (ChartEvent != null)
 				ChartPosition = ChartEvent.IntegerPosition;
+		}
+
+		/// <summary>
+		/// Clones this event.
+		/// </summary>
+		/// <returns>Newly cloned EditorEvent.</returns>
+		public EditorEvent Clone()
+		{
+			var clonedEvents = new List<Event>();
+			foreach(var originalEvent in GetEvents())
+				clonedEvents.Add(originalEvent.Clone());
+
+			var cloneConfig = new EventConfig()
+			{
+				ChartEvents = clonedEvents,
+				EditorChart = EditorChart,
+				ChartPosition = ChartPosition,
+				IsBeingEdited = BeingEdited,
+				IsDummyEvent = IsDummyEvent,
+			};
+
+			var newEvent = CreateEvent(cloneConfig);
+
+			newEvent.IsPositionImmutable = IsPositionImmutable;
+			newEvent.Selected = Selected;
+			newEvent.ChartPosition = ChartPosition;
+
+			return newEvent;
 		}
 
 		/// <summary>
@@ -175,12 +217,24 @@ namespace StepManiaEditor
 		}
 
 		/// <summary>
-		/// Gets the underlying Event for this EditorEvent. This may be null.
+		/// Gets the first underlying Event for this EditorEvent.
+		/// This may be null.
+		/// Some EditorEvents may be composed of multiple underlying Events.
 		/// </summary>
-		/// <returns>The underlying Event for this EditorEvent.</returns>
-		public Event GetEvent()
+		/// <returns>The first underlying Event for this EditorEvent.</returns>
+		public Event GetFirstEvent()
 		{
 			return ChartEvent;
+		}
+
+		/// <summary>
+		/// Gets all underlying Events for this EditorEvent.
+		/// This may be an empty list.
+		/// </summary>
+		/// <returns>All underlying Events for this EditorEvent.</returns>
+		public virtual List<Event> GetEvents()
+		{
+			return new List<Event>() { ChartEvent };
 		}
 
 		/// <summary>
@@ -223,9 +277,23 @@ namespace StepManiaEditor
 		public virtual void SetNewPosition(int row)
 		{
 			ChartPosition = row;
-			if (ChartEvent != null)
-				ChartEvent.IntegerPosition = row;
-			ResetTimeBasedOnRow();
+			SetNewPositionForEvent(ChartEvent, row);
+		}
+
+		/// <summary>
+		/// Sets the given Event's row to the given row and updates its time accordingly.
+		/// </summary>
+		/// <param name="chartEvent">
+		/// Event to modify. Take care if this Event is used for sorting. Changing the Event's
+		/// time will affect sorting.
+		/// </param>
+		/// <param name="row">New row to set.</param>
+		protected void SetNewPositionForEvent(Event chartEvent, int row)
+		{
+			if (chartEvent == null)
+				return;
+			chartEvent.IntegerPosition = row;
+			ResetTimeBasedOnRowForEvent(chartEvent, row);
 		}
 
 		/// <summary>
@@ -238,40 +306,86 @@ namespace StepManiaEditor
 		/// </remarks>
 		public void ResetTimeBasedOnRow()
 		{
-			if (ChartEvent == null)
-				return;
-			var chartTime = 0.0;
-			EditorChart.TryGetTimeFromChartPosition(GetRow(), ref chartTime);
-			ChartEvent.TimeSeconds = chartTime;
+			ResetTimeBasedOnRowForEvent(ChartEvent, GetRow());
 		}
 
 		/// <summary>
-		/// Gets the row/ChartPosition as an integer.
+		/// Resets the chart time of the given event to match the given row.
+		/// This also updates the given event's time.
 		/// </summary>
-		/// <returns>Integer row.</returns>
+		/// <param name="chartEvent">
+		/// Event to modify. Take care if this Event is used for sorting. Changing the Event's
+		/// time will affect sorting.
+		/// </param>
+		/// <param name="row">Row to use for setting the time.</param>
+		protected void ResetTimeBasedOnRowForEvent(Event chartEvent, int row)
+		{
+			if (chartEvent == null)
+				return;
+			var chartTime = 0.0;
+			EditorChart.TryGetTimeFromChartPosition(row, ref chartTime);
+			chartEvent.TimeSeconds = chartTime;
+		}
+
+		/// <summary>
+		/// Gets the row/ChartPosition of the event as an integer.
+		/// </summary>
+		/// <returns>Integer row of the event.</returns>
 		public virtual int GetRow()
 		{
 			return (int)ChartPosition;
 		}
 
 		/// <summary>
-		/// Gets the row/ChartPosition as a double.
+		/// Gets the row/ChartPosition of the end of the event as an integer.
 		/// </summary>
-		/// <returns>Double row.</returns>
+		/// <returns>Integer row of the end of the event.</returns>
+		public virtual int GetEndRow()
+		{
+			// By default an event has no length and its end row is its start row.
+			return GetRow();
+		}
+
+		/// <summary>
+		/// Gets the row/ChartPosition of the event as a double.
+		/// </summary>
+		/// <returns>Double row/ChartPosition of the event.</returns>
 		public virtual double GetChartPosition()
 		{	
 			return ChartPosition;
 		}
 
 		/// <summary>
-		/// Gets the chart time of the event in seconds.
+		/// Gets the row/ChartPosition of the end of the event as a double.
 		/// </summary>
-		/// <returns>Chart time of the event in seconds.</returns>
+		/// <returns>Double row/ChartPosition of the end of the event.</returns>
+		public virtual double GetEndChartPosition()
+		{
+			// By default an event has no length and its end chart position is its
+			// start chart position.
+			return GetChartPosition();
+		}
+
+		/// <summary>
+		/// Gets the chart time in seconds of the event.
+		/// </summary>
+		/// <returns>Chart time in seconds of the event.</returns>
 		public virtual double GetChartTime()
 		{
 			if (ChartEvent == null)
 				return 0.0;
 			return ChartEvent.TimeSeconds;
+		}
+
+		/// <summary>
+		/// Gets the chart time in seconds of the end of this event.
+		/// </summary>
+		/// <returns>Chart time in seconds of the end of this event.</returns>
+		public virtual double GetEndChartTime()
+		{
+			// By default an event has no length and its end chart time is its
+			// start chart time.
+			return GetChartTime();
 		}
 
 		/// <summary>
@@ -417,21 +531,11 @@ namespace StepManiaEditor
 		}
 
 		/// <summary>
-		/// Returns all events which should be selected when this event is selected. For most
-		/// events, that is just this event. For holds, the start and end are selected together.
-		/// </summary>
-		public virtual List<EditorEvent> GetEventsSelectedTogether()
-		{
-			return new List<EditorEvent>() { this };
-		}
-
-		/// <summary>
 		/// Select this event, and all other events which should be selected together with it.
 		/// </summary>
 		public void Select()
 		{
-			foreach (var e in GetEventsSelectedTogether())
-				e.Selected = true;
+			Selected = true;
 		}
 
 		/// <summary>
@@ -439,8 +543,7 @@ namespace StepManiaEditor
 		/// </summary>
 		public void Deselect()
 		{
-			foreach (var e in GetEventsSelectedTogether())
-				e.Selected = false;
+			Selected = false;
 		}
 
 		#endregion Selection

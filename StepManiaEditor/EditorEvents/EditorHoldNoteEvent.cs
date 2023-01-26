@@ -1,77 +1,147 @@
 ﻿using System;
 using System.Collections.Generic;
 using Fumen.ChartDefinition;
+using Fumen.Converters;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using static System.Diagnostics.Debug;
 using static StepManiaEditor.Utils;
 
 namespace StepManiaEditor
 {
-	internal sealed class EditorHoldEndNoteEvent : EditorEvent
+	internal sealed class EditorHoldNoteEvent : EditorEvent
 	{
-		private EditorHoldStartNoteEvent EditorHoldStartNoteEvent;
+		/// <summary>
+		/// The first underlying Event of the hold: the LaneHoldStartNote.
+		/// </summary>
+		private readonly LaneHoldStartNote LaneHoldStartNote;
+		/// <summary>
+		/// The second underlying Event of the hold: the LaneHoldEndNote.
+		/// </summary>
 		private readonly LaneHoldEndNote LaneHoldEndNote;
+		/// <summary>
+		/// Whether or not this hold is a roll.
+		/// </summary>
+		private bool Roll;
 
 		/// <summary>
-		/// Whether or not this hold should be considered active for rendering.
+		/// Whether or not this hold should be considered active (lit by input/autoplay) for rendering.
 		/// </summary>
 		private bool NextDrawActive;
+		/// <summary>
+		/// When the hold is active the start needs to be brought down to match the receptor.
+		/// This cutoff value is used to cut off the top of the hold and bring the start down.
+		/// </summary>
 		private double NextDrawActiveYCutoffPoint;
 
-		public EditorHoldEndNoteEvent(EventConfig config, LaneHoldEndNote chartEvent) : base(config)
+		public EditorHoldNoteEvent(EventConfig config, LaneHoldStartNote startEvent, LaneHoldEndNote endEvent) : base(config)
 		{
-			LaneHoldEndNote = chartEvent;
+			LaneHoldStartNote = startEvent;
+			LaneHoldEndNote = endEvent;
+			Roll = LaneHoldStartNote.SourceType == SMCommon.NoteChars[(int)SMCommon.NoteType.RollStart].ToString();
 		}
 
-		public void SetHoldStartNote(EditorHoldStartNoteEvent editorHoldStartNoteEvent)
+		/// <summary>
+		/// Static method to create a hold.
+		/// </summary>
+		public static EditorHoldNoteEvent CreateHold(EditorChart chart, int lane, int row, int length, bool roll)
 		{
-			EditorHoldStartNoteEvent = editorHoldStartNoteEvent;
-		}
+			var holdStartTime = 0.0;
+			chart.TryGetTimeFromChartPosition(row, ref holdStartTime);
+			var holdStartNote = new LaneHoldStartNote()
+			{
+				Lane = lane,
+				IntegerPosition = row,
+				TimeSeconds = holdStartTime
+			};
+			var holdEndTime = 0.0;
+			chart.TryGetTimeFromChartPosition(row + length, ref holdEndTime);
+			var holdEndNote = new LaneHoldEndNote()
+			{
+				Lane = lane,
+				IntegerPosition = row + length,
+				TimeSeconds = holdEndTime
+			};
 
-		public EditorHoldStartNoteEvent GetHoldStartNote()
-		{
-			return EditorHoldStartNoteEvent;
+			var config = new EventConfig
+			{
+				EditorChart = chart,
+				ChartEvents = new List<Event> { holdStartNote, holdEndNote },
+			};
+			var hold = new EditorHoldNoteEvent(config, holdStartNote, holdEndNote);
+			hold.SetIsRoll(roll);
+			return hold;
 		}
 
 		public override int GetLane()
 		{
-			return LaneHoldEndNote.Lane;
+			return LaneHoldStartNote.Lane;
 		}
 
 		public override void SetLane(int lane)
 		{
-			if (lane == GetLane())
-				return;
-			base.SetLane(lane);
-
-			// Keep the hold start and end in sync.
-			EditorHoldStartNoteEvent.SetLane(lane);
+			Assert(lane >= 0 && lane < EditorChart.NumInputs);
+			LaneHoldStartNote.Lane = lane;
+			LaneHoldEndNote.Lane = lane; 
 		}
 
 		public override void SetNewPosition(int row)
 		{
-			var len = EditorHoldStartNoteEvent.GetLength();
-			base.SetNewPosition(row);
-
-			if (len != EditorHoldStartNoteEvent.GetLength())
-				EditorHoldStartNoteEvent.UpdatePositionToMaintainLength(len);
+			var len = GetLength();
+			ChartPosition = row;
+			SetNewPositionForEvent(LaneHoldStartNote, row);
+			SetNewPositionForEvent(LaneHoldEndNote, row + len);
 		}
 
-		public void UpdatePositionToMaintainLength(int length)
+		public void RefreshHoldEndTime()
 		{
-			var row = EditorHoldStartNoteEvent.GetRow() + length;
-			base.SetNewPosition(row);
+			SetNewPositionForEvent(LaneHoldEndNote, GetRow() + GetLength());
+		}
+
+		public override int GetLength()
+		{
+			return LaneHoldEndNote.IntegerPosition - LaneHoldStartNote.IntegerPosition;
+		}
+
+		public void SetLength(int length)
+		{
+			SetNewPositionForEvent(LaneHoldEndNote, GetRow() + length);
+		}
+
+		public override double GetEndChartPosition()
+		{
+			return LaneHoldEndNote.IntegerPosition;
+		}
+
+		public override int GetEndRow()
+		{
+			return LaneHoldEndNote.IntegerPosition;
+		}
+
+		public override double GetEndChartTime()
+		{
+			return LaneHoldEndNote.TimeSeconds;
+		}
+
+		public override List<Event> GetEvents()
+		{
+			return new List<Event>() { LaneHoldStartNote, LaneHoldEndNote };
 		}
 
 		public bool IsRoll()
 		{
-			return EditorHoldStartNoteEvent.IsRoll();
+			return Roll;
 		}
 
 		public void SetIsRoll(bool roll)
 		{
-			EditorHoldStartNoteEvent.SetIsRoll(roll);
+			Roll = roll;
+			LaneHoldStartNote.SourceType = Roll ? SMCommon.NoteChars[(int)SMCommon.NoteType.RollStart].ToString() : string.Empty;
 		}
+
+		public override bool IsMiscEvent() { return false; }
+		public override bool IsSelectableWithoutModifiers() { return true; }
+		public override bool IsSelectableWithModifiers() { return false; }
 
 		public void SetNextDrawActive(bool active, double y)
 		{
@@ -79,26 +149,8 @@ namespace StepManiaEditor
 			NextDrawActiveYCutoffPoint = y;
 		}
 
-		public override bool DoesPointIntersect(double x, double y)
-		{
-			// Hold intersections involve the start and end. Checking either
-			// should return the same thing. Leverage the hold start logic.
-			return EditorHoldStartNoteEvent.DoesPointIntersect(x, y);
-		}
-
-		public override List<EditorEvent> GetEventsSelectedTogether()
-		{
-			// Always select both the start and end together.
-			return new List<EditorEvent>() { EditorHoldStartNoteEvent, this };
-		}
-
-		public override bool IsMiscEvent() { return false; }
-		public override bool IsSelectableWithoutModifiers() { return false; }
-		public override bool IsSelectableWithModifiers() { return false; }
-
 		public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)
 		{
-			var roll = IsRoll();
 			var alpha = IsBeingEdited() ? ActiveEditEventAlpha : Alpha;
 			if (alpha <= 0.0f)
 			{
@@ -109,9 +161,15 @@ namespace StepManiaEditor
 
 			var active = NextDrawActive && Preferences.Instance.PreferencesReceptors.AutoPlayLightHolds;
 			var activeAndCutoff = NextDrawActive && Preferences.Instance.PreferencesReceptors.AutoPlayHideArrows;
+			var selected = IsSelected();
+
+			var (startArrowTexture, holdRot) = arrowGraphicManager.GetArrowTexture(LaneHoldStartNote.IntegerPosition, GetLane(), selected);
+			var (_, startArrowHeight) = textureAtlas.GetDimensions(startArrowTexture);
+			var halfArrowHeight = startArrowHeight * 0.5 * Scale;
+
+			var roll = IsRoll();
 
 			// The hold body texture is a tiled texture that starts at the end of the hold and ends at the arrow.
-			var selected = IsSelected();
 			var (holdBodyTextureId, holdBodyMirrored) = roll ?
 				arrowGraphicManager.GetRollBodyTexture(LaneHoldEndNote.IntegerPosition, LaneHoldEndNote.Lane, active, selected) :
 				arrowGraphicManager.GetHoldBodyTexture(LaneHoldEndNote.IntegerPosition, LaneHoldEndNote.Lane, active, selected);
@@ -122,26 +180,26 @@ namespace StepManiaEditor
 			// The hold start texture is only used to extend the start of the hold upward into the arrow for certain
 			// arrow graphics which wouldn't otherwise mask the hold start, like solo diagonals.
 			var (holdBodyStartTexture, holdBodyStartMirror) = roll ?
-				arrowGraphicManager.GetRollStartTexture(GetHoldStartNote().GetRow(), GetLane(), NextDrawActive, selected) :
-				arrowGraphicManager.GetHoldStartTexture(GetHoldStartNote().GetRow(), GetLane(), NextDrawActive, selected);
+				arrowGraphicManager.GetRollStartTexture(LaneHoldStartNote.IntegerPosition, GetLane(), NextDrawActive, selected) :
+				arrowGraphicManager.GetHoldStartTexture(LaneHoldStartNote.IntegerPosition, GetLane(), NextDrawActive, selected);
 
 			var (_, capH) = textureAtlas.GetDimensions(holdCapTextureId);
 			var (bodyTexW, bodyTexH) = textureAtlas.GetDimensions(holdBodyTextureId);
 
 			// Determine the Y value and height to use.
 			// If the note is active, we should bring down the top to the cutoff point.
-			var noteY = Y;
-			var noteH = H;
+			var bodyY = Y + halfArrowHeight;
+			var noteH = H - halfArrowHeight;
 			if (activeAndCutoff)
 			{
-				noteH -= (NextDrawActiveYCutoffPoint - noteY);
-				noteY = NextDrawActiveYCutoffPoint;
+				noteH -= (NextDrawActiveYCutoffPoint - bodyY);
+				bodyY = NextDrawActiveYCutoffPoint;
 			}
 
 			capH = (int)(capH * Scale + 0.5);
 			var bodyTileH = (int)(bodyTexH * Scale + 0.5);
-			var y = (int)(noteY + noteH + 0.5) - capH;
-			var minY = (int)(noteY + 0.5);
+			var y = (int)(bodyY + noteH + 0.5) - capH;
+			var minY = (int)(bodyY + 0.5);
 			var x = (int)(X + 0.5);
 			var w = (int)(W + 0.5);
 
@@ -197,19 +255,21 @@ namespace StepManiaEditor
 			}
 
 			// Draw the cap, if it is visible.
+			// Also ensure that the cap is below the start. In negative scroll rate regions it may be
+			// above the start, in which case we do not want to render it.
 			// The cap should be drawn after the body as some caps render on top of the body.
-			if (capY > -capH && capY < ScreenHeight)
+			if (capY > -capH && capY < ScreenHeight && capY >= bodyY)
 				textureAtlas.Draw(holdCapTextureId, spriteBatch, new Rectangle(x, capY, w, capH), holdCapRotation, alpha, SpriteEffects.None);
 
-			// If active, draw the hold start note on top of the receptors.
-			// The actual hold start note will not draw since it is above the receptors.
-			if (activeAndCutoff)
-			{
-				var (startArrowTexture, _) = arrowGraphicManager.GetArrowTexture(GetHoldStartNote().GetRow(), GetLane(), selected);
-				var (_, startArrowHeight) = textureAtlas.GetDimensions(startArrowTexture);
-				var holdStartY = noteY - (startArrowHeight * 0.5 * Scale);
-				GetHoldStartNote().DrawAtY(textureAtlas, spriteBatch, arrowGraphicManager, holdStartY);
-			}
+			// Draw the arrow at the start of the hold.
+			var holdStartY = bodyY - halfArrowHeight;
+			textureAtlas.Draw(
+					startArrowTexture,
+					spriteBatch,
+					new Vector2((float)X, (float)holdStartY),
+					Scale,
+					holdRot,
+					alpha);
 
 			// Reset active flags.
 			NextDrawActive = false;

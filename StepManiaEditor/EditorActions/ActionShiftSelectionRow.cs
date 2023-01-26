@@ -19,11 +19,6 @@ namespace StepManiaEditor
 			/// </summary>
 			public EditorEvent Event;
 			/// <summary>
-			/// All events which were removed and added as a unit for the transformed event.
-			/// This is normally just once event, but in the case of holds it is the start and end.
-			/// </summary>
-			public List<EditorEvent> EventsReAdded;
-			/// <summary>
 			/// All events which were forcibly deleted as a side effect of moving this event.
 			/// </summary>
 			public List<EditorEvent> SideEffectDeletions;
@@ -117,28 +112,19 @@ namespace StepManiaEditor
 			// Update each event.
 			foreach (var editorEvent in TransformableEvents)
 			{
-				// Hold ends are handled through their starts.
-				if (editorEvent is EditorHoldEndNoteEvent)
-					continue;
-
-				// In the case of holds, setting the new position will update both the hold
-				// start and end. We need to treat these two events as a unit for adding or
-				// removing.
-				var eventTransformedTogether = editorEvent.GetEventsSelectedTogether();
-
 				// If shifting the row would put this event at an invalid position, then
 				// remove it.
 				var newRow = editorEvent.GetRow() + Rows;
 				if (newRow < 0)
 				{
-					EventsWhichCouldNotBeTransformed.AddRange(eventTransformedTogether);
+					EventsWhichCouldNotBeTransformed.Add(editorEvent);
 					continue;
 				}
 
 				// Do not allow time signatures to move to non-measure boundaries.
 				if (editorEvent is EditorTimeSignatureEvent && !Chart.IsRowOnMeasureBoundary(newRow))
 				{
-					EventsWhichCouldNotBeTransformed.AddRange(eventTransformedTogether);
+					EventsWhichCouldNotBeTransformed.Add(editorEvent);
 					continue;
 				}
 
@@ -146,20 +132,19 @@ namespace StepManiaEditor
 				editorEvent.SetNewPosition(newRow);
 
 				// Re-add the event to complete the row transformation.
-				var (addedFromAlteration, deletedFromAlteration) = Chart.ForceAddEvents(eventTransformedTogether);
+				var (addedFromAlteration, deletedFromAlteration) = Chart.ForceAddEvents( new List<EditorEvent>{ editorEvent } );
 
 				// Record the transformation so that it can be undone.
 				Transformations.Add(new Transformation
 				{
 					Event = editorEvent,
-					EventsReAdded = eventTransformedTogether,
 					SideEffectAdditions = addedFromAlteration,
 					SideEffectDeletions = deletedFromAlteration
 				});
 
 				// Record the transformed events. When we undo, we will need to know which events
 				// were successfully transformed (as opposed to removed) so we can undo them.
-				RemainingOriginalEventsAfterTransform.AddRange(eventTransformedTogether);
+				RemainingOriginalEventsAfterTransform.Add(editorEvent);
 			}
 
 			// Notify the Editor the transformation is complete. Only supply the transformed events
@@ -206,7 +191,7 @@ namespace StepManiaEditor
 				transformation.Event.SetNewPosition(newRow);
 
 				// Re-add the transformed event.
-				Chart.AddEvents(transformation.EventsReAdded);
+				Chart.AddEvent(transformation.Event);
 			}
 
 			// Add back the original events which could not be transformed originally.

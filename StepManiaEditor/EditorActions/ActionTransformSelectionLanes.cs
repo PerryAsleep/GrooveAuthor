@@ -99,16 +99,9 @@ namespace StepManiaEditor
 			RemainingOriginalEventsAfterTransform = new List<EditorEvent>();
 			foreach (var editorEvent in TransformableEvents)
 			{
-				// Hold ends are handled through their starts.
-				if (editorEvent is EditorHoldEndNoteEvent)
-					continue;
-
 				if (DoTransform(editorEvent, padData))
 				{
-					// In the case of holds, transforming the start will transform the end.
-					// We need to treat these two events as a unit for adding or removing.
-					var eventsTransformedTogether = editorEvent.GetEventsSelectedTogether();
-					RemainingOriginalEventsAfterTransform.AddRange(eventsTransformedTogether);
+					RemainingOriginalEventsAfterTransform.Add(editorEvent);
 				}
 			}
 
@@ -147,9 +140,6 @@ namespace StepManiaEditor
 			var padData = Editor.GetPadData(Chart.ChartType);
 			foreach (var editorEvent in RemainingOriginalEventsAfterTransform)
 			{
-				// Hold ends are handled through their starts.
-				if (editorEvent is EditorHoldEndNoteEvent)
-					continue;
 				UndoTransform(editorEvent, padData);
 			}
 

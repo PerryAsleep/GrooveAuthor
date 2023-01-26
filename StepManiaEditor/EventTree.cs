@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using static System.Diagnostics.Debug;
 using System.Diagnostics;
 using static StepManiaLibrary.Constants;
+using Fumen.ChartDefinition;
 
 namespace StepManiaEditor
 {
@@ -79,8 +80,8 @@ namespace StepManiaEditor
 		{
 			var pos = EditorEvent.CreateEvent(CreateDummyConfig(row));
 
-			// Find the greatest preceding event.
-			var best = FindGreatestPreceding(pos);
+			// Find the first event at the given row.
+			var best = FindLeastFollowing(pos);
 			if (best == null)
 				return null;
 
@@ -104,11 +105,8 @@ namespace StepManiaEditor
 					continue;
 				if (ignoreNotesBeingEdited && best.Current.IsBeingEdited())
 					continue;
-				if (best.Current.GetRow() == row)
+				if (best.Current.GetRow() <= row && best.Current.GetEndRow() >= row)
 					return best.Current;
-				if (!(best.Current is EditorHoldStartNoteEvent hsn))
-					return null;
-				return hsn.GetHoldEndNote().GetRow() >= row ? best.Current : null;
 			} while (best.MovePrev());
 
 			return null;
@@ -221,7 +219,7 @@ namespace StepManiaEditor
 			return new EditorEvent.EventConfig
 			{
 				EditorChart = Chart,
-				ChartEvent = CreateDummyFirstEventForRow((int)chartPosition),
+				ChartEvents = new List<Event> { CreateDummyFirstEventForRow((int)chartPosition) },
 				ChartPosition = chartPosition,
 				UseDoubleChartPosition = true,
 				IsDummyEvent = true
