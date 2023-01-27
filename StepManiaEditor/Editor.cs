@@ -4164,6 +4164,10 @@ namespace StepManiaEditor
 
 		private void OnCopy()
 		{
+			// Do not alter the currently copied events if nothing is selected.
+			if (SelectedEvents.Count == 0)
+				return;
+
 			CopiedEvents.Clear();
 			foreach (var selectedEvent in SelectedEvents)
 				CopiedEvents.Add(selectedEvent);
@@ -4178,12 +4182,11 @@ namespace StepManiaEditor
 
 		private void OnPaste()
 		{
-			// TODO: Implement
-			//if (CopiedEvents.Count == 0)
-			//	return;
-			//var earliestRow = CopiedEvents[0].GetRow();
-			//var currentRow = Math.Max(0, Position.GetNearestRow());
-			//ActionQueue.Instance.Do(new ActionShiftSelectionRow(this, ActiveChart, CopiedEvents, currentRow - earliestRow));
+			if (CopiedEvents.Count == 0)
+				return;
+			var earliestRow = CopiedEvents[0].GetRow();
+			var currentRow = Math.Max(0, Position.GetNearestRow());
+			ActionQueue.Instance.Do(new ActionPasteEvents(this, ActiveChart, CopiedEvents, currentRow - earliestRow));
 		}
 
 		#endregion Copy Paste

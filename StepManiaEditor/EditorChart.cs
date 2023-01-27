@@ -768,6 +768,18 @@ namespace StepManiaEditor
 			return enumerator.Current;
 		}
 
+		public bool CanEventExistAtRow(EditorEvent editorEvent, int row)
+		{
+			if (row < 0)
+				return false;
+
+			// Do not allow time signatures to move to non-measure boundaries.
+			if (editorEvent is EditorTimeSignatureEvent && !IsRowOnMeasureBoundary(row))
+				return false;
+
+			return true;
+		}
+
 		public bool IsRowOnMeasureBoundary(int row)
 		{
 			return row == GetNearestMeasureBoundaryRow(row);

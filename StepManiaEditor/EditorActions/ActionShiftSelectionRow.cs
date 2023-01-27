@@ -12,20 +12,22 @@ namespace StepManiaEditor
 		/// <summary>
 		/// Class to hold all events which were modified as a result of transforming a single event.
 		/// </summary>
-		private class Transformation
+		private sealed class Transformation
 		{
 			/// <summary>
 			/// The event whose row was transformed.
 			/// </summary>
 			public EditorEvent Event;
 			/// <summary>
-			/// All events which were forcibly deleted as a side effect of moving this event.
+			/// Side effect of adding the event.
 			/// </summary>
-			public List<EditorEvent> SideEffectDeletions;
-			/// <summary>
-			/// All events which were forcibly added as a side effect of moving this event.
-			/// </summary>
-			public List<EditorEvent> SideEffectAdditions;
+			public ForceAddSideEffect SideEffect;
+
+			public Transformation(EditorEvent editorEvent, List<EditorEvent> additions, List<EditorEvent> deletions)
+			{
+				Event = editorEvent;
+				SideEffect = new ForceAddSideEffect(additions, deletions);
+			}
 		}
 
 		private int Rows;
@@ -112,21 +114,10 @@ namespace StepManiaEditor
 			// Update each event.
 			foreach (var editorEvent in TransformableEvents)
 			{
-				// If shifting the row would put this event at an invalid position, then
-				// remove it.
+				// If shifting the row would put this event at an invalid position, then remove it.
 				var newRow = editorEvent.GetRow() + Rows;
-				if (newRow < 0)
-				{
-					EventsWhichCouldNotBeTransformed.Add(editorEvent);
+				if (!Chart.CanEventExistAtRow(editorEvent, newRow))
 					continue;
-				}
-
-				// Do not allow time signatures to move to non-measure boundaries.
-				if (editorEvent is EditorTimeSignatureEvent && !Chart.IsRowOnMeasureBoundary(newRow))
-				{
-					EventsWhichCouldNotBeTransformed.Add(editorEvent);
-					continue;
-				}
 
 				// If the event can be moved, update the position.
 				editorEvent.SetNewPosition(newRow);
@@ -135,12 +126,7 @@ namespace StepManiaEditor
 				var (addedFromAlteration, deletedFromAlteration) = Chart.ForceAddEvents( new List<EditorEvent>{ editorEvent } );
 
 				// Record the transformation so that it can be undone.
-				Transformations.Add(new Transformation
-				{
-					Event = editorEvent,
-					SideEffectAdditions = addedFromAlteration,
-					SideEffectDeletions = deletedFromAlteration
-				});
+				Transformations.Add(new Transformation(editorEvent, addedFromAlteration, deletedFromAlteration));
 
 				// Record the transformed events. When we undo, we will need to know which events
 				// were successfully transformed (as opposed to removed) so we can undo them.
@@ -167,23 +153,8 @@ namespace StepManiaEditor
 			// Undo each transformation.
 			foreach(var transformation in Transformations)
 			{
-				if (transformation.SideEffectAdditions.Count > 0)
-				{
-					var deletedEvents = Chart.DeleteEvents(transformation.SideEffectAdditions);
-					Assert(deletedEvents.Count == transformation.SideEffectAdditions.Count);
-				}
-				if (transformation.SideEffectDeletions.Count > 0)
-				{
-					// Reset the times of these events before adding them back.
-					// It could be the case that the events being moved as part of this action contain
-					// multiple rate altering events. If one altered this event's time when it moved and
-					// then a subsequently moved event deleted this event, then it's time will be incorrect
-					// at this point since it was not in the event tree when we re-added the unmodified event
-					// which changed it's time originally.
-					foreach (var deletedEvent in transformation.SideEffectDeletions)
-						deletedEvent.ResetTimeBasedOnRow();
-					Chart.AddEvents(transformation.SideEffectDeletions);
-				}
+				// Undo the side effects of transforming the event.
+				transformation.SideEffect.Undo(Chart);
 
 				// Undo the transformation.
 				var newRow = transformation.Event.GetRow() - Rows;
