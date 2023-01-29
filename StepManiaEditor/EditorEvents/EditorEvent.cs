@@ -408,6 +408,18 @@ namespace StepManiaEditor
 			return DummyEvent;
 		}
 
+		/// <summary>
+		/// Called when this event is added to its EditorChart.
+		/// An event may be added and removed repeatedly with undoing and redoing actions.
+		/// </summary>
+		public virtual void OnAddedToChart() { }
+
+		/// <summary>
+		/// Called when this event is removed from its EditorChart.
+		/// An event may be added and removed repeatedly with undoing and redoing actions.
+		/// </summary>
+		public virtual void OnRemovedFromChart() { }
+
 		#region IComparable
 
 		private static readonly Dictionary<string, int> CustomEventOrder = new Dictionary<string, int>

@@ -205,9 +205,12 @@ namespace StepManiaEditor
 	/// Editor represenation of a Stepmania song.
 	/// An EditorSong can have multiple EditorCharts.
 	/// </summary>
-	internal sealed class EditorSong
+	internal sealed class EditorSong : Notifier<EditorSong>
 	{
-		private Editor Editor;
+		public const string NotificationMusicChanged = "MusicChanged";
+		public const string NotificationMusicPreviewChanged = "MusicPreviewChanged";
+		public const string NotificationMusicOffsetChanged = "MusicOffsetChanged";
+		public const string NotificationSampleLengthChanged = "SampleLengthChanged";
 
 		private Extras OriginalSongExtras;
 
@@ -248,7 +251,7 @@ namespace StepManiaEditor
 			set
 			{
 				MusicPathInternal = value ?? "";
-				Editor.OnSongMusicChanged(this);
+				Notify(NotificationMusicChanged, this);
 			}
 		}
 
@@ -260,7 +263,7 @@ namespace StepManiaEditor
 			set
 			{
 				MusicPreviewPathInternal = value ?? "";
-				Editor.OnSongMusicPreviewChanged(this);
+				Notify(NotificationMusicPreviewChanged, this);
 			}
 		}
 
@@ -273,7 +276,7 @@ namespace StepManiaEditor
 				DeletePreviewEvents();
 				MusicOffsetInternal = value;
 				AddPreviewEvents();
-				Editor.OnSongMusicOffsetChanged(this);
+				Notify(NotificationMusicOffsetChanged, this);
 			}
 		}
 
@@ -304,20 +307,33 @@ namespace StepManiaEditor
 					SampleStartInternal = value;
 					AddPreviewEvents();
 				}
-				SampleStartInternal = value;
 			}
 		}
-		public double SampleLength;
+
+		private double SampleLengthInternal;
+		public double SampleLength
+		{
+			get => SampleLengthInternal;
+			set
+			{
+				if (!SampleLengthInternal.DoubleEquals(value))
+				{
+					SampleLengthInternal = value;
+					Notify(NotificationSampleLengthChanged, this);
+				}
+			}
+		}
 
 		public Selectable Selectable = Selectable.YES;
 
 
 		public EditorSong(
-			Editor editor,
 			GraphicsDevice graphicsDevice,
-			ImGuiRenderer imGuiRenderer)
+			ImGuiRenderer imGuiRenderer,
+			Fumen.IObserver<EditorSong> observer)
 		{
-			Editor = editor;
+			if (observer != null)
+				AddObserver(observer);
 
 			Banner = new EditorImageData(FileDirectory, graphicsDevice, imGuiRenderer, (uint)GetBannerWidth(), (uint)GetBannerHeight(), null, false);
 			Background = new EditorImageData(FileDirectory, graphicsDevice, imGuiRenderer, (uint)GetBackgroundWidth(), (uint)GetBackgroundHeight(), null, true);
@@ -331,13 +347,16 @@ namespace StepManiaEditor
 		}
 
 		public EditorSong(
-			Editor editor,
 			string fullFilePath,
 			Song song,
 			GraphicsDevice graphicsDevice,
-			ImGuiRenderer imGuiRenderer)
+			ImGuiRenderer imGuiRenderer,
+			Func<Chart, bool> isChartSupported,
+			Fumen.IObserver<EditorSong> observer,
+			Fumen.IObserver<EditorChart> chartObserver)
 		{
-			Editor = editor;
+			if (observer != null)
+				AddObserver(observer);
 
 			SetFullFilePath(fullFilePath);
 			
@@ -412,13 +431,13 @@ namespace StepManiaEditor
 
 			foreach (var chart in song.Charts)
 			{
-				if (!Editor.IsChartSupported(chart))
+				if (!isChartSupported(chart))
 				{
 					UnsupportedCharts.Add(chart);
 					continue;
 				}
 
-				var editorChart = new EditorChart(Editor, this, chart);
+				var editorChart = new EditorChart(this, chart, chartObserver);
 				if (!Charts.ContainsKey(editorChart.ChartType))
 					Charts.Add(editorChart.ChartType, new List<EditorChart>());
 				Charts[editorChart.ChartType].Add(editorChart);
@@ -432,9 +451,9 @@ namespace StepManiaEditor
 			UpdateChartSort();
 		}
 
-		public EditorChart AddChart(ChartType chartType)
+		public EditorChart AddChart(ChartType chartType, Fumen.IObserver<EditorChart> observer)
 		{
-			var chart = new EditorChart(Editor, this, chartType);
+			var chart = new EditorChart(this, chartType, observer);
 			if (!Charts.ContainsKey(chartType))
 				Charts.Add(chartType, new List<EditorChart>());
 			Charts[chartType].Add(chart);

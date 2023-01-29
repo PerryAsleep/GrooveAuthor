@@ -26,12 +26,14 @@ namespace StepManiaEditor
 
 		private static ImFontPtr ImGuiFont;
 
+		private static readonly float CheckBoxWidth = Utils.UiScaled(20);
 		private static readonly float FileBrowseXwidth = Utils.UiScaled(20);
 		private static readonly float FileBrowseBrowseWidth = Utils.UiScaled(50);
 		private static readonly float FileBrowseAutoWidth = Utils.UiScaled(50);
 		private static readonly float DisplayTempoEnumWidth = Utils.UiScaled(120);
 		private static readonly float DisplayTempoToWidth = Utils.UiScaled(14);
 		private static readonly float SliderResetWidth = Utils.UiScaled(50);
+		private static readonly float DragDoubleCustomSetWidth = Utils.UiScaled(108);
 
 		public static void SetFont(ImFontPtr font)
 		{
@@ -711,10 +713,10 @@ namespace StepManiaEditor
 
 			bool enabled;
 
-			var controlWidth = ImGui.GetContentRegionAvail().X - 20.0f - ImGui.GetStyle().ItemSpacing.X;
+			var controlWidth = ImGui.GetContentRegionAvail().X - CheckBoxWidth - ImGui.GetStyle().ItemSpacing.X;
 
 			// Draw the checkbox for enabling the other control.
-			if (DrawCheckbox(false, title + "check", o, enabledFieldName, 20.0f, affectsFile, GetDragHelpText(help)))
+			if (DrawCheckbox(false, title + "check", o, enabledFieldName, CheckBoxWidth, affectsFile, GetDragHelpText(help)))
 			{
 				if (undoable)
 				{
@@ -844,10 +846,10 @@ namespace StepManiaEditor
 
 			bool enabled;
 
-			var controlWidth = ImGui.GetContentRegionAvail().X - 20.0f - ImGui.GetStyle().ItemSpacing.X;
+			var controlWidth = ImGui.GetContentRegionAvail().X - CheckBoxWidth - ImGui.GetStyle().ItemSpacing.X;
 
 			// Draw the checkbox for enabling the other control.
-			if (DrawCheckbox(false, title + "check", o, enabledFieldName, 20.0f, affectsFile, GetDragHelpText(help)))
+			if (DrawCheckbox(false, title + "check", o, enabledFieldName, CheckBoxWidth, affectsFile, GetDragHelpText(help)))
 			{
 				if (undoable)
 				{
@@ -885,6 +887,32 @@ namespace StepManiaEditor
 
 			if (!enabled)
 				Utils.PopDisabled();
+		}
+
+		public static void DrawRowDragDoubleWithSetButton(
+			bool undoable,
+			string title,
+			object o,
+			string fieldName,
+			bool affectsFile,
+			Action setAction,
+			string setText,
+			string help = null,
+			float speed = 0.0001f,
+			string format = "%.6f",
+			double min = double.MinValue,
+			double max = double.MaxValue)
+		{
+			var dragDoubleWidth = ImGui.GetContentRegionAvail().X - DragDoubleCustomSetWidth - ImGui.GetStyle().ItemSpacing.X;
+
+			DrawRowTitleAndAdvanceColumn(title);
+			DrawDragDouble(undoable, title, o, fieldName, dragDoubleWidth, help, speed, format, affectsFile, min, max);
+
+			ImGui.SameLine();
+			if (ImGui.Button($"{setText}{GetElementTitle(title, fieldName)}", new Vector2(DragDoubleCustomSetWidth, 0.0f)))
+			{
+				setAction();
+			}
 		}
 
 		private static bool DrawDragDouble(
@@ -1285,7 +1313,7 @@ namespace StepManiaEditor
 
 		public static void MiscEditorEventPreviewDragDoubleWidget(
 			string id,
-			object o,
+			EditorEvent e,
 			string fieldName,
 			int x,
 			int y,
@@ -1301,12 +1329,10 @@ namespace StepManiaEditor
 		{
 			void Func(float elementWidth)
 			{
-				DrawDragDouble(true, $"##{id}", o, fieldName, elementWidth, "", speed, format, true, min, max);
+				DrawDragDouble(true, $"##{id}", e, fieldName, elementWidth, "", speed, format, true, min, max);
 			}
 
-			// MiscEditorEventWidget requires an EditorEvent for enqueuing delete events.
-			// There is no EditorEvent for the preview, but it can also not be deleted, so pass in null.
-			MiscEditorEventWidget(id, null, x, y, width, colorRGBA, selected, false, alpha, help, Func);
+			MiscEditorEventWidget(id, e, x, y, width, colorRGBA, selected, false, alpha, help, Func);
 		}
 
 		public static double GetMiscEditorEventStringWidth(string s)

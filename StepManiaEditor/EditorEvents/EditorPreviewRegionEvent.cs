@@ -11,7 +11,7 @@ namespace StepManiaEditor
 	/// The preview is rendered as an IRegion and also as a miscellaneous editor event widget.
 	/// The preview does not correspond to an Event in a Chart.
 	/// </summary>
-	internal sealed class EditorPreviewRegionEvent : EditorEvent, IChartRegion
+	internal sealed class EditorPreviewRegionEvent : EditorEvent, IChartRegion, Fumen.IObserver<EditorSong>
 	{
 		public static readonly string WidgetHelp =
 			"Preview.\n" +
@@ -85,6 +85,16 @@ namespace StepManiaEditor
 			IsPositionImmutable = true;
 		}
 
+		public override void OnAddedToChart()
+		{
+			EditorChart.EditorSong.AddObserver(this);
+		}
+
+		public override void OnRemovedFromChart()
+		{
+			EditorChart.EditorSong.RemoveObserver(this);
+		}
+
 		public override double GetChartTime()
 		{
 			return EditorChart.EditorSong.SampleStart + EditorChart.GetMusicOffset();
@@ -108,6 +118,12 @@ namespace StepManiaEditor
 				Alpha,
 				WidgetHelp,
 				0.0);
+		}
+
+		public void OnNotify(string eventId, EditorSong song, object payload)
+		{
+			if (eventId == EditorSong.NotificationSampleLengthChanged)
+				WidthDirty = true;
 		}
 	}
 }

@@ -13,8 +13,16 @@ namespace StepManiaEditor
 	/// Editor represenation of a Stepmania chart.
 	/// An EditorChart is owned by an EditorSong.
 	/// </summary>
-	internal sealed class EditorChart
+	internal sealed class EditorChart : Notifier<EditorChart>
 	{
+		public const string NotificationDifficultyTypeChanged = "DifficultyTypeChanged";
+		public const string NotificationRatingChanged = "RatingChanged";
+		public const string NotificationNameChanged = "NameChanged";
+		public const string NotificationDescriptionChanged = "DescriptionChanged";
+		public const string NotificationMusicChanged = "MusicChanged";
+		public const string NotificationMusicOffsetChanged = "MusicOffsetChanged";
+		public const string NotificationEventsDeleted = "EventsDeleted";
+
 		public const double DefaultTempo = 120.0;
 		public static Fraction DefaultTimeSignature = new Fraction(4, 4);
 		public const double DefaultScrollRate = 1.0;
@@ -23,7 +31,6 @@ namespace StepManiaEditor
 		public const int DefaultMissMultiplier = 1;
 		public const int DefaultRating = 1;
 
-		private Editor Editor;
 		private Extras OriginalChartExtras;
 
 		public EditorSong EditorSong;
@@ -37,7 +44,7 @@ namespace StepManiaEditor
 			set
 			{
 				ChartDifficultyTypeInternal = value;
-				Editor.OnChartDifficultyTypeChanged(this);
+				Notify(NotificationDifficultyTypeChanged, this);
 			}
 		}
 
@@ -48,7 +55,7 @@ namespace StepManiaEditor
 			set
 			{
 				RatingInternal = value;
-				Editor.OnChartRatingChanged(this);
+				Notify(NotificationRatingChanged, this);
 			}
 		}
 
@@ -59,7 +66,7 @@ namespace StepManiaEditor
 			set
 			{
 				NameInternal = value;
-				Editor.OnChartNameChanged(this);
+				Notify(NotificationNameChanged, this);
 			}
 		}
 
@@ -70,7 +77,7 @@ namespace StepManiaEditor
 			set
 			{
 				DescriptionInternal = value;
-				Editor.OnChartDescriptionChanged(this);
+				Notify(NotificationDescriptionChanged, this);
 			}
 		}
 
@@ -84,7 +91,7 @@ namespace StepManiaEditor
 			set
 			{
 				MusicPathInternal = value ?? "";
-				Editor.OnChartMusicChanged(this);
+				Notify(NotificationMusicChanged, this);
 			}
 		}
 
@@ -100,7 +107,7 @@ namespace StepManiaEditor
 					UsesChartMusicOffsetInternal = value;
 					if (deleted)
 						AddPreviewEvent();
-					Editor.OnChartMusicOffsetChanged(this);
+					Notify(NotificationMusicOffsetChanged, this);
 				}
 			}
 		}
@@ -117,7 +124,7 @@ namespace StepManiaEditor
 					MusicOffsetInternal = value;
 					if (deleted)
 						AddPreviewEvent();
-					Editor.OnChartMusicOffsetChanged(this);
+					Notify(NotificationMusicOffsetChanged, this);
 				}
 			}
 		}
@@ -145,9 +152,11 @@ namespace StepManiaEditor
 		public readonly int NumInputs;
 		public readonly int NumPlayers;
 
-		public EditorChart(Editor editor, EditorSong editorSong, Chart chart)
+		public EditorChart(EditorSong editorSong, Chart chart, Fumen.IObserver<EditorChart> observer)
 		{
-			Editor = editor;
+			if (observer != null)
+				AddObserver(observer);
+
 			OriginalChartExtras = chart.Extras;
 			EditorSong = editorSong;
 
@@ -178,9 +187,11 @@ namespace StepManiaEditor
 			SetUpEditorEvents(chart);
 		}
 
-		public EditorChart(Editor editor, EditorSong editorSong, ChartType chartType)
+		public EditorChart(EditorSong editorSong, ChartType chartType, Fumen.IObserver<EditorChart> observer)
 		{
-			Editor = editor;
+			if (observer != null)
+				AddObserver(observer);
+
 			EditorSong = editorSong;
 			ChartType = chartType;
 
@@ -1059,6 +1070,8 @@ namespace StepManiaEditor
 						e.Delete();
 					}
 				}
+
+				editorEvent.OnRemovedFromChart();
 			}
 
 			if (rateDirty)
@@ -1066,7 +1079,7 @@ namespace StepManiaEditor
 				allDeletedEvents.AddRange(UpdateEventTimingData());
 			}
 
-			Editor.OnEventsDeleted(allDeletedEvents);
+			Notify(NotificationEventsDeleted, this, allDeletedEvents);
 
 			return allDeletedEvents;
 		}
@@ -1148,6 +1161,8 @@ namespace StepManiaEditor
 						}
 					}
 				}
+
+				editorEvent.OnAddedToChart();
 
 				// TODO: Optimize.
 				// When deleting a re-adding many rate altering events this causes a hitch.

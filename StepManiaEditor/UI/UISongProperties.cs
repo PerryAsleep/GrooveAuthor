@@ -16,9 +16,9 @@ namespace StepManiaEditor
 	/// </summary>
 	internal sealed class UISongProperties
 	{
-		private static EditorSong EditorSong;
-
 		private readonly Editor Editor;
+		private EditorSong EditorSong;
+
 		private static EmptyTexture EmptyTextureBanner;
 		private static EmptyTexture EmptyTextureCDTitle;
 
@@ -132,14 +132,16 @@ namespace StepManiaEditor
 					ImGuiLayoutUtils.DrawRowFileBrowse("Preview File", EditorSong, nameof(EditorSong.MusicPreviewPath), BrowseMusicPreviewFile, ClearMusicPreviewFile, true,
 						"(Uncommon) An audio file to use for a preview instead of playing a range from the music file.");
 
-					// TODO: Better Preview Controls
-					ImGuiLayoutUtils.DrawRowDragDouble(true, "Preview Start", EditorSong, nameof(EditorSong.SampleStart), true,
+					ImGuiLayoutUtils.DrawRowDragDoubleWithSetButton(true, "Preview Start", EditorSong, nameof(EditorSong.SampleStart), true,
+						SetPreviewStartFromCurrentTime, "Use Current Time",
 						"Music preview start time.",
 						0.0001f, "%.6f seconds");
-					ImGuiLayoutUtils.DrawRowDragDouble(true, "Preview Length", EditorSong, nameof(EditorSong.SampleLength), true,
+					ImGuiLayoutUtils.DrawRowDragDoubleWithSetButton(true, "Preview Length", EditorSong, nameof(EditorSong.SampleLength), true,
+						SetPreviewEndFromCurrentTime, "Use Current Time",
 						"Music preview length.",
 						0.0001f, "%.6f seconds", 0.0);
-					if (ImGuiLayoutUtils.DrawRowButton(null, Editor.IsPlayingPreview() ? "Stop Preview" : "Play Preview"))
+					if (ImGuiLayoutUtils.DrawRowButton(null, Editor.IsPlayingPreview() ? "Stop Preview" : "Play Preview",
+						"Toggle Preview playback. Playback can be toggled with P. Playback can be cancelled with Esc."))
 						Editor.OnTogglePlayPreview();
 
 					// TODO: Better LastSecondHint Controls.
@@ -173,7 +175,7 @@ namespace StepManiaEditor
 			ImGui.End();
 		}
 
-		private static string TryFindBestAsset(
+		private string TryFindBestAsset(
 			int w,
 			int h,
 			string endsWith,
@@ -274,7 +276,7 @@ namespace StepManiaEditor
 			return null;
 		}
 
-		private static void TryFindBestBanner()
+		private void TryFindBestBanner()
 		{
 			var bestFile = TryFindBestAsset(GetUnscaledBannerWidth(), GetUnscaledBannerHeight(), "bn", "banner", false, false, false);
 			if (!string.IsNullOrEmpty(bestFile))
@@ -291,7 +293,7 @@ namespace StepManiaEditor
 			}
 		}
 
-		private static void BrowseBanner()
+		private void BrowseBanner()
 		{
 			var relativePath = BrowseFile(
 				"Banner",
@@ -302,13 +304,13 @@ namespace StepManiaEditor
 				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong.Banner, nameof(EditorSong.Banner.Path), relativePath, true));
 		}
 
-		private static void ClearBanner()
+		private void ClearBanner()
 		{
 			if (!string.IsNullOrEmpty(EditorSong.Banner.Path))
 				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong.Banner, nameof(EditorSong.Banner.Path), "", true));
 		}
 
-		private static void TryFindBestBackground()
+		private void TryFindBestBackground()
 		{
 			var bestFile = TryFindBestAsset(GetUnscaledBackgroundWidth(), GetUnscaledBackgroundHeight(), "bg", "background", true, true, true);
 			if (!string.IsNullOrEmpty(bestFile))
@@ -325,7 +327,7 @@ namespace StepManiaEditor
 			}
 		}
 
-		private static void BrowseBackground()
+		private void BrowseBackground()
 		{
 			var relativePath = BrowseFile(
 				"Background",
@@ -336,13 +338,13 @@ namespace StepManiaEditor
 				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong.Background, nameof(EditorSong.Background.Path), relativePath, true));
 		}
 
-		private static void ClearBackground()
+		private void ClearBackground()
 		{
 			if (!string.IsNullOrEmpty(EditorSong.Background.Path))
 				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong.Background, nameof(EditorSong.Background.Path), "", true));
 		}
 
-		private static void BrowseCDTitle()
+		private void BrowseCDTitle()
 		{
 			var relativePath = BrowseFile(
 				"CD Title",
@@ -353,13 +355,13 @@ namespace StepManiaEditor
 				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong.CDTitle, nameof(EditorSong.CDTitle.Path), relativePath, true));
 		}
 
-		private static void ClearCDTitle()
+		private void ClearCDTitle()
 		{
 			if (!string.IsNullOrEmpty(EditorSong.CDTitle.Path))
 				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong.CDTitle, nameof(EditorSong.CDTitle.Path), "", true));
 		}
 
-		private static void BrowseJacket()
+		private void BrowseJacket()
 		{
 			var relativePath = BrowseFile(
 				"Jacket",
@@ -370,13 +372,13 @@ namespace StepManiaEditor
 				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong.Jacket, nameof(EditorSong.Jacket.Path), relativePath, true));
 		}
 
-		private static void ClearJacket()
+		private void ClearJacket()
 		{
 			if (!string.IsNullOrEmpty(EditorSong.Jacket.Path))
 				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong.Jacket, nameof(EditorSong.Jacket.Path), "", true));
 		}
 
-		private static void BrowseCDImage()
+		private void BrowseCDImage()
 		{
 			var relativePath = BrowseFile(
 				"CD Image",
@@ -387,13 +389,13 @@ namespace StepManiaEditor
 				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong.CDImage, nameof(EditorSong.CDImage.Path), relativePath, true));
 		}
 
-		private static void ClearCDImage()
+		private void ClearCDImage()
 		{
 			if (!string.IsNullOrEmpty(EditorSong.CDImage.Path))
 				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong.CDImage, nameof(EditorSong.CDImage.Path), "", true));
 		}
 
-		private static void BrowseDiscImage()
+		private void BrowseDiscImage()
 		{
 			var relativePath = BrowseFile(
 				"Disc Image",
@@ -404,13 +406,13 @@ namespace StepManiaEditor
 				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong.DiscImage, nameof(EditorSong.DiscImage.Path), relativePath, true));
 		}
 
-		private static void ClearDiscImage()
+		private void ClearDiscImage()
 		{
 			if (!string.IsNullOrEmpty(EditorSong.DiscImage.Path))
 				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong.DiscImage, nameof(EditorSong.DiscImage.Path), "", true));
 		}
 
-		private static void BrowseMusicFile()
+		private void BrowseMusicFile()
 		{
 			var relativePath = BrowseFile(
 				"Music",
@@ -421,13 +423,13 @@ namespace StepManiaEditor
 				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong, nameof(EditorSong.MusicPath), relativePath, true));
 		}
 
-		private static void ClearMusicFile()
+		private void ClearMusicFile()
 		{
 			if (!string.IsNullOrEmpty(EditorSong.MusicPath))
 				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong, nameof(EditorSong.MusicPath), "", true));
 		}
 
-		private static void BrowseMusicPreviewFile()
+		private void BrowseMusicPreviewFile()
 		{
 			var relativePath = BrowseFile(
 				"Music Preview",
@@ -438,13 +440,13 @@ namespace StepManiaEditor
 				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong, nameof(EditorSong.MusicPreviewPath), relativePath, true));
 		}
 
-		private static void ClearMusicPreviewFile()
+		private void ClearMusicPreviewFile()
 		{
 			if (!string.IsNullOrEmpty(EditorSong.MusicPreviewPath))
 				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong, nameof(EditorSong.MusicPreviewPath), "", true));
 		}
 
-		private static void BrowseLyricsFile()
+		private void BrowseLyricsFile()
 		{
 			var relativePath = BrowseFile(
 				"Lyrics",
@@ -455,13 +457,13 @@ namespace StepManiaEditor
 				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong, nameof(EditorSong.LyricsPath), relativePath, true));
 		}
 
-		private static void ClearLyricsFile()
+		private void ClearLyricsFile()
 		{
 			if (!string.IsNullOrEmpty(EditorSong.LyricsPath))
 				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong, nameof(EditorSong.LyricsPath), "", true));
 		}
 
-		private static void BrowsePreviewVideoFile()
+		private void BrowsePreviewVideoFile()
 		{
 			var relativePath = BrowseFile(
 				"Preview Video",
@@ -472,10 +474,24 @@ namespace StepManiaEditor
 				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong, nameof(EditorSong.PreviewVideoPath), relativePath, true));
 		}
 
-		private static void ClearPreviewVideoFile()
+		private void ClearPreviewVideoFile()
 		{
 			if (!string.IsNullOrEmpty(EditorSong.PreviewVideoPath))
 				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong, nameof(EditorSong.PreviewVideoPath), "", true));
+		}
+
+		private void SetPreviewStartFromCurrentTime()
+		{
+			var startTime = Math.Max(0.0, Editor.GetPosition().SongTime);
+			ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyValue<double>(EditorSong, nameof(EditorSong.SampleStart), startTime, true));
+		}
+
+		private void SetPreviewEndFromCurrentTime()
+		{
+			var currentTime = Math.Max(0.0, Editor.GetPosition().SongTime);
+			var startTime = EditorSong.SampleStart;
+			var sampleLength = Math.Max(0.0, currentTime - startTime);
+			ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyValue<double>(EditorSong, nameof(EditorSong.SampleLength), sampleLength, true));
 		}
 	}
 }

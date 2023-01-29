@@ -25,7 +25,7 @@ using System.Linq;
 
 namespace StepManiaEditor
 {
-	internal sealed class Editor : Game
+	internal sealed class Editor : Game, Fumen.IObserver<EditorSong>, Fumen.IObserver<EditorChart>
 	{
 		/// <summary>
 		/// How to space Chart Events when rendering.
@@ -3359,11 +3359,13 @@ namespace StepManiaEditor
 
 						LoadSongCancellationTokenSource.Token.ThrowIfCancellationRequested();
 						ActiveSong = new EditorSong(
-							this,
 							fileName,
 							song,
 							GraphicsDevice,
-							ImGuiRenderer);
+							ImGuiRenderer,
+							IsChartSupported,
+							this,
+							this);
 
 						// Select the best Chart to make active.
 						newActiveChart = SelectBestChart(ActiveSong, chartType, chartDifficultyType);
@@ -3639,7 +3641,7 @@ namespace StepManiaEditor
 			LastSelectedEvent = null;
 		}
 
-		public void OnDelete()
+		private void OnDelete()
 		{
 			if (ActiveChart == null || SelectedEvents.Count < 1)
 				return;
@@ -3655,7 +3657,7 @@ namespace StepManiaEditor
 			ActionQueue.Instance.Do(new ActionDeleteEditorEvents(eventsToDelete, false));
 		}
 
-		public void OnEventsDeleted(List<EditorEvent> deletedEvents)
+		private void OnEventsDeleted(List<EditorEvent> deletedEvents)
 		{
 			if (SelectedEvents.Count == 0)
 				return;
@@ -4790,7 +4792,7 @@ namespace StepManiaEditor
 		private void OnNewNoSave()
 		{
 			UnloadSongResources();
-			ActiveSong = new EditorSong(this, GraphicsDevice, ImGuiRenderer);
+			ActiveSong = new EditorSong(GraphicsDevice, ImGuiRenderer, this);
 			Position.Reset();
 			SetZoom(1.0, true);
 		}
@@ -4957,59 +4959,19 @@ namespace StepManiaEditor
 			return PlayingPreview;
 		}
 
-		public void OnSongMusicChanged(EditorSong song)
-		{
-			OnMusicChangedInternal();
-		}
-
-		public void OnSongMusicPreviewChanged(EditorSong song)
-		{
-			if (ActiveChart == null || song != ActiveChart.EditorSong)
-				return;
-			OnMusicPreviewChangedInternal();
-		}
-
-		public void OnSongMusicOffsetChanged(EditorSong song)
-		{
-			if (ActiveChart == null || song != ActiveChart.EditorSong)
-				return;
-			OnMusicOffsetChangedInternal();
-		}
-
-		public void OnChartMusicChanged(EditorChart chart)
-		{
-			if (ActiveChart == null || chart != ActiveChart)
-				return;
-			OnMusicChangedInternal();
-		}
-
-		public void OnChartMusicPreviewChanged(EditorChart chart)
-		{
-			if (ActiveChart == null || chart != ActiveChart)
-				return;
-			OnMusicPreviewChangedInternal();
-		}
-
-		public void OnChartMusicOffsetChanged(EditorChart chart)
-		{
-			if (ActiveChart == null || chart != ActiveChart)
-				return;
-			OnMusicOffsetChangedInternal();
-		}
-
-		private void OnMusicChangedInternal()
+		private void OnMusicChanged()
 		{
 			StopPreview();
 			MusicManager.LoadMusicAsync(GetFullPathToMusicFile(), GetSongTime);
 		}
 
-		private void OnMusicPreviewChangedInternal()
+		private void OnMusicPreviewChanged()
 		{
 			StopPreview();
 			MusicManager.LoadMusicPreviewAsync(GetFullPathToMusicPreviewFile());
 		}
 
-		private void OnMusicOffsetChangedInternal()
+		private void OnMusicOffsetChanged()
 		{
 			// Re-set the position to recompute the chart and song times.
 			Position.ChartPosition = Position.ChartPosition;
@@ -5033,34 +4995,6 @@ namespace StepManiaEditor
 		public EditorChart GetActiveChart()
 		{
 			return ActiveChart;
-		}
-
-		public void OnChartDifficultyTypeChanged(EditorChart chart)
-		{
-			if (ActiveChart == null || chart != ActiveChart)
-				return;
-			ActiveChart.EditorSong.UpdateChartSort();
-		}
-
-		public void OnChartRatingChanged(EditorChart chart)
-		{
-			if (ActiveChart == null || chart != ActiveChart)
-				return;
-			ActiveChart.EditorSong.UpdateChartSort();
-		}
-
-		public void OnChartNameChanged(EditorChart chart)
-		{
-			if (ActiveChart == null || chart != ActiveChart)
-				return;
-			ActiveChart.EditorSong.UpdateChartSort();
-		}
-
-		public void OnChartDescriptionChanged(EditorChart chart)
-		{
-			if (ActiveChart == null || chart != ActiveChart)
-				return;
-			ActiveChart.EditorSong.UpdateChartSort();
 		}
 
 		public void OnChartSelected(EditorChart chart, bool undoable = true)
@@ -5117,15 +5051,15 @@ namespace StepManiaEditor
 			UpdateWindowTitle();
 
 			// Start loading music for this Chart.
-			OnChartMusicChanged(ActiveChart);
-			OnChartMusicPreviewChanged(ActiveChart);
+			OnMusicChanged();
+			OnMusicPreviewChanged();
 		}
 
 		public EditorChart AddChart(ChartType chartType, bool selectNewChart)
 		{
 			if (ActiveSong == null)
 				return null;
-			var chart = ActiveSong.AddChart(chartType);
+			var chart = ActiveSong.AddChart(chartType, this);
 			if (selectNewChart)
 				OnChartSelected(chart, false);
 			return chart;
@@ -5174,5 +5108,47 @@ namespace StepManiaEditor
 			foreach (string file in files)
 				Logger.Info(file);
 		}
+
+		#region IObserver<EditorSong>
+		public void OnNotify(string eventId, EditorSong song, object payload)
+		{
+			if (song != ActiveSong)
+				return;
+
+			switch (eventId)
+			{
+				case EditorSong.NotificationMusicChanged:
+					OnMusicChanged(); break;
+				case EditorSong.NotificationMusicPreviewChanged:
+					OnMusicPreviewChanged(); break;
+				case EditorSong.NotificationMusicOffsetChanged:
+					OnMusicOffsetChanged(); break;
+			}
+		}
+		#endregion IObserver<EditorSong>
+
+		#region IObserver<EditorChart>
+		public void OnNotify(string eventId, EditorChart chart, object payload)
+		{
+			if (chart != ActiveChart)
+				return;
+
+			switch (eventId)
+			{
+				case EditorChart.NotificationDifficultyTypeChanged:
+				case EditorChart.NotificationRatingChanged:
+				case EditorChart.NotificationNameChanged:
+				case EditorChart.NotificationDescriptionChanged:
+					chart.EditorSong.UpdateChartSort(); break;
+
+				case EditorChart.NotificationMusicChanged:
+					OnMusicChanged(); break;
+				case EditorChart.NotificationMusicOffsetChanged:
+					OnMusicOffsetChanged(); break;
+				case EditorChart.NotificationEventsDeleted:
+					OnEventsDeleted((List<EditorEvent>)payload); break;
+			}
+		}
+		#endregion IObserver<EditorChart>
 	}
 }
