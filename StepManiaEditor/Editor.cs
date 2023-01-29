@@ -11,7 +11,6 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using Fumen.ChartDefinition;
 using Fumen.Converters;
-using static Fumen.Utils;
 using StepManiaLibrary;
 using static StepManiaLibrary.Constants;
 using static StepManiaEditor.Utils;
@@ -1724,13 +1723,8 @@ namespace StepManiaEditor
 			var interpolatedScrollRate = 1.0;
 			if (Preferences.Instance.PreferencesScroll.SpacingMode == SpacingMode.Variable)
 			{
-				var sriEvent = new ScrollRateInterpolation(0.0, 0, 0.0, false)
-				{
-					IntegerPosition = (int)Position.ChartPosition,
-					TimeSeconds = Position.ChartTime,
-				};
-				var ratePosEventForChecking = new EditorInterpolatedRateAlteringEvent(
-					new EditorEvent.EventConfig { EditorChart = ActiveChart, ChartEvents = new List<Event> { sriEvent } }, sriEvent);
+				var ratePosEventForChecking = (EditorInterpolatedRateAlteringEvent)EditorEvent.CreateEvent(
+					EventConfig.CreateScrollRateInterpolationConfig(ActiveChart, (int)Position.ChartPosition, Position.ChartTime, 0.0, 0, 0.0, false));
 
 				var interpolatedScrollRateEnumerator =
 					ActiveChart.InterpolatedScrollRateEvents.FindGreatestPreceding(ratePosEventForChecking);
@@ -2756,31 +2750,31 @@ namespace StepManiaEditor
 				{
 					if (ImGui.BeginMenu("Selection"))
 					{
-						if (ImGui.Selectable("Mirror"))
+						if (ImGui.MenuItem("Mirror"))
 						{
 							ActionQueue.Instance.Do(new ActionMirrorSelection(this, ActiveChart, SelectedEvents));
 						}
-						if (ImGui.Selectable("Flip"))
+						if (ImGui.MenuItem("Flip"))
 						{
 							ActionQueue.Instance.Do(new ActionFlipSelection(this, ActiveChart, SelectedEvents));
 						}
-						if (ImGui.Selectable("Mirror and Flip"))
+						if (ImGui.MenuItem("Mirror and Flip"))
 						{
-							 ActionQueue.Instance.Do(new ActionMirrorAndFlipSelection(this, ActiveChart, SelectedEvents));
+							ActionQueue.Instance.Do(new ActionMirrorAndFlipSelection(this, ActiveChart, SelectedEvents));
 						}
-						if (ImGui.Selectable("Shift Right"))
+						if (ImGui.MenuItem("Shift Right"))
 						{
 							OnShiftSelectedNotesRight();
 						}
-						if (ImGui.Selectable("Shift Right and Wrap"))
+						if (ImGui.MenuItem("Shift Right and Wrap", "Ctrl+Shift+Right"))
 						{
 							OnShiftSelectedNotesRightAndWrap();
 						}
-						if (ImGui.Selectable("Shift Left"))
+						if (ImGui.MenuItem("Shift Left"))
 						{
 							OnShiftSelectedNotesLeft();
 						}
-						if (ImGui.Selectable("Shift Left and Wrap"))
+						if (ImGui.MenuItem("Shift Left and Wrap", "Ctrl+Shift+Left"))
 						{
 							OnShiftSelectedNotesLeftAndWrap();
 						}
@@ -2791,17 +2785,133 @@ namespace StepManiaEditor
 							rows = MaxValidDenominator;
 						shiftAmount = $"1/{(MaxValidDenominator / rows) * SMCommon.NumBeatsPerMeasure}";
 
-						if (ImGui.Selectable($"Shift Earlier ({shiftAmount})"))
+						if (ImGui.MenuItem($"Shift Earlier ({shiftAmount})", "Ctrl+Shift+Up"))
 						{
 							OnShiftSelectedNotesEarlier();
 						}
-						if (ImGui.Selectable($"Shift Later ({shiftAmount})"))
+						if (ImGui.MenuItem($"Shift Later ({shiftAmount})", "Ctrl+Shift+Down"))
 						{
 							OnShiftSelectedNotesLater();
 						}
 
+						if (ImGui.BeginMenu("Convert"))
+						{
+							if (ImGui.MenuItem("Taps to Mines"))
+							{
+								ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, SelectedEvents,
+									(EditorEvent e) => { return e is EditorTapNoteEvent; },
+									(EditorEvent e) => {
+										return EditorEvent.CreateEvent(
+											EventConfig.CreateMineConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(), e.GetLane()));
+									}));
+							}
+							if (ImGui.MenuItem("Mines to Taps"))
+							{
+								ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, SelectedEvents,
+									(EditorEvent e) => { return e is EditorMineNoteEvent; },
+									(EditorEvent e) => {
+										return EditorEvent.CreateEvent(
+											EventConfig.CreateTapConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(), e.GetLane()));
+									}));
+							}
+
+							ImGui.Separator();
+							if (ImGui.MenuItem("Holds to Rolls"))
+							{
+								ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, SelectedEvents,
+									(EditorEvent e) => { return e is EditorHoldNoteEvent hn && !hn.IsRoll(); },
+									(EditorEvent e) => {
+										return EditorHoldNoteEvent.CreateHold(ActiveChart, e.GetLane(), e.GetRow(), e.GetLength(), true);
+									}));
+							}
+							if (ImGui.MenuItem("Holds to Taps"))
+							{
+								ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, SelectedEvents,
+									(EditorEvent e) => { return e is EditorHoldNoteEvent hn && !hn.IsRoll(); },
+									(EditorEvent e) => {
+										return EditorEvent.CreateEvent(
+											EventConfig.CreateTapConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(), e.GetLane()));
+									}));
+							}
+							if (ImGui.MenuItem("Holds to Mines"))
+							{
+								ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, SelectedEvents,
+									(EditorEvent e) => { return e is EditorHoldNoteEvent hn && !hn.IsRoll(); },
+									(EditorEvent e) => {
+										return EditorEvent.CreateEvent(
+											EventConfig.CreateMineConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(), e.GetLane()));
+									}));
+							}
+
+							ImGui.Separator();
+							if (ImGui.MenuItem("Rolls to Holds"))
+							{
+								ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, SelectedEvents,
+									(EditorEvent e) => { return e is EditorHoldNoteEvent hn && hn.IsRoll(); },
+									(EditorEvent e) => {
+										return EditorHoldNoteEvent.CreateHold(ActiveChart, e.GetLane(), e.GetRow(), e.GetLength(), false);
+									}));
+							}
+							if (ImGui.MenuItem("Rolls to Taps"))
+							{
+								ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, SelectedEvents,
+									(EditorEvent e) => { return e is EditorHoldNoteEvent hn && hn.IsRoll(); },
+									(EditorEvent e) => {
+										return EditorEvent.CreateEvent(
+											EventConfig.CreateTapConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(), e.GetLane()));
+									}));
+							}
+							if (ImGui.MenuItem("Rolls to Mines"))
+							{
+								ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, SelectedEvents,
+									(EditorEvent e) => { return e is EditorHoldNoteEvent hn && hn.IsRoll(); },
+									(EditorEvent e) => {
+										return EditorEvent.CreateEvent(
+											EventConfig.CreateMineConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(), e.GetLane()));
+									}));
+							}
+							ImGui.EndMenu();
+						}
+
 						ImGui.EndMenu();
 					}
+				}
+
+				if (ImGui.BeginMenu("Select All"))
+				{
+					if (ImGui.MenuItem("Notes", "Ctrl+A"))
+					{
+						OnSelectAll();
+					}
+					if (ImGui.Selectable("Taps"))
+					{
+						OnSelectAllImpl((EditorEvent e) => { return e is EditorTapNoteEvent; });
+					}
+					if (ImGui.Selectable("Mines"))
+					{
+						OnSelectAllImpl((EditorEvent e) => { return e is EditorMineNoteEvent; });
+					}
+					if (ImGui.Selectable("Holds"))
+					{
+						OnSelectAllImpl((EditorEvent e) => { return e is EditorHoldNoteEvent hn && !hn.IsRoll(); });
+					}
+					if (ImGui.Selectable("Rolls"))
+					{
+						OnSelectAllImpl((EditorEvent e) => { return e is EditorHoldNoteEvent hn && hn.IsRoll(); });
+					}
+					if (ImGui.Selectable("Holds and Rolls"))
+					{
+						OnSelectAllImpl((EditorEvent e) => { return e is EditorHoldNoteEvent hn; });
+					}
+					if (ImGui.MenuItem("Miscellaneous Events", "Ctrl+Alt+A"))
+					{
+						OnSelectAllAlt();
+					}
+					if (ImGui.MenuItem("Notes and Miscellaneous Events", "Ctrl+Shift+A"))
+					{
+						OnSelectAllShift();
+					}
+					ImGui.EndMenu();
 				}
 
 				if (isInMiniMapArea)
@@ -2892,144 +3002,57 @@ namespace StepManiaEditor
 
 						DrawAddEventMenuItem("Tempo", !hasTempoEvent, UITempoColorRGBA, EditorTempoEvent.EventShortDescription, row, () =>
 						{
-							return EditorEvent.CreateEvent(new EditorEvent.EventConfig
-							{
-								EditorChart = ActiveChart,
-								ChartEvents = new List<Event> { new Tempo(currentRateAlteringEvent?.GetTempo() ?? EditorChart.DefaultTempo)
-								{
-									IntegerPosition = row,
-									TimeSeconds = chartTime,
-								} }
-							});
+							return EditorEvent.CreateEvent(EventConfig.CreateTempoConfig(ActiveChart, row, chartTime,
+								currentRateAlteringEvent?.GetTempo() ?? EditorChart.DefaultTempo));
 						});
 
 						ImGui.Separator();
 						DrawAddEventMenuItem("Interpolated Scroll Rate", !hasInterpolatedScrollRateEvent, UISpeedsColorRGBA, EditorInterpolatedRateAlteringEvent.EventShortDescription, row, () =>
 						{
-							return EditorEvent.CreateEvent(new EditorEvent.EventConfig
-							{
-								EditorChart = ActiveChart,
-								ChartEvents = new List<Event> { new ScrollRateInterpolation(EditorChart.DefaultScrollRate, MaxValidDenominator, 0.0, false)
-								{
-									IntegerPosition = row,
-									TimeSeconds = chartTime,
-								} }
-							});
+							return EditorEvent.CreateEvent(EventConfig.CreateScrollRateInterpolationConfig(ActiveChart, row, chartTime));
 						});
 						DrawAddEventMenuItem("Scroll Rate", !hasScrollRateEvent, UIScrollsColorRGBA, EditorScrollRateEvent.EventShortDescription, row, () =>
 						{
-							return EditorEvent.CreateEvent(new EditorEvent.EventConfig
-							{
-								EditorChart = ActiveChart,
-								ChartEvents = new List<Event> { new ScrollRate(EditorChart.DefaultScrollRate)
-								{
-									IntegerPosition = row,
-									TimeSeconds = chartTime,
-								} }
-							});
+							return EditorEvent.CreateEvent(EventConfig.CreateScrollRateConfig(ActiveChart, row, chartTime));
 						});
 
 						ImGui.Separator();
 						DrawAddEventMenuItem("Stop", !hasStopEvent, UIStopColorRGBA, EditorStopEvent.EventShortDescription, row, () =>
 						{
-							var stopLength = currentRateAlteringEvent.GetSecondsPerRow() * MaxValidDenominator;
-							return EditorEvent.CreateEvent(new EditorEvent.EventConfig
-							{
-								EditorChart = ActiveChart,
-								ChartEvents = new List<Event> { new Stop(stopLength, false)
-								{
-									IntegerPosition = row,
-									TimeSeconds = chartTime,
-								} }
-							});
+							var stopTime = currentRateAlteringEvent.GetSecondsPerRow() * MaxValidDenominator;
+							return EditorEvent.CreateEvent(EventConfig.CreateStopConfig(ActiveChart, row, chartTime, stopTime));
 						});
 						DrawAddEventMenuItem("Delay", !hasDelayEvent, UIDelayColorRGBA, EditorDelayEvent.EventShortDescription, row, () =>
 						{
-							var stopLength = currentRateAlteringEvent.GetSecondsPerRow() * MaxValidDenominator;
-							return EditorEvent.CreateEvent(new EditorEvent.EventConfig
-							{
-								EditorChart = ActiveChart,
-								ChartEvents = new List<Event> { new Stop(stopLength, true)
-								{
-									IntegerPosition = row,
-									TimeSeconds = chartTime,
-								} }
-							});
+							var stopTime = currentRateAlteringEvent.GetSecondsPerRow() * MaxValidDenominator;
+							return EditorEvent.CreateEvent(EventConfig.CreateDelayConfig(ActiveChart, row, chartTime, stopTime));
 						});
 						DrawAddEventMenuItem("Warp", !hasWarpEvent, UIWarpColorRGBA, EditorWarpEvent.EventShortDescription, row, () =>
 						{
-							return EditorEvent.CreateEvent(new EditorEvent.EventConfig
-							{
-								EditorChart = ActiveChart,
-								ChartEvents = new List<Event> { new Warp(MaxValidDenominator)
-								{
-									IntegerPosition = row,
-									TimeSeconds = chartTime,
-								} }
-							});
+							return EditorEvent.CreateEvent(EventConfig.CreateWarpConfig(ActiveChart, row, chartTime));
 						});
 
 						ImGui.Separator();
 						DrawAddEventMenuItem("Fake Region", !hasFakeEvent, UIFakesColorRGBA, EditorFakeSegmentEvent.EventShortDescription, row, () =>
 						{
 							var fakeLength = currentRateAlteringEvent.GetSecondsPerRow() * MaxValidDenominator;
-							return EditorEvent.CreateEvent(new EditorEvent.EventConfig
-							{
-								EditorChart = ActiveChart,
-								ChartEvents = new List<Event> { new FakeSegment(fakeLength)
-								{
-									IntegerPosition = row,
-									TimeSeconds = chartTime,
-								} }
-							});
+							return EditorEvent.CreateEvent(EventConfig.CreateFakeConfig(ActiveChart, row, chartTime, fakeLength));
 						});
 						DrawAddEventMenuItem("Ticks", !hasTickCountEvent, UITicksColorRGBA, EditorTickCountEvent.EventShortDescription, row, () =>
 						{
-							return EditorEvent.CreateEvent(new EditorEvent.EventConfig
-							{
-								EditorChart = ActiveChart,
-								ChartEvents = new List<Event> { new TickCount(EditorChart.DefaultTickCount)
-								{
-									IntegerPosition = row,
-									TimeSeconds = chartTime,
-								} }
-							});
+							return EditorEvent.CreateEvent(EventConfig.CreateTickCountConfig(ActiveChart, row, chartTime));
 						});
 						DrawAddEventMenuItem("Combo Multipliers", !hasMultipliersEvent, UIMultipliersColorRGBA, EditorMultipliersEvent.EventShortDescription, row, () =>
 						{
-							return EditorEvent.CreateEvent(new EditorEvent.EventConfig
-							{
-								EditorChart = ActiveChart,
-								ChartEvents = new List<Event> { new Multipliers(EditorChart.DefaultHitMultiplier, EditorChart.DefaultMissMultiplier)
-								{
-									IntegerPosition = row,
-									TimeSeconds = chartTime,
-								} }
-							});
+							return EditorEvent.CreateEvent(EventConfig.CreateMultipliersConfig(ActiveChart, row, chartTime));
 						});
 						DrawAddEventMenuItem("Time Signature", !hasTimeSignatureEvent, UITimeSignatureColorRGBA, EditorTimeSignatureEvent.EventShortDescription, nearestMeasureBoundaryRow, () =>
 						{
-							return EditorEvent.CreateEvent(new EditorEvent.EventConfig
-							{
-								EditorChart = ActiveChart,
-								ChartEvents = new List<Event> { new TimeSignature(EditorChart.DefaultTimeSignature)
-								{
-									IntegerPosition = nearestMeasureBoundaryRow,
-									TimeSeconds = nearestMeasureChartTime,
-								} }
-							});
+							return EditorEvent.CreateEvent(EventConfig.CreateTimeSignatureConfig(ActiveChart, nearestMeasureBoundaryRow, nearestMeasureChartTime, EditorChart.DefaultTimeSignature));
 						}, true);
 						DrawAddEventMenuItem("Label", !hasLabelEvent, UILabelColorRGBA, EditorLabelEvent.EventShortDescription, row, () =>
 						{
-							return EditorEvent.CreateEvent(new EditorEvent.EventConfig
-							{
-								EditorChart = ActiveChart,
-								ChartEvents = new List<Event> { new Fumen.ChartDefinition.Label("New Label")
-								{
-									IntegerPosition = row,
-									TimeSeconds = chartTime,
-								} }
-							});
+							return EditorEvent.CreateEvent(EventConfig.CreateLabelConfig(ActiveChart, row, chartTime));
 						});
 
 						ImGui.EndMenu();
@@ -4404,33 +4427,14 @@ namespace StepManiaEditor
 
 				if (KeyCommandManager.IsKeyDown(Keys.LeftShift))
 				{
-					var config = new EditorEvent.EventConfig
-					{
-						EditorChart = ActiveChart,
-						ChartEvents = new List<Event> { new LaneNote
-						{
-							Lane = lane,
-							IntegerPosition = row,
-							TimeSeconds = chartTime,
-							SourceType = NoteChars[(int)NoteType.Mine].ToString()
-						} },
-						IsBeingEdited = true
-					};
+					var config = EventConfig.CreateMineConfig(ActiveChart, row, chartTime, lane);
+					config.IsBeingEdited = true;
 					LaneEditStates[lane].SetEditingTapOrMine(EditorEvent.CreateEvent(config));
 				}
 				else
 				{
-					var config = new EditorEvent.EventConfig
-					{
-						EditorChart = ActiveChart,
-						ChartEvents = new List<Event> { new LaneTapNote
-						{
-							Lane = lane,
-							IntegerPosition = row,
-							TimeSeconds = chartTime,
-						} },
-						IsBeingEdited = true
-					};
+					var config = EventConfig.CreateTapConfig(ActiveChart, row, chartTime, lane);
+					config.IsBeingEdited = true;
 					LaneEditStates[lane].SetEditingTapOrMine(EditorEvent.CreateEvent(config));
 				}
 			}
@@ -4513,16 +4517,7 @@ namespace StepManiaEditor
 							{
 								var deleteHold = new ActionDeleteEditorEvents(existingEvent);
 
-								var config = new EditorEvent.EventConfig
-								{
-									EditorChart = ActiveChart,
-									ChartEvents = new List<Event> { new LaneTapNote
-									{
-										Lane = lane,
-										IntegerPosition = existingEvent.GetRow(),
-										TimeSeconds = existingEvent.GetChartTime(),
-									} }
-								};
+								var config = EventConfig.CreateTapConfig(ActiveChart, existingEvent.GetRow(), existingEvent.GetChartTime(), lane);
 								var insertNewNoteAtHoldStart = new ActionAddEditorEvent(EditorEvent.CreateEvent(config));
 
 								LaneEditStates[lane].SetEditingTapOrMine(LaneEditStates[lane].GetEventBeingEdited(), new List<EditorAction>

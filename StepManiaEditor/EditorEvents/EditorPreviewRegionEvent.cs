@@ -79,16 +79,14 @@ namespace StepManiaEditor
 		}
 
 		public EditorPreviewRegionEvent(EditorChart editorChart, double chartPosition)
-			: base(new EventConfig { EditorChart = editorChart, ChartPosition = chartPosition, UseDoubleChartPosition = true })
+			: base(EventConfig.CreateConfigNoEvent(editorChart, chartPosition))
 		{
 			WidthDirty = true;
 			IsPositionImmutable = true;
 		}
 
-		private double HackChartTime = 0.0;
 		public override double GetChartTime()
 		{
-			HackChartTime = EditorChart.EditorSong.SampleStart + EditorChart.GetMusicOffset();
 			return EditorChart.EditorSong.SampleStart + EditorChart.GetMusicOffset();
 		}
 

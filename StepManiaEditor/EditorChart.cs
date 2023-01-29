@@ -15,13 +15,13 @@ namespace StepManiaEditor
 	/// </summary>
 	internal sealed class EditorChart
 	{
-		public static double DefaultTempo = 120.0;
+		public const double DefaultTempo = 120.0;
 		public static Fraction DefaultTimeSignature = new Fraction(4, 4);
-		public static double DefaultScrollRate = 1.0;
-		public static int DefaultTickCount = 4;
-		public static int DefaultHitMultiplier = 1;
-		public static int DefaultMissMultiplier = 1;
-		public static int DefaultRating = 1;
+		public const double DefaultScrollRate = 1.0;
+		public const int DefaultTickCount = 4;
+		public const int DefaultHitMultiplier = 1;
+		public const int DefaultMissMultiplier = 1;
+		public const int DefaultRating = 1;
 
 		private Editor Editor;
 		private Extras OriginalChartExtras;
@@ -299,15 +299,13 @@ namespace StepManiaEditor
 				}
 				if (chartEvent is LaneHoldEndNote hen)
 				{
-					var config = new EditorEvent.EventConfig { EditorChart = this, ChartEvents = new List<Event> { pendingHoldStarts[hen.Lane], hen } };
+					editorEvent = EditorEvent.CreateEvent(EventConfig.CreateHoldConfig(this, pendingHoldStarts[hen.Lane], hen));
 					pendingHoldStarts[hen.Lane] = null;
-					editorEvent = EditorEvent.CreateEvent(config);
 					holds.Insert(editorEvent);
 				}
 				else
 				{
-					var config = new EditorEvent.EventConfig { EditorChart = this, ChartEvents = new List<Event> { chartEvent } };
-					editorEvent = EditorEvent.CreateEvent(config);
+					editorEvent = EditorEvent.CreateEvent(EventConfig.CreateConfig(this, chartEvent));
 				}
 
 				if (editorEvent != null)
@@ -1224,16 +1222,7 @@ namespace StepManiaEditor
 							// If the reduction in length is below the min length for a hold, replace it with a tap.
 							if (newExistingHoldEndRow <= existingNote.GetRow())
 							{
-								var replacementEvent = EditorEvent.CreateEvent(new EditorEvent.EventConfig
-								{
-									ChartEvents = new List<Event> { new LaneTapNote()
-									{
-										Lane = lane,
-										IntegerPosition = existingNote.GetRow(),
-										TimeSeconds = existingNote.GetChartTime(),
-									} },
-									EditorChart = this
-								});
+								var replacementEvent = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(this, existingNote.GetRow(), existingNote.GetChartTime(), lane));
 								AddEvent(replacementEvent);
 								sideEffectAddedEvents.Add(replacementEvent);
 							}

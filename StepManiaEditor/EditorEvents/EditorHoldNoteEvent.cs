@@ -63,11 +63,7 @@ namespace StepManiaEditor
 				TimeSeconds = holdEndTime
 			};
 
-			var config = new EventConfig
-			{
-				EditorChart = chart,
-				ChartEvents = new List<Event> { holdStartNote, holdEndNote },
-			};
+			var config = EventConfig.CreateHoldConfig(chart, holdStartNote, holdEndNote);
 			var hold = new EditorHoldNoteEvent(config, holdStartNote, holdEndNote);
 			hold.SetIsRoll(roll);
 			return hold;

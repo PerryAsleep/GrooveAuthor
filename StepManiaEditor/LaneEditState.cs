@@ -138,37 +138,26 @@ namespace StepManiaEditor
 		public void Shift(bool up)
 		{
 			// Switch between a tap and mine.
-			if (EventBeingEdited is EditorTapNoteEvent)
+			if (EventBeingEdited is EditorTapNoteEvent || EventBeingEdited is EditorMineNoteEvent)
 			{
 				if (up)
 				{
-					var config = new EditorEvent.EventConfig
-					{
-						EditorChart = EventBeingEdited.GetEditorChart(),
-						ChartEvents = new List<Event> { new LaneTapNote
-						{
-							Lane = EventBeingEdited.GetLane(),
-							IntegerPosition = EventBeingEdited.GetRow(),
-							TimeSeconds = EventBeingEdited.GetChartTime()
-						} },
-						IsBeingEdited = true
-					};
+					var config = EventConfig.CreateTapConfig(
+						EventBeingEdited.GetEditorChart(),
+						EventBeingEdited.GetRow(),
+						EventBeingEdited.GetChartTime(),
+						EventBeingEdited.GetLane());
+					config.IsBeingEdited = true;
 					EventBeingEdited = EditorEvent.CreateEvent(config);
 				}
 				else
 				{
-					var config = new EditorEvent.EventConfig
-					{
-						EditorChart = EventBeingEdited.GetEditorChart(),
-						ChartEvents = new List<Event> { new LaneNote
-						{
-							Lane = EventBeingEdited.GetLane(),
-							IntegerPosition = EventBeingEdited.GetRow(),
-							TimeSeconds = EventBeingEdited.GetChartTime(),
-							SourceType = SMCommon.NoteChars[(int)SMCommon.NoteType.Mine].ToString()
-						} },
-						IsBeingEdited = true
-					};
+					var config = EventConfig.CreateMineConfig(
+						EventBeingEdited.GetEditorChart(),
+						EventBeingEdited.GetRow(),
+						EventBeingEdited.GetChartTime(),
+						EventBeingEdited.GetLane());
+					config.IsBeingEdited = true;
 					EventBeingEdited = EditorEvent.CreateEvent(config);
 				}
 

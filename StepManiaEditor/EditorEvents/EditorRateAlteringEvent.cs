@@ -154,7 +154,7 @@ namespace StepManiaEditor
 		private double ChartTime;
 
 		public EditorDummyRateAlteringEventWithTime(EditorChart editorChart, double chartTime)
-			: base(new EventConfig { EditorChart = editorChart, IsDummyEvent = true })
+			: base(EventConfig.CreateDummyRateAlteringEventConfig(editorChart))
 		{
 			ChartTime = chartTime;
 		}
@@ -176,7 +176,7 @@ namespace StepManiaEditor
 	internal sealed class EditorDummyRateAlteringEventWithRow : EditorRateAlteringEvent
 	{
 		public EditorDummyRateAlteringEventWithRow(EditorChart editorChart, double row)
-			: base(new EventConfig { EditorChart = editorChart, IsDummyEvent = true, ChartPosition = row, UseDoubleChartPosition = true })
+			: base(EventConfig.CreateDummyRateAlteringEventConfigWithRow(editorChart, row))
 		{
 		}
 

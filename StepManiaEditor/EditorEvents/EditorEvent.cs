@@ -19,19 +19,6 @@ namespace StepManiaEditor
 	internal abstract class EditorEvent : IComparable<EditorEvent>
 	{
 		/// <summary>
-		/// Configuration struct for constructing a new EditorEvent.
-		/// </summary>
-		internal struct EventConfig
-		{
-			public EditorChart EditorChart;
-			public List<Event> ChartEvents;
-			public bool UseDoubleChartPosition;
-			public double ChartPosition;
-			public bool IsDummyEvent;
-			public bool IsBeingEdited;
-		}
-
-		/// <summary>
 		/// The underlying Event for this EditorEvent.
 		/// Most EditorEvents have one Event.
 		/// Holds have two Events. For Holds this is LaneHoldStartNote. 
@@ -50,18 +37,18 @@ namespace StepManiaEditor
 		/// <summary>
 		/// Whether or not this EditorEvent is currently selected by the user.
 		/// </summary>
-		private bool Selected;
+		private bool Selected = false;
 		/// <summary>
 		/// Whether or not this EditorEvent is in a temporary state where it is being edited
 		/// but not actually committed to the EditorChart yet.
 		/// </summary>
 		private bool BeingEdited = false;
 		/// <summary>
-		/// Whether or not this is a dummy EditorEvent. Dummy events used for comparing against
+		/// Whether or not this is a dummy EditorEvent. Dummy events are used for comparing against
 		/// other EditorEvents in sorted data structures. Dummy events always sort before other
 		/// events that would otherwise be equal.
 		/// </summary>
-		protected readonly bool IsDummyEvent;
+		protected readonly bool DummyEvent = false;
 		/// <summary>
 		/// The ChartPosition as a double. EditorEvents with a ChartEvent are expected to have
 		/// integer values for their ChartPosition/Row/IntegerPosition. EditorEvents created
@@ -142,7 +129,7 @@ namespace StepManiaEditor
 			EditorChart = config.EditorChart;
 			if (config.ChartEvents != null && config.ChartEvents.Count > 0)
 				ChartEvent = config.ChartEvents[0];
-			IsDummyEvent = config.IsDummyEvent;
+			DummyEvent = config.IsDummyEvent;
 			BeingEdited = config.IsBeingEdited;
 			if (config.UseDoubleChartPosition)
 				ChartPosition = config.ChartPosition;
@@ -156,25 +143,10 @@ namespace StepManiaEditor
 		/// <returns>Newly cloned EditorEvent.</returns>
 		public EditorEvent Clone()
 		{
-			var clonedEvents = new List<Event>();
-			foreach(var originalEvent in GetEvents())
-				clonedEvents.Add(originalEvent.Clone());
-
-			var cloneConfig = new EventConfig()
-			{
-				ChartEvents = clonedEvents,
-				EditorChart = EditorChart,
-				ChartPosition = ChartPosition,
-				IsBeingEdited = BeingEdited,
-				IsDummyEvent = IsDummyEvent,
-			};
-
-			var newEvent = CreateEvent(cloneConfig);
-
+			var newEvent = CreateEvent(EventConfig.CreateCloneEventConfig(this));
 			newEvent.IsPositionImmutable = IsPositionImmutable;
 			newEvent.Selected = Selected;
 			newEvent.ChartPosition = ChartPosition;
-
 			return newEvent;
 		}
 
@@ -427,6 +399,15 @@ namespace StepManiaEditor
 			return BeingEdited;
 		}
 
+		/// <summary>
+		/// Returns whether or not this event is a dummy event.
+		/// </summary>
+		/// <returns>Whether or not this event is a dummy event.</returns>
+		public bool IsDummyEvent()
+		{
+			return DummyEvent;
+		}
+
 		#region IComparable
 
 		private static readonly Dictionary<string, int> CustomEventOrder = new Dictionary<string, int>
@@ -487,8 +468,8 @@ namespace StepManiaEditor
 				return comparison;
 
 			// Dummy events come before other events at the same location.
-			if (IsDummyEvent != other.IsDummyEvent)
-				return IsDummyEvent ? -1 : 1;
+			if (DummyEvent != other.DummyEvent)
+				return DummyEvent ? -1 : 1;
 
 			// Events being edited come after events not being edited.
 			// This sort order is being relied on in EditorChart.FindNoteAt.
