@@ -132,24 +132,23 @@ namespace StepManiaEditor
 					ImGuiLayoutUtils.DrawRowFileBrowse("Preview File", EditorSong, nameof(EditorSong.MusicPreviewPath), BrowseMusicPreviewFile, ClearMusicPreviewFile, true,
 						"(Uncommon) An audio file to use for a preview instead of playing a range from the music file.");
 
-					ImGuiLayoutUtils.DrawRowDragDoubleWithSetButton(true, "Preview Start", EditorSong, nameof(EditorSong.SampleStart), true,
-						SetPreviewStartFromCurrentTime, "Use Current Time",
-						"Music preview start time.",
+					ImGuiLayoutUtils.DrawRowDragDoubleWithSetAndGoButtons(true, "Preview Start", EditorSong, nameof(EditorSong.SampleStart), true,
+						SetPreviewStartFromCurrentTime, "Use Current Time", JumpToPreviewStart,
+						"Music preview start time.\n" +
+						EditorPreviewRegionEvent.PreviewDescription,
 						0.0001f, "%.6f seconds");
-					ImGuiLayoutUtils.DrawRowDragDoubleWithSetButton(true, "Preview Length", EditorSong, nameof(EditorSong.SampleLength), true,
-						SetPreviewEndFromCurrentTime, "Use Current Time",
-						"Music preview length.",
+					ImGuiLayoutUtils.DrawRowDragDoubleWithSetAndGoButtons(true, "Preview Length", EditorSong, nameof(EditorSong.SampleLength), true,
+						SetPreviewEndFromCurrentTime, "Use Current Time", JumpToPreviewEnd,
+						"Music preview length.\n" +
+						EditorPreviewRegionEvent.PreviewDescription,
 						0.0001f, "%.6f seconds", 0.0);
 					if (ImGuiLayoutUtils.DrawRowButton(null, Editor.IsPlayingPreview() ? "Stop Preview" : "Play Preview",
 						"Toggle Preview playback. Playback can be toggled with P. Playback can be cancelled with Esc."))
 						Editor.OnTogglePlayPreview();
 
-					// TODO: Better LastSecondHint Controls.
-					ImGuiLayoutUtils.DrawRowDragDouble(true, "Last Second Hint", EditorSong, nameof(EditorSong.LastSecondHint), true,
-						"The specified end time of the song." +
-						"\nOptional. When not set StepMania will stop a chart shortly after the last note." +
-						"\nUseful if you want the chart to continue after the last note." +
-						"\nStepMania will ignore this value if it is less than or equal to 0.0.",
+					ImGuiLayoutUtils.DrawRowDragDoubleWithSetAndGoButtons(true, "End Hint", EditorSong, nameof(EditorSong.LastSecondHint), true,
+						SetLastSecondHintFromCurrentTime, "Use Current Time", JumpToLastSecondHint,
+						EditorLastSecondHintEvent.LastSecondHintDescription,
 						0.0001f, "%.6f seconds", 0.0);
 
 					ImGuiLayoutUtils.EndTable();
@@ -486,12 +485,33 @@ namespace StepManiaEditor
 			ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyValue<double>(EditorSong, nameof(EditorSong.SampleStart), startTime, true));
 		}
 
+		private void JumpToPreviewStart()
+		{
+			Editor.GetPosition().SongTime = EditorSong.SampleStart;
+		}
+
 		private void SetPreviewEndFromCurrentTime()
 		{
 			var currentTime = Math.Max(0.0, Editor.GetPosition().SongTime);
 			var startTime = EditorSong.SampleStart;
 			var sampleLength = Math.Max(0.0, currentTime - startTime);
 			ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyValue<double>(EditorSong, nameof(EditorSong.SampleLength), sampleLength, true));
+		}
+
+		private void JumpToPreviewEnd()
+		{
+			Editor.GetPosition().SongTime = EditorSong.SampleStart + EditorSong.SampleLength;
+		}
+
+		private void SetLastSecondHintFromCurrentTime()
+		{
+			var currentTime = Math.Max(0.0, Editor.GetPosition().ChartTime);
+			ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyValue<double>(EditorSong, nameof(EditorSong.LastSecondHint), currentTime, true));
+		}
+
+		private void JumpToLastSecondHint()
+		{
+			Editor.GetPosition().ChartTime = EditorSong.LastSecondHint;
 		}
 	}
 }

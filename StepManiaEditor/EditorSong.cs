@@ -292,8 +292,16 @@ namespace StepManiaEditor
 		//ATTACKS
 
 		private double LastSecondHintInternal;
-		public double LastSecondHint;
-
+		public double LastSecondHint
+		{
+			get => LastSecondHintInternal;
+			set
+			{
+				DeleteLastSecondHintEvents();
+				LastSecondHintInternal = value;
+				AddLastSecondHintEvents();
+			}
+		}
 
 		private double SampleStartInternal;
 		public double SampleStart
@@ -398,7 +406,10 @@ namespace StepManiaEditor
 			MusicPreviewPath = song.PreviewMusicFile ?? "";
 			song.Extras.TryGetExtra(TagOffset, out double musicOffset, true);
 			MusicOffset = musicOffset;
-			song.Extras.TryGetExtra(TagLastSecondHint, out LastSecondHint, true);
+
+
+			song.Extras.TryGetExtra(TagLastSecondHint, out double lastSecondHint, true);
+			LastSecondHint = lastSecondHint;
 			if (LastSecondHint <= 0.0)
 			{
 				// TODO: When the last beat hint is set we need to use the song's timing data
@@ -571,6 +582,28 @@ namespace StepManiaEditor
 				foreach (var chart in kvp.Value)
 				{
 					chart.AddPreviewEvent();
+				}
+			}
+		}
+
+		private void DeleteLastSecondHintEvents()
+		{
+			foreach (var kvp in Charts)
+			{
+				foreach (var chart in kvp.Value)
+				{
+					chart.DeleteLastSecondHintEvent();
+				}
+			}
+		}
+
+		private void AddLastSecondHintEvents()
+		{
+			foreach (var kvp in Charts)
+			{
+				foreach (var chart in kvp.Value)
+				{
+					chart.AddLastSecondHintEvent();
 				}
 			}
 		}

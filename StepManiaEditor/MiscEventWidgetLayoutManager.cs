@@ -66,6 +66,7 @@ namespace StepManiaEditor
 				{ typeof(EditorFakeSegmentEvent), new WidgetData() },
 				{ typeof(EditorLabelEvent), new WidgetData() },
 				{ typeof(EditorPreviewRegionEvent), new WidgetData() },
+				{ typeof(EditorLastSecondHintEvent), new WidgetData() },
 			};
 
 			LeftTypes = new List<Type>
@@ -81,6 +82,7 @@ namespace StepManiaEditor
 			RightTypes = new List<Type>
 			{
 				typeof(EditorPreviewRegionEvent),
+				typeof(EditorLastSecondHintEvent),
 				typeof(EditorTempoEvent),
 				typeof(EditorScrollRateEvent),
 				typeof(EditorInterpolatedRateAlteringEvent),

@@ -144,6 +144,7 @@ namespace StepManiaEditor
 		private EventTree Fakes;
 		private EventTree Warps;
 		private EditorPreviewRegionEvent PreviewEvent;
+		private EditorLastSecondHintEvent LastSecondHintEvent;
 
 		public double MostCommonTempo;
 		public double MinTempo;
@@ -387,6 +388,7 @@ namespace StepManiaEditor
 
 			// Create events that are not derived from the Chart's Events.
 			AddPreviewEvent();
+			AddLastSecondHintEvent();
 		}
 
 		/// <summary>
@@ -577,9 +579,10 @@ namespace StepManiaEditor
 			// First, delete any events which do not correspond to Stepmania chart events.
 			// These events may sort to a different relative position based on rate altering
 			// event changes. For example, if a stop is extended, that may change the position
-			// of the preview since it always occurs at an absolute, with a derived position.
+			// of the preview since it always occurs at an absolute time, with a derived position.
 			// We will re-add these events after updating the normal events.
 			var deletedPreview = DeletePreviewEvent();
+			var deletedLastSecondHint = DeleteLastSecondHintEvent();
 
 			EditorEvents.Validate();
 
@@ -606,6 +609,8 @@ namespace StepManiaEditor
 
 			// Finally, re-add any events we deleted above. When re-adding them, we will derive
 			// their positions again using the update timing information.
+			if (deletedLastSecondHint)
+				AddLastSecondHintEvent();
 			if (deletedPreview)
 				AddPreviewEvent();
 
@@ -634,6 +639,27 @@ namespace StepManiaEditor
 			TryGetChartPositionFromTime(previewChartTime, ref chartPosition);
 			PreviewEvent = new EditorPreviewRegionEvent(this, chartPosition);
 			AddEvent(PreviewEvent);
+		}
+
+		public bool DeleteLastSecondHintEvent()
+		{
+			if (LastSecondHintEvent == null)
+				return false;
+			var lastSecondHintEnum = EditorEvents.Find(LastSecondHintEvent);
+			if (lastSecondHintEnum == null || !lastSecondHintEnum.MoveNext())
+				return false;
+			DeleteEvent(LastSecondHintEvent);
+			return true;
+		}
+
+		public void AddLastSecondHintEvent()
+		{
+			if (EditorSong.LastSecondHint <= 0.0)
+				return;
+			double chartPosition = 0.0;
+			TryGetChartPositionFromTime(EditorSong.LastSecondHint, ref chartPosition);
+			LastSecondHintEvent = new EditorLastSecondHintEvent(this, chartPosition);
+			AddEvent(LastSecondHintEvent);
 		}
 
 		public bool TryGetChartPositionFromTime(double chartTime, ref double chartPosition)

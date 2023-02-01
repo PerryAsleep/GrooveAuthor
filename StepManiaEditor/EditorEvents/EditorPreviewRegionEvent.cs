@@ -13,11 +13,16 @@ namespace StepManiaEditor
 	/// </summary>
 	internal sealed class EditorPreviewRegionEvent : EditorEvent, IChartRegion, Fumen.IObserver<EditorSong>
 	{
+		public static readonly string PreviewDescription =
+			"The music Preview plays when a player scrolls to this song in StepMania.";
+		public static readonly string EventShortDescription =
+			PreviewDescription +
+			"\nThe Preview time and length can also be set in the Song Properties window.";
 		public static readonly string WidgetHelp =
-			"Preview.\n" +
+			"Music Preview.\n" +
+			EventShortDescription +
 			"Expected format: \"<length>s\". e.g. \"1.0s\"\n" +
-			"Time must be non-negative.\n" +
-			"The Preview time and length can also be set in the Song Properties window.";
+			"Time must be non-negative.";
 		private const string Format = "%.9gs";
 		private const float Speed = 0.01f;
 
@@ -82,6 +87,14 @@ namespace StepManiaEditor
 			: base(EventConfig.CreateConfigNoEvent(editorChart, chartPosition))
 		{
 			WidthDirty = true;
+
+			// Do not allow repositioning of this event through the widget.
+			// To allow this we'll need to fix how updating event timing data from rate altering events
+			// handles events which do not correspond to Stepmania chart events (like this event).
+			// These events are deleted and re-added as part of the timing update so that their positions can
+			// be re-derived. If we allow this event to be repositioned, it may be repositioned in a group
+			// with other rate altering events. When this happens, the event tree can end up in an invalid
+			// state due to the deletion behavior described above.
 			IsPositionImmutable = true;
 		}
 
@@ -95,6 +108,22 @@ namespace StepManiaEditor
 			EditorChart.EditorSong.RemoveObserver(this);
 		}
 
+		/// <summary>
+		/// Updates the chart time of the event to match its row.
+		/// Overriden as this ChartEvent's time is stored on the song's sample start value and not
+		/// on an underlying Event.
+		/// </summary>
+		public override void ResetTimeBasedOnRow()
+		{
+			var chartTime = 0.0;
+			EditorChart.TryGetTimeFromChartPosition(GetChartPosition(), ref chartTime);
+			EditorChart.EditorSong.SampleStart = chartTime - EditorChart.GetMusicOffset();
+		}
+
+		/// <summary>
+		/// Gets the chart time in seconds of the event.
+		/// Overriden as this event's time is derived from the song's sample start time.
+		/// </summary>
 		public override double GetChartTime()
 		{
 			return EditorChart.EditorSong.SampleStart + EditorChart.GetMusicOffset();

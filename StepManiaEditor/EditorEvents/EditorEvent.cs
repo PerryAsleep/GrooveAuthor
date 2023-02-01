@@ -249,7 +249,9 @@ namespace StepManiaEditor
 		public virtual void SetNewPosition(int row)
 		{
 			ChartPosition = row;
-			SetNewPositionForEvent(ChartEvent, row);
+			if (ChartEvent != null)
+				ChartEvent.IntegerPosition = row;
+			ResetTimeBasedOnRow();
 		}
 
 		/// <summary>
@@ -262,9 +264,8 @@ namespace StepManiaEditor
 		/// <param name="row">New row to set.</param>
 		protected void SetNewPositionForEvent(Event chartEvent, int row)
 		{
-			if (chartEvent == null)
-				return;
-			chartEvent.IntegerPosition = row;
+			if (chartEvent != null)
+				chartEvent.IntegerPosition = row;
 			ResetTimeBasedOnRowForEvent(chartEvent, row);
 		}
 
@@ -276,7 +277,7 @@ namespace StepManiaEditor
 		/// Call this carefully. This changes how events are sorted.
 		/// This cannot be changed while this event is in a sorted list without resorting.
 		/// </remarks>
-		public void ResetTimeBasedOnRow()
+		public virtual void ResetTimeBasedOnRow()
 		{
 			ResetTimeBasedOnRowForEvent(ChartEvent, GetRow());
 		}
@@ -305,7 +306,7 @@ namespace StepManiaEditor
 		/// <returns>Integer row of the event.</returns>
 		public virtual int GetRow()
 		{
-			return (int)ChartPosition;
+			return (int)GetChartPosition();
 		}
 
 		/// <summary>

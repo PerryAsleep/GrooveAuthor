@@ -33,6 +33,7 @@ namespace StepManiaEditor
 		public const uint UILabelColorRGBA = 0x8A68297A;			// pink
 
 		public const uint UIPreviewColorRGBA = 0x8A7A7A7A;          // grey
+		public const uint UILastSecondHintColorRGBA = 0x8A202020;   // dark grey
 
 		public const uint UIDifficultyBeginnerColorRGBA = 0xFF808040;
 		public const uint UIDifficultyEasyColorRGBA = 0xFF4D804D;

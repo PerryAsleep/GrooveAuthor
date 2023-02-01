@@ -34,6 +34,7 @@ namespace StepManiaEditor
 		private static readonly float DisplayTempoToWidth = Utils.UiScaled(14);
 		private static readonly float SliderResetWidth = Utils.UiScaled(50);
 		private static readonly float DragDoubleCustomSetWidth = Utils.UiScaled(108);
+		private static readonly float DragDoubleCustomGoWidth = Utils.UiScaled(20);
 
 		public static void SetFont(ImFontPtr font)
 		{
@@ -889,7 +890,7 @@ namespace StepManiaEditor
 				Utils.PopDisabled();
 		}
 
-		public static void DrawRowDragDoubleWithSetButton(
+		public static void DrawRowDragDoubleWithSetAndGoButtons(
 			bool undoable,
 			string title,
 			object o,
@@ -897,13 +898,14 @@ namespace StepManiaEditor
 			bool affectsFile,
 			Action setAction,
 			string setText,
+			Action goAction,
 			string help = null,
 			float speed = 0.0001f,
 			string format = "%.6f",
 			double min = double.MinValue,
 			double max = double.MaxValue)
 		{
-			var dragDoubleWidth = ImGui.GetContentRegionAvail().X - DragDoubleCustomSetWidth - ImGui.GetStyle().ItemSpacing.X;
+			var dragDoubleWidth = ImGui.GetContentRegionAvail().X - DragDoubleCustomSetWidth - DragDoubleCustomGoWidth - ImGui.GetStyle().ItemSpacing.X * 2;
 
 			DrawRowTitleAndAdvanceColumn(title);
 			DrawDragDouble(undoable, title, o, fieldName, dragDoubleWidth, help, speed, format, affectsFile, min, max);
@@ -912,6 +914,12 @@ namespace StepManiaEditor
 			if (ImGui.Button($"{setText}{GetElementTitle(title, fieldName)}", new Vector2(DragDoubleCustomSetWidth, 0.0f)))
 			{
 				setAction();
+			}
+
+			ImGui.SameLine();
+			if (ImGui.Button($"Go{GetElementTitle(title, fieldName)}", new Vector2(DragDoubleCustomGoWidth, 0.0f)))
+			{
+				goAction();
 			}
 		}
 
@@ -937,6 +945,32 @@ namespace StepManiaEditor
 			return DrawLiveEditValue<double>(undoable, title, o, fieldName, width, affectsFile, Func, DoubleCompare, GetDragHelpText(help));
 		}
 
+		private static bool DrawDragDoubleCached(
+			bool undoable,
+			string title,
+			object o,
+			string fieldName,
+			float width,
+			string help,
+			float speed,
+			string format,
+			bool affectsFile,
+			double min = double.MinValue,
+			double max = double.MaxValue)
+		{
+			(bool, double) Func(double v)
+			{
+				var r = Utils.DragDouble(ref v, GetElementTitle(title, fieldName), speed, format, min, max);
+				return (r, v);
+			}
+
+			bool ValidationFunc(double v)
+			{
+				return true;
+			}
+
+			return DrawCachedEditValue<double>(undoable, title, o, fieldName, width, affectsFile, Func, DoubleCompare, ValidationFunc, GetDragHelpText(help));
+		}
 		#endregion Drag Double
 
 		#region Enum
@@ -1406,6 +1440,31 @@ namespace StepManiaEditor
 			MiscEditorEventWidget(id, e, x, y, width, colorRGBA, selected, canBeDeleted, alpha, help, Func);
 		}
 
+		public static void MiscEditorEventLastSecondHintWidget(
+			string id,
+			EditorEvent e,
+			string fieldName,
+			int x,
+			int y,
+			int width,
+			uint colorRGBA,
+			bool selected,
+			bool canBeDeleted,
+			float speed,
+			string format,
+			float alpha,
+			string help,
+			double min = double.MinValue,
+			double max = double.MaxValue)
+		{
+			void Func(float elementWidth)
+			{
+				DrawDragDoubleCached(true, $"##{id}", e, fieldName, elementWidth, "", speed, format, true, min, max);
+			}
+
+			MiscEditorEventWidget(id, e, x, y, width, colorRGBA, selected, canBeDeleted, alpha, help, Func);
+		}
+
 		public static void MiscEditorEventScrollRateInterpolationInputWidget(
 			string id,
 			EditorEvent e,
@@ -1707,6 +1766,61 @@ namespace StepManiaEditor
 			{
 				if (undoable)
 					ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<T>(o, fieldName, (T)cachedValue.Clone(), affectsFile));
+				else
+					SetFieldOrPropertyToValue(o, fieldName, cachedValue);
+				value = cachedValue;
+			}
+
+			// Always update the cached value if the control is not active.
+			if (!ImGui.IsItemActive())
+				SetCachedValue(cacheKey, value);
+
+			return result;
+		}
+
+		private static bool DrawCachedEditValue<T>(
+			bool undoable,
+			string title,
+			object o,
+			string fieldName,
+			float width,
+			bool affectsFile,
+			Func<T, (bool, T)> imGuiFunc,
+			Func<T, T, bool> compareFunc,
+			Func<T, bool> validationFunc = null,
+			string help = null) where T : struct
+		{
+			// Get the cached value.
+			var cacheKey = GetCacheKey(title, fieldName);
+			if (!TryGetCachedValue(cacheKey, out T cachedValue))
+			{
+				cachedValue = default;
+				SetCachedValue(cacheKey, cachedValue);
+			}
+
+			// Get the current value.
+			var value = GetValueFromFieldOrProperty<T>(o, fieldName);
+
+			// Draw the help marker and determine the remaining width.
+			var textWidth = DrawHelp(help, width);
+			ImGui.SetNextItemWidth(textWidth);
+
+			// Draw the ImGui control using the cached value.
+			// We do not want to see the effect of changing the value outside of the control
+			// until after editing is complete.
+			var (result, resultValue) = imGuiFunc(cachedValue);
+			cachedValue = resultValue;
+			SetCachedValue(cacheKey, cachedValue);
+
+			// At the moment of releasing the control, enqueue an event to update the value to the
+			// newly edited cached value.
+			if (ImGui.IsItemDeactivatedAfterEdit()
+				&& o != null
+				&& (validationFunc == null || validationFunc(cachedValue))
+				&& !compareFunc(cachedValue, value))
+			{
+				if (undoable)
+					ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyValue<T>(o, fieldName, cachedValue, affectsFile));
 				else
 					SetFieldOrPropertyToValue(o, fieldName, cachedValue);
 				value = cachedValue;

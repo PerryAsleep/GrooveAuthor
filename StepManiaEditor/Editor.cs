@@ -2942,7 +2942,7 @@ namespace StepManiaEditor
 				var row = Math.Max(0, Position.GetNearestRow());
 				if (ActiveChart != null)
 				{
-					if (ImGui.BeginMenu("Add"))
+					if (ImGui.BeginMenu("Add Event"))
 					{
 						var nearestMeasureBoundaryRow = ActiveChart.GetNearestMeasureBoundaryRow(row);
 						var eventsAtNearestMeasureBoundary = ActiveChart.EditorEvents.FindEventsAtRow(nearestMeasureBoundaryRow);
@@ -3054,6 +3054,20 @@ namespace StepManiaEditor
 						{
 							return EditorEvent.CreateEvent(EventConfig.CreateLabelConfig(ActiveChart, row, chartTime));
 						});
+
+						ImGui.Separator();
+						if (MenuItemWithColor("(Move) Music Preview", true, UIPreviewColorRGBA))
+						{
+							var startTime = Math.Max(0.0, Position.SongTime);
+							ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyValue<double>(ActiveSong, nameof(EditorSong.SampleStart), startTime, true));
+						}
+						ToolTip(EditorPreviewRegionEvent.EventShortDescription);
+						if (MenuItemWithColor("(Move) End Hint", true, UILastSecondHintColorRGBA))
+						{
+							var currentTime = Math.Max(0.0, Position.ChartTime);
+							ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyValue<double>(ActiveSong, nameof(EditorSong.LastSecondHint), currentTime, true));
+						}
+						ToolTip(EditorLastSecondHintEvent.EventShortDescription);
 
 						ImGui.EndMenu();
 					}
