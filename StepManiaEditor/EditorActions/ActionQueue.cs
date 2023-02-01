@@ -138,7 +138,7 @@ namespace StepManiaEditor
 			{
 				// If bringing back the MaxRedoHistory will lose changes which affect the file,
 				// set a flag that we have unsaved changes.
-				if (AreUnsavedChangesPresentBetweenIndexes(MaxRedoIndex, Index))
+				if (AreUnsavedChangesPresentBetweenIndexes(MaxRedoIndex, Index) && LastSavedIndex >= Index)
 				{
 					LostSavedChanges = true;
 					LastSavedIndex = -1;
