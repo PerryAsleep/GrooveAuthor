@@ -7,6 +7,9 @@ using Fumen.Converters;
 using Microsoft.Xna.Framework.Graphics;
 using static StepManiaEditor.Utils;
 using static Fumen.Converters.SMCommon;
+using static Fumen.Converters.SMWriterBase;
+using System.Text.Json.Serialization;
+using System.Text.Json;
 
 namespace StepManiaEditor
 {
@@ -207,10 +210,40 @@ namespace StepManiaEditor
 	/// </summary>
 	internal sealed class EditorSong : Notifier<EditorSong>
 	{
+		/// <summary>
+		/// Data saved in the song file as a custom data chunk of Editor-specific data at the Song level.
+		/// </summary>
+		private class CustomSaveDataV1
+		{
+			public double SyncOffset;
+		}
+
+		/// <summary>
+		/// Version of custom data saved to the Song.
+		/// </summary>
+		private const int CustomSaveDataVersion = 1;
+
 		public const string NotificationMusicChanged = "MusicChanged";
 		public const string NotificationMusicPreviewChanged = "MusicPreviewChanged";
+		public const string NotificationSyncOffsetChanged = "SyncOffsetChanged";
 		public const string NotificationMusicOffsetChanged = "MusicOffsetChanged";
 		public const string NotificationSampleLengthChanged = "SampleLengthChanged";
+
+		private const string TagCustomSongData = "SongData";
+		private const string TagCustomSongDataVersion = "SongDataVersion";
+
+		/// <summary>
+		/// Options for serializing and deserializing custom Song data.
+		/// </summary>
+		private static JsonSerializerOptions CustomSaveDataSerializationOptions = new JsonSerializerOptions()
+		{
+			Converters =
+			{
+				new JsonStringEnumConverter(JsonNamingPolicy.CamelCase)
+			},
+			ReadCommentHandling = JsonCommentHandling.Skip,
+			IncludeFields = true,
+		};
 
 		private Extras OriginalSongExtras;
 
@@ -280,7 +313,19 @@ namespace StepManiaEditor
 			}
 		}
 
-		public double SyncOffset; // TODO: I want a variable so that you can use the 9ms offset but also have the waveform line up.
+		private double SyncOffsetInternal;
+		public double SyncOffset
+		{
+			get => SyncOffsetInternal;
+			set
+			{
+				DeletePreviewEvents();
+				SyncOffsetInternal = value;
+				AddPreviewEvents();
+				Notify(NotificationSyncOffsetChanged, this);
+			}
+		}
+
 
 		//Intentionally not set.
 		//INSTRUMENTTRACK
@@ -333,7 +378,6 @@ namespace StepManiaEditor
 		}
 
 		public Selectable Selectable = Selectable.YES;
-
 
 		public EditorSong(
 			GraphicsDevice graphicsDevice,
@@ -407,17 +451,8 @@ namespace StepManiaEditor
 			song.Extras.TryGetExtra(TagOffset, out double musicOffset, true);
 			MusicOffset = musicOffset;
 
-
 			song.Extras.TryGetExtra(TagLastSecondHint, out double lastSecondHint, true);
 			LastSecondHint = lastSecondHint;
-			if (LastSecondHint <= 0.0)
-			{
-				// TODO: When the last beat hint is set we need to use the song's timing data
-				// to determine the last second hint.
-				if (song.Extras.TryGetExtra(TagLastBeatHint, out double lastBeatHint, true))
-				{
-				}
-			}
 
 			SampleStart = song.PreviewSampleStart;
 			SampleLength = song.PreviewSampleLength;
@@ -439,6 +474,8 @@ namespace StepManiaEditor
 					Logger.Warn($"Failed to parse Song {TagSelectable} value: '{selectableString}'.");
 				}
 			}
+
+			DeserializeCustomSongData(song);
 
 			foreach (var chart in song.Charts)
 			{
@@ -608,7 +645,7 @@ namespace StepManiaEditor
 			}
 		}
 
-		public Song SaveToSong()
+		public Song SaveToSong(SMWriterCustomProperties customProperties)
 		{
 			Song song = new Song();
 
@@ -642,15 +679,19 @@ namespace StepManiaEditor
 
 			// Do not add the display BPM.
 			// We want to use the charts' display BPMs.
-			//song.Extras.AddDestExtra(TagDisplayBPM, DisplayTempo.ToString(), true);
+			song.Extras.RemoveSourceExtra(TagDisplayBPM);
 
 			song.Extras.AddDestExtra(TagSelectable, Selectable.ToString(), true);
+
+			SerializeCustomSongData(customProperties.CustomSongProperties);
 
 			foreach (var editorChartsForChartType in Charts)
 			{
 				foreach (var editorChart in editorChartsForChartType.Value)
 				{
-					song.Charts.Add(editorChart.SaveToChart());
+					var chartProperties = new Dictionary<string, string>();
+					song.Charts.Add(editorChart.SaveToChart(chartProperties));
+					customProperties.CustomChartProperties.Add(chartProperties);
 				}
 			}
 			foreach (var unsupportedChart in UnsupportedCharts)
@@ -660,5 +701,80 @@ namespace StepManiaEditor
 
 			return song;
 		}
+
+		#region Custom Data Serialization
+
+		/// <summary>
+		/// Serialize custom data into the given dictionary
+		/// </summary>
+		/// <param name="customSongProperties">Dictionary of custom song properties to serialize into.</param>
+		private void SerializeCustomSongData(Dictionary<string, string> customSongProperties)
+		{
+			// Serialize the custom data.
+			var customSaveData = new CustomSaveDataV1
+			{
+				SyncOffset = SyncOffset
+			};
+			var jsonString = JsonSerializer.Serialize(customSaveData, CustomSaveDataSerializationOptions);
+
+			// Save the serialized json and version.
+			customSongProperties.Add(GetCustomPropertyName(TagCustomSongDataVersion), CustomSaveDataVersion.ToString());
+			customSongProperties.Add(GetCustomPropertyName(TagCustomSongData), jsonString);
+		}
+
+		/// <summary>
+		/// Deserialize custom data stored on the given Song into this EditorSong.
+		/// </summary>
+		/// <param name="song">Song to deserialize custom data from.</param>
+		private void DeserializeCustomSongData(Song song)
+		{
+			var versionTag = GetCustomPropertyName(TagCustomSongDataVersion);
+			var dataTag = GetCustomPropertyName(TagCustomSongData);
+
+			// Get the version and the serialized custom data.
+			if (!song.Extras.TryGetExtra(versionTag, out string versionString, true))
+				return;
+			if (!int.TryParse(versionString, out int version))
+				return;
+			if (!song.Extras.TryGetExtra(dataTag, out string customSaveDataString, true))
+				return;
+
+			// Deserialized the data based on the version.
+			switch (version)
+			{
+				case 1:
+				{
+					DeserializeV1CustomData(customSaveDataString);
+					break;
+				}
+				default:
+				{
+					Logger.Warn($"Unsupported {versionTag}: {version}.");
+					break;
+				}
+			}
+		}
+
+		/// <summary>
+		/// Deserialize custom data from a serialized string of CustomSaveDataV1 data.
+		/// </summary>
+		/// <param name="customDataString">Serialized string of CustomSaveDataV1 data.</param>
+		/// <returns>True if deserialization was successful and false otherwise.</returns>
+		private bool DeserializeV1CustomData(string customDataString)
+		{
+			try
+			{
+				var customSaveData = JsonSerializer.Deserialize<CustomSaveDataV1>(customDataString, CustomSaveDataSerializationOptions);
+				SyncOffset = customSaveData.SyncOffset;
+				return true;
+			}
+			catch (Exception e)
+			{
+				Logger.Warn($"Failed to deserialize {GetCustomPropertyName(TagCustomSongData)} value: \"{customDataString}\". {e}");
+			}
+			return false;
+		}
+
+		#endregion Custom Data Serialization
 	}
 }

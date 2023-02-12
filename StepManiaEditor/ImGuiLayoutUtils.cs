@@ -33,8 +33,6 @@ namespace StepManiaEditor
 		private static readonly float DisplayTempoEnumWidth = Utils.UiScaled(120);
 		private static readonly float DisplayTempoToWidth = Utils.UiScaled(14);
 		private static readonly float SliderResetWidth = Utils.UiScaled(50);
-		private static readonly float DragDoubleCustomSetWidth = Utils.UiScaled(108);
-		private static readonly float DragDoubleCustomGoWidth = Utils.UiScaled(20);
 
 		public static void SetFont(ImFontPtr font)
 		{
@@ -855,26 +853,8 @@ namespace StepManiaEditor
 				if (undoable)
 				{
 					enabled = GetValueFromFieldOrProperty<bool>(o, enabledFieldName);
-
-					// If disabling the checkbox enqueue an action for undoing both the bool
-					// and the setting of the double value to 0.
-					if (!enabled)
-					{
-						var multiple = new ActionMultiple();
-						multiple.EnqueueAndDo(new ActionSetObjectFieldOrPropertyValue<double>(o,
-							fieldName, 0.0, GetValueFromFieldOrProperty<double>(o, fieldName), affectsFile));
-						multiple.EnqueueAndDo(new ActionSetObjectFieldOrPropertyValue<bool>(o,
-							enabledFieldName, enabled, !enabled, affectsFile));
-						ActionQueue.Instance.EnqueueWithoutDoing(multiple);
-					}
-
-					// If enabling the checkbox we only need to enqueue an action for the checkbox bool.
-					else
-					{
-						ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyValue<bool>(
-							o,
-							enabledFieldName, enabled, !enabled, affectsFile));
-					}
+					ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyValue<bool>(
+						o, enabledFieldName, enabled, !enabled, affectsFile));
 				}
 			}
 
@@ -890,36 +870,71 @@ namespace StepManiaEditor
 				Utils.PopDisabled();
 		}
 
-		public static void DrawRowDragDoubleWithSetAndGoButtons(
+		public static void DrawRowDragDoubleWithOneButton(
 			bool undoable,
 			string title,
 			object o,
 			string fieldName,
 			bool affectsFile,
-			Action setAction,
-			string setText,
-			Action goAction,
+			Action action,
+			string text,
+			float width,
+			bool enabled,
 			string help = null,
 			float speed = 0.0001f,
 			string format = "%.6f",
 			double min = double.MinValue,
 			double max = double.MaxValue)
 		{
-			var dragDoubleWidth = ImGui.GetContentRegionAvail().X - DragDoubleCustomSetWidth - DragDoubleCustomGoWidth - ImGui.GetStyle().ItemSpacing.X * 2;
-
 			DrawRowTitleAndAdvanceColumn(title);
+
+			var dragDoubleWidth = ImGui.GetContentRegionAvail().X - width - ImGui.GetStyle().ItemSpacing.X;
 			DrawDragDouble(undoable, title, o, fieldName, dragDoubleWidth, help, speed, format, affectsFile, min, max);
 
 			ImGui.SameLine();
-			if (ImGui.Button($"{setText}{GetElementTitle(title, fieldName)}", new Vector2(DragDoubleCustomSetWidth, 0.0f)))
+			if (!enabled)
+				Utils.PushDisabled();
+			if (ImGui.Button($"{text}{GetElementTitle(title, fieldName)}", new Vector2(width, 0.0f)))
 			{
-				setAction();
+				action();
+			}
+			if (!enabled)
+				Utils.PopDisabled();
+		}
+
+		public static void DrawRowDragDoubleWithTwoButtons(
+			bool undoable,
+			string title,
+			object o,
+			string fieldName,
+			bool affectsFile,
+			Action action1,
+			string text1,
+			float width1,
+			Action action2,
+			string text2,
+			float width2,
+			string help = null,
+			float speed = 0.0001f,
+			string format = "%.6f",
+			double min = double.MinValue,
+			double max = double.MaxValue)
+		{
+			DrawRowTitleAndAdvanceColumn(title);
+
+			var dragDoubleWidth = ImGui.GetContentRegionAvail().X - width1 - width2 - ImGui.GetStyle().ItemSpacing.X * 2;
+			DrawDragDouble(undoable, title, o, fieldName, dragDoubleWidth, help, speed, format, affectsFile, min, max);
+
+			ImGui.SameLine();
+			if (ImGui.Button($"{text1}{GetElementTitle(title, fieldName)}", new Vector2(width1, 0.0f)))
+			{
+				action1();
 			}
 
 			ImGui.SameLine();
-			if (ImGui.Button($"Go{GetElementTitle(title, fieldName)}", new Vector2(DragDoubleCustomGoWidth, 0.0f)))
+			if (ImGui.Button($"{text2}{GetElementTitle(title, fieldName)}", new Vector2(width2, 0.0f)))
 			{
-				goAction();
+				action2();
 			}
 		}
 

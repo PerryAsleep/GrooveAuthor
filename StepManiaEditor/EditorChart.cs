@@ -3,9 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using Fumen;
 using Fumen.ChartDefinition;
+using static StepManiaEditor.Utils;
 using static Fumen.Converters.SMCommon;
 using static System.Diagnostics.Debug;
 using static StepManiaLibrary.Constants;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace StepManiaEditor
 {
@@ -15,6 +18,20 @@ namespace StepManiaEditor
 	/// </summary>
 	internal sealed class EditorChart : Notifier<EditorChart>
 	{
+		/// <summary>
+		/// Data saved in the song file as a custom data chunk of Editor-specific data at the Chart level.
+		/// </summary>
+		private class CustomSaveDataV1
+		{
+			public double MusicOffset = 0.0;
+			public bool ShouldUseChartMusicOffset = false;
+		}
+
+		/// <summary>
+		/// Version of custom data saved to the Chart.
+		/// </summary>
+		private const int CustomSaveDataVersion = 1;
+
 		public const string NotificationDifficultyTypeChanged = "DifficultyTypeChanged";
 		public const string NotificationRatingChanged = "RatingChanged";
 		public const string NotificationNameChanged = "NameChanged";
@@ -30,6 +47,22 @@ namespace StepManiaEditor
 		public const int DefaultHitMultiplier = 1;
 		public const int DefaultMissMultiplier = 1;
 		public const int DefaultRating = 1;
+
+		private const string TagCustomChartData = "ChartData";
+		private const string TagCustomChartDataVersion = "ChartDataVersion";
+
+		/// <summary>
+		/// Options for serializing and deserializing custom Chart data.
+		/// </summary>
+		private static JsonSerializerOptions CustomSaveDataSerializationOptions = new JsonSerializerOptions()
+		{
+			Converters =
+			{
+				new JsonStringEnumConverter(JsonNamingPolicy.CamelCase)
+			},
+			ReadCommentHandling = JsonCommentHandling.Skip,
+			IncludeFields = true,
+		};
 
 		private Extras OriginalChartExtras;
 
@@ -184,6 +217,8 @@ namespace StepManiaEditor
 			HasDisplayTempoFromChart = !string.IsNullOrEmpty(chart.Tempo);
 			DisplayTempo.FromString(chart.Tempo);
 
+			DeserializeCustomChartData(chart);
+
 			// TODO: I wonder if there is an optimization to not do all the tree parsing for inactive charts.
 			SetUpEditorEvents(chart);
 		}
@@ -245,7 +280,7 @@ namespace StepManiaEditor
 			SetUpEditorEvents(tempChart);
 		}
 
-		public Chart SaveToChart()
+		public Chart SaveToChart(Dictionary<string, string> customProperties)
 		{
 			Chart chart = new Chart();
 			chart.Extras = new Extras(OriginalChartExtras);
@@ -262,8 +297,11 @@ namespace StepManiaEditor
 			chart.Extras.AddDestExtra(TagMusic, MusicPath);
 			if (UsesChartMusicOffset)
 				chart.Extras.AddDestExtra(TagOffset, MusicOffset);
-			//TODO: Else use song?
+			else
+				chart.Extras.RemoveSourceExtra(TagOffset);
 			chart.Tempo = DisplayTempo.ToString();
+
+			SerializeCustomChartData(customProperties);
 
 			var layer = new Layer();
 			foreach (var editorEvent in EditorEvents)
@@ -634,7 +672,7 @@ namespace StepManiaEditor
 		{
 			if (!EditorSong.IsUsingSongForPreview())
 				return;
-			double previewChartTime = EditorSong.SampleStart + GetMusicOffset();
+			double previewChartTime = EditorPosition.GetChartTimeFromSongTime(this, EditorSong.SampleStart);
 			double chartPosition = 0.0;
 			TryGetChartPositionFromTime(previewChartTime, ref chartPosition);
 			PreviewEvent = new EditorPreviewRegionEvent(this, chartPosition);
@@ -1319,9 +1357,9 @@ namespace StepManiaEditor
 			return (sideEffectAddedEvents, sideEffectDeletedEvents);
 		}
 
-		public double GetStartTime(bool withOffset)
+		public double GetStartChartTime()
 		{
-			return withOffset ? -GetMusicOffset() : 0.0;
+			return 0.0;
 		}
 
 		public double GetMusicOffset()
@@ -1331,7 +1369,7 @@ namespace StepManiaEditor
 			return EditorSong.MusicOffset;
 		}
 
-		public double GetEndTime(bool withOffset)
+		public double GetEndChartTime()
 		{
 			var lastEvent = EditorEvents.Last();
 			var endTime = 0.0;
@@ -1350,10 +1388,7 @@ namespace StepManiaEditor
 					endTime = lastEvent.Current.GetEndChartTime();
 				}
 			}
-			endTime = Math.Max(endTime, EditorSong.LastSecondHint);
-			if (withOffset)
-				endTime -= GetMusicOffset();
-			return endTime;
+			return Math.Max(endTime, EditorSong.LastSecondHint);
 		}
 
 		public double GetEndPosition()
@@ -1401,6 +1436,84 @@ namespace StepManiaEditor
 		///* If this is called, the chart does not use the same attacks
 		// * as the Song's timing. No other changes are required. */
 		//steps_tag_handlers["ATTACKS"] = &SetStepsAttacks;
+
+		#region Custom Data Serialization
+
+		/// <summary>
+		/// Serialize custom data into the given dictionary
+		/// </summary>
+		/// <param name="customChartProperties">Dictionary of custom song properties to serialize into.</param>
+		private void SerializeCustomChartData(Dictionary<string, string> customChartProperties)
+		{
+			// Serialize the custom data.
+			var customSaveData = new CustomSaveDataV1
+			{
+				MusicOffset = MusicOffset,
+				ShouldUseChartMusicOffset = UsesChartMusicOffset,
+			};
+			var jsonString = JsonSerializer.Serialize(customSaveData, CustomSaveDataSerializationOptions);
+
+			// Save the serialized json and version.
+			customChartProperties.Add(GetCustomPropertyName(TagCustomChartDataVersion), CustomSaveDataVersion.ToString());
+			customChartProperties.Add(GetCustomPropertyName(TagCustomChartData), jsonString);
+		}
+
+		/// <summary>
+		/// Deserialize custom data stored on the given Song into this EditorSong.
+		/// </summary>
+		/// <param name="song">Song to deserialize custom data from.</param>
+		private void DeserializeCustomChartData(Chart chart)
+		{
+			var versionTag = GetCustomPropertyName(TagCustomChartDataVersion);
+			var dataTag = GetCustomPropertyName(TagCustomChartData);
+
+			// Get the version and the serialized custom data.
+			if (!chart.Extras.TryGetExtra(versionTag, out string versionString, true))
+				return;
+			if (!int.TryParse(versionString, out int version))
+				return;
+			if (!chart.Extras.TryGetExtra(dataTag, out string customSaveDataString, true))
+				return;
+
+			// Deserialized the data based on the version.
+			switch (version)
+			{
+				case 1:
+				{
+					DeserializeV1CustomData(customSaveDataString);
+					break;
+				}
+				default:
+				{
+					Logger.Warn($"Unsupported {versionTag}: {version}.");
+					break;
+				}
+			}
+		}
+
+		/// <summary>
+		/// Deserialize custom data from a serialized string of CustomSaveDataV1 data.
+		/// </summary>
+		/// <param name="customDataString">Serialized string of CustomSaveDataV1 data.</param>
+		/// <returns>True if deserialization was successful and false otherwise.</returns>
+		private bool DeserializeV1CustomData(string customDataString)
+		{
+			try
+			{
+				var customSaveData = JsonSerializer.Deserialize<CustomSaveDataV1>(customDataString, CustomSaveDataSerializationOptions);
+
+				MusicOffset = customSaveData.MusicOffset;
+				UsesChartMusicOffset = customSaveData.ShouldUseChartMusicOffset;
+				return true;
+			}
+			catch (Exception e)
+			{
+				Logger.Warn($"Failed to deserialize {GetCustomPropertyName(TagCustomChartData)} value: \"{customDataString}\". {e}");
+			}
+			return false;
+		}
+
+		#endregion Custom Data Serialization
 	}
 
 	/// <summary>

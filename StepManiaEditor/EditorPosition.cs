@@ -22,7 +22,7 @@ namespace StepManiaEditor
 			set
 			{
 				SongTimeInternal = value;
-				ChartTimeInternal = SongTimeInternal + (ActiveChart?.GetMusicOffset() ?? 0.0);
+				ChartTimeInternal = GetChartTimeFromSongTime(ActiveChart, SongTimeInternal);
 				ActiveChart?.TryGetChartPositionFromTime(ChartTimeInternal, ref ChartPositionInternal);
 				OnPositionChanged?.Invoke();
 			}
@@ -36,7 +36,7 @@ namespace StepManiaEditor
 			{
 				ChartTimeInternal = value;
 				ActiveChart?.TryGetChartPositionFromTime(ChartTimeInternal, ref ChartPositionInternal);
-				SongTimeInternal = ChartTimeInternal - (ActiveChart?.GetMusicOffset() ?? 0.0);
+				SongTimeInternal = GetSongTimeFromChartTime(ActiveChart, ChartTimeInternal);
 				OnPositionChanged?.Invoke();
 			}
 		}
@@ -49,7 +49,7 @@ namespace StepManiaEditor
 			{
 				ChartPositionInternal = value;
 				ActiveChart?.TryGetTimeFromChartPosition(ChartPositionInternal, ref ChartTimeInternal);
-				SongTimeInternal = ChartTimeInternal - (ActiveChart?.GetMusicOffset() ?? 0.0);
+				SongTimeInternal = GetSongTimeFromChartTime(ActiveChart, ChartTimeInternal);
 				OnPositionChanged?.Invoke();
 			}
 		}
@@ -66,6 +66,16 @@ namespace StepManiaEditor
 		{
 			Reset();
 			OnPositionChanged = onPositionChanged;
+		}
+
+		public static double GetSongTimeFromChartTime(EditorChart chart, double chartTime)
+		{
+			return chartTime - (chart?.GetMusicOffset() ?? 0.0) + (chart?.EditorSong?.SyncOffset ?? 0.0);
+		}
+
+		public static double GetChartTimeFromSongTime(EditorChart chart, double songTime)
+		{
+			return songTime + (chart?.GetMusicOffset() ?? 0.0) - (chart?.EditorSong?.SyncOffset ?? 0.0);
 		}
 
 		public int GetNearestRow()

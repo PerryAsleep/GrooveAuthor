@@ -18,6 +18,7 @@ namespace StepManiaEditor
 		// TODO: Rename / Reorganize. Currently dumping a lot of rendering-related constants in here.
 
 		public const int MaxLogFiles = 10;
+		public const string CustomSavePropertyPrefix = "FE";
 
 		public const uint UITempoColorRGBA = 0x8A297A79;			// yellow
 		public const uint UITimeSignatureColorRGBA = 0x8A297A29;	// green
@@ -154,6 +155,45 @@ namespace StepManiaEditor
 			Box
 		}
 
+		public static string GetCustomPropertyName(string key)
+		{
+			return CustomSavePropertyPrefix + key;
+		}
+
+		public static Vector2 GetDrawPos(
+			SpriteFont font,
+			string text,
+			Vector2 anchorPos,
+			float scale,
+			HorizontalAlignment hAlign = HorizontalAlignment.Left,
+			VerticalAlignment vAlign = VerticalAlignment.Top)
+		{
+			var x = anchorPos.X;
+			var y = anchorPos.Y;
+			var size = font.MeasureString(text);
+			switch (hAlign)
+			{
+				case HorizontalAlignment.Center:
+					x -= size.X * 0.5f * scale;
+					break;
+				case HorizontalAlignment.Right:
+					x -= size.X * scale;
+					break;
+			}
+			switch (vAlign)
+			{
+				case VerticalAlignment.Center:
+					y -= size.Y * 0.5f * scale;
+					break;
+				case VerticalAlignment.Bottom:
+					y -= size.Y * scale;
+					break;
+			}
+			return new Vector2(x, y);
+		}
+
+		#region Color Helpers
+
 		public static uint ColorRGBAInterpolate(uint startColor, uint endColor, float endPercent)
 		{
 			var startPercent = 1.0f - endPercent;
@@ -214,38 +254,6 @@ namespace StepManiaEditor
 				(byte)((RGBA & 0xFF000000) >> 24) / (float)byte.MaxValue);
 		}
 
-		public static Vector2 GetDrawPos(
-			SpriteFont font,
-			string text,
-			Vector2 anchorPos,
-			float scale,
-			HorizontalAlignment hAlign = HorizontalAlignment.Left,
-			VerticalAlignment vAlign = VerticalAlignment.Top)
-		{
-			var x = anchorPos.X;
-			var y = anchorPos.Y;
-			var size = font.MeasureString(text);
-			switch (hAlign)
-			{
-				case HorizontalAlignment.Center:
-					x -= size.X * 0.5f * scale;
-					break;
-				case HorizontalAlignment.Right:
-					x -= size.X * scale;
-					break;
-			}
-			switch (vAlign)
-			{
-				case VerticalAlignment.Center:
-					y -= size.Y * 0.5f * scale;
-					break;
-				case VerticalAlignment.Bottom:
-					y -= size.Y * scale;
-					break;
-			}
-			return new Vector2(x, y);
-		}
-
 		public static uint GetColorForDifficultyType(SMCommon.ChartDifficultyType difficulty)
 		{
 			switch (difficulty)
@@ -259,6 +267,8 @@ namespace StepManiaEditor
 			}
 			return UIDifficultyEditColorRGBA;
 		}
+
+		#endregion Color Helpers
 
 		#region ImGui Helpers
 

@@ -117,7 +117,7 @@ namespace StepManiaEditor
 		{
 			var chartTime = 0.0;
 			EditorChart.TryGetTimeFromChartPosition(GetChartPosition(), ref chartTime);
-			EditorChart.EditorSong.SampleStart = chartTime - EditorChart.GetMusicOffset();
+			EditorChart.EditorSong.SampleStart = EditorPosition.GetSongTimeFromChartTime(EditorChart, chartTime);
 		}
 
 		/// <summary>
@@ -126,7 +126,7 @@ namespace StepManiaEditor
 		/// </summary>
 		public override double GetChartTime()
 		{
-			return EditorChart.EditorSong.SampleStart + EditorChart.GetMusicOffset();
+			return EditorPosition.GetChartTimeFromSongTime(EditorChart, EditorChart.EditorSong.SampleStart);
 		}
 
 		public override bool IsMiscEvent() { return true; }

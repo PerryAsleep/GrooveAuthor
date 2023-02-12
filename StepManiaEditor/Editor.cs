@@ -22,6 +22,7 @@ using System.Text;
 using System.Media;
 using System.IO;
 using System.Linq;
+using static Fumen.Converters.SMWriterBase;
 
 namespace StepManiaEditor
 {
@@ -213,6 +214,11 @@ namespace StepManiaEditor
 
 		private bool ShowImGuiTestWindow = true;
 
+		public static string GetAppName()
+		{
+			return System.Reflection.Assembly.GetExecutingAssembly().GetName().Name;
+		}
+
 		public Editor()
 		{
 			// Create a logger first so we can log any startup messages.
@@ -303,7 +309,7 @@ namespace StepManiaEditor
 		{
 			var programPath = System.Reflection.Assembly.GetEntryAssembly().Location;
 			var programDir = System.IO.Path.GetDirectoryName(programPath);
-			var appName = System.Reflection.Assembly.GetExecutingAssembly().GetName().Name;
+			var appName = GetAppName();
 			var logDirectory = Path.Combine(programDir, "logs");
 
 			var canLogToFile = true;
@@ -2367,14 +2373,14 @@ namespace StepManiaEditor
 					var editorAreaTimeRange = editorAreaTimeEnd - editorAreaTimeStart;
 
 					// Determine the end time.
-					var maxTimeFromChart = ActiveChart.GetEndTime(false);
+					var maxTimeFromChart = ActiveChart.GetEndChartTime();
 
 					// Full Area. The time from the chart, extended in both directions by the editor range.
-					var fullAreaTimeStart = ActiveChart.GetStartTime(false) - editorAreaTimeRange;
+					var fullAreaTimeStart = ActiveChart.GetStartChartTime() - editorAreaTimeRange;
 					var fullAreaTimeEnd = maxTimeFromChart + editorAreaTimeRange;
 
 					// Content Area. The time from the chart.
-					var contentAreaTimeStart = ActiveChart.GetStartTime(false);
+					var contentAreaTimeStart = ActiveChart.GetStartChartTime();
 					var contentAreaTimeEnd = maxTimeFromChart;
 
 					// Update the MiniMap with the ranges.
@@ -3104,7 +3110,7 @@ namespace StepManiaEditor
 
 		private string GetSavePopupTitle()
 		{
-			var appName = System.Reflection.Assembly.GetExecutingAssembly().GetName().Name;
+			var appName = GetAppName();
 			return $"{appName}##save";
 		}
 
@@ -3582,7 +3588,7 @@ namespace StepManiaEditor
 		private void UpdateWindowTitle()
 		{
 			var hasUnsavedChanges = ActionQueue.Instance.HasUnsavedChanges();
-			var appName = System.Reflection.Assembly.GetExecutingAssembly().GetName().Name;
+			var appName = GetAppName();
 			var sb = new StringBuilder();
 			var title = "New File";
 			if (ActiveSong != null && !string.IsNullOrEmpty(ActiveSong.FileName))
@@ -4900,13 +4906,15 @@ namespace StepManiaEditor
 			//var end = fullPath.Substring(fullPath.LastIndexOf('.'));
 			//fullPath = $"{start}-exported{end}";
 
-			var song = ActiveSong.SaveToSong();
+			var customProperties = new SMWriterCustomProperties();
+			var song = ActiveSong.SaveToSong(customProperties);
 			var config = new SMWriterBase.SMWriterBaseConfig
 			{
 				FilePath = fullPath,
 				Song = song,
 				MeasureSpacingBehavior = SMWriterBase.MeasureSpacingBehavior.UseLeastCommonMultiple,
 				PropertyEmissionBehavior = SMWriterBase.PropertyEmissionBehavior.Stepmania,
+				CustomProperties = customProperties,
 				// HACK:
 				FallbackChart = song.Charts.Count > 0 ? song.Charts[0] : null,
 			};
@@ -4986,6 +4994,12 @@ namespace StepManiaEditor
 		}
 
 		private void OnMusicOffsetChanged()
+		{
+			// Re-set the position to recompute the chart and song times.
+			Position.ChartPosition = Position.ChartPosition;
+		}
+
+		private void OnSyncOffsetChanged()
 		{
 			// Re-set the position to recompute the chart and song times.
 			Position.ChartPosition = Position.ChartPosition;
@@ -5137,6 +5151,8 @@ namespace StepManiaEditor
 					OnMusicPreviewChanged(); break;
 				case EditorSong.NotificationMusicOffsetChanged:
 					OnMusicOffsetChanged(); break;
+				case EditorSong.NotificationSyncOffsetChanged:
+					OnSyncOffsetChanged(); break;
 			}
 		}
 		#endregion IObserver<EditorSong>
