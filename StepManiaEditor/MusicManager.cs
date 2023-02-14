@@ -21,6 +21,14 @@ namespace StepManiaEditor
 	/// the music audio file. When playing the preview sound, it will loop continuously
 	/// until told to stop.
 	/// 
+	/// Offers method for playing the music with an offset. Normally offsets used to sync
+	/// visuals and audio would be implemented on the visuals by shifting everthing up or
+	/// down to match the audio, however in an Editor the positions need to be precise.
+	/// If for example the delay between audio and video is substantial and the editor is
+	/// paused at a specific row, and then playback begins, if the offset were implemented
+	/// visually, then the notes would visibly jerk. It may be preferable to a user to
+	/// instead have the audio shift instead.
+	/// 
 	/// Expected usage:
 	///  Call LoadMusicAsync whenever the music file changes.
 	///  Call LoadMusicPreviewAsync whenever the preview file changes.
@@ -87,10 +95,37 @@ namespace StepManiaEditor
 				uint bytes = 0;
 				if (timeInSeconds >= 0.0)
 					bytes = (uint)(timeInSeconds * NumChannels * (BitsPerSample >> 3) * SampleRate);
-				if (bytes > TotalBytes)
+				if (bytes >= TotalBytes)
 					bytes = TotalBytes - 1;
 				SoundManager.ErrCheck(Channel.setPosition(bytes, TIMEUNIT.PCMBYTES));
 				return true;
+			}
+
+			/// <summary>
+			/// Returns whether the sound is at its minimum or maximum position.
+			/// Sets the out parameter to the time of the sound in seconds.
+			/// This allows for checking if the sound is at its bounds, and getting the time with
+			/// one call. With multiple calls, the sound's time may change between calls.
+			/// </summary>
+			/// <param name="timeInSeconds">Time in seconds of the sound.</param>
+			/// <returns>True if the sound at the minimum or maximum postion and false otherwise.</returns>
+			public bool IsAtMinOrMaxPosition(out double timeInSeconds)
+			{
+				timeInSeconds = 0.0;
+				if (NumChannels == 0 || SampleRate == 0 || BitsPerSample < 8)
+					return true;
+				SoundManager.ErrCheck(Channel.getPosition(out uint bytes, TIMEUNIT.PCMBYTES));
+				
+				// Determine the time in secounds to return to the caller.
+				timeInSeconds = (double)bytes / NumChannels / (BitsPerSample >> 3) / SampleRate;
+				
+				// Consider the sound to be at the maximum position if it is within one sample of the end.
+				// In practice calling setPosition on a Channel will result in the position returned by
+				// getPosition to be floored to the nearest sample boundary. It is also the case that when
+				// playing the sonud normally, getPosition will return the total number of bytes when called
+				// when the sound has completed, though setPosition cannot be called with that value.
+				var sampleSize = NumChannels * (BitsPerSample >> 3);
+				return bytes <= 0 || bytes + sampleSize >= TotalBytes;
 			}
 
 			public double GetLengthInSeconds()
@@ -147,14 +182,24 @@ namespace StepManiaEditor
 		private double PreviewFadeInTime = 0.0;
 		private double PreviewFadeOutTime = 1.5;
 
-		// Desired music and preview sound volume.
+		/// <summary>
+		/// Music and preview sound Channel volume.
+		/// </summary>
 		private double MusicVolume = 1.0;
+		/// <summary>
+		/// Internal offset for the music.
+		/// The offset is applied to the music but not the preview, as a way of visually synchronizing the music
+		/// with the chart as it is played. The preview is played without visuals and should be started precisely
+		/// at the specified time.
+		/// </summary>
+		private double MusicOffset = 0.0;
 
 		/// <summary>
 		/// Constructor.
 		/// </summary>
 		/// <param name="soundManager">SoundManager.</param>
-		public MusicManager(SoundManager soundManager)
+		/// <param name="musicOffset">Offset to use for playing the music.</param>
+		public MusicManager(SoundManager soundManager, double musicOffset)
 		{
 			SoundManager = soundManager;
 
@@ -162,6 +207,7 @@ namespace StepManiaEditor
 			SoundManager.CreateChannelGroup("MusicChannelGroup", out MusicChannelGroup);
 
 			MusicData = new SoundData(new SoundMipMap());
+			SetMusicOffset(musicOffset);
 			PreviewData = new SoundData(null);
 		}
 
@@ -198,7 +244,7 @@ namespace StepManiaEditor
 		/// </param>
 		public void LoadMusicAsync(string fullPathToMusicFile, Func<double> getMusicTimeFunction, bool force = false)
 		{
-			LoadSoundAsync(MusicData, fullPathToMusicFile, getMusicTimeFunction, force);
+			LoadSoundAsync(MusicData, fullPathToMusicFile, MusicOffset, getMusicTimeFunction, force);
 		}
 
 		/// <summary>
@@ -218,7 +264,7 @@ namespace StepManiaEditor
 			// the music file if we were given a non-empty string.
 			ShouldBeUsingPreviewFile = !string.IsNullOrEmpty(fullPathToMusicFile);
 
-			LoadSoundAsync(PreviewData, fullPathToMusicFile, null, force);
+			LoadSoundAsync(PreviewData, fullPathToMusicFile, 0.0, null, force);
 		}
 
 		/// <summary>
@@ -227,7 +273,12 @@ namespace StepManiaEditor
 		/// based on SetSoundPositionInternal, which takes into account MusicManager state.
 		/// We set this before loading the SoundMipMap, in the middle of the async load.
 		/// </summary>
-		private async void LoadSoundAsync(SoundData soundData, string fullPathToMusicFile, Func<double> getMusicTimeFunction = null, bool force = false)
+		private async void LoadSoundAsync(
+			SoundData soundData,
+			string fullPathToMusicFile,
+			double offset = 0.0,
+			Func<double> getMusicTimeFunction = null,
+			bool force = false)
 		{
 			// It is common for Charts to re-use the same sound files.
 			// Do not reload the sound file if we were already using it.
@@ -287,7 +338,7 @@ namespace StepManiaEditor
 						SoundManager.ErrCheck(soundData.Channel.getFrequency(out float frequency));
 						soundData.SampleRate = (uint)frequency;
 						if (getMusicTimeFunction != null)
-							SetSoundPositionInternal(soundData, getMusicTimeFunction());
+							SetSoundPositionInternal(soundData, getMusicTimeFunction(), offset);
 						Logger.Info($"Loaded {soundData.File}...");
 
 						soundData.LoadCancellationTokenSource.Token.ThrowIfCancellationRequested();
@@ -329,13 +380,18 @@ namespace StepManiaEditor
 		}
 
 		/// <summary>
-		/// Gets the time of the music sound in seconds.
-		/// This value will never be negative and will always be in range of the actual music sound.
+		/// Returns whether the music is at its minimum or maximum position.
+		/// Sets the out parameter to the time of the music in seconds.
+		/// This allows for checking if the sound is at its bounds, and getting the time with
+		/// one call. With multiple calls, the sound's time may change between calls.
 		/// </summary>
-		/// <returns>The time of the music sound in seconds.</returns>
-		public double GetMusicTimeInSeconds()
+		/// <param name="timeInSeconds">Time in seconds of the music.</param>
+		/// <returns>True if the music at the minimum or maximum postion and false otherwise.</returns>
+		public bool IsMusicAtMinOrMaxPosition(out double timeInSeconds)
 		{
-			return MusicData.GetTimeInSeconds();
+			var result = MusicData.IsAtMinOrMaxPosition(out timeInSeconds);
+			timeInSeconds -= MusicOffset;
+			return result;
 		}
 
 		/// <summary>
@@ -357,7 +413,7 @@ namespace StepManiaEditor
 				return;
 			}
 
-			SetSoundPositionInternal(MusicData, musicTimeInSeconds);
+			SetSoundPositionInternal(MusicData, musicTimeInSeconds, MusicOffset);
 		}
 
 		/// <summary>
@@ -366,16 +422,18 @@ namespace StepManiaEditor
 		/// uses the music file instead of an independent preview file.
 		/// The given time my be negative or outside the time range of the music sound.
 		/// </summary>
-		/// <param name="timeInSeconds">Music sound time in seconds.</param>
-		private void SetSoundPositionInternal(SoundData soundData, double timeInSeconds)
+		/// <param name="soundData">Sound data to set the time on.</param>
+		/// <param name="timeInSeconds">Sound time in seconds.</param>
+		/// <param name="offset">Offset to be added to the time.</param>
+		private void SetSoundPositionInternal(SoundData soundData, double timeInSeconds, double offset)
 		{
-			if (!soundData.SetTimeInSeconds(timeInSeconds))
+			if (!soundData.SetTimeInSeconds(timeInSeconds + offset))
 				return;
 			if (!soundData.IsPlaying)
 				return;
 			if (soundData == MusicData && State == PlayingState.PlayingPreview && ShouldBeUsingPreviewFile)
 				return;
-			UpdateSoundPausedState(soundData, timeInSeconds);
+			UpdateSoundPausedState(soundData, timeInSeconds + offset);
 		}
 
 		/// <summary>
@@ -405,7 +463,7 @@ namespace StepManiaEditor
 
 			State = PlayingState.PlayingMusic;
 			MusicData.IsPlaying = true;
-			UpdateSoundPausedState(MusicData, musicTimeInSeconds);
+			UpdateSoundPausedState(MusicData, musicTimeInSeconds + MusicOffset);
 		}
 
 		/// <summary>
@@ -447,7 +505,7 @@ namespace StepManiaEditor
 			if (!ShouldBeUsingPreviewFile && PreviewLength <= 0.0)
 				return false;
 
-			DesiredMusicTimeAfterPreview = MusicData.GetTimeInSeconds();
+			DesiredMusicTimeAfterPreview = MusicData.GetTimeInSeconds() - MusicOffset;
 			State = PlayingState.PlayingPreview;
 
 			RestartPreview();
@@ -463,7 +521,7 @@ namespace StepManiaEditor
 			var soundData = GetPreviewSoundData();
 			soundData.IsPlaying = true;
 			var previewStartTime = ShouldBeUsingPreviewFile ? 0.0 : PreviewStartTime;
-			SetSoundPositionInternal(soundData, previewStartTime);
+			SetSoundPositionInternal(soundData, previewStartTime, 0.0);
 			PreviewStopwatch = Stopwatch.StartNew();
 		}
 
@@ -502,7 +560,7 @@ namespace StepManiaEditor
 			// the desired music time is a valid time to set the music to.
 			if (State == PlayingState.PlayingMusic)
 			{
-				UpdateSoundPausedState(MusicData, musicTimeInSeconds);
+				UpdateSoundPausedState(MusicData, musicTimeInSeconds + MusicOffset);
 			}
 
 			// If playing the preview we are either playing a sample range of the music file, or
@@ -583,7 +641,7 @@ namespace StepManiaEditor
 		/// <returns>Length of the music in seconds.</returns>
 		public double GetMusicLengthInSeconds()
 		{
-			return MusicData.GetTimeInSeconds();
+			return MusicData.GetLengthInSeconds();
 		}
 
 		/// <summary>
@@ -594,6 +652,26 @@ namespace StepManiaEditor
 		private SoundData GetPreviewSoundData()
 		{
 			return ShouldBeUsingPreviewFile ? PreviewData : MusicData;
+		}
+
+		/// <summary>
+		/// Sets the offset to be used when playing the music.
+		/// Changes to this value will not have an effect until the next time the music is played.
+		/// </summary>
+		/// <param name="offset">New music offset value.</param>
+		public void SetMusicOffset(double offset)
+		{
+			MusicOffset = offset;
+		}
+
+		/// <summary>
+		/// Sets the Volume all sounds managed through this MusicManager.
+		/// </summary>
+		/// <param name="volume">Volume as a value between 0.0f and 1.0f.</param>
+		public void SetVolume(float volume)
+		{
+			// Set the volume on the MusicChannelGroup to control all sounds.
+			SoundManager.ErrCheck(MusicChannelGroup.setVolume(volume));
 		}
 	}
 }

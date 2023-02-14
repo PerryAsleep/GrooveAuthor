@@ -396,6 +396,7 @@ namespace StepManiaEditor
 
 			MusicPath = "";
 			MusicPreviewPath = "";
+			SyncOffset = Preferences.Instance.PreferencesOptions.NewSongSyncOffset;
 		}
 
 		public EditorSong(
@@ -474,6 +475,8 @@ namespace StepManiaEditor
 					Logger.Warn($"Failed to parse Song {TagSelectable} value: '{selectableString}'.");
 				}
 			}
+
+			SyncOffset = Preferences.Instance.PreferencesOptions.OpenSongSyncOffset;
 
 			DeserializeCustomSongData(song);
 

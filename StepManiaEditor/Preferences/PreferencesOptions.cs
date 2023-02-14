@@ -1,14 +1,18 @@
 ﻿using System;
 using System.Linq;
 using System.Text.Json.Serialization;
+using Fumen;
 using Fumen.Converters;
 using static Fumen.Converters.SMCommon;
 using static Fumen.FumenExtensions;
 
 namespace StepManiaEditor
 {
-	internal sealed class PreferencesOptions
+	internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 	{
+		public const string NotificationAudioOffsetChanged = "AudioOffsetChanged";
+		public const string NotificationVolumeChanged = "VolumeChanged";
+
 		// Default values.
 		public const int DefaultRecentFilesHistorySize = 10;
 		public const SMCommon.ChartType DefaultDefaultStepsType = SMCommon.ChartType.dance_single;
@@ -22,6 +26,10 @@ namespace StepManiaEditor
 		};
 		public static bool[] DefaultStartupChartTypesBools;
 		public const bool DefaultOpenLastOpenedFileOnLaunch = false;
+		public const double DefaultNewSongSyncOffset = 0.009;
+		public const double DefaultOpenSongSyncOffset = 0.009;
+		public const double DefaultAudioOffset = 0.0;
+		public const float DefaultVolume = 1.0f;
 
 		// Preferences.
 		[JsonInclude] public bool ShowOptionsWindow = false;
@@ -32,6 +40,41 @@ namespace StepManiaEditor
 		[JsonInclude] public double PreviewFadeOutTime = DefaultPreviewFadeOutTime;
 		[JsonInclude] public SMCommon.ChartType[] StartupChartTypes = (SMCommon.ChartType[])DefaultStartupChartTypes.Clone();
 		[JsonInclude] public bool OpenLastOpenedFileOnLaunch = DefaultOpenLastOpenedFileOnLaunch;
+		[JsonInclude] public double NewSongSyncOffset = DefaultNewSongSyncOffset;
+		[JsonInclude] public double OpenSongSyncOffset = DefaultOpenSongSyncOffset;
+		[JsonInclude] public double AudioOffset
+		{
+			get
+			{
+				return AudioOffsetInternal;
+			}
+			set
+			{
+				if (!AudioOffsetInternal.DoubleEquals(value))
+				{
+					AudioOffsetInternal = value;
+					Notify(NotificationAudioOffsetChanged, this);
+				}
+			}
+		}
+		[JsonInclude] public float Volume
+		{
+			get
+			{
+				return VolumeInternal;
+			}
+			set
+			{
+				if (!VolumeInternal.FloatEquals(value))
+				{
+					VolumeInternal = value;
+					Notify(NotificationVolumeChanged, this);
+				}
+			}
+		}
+
+		private float VolumeInternal = DefaultVolume;
+		private double AudioOffsetInternal = DefaultAudioOffset;
 
 		// Strings are serialized, but converted to an array of booleans for UI.
 		[JsonIgnore] public bool[] StartupChartTypesBools;
@@ -44,7 +87,11 @@ namespace StepManiaEditor
 			       && PreviewFadeInTime.DoubleEquals(DefaultPreviewFadeInTime)
 			       && PreviewFadeOutTime.DoubleEquals(DefaultPreviewFadeOutTime)
 			       && StartupChartTypesBools.SequenceEqual(DefaultStartupChartTypesBools)
-			       && OpenLastOpenedFileOnLaunch == DefaultOpenLastOpenedFileOnLaunch;
+			       && OpenLastOpenedFileOnLaunch == DefaultOpenLastOpenedFileOnLaunch
+				   && NewSongSyncOffset.DoubleEquals(DefaultNewSongSyncOffset)
+				   && OpenSongSyncOffset.DoubleEquals(DefaultOpenSongSyncOffset)
+				   && AudioOffset.DoubleEquals(DefaultAudioOffset)
+				   && Volume.FloatEquals(DefaultVolume);
 		}
 
 		public void RestoreDefaults()
@@ -116,6 +163,10 @@ namespace StepManiaEditor
 		private readonly double PreviousPreviewFadeOutTime;
 		private readonly bool[] PreviousStartupChartTypesBools;
 		private readonly bool PreviousOpenLastOpenedFileOnLaunch;
+		private readonly double PreviousNewSongSyncOffset;
+		private readonly double PreviousOpenSongSyncOffset;
+		private readonly double PreviousAudioOffset;
+		private readonly float PreviousVolume;
 
 		public ActionRestoreOptionPreferenceDefaults()
 		{
@@ -128,6 +179,10 @@ namespace StepManiaEditor
 			PreviousPreviewFadeOutTime = p.PreviewFadeOutTime;
 			PreviousStartupChartTypesBools = (bool[])p.StartupChartTypesBools.Clone();
 			PreviousOpenLastOpenedFileOnLaunch = p.OpenLastOpenedFileOnLaunch;
+			PreviousNewSongSyncOffset = p.NewSongSyncOffset;
+			PreviousOpenSongSyncOffset = p.OpenSongSyncOffset;
+			PreviousAudioOffset = p.AudioOffset;
+			PreviousVolume = p.Volume;
 		}
 
 		public override bool AffectsFile()
@@ -150,6 +205,10 @@ namespace StepManiaEditor
 			p.PreviewFadeOutTime = PreferencesOptions.DefaultPreviewFadeOutTime;
 			p.StartupChartTypesBools = (bool[])PreferencesOptions.DefaultStartupChartTypesBools.Clone();
 			p.OpenLastOpenedFileOnLaunch = PreferencesOptions.DefaultOpenLastOpenedFileOnLaunch;
+			p.NewSongSyncOffset = PreferencesOptions.DefaultNewSongSyncOffset;
+			p.OpenSongSyncOffset = PreferencesOptions.DefaultOpenSongSyncOffset;
+			p.AudioOffset = PreferencesOptions.DefaultAudioOffset;
+			p.Volume = PreferencesOptions.DefaultVolume;
 		}
 
 		public override void Undo()
@@ -162,6 +221,10 @@ namespace StepManiaEditor
 			p.PreviewFadeOutTime = PreviousPreviewFadeOutTime;
 			p.StartupChartTypesBools = (bool[])PreviousStartupChartTypesBools.Clone();
 			p.OpenLastOpenedFileOnLaunch = PreviousOpenLastOpenedFileOnLaunch;
+			p.NewSongSyncOffset = PreviousNewSongSyncOffset;
+			p.OpenSongSyncOffset = PreviousOpenSongSyncOffset;
+			p.AudioOffset = PreviousAudioOffset;
+			p.Volume = PreviousVolume;
 		}
 	}
 }

@@ -130,12 +130,12 @@ namespace StepManiaEditor
 						"\nIn most cases all Charts use the same Music and it is defined here at the Song level.");
 
 					ImGuiLayoutUtils.DrawRowDragDoubleWithOneButton(true, "Music Offset", EditorSong, nameof(EditorSong.MusicOffset), true,
-						ApplyItgSongOffset, "Apply 9ms Offset", ButtonApplyItgOffsetWidth, EditorSong.SyncOffset.DoubleEquals(0.0),
+						ApplyItgSongOffset, "Apply 9ms Offset", ButtonApplyItgOffsetWidth, EditorSong?.SyncOffset.DoubleEquals(0.0) ?? false,
 						"The music offset from the start of the chart."
 						+ "\nClicking the Apply 9ms Offset button will add an additional 9ms to the offset and"
 						+ "\nset the Song Sync (below) to account for the 9ms offset so that the editor can"
 						+ "\ncompensate and keep the arrows and Waveform in sync."
-						+ "\nApplying a 9ms offset through by clicking the button is not idempotent.",
+						+ "\nApplying a 9ms offset through clicking the button is not idempotent.",
 						0.0001f, "%.6f seconds");
 
 					ImGuiLayoutUtils.DrawRowFileBrowse("Preview File", EditorSong, nameof(EditorSong.MusicPreviewPath), BrowseMusicPreviewFile, ClearMusicPreviewFile, true,
@@ -194,6 +194,7 @@ namespace StepManiaEditor
 						"\n           If this song is synced with a 9ms offset then use this option." +
 						"\n0ms (DDR): (Less Common) Use this option of the song has no sync offset built in and is" +
 						"\n           already synced perfectly." +
+						"\nThe default song sync value can be set in the Options menu." +
 						"\nSee https://itgwiki.dominick.cc/en/packs-and-simfiles/the-9ms-bias for more information."
 						,
 						0.0001f, "%.6f seconds", 0.0);

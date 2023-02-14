@@ -34,6 +34,11 @@ namespace StepManiaEditor
 			ErrCheck(System.playSound(sound, channelGroup, true, out channel));
 		}
 
+		public void Update()
+		{
+			ErrCheck(System.update());
+		}
+
 		public static bool ErrCheck(RESULT result, string failureMessage = null)
 		{
 			if (result != RESULT.OK)

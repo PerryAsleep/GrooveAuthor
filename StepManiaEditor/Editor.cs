@@ -26,7 +26,11 @@ using static Fumen.Converters.SMWriterBase;
 
 namespace StepManiaEditor
 {
-	internal sealed class Editor : Game, Fumen.IObserver<EditorSong>, Fumen.IObserver<EditorChart>
+	internal sealed class Editor :
+		Game,
+		Fumen.IObserver<EditorSong>,
+		Fumen.IObserver<EditorChart>,
+		Fumen.IObserver<PreferencesOptions>
 	{
 		/// <summary>
 		/// How to space Chart Events when rendering.
@@ -229,7 +233,8 @@ namespace StepManiaEditor
 
 			Position = new EditorPosition(OnPositionChanged);
 			SoundManager = new SoundManager();
-			MusicManager = new MusicManager(SoundManager);
+			MusicManager = new MusicManager(SoundManager, Preferences.Instance.PreferencesOptions.AudioOffset);
+			MusicManager.SetVolume(Preferences.Instance.PreferencesOptions.Volume);
 
 			Graphics = new GraphicsDeviceManager(this);
 			Graphics.GraphicsProfile = GraphicsProfile.HiDef;
@@ -301,6 +306,8 @@ namespace StepManiaEditor
 					Texture = ArrowGraphicManager.GetSnapIndicatorTexture(ValidDenominators[denominatorIndex])
 				};
 			}
+
+			Preferences.Instance.PreferencesOptions.AddObserver(this);
 
 			UpdateWindowTitle();
 		}
@@ -584,6 +591,8 @@ namespace StepManiaEditor
 
 			double currentTime = gameTime.TotalGameTime.TotalSeconds;
 
+			SoundManager.Update();
+
 			ProcessInput(gameTime, currentTime);
 
 			TextureAtlas.Update();
@@ -640,15 +649,14 @@ namespace StepManiaEditor
 					// it has drifted significantly by comparing it to the time from FMOD, then
 					// snap it back.
 					var maxDeviation = 0.1;
-					var fmodSongTime = MusicManager.GetMusicTimeInSeconds();
-					if (Position.SongTime >= 0.0 && Position.SongTime < MusicManager.GetMusicLengthInSeconds())
+					if (CanMusicBeUsedToDetermineSongTime(out var musicSongTime))
 					{
-						if (Position.SongTime - fmodSongTime > maxDeviation)
+						if (Position.SongTime - musicSongTime > maxDeviation)
 						{
 							PlaybackStartTime -= (0.5 * maxDeviation);
 							Position.SongTime = PlaybackStartTime + PlaybackStopwatch.Elapsed.TotalSeconds;
 						}
-						else if (fmodSongTime - Position.SongTime > maxDeviation)
+						else if (musicSongTime - Position.SongTime > maxDeviation)
 						{
 							PlaybackStartTime += (0.5 * maxDeviation);
 							Position.SongTime = PlaybackStartTime + PlaybackStopwatch.Elapsed.TotalSeconds;
@@ -984,6 +992,25 @@ namespace StepManiaEditor
 
 		#endregion Input Processing
 
+		/// <summary>
+		/// Returns whether the music can be used to determine the song time.
+		/// The music can normally be used to determine the song time, but it cannot be used if
+		/// it is before the start or after the end.
+		/// </summary>
+		/// <param name="musicSongTime">The song time as determined from querying the music.</param>
+		/// <returns>Whether the music can be used to determine the song time.</returns>
+		private bool CanMusicBeUsedToDetermineSongTime(out double musicSongTime)
+		{
+			musicSongTime = 0.0;
+			if (!MusicManager.IsMusicLoaded())
+				return false;
+			var musicLen = MusicManager.GetMusicLengthInSeconds();
+			var musicWithinRangeToUseForSongTime = !MusicManager.IsMusicAtMinOrMaxPosition(out musicSongTime);
+			// To use the music to determine the song time the song time and the music must be within the bounds
+			// of the music.
+			return (Position.SongTime >= 0.0 && Position.SongTime < musicLen && musicWithinRangeToUseForSongTime);
+		}
+
 		private void StartPlayback()
 		{
 			if (Playing)
@@ -991,13 +1018,13 @@ namespace StepManiaEditor
 
 			StopPreview();
 
-			if (!MusicManager.IsMusicLoaded() || Position.SongTime < 0.0 || Position.SongTime > MusicManager.GetMusicLengthInSeconds())
+			if (!CanMusicBeUsedToDetermineSongTime(out var musicSongTime))
 			{
 				PlaybackStartTime = Position.SongTime;
 			}
 			else
 			{
-				PlaybackStartTime = MusicManager.GetMusicTimeInSeconds();
+				PlaybackStartTime = musicSongTime;
 			}
 
 			PlaybackStopwatch = new Stopwatch();
@@ -5005,6 +5032,22 @@ namespace StepManiaEditor
 			Position.ChartPosition = Position.ChartPosition;
 		}
 
+		private void OnAudioOffsetChanged()
+		{
+			var playing = Playing;
+			if (playing)
+				StopPlayback();
+			MusicManager.SetMusicOffset(Preferences.Instance.PreferencesOptions.AudioOffset);
+			MusicManager.SetMusicTimeInSeconds(Position.SongTime);
+			if (playing)
+				StartPlayback();
+		}
+
+		private void OnVolumeChanged()
+		{
+			MusicManager.SetVolume(Preferences.Instance.PreferencesOptions.Volume);
+		}
+
 		private double GetSongTime()
 		{
 			return Position.SongTime;
@@ -5137,7 +5180,7 @@ namespace StepManiaEditor
 				Logger.Info(file);
 		}
 
-		#region IObserver<EditorSong>
+		#region IObserver
 		public void OnNotify(string eventId, EditorSong song, object payload)
 		{
 			if (song != ActiveSong)
@@ -5155,9 +5198,7 @@ namespace StepManiaEditor
 					OnSyncOffsetChanged(); break;
 			}
 		}
-		#endregion IObserver<EditorSong>
 
-		#region IObserver<EditorChart>
 		public void OnNotify(string eventId, EditorChart chart, object payload)
 		{
 			if (chart != ActiveChart)
@@ -5179,6 +5220,19 @@ namespace StepManiaEditor
 					OnEventsDeleted((List<EditorEvent>)payload); break;
 			}
 		}
-		#endregion IObserver<EditorChart>
+
+		public void OnNotify(string eventId, PreferencesOptions options, object payload)
+		{
+			switch (eventId)
+			{
+				case PreferencesOptions.NotificationAudioOffsetChanged:
+					OnAudioOffsetChanged();
+					break;
+				case PreferencesOptions.NotificationVolumeChanged:
+					OnVolumeChanged();
+					break;
+			}
+		}
+		#endregion IObserver
 	}
 }
