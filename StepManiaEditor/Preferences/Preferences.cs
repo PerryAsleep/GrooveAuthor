@@ -36,10 +36,23 @@ namespace StepManiaEditor
 
 		public class SavedSongInformation
 		{
+			public void UpdateChart(SMCommon.ChartType chartType, SMCommon.ChartDifficultyType difficultyType)
+			{
+				LastChartType = chartType;
+				LastChartDifficultyType = difficultyType;
+			}
+
+			public void UpdatePosition(double spacingZoom, double chartPosition)
+			{
+				SpacingZoom = spacingZoom;
+				ChartPosition = chartPosition;
+			}
+
 			[JsonInclude] public string FileName;
 			[JsonInclude] public SMCommon.ChartType LastChartType;
 			[JsonInclude] public SMCommon.ChartDifficultyType LastChartDifficultyType;
-			// TODO: Zoom level and position
+			[JsonInclude] public double SpacingZoom = 1.0;
+			[JsonInclude] public double ChartPosition = 0.0;
 		}
 
 		/// <summary>

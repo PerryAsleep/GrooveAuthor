@@ -23,6 +23,7 @@ using System.Media;
 using System.IO;
 using System.Linq;
 using static Fumen.Converters.SMWriterBase;
+using static StepManiaEditor.Preferences;
 
 namespace StepManiaEditor
 {
@@ -477,6 +478,7 @@ namespace StepManiaEditor
 
 		protected override void EndRun()
 		{
+			CloseSong();
 			Preferences.Save();
 			Logger.Shutdown();
 			base.EndRun();
@@ -3377,7 +3379,7 @@ namespace StepManiaEditor
 				chartType = PendingOpenFileChartType;
 				chartDifficultyType = PendingOpenFileChartDifficultyType;
 
-				UnloadSongResources();
+				CloseSong();
 
 				// Start an asynchronous series of operations to load the song.
 				EditorChart newActiveChart = null;
@@ -3421,7 +3423,7 @@ namespace StepManiaEditor
 					catch (OperationCanceledException)
 					{
 						// Upon cancellation null out the Song and ActiveChart.
-						UnloadSongResources();
+						CloseSong();
 					}
 					finally
 					{
@@ -3435,15 +3437,25 @@ namespace StepManiaEditor
 					return;
 				}
 
+				// Set the position and zoom to the last used values for this song.
+				var desiredChartPosition = 0.0;
+				var desiredZoom = 1.0;
+				var savedInfo = GetMostRecentSavedSongInfoForActiveSong();
+				if (savedInfo != null)
+				{
+					desiredChartPosition = savedInfo.ChartPosition;
+					desiredZoom = savedInfo.SpacingZoom;
+				}
+
 				// Insert a new entry at the top of the saved recent files.
-				UpdateRecentFilesForActiveSong();
+				UpdateRecentFilesForActiveSong(desiredChartPosition, desiredZoom);
 
 				OnChartSelected(newActiveChart, false);
 
-				// Find a better spot for this.
+				// Set position and zoom.
 				Position.Reset();
-
-				SetZoom(1.0, true);
+				Position.ChartPosition = desiredChartPosition;
+				SetZoom(desiredZoom, true);
 			}
 			catch (Exception e)
 			{
@@ -3451,7 +3463,21 @@ namespace StepManiaEditor
 			}
 		}
 
-		private void UpdateRecentFilesForActiveSong()
+		private SavedSongInformation GetMostRecentSavedSongInfoForActiveSong()
+		{
+			if (ActiveSong == null || string.IsNullOrEmpty(ActiveSong.FileFullPath))
+				return null;
+			foreach (var savedInfo in Preferences.Instance.RecentFiles)
+			{
+				if (savedInfo.FileName == ActiveSong.FileFullPath)
+				{
+					return savedInfo;
+				}
+			}
+			return null;
+		}
+
+		private void UpdateRecentFilesForActiveSong(double chartPosition, double spacingZoom)
 		{
 			if (ActiveSong == null || string.IsNullOrEmpty(ActiveSong.FileFullPath))
 				return;
@@ -3463,6 +3489,8 @@ namespace StepManiaEditor
 				FileName = ActiveSong.FileFullPath,
 				LastChartType = ActiveChart?.ChartType ?? pOptions.DefaultStepsType,
 				LastChartDifficultyType = ActiveChart?.ChartDifficultyType ?? pOptions.DefaultDifficultyType,
+				SpacingZoom = spacingZoom,
+				ChartPosition = chartPosition
 			};
 			p.RecentFiles.RemoveAll(info => info.FileName == ActiveSong.FileFullPath);
 			p.RecentFiles.Insert(0, savedSongInfo);
@@ -3473,7 +3501,6 @@ namespace StepManiaEditor
 					p.RecentFiles.Count - pOptions.RecentFilesHistorySize);
 			}
 		}
-		
 
 
 		/// <summary>
@@ -3593,6 +3620,16 @@ namespace StepManiaEditor
 			}
 
 			return fullPath;
+		}
+
+		private void CloseSong()
+		{
+			// First, save the current zoom and position to the song history so we can restore them when
+			// opening this song again later.
+			var savedSongInfo = GetMostRecentSavedSongInfoForActiveSong();
+			if (savedSongInfo != null)
+				savedSongInfo.UpdatePosition(GetSpacingZoom(), Position.ChartPosition);
+			UnloadSongResources();
 		}
 
 		private void UnloadSongResources()
@@ -4838,7 +4875,7 @@ namespace StepManiaEditor
 
 		private void OnNewNoSave()
 		{
-			UnloadSongResources();
+			CloseSong();
 			ActiveSong = new EditorSong(GraphicsDevice, ImGuiRenderer, this);
 			Position.Reset();
 			SetZoom(1.0, true);
@@ -4859,7 +4896,7 @@ namespace StepManiaEditor
 
 		private void OnCloseNoSave()
 		{
-			UnloadSongResources();
+			CloseSong();
 			Position.Reset();
 			SetZoom(1.0, true);
 		}
@@ -4961,7 +4998,7 @@ namespace StepManiaEditor
 			// Update the ActiveSong's file path information.
 			editorSong.SetFullFilePath(fullPath);
 			UpdateWindowTitle();
-			UpdateRecentFilesForActiveSong();
+			UpdateRecentFilesForActiveSong(Position.ChartPosition, GetSpacingZoom());
 
 			ActionQueue.Instance.OnSaved();
 
@@ -5094,8 +5131,7 @@ namespace StepManiaEditor
 				var p = Preferences.Instance;
 				if (p.RecentFiles.Count > 0 && p.RecentFiles[0].FileName == ActiveSong.FileFullPath)
 				{
-					p.RecentFiles[0].LastChartType = ActiveChart.ChartType;
-					p.RecentFiles[0].LastChartDifficultyType = ActiveChart.ChartDifficultyType;
+					p.RecentFiles[0].UpdateChart(ActiveChart.ChartType, ActiveChart.ChartDifficultyType);
 				}
 
 				// The receptors and arrow graphics depend on the active chart.
