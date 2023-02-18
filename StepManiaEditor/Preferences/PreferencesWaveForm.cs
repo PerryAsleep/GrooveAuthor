@@ -11,6 +11,7 @@ namespace StepManiaEditor
 	{
 		// Default values.
 		public const bool DefaultShowWaveForm = true;
+		public const bool DefaultEnableWaveForm = true;
 		public const bool DefaultWaveFormScaleXWhenZooming = false;
 		public const UIWaveFormPreferences.SparseColorOption DefaultWaveFormSparseColorOption = UIWaveFormPreferences.SparseColorOption.DarkerDenseColor;
 		public const float DefaultWaveFormSparseColorScale = 0.8f;
@@ -28,6 +29,7 @@ namespace StepManiaEditor
 		// Preferences.
 		[JsonInclude] public bool ShowWaveFormPreferencesWindow = false;
 		[JsonInclude] public bool ShowWaveForm = DefaultShowWaveForm;
+		[JsonInclude] public bool EnableWaveForm = DefaultEnableWaveForm;
 		[JsonInclude] public bool WaveFormScaleXWhenZooming = DefaultWaveFormScaleXWhenZooming;
 		[JsonInclude] public UIWaveFormPreferences.SparseColorOption WaveFormSparseColorOption = DefaultWaveFormSparseColorOption;
 		[JsonInclude] public float WaveFormSparseColorScale = DefaultWaveFormSparseColorScale;
@@ -45,7 +47,8 @@ namespace StepManiaEditor
 		public bool IsUsingDefaults()
 		{
 			return ShowWaveForm == DefaultShowWaveForm
-			       && WaveFormScaleXWhenZooming == DefaultWaveFormScaleXWhenZooming
+				   && EnableWaveForm == DefaultEnableWaveForm
+				   && WaveFormScaleXWhenZooming == DefaultWaveFormScaleXWhenZooming
 			       && WaveFormSparseColorOption == DefaultWaveFormSparseColorOption
 			       && WaveFormSparseColorScale.FloatEquals(DefaultWaveFormSparseColorScale)
 			       && WaveFormDenseColor.Equals(DefaultWaveFormDenseColor)
@@ -75,6 +78,7 @@ namespace StepManiaEditor
 	internal sealed class ActionRestoreWaveFormPreferenceDefaults : EditorAction
 	{
 		private readonly bool PreviousShowWaveForm;
+		private readonly bool PreviousEnableWaveForm;
 		private readonly bool PreviousWaveFormScaleXWhenZooming;
 		private readonly UIWaveFormPreferences.SparseColorOption PreviousWaveFormSparseColorOption;
 		private readonly float PreviousWaveFormSparseColorScale;
@@ -93,6 +97,7 @@ namespace StepManiaEditor
 		{
 			var p = Preferences.Instance.PreferencesWaveForm;
 			PreviousShowWaveForm = p.ShowWaveForm;
+			PreviousEnableWaveForm = p.EnableWaveForm;
 			PreviousWaveFormScaleXWhenZooming = p.WaveFormScaleXWhenZooming;
 			PreviousWaveFormSparseColorOption = p.WaveFormSparseColorOption;
 			PreviousWaveFormSparseColorScale = p.WaveFormSparseColorScale;
@@ -122,6 +127,7 @@ namespace StepManiaEditor
 		{
 			var p = Preferences.Instance.PreferencesWaveForm;
 			p.ShowWaveForm = PreferencesWaveForm.DefaultShowWaveForm;
+			p.EnableWaveForm = PreferencesWaveForm.DefaultEnableWaveForm;
 			p.WaveFormScaleXWhenZooming = PreferencesWaveForm.DefaultWaveFormScaleXWhenZooming;
 			p.WaveFormSparseColorOption = PreferencesWaveForm.DefaultWaveFormSparseColorOption;
 			p.WaveFormSparseColorScale = PreferencesWaveForm.DefaultWaveFormSparseColorScale;
@@ -141,6 +147,7 @@ namespace StepManiaEditor
 		{
 			var p = Preferences.Instance.PreferencesWaveForm;
 			p.ShowWaveForm = PreviousShowWaveForm;
+			p.EnableWaveForm = PreviousEnableWaveForm;
 			p.WaveFormScaleXWhenZooming = PreviousWaveFormScaleXWhenZooming;
 			p.WaveFormSparseColorOption = PreviousWaveFormSparseColorOption;
 			p.WaveFormSparseColorScale = PreviousWaveFormSparseColorScale;

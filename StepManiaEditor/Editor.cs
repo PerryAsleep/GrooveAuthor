@@ -1164,7 +1164,7 @@ namespace StepManiaEditor
 		private void PreDrawWaveFormToRenderTargets()
 		{
 			var p = Preferences.Instance.PreferencesWaveForm;
-			if (!p.ShowWaveForm)
+			if (!p.ShowWaveForm || !p.EnableWaveForm)
 				return;
 
 			// Draw the waveform to the first render target.
@@ -1276,7 +1276,7 @@ namespace StepManiaEditor
 			var pWave = Preferences.Instance.PreferencesWaveForm;
 
 			// Performance optimization. Do not update the texture if we won't render it.
-			if (!pWave.ShowWaveForm)
+			if (!pWave.ShowWaveForm || !pWave.EnableWaveForm)
 				return;
 
 			// Update the WaveFormRenderer.
@@ -3202,7 +3202,7 @@ namespace StepManiaEditor
 				if (ImGui.Button("Reload Song"))
 				{
 					StopPreview();
-					MusicManager.LoadMusicAsync(GetFullPathToMusicFile(), GetSongTime, true);
+					MusicManager.LoadMusicAsync(GetFullPathToMusicFile(), GetSongTime, true, Preferences.Instance.PreferencesWaveForm.EnableWaveForm);
 				}
 
 				if (ImGui.Button("Save Time and Zoom"))
@@ -4959,16 +4959,13 @@ namespace StepManiaEditor
 
 		private void Save(FileFormatType fileType, string fullPath, EditorSong editorSong)
 		{
+			Logger.Info($"Saving {fullPath}...");
+
 			// TODO: Check for incompatible features with SM format.
 			if (fileType == FileFormatType.SM)
 			{
 
 			}
-
-			// Temp hack to not overwrite original file.
-			//var start = fullPath.Substring(0, fullPath.LastIndexOf('.'));
-			//var end = fullPath.Substring(fullPath.LastIndexOf('.'));
-			//fullPath = $"{start}-exported{end}";
 
 			var customProperties = new SMWriterCustomProperties();
 			var song = ActiveSong.SaveToSong(customProperties);
@@ -5001,6 +4998,8 @@ namespace StepManiaEditor
 			UpdateRecentFilesForActiveSong(Position.ChartPosition, GetSpacingZoom());
 
 			ActionQueue.Instance.OnSaved();
+
+			Logger.Info($"Saved {fullPath}.");
 
 			TryInvokePostSaveFunction();
 		}
@@ -5048,7 +5047,7 @@ namespace StepManiaEditor
 		private void OnMusicChanged()
 		{
 			StopPreview();
-			MusicManager.LoadMusicAsync(GetFullPathToMusicFile(), GetSongTime);
+			MusicManager.LoadMusicAsync(GetFullPathToMusicFile(), GetSongTime, false, Preferences.Instance.PreferencesWaveForm.EnableWaveForm);
 		}
 
 		private void OnMusicPreviewChanged()

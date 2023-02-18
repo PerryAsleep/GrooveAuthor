@@ -45,7 +45,13 @@ namespace StepManiaEditor
 			{
 				ImGuiLayoutUtils.DrawRowCheckbox(true, "Show Waveform", p, nameof(PreferencesWaveForm.ShowWaveForm), false,
 					"Whether to show the waveform." +
-					"\nDisabling the waveform will increase performance.");
+					"\nHiding the waveform will increase performance." +
+					"\nUnchecking this box will hide the waveform, but it will still be generated.");
+				ImGuiLayoutUtils.DrawRowCheckbox(true, "Enable Waveform", p, nameof(PreferencesWaveForm.EnableWaveForm), false,
+					"Whether to enable or disable the waveform." +
+					"\nUnchecking this box will prevent the waveform from being generated." +
+					"\nThe waveform uses a significant amount of memory, especially for very long songs." +
+					"\nChanging this value will take effect the next time a song is loaded.");
 				ImGuiLayoutUtils.EndTable();
 			}
 

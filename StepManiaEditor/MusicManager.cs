@@ -242,9 +242,13 @@ namespace StepManiaEditor
 		/// Function to be called to get the music time so that it can be set appropriate immediately
 		/// after loading is complete.
 		/// </param>
-		public void LoadMusicAsync(string fullPathToMusicFile, Func<double> getMusicTimeFunction, bool force = false)
+		public void LoadMusicAsync(
+			string fullPathToMusicFile,
+			Func<double> getMusicTimeFunction,
+			bool force = false,
+			bool generateMipMap = true)
 		{
-			LoadSoundAsync(MusicData, fullPathToMusicFile, MusicOffset, getMusicTimeFunction, force);
+			LoadSoundAsync(MusicData, fullPathToMusicFile, MusicOffset, getMusicTimeFunction, force, generateMipMap);
 		}
 
 		/// <summary>
@@ -278,7 +282,8 @@ namespace StepManiaEditor
 			string fullPathToMusicFile,
 			double offset = 0.0,
 			Func<double> getMusicTimeFunction = null,
-			bool force = false)
+			bool force = false,
+			bool generateMipMap = true)
 		{
 			// It is common for Charts to re-use the same sound files.
 			// Do not reload the sound file if we were already using it.
@@ -339,12 +344,12 @@ namespace StepManiaEditor
 						soundData.SampleRate = (uint)frequency;
 						if (getMusicTimeFunction != null)
 							SetSoundPositionInternal(soundData, getMusicTimeFunction(), offset);
-						Logger.Info($"Loaded {soundData.File}...");
+						Logger.Info($"Loaded {soundData.File}.");
 
 						soundData.LoadCancellationTokenSource.Token.ThrowIfCancellationRequested();
 
 						// Set up the new sound mip map.
-						if (soundData.MipMap != null)
+						if (generateMipMap && soundData.MipMap != null)
 						{
 							await soundData.MipMap.CreateMipMapAsync(soundData.Sound, soundData.SampleRate, Utils.WaveFormTextureWidth,
 								soundData.LoadCancellationTokenSource.Token);
