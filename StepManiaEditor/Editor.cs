@@ -3651,6 +3651,8 @@ namespace StepManiaEditor
 
 		private void UpdateWindowTitle()
 		{
+			if (Window == null)
+				return;
 			var hasUnsavedChanges = ActionQueue.Instance.HasUnsavedChanges();
 			var appName = GetAppName();
 			var sb = new StringBuilder();
@@ -5215,6 +5217,11 @@ namespace StepManiaEditor
 				Logger.Info(file);
 		}
 
+		private void OnUndoHistorySizeChanged()
+		{
+			ActionQueue.Instance.Resize(Preferences.Instance.PreferencesOptions.UndoHistorySize);
+		}
+
 		#region IObserver
 		public void OnNotify(string eventId, EditorSong song, object payload)
 		{
@@ -5265,6 +5272,9 @@ namespace StepManiaEditor
 					break;
 				case PreferencesOptions.NotificationVolumeChanged:
 					OnVolumeChanged();
+					break;
+				case PreferencesOptions.NotificationUndoHistorySizeChanged:
+					OnUndoHistorySizeChanged();
 					break;
 			}
 		}

@@ -1,5 +1,4 @@
-﻿using System.Collections.Generic;
-using Fumen;
+﻿using Fumen;
 
 namespace StepManiaEditor
 {
@@ -17,26 +16,20 @@ namespace StepManiaEditor
 	/// </summary>
 	internal sealed class ActionQueue
 	{
-		/// <summary>
-		/// Index of the current action.
-		/// In other words, the index of the last action which was done.
-		/// If no action was done or we have undone to the beginning, then Index will be -1.
-		/// </summary>
-		private int Index = -1;
-
-		/// <summary>
-		/// The maximum index that can be redone to.
-		/// When undoing actions and then doing new actions, the MaxRedoAction will
-		/// decrease in order to cut off old future actions which can no longer be
-		/// redone.
-		/// </summary>
-		private int MaxRedoIndex = -1;
+		const int DefaultSize = 1024;
 
 		/// <summary>
 		/// The index at the last time the file was saved.
 		/// </summary>
 		private int LastSavedIndex = -1;
-
+		/// <summary>
+		/// The number of actions affecting the file at the last time the file was saved.
+		/// </summary>
+		private int LastSavedChangeCount = 0;
+		/// <summary>
+		/// The number of actions affecting the file currently.
+		/// </summary>
+		private int CurrentChangeCount = 0;
 		/// <summary>
 		/// Flag for recording when redo history is lost and the history contains actions
 		/// which affect the save file.
@@ -44,18 +37,25 @@ namespace StepManiaEditor
 		private bool LostSavedChanges = false;
 
 		/// <summary>
-		/// List of EditorActions for undo and redo.
-		/// This list may be longer than the actual set of EditorActions which can
-		/// be redone in situations where actions are undone and then new actions
-		/// are performed.
+		/// UndoStack of EditorActions for undo and redo.
 		/// </summary>
-		private readonly List<EditorAction> Actions = new List<EditorAction>();
+		private readonly UndoStack<EditorAction> Actions;
 
 		public static ActionQueue Instance { get; } = new ActionQueue();
 
-		private ActionQueue()
+		private ActionQueue(int size = DefaultSize)
 		{
+			Actions = new UndoStack<EditorAction>(size, true);
+		}
 
+		/// <summary>
+		/// Resizes the ActionQueue.
+		/// May result in history loss if reducing the size.
+		/// </summary>
+		/// <param name="size">New size.</param>
+		public void Resize(int size)
+		{
+			Actions.Resize(size);
 		}
 
 		/// <summary>
@@ -66,28 +66,7 @@ namespace StepManiaEditor
 		{
 			if (LostSavedChanges)
 				return true;
-			return AreUnsavedChangesPresentBetweenIndexes(LastSavedIndex, Index);
-		}
-
-		/// <summary>
-		/// Helper to determine if there are differences to the underlying file between actions
-		/// at the given indexes.
-		/// </summary>
-		private bool AreUnsavedChangesPresentBetweenIndexes(int indexA, int indexB)
-		{
-			if (indexA == indexB)
-				return false;
-
-			var numActionsAffectingFileA = 0;
-			var numActionsAffectingFileB = 0;
-
-			if (indexA + 1 >= 0 && indexA < MaxRedoIndex)
-				numActionsAffectingFileA = Actions[indexA + 1].GetTotalNumActionsAffectingFile();
-			if (indexB + 1 >= 0 && indexB < MaxRedoIndex)
-				numActionsAffectingFileB = Actions[indexB + 1].GetTotalNumActionsAffectingFile();
-
-			var numUnsavedChanges = numActionsAffectingFileB - numActionsAffectingFileA;
-			return numUnsavedChanges != 0;
+			return CurrentChangeCount != LastSavedChangeCount;
 		}
 
 		/// <summary>
@@ -96,7 +75,8 @@ namespace StepManiaEditor
 		public void OnSaved()
 		{
 			// Update state for tracking unsaved changes.
-			LastSavedIndex = Index;
+			LastSavedIndex = Actions.GetAbsoluteIndex();
+			LastSavedChangeCount = Actions.GetCurrent()?.GetTotalNumActionsAffectingFile() ?? 0;
 			LostSavedChanges = false;
 		}
 
@@ -106,9 +86,8 @@ namespace StepManiaEditor
 		/// <param name="editorAction">EditorAction to do.</param>
 		public void Do(EditorAction editorAction)
 		{
-			// Do the action.
+			// Do the action and enqueue it.
 			editorAction.Do();
-
 			EnqueueWithoutDoing(editorAction);
 		}
 
@@ -120,31 +99,22 @@ namespace StepManiaEditor
 		{
 			Logger.Info(editorAction.ToString());
 
-			if (Index >= 0)
+			var lastAction = Actions.GetCurrent();
+			if (lastAction != null)
+				editorAction.SetNumPreviousActionsAffectingFile(lastAction.GetTotalNumActionsAffectingFile());
+
+			// If doing this action will lose changes which affect the file, set a flag
+			// that unsaved changes are lost.
+			if (LastSavedIndex > Actions.GetAbsoluteIndex()
+				&& LastSavedChangeCount > lastAction.GetTotalNumActionsAffectingFile())
 			{
-				editorAction.SetNumPreviousActionsAffectingFile(Actions[Index].GetTotalNumActionsAffectingFile());
+				LostSavedChanges = true;
+				LastSavedIndex = -1;
 			}
 
-			// Add the action to the list, overwriting any old future action.
-			if (Index == Actions.Count - 1)
-				Actions.Add(editorAction);
-			else
-				Actions[Index + 1] = editorAction;
-			Index++;
-
-			// When an action is added, even if there were future actions now they can
-			// no longer be redone.
-			if (MaxRedoIndex >= Index)
-			{
-				// If bringing back the MaxRedoHistory will lose changes which affect the file,
-				// set a flag that we have unsaved changes.
-				if (AreUnsavedChangesPresentBetweenIndexes(MaxRedoIndex, Index) && LastSavedIndex >= Index)
-				{
-					LostSavedChanges = true;
-					LastSavedIndex = -1;
-				}
-			}
-			MaxRedoIndex = Index;
+			// Add the action.
+			Actions.Push(editorAction);
+			CurrentChangeCount = editorAction.GetTotalNumActionsAffectingFile();
 		}
 
 		/// <summary>
@@ -152,10 +122,10 @@ namespace StepManiaEditor
 		/// </summary>
 		public void Clear()
 		{
-			Index = -1;
-			MaxRedoIndex = -1;
 			LastSavedIndex = -1;
 			LostSavedChanges = false;
+			CurrentChangeCount = 0;
+			Actions.Reset();
 		}
 
 		/// <summary>
@@ -164,15 +134,16 @@ namespace StepManiaEditor
 		/// <returns>The action which was undone or null if no action is left to undo.</returns>
 		public EditorAction Undo()
 		{
-			if (Index < 0)
+			if (!Actions.CanPop())
 				return null;
-
-			// Undo the action.
-			Logger.Info($"Undo [{Index + 1}/{MaxRedoIndex + 1}]: {Actions[Index]}");
-			var action = Actions[Index--];
-			action.Undo();
-
-			return action;
+			Actions.Pop(out var popped);
+			if (popped != null)
+			{
+				popped.Undo();
+				Logger.Info($"Undo {popped}");
+				CurrentChangeCount = popped.GetTotalNumActionsAffectingFile() - (popped.AffectsFile() ? 1 : 0);
+			}
+			return popped;
 		}
 
 		/// <summary>
@@ -181,15 +152,16 @@ namespace StepManiaEditor
 		/// <returns>The action which was redone or null if no action is left to redo.</returns>
 		public EditorAction Redo()
 		{
-			if (Index >= MaxRedoIndex)
+			if (!Actions.CanRepush())
 				return null;
-
-			// Redo the action.
-			Logger.Info($"Redo [{Index + 2}/{MaxRedoIndex + 1}]: {Actions[Index + 1]}");
-			var action = Actions[++Index];
-			action.Do();
-
-			return action;
+			Actions.Repush(out var repushed);
+			if (repushed != null)
+			{
+				repushed.Do();
+				Logger.Info($"Redo {repushed}");
+				CurrentChangeCount = repushed.GetTotalNumActionsAffectingFile();
+			}
+			return repushed;
 		}
 	}
 }

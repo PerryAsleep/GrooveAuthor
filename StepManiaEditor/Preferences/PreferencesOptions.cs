@@ -12,6 +12,7 @@ namespace StepManiaEditor
 	{
 		public const string NotificationAudioOffsetChanged = "AudioOffsetChanged";
 		public const string NotificationVolumeChanged = "VolumeChanged";
+		public const string NotificationUndoHistorySizeChanged = "UndoHistorySizeChanged";
 
 		// Default values.
 		public const int DefaultRecentFilesHistorySize = 10;
@@ -30,6 +31,7 @@ namespace StepManiaEditor
 		public const double DefaultOpenSongSyncOffset = 0.009;
 		public const double DefaultAudioOffset = 0.0;
 		public const float DefaultVolume = 1.0f;
+		public const int DefaultUndoHistorySize = 1024;
 
 		// Preferences.
 		[JsonInclude] public bool ShowOptionsWindow = false;
@@ -72,9 +74,25 @@ namespace StepManiaEditor
 				}
 			}
 		}
+		[JsonInclude] public int UndoHistorySize
+		{
+			get
+			{
+				return UndoHistorySizeInternal;
+			}
+			set
+			{
+				if (UndoHistorySizeInternal != value)
+				{
+					UndoHistorySizeInternal = value;
+					Notify(NotificationUndoHistorySizeChanged, this);
+				}
+			}
+		}
 
 		private float VolumeInternal = DefaultVolume;
 		private double AudioOffsetInternal = DefaultAudioOffset;
+		private int UndoHistorySizeInternal = DefaultUndoHistorySize;
 
 		// Strings are serialized, but converted to an array of booleans for UI.
 		[JsonIgnore] public bool[] StartupChartTypesBools;
@@ -82,16 +100,17 @@ namespace StepManiaEditor
 		public bool IsUsingDefaults()
 		{
 			return RecentFilesHistorySize == DefaultRecentFilesHistorySize
-			       && DefaultStepsType == DefaultDefaultStepsType
-			       && DefaultDifficultyType == DefaultDefaultDifficultyType
-			       && PreviewFadeInTime.DoubleEquals(DefaultPreviewFadeInTime)
-			       && PreviewFadeOutTime.DoubleEquals(DefaultPreviewFadeOutTime)
-			       && StartupChartTypesBools.SequenceEqual(DefaultStartupChartTypesBools)
-			       && OpenLastOpenedFileOnLaunch == DefaultOpenLastOpenedFileOnLaunch
+				   && DefaultStepsType == DefaultDefaultStepsType
+				   && DefaultDifficultyType == DefaultDefaultDifficultyType
+				   && PreviewFadeInTime.DoubleEquals(DefaultPreviewFadeInTime)
+				   && PreviewFadeOutTime.DoubleEquals(DefaultPreviewFadeOutTime)
+				   && StartupChartTypesBools.SequenceEqual(DefaultStartupChartTypesBools)
+				   && OpenLastOpenedFileOnLaunch == DefaultOpenLastOpenedFileOnLaunch
 				   && NewSongSyncOffset.DoubleEquals(DefaultNewSongSyncOffset)
 				   && OpenSongSyncOffset.DoubleEquals(DefaultOpenSongSyncOffset)
 				   && AudioOffset.DoubleEquals(DefaultAudioOffset)
-				   && Volume.FloatEquals(DefaultVolume);
+				   && Volume.FloatEquals(DefaultVolume)
+				   && UndoHistorySize == DefaultUndoHistorySize;
 		}
 
 		public void RestoreDefaults()
@@ -167,6 +186,7 @@ namespace StepManiaEditor
 		private readonly double PreviousOpenSongSyncOffset;
 		private readonly double PreviousAudioOffset;
 		private readonly float PreviousVolume;
+		private readonly int PreviousUndoHistorySize;
 
 		public ActionRestoreOptionPreferenceDefaults()
 		{
@@ -183,6 +203,7 @@ namespace StepManiaEditor
 			PreviousOpenSongSyncOffset = p.OpenSongSyncOffset;
 			PreviousAudioOffset = p.AudioOffset;
 			PreviousVolume = p.Volume;
+			PreviousUndoHistorySize = p.UndoHistorySize;
 		}
 
 		public override bool AffectsFile()
@@ -209,6 +230,7 @@ namespace StepManiaEditor
 			p.OpenSongSyncOffset = PreferencesOptions.DefaultOpenSongSyncOffset;
 			p.AudioOffset = PreferencesOptions.DefaultAudioOffset;
 			p.Volume = PreferencesOptions.DefaultVolume;
+			p.UndoHistorySize = PreferencesOptions.DefaultUndoHistorySize;
 		}
 
 		public override void Undo()
@@ -225,6 +247,7 @@ namespace StepManiaEditor
 			p.OpenSongSyncOffset = PreviousOpenSongSyncOffset;
 			p.AudioOffset = PreviousAudioOffset;
 			p.Volume = PreviousVolume;
+			p.UndoHistorySize = PreviousUndoHistorySize;
 		}
 	}
 }

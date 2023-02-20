@@ -50,6 +50,16 @@ namespace StepManiaEditor
 				}
 
 				ImGui.Separator();
+				if (ImGuiLayoutUtils.BeginTable("Options Undo", TitleColumnWidth))
+				{
+					ImGuiLayoutUtils.DrawRowInputInt(true, "Undo History Size", p,
+						nameof(PreferencesOptions.UndoHistorySize), false,
+						"Number of actions which can be stored in the undo history.", 1, 32768);
+
+					ImGuiLayoutUtils.EndTable();
+				}
+
+				ImGui.Separator();
 				if (ImGuiLayoutUtils.BeginTable("Options Preview", TitleColumnWidth))
 				{
 					ImGuiLayoutUtils.DrawRowDragDouble(true, "Preview Fade In", p, nameof(PreferencesOptions.PreviewFadeInTime), false,
