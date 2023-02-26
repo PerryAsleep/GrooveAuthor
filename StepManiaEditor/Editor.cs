@@ -97,6 +97,7 @@ namespace StepManiaEditor
 		private ChartDifficultyType PendingOpenFileChartDifficultyType;
 
 		private bool UnsavedChangesLastFrame = false;
+		private string PendingOpenSongFileName;
 		private bool ShowSavePopup = false;
 		private Action PostSaveFunction = null;
 		private int OpenRecentIndex = 0;
@@ -754,25 +755,32 @@ namespace StepManiaEditor
 
 			SelectedRegion.UpdateTime(currentTime);
 
-			// ImGui needs to update its frame even the app is not in focus.
-			// There may be a way to decouple input processing and advancing the frame, but for now
-			// use the ImGuiRenderer.Update method and give it a flag so it knows to not process input.
-			(var imGuiWantMouse, var imGuiWantKeyboard) = ImGuiRenderer.Update(gameTime, inFocus);
+			// TODO: Remove remaining input processing from ImGuiRenderer.
+			ImGuiRenderer.UpdateInput(gameTime);
+
+			// ImGui needs to be told when a new frame begins after processing input.
+			// This application also relies on the new frame being begun in input processing
+			// as some inputs need to check bounds with ImGui elements that require pushing
+			// font state.
+			ImGuiRenderer.BeforeLayout();
+
+			// Process Mouse Input.
+			var state = Mouse.GetState();
+			var (mouseChartTime, mouseChartPosition) = FindChartTimeAndRowForScreenY(state.Y);
+			EditorMouseState.Update(state, mouseChartTime, mouseChartPosition, inFocus);
 
 			// Do not do any further input processing if the application does not have focus.
 			if (!inFocus)
 				return;
+
+			var imGuiWantMouse = ImGui.GetIO().WantCaptureMouse;
+			var imGuiWantKeyboard = ImGui.GetIO().WantCaptureKeyboard;
 
 			// Process Keyboard Input.
 			if (imGuiWantKeyboard)
 				KeyCommandManager.CancelAllCommands();
 			else
 				KeyCommandManager.Update(currentTime);
-
-			// Process Mouse Input.
-			var state = Mouse.GetState();
-			var (mouseChartTime, mouseChartPosition) = FindChartTimeAndRowForScreenY(state.Y);
-			EditorMouseState.UpdateMouseState(state, mouseChartTime, mouseChartPosition);
 
 			// Early out if ImGui is using the mouse.
 			if (imGuiWantMouse)
@@ -833,7 +841,7 @@ namespace StepManiaEditor
 		private void ProcessInputForMovingFocalPoint(bool inReceptorArea)
 		{
 			// Begin moving focal point.
-			if (EditorMouseState.LeftClickDownThisFrame()
+			if (EditorMouseState.GetButtonState(EditorMouseState.Button.Left).DownThisFrame()
 				&& inReceptorArea
 				&& !Preferences.Instance.PreferencesReceptors.LockPosition)
 			{
@@ -869,7 +877,7 @@ namespace StepManiaEditor
 			}
 
 			// Stop moving focal point.
-			if (EditorMouseState.LeftReleased() && MovingFocalPoint)
+			if (EditorMouseState.GetButtonState(EditorMouseState.Button.Left).Up() && MovingFocalPoint)
 			{
 				MovingFocalPoint = false;
 				FocalPointMoveOffset = new Vector2();
@@ -888,7 +896,7 @@ namespace StepManiaEditor
 		private void ProcessInputForSelectedRegion(double currentTime)
 		{
 			// Starting a selection.
-			if (EditorMouseState.LeftClickDownThisFrame())
+			if (EditorMouseState.GetButtonState(EditorMouseState.Button.Left).DownThisFrame())
 			{
 				var y = EditorMouseState.Y();
 				var (chartTime, chartPosition) = FindChartTimeAndRowForScreenY(y);
@@ -904,14 +912,14 @@ namespace StepManiaEditor
 			}
 
 			// Dragging a selection.
-			if (EditorMouseState.LeftDown() && SelectedRegion.IsActive())
+			if (EditorMouseState.GetButtonState(EditorMouseState.Button.Left).Down() && SelectedRegion.IsActive())
 			{
 				var xInChartSpace = (EditorMouseState.X() - GetFocalPointX()) / GetSizeZoom();
 				SelectedRegion.UpdatePerFrameValues(xInChartSpace, EditorMouseState.Y(), GetSizeZoom(), GetFocalPointX());
 			}
 
 			// Releasing a selection.
-			if (EditorMouseState.LeftReleased() && SelectedRegion.IsActive())
+			if (EditorMouseState.GetButtonState(EditorMouseState.Button.Left).Up() && SelectedRegion.IsActive())
 			{
 				FinishSelectedRegion();
 			}
@@ -2254,13 +2262,14 @@ namespace StepManiaEditor
 			var miniMapCapturingMouseLastFrame = MiniMapCapturingMouse;
 
 			var miniMapNeedsMouseThisFrame = false;
-			if (EditorMouseState.LeftClickDownThisFrame())
+			if (EditorMouseState.GetButtonState(EditorMouseState.Button.Left).DownThisFrame())
 			{
 				miniMapNeedsMouseThisFrame = MiniMap.MouseDown(EditorMouseState.X(), EditorMouseState.Y());
 			}
 
 			MiniMap.MouseMove(EditorMouseState.X(), EditorMouseState.Y());
-			if (EditorMouseState.LeftClickUpThisFrame() || (MiniMapCapturingMouse && EditorMouseState.LeftReleased()))
+			if (EditorMouseState.GetButtonState(EditorMouseState.Button.Left).UpThisFrame()
+				|| (MiniMapCapturingMouse && EditorMouseState.GetButtonState(EditorMouseState.Button.Left).Up()))
 			{
 				MiniMap.MouseUp(EditorMouseState.X(), EditorMouseState.Y());
 			}
@@ -2272,7 +2281,7 @@ namespace StepManiaEditor
 			if (MiniMapCapturingMouse)
 			{
 				// When moving the MiniMap, pause or stop playback.
-				if (EditorMouseState.LeftClickDownThisFrame() && Playing)
+				if (EditorMouseState.GetButtonState(EditorMouseState.Button.Left).DownThisFrame() && Playing)
 				{
 					// Set a flag to unpause playback unless the preference is to completely stop when scrolling.
 					StartPlayingWhenMiniMapDone = !pMiniMap.MiniMapStopPlaybackWhenScrolling;
@@ -2624,11 +2633,12 @@ namespace StepManiaEditor
 				ImGui.OpenPopup(GetSavePopupTitle());
 			}
 
-			if (CanShowRightClickPopupThisFrame && EditorMouseState.RightClickUpThisFrame())
+			if (CanShowRightClickPopupThisFrame && EditorMouseState.GetButtonState(EditorMouseState.Button.Right).UpThisFrame())
 			{
 				ImGui.OpenPopup("RightClickPopup");
 			}
-			DrawRightClickMenu((int)EditorMouseState.LastRightClickUpPosition.X, (int)EditorMouseState.LastRightClickUpPosition.Y);
+			var lastPos = EditorMouseState.GetButtonState(EditorMouseState.Button.Right).GetLastClickUpPosition();
+			DrawRightClickMenu((int)lastPos.X, (int)lastPos.Y);
 
 			DrawUnsavedChangesPopup();
 		}
@@ -4828,6 +4838,30 @@ namespace StepManiaEditor
 			}
 		}
 
+		private void OnOpenFile(string songFile)
+		{
+			PendingOpenSongFileName = songFile;
+			if (ActionQueue.Instance.HasUnsavedChanges())
+			{
+				PostSaveFunction = OnOpenFileNoSave;
+				ShowSavePopup = true;
+			}
+			else
+			{
+				OnOpenFileNoSave();
+			}
+		}
+
+		private void OnOpenFileNoSave()
+		{
+			if (string.IsNullOrEmpty(PendingOpenSongFileName))
+				return;
+			var pOptions = Preferences.Instance.PreferencesOptions;
+			OpenSongFileAsync(PendingOpenSongFileName,
+				pOptions.DefaultStepsType,
+				pOptions.DefaultDifficultyType);
+		}
+
 		private void OnReload()
 		{
 			OpenRecentIndex = 0;
@@ -5206,15 +5240,50 @@ namespace StepManiaEditor
 
 		public void DragEnter(object sender, DragEventArgs e)
 		{
-			if (e.Data.GetDataPresent(DataFormats.FileDrop))
+			if (!e.Data.GetDataPresent(DataFormats.FileDrop))
+				return;
+			string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
+			if (files.Count() != 1)
+			{
+				e.Effect = DragDropEffects.None;
+				return;
+			}
+			var file = files[0];
+			if (IsSongFilePathSupported(file))
 				e.Effect = DragDropEffects.Copy;
+			else
+				e.Effect = DragDropEffects.None;
 		}
 
 		public void DragDrop(object sender, DragEventArgs e)
 		{
+			if (!e.Data.GetDataPresent(DataFormats.FileDrop))
+				return;
 			string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
-			foreach (string file in files)
-				Logger.Info(file);
+			if (files.Count() != 1)
+				return;
+			var file = files[0];
+			if (IsSongFilePathSupported(file))
+				OnOpenFile(file);
+		}
+
+		private static bool IsSongFilePathSupported(string filePath)
+		{
+			try
+			{
+				var extension = System.IO.Path.GetExtension(filePath);
+				return IsSongExtensionSupported(extension);
+			}
+			catch(Exception) {}
+			return false;
+		}
+
+		private static bool IsSongExtensionSupported(string extension)
+		{
+			var fileFormat = FileFormat.GetFileFormatByExtension(extension);
+			if (fileFormat != null && (fileFormat.Type == FileFormatType.SM || fileFormat.Type == FileFormatType.SSC))
+				return true;
+			return false;
 		}
 
 		private void OnUndoHistorySizeChanged()
