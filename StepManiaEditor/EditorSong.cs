@@ -569,12 +569,18 @@ namespace StepManiaEditor
 			MusicPreviewPath = UpdateRelativePath(oldFullPath, newFullPath, MusicPreviewPath);
 			LyricsPath = UpdateRelativePath(oldFullPath, newFullPath, LyricsPath);
 			PreviewVideoPath = UpdateRelativePath(oldFullPath, newFullPath, PreviewVideoPath);
-			Banner.Path = UpdateRelativePath(oldFullPath, newFullPath, Banner.Path);
-			Background.Path = UpdateRelativePath(oldFullPath, newFullPath, Background.Path);
-			Jacket.Path = UpdateRelativePath(oldFullPath, newFullPath, Jacket.Path);
-			CDImage.Path = UpdateRelativePath(oldFullPath, newFullPath, CDImage.Path);
-			DiscImage.Path = UpdateRelativePath(oldFullPath, newFullPath, DiscImage.Path);
-			CDTitle.Path = UpdateRelativePath(oldFullPath, newFullPath, CDTitle.Path);
+			if (Banner != null)
+				Banner.Path = UpdateRelativePath(oldFullPath, newFullPath, Banner.Path);
+			if (Background != null)
+				Background.Path = UpdateRelativePath(oldFullPath, newFullPath, Background.Path);
+			if (Jacket != null)
+				Jacket.Path = UpdateRelativePath(oldFullPath, newFullPath, Jacket.Path);
+			if (CDImage != null)
+				CDImage.Path = UpdateRelativePath(oldFullPath, newFullPath, CDImage.Path);
+			if (DiscImage != null)
+				DiscImage.Path = UpdateRelativePath(oldFullPath, newFullPath, DiscImage.Path);
+			if (CDTitle != null)
+				CDTitle.Path = UpdateRelativePath(oldFullPath, newFullPath, CDTitle.Path);
 		}
 
 		/// <summary>
