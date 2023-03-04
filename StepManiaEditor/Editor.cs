@@ -99,6 +99,7 @@ namespace StepManiaEditor
 		private bool UnsavedChangesLastFrame = false;
 		private string PendingOpenSongFileName;
 		private string PendingMusicFile;
+		private string PendingVideoFile;
 		private string PendingLyricsFile;
 		private bool ShowSavePopup = false;
 		private Action PostSaveFunction = null;
@@ -4841,6 +4842,27 @@ namespace StepManiaEditor
 			}
 		}
 
+		private void OnOpenVideoFile(string videoFile)
+		{
+			if (ActiveSong != null)
+			{
+				var relativePath = Path.GetRelativePath(ActiveSong.FileDirectory, videoFile);
+				UpdateBackgroundPath(relativePath);
+			}
+			else
+			{
+				PendingVideoFile = videoFile;
+				OnNew();
+			}
+		}
+
+		public void UpdateBackgroundPath(string backgroundPath)
+		{
+			if (ActiveSong == null || backgroundPath == null || backgroundPath == ActiveSong.Background.Path)
+				return;
+			ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(ActiveSong.Background, nameof(EditorSong.Background.Path), backgroundPath, true));
+		}
+
 		public void UpdateMusicPath(string musicPath)
 		{
 			if (ActiveSong == null || musicPath == null || musicPath == ActiveSong.MusicPath)
@@ -4967,6 +4989,12 @@ namespace StepManiaEditor
 			{
 				ActiveSong.LyricsPath = PendingLyricsFile;
 				PendingLyricsFile = null;
+			}
+			if (!string.IsNullOrEmpty(PendingVideoFile))
+			{
+				// Assume that a video file is meant to be the background.
+				ActiveSong.Background.Path = PendingVideoFile;
+				PendingVideoFile = null;
 			}
 
 			Position.Reset();
@@ -5349,6 +5377,8 @@ namespace StepManiaEditor
 				OnOpenFile(file);
 			else if (ExpectedAudioFormats.Contains(extension))
 				OnOpenAudioFile(file);
+			else if (ExpectedVideoFormats.Contains(extension))
+				OnOpenVideoFile(file);
 			else if (ExpectedLyricsFormats.Contains(extension))
 				OnOpenLyricsFile(file);
 		}
@@ -5364,6 +5394,8 @@ namespace StepManiaEditor
 			if (IsSongExtensionSupported(extension))
 				return true;
 			if (ExpectedAudioFormats.Contains(extension))
+				return true;
+			if (ExpectedVideoFormats.Contains(extension))
 				return true;
 			if (ExpectedLyricsFormats.Contains(extension))
 				return true;

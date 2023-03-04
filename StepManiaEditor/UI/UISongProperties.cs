@@ -367,8 +367,7 @@ namespace StepManiaEditor
 				EditorSong.FileDirectory,
 				EditorSong.Banner.Path,
 				FileOpenFilterForImagesAndVideos("Background", true));
-			if (relativePath != null && relativePath != EditorSong.Background.Path)
-				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong.Background, nameof(EditorSong.Background.Path), relativePath, true));
+			Editor.UpdateBackgroundPath(relativePath);
 		}
 
 		private void ClearBackground()

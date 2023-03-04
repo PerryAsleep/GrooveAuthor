@@ -2,6 +2,7 @@
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Linq;
 using Fumen;
 using Microsoft.Xna.Framework.Graphics;
 
@@ -168,7 +169,8 @@ namespace StepManiaEditor
 				{
 					try
 					{
-						if (!string.IsNullOrEmpty(filePath))
+						// Don't try to load video files. We expect them to fail.
+						if (!string.IsNullOrEmpty(filePath) && !IsVideoFile(filePath))
 						{
 							using var fileStream = File.OpenRead(filePath);
 							newTexture = Texture2D.FromStream(GraphicsDevice, fileStream);
@@ -208,6 +210,18 @@ namespace StepManiaEditor
 				NewTextureColor = newTextureColor;
 				NewTextureReady = true;
 			}
+		}
+
+		/// <summary>
+		/// Returns whether or not the given texture file is a video file.
+		/// </summary>
+		/// <param name="filePath">Texture file path.</param>
+		/// <returns>Whether or not the given texture file is a video file.</returns>
+		private static bool IsVideoFile(string filePath)
+		{
+			if (!Fumen.Path.GetExtensionWithoutSeparator(filePath, out var extension))
+				return false;
+			return Utils.ExpectedVideoFormats.Contains(extension);
 		}
 
 		/// <summary>
