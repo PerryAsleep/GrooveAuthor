@@ -8,6 +8,7 @@ using ImGuiNET;
 using Microsoft.Xna.Framework.Graphics;
 using Path = Fumen.Path;
 using static StepManiaEditor.Utils;
+using static StepManiaEditor.ImGuiUtils;
 
 namespace StepManiaEditor
 {

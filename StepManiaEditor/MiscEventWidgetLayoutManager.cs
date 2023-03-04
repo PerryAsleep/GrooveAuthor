@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using static StepManiaEditor.Utils;
+using static StepManiaEditor.ImGuiUtils;
 
 namespace StepManiaEditor
 {

@@ -5,6 +5,7 @@ using ImGuiNET;
 using System.Numerics;
 using Fumen.ChartDefinition;
 using static Fumen.FumenExtensions;
+using static StepManiaEditor.ImGuiUtils;
 
 namespace StepManiaEditor
 {
@@ -26,13 +27,13 @@ namespace StepManiaEditor
 
 		private static ImFontPtr ImGuiFont;
 
-		private static readonly float CheckBoxWidth = Utils.UiScaled(20);
-		private static readonly float FileBrowseXwidth = Utils.UiScaled(20);
-		private static readonly float FileBrowseBrowseWidth = Utils.UiScaled(50);
-		private static readonly float FileBrowseAutoWidth = Utils.UiScaled(50);
-		private static readonly float DisplayTempoEnumWidth = Utils.UiScaled(120);
-		private static readonly float DisplayTempoToWidth = Utils.UiScaled(14);
-		private static readonly float SliderResetWidth = Utils.UiScaled(50);
+		private static readonly float CheckBoxWidth = UiScaled(20);
+		private static readonly float FileBrowseXwidth = UiScaled(20);
+		private static readonly float FileBrowseBrowseWidth = UiScaled(50);
+		private static readonly float FileBrowseAutoWidth = UiScaled(50);
+		private static readonly float DisplayTempoEnumWidth = UiScaled(120);
+		private static readonly float DisplayTempoToWidth = UiScaled(14);
+		private static readonly float SliderResetWidth = UiScaled(50);
 
 		public static void SetFont(ImFontPtr font)
 		{
@@ -297,10 +298,10 @@ namespace StepManiaEditor
 			DrawRowTitleAndAdvanceColumn(title);
 
 			// Display the text input but do not allow edits to it.
-			Utils.PushDisabled();
+			PushDisabled();
 			DrawTextInput(false, title, o, fieldName,
 				Math.Max(1.0f, ImGui.GetContentRegionAvail().X - (FileBrowseXwidth + FileBrowseBrowseWidth) - ImGui.GetStyle().ItemSpacing.X * 2), affectsFile, help);
-			Utils.PopDisabled();
+			PopDisabled();
 
 			ImGui.SameLine();
 			if (ImGui.Button($"X{GetElementTitle(title, fieldName)}", new Vector2(FileBrowseXwidth, 0.0f)))
@@ -322,10 +323,10 @@ namespace StepManiaEditor
 			DrawRowTitleAndAdvanceColumn(title);
 
 			// Display the text input but do not allow edits to it.
-			Utils.PushDisabled();
+			PushDisabled();
 			DrawTextInput(false, title, o, fieldName,
 				Math.Max(1.0f, ImGui.GetContentRegionAvail().X - (FileBrowseXwidth + FileBrowseAutoWidth + FileBrowseBrowseWidth) - ImGui.GetStyle().ItemSpacing.X * 3), affectsFile, help);
-			Utils.PopDisabled();
+			PopDisabled();
 
 			ImGui.SameLine();
 			if (ImGui.Button($"X{GetElementTitle(title, fieldName)}", new Vector2(FileBrowseXwidth, 0.0f)))
@@ -377,7 +378,7 @@ namespace StepManiaEditor
 		{
 			(bool, int) Func(int v)
 			{
-				var r = Utils.InputInt(GetElementTitle(title, fieldName), ref v, min, max);
+				var r = InputInt(GetElementTitle(title, fieldName), ref v, min, max);
 				return (r, v);
 			}
 
@@ -407,16 +408,16 @@ namespace StepManiaEditor
 		{
 			DrawRowTitleAndAdvanceColumn(title);
 			if (!field1Enabled)
-				Utils.PushDisabled();
+				PushDisabled();
 			DrawDragInt(undoable, "", o, fieldName1, ImGui.GetContentRegionAvail().X * 0.5f, affectsFile, help, speed, format, min1, max1);
 			if (!field1Enabled)
-				Utils.PopDisabled();
+				PopDisabled();
 			ImGui.SameLine();
 			if (!field2Enabled)
-				Utils.PushDisabled();
+				PushDisabled();
 			DrawDragInt(undoable, "", o, fieldName2, ImGui.GetContentRegionAvail().X, affectsFile, "", speed, format, min2, max2);
 			if (!field2Enabled)
-				Utils.PopDisabled();
+				PopDisabled();
 		}
 
 		public static bool DrawRowDragInt(
@@ -444,7 +445,7 @@ namespace StepManiaEditor
 		{
 			var itemWidth = DrawHelp(GetDragHelpText(help), width);
 			ImGui.SetNextItemWidth(itemWidth);
-			return Utils.DragInt(ref value, GetElementTitle(title), speed, format, min, max);
+			return DragInt(ref value, GetElementTitle(title), speed, format, min, max);
 		}
 
 		public static bool DrawRowDragInt(
@@ -478,7 +479,7 @@ namespace StepManiaEditor
 		{
 			(bool, int) Func(int v)
 			{
-				var r = Utils.DragInt(ref v, GetElementTitle(title, fieldName), speed, format, min, max);
+				var r = DragInt(ref v, GetElementTitle(title, fieldName), speed, format, min, max);
 				return (r, v);
 			}
 
@@ -558,7 +559,7 @@ namespace StepManiaEditor
 		{
 			(bool, uint) Func(uint v)
 			{
-				var r = Utils.SliderUInt(GetElementTitle(title, fieldName), ref v, min, max, format, flags);
+				var r = SliderUInt(GetElementTitle(title, fieldName), ref v, min, max, format, flags);
 				return (r, v);
 			}
 
@@ -745,14 +746,14 @@ namespace StepManiaEditor
 
 			enabled = GetValueFromFieldOrProperty<bool>(o, enabledFieldName);
 			if (!enabled)
-				Utils.PushDisabled();
+				PushDisabled();
 
 			// Control for the float value.
 			ImGui.SameLine();
 			DrawDragFloat(undoable, title, o, fieldName, controlWidth, null, speed, format, affectsFile, min, max, flags);
 
 			if (!enabled)
-				Utils.PopDisabled();
+				PopDisabled();
 		}
 
 		private static bool DrawDragFloat(
@@ -807,7 +808,7 @@ namespace StepManiaEditor
 		{
 			var itemWidth = DrawHelp(GetDragHelpText(help), width);
 			ImGui.SetNextItemWidth(itemWidth);
-			return Utils.DragDouble(ref value, GetElementTitle(title), speed, format, min, max);
+			return DragDouble(ref value, GetElementTitle(title), speed, format, min, max);
 		}
 
 		public static bool DrawRowDragDouble(
@@ -860,14 +861,14 @@ namespace StepManiaEditor
 
 			enabled = GetValueFromFieldOrProperty<bool>(o, enabledFieldName);
 			if (!enabled)
-				Utils.PushDisabled();
+				PushDisabled();
 
 			// Control for the double value.
 			ImGui.SameLine();
 			DrawDragDouble(undoable, title, o, fieldName, controlWidth, null, speed, format, affectsFile, min, max);
 
 			if (!enabled)
-				Utils.PopDisabled();
+				PopDisabled();
 		}
 
 		public static void DrawRowDragDoubleWithOneButton(
@@ -893,13 +894,13 @@ namespace StepManiaEditor
 
 			ImGui.SameLine();
 			if (!enabled)
-				Utils.PushDisabled();
+				PushDisabled();
 			if (ImGui.Button($"{text}{GetElementTitle(title, fieldName)}", new Vector2(width, 0.0f)))
 			{
 				action();
 			}
 			if (!enabled)
-				Utils.PopDisabled();
+				PopDisabled();
 		}
 
 		public static void DrawRowDragDoubleWithTwoButtons(
@@ -953,7 +954,7 @@ namespace StepManiaEditor
 		{
 			(bool, double) Func(double v)
 			{
-				var r = Utils.DragDouble(ref v, GetElementTitle(title, fieldName), speed, format, min, max);
+				var r = DragDouble(ref v, GetElementTitle(title, fieldName), speed, format, min, max);
 				return (r, v);
 			}
 
@@ -975,7 +976,7 @@ namespace StepManiaEditor
 		{
 			(bool, double) Func(double v)
 			{
-				var r = Utils.DragDouble(ref v, GetElementTitle(title, fieldName), speed, format, min, max);
+				var r = DragDouble(ref v, GetElementTitle(title, fieldName), speed, format, min, max);
 				return (r, v);
 			}
 
@@ -1014,10 +1015,10 @@ namespace StepManiaEditor
 			T newValue = value;
 			var ret = false;
 			if (allowedValues != null)
-				ret = Utils.ComboFromEnum(GetElementTitle(title, fieldName), ref newValue, allowedValues,
+				ret = ComboFromEnum(GetElementTitle(title, fieldName), ref newValue, allowedValues,
 					GetElementTitle(title, fieldName));
 			else
-				ret = Utils.ComboFromEnum(GetElementTitle(title, fieldName), ref newValue);
+				ret = ComboFromEnum(GetElementTitle(title, fieldName), ref newValue);
 			if (ret)
 			{
 				if (!newValue.Equals(value))
@@ -1051,7 +1052,7 @@ namespace StepManiaEditor
 			var itemWidth = DrawHelp(help, width);
 			ImGui.SetNextItemWidth(itemWidth);
 
-			(var ret, var originalValues) = Utils.SelectableTree<T>(title, ref value);
+			(var ret, var originalValues) = SelectableTree<T>(title, ref value);
 			if (ret && undoable)
 				ActionQueue.Instance.Do(
 					new ActionSetObjectFieldOrPropertyReference<bool[]>(o, fieldName, (bool[])value.Clone(), originalValues, affectsFile));
@@ -1074,7 +1075,7 @@ namespace StepManiaEditor
 			var itemWidth = DrawHelp(help, width);
 			ImGui.SetNextItemWidth(itemWidth);
 
-			(var ret, var originalValues) = Utils.SelectableTree(title, validChoices, ref value);
+			(var ret, var originalValues) = SelectableTree(title, validChoices, ref value);
 			if (ret && undoable)
 				ActionQueue.Instance.Do(
 					new ActionSetObjectFieldOrPropertyReference<bool[]>(o, fieldName, (bool[])value.Clone(), originalValues, affectsFile));
@@ -1192,12 +1193,12 @@ namespace StepManiaEditor
 				// For a Random display, just draw a disabled InputText with "???".
 				case DisplayTempoMode.Random:
 					{
-						Utils.PushDisabled();
+						PushDisabled();
 						var text = "???";
 						ImGui.SetNextItemWidth(Math.Max(1.0f, tempoControlWidth));
 						ImGui.SameLine();
 						ImGui.InputText("", ref text, 4);
-						Utils.PopDisabled();
+						PopDisabled();
 						break;
 					}
 
@@ -1212,7 +1213,7 @@ namespace StepManiaEditor
 
 						// "to" text to split the min and max.
 						ImGui.SameLine();
-						Utils.Text("to", DisplayTempoToWidth);
+						Text("to", DisplayTempoToWidth);
 
 						// Checkbox for whether or not to use a distinct max.
 						ImGui.SameLine();
@@ -1229,7 +1230,7 @@ namespace StepManiaEditor
 						// If not using a distinct max, disable the max DragDouble and ensure that the max is set to the min.
 						if (!displayTempo.ShouldAllowEditsOfMax)
 						{
-							Utils.PushDisabled();
+							PushDisabled();
 
 							if (!displayTempo.SpecifiedTempoMin.DoubleEquals(displayTempo.SpecifiedTempoMax))
 								displayTempo.SpecifiedTempoMax = displayTempo.SpecifiedTempoMin;
@@ -1245,7 +1246,7 @@ namespace StepManiaEditor
 						// Pop the disabled setting if we pushed it before.
 						if (!displayTempo.ShouldAllowEditsOfMax)
 						{
-							Utils.PopDisabled();
+							PopDisabled();
 						}
 
 						break;
@@ -1254,14 +1255,14 @@ namespace StepManiaEditor
 				case DisplayTempoMode.Actual:
 					{
 						// The controls for the actual tempo are always disabled.
-						Utils.PushDisabled();
+						PushDisabled();
 
 						// If the actual tempo is one value then just draw one DragDouble.
 						if (actualMinTempo.DoubleEquals(actualMaxTempo))
 						{
 							ImGui.SetNextItemWidth(Math.Max(1.0f, tempoControlWidth));
 							ImGui.SameLine();
-							Utils.DragDouble(ref actualMinTempo, "");
+							DragDouble(ref actualMinTempo, "");
 						}
 
 						// If the actual tempo is a range then draw the min and max.
@@ -1270,7 +1271,7 @@ namespace StepManiaEditor
 							// DragDouble for the min.
 							ImGui.SetNextItemWidth(splitTempoWidth);
 							ImGui.SameLine();
-							Utils.DragDouble(ref actualMinTempo, "");
+							DragDouble(ref actualMinTempo, "");
 
 							// "to" text to split the min and max.
 							ImGui.SameLine();
@@ -1279,10 +1280,10 @@ namespace StepManiaEditor
 							// DragDouble for the max.
 							ImGui.SetNextItemWidth(splitTempoWidth);
 							ImGui.SameLine();
-							Utils.DragDouble(ref actualMaxTempo, "");
+							DragDouble(ref actualMaxTempo, "");
 						}
 
-						Utils.PopDisabled();
+						PopDisabled();
 						break;
 					}
 			}
@@ -1302,7 +1303,7 @@ namespace StepManiaEditor
 
 		public static double GetMiscEditorEventDragIntWidgetWidth(int i, string format)
 		{
-			return GetMiscEditorEventStringWidth(Utils.FormatImGuiInt(format, i));
+			return GetMiscEditorEventStringWidth(FormatImGuiInt(format, i));
 		}
 
 		public static void MiscEditorEventDragIntWidget(
@@ -1332,7 +1333,7 @@ namespace StepManiaEditor
 
 		public static double GetMiscEditorEventDragDoubleWidgetWidth(double d, string format)
 		{
-			return GetMiscEditorEventStringWidth(Utils.FormatImGuiDouble(format, d));
+			return GetMiscEditorEventStringWidth(FormatImGuiDouble(format, d));
 		}
 
 		public static void MiscEditorEventDragDoubleWidget(
@@ -1387,7 +1388,7 @@ namespace StepManiaEditor
 		public static double GetMiscEditorEventStringWidth(string s)
 		{
 			ImGui.PushFont(ImGuiFont);
-			var width = ImGui.CalcTextSize(s).X + Utils.GetCloseWidth();
+			var width = ImGui.CalcTextSize(s).X + GetCloseWidth();
 			ImGui.PopFont();
 			return width;
 		}
@@ -1532,11 +1533,11 @@ namespace StepManiaEditor
 			// If fading out, multiply key window elements by the alpha value.
 			if (alpha < 1.0f)
 			{
-				Utils.PushAlpha(ImGuiCol.WindowBg, alpha);
-				Utils.PushAlpha(ImGuiCol.Button, alpha);
-				Utils.PushAlpha(ImGuiCol.FrameBg, alpha);
-				Utils.PushAlpha(ImGuiCol.Text, alpha);
-				Utils.PushAlpha(ImGuiCol.Border, alpha);
+				PushAlpha(ImGuiCol.WindowBg, alpha);
+				PushAlpha(ImGuiCol.Button, alpha);
+				PushAlpha(ImGuiCol.FrameBg, alpha);
+				PushAlpha(ImGuiCol.Text, alpha);
+				PushAlpha(ImGuiCol.Border, alpha);
 				colorPushCount += 5;
 			}
 
@@ -1569,7 +1570,7 @@ namespace StepManiaEditor
 				| ImGuiWindowFlags.NoBringToFrontOnFocus
 				| ImGuiWindowFlags.NoFocusOnAppearing))
 			{
-				var elementWidth = width - Utils.GetCloseWidth();
+				var elementWidth = width - GetCloseWidth();
 
 				// Draw the control.
 				func(elementWidth);
@@ -1581,11 +1582,11 @@ namespace StepManiaEditor
 				// Delete button
 				ImGui.SameLine();
 				if (!canBeDeleted)
-					Utils.PushDisabled();
-				if (ImGui.Button($"X##{id}", new Vector2(Utils.GetCloseWidth(), 0.0f)))
+					PushDisabled();
+				if (ImGui.Button($"X##{id}", new Vector2(GetCloseWidth(), 0.0f)))
 					ActionQueue.Instance.Do(new ActionDeleteEditorEvents(e));
 				if (!canBeDeleted)
-					Utils.PopDisabled();
+					PopDisabled();
 			}
 			ImGui.End();
 
@@ -1721,17 +1722,17 @@ namespace StepManiaEditor
 		public static float DrawHelp(string help, float width)
 		{
 			var hasHelp = !string.IsNullOrEmpty(help);
-			var remainderWidth = hasHelp ? Math.Max(1.0f, width - Utils.GetHelpWidth() - ImGui.GetStyle().ItemSpacing.X) : width;
-			//var remainderWidth = Math.Max(1.0f, width - Utils.GetHelpWidth() - ImGui.GetStyle().ItemSpacing.X);
+			var remainderWidth = hasHelp ? Math.Max(1.0f, width - GetHelpWidth() - ImGui.GetStyle().ItemSpacing.X) : width;
+			//var remainderWidth = Math.Max(1.0f, width - GetHelpWidth() - ImGui.GetStyle().ItemSpacing.X);
 
 			if (hasHelp)
 			{
-				Utils.HelpMarker(help);
+				HelpMarker(help);
 				ImGui.SameLine();
 			}
 			//else
 			//{
-			//	ImGui.Dummy(new Vector2(Utils.HelpWidth, 1));
+			//	ImGui.Dummy(new Vector2(HelpWidth, 1));
 			//	ImGui.SameLine();
 			//}
 

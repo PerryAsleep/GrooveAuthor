@@ -1,7 +1,7 @@
 ﻿using System.Numerics;
 using Fumen.Converters;
 using ImGuiNET;
-using static StepManiaEditor.Utils;
+using static StepManiaEditor.ImGuiUtils;
 
 namespace StepManiaEditor
 {
@@ -86,11 +86,11 @@ namespace StepManiaEditor
 
 		private static void BrowseMusicFile()
 		{
-			var relativePath = BrowseFile(
+			var relativePath = Utils.BrowseFile(
 				"Music",
 				EditorChart.EditorSong.FileDirectory,
 				EditorChart.MusicPath,
-				FileOpenFilterForAudio("Music", true));
+				Utils.FileOpenFilterForAudio("Music", true));
 			if (relativePath != null && relativePath != EditorChart.MusicPath)
 				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorChart, nameof(EditorChart.MusicPath), relativePath, true));
 		}

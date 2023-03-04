@@ -23,7 +23,7 @@ namespace StepManiaEditor
 
 		public override string ToString()
 		{
-			return $"Delete {Utils.GetPrettyEnumString(Chart.ChartType)} Chart.";
+			return $"Delete {ImGuiUtils.GetPrettyEnumString(Chart.ChartType)} Chart.";
 		}
 
 		public override void Do()

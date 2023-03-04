@@ -14,6 +14,7 @@ using Fumen.Converters;
 using StepManiaLibrary;
 using static StepManiaLibrary.Constants;
 using static StepManiaEditor.Utils;
+using static StepManiaEditor.ImGuiUtils;
 using Keys = Microsoft.Xna.Framework.Input.Keys;
 using Path = Fumen.Path;
 using Vector2 = Microsoft.Xna.Framework.Vector2;
@@ -99,6 +100,7 @@ namespace StepManiaEditor
 		private bool UnsavedChangesLastFrame = false;
 		private string PendingOpenSongFileName;
 		private string PendingMusicFile;
+		private string PendingImageFile;
 		private string PendingVideoFile;
 		private string PendingLyricsFile;
 		private bool ShowSavePopup = false;
@@ -1231,7 +1233,7 @@ namespace StepManiaEditor
 
 			// Draw the background texture.
 			SpriteBatch.Begin();
-			ActiveSong.Background.GetTexture().DrawTexture(SpriteBatch, 0, 0, (uint)GetViewportWidth(), (uint)GetViewportHeight(), TextureLayoutMode.Box);
+			ActiveSong.Background.GetTexture().DrawTexture(SpriteBatch, 0, 0, (uint)GetViewportWidth(), (uint)GetViewportHeight(), TextureUtils.TextureLayoutMode.Box);
 			SpriteBatch.End();
 		}
 
@@ -4842,6 +4844,21 @@ namespace StepManiaEditor
 			}
 		}
 
+		private void OnOpenImageFile(string imageFile)
+		{
+			if (ActiveSong != null)
+			{
+				// TODO: Use image for most appropriate song asset.
+				var relativePath = Path.GetRelativePath(ActiveSong.FileDirectory, imageFile);
+				UpdateBackgroundPath(relativePath);
+			}
+			else
+			{
+				PendingImageFile = imageFile;
+				OnNew();
+			}
+		}
+
 		private void OnOpenVideoFile(string videoFile)
 		{
 			if (ActiveSong != null)
@@ -4989,6 +5006,12 @@ namespace StepManiaEditor
 			{
 				ActiveSong.LyricsPath = PendingLyricsFile;
 				PendingLyricsFile = null;
+			}
+			if (!string.IsNullOrEmpty(PendingImageFile))
+			{
+				// TODO: Use image for most appropriate song asset.
+				ActiveSong.Background.Path = PendingImageFile;
+				PendingImageFile = null;
 			}
 			if (!string.IsNullOrEmpty(PendingVideoFile))
 			{
@@ -5377,6 +5400,8 @@ namespace StepManiaEditor
 				OnOpenFile(file);
 			else if (ExpectedAudioFormats.Contains(extension))
 				OnOpenAudioFile(file);
+			else if (ExpectedImageFormats.Contains(extension))
+				OnOpenImageFile(file);
 			else if (ExpectedVideoFormats.Contains(extension))
 				OnOpenVideoFile(file);
 			else if (ExpectedLyricsFormats.Contains(extension))
@@ -5394,6 +5419,8 @@ namespace StepManiaEditor
 			if (IsSongExtensionSupported(extension))
 				return true;
 			if (ExpectedAudioFormats.Contains(extension))
+				return true;
+			if (ExpectedImageFormats.Contains(extension))
 				return true;
 			if (ExpectedVideoFormats.Contains(extension))
 				return true;

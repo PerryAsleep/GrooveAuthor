@@ -1,6 +1,6 @@
 ﻿using System.Numerics;
 using ImGuiNET;
-using static StepManiaEditor.Utils;
+using static StepManiaEditor.ImGuiUtils;
 
 namespace StepManiaEditor
 {
@@ -22,7 +22,7 @@ namespace StepManiaEditor
 			var deleteChart = false;
 			ImGui.TableNextRow();
 
-			var color = GetColorForDifficultyType(chart.ChartDifficultyType);
+			var color = Utils.GetColorForDifficultyType(chart.ChartDifficultyType);
 
 			ImGui.TableSetColumnIndex(0);
 			ImGui.TableSetBgColor(ImGuiTableBgTarget.CellBg, color);

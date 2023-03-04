@@ -2,7 +2,7 @@
 using System.Numerics;
 using Fumen.Converters;
 using ImGuiNET;
-using static StepManiaEditor.Utils;
+using static StepManiaEditor.ImGuiUtils;
 using static Fumen.FumenExtensions;
 
 namespace StepManiaEditor

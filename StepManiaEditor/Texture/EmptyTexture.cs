@@ -1,5 +1,6 @@
 ﻿using System;
 using Microsoft.Xna.Framework.Graphics;
+using static StepManiaEditor.TextureUtils;
 
 namespace StepManiaEditor
 {
@@ -61,9 +62,9 @@ namespace StepManiaEditor
 		/// Draw the empty texture as an image through ImGui.
 		/// </summary>
 		/// <param name="mode">TextureLayoutMode for how to layout this texture.</param>
-		public void Draw(Utils.TextureLayoutMode mode = Utils.TextureLayoutMode.Box)
+		public void Draw(TextureLayoutMode mode = TextureLayoutMode.Box)
 		{
-			Utils.DrawImage(ImGuiId, TextureImGui, TextureMonogame, Width, Height, mode);
+			ImGuiUtils.DrawImage(ImGuiId, TextureImGui, TextureMonogame, Width, Height, mode);
 		}
 
 		/// <summary>
@@ -71,9 +72,9 @@ namespace StepManiaEditor
 		/// </summary>
 		/// <param name="mode">TextureLayoutMode for how to layout this texture.</param>
 		/// <returns>True if the button was pressed and false otherwise.</returns>
-		public bool DrawButton(Utils.TextureLayoutMode mode = Utils.TextureLayoutMode.Box)
+		public bool DrawButton(TextureLayoutMode mode = TextureLayoutMode.Box)
 		{
-			return Utils.DrawButton(ImGuiId, TextureImGui, TextureMonogame, Width, Height, mode);
+			return ImGuiUtils.DrawButton(ImGuiId, TextureImGui, TextureMonogame, Width, Height, mode);
 		}
 
 		/// <summary>

@@ -6,12 +6,11 @@ using Fumen.ChartDefinition;
 using Fumen.Converters;
 using Microsoft.Xna.Framework.Graphics;
 using static StepManiaEditor.Utils;
+using static StepManiaEditor.ImGuiUtils;
 using static Fumen.Converters.SMCommon;
 using static Fumen.Converters.SMWriterBase;
 using System.Text.Json.Serialization;
 using System.Text.Json;
-
-
 
 namespace StepManiaEditor
 {

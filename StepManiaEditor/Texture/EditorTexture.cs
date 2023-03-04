@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Linq;
 using Fumen;
 using Microsoft.Xna.Framework.Graphics;
+using static StepManiaEditor.TextureUtils;
 
 namespace StepManiaEditor
 {
@@ -21,7 +22,7 @@ namespace StepManiaEditor
 	///  Call Draw or DrawButton once per frame as needed to draw the texture through ImGui.
 	///  Call DrawTexture once per frame as needed to draw the texture through Monogame.
 	/// </summary>
-	public class EditorTexture : IDisposable
+	internal sealed class EditorTexture : IDisposable
 	{
 		private readonly ImGuiRenderer ImGuiRenderer;
 		private readonly GraphicsDevice GraphicsDevice;
@@ -100,7 +101,7 @@ namespace StepManiaEditor
 			GC.SuppressFinalize(this);
 		}
 
-		protected virtual void Dispose(bool disposing)
+		private void Dispose(bool disposing)
 		{
 			if (Disposed)
 				return;
@@ -271,7 +272,7 @@ namespace StepManiaEditor
 		/// </summary>
 		/// <param name="mode">TextureLayoutMode for how to layout this texture.</param>
 		/// <returns>True if the texture was successfully drawn and false otherwise.</returns>
-		public bool Draw(Utils.TextureLayoutMode mode = Utils.TextureLayoutMode.Box)
+		public bool Draw(TextureLayoutMode mode = TextureLayoutMode.Box)
 		{
 			// Prior to drawing, check if there is a newly loaded texture to swap to.
 			CheckForSwappingToNewTexture();
@@ -279,7 +280,7 @@ namespace StepManiaEditor
 			if (!Bound)
 				return false;
 
-			Utils.DrawImage(ImGuiId, TextureImGui, TextureMonogame, Width, Height, mode);
+			ImGuiUtils.DrawImage(ImGuiId, TextureImGui, TextureMonogame, Width, Height, mode);
 			return true;
 		}
 
@@ -291,7 +292,7 @@ namespace StepManiaEditor
 		/// Tuple where the first value represents if the texture was successfully drawn.
 		/// The second value represents if the button was pressed.
 		/// </returns>
-		public (bool, bool) DrawButton(Utils.TextureLayoutMode mode = Utils.TextureLayoutMode.Box)
+		public (bool, bool) DrawButton(TextureLayoutMode mode = TextureLayoutMode.Box)
 		{
 			// Prior to drawing, check if there is a newly loaded texture to swap to.
 			CheckForSwappingToNewTexture();
@@ -299,7 +300,7 @@ namespace StepManiaEditor
 			if (!Bound)
 				return (false, false);
 
-			return (true, Utils.DrawButton(ImGuiId, TextureImGui, TextureMonogame, Width, Height, mode));
+			return (true, ImGuiUtils.DrawButton(ImGuiId, TextureImGui, TextureMonogame, Width, Height, mode));
 		}
 
 		/// <summary>
@@ -311,7 +312,7 @@ namespace StepManiaEditor
 		/// <param name="w">Width of area to draw the texture.</param>
 		/// <param name="h">Height of are to draw the texture.</param>
 		/// <param name="mode">TextureLayoutMode for how to layout this texture.</param>
-		public void DrawTexture(SpriteBatch spriteBatch, int x, int y, uint w, uint h, Utils.TextureLayoutMode mode = Utils.TextureLayoutMode.Box)
+		public void DrawTexture(SpriteBatch spriteBatch, int x, int y, uint w, uint h, TextureLayoutMode mode = TextureLayoutMode.Box)
 		{
 			// Prior to drawing, check if there is a newly loaded texture to swap to.
 			CheckForSwappingToNewTexture();
@@ -319,7 +320,7 @@ namespace StepManiaEditor
 			if (!Bound)
 				return;
 
-			Utils.DrawTexture(spriteBatch, TextureMonogame, x, y, w, h, mode);
+			TextureUtils.DrawTexture(spriteBatch, TextureMonogame, x, y, w, h, mode);
 		}
 	}
 }

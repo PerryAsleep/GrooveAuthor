@@ -25,7 +25,7 @@ namespace StepManiaEditor
 
 		public override string ToString()
 		{
-			return $"Add {Utils.GetPrettyEnumString(ChartType)} Chart.";
+			return $"Add {ImGuiUtils.GetPrettyEnumString(ChartType)} Chart.";
 		}
 
 		public override void Do()

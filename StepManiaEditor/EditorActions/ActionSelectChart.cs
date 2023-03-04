@@ -24,7 +24,7 @@ namespace StepManiaEditor
 
 		public override string ToString()
 		{
-			return $"Select {Utils.GetPrettyEnumString(Chart.ChartType)} {Utils.GetPrettyEnumString(Chart.ChartDifficultyType)} Chart.";
+			return $"Select {ImGuiUtils.GetPrettyEnumString(Chart.ChartType)} {ImGuiUtils.GetPrettyEnumString(Chart.ChartDifficultyType)} Chart.";
 		}
 
 		public override void Do()

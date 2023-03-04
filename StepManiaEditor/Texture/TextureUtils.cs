@@ -1,12 +1,193 @@
 ﻿using System;
 using System.Collections.Generic;
+using Fumen;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using static Fumen.FumenExtensions;
 
 namespace StepManiaEditor
 {
 	internal sealed class TextureUtils
 	{
+		public enum TextureLayoutMode
+		{
+			/// <summary>
+			/// Draw the texture at its original size, centered in the destination area. If the texture is larger
+			/// than the destination area then it will be cropped as needed to fit. If it is smaller then it will
+			/// be rendered smaller.
+			/// </summary>
+			OriginalSize,
+
+			/// <summary>
+			/// The texture will fill the destination area exactly. It will shrink or grow as needed and the aspect
+			/// ratio will change to match the destination.
+			/// </summary>
+			Stretch,
+
+			/// <summary>
+			/// Maintain the texture's original aspect ratio and fill the destination area. If the texture aspect
+			/// ratio does not match the destination area's aspect ratio, then the texture will be cropped.
+			/// </summary>
+			Fill,
+
+			/// <summary>
+			/// Letterbox or pillarbox as needed such that texture's original aspect ratio is maintained and it fills
+			/// the destination area as much as possible.
+			/// </summary>
+			Box
+		}
+
+		public static (float xOffset, float yOffset, System.Numerics.Vector2 size, System.Numerics.Vector2 uv0, System.Numerics.Vector2 uv1) GetTextureUVs(
+			Texture2D texture, uint width, uint height, TextureLayoutMode mode)
+		{
+			float xOffset = 0.0f;
+			float yOffset = 0.0f;
+
+			// The size of the image to draw.
+			var size = new System.Numerics.Vector2(width, height);
+
+			// The UV coordinates for drawing the texture on the image.
+			var uv0 = new System.Numerics.Vector2(0.0f, 0.0f);
+			var uv1 = new System.Numerics.Vector2(1.0f, 1.0f);
+
+			switch (mode)
+			{
+				// Maintain the original size of the texture.
+				// Crop and offset as needed.
+				case TextureLayoutMode.OriginalSize:
+					{
+						// If the texture is wider than the destination area then adjust the UV X values
+						// so that we crop the texture.
+						if (texture.Width > width)
+						{
+							xOffset = 0.0f;
+							size.X = width;
+							uv0.X = (texture.Width - width) * 0.5f / texture.Width;
+							uv1.X = 1.0f - uv0.X;
+						}
+						// If the destination area is wider than the texture, then set the X offset value
+						// so that we center the texture in X within the destination area.
+						else if (texture.Width < width)
+						{
+							xOffset = (width - texture.Width) * 0.5f;
+							size.X = texture.Width;
+							uv0.X = 0.0f;
+							uv1.X = 1.0f;
+						}
+
+						// If the texture is taller than the destination area then adjust the UV Y values
+						// so that we crop the texture.
+						if (texture.Height > height)
+						{
+							yOffset = 0.0f;
+							size.Y = height;
+							uv0.Y = (texture.Height - height) * 0.5f / texture.Height;
+							uv1.Y = 1.0f - uv0.Y;
+						}
+						// If the destination area is taller than the texture, then set the Y offset value
+						// so that we center the texture in Y within the destination area.
+						else if (texture.Height < height)
+						{
+							yOffset = (height - texture.Height) * 0.5f;
+							size.Y = texture.Height;
+							uv0.Y = 0.0f;
+							uv1.Y = 1.0f;
+						}
+
+						break;
+					}
+
+				// Stretch the texture to exactly fill the destination area.
+				// The parameters are already set for rendering in this mode.
+				case TextureLayoutMode.Stretch:
+					{
+						break;
+					}
+
+				// Scale the texture uniformly such that it fills the entire destination area.
+				// Crop the dimension which goes beyond the destination area as needed.
+				case TextureLayoutMode.Fill:
+					{
+						var textureAspectRatio = (float)texture.Width / texture.Height;
+						var destinationAspectRatio = (float)width / height;
+
+						// If the texture is wider than the destination area, crop the left and right.
+						if (textureAspectRatio > destinationAspectRatio)
+						{
+							// Crop left and right.
+							var scaledTextureW = texture.Width * ((float)height / texture.Height);
+							uv0.X = (scaledTextureW - height) * 0.5f / scaledTextureW;
+							uv1.X = 1.0f - uv0.X;
+
+							// Fill Y.
+							uv0.Y = 0.0f;
+							uv1.Y = 1.0f;
+						}
+
+						// If the texture is taller than the destination area, crop the top and bottom.
+						else if (textureAspectRatio < destinationAspectRatio)
+						{
+							// Fill X.
+							uv0.X = 0.0f;
+							uv1.X = 1.0f;
+
+							// Crop top and bottom.
+							var scaledTextureH = texture.Height * ((float)width / texture.Width);
+							uv0.Y = (scaledTextureH - width) * 0.5f / scaledTextureH;
+							uv1.Y = 1.0f - uv0.Y;
+						}
+
+						break;
+					}
+
+				// Scale the texture uniformly such that it fills the destination area without going over
+				// in either dimension.
+				case TextureLayoutMode.Box:
+					{
+						var textureAspectRatio = (float)texture.Width / texture.Height;
+						var destinationAspectRatio = (float)width / height;
+
+						// If the texture is wider than the destination area, letterbox.
+						if (textureAspectRatio > destinationAspectRatio)
+						{
+							var scale = (float)width / texture.Width;
+							size.X = texture.Width * scale;
+							size.Y = texture.Height * scale;
+							yOffset = (height - texture.Height * scale) * 0.5f;
+						}
+
+						// If the texture is taller than the destination area, pillarbox.
+						else if (textureAspectRatio < destinationAspectRatio)
+						{
+							var scale = (float)height / texture.Height;
+							size.X = texture.Width * scale;
+							size.Y = texture.Height * scale;
+							xOffset = (width - texture.Width * scale) * 0.5f;
+						}
+
+						break;
+					}
+			}
+
+			return (xOffset, yOffset, size, uv0, uv1);
+		}
+
+		public static void DrawTexture(
+			SpriteBatch spriteBatch,
+			Texture2D texture,
+			int x,
+			int y,
+			uint width,
+			uint height,
+			TextureLayoutMode mode)
+		{
+			var (xOffset, yOffset, size, uv0, uv1) = GetTextureUVs(texture, width, height, mode);
+
+			var destRect = new Rectangle((int)(x + xOffset), (int)(y + yOffset), (int)size.X, (int)size.Y);
+			var sourceRect = new Rectangle((int)(uv0.X * texture.Width), (int)(uv0.Y * texture.Height), (int)(uv1.X * texture.Width), (int)(uv1.Y * texture.Height));
+
+			spriteBatch.Draw(texture, destRect, sourceRect, Color.White);
+		}
+
 		/// <summary>
 		/// Given a texture, returns list of textures representing the mip levels.
 		/// The first texture is the given texture. Every subsequent texture is half the size of the previous.
