@@ -11,6 +11,8 @@ using static Fumen.Converters.SMWriterBase;
 using System.Text.Json.Serialization;
 using System.Text.Json;
 
+
+
 namespace StepManiaEditor
 {
 	internal enum Selectable

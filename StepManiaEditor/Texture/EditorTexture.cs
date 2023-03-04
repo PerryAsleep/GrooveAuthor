@@ -246,7 +246,7 @@ namespace StepManiaEditor
 				if (!NewTextureReady)
 					return;
 				NewTextureReady = false;
-				
+
 				// Unbind the previous texture.
 				if (Bound)
 				{

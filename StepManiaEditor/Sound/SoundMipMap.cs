@@ -23,8 +23,8 @@ namespace StepManiaEditor
 		///  - A minimum value representing the lowest value of the underlying samples.
 		///  - A maximum value representing the highest value of the underlying samples.
 		///  - A distance value representing the sum of the deltas between each underlying sample from its
-		///    previous sample divided by the number of samples. This is stored as a ratio rather than a
-		///    sum in order to require less memory.
+		///	previous sample divided by the number of samples. This is stored as a ratio rather than a
+		///	sum in order to require less memory.
 		/// All values are in the range of [0-R) where R is the total x pixel range.
 		/// At each mip level, the number of samples represented by each SampleDataPerChannel entry
 		/// is 2 to the power of the mip level. For example at mip level 0 each uint
@@ -69,7 +69,7 @@ namespace StepManiaEditor
 			}
 			public static void SetMin(ref uint sampleData, ushort min)
 			{
-				sampleData = (sampleData & 0xFFFFFE00) | min;
+				sampleData = sampleData & 0xFFFFFE00 | min;
 			}
 
 			public static ushort GetMax(uint sampleData)
@@ -78,7 +78,7 @@ namespace StepManiaEditor
 			}
 			public static void SetMax(ref uint sampleData, ushort max)
 			{
-				sampleData = (sampleData & 0xFFFC01FF) | ((uint)max << 9);
+				sampleData = sampleData & 0xFFFC01FF | (uint)max << 9;
 			}
 
 			public static ushort GetDistanceOverSamples(uint sampleData)
@@ -87,7 +87,7 @@ namespace StepManiaEditor
 			}
 			public static void SetDistanceOverSamples(ref uint sampleData, ushort d)
 			{
-				sampleData = (sampleData & 0x3FFFF) | ((uint)d << 18);
+				sampleData = sampleData & 0x3FFFF | (uint)d << 18;
 			}
 		}
 
@@ -362,7 +362,7 @@ namespace StepManiaEditor
 					var numSamples = totalNumSamples / mipSampleSize;
 					if (totalNumSamples % mipSampleSize != 0)
 						numSamples++;
-					MipLevels[mipLevelIndex] = new MipLevel(numSamples, (uint) numChannels);
+					MipLevels[mipLevelIndex] = new MipLevel(numSamples, (uint)numChannels);
 
 					// If this mip level divides the data by the number of parallel workers desired,
 					// record information about this level for the tasks.
@@ -426,7 +426,7 @@ namespace StepManiaEditor
 							for (var channel = 0; channel < NumChannels; channel++)
 							{
 								var relativeSampleIndex = mipSampleIndex * numChannels + channel;
-								var previousRelativeSampleIndex = ((mipSampleIndex * numChannels) << 1) + channel;
+								var previousRelativeSampleIndex = (mipSampleIndex * numChannels << 1) + channel;
 
 								// We want to combine values from the corresponding two samples from the previous, more dense
 								// mip level data. First, just take the first sample.
@@ -467,7 +467,7 @@ namespace StepManiaEditor
 							for (var channel = 0; channel < NumChannels; channel++)
 							{
 								var relativeSampleIndex = mipSampleIndex * numChannels + channel;
-								var previousRelativeSampleIndex = ((mipSampleIndex * numChannels) << 1) + channel;
+								var previousRelativeSampleIndex = (mipSampleIndex * numChannels << 1) + channel;
 
 								// We want to combine values from the corresponding two samples from the previous, more dense
 								// mip level data. First, just take the first sample.
@@ -554,36 +554,36 @@ namespace StepManiaEditor
 			switch (format)
 			{
 				case SOUND_FORMAT.PCM8:
-				{
-					parseSample = i => ptr[i] * invPcm8Max;
-					break;
-				}
+					{
+						parseSample = i => ptr[i] * invPcm8Max;
+						break;
+					}
 				case SOUND_FORMAT.PCM16:
-				{
-					parseSample = i => ((short)ptr[i]
-					                    + (short)(ptr[i + 1] << 8)) * invPcm16Max;
-					break;
-				}
+					{
+						parseSample = i => (ptr[i]
+											+ (short)(ptr[i + 1] << 8)) * invPcm16Max;
+						break;
+					}
 				case SOUND_FORMAT.PCM24:
-				{
-					parseSample = i => (((int)(ptr[i] << 8)
-					                     + (int)(ptr[i + 1] << 16)
-					                     + (int)(ptr[i + 2] << 24)) >> 8) * invPcm24Max;
-					break;
-				}
+					{
+						parseSample = i => ((ptr[i] << 8)
+											 + (ptr[i + 1] << 16)
+											 + (ptr[i + 2] << 24) >> 8) * invPcm24Max;
+						break;
+					}
 				case SOUND_FORMAT.PCM32:
-				{
-					parseSample = i => ((int)ptr[i]
-					                    + (int)(ptr[i + 1] << 8)
-					                    + (int)(ptr[i + 2] << 16)
-					                    + (int)(ptr[i + 3] << 24)) * invPcm32Max;
-					break;
-				}
+					{
+						parseSample = i => (ptr[i]
+											+ (ptr[i + 1] << 8)
+											+ (ptr[i + 2] << 16)
+											+ (ptr[i + 3] << 24)) * invPcm32Max;
+						break;
+					}
 				case SOUND_FORMAT.PCMFLOAT:
-				{
-					parseSample = i => ((float*)ptr)[i >> 2];
-					break;
-				}
+					{
+						parseSample = i => ((float*)ptr)[i >> 2];
+						break;
+					}
 				default:
 					return;
 			}
@@ -605,7 +605,7 @@ namespace StepManiaEditor
 					previousValues[channel] = parseSample(byteIndex);
 				}
 			}
-			
+
 			// Loop over every sample and fill.
 			while (sampleIndex < endSample)
 			{
@@ -650,7 +650,7 @@ namespace StepManiaEditor
 							// If this is the last sample index for the chunk, divide and finalize.
 							if (sampleIndex % numSamplesPerMipLevel == numSamplesPerMipLevel - 1)
 							{
-								MipLevel.SetDistanceOverSamples(ref v, (ushort)(((float)d / numSamplesPerMipLevel) + 0.5f));
+								MipLevel.SetDistanceOverSamples(ref v, (ushort)((float)d / numSamplesPerMipLevel + 0.5f));
 							}
 						}
 					}

@@ -1025,7 +1025,7 @@ namespace StepManiaEditor
 					if (undoable)
 						ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyValue<T>(o, fieldName, newValue, value, affectsFile));
 					else
-						SetFieldOrPropertyToValue<T>(o, fieldName, newValue);
+						SetFieldOrPropertyToValue(o, fieldName, newValue);
 				}
 			}
 
@@ -1074,7 +1074,7 @@ namespace StepManiaEditor
 			var itemWidth = DrawHelp(help, width);
 			ImGui.SetNextItemWidth(itemWidth);
 
-			(var ret, var originalValues) = Utils.SelectableTree<T>(title, validChoices, ref value);
+			(var ret, var originalValues) = Utils.SelectableTree(title, validChoices, ref value);
 			if (ret && undoable)
 				ActionQueue.Instance.Do(
 					new ActionSetObjectFieldOrPropertyReference<bool[]>(o, fieldName, (bool[])value.Clone(), originalValues, affectsFile));
@@ -1181,110 +1181,110 @@ namespace StepManiaEditor
 			// Draw an enum for choosing the DisplayTempoMode.
 			DrawEnum<DisplayTempoMode>(undoable, "", displayTempo, nameof(DisplayTempo.Mode), DisplayTempoEnumWidth, null, true,
 				"How the tempo for this chart should be displayed." +
-				"\nRandom:    The actual tempo will be hidden and replaced with a random display." +
+				"\nRandom:	The actual tempo will be hidden and replaced with a random display." +
 				"\nSpecified: A specified tempo or tempo range will be displayed." +
-				"\n           This is a good option when tempo gimmicks would result in a misleading actual tempo range." +
-				"\nActual:    The actual tempo or tempo range will be displayed.");
+				"\n		   This is a good option when tempo gimmicks would result in a misleading actual tempo range." +
+				"\nActual:	The actual tempo or tempo range will be displayed.");
 
 			// The remainder of the row depends on the mode.
 			switch (displayTempo.Mode)
 			{
 				// For a Random display, just draw a disabled InputText with "???".
 				case DisplayTempoMode.Random:
-				{
-					Utils.PushDisabled();
-					var text = "???";
-					ImGui.SetNextItemWidth(Math.Max(1.0f, tempoControlWidth));
-					ImGui.SameLine();
-					ImGui.InputText("", ref text, 4);
-					Utils.PopDisabled();
-					break;
-				}
+					{
+						Utils.PushDisabled();
+						var text = "???";
+						ImGui.SetNextItemWidth(Math.Max(1.0f, tempoControlWidth));
+						ImGui.SameLine();
+						ImGui.InputText("", ref text, 4);
+						Utils.PopDisabled();
+						break;
+					}
 
 				// For a Specified display, draw the specified range.
 				case DisplayTempoMode.Specified:
-				{
-					// DragDouble for the min.
-					ImGui.SameLine();
-					ImGui.SetNextItemWidth(splitTempoWidth);
-					DrawDragDouble(undoable, "", displayTempo, nameof(DisplayTempo.SpecifiedTempoMin), splitTempoWidth, null,
-						0.001f, "%.6f", true);
-
-					// "to" text to split the min and max.
-					ImGui.SameLine();
-					Utils.Text("to", DisplayTempoToWidth);
-
-					// Checkbox for whether or not to use a distinct max.
-					ImGui.SameLine();
-					if (DrawCheckbox(false, "", displayTempo, nameof(DisplayTempo.ShouldAllowEditsOfMax), 10.0f, true))
-					{
-						if (undoable)
-						{
-							// Enqueue a custom action so that the ShouldAllowEditsOfMax and previous max tempo can be undone together.
-							ActionQueue.Instance.Do(
-								new ActionSetDisplayTempoAllowEditsOfMax(displayTempo, displayTempo.ShouldAllowEditsOfMax));
-						}
-					}
-
-					// If not using a distinct max, disable the max DragDouble and ensure that the max is set to the min.
-					if (!displayTempo.ShouldAllowEditsOfMax)
-					{
-						Utils.PushDisabled();
-
-						if (!displayTempo.SpecifiedTempoMin.DoubleEquals(displayTempo.SpecifiedTempoMax))
-							displayTempo.SpecifiedTempoMax = displayTempo.SpecifiedTempoMin;
-					}
-
-					// DragDouble for the max.
-					ImGui.SameLine();
-					ImGui.SetNextItemWidth(splitTempoWidth);
-					DrawDragDouble(undoable, "", displayTempo, nameof(DisplayTempo.SpecifiedTempoMax),
-						ImGui.GetContentRegionAvail().X, null,
-						0.001f, "%.6f", true);
-
-					// Pop the disabled setting if we pushed it before.
-					if (!displayTempo.ShouldAllowEditsOfMax)
-					{
-						Utils.PopDisabled();
-					}
-
-					break;
-				}
-
-				case DisplayTempoMode.Actual:
-				{
-					// The controls for the actual tempo are always disabled.
-					Utils.PushDisabled();
-
-					// If the actual tempo is one value then just draw one DragDouble.
-					if (actualMinTempo.DoubleEquals(actualMaxTempo))
-					{
-						ImGui.SetNextItemWidth(Math.Max(1.0f, tempoControlWidth));
-						ImGui.SameLine();
-						Utils.DragDouble(ref actualMinTempo, "");
-					}
-
-					// If the actual tempo is a range then draw the min and max.
-					else
 					{
 						// DragDouble for the min.
-						ImGui.SetNextItemWidth(splitTempoWidth);
 						ImGui.SameLine();
-						Utils.DragDouble(ref actualMinTempo, "");
+						ImGui.SetNextItemWidth(splitTempoWidth);
+						DrawDragDouble(undoable, "", displayTempo, nameof(DisplayTempo.SpecifiedTempoMin), splitTempoWidth, null,
+							0.001f, "%.6f", true);
 
 						// "to" text to split the min and max.
 						ImGui.SameLine();
-						ImGui.Text("to");
+						Utils.Text("to", DisplayTempoToWidth);
+
+						// Checkbox for whether or not to use a distinct max.
+						ImGui.SameLine();
+						if (DrawCheckbox(false, "", displayTempo, nameof(DisplayTempo.ShouldAllowEditsOfMax), 10.0f, true))
+						{
+							if (undoable)
+							{
+								// Enqueue a custom action so that the ShouldAllowEditsOfMax and previous max tempo can be undone together.
+								ActionQueue.Instance.Do(
+									new ActionSetDisplayTempoAllowEditsOfMax(displayTempo, displayTempo.ShouldAllowEditsOfMax));
+							}
+						}
+
+						// If not using a distinct max, disable the max DragDouble and ensure that the max is set to the min.
+						if (!displayTempo.ShouldAllowEditsOfMax)
+						{
+							Utils.PushDisabled();
+
+							if (!displayTempo.SpecifiedTempoMin.DoubleEquals(displayTempo.SpecifiedTempoMax))
+								displayTempo.SpecifiedTempoMax = displayTempo.SpecifiedTempoMin;
+						}
 
 						// DragDouble for the max.
-						ImGui.SetNextItemWidth(splitTempoWidth);
 						ImGui.SameLine();
-						Utils.DragDouble(ref actualMaxTempo, "");
+						ImGui.SetNextItemWidth(splitTempoWidth);
+						DrawDragDouble(undoable, "", displayTempo, nameof(DisplayTempo.SpecifiedTempoMax),
+							ImGui.GetContentRegionAvail().X, null,
+							0.001f, "%.6f", true);
+
+						// Pop the disabled setting if we pushed it before.
+						if (!displayTempo.ShouldAllowEditsOfMax)
+						{
+							Utils.PopDisabled();
+						}
+
+						break;
 					}
 
-					Utils.PopDisabled();
-					break;
-				}
+				case DisplayTempoMode.Actual:
+					{
+						// The controls for the actual tempo are always disabled.
+						Utils.PushDisabled();
+
+						// If the actual tempo is one value then just draw one DragDouble.
+						if (actualMinTempo.DoubleEquals(actualMaxTempo))
+						{
+							ImGui.SetNextItemWidth(Math.Max(1.0f, tempoControlWidth));
+							ImGui.SameLine();
+							Utils.DragDouble(ref actualMinTempo, "");
+						}
+
+						// If the actual tempo is a range then draw the min and max.
+						else
+						{
+							// DragDouble for the min.
+							ImGui.SetNextItemWidth(splitTempoWidth);
+							ImGui.SameLine();
+							Utils.DragDouble(ref actualMinTempo, "");
+
+							// "to" text to split the min and max.
+							ImGui.SameLine();
+							ImGui.Text("to");
+
+							// DragDouble for the max.
+							ImGui.SetNextItemWidth(splitTempoWidth);
+							ImGui.SameLine();
+							Utils.DragDouble(ref actualMaxTempo, "");
+						}
+
+						Utils.PopDisabled();
+						break;
+					}
 			}
 		}
 
@@ -1349,8 +1349,8 @@ namespace StepManiaEditor
 			string format,
 			float alpha,
 			string help,
-			double min=double.MinValue,
-			double max=double.MaxValue)
+			double min = double.MinValue,
+			double max = double.MaxValue)
 		{
 			void Func(float elementWidth)
 			{
@@ -1516,7 +1516,7 @@ namespace StepManiaEditor
 		{
 			var colorPushCount = 0;
 			var drawHelp = false;
-			
+
 			// Selected coloring.
 			if (selected)
 			{
@@ -1539,7 +1539,7 @@ namespace StepManiaEditor
 				Utils.PushAlpha(ImGuiCol.Border, alpha);
 				colorPushCount += 5;
 			}
-			
+
 			var height = (int)GetMiscEditorEventHeight();
 
 			// Record window size and padding values so we can edit and restore them.
@@ -1775,7 +1775,7 @@ namespace StepManiaEditor
 			// At the moment of releasing the control, enqueue an event to update the value to the
 			// newly edited cached value.
 			if (ImGui.IsItemDeactivatedAfterEdit()
-			    && o != null
+				&& o != null
 				&& (validationFunc == null || validationFunc(cachedValue))
 				&& !compareFunc(cachedValue, value))
 			{

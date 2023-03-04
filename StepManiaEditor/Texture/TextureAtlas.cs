@@ -245,7 +245,7 @@ namespace StepManiaEditor
 				}
 
 				// Set the mip levels to be just this PackNode.
-				node.MipLevels = new [] { node };
+				node.MipLevels = new[] { node };
 
 				TextureNodes.Add(textureId, node);
 				DirtyNodes.Add(textureId, node);
@@ -423,8 +423,8 @@ namespace StepManiaEditor
 			if (rotation != 0.0f)
 			{
 				rotationOffset = new Vector2(node.TextureRect.Width >> 1, node.TextureRect.Height >> 1);
-				destinationRectangle.X += (destinationRectangle.Width >> 1);
-				destinationRectangle.Y += (destinationRectangle.Height >> 1);
+				destinationRectangle.X += destinationRectangle.Width >> 1;
+				destinationRectangle.Y += destinationRectangle.Height >> 1;
 			}
 
 			Draw(textureId, spriteBatch, destinationRectangle, rotation, rotationOffset, alpha, spriteEffects);
@@ -483,8 +483,8 @@ namespace StepManiaEditor
 			if (rotation != 0.0f)
 			{
 				rotationOffset = new Vector2(node.TextureRect.Width >> 1, node.TextureRect.Height >> 1);
-				destinationRectangle.X += (destinationRectangle.Width >> 1);
-				destinationRectangle.Y += (destinationRectangle.Height >> 1);
+				destinationRectangle.X += destinationRectangle.Width >> 1;
+				destinationRectangle.Y += destinationRectangle.Height >> 1;
 			}
 
 			// If we are using a smaller texture, we need to offset the source rectangle accordingly.

@@ -78,8 +78,8 @@ namespace StepManiaEditor
 				(r, g, b, a) = Utils.ToFloats(color);
 				(h, s, v) = RgbToHsv(r, g, b);
 
-				saturationSumOfSquares += (s * s);
-				valueSumOfSquares += (v * v);
+				saturationSumOfSquares += s * s;
+				valueSumOfSquares += v * v;
 
 				// Hue values are angles around a circle. We need to determine the average x and y
 				// and then compute the average angle from those values.
@@ -90,8 +90,8 @@ namespace StepManiaEditor
 			}
 
 			// Determine the average hue by determining the angle of the average hue x and y values.
-			hx = (hueXSum / colorData.Length);
-			hy = (hueYSum / colorData.Length);
+			hx = hueXSum / colorData.Length;
+			hy = hueYSum / colorData.Length;
 			double avgHue = Math.Atan2(hy, hx);
 			if (avgHue < 0.0)
 				avgHue = 2.0 * Math.PI + avgHue;
@@ -165,12 +165,12 @@ namespace StepManiaEditor
 				if (h.FloatEquals((float)(Math.PI * 2.0f)))
 					h = 0.0f;
 				else
-					h = (float)((h * 3.0f) / Math.PI);
+					h = (float)(h * 3.0f / Math.PI);
 				var sextant = (float)Math.Floor(h);
 				var f = h - sextant;
 				var p = v * (1.0f - s);
-				var q = v * (1.0f - (s * f));
-				var t = v * (1.0f - (s * (1.0f - f)));
+				var q = v * (1.0f - s * f);
+				var t = v * (1.0f - s * (1.0f - f));
 				switch (sextant)
 				{
 					default:

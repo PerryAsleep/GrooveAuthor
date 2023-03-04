@@ -1,6 +1,8 @@
 ﻿using static Fumen.FumenExtensions;
 using Microsoft.Xna.Framework.Graphics;
 
+
+
 namespace StepManiaEditor
 {
 	/// <summary>
