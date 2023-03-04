@@ -99,6 +99,7 @@ namespace StepManiaEditor
 		private bool UnsavedChangesLastFrame = false;
 		private string PendingOpenSongFileName;
 		private string PendingMusicFile;
+		private string PendingLyricsFile;
 		private bool ShowSavePopup = false;
 		private Action PostSaveFunction = null;
 		private int OpenRecentIndex = 0;
@@ -4847,6 +4848,27 @@ namespace StepManiaEditor
 			ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(ActiveSong, nameof(EditorSong.MusicPath), musicPath, true));
 		}
 
+		private void OnOpenLyricsFile(string lyricsFile)
+		{
+			if (ActiveSong != null)
+			{
+				var relativePath = Path.GetRelativePath(ActiveSong.FileDirectory, lyricsFile);
+				UpdateLyricsPath(relativePath);
+			}
+			else
+			{
+				PendingLyricsFile = lyricsFile;
+				OnNew();
+			}
+		}
+
+		public void UpdateLyricsPath(string lyricsPath)
+		{
+			if (ActiveSong == null || lyricsPath == null || lyricsPath == ActiveSong.LyricsPath)
+				return;
+			ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(ActiveSong, nameof(EditorSong.LyricsPath), lyricsPath, true));
+		}
+
 		private void OnOpen()
 		{
 			if (ActionQueue.Instance.HasUnsavedChanges())
@@ -4940,6 +4962,11 @@ namespace StepManiaEditor
 			{
 				ActiveSong.MusicPath = PendingMusicFile;
 				PendingMusicFile = null;
+			}
+			if (!string.IsNullOrEmpty(PendingLyricsFile))
+			{
+				ActiveSong.LyricsPath = PendingLyricsFile;
+				PendingLyricsFile = null;
 			}
 
 			Position.Reset();
@@ -5322,6 +5349,8 @@ namespace StepManiaEditor
 				OnOpenFile(file);
 			else if (ExpectedAudioFormats.Contains(extension))
 				OnOpenAudioFile(file);
+			else if (ExpectedLyricsFormats.Contains(extension))
+				OnOpenLyricsFile(file);
 		}
 
 		/// <summary>
@@ -5335,6 +5364,8 @@ namespace StepManiaEditor
 			if (IsSongExtensionSupported(extension))
 				return true;
 			if (ExpectedAudioFormats.Contains(extension))
+				return true;
+			if (ExpectedLyricsFormats.Contains(extension))
 				return true;
 			return false;
 		}

@@ -485,8 +485,7 @@ namespace StepManiaEditor
 				EditorSong.FileDirectory,
 				EditorSong.LyricsPath,
 				FileOpenFilterForLyrics("Lyrics", true));
-			if (relativePath != null && relativePath != EditorSong.LyricsPath)
-				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong, nameof(EditorSong.LyricsPath), relativePath, true));
+			Editor.UpdateLyricsPath(relativePath);
 		}
 
 		private void ClearLyricsFile()
