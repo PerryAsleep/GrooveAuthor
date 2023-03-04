@@ -98,6 +98,7 @@ namespace StepManiaEditor
 
 		private bool UnsavedChangesLastFrame = false;
 		private string PendingOpenSongFileName;
+		private string PendingMusicFile;
 		private bool ShowSavePopup = false;
 		private Action PostSaveFunction = null;
 		private int OpenRecentIndex = 0;
@@ -1051,7 +1052,7 @@ namespace StepManiaEditor
 
 			PlaybackStopwatch.Stop();
 			MusicManager.StopPlayback();
-			AutoPlayer.Stop();
+			AutoPlayer?.Stop();
 
 			Playing = false;
 		}
@@ -2241,12 +2242,12 @@ namespace StepManiaEditor
 		{
 			if (!Playing)
 				return;
-			AutoPlayer.Update(Position);
+			AutoPlayer?.Update(Position);
 		}
 
 		private void UpdateAutoPlayFromScrolling()
 		{
-			AutoPlayer.Stop();
+			AutoPlayer?.Stop();
 		}
 
 		#endregion Autoplay
@@ -4825,6 +4826,27 @@ namespace StepManiaEditor
 			Exit();
 		}
 
+		private void OnOpenAudioFile(string audioFile)
+		{
+			if (ActiveSong != null)
+			{
+				var relativePath = Path.GetRelativePath(ActiveSong.FileDirectory, audioFile);
+				UpdateMusicPath(relativePath);
+			}
+			else
+			{
+				PendingMusicFile = audioFile;
+				OnNew();
+			}
+		}
+
+		public void UpdateMusicPath(string musicPath)
+		{
+			if (ActiveSong == null || musicPath == null || musicPath == ActiveSong.MusicPath)
+				return;
+			ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(ActiveSong, nameof(EditorSong.MusicPath), musicPath, true));
+		}
+
 		private void OnOpen()
 		{
 			if (ActionQueue.Instance.HasUnsavedChanges())
@@ -4913,6 +4935,13 @@ namespace StepManiaEditor
 		{
 			CloseSong();
 			ActiveSong = new EditorSong(GraphicsDevice, ImGuiRenderer, this);
+
+			if (!string.IsNullOrEmpty(PendingMusicFile))
+			{
+				ActiveSong.MusicPath = PendingMusicFile;
+				PendingMusicFile = null;
+			}
+
 			Position.Reset();
 			SetZoom(1.0, true);
 		}
@@ -4997,6 +5026,9 @@ namespace StepManiaEditor
 		{
 			Logger.Info($"Saving {fullPath}...");
 
+			// Update the ActiveSong's file path information.
+			editorSong.SetFullFilePath(fullPath);
+
 			// TODO: Check for incompatible features with SM format.
 			if (fileType == FileFormatType.SM)
 			{
@@ -5028,8 +5060,6 @@ namespace StepManiaEditor
 					break;
 			}
 
-			// Update the ActiveSong's file path information.
-			editorSong.SetFullFilePath(fullPath);
 			UpdateWindowTitle();
 			UpdateRecentFilesForActiveSong(Position.ChartPosition, GetSpacingZoom());
 
@@ -5238,8 +5268,14 @@ namespace StepManiaEditor
 			return null;
 		}
 
+		#region Drag and Drop
+
+		/// <summary>
+		/// Called when dragging a file into the window.
+		/// </summary>
 		public void DragEnter(object sender, DragEventArgs e)
 		{
+			// The application only supports opening one file at a time.
 			if (!e.Data.GetDataPresent(DataFormats.FileDrop))
 				return;
 			string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
@@ -5249,42 +5285,75 @@ namespace StepManiaEditor
 				return;
 			}
 			var file = files[0];
-			if (IsSongFilePathSupported(file))
+
+			// Get the extension to determine if the file type is supported.
+			if (!Path.GetExtensionWithoutSeparator(file, out var extension))
+			{
+				e.Effect = DragDropEffects.None;
+				return;
+			}
+
+			// Set the effect for the drop based on if the file type is supported.
+			if (IsExtensionSupportedForFileDrop(extension))
 				e.Effect = DragDropEffects.Copy;
 			else
 				e.Effect = DragDropEffects.None;
 		}
 
+		/// <summary>
+		/// Called when dropping a file into the window.
+		/// </summary>
 		public void DragDrop(object sender, DragEventArgs e)
 		{
+			// The application only supports opening one file at a time.
 			if (!e.Data.GetDataPresent(DataFormats.FileDrop))
 				return;
 			string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
 			if (files.Count() != 1)
 				return;
 			var file = files[0];
-			if (IsSongFilePathSupported(file))
+
+			// Get the extension to determine if the file type is supported.
+			if (!Path.GetExtensionWithoutSeparator(file, out var extension))
+				return;
+
+			// Based on the type, open the file.
+			if (IsSongExtensionSupported(extension))
 				OnOpenFile(file);
+			else if (ExpectedAudioFormats.Contains(extension))
+				OnOpenAudioFile(file);
 		}
 
-		private static bool IsSongFilePathSupported(string filePath)
+		/// <summary>
+		/// Returns whether or not a file with the given extension is supported for
+		/// opening via drag and drop.
+		/// </summary>
+		/// <param name="extension">Extension without separator.</param>
+		/// <returns>Whether or not the file is supported for opening via drag and drop.</returns>
+		private static bool IsExtensionSupportedForFileDrop(string extension)
 		{
-			try
-			{
-				var extension = System.IO.Path.GetExtension(filePath);
-				return IsSongExtensionSupported(extension);
-			}
-			catch(Exception) {}
+			if (IsSongExtensionSupported(extension))
+				return true;
+			if (ExpectedAudioFormats.Contains(extension))
+				return true;
 			return false;
 		}
 
+		/// <summary>
+		/// Returns whether or not a file with the given extension is a supported song file.
+		/// </summary>
+		/// <param name="extension">Extension without separator.</param>
+		/// <returns>Whether or not the file is supported.</returns>
 		private static bool IsSongExtensionSupported(string extension)
 		{
+			// sm and ssc files are supported.
 			var fileFormat = FileFormat.GetFileFormatByExtension(extension);
 			if (fileFormat != null && (fileFormat.Type == FileFormatType.SM || fileFormat.Type == FileFormatType.SSC))
 				return true;
 			return false;
 		}
+
+		#endregion Drag and Drop
 
 		private void OnUndoHistorySizeChanged()
 		{

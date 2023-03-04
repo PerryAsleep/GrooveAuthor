@@ -452,8 +452,7 @@ namespace StepManiaEditor
 				EditorSong.FileDirectory,
 				EditorSong.MusicPath,
 				FileOpenFilterForAudio("Music", true));
-			if (relativePath != null && relativePath != EditorSong.MusicPath)
-				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong, nameof(EditorSong.MusicPath), relativePath, true));
+			Editor.UpdateMusicPath(relativePath);
 		}
 
 		private void ClearMusicFile()

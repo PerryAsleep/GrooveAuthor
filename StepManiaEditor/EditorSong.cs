@@ -539,12 +539,80 @@ namespace StepManiaEditor
 			}
 		}
 
+		/// <summary>
+		/// Sets the full path of the EditorSong.
+		/// Updates all relative paths to other assets to be relative to the new full path.
+		/// </summary>
+		/// <param name="fullFilePath">New full path of the EditorSong.</param>
 		public void SetFullFilePath(string fullFilePath)
 		{
+			var oldPath = FileFullPath;
+
+			// Update the path information.
 			FileFullPath = fullFilePath;
 			FileName = System.IO.Path.GetFileName(fullFilePath);
 			FileDirectory = System.IO.Path.GetDirectoryName(fullFilePath);
 			FileFormat = FileFormat.GetFileFormatByExtension(System.IO.Path.GetExtension(fullFilePath));
+
+			// Update paths which were relative to the old path to be relative to the new path.
+			UpdateRelativePaths(oldPath, FileFullPath);
+		}
+
+		/// <summary>
+		/// Updates all relative paths to be relative from the old full path to the new provided full path.
+		/// </summary>
+		/// <param name="oldFullPath">Old full path of this EditorSong.</param>
+		/// <param name="newFullPath">New full path of this EditorSong.</param>
+		private void UpdateRelativePaths(string oldFullPath, string newFullPath)
+		{
+			MusicPath = UpdateRelativePath(oldFullPath, newFullPath, MusicPath);
+			MusicPreviewPath = UpdateRelativePath(oldFullPath, newFullPath, MusicPreviewPath);
+			LyricsPath = UpdateRelativePath(oldFullPath, newFullPath, LyricsPath);
+			PreviewVideoPath = UpdateRelativePath(oldFullPath, newFullPath, PreviewVideoPath);
+			Banner.Path = UpdateRelativePath(oldFullPath, newFullPath, Banner.Path);
+			Background.Path = UpdateRelativePath(oldFullPath, newFullPath, Background.Path);
+			Jacket.Path = UpdateRelativePath(oldFullPath, newFullPath, Jacket.Path);
+			CDImage.Path = UpdateRelativePath(oldFullPath, newFullPath, CDImage.Path);
+			DiscImage.Path = UpdateRelativePath(oldFullPath, newFullPath, DiscImage.Path);
+			CDTitle.Path = UpdateRelativePath(oldFullPath, newFullPath, CDTitle.Path);
+		}
+
+		/// <summary>
+		/// Updates a path relative to the old full path to be relative to the new full path.
+		/// Used to update EditorSong variables like MusicPath when the full path to the Song changes.
+		/// </summary>
+		/// <param name="oldFullPath">The old full path.</param>
+		/// <param name="newFullPath">The new full path.</param>
+		/// <param name="relativePath">The path relative to the old full path to update.</param>
+		/// <returns>Path relative to the new full path.</returns>
+		private static string UpdateRelativePath(string oldFullPath, string newFullPath, string relativePath)
+		{
+			if (string.IsNullOrEmpty(relativePath))
+			{
+				return relativePath;
+			}
+			try
+			{
+				// Occaisonally paths will be absolute. This can occur if the song is new and hasn't been saved yet.
+				// In that case there is no song path to be relative to. If the path is absolute, convert it to be
+				// relative to the new full path.
+				if (System.IO.Path.IsPathRooted(relativePath))
+				{
+					relativePath = Fumen.Path.GetRelativePath(System.IO.Path.GetDirectoryName(newFullPath), relativePath);
+				}
+				// Normally, the relative path exists and is relative to the old full path. In this case, convert
+				// the relative path to an absolute path first, then convert that absolute path to be relatiev to
+				// the new full path.
+				else if (!string.IsNullOrEmpty(oldFullPath))
+				{
+					var relativeFullPath = Fumen.Path.GetFullPathFromRelativePathToFullPath(oldFullPath, relativePath);
+					relativePath = Fumen.Path.GetRelativePath(System.IO.Path.GetDirectoryName(newFullPath), relativeFullPath);
+				}
+			}
+			catch(Exception)
+			{ }
+
+			return relativePath;
 		}
 
 		public double GetBestChartStartingTempo()
