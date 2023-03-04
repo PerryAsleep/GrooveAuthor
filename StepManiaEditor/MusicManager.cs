@@ -44,15 +44,19 @@ namespace StepManiaEditor
 		/// </summary>
 		private class SoundData
 		{
+			private readonly ChannelGroup ChannelGroup;
+			private readonly SoundManager SoundManager;
+
 			// FMOD sound data.
 			public Sound Sound;
 			public Channel Channel;
+			private CHANNELCONTROL_CALLBACK ChannelControlCallback;
 
 			// Cached Sound data for length and time calculations.
-			public int NumChannels;
-			public int BitsPerSample;
-			public uint TotalBytes;
-			public uint SampleRate;
+			private int NumChannels;
+			private int BitsPerSample;
+			private uint TotalBytes;
+			private uint SampleRate;
 
 			// Loading variables.
 			public string PendingFile;
@@ -68,13 +72,40 @@ namespace StepManiaEditor
 			// a negative time.
 			public bool IsPlaying;
 
-			public SoundData(SoundMipMap mipMap)
+			public SoundData(SoundManager soundManager, ChannelGroup channelGroup, SoundMipMap mipMap)
 			{
+				SoundManager = soundManager;
+				ChannelGroup = channelGroup;
+				ChannelControlCallback = new CHANNELCONTROL_CALLBACK(ChannelCallback);
+
 				if (mipMap != null)
 				{
 					MipMap = mipMap;
 					MipMap.SetLoadParallelism(Preferences.Instance.PreferencesWaveForm.WaveFormLoadingMaxParallelism);
 				}
+			}
+
+			public void SetSound(Sound sound)
+			{
+				Sound = sound;
+
+				// Play the sound in order to assign it to a Channel.
+				SoundManager.PlaySound(Sound, ChannelGroup, out Channel);
+				
+				// Register a callback for the newly assigned Channel so we can respond to it becoming
+				// invalid when the sound reaches its end.
+				SoundManager.ErrCheck(Channel.setCallback(ChannelControlCallback));
+
+				// Record information about this Sound.
+				SoundManager.ErrCheck(Sound.getFormat(out _, out _, out NumChannels, out BitsPerSample));
+				SoundManager.ErrCheck(Sound.getLength(out TotalBytes, TIMEUNIT.PCMBYTES));
+				SoundManager.ErrCheck(Channel.getFrequency(out float frequency));
+				SampleRate = (uint)frequency;
+			}
+
+			public uint GetSampleRate()
+			{
+				return SampleRate;
 			}
 
 			public double GetTimeInSeconds()
@@ -115,10 +146,10 @@ namespace StepManiaEditor
 				if (NumChannels == 0 || SampleRate == 0 || BitsPerSample < 8)
 					return true;
 				SoundManager.ErrCheck(Channel.getPosition(out uint bytes, TIMEUNIT.PCMBYTES));
-				
-				// Determine the time in secounds to return to the caller.
+
+				// Determine the time in seconds to return to the caller.
 				timeInSeconds = (double)bytes / NumChannels / (BitsPerSample >> 3) / SampleRate;
-				
+
 				// Consider the sound to be at the maximum position if it is within one sample of the end.
 				// In practice calling setPosition on a Channel will result in the position returned by
 				// getPosition to be floored to the nearest sample boundary. It is also the case that when
@@ -134,10 +165,36 @@ namespace StepManiaEditor
 					return 0.0;
 				return (double)TotalBytes / NumChannels / (BitsPerSample >> 3) / SampleRate;
 			}
-			
+
 			public bool IsLoaded()
 			{
 				return Sound.hasHandle();
+			}
+
+			/// <summary>
+			/// Callback from FMOD for responding to Channel events.
+			/// </summary>
+			public RESULT ChannelCallback(
+				IntPtr channelcontrol,
+				CHANNELCONTROL_TYPE controltype,
+				CHANNELCONTROL_CALLBACK_TYPE callbacktype,
+				IntPtr commanddata1,
+				IntPtr commanddata2)
+			{
+				// When a Channel ends it is no longer valid.
+				if (callbacktype == CHANNELCONTROL_CALLBACK_TYPE.END)
+				{
+					// Start playing the sound again to get a new Channel from FMOD.
+					SoundManager.PlaySound(Sound, ChannelGroup, out Channel);
+
+					// Set the Channel to be paused at the end of the sound.
+					SoundManager.ErrCheck(Channel.setPosition(TotalBytes - 1, TIMEUNIT.PCMBYTES));
+					SoundManager.ErrCheck(Channel.setPaused(true));
+
+					// Now that we have a new Channel, set its callback to this function.
+					Channel.setCallback(ChannelControlCallback);
+				}
+				return RESULT.OK;
 			}
 		}
 
@@ -206,9 +263,9 @@ namespace StepManiaEditor
 			// Create a ChannelGroup for music and preview audio.
 			SoundManager.CreateChannelGroup("MusicChannelGroup", out MusicChannelGroup);
 
-			MusicData = new SoundData(new SoundMipMap());
+			MusicData = new SoundData(SoundManager, MusicChannelGroup, new SoundMipMap());
 			SetMusicOffset(musicOffset);
-			PreviewData = new SoundData(null);
+			PreviewData = new SoundData(SoundManager, MusicChannelGroup, null);
 		}
 
 		/// <summary>
@@ -331,17 +388,14 @@ namespace StepManiaEditor
 
 					if (!string.IsNullOrEmpty(soundData.File))
 					{
+						Logger.Info($"Loading { soundData.File }...");
+
 						// Load the sound file.
 						// This is not cancelable. According to FMOD: "you can't cancel it"
 						// https://qa.fmod.com/t/reusing-channels/13145/3
 						// Normally this is not a problem, but for hour-long files this is unfortunate.
-						Logger.Info($"Loading { soundData.File }...");
-						soundData.Sound = await SoundManager.LoadAsync(soundData.File);
-						SoundManager.PlaySound(soundData.Sound, MusicChannelGroup, out soundData.Channel);
-						SoundManager.ErrCheck(soundData.Sound.getFormat(out _, out _, out soundData.NumChannels, out soundData.BitsPerSample));
-						SoundManager.ErrCheck(soundData.Sound.getLength(out soundData.TotalBytes, TIMEUNIT.PCMBYTES));
-						SoundManager.ErrCheck(soundData.Channel.getFrequency(out float frequency));
-						soundData.SampleRate = (uint)frequency;
+						soundData.SetSound(await SoundManager.LoadAsync(soundData.File));
+						
 						if (getMusicTimeFunction != null)
 							SetSoundPositionInternal(soundData, getMusicTimeFunction(), offset);
 						Logger.Info($"Loaded {soundData.File}.");
@@ -351,7 +405,7 @@ namespace StepManiaEditor
 						// Set up the new sound mip map.
 						if (generateMipMap && soundData.MipMap != null)
 						{
-							await soundData.MipMap.CreateMipMapAsync(soundData.Sound, soundData.SampleRate, Utils.WaveFormTextureWidth,
+							await soundData.MipMap.CreateMipMapAsync(soundData.Sound, soundData.GetSampleRate(), Utils.WaveFormTextureWidth,
 								soundData.LoadCancellationTokenSource.Token);
 						}
 
@@ -636,7 +690,7 @@ namespace StepManiaEditor
 			// it while the preview is playing.
 			if (soundData == MusicData && State == PlayingState.PlayingPreview && ShouldBeUsingPreviewFile)
 				return;
-			
+
 			SoundManager.ErrCheck(soundData.Channel.setPaused(musicTimeInSeconds < 0.0));
 		}
 
