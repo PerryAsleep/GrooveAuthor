@@ -9,6 +9,7 @@ using Microsoft.Xna.Framework.Graphics;
 using Path = Fumen.Path;
 using static StepManiaEditor.Utils;
 using static StepManiaEditor.ImGuiUtils;
+using static StepManiaEditor.EditorSongImageUtils;
 
 namespace StepManiaEditor
 {
@@ -209,110 +210,9 @@ namespace StepManiaEditor
 			ImGui.End();
 		}
 
-		private string TryFindBestAsset(
-			int w,
-			int h,
-			string endsWith,
-			string contains,
-			bool includeVideoFiles,
-			bool preferBiggestFile,
-			bool preferAnyVideo)
-		{
-			try
-			{
-				var files = Directory.GetFiles(EditorSong.FileDirectory);
-
-				// Check for files which match StepMania's expected names.
-				var assetFiles = new List<string>();
-				var videoFiles = new List<string>();
-				foreach (var file in files)
-				{
-					try
-					{
-						var fileNameNoExtension = System.IO.Path.GetFileNameWithoutExtension(file).ToLower();
-						var extension = System.IO.Path.GetExtension(file);
-						if (extension.StartsWith('.'))
-							extension = extension.Substring(1);
-						var imageFile = ExpectedImageFormats.Contains(extension);
-						var videoFile = ExpectedVideoFormats.Contains(extension);
-
-						if (!includeVideoFiles && !imageFile)
-							continue;
-						if (includeVideoFiles && !imageFile && !videoFile)
-							continue;
-
-						assetFiles.Add(file);
-						if (videoFile)
-							videoFiles.Add(file);
-						if (fileNameNoExtension.EndsWith(endsWith) || fileNameNoExtension.Contains(contains))
-						{
-							return file;
-						}
-					}
-					catch (Exception)
-					{
-						// Ignored.
-					}
-				}
-
-				// Try to match expected dimensions.
-				var filesWithExpectedAspectRatio = new List<string>();
-				var expectedAspectRatio = (float)w / h;
-				string biggestFile = null;
-				int biggestSize = 0;
-				foreach (var file in assetFiles)
-				{
-					try
-					{
-						using Stream stream = File.OpenRead(file);
-						using var sourceImage = System.Drawing.Image.FromStream(stream, false, false);
-
-						var sourceAspectRatio = (float)sourceImage.Width / sourceImage.Height;
-						if (Math.Abs(sourceAspectRatio - expectedAspectRatio) < 0.05f)
-							filesWithExpectedAspectRatio.Add(file);
-
-						var size = sourceImage.Width * sourceImage.Height;
-						if (size > biggestSize && sourceImage.Width >= w && sourceImage.Height >= h)
-						{
-							biggestSize = size;
-							biggestFile = file;
-						}
-
-						if (sourceImage.Width == w && sourceImage.Height == h)
-						{
-							return file;
-						}
-					}
-					catch (Exception)
-					{
-						// Ignored.
-					}
-				}
-
-				// Try to match expected aspect ratio.
-				if (filesWithExpectedAspectRatio.Count > 0)
-					return filesWithExpectedAspectRatio[0];
-
-				// If configured to prefer the biggest file and a file exists that is at
-				// least as expected dimensions, use that.
-				if (preferBiggestFile && !string.IsNullOrEmpty(biggestFile))
-					return biggestFile;
-
-				// If configured to prefer video files and any video file exists, use that.
-				if (preferAnyVideo && videoFiles.Count > 0)
-					return videoFiles[0];
-			}
-			catch (Exception)
-			{
-				// Ignored.
-			}
-
-			return null;
-		}
-
 		private void TryFindBestBanner()
 		{
-			var bestFile = TryFindBestAsset(GetUnscaledBannerWidth(), GetUnscaledBannerHeight(), "bn", "banner", false, false, false);
+			var bestFile = EditorSongImageUtils.TryFindBestBanner(EditorSong.FileDirectory);
 			if (!string.IsNullOrEmpty(bestFile))
 			{
 				var relativePath = Path.GetRelativePath(EditorSong.FileDirectory, bestFile);
@@ -334,19 +234,17 @@ namespace StepManiaEditor
 				EditorSong.FileDirectory,
 				EditorSong.Banner.Path,
 				FileOpenFilterForImages("Banner", true));
-			if (relativePath != null && relativePath != EditorSong.Banner.Path)
-				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong.Banner, nameof(EditorSong.Banner.Path), relativePath, true));
+			Editor.UpdateSongImage(SongImageType.Banner, relativePath);
 		}
 
 		private void ClearBanner()
 		{
-			if (!string.IsNullOrEmpty(EditorSong.Banner.Path))
-				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong.Banner, nameof(EditorSong.Banner.Path), "", true));
+			Editor.UpdateSongImage(SongImageType.Banner, "");
 		}
 
 		private void TryFindBestBackground()
 		{
-			var bestFile = TryFindBestAsset(GetUnscaledBackgroundWidth(), GetUnscaledBackgroundHeight(), "bg", "background", true, true, true);
+			var bestFile = EditorSongImageUtils.TryFindBestBackground(EditorSong.FileDirectory);
 			if (!string.IsNullOrEmpty(bestFile))
 			{
 				var relativePath = Path.GetRelativePath(EditorSong.FileDirectory, bestFile);
@@ -368,13 +266,12 @@ namespace StepManiaEditor
 				EditorSong.FileDirectory,
 				EditorSong.Banner.Path,
 				FileOpenFilterForImagesAndVideos("Background", true));
-			Editor.UpdateBackgroundPath(relativePath);
+			Editor.UpdateSongImage(SongImageType.Background, relativePath);
 		}
 
 		private void ClearBackground()
 		{
-			if (!string.IsNullOrEmpty(EditorSong.Background.Path))
-				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong.Background, nameof(EditorSong.Background.Path), "", true));
+			Editor.UpdateSongImage(SongImageType.Background, "");
 		}
 
 		private void BrowseCDTitle()
@@ -384,14 +281,12 @@ namespace StepManiaEditor
 				EditorSong.FileDirectory,
 				EditorSong.CDTitle.Path,
 				FileOpenFilterForImages("CD Title", true));
-			if (relativePath != null && relativePath != EditorSong.CDTitle.Path)
-				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong.CDTitle, nameof(EditorSong.CDTitle.Path), relativePath, true));
+			Editor.UpdateSongImage(SongImageType.CDTitle, relativePath);
 		}
 
 		private void ClearCDTitle()
 		{
-			if (!string.IsNullOrEmpty(EditorSong.CDTitle.Path))
-				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong.CDTitle, nameof(EditorSong.CDTitle.Path), "", true));
+			Editor.UpdateSongImage(SongImageType.CDTitle, "");
 		}
 
 		private void BrowseJacket()
@@ -401,14 +296,12 @@ namespace StepManiaEditor
 				EditorSong.FileDirectory,
 				EditorSong.Jacket.Path,
 				FileOpenFilterForImages("Jacket", true));
-			if (relativePath != null && relativePath != EditorSong.Jacket.Path)
-				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong.Jacket, nameof(EditorSong.Jacket.Path), relativePath, true));
+			Editor.UpdateSongImage(SongImageType.Jacket, relativePath);
 		}
 
 		private void ClearJacket()
 		{
-			if (!string.IsNullOrEmpty(EditorSong.Jacket.Path))
-				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong.Jacket, nameof(EditorSong.Jacket.Path), "", true));
+			Editor.UpdateSongImage(SongImageType.Jacket, "");
 		}
 
 		private void BrowseCDImage()
@@ -418,14 +311,12 @@ namespace StepManiaEditor
 				EditorSong.FileDirectory,
 				EditorSong.CDImage.Path,
 				FileOpenFilterForImages("CD Image", true));
-			if (relativePath != null && relativePath != EditorSong.CDImage.Path)
-				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong.CDImage, nameof(EditorSong.CDImage.Path), relativePath, true));
+			Editor.UpdateSongImage(SongImageType.CDImage, relativePath);
 		}
 
 		private void ClearCDImage()
 		{
-			if (!string.IsNullOrEmpty(EditorSong.CDImage.Path))
-				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong.CDImage, nameof(EditorSong.CDImage.Path), "", true));
+			Editor.UpdateSongImage(SongImageType.CDImage, "");
 		}
 
 		private void BrowseDiscImage()
@@ -435,14 +326,12 @@ namespace StepManiaEditor
 				EditorSong.FileDirectory,
 				EditorSong.DiscImage.Path,
 				FileOpenFilterForImages("Disc Image", true));
-			if (relativePath != null && relativePath != EditorSong.DiscImage.Path)
-				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong.DiscImage, nameof(EditorSong.DiscImage.Path), relativePath, true));
+			Editor.UpdateSongImage(SongImageType.DiscImage, relativePath);
 		}
 
 		private void ClearDiscImage()
 		{
-			if (!string.IsNullOrEmpty(EditorSong.DiscImage.Path))
-				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong.DiscImage, nameof(EditorSong.DiscImage.Path), "", true));
+			Editor.UpdateSongImage(SongImageType.DiscImage, "");
 		}
 
 		private void BrowseMusicFile()

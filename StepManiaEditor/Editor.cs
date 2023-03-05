@@ -25,6 +25,7 @@ using System.IO;
 using System.Linq;
 using static Fumen.Converters.SMWriterBase;
 using static StepManiaEditor.Preferences;
+using static StepManiaEditor.EditorSongImageUtils;
 
 namespace StepManiaEditor
 {
@@ -4848,9 +4849,8 @@ namespace StepManiaEditor
 		{
 			if (ActiveSong != null)
 			{
-				// TODO: Use image for most appropriate song asset.
 				var relativePath = Path.GetRelativePath(ActiveSong.FileDirectory, imageFile);
-				UpdateBackgroundPath(relativePath);
+				UpdateSongImage(GetBestSongImageType(imageFile), relativePath);
 			}
 			else
 			{
@@ -4864,7 +4864,7 @@ namespace StepManiaEditor
 			if (ActiveSong != null)
 			{
 				var relativePath = Path.GetRelativePath(ActiveSong.FileDirectory, videoFile);
-				UpdateBackgroundPath(relativePath);
+				UpdateSongImage(SongImageType.Background, relativePath);
 			}
 			else
 			{
@@ -4873,11 +4873,43 @@ namespace StepManiaEditor
 			}
 		}
 
-		public void UpdateBackgroundPath(string backgroundPath)
+		public void UpdateSongImage(SongImageType imageType, string path)
 		{
-			if (ActiveSong == null || backgroundPath == null || backgroundPath == ActiveSong.Background.Path)
+			if (ActiveSong == null || path == null)
 				return;
-			ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(ActiveSong.Background, nameof(EditorSong.Background.Path), backgroundPath, true));
+			switch (imageType)
+			{
+				case SongImageType.Background:
+					if (path == ActiveSong.Background.Path)
+						return;
+					ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(ActiveSong.Background, nameof(EditorSong.Background.Path), path, true));
+					break;
+				case SongImageType.Banner:
+					if (path == ActiveSong.Banner.Path)
+						return;
+					ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(ActiveSong.Banner, nameof(EditorSong.Banner.Path), path, true));
+					break;
+				case SongImageType.Jacket:
+					if (path == ActiveSong.Jacket.Path)
+						return;
+					ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(ActiveSong.Jacket, nameof(EditorSong.Jacket.Path), path, true));
+					break;
+				case SongImageType.CDImage:
+					if (path == ActiveSong.CDImage.Path)
+						return;
+					ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(ActiveSong.CDImage, nameof(EditorSong.CDImage.Path), path, true));
+					break;
+				case SongImageType.DiscImage:
+					if (path == ActiveSong.DiscImage.Path)
+						return;
+					ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(ActiveSong.DiscImage, nameof(EditorSong.DiscImage.Path), path, true));
+					break;
+				case SongImageType.CDTitle:
+					if (path == ActiveSong.CDTitle.Path)
+						return;
+					ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(ActiveSong.CDTitle, nameof(EditorSong.CDTitle.Path), path, true));
+					break;
+			}
 		}
 
 		public void UpdateMusicPath(string musicPath)
@@ -5009,8 +5041,27 @@ namespace StepManiaEditor
 			}
 			if (!string.IsNullOrEmpty(PendingImageFile))
 			{
-				// TODO: Use image for most appropriate song asset.
-				ActiveSong.Background.Path = PendingImageFile;
+				switch (GetBestSongImageType(PendingImageFile))
+				{
+					case SongImageType.Background:
+						ActiveSong.Background.Path = PendingImageFile;
+						break;
+					case SongImageType.Banner:
+						ActiveSong.Banner.Path = PendingImageFile;
+						break;
+					case SongImageType.Jacket:
+						ActiveSong.Jacket.Path = PendingImageFile;
+						break;
+					case SongImageType.CDImage:
+						ActiveSong.CDImage.Path = PendingImageFile;
+						break;
+					case SongImageType.DiscImage:
+						ActiveSong.DiscImage.Path = PendingImageFile;
+						break;
+					case SongImageType.CDTitle:
+						ActiveSong.CDTitle.Path = PendingImageFile;
+						break;
+				}
 				PendingImageFile = null;
 			}
 			if (!string.IsNullOrEmpty(PendingVideoFile))
