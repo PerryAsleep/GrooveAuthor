@@ -3319,15 +3319,33 @@ namespace StepManiaEditor
 		/// </returns>
 		private async Task<bool> CreateStepGraph(ChartType chartType)
 		{
-			// Create the StepGraph.
+			// Create the StepGr(aph.
 			await Task.Run(() =>
 			{
+				var chartTypeString = ChartTypeString(chartType);
+				var fileName = $"{chartTypeString}.fsg";
+
 				Logger.Info($"Creating {chartType} StepGraph.");
+
 				StepGraphByChartType[chartType] = StepGraph.CreateStepGraph(
 					PadDataByChartType[chartType],
 					PadDataByChartType[chartType].StartingPositions[0][0][L],
 					PadDataByChartType[chartType].StartingPositions[0][0][R]);
-				Logger.Info($"Finished creating {chartType} StepGraph.");
+
+				//StepGraphByChartType[chartType] = StepGraph.Load(
+				//	$"C:\\Users\\perry\\Projects\\Fumen\\StepManiaLibrary\\{fileName}",
+				//	PadDataByChartType[chartType]);
+
+				//Logger.Info($"Finished creating {chartType} StepGraph.");
+
+				// TEMP
+				//StepGraphByChartType[chartType] = new StepGraph();
+				//StepGraphByChartType[chartType].Fill2();
+
+				// TEMP
+				//Logger.Info($"Saving {chartType}.fsg.");
+				//StepGraphByChartType[chartType].Save($"C:\\Users\\perry\\Projects\\Fumen\\StepManiaLibrary\\{chartType}.fsg");
+				//Logger.Info($"Saved {chartType}.fsg.");
 			});
 
 			return true;
