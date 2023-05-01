@@ -196,7 +196,11 @@ namespace StepManiaEditor
 					return "*";
 				case DisplayTempoMode.Specified:
 					if (!SpecifiedTempoMin.DoubleEquals(SpecifiedTempoMax))
-						return $"{SpecifiedTempoMin.ToString(SMDoubleFormat)}:{SpecifiedTempoMax.ToString(SMDoubleFormat)}";
+					{
+						var min = SpecifiedTempoMin.ToString(SMDoubleFormat);
+						var max = SpecifiedTempoMax.ToString(SMDoubleFormat);
+						return $"{min}:{max}";
+					}
 					return SpecifiedTempoMin.ToString(SMDoubleFormat);
 				case DisplayTempoMode.Actual:
 					return "";
