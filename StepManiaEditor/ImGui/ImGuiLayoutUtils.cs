@@ -991,24 +991,26 @@ namespace StepManiaEditor
 
 		#region Enum
 
-		public static bool DrawRowEnum<T>(bool undoable, string title, object o, string fieldName, bool affectsFile, string help = null)
+		public static bool DrawRowEnum<T>(bool undoable, string title, object o, string fieldName, bool affectsFile, string help = null, T defaultValue = default(T))
 			where T : struct, Enum
 		{
 			DrawRowTitleAndAdvanceColumn(title);
-			return DrawEnum<T>(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, null, affectsFile, help);
+			return DrawEnum<T>(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, null, affectsFile, help, defaultValue);
 		}
 
 		public static bool DrawRowEnum<T>(bool undoable, string title, object o, string fieldName, T[] allowedValues,
-			bool affectsFile, string help = null) where T : struct, Enum
+			bool affectsFile, string help = null, T defaultValue = default(T)) where T : struct, Enum
 		{
 			DrawRowTitleAndAdvanceColumn(title);
-			return DrawEnum<T>(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, allowedValues, affectsFile, help);
+			return DrawEnum<T>(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, allowedValues, affectsFile, help, defaultValue);
 		}
 
 		public static bool DrawEnum<T>(bool undoable, string title, object o, string fieldName, float width, T[] allowedValues,
-			bool affectsFile, string help = null) where T : struct, Enum
+			bool affectsFile, string help = null, T defaultValue = default(T)) where T : struct, Enum
 		{
-			var value = GetValueFromFieldOrProperty<T>(o, fieldName);
+			var value = defaultValue;
+			if (o != null)
+				value = GetValueFromFieldOrProperty<T>(o, fieldName);
 
 			var itemWidth = DrawHelp(help, width);
 			ImGui.SetNextItemWidth(itemWidth);
@@ -1160,15 +1162,15 @@ namespace StepManiaEditor
 		#region Display Tempo
 
 		/// <summary>
-		/// Draws a row for a custom set of controls to edit a DisplayTempo object.
+		/// Draws a row for a custom set of controls to edit an EditorChart's display tempo.
 		/// </summary>
 		/// <param name="undoable">Whether operations should be undoable or not.</param>
-		/// <param name="displayTempo">DisplayTempo object to control.</param>
+		/// <param name="chart">EditorChart object to control.</param>
 		/// <param name="actualMinTempo">Actual min tempo of the Chart.</param>
 		/// <param name="actualMaxTempo">Actual max tempo of the Chart.</param>
 		public static void DrawRowDisplayTempo(
 			bool undoable,
-			DisplayTempo displayTempo,
+			EditorChart chart,
 			double actualMinTempo,
 			double actualMaxTempo)
 		{
@@ -1180,112 +1182,113 @@ namespace StepManiaEditor
 			var splitTempoWidth = Math.Max(1.0f, (ImGui.GetContentRegionAvail().X - DisplayTempoEnumWidth - DisplayTempoToWidth - spacing * 3.0f) * 0.5f);
 
 			// Draw an enum for choosing the DisplayTempoMode.
-			DrawEnum<DisplayTempoMode>(undoable, "", displayTempo, nameof(DisplayTempo.Mode), DisplayTempoEnumWidth, null, true,
+			DrawEnum<DisplayTempoMode>(undoable, "", chart, nameof(EditorChart.DisplayTempoMode), DisplayTempoEnumWidth, null, true,
 				"How the tempo for this chart should be displayed." +
-				"\nRandom:	The actual tempo will be hidden and replaced with a random display." +
+				"\nRandom:    The actual tempo will be hidden and replaced with a random display." +
 				"\nSpecified: A specified tempo or tempo range will be displayed." +
-				"\n		   This is a good option when tempo gimmicks would result in a misleading actual tempo range." +
-				"\nActual:	The actual tempo or tempo range will be displayed.");
+				"\n           This is a good option when tempo gimmicks would result in a misleading actual tempo range." +
+				"\nActual:    The actual tempo or tempo range will be displayed.",
+				chart?.DisplayTempoMode ?? DisplayTempoMode.Actual);
 
 			// The remainder of the row depends on the mode.
-			switch (displayTempo.Mode)
+			switch (chart?.DisplayTempoMode ?? DisplayTempoMode.Actual)
 			{
 				// For a Random display, just draw a disabled InputText with "???".
 				case DisplayTempoMode.Random:
-					{
-						PushDisabled();
-						var text = "???";
-						ImGui.SetNextItemWidth(Math.Max(1.0f, tempoControlWidth));
-						ImGui.SameLine();
-						ImGui.InputText("", ref text, 4);
-						PopDisabled();
-						break;
-					}
+				{
+					PushDisabled();
+					var text = "???";
+					ImGui.SetNextItemWidth(Math.Max(1.0f, tempoControlWidth));
+					ImGui.SameLine();
+					ImGui.InputText("", ref text, 4);
+					PopDisabled();
+					break;
+				}
 
 				// For a Specified display, draw the specified range.
 				case DisplayTempoMode.Specified:
+				{
+					// DragDouble for the min.
+					ImGui.SameLine();
+					ImGui.SetNextItemWidth(splitTempoWidth);
+					DrawDragDouble(undoable, "", chart, nameof(EditorChart.DisplayTempoSpecifiedTempoMin), splitTempoWidth, null,
+						0.001f, "%.6f", true);
+
+					// "to" text to split the min and max.
+					ImGui.SameLine();
+					Text("to", DisplayTempoToWidth);
+
+					// Checkbox for whether or not to use a distinct max.
+					ImGui.SameLine();
+					if (DrawCheckbox(false, "", chart, nameof(EditorChart.DisplayTempoShouldAllowEditsOfMax), 10.0f, true))
+					{
+						if (undoable)
+						{
+							// Enqueue a custom action so that the ShouldAllowEditsOfMax and previous max tempo can be undone together.
+							ActionQueue.Instance.Do(
+								new ActionSetDisplayTempoAllowEditsOfMax(chart, chart.DisplayTempoShouldAllowEditsOfMax));
+						}
+					}
+
+					// If not using a distinct max, disable the max DragDouble and ensure that the max is set to the min.
+					if (!chart.DisplayTempoShouldAllowEditsOfMax)
+					{
+						PushDisabled();
+
+						if (!chart.DisplayTempoSpecifiedTempoMin.DoubleEquals(chart.DisplayTempoSpecifiedTempoMax))
+							chart.DisplayTempoSpecifiedTempoMax = chart.DisplayTempoSpecifiedTempoMin;
+					}
+
+					// DragDouble for the max.
+					ImGui.SameLine();
+					ImGui.SetNextItemWidth(splitTempoWidth);
+					DrawDragDouble(undoable, "", chart, nameof(EditorChart.DisplayTempoSpecifiedTempoMax),
+						ImGui.GetContentRegionAvail().X, null,
+						0.001f, "%.6f", true);
+
+					// Pop the disabled setting if we pushed it before.
+					if (!chart.DisplayTempoShouldAllowEditsOfMax)
+					{
+						PopDisabled();
+					}
+
+					break;
+				}
+
+				case DisplayTempoMode.Actual:
+				{
+					// The controls for the actual tempo are always disabled.
+					PushDisabled();
+
+					// If the actual tempo is one value then just draw one DragDouble.
+					if (actualMinTempo.DoubleEquals(actualMaxTempo))
+					{
+						ImGui.SetNextItemWidth(Math.Max(1.0f, tempoControlWidth));
+						ImGui.SameLine();
+						DragDouble(ref actualMinTempo, "");
+					}
+
+					// If the actual tempo is a range then draw the min and max.
+					else
 					{
 						// DragDouble for the min.
-						ImGui.SameLine();
 						ImGui.SetNextItemWidth(splitTempoWidth);
-						DrawDragDouble(undoable, "", displayTempo, nameof(DisplayTempo.SpecifiedTempoMin), splitTempoWidth, null,
-							0.001f, "%.6f", true);
+						ImGui.SameLine();
+						DragDouble(ref actualMinTempo, "");
 
 						// "to" text to split the min and max.
 						ImGui.SameLine();
-						Text("to", DisplayTempoToWidth);
-
-						// Checkbox for whether or not to use a distinct max.
-						ImGui.SameLine();
-						if (DrawCheckbox(false, "", displayTempo, nameof(DisplayTempo.ShouldAllowEditsOfMax), 10.0f, true))
-						{
-							if (undoable)
-							{
-								// Enqueue a custom action so that the ShouldAllowEditsOfMax and previous max tempo can be undone together.
-								ActionQueue.Instance.Do(
-									new ActionSetDisplayTempoAllowEditsOfMax(displayTempo, displayTempo.ShouldAllowEditsOfMax));
-							}
-						}
-
-						// If not using a distinct max, disable the max DragDouble and ensure that the max is set to the min.
-						if (!displayTempo.ShouldAllowEditsOfMax)
-						{
-							PushDisabled();
-
-							if (!displayTempo.SpecifiedTempoMin.DoubleEquals(displayTempo.SpecifiedTempoMax))
-								displayTempo.SpecifiedTempoMax = displayTempo.SpecifiedTempoMin;
-						}
+						ImGui.Text("to");
 
 						// DragDouble for the max.
-						ImGui.SameLine();
 						ImGui.SetNextItemWidth(splitTempoWidth);
-						DrawDragDouble(undoable, "", displayTempo, nameof(DisplayTempo.SpecifiedTempoMax),
-							ImGui.GetContentRegionAvail().X, null,
-							0.001f, "%.6f", true);
-
-						// Pop the disabled setting if we pushed it before.
-						if (!displayTempo.ShouldAllowEditsOfMax)
-						{
-							PopDisabled();
-						}
-
-						break;
+						ImGui.SameLine();
+						DragDouble(ref actualMaxTempo, "");
 					}
 
-				case DisplayTempoMode.Actual:
-					{
-						// The controls for the actual tempo are always disabled.
-						PushDisabled();
-
-						// If the actual tempo is one value then just draw one DragDouble.
-						if (actualMinTempo.DoubleEquals(actualMaxTempo))
-						{
-							ImGui.SetNextItemWidth(Math.Max(1.0f, tempoControlWidth));
-							ImGui.SameLine();
-							DragDouble(ref actualMinTempo, "");
-						}
-
-						// If the actual tempo is a range then draw the min and max.
-						else
-						{
-							// DragDouble for the min.
-							ImGui.SetNextItemWidth(splitTempoWidth);
-							ImGui.SameLine();
-							DragDouble(ref actualMinTempo, "");
-
-							// "to" text to split the min and max.
-							ImGui.SameLine();
-							ImGui.Text("to");
-
-							// DragDouble for the max.
-							ImGui.SetNextItemWidth(splitTempoWidth);
-							ImGui.SameLine();
-							DragDouble(ref actualMaxTempo, "");
-						}
-
-						PopDisabled();
-						break;
-					}
+					PopDisabled();
+					break;
+				}
 			}
 		}
 

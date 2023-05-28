@@ -2,21 +2,21 @@
 namespace StepManiaEditor
 {
 	/// <summary>
-	/// EditorAction for changing the ShouldAllowEditsOfMax field of a DisplayTempo.
+	/// EditorAction for changing the ShouldAllowEditsOfMax field of an EditorChart's display tempo.
 	/// When disabling ShouldAllowEditsOfMax, the max tempo is forced to be the min.
 	/// If they were different before setting ShouldAllowEditsOfMax to true, then undoing
 	/// that change should restore the max tempo back to what it was previously.
 	/// </summary>
 	internal sealed class ActionSetDisplayTempoAllowEditsOfMax : EditorAction
 	{
-		private readonly DisplayTempo DisplayTempo;
+		private readonly EditorChart Chart;
 		private readonly double PreviousMax;
 		private readonly bool Allow;
 
-		public ActionSetDisplayTempoAllowEditsOfMax(DisplayTempo displayTempo, bool allow)
+		public ActionSetDisplayTempoAllowEditsOfMax(EditorChart chart, bool allow)
 		{
-			DisplayTempo = displayTempo;
-			PreviousMax = DisplayTempo.SpecifiedTempoMax;
+			Chart = chart;
+			PreviousMax = Chart.DisplayTempoSpecifiedTempoMax;
 			Allow = allow;
 		}
 
@@ -32,16 +32,16 @@ namespace StepManiaEditor
 
 		public override void Do()
 		{
-			DisplayTempo.ShouldAllowEditsOfMax = Allow;
-			if (!DisplayTempo.ShouldAllowEditsOfMax)
-				DisplayTempo.SpecifiedTempoMax = DisplayTempo.SpecifiedTempoMin;
+			Chart.DisplayTempoShouldAllowEditsOfMax = Allow;
+			if (!Chart.DisplayTempoShouldAllowEditsOfMax)
+				Chart.DisplayTempoSpecifiedTempoMax = Chart.DisplayTempoSpecifiedTempoMin;
 		}
 
 		public override void Undo()
 		{
-			DisplayTempo.ShouldAllowEditsOfMax = !Allow;
-			if (DisplayTempo.ShouldAllowEditsOfMax)
-				DisplayTempo.SpecifiedTempoMax = PreviousMax;
+			Chart.DisplayTempoShouldAllowEditsOfMax = !Allow;
+			if (Chart.DisplayTempoShouldAllowEditsOfMax)
+				Chart.DisplayTempoSpecifiedTempoMax = PreviousMax;
 		}
 	}
 }

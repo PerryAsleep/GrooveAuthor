@@ -44,10 +44,21 @@ namespace StepManiaEditor
 
 			if (ImGui.BeginPopup($"ChartRightClickPopup##{index}"))
 			{
+				var disabled = !chart.CanBeEdited();
+				if (disabled)
+					PushDisabled();
 				if (ImGui.Selectable($"Delete {chart.ChartDifficultyType} Chart"))
 				{
 					deleteChart = true;
 				}
+				if (ImGui.BeginMenu($"Autogenerate"))
+				{
+					// TODO
+					//Editor.DrawAutogenerateChartSelectableList(chart);
+					ImGui.EndMenu();
+				}
+				if (disabled)
+					PopDisabled();
 				ImGui.EndPopup();
 			}
 
@@ -62,48 +73,49 @@ namespace StepManiaEditor
 			ImGui.SetNextWindowSize(new Vector2(0, 0), ImGuiCond.FirstUseEver);
 			if (ImGui.Begin("Chart List", ref Preferences.Instance.ShowChartListWindow, ImGuiWindowFlags.NoScrollbar))
 			{
-				if (editorSong == null)
-				{
+				var disabled = editorSong == null || !editorSong.CanBeEdited();
+				if (disabled)
 					PushDisabled();
-				}
 
 				var numCharts = 0;
 				if (editorChart != null)
 				{
-					var song = editorChart.EditorSong;
-					foreach (var kvp in song.Charts)
+					var song = editorChart.GetEditorSong();
+					foreach (var chartType in Editor.SupportedChartTypes)
 					{
-						var chartType = kvp.Key;
-
-						if (numCharts > 0)
+						var charts = song.GetCharts(chartType);
+						if (charts != null && charts.Count > 0)
 						{
-							ImGui.EndTable();
-							ImGui.Separator();
+							if (numCharts > 0)
+							{
+								ImGui.EndTable();
+								ImGui.Separator();
+							}
+
+							ImGui.Text(GetPrettyEnumString(chartType));
+
+							var ret = ImGui.BeginTable($"{chartType}Charts", 3,
+								ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders);
+							if (ret)
+							{
+								ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, TypeWidth);
+								ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, RatingWidth);
+								ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100);
+							}
+
+							var index = 0;
+							EditorChart pendingDeleteChart = null;
+							foreach (var chart in charts)
+								if (DrawChartRow(chart, index++, chart == editorChart))
+									pendingDeleteChart = chart;
+
+							if (pendingDeleteChart != null)
+							{
+								ActionQueue.Instance.Do(new ActionDeleteChart(Editor, pendingDeleteChart));
+							}
+
+							numCharts++;
 						}
-
-						ImGui.Text(GetPrettyEnumString(chartType));
-
-						var ret = ImGui.BeginTable($"{chartType}Charts", 3,
-							ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders);
-						if (ret)
-						{
-							ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, TypeWidth);
-							ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, RatingWidth);
-							ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100);
-						}
-
-						var index = 0;
-						EditorChart pendingDeleteChart = null;
-						foreach (var chart in kvp.Value)
-							if (DrawChartRow(chart, index++, chart == editorChart))
-								pendingDeleteChart = chart;
-
-						if (pendingDeleteChart != null)
-						{
-							ActionQueue.Instance.Do(new ActionDeleteChart(Editor, pendingDeleteChart));
-						}
-
-						numCharts++;
 					}
 					if (numCharts > 0)
 					{
@@ -140,10 +152,8 @@ namespace StepManiaEditor
 					ImGuiLayoutUtils.EndTable();
 				}
 
-				if (editorSong == null)
-				{
+				if (disabled)
 					PopDisabled();
-				}
 			}
 			ImGui.End();
 		}

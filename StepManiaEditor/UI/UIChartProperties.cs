@@ -31,7 +31,8 @@ namespace StepManiaEditor
 			ImGui.SetNextWindowSize(new Vector2(0, 0), ImGuiCond.FirstUseEver);
 			if (ImGui.Begin("Chart Properties", ref Preferences.Instance.ShowChartPropertiesWindow, ImGuiWindowFlags.NoScrollbar))
 			{
-				if (EditorChart == null)
+				var disabled = EditorChart == null || !EditorChart.CanBeEdited();
+				if (disabled)
 					PushDisabled();
 
 				if (ImGuiLayoutUtils.BeginTable("ChartInfoTable", TitleColumnWidth))
@@ -56,9 +57,9 @@ namespace StepManiaEditor
 						"(Uncommon) Originally meant to denote \"Pad\" versus \"Keyboard\" charts.");
 
 					if (EditorChart != null)
-						ImGuiLayoutUtils.DrawRowDisplayTempo(true, EditorChart.DisplayTempo, EditorChart.MinTempo, EditorChart.MaxTempo);
+						ImGuiLayoutUtils.DrawRowDisplayTempo(true, EditorChart, EditorChart.GetMinTempo(), EditorChart.GetMaxTempo());
 					else
-						ImGuiLayoutUtils.DrawRowDisplayTempo(true, DummyDisplayTempo, 0.0, 0.0);
+						ImGuiLayoutUtils.DrawRowDisplayTempo(true, null, 0.0, 0.0);
 
 					ImGuiLayoutUtils.EndTable();
 				}
@@ -78,7 +79,7 @@ namespace StepManiaEditor
 					ImGuiLayoutUtils.EndTable();
 				}
 
-				if (EditorChart == null)
+				if (disabled)
 					PopDisabled();
 			}
 			ImGui.End();
@@ -88,7 +89,7 @@ namespace StepManiaEditor
 		{
 			var relativePath = Utils.BrowseFile(
 				"Music",
-				EditorChart.EditorSong.FileDirectory,
+				EditorChart.GetEditorSong().GetFileDirectory(),
 				EditorChart.MusicPath,
 				Utils.FileOpenFilterForAudio("Music", true));
 			if (relativePath != null && relativePath != EditorChart.MusicPath)

@@ -47,19 +47,19 @@ namespace StepManiaEditor
 			ImGui.SetNextWindowSize(new Vector2(0, 0), ImGuiCond.FirstUseEver);
 			if (ImGui.Begin("Song Properties", ref Preferences.Instance.ShowSongPropertiesWindow, ImGuiWindowFlags.NoScrollbar))
 			{
-
-				if (EditorSong == null)
+				var disabled = EditorSong == null || !EditorSong.CanBeEdited();
+				if (disabled)
 					PushDisabled();
 
 				if (EditorSong != null)
 				{
-					var (bound, pressed) = EditorSong.Banner.GetTexture().DrawButton();
+					var (bound, pressed) = EditorSong.GetBanner().GetTexture().DrawButton();
 					if (pressed || (!bound && EmptyTextureBanner.DrawButton()))
 						BrowseBanner();
 
 					ImGui.SameLine();
 
-					(bound, pressed) = EditorSong.CDTitle.GetTexture().DrawButton();
+					(bound, pressed) = EditorSong.GetCDTitle().GetTexture().DrawButton();
 					if (pressed || (!bound && EmptyTextureCDTitle.DrawButton()))
 						BrowseCDTitle();
 				}
@@ -90,30 +90,30 @@ namespace StepManiaEditor
 				ImGui.Separator();
 				if (ImGuiLayoutUtils.BeginTable("SongAssetsTable", TitleColumnWidth))
 				{
-					ImGuiLayoutUtils.DrawRowAutoFileBrowse("Banner", EditorSong?.Banner, nameof(EditorSong.Banner.Path), TryFindBestBanner, BrowseBanner, ClearBanner, true,
+					ImGuiLayoutUtils.DrawRowAutoFileBrowse("Banner", EditorSong, nameof(EditorSong.BannerPath), TryFindBestBanner, BrowseBanner, ClearBanner, true,
 						"The banner graphic to display for this song when it is selected in the song wheel."
 						+ "\nITG banners are 418x164."
 						+ "\nDDR banners are 512x160 or 256x80.");
 
-					ImGuiLayoutUtils.DrawRowAutoFileBrowse("Background", EditorSong?.Background, nameof(EditorSong.Background.Path), TryFindBestBackground, BrowseBackground, ClearBackground, true,
+					ImGuiLayoutUtils.DrawRowAutoFileBrowse("Background", EditorSong, nameof(EditorSong.BackgroundPath), TryFindBestBackground, BrowseBackground, ClearBackground, true,
 						"The background graphic to display for this song while it is being played."
 						+ "\nITG backgrounds are 640x480.");
 
-					ImGuiLayoutUtils.DrawRowFileBrowse("CD Title", EditorSong?.CDTitle, nameof(EditorSong.CDTitle.Path), BrowseCDTitle, ClearCDTitle, true,
+					ImGuiLayoutUtils.DrawRowFileBrowse("CD Title", EditorSong, nameof(EditorSong.CDTitlePath), BrowseCDTitle, ClearCDTitle, true,
 						"The CD title graphic is most commonly used as a logo for the file author."
 						+ "\nDimensions are arbitrary.");
 
-					ImGuiLayoutUtils.DrawRowFileBrowse("Jacket", EditorSong?.Jacket, nameof(EditorSong.CDTitle.Path), BrowseJacket, ClearJacket, true,
+					ImGuiLayoutUtils.DrawRowFileBrowse("Jacket", EditorSong, nameof(EditorSong.CDTitlePath), BrowseJacket, ClearJacket, true,
 						"(Uncommon) Jacket graphic."
 						+ "\nMeant for themes which display songs with jacket assets in the song wheel like DDR X2."
 						+ "\nTypically square, but dimensions are arbitrary.");
 
-					ImGuiLayoutUtils.DrawRowFileBrowse("CD Image", EditorSong?.CDImage, nameof(EditorSong.CDTitle.Path), BrowseCDImage, ClearCDImage, true,
+					ImGuiLayoutUtils.DrawRowFileBrowse("CD Image", EditorSong, nameof(EditorSong.CDTitlePath), BrowseCDImage, ClearCDImage, true,
 						"(Uncommon) CD image graphic."
 						+ "\nOriginally meant to capture song select graphics which looked like CDs from the original DDR."
 						+ "\nTypically square, but dimensions are arbitrary.");
 
-					ImGuiLayoutUtils.DrawRowFileBrowse("Disc Image", EditorSong?.DiscImage, nameof(EditorSong.CDTitle.Path), BrowseDiscImage, ClearDiscImage, true,
+					ImGuiLayoutUtils.DrawRowFileBrowse("Disc Image", EditorSong, nameof(EditorSong.CDTitlePath), BrowseDiscImage, ClearDiscImage, true,
 						"(Uncommon) Disc Image graphic."
 						+ "\nOriginally meant to capture PIU song select graphics, which were discs in very old versions."
 						+ "\nMore modern PIU uses rectangular banners, but dimensions are arbitrary.");
@@ -204,7 +204,7 @@ namespace StepManiaEditor
 					ImGuiLayoutUtils.EndTable();
 				}
 
-				if (EditorSong == null)
+				if (disabled)
 					PopDisabled();
 			}
 			ImGui.End();
@@ -212,12 +212,12 @@ namespace StepManiaEditor
 
 		private void TryFindBestBanner()
 		{
-			var bestFile = EditorSongImageUtils.TryFindBestBanner(EditorSong.FileDirectory);
+			var bestFile = EditorSongImageUtils.TryFindBestBanner(EditorSong.GetFileDirectory());
 			if (!string.IsNullOrEmpty(bestFile))
 			{
-				var relativePath = Path.GetRelativePath(EditorSong.FileDirectory, bestFile);
-				if (relativePath != EditorSong.Banner.Path)
-					ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong.Banner, nameof(EditorSong.Banner.Path), relativePath, true));
+				var relativePath = Path.GetRelativePath(EditorSong.GetFileDirectory(), bestFile);
+				if (relativePath != EditorSong.BannerPath)
+					ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong, nameof(EditorSong.BannerPath), relativePath, true));
 				else
 					Logger.Info($"Song banner is already set to the best automatic choice: '{relativePath}'.");
 			}
@@ -231,8 +231,8 @@ namespace StepManiaEditor
 		{
 			var relativePath = BrowseFile(
 				"Banner",
-				EditorSong.FileDirectory,
-				EditorSong.Banner.Path,
+				EditorSong.GetFileDirectory(),
+				EditorSong.BannerPath,
 				FileOpenFilterForImages("Banner", true));
 			Editor.UpdateSongImage(SongImageType.Banner, relativePath);
 		}
@@ -244,12 +244,12 @@ namespace StepManiaEditor
 
 		private void TryFindBestBackground()
 		{
-			var bestFile = EditorSongImageUtils.TryFindBestBackground(EditorSong.FileDirectory);
+			var bestFile = EditorSongImageUtils.TryFindBestBackground(EditorSong.GetFileDirectory());
 			if (!string.IsNullOrEmpty(bestFile))
 			{
-				var relativePath = Path.GetRelativePath(EditorSong.FileDirectory, bestFile);
-				if (relativePath != EditorSong.Background.Path)
-					ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong.Background, nameof(EditorSong.Background.Path), relativePath, true));
+				var relativePath = Path.GetRelativePath(EditorSong.GetFileDirectory(), bestFile);
+				if (relativePath != EditorSong.BackgroundPath)
+					ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong, nameof(EditorSong.BackgroundPath), relativePath, true));
 				else
 					Logger.Info($"Song background is already set to the best automatic choice: '{relativePath}'.");
 			}
@@ -263,8 +263,8 @@ namespace StepManiaEditor
 		{
 			var relativePath = BrowseFile(
 				"Background",
-				EditorSong.FileDirectory,
-				EditorSong.Banner.Path,
+				EditorSong.GetFileDirectory(),
+				EditorSong.BackgroundPath,
 				FileOpenFilterForImagesAndVideos("Background", true));
 			Editor.UpdateSongImage(SongImageType.Background, relativePath);
 		}
@@ -278,8 +278,8 @@ namespace StepManiaEditor
 		{
 			var relativePath = BrowseFile(
 				"CD Title",
-				EditorSong.FileDirectory,
-				EditorSong.CDTitle.Path,
+				EditorSong.GetFileDirectory(),
+				EditorSong.CDTitlePath,
 				FileOpenFilterForImages("CD Title", true));
 			Editor.UpdateSongImage(SongImageType.CDTitle, relativePath);
 		}
@@ -293,8 +293,8 @@ namespace StepManiaEditor
 		{
 			var relativePath = BrowseFile(
 				"Jacket",
-				EditorSong.FileDirectory,
-				EditorSong.Jacket.Path,
+				EditorSong.GetFileDirectory(),
+				EditorSong.JacketPath,
 				FileOpenFilterForImages("Jacket", true));
 			Editor.UpdateSongImage(SongImageType.Jacket, relativePath);
 		}
@@ -308,8 +308,8 @@ namespace StepManiaEditor
 		{
 			var relativePath = BrowseFile(
 				"CD Image",
-				EditorSong.FileDirectory,
-				EditorSong.CDImage.Path,
+				EditorSong.GetFileDirectory(),
+				EditorSong.CDImagePath,
 				FileOpenFilterForImages("CD Image", true));
 			Editor.UpdateSongImage(SongImageType.CDImage, relativePath);
 		}
@@ -323,8 +323,8 @@ namespace StepManiaEditor
 		{
 			var relativePath = BrowseFile(
 				"Disc Image",
-				EditorSong.FileDirectory,
-				EditorSong.DiscImage.Path,
+				EditorSong.GetFileDirectory(),
+				EditorSong.DiscImagePath,
 				FileOpenFilterForImages("Disc Image", true));
 			Editor.UpdateSongImage(SongImageType.DiscImage, relativePath);
 		}
@@ -338,7 +338,7 @@ namespace StepManiaEditor
 		{
 			var relativePath = BrowseFile(
 				"Music",
-				EditorSong.FileDirectory,
+				EditorSong.GetFileDirectory(),
 				EditorSong.MusicPath,
 				FileOpenFilterForAudio("Music", true));
 			Editor.UpdateMusicPath(relativePath);
@@ -354,7 +354,7 @@ namespace StepManiaEditor
 		{
 			var relativePath = BrowseFile(
 				"Music Preview",
-				EditorSong.FileDirectory,
+				EditorSong.GetFileDirectory(),
 				EditorSong.MusicPreviewPath,
 				FileOpenFilterForAudio("Music Preview", true));
 			if (relativePath != null && relativePath != EditorSong.MusicPreviewPath)
@@ -371,7 +371,7 @@ namespace StepManiaEditor
 		{
 			var relativePath = BrowseFile(
 				"Lyrics",
-				EditorSong.FileDirectory,
+				EditorSong.GetFileDirectory(),
 				EditorSong.LyricsPath,
 				FileOpenFilterForLyrics("Lyrics", true));
 			Editor.UpdateLyricsPath(relativePath);
@@ -387,7 +387,7 @@ namespace StepManiaEditor
 		{
 			var relativePath = BrowseFile(
 				"Preview Video",
-				EditorSong.FileDirectory,
+				EditorSong.GetFileDirectory(),
 				EditorSong.PreviewVideoPath,
 				FileOpenFilterForVideo("Preview Video", true));
 			if (relativePath != null && relativePath != EditorSong.PreviewVideoPath)

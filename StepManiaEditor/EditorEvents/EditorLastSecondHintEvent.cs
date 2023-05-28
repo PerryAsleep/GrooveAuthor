@@ -54,12 +54,12 @@ namespace StepManiaEditor
 
 		public double DoubleValue
 		{
-			get => EditorChart.EditorSong.LastSecondHint;
+			get => EditorChart.GetEditorSong().LastSecondHint;
 			set
 			{
-				if (!EditorChart.EditorSong.LastSecondHint.DoubleEquals(value) && value >= 0.0)
+				if (!EditorChart.GetEditorSong().LastSecondHint.DoubleEquals(value) && value >= 0.0)
 				{
-					EditorChart.EditorSong.LastSecondHint = value;
+					EditorChart.GetEditorSong().LastSecondHint = value;
 				}
 			}
 		}
@@ -92,7 +92,7 @@ namespace StepManiaEditor
 		{
 			var chartTime = 0.0;
 			EditorChart.TryGetTimeFromChartPosition(GetChartPosition(), ref chartTime);
-			EditorChart.EditorSong.LastSecondHint = chartTime;
+			EditorChart.GetEditorSong().LastSecondHint = chartTime;
 		}
 
 		/// <summary>
@@ -101,7 +101,7 @@ namespace StepManiaEditor
 		/// </summary>
 		public override double GetChartTime()
 		{
-			return EditorChart.EditorSong.LastSecondHint;
+			return EditorChart.GetEditorSong().LastSecondHint;
 		}
 
 		public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)

@@ -37,7 +37,7 @@ namespace StepManiaEditor
 		public void SetRegionW(double w) { RegionW = w; }
 		public void SetRegionH(double h) { RegionH = h; }
 		public double GetRegionPosition() { return GetChartTime(); }
-		public double GetRegionDuration() { return EditorChart.EditorSong.SampleLength; }
+		public double GetRegionDuration() { return EditorChart.GetEditorSong().SampleLength; }
 		public bool AreRegionUnitsTime() { return true; }
 		public bool IsVisible(SpacingMode mode) { return true; }
 		public Color GetRegionColor() { return IRegion.GetColor(PreviewRegionColor, Alpha); }
@@ -72,12 +72,12 @@ namespace StepManiaEditor
 
 		public double DoubleValue
 		{
-			get => EditorChart.EditorSong.SampleLength;
+			get => EditorChart.GetEditorSong().SampleLength;
 			set
 			{
-				if (!EditorChart.EditorSong.SampleLength.DoubleEquals(value) && value >= 0.0)
+				if (!EditorChart.GetEditorSong().SampleLength.DoubleEquals(value) && value >= 0.0)
 				{
-					EditorChart.EditorSong.SampleLength = value;
+					EditorChart.GetEditorSong().SampleLength = value;
 					WidthDirty = true;
 				}
 			}
@@ -100,12 +100,12 @@ namespace StepManiaEditor
 
 		public override void OnAddedToChart()
 		{
-			EditorChart.EditorSong.AddObserver(this);
+			EditorChart.GetEditorSong().AddObserver(this);
 		}
 
 		public override void OnRemovedFromChart()
 		{
-			EditorChart.EditorSong.RemoveObserver(this);
+			EditorChart.GetEditorSong().RemoveObserver(this);
 		}
 
 		/// <summary>
@@ -117,7 +117,7 @@ namespace StepManiaEditor
 		{
 			var chartTime = 0.0;
 			EditorChart.TryGetTimeFromChartPosition(GetChartPosition(), ref chartTime);
-			EditorChart.EditorSong.SampleStart = EditorPosition.GetSongTimeFromChartTime(EditorChart, chartTime);
+			EditorChart.GetEditorSong().SampleStart = EditorPosition.GetSongTimeFromChartTime(EditorChart, chartTime);
 		}
 
 		/// <summary>
@@ -126,7 +126,7 @@ namespace StepManiaEditor
 		/// </summary>
 		public override double GetChartTime()
 		{
-			return EditorPosition.GetChartTimeFromSongTime(EditorChart, EditorChart.EditorSong.SampleStart);
+			return EditorPosition.GetChartTimeFromSongTime(EditorChart, EditorChart.GetEditorSong().SampleStart);
 		}
 
 		public override bool IsMiscEvent() { return true; }

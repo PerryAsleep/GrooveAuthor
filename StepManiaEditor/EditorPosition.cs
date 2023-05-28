@@ -70,12 +70,12 @@ namespace StepManiaEditor
 
 		public static double GetSongTimeFromChartTime(EditorChart chart, double chartTime)
 		{
-			return chartTime - (chart?.GetMusicOffset() ?? 0.0) + (chart?.EditorSong?.SyncOffset ?? 0.0);
+			return chartTime - (chart?.GetMusicOffset() ?? 0.0) + (chart?.GetEditorSong()?.SyncOffset ?? 0.0);
 		}
 
 		public static double GetChartTimeFromSongTime(EditorChart chart, double songTime)
 		{
-			return songTime + (chart?.GetMusicOffset() ?? 0.0) - (chart?.EditorSong?.SyncOffset ?? 0.0);
+			return songTime + (chart?.GetMusicOffset() ?? 0.0) - (chart?.GetEditorSong()?.SyncOffset ?? 0.0);
 		}
 
 		public int GetNearestRow()

@@ -9,14 +9,20 @@ using static System.Diagnostics.Debug;
 using static StepManiaLibrary.Constants;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading.Tasks;
 
 namespace StepManiaEditor
 {
 	/// <summary>
 	/// Editor represenation of a Stepmania chart.
 	/// An EditorChart is owned by an EditorSong.
+	/// 
+	/// EditorChart is not thread-safe. Some actions, like saving, are asynchronous. While asynchronous actions
+	/// are running edits are forbidden. Call CanBeEdited to determine if the EditorChart can be edited or not.
+	/// 
+	/// It is expected that Update is called once per frame.
 	/// </summary>
-	internal sealed class EditorChart : Notifier<EditorChart>
+	internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQueue>
 	{
 		/// <summary>
 		/// Data saved in the song file as a custom data chunk of Editor-specific data at the Chart level.
@@ -32,6 +38,7 @@ namespace StepManiaEditor
 		/// </summary>
 		private const int CustomSaveDataVersion = 1;
 
+		public const string NotificationCanEditChanged = "CanEditChanged";
 		public const string NotificationDifficultyTypeChanged = "DifficultyTypeChanged";
 		public const string NotificationRatingChanged = "RatingChanged";
 		public const string NotificationNameChanged = "NameChanged";
@@ -41,7 +48,7 @@ namespace StepManiaEditor
 		public const string NotificationEventsDeleted = "EventsDeleted";
 
 		public const double DefaultTempo = 120.0;
-		public static Fraction DefaultTimeSignature = new Fraction(4, 4);
+		public static readonly Fraction DefaultTimeSignature = new Fraction(4, 4);
 		public const double DefaultScrollRate = 1.0;
 		public const int DefaultTickCount = 4;
 		public const int DefaultHitMultiplier = 1;
@@ -64,76 +71,211 @@ namespace StepManiaEditor
 			IncludeFields = true,
 		};
 
-		private Extras OriginalChartExtras;
+		/// <summary>
+		/// WorkQueue for long running tasks like saving.
+		/// </summary>
+		private readonly WorkQueue WorkQueue;
 
-		public EditorSong EditorSong;
+		/// <summary>
+		/// Extras from the original Chart.
+		/// These are saved off into this member so they can be saved back out.
+		/// </summary>
+		private readonly Extras OriginalChartExtras;
+		/// <summary>
+		/// EditorSong which owns this EditorChart.
+		/// </summary>
+		private readonly EditorSong EditorSong;
 
-		public readonly ChartType ChartType;
+		// TODO: Need a read-only interface for these trees for public exposure.
 
-		private ChartDifficultyType ChartDifficultyTypeInternal;
+		/// <summary>
+		/// Tree of all EditorEvents.
+		/// </summary>
+		public EventTree EditorEvents;
+		/// <summary>
+		/// Tree of all EditorHoldNoteEvents.
+		/// </summary>
+		public EventTree Holds;
+		/// <summary>
+		/// Tree of all miscellaneous EditorEvents. See IsMiscEvent.
+		/// </summary>
+		public EventTree MiscEvents;
+		/// <summary>
+		/// Tree of all EditorRateAlteringEvents.
+		/// </summary>
+		public RateAlteringEventTree RateAlteringEvents;
+		/// <summary>
+		/// Tree of all EditorInterpolatedRateAlteringEvents.
+		/// </summary>
+		public RedBlackTree<EditorInterpolatedRateAlteringEvent> InterpolatedScrollRateEvents;
+
+		/// <summary>
+		/// Tree of all EditorStopEvents.
+		/// </summary>
+		private EventTree Stops;
+		/// <summary>
+		/// Tree of all EditorDelayEvents.
+		/// </summary>
+		private EventTree Delays;
+		/// <summary>
+		/// Tree of all EditorFakeEvents.
+		/// </summary>
+		private EventTree Fakes;
+		/// <summary>
+		/// Tree of all EditorWarpEvents.
+		/// </summary>
+		private EventTree Warps;
+		/// <summary>
+		/// The EditorPreviewRegionEvent.
+		/// </summary>
+		private EditorPreviewRegionEvent PreviewEvent;
+		/// <summary>
+		/// The EditorLastSecondHintEvent.
+		/// </summary>
+		private EditorLastSecondHintEvent LastSecondHintEvent;
+
+		/// <summary>
+		/// Whether this EditorChart uses a distinct display tempo from the EditorSong.
+		/// </summary>
+		private readonly bool DisplayTempoFromChart;
+
+		/// <summary>
+		/// Cached most common tempo in bpm.
+		/// </summary>
+		private double MostCommonTempo;
+		/// <summary>
+		/// Cached minimum tempo in bpm.
+		/// </summary>
+		private double MinTempo;
+		/// <summary>
+		/// Cached maximum tempo in bpm;
+		/// </summary>
+		private double MaxTempo;
+
+		/// <summary>
+		/// Number of inputs.
+		/// </summary>
+		public readonly int NumInputs;
+		/// <summary>
+		/// Number of players.
+		/// </summary>
+		public readonly int NumPlayers;
+
+		#region Properties
+
+		public ChartType ChartType
+		{
+			get
+			{
+				return ChartTypeInternal;
+			}
+		}
+		private readonly ChartType ChartTypeInternal;
+
 		public ChartDifficultyType ChartDifficultyType
 		{
 			get => ChartDifficultyTypeInternal;
 			set
 			{
+				Assert(CanBeEdited());
+				if (!CanBeEdited())
+					return;
 				ChartDifficultyTypeInternal = value;
 				Notify(NotificationDifficultyTypeChanged, this);
 			}
 		}
+		private ChartDifficultyType ChartDifficultyTypeInternal;
 
-		private int RatingInternal;
 		public int Rating
 		{
 			get => RatingInternal;
 			set
 			{
+				Assert(CanBeEdited());
+				if (!CanBeEdited())
+					return;
 				RatingInternal = value;
 				Notify(NotificationRatingChanged, this);
 			}
 		}
+		private int RatingInternal;
 
-		private string NameInternal;
 		public string Name
 		{
 			get => NameInternal;
 			set
 			{
+				Assert(CanBeEdited());
+				if (!CanBeEdited())
+					return;
 				NameInternal = value;
 				Notify(NotificationNameChanged, this);
 			}
 		}
+		private string NameInternal;
 
-		private string DescriptionInternal;
 		public string Description
 		{
 			get => DescriptionInternal;
 			set
 			{
+				Assert(CanBeEdited());
+				if (!CanBeEdited())
+					return;
 				DescriptionInternal = value;
 				Notify(NotificationDescriptionChanged, this);
 			}
 		}
+		private string DescriptionInternal;
 
-		public string Style;
-		public string Credit;
+		public string Style
+		{
+			get => StyleInternal;
+			set
+			{
+				Assert(CanBeEdited());
+				if (!CanBeEdited())
+					return;
+				StyleInternal = value;
+			}
+		}
+		private string StyleInternal;
 
-		private string MusicPathInternal;
+		public string Credit
+		{
+			get => CreditInternal;
+			set
+			{
+				Assert(CanBeEdited());
+				if (!CanBeEdited())
+					return;
+				CreditInternal = value;
+			}
+		}
+		private string CreditInternal;
+
 		public string MusicPath
 		{
 			get => MusicPathInternal;
 			set
 			{
+				Assert(CanBeEdited());
+				if (!CanBeEdited())
+					return;
 				MusicPathInternal = value ?? "";
 				Notify(NotificationMusicChanged, this);
 			}
 		}
+		private string MusicPathInternal;
 
-		private bool UsesChartMusicOffsetInternal;
 		public bool UsesChartMusicOffset
 		{
 			get => UsesChartMusicOffsetInternal;
 			set
 			{
+				Assert(CanBeEdited());
+				if (!CanBeEdited())
+					return;
 				if (UsesChartMusicOffsetInternal != value)
 				{
 					var deleted = DeletePreviewEvent();
@@ -144,13 +286,16 @@ namespace StepManiaEditor
 				}
 			}
 		}
+		private bool UsesChartMusicOffsetInternal;
 
-		private double MusicOffsetInternal;
 		public double MusicOffset
 		{
 			get => MusicOffsetInternal;
 			set
 			{
+				Assert(CanBeEdited());
+				if (!CanBeEdited())
+					return;
 				if (MusicOffsetInternal != value)
 				{
 					var deleted = DeletePreviewEvent();
@@ -161,60 +306,89 @@ namespace StepManiaEditor
 				}
 			}
 		}
+		private double MusicOffsetInternal;
 
-		public bool HasDisplayTempoFromChart;
-		public DisplayTempo DisplayTempo = new DisplayTempo();
+		public DisplayTempoMode DisplayTempoMode
+		{
+			get => DisplayTempo.Mode;
+			set
+			{
+				Assert(CanBeEdited());
+				if (!CanBeEdited())
+					return;
+				DisplayTempo.Mode = value;
+			}
+		}
+		public double DisplayTempoSpecifiedTempoMin
+		{
+			get => DisplayTempo.SpecifiedTempoMin;
+			set
+			{
+				Assert(CanBeEdited());
+				if (!CanBeEdited())
+					return;
+				DisplayTempo.SpecifiedTempoMin = value;
+			}
+		}
+		public double DisplayTempoSpecifiedTempoMax
+		{
+			get => DisplayTempo.SpecifiedTempoMax;
+			set
+			{
+				Assert(CanBeEdited());
+				if (!CanBeEdited())
+					return;
+				DisplayTempo.SpecifiedTempoMax = value;
+			}
+		}
+		public bool DisplayTempoShouldAllowEditsOfMax
+		{
+			get => DisplayTempo.ShouldAllowEditsOfMax;
+			set
+			{
+				Assert(CanBeEdited());
+				if (!CanBeEdited())
+					return;
+				DisplayTempo.ShouldAllowEditsOfMax = value;
+			}
+		}
+		private DisplayTempo DisplayTempo = new DisplayTempo();
 
-		// TODO: RADARVALUES?
+		#endregion Properties
 
-		public EventTree EditorEvents;
-		public EventTree Holds;
-		public EventTree MiscEvents;
-		public RateAlteringEventTree RateAlteringEvents;
-		public RedBlackTree<EditorInterpolatedRateAlteringEvent> InterpolatedScrollRateEvents;
-		private EventTree Stops;
-		private EventTree Delays;
-		private EventTree Fakes;
-		private EventTree Warps;
-		private EditorPreviewRegionEvent PreviewEvent;
-		private EditorLastSecondHintEvent LastSecondHintEvent;
-
-		public double MostCommonTempo;
-		public double MinTempo;
-		public double MaxTempo;
-
-		public readonly int NumInputs;
-		public readonly int NumPlayers;
+		#region Constructors
 
 		public EditorChart(EditorSong editorSong, Chart chart, Fumen.IObserver<EditorChart> observer)
 		{
 			if (observer != null)
 				AddObserver(observer);
 
+			WorkQueue = new WorkQueue();
+
 			OriginalChartExtras = chart.Extras;
 			EditorSong = editorSong;
 
-			TryGetChartType(chart.Type, out ChartType);
+			TryGetChartType(chart.Type, out ChartTypeInternal);
 			if (Enum.TryParse(chart.DifficultyType, out ChartDifficultyType parsedChartDifficultyType))
-				ChartDifficultyType = parsedChartDifficultyType;
-			Rating = (int)chart.DifficultyRating;
+				ChartDifficultyTypeInternal = parsedChartDifficultyType;
+			RatingInternal = (int)chart.DifficultyRating;
 
 			NumInputs = Properties[(int)ChartType].NumInputs;
 			NumPlayers = Properties[(int)ChartType].NumPlayers;
 
 			chart.Extras.TryGetExtra(TagChartName, out string parsedName, true);
-			Name = parsedName == null ? "" : parsedName;
-			Description = chart.Description ?? "";
-			chart.Extras.TryGetExtra(TagChartStyle, out Style, true);   // Pad or Keyboard
-			Style ??= "";
-			Credit = chart.Author ?? "";
+			NameInternal = parsedName == null ? "" : parsedName;
+			DescriptionInternal = chart.Description ?? "";
+			chart.Extras.TryGetExtra(TagChartStyle, out StyleInternal, true);   // Pad or Keyboard
+			StyleInternal ??= "";
+			CreditInternal = chart.Author ?? "";
 			chart.Extras.TryGetExtra(TagMusic, out string musicPath, true);
-			MusicPath = musicPath;
+			MusicPathInternal = musicPath;
 			UsesChartMusicOffsetInternal = chart.Extras.TryGetExtra(TagOffset, out double musicOffset, true);
 			if (UsesChartMusicOffset)
 				MusicOffsetInternal = musicOffset;
 
-			HasDisplayTempoFromChart = !string.IsNullOrEmpty(chart.Tempo);
+			DisplayTempoFromChart = !string.IsNullOrEmpty(chart.Tempo);
 			DisplayTempo.FromString(chart.Tempo);
 
 			DeserializeCustomChartData(chart);
@@ -229,7 +403,7 @@ namespace StepManiaEditor
 				AddObserver(observer);
 
 			EditorSong = editorSong;
-			ChartType = chartType;
+			ChartTypeInternal = chartType;
 
 			NumInputs = Properties[(int)ChartType].NumInputs;
 			NumPlayers = Properties[(int)ChartType].NumPlayers;
@@ -240,7 +414,7 @@ namespace StepManiaEditor
 			Credit = "";
 			MusicPath = "";
 			UsesChartMusicOffset = false;
-			HasDisplayTempoFromChart = false;
+			DisplayTempoFromChart = false;
 
 			Rating = DefaultRating;
 
@@ -278,45 +452,6 @@ namespace StepManiaEditor
 			});
 			tempChart.Layers.Add(tempLayer);
 			SetUpEditorEvents(tempChart);
-		}
-
-		public Chart SaveToChart(Dictionary<string, string> customProperties)
-		{
-			Chart chart = new Chart();
-			chart.Extras = new Extras(OriginalChartExtras);
-
-			chart.Type = ChartTypeString(ChartType);
-			chart.DifficultyType = ChartDifficultyType.ToString();
-			chart.NumInputs = NumInputs;
-			chart.NumPlayers = NumPlayers;
-			chart.DifficultyRating = Rating;
-			chart.Extras.AddDestExtra(TagChartName, Name);
-			chart.Description = Description;
-			chart.Extras.AddDestExtra(TagChartStyle, Style);
-			chart.Author = Credit;
-			chart.Extras.AddDestExtra(TagMusic, MusicPath);
-			if (UsesChartMusicOffset)
-				chart.Extras.AddDestExtra(TagOffset, MusicOffset);
-			else
-				chart.Extras.RemoveSourceExtra(TagOffset);
-			chart.Tempo = DisplayTempo.ToString();
-
-			SerializeCustomChartData(customProperties);
-
-			var layer = new Layer();
-			foreach (var editorEvent in EditorEvents)
-			{
-				layer.Events.AddRange(editorEvent.GetEvents());
-			}
-			layer.Events.Sort(new SMEventComparer());
-			chart.Layers.Add(layer);
-
-			return chart;
-		}
-
-		public void CopyDisplayTempo(DisplayTempo displayTempo)
-		{
-			DisplayTempo = new DisplayTempo(displayTempo);
 		}
 
 		private void SetUpEditorEvents(Chart chart)
@@ -360,7 +495,7 @@ namespace StepManiaEditor
 
 				if (editorEvent != null)
 					editorEvents.Insert(editorEvent);
-				
+
 				if (editorEvent is EditorFakeSegmentEvent fse)
 				{
 					fakes.Insert(fse);
@@ -428,6 +563,58 @@ namespace StepManiaEditor
 			AddPreviewEvent();
 			AddLastSecondHintEvent();
 		}
+
+		#endregion Constructors
+
+		#region Accessors
+
+		public EditorSong GetEditorSong()
+		{
+			return EditorSong;
+		}
+
+		public double GetMusicOffset()
+		{
+			if (UsesChartMusicOffset)
+				return MusicOffset;
+			return EditorSong.MusicOffset;
+		}
+
+		public double GetStartingTempo()
+		{
+			var rae = FindActiveRateAlteringEventForPosition(0.0);
+			return rae?.GetTempo() ?? DefaultTempo;
+		}
+
+		public bool HasDisplayTempoFromChart()
+		{
+			return DisplayTempoFromChart;
+		}
+
+		public double GetMostCommonTempo()
+		{
+			return MostCommonTempo;
+		}
+
+		public double GetMinTempo()
+		{
+			return MinTempo;
+		}
+
+		public double GetMaxTempo()
+		{
+			return MaxTempo;
+		}
+
+		public Fraction GetStartingTimeSignature()
+		{
+			var rae = FindActiveRateAlteringEventForPosition(0.0);
+			return rae?.GetTimeSignature().Signature ?? DefaultTimeSignature;
+		}
+
+		#endregion Accessors
+
+		#region Timing Updates
 
 		/// <summary>
 		/// Updates all EditorRateAlteringEvents rate tracking values.
@@ -609,6 +796,13 @@ namespace StepManiaEditor
 			return invalidTimeSignatures;
 		}
 
+		/// <summary>
+		/// Updates the TimeSeconds and MetricPosition values of all Events in this EditorChart.
+		/// If EditorRateAlteringEvents like stops are modified, they affect the timing of all following events.
+		/// This function will ensure all Events have correct TimeSeconds and MetricPosition values and
+		/// all events are sorted properly when a rate altering event is changed.
+		/// </summary>
+		/// <returns></returns>
 		private List<EditorEvent> UpdateEventTimingData()
 		{
 			// TODO: Remove Validation.
@@ -657,19 +851,43 @@ namespace StepManiaEditor
 			return deletedEvents;
 		}
 
+		#endregion Timing Updates
+
+		#region Time-Based Event Shifting
+
+		/// <summary>
+		/// Deletes the EditorPreviewRegionEvent.
+		/// When modifying properties that affect the song time, the preview region sort may change
+		/// relative to other events. We therefore need to delete these events then re-add them.
+		/// This method would ideally be private with EditorChart declaring EditorSong a friend class.
+		/// </summary>
 		public bool DeletePreviewEvent()
 		{
+			Assert(CanBeEdited());
+			if (!CanBeEdited())
+				return false;
+
 			if (PreviewEvent == null)
 				return false;
 			var previewEnum = EditorEvents.Find(PreviewEvent);
 			if (previewEnum == null || !previewEnum.MoveNext())
 				return false;
 			DeleteEvent(PreviewEvent);
-			return true;
+				return true;
 		}
 
+		/// <summary>
+		/// Adds the EditorPreviewRegionEvent.
+		/// When modifying properties that affect the song time, the preview region sort may change
+		/// relative to other events. We therefore need to delete these events then re-add them.
+		/// This method would ideally be private with EditorChart declaring EditorSong a friend class.
+		/// </summary>
 		public void AddPreviewEvent()
 		{
+			Assert(CanBeEdited());
+			if (!CanBeEdited())
+				return;
+
 			if (!EditorSong.IsUsingSongForPreview())
 				return;
 			double previewChartTime = EditorPosition.GetChartTimeFromSongTime(this, EditorSong.SampleStart);
@@ -679,8 +897,18 @@ namespace StepManiaEditor
 			AddEvent(PreviewEvent);
 		}
 
+		/// <summary>
+		/// Deletes all EditorLastSecondHintEvent.
+		/// When modifying the last second hint value, the EditorLastSecondHintEvent event sort may change
+		/// relative to other events. We therefore need to delete these events then re-add them.
+		/// This method would ideally be private with EditorChart declaring EditorSong a friend class.
+		/// </summary>
 		public bool DeleteLastSecondHintEvent()
 		{
+			Assert(CanBeEdited());
+			if (!CanBeEdited())
+				return false;
+
 			if (LastSecondHintEvent == null)
 				return false;
 			var lastSecondHintEnum = EditorEvents.Find(LastSecondHintEvent);
@@ -690,8 +918,18 @@ namespace StepManiaEditor
 			return true;
 		}
 
+		/// <summary>
+		/// Adds the EditorLastSecondHintEvent.
+		/// When modifying the last second hint value, the EditorLastSecondHintEvent event sort may change
+		/// relative to other events. We therefore need to delete these events then re-add them.
+		/// This method would ideally be private with EditorChart declaring EditorSong a friend class.
+		/// </summary>
 		public void AddLastSecondHintEvent()
 		{
+			Assert(CanBeEdited());
+			if (!CanBeEdited())
+				return;
+
 			if (EditorSong.LastSecondHint <= 0.0)
 				return;
 			double chartPosition = 0.0;
@@ -699,6 +937,10 @@ namespace StepManiaEditor
 			LastSecondHintEvent = new EditorLastSecondHintEvent(this, chartPosition);
 			AddEvent(LastSecondHintEvent);
 		}
+
+		#endregion Time-Based Event Shifting
+
+		#region Position And Time Determination
 
 		public bool TryGetChartPositionFromTime(double chartTime, ref double chartPosition)
 		{
@@ -708,6 +950,92 @@ namespace StepManiaEditor
 			chartPosition = rateEvent.GetChartPositionFromTime(chartTime);
 			return true;
 		}
+
+		public bool TryGetTimeFromChartPosition(double chartPosition, ref double chartTime)
+		{
+			var rateEvent = FindActiveRateAlteringEventForPosition(chartPosition, false);
+			if (rateEvent == null)
+				return false;
+			chartTime = rateEvent.GetChartTimeFromPosition(chartPosition);
+			return true;
+		}
+
+		public bool IsRowOnMeasureBoundary(int row)
+		{
+			return row == GetNearestMeasureBoundaryRow(row);
+		}
+
+		public int GetNearestMeasureBoundaryRow(int row)
+		{
+			var rae = FindActiveRateAlteringEventForPosition(row);
+			if (rae == null)
+				return 0;
+			return GetNearestMeasureBoundaryRow(rae.GetTimeSignature(), row);
+		}
+
+		private int GetNearestMeasureBoundaryRow(TimeSignature lastTimeSignature, int row)
+		{
+			var timeSignatureRow = lastTimeSignature.IntegerPosition;
+			var beatsPerMeasure = lastTimeSignature.Signature.Numerator;
+			var rowsPerBeat = (MaxValidDenominator * NumBeatsPerMeasure * beatsPerMeasure)
+							  / lastTimeSignature.Signature.Denominator / beatsPerMeasure;
+			var rowsPerMeasure = rowsPerBeat * beatsPerMeasure;
+			var previousMeasureRow = timeSignatureRow + ((row - timeSignatureRow) / rowsPerMeasure) * rowsPerMeasure;
+			var nextMeasureRow = previousMeasureRow + rowsPerMeasure;
+			if (row - previousMeasureRow < nextMeasureRow - row)
+				return previousMeasureRow;
+			return nextMeasureRow;
+		}
+
+		public double GetStartChartTime()
+		{
+			return 0.0;
+		}
+
+		public double GetEndChartTime()
+		{
+			var lastEvent = EditorEvents.Last();
+			var endTime = 0.0;
+			if (lastEvent.MoveNext())
+			{
+				// Do not include the preview as counting towards the song ending.
+				if (lastEvent.Current is EditorPreviewRegionEvent)
+				{
+					if (lastEvent.MovePrev())
+					{
+						endTime = lastEvent.Current.GetEndChartTime();
+					}
+				}
+				else
+				{
+					endTime = lastEvent.Current.GetEndChartTime();
+				}
+			}
+			return Math.Max(endTime, EditorSong.LastSecondHint);
+		}
+
+		public double GetEndPosition()
+		{
+			var lastEvent = EditorEvents.Last();
+			var endPosition = 0.0;
+			if (lastEvent.MoveNext())
+				endPosition = lastEvent.Current.GetEndRow();
+
+			if (EditorSong.LastSecondHint > 0.0)
+			{
+				var lastSecondChartPosition = 0.0;
+				if (TryGetChartPositionFromTime(EditorSong.LastSecondHint, ref lastSecondChartPosition))
+				{
+					endPosition = Math.Max(lastSecondChartPosition, endPosition);
+				}
+			}
+
+			return endPosition;
+		}
+
+		#endregion Position And Time Determination
+
+		#region Finding EditorEvents
 
 		public List<IChartRegion> GetRegionsOverlapping(double chartPosition, double chartTime)
 		{
@@ -813,15 +1141,6 @@ namespace StepManiaEditor
 			return enumerator.Current;
 		}
 
-		public bool TryGetTimeFromChartPosition(double chartPosition, ref double chartTime)
-		{
-			var rateEvent = FindActiveRateAlteringEventForPosition(chartPosition, false);
-			if (rateEvent == null)
-				return false;
-			chartTime = rateEvent.GetChartTimeFromPosition(chartPosition);
-			return true;
-		}
-
 		public EditorRateAlteringEvent FindActiveRateAlteringEventForPosition(double chartPosition, bool allowEqualTo = true)
 		{
 			if (RateAlteringEvents == null)
@@ -839,45 +1158,6 @@ namespace StepManiaEditor
 
 			enumerator.MoveNext();
 			return enumerator.Current;
-		}
-
-		public bool CanEventExistAtRow(EditorEvent editorEvent, int row)
-		{
-			if (row < 0)
-				return false;
-
-			// Do not allow time signatures to move to non-measure boundaries.
-			if (editorEvent is EditorTimeSignatureEvent && !IsRowOnMeasureBoundary(row))
-				return false;
-
-			return true;
-		}
-
-		public bool IsRowOnMeasureBoundary(int row)
-		{
-			return row == GetNearestMeasureBoundaryRow(row);
-		}
-
-		public int GetNearestMeasureBoundaryRow(int row)
-		{
-			var rae = FindActiveRateAlteringEventForPosition(row);
-			if (rae == null)
-				return 0;
-			return GetNearestMeasureBoundaryRow(rae.GetTimeSignature(), row);
-		}
-
-		private int GetNearestMeasureBoundaryRow(TimeSignature lastTimeSignature, int row)
-		{
-			var timeSignatureRow = lastTimeSignature.IntegerPosition;
-			var beatsPerMeasure = lastTimeSignature.Signature.Numerator;
-			var rowsPerBeat = (MaxValidDenominator * NumBeatsPerMeasure * beatsPerMeasure)
-							  / lastTimeSignature.Signature.Denominator / beatsPerMeasure;
-			var rowsPerMeasure = rowsPerBeat * beatsPerMeasure;
-			var previousMeasureRow = timeSignatureRow + ((row - timeSignatureRow) / rowsPerMeasure) * rowsPerMeasure;
-			var nextMeasureRow = previousMeasureRow + rowsPerMeasure;
-			if (row - previousMeasureRow < nextMeasureRow - row)
-				return previousMeasureRow;
-			return nextMeasureRow;
 		}
 
 		/// <summary>
@@ -991,12 +1271,31 @@ namespace StepManiaEditor
 			return holds;
 		}
 
+		public bool CanEventExistAtRow(EditorEvent editorEvent, int row)
+		{
+			if (row < 0)
+				return false;
+
+			// Do not allow time signatures to move to non-measure boundaries.
+			if (editorEvent is EditorTimeSignatureEvent && !IsRowOnMeasureBoundary(row))
+				return false;
+
+			return true;
+		}
+
+		#endregion Finding EditorEvents
+
+		#region EditorEvent Modification Callbacks
 
 		/// <summary>
 		/// Called when an EditorStopEvent's length is modified.
 		/// </summary>
 		public void OnStopLengthModified(EditorStopEvent stop, double newLengthSeconds)
 		{
+			Assert(CanBeEdited());
+			if (!CanBeEdited())
+				return;
+
 			// Unfortunately, Stepmania treats negative stops as occurring after notes at the same position
 			// and positive notes as occuring before notes at the same position. This means that altering the
 			// sign will alter how notes are sorted, which means we need to remove the stop and re-add it in
@@ -1017,11 +1316,22 @@ namespace StepManiaEditor
 		/// </summary>
 		public void OnRateAlteringEventModified(EditorRateAlteringEvent rae)
 		{
+			Assert(CanBeEdited());
+			if (!CanBeEdited())
+				return;
+
 			UpdateEventTimingData();
 		}
 
+		/// <summary>
+		/// Called when an EditorInterpolatedRateAlteringEvent's properties are modified.
+		/// </summary>
 		public void OnInterpolatedRateAlteringEventModified(EditorInterpolatedRateAlteringEvent irae)
 		{
+			Assert(CanBeEdited());
+			if (!CanBeEdited())
+				return;
+
 			var e = InterpolatedScrollRateEvents.Find(irae);
 			if (e != null)
 			{
@@ -1045,6 +1355,10 @@ namespace StepManiaEditor
 			}
 		}
 
+		#endregion EditorEvent Modification Callbacks
+
+		#region Adding and Deleting EditorEvents
+
 		/// <summary>
 		/// Deletes the given EditorEvent.
 		/// This may result in more events being deleted than the ones provided.
@@ -1053,6 +1367,10 @@ namespace StepManiaEditor
 		/// <returns>List of all deleted EditorEvents</returns>
 		public List<EditorEvent> DeleteEvent(EditorEvent editorEvent)
 		{
+			Assert(CanBeEdited());
+			if (!CanBeEdited())
+				return new List<EditorEvent>();
+
 			return DeleteEvents(new List<EditorEvent>() { editorEvent });
 		}
 
@@ -1064,6 +1382,10 @@ namespace StepManiaEditor
 		/// <returns>List of all deleted EditorEvents</returns>
 		public List<EditorEvent> DeleteEvents(List<EditorEvent> editorEvents)
 		{
+			Assert(CanBeEdited());
+			if (!CanBeEdited())
+				return new List<EditorEvent>();
+
 			List<EditorEvent> allDeletedEvents = new List<EditorEvent>();
 			allDeletedEvents.AddRange(editorEvents);
 
@@ -1158,6 +1480,10 @@ namespace StepManiaEditor
 		/// <param name="editorEvent">EditorEvent to add.</param>
 		public void AddEvent(EditorEvent editorEvent)
 		{
+			Assert(CanBeEdited());
+			if (!CanBeEdited())
+				return;
+
 			AddEvents(new List<EditorEvent> { editorEvent });
 		}
 
@@ -1171,6 +1497,10 @@ namespace StepManiaEditor
 		/// <param name="editorEvents">EditorEvents to add.</param>
 		public void AddEvents(List<EditorEvent> editorEvents)
 		{
+			Assert(CanBeEdited());
+			if (!CanBeEdited())
+				return;
+
 			foreach (var editorEvent in editorEvents)
 			{
 				var rateDirty = false;
@@ -1268,6 +1598,10 @@ namespace StepManiaEditor
 			var sideEffectAddedEvents = new List<EditorEvent>();
 			var sideEffectDeletedEvents = new List<EditorEvent>();
 
+			Assert(CanBeEdited());
+			if (!CanBeEdited())
+				return (sideEffectAddedEvents, sideEffectDeletedEvents);
+
 			foreach (var editorEvent in events)
 			{
 				var lane = editorEvent.GetLane();
@@ -1357,85 +1691,91 @@ namespace StepManiaEditor
 			return (sideEffectAddedEvents, sideEffectDeletedEvents);
 		}
 
-		public double GetStartChartTime()
+		#endregion Adding and Deleting EditorEvents
+
+		#region Misc
+
+		public void CopyDisplayTempo(DisplayTempo displayTempo)
 		{
-			return 0.0;
+			DisplayTempo = new DisplayTempo(displayTempo);
 		}
 
-		public double GetMusicOffset()
+		public bool CanBeEdited()
 		{
-			if (UsesChartMusicOffset)
-				return MusicOffset;
-			return EditorSong.MusicOffset;
+			// The Chart cannot be edited if work is queued up.
+			// The exception to that is if that work itself is synchronous as it means the edit
+			// is coming from that enqueued work.
+			if (WorkQueue.IsRunningSynchronousWork())
+				return true;
+			return WorkQueue.IsEmpty();
 		}
 
-		public double GetEndChartTime()
+		public void Update()
 		{
-			var lastEvent = EditorEvents.Last();
-			var endTime = 0.0;
-			if (lastEvent.MoveNext())
+			WorkQueue.Update();
+		}
+
+		#endregion Misc
+
+		#region IObserver
+
+		public void OnNotify(string eventId, WorkQueue notifier, object payload)
+		{
+			switch (eventId)
 			{
-				// Do not include the preview as counting towards the song ending.
-				if (lastEvent.Current is EditorPreviewRegionEvent)
-				{
-					if (lastEvent.MovePrev())
-					{
-						endTime = lastEvent.Current.GetEndChartTime();
-					}
-				}
+				case WorkQueue.NotificationWorking:
+					Notify(NotificationCanEditChanged, this);
+					break;
+				case WorkQueue.NotificationWorkComplete:
+					Notify(NotificationCanEditChanged, this);
+					break;
+			}
+		}
+
+		#endregion IObserver
+
+		#region Saving
+
+		public void SaveToChart(Action<Chart, Dictionary<string, string>> callback)
+		{
+			var chart = new Chart();
+			var customProperties = new Dictionary<string, string>();
+
+			// Enqueue a task to save this EditorChart to a Chart.
+			WorkQueue.Enqueue(new Task(() =>
+			{
+				chart.Extras = new Extras(OriginalChartExtras);
+				chart.Type = ChartTypeString(ChartType);
+				chart.DifficultyType = ChartDifficultyType.ToString();
+				chart.NumInputs = NumInputs;
+				chart.NumPlayers = NumPlayers;
+				chart.DifficultyRating = Rating;
+				chart.Extras.AddDestExtra(TagChartName, Name);
+				chart.Description = Description;
+				chart.Extras.AddDestExtra(TagChartStyle, Style);
+				chart.Author = Credit;
+				chart.Extras.AddDestExtra(TagMusic, MusicPath);
+				if (UsesChartMusicOffset)
+					chart.Extras.AddDestExtra(TagOffset, MusicOffset);
 				else
+					chart.Extras.RemoveSourceExtra(TagOffset);
+				chart.Tempo = DisplayTempo.ToString();
+
+				SerializeCustomChartData(customProperties);
+
+				var layer = new Layer();
+				foreach (var editorEvent in EditorEvents)
 				{
-					endTime = lastEvent.Current.GetEndChartTime();
+					layer.Events.AddRange(editorEvent.GetEvents());
 				}
-			}
-			return Math.Max(endTime, EditorSong.LastSecondHint);
+				layer.Events.Sort(new SMEventComparer());
+				chart.Layers.Add(layer);
+			}),
+			// When complete, call the given callback with the saved data.
+			() => callback(chart, customProperties));
 		}
 
-		public double GetEndPosition()
-		{
-			var lastEvent = EditorEvents.Last();
-			var endPosition = 0.0;
-			if (lastEvent.MoveNext())
-				endPosition = lastEvent.Current.GetEndRow();
-
-			if (EditorSong.LastSecondHint > 0.0)
-			{
-				var lastSecondChartPosition = 0.0;
-				if (TryGetChartPositionFromTime(EditorSong.LastSecondHint, ref lastSecondChartPosition))
-				{
-					endPosition = Math.Max(lastSecondChartPosition, endPosition);
-				}
-			}
-
-			return endPosition;
-		}
-
-		public double GetStartingTempo()
-		{
-			var rae = FindActiveRateAlteringEventForPosition(0.0);
-			return rae?.GetTempo() ?? DefaultTempo;
-		}
-
-		public Fraction GetStartingTimeSignature()
-		{
-			var rae = FindActiveRateAlteringEventForPosition(0.0);
-			return rae?.GetTimeSignature().Signature ?? DefaultTimeSignature;
-		}
-
-		//steps_tag_handlers["BPMS"] = &SetStepsBPMs;
-		//steps_tag_handlers["STOPS"] = &SetStepsStops;
-		//steps_tag_handlers["DELAYS"] = &SetStepsDelays;
-		//steps_tag_handlers["TIMESIGNATURES"] = &SetStepsTimeSignatures;
-		//steps_tag_handlers["TICKCOUNTS"] = &SetStepsTickCounts;
-		//steps_tag_handlers["COMBOS"] = &SetStepsCombos;
-		//steps_tag_handlers["WARPS"] = &SetStepsWarps;
-		//steps_tag_handlers["SPEEDS"] = &SetStepsSpeeds;
-		//steps_tag_handlers["SCROLLS"] = &SetStepsScrolls;
-		//steps_tag_handlers["FAKES"] = &SetStepsFakes;
-		//steps_tag_handlers["LABELS"] = &SetStepsLabels;
-		///* If this is called, the chart does not use the same attacks
-		// * as the Song's timing. No other changes are required. */
-		//steps_tag_handlers["ATTACKS"] = &SetStepsAttacks;
+		#endregion Saving
 
 		#region Custom Data Serialization
 
