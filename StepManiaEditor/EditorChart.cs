@@ -1750,13 +1750,13 @@ namespace StepManiaEditor
 				chart.NumInputs = NumInputs;
 				chart.NumPlayers = NumPlayers;
 				chart.DifficultyRating = Rating;
-				chart.Extras.AddDestExtra(TagChartName, Name);
+				chart.Extras.AddDestExtra(TagChartName, Name, true);
 				chart.Description = Description;
-				chart.Extras.AddDestExtra(TagChartStyle, Style);
+				chart.Extras.AddDestExtra(TagChartStyle, Style, true);
 				chart.Author = Credit;
-				chart.Extras.AddDestExtra(TagMusic, MusicPath);
+				chart.Extras.AddDestExtra(TagMusic, MusicPath, true);
 				if (UsesChartMusicOffset)
-					chart.Extras.AddDestExtra(TagOffset, MusicOffset);
+					chart.Extras.AddDestExtra(TagOffset, MusicOffset, true);
 				else
 					chart.Extras.RemoveSourceExtra(TagOffset);
 				chart.Tempo = DisplayTempo.ToString();
