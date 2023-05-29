@@ -201,8 +201,12 @@ namespace StepManiaEditor
 
 			// Record the cap position for drawing later.
 			var capY = y;
+			var minimumCapY = bodyY;
 			if (arrowGraphicManager.AreHoldCapsCentered())
+			{
 				y += (int)(capH * 0.5f);
+				minimumCapY = Y;
+			}
 
 			// Adjust the starting y value so we don't needlessly loop when zoomed in and a large
 			// area of the hold is off the screen.
@@ -254,7 +258,7 @@ namespace StepManiaEditor
 			// Also ensure that the cap is below the start. In negative scroll rate regions it may be
 			// above the start, in which case we do not want to render it.
 			// The cap should be drawn after the body as some caps render on top of the body.
-			if (capY > -capH && capY < ScreenHeight && capY >= bodyY)
+			if (capY > -capH && capY < ScreenHeight && capY >= minimumCapY)
 				textureAtlas.Draw(holdCapTextureId, spriteBatch, new Rectangle(x, capY, w, capH), holdCapRotation, alpha, SpriteEffects.None);
 
 			// Draw the arrow at the start of the hold.
