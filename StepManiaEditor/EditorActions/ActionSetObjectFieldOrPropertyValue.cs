@@ -26,7 +26,7 @@ namespace StepManiaEditor
 		/// <param name="o">Object to modify.</param>
 		/// <param name="fieldOrPropertyName">Name of Field or Property on the object to modify.</param>
 		/// <param name="value">New value to set.</param>
-		public ActionSetObjectFieldOrPropertyValue(object o, string fieldOrPropertyName, T value, bool affectsFile)
+		public ActionSetObjectFieldOrPropertyValue(object o, string fieldOrPropertyName, T value, bool affectsFile) : base(false, false)
 		{
 			O = o;
 			Value = value;
@@ -52,7 +52,7 @@ namespace StepManiaEditor
 		/// <param name="fieldOrPropertyName"></param>
 		/// <param name="value"></param>
 		/// <param name="previousValue"></param>
-		public ActionSetObjectFieldOrPropertyValue(object o, string fieldOrPropertyName, T value, T previousValue, bool affectsFile)
+		public ActionSetObjectFieldOrPropertyValue(object o, string fieldOrPropertyName, T value, T previousValue, bool affectsFile) : base(false, false)
 		{
 			O = o;
 			Value = value;
@@ -78,7 +78,7 @@ namespace StepManiaEditor
 			return $"Set {O.GetType()} {FieldOrPropertyName} '{PreviousValue}' > '{Value}'.";
 		}
 
-		public override void Do()
+		protected override void DoImplementation()
 		{
 			// Set Value on O.
 			if (IsField)
@@ -87,7 +87,7 @@ namespace StepManiaEditor
 				PropertyInfo.SetValue(O, Value);
 		}
 
-		public override void Undo()
+		protected override void UndoImplementation()
 		{
 			// Set PreviousValue on O.
 			if (IsField)

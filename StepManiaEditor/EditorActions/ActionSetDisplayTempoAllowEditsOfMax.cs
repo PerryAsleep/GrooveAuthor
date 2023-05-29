@@ -13,7 +13,7 @@ namespace StepManiaEditor
 		private readonly double PreviousMax;
 		private readonly bool Allow;
 
-		public ActionSetDisplayTempoAllowEditsOfMax(EditorChart chart, bool allow)
+		public ActionSetDisplayTempoAllowEditsOfMax(EditorChart chart, bool allow) : base(false, false)
 		{
 			Chart = chart;
 			PreviousMax = Chart.DisplayTempoSpecifiedTempoMax;
@@ -30,14 +30,14 @@ namespace StepManiaEditor
 			return $"Set display tempo ShouldAllowEditsOfMax '{!Allow}' > '{Allow}'.";
 		}
 
-		public override void Do()
+		protected override void DoImplementation()
 		{
 			Chart.DisplayTempoShouldAllowEditsOfMax = Allow;
 			if (!Chart.DisplayTempoShouldAllowEditsOfMax)
 				Chart.DisplayTempoSpecifiedTempoMax = Chart.DisplayTempoSpecifiedTempoMin;
 		}
 
-		public override void Undo()
+		protected override void UndoImplementation()
 		{
 			Chart.DisplayTempoShouldAllowEditsOfMax = !Allow;
 			if (Chart.DisplayTempoShouldAllowEditsOfMax)

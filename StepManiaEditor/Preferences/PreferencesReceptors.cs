@@ -132,7 +132,7 @@ namespace StepManiaEditor
 		private readonly int PreviousPositionX;
 		private readonly int PreviousPositionY;
 
-		public ActionRestoreAnimationsPreferenceDefaults()
+		public ActionRestoreAnimationsPreferenceDefaults() : base(false, false)
 		{
 			var p = Preferences.Instance.PreferencesReceptors;
 			PreviousAutoPlayHideArrows = p.AutoPlayHideArrows;
@@ -159,7 +159,7 @@ namespace StepManiaEditor
 			return "Restore animation default preferences.";
 		}
 
-		public override void Do()
+		protected override void DoImplementation()
 		{
 			var p = Preferences.Instance.PreferencesReceptors;
 
@@ -177,7 +177,7 @@ namespace StepManiaEditor
 			p.PositionY = PreferencesReceptors.DefaultPositionY;
 		}
 
-		public override void Undo()
+		protected override void UndoImplementation()
 		{
 			var p = Preferences.Instance.PreferencesReceptors;
 			p.AutoPlayHideArrows = PreviousAutoPlayHideArrows;

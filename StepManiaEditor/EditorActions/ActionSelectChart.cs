@@ -10,7 +10,7 @@ namespace StepManiaEditor
 		private EditorChart Chart;
 		private EditorChart PreviousChart;
 
-		public ActionSelectChart(Editor editor, EditorChart chart)
+		public ActionSelectChart(Editor editor, EditorChart chart) : base(false, false)
 		{
 			Editor = editor;
 			PreviousChart = Editor.GetActiveChart();
@@ -27,12 +27,12 @@ namespace StepManiaEditor
 			return $"Select {ImGuiUtils.GetPrettyEnumString(Chart.ChartType)} {ImGuiUtils.GetPrettyEnumString(Chart.ChartDifficultyType)} Chart.";
 		}
 
-		public override void Do()
+		protected override void DoImplementation()
 		{
 			Editor.OnChartSelected(Chart, false);
 		}
 
-		public override void Undo()
+		protected override void UndoImplementation()
 		{
 			Editor.OnChartSelected(PreviousChart, false);
 		}

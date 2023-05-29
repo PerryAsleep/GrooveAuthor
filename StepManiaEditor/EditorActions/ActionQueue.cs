@@ -1,10 +1,18 @@
 ﻿using Fumen;
+using static System.Diagnostics.Debug;
 
 namespace StepManiaEditor
 {
 	/// <summary>
 	/// Data structure to enqueue EditorActions, and undo and redo those actions
 	/// in the order they were enqueued.
+	/// 
+	/// EditorActions may be asynchronous. If an asynchronous EditorAction is being
+	/// done or undone, no other actions may be done or undone until it is complete.
+	/// Call IsDoingOrUndoing to determine if an asynchronous EditorAction is being
+	/// done or undone. Notifications will be issued to Observers when asynchronous
+	/// operations begin. Doing or undoing actions while one is running asynchronously
+	/// results in undefined behavior.
 	/// 
 	/// Expected Usage:
 	///  Call Do or EnqueueWithoutDoing to add an action to the queue.
@@ -14,9 +22,11 @@ namespace StepManiaEditor
 	///   report whether or not there are unsaved changes in the queue.
 	///  Call HasUnsavedChanges to determine if there are unsaved changes in the queue.
 	/// </summary>
-	internal sealed class ActionQueue
+	internal sealed class ActionQueue : Notifier<ActionQueue>
 	{
 		const int DefaultSize = 1024;
+
+		public const string NotificationAsyncActionStarted = "AsyncActionStarted";
 
 		/// <summary>
 		/// The index at the last time the file was saved.
@@ -35,14 +45,25 @@ namespace StepManiaEditor
 		/// which affect the save file.
 		/// </summary>
 		private bool LostSavedChanges = false;
+		/// <summary>
+		/// The last action either done or undone. Used for async tracking.
+		/// </summary>
+		private EditorAction LastAction = null;
 
 		/// <summary>
 		/// UndoStack of EditorActions for undo and redo.
 		/// </summary>
 		private readonly UndoStack<EditorAction> Actions;
 
+		/// <summary>
+		/// Static Instance.
+		/// </summary>
 		public static ActionQueue Instance { get; } = new ActionQueue();
 
+		/// <summary>
+		/// Contsuctor.
+		/// </summary>
+		/// <param name="size">Size of the ActionQueue.</param>
 		private ActionQueue(int size = DefaultSize)
 		{
 			Actions = new UndoStack<EditorAction>(size, true);
@@ -70,6 +91,17 @@ namespace StepManiaEditor
 		}
 
 		/// <summary>
+		/// Returns whether an action is currently being done or undone.
+		/// </summary>
+		/// <returns>True if an action is currently being done or undone and false otherwise.</returns>
+		public bool IsDoingOrUndoing()
+		{
+			if (LastAction == null)
+				return false;
+			return LastAction.IsDoingOrUndoing();
+		}
+
+		/// <summary>
 		/// Called when the underlying file is saved.
 		/// </summary>
 		public void OnSaved()
@@ -86,6 +118,8 @@ namespace StepManiaEditor
 		/// <param name="editorAction">EditorAction to do.</param>
 		public void Do(EditorAction editorAction)
 		{
+			Assert(!IsDoingOrUndoing());
+
 			// Do the action and enqueue it.
 			editorAction.Do();
 			EnqueueWithoutDoing(editorAction);
@@ -97,6 +131,8 @@ namespace StepManiaEditor
 		/// <param name="editorAction">EditorAction to enqueue.</param>
 		public void EnqueueWithoutDoing(EditorAction editorAction)
 		{
+			Assert(!IsDoingOrUndoing());
+
 			Logger.Info(editorAction.ToString());
 
 			var lastAction = Actions.GetCurrent();
@@ -115,6 +151,20 @@ namespace StepManiaEditor
 			// Add the action.
 			Actions.Push(editorAction);
 			CurrentChangeCount = editorAction.GetTotalNumActionsAffectingFile();
+
+			UpdateLastAction(editorAction);
+		}
+
+		/// <summary>
+		/// Helper method to update the LastAction and notify observers if
+		/// an async operation is now in progress.
+		/// </summary>
+		/// <param name="lastAction">EditorAction to set as the new LastAction.</param>
+		private void UpdateLastAction(EditorAction lastAction)
+		{
+			LastAction = lastAction;
+			if (LastAction != null && LastAction.IsDoingOrUndoing())
+				Notify(NotificationAsyncActionStarted, this);
 		}
 
 		/// <summary>
@@ -125,6 +175,7 @@ namespace StepManiaEditor
 			LastSavedIndex = -1;
 			LostSavedChanges = false;
 			CurrentChangeCount = 0;
+			UpdateLastAction(null);
 			Actions.Reset();
 		}
 
@@ -134,6 +185,8 @@ namespace StepManiaEditor
 		/// <returns>The action which was undone or null if no action is left to undo.</returns>
 		public EditorAction Undo()
 		{
+			Assert(!IsDoingOrUndoing());
+
 			if (!Actions.CanPop())
 				return null;
 			Actions.Pop(out var popped);
@@ -142,6 +195,7 @@ namespace StepManiaEditor
 				popped.Undo();
 				Logger.Info($"Undo {popped}");
 				CurrentChangeCount = popped.GetTotalNumActionsAffectingFile() - (popped.AffectsFile() ? 1 : 0);
+				UpdateLastAction(popped);
 			}
 			return popped;
 		}
@@ -152,6 +206,8 @@ namespace StepManiaEditor
 		/// <returns>The action which was redone or null if no action is left to redo.</returns>
 		public EditorAction Redo()
 		{
+			Assert(!IsDoingOrUndoing());
+
 			if (!Actions.CanRepush())
 				return null;
 			Actions.Repush(out var repushed);
@@ -160,6 +216,7 @@ namespace StepManiaEditor
 				repushed.Do();
 				Logger.Info($"Redo {repushed}");
 				CurrentChangeCount = repushed.GetTotalNumActionsAffectingFile();
+				UpdateLastAction(repushed);
 			}
 			return repushed;
 		}

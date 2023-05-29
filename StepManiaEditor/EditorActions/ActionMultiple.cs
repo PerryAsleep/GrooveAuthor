@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using static System.Diagnostics.Debug;
 
 namespace StepManiaEditor
 {
@@ -9,24 +10,33 @@ namespace StepManiaEditor
 	{
 		private readonly List<EditorAction> Actions;
 
-		public ActionMultiple()
+		public ActionMultiple() : base(false, false)
 		{
 			Actions = new List<EditorAction>();
 		}
 
-		public ActionMultiple(List<EditorAction> actions)
+		public ActionMultiple(List<EditorAction> actions) : base(false, false)
 		{
+			foreach(var action in actions)
+			{
+				Assert(!action.IsDoAsync() && !action.IsUndoAsync());
+			}
+
 			Actions = actions;
 		}
 
 		public void EnqueueAndDo(EditorAction action)
 		{
+			Assert(!action.IsDoAsync() && !action.IsUndoAsync());
+
 			action.Do();
 			Actions.Add(action);
 		}
 
 		public void EnqueueWithoutDoing(EditorAction action)
 		{
+			Assert(!action.IsDoAsync() && !action.IsUndoAsync());
+
 			Actions.Add(action);
 		}
 
@@ -50,7 +60,7 @@ namespace StepManiaEditor
 			return string.Join(' ', Actions);
 		}
 
-		public override void Do()
+		protected override void DoImplementation()
 		{
 			foreach (var action in Actions)
 			{
@@ -58,7 +68,7 @@ namespace StepManiaEditor
 			}
 		}
 
-		public override void Undo()
+		protected override void UndoImplementation()
 		{
 			var i = Actions.Count - 1;
 			while (i >= 0)

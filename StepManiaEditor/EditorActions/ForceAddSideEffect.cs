@@ -1,6 +1,4 @@
-﻿using Fumen.ChartDefinition;
-using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using static System.Diagnostics.Debug;
 
 namespace StepManiaEditor

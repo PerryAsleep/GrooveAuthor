@@ -44,7 +44,7 @@ namespace StepManiaEditor
 
 			if (ImGui.BeginPopup($"ChartRightClickPopup##{index}"))
 			{
-				var disabled = !chart.CanBeEdited();
+				var disabled = !Editor.CanChartBeEdited(chart);
 				if (disabled)
 					PushDisabled();
 				if (ImGui.Selectable($"Delete {chart.ChartDifficultyType} Chart"))
@@ -53,8 +53,7 @@ namespace StepManiaEditor
 				}
 				if (ImGui.BeginMenu($"Autogenerate"))
 				{
-					// TODO
-					//Editor.DrawAutogenerateChartSelectableList(chart);
+					Editor.DrawAutogenerateChartSelectableList(chart);
 					ImGui.EndMenu();
 				}
 				if (disabled)
@@ -73,7 +72,7 @@ namespace StepManiaEditor
 			ImGui.SetNextWindowSize(new Vector2(0, 0), ImGuiCond.FirstUseEver);
 			if (ImGui.Begin("Chart List", ref Preferences.Instance.ShowChartListWindow, ImGuiWindowFlags.NoScrollbar))
 			{
-				var disabled = editorSong == null || !editorSong.CanBeEdited();
+				var disabled = !Editor.CanSongBeEdited(editorSong);
 				if (disabled)
 					PushDisabled();
 

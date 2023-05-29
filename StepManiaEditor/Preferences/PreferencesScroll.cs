@@ -74,7 +74,7 @@ namespace StepManiaEditor
 		private readonly int PreviousScrollWheelRows;
 		private readonly double PreviousScrollInterpolationDuration;
 
-		public ActionRestoreScrollPreferenceDefaults()
+		public ActionRestoreScrollPreferenceDefaults() : base(false, false)
 		{
 			var p = Preferences.Instance.PreferencesScroll;
 			PreviousSpacingMode = p.SpacingMode;
@@ -99,7 +99,7 @@ namespace StepManiaEditor
 			return "Restore scroll default preferences.";
 		}
 
-		public override void Do()
+		protected override void DoImplementation()
 		{
 			var p = Preferences.Instance.PreferencesScroll;
 			p.SpacingMode = PreferencesScroll.DefaultSpacingMode;
@@ -114,7 +114,7 @@ namespace StepManiaEditor
 			p.ScrollInterpolationDuration = PreferencesScroll.DefaultScrollInterpolationDuration;
 		}
 
-		public override void Undo()
+		protected override void UndoImplementation()
 		{
 			var p = Preferences.Instance.PreferencesScroll;
 			p.SpacingMode = PreviousSpacingMode;

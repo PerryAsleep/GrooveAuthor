@@ -12,15 +12,10 @@ namespace StepManiaEditor
 		private EditorChart AddedChart;
 		private EditorChart PreivouslyActiveChart;
 
-		public ActionAddChart(Editor editor, ChartType chartType)
+		public ActionAddChart(Editor editor, ChartType chartType) : base(false, false)
 		{
 			Editor = editor;
 			ChartType = chartType;
-		}
-
-		public override bool AffectsFile()
-		{
-			return true;
 		}
 
 		public override string ToString()
@@ -28,7 +23,12 @@ namespace StepManiaEditor
 			return $"Add {ImGuiUtils.GetPrettyEnumString(ChartType)} Chart.";
 		}
 
-		public override void Do()
+		public override bool AffectsFile()
+		{
+			return true;
+		}
+
+		protected override void DoImplementation()
 		{
 			PreivouslyActiveChart = Editor.GetActiveChart();
 
@@ -42,7 +42,7 @@ namespace StepManiaEditor
 				AddedChart = Editor.AddChart(ChartType, true);
 		}
 
-		public override void Undo()
+		protected override void UndoImplementation()
 		{
 			Editor.DeleteChart(AddedChart, PreivouslyActiveChart);
 		}

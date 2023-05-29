@@ -10,15 +10,10 @@ namespace StepManiaEditor
 		private EditorChart Chart;
 		private bool DeletedActiveChart;
 
-		public ActionDeleteChart(Editor editor, EditorChart chart)
+		public ActionDeleteChart(Editor editor, EditorChart chart) : base(false, false)
 		{
 			Editor = editor;
 			Chart = chart;
-		}
-
-		public override bool AffectsFile()
-		{
-			return true;
 		}
 
 		public override string ToString()
@@ -26,13 +21,18 @@ namespace StepManiaEditor
 			return $"Delete {ImGuiUtils.GetPrettyEnumString(Chart.ChartType)} Chart.";
 		}
 
-		public override void Do()
+		public override bool AffectsFile()
+		{
+			return true;
+		}
+
+		protected override void DoImplementation()
 		{
 			DeletedActiveChart = Editor.GetActiveChart() == Chart;
 			Editor.DeleteChart(Chart, null);
 		}
 
-		public override void Undo()
+		protected override void UndoImplementation()
 		{
 			Editor.AddChart(Chart, DeletedActiveChart);
 		}

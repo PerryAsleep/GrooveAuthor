@@ -11,7 +11,7 @@ namespace StepManiaEditor
 		private int NewX;
 		private int NewY;
 
-		public ActionMoveFocalPoint(int previousX, int previousY, int newX, int newY)
+		public ActionMoveFocalPoint(int previousX, int previousY, int newX, int newY) : base(false, false)
 		{
 			PreviousX = previousX;
 			PreviousY = previousY;
@@ -19,23 +19,23 @@ namespace StepManiaEditor
 			NewY = newY;
 		}
 
-		public override bool AffectsFile()
-		{
-			return false;
-		}
-
 		public override string ToString()
 		{
 			return $"Move receptors from ({PreviousX}, {PreviousY}) to ({NewX}, {NewY}).";
 		}
 
-		public override void Do()
+		public override bool AffectsFile()
+		{
+			return false;
+		}
+
+		protected override void DoImplementation()
 		{
 			Preferences.Instance.PreferencesReceptors.PositionX = NewX;
 			Preferences.Instance.PreferencesReceptors.PositionY = NewY;
 		}
 
-		public override void Undo()
+		protected override void UndoImplementation()
 		{
 			Preferences.Instance.PreferencesReceptors.PositionX = PreviousX;
 			Preferences.Instance.PreferencesReceptors.PositionY = PreviousY;

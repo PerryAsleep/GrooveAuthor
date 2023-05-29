@@ -53,7 +53,7 @@ namespace StepManiaEditor
 		private readonly SelectionMode PreviousMode;
 		private readonly SelectionRegionMode PreviousRegionMode;
 
-		public ActionRestoreSelectionPreferenceDefaults()
+		public ActionRestoreSelectionPreferenceDefaults() : base(false, false)
 		{
 			var p = Preferences.Instance.PreferencesSelection;
 			PreviousMode = p.Mode;
@@ -70,14 +70,14 @@ namespace StepManiaEditor
 			return "Restore selection default preferences.";
 		}
 
-		public override void Do()
+		protected override void DoImplementation()
 		{
 			var p = Preferences.Instance.PreferencesSelection;
 			p.Mode = PreferencesSelection.DefaultSelectionMode;
 			p.RegionMode = PreferencesSelection.DefaultSelectionRegionMode;
 		}
 
-		public override void Undo()
+		protected override void UndoImplementation()
 		{
 			var p = Preferences.Instance.PreferencesSelection;
 			p.Mode = PreviousMode;

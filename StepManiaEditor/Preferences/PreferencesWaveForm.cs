@@ -93,7 +93,7 @@ namespace StepManiaEditor
 		private readonly float PreviousAntiAliasEdgeThreshold;
 		private readonly float PreviousAntiAliasEdgeThresholdMin;
 
-		public ActionRestoreWaveFormPreferenceDefaults()
+		public ActionRestoreWaveFormPreferenceDefaults() : base(false, false)
 		{
 			var p = Preferences.Instance.PreferencesWaveForm;
 			PreviousShowWaveForm = p.ShowWaveForm;
@@ -123,7 +123,7 @@ namespace StepManiaEditor
 			return "Restore Waveform default preferences.";
 		}
 
-		public override void Do()
+		protected override void DoImplementation()
 		{
 			var p = Preferences.Instance.PreferencesWaveForm;
 			p.ShowWaveForm = PreferencesWaveForm.DefaultShowWaveForm;
@@ -143,7 +143,7 @@ namespace StepManiaEditor
 			p.AntiAliasEdgeThresholdMin = PreferencesWaveForm.DefaultAntiAliasEdgeThresholdMin;
 		}
 
-		public override void Undo()
+		protected override void UndoImplementation()
 		{
 			var p = Preferences.Instance.PreferencesWaveForm;
 			p.ShowWaveForm = PreviousShowWaveForm;

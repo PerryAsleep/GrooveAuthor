@@ -78,7 +78,7 @@ namespace StepManiaEditor
 		private readonly uint PreviousMiniMapVisibleTimeRange;
 		private readonly uint PreviousMiniMapVisibleRowRange;
 
-		public ActionRestoreMiniMapPreferenceDefaults()
+		public ActionRestoreMiniMapPreferenceDefaults() : base(false, false)
 		{
 			var p = Preferences.Instance.PreferencesMiniMap;
 			PreviousShowMiniMap = p.ShowMiniMap;
@@ -104,7 +104,7 @@ namespace StepManiaEditor
 			return "Restore Mini Map default preferences.";
 		}
 
-		public override void Do()
+		protected override void DoImplementation()
 		{
 			var p = Preferences.Instance.PreferencesMiniMap;
 			p.ShowMiniMap = PreferencesMiniMap.DefaultShowMiniMap;
@@ -120,7 +120,7 @@ namespace StepManiaEditor
 			p.MiniMapVisibleRowRange = PreferencesMiniMap.DefaultMiniMapVisibleRowRange;
 		}
 
-		public override void Undo()
+		protected override void UndoImplementation()
 		{
 			var p = Preferences.Instance.PreferencesMiniMap;
 			p.ShowMiniMap = PreviousShowMiniMap;

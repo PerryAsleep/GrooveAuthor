@@ -47,7 +47,7 @@ namespace StepManiaEditor
 			ImGui.SetNextWindowSize(new Vector2(0, 0), ImGuiCond.FirstUseEver);
 			if (ImGui.Begin("Song Properties", ref Preferences.Instance.ShowSongPropertiesWindow, ImGuiWindowFlags.NoScrollbar))
 			{
-				var disabled = EditorSong == null || !EditorSong.CanBeEdited();
+				var disabled = !Editor.CanSongBeEdited(EditorSong);
 				if (disabled)
 					PushDisabled();
 

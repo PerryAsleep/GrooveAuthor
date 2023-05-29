@@ -24,6 +24,7 @@ using System.IO;
 using System.Linq;
 using static StepManiaEditor.Preferences;
 using static StepManiaEditor.EditorSongImageUtils;
+using StepManiaLibrary.PerformedChart;
 
 namespace StepManiaEditor
 {
@@ -31,7 +32,8 @@ namespace StepManiaEditor
 		Game,
 		Fumen.IObserver<EditorSong>,
 		Fumen.IObserver<EditorChart>,
-		Fumen.IObserver<PreferencesOptions>
+		Fumen.IObserver<PreferencesOptions>,
+		Fumen.IObserver<ActionQueue>
 	{
 		/// <summary>
 		/// How to space Chart Events when rendering.
@@ -157,6 +159,8 @@ namespace StepManiaEditor
 
 		private Dictionary<ChartType, PadData> PadDataByChartType = new Dictionary<ChartType, PadData>();
 		private Dictionary<ChartType, StepGraph> StepGraphByChartType = new Dictionary<ChartType, StepGraph>();
+		private Dictionary<ChartType, List<List<GraphNode>>> RootNodesByChartType = new Dictionary<ChartType, List<List<GraphNode>>>();
+		private StepTypeFallbacks StepTypeFallbacks;
 
 		private double PlaybackStartTime;
 		private Stopwatch PlaybackStopwatch;
@@ -245,6 +249,36 @@ namespace StepManiaEditor
 			Graphics = new GraphicsDeviceManager(this);
 			Graphics.GraphicsProfile = GraphicsProfile.HiDef;
 
+			InitKeyCommandManager();
+
+			Content.RootDirectory = "Content";
+			IsMouseVisible = true;
+			Window.AllowUserResizing = true;
+			Window.ClientSizeChanged += OnResize;
+
+			IsFixedTimeStep = false;
+			Graphics.SynchronizeWithVerticalRetrace = true;
+
+			// Set up snap levels for all valid denominators.
+			SnapLevels = new SnapData[ValidDenominators.Length + 1];
+			SnapLevels[0] = new SnapData { Rows = 0 };
+			for (var denominatorIndex = 0; denominatorIndex < ValidDenominators.Length; denominatorIndex++)
+			{
+				SnapLevels[denominatorIndex + 1] = new SnapData
+				{
+					Rows = MaxValidDenominator / ValidDenominators[denominatorIndex],
+					Texture = ArrowGraphicManager.GetSnapIndicatorTexture(ValidDenominators[denominatorIndex])
+				};
+			}
+
+			Preferences.Instance.PreferencesOptions.AddObserver(this);
+			ActionQueue.Instance.AddObserver(this);
+
+			UpdateWindowTitle();
+		}
+
+		private void InitKeyCommandManager()
+		{
 			KeyCommandManager = new KeyCommandManager();
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.Z }, OnUndo, true));
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.Z }, OnRedo, true));
@@ -292,30 +326,6 @@ namespace StepManiaEditor
 				KeyCommandManager.Register(new KeyCommandManager.Command(new[] { key }, Down, false, Up, true));
 			}
 			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftShift }, OnShiftDown, false, OnShiftUp, true));
-
-			Content.RootDirectory = "Content";
-			IsMouseVisible = true;
-			Window.AllowUserResizing = true;
-			Window.ClientSizeChanged += OnResize;
-
-			IsFixedTimeStep = false;
-			Graphics.SynchronizeWithVerticalRetrace = true;
-
-			// Set up snap levels for all valid denominators.
-			SnapLevels = new SnapData[ValidDenominators.Length + 1];
-			SnapLevels[0] = new SnapData { Rows = 0 };
-			for (var denominatorIndex = 0; denominatorIndex < ValidDenominators.Length; denominatorIndex++)
-			{
-				SnapLevels[denominatorIndex + 1] = new SnapData
-				{
-					Rows = MaxValidDenominator / ValidDenominators[denominatorIndex],
-					Texture = ArrowGraphicManager.GetSnapIndicatorTexture(ValidDenominators[denominatorIndex])
-				};
-			}
-
-			Preferences.Instance.PreferencesOptions.AddObserver(this);
-
-			UpdateWindowTitle();
 		}
 
 		private void CreateLogger()
@@ -528,7 +538,7 @@ namespace StepManiaEditor
 			regionRectTexture.SetData(textureData);
 			TextureAtlas.AddTexture(TextureIdRegionRect, regionRectTexture, true);
 
-			InitPadDataAndStepGraphsAsync();
+			InitStepGraphDataAsync();
 
 			// If we have a saved file to open, open it now.
 			if (Preferences.Instance.PreferencesOptions.OpenLastOpenedFileOnLaunch
@@ -597,7 +607,23 @@ namespace StepManiaEditor
 				return false;
 			if (ActiveChart != null && !ActiveChart.CanBeEdited())
 				return false;
+			if (ActionQueue.Instance.IsDoingOrUndoing())
+				return false;
 			return true;
+		}
+
+		public static bool CanSongBeEdited(EditorSong song)
+		{
+			if (ActionQueue.Instance.IsDoingOrUndoing())
+				return false;
+			return song?.CanBeEdited() ?? false;
+		}
+
+		public static bool CanChartBeEdited(EditorChart chart)
+		{
+			if (ActionQueue.Instance.IsDoingOrUndoing())
+				return false;
+			return chart?.CanBeEdited() ?? false;
 		}
 
 		private void OnCanEditChanged()
@@ -2818,6 +2844,17 @@ namespace StepManiaEditor
 			}
 		}
 
+		public void DrawAutogenerateChartSelectableList(EditorChart chart)
+		{
+			foreach (var chartType in SupportedChartTypes)
+			{
+				if (ImGui.Selectable(GetPrettyEnumString(chartType)))
+				{
+					ActionQueue.Instance.Do(new ActionAutogenerateChart(this, chart, chartType));
+				}
+			}
+		}
+
 		private void DrawRightClickMenu(int x, int y)
 		{
 			if (ImGui.BeginPopup("RightClickPopup"))
@@ -3238,7 +3275,6 @@ namespace StepManiaEditor
 			}
 		}
 
-
 		private void DrawDebugUI()
 		{
 			if (ImGui.Begin("Debug"))
@@ -3278,13 +3314,13 @@ namespace StepManiaEditor
 
 		#endregion Gui Rendering
 
-		#region Loading
+		#region StepGraphs
 
 		/// <summary>
 		/// Initializes all PadData and creates corresponding StepGraphs for all ChartTypes
 		/// specified in the StartupChartTypes.
 		/// </summary>
-		private async void InitPadDataAndStepGraphsAsync()
+		private async void InitStepGraphDataAsync()
 		{
 			foreach (var chartType in SupportedChartTypes)
 			{
@@ -3305,7 +3341,7 @@ namespace StepManiaEditor
 				PadDataByChartType[SupportedChartTypes[i]] = padDataTasks[i].Result;
 			}
 
-			// Create StepGraphs
+			// Create StepGraphs.
 			var pOptions = Preferences.Instance.PreferencesOptions;
 			var validStepGraphTypes = new HashSet<ChartType>();
 			for (var i = 0; i < pOptions.StartupChartTypes.Length; i++)
@@ -3314,9 +3350,11 @@ namespace StepManiaEditor
 				if (PadDataByChartType.TryGetValue(chartType, out var padData) && padData != null)
 					validStepGraphTypes.Add(chartType);
 			}
+
+			ChartType[] validStepGraphArray = null;
 			if (validStepGraphTypes.Count > 0)
 			{
-				var validStepGraphArray = validStepGraphTypes.ToArray();
+				validStepGraphArray = validStepGraphTypes.ToArray();
 
 				var stepGraphTasks = new Task<StepGraph>[validStepGraphArray.Length];
 				var index = 0;
@@ -3330,6 +3368,57 @@ namespace StepManiaEditor
 					StepGraphByChartType[validStepGraphArray[i]] = stepGraphTasks[i].Result;
 				}
 			}
+
+			// Set up root nodes.
+			if (validStepGraphArray != null)
+			{
+				var rootNodesByChartType = new Dictionary<ChartType, List<List<GraphNode>>>();
+				await Task.Run(() =>
+				{
+					for (var i = 0; i < validStepGraphArray.Length; i++)
+					{
+						var chartType = validStepGraphArray[i];
+						var rootNodes = new List<List<GraphNode>>();
+						var stepGraph = StepGraphByChartType[chartType];
+						var found = true;
+
+						// Add the root node as the first tier.
+						rootNodes.Add(new List<GraphNode> { stepGraph.GetRoot() });
+
+						// Loop over the remaining tiers.
+						for (var tier = 1; tier < stepGraph.PadData.StartingPositions.Length; tier++)
+						{
+							var nodesAtTier = new List<GraphNode>();
+							foreach (var pos in stepGraph.PadData.StartingPositions[tier])
+							{
+								var node = stepGraph.FindGraphNode(
+									pos[Constants.L], GraphArrowState.Resting,
+									pos[Constants.R], GraphArrowState.Resting);
+								if (node == null)
+								{
+									Logger.Error(
+										$"Could not find a node in the {GetPrettyEnumString(chartType)} StepGraph for StartingPosition with"
+										+ $" left on {pos[Constants.L]} and right on {pos[Constants.R]}.");
+									found = false;
+									break;
+								}
+
+								nodesAtTier.Add(node);
+							}
+							if (!found)
+								break;
+							rootNodes.Add(nodesAtTier);
+						}
+
+						if (found)
+							rootNodesByChartType.Add(chartType, rootNodes);
+					}
+				});
+				RootNodesByChartType = rootNodesByChartType;
+			}
+
+			// Load the default StepTypeFallbacks.
+			StepTypeFallbacks = await StepTypeFallbacks.Load(StepTypeFallbacks.DefaultFallbacksFileName);
 		}
 
 		/// <summary>
@@ -3381,6 +3470,32 @@ namespace StepManiaEditor
 			Logger.Info($"Finished loading {chartTypeString} StepGraph.");
 			return stepGraph;
 		}
+
+		public PadData GetPadData(ChartType chartType)
+		{
+			if (PadDataByChartType.TryGetValue(chartType, out var padData))
+				return padData;
+			return null;
+		}
+
+		public bool GetStepGraph(ChartType chartType, out StepGraph stepGraph)
+		{
+			return StepGraphByChartType.TryGetValue(chartType, out stepGraph);
+		}
+
+		public bool GetStepGraphRootNodes(ChartType chartType, out List<List<GraphNode>> rootNodes)
+		{
+			return RootNodesByChartType.TryGetValue(chartType, out rootNodes);
+		}
+
+		public StepTypeFallbacks GetStepTypeFallbacks()
+		{
+			return StepTypeFallbacks;
+		}
+
+		#endregion StepGraphs
+
+		#region Save and Load
 
 		/// <summary>
 		/// Starts the process of opening a Song file by presenting a dialog to choose a Song.
@@ -3572,7 +3687,6 @@ namespace StepManiaEditor
 			}
 		}
 
-
 		/// <summary>
 		/// Helper method when loading a Song to select the best Chart to be the active Chart.
 		/// </summary>
@@ -3749,7 +3863,7 @@ namespace StepManiaEditor
 			Window.Title = sb.ToString();
 		}
 
-		#endregion Loading
+		#endregion Save and Load
 
 		#region Selection
 
@@ -5446,13 +5560,6 @@ namespace StepManiaEditor
 			}
 		}
 
-		public PadData GetPadData(ChartType chartType)
-		{
-			if (PadDataByChartType.TryGetValue(chartType, out var padData))
-				return padData;
-			return null;
-		}
-
 		#region Drag and Drop
 
 		/// <summary>
@@ -5614,6 +5721,16 @@ namespace StepManiaEditor
 					break;
 				case PreferencesOptions.NotificationUndoHistorySizeChanged:
 					OnUndoHistorySizeChanged();
+					break;
+			}
+		}
+
+		public void OnNotify(string eventId, ActionQueue actionQueue, object payload)
+		{
+			switch (eventId)
+			{
+				case ActionQueue.NotificationAsyncActionStarted:
+					OnCanEditChanged();
 					break;
 			}
 		}

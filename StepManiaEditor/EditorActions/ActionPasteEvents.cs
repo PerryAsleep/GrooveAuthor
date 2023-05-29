@@ -37,7 +37,7 @@ namespace StepManiaEditor
 		/// <param name="chart">The Chart containing the events.</param>
 		/// <param name="events">The copied events to paste.</param>
 		/// <param name="rows">The number of rows to move the copied events by.</param>
-		public ActionPasteEvents(Editor editor, EditorChart chart, IEnumerable<EditorEvent> events, int rows)
+		public ActionPasteEvents(Editor editor, EditorChart chart, IEnumerable<EditorEvent> events, int rows) : base(false, false)
 		{
 			Editor = editor;
 			Chart = chart;
@@ -62,7 +62,7 @@ namespace StepManiaEditor
 			return true;
 		}
 
-		public override void Do()
+		protected override void DoImplementation()
 		{
 			// When starting a transformation let the Editor know.
 			Editor.OnNoteTransformationBegin();
@@ -136,7 +136,7 @@ namespace StepManiaEditor
 			}
 		}
 
-		public override void Undo()
+		protected override void UndoImplementation()
 		{
 			// When starting a transformation let the Editor know.
 			Editor.OnNoteTransformationBegin();

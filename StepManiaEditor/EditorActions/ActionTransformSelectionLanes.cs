@@ -17,7 +17,7 @@ namespace StepManiaEditor
 		private List<EditorEvent> DeletedFromAlteration;
 		private List<EditorEvent> AddedFromAlteration;
 
-		public ActionTransformSelectionLanes(Editor editor, EditorChart chart, IEnumerable<EditorEvent> events)
+		public ActionTransformSelectionLanes(Editor editor, EditorChart chart, IEnumerable<EditorEvent> events) : base(false, false)
 		{
 			Editor = editor;
 			Chart = chart;
@@ -38,11 +38,6 @@ namespace StepManiaEditor
 				}
 				TransformableEvents.Sort();
 			}
-		}
-
-		public override bool AffectsFile()
-		{
-			return true;
 		}
 
 		/// <summary>
@@ -82,7 +77,12 @@ namespace StepManiaEditor
 		/// <param name="padData">PadData for the event's chart.</param>
 		protected abstract void UndoTransform(EditorEvent e, PadData padData);
 
-		public override void Do()
+		public override bool AffectsFile()
+		{
+			return true;
+		}
+
+		protected override void DoImplementation()
 		{
 			var padData = Editor.GetPadData(Chart.ChartType);
 			if (padData == null)
@@ -112,7 +112,7 @@ namespace StepManiaEditor
 			Editor.OnNoteTransformationEnd(RemainingOriginalEventsAfterTransform);
 		}
 
-		public override void Undo()
+		protected override void UndoImplementation()
 		{
 			// When starting a transformation let the Editor know.
 			Editor.OnNoteTransformationBegin();

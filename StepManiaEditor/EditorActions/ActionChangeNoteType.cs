@@ -33,7 +33,7 @@ namespace StepManiaEditor
 			EditorChart chart,
 			IEnumerable<EditorEvent> events,
 			Func<EditorEvent, bool> filter,
-			Func<EditorEvent, EditorEvent> converter)
+			Func<EditorEvent, EditorEvent> converter) : base(false, false)
 		{
 			Editor = editor;
 			Chart = chart;
@@ -56,17 +56,17 @@ namespace StepManiaEditor
 			}
 		}
 
-		public override bool AffectsFile()
-		{
-			return true;
-		}
-
 		public override string ToString()
 		{
 			return $"Convert {OriginalEvents.Count} Notes.";
 		}
 
-		public override void Do()
+		public override bool AffectsFile()
+		{
+			return true;
+		}
+
+		protected override void DoImplementation()
 		{
 			Editor.OnNoteTransformationBegin();
 			for (var i = 0; i < NewEvents.Count; i++)
@@ -77,7 +77,7 @@ namespace StepManiaEditor
 			Editor.OnNoteTransformationEnd(NewEvents);
 		}
 
-		public override void Undo()
+		protected override void UndoImplementation()
 		{
 			Editor.OnNoteTransformationBegin();
 			for (var i = 0; i < NewEvents.Count; i++)

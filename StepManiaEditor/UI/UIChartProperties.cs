@@ -10,16 +10,9 @@ namespace StepManiaEditor
 	/// </summary>
 	internal sealed class UIChartProperties
 	{
-		private readonly DisplayTempo DummyDisplayTempo;
-		
 		private static EditorChart EditorChart;
 
 		private static readonly int TitleColumnWidth = UiScaled(100);
-
-		public UIChartProperties()
-		{
-			DummyDisplayTempo = new DisplayTempo(DisplayTempoMode.Specified, 0.0, 0.0);
-		}
 
 		public void Draw(EditorChart editorChart)
 		{
@@ -31,7 +24,7 @@ namespace StepManiaEditor
 			ImGui.SetNextWindowSize(new Vector2(0, 0), ImGuiCond.FirstUseEver);
 			if (ImGui.Begin("Chart Properties", ref Preferences.Instance.ShowChartPropertiesWindow, ImGuiWindowFlags.NoScrollbar))
 			{
-				var disabled = EditorChart == null || !EditorChart.CanBeEdited();
+				var disabled = !Editor.CanChartBeEdited(EditorChart);
 				if (disabled)
 					PushDisabled();
 

@@ -188,7 +188,7 @@ namespace StepManiaEditor
 		private readonly float PreviousVolume;
 		private readonly int PreviousUndoHistorySize;
 
-		public ActionRestoreOptionPreferenceDefaults()
+		public ActionRestoreOptionPreferenceDefaults() : base(false, false)
 		{
 			var p = Preferences.Instance.PreferencesOptions;
 			
@@ -216,7 +216,7 @@ namespace StepManiaEditor
 			return "Restore option default preferences.";
 		}
 
-		public override void Do()
+		protected override void DoImplementation()
 		{
 			var p = Preferences.Instance.PreferencesOptions;
 			p.RecentFilesHistorySize = PreferencesOptions.DefaultRecentFilesHistorySize;
@@ -233,7 +233,7 @@ namespace StepManiaEditor
 			p.UndoHistorySize = PreferencesOptions.DefaultUndoHistorySize;
 		}
 
-		public override void Undo()
+		protected override void UndoImplementation()
 		{
 			var p = Preferences.Instance.PreferencesOptions;
 			p.RecentFilesHistorySize = PreviousRecentFilesHistorySize;

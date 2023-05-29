@@ -63,7 +63,7 @@ namespace StepManiaEditor
 		/// <param name="chart">The Chart containing the events.</param>
 		/// <param name="events">The events to change.</param>
 		/// <param name="rows">The number of rows to move the given events.</param>
-		public ActionShiftSelectionRow(Editor editor, EditorChart chart, IEnumerable<EditorEvent> events, int rows)
+		public ActionShiftSelectionRow(Editor editor, EditorChart chart, IEnumerable<EditorEvent> events, int rows) : base(false, false)
 		{
 			Editor = editor;
 			Chart = chart;
@@ -94,7 +94,7 @@ namespace StepManiaEditor
 			return true;
 		}
 
-		public override void Do()
+		protected override void DoImplementation()
 		{
 			// When starting a transformation let the Editor know. Changing the positon of notes
 			// requires deleting them and re-adding them after they have been altered. The editor
@@ -138,7 +138,7 @@ namespace StepManiaEditor
 			Editor.OnNoteTransformationEnd(RemainingOriginalEventsAfterTransform);
 		}
 
-		public override void Undo()
+		protected override void UndoImplementation()
 		{
 			// When starting a transformation let the Editor know. Changing the positon of notes
 			// requires deleting them and re-adding them after they have been altered. The editor
