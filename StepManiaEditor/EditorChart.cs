@@ -1766,7 +1766,14 @@ namespace StepManiaEditor
 				var layer = new Layer();
 				foreach (var editorEvent in EditorEvents)
 				{
-					layer.Events.AddRange(editorEvent.GetEvents());
+					var events = editorEvent.GetEvents();
+					for (var i = 0; i < events.Count; i++)
+					{
+						if (events[i] != null)
+						{
+							layer.Events.Add(events[i]);
+						}
+					}
 				}
 				layer.Events.Sort(new SMEventComparer());
 				chart.Layers.Add(layer);
