@@ -1129,7 +1129,7 @@ namespace StepManiaEditor
 				// Each chart could be saved in parallel, and for large songs with many charts this would be quicker,
 				// however the default TaskScheduler will pause for over a frame when Starting a Task when there are
 				// a large number of Tasks already running. This causes a noticable hitch when saving. To avoid this
-				// we intentionally reducing the number of in flight Tasks by running Chart saves sequentially. Note
+				// we intentionally reduce the number of in flight Tasks by running Chart saves sequentially. Note
 				// that this means saving will take at least one frame per Chart due to the Charts' WorkQueues
 				// processing once per frame.
 				if (numCharts > 0)
