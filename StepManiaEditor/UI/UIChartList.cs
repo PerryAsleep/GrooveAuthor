@@ -6,7 +6,7 @@ namespace StepManiaEditor
 {
 	internal sealed class UIChartList
 	{
-		Editor Editor;
+		private Editor Editor;
 
 		private static readonly int TypeWidth = UiScaled(60);
 		private static readonly int RatingWidth = UiScaled(16);

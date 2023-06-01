@@ -9,6 +9,13 @@ using static StepManiaEditor.ImGuiUtils;
 
 namespace StepManiaEditor
 {
+	/// <summary>
+	/// This class offers methods for drawing complex elements using ImGui that typically use the following behavior:
+	///  - They can alter fields or properties on an object.
+	///  - They can be undoable, using EditorActions to perform edits.
+	///  - They can leverage cached state so that edits can occur in the UI before being committed to the underlying value.
+	///  - They are laid out using a table with a name on the left, an optional help tool tip marker, and a control on the right.
+	/// </summary>
 	internal sealed class ImGuiLayoutUtils
 	{
 		/// <summary>
@@ -34,6 +41,9 @@ namespace StepManiaEditor
 		private static readonly float DisplayTempoEnumWidth = UiScaled(120);
 		private static readonly float DisplayTempoToWidth = UiScaled(14);
 		private static readonly float SliderResetWidth = UiScaled(50);
+		private static readonly float ConfigFromListEditWidth = UiScaled(40);
+		private static readonly float ConfigFromListViewAllWidth = UiScaled(60);
+		private static readonly float ConfigFromListNewWidth = UiScaled(30);
 
 		public static void SetFont(ImFontPtr font)
 		{
@@ -170,21 +180,27 @@ namespace StepManiaEditor
 		public static void DrawRowTextInput(bool undoable, string title, object o, string fieldName, bool affectsFile, string help = null)
 		{
 			DrawRowTitleAndAdvanceColumn(title);
-			DrawTextInput(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, affectsFile, help);
+			DrawTextInput(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, affectsFile, null, help);
+		}
+
+		public static void DrawRowTextInput(bool undoable, string title, object o, string fieldName, bool affectsFile, Func<string, bool> validactionFunc, string help = null)
+		{
+			DrawRowTitleAndAdvanceColumn(title);
+			DrawTextInput(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, affectsFile, validactionFunc, help);
 		}
 
 		public static void DrawRowTextInputWithTransliteration(bool undoable, string title, object o, string fieldName,
 			string transliterationFieldName, bool affectsFile, string help = null)
 		{
 			DrawRowTitleAndAdvanceColumn(title);
-			DrawTextInput(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X * 0.5f, affectsFile, help);
+			DrawTextInput(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X * 0.5f, affectsFile, null, help);
 			ImGui.SameLine();
-			DrawTextInput(undoable, "Transliteration", o, transliterationFieldName, ImGui.GetContentRegionAvail().X, affectsFile,
+			DrawTextInput(undoable, "Transliteration", o, transliterationFieldName, ImGui.GetContentRegionAvail().X, affectsFile, null,
 				"Optional text to use when sorting by this value.\nStepMania sorts values lexicographically, preferring transliterations.");
 		}
 
 		private static void DrawTextInput(bool undoable, string title, object o, string fieldName, float width,
-			bool affectsFile, string help = null)
+			bool affectsFile, Func<string, bool> validactionFunc = null, string help = null)
 		{
 			(bool, string) Func(string v)
 			{
@@ -193,7 +209,7 @@ namespace StepManiaEditor
 				return (r, v);
 			}
 
-			DrawCachedEditReference<string>(undoable, title, o, fieldName, width, affectsFile, Func, StringCompare, null, help);
+			DrawCachedEditReference<string>(undoable, title, o, fieldName, width, affectsFile, Func, StringCompare, validactionFunc, help);
 		}
 
 		#endregion Text Input
@@ -300,7 +316,7 @@ namespace StepManiaEditor
 			// Display the text input but do not allow edits to it.
 			PushDisabled();
 			DrawTextInput(false, title, o, fieldName,
-				Math.Max(1.0f, ImGui.GetContentRegionAvail().X - (FileBrowseXwidth + FileBrowseBrowseWidth) - ImGui.GetStyle().ItemSpacing.X * 2), affectsFile, help);
+				Math.Max(1.0f, ImGui.GetContentRegionAvail().X - (FileBrowseXwidth + FileBrowseBrowseWidth) - ImGui.GetStyle().ItemSpacing.X * 2), affectsFile, null, help);
 			PopDisabled();
 
 			ImGui.SameLine();
@@ -325,7 +341,7 @@ namespace StepManiaEditor
 			// Display the text input but do not allow edits to it.
 			PushDisabled();
 			DrawTextInput(false, title, o, fieldName,
-				Math.Max(1.0f, ImGui.GetContentRegionAvail().X - (FileBrowseXwidth + FileBrowseAutoWidth + FileBrowseBrowseWidth) - ImGui.GetStyle().ItemSpacing.X * 3), affectsFile, help);
+				Math.Max(1.0f, ImGui.GetContentRegionAvail().X - (FileBrowseXwidth + FileBrowseAutoWidth + FileBrowseBrowseWidth) - ImGui.GetStyle().ItemSpacing.X * 3), affectsFile, null, help);
 			PopDisabled();
 
 			ImGui.SameLine();
@@ -348,6 +364,64 @@ namespace StepManiaEditor
 		}
 
 		#endregion File Browse
+
+		#region Config From List
+
+		public static bool DrawSelectableConfigFromList(
+			bool undoable,
+			string title,
+			object o,
+			string fieldName,
+			string[] values,
+			Action editAction,
+			Action viewAllAction,
+			Action newAction,
+			bool affectsFile,
+			string help = null)
+		{
+			DrawRowTitleAndAdvanceColumn(title);
+
+			var itemWidth = DrawHelp(help, ImGui.GetContentRegionAvail().X);
+			var spacing = ImGui.GetStyle().ItemSpacing.X;
+			var comboWidth = Math.Max(1.0f, (itemWidth - ConfigFromListEditWidth - ConfigFromListViewAllWidth - ConfigFromListNewWidth - spacing * 3.0f));
+			ImGui.SetNextItemWidth(comboWidth);
+
+			var value = GetValueFromFieldOrProperty<string>(o, fieldName);
+			var newValue = value;
+			var ret = ComboFromArray(GetElementTitle(title, fieldName), ref newValue, values);
+			if (ret)
+			{
+				if (!newValue.Equals(value))
+				{
+					if (undoable)
+						ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(o, fieldName, newValue, value, affectsFile));
+					else
+						SetFieldOrPropertyToValue(o, fieldName, newValue);
+				}
+			}
+
+			ImGui.SameLine();
+			if (ImGui.Button($"Edit{GetElementTitle(title, fieldName)}", new Vector2(ConfigFromListEditWidth, 0.0f)))
+			{
+				editAction();
+			}
+
+			ImGui.SameLine();
+			if (ImGui.Button($"View All{GetElementTitle(title, fieldName)}", new Vector2(ConfigFromListViewAllWidth, 0.0f)))
+			{
+				viewAllAction();
+			}
+
+			ImGui.SameLine();
+			if (ImGui.Button($"New{GetElementTitle(title, fieldName)}", new Vector2(ConfigFromListNewWidth, 0.0f)))
+			{
+				newAction();
+			}
+
+			return ret;
+		}
+
+		#endregion Config From List
 
 		#region Input Int
 

@@ -631,6 +631,16 @@ namespace StepManiaEditor
 			return charts;
 		}
 
+		public IReadOnlyList<EditorChart> GetCharts()
+		{
+			var allCharts = new List<EditorChart>();
+			foreach (var kvp in Charts)
+			{
+				allCharts.AddRange(kvp.Value);
+			}
+			return allCharts;
+		}
+
 		public int GetNumCharts()
 		{
 			var numCharts = 0;

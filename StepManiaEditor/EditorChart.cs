@@ -10,6 +10,7 @@ using static StepManiaLibrary.Constants;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+using StepManiaLibrary;
 
 namespace StepManiaEditor
 {
@@ -31,6 +32,7 @@ namespace StepManiaEditor
 		{
 			public double MusicOffset = 0.0;
 			public bool ShouldUseChartMusicOffset = false;
+			public string ExpressedChartConfig = PreferencesExpressedChartConfig.DefaultConfigName;
 		}
 
 		/// <summary>
@@ -354,6 +356,22 @@ namespace StepManiaEditor
 		}
 		private DisplayTempo DisplayTempo = new DisplayTempo();
 
+		public string ExpressedChartConfig
+		{
+			get => ExpressedChartConfigInternal;
+			set
+			{
+				Assert(CanBeEdited());
+				if (!CanBeEdited())
+					return;
+				if (string.IsNullOrEmpty(value))
+					return;
+				if (Preferences.Instance.PreferencesExpressedChartConfig.DoesConfigExist(value))
+					ExpressedChartConfigInternal = value;
+			}
+		}
+		private string ExpressedChartConfigInternal;
+
 		#endregion Properties
 
 		#region Constructors
@@ -364,6 +382,8 @@ namespace StepManiaEditor
 				AddObserver(observer);
 
 			WorkQueue = new WorkQueue();
+
+			ExpressedChartConfigInternal = PreferencesExpressedChartConfig.DefaultConfigName;
 
 			OriginalChartExtras = chart.Extras;
 			EditorSong = editorSong;
@@ -401,6 +421,10 @@ namespace StepManiaEditor
 		{
 			if (observer != null)
 				AddObserver(observer);
+
+			WorkQueue = new WorkQueue();
+
+			ExpressedChartConfigInternal = PreferencesExpressedChartConfig.DefaultConfigName;
 
 			EditorSong = editorSong;
 			ChartTypeInternal = chartType;
@@ -1797,6 +1821,7 @@ namespace StepManiaEditor
 			{
 				MusicOffset = MusicOffset,
 				ShouldUseChartMusicOffset = UsesChartMusicOffset,
+				ExpressedChartConfig = ExpressedChartConfig,
 			};
 			var jsonString = JsonSerializer.Serialize(customSaveData, CustomSaveDataSerializationOptions);
 
@@ -1851,6 +1876,7 @@ namespace StepManiaEditor
 
 				MusicOffset = customSaveData.MusicOffset;
 				UsesChartMusicOffset = customSaveData.ShouldUseChartMusicOffset;
+				ExpressedChartConfig = customSaveData.ExpressedChartConfig;
 				return true;
 			}
 			catch (Exception e)

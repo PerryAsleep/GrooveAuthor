@@ -33,6 +33,7 @@ namespace StepManiaEditor
 		Fumen.IObserver<EditorSong>,
 		Fumen.IObserver<EditorChart>,
 		Fumen.IObserver<PreferencesOptions>,
+		Fumen.IObserver<PreferencesExpressedChartConfig>,
 		Fumen.IObserver<ActionQueue>
 	{
 		/// <summary>
@@ -147,6 +148,7 @@ namespace StepManiaEditor
 		private UIReceptorPreferences UIReceptorPreferences;
 		private UIOptions UIOptions;
 		private UIChartPosition UIChartPosition;
+		private UIExpressedChartConfig UIExpressedChartConfig;
 
 		private TextureAtlas TextureAtlas;
 
@@ -272,6 +274,7 @@ namespace StepManiaEditor
 			}
 
 			Preferences.Instance.PreferencesOptions.AddObserver(this);
+			Preferences.Instance.PreferencesExpressedChartConfig.AddObserver(this);
 			ActionQueue.Instance.AddObserver(this);
 
 			UpdateWindowTitle();
@@ -487,6 +490,7 @@ namespace StepManiaEditor
 			UIReceptorPreferences = new UIReceptorPreferences(this);
 			UIOptions = new UIOptions();
 			UIChartPosition = new UIChartPosition(this);
+			UIExpressedChartConfig = new UIExpressedChartConfig(this);
 
 			base.Initialize();
 		}
@@ -601,7 +605,7 @@ namespace StepManiaEditor
 			return new Vector2(GetFocalPointX(), GetFocalPointY());
 		}
 
-		private bool CanEdit()
+		public bool CanEdit()
 		{
 			if (ActiveSong != null && !ActiveSong.CanBeEdited())
 				return false;
@@ -2692,7 +2696,8 @@ namespace StepManiaEditor
 			UISongProperties.Draw(ActiveSong);
 			UIChartProperties.Draw(ActiveChart);
 			UIChartList.Draw(ActiveSong, ActiveChart);
-			
+			UIExpressedChartConfig.Draw();
+
 			UIChartPosition.Draw(
 				GetFocalPointX(),
 				Graphics.PreferredBackBufferHeight - GetChartPositionUIYPAddingFromBottom() - (int)(UIChartPosition.Height * 0.5),
@@ -5464,6 +5469,11 @@ namespace StepManiaEditor
 			return EditorMouseState;
 		}
 
+		public EditorSong GetActiveSong()
+		{
+			return ActiveSong;
+		}
+
 		public EditorChart GetActiveChart()
 		{
 			return ActiveChart;
@@ -5664,6 +5674,21 @@ namespace StepManiaEditor
 			ActionQueue.Instance.Resize(Preferences.Instance.PreferencesOptions.UndoHistorySize);
 		}
 
+		private void OnExpressedChartConfigNameChanged(string oldName, string newName)
+		{
+			// When an Expressed Chart Config name has changed, update all loaded Charts directly without enqueueing actions.
+			// We don't want to introduce unintended actions to be undone / redone. Undoing changing an Expressed Chart Config
+			// name will result in this notification being triggered again.
+			if (ActiveSong != null)
+			{
+				foreach (var chart in ActiveSong.GetCharts())
+				{
+					if (chart.ExpressedChartConfig.Equals(oldName))
+						chart.ExpressedChartConfig = newName;
+				}
+			}
+		}
+
 		#region IObserver
 		public void OnNotify(string eventId, EditorSong song, object payload)
 		{
@@ -5721,6 +5746,17 @@ namespace StepManiaEditor
 					break;
 				case PreferencesOptions.NotificationUndoHistorySizeChanged:
 					OnUndoHistorySizeChanged();
+					break;
+			}
+		}
+
+		public void OnNotify(string eventId, PreferencesExpressedChartConfig options, object payload)
+		{
+			switch (eventId)
+			{
+				case PreferencesExpressedChartConfig.NotificationConfigRename:
+					var payloadNames = (Tuple<string, string>)payload;
+					OnExpressedChartConfigNameChanged(payloadNames.Item1, payloadNames.Item2);
 					break;
 			}
 		}

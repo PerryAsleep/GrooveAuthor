@@ -9,6 +9,9 @@ using Microsoft.Win32;
 
 namespace StepManiaEditor
 {
+	/// <summary>
+	/// This class offers helper methods for drawing ImGui controls with small additional behaviors.
+	/// </summary>
 	internal sealed class ImGuiUtils
 	{
 		// UI positioning values affected by DPI scaling.
@@ -73,6 +76,23 @@ namespace StepManiaEditor
 			var intValue = (int)(object)enumValue;
 			var result = ImGui.Combo(name, ref intValue, strings, strings.Length);
 			enumValue = (T)(object)intValue;
+			return result;
+		}
+
+		public static bool ComboFromArray(string name, ref string currentValue, string[] values)
+		{
+			var numValues = values.Length;
+			if (numValues == 0)
+				return false;
+
+			var intValue = 0;
+			while (intValue < numValues && !values[intValue].Equals(currentValue))
+				intValue++;
+			if (intValue >= numValues)
+				intValue = 0;
+
+			var result = ImGui.Combo(name, ref intValue, values, values.Length);
+			currentValue = values[intValue];
 			return result;
 		}
 

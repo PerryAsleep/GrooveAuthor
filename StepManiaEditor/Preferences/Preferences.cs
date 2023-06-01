@@ -6,6 +6,8 @@ using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Fumen;
 using Fumen.Converters;
+using StepManiaLibrary;
+using static Fumen.Converters.SMCommon;
 
 namespace StepManiaEditor
 {
@@ -18,6 +20,9 @@ namespace StepManiaEditor
 		/// File to use for deserializing Preferences.
 		/// </summary>
 		private const string FileName = "Preferences.json";
+
+		public const string DefaultBalancedPerformedChartConfigName = "Default Balanced";
+		public const string DefaultStaminaPerformedChartConfigName = "Default Stamina";
 
 		/// <summary>
 		/// Serialization options.
@@ -85,6 +90,13 @@ namespace StepManiaEditor
 		// Animations preferences
 		[JsonInclude] public PreferencesReceptors PreferencesReceptors = new PreferencesReceptors();
 
+		// ExpressedChart preferences
+		[JsonInclude] public PreferencesExpressedChartConfig PreferencesExpressedChartConfig = new PreferencesExpressedChartConfig();
+
+		// PerformedChart preferences
+		// TODO: Move these into their own class
+		[JsonInclude] public Dictionary<string, StepManiaLibrary.PerformedChart.Config> PerformedChartConfigs = new Dictionary<string, StepManiaLibrary.PerformedChart.Config>();
+
 		// Log preferences
 		[JsonInclude] public bool ShowLogWindow = true;
 		[JsonInclude] public int LogWindowDateDisplay = 1;
@@ -108,13 +120,65 @@ namespace StepManiaEditor
 		/// </summary>
 		public Preferences()
 		{
-			PostLoad();
+			//PostLoad();
 		}
 
 		private void PostLoad()
 		{
 			PreferencesReceptors.SetEditor(Editor);
 			PreferencesOptions.PostLoad();
+			PreferencesExpressedChartConfig.PostLoad();
+
+			AddDefaultPerformedChartConfigs();
+		}
+
+		private void AddDefaultPerformedChartConfigs()
+		{
+			// Default Balanced
+			var balancedConfig = new StepManiaLibrary.PerformedChart.Config();
+
+			var arrowWeights = new Dictionary<string, List<int>>();
+			arrowWeights[ChartTypeString(ChartType.dance_single)] = new List<int> { 25, 25, 25, 25 };
+			arrowWeights[ChartTypeString(ChartType.dance_double)] = new List<int> { 6, 12, 10, 22, 22, 12, 10, 6 };
+			arrowWeights[ChartTypeString(ChartType.dance_solo)] = new List<int> { 13, 12, 25, 25, 12, 13 };
+			arrowWeights[ChartTypeString(ChartType.dance_threepanel)] = new List<int> { 25, 50, 25 };
+			arrowWeights[ChartTypeString(ChartType.pump_single)] = new List<int> { 17, 16, 34, 16, 17 };
+			arrowWeights[ChartTypeString(ChartType.pump_halfdouble)] = new List<int> { 13, 12, 25, 25, 12, 13 }; // WRONG
+			arrowWeights[ChartTypeString(ChartType.pump_double)] = new List<int> { 6, 8, 7, 8, 22, 22, 8, 7, 8, 6 }; // WRONG
+			arrowWeights[ChartTypeString(ChartType.smx_beginner)] = new List<int> { 25, 50, 25 };
+			arrowWeights[ChartTypeString(ChartType.smx_single)] = new List<int> { 25, 21, 8, 21, 25 };
+			arrowWeights[ChartTypeString(ChartType.smx_dual)] = new List<int> { 8, 17, 25, 25, 17, 8 };
+			arrowWeights[ChartTypeString(ChartType.smx_full)] = new List<int> { 6, 8, 7, 8, 22, 22, 8, 7, 8, 6 };
+			balancedConfig.ArrowWeights = arrowWeights;
+
+			var stepTighteningConfig = new StepManiaLibrary.PerformedChart.Config.StepTighteningConfig();
+			stepTighteningConfig.TravelSpeedMinTimeSeconds = 0.176471;  // 16ths at 170
+			stepTighteningConfig.TravelSpeedMaxTimeSeconds = 0.24;      // 16ths at 125
+			stepTighteningConfig.TravelDistanceMin = 2.0;
+			stepTighteningConfig.TravelDistanceMax = 3.0;
+			stepTighteningConfig.StretchDistanceMin = 3.0;
+			stepTighteningConfig.StretchDistanceMax = 4.0;
+			balancedConfig.StepTightening = stepTighteningConfig;
+
+			var lateralTighteningConfig = new StepManiaLibrary.PerformedChart.Config.LateralTighteningConfig();
+			lateralTighteningConfig.RelativeNPS = 1.65;
+			lateralTighteningConfig.AbsoluteNPS = 12.0;
+			lateralTighteningConfig.Speed = 3.0;
+			balancedConfig.LateralTightening = lateralTighteningConfig;
+
+			var facingConfig = new StepManiaLibrary.PerformedChart.Config.FacingConfig();
+			facingConfig.MaxInwardPercentage = 1.0;
+			facingConfig.MaxOutwardPercentage = 1.0;
+			balancedConfig.Facing = facingConfig;
+
+			balancedConfig.Init();
+			PerformedChartConfigs[DefaultBalancedPerformedChartConfigName] = balancedConfig;
+
+			// Default Stamina
+			var staminaConfig = new StepManiaLibrary.PerformedChart.Config();
+			staminaConfig.StepTightening.TravelSpeedMaxTimeSeconds = 0.303; // 16ths at 99
+			staminaConfig.SetAsOverrideOf(balancedConfig);
+			PerformedChartConfigs[DefaultStaminaPerformedChartConfigName] = staminaConfig;
 		}
 
 		private void PreSave()

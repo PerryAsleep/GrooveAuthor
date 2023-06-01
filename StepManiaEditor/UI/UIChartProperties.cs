@@ -72,10 +72,43 @@ namespace StepManiaEditor
 					ImGuiLayoutUtils.EndTable();
 				}
 
+				ImGui.Separator();
+				if (ImGuiLayoutUtils.BeginTable("ChartExpressionTable", TitleColumnWidth))
+				{
+					var configValues = Preferences.Instance.PreferencesExpressedChartConfig.GetSortedConfigNames();
+					ImGuiLayoutUtils.DrawSelectableConfigFromList(true, "Expression", EditorChart, nameof(EditorChart.ExpressedChartConfig), configValues,
+						EditExpressedChartConfig, ViewAllExpressedChartConfigs, NewExpressedChartConfig, true,
+						"(Editor Only) Expressed Chart Configuration."
+						+ "\nThis configuration is used by the editor to parse the Chart and interpret its steps."
+						+ "\nThis interpretation is used for autogenerating patterns and other Charts.");
+
+					ImGuiLayoutUtils.EndTable();
+				}
+
 				if (disabled)
 					PopDisabled();
 			}
 			ImGui.End();
+		}
+
+		private static void EditExpressedChartConfig()
+		{
+			Preferences.Instance.PreferencesExpressedChartConfig.ActiveExpressedChartConfigForWindow = EditorChart.ExpressedChartConfig;
+			Preferences.Instance.PreferencesExpressedChartConfig.ShowExpressedChartListWindow = true;
+		}
+
+		private static void ViewAllExpressedChartConfigs()
+		{
+			// TODO
+		}
+
+		private static void NewExpressedChartConfig()
+		{
+			var newConfigName = Preferences.Instance.PreferencesExpressedChartConfig.GetNewConfigName();
+			ActionQueue.Instance.Do(new ActionAddExpressedChartConfig(newConfigName, EditorChart));
+
+			Preferences.Instance.PreferencesExpressedChartConfig.ActiveExpressedChartConfigForWindow = newConfigName;
+			Preferences.Instance.PreferencesExpressedChartConfig.ShowExpressedChartListWindow = true;
 		}
 
 		private static void BrowseMusicFile()

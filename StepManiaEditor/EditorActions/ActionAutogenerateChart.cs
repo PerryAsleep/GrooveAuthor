@@ -17,7 +17,6 @@ namespace StepManiaEditor
 		private EditorChart PreivouslyActiveChart;
 		private EditorChart NewEditorChart;
 		private ChartType ChartType;
-		private ExpressedChartConfig ExpressedChartConfig;
 		private StepManiaLibrary.PerformedChart.Config PerformedChartConfig;
 		private int RandomSeed;
 		private bool WasSuccessful;
@@ -34,15 +33,6 @@ namespace StepManiaEditor
 			ChartType = chartType;
 			WasSuccessful = false;
 			RandomSeed = new Random().Next();
-
-			// TODO: Configurable ExpressedChartConfig.
-			ExpressedChartConfig = new ExpressedChartConfig();
-			ExpressedChartConfig.DefaultBracketParsingMethod = BracketParsingMethod.Balanced;
-			ExpressedChartConfig.BracketParsingDetermination = BracketParsingDetermination.ChooseMethodDynamically;
-			ExpressedChartConfig.MinLevelForBrackets = 7;
-			ExpressedChartConfig.UseAggressiveBracketsWhenMoreSimultaneousNotesThanCanBeCoveredWithoutBrackets = true;
-			ExpressedChartConfig.BalancedBracketsPerMinuteForAggressiveBrackets = 3.0;
-			ExpressedChartConfig.BalancedBracketsPerMinuteForNoBrackets = 1.0;
 
 			// TODO: Configurable PerformedChartConfig.
 			PerformedChartConfig = new Config();
@@ -117,6 +107,14 @@ namespace StepManiaEditor
 				return;
 			}
 
+			var expressedChartConfig = Preferences.Instance.PreferencesExpressedChartConfig.GetConfig(SourceChart.ExpressedChartConfig);
+			if (expressedChartConfig == null)
+			{
+				Logger.Error($"{errorString} No {SourceChart.ExpressedChartConfig} Expressed Chart Config defined.");
+				OnDone();
+				return;
+			}
+
 			StepTypeFallbacks fallbacks = null;
 			if (!inputStepGraph.PadData.CanFitWithin(outputStepGraph.PadData))
 			{
@@ -141,7 +139,7 @@ namespace StepManiaEditor
 						var expressedChart = ExpressedChart.CreateFromSMEvents(
 							chart.Layers[0].Events,
 							inputStepGraph,
-							ExpressedChartConfig,
+							expressedChartConfig,
 							SourceChart.Rating);
 						if (expressedChart == null)
 						{
