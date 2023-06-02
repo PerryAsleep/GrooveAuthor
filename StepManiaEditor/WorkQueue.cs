@@ -13,7 +13,7 @@ namespace StepManiaEditor
 	/// Enqueued Actions are run synchronously on the WorkQueue's thread.
 	/// If there is no asynchronous work in the queue, enqueued Actions are run immediately when enqueued.
 	/// Enqueued Tasks may be async and are run through the TaskScheduler.
-	/// While enqueued work may run asychronously WorkQueue itself is not thread safe.
+	/// While enqueued work may run asynchronously WorkQueue itself is not thread safe.
 	/// Callbacks for enqueued work always occur on the WorkQueue's thread.
 	/// Expected Usage:
 	///  Call Enqueue to enqueue an Action or Task containing work to do.
@@ -137,36 +137,6 @@ namespace StepManiaEditor
 		/// If this is not null then it has been popped from Items.
 		/// </summary>
 		private WorkQueueItem ActiveItem;
-
-		private Task BackgroundTask;
-		private CancellationTokenSource CancellationTokenSource;
-
-		public WorkQueue()
-		{
-			//BackgroundTask = new 
-		}
-
-		//private void BackgroundWork(CancellationToken token)
-		//{
-		//	try
-		//	{
-		//		while (true)
-		//		{
-		//			token.ThrowIfCancellationRequested();
-
-
-		//			Task.Delay(TimeSpan.FromMilliseconds(5)).Wait();
-		//		}
-		//	}
-		//	catch (OperationCanceledException)
-		//	{
-
-		//	}
-		//	finally
-		//	{
-
-		//	}
-		//}
 
 		/// <summary>
 		/// Enqueues the given WorkQueueItem.
