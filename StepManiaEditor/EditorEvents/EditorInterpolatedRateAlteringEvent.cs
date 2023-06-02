@@ -2,7 +2,6 @@
 using Fumen;
 using Fumen.ChartDefinition;
 using Microsoft.Xna.Framework.Graphics;
-using static Fumen.Utils;
 
 namespace StepManiaEditor
 {
