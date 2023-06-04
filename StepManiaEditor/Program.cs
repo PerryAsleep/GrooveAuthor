@@ -1,14 +1,13 @@
 ﻿using System;
 
-namespace StepManiaEditor
+namespace StepManiaEditor;
+
+public static class Program
 {
-	public static class Program
+	[STAThread]
+	private static void Main()
 	{
-		[STAThread]
-		static void Main()
-		{
-			using (var game = new Editor())
-				game.Run();
-		}
+		using var game = new Editor();
+		game.Run();
 	}
 }
