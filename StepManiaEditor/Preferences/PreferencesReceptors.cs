@@ -80,8 +80,10 @@ internal sealed class PreferencesReceptors
 
 	public void ClampViewportPositions()
 	{
+#pragma warning disable CA2245
 		PositionX = PositionX;
 		PositionY = PositionY;
+#pragma warning restore CA2245
 	}
 
 	public bool IsUsingDefaults()
