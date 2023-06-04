@@ -1,70 +1,69 @@
 ﻿using System.Collections.Generic;
 
-namespace StepManiaEditor
+namespace StepManiaEditor;
+
+internal sealed class ActionDeleteExpressedChartConfig : EditorAction
 {
-	internal sealed class ActionDeleteExpressedChartConfig : EditorAction
+	private readonly Editor Editor;
+	private readonly string ConfigName;
+	private readonly List<EditorChart> ChartsWithDeletedConfig;
+
+	public ActionDeleteExpressedChartConfig(Editor editor, string configName) : base(false, false)
 	{
-		private Editor Editor;
-		private string ConfigName;
-		private List<EditorChart> ChartsWithDeletedConfig;
+		Editor = editor;
+		ConfigName = configName;
+		ChartsWithDeletedConfig = new List<EditorChart>();
 
-		public ActionDeleteExpressedChartConfig(Editor editor, string configName) : base(false, false)
+		ChartsWithDeletedConfig = new List<EditorChart>();
+		var song = Editor.GetActiveSong();
+		if (song != null)
 		{
-			Editor = editor;
-			ConfigName = configName;
-			ChartsWithDeletedConfig = new List<EditorChart>();
-
-			ChartsWithDeletedConfig = new List<EditorChart>();
-			var song = Editor.GetActiveSong();
-			if (song != null)
+			var charts = song.GetCharts();
+			foreach (var chart in charts)
 			{
-				var charts = song.GetCharts();
-				foreach (var chart in charts)
+				if (chart.ExpressedChartConfig == ConfigName)
 				{
-					if (chart.ExpressedChartConfig == ConfigName)
-					{
-						ChartsWithDeletedConfig.Add(chart);
-					}
+					ChartsWithDeletedConfig.Add(chart);
+				}
+			}
+		}
+	}
+
+	public override string ToString()
+	{
+		return $"Delete {ConfigName} Expressed Chart Config.";
+	}
+
+	public override bool AffectsFile()
+	{
+		return ChartsWithDeletedConfig.Count > 0;
+	}
+
+	protected override void DoImplementation()
+	{
+		var song = Editor.GetActiveSong();
+		if (song != null)
+		{
+			var charts = song.GetCharts();
+			foreach (var chart in charts)
+			{
+				if (chart.ExpressedChartConfig == ConfigName)
+				{
+					chart.ExpressedChartConfig = PreferencesExpressedChartConfig.DefaultConfigName;
 				}
 			}
 		}
 
-		public override string ToString()
+		Preferences.Instance.PreferencesExpressedChartConfig.DeleteConfig(ConfigName);
+	}
+
+	protected override void UndoImplementation()
+	{
+		Preferences.Instance.PreferencesExpressedChartConfig.AddConfig(ConfigName);
+
+		foreach (var chart in ChartsWithDeletedConfig)
 		{
-			return $"Delete {ConfigName} Expressed Chart Config.";
-		}
-
-		public override bool AffectsFile()
-		{
-			return ChartsWithDeletedConfig.Count > 0;
-		}
-
-		protected override void DoImplementation()
-		{
-			var song = Editor.GetActiveSong();
-			if (song != null)
-			{
-				var charts = song.GetCharts();
-				foreach(var chart in charts)
-				{
-					if (chart.ExpressedChartConfig == ConfigName)
-					{
-						chart.ExpressedChartConfig = PreferencesExpressedChartConfig.DefaultConfigName;
-					}
-				}
-			}
-
-			Preferences.Instance.PreferencesExpressedChartConfig.DeleteConfig(ConfigName);
-		}
-
-		protected override void UndoImplementation()
-		{
-			Preferences.Instance.PreferencesExpressedChartConfig.AddConfig(ConfigName);
-
-			foreach(var chart in ChartsWithDeletedConfig)
-			{
-				chart.ExpressedChartConfig = ConfigName;
-			}
+			chart.ExpressedChartConfig = ConfigName;
 		}
 	}
 }
