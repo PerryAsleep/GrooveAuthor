@@ -2700,7 +2700,7 @@ namespace StepManiaEditor
 
 			UIChartPosition.Draw(
 				GetFocalPointX(),
-				Graphics.PreferredBackBufferHeight - GetChartPositionUIYPAddingFromBottom() - (int)(UIChartPosition.Height * 0.5),
+				Graphics.PreferredBackBufferHeight - GetChartPositionUIYPaddingFromBottom() - (int)(UIChartPosition.Height * 0.5),
 				SnapLevels[SnapIndex]);
 
 			if (ShowSavePopup)
