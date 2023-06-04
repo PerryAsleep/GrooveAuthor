@@ -28,6 +28,10 @@ using StepManiaLibrary.PerformedChart;
 
 namespace StepManiaEditor
 {
+	/// <summary>
+	/// The Editor.
+	/// Implemented as a MonoGame Game.
+	/// </summary>
 	internal sealed class Editor :
 		Game,
 		Fumen.IObserver<EditorSong>,
@@ -77,7 +81,7 @@ namespace StepManiaEditor
 			/// <summary>
 			/// Scroll matching the most common tempo of the Chart.
 			/// </summary>
-			MostCommonTempo
+			MostCommonTempo,
 		}
 
 		public class SnapData
@@ -86,28 +90,28 @@ namespace StepManiaEditor
 			public string Texture;
 		}
 		private SnapData[] SnapLevels;
-		private int SnapIndex = 0;
+		private int SnapIndex;
 
-		private EditorMouseState EditorMouseState = new EditorMouseState();
-		private bool CanShowRightClickPopupThisFrame = false;
+		private readonly EditorMouseState EditorMouseState = new ();
+		private bool CanShowRightClickPopupThisFrame;
 
 		private bool MovingFocalPoint;
-		private Vector2 FocalPointAtMoveStart = new Vector2();
-		private Vector2 FocalPointMoveOffset = new Vector2();
+		private Vector2 FocalPointAtMoveStart;
+		private Vector2 FocalPointMoveOffset;
 
 		private string PendingOpenFileName;
 		private ChartType PendingOpenFileChartType;
 		private ChartDifficultyType PendingOpenFileChartDifficultyType;
 
-		private bool UnsavedChangesLastFrame = false;
+		private bool UnsavedChangesLastFrame;
 		private string PendingOpenSongFileName;
 		private string PendingMusicFile;
 		private string PendingImageFile;
 		private string PendingVideoFile;
 		private string PendingLyricsFile;
-		private bool ShowSavePopup = false;
-		private Action PostSaveFunction = null;
-		private int OpenRecentIndex = 0;
+		private bool ShowSavePopup;
+		private Action PostSaveFunction;
+		private int OpenRecentIndex;
 
 		public static readonly ChartType[] SupportedChartTypes = new[]
 		{
@@ -134,7 +138,7 @@ namespace StepManiaEditor
 		private SpriteBatch SpriteBatch;
 		private ImGuiRenderer ImGuiRenderer;
 		private WaveFormRenderer WaveFormRenderer;
-		private SoundManager SoundManager;
+		private readonly SoundManager SoundManager = new ();
 		private MusicManager MusicManager;
 		private MiniMap MiniMap;
 		private ArrowGraphicManager ArrowGraphicManager;
@@ -159,9 +163,9 @@ namespace StepManiaEditor
 		private CancellationTokenSource LoadSongCancellationTokenSource;
 		private Task LoadSongTask;
 
-		private Dictionary<ChartType, PadData> PadDataByChartType = new Dictionary<ChartType, PadData>();
-		private Dictionary<ChartType, StepGraph> StepGraphByChartType = new Dictionary<ChartType, StepGraph>();
-		private Dictionary<ChartType, List<List<GraphNode>>> RootNodesByChartType = new Dictionary<ChartType, List<List<GraphNode>>>();
+		private readonly Dictionary<ChartType, PadData> PadDataByChartType = new ();
+		private readonly Dictionary<ChartType, StepGraph> StepGraphByChartType = new ();
+		private Dictionary<ChartType, List<List<GraphNode>>> RootNodesByChartType = new ();
 		private StepTypeFallbacks StepTypeFallbacks;
 
 		private double PlaybackStartTime;
@@ -170,17 +174,17 @@ namespace StepManiaEditor
 		private EditorSong ActiveSong;
 		private EditorChart ActiveChart;
 
-		private List<EditorEvent> VisibleEvents = new List<EditorEvent>();
-		private List<EditorMarkerEvent> VisibleMarkers = new List<EditorMarkerEvent>();
-		private List<IChartRegion> VisibleRegions = new List<IChartRegion>();
-		private SelectedRegion SelectedRegion = new SelectedRegion();
-		private HashSet<EditorEvent> SelectedEvents = new HashSet<EditorEvent>();
-		private List<EditorEvent> CopiedEvents = new List<EditorEvent>();
+		private readonly List<EditorEvent> VisibleEvents = new ();
+		private readonly List<EditorMarkerEvent> VisibleMarkers = new ();
+		private readonly List<IChartRegion> VisibleRegions = new ();
+		private readonly SelectedRegion SelectedRegion = new ();
+		private readonly HashSet<EditorEvent> SelectedEvents = new ();
+		private readonly List<EditorEvent> CopiedEvents = new ();
 		private EditorEvent LastSelectedEvent;
-		private bool TransformingNotes = false;
-		private Receptor[] Receptors = null;
+		private bool TransformingNotes;
+		private Receptor[] Receptors;
 		private EventSpacingHelper SpacingHelper;
-		private AutoPlayer AutoPlayer = null;
+		private AutoPlayer AutoPlayer;
 
 		private double WaveFormPPS = 1.0;
 
@@ -194,29 +198,28 @@ namespace StepManiaEditor
 		// Zoom controls
 		public const double MinZoom = 0.000001;
 		public const double MaxZoom = 1000000.0;
-		private double ZoomInterpolationTimeStart = 0.0;
+		private double ZoomInterpolationTimeStart;
 		private double Zoom = 1.0;
 		private double ZoomAtStartOfInterpolation = 1.0;
 		private double DesiredZoom = 1.0;
 
 		private KeyCommandManager KeyCommandManager;
-		private bool Playing = false;
-		private bool PlayingPreview = false;
-		private bool MiniMapCapturingMouse = false;
-		private bool StartPlayingWhenMiniMapDone = false;
+		private bool Playing;
+		private bool PlayingPreview;
+		private bool MiniMapCapturingMouse;
+		private bool StartPlayingWhenMiniMapDone;
 
 		private uint MaxScreenHeight;
 
 		// Fonts
 		private ImFontPtr ImGuiFont;
-		private SpriteFont MonogameFont_MPlus1Code_Medium;
+		private SpriteFont Font;
 
 		// Cursor
 		private Cursor CurrentDesiredCursor = Cursors.Default;
 		private Cursor PreviousDesiredCursor = Cursors.Default;
 
 		// Debug
-		private bool ParallelizeUpdateLoop = false;
 		private bool RenderChart = true;
 		private double UpdateTimeTotal;
 		private double UpdateTimeWaveForm;
@@ -225,127 +228,85 @@ namespace StepManiaEditor
 		private double DrawTimeTotal;
 
 		// Logger
-		private readonly LinkedList<Logger.LogMessage> LogBuffer = new LinkedList<Logger.LogMessage>();
-		private readonly object LogBufferLock = new object();
+		private readonly LinkedList<Logger.LogMessage> LogBuffer = new ();
+		private readonly object LogBufferLock = new ();
 
 		private bool ShowImGuiTestWindow = true;
 
-		public static string GetAppName()
-		{
-			return System.Reflection.Assembly.GetExecutingAssembly().GetName().Name;
-		}
+		#region Initialization
 
+		/// <summary>
+		/// Constructor.
+		/// </summary>
 		public Editor()
 		{
 			// Create a logger first so we can log any startup messages.
-			CreateLogger();
+			InitializeLogger();
 
 			// Load Preferences synchronously so they can be used immediately.
 			Preferences.Load(this);
 
-			Position = new EditorPosition(OnPositionChanged);
-			SoundManager = new SoundManager();
-			MusicManager = new MusicManager(SoundManager, Preferences.Instance.PreferencesOptions.AudioOffset);
-			MusicManager.SetVolume(Preferences.Instance.PreferencesOptions.Volume);
+			InitializeEditorPosition();
+			InitializeMusicManager();
+			InitializeGraphics();
+			InitializeKeyCommandManager();
+			InitializeContentManager();
+			InitializeMouseVisibility();
+			InitializeWindowResizing();
+			InitializeVSync();
+			InitializeSnapLevels();
+			InitializeObservers();
 
-			Graphics = new GraphicsDeviceManager(this);
-			Graphics.GraphicsProfile = GraphicsProfile.HiDef;
-
-			InitKeyCommandManager();
-
-			Content.RootDirectory = "Content";
-			IsMouseVisible = true;
-			Window.AllowUserResizing = true;
-			Window.ClientSizeChanged += OnResize;
-
-			IsFixedTimeStep = false;
-			Graphics.SynchronizeWithVerticalRetrace = true;
-
-			// Set up snap levels for all valid denominators.
-			SnapLevels = new SnapData[ValidDenominators.Length + 1];
-			SnapLevels[0] = new SnapData { Rows = 0 };
-			for (var denominatorIndex = 0; denominatorIndex < ValidDenominators.Length; denominatorIndex++)
-			{
-				SnapLevels[denominatorIndex + 1] = new SnapData
-				{
-					Rows = MaxValidDenominator / ValidDenominators[denominatorIndex],
-					Texture = ArrowGraphicManager.GetSnapIndicatorTexture(ValidDenominators[denominatorIndex])
-				};
-			}
-
-			Preferences.Instance.PreferencesOptions.AddObserver(this);
-			Preferences.Instance.PreferencesExpressedChartConfig.AddObserver(this);
-			ActionQueue.Instance.AddObserver(this);
-
+			// Update the window title immediately.
 			UpdateWindowTitle();
 		}
 
-		private void InitKeyCommandManager()
+		/// <summary>
+		/// Override of MonoGame Game Initialize method.
+		/// From MonoGame:
+		///  Override this to initialize the game and load any needed non-graphical resources.
+		///  Initializes attached GameComponent instances and calls LoadContent.
+		/// </summary>
+		protected override void Initialize()
 		{
-			KeyCommandManager = new KeyCommandManager();
-			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.Z }, OnUndo, true));
-			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.Z }, OnRedo, true));
-			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.Y }, OnRedo, true));
-			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.O }, OnOpen, false));
-			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.S }, OnSaveAs, false));
-			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.S }, OnSave, false));
-			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.N }, OnNew, false));
-			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.R }, OnReload, false));
-			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.A }, OnSelectAll, false));
-			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftAlt, Keys.A }, OnSelectAllAlt, false));
-			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.A }, OnSelectAllShift, false));
-			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Space }, OnTogglePlayback, false));
-			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.P }, OnTogglePlayPreview, false));
-			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Escape }, OnEscape, false));
-			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Left }, OnDecreaseSnap, true));
-			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Right }, OnIncreaseSnap, true));
-			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Up }, OnMoveUp, true, null, false));
-			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Down }, OnMoveDown, true, null, false));
-			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.PageUp }, OnMoveToPreviousMeasure, true, null, true));
-			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.PageDown }, OnMoveToNextMeasure, true, null, true));
-			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Home }, OnMoveToChartStart, false, null, true));
-			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.End }, OnMoveToChartEnd, false, null, true));
-			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Delete }, OnDelete, false, null, true));
-
-			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.LeftAlt, Keys.Left }, OnShiftSelectedNotesLeft, true));
-			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.Left }, OnShiftSelectedNotesLeftAndWrap, true));
-			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.LeftAlt, Keys.Right }, OnShiftSelectedNotesRight, true));
-			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.Right }, OnShiftSelectedNotesRightAndWrap, true));
-			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.Up }, OnShiftSelectedNotesEarlier, true));
-			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.Down }, OnShiftSelectedNotesLater, true));
-
-			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.C, }, OnCopy, true));
-			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.X, }, OnCut, true));
-			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.V, }, OnPaste, true));
-
-			var arrowInputKeys = new[] { Keys.D1, Keys.D2, Keys.D3, Keys.D4, Keys.D5, Keys.D6, Keys.D7, Keys.D8, Keys.D9, Keys.D0 };
-			var index = 0;
-			foreach (var key in arrowInputKeys)
-			{
-				var capturedIndex = index;
-				void Down() { OnLaneInputDown(capturedIndex); }
-				void Up() { OnLaneInputUp(capturedIndex); }
-				index++;
-				KeyCommandManager.Register(new KeyCommandManager.Command(new[] { key }, Down, false, Up, true));
-			}
-			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftShift }, OnShiftDown, false, OnShiftUp, true));
+			InitializeWindowSize();
+			InitializeFormCallbacks();
+			InitializeFonts();
+			InitializeGuiDpiScale();
+			InitializeScreenHeight();
+			InitializeWaveFormRenderer();
+			InitializeMiniMap();
+			InitializeTextureAtlas();
+			InitializeUIHelpers();
+			base.Initialize();
 		}
 
-		private void CreateLogger()
+		private void InitializeLogger()
 		{
-			var programPath = System.Reflection.Assembly.GetEntryAssembly().Location;
-			var programDir = System.IO.Path.GetDirectoryName(programPath);
-			var appName = GetAppName();
-			var logDirectory = Path.Combine(programDir, "logs");
+			var assembly = System.Reflection.Assembly.GetEntryAssembly();
+			string logDirectory = null;
 
 			var canLogToFile = true;
 			var logToFileError = "";
 			try
 			{
+				if (assembly != null)
+				{
+					var programPath = assembly.Location;
+					var programDir = System.IO.Path.GetDirectoryName(programPath);
+					logDirectory = Path.Combine(programDir, "logs");
+				}
+
+				if (logDirectory == null)
+				{
+					throw new Exception("Could not determine log directory.");
+				}
+
 				// Make a log directory if one doesn't exist.
 				Directory.CreateDirectory(logDirectory);
 
 				// Start the logger and write to disk as well as the internal buffer to display.
+				var appName = GetAppName();
 				var logFileName = appName + " " + DateTime.Now.ToString("yyyy-MM-dd HH-mm-ss") + ".log";
 				var logFilePath = Path.Combine(logDirectory, logFileName);
 				Logger.StartUp(new Logger.Config
@@ -390,6 +351,11 @@ namespace StepManiaEditor
 			// Clean up old log files.
 			try
 			{
+				if (logDirectory == null)
+				{
+					throw new Exception("Could not determine log directory.");
+				}
+
 				var files = Directory.GetFiles(logDirectory);
 				var allLogFiles = new List<FileInfo>();
 				foreach (var file in files)
@@ -405,7 +371,7 @@ namespace StepManiaEditor
 					allLogFiles.RemoveRange(0, MaxLogFiles);
 					foreach (var fi in allLogFiles)
 					{
-						System.IO.File.Delete(fi.FullName);
+						File.Delete(fi.FullName);
 					}
 				}
 			}
@@ -415,56 +381,190 @@ namespace StepManiaEditor
 			}
 		}
 
-		protected override void Initialize()
+		private void InitializeEditorPosition()
+		{
+			Position = new EditorPosition(OnPositionChanged);
+		}
+
+		private void InitializeMusicManager()
+		{
+			MusicManager = new MusicManager(SoundManager, Preferences.Instance.PreferencesOptions.AudioOffset);
+			MusicManager.SetVolume(Preferences.Instance.PreferencesOptions.Volume);
+		}
+
+		private void InitializeGraphics()
+		{
+			Graphics = new GraphicsDeviceManager(this);
+			Graphics.GraphicsProfile = GraphicsProfile.HiDef;
+		}
+
+		private void InitializeKeyCommandManager()
+		{
+			KeyCommandManager = new KeyCommandManager();
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.Z }, OnUndo, true));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.Z }, OnRedo, true));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.Y }, OnRedo, true));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.O }, OnOpen));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.S }, OnSaveAs));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.S }, OnSave));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.N }, OnNew));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.R }, OnReload));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.A }, OnSelectAll));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftAlt, Keys.A }, OnSelectAllAlt));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.A }, OnSelectAllShift));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Space }, OnTogglePlayback));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.P }, OnTogglePlayPreview));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Escape }, OnEscape));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Left }, OnDecreaseSnap, true));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Right }, OnIncreaseSnap, true));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Up }, OnMoveUp, true));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Down }, OnMoveDown, true));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.PageUp }, OnMoveToPreviousMeasure, true, null, true));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.PageDown }, OnMoveToNextMeasure, true, null, true));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Home }, OnMoveToChartStart, false, null, true));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.End }, OnMoveToChartEnd, false, null, true));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Delete }, OnDelete, false, null, true));
+
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.LeftAlt, Keys.Left }, OnShiftSelectedNotesLeft, true));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.Left }, OnShiftSelectedNotesLeftAndWrap, true));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.LeftAlt, Keys.Right }, OnShiftSelectedNotesRight, true));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.Right }, OnShiftSelectedNotesRightAndWrap, true));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.Up }, OnShiftSelectedNotesEarlier, true));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.Down }, OnShiftSelectedNotesLater, true));
+
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.C, }, OnCopy, true));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.X, }, OnCut, true));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.V, }, OnPaste, true));
+
+			var arrowInputKeys = new[] { Keys.D1, Keys.D2, Keys.D3, Keys.D4, Keys.D5, Keys.D6, Keys.D7, Keys.D8, Keys.D9, Keys.D0 };
+			var index = 0;
+			foreach (var key in arrowInputKeys)
+			{
+				var capturedIndex = index;
+				void Down() { OnLaneInputDown(capturedIndex); }
+				void Up() { OnLaneInputUp(capturedIndex); }
+				index++;
+				KeyCommandManager.Register(new KeyCommandManager.Command(new[] { key }, Down, false, Up, true));
+			}
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftShift }, OnShiftDown, false, OnShiftUp, true));
+		}
+
+		private void InitializeContentManager()
+		{
+			Content.RootDirectory = "Content";
+		}
+
+		private void InitializeMouseVisibility()
+		{
+			IsMouseVisible = true;
+		}
+
+		private void InitializeWindowResizing()
+		{
+			Window.AllowUserResizing = true;
+			Window.ClientSizeChanged += OnResize;
+		}
+
+		private void InitializeVSync()
+		{
+			IsFixedTimeStep = false;
+			Graphics.SynchronizeWithVerticalRetrace = true;
+		}
+
+		private void InitializeSnapLevels()
+		{
+			// Set up snap levels for all valid denominators.
+			SnapLevels = new SnapData[ValidDenominators.Length + 1];
+			SnapLevels[0] = new SnapData { Rows = 0 };
+			for (var denominatorIndex = 0; denominatorIndex < ValidDenominators.Length; denominatorIndex++)
+			{
+				SnapLevels[denominatorIndex + 1] = new SnapData
+				{
+					Rows = MaxValidDenominator / ValidDenominators[denominatorIndex],
+					Texture = ArrowGraphicManager.GetSnapIndicatorTexture(ValidDenominators[denominatorIndex])
+				};
+			}
+		}
+
+		private void InitializeObservers()
+		{
+			Preferences.Instance.PreferencesOptions.AddObserver(this);
+			Preferences.Instance.PreferencesExpressedChartConfig.AddObserver(this);
+			ActionQueue.Instance.AddObserver(this);
+		}
+
+		private void InitializeWindowSize()
 		{
 			var p = Preferences.Instance;
 			Graphics.PreferredBackBufferHeight = p.WindowHeight;
 			Graphics.PreferredBackBufferWidth = p.WindowWidth;
 			Graphics.IsFullScreen = p.WindowFullScreen;
 			Graphics.ApplyChanges();
+		}
 
+		private void InitializeFormCallbacks()
+		{
+			var p = Preferences.Instance;
+			var form = ((Form)Control.FromHandle(Window.Handle));
 			if (p.WindowMaximized)
 			{
-				((Form)Control.FromHandle(Window.Handle)).WindowState = FormWindowState.Maximized;
+				form.WindowState = FormWindowState.Maximized;
 			}
-
-			var form = ((Form)Form.FromHandle(Window.Handle));
 			form.FormClosing += ClosingForm;
-
 			form.AllowDrop = true;
 			form.DragEnter += DragEnter;
 			form.DragDrop += DragDrop;
+		}
 
+		private void InitializeFonts()
+		{
 			var guiScale = GetDpiScale();
 			ImGuiRenderer = new ImGuiRenderer(this);
-			var programPath = System.Reflection.Assembly.GetEntryAssembly().Location;
-			var programDir = System.IO.Path.GetDirectoryName(programPath);
-			var mPlusFontPath = Path.Combine(programDir, @"Content\Mplus1Code-Medium.ttf");
-			ImGuiFont = ImGui.GetIO().Fonts.AddFontFromFileTTF(mPlusFontPath, (int)(15 * guiScale), null, ImGui.GetIO().Fonts.GetGlyphRangesJapanese());
-			ImGuiRenderer.RebuildFontAtlas();
-			ImGuiLayoutUtils.SetFont(ImGuiFont);
-			if (!guiScale.DoubleEquals(1.0))
-				ImGui.GetStyle().ScaleAllSizes((float)guiScale);
-
-			MonogameFont_MPlus1Code_Medium = Content.Load<SpriteFont>("mplus1code-medium");
-
-			foreach (var adapter in GraphicsAdapter.Adapters)
+			var assembly = System.Reflection.Assembly.GetEntryAssembly();
+			if (assembly != null)
 			{
-				MaxScreenHeight = Math.Max(MaxScreenHeight, (uint)adapter.CurrentDisplayMode.Height);
+				var programPath = assembly.Location;
+				var programDir = System.IO.Path.GetDirectoryName(programPath);
+				var mPlusFontPath = Path.Combine(programDir, @"Content\Mplus1Code-Medium.ttf");
+				ImGuiFont = ImGui.GetIO().Fonts.AddFontFromFileTTF(mPlusFontPath, (int)(15 * guiScale), null,
+					ImGui.GetIO().Fonts.GetGlyphRangesJapanese());
+				ImGuiRenderer.RebuildFontAtlas();
+				ImGuiLayoutUtils.SetFont(ImGuiFont);
+			}
+			else
+			{
+				Logger.Error("Failed to initialize ImGui fonts. Could not find assembly.");
 			}
 
+			Font = Content.Load<SpriteFont>("mplus1code-medium");
+		}
+
+		private void InitializeGuiDpiScale()
+		{
+			var guiScale = GetDpiScale();
+			if (!guiScale.DoubleEquals(1.0))
+				ImGui.GetStyle().ScaleAllSizes((float)guiScale);
+		}
+
+		private void InitializeScreenHeight()
+		{
+			var p = Preferences.Instance;
+			foreach (var adapter in GraphicsAdapter.Adapters)
+				MaxScreenHeight = Math.Max(MaxScreenHeight, (uint)adapter.CurrentDisplayMode.Height);
 			p.PreferencesReceptors.ClampViewportPositions();
-
 			EditorEvent.SetScreenHeight(MaxScreenHeight);
+		}
 
+		private void InitializeWaveFormRenderer()
+		{
+			var p = Preferences.Instance;
 			WaveFormRenderer = new WaveFormRenderer(GraphicsDevice, WaveFormTextureWidth, MaxScreenHeight);
 			WaveFormRenderer.SetColors(WaveFormColorDense, WaveFormColorSparse);
 			WaveFormRenderer.SetXPerChannelScale(p.PreferencesWaveForm.WaveFormMaxXPercentagePerChannel);
 			WaveFormRenderer.SetSoundMipMap(MusicManager.GetMusicMipMap());
 			WaveFormRenderer.SetFocalPointY(GetFocalPointY());
-
 			WaveformRenderTargets = new RenderTarget2D[2];
-			for (int i = 0; i < 2; i++)
+			for (var i = 0; i < 2; i++)
 			{
 				WaveformRenderTargets[i] = new RenderTarget2D(
 					GraphicsDevice,
@@ -474,12 +574,22 @@ namespace StepManiaEditor
 					GraphicsDevice.PresentationParameters.BackBufferFormat,
 					DepthFormat.Depth24);
 			}
+		}
 
+		private void InitializeMiniMap()
+		{
+			var p = Preferences.Instance;
 			MiniMap = new MiniMap(GraphicsDevice, new Rectangle(0, 0, 0, 0));
 			MiniMap.SetSelectMode(p.PreferencesMiniMap.MiniMapSelectMode);
+		}
 
+		private void InitializeTextureAtlas()
+		{
 			TextureAtlas = new TextureAtlas(GraphicsDevice, 2048, 2048, 1);
+		}
 
+		private void InitializeUIHelpers()
+		{
 			UISongProperties = new UISongProperties(this, GraphicsDevice, ImGuiRenderer);
 			UIChartProperties = new UIChartProperties();
 			UIChartList = new UIChartList(this);
@@ -491,20 +601,16 @@ namespace StepManiaEditor
 			UIOptions = new UIOptions();
 			UIChartPosition = new UIChartPosition(this);
 			UIExpressedChartConfig = new UIExpressedChartConfig(this);
-
-			base.Initialize();
 		}
 
-		protected override void EndRun()
-		{
-			CloseSong();
-			Preferences.Save();
-			Logger.Shutdown();
-			base.EndRun();
-		}
-
+		/// <summary>
+		/// Override of MonoGame LoadContent method.
+		/// From MonoGame:
+		///  Override this to load graphical resources required by the game.
+		/// </summary>
 		protected override void LoadContent()
 		{
+			// Initialize the SpriteBatch.
 			SpriteBatch = new SpriteBatch(GraphicsDevice);
 
 			// Load textures from disk and add them to the Texture Atlas.
@@ -542,6 +648,21 @@ namespace StepManiaEditor
 			regionRectTexture.SetData(textureData);
 			TextureAtlas.AddTexture(TextureIdRegionRect, regionRectTexture, true);
 
+			LoadShaders();
+
+			PerformPostContentLoadInitialization();
+
+			base.LoadContent();
+		}
+
+		private void LoadShaders()
+		{
+			FxaaEffect = Content.Load<Effect>("fxaa");
+			WaveformColorEffect = Content.Load<Effect>("waveform-color");
+		}
+
+		private void PerformPostContentLoadInitialization()
+		{
 			InitStepGraphDataAsync();
 
 			// If we have a saved file to open, open it now.
@@ -551,12 +672,112 @@ namespace StepManiaEditor
 				OpenRecentIndex = 0;
 				OnOpenRecentFile();
 			}
-
-			FxaaEffect = Content.Load<Effect>("fxaa");
-			WaveformColorEffect = Content.Load<Effect>("waveform-color");
-
-			base.LoadContent();
 		}
+
+		#endregion Initialization
+
+		#region Shutdown
+
+		public void ClosingForm(object sender, System.ComponentModel.CancelEventArgs e)
+		{
+			if (ActionQueue.Instance.HasUnsavedChanges())
+			{
+				e.Cancel = true;
+				PostSaveFunction = OnExitNoSave;
+				ShowSavePopup = true;
+			}
+		}
+
+		protected override void EndRun()
+		{
+			CloseSong();
+			Preferences.Save();
+			Logger.Shutdown();
+			base.EndRun();
+		}
+
+		private void OnExit()
+		{
+			if (ActionQueue.Instance.HasUnsavedChanges())
+			{
+				PostSaveFunction = OnExitNoSave;
+				ShowSavePopup = true;
+			}
+			else
+			{
+				OnExitNoSave();
+			}
+		}
+
+		private void OnExitNoSave()
+		{
+			Exit();
+		}
+
+		#endregion Shutdown
+
+		#region Static Helpers
+
+		public static string GetAppName()
+		{
+			return System.Reflection.Assembly.GetExecutingAssembly().GetName().Name;
+		}
+
+		public static bool IsChartSupported(Chart chart)
+		{
+			if (!TryGetChartType(chart.Type, out var chartType))
+				return false;
+			var typeSupported = false;
+			foreach (var supportedType in SupportedChartTypes)
+			{
+				if (supportedType == chartType)
+				{
+					typeSupported = true;
+					break;
+				}
+			}
+
+			if (!typeSupported)
+				return false;
+
+			if (!Enum.TryParse<ChartDifficultyType>(chart.DifficultyType, out _))
+				return false;
+
+			return true;
+		}
+
+		#endregion Static Helpers
+
+		#region State Accessors
+
+		public double GetSongTime()
+		{
+			return Position.SongTime;
+		}
+
+		public EditorPosition GetPosition()
+		{
+			return Position;
+		}
+
+		public EditorMouseState GetMouseState()
+		{
+			return EditorMouseState;
+		}
+
+		public EditorSong GetActiveSong()
+		{
+			return ActiveSong;
+		}
+
+		public EditorChart GetActiveChart()
+		{
+			return ActiveChart;
+		}
+
+		#endregion State Accessors
+
+		#region Window Resizing
 
 		public void OnResize(object sender, EventArgs e)
 		{
@@ -588,6 +809,10 @@ namespace StepManiaEditor
 			return Graphics.GraphicsDevice.Viewport.Height;
 		}
 
+		#endregion Window Resizing
+
+		#region Focal Point
+
 		public int GetFocalPointX()
 		{
 			if (Preferences.Instance.PreferencesReceptors.CenterHorizontally)
@@ -604,6 +829,10 @@ namespace StepManiaEditor
 		{
 			return new Vector2(GetFocalPointX(), GetFocalPointY());
 		}
+
+		#endregion Focal Point
+
+		#region Edit Locking
 
 		public bool CanEdit()
 		{
@@ -638,22 +867,17 @@ namespace StepManiaEditor
 				CancelLaneInput();
 		}
 
-		private bool IsSaving()
-		{
-			return ActiveSong?.IsSaving() ?? false;
-		}
-
 		private bool EditEarlyOut()
 		{
 			if (!CanEdit())
 			{
 				if (IsSaving())
 				{
-					Logger.Warn($"Edits cannot be made while saving.");
+					Logger.Warn("Edits cannot be made while saving.");
 				}
 				else
 				{
-					Logger.Warn($"Edits cannot be made asynchronous edits are running.");
+					Logger.Warn("Edits cannot be made asynchronous edits are running.");
 				}
 				SystemSounds.Exclamation.Play();
 				return true;
@@ -661,21 +885,65 @@ namespace StepManiaEditor
 			return false;
 		}
 
+		#endregion Edit Locking
+
+		#region Update
+
 		protected override void Update(GameTime gameTime)
 		{
+			// Time the Update method.
 			var stopWatch = new Stopwatch();
 			stopWatch.Start();
 
-			double currentTime = gameTime.TotalGameTime.TotalSeconds;
+			var currentTime = gameTime.TotalGameTime.TotalSeconds;
 
 			ActiveSong?.Update();
-
 			SoundManager.Update();
 
 			ProcessInput(gameTime, currentTime);
 
 			TextureAtlas.Update();
+			UpdateZoom(currentTime);
+			UpdateMusicAndPosition(currentTime);
+			UpdateTimeChartEvents = Fumen.Utils.Timed(() =>
+			{
+				UpdateChartEvents();
+				UpdateAutoPlay();
+			});
+			UpdateTimeMiniMap = Fumen.Utils.Timed(UpdateMiniMap);
+			UpdateTimeWaveForm = Fumen.Utils.Timed(UpdateWaveFormRenderer);
+			UpdateReceptors();
 
+			// Update the Window title if the state of unsaved changes has changed.
+			var hasUnsavedChanges = ActionQueue.Instance.HasUnsavedChanges();
+			if (UnsavedChangesLastFrame != hasUnsavedChanges)
+			{
+				UnsavedChangesLastFrame = hasUnsavedChanges;
+				UpdateWindowTitle();
+			}
+
+			base.Update(gameTime);
+
+			// Record total update time.
+			stopWatch.Stop();
+			UpdateTimeTotal = stopWatch.Elapsed.TotalSeconds;
+		}
+
+		private void UpdateZoom(double currentTime)
+		{
+			if (!Zoom.DoubleEquals(DesiredZoom))
+			{
+				SetZoom(Interpolation.Lerp(
+					ZoomAtStartOfInterpolation,
+					DesiredZoom,
+					ZoomInterpolationTimeStart,
+					ZoomInterpolationTimeStart + Preferences.Instance.PreferencesScroll.ScrollInterpolationDuration,
+					currentTime), false);
+			}
+		}
+
+		private void UpdateMusicAndPosition(double currentTime)
+		{
 			if (!Playing)
 			{
 				if (Position.IsInterpolatingChartPosition())
@@ -692,16 +960,6 @@ namespace StepManiaEditor
 					MusicManager.SetMusicTimeInSeconds(Position.SongTime);
 					UpdatingSongTimeDirectly = false;
 				}
-			}
-
-			if (!Zoom.DoubleEquals(DesiredZoom))
-			{
-				SetZoom(Interpolation.Lerp(
-					ZoomAtStartOfInterpolation,
-					DesiredZoom,
-					ZoomInterpolationTimeStart,
-					ZoomInterpolationTimeStart + Preferences.Instance.PreferencesScroll.ScrollInterpolationDuration,
-					currentTime), false);
 			}
 
 			var pOptions = Preferences.Instance.PreferencesOptions;
@@ -751,49 +1009,10 @@ namespace StepManiaEditor
 			{
 				MusicManager.Update(Position.SongTime);
 			}
+		}
 
-			Action timedUpdateChartEvents = () =>
-			{
-				var s = new Stopwatch();
-				s.Start();
-				UpdateChartEvents();
-				UpdateAutoPlay();
-				s.Stop();
-				UpdateTimeChartEvents = s.Elapsed.TotalSeconds;
-			};
-			Action timedUpdateMiniMap = () =>
-			{
-				var s = new Stopwatch();
-				s.Start();
-				UpdateMiniMap();
-				s.Stop();
-				UpdateTimeMiniMap = s.Elapsed.TotalSeconds;
-			};
-			Action timedUpdateWaveForm = () =>
-			{
-				var s = new Stopwatch();
-				s.Start();
-				UpdateWaveFormRenderer();
-				s.Stop();
-				UpdateTimeWaveForm = s.Elapsed.TotalSeconds;
-			};
-
-			// CPU heavy updates.
-			// This kind of parallelization isn't helpful as it has to create new threads each frame.
-			if (ParallelizeUpdateLoop)
-			{
-				Parallel.Invoke(
-					() => timedUpdateChartEvents(),
-					() => timedUpdateMiniMap(),
-					() => timedUpdateWaveForm());
-			}
-			else
-			{
-				timedUpdateChartEvents();
-				timedUpdateMiniMap();
-				timedUpdateWaveForm();
-			}
-
+		private void UpdateReceptors()
+		{
 			if (Receptors != null)
 			{
 				foreach (var receptor in Receptors)
@@ -801,19 +1020,25 @@ namespace StepManiaEditor
 					receptor.Update(Playing, Position.ChartPosition);
 				}
 			}
-
-			var hasUnsavedChanges = ActionQueue.Instance.HasUnsavedChanges();
-			if (UnsavedChangesLastFrame != hasUnsavedChanges)
-			{
-				UnsavedChangesLastFrame = hasUnsavedChanges;
-				UpdateWindowTitle();
-			}
-
-			base.Update(gameTime);
-
-			stopWatch.Stop();
-			UpdateTimeTotal = stopWatch.Elapsed.TotalSeconds;
 		}
+
+		private void UpdateWaveFormRenderer()
+		{
+			var pWave = Preferences.Instance.PreferencesWaveForm;
+
+			// Performance optimization. Do not update the texture if we won't render it.
+			if (!pWave.ShowWaveForm || !pWave.EnableWaveForm)
+				return;
+
+			// Update the WaveFormRenderer.
+			WaveFormRenderer.SetFocalPointY(GetFocalPointY());
+			WaveFormRenderer.SetXPerChannelScale(pWave.WaveFormMaxXPercentagePerChannel);
+			WaveFormRenderer.SetDenseScale(pWave.DenseScale);
+			WaveFormRenderer.SetScaleXWhenZooming(pWave.WaveFormScaleXWhenZooming);
+			WaveFormRenderer.Update(Position.SongTime, Zoom, WaveFormPPS);
+		}
+
+		#endregion Update
 
 		#region Input Processing
 
@@ -897,7 +1122,7 @@ namespace StepManiaEditor
 			CanShowRightClickPopupThisFrame = (!MiniMapCapturingMouse && !MovingFocalPoint && !MovingFocalPoint);
 
 			// Setting the cursor every frame prevents it from changing to support normal application
-			// behavior like indicating resizability at the edges of the window. But not setting every frame
+			// behavior like indicating resizeability at the edges of the window. But not setting every frame
 			// causes it to go back to the Default. Set it every frame only if it setting it to something
 			// other than the Default.
 			if (CurrentDesiredCursor != PreviousDesiredCursor || CurrentDesiredCursor != Cursors.Default)
@@ -1078,6 +1303,8 @@ namespace StepManiaEditor
 
 		#endregion Input Processing
 
+		#region Playing Music
+
 		/// <summary>
 		/// Returns whether the music can be used to determine the song time.
 		/// The music can normally be used to determine the song time, but it cannot be used if
@@ -1132,26 +1359,89 @@ namespace StepManiaEditor
 			Playing = false;
 		}
 
-		private void OnPositionChanged()
+		private void OnTogglePlayback()
 		{
-			// Update events being edited.
-			UpdateLaneEditStatesFromPosition();
-
-			// Update the music time
-			if (!UpdatingSongTimeDirectly)
-			{
-				var songTime = Position.SongTime;
-				Position.SetDesiredPositionToCurrent();
-				MusicManager.SetMusicTimeInSeconds(songTime);
-
-				if (Playing)
-				{
-					PlaybackStartTime = songTime;
-					PlaybackStopwatch = new Stopwatch();
-					PlaybackStopwatch.Start();
-				}
-			}
+			if (Playing)
+				StopPlayback();
+			else
+				StartPlayback();
 		}
+
+		public void OnTogglePlayPreview()
+		{
+			if (Playing)
+				StopPlayback();
+
+			if (!PlayingPreview)
+				StartPreview();
+			else
+				StopPreview();
+		}
+
+		public void StartPreview()
+		{
+			var success = MusicManager.StartPreviewPlayback();
+			if (success)
+				PlayingPreview = true;
+		}
+
+		public void StopPreview()
+		{
+			if (!PlayingPreview)
+				return;
+
+			MusicManager.StopPreviewPlayback();
+			PlayingPreview = false;
+		}
+
+		public bool IsPlayingPreview()
+		{
+			return PlayingPreview;
+		}
+
+		private void OnMusicChanged()
+		{
+			StopPreview();
+			MusicManager.LoadMusicAsync(GetFullPathToMusicFile(), GetSongTime, false, Preferences.Instance.PreferencesWaveForm.EnableWaveForm);
+		}
+
+		private void OnMusicPreviewChanged()
+		{
+			StopPreview();
+			MusicManager.LoadMusicPreviewAsync(GetFullPathToMusicPreviewFile());
+		}
+
+		private void OnMusicOffsetChanged()
+		{
+			// Re-set the position to recompute the chart and song times.
+			Position.ChartPosition = Position.ChartPosition;
+		}
+
+		private void OnSyncOffsetChanged()
+		{
+			// Re-set the position to recompute the chart and song times.
+			Position.ChartPosition = Position.ChartPosition;
+		}
+
+		private void OnAudioOffsetChanged()
+		{
+			var playing = Playing;
+			if (playing)
+				StopPlayback();
+			MusicManager.SetMusicOffset(Preferences.Instance.PreferencesOptions.AudioOffset);
+			MusicManager.SetMusicTimeInSeconds(Position.SongTime);
+			if (playing)
+				StartPlayback();
+		}
+
+		private void OnVolumeChanged()
+		{
+			MusicManager.SetVolume(Preferences.Instance.PreferencesOptions.Volume);
+		}
+
+		#endregion Playing Music
+
+		#region Zoom
 
 		public void SetZoom(double zoom, bool setDesiredZoom)
 		{
@@ -1185,6 +1475,8 @@ namespace StepManiaEditor
 			return Zoom;
 		}
 
+		#endregion Zoom
+
 		#region Drawing
 
 		protected override void Draw(GameTime gameTime)
@@ -1217,7 +1509,7 @@ namespace StepManiaEditor
 
 			SpriteBatch.End();
 
-			DrawGui(gameTime);
+			DrawGui();
 
 			ImGui.PopFont();
 			ImGuiRenderer.AfterLayout();
@@ -1255,7 +1547,7 @@ namespace StepManiaEditor
 			GraphicsDevice.SetRenderTarget(WaveformRenderTargets[0]);
 			GraphicsDevice.Clear(Color.Transparent);
 			SpriteBatch.Begin();
-			WaveFormRenderer.Draw(SpriteBatch, 0, 0);
+			WaveFormRenderer.Draw(SpriteBatch);
 			SpriteBatch.End();
 
 			// Determine the sparse color.
@@ -1284,7 +1576,7 @@ namespace StepManiaEditor
 			GraphicsDevice.Clear(Color.Transparent);
 			SpriteBatch.Begin(SpriteSortMode.Deferred, null, null, null, null, WaveformColorEffect);
 			WaveformColorEffect.CurrentTechnique.Passes[0].Apply();
-			SpriteBatch.Draw((Texture2D)WaveformRenderTargets[0], new Rectangle(0, 0, WaveformRenderTargets[0].Width, WaveformRenderTargets[0].Height), Color.White);
+			SpriteBatch.Draw(WaveformRenderTargets[0], new Rectangle(0, 0, WaveformRenderTargets[0].Width, WaveformRenderTargets[0].Height), Color.White);
 			SpriteBatch.End();
 		}
 
@@ -1304,7 +1596,7 @@ namespace StepManiaEditor
 
 			// Draw the background texture.
 			SpriteBatch.Begin();
-			ActiveSong.GetBackground().GetTexture().DrawTexture(SpriteBatch, 0, 0, (uint)GetViewportWidth(), (uint)GetViewportHeight(), TextureUtils.TextureLayoutMode.Box);
+			ActiveSong.GetBackground().GetTexture().DrawTexture(SpriteBatch, 0, 0, (uint)GetViewportWidth(), (uint)GetViewportHeight());
 			SpriteBatch.End();
 		}
 
@@ -1355,22 +1647,6 @@ namespace StepManiaEditor
 				receptor.DrawForegroundEffects(GetFocalPoint(), sizeZoom, TextureAtlas, SpriteBatch);
 		}
 
-		private void UpdateWaveFormRenderer()
-		{
-			var pWave = Preferences.Instance.PreferencesWaveForm;
-
-			// Performance optimization. Do not update the texture if we won't render it.
-			if (!pWave.ShowWaveForm || !pWave.EnableWaveForm)
-				return;
-
-			// Update the WaveFormRenderer.
-			WaveFormRenderer.SetFocalPointY(GetFocalPointY());
-			WaveFormRenderer.SetXPerChannelScale(pWave.WaveFormMaxXPercentagePerChannel);
-			WaveFormRenderer.SetDenseScale(pWave.DenseScale);
-			WaveFormRenderer.SetScaleXWhenZooming(pWave.WaveFormScaleXWhenZooming);
-			WaveFormRenderer.Update(Position.SongTime, Zoom, WaveFormPPS);
-		}
-
 		private void DrawWaveForm()
 		{
 			var p = Preferences.Instance.PreferencesWaveForm;
@@ -1411,7 +1687,7 @@ namespace StepManiaEditor
 		{
 			foreach (var visibleMarker in VisibleMarkers)
 			{
-				visibleMarker.Draw(TextureAtlas, SpriteBatch, MonogameFont_MPlus1Code_Medium);
+				visibleMarker.Draw(TextureAtlas, SpriteBatch, Font);
 			}
 		}
 
@@ -1572,7 +1848,7 @@ namespace StepManiaEditor
 
 				rateEvent = rateEnumerator.Current;
 				SpacingHelper.UpdatePpsAndPpr(rateEvent, interpolatedScrollRate, spacingZoom);
-				previousRateEventY = SpacingHelper.GetYPreceding(previousRateEventTime, previousRateEventRow, previousRateEventY, rateEvent.GetChartTime(), rateEvent.GetRow());
+				previousRateEventY = SpacingHelper.GetYPreceding(previousRateEventTime, previousRateEventRow, previousRateEventY, rateEvent!.GetChartTime(), rateEvent.GetRow());
 				previousRateEventRow = rateEvent.GetRow();
 				previousRateEventTime = rateEvent.GetChartTime();
 			}
@@ -1580,7 +1856,7 @@ namespace StepManiaEditor
 			// Now we know the position of first rate altering event to use.
 			// We can now determine the chart time and position at the top of the screen.
 			var (chartTimeAtTopOfScreen, chartPositionAtTopOfScreen) =
-				SpacingHelper.GetChartTimeAndRow(startPosY, previousRateEventY, rateEvent.GetChartTime(), rateEvent.GetRow());
+				SpacingHelper.GetChartTimeAndRow(startPosY, previousRateEventY, rateEvent!.GetChartTime(), rateEvent.GetRow());
 
 			var beatMarkerRow = (int)chartPositionAtTopOfScreen;
 			var beatMarkerLastRecordedRow = -1;
@@ -1694,7 +1970,7 @@ namespace StepManiaEditor
 				}
 				else
 				{
-					if (e.IsMiscEvent())
+					if (e!.IsMiscEvent())
 					{
 						e.Alpha = miscEventAlpha;
 						MiscEventWidgetLayoutManager.PositionEvent(e, y);
@@ -1719,7 +1995,7 @@ namespace StepManiaEditor
 			UpdateBeatMarkers(rateEvent, ref beatMarkerRow, ref beatMarkerLastRecordedRow, nextRateEvent, startPosX, sizeZoom, previousRateEventY);
 
 			// If the user is selecting a region and is zoomed out so far that we processed the maximum number of notes
-			// per frame without finding both ends of the seleced region, then keep iterating through rate altering events
+			// per frame without finding both ends of the selected region, then keep iterating through rate altering events
 			// to try and complete the selected region.
 			if (!reachedEndOfScreen && SelectedRegion.IsActive())
 			{
@@ -1752,8 +2028,7 @@ namespace StepManiaEditor
 		private (double, double) GetArrowDimensions(bool scaled = true)
 		{
 			var (arrowTexture, _) = ArrowGraphicManager.GetArrowTexture(0, 0, false);
-			double arrowW, arrowH;
-			(arrowW, arrowH) = TextureAtlas.GetDimensions(arrowTexture);
+			(double arrowW, double arrowH) = TextureAtlas.GetDimensions(arrowTexture);
 			if (scaled)
 			{
 				var sizeZoom = GetSizeZoom();
@@ -1778,7 +2053,7 @@ namespace StepManiaEditor
 			const int widgetStartPadding = 10;
 			const int widgetMeasureNumberFudge = 10;
 			
-			var (arrowW, _) = GetArrowDimensions(true);
+			var (arrowW, _) = GetArrowDimensions();
 
 			var focalPointX = GetFocalPointX();
 			var startPosX = focalPointX - (ActiveChart.NumInputs * arrowW * 0.5);
@@ -1843,7 +2118,7 @@ namespace StepManiaEditor
 			if (Preferences.Instance.PreferencesScroll.SpacingMode == SpacingMode.Variable)
 			{
 				var ratePosEventForChecking = (EditorInterpolatedRateAlteringEvent)EditorEvent.CreateEvent(
-					EventConfig.CreateScrollRateInterpolationConfig(ActiveChart, (int)Position.ChartPosition, Position.ChartTime, 0.0, 0, 0.0, false));
+					EventConfig.CreateScrollRateInterpolationConfig(ActiveChart, (int)Position.ChartPosition, Position.ChartTime, 0.0, 0));
 
 				var interpolatedScrollRateEnumerator =
 					ActiveChart.InterpolatedScrollRateEvents.FindGreatestPreceding(ratePosEventForChecking);
@@ -1851,7 +2126,7 @@ namespace StepManiaEditor
 				{
 					interpolatedScrollRateEnumerator.MoveNext();
 					var interpolatedRateEvent = interpolatedScrollRateEnumerator.Current;
-					if (interpolatedRateEvent.InterpolatesByTime())
+					if (interpolatedRateEvent!.InterpolatesByTime())
 						interpolatedScrollRate = interpolatedRateEvent.GetInterpolatedScrollRateFromTime(Position.ChartTime);
 					else
 						interpolatedScrollRate = interpolatedRateEvent.GetInterpolatedScrollRateFromRow(Position.ChartPosition);
@@ -1863,7 +2138,7 @@ namespace StepManiaEditor
 					{
 						interpolatedScrollRateEnumerator.MoveNext();
 						var interpolatedRateEvent = interpolatedScrollRateEnumerator.Current;
-						if (interpolatedRateEvent.InterpolatesByTime())
+						if (interpolatedRateEvent!.InterpolatesByTime())
 							interpolatedScrollRate = interpolatedRateEvent.GetInterpolatedScrollRateFromTime(Position.ChartTime);
 						else
 							interpolatedScrollRate = interpolatedRateEvent.GetInterpolatedScrollRateFromRow(Position.ChartPosition);
@@ -2067,20 +2342,18 @@ namespace StepManiaEditor
 			double previousRateEventY,
 			EditorRateAlteringEvent rateEvent)
 		{
-			// We do not need to scan forward for more rate mods.
-			EditorRateAlteringEvent nextRateEvent = null;
-
-			CheckForCompletingRegions(ref regionsNeedingToBeAdded, ref addedRegions, previousRateEventY, nextRateEvent);
+			// We do not need to scan forward for more rate mods so we can use null for the next rate event.
+			CheckForCompletingRegions(ref regionsNeedingToBeAdded, ref addedRegions, previousRateEventY, null);
 
 			// Check for updating the SelectedRegion.
-			CheckForUpdatingSelectedRegionStartY(previousRateEventY, rateEvent, nextRateEvent);
-			CheckForUpdatingSelectedRegionCurrentValues(previousRateEventY, rateEvent, nextRateEvent);
+			CheckForUpdatingSelectedRegionStartY(previousRateEventY, rateEvent, null);
+			CheckForUpdatingSelectedRegionCurrentValues(previousRateEventY, rateEvent, null);
 		}
 
 		/// <summary>
 		/// Handles completing any pending holds when the current rate altering event changes
 		/// while processing events in the main tick loop and holds end within the new rate
-		/// altertering event range.
+		/// altering event range.
 		/// </summary>
 		/// <remarks>Helper for UpdateChartEvents.</remarks>
 		private void CheckForCompletingHolds(
@@ -2100,7 +2373,7 @@ namespace StepManiaEditor
 		/// <summary>
 		/// Handles completing a pending hold when the current rate altering event changes
 		/// while processing events in the main tick loop and the hold ends within the new rate
-		/// altertering event range.
+		/// altering event range.
 		/// </summary>
 		/// <remarks>Helper for UpdateChartEvents.</remarks>
 		private bool CheckForCompletingHold(
@@ -2259,7 +2532,7 @@ namespace StepManiaEditor
 			// Determine the active rate event's position and rate information.
 			spacingHelper.UpdatePpsAndPpr(rateEnumerator.Current, interpolatedScrollRate, spacingZoom);
 			var rateEventY = spacingHelper.GetY(rateEnumerator.Current, focalPointY, focalPointChartTime, focalPointChartPosition);
-			var rateChartTime = rateEnumerator.Current.GetChartTime();
+			var rateChartTime = rateEnumerator.Current!.GetChartTime();
 			var rateRow = rateEnumerator.Current.GetRow();
 
 			// If the desired Y is above the focal point.
@@ -2407,7 +2680,7 @@ namespace StepManiaEditor
 				}
 				case MiniMap.Position.RightOfChartArea:
 				{
-					x = (int)(focalPointX + (WaveFormTextureWidth >> 1) + (int)p.PreferencesMiniMap.MiniMapXPadding);
+					x = (focalPointX + (WaveFormTextureWidth >> 1) + (int)p.PreferencesMiniMap.MiniMapXPadding);
 					break;
 				}
 				case MiniMap.Position.MountedToWaveForm:
@@ -2418,7 +2691,7 @@ namespace StepManiaEditor
 					}
 					else
 					{
-						x = (int)(focalPointX + (WaveFormTextureWidth >> 1) + (int)p.PreferencesMiniMap.MiniMapXPadding);
+						x = (focalPointX + (WaveFormTextureWidth >> 1) + (int)p.PreferencesMiniMap.MiniMapXPadding);
 					}
 
 					break;
@@ -2673,7 +2946,7 @@ namespace StepManiaEditor
 
 		#region Gui Rendering
 
-		private void DrawGui(GameTime gameTime)
+		private void DrawGui()
 		{
 			DrawMainMenuUI();
 
@@ -2912,11 +3185,10 @@ namespace StepManiaEditor
 							OnShiftSelectedNotesLeftAndWrap();
 						}
 
-						var shiftAmount = "1 Measure";
 						var rows = SnapLevels[SnapIndex].Rows;
 						if (rows == 0)
 							rows = MaxValidDenominator;
-						shiftAmount = $"1/{(MaxValidDenominator / rows) * SMCommon.NumBeatsPerMeasure}";
+						var shiftAmount = $"1/{(MaxValidDenominator / rows) * SMCommon.NumBeatsPerMeasure}";
 
 						if (ImGui.MenuItem($"Shift Earlier ({shiftAmount})", "Ctrl+Shift+Up"))
 						{
@@ -2932,76 +3204,60 @@ namespace StepManiaEditor
 							if (ImGui.MenuItem("Taps to Mines"))
 							{
 								ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, SelectedEvents,
-									(EditorEvent e) => { return e is EditorTapNoteEvent; },
-									(EditorEvent e) => {
-										return EditorEvent.CreateEvent(
-											EventConfig.CreateMineConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(), e.GetLane()));
-									}));
+									(e) => e is EditorTapNoteEvent,
+									(e) => EditorEvent.CreateEvent(
+										EventConfig.CreateMineConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(), e.GetLane()))));
 							}
 							if (ImGui.MenuItem("Mines to Taps"))
 							{
 								ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, SelectedEvents,
-									(EditorEvent e) => { return e is EditorMineNoteEvent; },
-									(EditorEvent e) => {
-										return EditorEvent.CreateEvent(
-											EventConfig.CreateTapConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(), e.GetLane()));
-									}));
+									(e) => e is EditorMineNoteEvent,
+									(e) => EditorEvent.CreateEvent(
+										EventConfig.CreateTapConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(), e.GetLane()))));
 							}
 
 							ImGui.Separator();
 							if (ImGui.MenuItem("Holds to Rolls"))
 							{
 								ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, SelectedEvents,
-									(EditorEvent e) => { return e is EditorHoldNoteEvent hn && !hn.IsRoll(); },
-									(EditorEvent e) => {
-										return EditorHoldNoteEvent.CreateHold(ActiveChart, e.GetLane(), e.GetRow(), e.GetLength(), true);
-									}));
+									(e) => e is EditorHoldNoteEvent hn && !hn.IsRoll(),
+									(e) => EditorHoldNoteEvent.CreateHold(ActiveChart, e.GetLane(), e.GetRow(), e.GetLength(), true)));
 							}
 							if (ImGui.MenuItem("Holds to Taps"))
 							{
 								ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, SelectedEvents,
-									(EditorEvent e) => { return e is EditorHoldNoteEvent hn && !hn.IsRoll(); },
-									(EditorEvent e) => {
-										return EditorEvent.CreateEvent(
-											EventConfig.CreateTapConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(), e.GetLane()));
-									}));
+									(e) => e is EditorHoldNoteEvent hn && !hn.IsRoll(),
+									(e) => EditorEvent.CreateEvent(
+										EventConfig.CreateTapConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(), e.GetLane()))));
 							}
 							if (ImGui.MenuItem("Holds to Mines"))
 							{
 								ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, SelectedEvents,
-									(EditorEvent e) => { return e is EditorHoldNoteEvent hn && !hn.IsRoll(); },
-									(EditorEvent e) => {
-										return EditorEvent.CreateEvent(
-											EventConfig.CreateMineConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(), e.GetLane()));
-									}));
+									(e) => e is EditorHoldNoteEvent hn && !hn.IsRoll(),
+									(e) => EditorEvent.CreateEvent(
+										EventConfig.CreateMineConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(), e.GetLane()))));
 							}
 
 							ImGui.Separator();
 							if (ImGui.MenuItem("Rolls to Holds"))
 							{
 								ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, SelectedEvents,
-									(EditorEvent e) => { return e is EditorHoldNoteEvent hn && hn.IsRoll(); },
-									(EditorEvent e) => {
-										return EditorHoldNoteEvent.CreateHold(ActiveChart, e.GetLane(), e.GetRow(), e.GetLength(), false);
-									}));
+									(e) => e is EditorHoldNoteEvent hn && hn.IsRoll(),
+									(e) => EditorHoldNoteEvent.CreateHold(ActiveChart, e.GetLane(), e.GetRow(), e.GetLength(), false)));
 							}
 							if (ImGui.MenuItem("Rolls to Taps"))
 							{
 								ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, SelectedEvents,
-									(EditorEvent e) => { return e is EditorHoldNoteEvent hn && hn.IsRoll(); },
-									(EditorEvent e) => {
-										return EditorEvent.CreateEvent(
-											EventConfig.CreateTapConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(), e.GetLane()));
-									}));
+									(e) => e is EditorHoldNoteEvent hn && hn.IsRoll(),
+									(e) => EditorEvent.CreateEvent(
+										EventConfig.CreateTapConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(), e.GetLane()))));
 							}
 							if (ImGui.MenuItem("Rolls to Mines"))
 							{
 								ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, SelectedEvents,
-									(EditorEvent e) => { return e is EditorHoldNoteEvent hn && hn.IsRoll(); },
-									(EditorEvent e) => {
-										return EditorEvent.CreateEvent(
-											EventConfig.CreateMineConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(), e.GetLane()));
-									}));
+									(e) => e is EditorHoldNoteEvent hn && hn.IsRoll(),
+									(e) => EditorEvent.CreateEvent(
+										EventConfig.CreateMineConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(), e.GetLane()))));
 							}
 							ImGui.EndMenu();
 						}
@@ -3018,23 +3274,23 @@ namespace StepManiaEditor
 					}
 					if (ImGui.Selectable("Taps"))
 					{
-						OnSelectAllImpl((EditorEvent e) => { return e is EditorTapNoteEvent; });
+						OnSelectAllImpl((e) => e is EditorTapNoteEvent);
 					}
 					if (ImGui.Selectable("Mines"))
 					{
-						OnSelectAllImpl((EditorEvent e) => { return e is EditorMineNoteEvent; });
+						OnSelectAllImpl((e) => e is EditorMineNoteEvent);
 					}
 					if (ImGui.Selectable("Holds"))
 					{
-						OnSelectAllImpl((EditorEvent e) => { return e is EditorHoldNoteEvent hn && !hn.IsRoll(); });
+						OnSelectAllImpl((e) => e is EditorHoldNoteEvent hn && !hn.IsRoll());
 					}
 					if (ImGui.Selectable("Rolls"))
 					{
-						OnSelectAllImpl((EditorEvent e) => { return e is EditorHoldNoteEvent hn && hn.IsRoll(); });
+						OnSelectAllImpl((e) => e is EditorHoldNoteEvent hn && hn.IsRoll());
 					}
 					if (ImGui.Selectable("Holds and Rolls"))
 					{
-						OnSelectAllImpl((EditorEvent e) => { return e is EditorHoldNoteEvent hn; });
+						OnSelectAllImpl((e) => e is EditorHoldNoteEvent);
 					}
 					if (ImGui.MenuItem("Miscellaneous Events", "Ctrl+Alt+A"))
 					{
@@ -3133,37 +3389,31 @@ namespace StepManiaEditor
 
 						var currentRateAlteringEvent = ActiveChart.FindActiveRateAlteringEventForPosition(row);
 
-						DrawAddEventMenuItem("Tempo", !hasTempoEvent, UITempoColorRGBA, EditorTempoEvent.EventShortDescription, row, () =>
-						{
-							return EditorEvent.CreateEvent(EventConfig.CreateTempoConfig(ActiveChart, row, chartTime,
-								currentRateAlteringEvent?.GetTempo() ?? EditorChart.DefaultTempo));
-						});
+						DrawAddEventMenuItem("Tempo", !hasTempoEvent, UITempoColorRGBA, EditorTempoEvent.EventShortDescription, row,
+							() => EditorEvent.CreateEvent(
+								EventConfig.CreateTempoConfig(ActiveChart, row, chartTime, currentRateAlteringEvent?.GetTempo() ?? EditorChart.DefaultTempo)));
 
 						ImGui.Separator();
-						DrawAddEventMenuItem("Interpolated Scroll Rate", !hasInterpolatedScrollRateEvent, UISpeedsColorRGBA, EditorInterpolatedRateAlteringEvent.EventShortDescription, row, () =>
-						{
-							return EditorEvent.CreateEvent(EventConfig.CreateScrollRateInterpolationConfig(ActiveChart, row, chartTime));
-						});
-						DrawAddEventMenuItem("Scroll Rate", !hasScrollRateEvent, UIScrollsColorRGBA, EditorScrollRateEvent.EventShortDescription, row, () =>
-						{
-							return EditorEvent.CreateEvent(EventConfig.CreateScrollRateConfig(ActiveChart, row, chartTime));
-						});
+						DrawAddEventMenuItem("Interpolated Scroll Rate", !hasInterpolatedScrollRateEvent, UISpeedsColorRGBA, EditorInterpolatedRateAlteringEvent.EventShortDescription, row,
+							() => EditorEvent.CreateEvent(EventConfig.CreateScrollRateInterpolationConfig(ActiveChart, row, chartTime)));
+						DrawAddEventMenuItem("Scroll Rate", !hasScrollRateEvent, UIScrollsColorRGBA, EditorScrollRateEvent.EventShortDescription, row,
+							() => EditorEvent.CreateEvent(EventConfig.CreateScrollRateConfig(ActiveChart, row, chartTime)));
 
 						ImGui.Separator();
-						DrawAddEventMenuItem("Stop", !hasStopEvent, UIStopColorRGBA, EditorStopEvent.EventShortDescription, row, () =>
-						{
-							var stopTime = currentRateAlteringEvent.GetSecondsPerRow() * MaxValidDenominator;
-							return EditorEvent.CreateEvent(EventConfig.CreateStopConfig(ActiveChart, row, chartTime, stopTime));
-						});
-						DrawAddEventMenuItem("Delay", !hasDelayEvent, UIDelayColorRGBA, EditorDelayEvent.EventShortDescription, row, () =>
-						{
-							var stopTime = currentRateAlteringEvent.GetSecondsPerRow() * MaxValidDenominator;
-							return EditorEvent.CreateEvent(EventConfig.CreateDelayConfig(ActiveChart, row, chartTime, stopTime));
-						});
-						DrawAddEventMenuItem("Warp", !hasWarpEvent, UIWarpColorRGBA, EditorWarpEvent.EventShortDescription, row, () =>
-						{
-							return EditorEvent.CreateEvent(EventConfig.CreateWarpConfig(ActiveChart, row, chartTime));
-						});
+						DrawAddEventMenuItem("Stop", !hasStopEvent, UIStopColorRGBA, EditorStopEvent.EventShortDescription, row,
+							() =>
+							{
+								var stopTime = currentRateAlteringEvent.GetSecondsPerRow() * MaxValidDenominator;
+								return EditorEvent.CreateEvent(EventConfig.CreateStopConfig(ActiveChart, row, chartTime, stopTime));
+							});
+						DrawAddEventMenuItem("Delay", !hasDelayEvent, UIDelayColorRGBA, EditorDelayEvent.EventShortDescription, row,
+							() =>
+							{
+								var stopTime = currentRateAlteringEvent.GetSecondsPerRow() * MaxValidDenominator;
+								return EditorEvent.CreateEvent(EventConfig.CreateDelayConfig(ActiveChart, row, chartTime, stopTime));
+							});
+						DrawAddEventMenuItem("Warp", !hasWarpEvent, UIWarpColorRGBA, EditorWarpEvent.EventShortDescription, row,
+							() => EditorEvent.CreateEvent(EventConfig.CreateWarpConfig(ActiveChart, row, chartTime)));
 
 						ImGui.Separator();
 						DrawAddEventMenuItem("Fake Region", !hasFakeEvent, UIFakesColorRGBA, EditorFakeSegmentEvent.EventShortDescription, row, () =>
@@ -3171,22 +3421,14 @@ namespace StepManiaEditor
 							var fakeLength = currentRateAlteringEvent.GetSecondsPerRow() * MaxValidDenominator;
 							return EditorEvent.CreateEvent(EventConfig.CreateFakeConfig(ActiveChart, row, chartTime, fakeLength));
 						});
-						DrawAddEventMenuItem("Ticks", !hasTickCountEvent, UITicksColorRGBA, EditorTickCountEvent.EventShortDescription, row, () =>
-						{
-							return EditorEvent.CreateEvent(EventConfig.CreateTickCountConfig(ActiveChart, row, chartTime));
-						});
-						DrawAddEventMenuItem("Combo Multipliers", !hasMultipliersEvent, UIMultipliersColorRGBA, EditorMultipliersEvent.EventShortDescription, row, () =>
-						{
-							return EditorEvent.CreateEvent(EventConfig.CreateMultipliersConfig(ActiveChart, row, chartTime));
-						});
-						DrawAddEventMenuItem("Time Signature", !hasTimeSignatureEvent, UITimeSignatureColorRGBA, EditorTimeSignatureEvent.EventShortDescription, nearestMeasureBoundaryRow, () =>
-						{
-							return EditorEvent.CreateEvent(EventConfig.CreateTimeSignatureConfig(ActiveChart, nearestMeasureBoundaryRow, nearestMeasureChartTime, EditorChart.DefaultTimeSignature));
-						}, true);
-						DrawAddEventMenuItem("Label", !hasLabelEvent, UILabelColorRGBA, EditorLabelEvent.EventShortDescription, row, () =>
-						{
-							return EditorEvent.CreateEvent(EventConfig.CreateLabelConfig(ActiveChart, row, chartTime));
-						});
+						DrawAddEventMenuItem("Ticks", !hasTickCountEvent, UITicksColorRGBA, EditorTickCountEvent.EventShortDescription, row,
+							() => EditorEvent.CreateEvent(EventConfig.CreateTickCountConfig(ActiveChart, row, chartTime)));
+						DrawAddEventMenuItem("Combo Multipliers", !hasMultipliersEvent, UIMultipliersColorRGBA, EditorMultipliersEvent.EventShortDescription, row,
+							() => EditorEvent.CreateEvent(EventConfig.CreateMultipliersConfig(ActiveChart, row, chartTime)));
+						DrawAddEventMenuItem("Time Signature", !hasTimeSignatureEvent, UITimeSignatureColorRGBA, EditorTimeSignatureEvent.EventShortDescription, nearestMeasureBoundaryRow,
+							() => EditorEvent.CreateEvent(EventConfig.CreateTimeSignatureConfig(ActiveChart, nearestMeasureBoundaryRow, nearestMeasureChartTime, EditorChart.DefaultTimeSignature)), true);
+						DrawAddEventMenuItem("Label", !hasLabelEvent, UILabelColorRGBA, EditorLabelEvent.EventShortDescription, row,
+							() => EditorEvent.CreateEvent(EventConfig.CreateLabelConfig(ActiveChart, row, chartTime)));
 
 						ImGui.Separator();
 						if (MenuItemWithColor("(Move) Music Preview", true, UIPreviewColorRGBA))
@@ -3248,7 +3490,7 @@ namespace StepManiaEditor
 				if (!string.IsNullOrEmpty(ActiveSong.Title))
 					ImGui.Text($"Do you want to save the changes you made to {ActiveSong.Title}?\nYour changes will be lost if you don't save them.");
 				else
-					ImGui.Text($"Do you want to save your changes?\nYour changes will be lost if you don't save them.");
+					ImGui.Text("Do you want to save your changes?\nYour changes will be lost if you don't save them.");
 				
 				ImGui.Separator();
 				if (ImGui.Button("Save"))
@@ -3284,7 +3526,6 @@ namespace StepManiaEditor
 		{
 			if (ImGui.Begin("Debug"))
 			{
-				ImGui.Checkbox("Parallelize Update Loop", ref ParallelizeUpdateLoop);
 				ImGui.Checkbox("Render Chart", ref RenderChart);
 				ImGui.Text($"Update Time:       {UpdateTimeTotal:F6} seconds");
 				ImGui.Text($"  Waveform:        {UpdateTimeWaveForm:F6} seconds");
@@ -3502,26 +3743,105 @@ namespace StepManiaEditor
 
 		#region Save and Load
 
+		private bool IsSaving()
+		{
+			return ActiveSong?.IsSaving() ?? false;
+		}
+
+		private void TryInvokePostSaveFunction()
+		{
+			if (PostSaveFunction != null)
+				PostSaveFunction();
+			PostSaveFunction = null;
+		}
+
+		private bool CanSaveWithoutLocationPrompt()
+		{
+			if (ActiveSong == null)
+				return false;
+
+			if (ActiveSong.GetFileFormat() == null)
+				return false;
+
+			if (string.IsNullOrEmpty(ActiveSong.GetFileFullPath()))
+				return false;
+
+			return true;
+		}
+
+		private void OnSave()
+		{
+			if (EditEarlyOut())
+				return;
+
+			if (!CanSaveWithoutLocationPrompt())
+			{
+				OnSaveAs();
+				return;
+			}
+			Save(ActiveSong.GetFileFormat().Type, ActiveSong.GetFileFullPath(), ActiveSong);
+		}
+
+		private void OnSaveAs()
+		{
+			if (EditEarlyOut())
+				return;
+
+			if (ActiveSong == null)
+				return;
+
+			SaveFileDialog saveFileDialog1 = new SaveFileDialog();
+			saveFileDialog1.Filter = "SSC File|*.ssc|SM File|*.sm";
+			saveFileDialog1.Title = "Save As...";
+			saveFileDialog1.FilterIndex = 0;
+			if (ActiveSong.GetFileFormat() != null && ActiveSong.GetFileFormat().Type == FileFormatType.SM)
+			{
+				saveFileDialog1.FilterIndex = 2;
+			}
+			if (saveFileDialog1.ShowDialog() != DialogResult.OK)
+				return;
+
+			var fullPath = saveFileDialog1.FileName;
+			var extension = System.IO.Path.GetExtension(fullPath);
+			var fileFormat = FileFormat.GetFileFormatByExtension(extension);
+			if (fileFormat == null)
+				return;
+
+			Save(fileFormat.Type, fullPath, ActiveSong);
+		}
+
+		private void Save(FileFormatType fileType, string fullPath, EditorSong editorSong)
+		{
+			if (EditEarlyOut())
+				return;
+
+			editorSong.Save(fileType, fullPath, () =>
+			{
+				UpdateWindowTitle();
+				UpdateRecentFilesForActiveSong(Position.ChartPosition, GetSpacingZoom());
+				ActionQueue.Instance.OnSaved();
+				TryInvokePostSaveFunction();
+			});
+		}
+
 		/// <summary>
 		/// Starts the process of opening a Song file by presenting a dialog to choose a Song.
 		/// </summary>
 		private void OpenSongFile()
 		{
 			var pOptions = Preferences.Instance.PreferencesOptions;
-			using (OpenFileDialog openFileDialog = new OpenFileDialog())
-			{
-				openFileDialog.InitialDirectory = Preferences.Instance.OpenFileDialogInitialDirectory;
-				openFileDialog.Filter = "StepMania Files (*.sm,*.ssc)|*.sm;*.ssc|All files (*.*)|*.*";
-				openFileDialog.FilterIndex = 1;
+			using var openFileDialog = new OpenFileDialog();
+			openFileDialog.InitialDirectory = Preferences.Instance.OpenFileDialogInitialDirectory;
+			openFileDialog.Filter = "StepMania Files (*.sm,*.ssc)|*.sm;*.ssc|All files (*.*)|*.*";
+			openFileDialog.FilterIndex = 1;
 
-				if (openFileDialog.ShowDialog() == DialogResult.OK)
-				{
-					var fileName = openFileDialog.FileName;
-					Preferences.Instance.OpenFileDialogInitialDirectory = System.IO.Path.GetDirectoryName(fileName);
-					OpenSongFileAsync(openFileDialog.FileName,
-						pOptions.DefaultStepsType,
-						pOptions.DefaultDifficultyType);
-				}
+			if (openFileDialog.ShowDialog() == DialogResult.OK)
+			{
+				var fileName = openFileDialog.FileName;
+				Preferences.Instance.OpenFileDialogInitialDirectory = System.IO.Path.GetDirectoryName(fileName);
+				OpenSongFileAsync(openFileDialog.FileName,
+					pOptions.DefaultStepsType,
+					pOptions.DefaultDifficultyType);
 			}
 		}
 
@@ -3674,7 +3994,7 @@ namespace StepManiaEditor
 
 			var p = Preferences.Instance;
 			var pOptions = p.PreferencesOptions;
-			var savedSongInfo = new Preferences.SavedSongInformation
+			var savedSongInfo = new SavedSongInformation
 			{
 				FileName = ActiveSong.GetFileFullPath(),
 				LastChartType = ActiveChart?.ChartType ?? pOptions.DefaultStepsType,
@@ -3728,11 +4048,11 @@ namespace StepManiaEditor
 			// of the preferred chart type.
 			if (hasChartsOfPreferredType)
 			{
-				foreach (var currDifficultyType in orderedDifficultyTypes)
+				foreach (var currentDifficultyType in orderedDifficultyTypes)
 				{
 					foreach (var chart in preferredChartsByType)
 					{
-						if (chart.ChartDifficultyType == currDifficultyType)
+						if (chart.ChartDifficultyType == currentDifficultyType)
 							return chart;
 					}
 				}
@@ -3756,11 +4076,11 @@ namespace StepManiaEditor
 				var nextBestChartsByType = song.GetCharts(nextBestChartType);
 				if (nextBestChartsByType != null)
 				{
-					foreach (var currDifficultyType in orderedDifficultyTypes)
+					foreach (var currentDifficultyType in orderedDifficultyTypes)
 					{
 						foreach (var chart in nextBestChartsByType)
 						{
-							if (chart.ChartDifficultyType == currDifficultyType)
+							if (chart.ChartDifficultyType == currentDifficultyType)
 								return chart;
 						}
 					}
@@ -3771,7 +4091,7 @@ namespace StepManiaEditor
 			foreach (var supportedChartType in SupportedChartTypes)
 			{
 				var charts = song.GetCharts(supportedChartType);
-				if (charts != null && charts.Count > 0)
+				if (charts?.Count > 0)
 				{
 					return charts[0];
 				}
@@ -3813,6 +4133,161 @@ namespace StepManiaEditor
 			}
 
 			return fullPath;
+		}
+
+		private void OnOpen()
+		{
+			if (ActionQueue.Instance.HasUnsavedChanges())
+			{
+				PostSaveFunction = OpenSongFile;
+				ShowSavePopup = true;
+			}
+			else
+			{
+				OpenSongFile();
+			}
+		}
+
+		private void OnOpenFile(string songFile)
+		{
+			PendingOpenSongFileName = songFile;
+			if (ActionQueue.Instance.HasUnsavedChanges())
+			{
+				PostSaveFunction = OnOpenFileNoSave;
+				ShowSavePopup = true;
+			}
+			else
+			{
+				OnOpenFileNoSave();
+			}
+		}
+
+		private void OnOpenFileNoSave()
+		{
+			if (string.IsNullOrEmpty(PendingOpenSongFileName))
+				return;
+			var pOptions = Preferences.Instance.PreferencesOptions;
+			OpenSongFileAsync(PendingOpenSongFileName,
+				pOptions.DefaultStepsType,
+				pOptions.DefaultDifficultyType);
+		}
+
+		private void OnReload()
+		{
+			OpenRecentIndex = 0;
+			OnOpenRecentFile();
+		}
+
+		private void OnOpenRecentFile()
+		{
+			var p = Preferences.Instance;
+			if (OpenRecentIndex >= p.RecentFiles.Count)
+				return;
+
+			if (ActionQueue.Instance.HasUnsavedChanges())
+			{
+				PostSaveFunction = OpenRecentFile;
+				ShowSavePopup = true;
+			}
+			else
+			{
+				OpenRecentFile();
+			}
+		}
+
+		private void OpenRecentFile()
+		{
+			var p = Preferences.Instance;
+			if (OpenRecentIndex >= p.RecentFiles.Count)
+				return;
+
+			OpenSongFileAsync(p.RecentFiles[OpenRecentIndex].FileName,
+							p.RecentFiles[OpenRecentIndex].LastChartType,
+							p.RecentFiles[OpenRecentIndex].LastChartDifficultyType);
+		}
+
+		private void OnNew()
+		{
+			if (ActionQueue.Instance.HasUnsavedChanges())
+			{
+				PostSaveFunction = OnNewNoSave;
+				ShowSavePopup = true;
+			}
+			else
+			{
+				OnNewNoSave();
+			}
+		}
+
+		private void OnNewNoSave()
+		{
+			CloseSong();
+			ActiveSong = new EditorSong(GraphicsDevice, ImGuiRenderer, this);
+
+			if (!string.IsNullOrEmpty(PendingMusicFile))
+			{
+				ActiveSong.MusicPath = PendingMusicFile;
+				PendingMusicFile = null;
+			}
+			if (!string.IsNullOrEmpty(PendingLyricsFile))
+			{
+				ActiveSong.LyricsPath = PendingLyricsFile;
+				PendingLyricsFile = null;
+			}
+			if (!string.IsNullOrEmpty(PendingImageFile))
+			{
+				switch (GetBestSongImageType(PendingImageFile))
+				{
+					case SongImageType.Background:
+						ActiveSong.BackgroundPath = PendingImageFile;
+						break;
+					case SongImageType.Banner:
+						ActiveSong.BannerPath = PendingImageFile;
+						break;
+					case SongImageType.Jacket:
+						ActiveSong.JacketPath = PendingImageFile;
+						break;
+					case SongImageType.CDImage:
+						ActiveSong.CDImagePath = PendingImageFile;
+						break;
+					case SongImageType.DiscImage:
+						ActiveSong.DiscImagePath = PendingImageFile;
+						break;
+					case SongImageType.CDTitle:
+						ActiveSong.CDTitlePath = PendingImageFile;
+						break;
+				}
+				PendingImageFile = null;
+			}
+			if (!string.IsNullOrEmpty(PendingVideoFile))
+			{
+				// Assume that a video file is meant to be the background.
+				ActiveSong.BackgroundPath = PendingVideoFile;
+				PendingVideoFile = null;
+			}
+
+			Position.Reset();
+			SetZoom(1.0, true);
+		}
+
+		private void OnClose()
+		{
+			if (ActionQueue.Instance.HasUnsavedChanges())
+			{
+				PostSaveFunction = OnCloseNoSave;
+				ShowSavePopup = true;
+			}
+			else
+			{
+				OnCloseNoSave();
+			}
+		}
+
+		private void OnCloseNoSave()
+		{
+			CloseSong();
+			Position.Reset();
+			SetZoom(1.0, true);
 		}
 
 		private void CloseSong()
@@ -3882,10 +4357,10 @@ namespace StepManiaEditor
 			TransformingNotes = false;
 
 			// When a transformation ends, set the selection to the transformed notes.
-			// Technically this will deselect notes if the user performed a transfrom
+			// Technically this will deselect notes if the user performed a transform
 			// on a set of events where not all were eligible to be transformed. For
 			// example, if they selected all events (including rate altering events)
-			// and then mirroed the selection, this would deselect the rate altering
+			// and then mirrored the selection, this would deselect the rate altering
 			// events. However, this logic also guarantees that after a transform,
 			// including transforms initiated from undo and redo, the selection contains
 			// the modified notes.
@@ -3967,17 +4442,17 @@ namespace StepManiaEditor
 
 		public void OnSelectAll()
 		{
-			OnSelectAllImpl((EditorEvent e) => { return e.IsSelectableWithoutModifiers(); });
+			OnSelectAllImpl((e) => e.IsSelectableWithoutModifiers());
 		}
 
 		public void OnSelectAllAlt()
 		{
-			OnSelectAllImpl((EditorEvent e) => { return e.IsSelectableWithModifiers(); });
+			OnSelectAllImpl((e) => e.IsSelectableWithModifiers());
 		}
 
 		public void OnSelectAllShift()
 		{
-			OnSelectAllImpl((EditorEvent e) => { return e.IsSelectableWithoutModifiers() || e.IsSelectableWithModifiers(); });
+			OnSelectAllImpl((e) => e.IsSelectableWithoutModifiers() || e.IsSelectableWithModifiers());
 		}
 
 		private void OnSelectAllImpl(Func<EditorEvent, bool> isSelectable)
@@ -4014,11 +4489,10 @@ namespace StepManiaEditor
 
 			var alt = KeyCommandManager.IsKeyDown(Keys.LeftAlt);
 			Func<EditorEvent, bool> isSelectable = alt ?
-				((EditorEvent e) => { return e.IsSelectableWithModifiers(); })
-				: ((EditorEvent e) => { return e.IsSelectableWithoutModifiers(); });
+				((e) => e.IsSelectableWithModifiers())
+				: ((e) => e.IsSelectableWithoutModifiers());
 
-			var spacingZoom = GetSpacingZoom();
-			var (arrowWidthUnscaled, arrowHeightUnscaled) = GetArrowDimensions(false);
+			var (_, arrowHeightUnscaled) = GetArrowDimensions(false);
 			var halfArrowH = arrowHeightUnscaled * GetSizeZoom() * 0.5;
 			var halfMiscEventH = ImGuiLayoutUtils.GetMiscEditorEventHeight() * 0.5;
 
@@ -4039,7 +4513,7 @@ namespace StepManiaEditor
 				{
 					// Early out if we have searched beyond the selected y. Add an extra half arrow
 					// height to this check so that short miscellaneous events do not cause us to
-					// early out prematurealy.
+					// early out prematurely.
 					if (visibleEvent.Y > y + halfArrowH)
 						break;
 					if (visibleEvent.DoesPointIntersect(x, y))
@@ -4075,7 +4549,7 @@ namespace StepManiaEditor
 							var enumerator = ActiveChart.EditorEvents.FindFirstAfterChartTime(adjustedMinTime);
 							while (enumerator.MoveNext())
 							{
-								if (enumerator.Current.GetChartTime() > adjustedMaxTime)
+								if (enumerator.Current!.GetChartTime() > adjustedMaxTime)
 									break;
 								if (!isSelectable(enumerator.Current))
 									continue;
@@ -4088,7 +4562,7 @@ namespace StepManiaEditor
 
 						// If nothing was selected and the selection was partially outside of the lanes, treat it as
 						// an attempt to select misc events.
-						if (newlySelectedEvents.Count() == 0 && partiallyOutsideLanes)
+						if (newlySelectedEvents.Count == 0 && partiallyOutsideLanes)
 							selectMiscEvents = true;
 					}
 
@@ -4110,7 +4584,7 @@ namespace StepManiaEditor
 						while (enumerator != null && enumerator.MoveNext())
 						{
 							var miscEvent = enumerator.Current;
-							if (miscEvent.GetChartTime() > adjustedMaxTime)
+							if (miscEvent!.GetChartTime() > adjustedMaxTime)
 								break;
 							if (!miscEvent.IsSelectableWithModifiers())
 								continue;
@@ -4148,7 +4622,7 @@ namespace StepManiaEditor
 							var enumerator = ActiveChart.EditorEvents.FindFirstAfterChartPosition(adjustedMinPosition);
 							while (enumerator != null && enumerator.MoveNext())
 							{
-								if (enumerator.Current.GetRow() > adjustedMaxPosition)
+								if (enumerator.Current!.GetRow() > adjustedMaxPosition)
 									break;
 								if (!isSelectable(enumerator.Current))
 									continue;
@@ -4161,7 +4635,7 @@ namespace StepManiaEditor
 
 						// If nothing was selected and the selection was partially outside of the lanes, treat it as
 						// an attempt to select misc events.
-						if (newlySelectedEvents.Count() == 0 && partiallyOutsideLanes)
+						if (newlySelectedEvents.Count == 0 && partiallyOutsideLanes)
 							selectMiscEvents = true;
 					}
 
@@ -4181,7 +4655,7 @@ namespace StepManiaEditor
 						while (enumerator != null && enumerator.MoveNext())
 						{
 							var miscEvent = enumerator.Current;
-							if (miscEvent.GetRow() > adjustedMaxPosition)
+							if (miscEvent!.GetRow() > adjustedMaxPosition)
 								break;
 							if (!miscEvent.IsSelectableWithModifiers())
 								continue;
@@ -4228,18 +4702,16 @@ namespace StepManiaEditor
 					}
 					if (enumerator != null)
 					{
-						bool last;
 						bool checkLane = Preferences.Instance.PreferencesSelection.RegionMode == PreferencesSelection.SelectionRegionMode.TimeOrPositionAndLane;
-						var minLane = Math.Min(newlySelectedEvents[0].GetLane(), Math.Min(LastSelectedEvent.GetLane(), newlySelectedEvents[newlySelectedEvents.Count - 1].GetLane()));
-						var maxLane = Math.Max(newlySelectedEvents[0].GetLane(), Math.Max(LastSelectedEvent.GetLane(), newlySelectedEvents[newlySelectedEvents.Count - 1].GetLane()));
+						var minLane = Math.Min(newlySelectedEvents[0].GetLane(), Math.Min(LastSelectedEvent.GetLane(), newlySelectedEvents[^1].GetLane()));
+						var maxLane = Math.Max(newlySelectedEvents[0].GetLane(), Math.Max(LastSelectedEvent.GetLane(), newlySelectedEvents[^1].GetLane()));
 
 						while (enumerator.MoveNext())
 						{
-							last = enumerator.Current == end;
+							var last = enumerator.Current == end;
 							if (isSelectable(enumerator.Current))
 							{
-								if (!checkLane || (
-									checkLane && enumerator.Current.GetLane() >= minLane && enumerator.Current.GetLane() <= maxLane))
+								if (!checkLane || (enumerator.Current!.GetLane() >= minLane && enumerator.Current.GetLane() <= maxLane))
 								{
 									SelectEvent(enumerator.Current, last);
 								}
@@ -4318,7 +4790,7 @@ namespace StepManiaEditor
 
 		/// <summary>
 		/// Given a time range defined by the given min and max time, returns an adjusted min and max time that
-		/// are expanded by the given distance value. The diven distance value is typically half the height of
+		/// are expanded by the given distance value. The given distance value is typically half the height of
 		/// an event that should be captured by a selection, like half of an arrow height or half of a misc.
 		/// event height.
 		/// </summary>
@@ -4344,7 +4816,7 @@ namespace StepManiaEditor
 
 		/// <summary>
 		/// Given a position range defined by the given min and max position, returns an adjusted min and max
-		/// position that are expanded by the given distance value. The diven distance value is typically half
+		/// position that are expanded by the given distance value. The given distance value is typically half
 		/// the height of an event that should be captured by a selection, like half of an arrow height or half
 		/// of a misc. event height.
 		/// </summary>
@@ -4370,7 +4842,7 @@ namespace StepManiaEditor
 
 		/// <summary>
 		/// Returns whether the given EditorEvent is eligible to be selected based on its x values by checking
-		/// if the range defined by if fallse within the given start and end x values, taking into account the
+		/// if the range defined by it falls within the given start and end x values, taking into account the
 		/// current selection preferences.
 		/// </summary>
 		/// <returns>Whether the given EditorEvent falls within the given range.</returns>
@@ -4510,27 +4982,27 @@ namespace StepManiaEditor
 
 		#endregion Copy Paste
 
-		public bool IsChartSupported(Chart chart)
+		#region Chart Navigation
+
+		private void OnPositionChanged()
 		{
-			if (!TryGetChartType(chart.Type, out var chartType))
-				return false;
-			var typeSupported = false;
-			foreach (var supportedType in SupportedChartTypes)
+			// Update events being edited.
+			UpdateLaneEditStatesFromPosition();
+
+			// Update the music time
+			if (!UpdatingSongTimeDirectly)
 			{
-				if (supportedType == chartType)
+				var songTime = Position.SongTime;
+				Position.SetDesiredPositionToCurrent();
+				MusicManager.SetMusicTimeInSeconds(songTime);
+
+				if (Playing)
 				{
-					typeSupported = true;
-					break;
+					PlaybackStartTime = songTime;
+					PlaybackStopwatch = new Stopwatch();
+					PlaybackStopwatch.Start();
 				}
 			}
-
-			if (!typeSupported)
-				return false;
-
-			if (!Enum.TryParse<ChartDifficultyType>(chart.DifficultyType, out _))
-				return false;
-
-			return true;
 		}
 
 		private void OnDecreaseSnap()
@@ -4589,7 +5061,7 @@ namespace StepManiaEditor
 			}
 			else
 			{
-				Position.ChartPosition = ((int)Position.ChartPosition / rows) * rows + rows;
+				Position.ChartPosition = (Position.ChartPosition / rows) * rows + rows;
 				UpdateAutoPlayFromScrolling();
 			}
 		}
@@ -4640,6 +5112,10 @@ namespace StepManiaEditor
 
 			UpdateAutoPlayFromScrolling();
 		}
+
+		#endregion Chart Navigation
+
+		#region Lane Input
 
 		private void OnShiftDown()
 		{
@@ -4848,9 +5324,8 @@ namespace StepManiaEditor
 
 				// If the hold is completely within another hold, do not add or delete notes, but make sure the outer
 				// hold is the same type (hold/roll) as the new type.
-				if (existingEvent != null
-				    && existingEvent is EditorHoldNoteEvent holdFull
-				    && holdFull.GetRow() <= row
+				if (existingEvent is EditorHoldNoteEvent holdFull 
+				    && holdFull.GetRow() <= row 
 				    && holdFull.GetRow() + holdFull.GetLength() >= row + length)
 				{
 					LaneEditStates[lane].Clear(true);
@@ -4865,20 +5340,18 @@ namespace StepManiaEditor
 				// new hold to cover their range. We just need to extend the new event now. The deletion of the
 				// old event will will be handled below when we check for events fully contained within the new
 				// hold region.
-				if (existingEvent != null
-				    && existingEvent is EditorHoldNoteEvent hsnStart
-				    && hsnStart.GetRow() < row
-				    && hsnStart.GetEndRow() >= row
+				if (existingEvent is EditorHoldNoteEvent hsnStart 
+				    && hsnStart.GetRow() < row 
+				    && hsnStart.GetEndRow() >= row 
 				    && hsnStart.GetEndRow() < row + length)
 				{
 					row = hsnStart.GetRow();
 					length = editHold.GetEndRow() - hsnStart.GetRow();
 				}
 				existingEvent = ActiveChart.EditorEvents.FindNoteAt(row + length, lane, true);
-				if (existingEvent != null
-				    && existingEvent is EditorHoldNoteEvent hsnEnd
-				    && hsnEnd.GetRow() <= row + length
-					&& hsnEnd.GetEndRow() >= row + length
+				if (existingEvent is EditorHoldNoteEvent hsnEnd 
+				    && hsnEnd.GetRow() <= row + length 
+				    && hsnEnd.GetEndRow() >= row + length 
 				    && hsnEnd.GetRow() > row)
 				{
 					length = hsnEnd.GetEndRow() - row;
@@ -4888,7 +5361,7 @@ namespace StepManiaEditor
 				var e = ActiveChart.EditorEvents.FindBestByPosition(row);
 				if (e != null)
 				{
-					while (e.MoveNext() && e.Current.GetRow() <= row + length)
+					while (e.MoveNext() && e.Current!.GetRow() <= row + length)
 					{
 						if (e.Current.GetRow() < row)
 							continue;
@@ -4969,6 +5442,15 @@ namespace StepManiaEditor
 			return anyCancelled;
 		}
 
+		#endregion Lane Input
+
+		#region Undo
+
+		private void OnUndoHistorySizeChanged()
+		{
+			ActionQueue.Instance.Resize(Preferences.Instance.PreferencesOptions.UndoHistorySize);
+		}
+
 		private void OnUndo()
 		{
 			// Not all undoable actions affect the song / chart but for simplicity it is easier to
@@ -4987,52 +5469,9 @@ namespace StepManiaEditor
 			ActionQueue.Instance.Redo();
 		}
 
-		private void OnEscape()
-		{
-			if (CancelLaneInput())
-				return;
-			if (MovingFocalPoint)
-			{
-				MovingFocalPoint = false;
-				Preferences.Instance.PreferencesReceptors.PositionX = (int)FocalPointAtMoveStart.X;
-				Preferences.Instance.PreferencesReceptors.PositionY = (int)FocalPointAtMoveStart.Y;
-				return;
-			}
-			if (IsPlayingPreview())
-				StopPreview();
-			else if (Playing)
-				StopPlayback();
-			else if (SelectedEvents.Count > 0)
-				ClearSelectedEvents();
-		}
+		#endregion Undo
 
-		public void ClosingForm(object sender, System.ComponentModel.CancelEventArgs e)
-		{
-			if (ActionQueue.Instance.HasUnsavedChanges())
-			{
-				e.Cancel = true;
-				PostSaveFunction = OnExitNoSave;
-				ShowSavePopup = true;
-			}
-		}
-
-		private void OnExit()
-		{
-			if (ActionQueue.Instance.HasUnsavedChanges())
-			{
-				PostSaveFunction = OnExitNoSave;
-				ShowSavePopup = true;
-			}
-			else
-			{
-				OnExitNoSave();
-			}
-		}
-
-		private void OnExitNoSave()
-		{
-			Exit();
-		}
+		#region Song Media Files
 
 		private void OnOpenAudioFile(string audioFile)
 		{
@@ -5143,341 +5582,9 @@ namespace StepManiaEditor
 			ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(ActiveSong, nameof(EditorSong.LyricsPath), lyricsPath, true));
 		}
 
-		private void OnOpen()
-		{
-			if (ActionQueue.Instance.HasUnsavedChanges())
-			{
-				PostSaveFunction = OpenSongFile;
-				ShowSavePopup = true;
-			}
-			else
-			{
-				OpenSongFile();
-			}
-		}
+		#endregion Song Media Files
 
-		private void OnOpenFile(string songFile)
-		{
-			PendingOpenSongFileName = songFile;
-			if (ActionQueue.Instance.HasUnsavedChanges())
-			{
-				PostSaveFunction = OnOpenFileNoSave;
-				ShowSavePopup = true;
-			}
-			else
-			{
-				OnOpenFileNoSave();
-			}
-		}
-
-		private void OnOpenFileNoSave()
-		{
-			if (string.IsNullOrEmpty(PendingOpenSongFileName))
-				return;
-			var pOptions = Preferences.Instance.PreferencesOptions;
-			OpenSongFileAsync(PendingOpenSongFileName,
-				pOptions.DefaultStepsType,
-				pOptions.DefaultDifficultyType);
-		}
-
-		private void OnReload()
-		{
-			OpenRecentIndex = 0;
-			OnOpenRecentFile();
-		}
-
-		private void OnOpenRecentFile()
-		{
-			var p = Preferences.Instance;
-			if (OpenRecentIndex >= p.RecentFiles.Count)
-				return;
-
-			if (ActionQueue.Instance.HasUnsavedChanges())
-			{
-				PostSaveFunction = OpenRecentFile;
-				ShowSavePopup = true;
-			}
-			else
-			{
-				OpenRecentFile();
-			}
-		}
-
-		private void OpenRecentFile()
-		{
-			var p = Preferences.Instance;
-			if (OpenRecentIndex >= p.RecentFiles.Count)
-				return;
-
-			OpenSongFileAsync(p.RecentFiles[OpenRecentIndex].FileName,
-							p.RecentFiles[OpenRecentIndex].LastChartType,
-							p.RecentFiles[OpenRecentIndex].LastChartDifficultyType);
-		}
-
-		private void OnNew()
-		{
-			if (ActionQueue.Instance.HasUnsavedChanges())
-			{
-				PostSaveFunction = OnNewNoSave;
-				ShowSavePopup = true;
-			}
-			else
-			{
-				OnNewNoSave();
-			}
-		}
-
-		private void OnNewNoSave()
-		{
-			CloseSong();
-			ActiveSong = new EditorSong(GraphicsDevice, ImGuiRenderer, this);
-
-			if (!string.IsNullOrEmpty(PendingMusicFile))
-			{
-				ActiveSong.MusicPath = PendingMusicFile;
-				PendingMusicFile = null;
-			}
-			if (!string.IsNullOrEmpty(PendingLyricsFile))
-			{
-				ActiveSong.LyricsPath = PendingLyricsFile;
-				PendingLyricsFile = null;
-			}
-			if (!string.IsNullOrEmpty(PendingImageFile))
-			{
-				switch (GetBestSongImageType(PendingImageFile))
-				{
-					case SongImageType.Background:
-						ActiveSong.BackgroundPath = PendingImageFile;
-						break;
-					case SongImageType.Banner:
-						ActiveSong.BannerPath = PendingImageFile;
-						break;
-					case SongImageType.Jacket:
-						ActiveSong.JacketPath = PendingImageFile;
-						break;
-					case SongImageType.CDImage:
-						ActiveSong.CDImagePath = PendingImageFile;
-						break;
-					case SongImageType.DiscImage:
-						ActiveSong.DiscImagePath = PendingImageFile;
-						break;
-					case SongImageType.CDTitle:
-						ActiveSong.CDTitlePath = PendingImageFile;
-						break;
-				}
-				PendingImageFile = null;
-			}
-			if (!string.IsNullOrEmpty(PendingVideoFile))
-			{
-				// Assume that a video file is meant to be the background.
-				ActiveSong.BackgroundPath = PendingVideoFile;
-				PendingVideoFile = null;
-			}
-
-			Position.Reset();
-			SetZoom(1.0, true);
-		}
-
-		private void OnClose()
-		{
-			if (ActionQueue.Instance.HasUnsavedChanges())
-			{
-				PostSaveFunction = OnCloseNoSave;
-				ShowSavePopup = true;
-			}
-			else
-			{
-				OnCloseNoSave();
-			}
-		}
-
-		private void OnCloseNoSave()
-		{
-			CloseSong();
-			Position.Reset();
-			SetZoom(1.0, true);
-		}
-
-		private void TryInvokePostSaveFunction()
-		{
-			if (PostSaveFunction != null)
-				PostSaveFunction();
-			PostSaveFunction = null;
-		}
-
-		private bool CanSaveWithoutLocationPrompt()
-		{
-			if (ActiveSong == null)
-				return false;
-
-			if (ActiveSong.GetFileFormat() == null)
-				return false;
-
-			if (string.IsNullOrEmpty(ActiveSong.GetFileFullPath()))
-				return false;
-
-			return true;
-		}
-
-		private void OnSave()
-		{
-			if (EditEarlyOut())
-				return;
-
-			if (!CanSaveWithoutLocationPrompt())
-			{
-				OnSaveAs();
-				return;
-			}
-			Save(ActiveSong.GetFileFormat().Type, ActiveSong.GetFileFullPath(), ActiveSong);
-		}
-
-		private void OnSaveAs()
-		{
-			if (EditEarlyOut())
-				return;
-
-			if (ActiveSong == null)
-				return;
-
-			SaveFileDialog saveFileDialog1 = new SaveFileDialog();
-			saveFileDialog1.Filter = "SSC File|*.ssc|SM File|*.sm";
-			saveFileDialog1.Title = "Save As...";
-			saveFileDialog1.FilterIndex = 0;
-			if (ActiveSong.GetFileFormat() != null && ActiveSong.GetFileFormat().Type == FileFormatType.SM)
-			{
-				saveFileDialog1.FilterIndex = 2;
-			}
-			if (saveFileDialog1.ShowDialog() != DialogResult.OK)
-				return;
-			
-			var fullPath = saveFileDialog1.FileName;
-			var extension = System.IO.Path.GetExtension(fullPath);
-			var fileFormat = FileFormat.GetFileFormatByExtension(extension);
-			if (fileFormat == null)
-				return;
-
-			Save(fileFormat.Type, fullPath, ActiveSong);
-		}
-
-		private void Save(FileFormatType fileType, string fullPath, EditorSong editorSong)
-		{
-			if (EditEarlyOut())
-				return;
-
-			editorSong.Save(fileType, fullPath, () =>
-			{
-				UpdateWindowTitle();
-				UpdateRecentFilesForActiveSong(Position.ChartPosition, GetSpacingZoom());
-				ActionQueue.Instance.OnSaved();
-				TryInvokePostSaveFunction();
-			});
-		}
-
-		private void OnTogglePlayback()
-		{
-			if (Playing)
-				StopPlayback();
-			else
-				StartPlayback();
-		}
-
-		public void OnTogglePlayPreview()
-		{
-			if (Playing)
-				StopPlayback();
-
-			if (!PlayingPreview)
-				StartPreview();
-			else
-				StopPreview();
-		}
-
-		public void StartPreview()
-		{
-			var success = MusicManager.StartPreviewPlayback();
-			if (success)
-				PlayingPreview = true;
-		}
-
-		public void StopPreview()
-		{
-			if (!PlayingPreview)
-				return;
-
-			MusicManager.StopPreviewPlayback();
-			PlayingPreview = false;
-		}
-
-		public bool IsPlayingPreview()
-		{
-			return PlayingPreview;
-		}
-
-		private void OnMusicChanged()
-		{
-			StopPreview();
-			MusicManager.LoadMusicAsync(GetFullPathToMusicFile(), GetSongTime, false, Preferences.Instance.PreferencesWaveForm.EnableWaveForm);
-		}
-
-		private void OnMusicPreviewChanged()
-		{
-			StopPreview();
-			MusicManager.LoadMusicPreviewAsync(GetFullPathToMusicPreviewFile());
-		}
-
-		private void OnMusicOffsetChanged()
-		{
-			// Re-set the position to recompute the chart and song times.
-			Position.ChartPosition = Position.ChartPosition;
-		}
-
-		private void OnSyncOffsetChanged()
-		{
-			// Re-set the position to recompute the chart and song times.
-			Position.ChartPosition = Position.ChartPosition;
-		}
-
-		private void OnAudioOffsetChanged()
-		{
-			var playing = Playing;
-			if (playing)
-				StopPlayback();
-			MusicManager.SetMusicOffset(Preferences.Instance.PreferencesOptions.AudioOffset);
-			MusicManager.SetMusicTimeInSeconds(Position.SongTime);
-			if (playing)
-				StartPlayback();
-		}
-
-		private void OnVolumeChanged()
-		{
-			MusicManager.SetVolume(Preferences.Instance.PreferencesOptions.Volume);
-		}
-
-		private double GetSongTime()
-		{
-			return Position.SongTime;
-		}
-
-		internal EditorPosition GetPosition()
-		{
-			return Position;
-		}
-
-		internal EditorMouseState GetMouseState()
-		{
-			return EditorMouseState;
-		}
-
-		public EditorSong GetActiveSong()
-		{
-			return ActiveSong;
-		}
-
-		public EditorChart GetActiveChart()
-		{
-			return ActiveChart;
-		}
+		#region Chart Selection
 
 		public void OnChartSelected(EditorChart chart, bool undoable = true)
 		{
@@ -5562,13 +5669,17 @@ namespace StepManiaEditor
 				return;
 			ActiveSong.DeleteChart(chart);
 			if (chartToSelect != null)
+			{
 				OnChartSelected(chartToSelect, false);
+			}
 			else if (ActiveChart == chart)
 			{
 				var newActiveChart = SelectBestChart(ActiveSong, ActiveChart.ChartType, ActiveChart.ChartDifficultyType);
 				OnChartSelected(newActiveChart, false);
 			}
 		}
+
+		#endregion Chart Selection
 
 		#region Drag and Drop
 
@@ -5577,11 +5688,13 @@ namespace StepManiaEditor
 		/// </summary>
 		public void DragEnter(object sender, DragEventArgs e)
 		{
+			if (e.Data == null)
+				return;
 			// The application only supports opening one file at a time.
 			if (!e.Data.GetDataPresent(DataFormats.FileDrop))
 				return;
 			string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
-			if (files.Count() != 1)
+			if (files.Length != 1)
 			{
 				e.Effect = DragDropEffects.None;
 				return;
@@ -5607,11 +5720,13 @@ namespace StepManiaEditor
 		/// </summary>
 		public void DragDrop(object sender, DragEventArgs e)
 		{
+			if (e.Data == null)
+				return;
 			// The application only supports opening one file at a time.
 			if (!e.Data.GetDataPresent(DataFormats.FileDrop))
 				return;
 			string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
-			if (files.Count() != 1)
+			if (files.Length != 1)
 				return;
 			var file = files[0];
 
@@ -5668,26 +5783,6 @@ namespace StepManiaEditor
 		}
 
 		#endregion Drag and Drop
-
-		private void OnUndoHistorySizeChanged()
-		{
-			ActionQueue.Instance.Resize(Preferences.Instance.PreferencesOptions.UndoHistorySize);
-		}
-
-		private void OnExpressedChartConfigNameChanged(string oldName, string newName)
-		{
-			// When an Expressed Chart Config name has changed, update all loaded Charts directly without enqueueing actions.
-			// We don't want to introduce unintended actions to be undone / redone. Undoing changing an Expressed Chart Config
-			// name will result in this notification being triggered again.
-			if (ActiveSong != null)
-			{
-				foreach (var chart in ActiveSong.GetCharts())
-				{
-					if (chart.ExpressedChartConfig.Equals(oldName))
-						chart.ExpressedChartConfig = newName;
-				}
-			}
-		}
 
 		#region IObserver
 		public void OnNotify(string eventId, EditorSong song, object payload)
@@ -5771,5 +5866,39 @@ namespace StepManiaEditor
 			}
 		}
 		#endregion IObserver
+
+		private void OnExpressedChartConfigNameChanged(string oldName, string newName)
+		{
+			// When an Expressed Chart Config name has changed, update all loaded Charts directly without enqueueing actions.
+			// We don't want to introduce unintended actions to be undone / redone. Undoing changing an Expressed Chart Config
+			// name will result in this notification being triggered again.
+			if (ActiveSong != null)
+			{
+				foreach (var chart in ActiveSong.GetCharts())
+				{
+					if (chart.ExpressedChartConfig.Equals(oldName))
+						chart.ExpressedChartConfig = newName;
+				}
+			}
+		}
+
+		private void OnEscape()
+		{
+			if (CancelLaneInput())
+				return;
+			if (MovingFocalPoint)
+			{
+				MovingFocalPoint = false;
+				Preferences.Instance.PreferencesReceptors.PositionX = (int)FocalPointAtMoveStart.X;
+				Preferences.Instance.PreferencesReceptors.PositionY = (int)FocalPointAtMoveStart.Y;
+				return;
+			}
+			if (IsPlayingPreview())
+				StopPreview();
+			else if (Playing)
+				StopPlayback();
+			else if (SelectedEvents.Count > 0)
+				ClearSelectedEvents();
+		}
 	}
 }
