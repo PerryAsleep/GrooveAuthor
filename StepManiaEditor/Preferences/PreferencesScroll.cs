@@ -1,20 +1,24 @@
 ﻿using System.Text.Json.Serialization;
-using static Fumen.FumenExtensions;
+using Fumen;
 
 namespace StepManiaEditor;
 
 /// <summary>
 /// Preferences for scrolling.
 /// </summary>
-internal sealed class PreferencesScroll
+internal sealed class PreferencesScroll : Notifier<PreferencesScroll>
 {
-	public const float DefaultVariableSpeedBPM = 120.0f;
+	public const double DefaultVariableSpeedBPM = 120.0;
+
+	public const string NotificationTimeBasedPpsChanged = "TimeBasedPpsChanged";
+	public const string NotificationRowBasedPprChanged = "RowBasedPprChanged";
+	public const string NotificationVariablePpsChanged = "VariablePpsChanged";
 
 	// Default values.
 	public const Editor.SpacingMode DefaultSpacingMode = Editor.SpacingMode.ConstantTime;
-	public const float DefaultTimeBasedPixelsPerSecond = 300.0f;
-	public const float DefaultRowBasedPixelsPerRow = 2.0f;
-	public const float DefaultVariablePixelsPerSecondAtDefaultBPM = 300.0f;
+	public const double DefaultTimeBasedPixelsPerSecond = 300.0;
+	public const double DefaultRowBasedPixelsPerRow = 2.0;
+	public const double DefaultVariablePixelsPerSecondAtDefaultBPM = 300.0;
 	public const Editor.WaveFormScrollMode DefaultRowBasedWaveFormScrollMode = Editor.WaveFormScrollMode.MostCommonTempo;
 	public const bool DefaultStopPlaybackWhenScrolling = false;
 	public const double DefaultZoomMultiplier = 1.2;
@@ -25,9 +29,76 @@ internal sealed class PreferencesScroll
 	// Preferences.
 	[JsonInclude] public bool ShowScrollControlPreferencesWindow = true;
 	[JsonInclude] public Editor.SpacingMode SpacingMode = DefaultSpacingMode;
-	[JsonInclude] public float TimeBasedPixelsPerSecond = DefaultTimeBasedPixelsPerSecond;
-	[JsonInclude] public float RowBasedPixelsPerRow = DefaultRowBasedPixelsPerRow;
-	[JsonInclude] public float VariablePixelsPerSecondAtDefaultBPM = DefaultVariablePixelsPerSecondAtDefaultBPM;
+	
+	[JsonInclude] public double TimeBasedPixelsPerSecond
+	{
+		get => TimeBasedPixelsPerSecondInternal;
+		set
+		{
+			if (!TimeBasedPixelsPerSecondInternal.DoubleEquals(value))
+			{
+				TimeBasedPixelsPerSecondInternal = value;
+				Notify(NotificationTimeBasedPpsChanged, this);
+			}
+		}
+	}
+	/// <summary>
+	/// Float property for ImGui slider limitations.
+	/// </summary>
+	[JsonIgnore]
+	public float TimeBasedPixelsPerSecondFloat
+	{
+		get => (float)TimeBasedPixelsPerSecond;
+		set => TimeBasedPixelsPerSecond = value;
+	}
+	private double TimeBasedPixelsPerSecondInternal = DefaultTimeBasedPixelsPerSecond;
+
+	[JsonInclude] public double RowBasedPixelsPerRow
+	{
+		get => RowBasedPixelsPerRowInternal;
+		set
+		{
+			if (!RowBasedPixelsPerRowInternal.DoubleEquals(value))
+			{
+				RowBasedPixelsPerRowInternal = value;
+				Notify(NotificationRowBasedPprChanged, this);
+			}
+		}
+	}
+	/// <summary>
+	/// Float property for ImGui slider limitations.
+	/// </summary>
+	[JsonIgnore]
+	public float RowBasedPixelsPerRowFloat
+	{
+		get => (float)RowBasedPixelsPerRow;
+		set => RowBasedPixelsPerRow = value;
+	}
+	private double RowBasedPixelsPerRowInternal = DefaultRowBasedPixelsPerRow;
+
+	[JsonInclude] public double VariablePixelsPerSecondAtDefaultBPM
+	{
+		get => VariablePixelsPerSecondAtDefaultBPMInternal;
+		set
+		{
+			if (!VariablePixelsPerSecondAtDefaultBPMInternal.DoubleEquals(value))
+			{
+				VariablePixelsPerSecondAtDefaultBPMInternal = value;
+				Notify(NotificationVariablePpsChanged, this);
+			}
+		}
+	}
+	/// <summary>
+	/// Float property for ImGui slider limitations.
+	/// </summary>
+	[JsonIgnore]
+	public float VariablePixelsPerSecondAtDefaultBPMFloat
+	{
+		get => (float)VariablePixelsPerSecondAtDefaultBPM;
+		set => VariablePixelsPerSecondAtDefaultBPM = value;
+	}
+	private double VariablePixelsPerSecondAtDefaultBPMInternal = DefaultVariablePixelsPerSecondAtDefaultBPM;
+
 	[JsonInclude] public Editor.WaveFormScrollMode RowBasedWaveFormScrollMode = DefaultRowBasedWaveFormScrollMode;
 	[JsonInclude] public bool StopPlaybackWhenScrolling = DefaultStopPlaybackWhenScrolling;
 	[JsonInclude] public double ZoomMultiplier = DefaultZoomMultiplier;
@@ -38,9 +109,9 @@ internal sealed class PreferencesScroll
 	public bool IsUsingDefaults()
 	{
 		return SpacingMode == DefaultSpacingMode
-		       && TimeBasedPixelsPerSecond.FloatEquals(DefaultTimeBasedPixelsPerSecond)
-		       && RowBasedPixelsPerRow.FloatEquals(DefaultRowBasedPixelsPerRow)
-		       && VariablePixelsPerSecondAtDefaultBPM.FloatEquals(DefaultVariablePixelsPerSecondAtDefaultBPM)
+		       && TimeBasedPixelsPerSecond.DoubleEquals(DefaultTimeBasedPixelsPerSecond)
+		       && RowBasedPixelsPerRow.DoubleEquals(DefaultRowBasedPixelsPerRow)
+		       && VariablePixelsPerSecondAtDefaultBPM.DoubleEquals(DefaultVariablePixelsPerSecondAtDefaultBPM)
 		       && RowBasedWaveFormScrollMode == DefaultRowBasedWaveFormScrollMode
 		       && StopPlaybackWhenScrolling == DefaultStopPlaybackWhenScrolling
 		       && ZoomMultiplier.DoubleEquals(DefaultZoomMultiplier)
@@ -64,9 +135,9 @@ internal sealed class PreferencesScroll
 internal sealed class ActionRestoreScrollPreferenceDefaults : EditorAction
 {
 	private readonly Editor.SpacingMode PreviousSpacingMode;
-	private readonly float PreviousTimeBasedPixelsPerSecond;
-	private readonly float PreviousRowBasedPixelsPerRow;
-	private readonly float PreviousVariablePixelsPerSecondAtDefaultBPM;
+	private readonly double PreviousTimeBasedPixelsPerSecond;
+	private readonly double PreviousRowBasedPixelsPerRow;
+	private readonly double PreviousVariablePixelsPerSecondAtDefaultBPM;
 	private readonly Editor.WaveFormScrollMode PreviousRowBasedWaveFormScrollMode;
 	private readonly bool PreviousStopPlaybackWhenScrolling;
 	private readonly double PreviousZoomMultiplier;

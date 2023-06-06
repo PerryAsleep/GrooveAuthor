@@ -77,11 +77,15 @@ internal sealed class UIChartPosition
 				// Casting to a float to allow use of ImGuiSliderFlags.Logarithmic.
 				var zoom = (float)Editor.GetSpacingZoom();
 				var originalZoom = zoom;
-				ImGuiLayoutUtils.DrawRowDragFloat("Zoom", ref zoom, "Chart zoom level.", 100.0f, "%.6f", (float)Editor.MinZoom,
-					(float)Editor.MaxZoom, ImGuiSliderFlags.Logarithmic);
+				ImGuiLayoutUtils.DrawRowDragFloat("Zoom", ref zoom,
+					"Chart zoom level." +
+					"\nCtrl+Scroll while over the chart changes the zoom level." +
+					"\nShift+Scroll while over the chart changes how the notes are spaced for the current Spacing mode.",
+					100.0f, "%.6f", (float)ZoomManager.MinZoom,
+					(float)ZoomManager.MaxZoom, ImGuiSliderFlags.Logarithmic);
 				if (!zoom.FloatEquals(originalZoom))
 				{
-					Editor.SetZoom(zoom, true);
+					Editor.SetSpacingZoom(zoom);
 				}
 
 				// Snap level.

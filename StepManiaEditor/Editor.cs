@@ -153,6 +153,7 @@ internal sealed class Editor :
 	private UIOptions UIOptions;
 	private UIChartPosition UIChartPosition;
 	private UIExpressedChartConfig UIExpressedChartConfig;
+	private ZoomManager ZoomManager;
 
 	private TextureAtlas TextureAtlas;
 
@@ -194,14 +195,6 @@ internal sealed class Editor :
 
 	// Note controls
 	private LaneEditState[] LaneEditStates;
-
-	// Zoom controls
-	public const double MinZoom = 0.000001;
-	public const double MaxZoom = 1000000.0;
-	private double ZoomInterpolationTimeStart;
-	private double Zoom = 1.0;
-	private double ZoomAtStartOfInterpolation = 1.0;
-	private double DesiredZoom = 1.0;
 
 	private KeyCommandManager KeyCommandManager;
 	private bool Playing;
@@ -246,6 +239,7 @@ internal sealed class Editor :
 		// Load Preferences synchronously so they can be used immediately.
 		Preferences.Load(this);
 
+		InitializeZoomManager();
 		InitializeEditorPosition();
 		InitializeMusicManager();
 		InitializeGraphics();
@@ -380,6 +374,11 @@ internal sealed class Editor :
 		{
 			Logger.Warn($"Unable to clean up old log files. {e}");
 		}
+	}
+
+	private void InitializeZoomManager()
+	{
+		ZoomManager = new ZoomManager();
 	}
 
 	private void InitializeEditorPosition()
@@ -913,6 +912,12 @@ internal sealed class Editor :
 
 	#region Update
 
+	/// <summary>
+	/// Override of MonoGame Game Update method.
+	/// Called once per frame.
+	/// From MonoGame:
+	///  Called when the game should update.
+	/// </summary>
 	protected override void Update(GameTime gameTime)
 	{
 		// Time the Update method.
@@ -927,7 +932,7 @@ internal sealed class Editor :
 		ProcessInput(gameTime, currentTime);
 
 		TextureAtlas.Update();
-		UpdateZoom(currentTime);
+		ZoomManager.Update(currentTime);
 		UpdateMusicAndPosition(currentTime);
 		UpdateTimeChartEvents = Fumen.Utils.Timed(() =>
 		{
@@ -951,19 +956,6 @@ internal sealed class Editor :
 		// Record total update time.
 		stopWatch.Stop();
 		UpdateTimeTotal = stopWatch.Elapsed.TotalSeconds;
-	}
-
-	private void UpdateZoom(double currentTime)
-	{
-		if (!Zoom.DoubleEquals(DesiredZoom))
-		{
-			SetZoom(Interpolation.Lerp(
-				ZoomAtStartOfInterpolation,
-				DesiredZoom,
-				ZoomInterpolationTimeStart,
-				ZoomInterpolationTimeStart + Preferences.Instance.PreferencesScroll.ScrollInterpolationDuration,
-				currentTime), false);
-		}
 	}
 
 	private void UpdateMusicAndPosition(double currentTime)
@@ -1060,7 +1052,7 @@ internal sealed class Editor :
 		WaveFormRenderer.SetXPerChannelScale(pWave.WaveFormMaxXPercentagePerChannel);
 		WaveFormRenderer.SetDenseScale(pWave.DenseScale);
 		WaveFormRenderer.SetScaleXWhenZooming(pWave.WaveFormScaleXWhenZooming);
-		WaveFormRenderer.Update(Position.SongTime, Zoom, WaveFormPPS);
+		WaveFormRenderer.Update(Position.SongTime, ZoomManager.GetSpacingZoom(), WaveFormPPS);
 	}
 
 	#endregion Update
@@ -1121,7 +1113,7 @@ internal sealed class Editor :
 			EditorMouseState.X(),
 			EditorMouseState.Y(),
 			GetFocalPoint(),
-			GetSizeZoom(),
+			ZoomManager.GetSizeZoom(),
 			TextureAtlas,
 			ArrowGraphicManager,
 			ActiveChart);
@@ -1222,18 +1214,20 @@ internal sealed class Editor :
 	/// <remarks>Helper for ProcessInput.</remarks>
 	private void ProcessInputForSelectedRegion(double currentTime)
 	{
+		var sizeZoom = ZoomManager.GetSizeZoom();
+
 		// Starting a selection.
 		if (EditorMouseState.GetButtonState(EditorMouseState.Button.Left).DownThisFrame())
 		{
 			var y = EditorMouseState.Y();
 			var (chartTime, chartPosition) = FindChartTimeAndRowForScreenY(y);
-			var xInChartSpace = (EditorMouseState.X() - GetFocalPointX()) / GetSizeZoom();
+			var xInChartSpace = (EditorMouseState.X() - GetFocalPointX()) / sizeZoom;
 			SelectedRegion.Start(
 				xInChartSpace,
 				y,
 				chartTime,
 				chartPosition,
-				GetSizeZoom(),
+				sizeZoom,
 				GetFocalPointX(),
 				currentTime);
 		}
@@ -1241,8 +1235,8 @@ internal sealed class Editor :
 		// Dragging a selection.
 		if (EditorMouseState.GetButtonState(EditorMouseState.Button.Left).Down() && SelectedRegion.IsActive())
 		{
-			var xInChartSpace = (EditorMouseState.X() - GetFocalPointX()) / GetSizeZoom();
-			SelectedRegion.UpdatePerFrameValues(xInChartSpace, EditorMouseState.Y(), GetSizeZoom(), GetFocalPointX());
+			var xInChartSpace = (EditorMouseState.X() - GetFocalPointX()) / sizeZoom;
+			SelectedRegion.UpdatePerFrameValues(xInChartSpace, EditorMouseState.Y(), sizeZoom, GetFocalPointX());
 		}
 
 		// Releasing a selection.
@@ -1260,71 +1254,48 @@ internal sealed class Editor :
 	{
 		var pScroll = Preferences.Instance.PreferencesScroll;
 		var scrollDelta = (float)EditorMouseState.ScrollDeltaSinceLastFrame() / EditorMouseState.GetDefaultScrollDetentValue();
-		var scrollShouldZoom = KeyCommandManager.IsKeyDown(Keys.LeftControl);
 
-		// Hack.
-		if (KeyCommandManager.IsKeyDown(Keys.OemPlus))
-		{
-			SetZoom(Zoom * 1.0001, true);
-		}
+		// Process input for zoom controls.
+		var zoomManagerCaptureInput = ZoomManager.ProcessInput(currentTime, KeyCommandManager, scrollDelta);
 
-		if (KeyCommandManager.IsKeyDown(Keys.OemMinus))
-		{
-			SetZoom(Zoom / 1.0001, true);
-		}
+		// If the input was used for controlling zoom levels do not continue to process it.
+		if (zoomManagerCaptureInput || scrollDelta.FloatEquals(0.0f))
+			return;
 
-		// Scrolling.
-		if (!scrollDelta.FloatEquals(0.0f))
+		// Adjust position.
+		var timeDelta = pScroll.ScrollWheelTime / ZoomManager.GetSpacingZoom() * (scrollDelta > 0.0f ? -1.0f : 1.0f);
+		var rowDelta = pScroll.ScrollWheelRows / ZoomManager.GetSpacingZoom() * (scrollDelta > 0.0f ? -1.0f : 1.0f);
+		if (Playing)
 		{
-			// Adjust zoom.
-			if (scrollShouldZoom)
+			PlaybackStartTime += timeDelta;
+			Position.SongTime = PlaybackStartTime + PlaybackStopwatch.Elapsed.TotalSeconds;
+
+			if (pScroll.StopPlaybackWhenScrolling)
 			{
-				if (scrollDelta > 0.0f)
-					SetDesiredZoom(DesiredZoom * (pScroll.ZoomMultiplier * scrollDelta));
-				else
-					SetDesiredZoom(DesiredZoom / (pScroll.ZoomMultiplier * -scrollDelta));
-				ZoomInterpolationTimeStart = currentTime;
-				ZoomAtStartOfInterpolation = Zoom;
+				StopPlayback();
 			}
-
-			// Adjust position.
 			else
 			{
-				var timeDelta = pScroll.ScrollWheelTime / Zoom * (scrollDelta > 0.0f ? -1.0f : 1.0f);
-				var rowDelta = pScroll.ScrollWheelRows / Zoom * (scrollDelta > 0.0f ? -1.0f : 1.0f);
-				if (Playing)
-				{
-					PlaybackStartTime += timeDelta;
-					Position.SongTime = PlaybackStartTime + PlaybackStopwatch.Elapsed.TotalSeconds;
+				MusicManager.SetMusicTimeInSeconds(Position.SongTime);
+			}
 
-					if (pScroll.StopPlaybackWhenScrolling)
-					{
-						StopPlayback();
-					}
-					else
-					{
-						MusicManager.SetMusicTimeInSeconds(Position.SongTime);
-					}
-
-					UpdateAutoPlayFromScrolling();
-				}
+			UpdateAutoPlayFromScrolling();
+		}
+		else
+		{
+			if (SnapLevels[SnapIndex].Rows == 0)
+			{
+				if (pScroll.SpacingMode == SpacingMode.ConstantTime)
+					Position.BeginSongTimeInterpolation(currentTime, timeDelta);
 				else
-				{
-					if (SnapLevels[SnapIndex].Rows == 0)
-					{
-						if (pScroll.SpacingMode == SpacingMode.ConstantTime)
-							Position.BeginSongTimeInterpolation(currentTime, timeDelta);
-						else
-							Position.BeginChartPositionInterpolation(currentTime, rowDelta);
-					}
-					else
-					{
-						if (scrollDelta > 0.0f)
-							OnMoveUp();
-						else
-							OnMoveDown();
-					}
-				}
+					Position.BeginChartPositionInterpolation(currentTime, rowDelta);
+			}
+			else
+			{
+				if (scrollDelta > 0.0f)
+					OnMoveUp();
+				else
+					OnMoveDown();
 			}
 		}
 	}
@@ -1472,36 +1443,14 @@ internal sealed class Editor :
 
 	#region Zoom
 
-	public void SetZoom(double zoom, bool setDesiredZoom)
+	public void SetSpacingZoom(double zoom)
 	{
-		Zoom = Math.Clamp(zoom, MinZoom, MaxZoom);
-		if (setDesiredZoom)
-			SetDesiredZoom(Zoom);
+		ZoomManager.SetZoom(zoom);
 	}
 
-	public void SetDesiredZoom(double desiredZoom)
-	{
-		DesiredZoom = Math.Clamp(desiredZoom, MinZoom, MaxZoom);
-	}
-
-	/// <summary>
-	/// Gets the zoom to use for sizing objects.
-	/// When zooming in we only zoom the spacing, not the scale of objects.
-	/// </summary>
-	/// <returns>Zoom level to be used as a multiplier.</returns>
-	public double GetSizeZoom()
-	{
-		return Zoom > 1.0 ? 1.0 : Zoom;
-	}
-
-	/// <summary>
-	/// Gets the zoom to use for spacing objects.
-	/// Objects are spaced one to one with the zoom level.
-	/// </summary>
-	/// <returns>Zoom level to be used as a multiplier.</returns>
 	public double GetSpacingZoom()
 	{
-		return Zoom;
+		return ZoomManager.GetSpacingZoom();
 	}
 
 	#endregion Zoom
@@ -1636,7 +1585,7 @@ internal sealed class Editor :
 		if (ActiveChart == null || ArrowGraphicManager == null || Receptors == null)
 			return;
 
-		var sizeZoom = GetSizeZoom();
+		var sizeZoom = ZoomManager.GetSizeZoom();
 		foreach (var receptor in Receptors)
 			receptor.Draw(GetFocalPoint(), sizeZoom, TextureAtlas, SpriteBatch);
 	}
@@ -1650,7 +1599,7 @@ internal sealed class Editor :
 			return;
 		var (receptorTextureId, _) = ArrowGraphicManager.GetReceptorTexture(0);
 		var (receptorTextureWidth, _) = TextureAtlas.GetDimensions(receptorTextureId);
-		var zoom = GetSizeZoom();
+		var zoom = ZoomManager.GetSizeZoom();
 		var receptorLeftEdge = GetFocalPointX() - ActiveChart.NumInputs * 0.5 * receptorTextureWidth * zoom;
 
 		var (snapTextureWidth, snapTextureHeight) = TextureAtlas.GetDimensions(snapTextureId);
@@ -1673,7 +1622,7 @@ internal sealed class Editor :
 		if (ActiveChart == null || ArrowGraphicManager == null || Receptors == null)
 			return;
 
-		var sizeZoom = GetSizeZoom();
+		var sizeZoom = ZoomManager.GetSizeZoom();
 		foreach (var receptor in Receptors)
 			receptor.DrawForegroundEffects(GetFocalPoint(), sizeZoom, TextureAtlas, SpriteBatch);
 	}
@@ -1818,8 +1767,8 @@ internal sealed class Editor :
 		var focalPointY = GetFocalPointY();
 		var numArrows = ActiveChart.NumInputs;
 
-		var spacingZoom = GetSpacingZoom();
-		var sizeZoom = GetSizeZoom();
+		var spacingZoom = ZoomManager.GetSpacingZoom();
+		var sizeZoom = ZoomManager.GetSizeZoom();
 
 		// Determine graphic dimensions based on the zoom level.
 		var (arrowW, arrowH) = GetArrowDimensions();
@@ -2071,7 +2020,7 @@ internal sealed class Editor :
 		(double arrowW, double arrowH) = TextureAtlas.GetDimensions(arrowTexture);
 		if (scaled)
 		{
-			var sizeZoom = GetSizeZoom();
+			var sizeZoom = ZoomManager.GetSizeZoom();
 			arrowW *= sizeZoom;
 			arrowH *= sizeZoom;
 		}
@@ -2083,7 +2032,7 @@ internal sealed class Editor :
 	{
 		var (holdCapTexture, _) = ArrowGraphicManager.GetHoldEndTexture(0, 0, false, false);
 		var (_, holdCapTextureHeight) = TextureAtlas.GetDimensions(holdCapTexture);
-		var holdCapHeight = holdCapTextureHeight * GetSizeZoom();
+		var holdCapHeight = holdCapTextureHeight * ZoomManager.GetSizeZoom();
 		if (ArrowGraphicManager.AreHoldCapsCentered())
 			holdCapHeight *= 0.5;
 		return holdCapHeight;
@@ -2102,8 +2051,8 @@ internal sealed class Editor :
 
 		var lMiscWidgetPos = startPosX
 		                     - widgetStartPadding
-		                     + EditorMarkerEvent.GetNumberRelativeAnchorPos(GetSizeZoom())
-		                     - EditorMarkerEvent.GetNumberAlpha(GetSizeZoom()) * widgetMeasureNumberFudge;
+		                     + EditorMarkerEvent.GetNumberRelativeAnchorPos(ZoomManager.GetSizeZoom())
+		                     - EditorMarkerEvent.GetNumberAlpha(ZoomManager.GetSizeZoom()) * widgetMeasureNumberFudge;
 		var rMiscWidgetPos = endXPos + widgetStartPadding;
 		MiscEventWidgetLayoutManager.BeginFrame(lMiscWidgetPos, rMiscWidgetPos);
 	}
@@ -2582,7 +2531,7 @@ internal sealed class Editor :
 		rateEnumerator.MoveNext();
 
 		var interpolatedScrollRate = GetCurrentInterpolatedScrollRate();
-		var spacingZoom = GetSpacingZoom();
+		var spacingZoom = ZoomManager.GetSpacingZoom();
 
 		// Determine the active rate event's position and rate information.
 		spacingHelper.UpdatePpsAndPpr(rateEnumerator.Current, interpolatedScrollRate, spacingZoom);
@@ -2699,13 +2648,13 @@ internal sealed class Editor :
 				case SpacingMode.ConstantTime:
 				{
 					Position.ChartTime =
-						editorPosition + focalPointY / (pScroll.TimeBasedPixelsPerSecond * GetSpacingZoom());
+						editorPosition + focalPointY / (pScroll.TimeBasedPixelsPerSecond * ZoomManager.GetSpacingZoom());
 					break;
 				}
 				case SpacingMode.ConstantRow:
 				{
 					Position.ChartPosition =
-						editorPosition + focalPointY / (pScroll.RowBasedPixelsPerRow * GetSpacingZoom());
+						editorPosition + focalPointY / (pScroll.RowBasedPixelsPerRow * ZoomManager.GetSpacingZoom());
 					break;
 				}
 			}
@@ -2726,7 +2675,7 @@ internal sealed class Editor :
 		var p = Preferences.Instance;
 		var focalPointX = GetFocalPointX();
 		var x = 0;
-		var sizeZoom = GetSizeZoom();
+		var sizeZoom = ZoomManager.GetSizeZoom();
 		switch (p.PreferencesMiniMap.MiniMapPosition)
 		{
 			case MiniMap.Position.RightSideOfWindow:
@@ -2808,7 +2757,7 @@ internal sealed class Editor :
 			case SpacingMode.ConstantTime:
 			{
 				var screenHeight = GetViewportHeight();
-				var spacingZoom = GetSpacingZoom();
+				var spacingZoom = ZoomManager.GetSpacingZoom();
 				var pps = pScroll.TimeBasedPixelsPerSecond * spacingZoom;
 				var time = Position.ChartTime;
 
@@ -2902,7 +2851,7 @@ internal sealed class Editor :
 				var screenHeight = GetViewportHeight();
 
 				var chartPosition = Position.ChartPosition;
-				var spacingZoom = GetSpacingZoom();
+				var spacingZoom = ZoomManager.GetSpacingZoom();
 				var ppr = pScroll.RowBasedPixelsPerRow * spacingZoom;
 
 				// Editor Area. The visible row range.
@@ -3212,7 +3161,7 @@ internal sealed class Editor :
 			var isInWaveFormArea = Preferences.Instance.PreferencesWaveForm.ShowWaveForm
 			                       && x >= GetFocalPointX() - (WaveFormTextureWidth >> 1)
 			                       && x <= GetFocalPointX() + (WaveFormTextureWidth >> 1);
-			var isInReceptorArea = Receptor.IsInReceptorArea(x, y, GetFocalPoint(), GetSizeZoom(), TextureAtlas,
+			var isInReceptorArea = Receptor.IsInReceptorArea(x, y, GetFocalPoint(), ZoomManager.GetSizeZoom(), TextureAtlas,
 				ArrowGraphicManager, ActiveChart);
 
 			if (SelectedEvents.Count > 0)
@@ -3662,13 +3611,13 @@ internal sealed class Editor :
 			if (ImGui.Button("Save Time and Zoom"))
 			{
 				Preferences.Instance.DebugSongTime = Position.SongTime;
-				Preferences.Instance.DebugZoom = Zoom;
+				Preferences.Instance.DebugZoom = ZoomManager.GetSpacingZoom();
 			}
 
 			if (ImGui.Button("Load Time and Zoom"))
 			{
 				Position.SongTime = Preferences.Instance.DebugSongTime;
-				SetZoom(Preferences.Instance.DebugZoom, true);
+				ZoomManager.SetZoom(Preferences.Instance.DebugZoom);
 			}
 		}
 
@@ -3940,7 +3889,7 @@ internal sealed class Editor :
 		editorSong.Save(fileType, fullPath, () =>
 		{
 			UpdateWindowTitle();
-			UpdateRecentFilesForActiveSong(Position.ChartPosition, GetSpacingZoom());
+			UpdateRecentFilesForActiveSong(Position.ChartPosition, ZoomManager.GetSpacingZoom());
 			ActionQueue.Instance.OnSaved();
 			TryInvokePostSaveFunction();
 		});
@@ -4087,7 +4036,7 @@ internal sealed class Editor :
 			// Set position and zoom.
 			Position.Reset();
 			Position.ChartPosition = desiredChartPosition;
-			SetZoom(desiredZoom, true);
+			ZoomManager.SetZoom(desiredZoom);
 		}
 		catch (Exception e)
 		{
@@ -4396,7 +4345,7 @@ internal sealed class Editor :
 		}
 
 		Position.Reset();
-		SetZoom(1.0, true);
+		ZoomManager.SetZoom(1.0);
 	}
 
 	private void OnClose()
@@ -4416,7 +4365,7 @@ internal sealed class Editor :
 	{
 		CloseSong();
 		Position.Reset();
-		SetZoom(1.0, true);
+		ZoomManager.SetZoom(1.0);
 	}
 
 	private void CloseSong()
@@ -4424,8 +4373,7 @@ internal sealed class Editor :
 		// First, save the current zoom and position to the song history so we can restore them when
 		// opening this song again later.
 		var savedSongInfo = GetMostRecentSavedSongInfoForActiveSong();
-		if (savedSongInfo != null)
-			savedSongInfo.UpdatePosition(GetSpacingZoom(), Position.ChartPosition);
+		savedSongInfo?.UpdatePosition(ZoomManager.GetSpacingZoom(), Position.ChartPosition);
 		UnloadSongResources();
 	}
 
@@ -4628,7 +4576,7 @@ internal sealed class Editor :
 			: (e) => e.IsSelectableWithoutModifiers();
 
 		var (_, arrowHeightUnscaled) = GetArrowDimensions(false);
-		var halfArrowH = arrowHeightUnscaled * GetSizeZoom() * 0.5;
+		var halfArrowH = arrowHeightUnscaled * ZoomManager.GetSizeZoom() * 0.5;
 		var halfMiscEventH = ImGuiLayoutUtils.GetMiscEditorEventHeight() * 0.5;
 
 		// For clicking, we want to select only one note. The latest note whose bounding rect
@@ -5022,7 +4970,7 @@ internal sealed class Editor :
 	{
 		var rae = ActiveChart.FindActiveRateAlteringEventForTime(time);
 		var spacingHelper = EventSpacingHelper.GetSpacingHelper(ActiveChart);
-		spacingHelper.UpdatePpsAndPpr(rae, GetCurrentInterpolatedScrollRate(), GetSpacingZoom());
+		spacingHelper.UpdatePpsAndPpr(rae, GetCurrentInterpolatedScrollRate(), ZoomManager.GetSpacingZoom());
 
 		return duration / spacingHelper.GetPps();
 	}
@@ -5044,7 +4992,7 @@ internal sealed class Editor :
 	{
 		var rae = ActiveChart.FindActiveRateAlteringEventForPosition(position);
 		var spacingHelper = EventSpacingHelper.GetSpacingHelper(ActiveChart);
-		spacingHelper.UpdatePpsAndPpr(rae, GetCurrentInterpolatedScrollRate(), GetSpacingZoom());
+		spacingHelper.UpdatePpsAndPpr(rae, GetCurrentInterpolatedScrollRate(), ZoomManager.GetSpacingZoom());
 
 		return duration / spacingHelper.GetPpr();
 	}

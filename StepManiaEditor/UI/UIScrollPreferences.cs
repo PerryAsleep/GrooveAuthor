@@ -62,59 +62,73 @@ internal sealed class UIScrollPreferences
 			}
 
 			ImGui.Separator();
-			ImGui.Text("Constant Time Spacing Options");
-			if (ImGuiLayoutUtils.BeginTable("Scroll Constant Time", TitleColumnWidth))
+			ImGui.Text("Spacing Options");
+			ImGui.TextWrapped("Shift+Scroll while over the chart changes how the notes are spaced for the current Spacing mode.");
+			if (ImGuiLayoutUtils.BeginTable("Spacing Options", TitleColumnWidth))
 			{
-				ImGuiLayoutUtils.DrawRowSliderFloatWithReset(
-					true,
-					"Speed",
-					p,
-					nameof(PreferencesScroll.TimeBasedPixelsPerSecond),
-					10.0f,
-					100000.0f,
-					PreferencesScroll.DefaultTimeBasedPixelsPerSecond,
-					false,
-					"Speed in pixels per second at default zoom level.",
-					"%.3f",
-					ImGuiSliderFlags.Logarithmic);
-				ImGuiLayoutUtils.EndTable();
-			}
+				if (p.SpacingMode != Editor.SpacingMode.ConstantTime)
+					PushDisabled();
 
-			ImGui.Separator();
-			ImGui.Text("Constant Row Spacing Options");
-			if (ImGuiLayoutUtils.BeginTable("Scroll Constant Row", TitleColumnWidth))
-			{
+				// Don't allow undo as it doesn't make sense with scroll wheel modifications to this value.
 				ImGuiLayoutUtils.DrawRowSliderFloatWithReset(
-					true,
-					"Spacing",
-					p,
-					nameof(PreferencesScroll.RowBasedPixelsPerRow),
-					0.1f,
-					10000.0f,
-					PreferencesScroll.DefaultRowBasedPixelsPerRow,
 					false,
-					$"Spacing in pixels per row at default zoom level. A row is 1/{SMCommon.MaxValidDenominator} of a {SMCommon.NumBeatsPerMeasure}/{SMCommon.NumBeatsPerMeasure} beat.",
+					"Constant Time Speed",
+					p,
+					nameof(PreferencesScroll.TimeBasedPixelsPerSecondFloat),
+					(float)ZoomManager.MinConstantTimeSpeed,
+					(float)ZoomManager.MaxConstantTimeSpeed,
+					(float)PreferencesScroll.DefaultTimeBasedPixelsPerSecond,
+					false,
+					"Speed in pixels per second at default zoom level." +
+					"\nOnly used for Constant Time Spacing Mode.",
 					"%.3f",
 					ImGuiSliderFlags.Logarithmic);
-				ImGuiLayoutUtils.EndTable();
-			}
 
-			ImGui.Separator();
-			ImGui.Text("Variable Spacing Options");
-			if (ImGuiLayoutUtils.BeginTable("Scroll Variable", TitleColumnWidth))
-			{
+				if (p.SpacingMode != Editor.SpacingMode.ConstantTime)
+					PopDisabled();
+
+				if (p.SpacingMode != Editor.SpacingMode.ConstantRow)
+					PushDisabled();
+
+				// Don't allow undo as it doesn't make sense with scroll wheel modifications to this value.
 				ImGuiLayoutUtils.DrawRowSliderFloatWithReset(
-					true,
-					"Speed",
-					p,
-					nameof(PreferencesScroll.VariablePixelsPerSecondAtDefaultBPM),
-					10.0f,
-					100000.0f,
-					PreferencesScroll.DefaultVariablePixelsPerSecondAtDefaultBPM,
 					false,
-					$"Speed in pixels per second at default zoom level at {PreferencesScroll.DefaultVariableSpeedBPM} BPM.",
+					"Constant Row Spacing",
+					p,
+					nameof(PreferencesScroll.RowBasedPixelsPerRowFloat),
+					(float)ZoomManager.MinConstantRowSpacing,
+					(float)ZoomManager.MaxConstantRowSpacing,
+					(float)PreferencesScroll.DefaultRowBasedPixelsPerRow,
+					false,
+					$"Spacing in pixels per row at default zoom level. A row is 1/{SMCommon.MaxValidDenominator} of a {SMCommon.NumBeatsPerMeasure}/{SMCommon.NumBeatsPerMeasure} beat." +
+					"\nOnly used for Constant Row Spacing Mode.",
 					"%.3f",
 					ImGuiSliderFlags.Logarithmic);
+
+				if (p.SpacingMode != Editor.SpacingMode.ConstantRow)
+					PopDisabled();
+
+				if (p.SpacingMode != Editor.SpacingMode.Variable)
+					PushDisabled();
+
+				// Don't allow undo as it doesn't make sense with scroll wheel modifications to this value.
+				ImGuiLayoutUtils.DrawRowSliderFloatWithReset(
+					false,
+					"Variable Speed",
+					p,
+					nameof(PreferencesScroll.VariablePixelsPerSecondAtDefaultBPMFloat),
+					(float)ZoomManager.MinVariableSpeed,
+					(float)ZoomManager.MaxVariableSpeed,
+					(float)PreferencesScroll.DefaultVariablePixelsPerSecondAtDefaultBPM,
+					false,
+					$"Speed in pixels per second at default zoom level at {PreferencesScroll.DefaultVariableSpeedBPM} BPM."+
+					"\nOnly used for Variable Spacing Mode.",
+					"%.3f",
+					ImGuiSliderFlags.Logarithmic);
+
+				if (p.SpacingMode != Editor.SpacingMode.Variable)
+					PopDisabled();
+
 				ImGuiLayoutUtils.EndTable();
 			}
 
