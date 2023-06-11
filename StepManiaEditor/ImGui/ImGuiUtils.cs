@@ -6,6 +6,7 @@ using ImGuiNET;
 using Microsoft.Xna.Framework.Graphics;
 using System.Collections.Generic;
 using Microsoft.Win32;
+using MonoGameExtensions;
 
 namespace StepManiaEditor;
 
@@ -326,11 +327,22 @@ internal sealed class ImGuiUtils
 		if (ImGui.IsItemHovered(ImGuiHoveredFlags.AllowWhenDisabled))
 		{
 			ImGui.BeginTooltip();
-			ImGui.PushTextWrapPos(ImGui.GetFontSize() * 80.0f);
+			ImGui.PushTextWrapPos(UiScaled(650));
 			ImGui.TextUnformatted(text);
 			ImGui.PopTextWrapPos();
 			ImGui.EndTooltip();
 		}
+	}
+
+	private static void SetMenuColor(uint color)
+	{
+		var min = ImGui.GetCursorScreenPos();
+		min.X -= ImGui.GetStyle().FramePadding.X;
+		min.Y -= (int)(ImGui.GetStyle().ItemSpacing.Y * 0.5);
+		var max = new System.Numerics.Vector2(
+			min.X + ImGui.GetContentRegionAvail().X + ImGui.GetStyle().FramePadding.X * 2,
+			min.Y + ImGui.GetFrameHeight() + ImGui.GetStyle().ItemSpacing.Y - ImGui.GetStyle().FramePadding.Y * 2);
+		ImGui.GetWindowDrawList().AddRectFilled(min, max, color);
 	}
 
 	/// <summary>
@@ -342,15 +354,21 @@ internal sealed class ImGuiUtils
 	/// <returns>Whether the MenuItem was selected.</returns>
 	public static bool MenuItemWithColor(string label, bool enabled, uint color)
 	{
-		var min = ImGui.GetCursorScreenPos();
-		min.X -= ImGui.GetStyle().FramePadding.X;
-		min.Y -= (int)(ImGui.GetStyle().ItemSpacing.Y * 0.5);
-		var max = new System.Numerics.Vector2(
-			min.X + ImGui.GetContentRegionAvail().X + ImGui.GetStyle().FramePadding.X * 2,
-			min.Y + ImGui.GetFrameHeight() + ImGui.GetStyle().ItemSpacing.Y - ImGui.GetStyle().FramePadding.Y * 2);
-		ImGui.GetWindowDrawList().AddRectFilled(min, max, color);
-
+		SetMenuColor(color);
 		return ImGui.MenuItem(label, enabled);
+	}
+
+	/// <summary>
+	/// Draws an ImGui BeginMenu with a given background color.
+	/// </summary>
+	/// <param name="label">Label text for the MenuItem.</param>
+	/// <param name="enabled">Whether or not the MenuItem is enabled.</param>
+	/// <param name="color">The color to draw behind the MenuItem.</param>
+	/// <returns>Whether the MenuItem was selected.</returns>
+	public static bool BeginMenuWithColor(string label, bool enabled, uint color)
+	{
+		SetMenuColor(color);
+		return ImGui.BeginMenu(label, enabled);
 	}
 
 	/// <summary>

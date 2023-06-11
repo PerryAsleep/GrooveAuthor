@@ -24,6 +24,7 @@ using System.IO;
 using System.Linq;
 using static StepManiaEditor.EditorSongImageUtils;
 using StepManiaLibrary.PerformedChart;
+using MonoGameExtensions;
 
 namespace StepManiaEditor;
 
@@ -153,9 +154,10 @@ internal sealed class Editor :
 	private UIOptions UIOptions;
 	private UIChartPosition UIChartPosition;
 	private UIExpressedChartConfig UIExpressedChartConfig;
+	private UIPerformedChartConfig UIPerformedChartConfig;
+	private UIAutogenConfigs UIAutogenConfigs;
 	private ZoomManager ZoomManager;
-
-	private TextureAtlas TextureAtlas;
+	private StaticTextureAtlas TextureAtlas;
 
 	private Effect FxaaEffect;
 	private Effect WaveformColorEffect;
@@ -270,7 +272,6 @@ internal sealed class Editor :
 		InitializeScreenHeight();
 		InitializeWaveFormRenderer();
 		InitializeMiniMap();
-		InitializeTextureAtlas();
 		InitializeUIHelpers();
 		base.Initialize();
 	}
@@ -604,11 +605,6 @@ internal sealed class Editor :
 		MiniMap.SetSelectMode(p.PreferencesMiniMap.MiniMapSelectMode);
 	}
 
-	private void InitializeTextureAtlas()
-	{
-		TextureAtlas = new TextureAtlas(GraphicsDevice, 2048, 2048, 1);
-	}
-
 	private void InitializeUIHelpers()
 	{
 		UISongProperties = new UISongProperties(this, GraphicsDevice, ImGuiRenderer);
@@ -622,6 +618,8 @@ internal sealed class Editor :
 		UIOptions = new UIOptions();
 		UIChartPosition = new UIChartPosition(this);
 		UIExpressedChartConfig = new UIExpressedChartConfig(this);
+		UIPerformedChartConfig = new UIPerformedChartConfig(this);
+		UIAutogenConfigs = new UIAutogenConfigs(this);
 	}
 
 	/// <summary>
@@ -634,46 +632,27 @@ internal sealed class Editor :
 		// Initialize the SpriteBatch.
 		SpriteBatch = new SpriteBatch(GraphicsDevice);
 
-		// Load textures from disk and add them to the Texture Atlas.
-		foreach (var textureId in ArrowGraphicManager.GetAllTextureIds())
-		{
-			var texture = Content.Load<Texture2D>(textureId);
-			TextureAtlas.AddTexture(textureId, texture, true);
-
-			texture = ArrowGraphicManager.GenerateSelectedTexture(GraphicsDevice, texture);
-			if (texture != null)
-			{
-				TextureAtlas.AddTexture(ArrowGraphicManager.GetSelectedTextureId(textureId), texture, true);
-			}
-		}
-
-		// Generate and add measure marker texture.
-		var measureMarkerTexture = new Texture2D(GraphicsDevice, MarkerTextureWidth, 1);
-		var textureData = new uint[MarkerTextureWidth];
-		for (var i = 0; i < MarkerTextureWidth; i++)
-			textureData[i] = 0xFFFFFFFF;
-		measureMarkerTexture.SetData(textureData);
-		TextureAtlas.AddTexture(TextureIdMeasureMarker, measureMarkerTexture, true);
-
-		// Generate and add beat marker texture.
-		var beatMarkerTexture = new Texture2D(GraphicsDevice, MarkerTextureWidth, 1);
-		for (var i = 0; i < MarkerTextureWidth; i++)
-			textureData[i] = 0xFF7F7F7F;
-		beatMarkerTexture.SetData(textureData);
-		TextureAtlas.AddTexture(TextureIdBeatMarker, beatMarkerTexture, true);
-
-		// Generate and add generic region rect texture.
-		var regionRectTexture = new Texture2D(GraphicsDevice, 1, 1);
-		textureData = new uint[1];
-		textureData[0] = 0xFFFFFFFF;
-		regionRectTexture.SetData(textureData);
-		TextureAtlas.AddTexture(TextureIdRegionRect, regionRectTexture, true);
-
+		LoadTextureAtlas();
 		LoadShaders();
-
 		PerformPostContentLoadInitialization();
 
 		base.LoadContent();
+	}
+
+	private void LoadTextureAtlas()
+	{
+		var atlasFileName = "atlas.json";
+		var fullAtlasFileName = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, atlasFileName);
+		if (!File.Exists(fullAtlasFileName))
+		{
+			Logger.Error($"Could not find texture atlas file {atlasFileName}.");
+			TextureAtlas = new StaticTextureAtlas(new Texture2D(GraphicsDevice, 0, 0));
+			return;
+		}
+
+		// Initialize the TextureAtlas
+		TextureAtlas = StaticTextureAtlas.Load(Content, "atlas", fullAtlasFileName)
+		               ?? new StaticTextureAtlas(new Texture2D(GraphicsDevice, 0, 0));
 	}
 
 	private void LoadShaders()
@@ -931,7 +910,6 @@ internal sealed class Editor :
 
 		ProcessInput(gameTime, currentTime);
 
-		TextureAtlas.Update();
 		ZoomManager.Update(currentTime);
 		UpdateMusicAndPosition(currentTime);
 		UpdateTimeChartEvents = Fumen.Utils.Timed(() =>
@@ -2977,6 +2955,8 @@ internal sealed class Editor :
 		UIChartProperties.Draw(ActiveChart);
 		UIChartList.Draw(ActiveSong, ActiveChart);
 		UIExpressedChartConfig.Draw();
+		UIPerformedChartConfig.Draw();
+		UIAutogenConfigs.Draw();
 
 		UIChartPosition.Draw(
 			GetFocalPointX(),
@@ -3118,6 +3098,63 @@ internal sealed class Editor :
 				ImGui.EndMenu();
 			}
 
+			if (ImGui.BeginMenu("Autogen"))
+			{
+				var disabled = !CanEdit();
+				if (disabled)
+					PushDisabled();
+
+				if (ImGui.MenuItem("Configuration"))
+					p.ShowAutogenConfigsWindow = true;
+
+				if (ImGui.BeginMenu("Autogen New Chart From"))
+				{
+					if (ActiveSong == null || ActiveSong.GetNumCharts() == 0)
+					{
+						PushDisabled();
+						ImGui.Text("No Charts to Autogen From");
+						PopDisabled();
+					}
+					else
+					{
+						UIChartList.DrawChartList(ActiveChart, null, null, true, DrawAutogenerateChartSelectableList);
+					}
+					ImGui.EndMenu();
+				}
+
+				if (ImGui.BeginMenu("Autogen New Charts From"))
+				{
+					if (ActiveSong == null || ActiveSong.GetNumCharts() == 0)
+					{
+						PushDisabled();
+						ImGui.Text("No Charts to Autogen From");
+						PopDisabled();
+					}
+					else
+					{
+						foreach (var chartType in SupportedChartTypes)
+						{
+							var charts = ActiveSong.GetCharts(chartType);
+							if (charts?.Count > 0)
+							{
+								if (ImGui.BeginMenu($"{GetPrettyEnumString(chartType)} Charts"))
+								{
+									DrawAutogenerateChartsOfTypeSelectableList(chartType);
+									ImGui.EndMenu();
+								}
+							}
+						}
+					}
+
+					ImGui.EndMenu();
+				}
+
+				if (disabled)
+					PopDisabled();
+
+				ImGui.EndMenu();
+			}
+
 			ImGui.EndMainMenuBar();
 		}
 	}
@@ -3137,9 +3174,20 @@ internal sealed class Editor :
 	{
 		foreach (var chartType in SupportedChartTypes)
 		{
-			if (ImGui.Selectable(GetPrettyEnumString(chartType)))
+			if (ImGui.Selectable($"Autogen New {GetPrettyEnumString(chartType)} Chart"))
 			{
 				ActionQueue.Instance.Do(new ActionAutogenerateChart(this, chart, chartType));
+			}
+		}
+	}
+
+	public void DrawAutogenerateChartsOfTypeSelectableList(ChartType sourceChartType)
+	{
+		foreach (var chartType in SupportedChartTypes)
+		{
+			if (ImGui.Selectable($"Autogen New {GetPrettyEnumString(chartType)} Charts"))
+			{
+				// TODO
 			}
 		}
 	}

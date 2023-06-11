@@ -105,14 +105,13 @@ internal sealed class UIChartProperties
 
 	private static void ViewAllExpressedChartConfigs()
 	{
-		// TODO
+		Preferences.Instance.ShowAutogenConfigsWindow = true;
 	}
 
 	private static void NewExpressedChartConfig()
 	{
 		var newConfigName = Preferences.Instance.PreferencesExpressedChartConfig.GetNewConfigName();
 		ActionQueue.Instance.Do(new ActionAddExpressedChartConfig(newConfigName, EditorChart));
-
 		Preferences.Instance.PreferencesExpressedChartConfig.ActiveExpressedChartConfigForWindow = newConfigName;
 		Preferences.Instance.PreferencesExpressedChartConfig.ShowExpressedChartListWindow = true;
 	}

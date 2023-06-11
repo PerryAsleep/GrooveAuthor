@@ -1,6 +1,7 @@
 ﻿using System.Text.RegularExpressions;
 using Fumen.ChartDefinition;
 using Microsoft.Xna.Framework.Graphics;
+using MonoGameExtensions;
 
 namespace StepManiaEditor;
 

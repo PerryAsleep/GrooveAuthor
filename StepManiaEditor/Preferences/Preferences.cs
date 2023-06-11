@@ -93,8 +93,7 @@ internal sealed class Preferences
 	[JsonInclude] public PreferencesExpressedChartConfig PreferencesExpressedChartConfig = new();
 
 	// PerformedChart preferences
-	// TODO: Move these into their own class
-	[JsonInclude] public Dictionary<string, StepManiaLibrary.PerformedChart.Config> PerformedChartConfigs = new();
+	[JsonInclude] public PreferencesPerformedChartConfig PreferencesPerformedChartConfig = new ();
 
 	// Log preferences
 	[JsonInclude] public bool ShowLogWindow = true;
@@ -105,6 +104,7 @@ internal sealed class Preferences
 	// Misc
 	[JsonInclude] public bool ShowSongPropertiesWindow;
 	[JsonInclude] public bool ShowChartPropertiesWindow;
+	[JsonInclude] public bool ShowAutogenConfigsWindow;
 	[JsonInclude] public bool ShowChartListWindow;
 	[JsonInclude] public string OpenFileDialogInitialDirectory = @"C:\Games\StepMania 5\Songs\";
 	[JsonInclude] public List<SavedSongInformation> RecentFiles = new();
@@ -127,70 +127,7 @@ internal sealed class Preferences
 		PreferencesReceptors.SetEditor(Editor);
 		PreferencesOptions.PostLoad();
 		PreferencesExpressedChartConfig.PostLoad();
-
-		AddDefaultPerformedChartConfigs();
-	}
-
-	private void AddDefaultPerformedChartConfigs()
-	{
-		// Default Balanced
-		var balancedConfig = new StepManiaLibrary.PerformedChart.Config();
-
-		var arrowWeights = new Dictionary<string, List<int>>
-		{
-			[ChartTypeString(ChartType.dance_single)] = new() { 25, 25, 25, 25 },
-			[ChartTypeString(ChartType.dance_double)] = new() { 6, 12, 10, 22, 22, 12, 10, 6 },
-			[ChartTypeString(ChartType.dance_solo)] = new() { 13, 12, 25, 25, 12, 13 },
-			[ChartTypeString(ChartType.dance_threepanel)] = new() { 25, 50, 25 },
-			[ChartTypeString(ChartType.pump_single)] = new() { 17, 16, 34, 16, 17 },
-			[ChartTypeString(ChartType.pump_halfdouble)] = new() { 13, 12, 25, 25, 12, 13 }, // WRONG
-			[ChartTypeString(ChartType.pump_double)] = new() { 6, 8, 7, 8, 22, 22, 8, 7, 8, 6 }, // WRONG
-			[ChartTypeString(ChartType.smx_beginner)] = new() { 25, 50, 25 },
-			[ChartTypeString(ChartType.smx_single)] = new() { 25, 21, 8, 21, 25 },
-			[ChartTypeString(ChartType.smx_dual)] = new() { 8, 17, 25, 25, 17, 8 },
-			[ChartTypeString(ChartType.smx_full)] = new() { 6, 8, 7, 8, 22, 22, 8, 7, 8, 6 },
-		};
-		balancedConfig.ArrowWeights = arrowWeights;
-
-		var stepTighteningConfig = new StepManiaLibrary.PerformedChart.Config.StepTighteningConfig
-		{
-			TravelSpeedMinTimeSeconds = 0.176471, // 16ths at 170
-			TravelSpeedMaxTimeSeconds = 0.24, // 16ths at 125
-			TravelDistanceMin = 2.0,
-			TravelDistanceMax = 3.0,
-			StretchDistanceMin = 3.0,
-			StretchDistanceMax = 4.0,
-		};
-		balancedConfig.StepTightening = stepTighteningConfig;
-
-		var lateralTighteningConfig = new StepManiaLibrary.PerformedChart.Config.LateralTighteningConfig
-		{
-			RelativeNPS = 1.65,
-			AbsoluteNPS = 12.0,
-			Speed = 3.0,
-		};
-		balancedConfig.LateralTightening = lateralTighteningConfig;
-
-		var facingConfig = new StepManiaLibrary.PerformedChart.Config.FacingConfig
-		{
-			MaxInwardPercentage = 1.0,
-			MaxOutwardPercentage = 1.0,
-		};
-		balancedConfig.Facing = facingConfig;
-
-		balancedConfig.Init();
-		PerformedChartConfigs[DefaultBalancedPerformedChartConfigName] = balancedConfig;
-
-		// Default Stamina
-		var staminaConfig = new StepManiaLibrary.PerformedChart.Config
-		{
-			StepTightening =
-			{
-				TravelSpeedMaxTimeSeconds = 0.303, // 16ths at 99
-			},
-		};
-		staminaConfig.SetAsOverrideOf(balancedConfig);
-		PerformedChartConfigs[DefaultStaminaPerformedChartConfigName] = staminaConfig;
+		PreferencesPerformedChartConfig.PostLoad();
 	}
 
 	private void PreSave()

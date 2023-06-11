@@ -5,7 +5,8 @@ using System.Threading.Tasks;
 using System.Linq;
 using Fumen;
 using Microsoft.Xna.Framework.Graphics;
-using static StepManiaEditor.TextureUtils;
+using MonoGameExtensions;
+using static MonoGameExtensions.TextureUtils;
 
 namespace StepManiaEditor;
 

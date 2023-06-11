@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using Fumen;
 using Fumen.ChartDefinition;
 using Microsoft.Xna.Framework.Graphics;
+using MonoGameExtensions;
 
 namespace StepManiaEditor;
 

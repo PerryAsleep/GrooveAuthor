@@ -4,6 +4,7 @@ using Fumen.ChartDefinition;
 using Fumen.Converters;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using MonoGameExtensions;
 using static System.Diagnostics.Debug;
 using static StepManiaEditor.Utils;
 

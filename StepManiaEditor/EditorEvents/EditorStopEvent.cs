@@ -1,6 +1,7 @@
 ﻿using Fumen.ChartDefinition;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using MonoGameExtensions;
 using static Fumen.FumenExtensions;
 using static StepManiaEditor.Editor;
 using static StepManiaEditor.Utils;

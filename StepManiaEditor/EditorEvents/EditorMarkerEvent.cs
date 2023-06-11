@@ -1,6 +1,7 @@
 ﻿using Fumen;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using MonoGameExtensions;
 using static StepManiaEditor.Utils;
 
 namespace StepManiaEditor;

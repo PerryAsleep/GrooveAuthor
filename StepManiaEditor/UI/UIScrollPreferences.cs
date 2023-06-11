@@ -62,10 +62,11 @@ internal sealed class UIScrollPreferences
 			}
 
 			ImGui.Separator();
-			ImGui.Text("Spacing Options");
-			ImGui.TextWrapped("Shift+Scroll while over the chart changes how the notes are spaced for the current Spacing mode.");
 			if (ImGuiLayoutUtils.BeginTable("Spacing Options", TitleColumnWidth))
 			{
+				ImGuiLayoutUtils.DrawTitle("Spacing Options",
+					"Shift+Scroll while over the chart changes how the notes are spaced for the current Spacing mode.");
+
 				if (p.SpacingMode != Editor.SpacingMode.ConstantTime)
 					PushDisabled();
 

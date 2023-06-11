@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Fumen.ChartDefinition;
 using Fumen.Converters;
 using Microsoft.Xna.Framework.Graphics;
+using MonoGameExtensions;
 using static StepManiaLibrary.Constants;
 using static System.Diagnostics.Debug;
 using static Fumen.FumenExtensions;

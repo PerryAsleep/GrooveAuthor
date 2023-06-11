@@ -76,9 +76,9 @@ public class Utils
 
 	public const int MiniMapMaxNotesToDraw = 6144;
 
-	public const string TextureIdMeasureMarker = "measure_marker";
-	public const string TextureIdBeatMarker = "beat_marker";
-	public const string TextureIdRegionRect = "region_rect";
+	public const string TextureIdMeasureMarker = "measure-marker";
+	public const string TextureIdBeatMarker = "beat-marker";
+	public const string TextureIdRegionRect = "region-rect";
 
 	public static Color StopRegionColor = new(0x7A, 0x29, 0x29, 0x7F);
 	public static Color DelayRegionColor = new(0x7A, 0x5E, 0x29, 0x7F);

@@ -1,6 +1,6 @@
 ﻿using System;
 using Microsoft.Xna.Framework.Graphics;
-using static StepManiaEditor.TextureUtils;
+using static MonoGameExtensions.TextureUtils;
 
 namespace StepManiaEditor;
 

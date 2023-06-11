@@ -95,17 +95,17 @@ internal sealed class ActionSetObjectFieldOrPropertyReference<T> : EditorAction 
 	{
 		// Clone Value to O.
 		if (IsField)
-			FieldInfo.SetValue(O, (T)Value.Clone());
+			FieldInfo.SetValue(O, (T)Value?.Clone());
 		else
-			PropertyInfo.SetValue(O, (T)Value.Clone());
+			PropertyInfo.SetValue(O, (T)Value?.Clone());
 	}
 
 	protected override void UndoImplementation()
 	{
 		// Clone PreviousValue to O.
 		if (IsField)
-			FieldInfo.SetValue(O, (T)PreviousValue.Clone());
+			FieldInfo.SetValue(O, (T)PreviousValue?.Clone());
 		else
-			PropertyInfo.SetValue(O, (T)PreviousValue.Clone());
+			PropertyInfo.SetValue(O, (T)PreviousValue?.Clone());
 	}
 }

@@ -31,7 +31,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	{
 		public double MusicOffset;
 		public bool ShouldUseChartMusicOffset;
-		public string ExpressedChartConfig = PreferencesExpressedChartConfig.DefaultConfigName;
+		public string ExpressedChartConfig = PreferencesExpressedChartConfig.DefaultDynamicConfigName;
 	}
 
 	/// <summary>
@@ -403,7 +403,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 		WorkQueue = new WorkQueue();
 
-		ExpressedChartConfigInternal = PreferencesExpressedChartConfig.DefaultConfigName;
+		ExpressedChartConfigInternal = PreferencesExpressedChartConfig.DefaultDynamicConfigName;
 
 		OriginalChartExtras = chart.Extras;
 		EditorSong = editorSong;
@@ -444,7 +444,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 		WorkQueue = new WorkQueue();
 
-		ExpressedChartConfigInternal = PreferencesExpressedChartConfig.DefaultConfigName;
+		ExpressedChartConfigInternal = PreferencesExpressedChartConfig.DefaultDynamicConfigName;
 
 		EditorSong = editorSong;
 		ChartTypeInternal = chartType;

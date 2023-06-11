@@ -3,6 +3,7 @@ using static StepManiaEditor.Editor;
 using static StepManiaEditor.Utils;
 using static Fumen.FumenExtensions;
 using Microsoft.Xna.Framework.Graphics;
+using MonoGameExtensions;
 
 namespace StepManiaEditor;
 

@@ -92,6 +92,18 @@ internal sealed class ImGuiLayoutUtils
 		ImGui.TableSetColumnIndex(1);
 	}
 
+	public static void DrawTitle(string title, string help = null)
+	{
+		ImGui.TableNextRow();
+
+		ImGui.TableSetColumnIndex(0);
+		if (!string.IsNullOrEmpty(title))
+			ImGui.Text(title);
+
+		ImGui.TableSetColumnIndex(1);
+		DrawHelp(help, ImGui.GetContentRegionAvail().X);
+	}
+
 	private static string GetDragHelpText(string helpText)
 	{
 		return string.IsNullOrEmpty(helpText) ? null : helpText + DragHelpText;

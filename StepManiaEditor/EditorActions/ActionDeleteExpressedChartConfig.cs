@@ -14,7 +14,6 @@ internal sealed class ActionDeleteExpressedChartConfig : EditorAction
 		ConfigName = configName;
 		ChartsWithDeletedConfig = new List<EditorChart>();
 
-		ChartsWithDeletedConfig = new List<EditorChart>();
 		var song = Editor.GetActiveSong();
 		if (song != null)
 		{
@@ -49,7 +48,7 @@ internal sealed class ActionDeleteExpressedChartConfig : EditorAction
 			{
 				if (chart.ExpressedChartConfig == ConfigName)
 				{
-					chart.ExpressedChartConfig = PreferencesExpressedChartConfig.DefaultConfigName;
+					chart.ExpressedChartConfig = PreferencesExpressedChartConfig.DefaultDynamicConfigName;
 				}
 			}
 		}

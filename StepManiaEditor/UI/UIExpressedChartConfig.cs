@@ -6,9 +6,19 @@ using static StepManiaEditor.PreferencesExpressedChartConfig;
 
 namespace StepManiaEditor;
 
+/// <summary>
+/// Class for drawing UI to edit an ExpressedChartConfig.
+/// </summary>
 internal sealed class UIExpressedChartConfig
 {
 	private static readonly int TitleColumnWidth = UiScaled(240);
+
+	public const string HelpText = "Expressed Chart Configs are settings used by the Editor to interpret Charts."
+	                               + " This is used for autogenerating patterns and new Charts as those actions require understanding how the body moves to perform a Chart."
+	                               + " An Expressed Chart Config can be assigned to a Chart in the Chart Properties window."
+	                               + " Charts will default to using the Dynamic Expressed Chart Config."
+	                               + " Charts reference Expressed Chart Configs by name. Altering an Expressed Chart Config alters it for every Chart which references it."
+	                               + " The default Expressed Chart Configs cannot be edited.";
 
 	private readonly Editor Editor;
 
@@ -31,13 +41,6 @@ internal sealed class UIExpressedChartConfig
 		ImGui.SetNextWindowSize(new Vector2(0, 0), ImGuiCond.FirstUseEver);
 		if (ImGui.Begin("Expressed Chart Config", ref p.ShowExpressedChartListWindow, ImGuiWindowFlags.NoScrollbar))
 		{
-			ImGui.TextWrapped("Expressed Chart Configs are settings used by the Editor to interpret Charts."
-			                  + " This is used for autogenerating patterns and new Charts as those actions require understanding how the body moves to perform a Chart."
-			                  + " An Expressed Chart Config can be assigned to a Chart in the Chart Properties window."
-			                  + " Charts will default to using the Default Expressed Chart Config."
-			                  + " Charts reference Expressed Chart Configs by name. Altering an Expressed Chart Config alters it for every Chart which references it."
-			                  + " The Default Expressed Chart Config cannot be edited.");
-
 			var disabled = !Editor.CanEdit() || namedConfig.IsDefaultConfig();
 			if (disabled)
 				PushDisabled();
@@ -50,6 +53,9 @@ internal sealed class UIExpressedChartConfig
 					"\nEditing the name will update any loaded Chart that references the old name to reference the new name." +
 					"\nAny unloaded Charts referencing the old name will not be updated and they will default back to the" +
 					"\nDefault config the next time they are loaded.");
+
+				ImGuiLayoutUtils.DrawRowTextInput(true, "Description", namedConfig, nameof(NamedConfig.Description), true,
+					"Configuration description.");
 
 				var config = namedConfig.Config;
 
@@ -118,6 +124,20 @@ internal sealed class UIExpressedChartConfig
 					    + "\nAny Charts using a deleted Expressed Chart Config will be updated to use the Default config."))
 				{
 					ActionQueue.Instance.Do(new ActionDeleteExpressedChartConfig(Editor, namedConfig.Name));
+				}
+
+				ImGuiLayoutUtils.EndTable();
+			}
+
+			ImGui.Separator();
+			if (ImGuiLayoutUtils.BeginTable("Expressed Chart Config Restore", TitleColumnWidth))
+			{
+				ImGuiLayoutUtils.DrawTitle("Help", HelpText);
+
+				if (ImGuiLayoutUtils.DrawRowButton("Restore Defaults", "Restore Defaults", 
+					    "Restore config values to their defaults."))
+				{
+					namedConfig.RestoreDefaults();
 				}
 
 				ImGuiLayoutUtils.EndTable();
