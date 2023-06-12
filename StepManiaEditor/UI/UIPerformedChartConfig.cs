@@ -4,6 +4,7 @@ using ImGuiNET;
 using StepManiaLibrary.PerformedChart;
 using static StepManiaEditor.ImGuiUtils;
 using static StepManiaEditor.PreferencesPerformedChartConfig;
+using static StepManiaLibrary.PerformedChart.Config;
 
 namespace StepManiaEditor;
 
@@ -15,7 +16,10 @@ internal sealed class UIPerformedChartConfig
 	private static readonly int TitleColumnWidth = UiScaled(240);
 
 	public const string HelpText = "Performed Chart Configs are settings used by the Editor to generate Charts and patterns."
-	                               + " TODO";
+	                               + " When generating steps, all possible paths are considered. Costs are assigned to paths"
+	                               + " based on Performed Chart Config values, and the path with the lowest cost is chosen."
+	                               + " Full details on the config values and how they are used to assign costs can be found"
+	                               + " in the online documentation.";
 
 	private readonly Editor Editor;
 	private readonly List<ImGuiArrowWeightsWidget> ArrowWeightsWidgets;
@@ -67,6 +71,25 @@ internal sealed class UIPerformedChartConfig
 			{
 				ImGuiLayoutUtils.DrawTitle("Step Tightening");
 
+				ImGuiLayoutUtils.DrawRowDragDoubleRange(true, "Stretch", config.StepTightening,
+					nameof(StepTighteningConfig.StretchDistanceMin), nameof(StepTighteningConfig.StretchDistanceMax), false,
+					"When limiting stretch, the range for tightening."
+					+ "\nDistance in panel lengths."
+					+ "\nSet both values to 0.0 to disable stretch tightening.", 0.01f, "%.6f", 0.0, 10.0);
+
+				ImGuiLayoutUtils.DrawRowDragDoubleRange(true, "Distance", config.StepTightening,
+					nameof(StepTighteningConfig.TravelDistanceMin), nameof(StepTighteningConfig.TravelDistanceMax), false,
+					"When limiting travel distance, the range for tightening."
+					+ "\nDistance in panel lengths."
+					+ "\nSet both values to 0.0 to disable distance tightening.", 0.01f, "%.6f", 0.0, 10.0);
+
+				ImGuiLayoutUtils.DrawRowDragDoubleRange(true, "Speed", config.StepTightening,
+					nameof(StepTighteningConfig.TravelSpeedMinTimeSeconds),
+					nameof(StepTighteningConfig.TravelSpeedMaxTimeSeconds), false,
+					"When limiting travel speed, the range for tightening."
+					+ "\nTime in seconds between steps for one foot."
+					+ "\nSet both values to 0.0 to disable speed tightening.", 0.01f, "%.6f", 0.0, 10.0);
+
 				ImGuiLayoutUtils.EndTable();
 			}
 
@@ -77,7 +100,8 @@ internal sealed class UIPerformedChartConfig
 				ImGuiLayoutUtils.DrawRowDragDouble(true, "Speed", config.LateralTightening,
 					nameof(Config.LateralTightening.Speed), false,
 					"Speed in panel lengths per second over which continuous lateral movement will be subject to lateral tightening "
-					+ "costs based on the NPS checks below.",
+					+ "costs based on the NPS checks below."
+					+ "\nSet this to a high value to disable lateral tightening.",
 					0.0001f, "%.6f", 0.0, 100.0);
 				ImGuiLayoutUtils.DrawRowDragDouble(true, "Relative NPS", config.LateralTightening,
 					nameof(Config.LateralTightening.RelativeNPS), false,
@@ -125,7 +149,8 @@ internal sealed class UIPerformedChartConfig
 					if (ImGui.BeginTable("Arrow Weights Table", 2, ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders))
 					{
 						ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100);
-						ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, ImGuiArrowWeightsWidget.GetFullWidth(namedConfig));
+						ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed,
+							ImGuiArrowWeightsWidget.GetFullWidth(namedConfig));
 
 						var index = 0;
 						foreach (var chartType in Editor.SupportedChartTypes)
@@ -142,6 +167,7 @@ internal sealed class UIPerformedChartConfig
 
 						ImGui.EndTable();
 					}
+
 					ImGuiLayoutUtils.EndTable();
 				}
 			}

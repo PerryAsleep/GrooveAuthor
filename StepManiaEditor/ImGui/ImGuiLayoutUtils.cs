@@ -38,7 +38,7 @@ internal sealed class ImGuiLayoutUtils
 	private static readonly float FileBrowseBrowseWidth = UiScaled(50);
 	private static readonly float FileBrowseAutoWidth = UiScaled(50);
 	private static readonly float DisplayTempoEnumWidth = UiScaled(120);
-	private static readonly float DisplayTempoToWidth = UiScaled(14);
+	private static readonly float RangeToWidth = UiScaled(14);
 	private static readonly float SliderResetWidth = UiScaled(50);
 	private static readonly float ConfigFromListEditWidth = UiScaled(40);
 	private static readonly float ConfigFromListViewAllWidth = UiScaled(60);
@@ -1102,6 +1102,47 @@ internal sealed class ImGuiLayoutUtils
 
 	#endregion Drag Double
 
+	#region Drag Double Range
+
+	public static void DrawRowDragDoubleRange(
+		bool undoable,
+		string title,
+		object o,
+		string beginFieldName,
+		string endFieldName,
+		bool affectsFile,
+		string help = null,
+		float speed = 0.0001f,
+		string format = "%.6f",
+		double min = double.MinValue,
+		double max = double.MaxValue)
+	{
+		title ??= "";
+
+		DrawRowTitleAndAdvanceColumn(title);
+
+		var remainingWidth = DrawHelp(GetDragHelpText(help), ImGui.GetContentRegionAvail().X);
+		var controlWidth = Math.Max(0.0f, 0.5f * (remainingWidth - ImGui.GetStyle().ItemSpacing.X * 2.0f - RangeToWidth));
+
+		var currentBeginValue = GetValueFromFieldOrProperty<double>(o, beginFieldName);
+		var currentEndValue = GetValueFromFieldOrProperty<double>(o, endFieldName);
+		var maxForBegin = Math.Min(max, currentEndValue);
+		var minForEnd = Math.Max(min, currentBeginValue);
+
+		// Controls for the double values.
+		ImGui.SameLine();
+		DrawDragDouble(undoable, title, o, beginFieldName, controlWidth, null, speed, format, affectsFile, min, maxForBegin);
+
+		// "to" text
+		ImGui.SameLine();
+		Text("to", RangeToWidth);
+
+		ImGui.SameLine();
+		DrawDragDouble(undoable, title, o, endFieldName, controlWidth, null, speed, format, affectsFile, minForEnd, max);
+	}
+
+	#endregion Drag Double Range
+
 	#region Enum
 
 	public static bool DrawRowEnum<T>(bool undoable, string title, object o, string fieldName, bool affectsFile,
@@ -1301,7 +1342,7 @@ internal sealed class ImGuiLayoutUtils
 
 		var tempoControlWidth = ImGui.GetContentRegionAvail().X - DisplayTempoEnumWidth - spacing;
 		var splitTempoWidth = Math.Max(1.0f,
-			(ImGui.GetContentRegionAvail().X - DisplayTempoEnumWidth - DisplayTempoToWidth - spacing * 3.0f) * 0.5f);
+			(ImGui.GetContentRegionAvail().X - DisplayTempoEnumWidth - RangeToWidth - spacing * 3.0f) * 0.5f);
 
 		// Draw an enum for choosing the DisplayTempoMode.
 		DrawEnum(undoable, "", chart, nameof(EditorChart.DisplayTempoMode), DisplayTempoEnumWidth, null, true,
@@ -1339,7 +1380,7 @@ internal sealed class ImGuiLayoutUtils
 
 				// "to" text to split the min and max.
 				ImGui.SameLine();
-				Text("to", DisplayTempoToWidth);
+				Text("to", RangeToWidth);
 
 				// Checkbox for whether or not to use a distinct max.
 				ImGui.SameLine();

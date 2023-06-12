@@ -7,6 +7,10 @@ using System.Text.Json.Serialization;
 
 namespace StepManiaEditor;
 
+/// <summary>
+/// Preferences for the ExpressedChartConfigs.
+/// Holds default configuration and custom user-made configurations.
+/// </summary>
 internal sealed class PreferencesExpressedChartConfig : Notifier<PreferencesExpressedChartConfig>
 {
 	// Default config names for configs which cannot be edited.

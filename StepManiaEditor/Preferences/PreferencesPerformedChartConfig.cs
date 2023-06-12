@@ -8,6 +8,10 @@ using static Fumen.Converters.SMCommon;
 
 namespace StepManiaEditor;
 
+/// <summary>
+/// Preferences for the PerformedChartConfigs.
+/// Holds default configuration and custom user-made configurations.
+/// </summary>
 internal sealed class PreferencesPerformedChartConfig : Notifier<PreferencesPerformedChartConfig>
 {
 	// Default config names for configs which cannot be edited.
@@ -214,13 +218,11 @@ internal sealed class PreferencesPerformedChartConfig : Notifier<PreferencesPerf
 		var defaultConfig = AddConfig(DefaultConfigName);
 		defaultConfig.Description = "Default balanced settings";
 		InitializeConfigWithDefaultValues(defaultConfig.Config);
-		defaultConfig.Config.Init();
 
 		Configs.Remove(DefaultStaminaConfigName);
 		var defaultAggressiveConfig = AddConfig(DefaultStaminaConfigName);
 		defaultAggressiveConfig.Description = "Default settings with more aggressive step tightening";
 		defaultAggressiveConfig.Config.StepTightening.TravelSpeedMaxTimeSeconds = 0.303;
-		defaultAggressiveConfig.Config.Init();
 
 		// Ensure every NamedConfig is configured and valid.
 		var invalidConfigNames = new List<string>();
@@ -314,6 +316,7 @@ internal sealed class PreferencesPerformedChartConfig : Notifier<PreferencesPerf
 		if (useDefaultValues)
 			InitializeConfigWithDefaultValues(config.Config);
 		Configs[name] = config;
+		config.Config.Init();
 
 		UpdateSortedConfigNames();
 
@@ -330,7 +333,7 @@ internal sealed class PreferencesPerformedChartConfig : Notifier<PreferencesPerf
 
 		// If the actively displayed config is being deleted, remove the variable tracking 
 		if (!string.IsNullOrEmpty(ActivePerformedChartConfigForWindow)
-			&& ActivePerformedChartConfigForWindow.Equals(name))
+		    && ActivePerformedChartConfigForWindow.Equals(name))
 		{
 			ActivePerformedChartConfigForWindow = null;
 			ShowPerformedChartListWindow = false;
@@ -386,7 +389,7 @@ internal sealed class PreferencesPerformedChartConfig : Notifier<PreferencesPerf
 		// If the preference for the actively displayed config is holding on to the
 		// old name, update it to the new name.
 		if (!string.IsNullOrEmpty(ActivePerformedChartConfigForWindow)
-			&& ActivePerformedChartConfigForWindow.Equals(oldName))
+		    && ActivePerformedChartConfigForWindow.Equals(oldName))
 		{
 			ActivePerformedChartConfigForWindow = newName;
 		}
@@ -465,7 +468,7 @@ internal sealed class ActionRestorePerformedChartConfigDefaults : EditorAction
 		foreach (var (chartType, weights) in Config.Config.ArrowWeights)
 		{
 			var previousWeights = new List<int>(weights.Count);
-			foreach(var weight in weights)
+			foreach (var weight in weights)
 				previousWeights.Add(weight);
 			PreviousArrowWeights[chartType] = previousWeights;
 		}
@@ -485,14 +488,22 @@ internal sealed class ActionRestorePerformedChartConfigDefaults : EditorAction
 	{
 		Config.Config.Facing.MaxInwardPercentage = PreferencesPerformedChartConfig.NamedConfig.DefaultFacingMaxInwardPercentage;
 		Config.Config.Facing.MaxOutwardPercentage = PreferencesPerformedChartConfig.NamedConfig.DefaultFacingMaxOutwardPercentage;
-		Config.Config.StepTightening.TravelSpeedMinTimeSeconds = PreferencesPerformedChartConfig.NamedConfig.DefaultStepTighteningTravelSpeedMinTimeSeconds;
-		Config.Config.StepTightening.TravelSpeedMaxTimeSeconds = PreferencesPerformedChartConfig.NamedConfig.DefaultStepTighteningTravelSpeedMaxTimeSeconds;
-		Config.Config.StepTightening.TravelDistanceMin = PreferencesPerformedChartConfig.NamedConfig.DefaultStepTighteningTravelDistanceMin;
-		Config.Config.StepTightening.TravelDistanceMax = PreferencesPerformedChartConfig.NamedConfig.DefaultStepTighteningTravelDistanceMax;
-		Config.Config.StepTightening.StretchDistanceMin = PreferencesPerformedChartConfig.NamedConfig.DefaultStepTighteningStretchDistanceMin;
-		Config.Config.StepTightening.StretchDistanceMax = PreferencesPerformedChartConfig.NamedConfig.DefaultStepTighteningStretchDistanceMax;
-		Config.Config.LateralTightening.RelativeNPS = PreferencesPerformedChartConfig.NamedConfig.DefaultLateralTighteningRelativeNPS;
-		Config.Config.LateralTightening.AbsoluteNPS = PreferencesPerformedChartConfig.NamedConfig.DefaultLateralTighteningAbsoluteNPS;
+		Config.Config.StepTightening.TravelSpeedMinTimeSeconds =
+			PreferencesPerformedChartConfig.NamedConfig.DefaultStepTighteningTravelSpeedMinTimeSeconds;
+		Config.Config.StepTightening.TravelSpeedMaxTimeSeconds =
+			PreferencesPerformedChartConfig.NamedConfig.DefaultStepTighteningTravelSpeedMaxTimeSeconds;
+		Config.Config.StepTightening.TravelDistanceMin =
+			PreferencesPerformedChartConfig.NamedConfig.DefaultStepTighteningTravelDistanceMin;
+		Config.Config.StepTightening.TravelDistanceMax =
+			PreferencesPerformedChartConfig.NamedConfig.DefaultStepTighteningTravelDistanceMax;
+		Config.Config.StepTightening.StretchDistanceMin =
+			PreferencesPerformedChartConfig.NamedConfig.DefaultStepTighteningStretchDistanceMin;
+		Config.Config.StepTightening.StretchDistanceMax =
+			PreferencesPerformedChartConfig.NamedConfig.DefaultStepTighteningStretchDistanceMax;
+		Config.Config.LateralTightening.RelativeNPS =
+			PreferencesPerformedChartConfig.NamedConfig.DefaultLateralTighteningRelativeNPS;
+		Config.Config.LateralTightening.AbsoluteNPS =
+			PreferencesPerformedChartConfig.NamedConfig.DefaultLateralTighteningAbsoluteNPS;
 		Config.Config.LateralTightening.Speed = PreferencesPerformedChartConfig.NamedConfig.DefaultLateralTighteningSpeed;
 
 		Config.Config.ArrowWeights = new Dictionary<string, List<int>>();
