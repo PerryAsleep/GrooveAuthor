@@ -56,11 +56,11 @@ internal sealed class UIPerformedChartConfig
 
 			if (ImGuiLayoutUtils.BeginTable("PerformedChartConfigTable", TitleColumnWidth))
 			{
-				ImGuiLayoutUtils.DrawRowTextInput(true, "Name", namedConfig, nameof(NamedConfig.Name), true,
+				ImGuiLayoutUtils.DrawRowTextInput(true, "Name", namedConfig, nameof(NamedConfig.Name), false,
 					Preferences.Instance.PreferencesPerformedChartConfig.IsNewConfigNameValid,
 					"Configuration name.");
 
-				ImGuiLayoutUtils.DrawRowTextInput(true, "Description", namedConfig, nameof(NamedConfig.Description), true,
+				ImGuiLayoutUtils.DrawRowTextInput(true, "Description", namedConfig, nameof(NamedConfig.Description), false,
 					"Configuration description.");
 
 				ImGuiLayoutUtils.EndTable();

@@ -54,7 +54,7 @@ internal sealed class UIExpressedChartConfig
 					"\nAny unloaded Charts referencing the old name will not be updated and they will default back to the" +
 					"\nDefault config the next time they are loaded.");
 
-				ImGuiLayoutUtils.DrawRowTextInput(true, "Description", namedConfig, nameof(NamedConfig.Description), true,
+				ImGuiLayoutUtils.DrawRowTextInput(true, "Description", namedConfig, nameof(NamedConfig.Description), false,
 					"Configuration description.");
 
 				var config = namedConfig.Config;
