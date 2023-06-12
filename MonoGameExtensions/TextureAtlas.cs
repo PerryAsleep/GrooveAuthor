@@ -325,6 +325,16 @@ public abstract class TextureAtlas
 		spriteBatch.Draw(Texture, new Vector2(0, 0), Color.White);
 	}
 
+	public (int, int, int, int) GetSubTextureBounds(string subTextureId)
+	{
+		if (!GetNode(subTextureId, out var node))
+		{
+			Logger.Warn($"Failed to get texture identified by \"{subTextureId}\". No texture with that id found.");
+			return (0, 0, 0, 0);
+		}
+		return (node.TextureRect.X, node.TextureRect.Y, node.TextureRect.Width, node.TextureRect.Height);
+	}
+
 	public void Draw(string subTextureId, SpriteBatch spriteBatch, Rectangle destinationRectangle, float alpha)
 	{
 		if (!GetNode(subTextureId, destinationRectangle, out var node, out _))
