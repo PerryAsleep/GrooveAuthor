@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics.Contracts;
 using Fumen;
-using Fumen.Converters;
+using static Fumen.Converters.SMCommon;
 using static StepManiaEditor.Utils;
 
 namespace StepManiaEditor;
@@ -74,50 +74,124 @@ internal abstract class ArrowGraphicManager
 
 	private static readonly string TextureIdMine = "mine";
 
-	protected static readonly Dictionary<int, string> SnapTextureByBeatSubdivision;
+	protected static readonly Dictionary<int, string> SnapTextureByBeatSubdivision = new()
+	{
+		[1] = "snap-1-4",
+		[2] = "snap-1-8",
+		[3] = "snap-1-12",
+		[4] = "snap-1-16",
+		[6] = "snap-1-24",
+		[8] = "snap-1-32",
+		[12] = "snap-1-48",
+		[16] = "snap-1-64",
+	};
+
+	private static readonly Dictionary<ChartType, List<string>> ArrowIcons = new()
+	{
+		[ChartType.dance_single] = new List<string>
+		{
+			"icon-dance-left",
+			"icon-dance-down",
+			"icon-dance-up",
+			"icon-dance-right",
+		},
+		[ChartType.dance_double] = new List<string>
+		{
+			"icon-dance-left",
+			"icon-dance-down",
+			"icon-dance-up",
+			"icon-dance-right",
+			"icon-dance-left",
+			"icon-dance-down",
+			"icon-dance-up",
+			"icon-dance-right",
+		},
+		[ChartType.dance_solo] = new List<string>
+		{
+			"icon-dance-left",
+			"icon-dance-up-left",
+			"icon-dance-down",
+			"icon-dance-up",
+			"icon-dance-up-right",
+			"icon-dance-right",
+		},
+		[ChartType.dance_threepanel] = new List<string>
+		{
+			"icon-dance-up-left",
+			"icon-dance-down",
+			"icon-dance-up-right",
+
+		},
+		[ChartType.pump_single] = new List<string>
+		{
+			"icon-pump-down-left",
+			"icon-pump-up-left",
+			"icon-pump-center",
+			"icon-pump-up-right",
+			"icon-pump-down-right",
+		},
+		[ChartType.pump_halfdouble] = new List<string>
+		{
+			"icon-pump-center",
+			"icon-pump-up-right",
+			"icon-pump-down-right",
+			"icon-pump-down-left",
+			"icon-pump-up-left",
+			"icon-pump-center",
+		},
+		[ChartType.pump_double] = new List<string>
+		{
+			"icon-pump-down-left","icon-pump-up-left",
+			"icon-pump-center",
+			"icon-pump-up-right",
+			"icon-pump-down-right",
+			"icon-pump-down-left",
+			"icon-pump-up-left",
+			"icon-pump-center",
+			"icon-pump-up-right",
+			"icon-pump-down-right",
+		},
+		[ChartType.smx_beginner] = new List<string>
+		{
+			"icon-dance-left",
+			"icon-dance-center",
+			"icon-dance-right",
+		},
+		[ChartType.smx_single] = new List<string>
+		{
+			"icon-dance-left",
+			"icon-dance-down",
+			"icon-dance-center",
+			"icon-dance-up",
+			"icon-dance-right",
+		},
+		[ChartType.smx_dual] = new List<string>
+		{
+			"icon-dance-left",
+			"icon-dance-center",
+			"icon-dance-right",
+			"icon-dance-left",
+			"icon-dance-center",
+			"icon-dance-right",
+		},
+		[ChartType.smx_full] = new List<string>
+		{
+			"icon-dance-left",
+			"icon-dance-down",
+			"icon-dance-center",
+			"icon-dance-up",
+			"icon-dance-right",
+			"icon-dance-left",
+			"icon-dance-down",
+			"icon-dance-center",
+			"icon-dance-up",
+			"icon-dance-right",
+		},
+	};
 
 	static ArrowGraphicManager()
 	{
 		MineColor = new ArrowColorSet(0xFFB7B7B7); // light grey
-
-		SnapTextureByBeatSubdivision = new Dictionary<int, string>
-		{
-			{ 1, "snap-1-4" },
-			{ 2, "snap-1-8" },
-			{ 3, "snap-1-12" },
-			{ 4, "snap-1-16" },
-			{ 6, "snap-1-24" },
-			{ 8, "snap-1-32" },
-			{ 12, "snap-1-48" },
-			{ 16, "snap-1-64" },
-		};
-	}
-
-	/// <summary>
-	/// Gets all texture ids which could possible be used by any ArrowGraphicManager.
-	/// </summary>
-	/// <returns></returns>
-	public static HashSet<string> GetAllTextureIds()
-	{
-		// ReSharper disable once UseObjectOrCollectionInitializer
-		HashSet<string> allTextures = new();
-
-		// Common textures.
-		allTextures.Add(TextureIdMine);
-		foreach (var kvp in SnapTextureByBeatSubdivision)
-			allTextures.Add(kvp.Value);
-
-		// ITG / SMX textures.
-		var danceTextures = ArrowGraphicManagerDance.GetAllTextures();
-		foreach (var danceTexture in danceTextures)
-			allTextures.Add(danceTexture);
-
-		// Pump textures.
-		var pumpTextures = ArrowGraphicManagerPIU.GetAllTextures();
-		foreach (var pumpTexture in pumpTextures)
-			allTextures.Add(pumpTexture);
-
-		return allTextures;
 	}
 
 	public static string GetSelectedTextureId(string textureId)
@@ -125,6 +199,13 @@ internal abstract class ArrowGraphicManager
 		if (string.IsNullOrEmpty(textureId))
 			return null;
 		return $"{textureId}-selected";
+	}
+
+	public static List<string> GetIcons(ChartType chartType)
+	{
+		if (ArrowIcons.TryGetValue(chartType, out var icons))
+			return icons;
+		return new List<string>();
 	}
 
 	protected static string GetTextureId(string textureId, bool selected)
@@ -135,36 +216,36 @@ internal abstract class ArrowGraphicManager
 	/// <summary>
 	/// Factory method for creating a new ArrowGraphicManager appropriate for the given ChartType.
 	/// </summary>
-	public static ArrowGraphicManager CreateArrowGraphicManager(SMCommon.ChartType chartType)
+	public static ArrowGraphicManager CreateArrowGraphicManager(ChartType chartType)
 	{
 		switch (chartType)
 		{
-			case SMCommon.ChartType.dance_single:
-			case SMCommon.ChartType.dance_double:
-			case SMCommon.ChartType.dance_couple:
-			case SMCommon.ChartType.dance_routine:
+			case ChartType.dance_single:
+			case ChartType.dance_double:
+			case ChartType.dance_couple:
+			case ChartType.dance_routine:
 				return new ArrowGraphicManagerDanceSingleOrDouble();
-			case SMCommon.ChartType.dance_solo:
+			case ChartType.dance_solo:
 				return new ArrowGraphicManagerDanceSolo();
-			case SMCommon.ChartType.dance_threepanel:
+			case ChartType.dance_threepanel:
 				return new ArrowGraphicManagerDanceThreePanel();
 
-			case SMCommon.ChartType.smx_beginner:
+			case ChartType.smx_beginner:
 				return new ArrowGraphicManagerDanceSMXBeginner();
-			case SMCommon.ChartType.smx_single:
-			case SMCommon.ChartType.smx_full:
-			case SMCommon.ChartType.smx_team:
+			case ChartType.smx_single:
+			case ChartType.smx_full:
+			case ChartType.smx_team:
 				return new ArrowGraphicManagerDanceSMXSingleOrFull();
-			case SMCommon.ChartType.smx_dual:
+			case ChartType.smx_dual:
 				return new ArrowGraphicManagerDanceSMXDual();
 
 			// TODO
-			case SMCommon.ChartType.pump_single:
-			case SMCommon.ChartType.pump_double:
-			case SMCommon.ChartType.pump_couple:
-			case SMCommon.ChartType.pump_routine:
+			case ChartType.pump_single:
+			case ChartType.pump_double:
+			case ChartType.pump_couple:
+			case ChartType.pump_routine:
 				return new ArrowGraphicManagerPIUSingleOrDouble();
-			case SMCommon.ChartType.pump_halfdouble:
+			case ChartType.pump_halfdouble:
 				return new ArrowGraphicManagerPIUSingleHalfDouble();
 
 			default:
@@ -302,10 +383,10 @@ internal abstract class ArrowGraphicManagerDance : ArrowGraphicManager
 			},
 		};
 
-		ArrowTextureByRow = new UniqueDanceTextures[SMCommon.MaxValidDenominator];
-		for (var i = 0; i < SMCommon.MaxValidDenominator; i++)
+		ArrowTextureByRow = new UniqueDanceTextures[MaxValidDenominator];
+		for (var i = 0; i < MaxValidDenominator; i++)
 		{
-			var key = new Fraction(i, SMCommon.MaxValidDenominator).Reduce().Denominator;
+			var key = new Fraction(i, MaxValidDenominator).Reduce().Denominator;
 			if (!ArrowTextureByBeatSubdivision.ContainsKey(key))
 				key = 16;
 			ArrowTextureByRow[i] = ArrowTextureByBeatSubdivision[key];
@@ -428,10 +509,10 @@ internal abstract class ArrowGraphicManagerDance : ArrowGraphicManager
 			{ 16, new ArrowColorSet(0xFF586F4F) }, // Pale Grey Green
 			{ 48, new ArrowColorSet(0xFF586F4F) }, // Pale Grey Green
 		};
-		ArrowColorByRow = new ArrowColorSet[SMCommon.MaxValidDenominator];
-		for (var i = 0; i < SMCommon.MaxValidDenominator; i++)
+		ArrowColorByRow = new ArrowColorSet[MaxValidDenominator];
+		for (var i = 0; i < MaxValidDenominator; i++)
 		{
-			var key = new Fraction(i, SMCommon.MaxValidDenominator).Reduce().Denominator;
+			var key = new Fraction(i, MaxValidDenominator).Reduce().Denominator;
 
 			if (!ArrowColorBySubdivision.ContainsKey(key))
 				key = 16;
@@ -488,7 +569,7 @@ internal abstract class ArrowGraphicManagerDance : ArrowGraphicManager
 
 	public override uint GetArrowColor(int integerPosition, int lane, bool selected)
 	{
-		return ArrowColorByRow[integerPosition % SMCommon.MaxValidDenominator].GetColor(selected);
+		return ArrowColorByRow[integerPosition % MaxValidDenominator].GetColor(selected);
 	}
 
 	public static uint GetDanceArrowColorForSubdivision(int subdivision)
@@ -498,7 +579,7 @@ internal abstract class ArrowGraphicManagerDance : ArrowGraphicManager
 
 	public override ushort GetArrowColorBGR565(int integerPosition, int lane, bool selected)
 	{
-		return ArrowColorByRow[integerPosition % SMCommon.MaxValidDenominator].GetColorBgr565();
+		return ArrowColorByRow[integerPosition % MaxValidDenominator].GetColorBgr565();
 	}
 
 	public override uint GetHoldColor(int integerPosition, int lane, bool selected)
@@ -534,7 +615,7 @@ internal sealed class ArrowGraphicManagerDanceSingleOrDouble : ArrowGraphicManag
 
 	public override (string, float) GetArrowTexture(int integerPosition, int lane, bool selected)
 	{
-		return (GetTextureId(ArrowTextureByRow[integerPosition % SMCommon.MaxValidDenominator].DownArrow, selected),
+		return (GetTextureId(ArrowTextureByRow[integerPosition % MaxValidDenominator].DownArrow, selected),
 			ArrowRotations[lane % 4]);
 	}
 
@@ -593,11 +674,11 @@ internal abstract class ArrowGraphicManagerDanceSoloBase : ArrowGraphicManagerDa
 	{
 		if (ShouldUseUpLeftArrow(lane))
 		{
-			return (GetTextureId(ArrowTextureByRow[integerPosition % SMCommon.MaxValidDenominator].UpLeftArrow, selected),
+			return (GetTextureId(ArrowTextureByRow[integerPosition % MaxValidDenominator].UpLeftArrow, selected),
 				GetRotation(lane));
 		}
 
-		return (GetTextureId(ArrowTextureByRow[integerPosition % SMCommon.MaxValidDenominator].DownArrow, selected),
+		return (GetTextureId(ArrowTextureByRow[integerPosition % MaxValidDenominator].DownArrow, selected),
 			GetRotation(lane));
 	}
 
@@ -736,11 +817,11 @@ internal abstract class ArrowGraphicManagerDanceSMX : ArrowGraphicManagerDance
 	{
 		if (ShouldUseCenterArrow(lane))
 		{
-			return (GetTextureId(ArrowTextureByRow[integerPosition % SMCommon.MaxValidDenominator].CenterArrow, selected),
+			return (GetTextureId(ArrowTextureByRow[integerPosition % MaxValidDenominator].CenterArrow, selected),
 				GetRotation(lane));
 		}
 
-		return (GetTextureId(ArrowTextureByRow[integerPosition % SMCommon.MaxValidDenominator].DownArrow, selected),
+		return (GetTextureId(ArrowTextureByRow[integerPosition % MaxValidDenominator].DownArrow, selected),
 			GetRotation(lane));
 	}
 
