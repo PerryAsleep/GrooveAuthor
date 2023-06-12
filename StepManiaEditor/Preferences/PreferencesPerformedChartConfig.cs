@@ -31,8 +31,8 @@ internal sealed class PreferencesPerformedChartConfig : Notifier<PreferencesPerf
 				[ChartTypeString(ChartType.dance_solo)] = new() { 13, 12, 25, 25, 12, 13 },
 				[ChartTypeString(ChartType.dance_threepanel)] = new() { 25, 50, 25 },
 				[ChartTypeString(ChartType.pump_single)] = new() { 17, 16, 34, 16, 17 },
-				[ChartTypeString(ChartType.pump_halfdouble)] = new() { 13, 12, 25, 25, 12, 13 }, // WRONG
-				[ChartTypeString(ChartType.pump_double)] = new() { 6, 8, 7, 8, 22, 22, 8, 7, 8, 6 }, // WRONG
+				[ChartTypeString(ChartType.pump_halfdouble)] = new() { 25, 12, 13, 13, 12, 25 },
+				[ChartTypeString(ChartType.pump_double)] = new() { 4, 4, 17, 12, 13, 13, 12, 17, 4, 4 },
 				[ChartTypeString(ChartType.smx_beginner)] = new() { 25, 50, 25 },
 				[ChartTypeString(ChartType.smx_single)] = new() { 25, 21, 8, 21, 25 },
 				[ChartTypeString(ChartType.smx_dual)] = new() { 8, 17, 25, 25, 17, 8 },
@@ -96,6 +96,38 @@ internal sealed class PreferencesPerformedChartConfig : Notifier<PreferencesPerf
 		{
 			IsNewNameValid = isNewNameValid;
 			OnNameUpdated = onNameUpdated;
+		}
+
+		/// <summary>
+		/// Sets the arrow weight for a given lane of a given ChartType.
+		/// Will update normalized weights.
+		/// </summary>
+		/// <param name="chartType">ChartType to set the arrow weight for.</param>
+		/// <param name="laneIndex">Lane index to set the arrow weight for.</param>
+		/// <param name="weight">New weight</param>
+		public void SetArrowWeight(ChartType chartType, int laneIndex, int weight)
+		{
+			var chartTypeString = ChartTypeString(chartType);
+			if (!Config.ArrowWeights.TryGetValue(chartTypeString, out var weights))
+				return;
+			if (laneIndex < 0 || laneIndex >= weights.Count)
+				return;
+			if (weights[laneIndex] == weight)
+				return;
+			weights[laneIndex] = weight;
+			Config.RefreshArrowWeightsNormalized();
+		}
+
+		/// <summary>
+		/// Gets the maximum number of weights for any ChartType in this PerformedChart Config.
+		/// </summary>
+		/// <returns>Maximum number of weights for any ChartType in this PerformedChart Config</returns>
+		public int GetMaxNumWeightsForAnyChartType()
+		{
+			var max = 0;
+			foreach (var (_, weights) in Config.ArrowWeights)
+				max = Math.Max(max, weights.Count);
+			return max;
 		}
 
 		/// <summary>
@@ -182,11 +214,13 @@ internal sealed class PreferencesPerformedChartConfig : Notifier<PreferencesPerf
 		var defaultConfig = AddConfig(DefaultConfigName);
 		defaultConfig.Description = "Default balanced settings";
 		InitializeConfigWithDefaultValues(defaultConfig.Config);
+		defaultConfig.Config.Init();
 
 		Configs.Remove(DefaultStaminaConfigName);
 		var defaultAggressiveConfig = AddConfig(DefaultStaminaConfigName);
 		defaultAggressiveConfig.Description = "Default settings with more aggressive step tightening";
 		defaultAggressiveConfig.Config.StepTightening.TravelSpeedMaxTimeSeconds = 0.303;
+		defaultAggressiveConfig.Config.Init();
 
 		// Ensure every NamedConfig is configured and valid.
 		var invalidConfigNames = new List<string>();

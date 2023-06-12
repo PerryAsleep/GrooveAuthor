@@ -1,4 +1,5 @@
-﻿using System.Numerics;
+﻿using System.Collections.Generic;
+using System.Numerics;
 using ImGuiNET;
 using StepManiaLibrary.PerformedChart;
 using static StepManiaEditor.ImGuiUtils;
@@ -17,10 +18,16 @@ internal sealed class UIPerformedChartConfig
 	                               + " TODO";
 
 	private readonly Editor Editor;
+	private readonly List<ImGuiArrowWeightsWidget> ArrowWeightsWidgets;
 
 	public UIPerformedChartConfig(Editor editor)
 	{
 		Editor = editor;
+		ArrowWeightsWidgets = new List<ImGuiArrowWeightsWidget>(Editor.SupportedChartTypes.Length);
+		foreach (var chartType in Editor.SupportedChartTypes)
+		{
+			ArrowWeightsWidgets.Add(new ImGuiArrowWeightsWidget(chartType, Editor));
+		}
 	}
 
 	public void Draw()
@@ -56,18 +63,10 @@ internal sealed class UIPerformedChartConfig
 			}
 
 			ImGui.Separator();
-			if (ImGuiLayoutUtils.BeginTable("PerformedChartConfigArrowWeights", TitleColumnWidth))
-			{
-				ImGuiLayoutUtils.DrawTitle("Arrow Weights");
-
-				ImGuiLayoutUtils.EndTable();
-			}
-
-			ImGui.Separator();
 			if (ImGuiLayoutUtils.BeginTable("PerformedChartConfigStepTightening", TitleColumnWidth))
 			{
 				ImGuiLayoutUtils.DrawTitle("Step Tightening");
-				
+
 				ImGuiLayoutUtils.EndTable();
 			}
 
@@ -109,13 +108,58 @@ internal sealed class UIPerformedChartConfig
 			}
 
 			ImGui.Separator();
+
+			// Always enable the collapsable arrow weights section so it can be viewed.
+			if (disabled)
+				PopDisabled();
+			if (ImGui.CollapsingHeader("Arrow Weights"))
+			{
+				if (disabled)
+					PushDisabled();
+
+				if (ImGuiLayoutUtils.BeginTable("ArrowWeightsTable", TitleColumnWidth))
+				{
+					ImGuiLayoutUtils.DrawTitle("Arrow Weights",
+						"Desired distribution of arrows per Chart type.");
+
+					if (ImGui.BeginTable("Arrow Weights Table", 2, ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders))
+					{
+						ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100);
+						ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, ImGuiArrowWeightsWidget.GetFullWidth(namedConfig));
+
+						var index = 0;
+						foreach (var chartType in Editor.SupportedChartTypes)
+						{
+							ImGui.TableNextRow();
+
+							ImGui.TableSetColumnIndex(0);
+							ImGui.Text(GetPrettyEnumString(chartType));
+
+							ImGui.TableSetColumnIndex(1);
+							ArrowWeightsWidgets[index].Draw(namedConfig);
+							index++;
+						}
+
+						ImGui.EndTable();
+					}
+					ImGuiLayoutUtils.EndTable();
+				}
+			}
+			else
+			{
+				if (disabled)
+					PushDisabled();
+			}
+
+			ImGui.Separator();
 			if (ImGuiLayoutUtils.BeginTable("PerformedChartConfigDelete", TitleColumnWidth))
 			{
 				if (ImGuiLayoutUtils.DrawRowButton("Delete Performed Chart Config", "Delete",
-						"Delete this Performed Chart Config."))
+					    "Delete this Performed Chart Config."))
 				{
 					ActionQueue.Instance.Do(new ActionDeletePerformedChartConfig(namedConfig.Name));
 				}
+
 				ImGuiLayoutUtils.EndTable();
 			}
 
@@ -125,7 +169,7 @@ internal sealed class UIPerformedChartConfig
 				ImGuiLayoutUtils.DrawTitle("Help", HelpText);
 
 				if (ImGuiLayoutUtils.DrawRowButton("Restore Defaults", "Restore Defaults",
-						"Restore config values to their defaults."))
+					    "Restore config values to their defaults."))
 				{
 					namedConfig.RestoreDefaults();
 				}

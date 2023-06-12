@@ -158,6 +158,7 @@ internal sealed class Editor :
 	private UIAutogenConfigs UIAutogenConfigs;
 	private ZoomManager ZoomManager;
 	private StaticTextureAtlas TextureAtlas;
+	private IntPtr TextureAtlasImGuiTexture;
 
 	private Effect FxaaEffect;
 	private Effect WaveformColorEffect;
@@ -653,6 +654,9 @@ internal sealed class Editor :
 		// Initialize the TextureAtlas
 		TextureAtlas = StaticTextureAtlas.Load(Content, "atlas", fullAtlasFileName)
 		               ?? new StaticTextureAtlas(new Texture2D(GraphicsDevice, 0, 0));
+
+		// Register the TextureAtlas's texture with ImGui so it can be drawn in UI.
+		TextureAtlasImGuiTexture = ImGuiRenderer.BindTexture(TextureAtlas.GetTexture());
 	}
 
 	private void LoadShaders()
@@ -693,6 +697,9 @@ internal sealed class Editor :
 		CloseSong();
 		Preferences.Save();
 		Logger.Shutdown();
+
+		ImGuiRenderer.UnbindTexture(TextureAtlasImGuiTexture);
+
 		base.EndRun();
 	}
 
@@ -747,6 +754,20 @@ internal sealed class Editor :
 	}
 
 	#endregion Static Helpers
+
+	#region Texture Atlas
+
+	public TextureAtlas GetTextureAtlas()
+	{
+		return TextureAtlas;
+	}
+
+	public IntPtr GetTextureAtlasImGuiTexture()
+	{
+		return TextureAtlasImGuiTexture;
+	}
+
+	#endregion Texture Atlas
 
 	#region State Accessors
 

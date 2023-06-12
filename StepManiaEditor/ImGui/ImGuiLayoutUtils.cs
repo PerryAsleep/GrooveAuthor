@@ -101,7 +101,7 @@ internal sealed class ImGuiLayoutUtils
 			ImGui.Text(title);
 
 		ImGui.TableSetColumnIndex(1);
-		DrawHelp(help, ImGui.GetContentRegionAvail().X);
+		ImGui.SetNextItemWidth(DrawHelp(help, ImGui.GetContentRegionAvail().X));
 	}
 
 	private static string GetDragHelpText(string helpText)
