@@ -9,6 +9,8 @@ namespace StepManiaEditor;
 /// </summary>
 public class UIOptions
 {
+	public const string WindowTitle = "Options";
+
 	private static readonly int TitleColumnWidth = UiScaled(160);
 	private static readonly float ButtonSyncWidth = UiScaled(60);
 
@@ -19,7 +21,7 @@ public class UIOptions
 			return;
 
 		ImGui.SetNextWindowSize(new System.Numerics.Vector2(0, 0), ImGuiCond.FirstUseEver);
-		if (ImGui.Begin("Options", ref p.ShowOptionsWindow, ImGuiWindowFlags.None))
+		if (ImGui.Begin(WindowTitle, ref p.ShowOptionsWindow, ImGuiWindowFlags.None))
 		{
 			if (ImGuiLayoutUtils.BeginTable("Options Step Type", TitleColumnWidth))
 			{

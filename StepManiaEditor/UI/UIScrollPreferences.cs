@@ -10,6 +10,8 @@ namespace StepManiaEditor;
 /// </summary>
 internal sealed class UIScrollPreferences
 {
+	public const string WindowTitle = "Scroll Preferences";
+
 	private static readonly int TitleColumnWidth = UiScaled(120);
 
 	public void Draw()
@@ -19,7 +21,7 @@ internal sealed class UIScrollPreferences
 			return;
 
 		ImGui.SetNextWindowSize(new Vector2(0, 0), ImGuiCond.FirstUseEver);
-		if (ImGui.Begin("Scroll Preferences", ref p.ShowScrollControlPreferencesWindow, ImGuiWindowFlags.NoScrollbar))
+		if (ImGui.Begin(WindowTitle, ref p.ShowScrollControlPreferencesWindow, ImGuiWindowFlags.NoScrollbar))
 		{
 			if (ImGuiLayoutUtils.BeginTable("Scroll", TitleColumnWidth))
 			{

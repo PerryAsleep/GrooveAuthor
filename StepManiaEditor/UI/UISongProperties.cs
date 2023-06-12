@@ -15,6 +15,8 @@ namespace StepManiaEditor;
 /// </summary>
 internal sealed class UISongProperties
 {
+	public const string WindowTitle = "Song Properties";
+
 	private readonly Editor Editor;
 	private EditorSong EditorSong;
 
@@ -42,7 +44,7 @@ internal sealed class UISongProperties
 			return;
 
 		ImGui.SetNextWindowSize(new Vector2(0, 0), ImGuiCond.FirstUseEver);
-		if (ImGui.Begin("Song Properties", ref Preferences.Instance.ShowSongPropertiesWindow, ImGuiWindowFlags.NoScrollbar))
+		if (ImGui.Begin(WindowTitle, ref Preferences.Instance.ShowSongPropertiesWindow, ImGuiWindowFlags.NoScrollbar))
 		{
 			var disabled = !Editor.CanSongBeEdited(EditorSong);
 			if (disabled)

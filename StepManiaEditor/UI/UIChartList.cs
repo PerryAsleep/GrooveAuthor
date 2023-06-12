@@ -7,6 +7,8 @@ namespace StepManiaEditor;
 
 internal sealed class UIChartList
 {
+	public const string WindowTitle = "Chart List";
+
 	private readonly Editor Editor;
 
 	private static readonly int TypeWidth = UiScaled(60);
@@ -26,7 +28,7 @@ internal sealed class UIChartList
 			return;
 
 		ImGui.SetNextWindowSize(new Vector2(0, 0), ImGuiCond.FirstUseEver);
-		if (ImGui.Begin("Chart List", ref Preferences.Instance.ShowChartListWindow, ImGuiWindowFlags.NoScrollbar))
+		if (ImGui.Begin(WindowTitle, ref Preferences.Instance.ShowChartListWindow, ImGuiWindowFlags.NoScrollbar))
 		{
 			var disabled = !Editor.CanSongBeEdited(editorSong);
 			if (disabled)

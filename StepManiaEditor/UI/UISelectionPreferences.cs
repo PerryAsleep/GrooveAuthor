@@ -9,6 +9,8 @@ namespace StepManiaEditor;
 /// </summary>
 internal sealed class UISelectionPreferences
 {
+	public const string WindowTitle = "Selection Preferences";
+
 	private static readonly int TitleColumnWidth = UiScaled(120);
 
 	public void Draw()
@@ -18,7 +20,7 @@ internal sealed class UISelectionPreferences
 			return;
 
 		ImGui.SetNextWindowSize(new Vector2(0, 0), ImGuiCond.FirstUseEver);
-		if (ImGui.Begin("Selection Preferences", ref p.ShowSelectionControlPreferencesWindow, ImGuiWindowFlags.NoScrollbar))
+		if (ImGui.Begin(WindowTitle, ref p.ShowSelectionControlPreferencesWindow, ImGuiWindowFlags.NoScrollbar))
 		{
 			if (ImGuiLayoutUtils.BeginTable("Selection", TitleColumnWidth))
 			{

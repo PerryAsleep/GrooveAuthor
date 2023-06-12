@@ -9,6 +9,8 @@ namespace StepManiaEditor;
 /// </summary>
 internal sealed class UIReceptorPreferences
 {
+	public const string WindowTitle = "Receptor Preferences";
+
 	private readonly Editor Editor;
 
 	private static readonly int TitleColumnWidth = UiScaled(120);
@@ -25,7 +27,7 @@ internal sealed class UIReceptorPreferences
 			return;
 
 		ImGui.SetNextWindowSize(new Vector2(0, 0), ImGuiCond.FirstUseEver);
-		if (ImGui.Begin("Receptor Preferences", ref p.ShowReceptorPreferencesWindow, ImGuiWindowFlags.NoScrollbar))
+		if (ImGui.Begin(WindowTitle, ref p.ShowReceptorPreferencesWindow, ImGuiWindowFlags.NoScrollbar))
 			DrawContents();
 		ImGui.End();
 	}

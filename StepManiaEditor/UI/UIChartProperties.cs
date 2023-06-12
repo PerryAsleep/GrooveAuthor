@@ -10,6 +10,8 @@ namespace StepManiaEditor;
 /// </summary>
 internal sealed class UIChartProperties
 {
+	public const string WindowTitle = "Chart Properties";
+
 	private static EditorChart EditorChart;
 
 	private static readonly int TitleColumnWidth = UiScaled(100);
@@ -22,7 +24,7 @@ internal sealed class UIChartProperties
 			return;
 
 		ImGui.SetNextWindowSize(new Vector2(0, 0), ImGuiCond.FirstUseEver);
-		if (ImGui.Begin("Chart Properties", ref Preferences.Instance.ShowChartPropertiesWindow, ImGuiWindowFlags.NoScrollbar))
+		if (ImGui.Begin(WindowTitle, ref Preferences.Instance.ShowChartPropertiesWindow, ImGuiWindowFlags.NoScrollbar))
 		{
 			var disabled = !Editor.CanChartBeEdited(EditorChart);
 			if (disabled)
@@ -101,11 +103,13 @@ internal sealed class UIChartProperties
 		Preferences.Instance.PreferencesExpressedChartConfig.ActiveExpressedChartConfigForWindow =
 			EditorChart.ExpressedChartConfig;
 		Preferences.Instance.PreferencesExpressedChartConfig.ShowExpressedChartListWindow = true;
+		ImGui.SetWindowFocus(UIExpressedChartConfig.WindowTitle);
 	}
 
 	private static void ViewAllExpressedChartConfigs()
 	{
 		Preferences.Instance.ShowAutogenConfigsWindow = true;
+		ImGui.SetWindowFocus(UIAutogenConfigs.WindowTitle);
 	}
 
 	private static void NewExpressedChartConfig()
@@ -114,6 +118,7 @@ internal sealed class UIChartProperties
 		ActionQueue.Instance.Do(new ActionAddExpressedChartConfig(newConfigName, EditorChart));
 		Preferences.Instance.PreferencesExpressedChartConfig.ActiveExpressedChartConfigForWindow = newConfigName;
 		Preferences.Instance.PreferencesExpressedChartConfig.ShowExpressedChartListWindow = true;
+		ImGui.SetWindowFocus(UIExpressedChartConfig.WindowTitle);
 	}
 
 	private static void BrowseMusicFile()

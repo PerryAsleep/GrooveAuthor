@@ -10,6 +10,8 @@ namespace StepManiaEditor;
 /// </summary>
 internal class UILog
 {
+	public const string WindowTitle = "Log";
+
 	private static readonly string[] LogWindowDateStrings =
 	{
 		"None",
@@ -36,7 +38,7 @@ internal class UILog
 			return;
 
 		ImGui.SetNextWindowSize(new System.Numerics.Vector2(WindowW, WindowH), ImGuiCond.FirstUseEver);
-		if (ImGui.Begin("Log", ref Preferences.Instance.ShowLogWindow, ImGuiWindowFlags.NoScrollbar))
+		if (ImGui.Begin(WindowTitle, ref Preferences.Instance.ShowLogWindow, ImGuiWindowFlags.NoScrollbar))
 		{
 			lock (logBufferLock)
 			{

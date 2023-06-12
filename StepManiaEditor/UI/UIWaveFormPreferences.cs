@@ -9,6 +9,8 @@ namespace StepManiaEditor;
 /// </summary>
 internal sealed class UIWaveFormPreferences
 {
+	public const string WindowTitle = "Waveform Preferences";
+
 	public enum SparseColorOption
 	{
 		DarkerDenseColor,
@@ -32,7 +34,7 @@ internal sealed class UIWaveFormPreferences
 			return;
 
 		ImGui.SetNextWindowSize(new Vector2(0, 0), ImGuiCond.FirstUseEver);
-		if (ImGui.Begin("Waveform Preferences", ref p.ShowWaveFormPreferencesWindow, ImGuiWindowFlags.NoScrollbar))
+		if (ImGui.Begin(WindowTitle, ref p.ShowWaveFormPreferencesWindow, ImGuiWindowFlags.NoScrollbar))
 			DrawContents();
 		ImGui.End();
 	}

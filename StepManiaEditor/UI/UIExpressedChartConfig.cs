@@ -13,6 +13,7 @@ internal sealed class UIExpressedChartConfig
 {
 	private static readonly int TitleColumnWidth = UiScaled(240);
 
+	public const string WindowTitle = "Expressed Chart Config";
 	public const string HelpText = "Expressed Chart Configs are settings used by the Editor to interpret Charts."
 	                               + " This is used for autogenerating patterns and new Charts as those actions require understanding how the body moves to perform a Chart."
 	                               + " An Expressed Chart Config can be assigned to a Chart in the Chart Properties window."
@@ -39,7 +40,7 @@ internal sealed class UIExpressedChartConfig
 		var namedConfig = p.Configs[p.ActiveExpressedChartConfigForWindow];
 
 		ImGui.SetNextWindowSize(new Vector2(0, 0), ImGuiCond.FirstUseEver);
-		if (ImGui.Begin("Expressed Chart Config", ref p.ShowExpressedChartListWindow, ImGuiWindowFlags.NoScrollbar))
+		if (ImGui.Begin(WindowTitle, ref p.ShowExpressedChartListWindow, ImGuiWindowFlags.NoScrollbar))
 		{
 			var disabled = !Editor.CanEdit() || namedConfig.IsDefaultConfig();
 			if (disabled)

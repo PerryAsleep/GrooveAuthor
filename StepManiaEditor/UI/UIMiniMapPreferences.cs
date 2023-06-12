@@ -9,6 +9,8 @@ namespace StepManiaEditor;
 /// </summary>
 internal sealed class UIMiniMapPreferences
 {
+	public const string WindowTitle = "MiniMap Preferences";
+
 	private static readonly int TitleColumnWidth = UiScaled(120);
 
 	public void Draw()
@@ -18,7 +20,7 @@ internal sealed class UIMiniMapPreferences
 			return;
 
 		ImGui.SetNextWindowSize(new Vector2(0, 0), ImGuiCond.FirstUseEver);
-		if (ImGui.Begin("MiniMap Preferences", ref p.ShowMiniMapPreferencesWindow, ImGuiWindowFlags.NoScrollbar))
+		if (ImGui.Begin(WindowTitle, ref p.ShowMiniMapPreferencesWindow, ImGuiWindowFlags.NoScrollbar))
 			DrawContents();
 		ImGui.End();
 	}

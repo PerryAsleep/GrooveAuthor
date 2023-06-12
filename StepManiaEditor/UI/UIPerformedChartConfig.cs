@@ -15,6 +15,7 @@ internal sealed class UIPerformedChartConfig
 {
 	private static readonly int TitleColumnWidth = UiScaled(240);
 
+	public const string WindowTitle = "Performed Chart Config";
 	public const string HelpText = "Performed Chart Configs are settings used by the Editor to generate Charts and patterns."
 	                               + " When generating steps, all possible paths are considered. Costs are assigned to paths"
 	                               + " based on Performed Chart Config values, and the path with the lowest cost is chosen."
@@ -46,7 +47,7 @@ internal sealed class UIPerformedChartConfig
 		var namedConfig = p.Configs[p.ActivePerformedChartConfigForWindow];
 
 		ImGui.SetNextWindowSize(new Vector2(0, 0), ImGuiCond.FirstUseEver);
-		if (ImGui.Begin("Performed Chart Config", ref p.ShowPerformedChartListWindow, ImGuiWindowFlags.NoScrollbar))
+		if (ImGui.Begin(WindowTitle, ref p.ShowPerformedChartListWindow, ImGuiWindowFlags.NoScrollbar))
 		{
 			var disabled = !Editor.CanEdit() || namedConfig.IsDefaultConfig();
 			if (disabled)

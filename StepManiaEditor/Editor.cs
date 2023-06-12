@@ -3087,33 +3087,69 @@ internal sealed class Editor :
 			if (ImGui.BeginMenu("View"))
 			{
 				if (ImGui.MenuItem("Options"))
+				{
 					p.PreferencesOptions.ShowOptionsWindow = true;
+					ImGui.SetWindowFocus(UIOptions.WindowTitle);
+				}
 
 				ImGui.Separator();
 				if (ImGui.MenuItem("Song Properties"))
+				{
 					p.ShowSongPropertiesWindow = true;
+					ImGui.SetWindowFocus(UISongProperties.WindowTitle);
+				}
+
 				if (ImGui.MenuItem("Chart Properties"))
+				{
 					p.ShowChartPropertiesWindow = true;
+					ImGui.SetWindowFocus(UIChartProperties.WindowTitle);
+				}
+
 				if (ImGui.MenuItem("Chart List"))
+				{
 					p.ShowChartListWindow = true;
+					ImGui.SetWindowFocus(UIChartList.WindowTitle);
+				}
 
 				ImGui.Separator();
 				if (ImGui.MenuItem("Scroll Preferences"))
+				{
 					p.PreferencesScroll.ShowScrollControlPreferencesWindow = true;
+					ImGui.SetWindowFocus(UIScrollPreferences.WindowTitle);
+				}
+
 				if (ImGui.MenuItem("Selection Preferences"))
+				{
 					p.PreferencesSelection.ShowSelectionControlPreferencesWindow = true;
+					ImGui.SetWindowFocus(UISelectionPreferences.WindowTitle);
+				}
 
 				ImGui.Separator();
 				if (ImGui.MenuItem("Waveform Preferences"))
+				{
 					p.PreferencesWaveForm.ShowWaveFormPreferencesWindow = true;
+					ImGui.SetWindowFocus(UIWaveFormPreferences.WindowTitle);
+				}
+
 				if (ImGui.MenuItem("Mini Map Preferences"))
+				{
 					p.PreferencesMiniMap.ShowMiniMapPreferencesWindow = true;
+					ImGui.SetWindowFocus(UIMiniMapPreferences.WindowTitle);
+				}
+
 				if (ImGui.MenuItem("Receptor Preferences"))
+				{
 					p.PreferencesReceptors.ShowReceptorPreferencesWindow = true;
+					ImGui.SetWindowFocus(UIReceptorPreferences.WindowTitle);
+				}
 
 				ImGui.Separator();
 				if (ImGui.MenuItem("Log"))
+				{
 					p.ShowLogWindow = true;
+					ImGui.SetWindowFocus(UILog.WindowTitle);
+				}
+
 				if (ImGui.MenuItem("ImGui Demo Window"))
 					ShowImGuiTestWindow = true;
 				ImGui.EndMenu();
@@ -3126,7 +3162,10 @@ internal sealed class Editor :
 					PushDisabled();
 
 				if (ImGui.MenuItem("Configuration"))
+				{
 					p.ShowAutogenConfigsWindow = true;
+					ImGui.SetWindowFocus(UIAutogenConfigs.WindowTitle);
+				}
 
 				if (ImGui.BeginMenu("Autogen New Chart From"))
 				{
