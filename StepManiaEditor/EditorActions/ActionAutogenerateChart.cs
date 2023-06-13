@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 using Fumen;
 using Fumen.ChartDefinition;
@@ -24,62 +23,17 @@ internal sealed class ActionAutogenerateChart : EditorAction
 	public ActionAutogenerateChart(
 		Editor editor,
 		EditorChart sourceChart,
-		ChartType chartType) : base(true, false)
+		ChartType chartType,
+		Config performedChartConfig) : base(true, false)
 	{
 		Editor = editor;
 		SourceChart = sourceChart;
+		PerformedChartConfig = performedChartConfig;
 		EditorSong = SourceChart.GetEditorSong();
 		PreviouslyActiveChart = Editor.GetActiveChart();
 		ChartType = chartType;
 		WasSuccessful = false;
 		RandomSeed = new Random().Next();
-
-		// TODO: Configurable PerformedChartConfig.
-		PerformedChartConfig = new Config();
-
-		var arrowWeights = new Dictionary<string, List<int>>
-		{
-			[ChartTypeString(ChartType.dance_single)] = new() { 25, 25, 25, 25 },
-			[ChartTypeString(ChartType.dance_double)] = new() { 6, 12, 10, 22, 22, 12, 10, 6 },
-			[ChartTypeString(ChartType.dance_solo)] = new() { 13, 12, 25, 25, 12, 13 },
-			[ChartTypeString(ChartType.dance_threepanel)] = new() { 25, 50, 25 },
-			[ChartTypeString(ChartType.pump_single)] = new() { 17, 16, 34, 16, 17 },
-			[ChartTypeString(ChartType.pump_halfdouble)] = new() { 13, 12, 25, 25, 12, 13 }, // WRONG
-			[ChartTypeString(ChartType.pump_double)] = new() { 6, 8, 7, 8, 22, 22, 8, 7, 8, 6 }, // WRONG
-			[ChartTypeString(ChartType.smx_beginner)] = new() { 25, 50, 25 },
-			[ChartTypeString(ChartType.smx_single)] = new() { 25, 21, 8, 21, 25 },
-			[ChartTypeString(ChartType.smx_dual)] = new() { 8, 17, 25, 25, 17, 8 },
-			[ChartTypeString(ChartType.smx_full)] = new() { 6, 8, 7, 8, 22, 22, 8, 7, 8, 6 },
-		};
-		PerformedChartConfig.ArrowWeights = arrowWeights;
-
-		var stepTighteningConfig = new Config.StepTighteningConfig
-		{
-			TravelSpeedMinTimeSeconds = 0.176471,
-			TravelSpeedMaxTimeSeconds = 0.24,
-			TravelDistanceMin = 2.0,
-			TravelDistanceMax = 3.0,
-			StretchDistanceMin = 3.0,
-			StretchDistanceMax = 4.0,
-		};
-		PerformedChartConfig.StepTightening = stepTighteningConfig;
-
-		var lateralTighteningConfig = new Config.LateralTighteningConfig
-		{
-			RelativeNPS = 1.65,
-			AbsoluteNPS = 12.0,
-			Speed = 3.0,
-		};
-		PerformedChartConfig.LateralTightening = lateralTighteningConfig;
-
-		var facingConfig = new Config.FacingConfig
-		{
-			MaxInwardPercentage = 1.0,
-			MaxOutwardPercentage = 1.0,
-		};
-		PerformedChartConfig.Facing = facingConfig;
-
-		PerformedChartConfig.Init();
 	}
 
 	public override string ToString()

@@ -12,21 +12,17 @@ internal sealed class UIChartProperties
 {
 	public const string WindowTitle = "Chart Properties";
 
-	private static EditorChart EditorChart;
-
 	private static readonly int TitleColumnWidth = UiScaled(100);
 
 	public void Draw(EditorChart editorChart)
 	{
-		EditorChart = editorChart;
-
 		if (!Preferences.Instance.ShowChartPropertiesWindow)
 			return;
 
 		ImGui.SetNextWindowSize(new Vector2(0, 0), ImGuiCond.FirstUseEver);
 		if (ImGui.Begin(WindowTitle, ref Preferences.Instance.ShowChartPropertiesWindow, ImGuiWindowFlags.NoScrollbar))
 		{
-			var disabled = !Editor.CanChartBeEdited(EditorChart);
+			var disabled = !Editor.CanChartBeEdited(editorChart);
 			if (disabled)
 				PushDisabled();
 
@@ -34,26 +30,26 @@ internal sealed class UIChartProperties
 			{
 				// The notes in the chart only make sense for one ChartType. Do not allow changing the ChartType.
 				PushDisabled();
-				ImGuiLayoutUtils.DrawRowEnum<SMCommon.ChartType>(true, "Type", EditorChart, nameof(EditorChart.ChartType), true,
+				ImGuiLayoutUtils.DrawRowEnum<SMCommon.ChartType>(true, "Type", editorChart, nameof(EditorChart.ChartType), true,
 					"Chart type.");
 				PopDisabled();
 
-				ImGuiLayoutUtils.DrawRowEnum<SMCommon.ChartDifficultyType>(true, "Difficulty", EditorChart,
+				ImGuiLayoutUtils.DrawRowEnum<SMCommon.ChartDifficultyType>(true, "Difficulty", editorChart,
 					nameof(EditorChart.ChartDifficultyType), true,
 					"Chart difficulty type.");
-				ImGuiLayoutUtils.DrawRowInputInt(true, "Rating", EditorChart, nameof(EditorChart.Rating), true,
+				ImGuiLayoutUtils.DrawRowInputInt(true, "Rating", editorChart, nameof(EditorChart.Rating), true,
 					"Chart rating.", 1);
-				ImGuiLayoutUtils.DrawRowTextInput(true, "Name", EditorChart, nameof(EditorChart.Name), true,
+				ImGuiLayoutUtils.DrawRowTextInput(true, "Name", editorChart, nameof(EditorChart.Name), true,
 					"Chart name.");
-				ImGuiLayoutUtils.DrawRowTextInput(true, "Description", EditorChart, nameof(EditorChart.Description), true,
+				ImGuiLayoutUtils.DrawRowTextInput(true, "Description", editorChart, nameof(EditorChart.Description), true,
 					"Chart description.");
-				ImGuiLayoutUtils.DrawRowTextInput(true, "Credit", EditorChart, nameof(EditorChart.Credit), true,
+				ImGuiLayoutUtils.DrawRowTextInput(true, "Credit", editorChart, nameof(EditorChart.Credit), true,
 					"Who this chart should be credited to.");
-				ImGuiLayoutUtils.DrawRowTextInput(true, "Style", EditorChart, nameof(EditorChart.Style), true,
+				ImGuiLayoutUtils.DrawRowTextInput(true, "Style", editorChart, nameof(EditorChart.Style), true,
 					"(Uncommon) Originally meant to denote \"Pad\" versus \"Keyboard\" charts.");
 
-				if (EditorChart != null)
-					ImGuiLayoutUtils.DrawRowDisplayTempo(true, EditorChart, EditorChart.GetMinTempo(), EditorChart.GetMaxTempo());
+				if (editorChart != null)
+					ImGuiLayoutUtils.DrawRowDisplayTempo(true, editorChart, editorChart.GetMinTempo(), editorChart.GetMaxTempo());
 				else
 					ImGuiLayoutUtils.DrawRowDisplayTempo(true, null, 0.0, 0.0);
 
@@ -63,12 +59,14 @@ internal sealed class UIChartProperties
 			ImGui.Separator();
 			if (ImGuiLayoutUtils.BeginTable("ChartMusicTable", TitleColumnWidth))
 			{
-				ImGuiLayoutUtils.DrawRowFileBrowse("Music", EditorChart, nameof(EditorChart.MusicPath), BrowseMusicFile,
-					ClearMusicFile, true,
+				ImGuiLayoutUtils.DrawRowFileBrowse("Music", editorChart, nameof(EditorChart.MusicPath),
+					() => BrowseMusicFile(editorChart),
+					() => ClearMusicFile(editorChart),
+					true,
 					"(Uncommon) The audio file to use for this chart, overriding the song music." +
 					"\nIn most cases all charts use the same music and it is defined at the song level.");
 
-				ImGuiLayoutUtils.DrawRowDragDoubleWithEnabledCheckbox(true, "Music Offset", EditorChart,
+				ImGuiLayoutUtils.DrawRowDragDoubleWithEnabledCheckbox(true, "Music Offset", editorChart,
 					nameof(EditorChart.MusicOffset), nameof(EditorChart.UsesChartMusicOffset), true,
 					"(Uncommon) The music offset from the start of the chart." +
 					"\nIn most cases all charts use the same music offset and it is defined at the song level.",
@@ -80,14 +78,10 @@ internal sealed class UIChartProperties
 			ImGui.Separator();
 			if (ImGuiLayoutUtils.BeginTable("ChartExpressionTable", TitleColumnWidth))
 			{
-				var configValues = Preferences.Instance.PreferencesExpressedChartConfig.GetSortedConfigNames();
-				ImGuiLayoutUtils.DrawSelectableConfigFromList(true, "Expression", EditorChart,
-					nameof(EditorChart.ExpressedChartConfig), configValues,
-					EditExpressedChartConfig, ViewAllExpressedChartConfigs, NewExpressedChartConfig, true,
+				DrawChartExpressedChartConfigWidget(editorChart, "Expression",
 					"(Editor Only) Expressed Chart Configuration."
 					+ "\nThis configuration is used by the editor to parse the Chart and interpret its steps."
 					+ "\nThis interpretation is used for autogenerating patterns and other Charts.");
-
 				ImGuiLayoutUtils.EndTable();
 			}
 
@@ -98,12 +92,18 @@ internal sealed class UIChartProperties
 		ImGui.End();
 	}
 
-	private static void EditExpressedChartConfig()
+	public static void DrawChartExpressedChartConfigWidget(EditorChart editorChart, string title, string help)
 	{
-		Preferences.Instance.PreferencesExpressedChartConfig.ActiveExpressedChartConfigForWindow =
-			EditorChart.ExpressedChartConfig;
-		Preferences.Instance.PreferencesExpressedChartConfig.ShowExpressedChartListWindow = true;
-		ImGui.SetWindowFocus(UIExpressedChartConfig.WindowTitle);
+		var configValues = Preferences.Instance.PreferencesExpressedChartConfig.GetSortedConfigNames();
+		ImGuiLayoutUtils.DrawSelectableConfigFromList(true,
+			title,
+			editorChart,
+			nameof(EditorChart.ExpressedChartConfig), configValues,
+			() => PreferencesExpressedChartConfig.ShowEditUI(editorChart.ExpressedChartConfig),
+			ViewAllExpressedChartConfigs,
+			() => PreferencesExpressedChartConfig.CreateNewConfigAndShowEditUI(editorChart),
+			true,
+			help);
 	}
 
 	private static void ViewAllExpressedChartConfigs()
@@ -112,31 +112,22 @@ internal sealed class UIChartProperties
 		ImGui.SetWindowFocus(UIAutogenConfigs.WindowTitle);
 	}
 
-	private static void NewExpressedChartConfig()
-	{
-		var newConfigName = Preferences.Instance.PreferencesExpressedChartConfig.GetNewConfigName();
-		ActionQueue.Instance.Do(new ActionAddExpressedChartConfig(newConfigName, EditorChart));
-		Preferences.Instance.PreferencesExpressedChartConfig.ActiveExpressedChartConfigForWindow = newConfigName;
-		Preferences.Instance.PreferencesExpressedChartConfig.ShowExpressedChartListWindow = true;
-		ImGui.SetWindowFocus(UIExpressedChartConfig.WindowTitle);
-	}
-
-	private static void BrowseMusicFile()
+	private static void BrowseMusicFile(EditorChart editorChart)
 	{
 		var relativePath = Utils.BrowseFile(
 			"Music",
-			EditorChart.GetEditorSong().GetFileDirectory(),
-			EditorChart.MusicPath,
+			editorChart.GetEditorSong().GetFileDirectory(),
+			editorChart.MusicPath,
 			Utils.FileOpenFilterForAudio("Music", true));
-		if (relativePath != null && relativePath != EditorChart.MusicPath)
-			ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorChart,
-				nameof(EditorChart.MusicPath), relativePath, true));
+		if (relativePath != null && relativePath != editorChart.MusicPath)
+			ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(editorChart,
+				nameof(editorChart.MusicPath), relativePath, true));
 	}
 
-	private static void ClearMusicFile()
+	private static void ClearMusicFile(EditorChart editorChart)
 	{
-		if (!string.IsNullOrEmpty(EditorChart.MusicPath))
+		if (!string.IsNullOrEmpty(editorChart.MusicPath))
 			ActionQueue.Instance.Do(
-				new ActionSetObjectFieldOrPropertyReference<string>(EditorChart, nameof(EditorChart.MusicPath), "", true));
+				new ActionSetObjectFieldOrPropertyReference<string>(editorChart, nameof(EditorChart.MusicPath), "", true));
 	}
 }

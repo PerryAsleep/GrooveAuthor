@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Serialization;
 using Fumen;
+using ImGuiNET;
 using StepManiaLibrary.PerformedChart;
 using static Fumen.Converters.SMCommon;
 
@@ -208,6 +209,20 @@ internal sealed class PreferencesPerformedChartConfig : Notifier<PreferencesPerf
 	/// </summary>
 	private string[] SortedConfigNames;
 
+	public static void CreateNewConfigAndShowEditUI()
+	{
+		var newConfigName = Preferences.Instance.PreferencesPerformedChartConfig.GetNewConfigName();
+		ActionQueue.Instance.Do(new ActionAddPerformedChartConfig(newConfigName));
+		ShowEditUI(newConfigName);
+	}
+
+	public static void ShowEditUI(string configName)
+	{
+		Preferences.Instance.PreferencesPerformedChartConfig.ActivePerformedChartConfigForWindow = configName;
+		Preferences.Instance.PreferencesPerformedChartConfig.ShowPerformedChartListWindow = true;
+		ImGui.SetWindowFocus(UIPerformedChartConfig.WindowTitle);
+	}
+
 	/// <summary>
 	/// Called by owning Preferences after deserialization.
 	/// </summary>
@@ -344,6 +359,8 @@ internal sealed class PreferencesPerformedChartConfig : Notifier<PreferencesPerf
 
 	public NamedConfig GetNamedConfig(string name)
 	{
+		if (string.IsNullOrEmpty(name))
+			return null;
 		if (!Configs.TryGetValue(name, out var config))
 			return null;
 		return config;
@@ -351,6 +368,8 @@ internal sealed class PreferencesPerformedChartConfig : Notifier<PreferencesPerf
 
 	public Config GetConfig(string name)
 	{
+		if (string.IsNullOrEmpty(name))
+			return null;
 		if (!Configs.TryGetValue(name, out var config))
 			return null;
 		return config.Config;

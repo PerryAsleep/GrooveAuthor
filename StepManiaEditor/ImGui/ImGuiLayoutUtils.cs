@@ -104,6 +104,20 @@ internal sealed class ImGuiLayoutUtils
 		ImGui.SetNextItemWidth(DrawHelp(help, ImGui.GetContentRegionAvail().X));
 	}
 
+	public static void DrawTitleAndText(string title, string text, string help = null)
+	{
+		ImGui.TableNextRow();
+
+		ImGui.TableSetColumnIndex(0);
+		if (!string.IsNullOrEmpty(title))
+			ImGui.Text(title);
+
+		ImGui.TableSetColumnIndex(1);
+		ImGui.SetNextItemWidth(DrawHelp(help, ImGui.GetContentRegionAvail().X));
+		ImGui.SameLine();
+		ImGui.Text(text);
+	}
+
 	private static string GetDragHelpText(string helpText)
 	{
 		return string.IsNullOrEmpty(helpText) ? null : helpText + DragHelpText;
@@ -391,6 +405,49 @@ internal sealed class ImGuiLayoutUtils
 	#region Config From List
 
 	public static bool DrawSelectableConfigFromList(
+		string title,
+		string elementName,
+		ref string value,
+		string[] values,
+		Action editAction,
+		Action viewAllAction,
+		Action newAction,
+		string help = null)
+	{
+		DrawRowTitleAndAdvanceColumn(title);
+
+		var elementTitle = GetElementTitle(title, elementName);
+
+		var itemWidth = DrawHelp(help, ImGui.GetContentRegionAvail().X);
+		var spacing = ImGui.GetStyle().ItemSpacing.X;
+		var comboWidth = Math.Max(1.0f,
+			itemWidth - ConfigFromListEditWidth - ConfigFromListViewAllWidth - ConfigFromListNewWidth - spacing * 3.0f);
+		ImGui.SetNextItemWidth(comboWidth);
+
+		var ret = ComboFromArray(elementTitle, ref value, values);
+
+		ImGui.SameLine();
+		if (ImGui.Button($"Edit{elementTitle}", new Vector2(ConfigFromListEditWidth, 0.0f)))
+		{
+			editAction();
+		}
+
+		ImGui.SameLine();
+		if (ImGui.Button($"View All{elementTitle}", new Vector2(ConfigFromListViewAllWidth, 0.0f)))
+		{
+			viewAllAction();
+		}
+
+		ImGui.SameLine();
+		if (ImGui.Button($"New{elementTitle}", new Vector2(ConfigFromListNewWidth, 0.0f)))
+		{
+			newAction();
+		}
+
+		return ret;
+	}
+
+	public static bool DrawSelectableConfigFromList(
 		bool undoable,
 		string title,
 		object o,
@@ -404,6 +461,8 @@ internal sealed class ImGuiLayoutUtils
 	{
 		DrawRowTitleAndAdvanceColumn(title);
 
+		var elementTitle = GetElementTitle(title, fieldName);
+
 		var itemWidth = DrawHelp(help, ImGui.GetContentRegionAvail().X);
 		var spacing = ImGui.GetStyle().ItemSpacing.X;
 		var comboWidth = Math.Max(1.0f,
@@ -412,7 +471,7 @@ internal sealed class ImGuiLayoutUtils
 
 		var value = GetValueFromFieldOrProperty<string>(o, fieldName);
 		var newValue = value;
-		var ret = ComboFromArray(GetElementTitle(title, fieldName), ref newValue, values);
+		var ret = ComboFromArray(elementTitle, ref newValue, values);
 		if (ret)
 		{
 			if (!newValue.Equals(value))
@@ -426,19 +485,19 @@ internal sealed class ImGuiLayoutUtils
 		}
 
 		ImGui.SameLine();
-		if (ImGui.Button($"Edit{GetElementTitle(title, fieldName)}", new Vector2(ConfigFromListEditWidth, 0.0f)))
+		if (ImGui.Button($"Edit{elementTitle}", new Vector2(ConfigFromListEditWidth, 0.0f)))
 		{
 			editAction();
 		}
 
 		ImGui.SameLine();
-		if (ImGui.Button($"View All{GetElementTitle(title, fieldName)}", new Vector2(ConfigFromListViewAllWidth, 0.0f)))
+		if (ImGui.Button($"View All{elementTitle}", new Vector2(ConfigFromListViewAllWidth, 0.0f)))
 		{
 			viewAllAction();
 		}
 
 		ImGui.SameLine();
-		if (ImGui.Button($"New{GetElementTitle(title, fieldName)}", new Vector2(ConfigFromListNewWidth, 0.0f)))
+		if (ImGui.Button($"New{elementTitle}", new Vector2(ConfigFromListNewWidth, 0.0f)))
 		{
 			newAction();
 		}
@@ -1144,6 +1203,18 @@ internal sealed class ImGuiLayoutUtils
 	#endregion Drag Double Range
 
 	#region Enum
+
+	public static bool DrawRowEnum<T>(string title, string elementName, ref T value, T[] allowedValues = null, string help = null)
+		where T : struct, Enum
+	{
+		DrawRowTitleAndAdvanceColumn(title);
+		ImGui.SetNextItemWidth(DrawHelp(help, ImGui.GetContentRegionAvail().X));
+
+		if (allowedValues != null)
+			return ComboFromEnum(GetElementTitle(title, elementName), ref value, allowedValues,
+				GetElementTitle(title, elementName));
+		return ComboFromEnum(GetElementTitle(title, elementName), ref value);
+	}
 
 	public static bool DrawRowEnum<T>(bool undoable, string title, object o, string fieldName, bool affectsFile,
 		string help = null, T defaultValue = default)

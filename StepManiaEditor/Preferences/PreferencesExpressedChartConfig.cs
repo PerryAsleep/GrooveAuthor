@@ -1,4 +1,5 @@
 ﻿using Fumen;
+using ImGuiNET;
 using StepManiaLibrary;
 using System;
 using System.Collections.Generic;
@@ -51,7 +52,10 @@ internal sealed class PreferencesExpressedChartConfig : Notifier<PreferencesExpr
 
 		// Default values.
 		public const BracketParsingMethod DefaultDefaultBracketParsingMethod = BracketParsingMethod.Balanced;
-		public const BracketParsingDetermination DefaultBracketParsingDetermination = BracketParsingDetermination.ChooseMethodDynamically;
+
+		public const BracketParsingDetermination DefaultBracketParsingDetermination =
+			BracketParsingDetermination.ChooseMethodDynamically;
+
 		public const int DefaultMinLevelForBrackets = 7;
 		public const bool DefaultUseAggressiveBracketsWhenMoreSimultaneousNotesThanCanBeCoveredWithoutBrackets = true;
 		public const double DefaultBalancedBracketsPerMinuteForAggressiveBrackets = 3.0;
@@ -106,7 +110,8 @@ internal sealed class PreferencesExpressedChartConfig : Notifier<PreferencesExpr
 			       && Config.MinLevelForBrackets == DefaultMinLevelForBrackets
 			       && Config.UseAggressiveBracketsWhenMoreSimultaneousNotesThanCanBeCoveredWithoutBrackets ==
 			       DefaultUseAggressiveBracketsWhenMoreSimultaneousNotesThanCanBeCoveredWithoutBrackets
-			       && Config.BalancedBracketsPerMinuteForAggressiveBrackets.DoubleEquals(DefaultBalancedBracketsPerMinuteForAggressiveBrackets)
+			       && Config.BalancedBracketsPerMinuteForAggressiveBrackets.DoubleEquals(
+				       DefaultBalancedBracketsPerMinuteForAggressiveBrackets)
 			       && Config.BalancedBracketsPerMinuteForNoBrackets.DoubleEquals(DefaultBalancedBracketsPerMinuteForNoBrackets);
 		}
 
@@ -128,6 +133,20 @@ internal sealed class PreferencesExpressedChartConfig : Notifier<PreferencesExpr
 	/// Sorted array of Config names to use for UI.
 	/// </summary>
 	private string[] SortedConfigNames;
+
+	public static void CreateNewConfigAndShowEditUI(EditorChart editorChart = null)
+	{
+		var newConfigName = Preferences.Instance.PreferencesExpressedChartConfig.GetNewConfigName();
+		ActionQueue.Instance.Do(new ActionAddExpressedChartConfig(newConfigName, editorChart));
+		ShowEditUI(newConfigName);
+	}
+
+	public static void ShowEditUI(string configName)
+	{
+		Preferences.Instance.PreferencesExpressedChartConfig.ActiveExpressedChartConfigForWindow = configName;
+		Preferences.Instance.PreferencesExpressedChartConfig.ShowExpressedChartListWindow = true;
+		ImGui.SetWindowFocus(UIExpressedChartConfig.WindowTitle);
+	}
 
 	/// <summary>
 	/// Called by owning Preferences after deserialization.
@@ -191,7 +210,8 @@ internal sealed class PreferencesExpressedChartConfig : Notifier<PreferencesExpr
 		config.DefaultBracketParsingMethod = NamedConfig.DefaultDefaultBracketParsingMethod;
 		config.BracketParsingDetermination = NamedConfig.DefaultBracketParsingDetermination;
 		config.MinLevelForBrackets = NamedConfig.DefaultMinLevelForBrackets;
-		config.UseAggressiveBracketsWhenMoreSimultaneousNotesThanCanBeCoveredWithoutBrackets = NamedConfig.DefaultUseAggressiveBracketsWhenMoreSimultaneousNotesThanCanBeCoveredWithoutBrackets;
+		config.UseAggressiveBracketsWhenMoreSimultaneousNotesThanCanBeCoveredWithoutBrackets = NamedConfig
+			.DefaultUseAggressiveBracketsWhenMoreSimultaneousNotesThanCanBeCoveredWithoutBrackets;
 		config.BalancedBracketsPerMinuteForAggressiveBrackets = NamedConfig.DefaultBalancedBracketsPerMinuteForAggressiveBrackets;
 		config.BalancedBracketsPerMinuteForNoBrackets = NamedConfig.DefaultBalancedBracketsPerMinuteForNoBrackets;
 	}
@@ -257,6 +277,8 @@ internal sealed class PreferencesExpressedChartConfig : Notifier<PreferencesExpr
 
 	public NamedConfig GetNamedConfig(string name)
 	{
+		if (string.IsNullOrEmpty(name))
+			return null;
 		if (!Configs.TryGetValue(name, out var config))
 			return null;
 		return config;
@@ -264,6 +286,8 @@ internal sealed class PreferencesExpressedChartConfig : Notifier<PreferencesExpr
 
 	public ExpressedChartConfig GetConfig(string name)
 	{
+		if (string.IsNullOrEmpty(name))
+			return null;
 		if (!Configs.TryGetValue(name, out var config))
 			return null;
 		return config.Config;
@@ -328,7 +352,7 @@ internal sealed class PreferencesExpressedChartConfig : Notifier<PreferencesExpr
 			var lhsDefault = NamedConfig.IsDefaultName(lhs);
 			var rhsDefault = NamedConfig.IsDefaultName(rhs);
 			if (lhsDefault != rhsDefault)
-				return lhsDefault ?-1 : 1;
+				return lhsDefault ? -1 : 1;
 
 			// Configs should sort alphabetically.
 			return string.Compare(lhs, rhs, StringComparison.CurrentCulture);
@@ -361,7 +385,8 @@ internal sealed class ActionRestoreExpressedChartConfigDefaults : EditorAction
 		PreviousDefaultBracketParsingMethod = Config.Config.DefaultBracketParsingMethod;
 		PreviousBracketParsingDetermination = Config.Config.BracketParsingDetermination;
 		PreviousMinLevelForBrackets = Config.Config.MinLevelForBrackets;
-		PreviousUseAggressiveBracketsWhenMoreSimultaneousNotesThanCanBeCoveredWithoutBrackets = Config.Config.UseAggressiveBracketsWhenMoreSimultaneousNotesThanCanBeCoveredWithoutBrackets;
+		PreviousUseAggressiveBracketsWhenMoreSimultaneousNotesThanCanBeCoveredWithoutBrackets =
+			Config.Config.UseAggressiveBracketsWhenMoreSimultaneousNotesThanCanBeCoveredWithoutBrackets;
 		PreviousBalancedBracketsPerMinuteForAggressiveBrackets = Config.Config.BalancedBracketsPerMinuteForAggressiveBrackets;
 		PreviousBalancedBracketsPerMinuteForNoBrackets = Config.Config.BalancedBracketsPerMinuteForNoBrackets;
 	}
@@ -378,12 +403,18 @@ internal sealed class ActionRestoreExpressedChartConfigDefaults : EditorAction
 
 	protected override void DoImplementation()
 	{
-		Config.Config.DefaultBracketParsingMethod = PreferencesExpressedChartConfig.NamedConfig.DefaultDefaultBracketParsingMethod;
-		Config.Config.BracketParsingDetermination = PreferencesExpressedChartConfig.NamedConfig.DefaultBracketParsingDetermination;
+		Config.Config.DefaultBracketParsingMethod =
+			PreferencesExpressedChartConfig.NamedConfig.DefaultDefaultBracketParsingMethod;
+		Config.Config.BracketParsingDetermination =
+			PreferencesExpressedChartConfig.NamedConfig.DefaultBracketParsingDetermination;
 		Config.Config.MinLevelForBrackets = PreferencesExpressedChartConfig.NamedConfig.DefaultMinLevelForBrackets;
-		Config.Config.UseAggressiveBracketsWhenMoreSimultaneousNotesThanCanBeCoveredWithoutBrackets = PreferencesExpressedChartConfig.NamedConfig.DefaultUseAggressiveBracketsWhenMoreSimultaneousNotesThanCanBeCoveredWithoutBrackets;
-		Config.Config.BalancedBracketsPerMinuteForAggressiveBrackets = PreferencesExpressedChartConfig.NamedConfig.DefaultBalancedBracketsPerMinuteForAggressiveBrackets;
-		Config.Config.BalancedBracketsPerMinuteForNoBrackets = PreferencesExpressedChartConfig.NamedConfig.DefaultBalancedBracketsPerMinuteForNoBrackets;
+		Config.Config.UseAggressiveBracketsWhenMoreSimultaneousNotesThanCanBeCoveredWithoutBrackets =
+			PreferencesExpressedChartConfig.NamedConfig
+				.DefaultUseAggressiveBracketsWhenMoreSimultaneousNotesThanCanBeCoveredWithoutBrackets;
+		Config.Config.BalancedBracketsPerMinuteForAggressiveBrackets = PreferencesExpressedChartConfig.NamedConfig
+			.DefaultBalancedBracketsPerMinuteForAggressiveBrackets;
+		Config.Config.BalancedBracketsPerMinuteForNoBrackets =
+			PreferencesExpressedChartConfig.NamedConfig.DefaultBalancedBracketsPerMinuteForNoBrackets;
 	}
 
 	protected override void UndoImplementation()
@@ -391,7 +422,8 @@ internal sealed class ActionRestoreExpressedChartConfigDefaults : EditorAction
 		Config.Config.DefaultBracketParsingMethod = PreviousDefaultBracketParsingMethod;
 		Config.Config.BracketParsingDetermination = PreviousBracketParsingDetermination;
 		Config.Config.MinLevelForBrackets = PreviousMinLevelForBrackets;
-		Config.Config.UseAggressiveBracketsWhenMoreSimultaneousNotesThanCanBeCoveredWithoutBrackets = PreviousUseAggressiveBracketsWhenMoreSimultaneousNotesThanCanBeCoveredWithoutBrackets;
+		Config.Config.UseAggressiveBracketsWhenMoreSimultaneousNotesThanCanBeCoveredWithoutBrackets =
+			PreviousUseAggressiveBracketsWhenMoreSimultaneousNotesThanCanBeCoveredWithoutBrackets;
 		Config.Config.BalancedBracketsPerMinuteForAggressiveBrackets = PreviousBalancedBracketsPerMinuteForAggressiveBrackets;
 		Config.Config.BalancedBracketsPerMinuteForNoBrackets = PreviousBalancedBracketsPerMinuteForNoBrackets;
 	}

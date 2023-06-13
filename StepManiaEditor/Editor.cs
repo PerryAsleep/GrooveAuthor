@@ -156,6 +156,7 @@ internal sealed class Editor :
 	private UIExpressedChartConfig UIExpressedChartConfig;
 	private UIPerformedChartConfig UIPerformedChartConfig;
 	private UIAutogenConfigs UIAutogenConfigs;
+	private UIAutogenChart UIAutogenChart;
 	private ZoomManager ZoomManager;
 	private StaticTextureAtlas TextureAtlas;
 	private IntPtr TextureAtlasImGuiTexture;
@@ -621,6 +622,7 @@ internal sealed class Editor :
 		UIExpressedChartConfig = new UIExpressedChartConfig(this);
 		UIPerformedChartConfig = new UIPerformedChartConfig(this);
 		UIAutogenConfigs = new UIAutogenConfigs(this);
+		UIAutogenChart = new UIAutogenChart(this);
 	}
 
 	/// <summary>
@@ -2978,6 +2980,7 @@ internal sealed class Editor :
 		UIExpressedChartConfig.Draw();
 		UIPerformedChartConfig.Draw();
 		UIAutogenConfigs.Draw();
+		UIAutogenChart.Draw();
 
 		UIChartPosition.Draw(
 			GetFocalPointX(),
@@ -3167,22 +3170,12 @@ internal sealed class Editor :
 					ImGui.SetWindowFocus(UIAutogenConfigs.WindowTitle);
 				}
 
-				if (ImGui.BeginMenu("Autogen New Chart From"))
+				if (ImGui.Selectable("Autogen New Chart"))
 				{
-					if (ActiveSong == null || ActiveSong.GetNumCharts() == 0)
-					{
-						PushDisabled();
-						ImGui.Text("No Charts to Autogen From");
-						PopDisabled();
-					}
-					else
-					{
-						UIChartList.DrawChartList(ActiveChart, null, null, true, DrawAutogenerateChartSelectableList);
-					}
-					ImGui.EndMenu();
+					ShowAutogenChartUI(ActiveChart);
 				}
 
-				if (ImGui.BeginMenu("Autogen New Charts From"))
+				if (ImGui.BeginMenu("Autogen New Set of Charts"))
 				{
 					if (ActiveSong == null || ActiveSong.GetNumCharts() == 0)
 					{
@@ -3230,15 +3223,9 @@ internal sealed class Editor :
 		}
 	}
 
-	public void DrawAutogenerateChartSelectableList(EditorChart chart)
+	public void ShowAutogenChartUI(EditorChart sourceChart = null)
 	{
-		foreach (var chartType in SupportedChartTypes)
-		{
-			if (ImGui.Selectable($"Autogen New {GetPrettyEnumString(chartType)} Chart"))
-			{
-				ActionQueue.Instance.Do(new ActionAutogenerateChart(this, chart, chartType));
-			}
-		}
+		UIAutogenChart.Show(sourceChart);
 	}
 
 	public void DrawAutogenerateChartsOfTypeSelectableList(ChartType sourceChartType)
@@ -4487,6 +4474,9 @@ internal sealed class Editor :
 
 	private void UnloadSongResources()
 	{
+		// Close any UI which holds on to Song/Chart state.
+		UIAutogenChart.Close();
+
 		StopPlayback();
 		MusicManager.UnloadAsync();
 		LaneEditStates = Array.Empty<LaneEditState>();
@@ -5890,6 +5880,7 @@ internal sealed class Editor :
 		if (ActiveSong == null)
 			return;
 		ActiveSong.DeleteChart(chart);
+
 		if (chartToSelect != null)
 		{
 			OnChartSelected(chartToSelect, false);

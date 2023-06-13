@@ -29,7 +29,7 @@ internal sealed class UIAutogenConfigs
 			return;
 
 		ImGui.SetNextWindowSize(new Vector2(0, 0), ImGuiCond.FirstUseEver);
-		if (ImGui.Begin(WindowTitle, ref p.ShowAutogenConfigsWindow, ImGuiWindowFlags.None))
+		if (ImGui.Begin(WindowTitle, ref p.ShowAutogenConfigsWindow, ImGuiWindowFlags.NoScrollbar))
 		{
 			// Expressed Chart section title.
 			ImGui.Text("Expressed Chart Configs");
@@ -54,7 +54,8 @@ internal sealed class UIAutogenConfigs
 				// Name.
 				var config = p.PreferencesExpressedChartConfig.GetNamedConfig(configName);
 				ImGui.TableSetColumnIndex(0);
-				if (ImGui.Selectable(config.Name, false, ImGuiSelectableFlags.SpanAllColumns | ImGuiSelectableFlags.AllowItemOverlap))
+				if (ImGui.Selectable(config.Name, false,
+					    ImGuiSelectableFlags.SpanAllColumns | ImGuiSelectableFlags.AllowItemOverlap))
 				{
 					Preferences.Instance.PreferencesExpressedChartConfig.ActiveExpressedChartConfigForWindow = config.Name;
 					Preferences.Instance.PreferencesExpressedChartConfig.ShowExpressedChartListWindow = true;
@@ -74,11 +75,13 @@ internal sealed class UIAutogenConfigs
 				{
 					ActionQueue.Instance.Do(new ActionDeleteExpressedChartConfig(Editor, config.Name));
 				}
+
 				if (disabled)
 					PopDisabled();
 
 				index++;
 			}
+
 			ImGui.EndTable();
 
 			// Section to add Expressed Chart Configs.
@@ -86,8 +89,9 @@ internal sealed class UIAutogenConfigs
 			{
 				if (ImGuiLayoutUtils.DrawRowButton("New", "New", "Add a new Expressed Chart Config."))
 				{
-					NewExpressedChartConfig();
+					PreferencesExpressedChartConfig.CreateNewConfigAndShowEditUI();
 				}
+
 				ImGuiLayoutUtils.EndTable();
 			}
 
@@ -114,11 +118,10 @@ internal sealed class UIAutogenConfigs
 				// Name.
 				var config = p.PreferencesPerformedChartConfig.GetNamedConfig(configName);
 				ImGui.TableSetColumnIndex(0);
-				if (ImGui.Selectable(config.Name, false, ImGuiSelectableFlags.SpanAllColumns | ImGuiSelectableFlags.AllowItemOverlap))
+				if (ImGui.Selectable(config.Name, false,
+					    ImGuiSelectableFlags.SpanAllColumns | ImGuiSelectableFlags.AllowItemOverlap))
 				{
-					Preferences.Instance.PreferencesPerformedChartConfig.ActivePerformedChartConfigForWindow = config.Name;
-					Preferences.Instance.PreferencesPerformedChartConfig.ShowPerformedChartListWindow = true;
-					ImGui.SetWindowFocus(UIPerformedChartConfig.WindowTitle);
+					PreferencesPerformedChartConfig.ShowEditUI(config.Name);
 				}
 
 				// Description.
@@ -134,11 +137,13 @@ internal sealed class UIAutogenConfigs
 				{
 					ActionQueue.Instance.Do(new ActionDeletePerformedChartConfig(config.Name));
 				}
+
 				if (disabled)
 					PopDisabled();
 
 				index++;
 			}
+
 			ImGui.EndTable();
 
 			// Section to add Performed Chart Configs.
@@ -146,30 +151,13 @@ internal sealed class UIAutogenConfigs
 			{
 				if (ImGuiLayoutUtils.DrawRowButton("New", "New", "Add a new Performed Chart Config."))
 				{
-					NewPerformedChartConfig();
+					PreferencesPerformedChartConfig.CreateNewConfigAndShowEditUI();
 				}
+
 				ImGuiLayoutUtils.EndTable();
 			}
 		}
 
 		ImGui.End();
-	}
-
-	public static void NewExpressedChartConfig()
-	{
-		var newConfigName = Preferences.Instance.PreferencesExpressedChartConfig.GetNewConfigName();
-		ActionQueue.Instance.Do(new ActionAddExpressedChartConfig(newConfigName, null));
-		Preferences.Instance.PreferencesExpressedChartConfig.ActiveExpressedChartConfigForWindow = newConfigName;
-		Preferences.Instance.PreferencesExpressedChartConfig.ShowExpressedChartListWindow = true;
-		ImGui.SetWindowFocus(UIExpressedChartConfig.WindowTitle);
-	}
-
-	public static void NewPerformedChartConfig()
-	{
-		var newConfigName = Preferences.Instance.PreferencesPerformedChartConfig.GetNewConfigName();
-		ActionQueue.Instance.Do(new ActionAddPerformedChartConfig(newConfigName));
-		Preferences.Instance.PreferencesPerformedChartConfig.ActivePerformedChartConfigForWindow = newConfigName;
-		Preferences.Instance.PreferencesPerformedChartConfig.ShowPerformedChartListWindow = true;
-		ImGui.SetWindowFocus(UIPerformedChartConfig.WindowTitle);
 	}
 }

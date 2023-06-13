@@ -34,12 +34,23 @@ internal sealed class UIChartList
 			if (disabled)
 				PushDisabled();
 
+			ChartPendingDelete = null;
+
 			var numCharts = DrawChartList(
+				editorSong,
 				editorChart,
 				ChartRightClickMenu,
 				selectedChart => { Editor.OnChartSelected(selectedChart); },
 				false,
 				null);
+
+			if (ChartPendingDelete != null)
+			{
+				ActionQueue.Instance.Do(new ActionDeleteChart(Editor, ChartPendingDelete));
+			}
+
+			ChartPendingDelete = null;
+
 			if (numCharts == 0)
 			{
 				ImGui.Text("No Charts");
@@ -83,7 +94,8 @@ internal sealed class UIChartList
 	/// The charts are grouped and sorted and formatted nicely.
 	/// The list can be drawn as Selectable items or as BeginMenu items.
 	/// </summary>
-	/// <param name="activeChart">The chart to get the Song from.</param>
+	/// <param name="activeSong">The active Song to derive the Chart list from.</param>
+	/// <param name="activeChart">The currently active Chart.</param>
 	/// <param name="onRightClick">(Selectable only) Action to invoke when right-clicked.</param>
 	/// <param name="onSelected">(Selectable only) Action to invoke when selected.</param>
 	/// <param name="asBeginMenuItems">
@@ -92,7 +104,8 @@ internal sealed class UIChartList
 	/// </param>
 	/// <param name="onMenu">(BeginMenu only) Action to invoke when selected in menu.</param>
 	/// <returns>Number of charts drawn.</returns>
-	public int DrawChartList(
+	public static int DrawChartList(
+		EditorSong activeSong,
 		EditorChart activeChart,
 		Action<EditorChart> onRightClick,
 		Action<EditorChart> onSelected,
@@ -100,14 +113,12 @@ internal sealed class UIChartList
 		Action<EditorChart> onMenu)
 	{
 		var numCharts = 0;
-		ChartPendingDelete = null;
 
-		if (activeChart != null)
+		if (activeSong != null)
 		{
-			var song = activeChart.GetEditorSong();
 			foreach (var chartType in Editor.SupportedChartTypes)
 			{
-				var charts = song.GetCharts(chartType);
+				var charts = activeSong.GetCharts(chartType);
 				if (charts?.Count > 0)
 				{
 					if (numCharts > 0)
@@ -140,12 +151,6 @@ internal sealed class UIChartList
 							onMenu);
 					}
 
-					if (ChartPendingDelete != null)
-					{
-						ActionQueue.Instance.Do(new ActionDeleteChart(Editor, ChartPendingDelete));
-					}
-					ChartPendingDelete = null;
-
 					numCharts++;
 				}
 			}
@@ -159,7 +164,7 @@ internal sealed class UIChartList
 		return numCharts;
 	}
 
-	private void DrawChartRow(
+	private static void DrawChartRow(
 		EditorChart chart,
 		int index,
 		bool active,
@@ -252,10 +257,9 @@ internal sealed class UIChartList
 			ChartPendingDelete = chart;
 		}
 
-		if (ImGui.BeginMenu("Autogen"))
+		if (ImGui.Selectable($"Autogen New Chart From {chart.ChartDifficultyType} Chart"))
 		{
-			Editor.DrawAutogenerateChartSelectableList(chart);
-			ImGui.EndMenu();
+			Editor.ShowAutogenChartUI(chart);
 		}
 
 		if (disabled)

@@ -657,6 +657,12 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		return rae?.GetTimeSignature().Signature ?? DefaultTimeSignature;
 	}
 
+	public string GetDescriptiveName()
+	{
+		return
+			$"{ImGuiUtils.GetPrettyEnumString(ChartType)} {ImGuiUtils.GetPrettyEnumString(ChartDifficultyType)} [{Rating}] {Description}";
+	}
+
 	#endregion Accessors
 
 	#region Timing Updates
