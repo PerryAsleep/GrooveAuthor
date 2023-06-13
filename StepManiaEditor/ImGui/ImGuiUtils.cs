@@ -30,7 +30,15 @@ internal sealed class ImGuiUtils
 	private const int BannerHeight = 164;
 
 	private static readonly Dictionary<Type, string[]> EnumStringsCacheByType = new();
-	private static readonly Dictionary<string, string[]> EnumStringsCacheByCustomKey = new();
+
+	private class EnumByAllowedValueCacheData
+	{
+		public Dictionary<int, int> AllowedValueToEnumValue;
+		public Dictionary<int, int> EnumValueToAllowedValue;
+		public string[] EnumStrings;
+	}
+
+	private static readonly Dictionary<string, EnumByAllowedValueCacheData> EnumDataCacheByCustomKey = new();
 	private static readonly List<bool> EnabledStack = new();
 
 	[DllImport("msvcrt.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl)]
@@ -55,6 +63,13 @@ internal sealed class ImGuiUtils
 		return sb.ToString();
 	}
 
+	/// <summary>
+	/// Draws an ImGui Combo element for the values of of the enum of type T.
+	/// </summary>
+	/// <typeparam name="T">Enum type of values in the Combo element.</typeparam>
+	/// <param name="name">Name of the element for ImGui.</param>
+	/// <param name="enumValue">The current value.</param>
+	/// <returns>Whether the Combo value has changed.</returns>
 	public static bool ComboFromEnum<T>(string name, ref T enumValue) where T : Enum
 	{
 		var strings = GetCachedEnumStrings<T>();
@@ -64,21 +79,44 @@ internal sealed class ImGuiUtils
 		return result;
 	}
 
+	/// <summary>
+	/// Draws an ImGui Combo element for the array of allowed values of type T.
+	/// This assumes that allowedValues does not change across multiple calls for the same cacheKey.
+	/// </summary>
+	/// <typeparam name="T">Enum type of values in the Combo element.</typeparam>
+	/// <param name="name">Name of the element for ImGui.</param>
+	/// <param name="enumValue">The current value.</param>
+	/// <param name="allowedValues">A sorted list of allowed values to use for the Combo, rather than the full enum.</param>
+	/// <param name="cacheKey">A key to use for caching lookup data.</param>
+	/// <returns>Whether the Combo value has changed.</returns>
 	public static bool ComboFromEnum<T>(string name, ref T enumValue, T[] allowedValues, string cacheKey) where T : Enum
 	{
-		if (!EnumStringsCacheByCustomKey.ContainsKey(cacheKey))
+		// Cache lookup data.
+		if (!EnumDataCacheByCustomKey.ContainsKey(cacheKey))
 		{
+			var allowedValueToEnumValue = new Dictionary<int, int>();
+			var enumValueToAllowedValue = new Dictionary<int, int>();
 			var numEnumValues = allowedValues.Length;
 			var enumStrings = new string[numEnumValues];
 			for (var i = 0; i < numEnumValues; i++)
+			{
 				enumStrings[i] = FormatEnumForUI(allowedValues[i].ToString());
-			EnumStringsCacheByCustomKey[cacheKey] = enumStrings;
+				allowedValueToEnumValue[i] = (int)(object)allowedValues[i];
+				enumValueToAllowedValue[(int)(object)allowedValues[i]] = i;
+			}
+
+			EnumDataCacheByCustomKey[cacheKey] = new EnumByAllowedValueCacheData
+			{
+				AllowedValueToEnumValue = allowedValueToEnumValue,
+				EnumValueToAllowedValue = enumValueToAllowedValue,
+				EnumStrings = enumStrings,
+			};
 		}
 
-		var strings = EnumStringsCacheByCustomKey[cacheKey];
-		var intValue = (int)(object)enumValue;
-		var result = ImGui.Combo(name, ref intValue, strings, strings.Length);
-		enumValue = (T)(object)intValue;
+		var cacheData = EnumDataCacheByCustomKey[cacheKey];
+		var intValue = cacheData.EnumValueToAllowedValue[(int)(object)enumValue];
+		var result = ImGui.Combo(name, ref intValue, cacheData.EnumStrings, cacheData.EnumStrings.Length);
+		enumValue = (T)(object)cacheData.AllowedValueToEnumValue[intValue];
 		return result;
 	}
 
