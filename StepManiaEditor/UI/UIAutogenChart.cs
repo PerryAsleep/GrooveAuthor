@@ -21,14 +21,17 @@ internal sealed class UIAutogenChart
 	/// This state is tracked internally and not persisted.
 	/// </summary>
 	private bool Showing;
+
 	/// <summary>
 	/// The EditorChart to use as the source chart for autogeneration.
 	/// </summary>
 	private EditorChart SourceChart;
+
 	/// <summary>
 	/// The ChartType to use for the destination chart for autogeneration.
 	/// </summary>
 	private ChartType DestinationChartType = ChartType.dance_single;
+
 	/// <summary>
 	/// The name of the PerformedChartConfig to use for autogeneration.
 	/// </summary>
@@ -156,15 +159,16 @@ internal sealed class UIAutogenChart
 				// Expressed Chart Config.
 				const string title = "Expression";
 				const string help = "Expressed Chart Config."
-					+ "\nThis config is defined on the source Chart in the Chart Properties window."
-					+ "\nChanging it here changes it on the source Chart.";
+				                    + "\nThis config is defined on the source Chart in the Chart Properties window."
+				                    + "\nChanging it here changes it on the source Chart.";
 				if (SourceChart != null)
 					UIChartProperties.DrawChartExpressedChartConfigWidget(SourceChart, title, help);
 				else
 					ImGuiLayoutUtils.DrawTitleAndText(title, "No available Charts.", help);
 
 				// Destination ChartType.
-				ImGuiLayoutUtils.DrawRowEnum("New Chart Type", "AutogenChartChartType", ref DestinationChartType, Editor.SupportedChartTypes,
+				ImGuiLayoutUtils.DrawRowEnum("New Chart Type", "AutogenChartChartType", ref DestinationChartType,
+					Editor.SupportedChartTypes,
 					"Type of Chart to generate.");
 
 				// Performed Chart Config.
@@ -192,11 +196,13 @@ internal sealed class UIAutogenChart
 			// Confirm button
 			if (!canStart)
 				PushDisabled();
-			if (ImGui.Button("Autogen"))
+			if (ImGui.Button($"Autogen {GetPrettyEnumString(DestinationChartType)} Chart"))
 			{
-				ActionQueue.Instance.Do(new ActionAutogenerateChart(Editor, SourceChart, DestinationChartType, performedChartConfig!.Config));
+				ActionQueue.Instance.Do(new ActionAutogenerateCharts(Editor, SourceChart, DestinationChartType,
+					performedChartConfig!.Config));
 				Close();
 			}
+
 			if (!canStart)
 				PopDisabled();
 

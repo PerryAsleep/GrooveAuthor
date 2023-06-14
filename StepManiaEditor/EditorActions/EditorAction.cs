@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using Fumen;
 using static System.Diagnostics.Debug;
 
 namespace StepManiaEditor;
@@ -94,6 +95,8 @@ internal abstract class EditorAction
 	{
 		Assert(ActionState == State.Doing);
 		ActionState = State.None;
+
+		Logger.Info($"Finished {this}");
 	}
 
 	/// <summary>

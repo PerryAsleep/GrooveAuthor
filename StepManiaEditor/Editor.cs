@@ -157,6 +157,7 @@ internal sealed class Editor :
 	private UIPerformedChartConfig UIPerformedChartConfig;
 	private UIAutogenConfigs UIAutogenConfigs;
 	private UIAutogenChart UIAutogenChart;
+	private UIAutogenChartsForChartType UIAutogenChartsForChartType;
 	private ZoomManager ZoomManager;
 	private StaticTextureAtlas TextureAtlas;
 	private IntPtr TextureAtlasImGuiTexture;
@@ -623,6 +624,7 @@ internal sealed class Editor :
 		UIPerformedChartConfig = new UIPerformedChartConfig(this);
 		UIAutogenConfigs = new UIAutogenConfigs(this);
 		UIAutogenChart = new UIAutogenChart(this);
+		UIAutogenChartsForChartType = new UIAutogenChartsForChartType(this);
 	}
 
 	/// <summary>
@@ -2981,6 +2983,7 @@ internal sealed class Editor :
 		UIPerformedChartConfig.Draw();
 		UIAutogenConfigs.Draw();
 		UIAutogenChart.Draw();
+		UIAutogenChartsForChartType.Draw();
 
 		UIChartPosition.Draw(
 			GetFocalPointX(),
@@ -3164,42 +3167,22 @@ internal sealed class Editor :
 				if (disabled)
 					PushDisabled();
 
-				if (ImGui.MenuItem("Configuration"))
-				{
-					p.ShowAutogenConfigsWindow = true;
-					ImGui.SetWindowFocus(UIAutogenConfigs.WindowTitle);
-				}
-
 				if (ImGui.Selectable("Autogen New Chart"))
 				{
 					ShowAutogenChartUI(ActiveChart);
 				}
 
-				if (ImGui.BeginMenu("Autogen New Set of Charts"))
+				if (ImGui.Selectable("Autogen New Set of Charts"))
 				{
-					if (ActiveSong == null || ActiveSong.GetNumCharts() == 0)
-					{
-						PushDisabled();
-						ImGui.Text("No Charts to Autogen From");
-						PopDisabled();
-					}
-					else
-					{
-						foreach (var chartType in SupportedChartTypes)
-						{
-							var charts = ActiveSong.GetCharts(chartType);
-							if (charts?.Count > 0)
-							{
-								if (ImGui.BeginMenu($"{GetPrettyEnumString(chartType)} Charts"))
-								{
-									DrawAutogenerateChartsOfTypeSelectableList(chartType);
-									ImGui.EndMenu();
-								}
-							}
-						}
-					}
+					UIAutogenChartsForChartType.Show();
+				}
 
-					ImGui.EndMenu();
+				ImGui.Separator();
+
+				if (ImGui.MenuItem("Configuration"))
+				{
+					p.ShowAutogenConfigsWindow = true;
+					ImGui.SetWindowFocus(UIAutogenConfigs.WindowTitle);
 				}
 
 				if (disabled)
@@ -3226,17 +3209,6 @@ internal sealed class Editor :
 	public void ShowAutogenChartUI(EditorChart sourceChart = null)
 	{
 		UIAutogenChart.Show(sourceChart);
-	}
-
-	public void DrawAutogenerateChartsOfTypeSelectableList(ChartType sourceChartType)
-	{
-		foreach (var chartType in SupportedChartTypes)
-		{
-			if (ImGui.Selectable($"Autogen New {GetPrettyEnumString(chartType)} Charts"))
-			{
-				// TODO
-			}
-		}
 	}
 
 	private void DrawRightClickMenu(int x, int y)
@@ -4476,6 +4448,7 @@ internal sealed class Editor :
 	{
 		// Close any UI which holds on to Song/Chart state.
 		UIAutogenChart.Close();
+		UIAutogenChartsForChartType.Close();
 
 		StopPlayback();
 		MusicManager.UnloadAsync();

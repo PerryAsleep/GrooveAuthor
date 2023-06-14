@@ -137,7 +137,10 @@ internal sealed class ActionQueue : Notifier<ActionQueue>
 	{
 		Assert(!IsDoingOrUndoing());
 
-		Logger.Info(editorAction.ToString());
+		if (editorAction.IsDoAsync())
+			Logger.Info($"Starting {editorAction}");
+		else
+			Logger.Info(editorAction.ToString());
 
 		var lastAction = Actions.GetCurrent();
 		if (lastAction != null)
@@ -198,7 +201,12 @@ internal sealed class ActionQueue : Notifier<ActionQueue>
 		if (popped != null)
 		{
 			popped.Undo();
-			Logger.Info($"Undo {popped}");
+
+			if (popped.IsUndoAsync())
+				Logger.Info($"Undoing {popped}");
+			else
+				Logger.Info($"Undo {popped}");
+
 			CurrentChangeCount = popped.GetTotalNumActionsAffectingFile() - (popped.AffectsFile() ? 1 : 0);
 			UpdateLastAction(popped);
 		}
@@ -220,7 +228,12 @@ internal sealed class ActionQueue : Notifier<ActionQueue>
 		if (repushed != null)
 		{
 			repushed.Do();
-			Logger.Info($"Redo {repushed}");
+
+			if (repushed.IsDoAsync())
+				Logger.Info($"Redoing {repushed}");
+			else
+				Logger.Info($"Redo {repushed}");
+
 			CurrentChangeCount = repushed.GetTotalNumActionsAffectingFile();
 			UpdateLastAction(repushed);
 		}

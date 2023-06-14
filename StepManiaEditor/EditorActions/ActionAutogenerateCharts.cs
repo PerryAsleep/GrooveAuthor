@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using Fumen;
 using Fumen.ChartDefinition;
@@ -8,36 +9,60 @@ using static Fumen.Converters.SMCommon;
 
 namespace StepManiaEditor;
 
-internal sealed class ActionAutogenerateChart : EditorAction
+/// <summary>
+/// Action to autogenerate one or more EditorCharts from existing EditorCharts.
+/// </summary>
+internal sealed class ActionAutogenerateCharts : EditorAction
 {
 	private readonly Editor Editor;
 	private readonly EditorSong EditorSong;
-	private readonly EditorChart SourceChart;
+	private readonly List<EditorChart> SourceCharts;
 	private readonly ChartType ChartType;
 	private readonly Config PerformedChartConfig;
 	private readonly int RandomSeed;
 	private readonly EditorChart PreviouslyActiveChart;
-	private EditorChart NewEditorChart;
-	private bool WasSuccessful;
+	private readonly List<EditorChart> NewEditorCharts;
+	private int NumComplete;
 
-	public ActionAutogenerateChart(
+	public ActionAutogenerateCharts(
 		Editor editor,
 		EditorChart sourceChart,
 		ChartType chartType,
 		Config performedChartConfig) : base(true, false)
 	{
 		Editor = editor;
-		SourceChart = sourceChart;
+		SourceCharts = new List<EditorChart> { sourceChart };
+		NewEditorCharts = new List<EditorChart>(1) { null };
 		PerformedChartConfig = performedChartConfig;
-		EditorSong = SourceChart.GetEditorSong();
+		EditorSong = sourceChart.GetEditorSong();
 		PreviouslyActiveChart = Editor.GetActiveChart();
 		ChartType = chartType;
-		WasSuccessful = false;
+		RandomSeed = new Random().Next();
+	}
+
+	public ActionAutogenerateCharts(
+		Editor editor,
+		IReadOnlyList<EditorChart> sourceCharts,
+		ChartType chartType,
+		Config performedChartConfig) : base(true, false)
+	{
+		Editor = editor;
+		SourceCharts = new List<EditorChart>(sourceCharts.Count);
+		SourceCharts.AddRange(sourceCharts);
+		NewEditorCharts = new List<EditorChart>(sourceCharts.Count);
+		for (var i = 0; i < sourceCharts.Count; i++)
+			NewEditorCharts.Add(null);
+		PerformedChartConfig = performedChartConfig;
+		EditorSong = SourceCharts[0].GetEditorSong();
+		PreviouslyActiveChart = Editor.GetActiveChart();
+		ChartType = chartType;
 		RandomSeed = new Random().Next();
 	}
 
 	public override string ToString()
 	{
+		if (SourceCharts.Count > 1)
+			return $"Autogenerate {SourceCharts.Count} {ImGuiUtils.GetPrettyEnumString(ChartType)} Charts.";
 		return $"Autogenerate {ImGuiUtils.GetPrettyEnumString(ChartType)} Chart.";
 	}
 
@@ -46,37 +71,42 @@ internal sealed class ActionAutogenerateChart : EditorAction
 		return true;
 	}
 
-	protected override void DoImplementation()
+	/// <summary>
+	/// Autogenerate a single EditorChart from the given sourceChart.
+	/// </summary>
+	/// <param name="sourceChart">EditorChart to generate from.</param>
+	/// <param name="index">The index of this EditorChart.</param>
+	private void AutogenerateSingleChart(EditorChart sourceChart, int index)
 	{
 		var errorString = $"Failed to autogenerate {ImGuiUtils.GetPrettyEnumString(ChartType)} Chart.";
 
-		if (!Editor.GetStepGraph(SourceChart.ChartType, out var inputStepGraph))
+		if (!Editor.GetStepGraph(sourceChart.ChartType, out var inputStepGraph))
 		{
-			Logger.Error($"{errorString} No {ImGuiUtils.GetPrettyEnumString(SourceChart.ChartType)} StepGraph is loaded.");
-			OnDone();
+			Logger.Error($"{errorString} No {ImGuiUtils.GetPrettyEnumString(sourceChart.ChartType)} StepGraph is loaded.");
+			OnChartAutogenComplete(index, null);
 			return;
 		}
 
 		if (!Editor.GetStepGraph(ChartType, out var outputStepGraph))
 		{
 			Logger.Error($"{errorString} No {ImGuiUtils.GetPrettyEnumString(ChartType)} StepGraph is loaded.");
-			OnDone();
+			OnChartAutogenComplete(index, null);
 			return;
 		}
 
 		if (!Editor.GetStepGraphRootNodes(ChartType, out var rootNodes))
 		{
 			Logger.Error($"{errorString} No {ImGuiUtils.GetPrettyEnumString(ChartType)} root nodes are present.");
-			OnDone();
+			OnChartAutogenComplete(index, null);
 			return;
 		}
 
 		var expressedChartConfig =
-			Preferences.Instance.PreferencesExpressedChartConfig.GetConfig(SourceChart.ExpressedChartConfig);
+			Preferences.Instance.PreferencesExpressedChartConfig.GetConfig(sourceChart.ExpressedChartConfig);
 		if (expressedChartConfig == null)
 		{
-			Logger.Error($"{errorString} No {SourceChart.ExpressedChartConfig} Expressed Chart Config defined.");
-			OnDone();
+			Logger.Error($"{errorString} No {sourceChart.ExpressedChartConfig} Expressed Chart Config defined.");
+			OnChartAutogenComplete(index, null);
 			return;
 		}
 
@@ -87,7 +117,7 @@ internal sealed class ActionAutogenerateChart : EditorAction
 			if (fallbacks == null)
 			{
 				Logger.Error($"{errorString} No StepType fallbacks are present.");
-				OnDone();
+				OnChartAutogenComplete(index, null);
 				return;
 			}
 		}
@@ -104,7 +134,7 @@ internal sealed class ActionAutogenerateChart : EditorAction
 						chart.Layers[0].Events,
 						inputStepGraph,
 						expressedChartConfig,
-						SourceChart.Rating);
+						sourceChart.Rating);
 					if (expressedChart == null)
 					{
 						throw new Exception("Could not create ExpressedChart.");
@@ -162,27 +192,55 @@ internal sealed class ActionAutogenerateChart : EditorAction
 				}
 			});
 
-			if (newEditorChart != null)
-			{
-				NewEditorChart = newEditorChart;
-				Editor.AddChart(NewEditorChart, true);
-				WasSuccessful = true;
-			}
-
-			OnDone();
+			OnChartAutogenComplete(index, newEditorChart);
 		}
 
 		// Create a Chart from the EditorChart.
-		SourceChart.SaveToChart((chart, _) => OnChartSaved(chart));
+		sourceChart.SaveToChart((chart, _) => OnChartSaved(chart));
+	}
+
+	protected override void DoImplementation()
+	{
+		// Reset the counter so we can determine when all charts are complete.
+		NumComplete = 0;
+		
+		// Kick off tasks to generate each chart.
+		var index = 0;
+		foreach (var chart in SourceCharts)
+		{
+			AutogenerateSingleChart(chart, index);
+			index++;
+		}
+	}
+
+	private void OnChartAutogenComplete(int chartIndex, EditorChart newChart)
+	{
+		// Record the new EditorChart.
+		NewEditorCharts[chartIndex] = newChart;
+		NumComplete++;
+		var lastChart = NumComplete == NewEditorCharts.Count;
+		if (newChart != null)
+		{
+			Editor.AddChart(newChart, lastChart);
+		}
+
+		// If this is the last EditorChart to have been created, mark this EditorAction complete.
+		if (lastChart)
+		{
+			OnDone();
+		}
 	}
 
 	protected override void UndoImplementation()
 	{
-		if (WasSuccessful)
+		for (var i = 0; i < NewEditorCharts.Count; i++)
 		{
-			Editor.DeleteChart(NewEditorChart, PreviouslyActiveChart);
+			if (NewEditorCharts[i] == null)
+				continue;
+			Editor.DeleteChart(NewEditorCharts[i], PreviouslyActiveChart);
+			NewEditorCharts[i] = null;
 		}
 
-		WasSuccessful = false;
+		NumComplete = 0;
 	}
 }
