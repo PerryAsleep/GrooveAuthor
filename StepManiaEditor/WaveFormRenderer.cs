@@ -357,6 +357,7 @@ public class WaveFormRenderer
 				var xZoom = ScaleXWhenZooming ? Math.Min(1.0, zoom) : 1.0;
 				var renderWidth = Width * xZoom;
 				var numChannels = MipMap.GetNumChannels();
+				var widthPerChannel = Width / numChannels;
 				var totalWidthPerChannel = (uint)(renderWidth / numChannels);
 
 				var sampleRate = MipMap.GetSampleRate();
@@ -643,8 +644,7 @@ public class WaveFormRenderer
 						// Don't draw any dense values if we are only processing one sample.
 						if (numSamplesUsedThisLoop > 1)
 						{
-							var factor = totalDistancePerChannel[channel] / numSamplesUsedThisLoop
-							                                              / totalWidthPerChannel * DenseScale;
+							var factor = totalDistancePerChannel[channel] / numSamplesUsedThisLoop / widthPerChannel * DenseScale;
 							if (factor > 1.0f)
 								factor = 1.0f;
 							var densePercentage = factor;
