@@ -124,7 +124,7 @@ internal sealed class UIScrollPreferences
 					(float)ZoomManager.MaxVariableSpeed,
 					(float)PreferencesScroll.DefaultVariablePixelsPerSecondAtDefaultBPM,
 					false,
-					$"Speed in pixels per second at default zoom level at {PreferencesScroll.DefaultVariableSpeedBPM} BPM."+
+					$"Speed in pixels per second at default zoom level at {PreferencesScroll.DefaultVariableSpeedBPM} BPM." +
 					"\nOnly used for Variable Spacing Mode.",
 					"%.3f",
 					ImGuiSliderFlags.Logarithmic);
@@ -162,6 +162,8 @@ internal sealed class UIScrollPreferences
 			+ "\n               Scroll rate modifiers are ignored."
 			+ "\n               Other rate altering events like stops and tempo changes affect the scroll rate."
 			+ "\nVariable:      Spacing is based on tempo and is affected by all rate altering events."
-			+ "\n               Equivalent to a XMOD when playing.");
+			+ "\n               Equivalent to a XMOD when playing."
+			+ "\n"
+			+ "\nThe Spacing Mode can be toggled with the S key.");
 	}
 }

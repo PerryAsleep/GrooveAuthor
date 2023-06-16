@@ -64,6 +64,23 @@ internal sealed class Editor :
 	}
 
 	/// <summary>
+	/// Modes for entering new notes.
+	/// </summary>
+	public enum NoteEntryMode
+	{
+		/// <summary>
+		/// Normal behavior.
+		/// </summary>
+		Normal,
+
+		/// <summary>
+		/// When entering a note the position will advance based on the current snap level.
+		/// This prevents entering holds, but is convenient for entering stream.
+		/// </summary>
+		AdvanceBySnap,
+	}
+
+	/// <summary>
 	/// How the WaveForm should scroll when not using ConstantTime SpacingMode.
 	/// </summary>
 	public enum WaveFormScrollMode
@@ -91,7 +108,6 @@ internal sealed class Editor :
 	}
 
 	private SnapData[] SnapLevels;
-	private int SnapIndex;
 
 	private readonly EditorMouseState EditorMouseState = new();
 	private bool CanShowRightClickPopupThisFrame;
@@ -404,21 +420,20 @@ internal sealed class Editor :
 
 	private void InitializeKeyCommandManager()
 	{
+		// @formatter:off
 		KeyCommandManager = new KeyCommandManager();
+
 		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.Z }, OnUndo, true));
-		KeyCommandManager.Register(
-			new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.Z }, OnRedo, true));
+		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.Z }, OnRedo, true));
 		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.Y }, OnRedo, true));
 		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.O }, OnOpen));
-		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.S }, OnSaveAs));
+		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.S }, OnSaveAs, false, null, true));
 		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.S }, OnSave));
 		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.N }, OnNew));
 		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.R }, OnReload));
 		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.A }, OnSelectAll));
-		KeyCommandManager.Register(
-			new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftAlt, Keys.A }, OnSelectAllAlt));
-		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.A },
-			OnSelectAllShift));
+		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftAlt, Keys.A }, OnSelectAllAlt));
+		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.A }, OnSelectAllShift));
 		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Space }, OnTogglePlayback));
 		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.P }, OnTogglePlayPreview));
 		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Escape }, OnEscape));
@@ -426,29 +441,27 @@ internal sealed class Editor :
 		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Right }, OnIncreaseSnap, true));
 		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Up }, OnMoveUp, true));
 		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Down }, OnMoveDown, true));
-		KeyCommandManager.Register(
-			new KeyCommandManager.Command(new[] { Keys.PageUp }, OnMoveToPreviousMeasure, true, null, true));
+		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.PageUp }, OnMoveToPreviousMeasure, true, null, true));
 		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.PageDown }, OnMoveToNextMeasure, true, null, true));
 		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Home }, OnMoveToChartStart, false, null, true));
 		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.End }, OnMoveToChartEnd, false, null, true));
 		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Delete }, OnDelete, false, null, true));
+		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.M }, OnToggleNoteEntryMode));
+		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.S }, OnToggleSpacingMode));
 
-		KeyCommandManager.Register(new KeyCommandManager.Command(
-			new[] { Keys.LeftControl, Keys.LeftShift, Keys.LeftAlt, Keys.Left }, OnShiftSelectedNotesLeft, true));
-		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.Left },
-			OnShiftSelectedNotesLeftAndWrap, true));
-		KeyCommandManager.Register(new KeyCommandManager.Command(
-			new[] { Keys.LeftControl, Keys.LeftShift, Keys.LeftAlt, Keys.Right }, OnShiftSelectedNotesRight, true));
-		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.Right },
-			OnShiftSelectedNotesRightAndWrap, true));
-		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.Up },
-			OnShiftSelectedNotesEarlier, true));
-		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.Down },
-			OnShiftSelectedNotesLater, true));
+		// Note Shifting
+		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.LeftAlt, Keys.Left }, OnShiftSelectedNotesLeft, true));
+		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.Left }, OnShiftSelectedNotesLeftAndWrap, true));
+		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.LeftAlt, Keys.Right }, OnShiftSelectedNotesRight, true));
+		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.Right }, OnShiftSelectedNotesRightAndWrap, true));
+		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.Up }, OnShiftSelectedNotesEarlier, true));
+		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.Down }, OnShiftSelectedNotesLater, true));
 
+		// Copy / Paste
 		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.C }, OnCopy, true));
 		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.X }, OnCut, true));
 		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.V }, OnPaste, true));
+		// @formatter:on
 
 		var arrowInputKeys = new[] { Keys.D1, Keys.D2, Keys.D3, Keys.D4, Keys.D5, Keys.D6, Keys.D7, Keys.D8, Keys.D9, Keys.D0 };
 		var index = 0;
@@ -507,6 +520,11 @@ internal sealed class Editor :
 				Rows = MaxValidDenominator / ValidDenominators[denominatorIndex],
 				Texture = ArrowGraphicManager.GetSnapIndicatorTexture(ValidDenominators[denominatorIndex]),
 			};
+		}
+
+		if (Preferences.Instance.SnapIndex < 0 || Preferences.Instance.SnapIndex >= SnapLevels.Length)
+		{
+			Preferences.Instance.SnapIndex = 0;
 		}
 	}
 
@@ -1286,7 +1304,7 @@ internal sealed class Editor :
 		}
 		else
 		{
-			if (SnapLevels[SnapIndex].Rows == 0)
+			if (SnapLevels[Preferences.Instance.SnapIndex].Rows == 0)
 			{
 				if (pScroll.SpacingMode == SpacingMode.ConstantTime)
 					Position.BeginSongTimeInterpolation(currentTime, timeDelta);
@@ -1597,7 +1615,7 @@ internal sealed class Editor :
 	{
 		if (ActiveChart == null || ArrowGraphicManager == null || Receptors == null)
 			return;
-		var snapTextureId = SnapLevels[SnapIndex].Texture;
+		var snapTextureId = SnapLevels[Preferences.Instance.SnapIndex].Texture;
 		if (string.IsNullOrEmpty(snapTextureId))
 			return;
 		var (receptorTextureId, _) = ArrowGraphicManager.GetReceptorTexture(0);
@@ -2988,7 +3006,7 @@ internal sealed class Editor :
 		UIChartPosition.Draw(
 			GetFocalPointX(),
 			Graphics.PreferredBackBufferHeight - GetChartPositionUIYPaddingFromBottom() - (int)(UIChartPosition.Height * 0.5),
-			SnapLevels[SnapIndex]);
+			SnapLevels[Preferences.Instance.SnapIndex]);
 
 		if (ShowSavePopup)
 		{
@@ -3270,7 +3288,7 @@ internal sealed class Editor :
 						OnShiftSelectedNotesLeftAndWrap();
 					}
 
-					var rows = SnapLevels[SnapIndex].Rows;
+					var rows = SnapLevels[Preferences.Instance.SnapIndex].Rows;
 					if (rows == 0)
 						rows = MaxValidDenominator;
 					var shiftAmount = $"1/{MaxValidDenominator / rows * NumBeatsPerMeasure}";
@@ -5100,7 +5118,7 @@ internal sealed class Editor :
 	{
 		if (EditEarlyOut())
 			return;
-		var rows = SnapLevels[SnapIndex].Rows;
+		var rows = SnapLevels[Preferences.Instance.SnapIndex].Rows;
 		if (rows == 0)
 			rows = MaxValidDenominator;
 		ActionQueue.Instance.Do(new ActionShiftSelectionRow(this, ActiveChart, SelectedEvents, -rows));
@@ -5110,7 +5128,7 @@ internal sealed class Editor :
 	{
 		if (EditEarlyOut())
 			return;
-		var rows = SnapLevels[SnapIndex].Rows;
+		var rows = SnapLevels[Preferences.Instance.SnapIndex].Rows;
 		if (rows == 0)
 			rows = MaxValidDenominator;
 		ActionQueue.Instance.Do(new ActionShiftSelectionRow(this, ActiveChart, SelectedEvents, rows));
@@ -5151,6 +5169,15 @@ internal sealed class Editor :
 
 	#region Chart Navigation
 
+	private void OnToggleSpacingMode()
+	{
+		var ordinal = (int)Preferences.Instance.PreferencesScroll.SpacingMode;
+		var numValues = Enum.GetNames(typeof(SpacingMode)).Length;
+		ordinal = (ordinal + 1) % numValues;
+		Preferences.Instance.PreferencesScroll.SpacingMode = (SpacingMode)ordinal;
+		Logger.Info($"Set Spacing Mode to {Preferences.Instance.PreferencesScroll.SpacingMode}");
+	}
+
 	private void OnPositionChanged()
 	{
 		// Update events being edited.
@@ -5174,26 +5201,28 @@ internal sealed class Editor :
 
 	private void OnDecreaseSnap()
 	{
-		SnapIndex--;
-		if (SnapIndex < 0)
-			SnapIndex = SnapLevels.Length - 1;
+		var p = Preferences.Instance;
+		p.SnapIndex--;
+		if (p.SnapIndex < 0)
+			p.SnapIndex = SnapLevels.Length - 1;
 
-		if (SnapLevels[SnapIndex].Rows == 0)
+		if (SnapLevels[p.SnapIndex].Rows == 0)
 			Logger.Info("Snap off");
 		else
-			Logger.Info($"Snap to 1/{MaxValidDenominator / SnapLevels[SnapIndex].Rows * 4}");
+			Logger.Info($"Snap to 1/{MaxValidDenominator / SnapLevels[p.SnapIndex].Rows * 4}");
 	}
 
 	private void OnIncreaseSnap()
 	{
-		SnapIndex++;
-		if (SnapIndex >= SnapLevels.Length)
-			SnapIndex = 0;
+		var p = Preferences.Instance;
+		p.SnapIndex++;
+		if (p.SnapIndex >= SnapLevels.Length)
+			p.SnapIndex = 0;
 
-		if (SnapLevels[SnapIndex].Rows == 0)
+		if (SnapLevels[p.SnapIndex].Rows == 0)
 			Logger.Info("Snap off");
 		else
-			Logger.Info($"Snap to 1/{MaxValidDenominator / SnapLevels[SnapIndex].Rows * 4}");
+			Logger.Info($"Snap to 1/{MaxValidDenominator / SnapLevels[p.SnapIndex].Rows * 4}");
 	}
 
 	private void OnMoveUp()
@@ -5201,7 +5230,7 @@ internal sealed class Editor :
 		if (Preferences.Instance.PreferencesScroll.StopPlaybackWhenScrolling)
 			StopPlayback();
 
-		var rows = SnapLevels[SnapIndex].Rows;
+		var rows = SnapLevels[Preferences.Instance.SnapIndex].Rows;
 		if (rows == 0)
 		{
 			OnMoveToPreviousMeasure();
@@ -5221,7 +5250,7 @@ internal sealed class Editor :
 		if (Preferences.Instance.PreferencesScroll.StopPlaybackWhenScrolling)
 			StopPlayback();
 
-		var rows = SnapLevels[SnapIndex].Rows;
+		var rows = SnapLevels[Preferences.Instance.SnapIndex].Rows;
 		if (rows == 0)
 		{
 			OnMoveToNextMeasure();
@@ -5284,6 +5313,15 @@ internal sealed class Editor :
 
 	#region Lane Input
 
+	private void OnToggleNoteEntryMode()
+	{
+		var ordinal = (int)Preferences.Instance.NoteEntryMode;
+		var numValues = Enum.GetNames(typeof(NoteEntryMode)).Length;
+		ordinal = (ordinal + 1) % numValues;
+		Preferences.Instance.NoteEntryMode = (NoteEntryMode)ordinal;
+		Logger.Info($"Set Note Entry Mode to {Preferences.Instance.NoteEntryMode}");
+	}
+
 	private void OnShiftDown()
 	{
 		if (LaneEditStates == null)
@@ -5329,20 +5367,25 @@ internal sealed class Editor :
 
 		// TODO: If playing we should take sync into account and adjust the position.
 
+		var p = Preferences.Instance;
 		var row = Position.GetNearestRow();
-		if (SnapLevels[SnapIndex].Rows != 0)
+		if (SnapLevels[p.SnapIndex].Rows != 0)
 		{
-			var snappedRow = row / SnapLevels[SnapIndex].Rows * SnapLevels[SnapIndex].Rows;
-			if (row - snappedRow >= SnapLevels[SnapIndex].Rows * 0.5)
-				snappedRow += SnapLevels[SnapIndex].Rows;
+			var snappedRow = row / SnapLevels[p.SnapIndex].Rows * SnapLevels[p.SnapIndex].Rows;
+			if (row - snappedRow >= SnapLevels[p.SnapIndex].Rows * 0.5)
+				snappedRow += SnapLevels[p.SnapIndex].Rows;
 			row = snappedRow;
 		}
 
 		// If there is a tap, mine, or hold start at this location, delete it now.
 		// Deleting immediately feels more responsive than deleting on the input up event.
+		var deletedNote = false;
 		var existingEvent = ActiveChart.EditorEvents.FindNoteAt(row, lane, true);
 		if (existingEvent != null && existingEvent.GetRow() == row)
+		{
+			deletedNote = true;
 			LaneEditStates[lane].StartEditingWithDelete(row, new ActionDeleteEditorEvents(existingEvent));
+		}
 
 		SetLaneInputDownNote(lane, row);
 
@@ -5350,6 +5393,16 @@ internal sealed class Editor :
 		if (Playing)
 		{
 			OnLaneInputUp(lane);
+		}
+		else
+		{
+			// If the NoteEntryMode is set to advance by the snap value and the snap is set, then advance.
+			// We do not want to do this while playing.
+			if (p.NoteEntryMode == NoteEntryMode.AdvanceBySnap && p.SnapIndex != 0 && !deletedNote)
+			{
+				OnLaneInputUp(lane);
+				OnMoveDown();
+			}
 		}
 	}
 

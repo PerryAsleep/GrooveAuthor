@@ -33,16 +33,16 @@ internal sealed class ImGuiLayoutUtils
 
 	private static ImFontPtr ImGuiFont;
 
-	private static readonly float CheckBoxWidth = UiScaled(20);
-	private static readonly float FileBrowseXWidth = UiScaled(20);
-	private static readonly float FileBrowseBrowseWidth = UiScaled(50);
-	private static readonly float FileBrowseAutoWidth = UiScaled(50);
-	private static readonly float DisplayTempoEnumWidth = UiScaled(120);
-	private static readonly float RangeToWidth = UiScaled(14);
-	private static readonly float SliderResetWidth = UiScaled(50);
-	private static readonly float ConfigFromListEditWidth = UiScaled(40);
-	private static readonly float ConfigFromListViewAllWidth = UiScaled(60);
-	private static readonly float ConfigFromListNewWidth = UiScaled(30);
+	public static readonly float CheckBoxWidth = UiScaled(20);
+	public static readonly float FileBrowseXWidth = UiScaled(20);
+	public static readonly float FileBrowseBrowseWidth = UiScaled(50);
+	public static readonly float FileBrowseAutoWidth = UiScaled(50);
+	public static readonly float DisplayTempoEnumWidth = UiScaled(120);
+	public static readonly float RangeToWidth = UiScaled(14);
+	public static readonly float SliderResetWidth = UiScaled(50);
+	public static readonly float ConfigFromListEditWidth = UiScaled(40);
+	public static readonly float ConfigFromListViewAllWidth = UiScaled(60);
+	public static readonly float ConfigFromListNewWidth = UiScaled(30);
 
 	public static void SetFont(ImFontPtr font)
 	{

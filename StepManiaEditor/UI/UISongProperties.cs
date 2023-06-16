@@ -171,7 +171,7 @@ internal sealed class UISongProperties
 					EditorPreviewRegionEvent.PreviewDescription,
 					0.0001f, "%.6f seconds", 0.0);
 				if (ImGuiLayoutUtils.DrawRowButton(null, Editor.IsPlayingPreview() ? "Stop Preview" : "Play Preview",
-					    "Toggle Preview playback. Playback can be toggled with P. Playback can be cancelled with Esc."))
+					    "Toggle Preview playback. Playback can be toggled with the P key."))
 					Editor.OnTogglePlayPreview();
 
 				ImGuiLayoutUtils.DrawRowDragDoubleWithTwoButtons(true, "End Hint", EditorSong, nameof(EditorSong.LastSecondHint),

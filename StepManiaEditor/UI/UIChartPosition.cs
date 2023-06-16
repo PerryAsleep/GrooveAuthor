@@ -4,6 +4,7 @@ using Fumen.Converters;
 using ImGuiNET;
 using static StepManiaEditor.ImGuiUtils;
 using static Fumen.FumenExtensions;
+using static StepManiaEditor.Editor;
 
 namespace StepManiaEditor;
 
@@ -21,6 +22,7 @@ internal sealed class UIChartPosition
 	public static readonly int HalfWidth = Width / 2;
 	public static readonly int HalfHeight = Height / 2;
 	private static readonly int MiscTableTitleColumnWidth = UiScaled(40);
+	private static readonly int MiscTableSnapWidth = UiScaled(32);
 	private static readonly int TableNameColWidth = UiScaled(37);
 	private static readonly int TablePositionColWidth = UiScaled(73);
 	private static readonly int TableSongTimeColWidth = UiScaled(104);
@@ -44,7 +46,7 @@ internal sealed class UIChartPosition
 	/// <param name="x">Desired X position of the center of the window.</param>
 	/// <param name="y">Desired Y position of the center of the window.</param>
 	/// <param name="snapData">SnapData.</param>
-	public void Draw(int x, int y, Editor.SnapData snapData)
+	public void Draw(int x, int y, SnapData snapData)
 	{
 		ImGui.SetNextWindowPos(new Vector2(x - HalfWidth, y - HalfHeight));
 		ImGui.SetNextWindowSize(new Vector2(Width, Height));
@@ -90,22 +92,37 @@ internal sealed class UIChartPosition
 
 				// Snap level.
 				ImGuiLayoutUtils.DrawRowTitleAndAdvanceColumn("Snap");
-				ImGui.SetNextItemWidth(ImGuiLayoutUtils.DrawHelp(
-					"Current note type being snapped to.\nUse the left and right arrow keys to change the snap.",
-					ImGui.GetContentRegionAvail().X));
+				ImGuiLayoutUtils.DrawHelp(
+					"Snap:     Current note type being snapped to." +
+					"\n          Use the left and right arrow keys to change the snap." +
+					"\nAutomove: If checked, when entering a new note the editor position will automatically" +
+					"\n          advance by the current Snap level." +
+					"\n          Automove can also be toggled with the M key.",
+					ImGui.GetContentRegionAvail().X);
 				if (snapData.Rows == 0)
 				{
 					ImGui.PushStyleColor(ImGuiCol.Text, ColorTextWhite);
-					ImGui.Text("None");
+					Text("None", MiscTableSnapWidth);
 				}
 				else
 				{
 					ImGui.PushStyleColor(ImGuiCol.Text,
 						ArrowGraphicManager.GetArrowColorForSubdivision(SMCommon.MaxValidDenominator / snapData.Rows));
-					ImGui.Text($"1/{SMCommon.MaxValidDenominator / snapData.Rows * SMCommon.NumBeatsPerMeasure}");
+					Text($"1/{SMCommon.MaxValidDenominator / snapData.Rows * SMCommon.NumBeatsPerMeasure}", MiscTableSnapWidth);
 				}
 
 				ImGui.PopStyleColor();
+
+				// Checkbox for NoteEntryMode.
+				ImGui.SetNextItemWidth(ImGuiLayoutUtils.CheckBoxWidth);
+				ImGui.SameLine();
+				var autoAdvance = Preferences.Instance.NoteEntryMode == NoteEntryMode.AdvanceBySnap;
+				ImGui.Checkbox("", ref autoAdvance);
+				Preferences.Instance.NoteEntryMode = autoAdvance ? NoteEntryMode.AdvanceBySnap : NoteEntryMode.Normal;
+
+				// Text for NoteEntryMode.
+				ImGui.SameLine();
+				ImGui.Text("Automove");
 
 				ImGuiLayoutUtils.EndTable();
 			}

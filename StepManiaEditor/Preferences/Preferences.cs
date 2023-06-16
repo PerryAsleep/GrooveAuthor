@@ -93,7 +93,7 @@ internal sealed class Preferences
 	[JsonInclude] public PreferencesExpressedChartConfig PreferencesExpressedChartConfig = new();
 
 	// PerformedChart preferences
-	[JsonInclude] public PreferencesPerformedChartConfig PreferencesPerformedChartConfig = new ();
+	[JsonInclude] public PreferencesPerformedChartConfig PreferencesPerformedChartConfig = new();
 
 	// Log preferences
 	[JsonInclude] public bool ShowLogWindow = true;
@@ -108,6 +108,8 @@ internal sealed class Preferences
 	[JsonInclude] public bool ShowChartListWindow;
 	[JsonInclude] public string OpenFileDialogInitialDirectory = @"C:\Games\StepMania 5\Songs\";
 	[JsonInclude] public List<SavedSongInformation> RecentFiles = new();
+	[JsonInclude] public Editor.NoteEntryMode NoteEntryMode = Editor.NoteEntryMode.Normal;
+	[JsonInclude] public int SnapIndex;
 
 	// Debug
 	[JsonInclude] public double DebugSongTime;
