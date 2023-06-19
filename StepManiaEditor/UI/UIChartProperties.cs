@@ -14,6 +14,13 @@ internal sealed class UIChartProperties
 
 	private static readonly int TitleColumnWidth = UiScaled(100);
 
+	private readonly ImGuiArrowWeightsWidget ArrowWeightsWidget;
+
+	public UIChartProperties(Editor editor)
+	{
+		ArrowWeightsWidget = new ImGuiArrowWeightsWidget(editor);
+	}
+
 	public void Draw(EditorChart editorChart)
 	{
 		if (!Preferences.Instance.ShowChartPropertiesWindow)
@@ -82,6 +89,26 @@ internal sealed class UIChartProperties
 					"(Editor Only) Expressed Chart Configuration."
 					+ "\nThis configuration is used by the editor to parse the Chart and interpret its steps."
 					+ "\nThis interpretation is used for autogenerating patterns and other Charts.");
+				ImGuiLayoutUtils.EndTable();
+			}
+
+			ImGui.Separator();
+			if (ImGuiLayoutUtils.BeginTable("ChartDetailsTable", TitleColumnWidth))
+			{
+				ImGuiLayoutUtils.DrawTitle("Distribution", "Distribution of steps across lanes.");
+				if (editorChart != null)
+				{
+					var width = ImGui.GetContentRegionAvail().X;
+					if (ImGui.BeginTable("DistributionInnerTable", 1, ImGuiTableFlags.None, new Vector2(width, 0), width))
+					{
+						ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100.0f);
+						ImGui.TableNextRow();
+						ImGui.TableSetColumnIndex(0);
+						ArrowWeightsWidget.DrawChartStepCounts(editorChart);
+						ImGui.EndTable();
+					}
+				}
+
 				ImGuiLayoutUtils.EndTable();
 			}
 

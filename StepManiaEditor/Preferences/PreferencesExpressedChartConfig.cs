@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json.Serialization;
+using static System.Diagnostics.Debug;
 
 namespace StepManiaEditor;
 
@@ -232,6 +233,15 @@ internal sealed class PreferencesExpressedChartConfig : Notifier<PreferencesExpr
 		}
 
 		return configName;
+	}
+
+	public void AddConfig(NamedConfig config)
+	{
+		Assert(IsNewConfigNameValid(config.Name));
+		if (!IsNewConfigNameValid(config.Name))
+			return;
+		Configs[config.Name] = config;
+		UpdateSortedConfigNames();
 	}
 
 	public NamedConfig AddConfig(string name)

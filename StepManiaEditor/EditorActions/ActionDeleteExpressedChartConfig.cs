@@ -2,16 +2,21 @@
 
 namespace StepManiaEditor;
 
+/// <summary>
+/// Action to delete an ExpressedChart configuration.
+/// </summary>
 internal sealed class ActionDeleteExpressedChartConfig : EditorAction
 {
 	private readonly Editor Editor;
 	private readonly string ConfigName;
+	private readonly PreferencesExpressedChartConfig.NamedConfig NamedConfig;
 	private readonly List<EditorChart> ChartsWithDeletedConfig;
 
 	public ActionDeleteExpressedChartConfig(Editor editor, string configName) : base(false, false)
 	{
 		Editor = editor;
 		ConfigName = configName;
+		NamedConfig = Preferences.Instance.PreferencesExpressedChartConfig.GetNamedConfig(ConfigName);
 		ChartsWithDeletedConfig = new List<EditorChart>();
 
 		var song = Editor.GetActiveSong();
@@ -58,7 +63,7 @@ internal sealed class ActionDeleteExpressedChartConfig : EditorAction
 
 	protected override void UndoImplementation()
 	{
-		Preferences.Instance.PreferencesExpressedChartConfig.AddConfig(ConfigName);
+		Preferences.Instance.PreferencesExpressedChartConfig.AddConfig(NamedConfig);
 
 		foreach (var chart in ChartsWithDeletedConfig)
 		{

@@ -6,6 +6,7 @@ using Fumen;
 using ImGuiNET;
 using StepManiaLibrary.PerformedChart;
 using static Fumen.Converters.SMCommon;
+using static System.Diagnostics.Debug;
 
 namespace StepManiaEditor;
 
@@ -70,7 +71,9 @@ internal sealed class PreferencesPerformedChartConfig : Notifier<PreferencesPerf
 
 		// Default values.
 		public const double DefaultFacingMaxInwardPercentage = 1.0;
+		public const double DefaultFacingInwardPercentageCutoff = 0.34;
 		public const double DefaultFacingMaxOutwardPercentage = 1.0;
+		public const double DefaultFacingOutwardPercentageCutoff = 0.34;
 		public const double DefaultStepTighteningTravelSpeedMinTimeSeconds = 0.176471;
 		public const double DefaultStepTighteningTravelSpeedMaxTimeSeconds = 0.24;
 		public const double DefaultStepTighteningTravelDistanceMin = 2.0;
@@ -120,7 +123,7 @@ internal sealed class PreferencesPerformedChartConfig : Notifier<PreferencesPerf
 			if (weights[laneIndex] == weight)
 				return;
 			weights[laneIndex] = weight;
-			Config.RefreshArrowWeightsNormalized();
+			Config.RefreshArrowWeightsNormalized(chartTypeString);
 		}
 
 		/// <summary>
@@ -158,7 +161,9 @@ internal sealed class PreferencesPerformedChartConfig : Notifier<PreferencesPerf
 		public bool IsUsingDefaults()
 		{
 			if (Config.Facing.MaxInwardPercentage.DoubleEquals(DefaultFacingMaxInwardPercentage)
+			    && Config.Facing.InwardPercentageCutoff.DoubleEquals(DefaultFacingInwardPercentageCutoff)
 			    && Config.Facing.MaxOutwardPercentage.DoubleEquals(DefaultFacingMaxOutwardPercentage)
+			    && Config.Facing.OutwardPercentageCutoff.DoubleEquals(DefaultFacingOutwardPercentageCutoff)
 			    && Config.StepTightening.TravelSpeedMinTimeSeconds.DoubleEquals(DefaultStepTighteningTravelSpeedMinTimeSeconds)
 			    && Config.StepTightening.TravelSpeedMaxTimeSeconds.DoubleEquals(DefaultStepTighteningTravelSpeedMaxTimeSeconds)
 			    && Config.StepTightening.TravelDistanceMin.DoubleEquals(DefaultStepTighteningTravelDistanceMin)
@@ -246,6 +251,8 @@ internal sealed class PreferencesPerformedChartConfig : Notifier<PreferencesPerf
 			// Configure the NamedConfig will name update functions.
 			kvp.Value.SetNameUpdateFunctions(IsNewConfigNameValid, OnConfigNameUpdated);
 
+			kvp.Value.Config.Init();
+
 			// Validate the Config. If this fails, store it for removal.
 			if (!kvp.Value.Config.Validate(kvp.Key))
 			{
@@ -276,7 +283,9 @@ internal sealed class PreferencesPerformedChartConfig : Notifier<PreferencesPerf
 	private void InitializeConfigWithDefaultValues(Config config)
 	{
 		config.Facing.MaxInwardPercentage = NamedConfig.DefaultFacingMaxInwardPercentage;
+		config.Facing.InwardPercentageCutoff = NamedConfig.DefaultFacingInwardPercentageCutoff;
 		config.Facing.MaxOutwardPercentage = NamedConfig.DefaultFacingMaxOutwardPercentage;
+		config.Facing.OutwardPercentageCutoff = NamedConfig.DefaultFacingOutwardPercentageCutoff;
 		config.StepTightening.TravelSpeedMinTimeSeconds = NamedConfig.DefaultStepTighteningTravelSpeedMinTimeSeconds;
 		config.StepTightening.TravelSpeedMaxTimeSeconds = NamedConfig.DefaultStepTighteningTravelSpeedMaxTimeSeconds;
 		config.StepTightening.TravelDistanceMin = NamedConfig.DefaultStepTighteningTravelDistanceMin;
@@ -313,6 +322,15 @@ internal sealed class PreferencesPerformedChartConfig : Notifier<PreferencesPerf
 		}
 
 		return configName;
+	}
+
+	public void AddConfig(NamedConfig config)
+	{
+		Assert(IsNewConfigNameValid(config.Name));
+		if (!IsNewConfigNameValid(config.Name))
+			return;
+		Configs[config.Name] = config;
+		UpdateSortedConfigNames();
 	}
 
 	public NamedConfig AddConfig(string name)
@@ -456,7 +474,9 @@ internal sealed class ActionRestorePerformedChartConfigDefaults : EditorAction
 	private readonly PreferencesPerformedChartConfig.NamedConfig Config;
 
 	private readonly double PreviousFacingMaxInwardPercentage;
+	private readonly double PreviousFacingInwardPercentageCutoff;
 	private readonly double PreviousFacingMaxOutwardPercentage;
+	private readonly double PreviousFacingOutwardPercentageCutoff;
 	private readonly double PreviousStepTighteningTravelSpeedMinTimeSeconds;
 	private readonly double PreviousStepTighteningTravelSpeedMaxTimeSeconds;
 	private readonly double PreviousStepTighteningTravelDistanceMin;
@@ -473,7 +493,9 @@ internal sealed class ActionRestorePerformedChartConfigDefaults : EditorAction
 		Config = config;
 
 		PreviousFacingMaxInwardPercentage = Config.Config.Facing.MaxInwardPercentage;
+		PreviousFacingInwardPercentageCutoff = Config.Config.Facing.InwardPercentageCutoff;
 		PreviousFacingMaxOutwardPercentage = Config.Config.Facing.MaxOutwardPercentage;
+		PreviousFacingOutwardPercentageCutoff = Config.Config.Facing.OutwardPercentageCutoff;
 		PreviousStepTighteningTravelSpeedMinTimeSeconds = Config.Config.StepTightening.TravelSpeedMinTimeSeconds;
 		PreviousStepTighteningTravelSpeedMaxTimeSeconds = Config.Config.StepTightening.TravelSpeedMaxTimeSeconds;
 		PreviousStepTighteningTravelDistanceMin = Config.Config.StepTightening.TravelDistanceMin;
@@ -505,8 +527,14 @@ internal sealed class ActionRestorePerformedChartConfigDefaults : EditorAction
 
 	protected override void DoImplementation()
 	{
-		Config.Config.Facing.MaxInwardPercentage = PreferencesPerformedChartConfig.NamedConfig.DefaultFacingMaxInwardPercentage;
-		Config.Config.Facing.MaxOutwardPercentage = PreferencesPerformedChartConfig.NamedConfig.DefaultFacingMaxOutwardPercentage;
+		Config.Config.Facing.MaxInwardPercentage =
+			PreferencesPerformedChartConfig.NamedConfig.DefaultFacingMaxInwardPercentage;
+		Config.Config.Facing.InwardPercentageCutoff =
+			PreferencesPerformedChartConfig.NamedConfig.DefaultFacingInwardPercentageCutoff;
+		Config.Config.Facing.MaxOutwardPercentage =
+			PreferencesPerformedChartConfig.NamedConfig.DefaultFacingMaxOutwardPercentage;
+		Config.Config.Facing.OutwardPercentageCutoff =
+			PreferencesPerformedChartConfig.NamedConfig.DefaultFacingOutwardPercentageCutoff;
 		Config.Config.StepTightening.TravelSpeedMinTimeSeconds =
 			PreferencesPerformedChartConfig.NamedConfig.DefaultStepTighteningTravelSpeedMinTimeSeconds;
 		Config.Config.StepTightening.TravelSpeedMaxTimeSeconds =
@@ -523,7 +551,8 @@ internal sealed class ActionRestorePerformedChartConfigDefaults : EditorAction
 			PreferencesPerformedChartConfig.NamedConfig.DefaultLateralTighteningRelativeNPS;
 		Config.Config.LateralTightening.AbsoluteNPS =
 			PreferencesPerformedChartConfig.NamedConfig.DefaultLateralTighteningAbsoluteNPS;
-		Config.Config.LateralTightening.Speed = PreferencesPerformedChartConfig.NamedConfig.DefaultLateralTighteningSpeed;
+		Config.Config.LateralTightening.Speed =
+			PreferencesPerformedChartConfig.NamedConfig.DefaultLateralTighteningSpeed;
 
 		Config.Config.ArrowWeights = new Dictionary<string, List<int>>();
 		foreach (var (defaultChartType, defaultWeights) in PreferencesPerformedChartConfig.NamedConfig.DefaultArrowWeights)
@@ -538,7 +567,9 @@ internal sealed class ActionRestorePerformedChartConfigDefaults : EditorAction
 	protected override void UndoImplementation()
 	{
 		Config.Config.Facing.MaxInwardPercentage = PreviousFacingMaxInwardPercentage;
+		Config.Config.Facing.InwardPercentageCutoff = PreviousFacingInwardPercentageCutoff;
 		Config.Config.Facing.MaxOutwardPercentage = PreviousFacingMaxOutwardPercentage;
+		Config.Config.Facing.OutwardPercentageCutoff = PreviousFacingOutwardPercentageCutoff;
 		Config.Config.StepTightening.TravelSpeedMinTimeSeconds = PreviousStepTighteningTravelSpeedMinTimeSeconds;
 		Config.Config.StepTightening.TravelSpeedMaxTimeSeconds = PreviousStepTighteningTravelSpeedMaxTimeSeconds;
 		Config.Config.StepTightening.TravelDistanceMin = PreviousStepTighteningTravelDistanceMin;

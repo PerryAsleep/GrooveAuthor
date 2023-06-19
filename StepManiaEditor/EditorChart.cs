@@ -175,6 +175,16 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	/// </summary>
 	public readonly int NumPlayers;
 
+	/// <summary>
+	/// Total step counts by lane for this EditorChart.
+	/// </summary>
+	private readonly int[] StepCountsByLane;
+
+	/// <summary>
+	/// Total step count for this EditorChart.
+	/// </summary>
+	private int StepCount;
+
 	#region Properties
 
 	public ChartType ChartType => ChartTypeInternal;
@@ -431,6 +441,11 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		DisplayTempoFromChart = !string.IsNullOrEmpty(chart.Tempo);
 		DisplayTempo.FromString(chart.Tempo);
 
+		StepCount = 0;
+		StepCountsByLane = new int[NumInputs];
+		for (var a = 0; a < NumInputs; a++)
+			StepCountsByLane[a] = 0;
+
 		DeserializeCustomChartData(chart);
 
 		// TODO: I wonder if there is an optimization to not do all the tree parsing for inactive charts.
@@ -461,6 +476,11 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		DisplayTempoFromChart = false;
 
 		Rating = DefaultRating;
+
+		StepCount = 0;
+		StepCountsByLane = new int[NumInputs];
+		for (var a = 0; a < NumInputs; a++)
+			StepCountsByLane[a] = 0;
 
 		var tempChart = new Chart();
 		var tempLayer = new Layer();
@@ -538,6 +558,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 			if (editorEvent != null)
 				editorEvents.Insert(editorEvent);
+
+			UpdateCachedDataForAddedEvent(editorEvent);
 
 			switch (editorEvent)
 			{
@@ -1464,6 +1486,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		var rateDirty = false;
 		foreach (var editorEvent in editorEvents)
 		{
+			UpdateCachedDataForDeletedEvent(editorEvent);
 			var deleted = EditorEvents.Delete(editorEvent);
 			Assert(deleted);
 
@@ -1581,7 +1604,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		foreach (var editorEvent in editorEvents)
 		{
 			var rateDirty = false;
-
+			UpdateCachedDataForAddedEvent(editorEvent);
 			EditorEvents.Insert(editorEvent);
 			if (editorEvent.IsMiscEvent())
 				MiscEvents.Insert(editorEvent);
@@ -1776,6 +1799,38 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	}
 
 	#endregion Adding and Deleting EditorEvents
+
+	#region Cached Data
+
+	private void UpdateCachedDataForAddedEvent(EditorEvent editorEvent)
+	{
+		if (editorEvent is EditorTapNoteEvent or EditorHoldNoteEvent)
+		{
+			StepCount++;
+			StepCountsByLane[editorEvent.GetLane()]++;
+		}
+	}
+
+	private void UpdateCachedDataForDeletedEvent(EditorEvent editorEvent)
+	{
+		if (editorEvent is EditorTapNoteEvent or EditorHoldNoteEvent)
+		{
+			StepCount--;
+			StepCountsByLane[editorEvent.GetLane()]--;
+		}
+	}
+
+	public int GetStepCount()
+	{
+		return StepCount;
+	}
+
+	public int[] GetStepCountByLane()
+	{
+		return StepCountsByLane;
+	}
+
+	#endregion Cached Data
 
 	#region Misc
 

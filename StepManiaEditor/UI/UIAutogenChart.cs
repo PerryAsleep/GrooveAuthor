@@ -1,6 +1,5 @@
 ﻿using System.Numerics;
 using ImGuiNET;
-using static Fumen.Converters.SMCommon;
 using static StepManiaEditor.ImGuiUtils;
 
 namespace StepManiaEditor;
@@ -27,16 +26,6 @@ internal sealed class UIAutogenChart
 	/// </summary>
 	private EditorChart SourceChart;
 
-	/// <summary>
-	/// The ChartType to use for the destination chart for autogeneration.
-	/// </summary>
-	private ChartType DestinationChartType = ChartType.dance_single;
-
-	/// <summary>
-	/// The name of the PerformedChartConfig to use for autogeneration.
-	/// </summary>
-	private string PerformedChartConfigName;
-
 	public UIAutogenChart(Editor editor)
 	{
 		Editor = editor;
@@ -49,8 +38,6 @@ internal sealed class UIAutogenChart
 	public void Show(EditorChart sourceChart)
 	{
 		SourceChart = sourceChart;
-		DestinationChartType = SourceChart?.ChartType ?? ChartType.dance_single;
-		PerformedChartConfigName = PreferencesPerformedChartConfig.DefaultConfigName;
 		Showing = true;
 	}
 
@@ -61,8 +48,6 @@ internal sealed class UIAutogenChart
 	{
 		Showing = false;
 		SourceChart = null;
-		DestinationChartType = ChartType.dance_single;
-		PerformedChartConfigName = null;
 	}
 
 	/// <summary>
@@ -167,15 +152,17 @@ internal sealed class UIAutogenChart
 					ImGuiLayoutUtils.DrawTitleAndText(title, "No available Charts.", help);
 
 				// Destination ChartType.
-				ImGuiLayoutUtils.DrawRowEnum("New Chart Type", "AutogenChartChartType", ref DestinationChartType,
+				ImGuiLayoutUtils.DrawRowEnum("New Chart Type", "AutogenChartChartType",
+					ref Preferences.Instance.LastSelectedAutogenChartType,
 					Editor.SupportedChartTypes,
 					"Type of Chart to generate.");
 
 				// Performed Chart Config.
 				var configValues = Preferences.Instance.PreferencesPerformedChartConfig.GetSortedConfigNames();
 				ImGuiLayoutUtils.DrawSelectableConfigFromList("Config", "AutogenChartPerformedChartConfigName",
-					ref PerformedChartConfigName, configValues,
-					() => PreferencesPerformedChartConfig.ShowEditUI(PerformedChartConfigName),
+					ref Preferences.Instance.LastSelectedAutogenPerformedChartConfig, configValues,
+					() => PreferencesPerformedChartConfig.ShowEditUI(Preferences.Instance
+						.LastSelectedAutogenPerformedChartConfig),
 					() =>
 					{
 						Preferences.Instance.ShowAutogenConfigsWindow = true;
@@ -190,15 +177,17 @@ internal sealed class UIAutogenChart
 			ImGui.Separator();
 
 			var performedChartConfig =
-				Preferences.Instance.PreferencesPerformedChartConfig.GetNamedConfig(PerformedChartConfigName);
+				Preferences.Instance.PreferencesPerformedChartConfig.GetNamedConfig(Preferences.Instance
+					.LastSelectedAutogenPerformedChartConfig);
 			var canStart = SourceChart != null && performedChartConfig != null;
 
 			// Confirm button
 			if (!canStart)
 				PushDisabled();
-			if (ImGui.Button($"Autogen {GetPrettyEnumString(DestinationChartType)} Chart"))
+			if (ImGui.Button($"Autogen {GetPrettyEnumString(Preferences.Instance.LastSelectedAutogenChartType)} Chart"))
 			{
-				ActionQueue.Instance.Do(new ActionAutogenerateCharts(Editor, SourceChart, DestinationChartType,
+				ActionQueue.Instance.Do(new ActionAutogenerateCharts(Editor, SourceChart,
+					Preferences.Instance.LastSelectedAutogenChartType,
 					performedChartConfig!.Config));
 				Close();
 			}

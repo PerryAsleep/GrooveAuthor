@@ -22,18 +22,11 @@ internal sealed class UIAutogenChartsForChartType
 	/// This state is tracked internally and not persisted.
 	/// </summary>
 	private bool Showing;
+
 	/// <summary>
 	/// The ChartType to use for sourcing charts for autogeneration.
 	/// </summary>
 	private ChartType? SourceChartType;
-	/// <summary>
-	/// The ChartType to use for the destination chart for autogeneration.
-	/// </summary>
-	private ChartType DestinationChartType = ChartType.dance_single;
-	/// <summary>
-	/// The name of the PerformedChartConfig to use for autogeneration.
-	/// </summary>
-	private string PerformedChartConfigName;
 
 	public UIAutogenChartsForChartType(Editor editor)
 	{
@@ -46,8 +39,6 @@ internal sealed class UIAutogenChartsForChartType
 	public void Show()
 	{
 		SourceChartType = null;
-		DestinationChartType = SourceChartType ?? ChartType.dance_single;
-		PerformedChartConfigName = PreferencesPerformedChartConfig.DefaultConfigName;
 		Showing = true;
 	}
 
@@ -58,8 +49,6 @@ internal sealed class UIAutogenChartsForChartType
 	{
 		Showing = false;
 		SourceChartType = null;
-		DestinationChartType = ChartType.dance_single;
-		PerformedChartConfigName = null;
 	}
 
 	/// <summary>
@@ -110,7 +99,8 @@ internal sealed class UIAutogenChartsForChartType
 				if (SourceChartType != null)
 				{
 					var sourceType = SourceChartType.Value;
-					ImGuiLayoutUtils.DrawRowEnum(sourceTypeTitle, "AutogenChartsSourceChartType", ref sourceType, Editor.SupportedChartTypes,
+					ImGuiLayoutUtils.DrawRowEnum(sourceTypeTitle, "AutogenChartsSourceChartType", ref sourceType,
+						Editor.SupportedChartTypes,
 						sourceTypeHelp);
 					SourceChartType = sourceType;
 				}
@@ -122,14 +112,16 @@ internal sealed class UIAutogenChartsForChartType
 				}
 
 				// Destination ChartType.
-				ImGuiLayoutUtils.DrawRowEnum("New Type", "AutogenChartsDestinationChartType", ref DestinationChartType, Editor.SupportedChartTypes,
+				ImGuiLayoutUtils.DrawRowEnum("New Type", "AutogenChartsDestinationChartType",
+					ref Preferences.Instance.LastSelectedAutogenChartType, Editor.SupportedChartTypes,
 					"Type of Charts to generate.");
 
 				// Performed Chart Config.
 				var configValues = Preferences.Instance.PreferencesPerformedChartConfig.GetSortedConfigNames();
 				ImGuiLayoutUtils.DrawSelectableConfigFromList("Config", "AutogenChartsPerformedChartConfigName",
-					ref PerformedChartConfigName, configValues,
-					() => PreferencesPerformedChartConfig.ShowEditUI(PerformedChartConfigName),
+					ref Preferences.Instance.LastSelectedAutogenPerformedChartConfig, configValues,
+					() => PreferencesPerformedChartConfig.ShowEditUI(Preferences.Instance
+						.LastSelectedAutogenPerformedChartConfig),
 					() =>
 					{
 						Preferences.Instance.ShowAutogenConfigsWindow = true;
@@ -144,7 +136,8 @@ internal sealed class UIAutogenChartsForChartType
 			ImGui.Separator();
 
 			var performedChartConfig =
-				Preferences.Instance.PreferencesPerformedChartConfig.GetNamedConfig(PerformedChartConfigName);
+				Preferences.Instance.PreferencesPerformedChartConfig.GetNamedConfig(Preferences.Instance
+					.LastSelectedAutogenPerformedChartConfig);
 			var canStart = SourceChartType != null && performedChartConfig != null;
 
 			var numCharts = 0;
@@ -155,17 +148,20 @@ internal sealed class UIAutogenChartsForChartType
 				numCharts = sourceCharts?.Count ?? 0;
 			}
 
-			canStart &= (numCharts > 0);
+			canStart &= numCharts > 0;
 
 			string buttonText;
 			switch (numCharts)
 			{
-				case 0: buttonText = "Autogen";
+				case 0:
+					buttonText = "Autogen";
 					break;
-				case 1: buttonText = $"Autogen 1 {GetPrettyEnumString(DestinationChartType)} Chart";
+				case 1:
+					buttonText = $"Autogen 1 {GetPrettyEnumString(Preferences.Instance.LastSelectedAutogenChartType)} Chart";
 					break;
 				default:
-					buttonText = $"Autogen {numCharts} {GetPrettyEnumString(DestinationChartType)} Charts";
+					buttonText =
+						$"Autogen {numCharts} {GetPrettyEnumString(Preferences.Instance.LastSelectedAutogenChartType)} Charts";
 					break;
 			}
 
@@ -174,7 +170,8 @@ internal sealed class UIAutogenChartsForChartType
 				PushDisabled();
 			if (ImGui.Button(buttonText))
 			{
-				ActionQueue.Instance.Do(new ActionAutogenerateCharts(Editor, sourceCharts, DestinationChartType, performedChartConfig!.Config));
+				ActionQueue.Instance.Do(new ActionAutogenerateCharts(Editor, sourceCharts,
+					Preferences.Instance.LastSelectedAutogenChartType, performedChartConfig!.Config));
 				Close();
 			}
 

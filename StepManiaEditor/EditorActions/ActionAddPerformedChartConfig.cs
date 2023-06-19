@@ -1,5 +1,8 @@
 ﻿namespace StepManiaEditor;
 
+/// <summary>
+/// Action to add a PerformedChart configuration.
+/// </summary>
 internal sealed class ActionAddPerformedChartConfig : EditorAction
 {
 	private readonly string ConfigName;

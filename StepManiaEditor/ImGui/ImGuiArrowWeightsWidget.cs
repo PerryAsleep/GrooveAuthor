@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Numerics;
 using Fumen;
 using ImGuiNET;
@@ -8,7 +9,10 @@ using static StepManiaEditor.ImGuiUtils;
 
 namespace StepManiaEditor;
 
-internal class ImGuiArrowWeightsWidget
+/// <summary>
+/// Class for drawing an ImGui widget that shows arrow weights with vertical sliders and int drag controls per lane.
+/// </summary>
+internal sealed class ImGuiArrowWeightsWidget
 {
 	private static readonly float IconWidth = UiScaled(16);
 	private static readonly float IconHeight = UiScaled(16);
@@ -21,16 +25,14 @@ internal class ImGuiArrowWeightsWidget
 	private static readonly Vector2 IconPadding = new((LaneWidth - IconWidth) * 0.5f, (LaneWidth - IconWidth) * 0.5f);
 
 	private readonly Editor Editor;
-	private readonly ChartType ChartType;
 
 	/// <summary>
 	/// Cached weight value for undo / redo.
 	/// </summary>
 	private int CachedValue;
 
-	public ImGuiArrowWeightsWidget(ChartType chartType, Editor editor)
+	public ImGuiArrowWeightsWidget(Editor editor)
 	{
-		ChartType = chartType;
 		Editor = editor;
 	}
 
@@ -40,11 +42,19 @@ internal class ImGuiArrowWeightsWidget
 		return numColumns * LaneWidth + (numColumns - 1) * LaneSpacingX;
 	}
 
-	public void Draw(NamedConfig config)
+	/// <summary>
+	/// Helper method for drawing.
+	/// </summary>
+	/// <param name="weights">Weight values to use for the vertical sliders.</param>
+	/// <param name="values">Numeric values to use for the int drag controls.</param>
+	/// <param name="chartType">ChartType to use for drawing.</param>
+	/// <param name="configForUpdates">
+	/// Optional NamedConfig to use for updates for enabled controls. This is expected to be null when drawing
+	/// an EditorChart's step counts.
+	/// </param>
+	private void Draw(IReadOnlyList<int> weights, IReadOnlyList<int> values, ChartType chartType, NamedConfig configForUpdates)
 	{
-		var chartTypeString = ChartTypeString(ChartType);
-		if (!config.Config.ArrowWeights.TryGetValue(chartTypeString, out var weights))
-			return;
+		var chartTypeString = ChartTypeString(chartType);
 
 		// Set tighter spacing.
 		var originalItemSpacingX = ImGui.GetStyle().ItemSpacing.X;
@@ -84,7 +94,7 @@ internal class ImGuiArrowWeightsWidget
 			// Draw the slider
 			ImGui.VSliderInt($"##{chartTypeString}v{index}", ArrowWeightWidgetSliderSize, ref weight, 0, 100, "");
 			weight = Math.Clamp(weight, 0, 100);
-			config.SetArrowWeight(ChartType, index, weight);
+			configForUpdates?.SetArrowWeight(chartType, index, weight);
 
 			if (ImGui.IsItemActivated())
 			{
@@ -94,7 +104,7 @@ internal class ImGuiArrowWeightsWidget
 			if (ImGui.IsItemDeactivatedAfterEdit() && CachedValue != weight)
 			{
 				ActionQueue.Instance.Do(
-					new ActionSetPerformedChartConfigArrowWeight(config, ChartType, index, weight, CachedValue));
+					new ActionSetPerformedChartConfigArrowWeight(configForUpdates, chartType, index, weight, CachedValue));
 			}
 
 			if (index != numArrows - 1)
@@ -106,22 +116,22 @@ internal class ImGuiArrowWeightsWidget
 		// Drag int control.
 		for (var index = 0; index < numArrows; index++)
 		{
-			var weightBefore = weights[index];
-			var weight = weights[index];
+			var valueBefore = values[index];
+			var value = values[index];
 			ImGui.SetNextItemWidth(LaneWidth);
-			ImGui.DragInt($"##{chartTypeString}{index}", ref weight, 1, 0, 100);
-			weight = Math.Clamp(weight, 0, 100);
-			config.SetArrowWeight(ChartType, index, weight);
+			ImGui.DragInt($"##{chartTypeString}{index}", ref value, 1, 0, 100);
+			value = Math.Clamp(value, 0, 100);
+			configForUpdates?.SetArrowWeight(chartType, index, value);
 
 			if (ImGui.IsItemActivated())
 			{
-				CachedValue = weightBefore;
+				CachedValue = valueBefore;
 			}
 
-			if (ImGui.IsItemDeactivatedAfterEdit() && CachedValue != weight)
+			if (ImGui.IsItemDeactivatedAfterEdit() && CachedValue != value)
 			{
 				ActionQueue.Instance.Do(
-					new ActionSetPerformedChartConfigArrowWeight(config, ChartType, index, weight, CachedValue));
+					new ActionSetPerformedChartConfigArrowWeight(configForUpdates, chartType, index, value, CachedValue));
 			}
 
 			if (index != numArrows - 1)
@@ -132,7 +142,7 @@ internal class ImGuiArrowWeightsWidget
 		var textureAtlas = Editor.GetTextureAtlas();
 		var imGuiTextureAtlasTexture = Editor.GetTextureAtlasImGuiTexture();
 		var (atlasW, atlasH) = textureAtlas.GetDimensions();
-		var icons = ArrowGraphicManager.GetIcons(ChartType);
+		var icons = ArrowGraphicManager.GetIcons(chartType);
 		for (var index = 0; index < numArrows; index++)
 		{
 			ImGui.Dummy(IconPadding);
@@ -158,5 +168,63 @@ internal class ImGuiArrowWeightsWidget
 		// Restore spacing.
 		ImGui.GetStyle().ItemSpacing.X = originalItemSpacingX;
 		ImGui.GetStyle().ItemSpacing.Y = originalItemSpacingY;
+	}
+
+	/// <summary>
+	/// Draw the widget representing weights for the step counts of the given EditorChart.
+	/// These values are not editable and the slider values are normalized to the highest
+	/// value to make the visualization more pronounced.
+	/// </summary>
+	/// <param name="editorChart">EditorChart to use for drawing.</param>
+	public void DrawChartStepCounts(EditorChart editorChart)
+	{
+		var stepCountsByLane = editorChart.GetStepCountByLane();
+		var totalStepCount = editorChart.GetStepCount();
+		var maxStepCountByLane = 0;
+		for (var a = 0; a < stepCountsByLane.Length; a++)
+		{
+			maxStepCountByLane = Math.Max(maxStepCountByLane, stepCountsByLane[a]);
+		}
+
+		// Set up normalized weights and values (out of 100 percent).
+		var weights = new int[stepCountsByLane.Length];
+		var values = new int[stepCountsByLane.Length];
+		for (var i = 0; i < stepCountsByLane.Length; i++)
+		{
+			if (maxStepCountByLane == 0)
+			{
+				weights[i] = 0;
+				values[i] = 0;
+			}
+			else
+			{
+				weights[i] = (int)Math.Round(100.0f * stepCountsByLane[i] / maxStepCountByLane);
+				values[i] = (int)Math.Round(100.0f * stepCountsByLane[i] / totalStepCount);
+			}
+
+			weights[i] = MathUtils.Clamp(weights[i], 0, 100);
+			values[i] = MathUtils.Clamp(values[i], 0, 100);
+		}
+
+		PushDisabled();
+		Draw(weights, values, editorChart.ChartType, null);
+		PopDisabled();
+	}
+
+	/// <summary>
+	/// Draw the widget representing weights from a PerformedChart NamedConfig.
+	/// These values are typically editable and use vertical slider values that
+	/// are not normalized to the highest value so that they can be slid to larger
+	/// values.
+	/// </summary>
+	/// <param name="config">NamedConfig to use for drawing.</param>
+	/// <param name="chartType">ChartType to use for drawing.</param>
+	public void DrawConfig(NamedConfig config, ChartType chartType)
+	{
+		var chartTypeString = ChartTypeString(chartType);
+		if (!config.Config.ArrowWeights.TryGetValue(chartTypeString, out var weights))
+			return;
+		// The weights and values are the same for this config.
+		Draw(weights, weights, chartType, config);
 	}
 }

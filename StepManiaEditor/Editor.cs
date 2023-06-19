@@ -38,6 +38,7 @@ internal sealed class Editor :
 	Fumen.IObserver<EditorChart>,
 	Fumen.IObserver<PreferencesOptions>,
 	Fumen.IObserver<PreferencesExpressedChartConfig>,
+	Fumen.IObserver<PreferencesPerformedChartConfig>,
 	Fumen.IObserver<ActionQueue>
 {
 	/// <summary>
@@ -629,7 +630,7 @@ internal sealed class Editor :
 	private void InitializeUIHelpers()
 	{
 		UISongProperties = new UISongProperties(this, GraphicsDevice, ImGuiRenderer);
-		UIChartProperties = new UIChartProperties();
+		UIChartProperties = new UIChartProperties(this);
 		UIChartList = new UIChartList(this);
 		UIWaveFormPreferences = new UIWaveFormPreferences(MusicManager);
 		UIScrollPreferences = new UIScrollPreferences();
@@ -6107,6 +6108,17 @@ internal sealed class Editor :
 		}
 	}
 
+	public void OnNotify(string eventId, PreferencesPerformedChartConfig options, object payload)
+	{
+		switch (eventId)
+		{
+			case PreferencesPerformedChartConfig.NotificationConfigRename:
+				var payloadNames = (Tuple<string, string>)payload;
+				OnPerformedChartConfigNameChanged(payloadNames.Item1, payloadNames.Item2);
+				break;
+		}
+	}
+
 	public void OnNotify(string eventId, ActionQueue actionQueue, object payload)
 	{
 		switch (eventId)
@@ -6132,6 +6144,12 @@ internal sealed class Editor :
 					chart.ExpressedChartConfig = newName;
 			}
 		}
+	}
+
+	private void OnPerformedChartConfigNameChanged(string oldName, string newName)
+	{
+		if (Preferences.Instance.LastSelectedAutogenPerformedChartConfig == oldName)
+			Preferences.Instance.LastSelectedAutogenPerformedChartConfig = newName;
 	}
 
 	private void OnEscape()

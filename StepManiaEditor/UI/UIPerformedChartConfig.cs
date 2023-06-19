@@ -16,6 +16,7 @@ internal sealed class UIPerformedChartConfig
 	private static readonly int TitleColumnWidth = UiScaled(240);
 
 	public const string WindowTitle = "Performed Chart Config";
+
 	public const string HelpText = "Performed Chart Configs are settings used by the Editor to generate Charts and patterns."
 	                               + " When generating steps, all possible paths are considered. Costs are assigned to paths"
 	                               + " based on Performed Chart Config values, and the path with the lowest cost is chosen."
@@ -29,9 +30,9 @@ internal sealed class UIPerformedChartConfig
 	{
 		Editor = editor;
 		ArrowWeightsWidgets = new List<ImGuiArrowWeightsWidget>(Editor.SupportedChartTypes.Length);
-		foreach (var chartType in Editor.SupportedChartTypes)
+		foreach (var _ in Editor.SupportedChartTypes)
 		{
-			ArrowWeightsWidgets.Add(new ImGuiArrowWeightsWidget(chartType, Editor));
+			ArrowWeightsWidgets.Add(new ImGuiArrowWeightsWidget(Editor));
 		}
 	}
 
@@ -125,9 +126,21 @@ internal sealed class UIPerformedChartConfig
 					nameof(Config.Facing.MaxInwardPercentage), false,
 					"Maximum percentage of steps which are allowed to face the body inward.",
 					0.0001f, "%.6f", 0.0, 1.0);
+				ImGuiLayoutUtils.DrawRowDragDouble(true, "Inward Cutoff Percent", config.Facing,
+					nameof(Config.Facing.InwardPercentageCutoff), false,
+					"Value to use for comparing arrow positions, representing a percentage of the total width of the pads."
+					+ "\nFor example if this value is 0.5, then the arrows must be on the outer half of the pads."
+					+ "\nIf it is 0.33, they must be on the outer third of the pads, etc.",
+					0.0001f, "%.6f", 0.0, 1.0);
 				ImGuiLayoutUtils.DrawRowDragDouble(true, "Max Outward Percent", config.Facing,
 					nameof(Config.Facing.MaxOutwardPercentage), false,
 					"Maximum percentage of steps which are allowed to face the body outward.",
+					0.0001f, "%.6f", 0.0, 1.0);
+				ImGuiLayoutUtils.DrawRowDragDouble(true, "Outward Cutoff Percent", config.Facing,
+					nameof(Config.Facing.OutwardPercentageCutoff), false,
+					"Value to use for comparing arrow positions, representing a percentage of the total width of the pads."
+					+ "\nFor example if this value is 0.5, then the arrows must be on the outer half of the pads."
+					+ "\nIf it is 0.33, they must be on the outer third of the pads, etc.",
 					0.0001f, "%.6f", 0.0, 1.0);
 				ImGuiLayoutUtils.EndTable();
 			}
@@ -162,7 +175,7 @@ internal sealed class UIPerformedChartConfig
 							ImGui.Text(GetPrettyEnumString(chartType));
 
 							ImGui.TableSetColumnIndex(1);
-							ArrowWeightsWidgets[index].Draw(namedConfig);
+							ArrowWeightsWidgets[index].DrawConfig(namedConfig, chartType);
 							index++;
 						}
 
