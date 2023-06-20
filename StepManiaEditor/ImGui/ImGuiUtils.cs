@@ -5,6 +5,7 @@ using System.Text;
 using ImGuiNET;
 using Microsoft.Xna.Framework.Graphics;
 using System.Collections.Generic;
+using Fumen.Converters;
 using Microsoft.Win32;
 using MonoGameExtensions;
 
@@ -38,8 +39,20 @@ internal sealed class ImGuiUtils
 		public string[] EnumStrings;
 	}
 
+	public static readonly string[] ValidNoteTypeStrings;
+
 	private static readonly Dictionary<string, EnumByAllowedValueCacheData> EnumDataCacheByCustomKey = new();
 	private static readonly List<bool> EnabledStack = new();
+
+	static ImGuiUtils()
+	{
+		var numStrings = SMCommon.ValidDenominators.Length;
+		ValidNoteTypeStrings = new string[numStrings];
+		for (var i = 0; i < numStrings; i++)
+		{
+			ValidNoteTypeStrings[i] = $"1/{SMCommon.ValidDenominators[i] * SMCommon.NumBeatsPerMeasure}";
+		}
+	}
 
 	[DllImport("msvcrt.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl)]
 	private static extern int _snwprintf_s([MarshalAs(UnmanagedType.LPWStr)] StringBuilder sb, IntPtr sizeOfBuffer, IntPtr count,
@@ -135,6 +148,11 @@ internal sealed class ImGuiUtils
 		var result = ImGui.Combo(name, ref intValue, values, values.Length);
 		currentValue = values[intValue];
 		return result;
+	}
+
+	public static bool ComboFromArray(string name, ref int currentIndex, string[] values)
+	{
+		return ImGui.Combo(name, ref currentIndex, values, values.Length);
 	}
 
 	/// <summary>

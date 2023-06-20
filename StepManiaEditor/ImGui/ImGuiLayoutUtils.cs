@@ -43,6 +43,9 @@ internal sealed class ImGuiLayoutUtils
 	public static readonly float ConfigFromListEditWidth = UiScaled(40);
 	public static readonly float ConfigFromListViewAllWidth = UiScaled(60);
 	public static readonly float ConfigFromListNewWidth = UiScaled(30);
+	public static readonly float NoteTypeComboWidth = UiScaled(60);
+	public static readonly float NotesFromTextWidth = UiScaled(60);
+	public static readonly float BpmTextWidth = UiScaled(20);
 
 	public static void SetFont(ImFontPtr font)
 	{
@@ -644,6 +647,40 @@ internal sealed class ImGuiLayoutUtils
 		}
 
 		return DrawLiveEditValue<int>(undoable, title, o, fieldName, width, affectsFile, Func, IntCompare, GetDragHelpText(help));
+	}
+
+	public static void DrawDragIntRange(
+		bool undoable,
+		string title,
+		object o,
+		string beginFieldName,
+		string endFieldName,
+		bool affectsFile,
+		float width,
+		string help = null,
+		float speed = 1.0f,
+		string format = "%i",
+		int min = int.MinValue,
+		int max = int.MaxValue)
+	{
+		var remainingWidth = DrawHelp(GetDragHelpText(help), width);
+		var controlWidth = Math.Max(0.0f, 0.5f * (remainingWidth - ImGui.GetStyle().ItemSpacing.X * 2.0f - RangeToWidth));
+
+		var currentBeginValue = GetValueFromFieldOrProperty<int>(o, beginFieldName);
+		var currentEndValue = GetValueFromFieldOrProperty<int>(o, endFieldName);
+		var maxForBegin = Math.Min(max, currentEndValue);
+		var minForEnd = Math.Max(min, currentBeginValue);
+
+		// Controls for the int values.
+		ImGui.SameLine();
+		DrawDragInt(undoable, title, o, beginFieldName, controlWidth, affectsFile, "", speed, format, min, maxForBegin);
+
+		// "to" text
+		ImGui.SameLine();
+		Text("to", RangeToWidth);
+
+		ImGui.SameLine();
+		DrawDragInt(undoable, title, o, endFieldName, controlWidth, affectsFile, "", speed, format, minForEnd, max);
 	}
 
 	#endregion Drag Int
@@ -1529,6 +1566,72 @@ internal sealed class ImGuiLayoutUtils
 	}
 
 	#endregion Display Tempo
+
+	#region Speed Tightening
+
+	public static void DrawRowPerformedChartConfigSpeedTightening(
+		PreferencesPerformedChartConfig.NamedConfig config,
+		string title,
+		string help)
+	{
+		DrawRowTitleAndAdvanceColumn(title);
+
+		var width = DrawHelp(help, ImGui.GetContentRegionAvail().X);
+		var spacing = ImGui.GetStyle().ItemSpacing.X;
+		var rangeWidth = width - (CheckBoxWidth + NoteTypeComboWidth + NotesFromTextWidth + BpmTextWidth + spacing * 5);
+
+		// Enabled checkbox.
+		DrawCheckbox(true, title + "check", config, nameof(PreferencesPerformedChartConfig.NamedConfig.TravelSpeedEnabled),
+			CheckBoxWidth, false);
+		var enabled = config.TravelSpeedEnabled;
+		if (!enabled)
+			PushDisabled();
+
+		// Note Type.
+		var index = config.TravelSpeedNoteTypeDenominatorIndex;
+		ImGui.SameLine();
+		ImGui.SetNextItemWidth(NoteTypeComboWidth);
+		var newIndex = index;
+		var ret = ComboFromArray("", ref newIndex, ValidNoteTypeStrings);
+		if (ret)
+		{
+			if (newIndex != index)
+			{
+				ActionQueue.Instance.Do(
+					new ActionSetObjectFieldOrPropertyValue<int>(config,
+						nameof(PreferencesPerformedChartConfig.NamedConfig.TravelSpeedNoteTypeDenominatorIndex), newIndex,
+						false));
+			}
+		}
+
+		// From text.
+		ImGui.SameLine();
+		Text("notes from", NotesFromTextWidth);
+
+		// BPM Range.
+		ImGui.SameLine();
+		DrawDragIntRange(
+			true,
+			"",
+			config,
+			nameof(PreferencesPerformedChartConfig.NamedConfig.TravelSpeedMinBPM),
+			nameof(PreferencesPerformedChartConfig.NamedConfig.TravelSpeedMaxBPM),
+			false,
+			rangeWidth,
+			null,
+			1F,
+			"%i",
+			1, 1000);
+
+		// BPM text.
+		ImGui.SameLine();
+		Text("BPM", BpmTextWidth);
+
+		if (!enabled)
+			PopDisabled();
+	}
+
+	#endregion Speed Tightening
 
 	#region Misc Editor Events
 

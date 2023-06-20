@@ -85,12 +85,11 @@ internal sealed class UIPerformedChartConfig
 					+ "\nDistance in panel lengths."
 					+ "\nSet both values to 0.0 to disable distance tightening.", 0.01f, "%.6f", 0.0, 10.0);
 
-				ImGuiLayoutUtils.DrawRowDragDoubleRange(true, "Speed", config.StepTightening,
-					nameof(StepTighteningConfig.TravelSpeedMinTimeSeconds),
-					nameof(StepTighteningConfig.TravelSpeedMaxTimeSeconds), false,
-					"When limiting travel speed, the range for tightening."
-					+ "\nTime in seconds between steps for one foot."
-					+ "\nSet both values to 0.0 to disable speed tightening.", 0.01f, "%.6f", 0.0, 10.0);
+				ImGuiLayoutUtils.DrawRowPerformedChartConfigSpeedTightening(namedConfig, "Speed",
+					"When limiting travel speed, the step speed range over which to ramp up tightening costs."
+					+ "\nAny speed at or above the minimum speed specified by the this range will be subject to tightening."
+					+ "\nIn other words, the tightening does not stop above the final specified tempo."
+					+ "\nThe speed range specified by these values is exclusive.");
 
 				ImGuiLayoutUtils.EndTable();
 			}

@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text.Json.Serialization;
 using Fumen;
 using ImGuiNET;
+using StepManiaLibrary;
 using StepManiaLibrary.PerformedChart;
 using static Fumen.Converters.SMCommon;
 using static System.Diagnostics.Debug;
@@ -66,7 +67,62 @@ internal sealed class PreferencesPerformedChartConfig : Notifier<PreferencesPerf
 		}
 
 		private string NameInternal;
+
 		[JsonInclude] public string Description;
+
+
+		[JsonInclude]
+		public int TravelSpeedNoteTypeDenominatorIndex
+		{
+			get => TravelSpeedNoteTypeDenominatorIndexInternal;
+			set
+			{
+				TravelSpeedNoteTypeDenominatorIndexInternal = MathUtils.Clamp(value, 0, ValidDenominators.Length - 1);
+				UpdateStepTighteningSpeed();
+			}
+		}
+
+		private int TravelSpeedNoteTypeDenominatorIndexInternal;
+
+		[JsonInclude]
+		public int TravelSpeedMinBPM
+		{
+			get => TravelSpeedMinBPMInternal;
+			set
+			{
+				TravelSpeedMinBPMInternal = value;
+				UpdateStepTighteningSpeed();
+			}
+		}
+
+		private int TravelSpeedMinBPMInternal = 1;
+
+		[JsonInclude]
+		public int TravelSpeedMaxBPM
+		{
+			get => TravelSpeedMaxBPMInternal;
+			set
+			{
+				TravelSpeedMaxBPMInternal = value;
+				UpdateStepTighteningSpeed();
+			}
+		}
+
+		private int TravelSpeedMaxBPMInternal = 1;
+
+		[JsonInclude]
+		public bool TravelSpeedEnabled
+		{
+			get => TravelSpeedEnabledInternal;
+			set
+			{
+				TravelSpeedEnabledInternal = value;
+				UpdateStepTighteningSpeed();
+			}
+		}
+
+		private bool TravelSpeedEnabledInternal;
+
 		[JsonInclude] public Config Config = new();
 
 		// Default values.
@@ -74,9 +130,11 @@ internal sealed class PreferencesPerformedChartConfig : Notifier<PreferencesPerf
 		public const double DefaultFacingInwardPercentageCutoff = 0.34;
 		public const double DefaultFacingMaxOutwardPercentage = 1.0;
 		public const double DefaultFacingOutwardPercentageCutoff = 0.34;
-		public const double DefaultStepTighteningTravelSpeedMinTimeSeconds = 0.176471;
-		public const double DefaultStepTighteningTravelSpeedMaxTimeSeconds = 0.24;
-		public const double DefaultStepTighteningTravelDistanceMin = 2.0;
+		public const bool DefaultTravelSpeedEnabled = true;
+		public const int DefaultStepTighteningTravelSpeedNoteDenominatorIndex = 3;
+		public const int DefaultStepTighteningTravelSpeedMinBPM = 125;
+		public const int DefaultStepTighteningTravelSpeedMaxBPM = 170;
+		public const double DefaultStepTighteningTravelDistanceMin = 2.5;
 		public const double DefaultStepTighteningTravelDistanceMax = 3.0;
 		public const double DefaultStepTighteningStretchDistanceMin = 3.0;
 		public const double DefaultStepTighteningStretchDistanceMax = 4.0;
@@ -126,6 +184,21 @@ internal sealed class PreferencesPerformedChartConfig : Notifier<PreferencesPerf
 			Config.RefreshArrowWeightsNormalized(chartTypeString);
 		}
 
+		private void UpdateStepTighteningSpeed()
+		{
+			if (TravelSpeedEnabled)
+			{
+				var notesPerBeat = ValidDenominators[TravelSpeedNoteTypeDenominatorIndex];
+				Config.StepTightening.TravelSpeedMinTimeSeconds = 60.0 / (notesPerBeat * TravelSpeedMaxBPM) * Constants.NumFeet;
+				Config.StepTightening.TravelSpeedMaxTimeSeconds = 60.0 / (notesPerBeat * TravelSpeedMinBPM) * Constants.NumFeet;
+			}
+			else
+			{
+				Config.StepTightening.TravelSpeedMinTimeSeconds = 0.0;
+				Config.StepTightening.TravelSpeedMaxTimeSeconds = 0.0;
+			}
+		}
+
 		/// <summary>
 		/// Gets the maximum number of weights for any ChartType in this PerformedChart Config.
 		/// </summary>
@@ -160,25 +233,28 @@ internal sealed class PreferencesPerformedChartConfig : Notifier<PreferencesPerf
 
 		public bool IsUsingDefaults()
 		{
-			if (Config.Facing.MaxInwardPercentage.DoubleEquals(DefaultFacingMaxInwardPercentage)
-			    && Config.Facing.InwardPercentageCutoff.DoubleEquals(DefaultFacingInwardPercentageCutoff)
-			    && Config.Facing.MaxOutwardPercentage.DoubleEquals(DefaultFacingMaxOutwardPercentage)
-			    && Config.Facing.OutwardPercentageCutoff.DoubleEquals(DefaultFacingOutwardPercentageCutoff)
-			    && Config.StepTightening.TravelSpeedMinTimeSeconds.DoubleEquals(DefaultStepTighteningTravelSpeedMinTimeSeconds)
-			    && Config.StepTightening.TravelSpeedMaxTimeSeconds.DoubleEquals(DefaultStepTighteningTravelSpeedMaxTimeSeconds)
-			    && Config.StepTightening.TravelDistanceMin.DoubleEquals(DefaultStepTighteningTravelDistanceMin)
-			    && Config.StepTightening.TravelDistanceMax.DoubleEquals(DefaultStepTighteningTravelDistanceMax)
-			    && Config.StepTightening.StretchDistanceMin.DoubleEquals(DefaultStepTighteningStretchDistanceMin)
-			    && Config.StepTightening.StretchDistanceMax.DoubleEquals(DefaultStepTighteningStretchDistanceMax)
-			    && Config.LateralTightening.RelativeNPS.DoubleEquals(DefaultLateralTighteningRelativeNPS)
-			    && Config.LateralTightening.AbsoluteNPS.DoubleEquals(DefaultLateralTighteningAbsoluteNPS)
-			    && Config.LateralTightening.Speed.DoubleEquals(DefaultLateralTighteningSpeed))
+			if (!(Config.Facing.MaxInwardPercentage.DoubleEquals(DefaultFacingMaxInwardPercentage)
+			      && Config.Facing.InwardPercentageCutoff.DoubleEquals(DefaultFacingInwardPercentageCutoff)
+			      && Config.Facing.MaxOutwardPercentage.DoubleEquals(DefaultFacingMaxOutwardPercentage)
+			      && Config.Facing.OutwardPercentageCutoff.DoubleEquals(DefaultFacingOutwardPercentageCutoff)
+			      && TravelSpeedEnabled == DefaultTravelSpeedEnabled
+			      && TravelSpeedNoteTypeDenominatorIndex == DefaultStepTighteningTravelSpeedNoteDenominatorIndex
+			      && TravelSpeedMinBPM == DefaultStepTighteningTravelSpeedMinBPM
+			      && TravelSpeedMaxBPM == DefaultStepTighteningTravelSpeedMaxBPM
+			      && Config.StepTightening.TravelDistanceMin.DoubleEquals(DefaultStepTighteningTravelDistanceMin)
+			      && Config.StepTightening.TravelDistanceMax.DoubleEquals(DefaultStepTighteningTravelDistanceMax)
+			      && Config.StepTightening.StretchDistanceMin.DoubleEquals(DefaultStepTighteningStretchDistanceMin)
+			      && Config.StepTightening.StretchDistanceMax.DoubleEquals(DefaultStepTighteningStretchDistanceMax)
+			      && Config.LateralTightening.RelativeNPS.DoubleEquals(DefaultLateralTighteningRelativeNPS)
+			      && Config.LateralTightening.AbsoluteNPS.DoubleEquals(DefaultLateralTighteningAbsoluteNPS)
+			      && Config.LateralTightening.Speed.DoubleEquals(DefaultLateralTighteningSpeed)))
 			{
-				return true;
+				return false;
 			}
 
 			if (Config.ArrowWeights.Count != DefaultArrowWeights.Count)
 				return false;
+
 			foreach (var (chartType, weights) in Config.ArrowWeights)
 			{
 				if (!DefaultArrowWeights.TryGetValue(chartType, out var defaultWeights))
@@ -237,12 +313,12 @@ internal sealed class PreferencesPerformedChartConfig : Notifier<PreferencesPerf
 		Configs.Remove(DefaultConfigName);
 		var defaultConfig = AddConfig(DefaultConfigName);
 		defaultConfig.Description = "Default balanced settings";
-		InitializeConfigWithDefaultValues(defaultConfig.Config);
+		InitializeConfigWithDefaultValues(defaultConfig);
 
 		Configs.Remove(DefaultStaminaConfigName);
 		var defaultAggressiveConfig = AddConfig(DefaultStaminaConfigName);
 		defaultAggressiveConfig.Description = "Default settings with more aggressive step tightening";
-		defaultAggressiveConfig.Config.StepTightening.TravelSpeedMaxTimeSeconds = 0.303;
+		defaultAggressiveConfig.TravelSpeedMinBPM = 99;
 
 		// Ensure every NamedConfig is configured and valid.
 		var invalidConfigNames = new List<string>();
@@ -280,29 +356,31 @@ internal sealed class PreferencesPerformedChartConfig : Notifier<PreferencesPerf
 		UpdateSortedConfigNames();
 	}
 
-	private void InitializeConfigWithDefaultValues(Config config)
+	private void InitializeConfigWithDefaultValues(NamedConfig config)
 	{
-		config.Facing.MaxInwardPercentage = NamedConfig.DefaultFacingMaxInwardPercentage;
-		config.Facing.InwardPercentageCutoff = NamedConfig.DefaultFacingInwardPercentageCutoff;
-		config.Facing.MaxOutwardPercentage = NamedConfig.DefaultFacingMaxOutwardPercentage;
-		config.Facing.OutwardPercentageCutoff = NamedConfig.DefaultFacingOutwardPercentageCutoff;
-		config.StepTightening.TravelSpeedMinTimeSeconds = NamedConfig.DefaultStepTighteningTravelSpeedMinTimeSeconds;
-		config.StepTightening.TravelSpeedMaxTimeSeconds = NamedConfig.DefaultStepTighteningTravelSpeedMaxTimeSeconds;
-		config.StepTightening.TravelDistanceMin = NamedConfig.DefaultStepTighteningTravelDistanceMin;
-		config.StepTightening.TravelDistanceMax = NamedConfig.DefaultStepTighteningTravelDistanceMax;
-		config.StepTightening.StretchDistanceMin = NamedConfig.DefaultStepTighteningStretchDistanceMin;
-		config.StepTightening.StretchDistanceMax = NamedConfig.DefaultStepTighteningStretchDistanceMax;
-		config.LateralTightening.RelativeNPS = NamedConfig.DefaultLateralTighteningRelativeNPS;
-		config.LateralTightening.AbsoluteNPS = NamedConfig.DefaultLateralTighteningAbsoluteNPS;
-		config.LateralTightening.Speed = NamedConfig.DefaultLateralTighteningSpeed;
+		config.Config.Facing.MaxInwardPercentage = NamedConfig.DefaultFacingMaxInwardPercentage;
+		config.Config.Facing.InwardPercentageCutoff = NamedConfig.DefaultFacingInwardPercentageCutoff;
+		config.Config.Facing.MaxOutwardPercentage = NamedConfig.DefaultFacingMaxOutwardPercentage;
+		config.Config.Facing.OutwardPercentageCutoff = NamedConfig.DefaultFacingOutwardPercentageCutoff;
+		config.TravelSpeedEnabled = NamedConfig.DefaultTravelSpeedEnabled;
+		config.TravelSpeedNoteTypeDenominatorIndex = NamedConfig.DefaultStepTighteningTravelSpeedNoteDenominatorIndex;
+		config.TravelSpeedMinBPM = NamedConfig.DefaultStepTighteningTravelSpeedMinBPM;
+		config.TravelSpeedMaxBPM = NamedConfig.DefaultStepTighteningTravelSpeedMaxBPM;
+		config.Config.StepTightening.TravelDistanceMin = NamedConfig.DefaultStepTighteningTravelDistanceMin;
+		config.Config.StepTightening.TravelDistanceMax = NamedConfig.DefaultStepTighteningTravelDistanceMax;
+		config.Config.StepTightening.StretchDistanceMin = NamedConfig.DefaultStepTighteningStretchDistanceMin;
+		config.Config.StepTightening.StretchDistanceMax = NamedConfig.DefaultStepTighteningStretchDistanceMax;
+		config.Config.LateralTightening.RelativeNPS = NamedConfig.DefaultLateralTighteningRelativeNPS;
+		config.Config.LateralTightening.AbsoluteNPS = NamedConfig.DefaultLateralTighteningAbsoluteNPS;
+		config.Config.LateralTightening.Speed = NamedConfig.DefaultLateralTighteningSpeed;
 
-		config.ArrowWeights = new Dictionary<string, List<int>>();
+		config.Config.ArrowWeights = new Dictionary<string, List<int>>();
 		foreach (var (chartType, weights) in NamedConfig.DefaultArrowWeights)
 		{
 			var defaultWeights = new List<int>(weights.Count);
 			foreach (var weight in weights)
 				defaultWeights.Add(weight);
-			config.ArrowWeights[chartType] = defaultWeights;
+			config.Config.ArrowWeights[chartType] = defaultWeights;
 		}
 	}
 
@@ -347,7 +425,7 @@ internal sealed class PreferencesPerformedChartConfig : Notifier<PreferencesPerf
 		config.SetNameUpdateFunctions(IsNewConfigNameValid, OnConfigNameUpdated);
 		config.Name = name;
 		if (useDefaultValues)
-			InitializeConfigWithDefaultValues(config.Config);
+			InitializeConfigWithDefaultValues(config);
 		Configs[name] = config;
 		config.Config.Init();
 
@@ -477,8 +555,10 @@ internal sealed class ActionRestorePerformedChartConfigDefaults : EditorAction
 	private readonly double PreviousFacingInwardPercentageCutoff;
 	private readonly double PreviousFacingMaxOutwardPercentage;
 	private readonly double PreviousFacingOutwardPercentageCutoff;
-	private readonly double PreviousStepTighteningTravelSpeedMinTimeSeconds;
-	private readonly double PreviousStepTighteningTravelSpeedMaxTimeSeconds;
+	private readonly bool PreviousTravelSpeedEnabled;
+	private readonly int PreviousTravelSpeedNoteTypeDenominatorIndex;
+	private readonly int PreviousTravelSpeedMinBPM;
+	private readonly int PreviousTravelSpeedMaxBPM;
 	private readonly double PreviousStepTighteningTravelDistanceMin;
 	private readonly double PreviousStepTighteningTravelDistanceMax;
 	private readonly double PreviousStepTighteningStretchDistanceMin;
@@ -496,8 +576,10 @@ internal sealed class ActionRestorePerformedChartConfigDefaults : EditorAction
 		PreviousFacingInwardPercentageCutoff = Config.Config.Facing.InwardPercentageCutoff;
 		PreviousFacingMaxOutwardPercentage = Config.Config.Facing.MaxOutwardPercentage;
 		PreviousFacingOutwardPercentageCutoff = Config.Config.Facing.OutwardPercentageCutoff;
-		PreviousStepTighteningTravelSpeedMinTimeSeconds = Config.Config.StepTightening.TravelSpeedMinTimeSeconds;
-		PreviousStepTighteningTravelSpeedMaxTimeSeconds = Config.Config.StepTightening.TravelSpeedMaxTimeSeconds;
+		PreviousTravelSpeedEnabled = config.TravelSpeedEnabled;
+		PreviousTravelSpeedNoteTypeDenominatorIndex = config.TravelSpeedNoteTypeDenominatorIndex;
+		PreviousTravelSpeedMinBPM = config.TravelSpeedMinBPM;
+		PreviousTravelSpeedMaxBPM = config.TravelSpeedMaxBPM;
 		PreviousStepTighteningTravelDistanceMin = Config.Config.StepTightening.TravelDistanceMin;
 		PreviousStepTighteningTravelDistanceMax = Config.Config.StepTightening.TravelDistanceMax;
 		PreviousStepTighteningStretchDistanceMin = Config.Config.StepTightening.StretchDistanceMin;
@@ -535,10 +617,14 @@ internal sealed class ActionRestorePerformedChartConfigDefaults : EditorAction
 			PreferencesPerformedChartConfig.NamedConfig.DefaultFacingMaxOutwardPercentage;
 		Config.Config.Facing.OutwardPercentageCutoff =
 			PreferencesPerformedChartConfig.NamedConfig.DefaultFacingOutwardPercentageCutoff;
-		Config.Config.StepTightening.TravelSpeedMinTimeSeconds =
-			PreferencesPerformedChartConfig.NamedConfig.DefaultStepTighteningTravelSpeedMinTimeSeconds;
-		Config.Config.StepTightening.TravelSpeedMaxTimeSeconds =
-			PreferencesPerformedChartConfig.NamedConfig.DefaultStepTighteningTravelSpeedMaxTimeSeconds;
+		Config.TravelSpeedEnabled =
+			PreferencesPerformedChartConfig.NamedConfig.DefaultTravelSpeedEnabled;
+		Config.TravelSpeedMinBPM =
+			PreferencesPerformedChartConfig.NamedConfig.DefaultStepTighteningTravelSpeedMinBPM;
+		Config.TravelSpeedMaxBPM =
+			PreferencesPerformedChartConfig.NamedConfig.DefaultStepTighteningTravelSpeedMaxBPM;
+		Config.TravelSpeedNoteTypeDenominatorIndex =
+			PreferencesPerformedChartConfig.NamedConfig.DefaultStepTighteningTravelSpeedNoteDenominatorIndex;
 		Config.Config.StepTightening.TravelDistanceMin =
 			PreferencesPerformedChartConfig.NamedConfig.DefaultStepTighteningTravelDistanceMin;
 		Config.Config.StepTightening.TravelDistanceMax =
@@ -570,8 +656,10 @@ internal sealed class ActionRestorePerformedChartConfigDefaults : EditorAction
 		Config.Config.Facing.InwardPercentageCutoff = PreviousFacingInwardPercentageCutoff;
 		Config.Config.Facing.MaxOutwardPercentage = PreviousFacingMaxOutwardPercentage;
 		Config.Config.Facing.OutwardPercentageCutoff = PreviousFacingOutwardPercentageCutoff;
-		Config.Config.StepTightening.TravelSpeedMinTimeSeconds = PreviousStepTighteningTravelSpeedMinTimeSeconds;
-		Config.Config.StepTightening.TravelSpeedMaxTimeSeconds = PreviousStepTighteningTravelSpeedMaxTimeSeconds;
+		Config.TravelSpeedEnabled = PreviousTravelSpeedEnabled;
+		Config.TravelSpeedMinBPM = PreviousTravelSpeedMinBPM;
+		Config.TravelSpeedMaxBPM = PreviousTravelSpeedMaxBPM;
+		Config.TravelSpeedNoteTypeDenominatorIndex = PreviousTravelSpeedNoteTypeDenominatorIndex;
 		Config.Config.StepTightening.TravelDistanceMin = PreviousStepTighteningTravelDistanceMin;
 		Config.Config.StepTightening.TravelDistanceMax = PreviousStepTighteningTravelDistanceMax;
 		Config.Config.StepTightening.StretchDistanceMin = PreviousStepTighteningStretchDistanceMin;
