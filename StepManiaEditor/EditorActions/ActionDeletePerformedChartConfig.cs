@@ -7,7 +7,7 @@ internal sealed class ActionDeletePerformedChartConfig : EditorAction
 {
 	private readonly string ConfigName;
 	private readonly PreferencesPerformedChartConfig.NamedConfig NamedConfig;
-	private bool LastSelectedAutogenPerformedChartConfigUsedDeletedConfig = false;
+	private bool LastSelectedAutogenPerformedChartConfigUsedDeletedConfig;
 
 	public ActionDeletePerformedChartConfig(string configName) : base(false, false)
 	{
