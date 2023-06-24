@@ -73,6 +73,21 @@ internal sealed class PreferencesExpressedChartConfig : Notifier<PreferencesExpr
 		private Action<string, string> OnNameUpdated;
 
 		/// <summary>
+		/// Returns a new NamedConfig that is a clone of this NamedConfig.
+		/// </summary>
+		public NamedConfig Clone(string newConfigName)
+		{
+			return new NamedConfig
+			{
+				Config = Config.Clone(),
+				Name = newConfigName,
+				Description = Description,
+				IsNewNameValid = IsNewNameValid,
+				OnNameUpdated = OnNameUpdated,
+			};
+		}
+
+		/// <summary>
 		/// Sets functions to use for name validation and calling back to when the name is updated.
 		/// </summary>
 		/// <param name="isNewNameValid">Name validation function.</param>
@@ -283,6 +298,12 @@ internal sealed class PreferencesExpressedChartConfig : Notifier<PreferencesExpr
 		}
 
 		UpdateSortedConfigNames();
+	}
+
+	public NamedConfig CloneConfig(string name)
+	{
+		var existingConfig = GetNamedConfig(name);
+		return existingConfig?.Clone(GetNewConfigName());
 	}
 
 	public NamedConfig GetNamedConfig(string name)

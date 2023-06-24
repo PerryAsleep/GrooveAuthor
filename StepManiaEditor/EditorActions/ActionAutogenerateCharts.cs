@@ -203,7 +203,7 @@ internal sealed class ActionAutogenerateCharts : EditorAction
 	{
 		// Reset the counter so we can determine when all charts are complete.
 		NumComplete = 0;
-		
+
 		// Kick off tasks to generate each chart.
 		var index = 0;
 		foreach (var chart in SourceCharts)

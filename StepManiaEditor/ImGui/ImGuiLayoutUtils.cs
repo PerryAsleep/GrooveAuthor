@@ -39,6 +39,8 @@ internal sealed class ImGuiLayoutUtils
 	public static readonly float FileBrowseAutoWidth = UiScaled(50);
 	public static readonly float DisplayTempoEnumWidth = UiScaled(120);
 	public static readonly float RangeToWidth = UiScaled(14);
+	public static readonly float TextXWidth = UiScaled(8);
+	public static readonly float TextYWidth = UiScaled(8);
 	public static readonly float SliderResetWidth = UiScaled(50);
 	public static readonly float ConfigFromListEditWidth = UiScaled(40);
 	public static readonly float ConfigFromListViewAllWidth = UiScaled(60);
@@ -1196,10 +1198,6 @@ internal sealed class ImGuiLayoutUtils
 			GetDragHelpText(help));
 	}
 
-	#endregion Drag Double
-
-	#region Drag Double Range
-
 	public static void DrawRowDragDoubleRange(
 		bool undoable,
 		string title,
@@ -1237,7 +1235,45 @@ internal sealed class ImGuiLayoutUtils
 		DrawDragDouble(undoable, title, o, endFieldName, controlWidth, null, speed, format, affectsFile, minForEnd, max);
 	}
 
-	#endregion Drag Double Range
+	public static void DrawRowDragDoubleXY(
+		bool undoable,
+		string title,
+		object o,
+		string xFieldName,
+		string yFieldName,
+		bool affectsFile,
+		string help = null,
+		float speed = 0.0001f,
+		string format = "%.6f",
+		double min = double.MinValue,
+		double max = double.MaxValue)
+	{
+		title ??= "";
+
+		DrawRowTitleAndAdvanceColumn(title);
+
+		var remainingWidth = DrawHelp(GetDragHelpText(help), ImGui.GetContentRegionAvail().X);
+		var controlWidth = Math.Max(0.0f,
+			0.5f * (remainingWidth - ImGui.GetStyle().ItemSpacing.X * 3.0f - TextXWidth - TextYWidth));
+
+		// X text
+		ImGui.SameLine();
+		Text("X", TextXWidth);
+
+		// Control for X.
+		ImGui.SameLine();
+		DrawDragDouble(undoable, title, o, xFieldName, controlWidth, null, speed, format, affectsFile, min, max);
+
+		// Y text
+		ImGui.SameLine();
+		Text("Y", TextYWidth);
+
+		// Control for Y
+		ImGui.SameLine();
+		DrawDragDouble(undoable, title, o, yFieldName, controlWidth, null, speed, format, affectsFile, min, max);
+	}
+
+	#endregion Drag Double
 
 	#region Enum
 

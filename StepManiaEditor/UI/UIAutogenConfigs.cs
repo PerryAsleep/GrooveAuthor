@@ -13,7 +13,8 @@ internal sealed class UIAutogenConfigs
 
 	private static readonly int AddConfigTitleWidth = UiScaled(120);
 	private static readonly int NameWidth = UiScaled(120);
-	private static readonly int DeleteWidth = UiScaled(43);
+	private static readonly int CloneWidth = UiScaled(39);
+	private static readonly int DeleteWidth = UiScaled(45);
 
 	private readonly Editor Editor;
 
@@ -37,11 +38,12 @@ internal sealed class UIAutogenConfigs
 			HelpMarker(UIExpressedChartConfig.HelpText);
 
 			// Expressed Chart table setup.
-			var ret = ImGui.BeginTable("Expressed Chart Configs", 3, ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders);
+			var ret = ImGui.BeginTable("Expressed Chart Configs", 4, ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders);
 			if (ret)
 			{
 				ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, NameWidth);
 				ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100);
+				ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, CloneWidth);
 				ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, DeleteWidth);
 			}
 
@@ -66,8 +68,15 @@ internal sealed class UIAutogenConfigs
 				ImGui.TableSetColumnIndex(1);
 				ImGui.Text(config.Description ?? "");
 
-				// Delete button.
+				// Clone button.
 				ImGui.TableSetColumnIndex(2);
+				if (ImGui.SmallButton($"Clone##ExpressedChartConfig{index}"))
+				{
+					ActionQueue.Instance.Do(new ActionCloneExpressedChartConfig(config.Name));
+				}
+
+				// Delete button.
+				ImGui.TableSetColumnIndex(3);
 				var disabled = config.IsDefaultConfig();
 				if (disabled)
 					PushDisabled();
@@ -101,11 +110,12 @@ internal sealed class UIAutogenConfigs
 			HelpMarker(UIPerformedChartConfig.HelpText);
 
 			// Performed Chart table setup.
-			ret = ImGui.BeginTable("Performed Chart Configs", 3, ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders);
+			ret = ImGui.BeginTable("Performed Chart Configs", 4, ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders);
 			if (ret)
 			{
 				ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, NameWidth);
 				ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100);
+				ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, CloneWidth);
 				ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, DeleteWidth);
 			}
 
@@ -128,8 +138,15 @@ internal sealed class UIAutogenConfigs
 				ImGui.TableSetColumnIndex(1);
 				ImGui.Text(config.Description ?? "");
 
-				// Delete button.
+				// Clone button.
 				ImGui.TableSetColumnIndex(2);
+				if (ImGui.SmallButton($"Clone##PerformedChartConfig{index}"))
+				{
+					ActionQueue.Instance.Do(new ActionClonePerformedChartConfig(config.Name));
+				}
+
+				// Delete button.
+				ImGui.TableSetColumnIndex(3);
 				var disabled = config.IsDefaultConfig();
 				if (disabled)
 					PushDisabled();

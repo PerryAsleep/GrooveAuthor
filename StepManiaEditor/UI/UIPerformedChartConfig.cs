@@ -91,6 +91,13 @@ internal sealed class UIPerformedChartConfig
 					+ "\nIn other words, the tightening does not stop above the final specified tempo."
 					+ "\nThe speed range specified by these values is exclusive.");
 
+				ImGuiLayoutUtils.DrawRowDragDoubleXY(true, "Distance Compensation", config.StepTightening,
+					nameof(StepTighteningConfig.DistanceCompensationX), nameof(StepTighteningConfig.DistanceCompensationY), false,
+					"When performing Step Tightening calculations involving distances, subtract these amounts from distance "
+					+ "\ndimensions. Adding a non-zero compensation for Y can be useful to account for movements in Y taking "
+					+ "\nless effort due to feet being significantly longer than they are wide."
+					, 0.01f, "%.6f", 0.0, 2.0);
+
 				ImGuiLayoutUtils.EndTable();
 			}
 
