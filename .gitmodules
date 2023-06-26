@@ -2,3 +2,6 @@
 	path = StepManiaEditor/MonoGame
 	url = https://github.com/PerryAsleep/MonoGame.git
 	branch = fumen
+[submodule "StepManiaLibrary"]
+	path = StepManiaLibrary
+	url = https://github.com/PerryAsleep/StepManiaLibrary

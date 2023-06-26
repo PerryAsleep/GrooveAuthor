@@ -8,9 +8,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Fumen\Fumen.csproj" />
     <ProjectReference Include="..\MonoGameExtensions\MonoGameExtensions.csproj" />
     <ProjectReference Include="..\StepManiaEditor\MonoGame\MonoGame.Framework\MonoGame.Framework.WindowsDX.csproj" />
+    <ProjectReference Include="..\StepManiaLibrary\Fumen\Fumen\Fumen.csproj" />
   </ItemGroup>
 
 </Project>
