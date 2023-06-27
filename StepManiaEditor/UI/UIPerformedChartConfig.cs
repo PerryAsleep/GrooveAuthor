@@ -17,7 +17,7 @@ internal sealed class UIPerformedChartConfig
 
 	public const string WindowTitle = "Performed Chart Config";
 
-	public const string HelpText = "Performed Chart Configs are settings used by the Editor to generate Charts and patterns."
+	public const string HelpText = "Performed Chart Configs are settings used by GrooveAuthor to generate Charts and patterns."
 	                               + " When generating steps, all possible paths are considered. Costs are assigned to paths"
 	                               + " based on Performed Chart Config values, and the path with the lowest cost is chosen."
 	                               + " Full details on the config values and how they are used to assign costs can be found"

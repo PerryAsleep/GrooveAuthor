@@ -12,7 +12,7 @@ internal sealed class PreferencesMiniMap
 
 	// Default values.
 	public const bool DefaultShowMiniMap = true;
-	public const MiniMap.SelectMode DefaultMiniMapSelectMode = MiniMap.SelectMode.MoveEditorToCursor;
+	public const MiniMap.SelectMode DefaultMiniMapSelectMode = MiniMap.SelectMode.MoveToCursor;
 	public const bool DefaultMiniMapStopPlaybackWhenScrolling = false;
 	public const uint DefaultMiniMapXPadding = 32;
 	public const uint DefaultMiniMapWidth = 90;

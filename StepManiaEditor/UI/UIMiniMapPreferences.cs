@@ -69,11 +69,11 @@ internal sealed class UIMiniMapPreferences
 		{
 			ImGuiLayoutUtils.DrawRowEnum<MiniMap.SelectMode>(true, "Select Mode", p, nameof(PreferencesMiniMap.MiniMapSelectMode),
 				false,
-				"How the editor should move when selecting an area outside of the editor range in the mini map."
-				+ "\nMove Editor To Cursor:         Move the editor to the cursor, not to the area under the cursor."
-				+ "\n                               This is the natural option if you consider the mini map like a scroll bar."
-				+ "\nMove Editor To Selected Area:  Move the editor to the area under the cursor, not to the cursor."
-				+ "\n                               This is the natural option if you consider the mini map like a map.");
+				"How the position should move when selecting an area outside of the editor range in the mini map."
+				+ "\nMove To Cursor:         Move the editor position to the cursor, not to the area under the cursor."
+				+ "\n                        This is the natural option if you consider the mini map like a scroll bar."
+				+ "\nMove To Selected Area:  Move the editor position to the area under the cursor, not to the cursor."
+				+ "\n                        This is the natural option if you consider the mini map like a map.");
 
 			ImGuiLayoutUtils.EndTable();
 		}

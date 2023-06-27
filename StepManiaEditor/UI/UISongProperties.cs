@@ -147,7 +147,7 @@ internal sealed class UISongProperties
 					EditorSong?.SyncOffset.DoubleEquals(0.0) ?? false,
 					"The music offset from the start of the chart."
 					+ "\nClicking the Apply 9ms Offset button will add an additional 9ms to the offset and"
-					+ "\nset the Song Sync (below) to account for the 9ms offset so that the editor can"
+					+ "\nset the Song Sync (below) to account for the 9ms offset so that GrooveAuthor can"
 					+ "\ncompensate and keep the arrows and Waveform in sync."
 					+ "\nApplying a 9ms offset through clicking the button is not idempotent.",
 					0.0001f, "%.6f seconds");
@@ -206,9 +206,9 @@ internal sealed class UISongProperties
 					true,
 					SetSyncItg, "9ms (ITG)", ButtonSyncWidth,
 					SetSyncDdr, "0ms (DDR)", ButtonSyncWidth,
-					"(Editor Only) Adjust the editor visuals to account for this song's sync." +
+					"(Editor Only) Adjust visuals to account for this song's sync." +
 					"\nIf the song sync is not 0, then the arrows will appear shifted from the Waveform." +
-					"\nIf this song has a built in sync, then set this value so the editor can account for it" +
+					"\nIf this song has a built in sync, then set this value so GrooveAuthor can account for it" +
 					"\nso the arrows and the Waveform line up perfectly." +
 					"\n9ms (ITG): (More Common) Most custom content uses a 9ms offset to account for a bug in ITG2." +
 					"\n           If this song is synced with a 9ms offset then use this option." +

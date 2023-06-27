@@ -37,16 +37,16 @@ internal sealed class MiniMap
 	public enum SelectMode
 	{
 		/// <summary>
-		/// Move the editor to the cursor, not the area under cursor.
+		/// Move the editor position to the cursor, not the area under cursor.
 		/// This is the natural option if you consider the MiniMap like a scrollbar.
 		/// </summary>
-		MoveEditorToCursor,
+		MoveToCursor,
 
 		/// <summary>
-		/// Move the editor to the selected area, not to the cursor.
+		/// Move the editor position to the selected area, not to the cursor.
 		/// This is the natural option if you consider the MiniMap like a map.
 		/// </summary>
-		MoveEditorToSelectedArea,
+		MoveToSelectedArea,
 	}
 
 	/// <summary>
@@ -212,7 +212,7 @@ internal sealed class MiniMap
 	/// <summary>
 	/// SelectMode for selecting the Editor area.
 	/// </summary>
-	private SelectMode EditorSelectMode = SelectMode.MoveEditorToCursor;
+	private SelectMode EditorSelectMode = SelectMode.MoveToCursor;
 
 	/// <summary>
 	/// Whether or not the editor area in the MiniMap is currently being grabbed.
@@ -437,7 +437,7 @@ internal sealed class MiniMap
 			{
 				// Move the editor to the cursor, not the area under cursor.
 				// This is the natural option if you consider the MiniMap like a scrollbar.
-				case SelectMode.MoveEditorToCursor:
+				case SelectMode.MoveToCursor:
 				{
 					Grabbed = true;
 					break;
@@ -445,7 +445,7 @@ internal sealed class MiniMap
 
 				// Move the editor to the selected area, not to the cursor.
 				// This is the natural option if you consider the MiniMap like a map.
-				case SelectMode.MoveEditorToSelectedArea:
+				case SelectMode.MoveToSelectedArea:
 				{
 					if (!Grabbed)
 					{

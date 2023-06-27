@@ -27,7 +27,7 @@ public class UIOptions
 			{
 				ImGuiLayoutUtils.DrawRowSelectableTree(true, "Startup Step Graphs", p,
 					nameof(PreferencesOptions.StartupChartTypesBools), false, Editor.SupportedChartTypes,
-					"Step graphs will be created for the selected charts when the application starts." +
+					"Step graphs will be created for the selected charts when GrooveAuthor starts." +
 					"\nStep graphs are used to generate patterns and convert charts from one type to another.");
 
 				ImGuiLayoutUtils.DrawRowEnum<SMCommon.ChartType>(true, "Default Type", p,
@@ -45,7 +45,7 @@ public class UIOptions
 			{
 				ImGuiLayoutUtils.DrawRowCheckbox(true, "Open Last File On Launch", p,
 					nameof(PreferencesOptions.OpenLastOpenedFileOnLaunch), false,
-					"Whether or not to open the last opened file when launching the application.");
+					"Whether or not to open the last opened file when launching GrooveAuthor.");
 				ImGuiLayoutUtils.DrawRowSliderInt(true, "File History Size", p,
 					nameof(PreferencesOptions.RecentFilesHistorySize), 0, 50, false,
 					"Number of files to remember in the history used for opening recent files.");
@@ -109,7 +109,7 @@ public class UIOptions
 			if (ImGuiLayoutUtils.BeginTable("Options Audio", TitleColumnWidth))
 			{
 				ImGuiLayoutUtils.DrawRowDragDouble(true, "Audio Offset", p, nameof(PreferencesOptions.AudioOffset), false,
-					"Offset used when playing songs through the editor."
+					"Offset used when playing songs through GrooveAuthor."
 					+ "\nIf the audio and visuals appear out of sync when playing a song, adjusting this value can"
 					+ "\ncompensate for this lag and bring the two in sync."
 					+ "\nNote that setting this to a nonzero value will cause the audio to play at an earlier or later"
