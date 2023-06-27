@@ -1,3 +1,5 @@
+<img src="StepManiaEditor/Content/logo.svg" width="100%"/>
+
 # GrooveAuthor
 
 `GrooveAuthor` is an editor for authoring [StepMania](https://www.stepmania.com/) charts.
