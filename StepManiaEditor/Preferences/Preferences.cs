@@ -154,14 +154,29 @@ internal sealed class Preferences
 			Instance = await JsonSerializer.DeserializeAsync<Preferences>(openStream, SerializationOptions);
 			Instance.Editor = editor;
 			Instance.PostLoad();
+			Logger.Info($"Loaded {PreferencesFileName}.");
+			return Instance;
+		}
+		catch (FileNotFoundException)
+		{
+			Logger.Info($"No preferences found at {PreferencesFileName}. Using defaults.");
 		}
 		catch (Exception e)
 		{
 			Logger.Error($"Failed to load {PreferencesFileName}. {e}");
-			return Instance;
 		}
 
-		Logger.Info($"Loaded {PreferencesFileName}.");
+		Instance = new Preferences();
+		try
+		{
+			Instance.Editor = editor;
+			Instance.PostLoad();
+		}
+		catch (Exception e)
+		{
+			Logger.Error($"Failed to initialize Preferences. {e}");
+		}
+
 		return Instance;
 	}
 
@@ -179,14 +194,29 @@ internal sealed class Preferences
 			Instance = JsonSerializer.Deserialize<Preferences>(openStream, SerializationOptions);
 			Instance.Editor = editor;
 			Instance.PostLoad();
+			Logger.Info($"Loaded {PreferencesFileName}.");
+			return Instance;
+		}
+		catch (FileNotFoundException)
+		{
+			Logger.Info($"No preferences found at {PreferencesFileName}. Using defaults.");
 		}
 		catch (Exception e)
 		{
 			Logger.Error($"Failed to load {PreferencesFileName}. {e}");
-			return Instance;
 		}
 
-		Logger.Info($"Loaded {PreferencesFileName}.");
+		Instance = new Preferences();
+		try
+		{
+			Instance.Editor = editor;
+			Instance.PostLoad();
+		}
+		catch (Exception e)
+		{
+			Logger.Error($"Failed to initialize Preferences. {e}");
+		}
+
 		return Instance;
 	}
 
