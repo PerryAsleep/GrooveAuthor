@@ -61,7 +61,7 @@ internal sealed class ImGuiUtils
 	public static string FormatImGuiInt(string fmt, int i, int sizeOfBuffer = 64, int count = 32)
 	{
 		var sb = new StringBuilder(sizeOfBuffer);
-		_snwprintf_s(sb, (IntPtr)sizeOfBuffer, (IntPtr)count, fmt, i);
+		_snwprintf_s(sb, sizeOfBuffer, count, fmt, i);
 		return sb.ToString();
 	}
 
@@ -72,7 +72,7 @@ internal sealed class ImGuiUtils
 	public static string FormatImGuiDouble(string fmt, double d, int sizeOfBuffer = 64, int count = 32)
 	{
 		var sb = new StringBuilder(sizeOfBuffer);
-		_snwprintf_s(sb, (IntPtr)sizeOfBuffer, (IntPtr)count, fmt, d);
+		_snwprintf_s(sb, sizeOfBuffer, count, fmt, d);
 		return sb.ToString();
 	}
 

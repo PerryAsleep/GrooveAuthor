@@ -310,7 +310,7 @@ public class Utils
 			initialDirectory = System.IO.Path.GetDirectoryName(initialDirectory);
 		}
 
-		openFileDialog.InitialDirectory = initialDirectory;
+		openFileDialog.InitialDirectory = initialDirectory ?? "";
 		openFileDialog.Filter = filter;
 		openFileDialog.FilterIndex = 1;
 		openFileDialog.Title = $"Open {name} File";

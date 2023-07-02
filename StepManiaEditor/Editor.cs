@@ -549,6 +549,9 @@ internal sealed class Editor :
 	{
 		var p = Preferences.Instance;
 		var form = (Form)Control.FromHandle(Window.Handle);
+		if (form == null)
+			return;
+
 		if (p.WindowMaximized)
 		{
 			form.WindowState = FormWindowState.Maximized;
@@ -825,7 +828,10 @@ internal sealed class Editor :
 
 	public void OnResize(object sender, EventArgs e)
 	{
-		var maximized = ((Form)Control.FromHandle(Window.Handle)).WindowState == FormWindowState.Maximized;
+		var form = (Form)Control.FromHandle(Window.Handle);
+		if (form == null)
+			return;
+		var maximized = form.WindowState == FormWindowState.Maximized;
 		var w = GetViewportWidth();
 		var h = GetViewportHeight();
 
@@ -5934,7 +5940,7 @@ internal sealed class Editor :
 		if (!e.Data.GetDataPresent(DataFormats.FileDrop))
 			return;
 		var files = (string[])e.Data.GetData(DataFormats.FileDrop);
-		if (files.Length != 1)
+		if (files?.Length != 1)
 		{
 			e.Effect = DragDropEffects.None;
 			return;
@@ -5967,6 +5973,8 @@ internal sealed class Editor :
 		if (!e.Data.GetDataPresent(DataFormats.FileDrop))
 			return;
 		var files = (string[])e.Data.GetData(DataFormats.FileDrop);
+		if (files == null)
+			return;
 		if (files.Length != 1)
 			return;
 		var file = files[0];
