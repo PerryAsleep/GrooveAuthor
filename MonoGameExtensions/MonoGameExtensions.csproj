@@ -1,14 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
-
-	<PropertyGroup>
-		<TargetFramework>net6.0-windows</TargetFramework>
-		<ImplicitUsings>enable</ImplicitUsings>
-		<Nullable>disable</Nullable>
-	</PropertyGroup>
-
-	<ItemGroup>
-		<ProjectReference Include="..\StepManiaEditor\MonoGame\MonoGame.Framework\MonoGame.Framework.WindowsDX.csproj" />
-		<ProjectReference Include="..\StepManiaLibrary\Fumen\Fumen\Fumen.csproj" />
-	</ItemGroup>
-
+  <PropertyGroup>
+    <TargetFramework>net7.0-windows</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>disable</Nullable>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\StepManiaEditor\MonoGame\MonoGame.Framework\MonoGame.Framework.WindowsDX.csproj" />
+    <ProjectReference Include="..\StepManiaLibrary\Fumen\Fumen\Fumen.csproj" />
+  </ItemGroup>
 </Project>
