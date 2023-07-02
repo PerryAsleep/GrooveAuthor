@@ -25,7 +25,7 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 	};
 
 	public static bool[] DefaultStartupChartTypesBools;
-	public const bool DefaultOpenLastOpenedFileOnLaunch = false;
+	public const bool DefaultOpenLastOpenedFileOnLaunch = true;
 	public const double DefaultNewSongSyncOffset = 0.009;
 	public const double DefaultOpenSongSyncOffset = 0.009;
 	public const double DefaultAudioOffset = 0.0;
