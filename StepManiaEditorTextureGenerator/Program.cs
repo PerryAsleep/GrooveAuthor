@@ -170,7 +170,7 @@ internal class TextureGeneratorGame : Game
 		InitializeLogger();
 
 		Logger.Info("Constructing.");
-		
+
 		InitializeDirectories();
 		InitializeGraphics();
 		InitializeSelectionDistances();

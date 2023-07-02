@@ -120,7 +120,6 @@ internal abstract class ArrowGraphicManager
 			"icon-dance-up-left",
 			"icon-dance-down",
 			"icon-dance-up-right",
-
 		},
 		[ChartType.pump_single] = new List<string>
 		{
@@ -141,7 +140,7 @@ internal abstract class ArrowGraphicManager
 		},
 		[ChartType.pump_double] = new List<string>
 		{
-			"icon-pump-down-left","icon-pump-up-left",
+			"icon-pump-down-left", "icon-pump-up-left",
 			"icon-pump-center",
 			"icon-pump-up-right",
 			"icon-pump-down-right",

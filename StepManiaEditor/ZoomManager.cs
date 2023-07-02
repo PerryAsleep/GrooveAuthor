@@ -190,9 +190,10 @@ internal class ZoomManager : Fumen.IObserver<PreferencesScroll>
 					VariableSpacingData.StartInterpolation(currentTime, SpacingDataScrollFactor * scrollDelta);
 					break;
 			}
+
 			return true;
 		}
-		
+
 		return false;
 	}
 

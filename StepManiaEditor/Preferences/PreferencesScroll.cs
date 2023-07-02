@@ -29,8 +29,9 @@ internal sealed class PreferencesScroll : Notifier<PreferencesScroll>
 	// Preferences.
 	[JsonInclude] public bool ShowScrollControlPreferencesWindow = true;
 	[JsonInclude] public Editor.SpacingMode SpacingMode = DefaultSpacingMode;
-	
-	[JsonInclude] public double TimeBasedPixelsPerSecond
+
+	[JsonInclude]
+	public double TimeBasedPixelsPerSecond
 	{
 		get => TimeBasedPixelsPerSecondInternal;
 		set
@@ -42,6 +43,7 @@ internal sealed class PreferencesScroll : Notifier<PreferencesScroll>
 			}
 		}
 	}
+
 	/// <summary>
 	/// Float property for ImGui slider limitations.
 	/// </summary>
@@ -51,9 +53,11 @@ internal sealed class PreferencesScroll : Notifier<PreferencesScroll>
 		get => (float)TimeBasedPixelsPerSecond;
 		set => TimeBasedPixelsPerSecond = value;
 	}
+
 	private double TimeBasedPixelsPerSecondInternal = DefaultTimeBasedPixelsPerSecond;
 
-	[JsonInclude] public double RowBasedPixelsPerRow
+	[JsonInclude]
+	public double RowBasedPixelsPerRow
 	{
 		get => RowBasedPixelsPerRowInternal;
 		set
@@ -65,6 +69,7 @@ internal sealed class PreferencesScroll : Notifier<PreferencesScroll>
 			}
 		}
 	}
+
 	/// <summary>
 	/// Float property for ImGui slider limitations.
 	/// </summary>
@@ -74,9 +79,11 @@ internal sealed class PreferencesScroll : Notifier<PreferencesScroll>
 		get => (float)RowBasedPixelsPerRow;
 		set => RowBasedPixelsPerRow = value;
 	}
+
 	private double RowBasedPixelsPerRowInternal = DefaultRowBasedPixelsPerRow;
 
-	[JsonInclude] public double VariablePixelsPerSecondAtDefaultBPM
+	[JsonInclude]
+	public double VariablePixelsPerSecondAtDefaultBPM
 	{
 		get => VariablePixelsPerSecondAtDefaultBPMInternal;
 		set
@@ -88,6 +95,7 @@ internal sealed class PreferencesScroll : Notifier<PreferencesScroll>
 			}
 		}
 	}
+
 	/// <summary>
 	/// Float property for ImGui slider limitations.
 	/// </summary>
@@ -97,6 +105,7 @@ internal sealed class PreferencesScroll : Notifier<PreferencesScroll>
 		get => (float)VariablePixelsPerSecondAtDefaultBPM;
 		set => VariablePixelsPerSecondAtDefaultBPM = value;
 	}
+
 	private double VariablePixelsPerSecondAtDefaultBPMInternal = DefaultVariablePixelsPerSecondAtDefaultBPM;
 
 	[JsonInclude] public Editor.WaveFormScrollMode RowBasedWaveFormScrollMode = DefaultRowBasedWaveFormScrollMode;

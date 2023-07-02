@@ -14,8 +14,9 @@ internal sealed class UIExpressedChartConfig
 	private static readonly int TitleColumnWidth = UiScaled(240);
 
 	public const string WindowTitle = "Expressed Chart Config";
+
 	public const string HelpText = "Expressed Chart Configs are settings used by GrooveAuthor to interpret Charts."
-								   + " This is used for autogenerating patterns and new Charts as those actions require understanding how the body moves to perform a Chart."
+	                               + " This is used for autogenerating patterns and new Charts as those actions require understanding how the body moves to perform a Chart."
 	                               + " An Expressed Chart Config can be assigned to a Chart in the Chart Properties window."
 	                               + " Charts will default to using the Dynamic Expressed Chart Config."
 	                               + " Charts reference Expressed Chart Configs by name. Altering an Expressed Chart Config alters it for every Chart which references it."
@@ -135,7 +136,7 @@ internal sealed class UIExpressedChartConfig
 			{
 				ImGuiLayoutUtils.DrawTitle("Help", HelpText);
 
-				if (ImGuiLayoutUtils.DrawRowButton("Restore Defaults", "Restore Defaults", 
+				if (ImGuiLayoutUtils.DrawRowButton("Restore Defaults", "Restore Defaults",
 					    "Restore config values to their defaults."))
 				{
 					namedConfig.RestoreDefaults();
