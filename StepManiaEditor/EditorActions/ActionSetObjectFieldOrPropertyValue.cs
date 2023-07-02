@@ -42,7 +42,7 @@ internal sealed class ActionSetObjectFieldOrPropertyValue<T> : EditorAction wher
 		Debug.Assert(FieldInfo != null || PropertyInfo != null);
 
 		// ReSharper disable PossibleNullReferenceException
-		PreviousValue = IsField ? (T)FieldInfo.GetValue(O) : (T)PropertyInfo.GetValue(O);
+		PreviousValue = IsField ? (T)(FieldInfo.GetValue(O) ?? default(T)) : (T)(PropertyInfo.GetValue(O) ?? default(T));
 		// ReSharper restore PossibleNullReferenceException
 
 		DoesAffectFile = affectsFile;

@@ -3,8 +3,10 @@ using System.Collections.Generic;
 using System.Reflection;
 using ImGuiNET;
 using System.Numerics;
+using StepManiaLibrary.PerformedChart;
 using static Fumen.FumenExtensions;
 using static StepManiaEditor.ImGuiUtils;
+using static StepManiaLibrary.PerformedChart.Config;
 
 namespace StepManiaEditor;
 
@@ -1216,12 +1218,30 @@ internal sealed class ImGuiLayoutUtils
 		DrawRowTitleAndAdvanceColumn(title);
 
 		var remainingWidth = DrawHelp(GetDragHelpText(help), ImGui.GetContentRegionAvail().X);
-		var controlWidth = Math.Max(0.0f, 0.5f * (remainingWidth - ImGui.GetStyle().ItemSpacing.X * 2.0f - RangeToWidth));
 
+		DrawDragDoubleRange(undoable, title, o, beginFieldName, endFieldName, affectsFile, remainingWidth, speed, format, min,
+			max);
+	}
+
+	public static void DrawDragDoubleRange(
+		bool undoable,
+		string title,
+		object o,
+		string beginFieldName,
+		string endFieldName,
+		bool affectsFile,
+		float width,
+		float speed = 0.0001f,
+		string format = "%.6f",
+		double min = double.MinValue,
+		double max = double.MaxValue)
+	{
 		var currentBeginValue = GetValueFromFieldOrProperty<double>(o, beginFieldName);
 		var currentEndValue = GetValueFromFieldOrProperty<double>(o, endFieldName);
 		var maxForBegin = Math.Min(max, currentEndValue);
 		var minForEnd = Math.Max(min, currentBeginValue);
+
+		var controlWidth = Math.Max(0.0f, 0.5f * (width - ImGui.GetStyle().ItemSpacing.X * 2.0f - RangeToWidth));
 
 		// Controls for the double values.
 		ImGui.SameLine();
@@ -1603,7 +1623,59 @@ internal sealed class ImGuiLayoutUtils
 
 	#endregion Display Tempo
 
-	#region Speed Tightening
+	#region Step Tightening
+
+	public static void DrawRowPerformedChartConfigDistanceTightening(
+		StepTighteningConfig config,
+		string title,
+		string help)
+	{
+		DrawRowTitleAndAdvanceColumn(title);
+
+		var width = DrawHelp(help, ImGui.GetContentRegionAvail().X);
+		var spacing = ImGui.GetStyle().ItemSpacing.X;
+		var rangeControlWidth = width - (CheckBoxWidth + spacing);
+
+		// Enabled checkbox.
+		DrawCheckbox(true, title + "check", config, nameof(Config.StepTightening.DistanceTighteningEnabled),
+			CheckBoxWidth, false);
+		var enabled = config.IsDistanceTighteningEnabled();
+		if (!enabled)
+			PushDisabled();
+
+		DrawDragDoubleRange(true, title, config, nameof(StepTighteningConfig.DistanceMin),
+			nameof(StepTighteningConfig.DistanceMax),
+			false, rangeControlWidth, 0.01f, "%.6f", 0.0, 10.0);
+
+		if (!enabled)
+			PopDisabled();
+	}
+
+	public static void DrawRowPerformedChartConfigStretchTightening(
+		StepTighteningConfig config,
+		string title,
+		string help)
+	{
+		DrawRowTitleAndAdvanceColumn(title);
+
+		var width = DrawHelp(help, ImGui.GetContentRegionAvail().X);
+		var spacing = ImGui.GetStyle().ItemSpacing.X;
+		var rangeControlWidth = width - (CheckBoxWidth + spacing);
+
+		// Enabled checkbox.
+		DrawCheckbox(true, title + "check", config, nameof(Config.StepTightening.StretchTighteningEnabled),
+			CheckBoxWidth, false);
+		var enabled = config.IsStretchTighteningEnabled();
+		if (!enabled)
+			PushDisabled();
+
+		DrawDragDoubleRange(true, title, config, nameof(StepTighteningConfig.StretchDistanceMin),
+			nameof(StepTighteningConfig.StretchDistanceMax),
+			false, rangeControlWidth, 0.01f, "%.6f", 0.0, 10.0);
+
+		if (!enabled)
+			PopDisabled();
+	}
 
 	public static void DrawRowPerformedChartConfigSpeedTightening(
 		PreferencesPerformedChartConfig.NamedConfig config,
@@ -1617,9 +1689,9 @@ internal sealed class ImGuiLayoutUtils
 		var rangeWidth = width - (CheckBoxWidth + NoteTypeComboWidth + NotesFromTextWidth + BpmTextWidth + spacing * 5);
 
 		// Enabled checkbox.
-		DrawCheckbox(true, title + "check", config, nameof(PreferencesPerformedChartConfig.NamedConfig.TravelSpeedEnabled),
+		DrawCheckbox(true, title + "check", config.Config.StepTightening, nameof(Config.StepTightening.SpeedTighteningEnabled),
 			CheckBoxWidth, false);
-		var enabled = config.TravelSpeedEnabled;
+		var enabled = config.Config.StepTightening.IsSpeedTighteningEnabled();
 		if (!enabled)
 			PushDisabled();
 
@@ -1667,7 +1739,7 @@ internal sealed class ImGuiLayoutUtils
 			PopDisabled();
 	}
 
-	#endregion Speed Tightening
+	#endregion Step Tightening
 
 	#region Misc Editor Events
 
@@ -2047,9 +2119,9 @@ internal sealed class ImGuiLayoutUtils
 
 		var isField = IsField(o, fieldOrPropertyName);
 		if (isField)
-			value = (T)o.GetType().GetField(fieldOrPropertyName)?.GetValue(o);
+			value = (T)(o.GetType().GetField(fieldOrPropertyName)?.GetValue(o) ?? value);
 		else
-			value = (T)o.GetType().GetProperty(fieldOrPropertyName)?.GetValue(o);
+			value = (T)(o.GetType().GetProperty(fieldOrPropertyName)?.GetValue(o) ?? value);
 		return value;
 	}
 

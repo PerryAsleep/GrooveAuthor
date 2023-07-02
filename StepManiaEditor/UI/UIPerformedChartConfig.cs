@@ -73,17 +73,15 @@ internal sealed class UIPerformedChartConfig
 			{
 				ImGuiLayoutUtils.DrawTitle("Step Tightening");
 
-				ImGuiLayoutUtils.DrawRowDragDoubleRange(true, "Stretch", config.StepTightening,
-					nameof(StepTighteningConfig.StretchDistanceMin), nameof(StepTighteningConfig.StretchDistanceMax), false,
+				ImGuiLayoutUtils.DrawRowPerformedChartConfigStretchTightening(config.StepTightening, "Stretch",
 					"When limiting stretch, the range for tightening."
 					+ "\nDistance in panel lengths."
-					+ "\nSet both values to 0.0 to disable stretch tightening.", 0.01f, "%.6f", 0.0, 10.0);
+					+ "\nSet both values to 0.0 to disable stretch tightening.");
 
-				ImGuiLayoutUtils.DrawRowDragDoubleRange(true, "Distance", config.StepTightening,
-					nameof(StepTighteningConfig.TravelDistanceMin), nameof(StepTighteningConfig.TravelDistanceMax), false,
+				ImGuiLayoutUtils.DrawRowPerformedChartConfigDistanceTightening(config.StepTightening, "Distance",
 					"When limiting travel distance, the range for tightening."
 					+ "\nDistance in panel lengths."
-					+ "\nSet both values to 0.0 to disable distance tightening.", 0.01f, "%.6f", 0.0, 10.0);
+					+ "\nSet both values to 0.0 to disable distance tightening.");
 
 				ImGuiLayoutUtils.DrawRowPerformedChartConfigSpeedTightening(namedConfig, "Speed",
 					"When limiting travel speed, the step speed range over which to ramp up tightening costs."
@@ -105,6 +103,15 @@ internal sealed class UIPerformedChartConfig
 			if (ImGuiLayoutUtils.BeginTable("PerformedChartConfigLateralTightening", TitleColumnWidth))
 			{
 				ImGuiLayoutUtils.DrawTitle("Lateral Tightening");
+
+				ImGuiLayoutUtils.DrawRowCheckbox(true, "Enabled", config.LateralTightening,
+					nameof(Config.LateralTightening.Enabled), false,
+					"Whether or not to enable lateral tightening controls.");
+
+				var lateralTighteningDisabled = !config.LateralTightening.IsEnabled();
+				if (lateralTighteningDisabled)
+					PushDisabled();
+
 				ImGuiLayoutUtils.DrawRowDragDouble(true, "Speed", config.LateralTightening,
 					nameof(Config.LateralTightening.Speed), false,
 					"Speed in panel lengths per second over which continuous lateral movement will be subject to lateral tightening "
@@ -122,6 +129,9 @@ internal sealed class UIPerformedChartConfig
 					+ "is considered to be fast enough to apply a lateral body movement cost to.",
 					0.0001f, "%.6f", 0.0, 100.0);
 				ImGuiLayoutUtils.EndTable();
+
+				if (lateralTighteningDisabled)
+					PopDisabled();
 			}
 
 			ImGui.Separator();
@@ -149,6 +159,48 @@ internal sealed class UIPerformedChartConfig
 					+ "\nIf it is 0.33, they must be on the outer third of the pads, etc.",
 					0.0001f, "%.6f", 0.0, 1.0);
 				ImGuiLayoutUtils.EndTable();
+			}
+
+			ImGui.Separator();
+			if (ImGuiLayoutUtils.BeginTable("PerformedChartConfigTransitions", TitleColumnWidth))
+			{
+				ImGuiLayoutUtils.DrawTitle("Transition Control");
+
+				ImGuiLayoutUtils.DrawRowCheckbox(true, "Enabled", config.Transitions,
+					nameof(Config.Transitions.Enabled), false,
+					"Whether or not to enable transition controls.");
+
+				var transitionsDisabled = !config.Transitions.IsEnabled();
+				if (transitionsDisabled)
+					PushDisabled();
+
+				ImGuiLayoutUtils.DrawRowDragInt(true, "Min Steps Per Transition", config.Transitions,
+					nameof(Config.Transitions.StepsPerTransitionMin), false,
+					"Desired minimum number of steps before transitions should occur."
+					+ "\nIncrease this value to prevent frequent transitions.",
+					1, "%i", 0, 2048);
+				ImGuiLayoutUtils.DrawRowDragInt(true, "Max Steps Per Transition", config.Transitions,
+					nameof(Config.Transitions.StepsPerTransitionMax), false,
+					"Desired maximum number of steps before transitions should occur."
+					+ "\nDecrease this value to prevent long segments with no transitions.",
+					1, "%i", 0, 2048);
+				ImGuiLayoutUtils.DrawRowDragInt(true, "Min Pads Width", config.Transitions,
+					nameof(Config.Transitions.MinimumPadWidth), false,
+					"Minimum width of the pads needed in order to apply transition control rules."
+					+ "\nUse this value to prevent unwanted application for ChartTypes which you do not consider"
+					+ "\nto have transitions.",
+					1, "%i", 0, 32);
+				ImGuiLayoutUtils.DrawRowDragDouble(true, "Transition Cutoff Percent", config.Transitions,
+					nameof(Config.Transitions.TransitionCutoffPercentage), false,
+					"Value for determining what constitutes a transition, representing a percentage of the total"
+					+ "\nwidth of the pads."
+					+ "\nFor example if this value is 0.5, then moving from one half of the pads to the other will"
+					+ "\nbe treated as a transition.",
+					0.0001f, "%.6f", 0.0, 1.0);
+				ImGuiLayoutUtils.EndTable();
+
+				if (transitionsDisabled)
+					PopDisabled();
 			}
 
 			ImGui.Separator();
