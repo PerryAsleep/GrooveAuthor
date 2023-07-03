@@ -444,7 +444,14 @@ internal class TextureGeneratorGame : Game
 		textureData = new uint[1];
 		textureData[0] = 0xFFFFFFFF;
 		regionRectTexture.SetData(textureData);
-		Atlas.AddSubTexture("region-rect", regionRectTexture, true);
+		Atlas.AddSubTexture("region-rect", regionRectTexture, false);
+
+		// Add the dark bg texture.
+		var darkBgTexture = new Texture2D(GraphicsDevice, 1, 1);
+		textureData = new uint[1];
+		textureData[0] = 0xFFFFFFFF;
+		darkBgTexture.SetData(textureData);
+		Atlas.AddSubTexture("dark-bg", darkBgTexture, false);
 	}
 
 	private Texture2D LoadTexture(string fileName)

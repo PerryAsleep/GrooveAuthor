@@ -164,6 +164,7 @@ internal sealed class Editor :
 	private UIChartProperties UIChartProperties;
 	private UIChartList UIChartList;
 	private UIWaveFormPreferences UIWaveFormPreferences;
+	private UIDarkPreferences UIDarkPreferences;
 	private UIScrollPreferences UIScrollPreferences;
 	private UISelectionPreferences UISelectionPreferences;
 	private UIMiniMapPreferences UIMiniMapPreferences;
@@ -636,6 +637,7 @@ internal sealed class Editor :
 		UIChartProperties = new UIChartProperties(this);
 		UIChartList = new UIChartList(this);
 		UIWaveFormPreferences = new UIWaveFormPreferences(MusicManager);
+		UIDarkPreferences = new UIDarkPreferences();
 		UIScrollPreferences = new UIScrollPreferences();
 		UISelectionPreferences = new UISelectionPreferences();
 		UIMiniMapPreferences = new UIMiniMapPreferences();
@@ -1494,8 +1496,12 @@ internal sealed class Editor :
 		PreDrawToRenderTargets();
 
 		DrawBackground();
+		if (Preferences.Instance.PreferencesDark.DarkBgDrawOrder == PreferencesDark.DrawOrder.AfterBackground)
+			DrawDarkBackground();
 
 		DrawWaveForm();
+		if (Preferences.Instance.PreferencesDark.DarkBgDrawOrder == PreferencesDark.DrawOrder.AfterWaveForm)
+			DrawDarkBackground();
 
 		ImGui.PushFont(ImGuiFont);
 
@@ -1605,6 +1611,66 @@ internal sealed class Editor :
 		SpriteBatch.Begin();
 		ActiveSong.GetBackground().GetTexture()
 			.DrawTexture(SpriteBatch, 0, 0, (uint)GetViewportWidth(), (uint)GetViewportHeight());
+		SpriteBatch.End();
+	}
+
+	private void DrawDarkBackground()
+	{
+		if (ActiveChart == null || ArrowGraphicManager == null)
+			return;
+
+		var p = Preferences.Instance.PreferencesDark;
+		if (!p.ShowDarkBg)
+			return;
+
+		var (receptorTextureId, _) = ArrowGraphicManager.GetReceptorTexture(0);
+		var (receptorTextureWidth, _) = TextureAtlas.GetDimensions(receptorTextureId);
+		var zoom = ZoomManager.GetSizeZoom();
+
+		var chartXCurrent = (int)(GetFocalPointX() - ActiveChart.NumInputs * 0.5 * receptorTextureWidth * zoom);
+		var chartXMax = (int)(GetFocalPointX() - ActiveChart.NumInputs * 0.5 * receptorTextureWidth);
+		var chartWMax = ActiveChart.NumInputs * receptorTextureWidth;
+		var chartWCurrent = (int)(ActiveChart.NumInputs * receptorTextureWidth * zoom);
+
+		var waveformXMax = (int)(GetFocalPointX() - WaveFormTextureWidth * 0.5f);
+		var waveformWMax = WaveFormTextureWidth;
+
+		var waveformWCurrent = WaveFormRenderer.GetScaledWaveFormWidth(ZoomManager.GetSpacingZoom());
+		var waveformXCurrent = (int)(waveformXMax + waveformWMax * 0.5f - waveformWCurrent * 0.5f);
+
+		var x = 0;
+		var w = 0;
+		switch (p.Size)
+		{
+			case PreferencesDark.SizeMode.WaveFormWidthMax:
+				x = waveformXMax;
+				w = waveformWMax;
+				break;
+			case PreferencesDark.SizeMode.WaveFormWidthCurrent:
+				x = waveformXCurrent;
+				w = waveformWCurrent;
+				break;
+			case PreferencesDark.SizeMode.ChartWidthMax:
+				x = chartXMax;
+				w = chartWMax;
+				break;
+			case PreferencesDark.SizeMode.ChartCurrentWidth:
+				x = chartXCurrent;
+				w = chartWCurrent;
+				break;
+			case PreferencesDark.SizeMode.MaxOfWaveFormOrChartCurrentWidth:
+				x = Math.Min(chartXCurrent, waveformXCurrent);
+				w = Math.Max(chartWCurrent, waveformWCurrent);
+				break;
+			case PreferencesDark.SizeMode.MaxOfWaveFormOrChartMaxWidth:
+				x = Math.Min(chartXMax, waveformXMax);
+				w = Math.Max(chartWMax, waveformWMax);
+				break;
+		}
+
+		SpriteBatch.Begin();
+		TextureAtlas.Draw("dark-bg", SpriteBatch, new Rectangle(x, 0, w, GetViewportHeight()),
+			new Color(p.Color.X, p.Color.Y, p.Color.Z, p.Color.W));
 		SpriteBatch.End();
 	}
 
@@ -2997,6 +3063,7 @@ internal sealed class Editor :
 		UIScrollPreferences.Draw();
 		UISelectionPreferences.Draw();
 		UIWaveFormPreferences.Draw();
+		UIDarkPreferences.Draw();
 		UIMiniMapPreferences.Draw();
 		UIReceptorPreferences.Draw();
 		UIOptions.Draw();
@@ -3160,6 +3227,12 @@ internal sealed class Editor :
 				{
 					p.PreferencesWaveForm.ShowWaveFormPreferencesWindow = true;
 					ImGui.SetWindowFocus(UIWaveFormPreferences.WindowTitle);
+				}
+
+				if (ImGui.MenuItem("Dark Preferences"))
+				{
+					p.PreferencesDark.ShowDarkPreferencesWindow = true;
+					ImGui.SetWindowFocus(UIDarkPreferences.WindowTitle);
 				}
 
 				if (ImGui.MenuItem("Mini Map Preferences"))

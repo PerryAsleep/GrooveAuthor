@@ -74,6 +74,9 @@ internal sealed class Preferences
 	// Waveform preferences
 	[JsonInclude] public PreferencesWaveForm PreferencesWaveForm = new();
 
+	// Dark background preferences
+	[JsonInclude] public PreferencesDark PreferencesDark = new();
+
 	// Scroll control preferences
 	[JsonInclude] public PreferencesScroll PreferencesScroll = new();
 

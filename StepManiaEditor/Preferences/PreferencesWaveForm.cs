@@ -20,7 +20,7 @@ internal sealed class PreferencesWaveForm
 	public const float DefaultWaveFormSparseColorScale = 0.8f;
 	public static readonly Vector4 DefaultWaveFormDenseColor = new(0.0f, 0.389f, 0.183f, 0.8f);
 	public static readonly Vector4 DefaultWaveFormSparseColor = new(0.0f, 0.350f, 0.164f, 0.8f);
-	public static readonly Vector4 DefaultWaveFormBackgroundColor = new(0.0f, 0.0f, 0.0f, 0.8f);
+	public static readonly Vector4 DefaultWaveFormBackgroundColor = new(0.0f, 0.0f, 0.0f, 0.0f);
 	public const float DefaultWaveFormMaxXPercentagePerChannel = 0.9f;
 	public const int DefaultWaveFormLoadingMaxParallelism = 8;
 	public const float DefaultDenseScale = 6.0f;

@@ -281,6 +281,18 @@ public class WaveFormRenderer
 	}
 
 	/// <summary>
+	/// Gets the width of the WaveForm after scaling.
+	/// </summary>
+	/// <param name="zoom">Zoom level.</param>
+	/// <returns>Width of the WaveForm.</returns>
+	public int GetScaledWaveFormWidth(double zoom)
+	{
+		var xZoom = ScaleXWhenZooming ? Math.Min(1.0, zoom) : 1.0;
+		var renderWidth = Width * xZoom;
+		return (int)renderWidth;
+	}
+
+	/// <summary>
 	/// Renders the waveform.
 	/// </summary>
 	/// <param name="spriteBatch">SpriteBatch to use for rendering the texture.</param>
