@@ -906,12 +906,6 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		// order of other such events. As such, we do not need to sort EditorEvents again.
 		SetEventTimeAndMetricPositionsFromRows(EditorEvents.Select(e => e.GetFirstEvent()));
 
-		// Since holds are treated as one event in the editor and two events in stepmania, we need
-		// to manually update the times for the hold ends since they were not included in the previous
-		// call to update timing.
-		foreach (var hold in Holds)
-			((EditorHoldNoteEvent)hold).RefreshHoldEndTime();
-
 		EditorEvents.Validate();
 
 		// Now, update all the rate altering events using the updated times. It is possible that
@@ -919,6 +913,14 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		// deleting a time signature that then invalidates a future time signature. This will
 		// not invalidate note times or positions.
 		var deletedEvents = CleanRateAlteringEvents();
+
+		// Since holds are treated as one event in the editor and two events in stepmania, we need
+		// to manually update the times for the hold ends since they were not included in the previous
+		// call to SetEventTimeAndMetricPositionsFromRows to update timing. This needs to be done
+		// after we clean the rate altering events because setting their times relies on values cached
+		// from performing the clean, like SecondsPerRow, RowsPerSecond, etc.
+		foreach (var hold in Holds)
+			((EditorHoldNoteEvent)hold).RefreshHoldEndTime();
 
 		EditorEvents.Validate();
 
