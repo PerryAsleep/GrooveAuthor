@@ -117,26 +117,34 @@ internal sealed class PreferencesPerformedChartConfig : Notifier<PreferencesPerf
 		public const double DefaultFacingInwardPercentageCutoff = 0.34;
 		public const double DefaultFacingMaxOutwardPercentage = 1.0;
 		public const double DefaultFacingOutwardPercentageCutoff = 0.34;
+
 		public const bool DefaultStepTighteningTravelSpeedEnabled = true;
 		public const int DefaultStepTighteningTravelSpeedNoteDenominatorIndex = 3;
 		public const int DefaultStepTighteningTravelSpeedMinBPM = 125;
 		public const int DefaultStepTighteningTravelSpeedMaxBPM = 170;
+		public const double DefaultStepTighteningTravelSpeedTighteningMinDistance = 0.0;
+
 		public const bool DefaultStepTighteningTravelDistanceEnabled = true;
-		public const double DefaultStepTighteningTravelDistanceMin = 2.25;
-		public const double DefaultStepTighteningTravelDistanceMax = 3.0;
+		public const double DefaultStepTighteningTravelDistanceMin = 1.4;
+		public const double DefaultStepTighteningTravelDistanceMax = 2.3;
+
 		public const bool DefaultStepTighteningStretchEnabled = true;
-		public const double DefaultStepTighteningStretchDistanceMin = 3.0;
-		public const double DefaultStepTighteningStretchDistanceMax = 4.0;
-		public const double DefaultStepTighteningDistanceCompensationX = 0.0;
-		public const double DefaultStepTighteningDistanceCompensationY = 0.5;
+		public const double DefaultStepTighteningStretchDistanceMin = 2.3;
+		public const double DefaultStepTighteningStretchDistanceMax = 3.3;
+
+		public const double DefaultStepTighteningLateralMinPanelDistance = 0.166667;
+		public const double DefaultStepTighteningLongitudinalMinPanelDistance = -0.125;
+
 		public const bool DefaultLateralTighteningEnabled = true;
 		public const double DefaultLateralTighteningRelativeNPS = 1.65;
 		public const double DefaultLateralTighteningAbsoluteNPS = 12.0;
 		public const double DefaultLateralTighteningSpeed = 3.0;
+
 		public const bool DefaultTransitionsEnabled = false;
 		public const int DefaultTransitionsStepsPerTransitionMin = 0;
 		public const int DefaultTransitionsStepsPerTransitionMax = 1024;
 		public const int DefaultTransitionsMinimumPadWidth = 5;
+
 		public const double DefaultTransitionsCutoffPercentage = 0.5;
 		public static readonly Dictionary<string, List<int>> DefaultArrowWeights;
 
@@ -248,14 +256,17 @@ internal sealed class PreferencesPerformedChartConfig : Notifier<PreferencesPerf
 			      && TravelSpeedNoteTypeDenominatorIndex == DefaultStepTighteningTravelSpeedNoteDenominatorIndex
 			      && TravelSpeedMinBPM == DefaultStepTighteningTravelSpeedMinBPM
 			      && TravelSpeedMaxBPM == DefaultStepTighteningTravelSpeedMaxBPM
+			      && Config.StepTightening.SpeedTighteningMinDistance.DoubleEquals(
+				      DefaultStepTighteningTravelSpeedTighteningMinDistance)
 			      && Config.StepTightening.DistanceTighteningEnabled == DefaultStepTighteningTravelDistanceEnabled
 			      && Config.StepTightening.DistanceMin.DoubleEquals(DefaultStepTighteningTravelDistanceMin)
 			      && Config.StepTightening.DistanceMax.DoubleEquals(DefaultStepTighteningTravelDistanceMax)
 			      && Config.StepTightening.StretchTighteningEnabled == DefaultStepTighteningStretchEnabled
 			      && Config.StepTightening.StretchDistanceMin.DoubleEquals(DefaultStepTighteningStretchDistanceMin)
 			      && Config.StepTightening.StretchDistanceMax.DoubleEquals(DefaultStepTighteningStretchDistanceMax)
-			      && Config.StepTightening.DistanceCompensationX.DoubleEquals(DefaultStepTighteningDistanceCompensationX)
-			      && Config.StepTightening.DistanceCompensationX.DoubleEquals(DefaultStepTighteningDistanceCompensationY)
+			      && Config.StepTightening.LateralMinPanelDistance.DoubleEquals(DefaultStepTighteningLateralMinPanelDistance)
+			      && Config.StepTightening.LongitudinalMinPanelDistance.DoubleEquals(
+				      DefaultStepTighteningLongitudinalMinPanelDistance)
 			      && Config.LateralTightening.Enabled == DefaultLateralTighteningEnabled
 			      && Config.LateralTightening.RelativeNPS.DoubleEquals(DefaultLateralTighteningRelativeNPS)
 			      && Config.LateralTightening.AbsoluteNPS.DoubleEquals(DefaultLateralTighteningAbsoluteNPS)
@@ -333,9 +344,11 @@ internal sealed class PreferencesPerformedChartConfig : Notifier<PreferencesPerf
 		InitializeConfigWithDefaultValues(defaultConfig);
 
 		Configs.Remove(DefaultStaminaConfigName);
-		var defaultAggressiveConfig = AddConfig(DefaultStaminaConfigName);
-		defaultAggressiveConfig.Description = "Default settings with more aggressive step tightening";
-		defaultAggressiveConfig.TravelSpeedMinBPM = 99;
+		var defaultStaminaConfig = AddConfig(DefaultStaminaConfigName);
+		defaultStaminaConfig.Description = "Default with more step tightening & transition limits";
+		defaultStaminaConfig.TravelSpeedMinBPM = 99;
+		defaultStaminaConfig.Config.Transitions.Enabled = true;
+		defaultStaminaConfig.Config.Transitions.StepsPerTransitionMin = 32;
 
 		// Ensure every NamedConfig is configured and valid.
 		var invalidConfigNames = new List<string>();
@@ -383,14 +396,16 @@ internal sealed class PreferencesPerformedChartConfig : Notifier<PreferencesPerf
 		config.TravelSpeedNoteTypeDenominatorIndex = NamedConfig.DefaultStepTighteningTravelSpeedNoteDenominatorIndex;
 		config.TravelSpeedMinBPM = NamedConfig.DefaultStepTighteningTravelSpeedMinBPM;
 		config.TravelSpeedMaxBPM = NamedConfig.DefaultStepTighteningTravelSpeedMaxBPM;
+		config.Config.StepTightening.SpeedTighteningMinDistance =
+			NamedConfig.DefaultStepTighteningTravelSpeedTighteningMinDistance;
 		config.Config.StepTightening.DistanceTighteningEnabled = NamedConfig.DefaultStepTighteningTravelDistanceEnabled;
 		config.Config.StepTightening.DistanceMin = NamedConfig.DefaultStepTighteningTravelDistanceMin;
 		config.Config.StepTightening.DistanceMax = NamedConfig.DefaultStepTighteningTravelDistanceMax;
 		config.Config.StepTightening.StretchTighteningEnabled = NamedConfig.DefaultStepTighteningStretchEnabled;
 		config.Config.StepTightening.StretchDistanceMin = NamedConfig.DefaultStepTighteningStretchDistanceMin;
 		config.Config.StepTightening.StretchDistanceMax = NamedConfig.DefaultStepTighteningStretchDistanceMax;
-		config.Config.StepTightening.DistanceCompensationX = NamedConfig.DefaultStepTighteningDistanceCompensationX;
-		config.Config.StepTightening.DistanceCompensationY = NamedConfig.DefaultStepTighteningDistanceCompensationY;
+		config.Config.StepTightening.LateralMinPanelDistance = NamedConfig.DefaultStepTighteningLateralMinPanelDistance;
+		config.Config.StepTightening.LongitudinalMinPanelDistance = NamedConfig.DefaultStepTighteningLongitudinalMinPanelDistance;
 		config.Config.LateralTightening.Enabled = NamedConfig.DefaultLateralTighteningEnabled;
 		config.Config.LateralTightening.RelativeNPS = NamedConfig.DefaultLateralTighteningRelativeNPS;
 		config.Config.LateralTightening.AbsoluteNPS = NamedConfig.DefaultLateralTighteningAbsoluteNPS;
@@ -592,14 +607,15 @@ internal sealed class ActionRestorePerformedChartConfigDefaults : EditorAction
 	private readonly int PreviousTravelSpeedNoteTypeDenominatorIndex;
 	private readonly int PreviousTravelSpeedMinBPM;
 	private readonly int PreviousTravelSpeedMaxBPM;
+	private readonly double PreviousStepTighteningSpeedTighteningMinDistance;
 	private readonly bool PreviousStepTighteningTravelDistanceEnabled;
 	private readonly double PreviousStepTighteningTravelDistanceMin;
 	private readonly double PreviousStepTighteningTravelDistanceMax;
 	private readonly bool PreviousStepTighteningStretchEnabled;
 	private readonly double PreviousStepTighteningStretchDistanceMin;
 	private readonly double PreviousStepTighteningStretchDistanceMax;
-	private readonly double PreviousStepTighteningDistanceCompensationX;
-	private readonly double PreviousStepTighteningDistanceCompensationY;
+	private readonly double PreviousStepTighteningLateralMinPanelDistance;
+	private readonly double PreviousStepTighteningLongitudinalMinPanelDistance;
 	private readonly bool PreviousLateralTighteningEnabled;
 	private readonly double PreviousLateralTighteningRelativeNPS;
 	private readonly double PreviousLateralTighteningAbsoluteNPS;
@@ -624,14 +640,15 @@ internal sealed class ActionRestorePerformedChartConfigDefaults : EditorAction
 		PreviousTravelSpeedNoteTypeDenominatorIndex = config.TravelSpeedNoteTypeDenominatorIndex;
 		PreviousTravelSpeedMinBPM = config.TravelSpeedMinBPM;
 		PreviousTravelSpeedMaxBPM = config.TravelSpeedMaxBPM;
+		PreviousStepTighteningSpeedTighteningMinDistance = Config.Config.StepTightening.SpeedTighteningMinDistance;
 		PreviousStepTighteningTravelDistanceEnabled = Config.Config.StepTightening.IsDistanceTighteningEnabled();
 		PreviousStepTighteningTravelDistanceMin = Config.Config.StepTightening.DistanceMin;
 		PreviousStepTighteningTravelDistanceMax = Config.Config.StepTightening.DistanceMax;
 		PreviousStepTighteningStretchEnabled = Config.Config.StepTightening.IsStretchTighteningEnabled();
 		PreviousStepTighteningStretchDistanceMin = Config.Config.StepTightening.StretchDistanceMin;
 		PreviousStepTighteningStretchDistanceMax = Config.Config.StepTightening.StretchDistanceMax;
-		PreviousStepTighteningDistanceCompensationX = Config.Config.StepTightening.DistanceCompensationX;
-		PreviousStepTighteningDistanceCompensationY = Config.Config.StepTightening.DistanceCompensationY;
+		PreviousStepTighteningLateralMinPanelDistance = Config.Config.StepTightening.LateralMinPanelDistance;
+		PreviousStepTighteningLongitudinalMinPanelDistance = Config.Config.StepTightening.LongitudinalMinPanelDistance;
 		PreviousLateralTighteningEnabled = Config.Config.LateralTightening.IsEnabled();
 		PreviousLateralTighteningRelativeNPS = Config.Config.LateralTightening.RelativeNPS;
 		PreviousLateralTighteningAbsoluteNPS = Config.Config.LateralTightening.AbsoluteNPS;
@@ -680,6 +697,8 @@ internal sealed class ActionRestorePerformedChartConfigDefaults : EditorAction
 			PreferencesPerformedChartConfig.NamedConfig.DefaultStepTighteningTravelSpeedMaxBPM;
 		Config.TravelSpeedNoteTypeDenominatorIndex =
 			PreferencesPerformedChartConfig.NamedConfig.DefaultStepTighteningTravelSpeedNoteDenominatorIndex;
+		Config.Config.StepTightening.SpeedTighteningMinDistance =
+			PreferencesPerformedChartConfig.NamedConfig.DefaultStepTighteningTravelSpeedTighteningMinDistance;
 		Config.Config.StepTightening.DistanceTighteningEnabled =
 			PreferencesPerformedChartConfig.NamedConfig.DefaultStepTighteningTravelDistanceEnabled;
 		Config.Config.StepTightening.DistanceMin =
@@ -692,10 +711,10 @@ internal sealed class ActionRestorePerformedChartConfigDefaults : EditorAction
 			PreferencesPerformedChartConfig.NamedConfig.DefaultStepTighteningStretchDistanceMin;
 		Config.Config.StepTightening.StretchDistanceMax =
 			PreferencesPerformedChartConfig.NamedConfig.DefaultStepTighteningStretchDistanceMax;
-		Config.Config.StepTightening.DistanceCompensationX =
-			PreferencesPerformedChartConfig.NamedConfig.DefaultStepTighteningDistanceCompensationX;
-		Config.Config.StepTightening.DistanceCompensationY =
-			PreferencesPerformedChartConfig.NamedConfig.DefaultStepTighteningDistanceCompensationY;
+		Config.Config.StepTightening.LateralMinPanelDistance =
+			PreferencesPerformedChartConfig.NamedConfig.DefaultStepTighteningLateralMinPanelDistance;
+		Config.Config.StepTightening.LongitudinalMinPanelDistance =
+			PreferencesPerformedChartConfig.NamedConfig.DefaultStepTighteningLongitudinalMinPanelDistance;
 		Config.Config.LateralTightening.Enabled =
 			PreferencesPerformedChartConfig.NamedConfig.DefaultLateralTighteningEnabled;
 		Config.Config.LateralTightening.RelativeNPS =
@@ -735,14 +754,15 @@ internal sealed class ActionRestorePerformedChartConfigDefaults : EditorAction
 		Config.TravelSpeedMinBPM = PreviousTravelSpeedMinBPM;
 		Config.TravelSpeedMaxBPM = PreviousTravelSpeedMaxBPM;
 		Config.TravelSpeedNoteTypeDenominatorIndex = PreviousTravelSpeedNoteTypeDenominatorIndex;
+		Config.Config.StepTightening.SpeedTighteningMinDistance = PreviousStepTighteningSpeedTighteningMinDistance;
 		Config.Config.StepTightening.DistanceTighteningEnabled = PreviousStepTighteningTravelDistanceEnabled;
 		Config.Config.StepTightening.DistanceMin = PreviousStepTighteningTravelDistanceMin;
 		Config.Config.StepTightening.DistanceMax = PreviousStepTighteningTravelDistanceMax;
 		Config.Config.StepTightening.StretchTighteningEnabled = PreviousStepTighteningStretchEnabled;
 		Config.Config.StepTightening.StretchDistanceMin = PreviousStepTighteningStretchDistanceMin;
 		Config.Config.StepTightening.StretchDistanceMax = PreviousStepTighteningStretchDistanceMax;
-		Config.Config.StepTightening.DistanceCompensationX = PreviousStepTighteningDistanceCompensationX;
-		Config.Config.StepTightening.DistanceCompensationY = PreviousStepTighteningDistanceCompensationY;
+		Config.Config.StepTightening.LateralMinPanelDistance = PreviousStepTighteningLateralMinPanelDistance;
+		Config.Config.StepTightening.LongitudinalMinPanelDistance = PreviousStepTighteningLongitudinalMinPanelDistance;
 		Config.Config.LateralTightening.Enabled = PreviousLateralTighteningEnabled;
 		Config.Config.LateralTightening.RelativeNPS = PreviousLateralTighteningRelativeNPS;
 		Config.Config.LateralTightening.AbsoluteNPS = PreviousLateralTighteningAbsoluteNPS;

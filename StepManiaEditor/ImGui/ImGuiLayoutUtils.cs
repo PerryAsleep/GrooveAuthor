@@ -43,6 +43,8 @@ internal sealed class ImGuiLayoutUtils
 	public static readonly float RangeToWidth = UiScaled(14);
 	public static readonly float TextXWidth = UiScaled(8);
 	public static readonly float TextYWidth = UiScaled(8);
+	public static readonly float TextLatWidth = UiScaled(26);
+	public static readonly float TextLongWidth = UiScaled(26);
 	public static readonly float SliderResetWidth = UiScaled(50);
 	public static readonly float ConfigFromListEditWidth = UiScaled(40);
 	public static readonly float ConfigFromListViewAllWidth = UiScaled(60);
@@ -1291,6 +1293,44 @@ internal sealed class ImGuiLayoutUtils
 		// Control for Y
 		ImGui.SameLine();
 		DrawDragDouble(undoable, title, o, yFieldName, controlWidth, null, speed, format, affectsFile, min, max);
+	}
+
+	public static void DrawRowDragDoubleLatitudeLongitude(
+		bool undoable,
+		string title,
+		object o,
+		string latFieldName,
+		string longFieldName,
+		bool affectsFile,
+		string help = null,
+		float speed = 0.0001f,
+		string format = "%.6f",
+		double min = double.MinValue,
+		double max = double.MaxValue)
+	{
+		title ??= "";
+
+		DrawRowTitleAndAdvanceColumn(title);
+
+		var remainingWidth = DrawHelp(GetDragHelpText(help), ImGui.GetContentRegionAvail().X);
+		var controlWidth = Math.Max(0.0f,
+			0.5f * (remainingWidth - ImGui.GetStyle().ItemSpacing.X * 3.0f - TextLatWidth - TextLongWidth));
+
+		// Latitude text
+		ImGui.SameLine();
+		Text("Lat", TextLatWidth);
+
+		// Control for X.
+		ImGui.SameLine();
+		DrawDragDouble(undoable, title, o, latFieldName, controlWidth, null, speed, format, affectsFile, min, max);
+
+		// Longitude text
+		ImGui.SameLine();
+		Text("Long", TextLongWidth);
+
+		// Control for Y
+		ImGui.SameLine();
+		DrawDragDouble(undoable, title, o, longFieldName, controlWidth, null, speed, format, affectsFile, min, max);
 	}
 
 	#endregion Drag Double

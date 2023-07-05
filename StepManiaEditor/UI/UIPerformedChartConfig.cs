@@ -73,28 +73,53 @@ internal sealed class UIPerformedChartConfig
 			{
 				ImGuiLayoutUtils.DrawTitle("Step Tightening");
 
+				ImGuiLayoutUtils.DrawRowDragDoubleLatitudeLongitude(true, "Movement Compensation", config.StepTightening,
+					nameof(StepTighteningConfig.LateralMinPanelDistance),
+					nameof(StepTighteningConfig.LongitudinalMinPanelDistance), false,
+					"When performing distance calculations for Step Tightening rules, how much lateral and longitudinal\n"
+					+ "compensation should exist for a foot needing to minimally step on panel. Step tightening\n"
+					+ "distance checks measure the minimum possible moves between panels. These values are used\n"
+					+ "to know how far into a panel a foot actually needs to go to trigger it. These values should\n"
+					+ "be chosen carefully to represent real-world movements.\n"
+					+ "\n"
+					+ "Lateral:      How far in from the edge of a panel the center of the foot needs to minimally be in the\n"
+					+ "              lateral (side-to-side) direction in order to activate the panel.\n"
+					+ "Longitudinal: How far in from the edge of a panel the center of the foot needs to minimally be in the\n"
+					+ "              longitudinal (front-to-back) direction in order to activate the panel.\n"
+					+ "\n"
+					+ "These measurement unit is in panel dimensions and assume square panels.\n"
+					+ "0.5 would mean the foot needs to be centered on the panel in the given dimension.\n"
+					+ "0.0 would mean the foot could be directly over the edge in the given dimension.\n"
+					+ "A negative value would mean the foot could be centered off the panel and still trigger it.",
+					0.001f, "%.6f", 0.0, 2.0);
+
 				ImGuiLayoutUtils.DrawRowPerformedChartConfigStretchTightening(config.StepTightening, "Stretch",
-					"When limiting stretch, the range for tightening."
-					+ "\nDistance in panel lengths."
-					+ "\nSet both values to 0.0 to disable stretch tightening.");
+					"When limiting the stretch distance between both feet, the range for tightening."
+					+ "\nThe distance is in panel lengths and takes into account the Movement Compensation values specified above.");
 
 				ImGuiLayoutUtils.DrawRowPerformedChartConfigDistanceTightening(config.StepTightening, "Distance",
-					"When limiting travel distance, the range for tightening."
-					+ "\nDistance in panel lengths."
-					+ "\nSet both values to 0.0 to disable distance tightening.");
+					"When limiting individual step travel distance, the range for tightening."
+					+ "\nThe distance is in panel lengths and takes into account the Movement Compensation values specified above.");
 
 				ImGuiLayoutUtils.DrawRowPerformedChartConfigSpeedTightening(namedConfig, "Speed",
-					"When limiting travel speed, the step speed range over which to ramp up tightening costs."
+					"When limiting individual step travel speed, the speed range over which to ramp up tightening costs."
 					+ "\nAny speed at or above the minimum speed specified by the this range will be subject to tightening."
 					+ "\nIn other words, the tightening does not stop above the final specified tempo."
-					+ "\nThe speed range specified by these values is exclusive.");
+					+ "\nThe speed range specified by these values is exclusive."
+					+ "\nThe distance used for speed measurements is in panel lengths and takes into account the Movement"
+					+ "\nCompensation values specified above.");
 
-				ImGuiLayoutUtils.DrawRowDragDoubleXY(true, "Distance Compensation", config.StepTightening,
-					nameof(StepTighteningConfig.DistanceCompensationX), nameof(StepTighteningConfig.DistanceCompensationY), false,
-					"When performing Step Tightening calculations involving distances, subtract these amounts from distance "
-					+ "\ndimensions. Adding a non-zero compensation for Y can be useful to account for movements in Y taking "
-					+ "\nless effort due to feet being significantly longer than they are wide."
-					, 0.01f, "%.6f", 0.0, 2.0);
+				var speedDisabled = !config.StepTightening.IsSpeedTighteningEnabled();
+				if (speedDisabled)
+					PushDisabled();
+				ImGuiLayoutUtils.DrawRowDragDouble(true, "Speed Min Distance", config.StepTightening,
+					nameof(StepTighteningConfig.SpeedTighteningMinDistance), false,
+					"Minimum distance for applying speed tightening."
+					+ "\nSetting a minimum distance can be helpful if you want to treat a range of short movements as equally acceptable."
+					+ "\nThe distance is in panel lengths and takes into account the Movement Compensation values specified above.",
+					0.01f, "%.6f", 0.0, 10.0);
+				if (speedDisabled)
+					PopDisabled();
 
 				ImGuiLayoutUtils.EndTable();
 			}
