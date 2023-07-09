@@ -160,6 +160,7 @@ internal sealed class Editor :
 	private MusicManager MusicManager;
 	private MiniMap MiniMap;
 	private ArrowGraphicManager ArrowGraphicManager;
+	private UIAbout UIAbout;
 	private UISongProperties UISongProperties;
 	private UIChartProperties UIChartProperties;
 	private UIChartList UIChartList;
@@ -242,12 +243,19 @@ internal sealed class Editor :
 	private double UpdateTimeMiniMap;
 	private double UpdateTimeChartEvents;
 	private double DrawTimeTotal;
+	private bool ShowImGuiTestWindow = true;
 
 	// Logger
 	private readonly LinkedList<Logger.LogMessage> LogBuffer = new();
 	private readonly object LogBufferLock = new();
 
-	private bool ShowImGuiTestWindow = true;
+	// Splash
+	private const double TotalSplashTime = 1.75;
+
+	// ReSharper disable once MemberInitializerValueIgnored
+	private double SplashTime = TotalSplashTime;
+	private Texture2D SplashBackground;
+	private Texture2D LogoAttribution;
 
 	#region Initialization
 
@@ -276,6 +284,13 @@ internal sealed class Editor :
 
 		// Update the window title immediately.
 		UpdateWindowTitle();
+
+#if DEBUG
+		// Disable the splash screen on debug builds.
+		// It is required to show it on Release builds as it includes the FMOD logo which is required to be
+		// shown on a splash screen under the FMOD EULA.
+		SplashTime = 0.0f;
+#endif
 	}
 
 	/// <summary>
@@ -633,6 +648,7 @@ internal sealed class Editor :
 
 	private void InitializeUIHelpers()
 	{
+		UIAbout = new UIAbout();
 		UISongProperties = new UISongProperties(this, GraphicsDevice, ImGuiRenderer);
 		UIChartProperties = new UIChartProperties(this);
 		UIChartList = new UIChartList(this);
@@ -662,6 +678,7 @@ internal sealed class Editor :
 		SpriteBatch = new SpriteBatch(GraphicsDevice);
 
 		LoadTextureAtlas();
+		LoadSplashTextures();
 		LoadShaders();
 		PerformPostContentLoadInitialization();
 
@@ -685,6 +702,16 @@ internal sealed class Editor :
 
 		// Register the TextureAtlas's texture with ImGui so it can be drawn in UI.
 		TextureAtlasImGuiTexture = ImGuiRenderer.BindTexture(TextureAtlas.GetTexture());
+	}
+
+	private void LoadSplashTextures()
+	{
+		LogoAttribution ??= Content.Load<Texture2D>(TextureIdLogoAttribution);
+		if (SplashBackground == null)
+		{
+			SplashBackground = new Texture2D(GraphicsDevice, 1, 1);
+			SplashBackground.SetData(new[] { Color.Black });
+		}
 	}
 
 	private void LoadShaders()
@@ -749,6 +776,17 @@ internal sealed class Editor :
 		Exit();
 	}
 
+	private void UnloadSplashTextures()
+	{
+		if (LogoAttribution != null)
+		{
+			LogoAttribution = null;
+			Content.UnloadAsset(TextureIdLogoAttribution);
+		}
+
+		SplashBackground = null;
+	}
+
 	#endregion Shutdown
 
 	#region Static Helpers
@@ -756,6 +794,11 @@ internal sealed class Editor :
 	public static string GetAppName()
 	{
 		return System.Reflection.Assembly.GetExecutingAssembly().GetName().Name;
+	}
+
+	public static Version GetAppVersion()
+	{
+		return System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
 	}
 
 	public static bool IsChartSupported(Chart chart)
@@ -981,11 +1024,28 @@ internal sealed class Editor :
 			UpdateWindowTitle();
 		}
 
+		// Update splash screen timer.
+		UpdateSplashTime(gameTime);
+
 		base.Update(gameTime);
 
 		// Record total update time.
 		stopWatch.Stop();
 		UpdateTimeTotal = stopWatch.Elapsed.TotalSeconds;
+	}
+
+	private void UpdateSplashTime(GameTime gameTime)
+	{
+		// Update splash screen timer.
+		if (SplashTime > 0.0)
+		{
+			SplashTime -= gameTime.ElapsedGameTime.TotalSeconds;
+			if (SplashTime <= 0.0)
+			{
+				UnloadSplashTextures();
+				SplashTime = 0.0;
+			}
+		}
 	}
 
 	private void UpdateMusicAndPosition(double currentTime)
@@ -1525,6 +1585,8 @@ internal sealed class Editor :
 
 		ImGui.PopFont();
 		ImGuiRenderer.AfterLayout();
+
+		DrawSplash();
 
 		base.Draw(gameTime);
 
@@ -3059,6 +3121,7 @@ internal sealed class Editor :
 			ImGui.ShowDemoWindow(ref ShowImGuiTestWindow);
 		}
 
+		UIAbout.Draw();
 		UILog.Draw(LogBuffer, LogBufferLock);
 		UIScrollPreferences.Draw();
 		UISelectionPreferences.Draw();
@@ -3285,6 +3348,17 @@ internal sealed class Editor :
 
 				if (disabled)
 					PopDisabled();
+
+				ImGui.EndMenu();
+			}
+
+			if (ImGui.BeginMenu("Help"))
+			{
+				if (ImGui.Selectable($"About {GetAppName()}"))
+				{
+					p.ShowAboutWindow = true;
+					ImGui.SetWindowFocus(UIAbout.WindowTitle);
+				}
 
 				ImGui.EndMenu();
 			}
@@ -3765,6 +3839,11 @@ internal sealed class Editor :
 			ImGui.Text($"Total FPS:         {1.0f / (UpdateTimeTotal + DrawTimeTotal):F6}");
 			ImGui.Text($"Actual Time:       {1.0f / ImGui.GetIO().Framerate:F6} seconds");
 			ImGui.Text($"Actual FPS:        {ImGui.GetIO().Framerate:F6}");
+			if (ImGui.Button("Splash"))
+			{
+				LoadSplashTextures();
+				SplashTime = TotalSplashTime;
+			}
 
 			if (ImGui.Button("Reload Song"))
 			{
@@ -3787,6 +3866,39 @@ internal sealed class Editor :
 		}
 
 		ImGui.End();
+	}
+
+	/// <summary>
+	/// Draws the splash screen.
+	/// The splash screen with an FMOD logo is required by the FMOD EULA.
+	/// </summary>
+	public void DrawSplash()
+	{
+		if (SplashTime <= 0.0)
+			return;
+		SpriteBatch.Begin(SpriteSortMode.Deferred, BlendState.NonPremultiplied);
+
+		var screenW = GetViewportWidth();
+		var screenH = GetViewportHeight();
+
+		// Draw dark background
+		const float bgFadeDuration = 0.2f;
+		var bgAlpha = (float)Interpolation.Lerp(0.7f, 0.0f, TotalSplashTime - bgFadeDuration, TotalSplashTime,
+			TotalSplashTime - SplashTime);
+		var bgColor = new Color(Color.White, bgAlpha);
+		SpriteBatch.Draw(SplashBackground, new Rectangle(0, 0, screenW, screenH), bgColor);
+
+		// Draw logo with required attribution information.
+		const float logoFadeDuration = 0.3f;
+		var logoAlpha = (float)Interpolation.Lerp(1.0f, 0.0f, TotalSplashTime - logoFadeDuration, TotalSplashTime,
+			TotalSplashTime - SplashTime);
+		var logoColor = new Color(Color.White, logoAlpha);
+		var textureW = LogoAttribution.Bounds.Width;
+		var textureH = LogoAttribution.Bounds.Height;
+		var destinationRect = new Rectangle((screenW - textureW) >> 1, (screenH - textureH) >> 1, textureW, textureH);
+		SpriteBatch.Draw(LogoAttribution, destinationRect, logoColor);
+
+		SpriteBatch.End();
 	}
 
 	#endregion Gui Rendering

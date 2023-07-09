@@ -109,6 +109,7 @@ internal sealed class Preferences
 	[JsonInclude] public bool ShowChartPropertiesWindow;
 	[JsonInclude] public bool ShowAutogenConfigsWindow;
 	[JsonInclude] public bool ShowChartListWindow;
+	[JsonInclude] public bool ShowAboutWindow;
 	[JsonInclude] public string OpenFileDialogInitialDirectory = @"C:\Games\StepMania 5\Songs\";
 	[JsonInclude] public List<SavedSongInformation> RecentFiles = new();
 	[JsonInclude] public Editor.NoteEntryMode NoteEntryMode = Editor.NoteEntryMode.Normal;

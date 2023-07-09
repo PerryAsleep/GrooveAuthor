@@ -2,7 +2,7 @@
 
 # GrooveAuthor
 
-`GrooveAuthor` is an open-source editor for authoring [StepMania](https://www.stepmania.com/) charts.
+`GrooveAuthor` is a free open-source editor for authoring [StepMania](https://www.stepmania.com/) charts.
 
 [<img src="StepManiaEditor/docs/screenshot-01.png" width="100%"/>](StepManiaEditor/docs/screenshot-01.png)
 
@@ -30,3 +30,9 @@ Building from source requires Windows 10 or greater and Microsoft Visual Studio 
 	git submodule update --init --recursive
 	```
 2. Open `GrooveAuthor.sln` and build through Visual Studio.
+
+## License
+
+- `GrooveAuthor` is distributed under the [MIT License](LICENSE).
+- [MonoGame](https://github.com/PerryAsleep/MonoGame) is distributed under the [Microsoft Public License (Ms-PL) and the The MIT License (MIT)](https://github.com/PerryAsleep/MonoGame/blob/fumen/LICENSE.txt).
+- [fmod](./StepManiaEditor/fmod) is distributed in accordance with the [FMOD EULA](https://www.fmod.com/legal).

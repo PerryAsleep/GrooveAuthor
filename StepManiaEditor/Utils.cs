@@ -79,6 +79,7 @@ public class Utils
 	public const string TextureIdMeasureMarker = "measure-marker";
 	public const string TextureIdBeatMarker = "beat-marker";
 	public const string TextureIdRegionRect = "region-rect";
+	public const string TextureIdLogoAttribution = "logo-attribution";
 
 	public static Color StopRegionColor = new(0x7A, 0x29, 0x29, 0x7F);
 	public static Color DelayRegionColor = new(0x7A, 0x5E, 0x29, 0x7F);
