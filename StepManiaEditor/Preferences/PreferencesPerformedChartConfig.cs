@@ -126,11 +126,11 @@ internal sealed class PreferencesPerformedChartConfig : Notifier<PreferencesPerf
 
 		public const bool DefaultStepTighteningTravelDistanceEnabled = true;
 		public const double DefaultStepTighteningTravelDistanceMin = 1.4;
-		public const double DefaultStepTighteningTravelDistanceMax = 2.3;
+		public const double DefaultStepTighteningTravelDistanceMax = 2.333333;
 
 		public const bool DefaultStepTighteningStretchEnabled = true;
-		public const double DefaultStepTighteningStretchDistanceMin = 2.3;
-		public const double DefaultStepTighteningStretchDistanceMax = 3.3;
+		public const double DefaultStepTighteningStretchDistanceMin = 2.333333;
+		public const double DefaultStepTighteningStretchDistanceMax = 3.333333;
 
 		public const double DefaultStepTighteningLateralMinPanelDistance = 0.166667;
 		public const double DefaultStepTighteningLongitudinalMinPanelDistance = -0.125;
@@ -345,10 +345,11 @@ internal sealed class PreferencesPerformedChartConfig : Notifier<PreferencesPerf
 
 		Configs.Remove(DefaultStaminaConfigName);
 		var defaultStaminaConfig = AddConfig(DefaultStaminaConfigName);
-		defaultStaminaConfig.Description = "Default with more step tightening & transition limits";
+		defaultStaminaConfig.Description = "Default stamina settings.";
 		defaultStaminaConfig.TravelSpeedMinBPM = 99;
 		defaultStaminaConfig.Config.Transitions.Enabled = true;
 		defaultStaminaConfig.Config.Transitions.StepsPerTransitionMin = 32;
+		defaultStaminaConfig.Config.LateralTightening.AbsoluteNPS = 26.666667;
 
 		// Ensure every NamedConfig is configured and valid.
 		var invalidConfigNames = new List<string>();
