@@ -96,7 +96,8 @@ internal abstract class EditorAction
 		Assert(ActionState == State.Doing);
 		ActionState = State.None;
 
-		Logger.Info($"Finished {this}");
+		if (IsDoAsync())
+			Logger.Info($"Finished {this}");
 	}
 
 	/// <summary>
