@@ -246,6 +246,7 @@ internal sealed class Editor :
 	private bool ShowImGuiTestWindow = true;
 
 	// Logger
+	private string LogFilePath;
 	private readonly LinkedList<Logger.LogMessage> LogBuffer = new();
 	private readonly object LogBufferLock = new();
 
@@ -339,13 +340,13 @@ internal sealed class Editor :
 			// Start the logger and write to disk as well as the internal buffer to display.
 			var appName = GetAppName();
 			var logFileName = appName + " " + DateTime.Now.ToString("yyyy-MM-dd HH-mm-ss") + ".log";
-			var logFilePath = Path.Combine(logDirectory, logFileName);
+			LogFilePath = Path.Combine(logDirectory, logFileName);
 			Logger.StartUp(new Logger.Config
 			{
 				WriteToConsole = false,
 
 				WriteToFile = true,
-				LogFilePath = logFilePath,
+				LogFilePath = LogFilePath,
 				LogFileFlushIntervalSeconds = 20,
 				LogFileBufferSizeBytes = 10240,
 
@@ -3122,7 +3123,7 @@ internal sealed class Editor :
 		}
 
 		UIAbout.Draw();
-		UILog.Draw(LogBuffer, LogBufferLock);
+		UILog.Draw(LogBuffer, LogBufferLock, LogFilePath);
 		UIScrollPreferences.Draw();
 		UISelectionPreferences.Draw();
 		UIWaveFormPreferences.Draw();
