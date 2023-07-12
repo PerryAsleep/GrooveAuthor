@@ -147,7 +147,7 @@ internal sealed class UIAutogenChart
 				                    + "\nThis config is defined on the source Chart in the Chart Properties window."
 				                    + "\nChanging it here changes it on the source Chart.";
 				if (SourceChart != null)
-					UIChartProperties.DrawChartExpressedChartConfigWidget(SourceChart, title, help);
+					ImGuiLayoutUtils.DrawExpressedChartConfig(SourceChart, title, help);
 				else
 					ImGuiLayoutUtils.DrawTitleAndText(title, "No available Charts.", help);
 
@@ -158,9 +158,20 @@ internal sealed class UIAutogenChart
 					"Type of Chart to generate.");
 
 				// Performed Chart Config.
-				var configValues = Preferences.Instance.PreferencesPerformedChartConfig.GetSortedConfigNames();
+				var configGuids = Preferences.Instance.PreferencesPerformedChartConfig.GetSortedConfigGuids();
+				var configNames = Preferences.Instance.PreferencesPerformedChartConfig.GetSortedConfigNames();
+				var selectedIndex = 0;
+				for (var i = 0; i < configGuids.Length; i++)
+				{
+					if (configGuids[i].Equals(Preferences.Instance.LastSelectedAutogenPerformedChartConfig))
+					{
+						selectedIndex = i;
+						break;
+					}
+				}
+				
 				ImGuiLayoutUtils.DrawSelectableConfigFromList("Config", "AutogenChartPerformedChartConfigName",
-					ref Preferences.Instance.LastSelectedAutogenPerformedChartConfig, configValues,
+					ref selectedIndex, configNames,
 					() => PreferencesPerformedChartConfig.ShowEditUI(Preferences.Instance
 						.LastSelectedAutogenPerformedChartConfig),
 					() =>
@@ -170,6 +181,7 @@ internal sealed class UIAutogenChart
 					},
 					PreferencesPerformedChartConfig.CreateNewConfigAndShowEditUI,
 					"Performed Chart Config.");
+				Preferences.Instance.LastSelectedAutogenPerformedChartConfig = configGuids[selectedIndex];
 
 				ImGuiLayoutUtils.EndTable();
 			}

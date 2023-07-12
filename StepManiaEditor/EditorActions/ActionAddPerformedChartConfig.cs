@@ -1,20 +1,22 @@
-﻿namespace StepManiaEditor;
+﻿using System;
+
+namespace StepManiaEditor;
 
 /// <summary>
 /// Action to add a PerformedChart configuration.
 /// </summary>
 internal sealed class ActionAddPerformedChartConfig : EditorAction
 {
-	private readonly string ConfigName;
+	private readonly Guid ConfigGuid;
 
 	public ActionAddPerformedChartConfig() : base(false, false)
 	{
-		ConfigName = Preferences.Instance.PreferencesExpressedChartConfig.GetNewConfigName();
+		ConfigGuid = Guid.NewGuid();
 	}
 
-	public ActionAddPerformedChartConfig(string configName) : base(false, false)
+	public ActionAddPerformedChartConfig(Guid configGuid) : base(false, false)
 	{
-		ConfigName = configName;
+		ConfigGuid = configGuid;
 	}
 
 	public override string ToString()
@@ -29,11 +31,11 @@ internal sealed class ActionAddPerformedChartConfig : EditorAction
 
 	protected override void DoImplementation()
 	{
-		Preferences.Instance.PreferencesPerformedChartConfig.AddConfig(ConfigName);
+		Preferences.Instance.PreferencesPerformedChartConfig.AddConfig(ConfigGuid);
 	}
 
 	protected override void UndoImplementation()
 	{
-		Preferences.Instance.PreferencesPerformedChartConfig.DeleteConfig(ConfigName);
+		Preferences.Instance.PreferencesPerformedChartConfig.DeleteConfig(ConfigGuid);
 	}
 }

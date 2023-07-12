@@ -49,8 +49,7 @@ internal sealed class UIExpressedChartConfig
 
 			if (ImGuiLayoutUtils.BeginTable("ExpressedChartConfigTable", TitleColumnWidth))
 			{
-				ImGuiLayoutUtils.DrawRowTextInput(true, "Name", namedConfig, nameof(NamedConfig.Name), true,
-					Preferences.Instance.PreferencesExpressedChartConfig.IsNewConfigNameValid,
+				ImGuiLayoutUtils.DrawRowTextInput(true, "Name", namedConfig, nameof(NamedConfig.Name), false,
 					"Configuration name." +
 					"\nEditing the name will update any loaded Chart that references the old name to reference the new name." +
 					"\nAny unloaded Charts referencing the old name will not be updated and they will default back to the" +
@@ -125,7 +124,7 @@ internal sealed class UIExpressedChartConfig
 					    "Delete this Expressed Chart Config."
 					    + "\nAny Charts using a deleted Expressed Chart Config will be updated to use the Default config."))
 				{
-					ActionQueue.Instance.Do(new ActionDeleteExpressedChartConfig(Editor, namedConfig.Name));
+					ActionQueue.Instance.Do(new ActionDeleteExpressedChartConfig(Editor, namedConfig.Guid));
 				}
 
 				ImGuiLayoutUtils.EndTable();

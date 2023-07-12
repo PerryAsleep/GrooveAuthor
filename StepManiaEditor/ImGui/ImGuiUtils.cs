@@ -133,23 +133,6 @@ internal sealed class ImGuiUtils
 		return result;
 	}
 
-	public static bool ComboFromArray(string name, ref string currentValue, string[] values)
-	{
-		var numValues = values.Length;
-		if (numValues == 0)
-			return false;
-
-		var intValue = 0;
-		while (intValue < numValues && !values[intValue].Equals(currentValue))
-			intValue++;
-		if (intValue >= numValues)
-			intValue = 0;
-
-		var result = ImGui.Combo(name, ref intValue, values, values.Length);
-		currentValue = values[intValue];
-		return result;
-	}
-
 	public static bool ComboFromArray(string name, ref int currentIndex, string[] values)
 	{
 		return ImGui.Combo(name, ref currentIndex, values, values.Length);

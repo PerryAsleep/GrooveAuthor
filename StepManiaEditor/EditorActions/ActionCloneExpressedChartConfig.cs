@@ -1,22 +1,23 @@
-﻿namespace StepManiaEditor;
+﻿using System;
+
+namespace StepManiaEditor;
 
 /// <summary>
 /// Action to clone an ExpressedChart configuration.
 /// </summary>
 internal sealed class ActionCloneExpressedChartConfig : EditorAction
 {
-	private readonly string ExistingConfigName;
-	private string NewConfigName;
+	private readonly Guid ExistingConfigGuid;
+	private Guid NewConfigGuid = Guid.Empty;
 
-
-	public ActionCloneExpressedChartConfig(string existingConfigName) : base(false, false)
+	public ActionCloneExpressedChartConfig(Guid existingConfigGuid) : base(false, false)
 	{
-		ExistingConfigName = existingConfigName;
+		ExistingConfigGuid = existingConfigGuid;
 	}
 
 	public override string ToString()
 	{
-		return $"Clone {ExistingConfigName} Expressed Chart Config.";
+		return "Clone Expressed Chart Config.";
 	}
 
 	public override bool AffectsFile()
@@ -26,17 +27,17 @@ internal sealed class ActionCloneExpressedChartConfig : EditorAction
 
 	protected override void DoImplementation()
 	{
-		var newConfig = Preferences.Instance.PreferencesExpressedChartConfig.CloneConfig(ExistingConfigName);
+		var newConfig = Preferences.Instance.PreferencesExpressedChartConfig.CloneConfig(ExistingConfigGuid);
 		if (newConfig == null)
 			return;
-		NewConfigName = newConfig.Name;
+		NewConfigGuid = newConfig.Guid;
 		Preferences.Instance.PreferencesExpressedChartConfig.AddConfig(newConfig);
-		PreferencesExpressedChartConfig.ShowEditUI(NewConfigName);
+		PreferencesExpressedChartConfig.ShowEditUI(NewConfigGuid);
 	}
 
 	protected override void UndoImplementation()
 	{
-		if (!string.IsNullOrEmpty(NewConfigName))
-			Preferences.Instance.PreferencesExpressedChartConfig.DeleteConfig(NewConfigName);
+		if (NewConfigGuid != Guid.Empty)
+			Preferences.Instance.PreferencesExpressedChartConfig.DeleteConfig(NewConfigGuid);
 	}
 }

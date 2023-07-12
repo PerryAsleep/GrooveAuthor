@@ -117,9 +117,20 @@ internal sealed class UIAutogenChartsForChartType
 					"Type of Charts to generate.");
 
 				// Performed Chart Config.
-				var configValues = Preferences.Instance.PreferencesPerformedChartConfig.GetSortedConfigNames();
+				var configGuids = Preferences.Instance.PreferencesPerformedChartConfig.GetSortedConfigGuids();
+				var configNames = Preferences.Instance.PreferencesPerformedChartConfig.GetSortedConfigNames();
+				var selectedIndex = 0;
+				for (var i = 0; i < configGuids.Length; i++)
+				{
+					if (configGuids[i].Equals(Preferences.Instance.LastSelectedAutogenPerformedChartConfig))
+					{
+						selectedIndex = i;
+						break;
+					}
+				}
+				
 				ImGuiLayoutUtils.DrawSelectableConfigFromList("Config", "AutogenChartsPerformedChartConfigName",
-					ref Preferences.Instance.LastSelectedAutogenPerformedChartConfig, configValues,
+					ref selectedIndex, configNames,
 					() => PreferencesPerformedChartConfig.ShowEditUI(Preferences.Instance
 						.LastSelectedAutogenPerformedChartConfig),
 					() =>
@@ -129,6 +140,7 @@ internal sealed class UIAutogenChartsForChartType
 					},
 					PreferencesPerformedChartConfig.CreateNewConfigAndShowEditUI,
 					"Performed Chart Config.");
+				Preferences.Instance.LastSelectedAutogenPerformedChartConfig = configGuids[selectedIndex];
 
 				ImGuiLayoutUtils.EndTable();
 			}

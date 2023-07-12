@@ -85,7 +85,7 @@ internal sealed class UIChartProperties
 			ImGui.Separator();
 			if (ImGuiLayoutUtils.BeginTable("ChartExpressionTable", TitleColumnWidth))
 			{
-				DrawChartExpressedChartConfigWidget(editorChart, "Expression",
+				ImGuiLayoutUtils.DrawExpressedChartConfig(editorChart, "Expression",
 					"(Editor Only) Expressed Chart Configuration."
 					+ "\nThis configuration is used by GrooveAuthor to parse the Chart and interpret its steps."
 					+ "\nThis interpretation is used for autogenerating patterns and other Charts.");
@@ -117,26 +117,6 @@ internal sealed class UIChartProperties
 		}
 
 		ImGui.End();
-	}
-
-	public static void DrawChartExpressedChartConfigWidget(EditorChart editorChart, string title, string help)
-	{
-		var configValues = Preferences.Instance.PreferencesExpressedChartConfig.GetSortedConfigNames();
-		ImGuiLayoutUtils.DrawSelectableConfigFromList(true,
-			title,
-			editorChart,
-			nameof(EditorChart.ExpressedChartConfig), configValues,
-			() => PreferencesExpressedChartConfig.ShowEditUI(editorChart.ExpressedChartConfig),
-			ViewAllExpressedChartConfigs,
-			() => PreferencesExpressedChartConfig.CreateNewConfigAndShowEditUI(editorChart),
-			true,
-			help);
-	}
-
-	private static void ViewAllExpressedChartConfigs()
-	{
-		Preferences.Instance.ShowAutogenConfigsWindow = true;
-		ImGui.SetWindowFocus(UIAutogenConfigs.WindowTitle);
 	}
 
 	private static void BrowseMusicFile(EditorChart editorChart)

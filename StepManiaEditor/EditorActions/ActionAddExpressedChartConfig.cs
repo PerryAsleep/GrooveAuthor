@@ -1,26 +1,28 @@
-﻿namespace StepManiaEditor;
+﻿using System;
+
+namespace StepManiaEditor;
 
 /// <summary>
 /// Action to add an ExpressedChart configuration.
 /// </summary>
 internal sealed class ActionAddExpressedChartConfig : EditorAction
 {
-	private readonly string ConfigName;
+	private readonly Guid ConfigGuid;
 	private readonly EditorChart EditorChart;
-	private readonly string EditorChartOldConfigName;
+	private readonly Guid EditorChartOldConfigGuid;
 
 	public ActionAddExpressedChartConfig() : base(false, false)
 	{
-		ConfigName = Preferences.Instance.PreferencesExpressedChartConfig.GetNewConfigName();
+		ConfigGuid = Guid.NewGuid();
 	}
 
-	public ActionAddExpressedChartConfig(string configName, EditorChart editorChart) : base(false, false)
+	public ActionAddExpressedChartConfig(Guid configGuid, EditorChart editorChart) : base(false, false)
 	{
-		ConfigName = configName;
+		ConfigGuid = configGuid;
 		EditorChart = editorChart;
 		if (EditorChart != null)
 		{
-			EditorChartOldConfigName = EditorChart.ExpressedChartConfig;
+			EditorChartOldConfigGuid = EditorChart.ExpressedChartConfig;
 		}
 	}
 
@@ -36,19 +38,19 @@ internal sealed class ActionAddExpressedChartConfig : EditorAction
 
 	protected override void DoImplementation()
 	{
-		Preferences.Instance.PreferencesExpressedChartConfig.AddConfig(ConfigName);
+		Preferences.Instance.PreferencesExpressedChartConfig.AddConfig(ConfigGuid);
 		if (EditorChart != null)
 		{
-			EditorChart.ExpressedChartConfig = ConfigName;
+			EditorChart.ExpressedChartConfig = ConfigGuid;
 		}
 	}
 
 	protected override void UndoImplementation()
 	{
-		Preferences.Instance.PreferencesExpressedChartConfig.DeleteConfig(ConfigName);
+		Preferences.Instance.PreferencesExpressedChartConfig.DeleteConfig(ConfigGuid);
 		if (EditorChart != null)
 		{
-			EditorChart.ExpressedChartConfig = EditorChartOldConfigName;
+			EditorChart.ExpressedChartConfig = EditorChartOldConfigGuid;
 		}
 	}
 }

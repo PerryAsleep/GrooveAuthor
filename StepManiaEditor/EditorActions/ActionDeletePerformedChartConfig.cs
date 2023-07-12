@@ -1,23 +1,25 @@
-﻿namespace StepManiaEditor;
+﻿using System;
+
+namespace StepManiaEditor;
 
 /// <summary>
 /// Action to delete a PerformedChart configuration.
 /// </summary>
 internal sealed class ActionDeletePerformedChartConfig : EditorAction
 {
-	private readonly string ConfigName;
+	private readonly Guid ConfigGuid;
 	private readonly PreferencesPerformedChartConfig.NamedConfig NamedConfig;
 	private bool LastSelectedAutogenPerformedChartConfigUsedDeletedConfig;
 
-	public ActionDeletePerformedChartConfig(string configName) : base(false, false)
+	public ActionDeletePerformedChartConfig(Guid configGuid) : base(false, false)
 	{
-		ConfigName = configName;
-		NamedConfig = Preferences.Instance.PreferencesPerformedChartConfig.GetNamedConfig(ConfigName);
+		ConfigGuid = configGuid;
+		NamedConfig = Preferences.Instance.PreferencesPerformedChartConfig.GetNamedConfig(ConfigGuid);
 	}
 
 	public override string ToString()
 	{
-		return $"Delete {ConfigName} Performed Chart Config.";
+		return $"Delete {NamedConfig.Name} Performed Chart Config.";
 	}
 
 	public override bool AffectsFile()
@@ -28,17 +30,17 @@ internal sealed class ActionDeletePerformedChartConfig : EditorAction
 	protected override void DoImplementation()
 	{
 		LastSelectedAutogenPerformedChartConfigUsedDeletedConfig =
-			Preferences.Instance.LastSelectedAutogenPerformedChartConfig == ConfigName;
-		Preferences.Instance.PreferencesPerformedChartConfig.DeleteConfig(ConfigName);
+			Preferences.Instance.LastSelectedAutogenPerformedChartConfig == ConfigGuid;
+		Preferences.Instance.PreferencesPerformedChartConfig.DeleteConfig(ConfigGuid);
 		if (LastSelectedAutogenPerformedChartConfigUsedDeletedConfig)
 			Preferences.Instance.LastSelectedAutogenPerformedChartConfig =
-				PreferencesPerformedChartConfig.DefaultConfigName;
+				PreferencesPerformedChartConfig.DefaultConfigGuid;
 	}
 
 	protected override void UndoImplementation()
 	{
 		Preferences.Instance.PreferencesPerformedChartConfig.AddConfig(NamedConfig);
 		if (LastSelectedAutogenPerformedChartConfigUsedDeletedConfig)
-			Preferences.Instance.LastSelectedAutogenPerformedChartConfig = ConfigName;
+			Preferences.Instance.LastSelectedAutogenPerformedChartConfig = ConfigGuid;
 	}
 }

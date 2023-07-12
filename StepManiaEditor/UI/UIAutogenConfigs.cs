@@ -47,19 +47,19 @@ internal sealed class UIAutogenConfigs
 				ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, DeleteWidth);
 			}
 
-			var sortedConfigNames = p.PreferencesExpressedChartConfig.GetSortedConfigNames();
+			var sortedConfigGuids = p.PreferencesExpressedChartConfig.GetSortedConfigGuids();
 			var index = 0;
-			foreach (var configName in sortedConfigNames)
+			foreach (var configGuid in sortedConfigGuids)
 			{
 				ImGui.TableNextRow();
 
 				// Name.
-				var config = p.PreferencesExpressedChartConfig.GetNamedConfig(configName);
+				var config = p.PreferencesExpressedChartConfig.GetNamedConfig(configGuid);
 				ImGui.TableSetColumnIndex(0);
 				if (ImGui.Selectable(config.Name, false,
 					    ImGuiSelectableFlags.SpanAllColumns | ImGuiSelectableFlags.AllowItemOverlap))
 				{
-					Preferences.Instance.PreferencesExpressedChartConfig.ActiveExpressedChartConfigForWindow = config.Name;
+					Preferences.Instance.PreferencesExpressedChartConfig.ActiveExpressedChartConfigForWindow = configGuid;
 					Preferences.Instance.PreferencesExpressedChartConfig.ShowExpressedChartListWindow = true;
 					ImGui.SetWindowFocus(UIExpressedChartConfig.WindowTitle);
 				}
@@ -72,7 +72,7 @@ internal sealed class UIAutogenConfigs
 				ImGui.TableSetColumnIndex(2);
 				if (ImGui.SmallButton($"Clone##ExpressedChartConfig{index}"))
 				{
-					ActionQueue.Instance.Do(new ActionCloneExpressedChartConfig(config.Name));
+					ActionQueue.Instance.Do(new ActionCloneExpressedChartConfig(configGuid));
 				}
 
 				// Delete button.
@@ -82,7 +82,7 @@ internal sealed class UIAutogenConfigs
 					PushDisabled();
 				if (ImGui.SmallButton($"Delete##ExpressedChartConfig{index}"))
 				{
-					ActionQueue.Instance.Do(new ActionDeleteExpressedChartConfig(Editor, config.Name));
+					ActionQueue.Instance.Do(new ActionDeleteExpressedChartConfig(Editor, configGuid));
 				}
 
 				if (disabled)
@@ -119,19 +119,19 @@ internal sealed class UIAutogenConfigs
 				ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, DeleteWidth);
 			}
 
-			sortedConfigNames = p.PreferencesPerformedChartConfig.GetSortedConfigNames();
+			sortedConfigGuids = p.PreferencesPerformedChartConfig.GetSortedConfigGuids();
 			index = 0;
-			foreach (var configName in sortedConfigNames)
+			foreach (var configGuid in sortedConfigGuids)
 			{
 				ImGui.TableNextRow();
 
 				// Name.
-				var config = p.PreferencesPerformedChartConfig.GetNamedConfig(configName);
+				var config = p.PreferencesPerformedChartConfig.GetNamedConfig(configGuid);
 				ImGui.TableSetColumnIndex(0);
 				if (ImGui.Selectable(config.Name, false,
 					    ImGuiSelectableFlags.SpanAllColumns | ImGuiSelectableFlags.AllowItemOverlap))
 				{
-					PreferencesPerformedChartConfig.ShowEditUI(config.Name);
+					PreferencesPerformedChartConfig.ShowEditUI(configGuid);
 				}
 
 				// Description.
@@ -142,7 +142,7 @@ internal sealed class UIAutogenConfigs
 				ImGui.TableSetColumnIndex(2);
 				if (ImGui.SmallButton($"Clone##PerformedChartConfig{index}"))
 				{
-					ActionQueue.Instance.Do(new ActionClonePerformedChartConfig(config.Name));
+					ActionQueue.Instance.Do(new ActionClonePerformedChartConfig(configGuid));
 				}
 
 				// Delete button.
@@ -152,7 +152,7 @@ internal sealed class UIAutogenConfigs
 					PushDisabled();
 				if (ImGui.SmallButton($"Delete##PerformedChartConfig{index}"))
 				{
-					ActionQueue.Instance.Do(new ActionDeletePerformedChartConfig(config.Name));
+					ActionQueue.Instance.Do(new ActionDeletePerformedChartConfig(configGuid));
 				}
 
 				if (disabled)

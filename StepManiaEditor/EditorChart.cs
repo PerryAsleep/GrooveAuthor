@@ -31,7 +31,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	{
 		public double MusicOffset;
 		public bool ShouldUseChartMusicOffset;
-		public string ExpressedChartConfig = PreferencesExpressedChartConfig.DefaultDynamicConfigName;
+		public Guid ExpressedChartConfig = PreferencesExpressedChartConfig.DefaultDynamicConfigGuid;
 	}
 
 	/// <summary>
@@ -385,7 +385,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 	private DisplayTempo DisplayTempo = new();
 
-	public string ExpressedChartConfig
+	public Guid ExpressedChartConfig
 	{
 		get => ExpressedChartConfigInternal;
 		set
@@ -393,14 +393,12 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			Assert(CanBeEdited());
 			if (!CanBeEdited())
 				return;
-			if (string.IsNullOrEmpty(value))
-				return;
 			if (Preferences.Instance.PreferencesExpressedChartConfig.DoesConfigExist(value))
 				ExpressedChartConfigInternal = value;
 		}
 	}
 
-	private string ExpressedChartConfigInternal;
+	private Guid ExpressedChartConfigInternal;
 
 	#endregion Properties
 
@@ -413,7 +411,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 		WorkQueue = new WorkQueue();
 
-		ExpressedChartConfigInternal = PreferencesExpressedChartConfig.DefaultDynamicConfigName;
+		ExpressedChartConfigInternal = PreferencesExpressedChartConfig.DefaultDynamicConfigGuid;
 
 		OriginalChartExtras = chart.Extras;
 		EditorSong = editorSong;
@@ -459,7 +457,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 		WorkQueue = new WorkQueue();
 
-		ExpressedChartConfigInternal = PreferencesExpressedChartConfig.DefaultDynamicConfigName;
+		ExpressedChartConfigInternal = PreferencesExpressedChartConfig.DefaultDynamicConfigGuid;
 
 		EditorSong = editorSong;
 		ChartTypeInternal = chartType;

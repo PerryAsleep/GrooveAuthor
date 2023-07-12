@@ -115,7 +115,7 @@ internal sealed class Preferences
 	[JsonInclude] public Editor.NoteEntryMode NoteEntryMode = Editor.NoteEntryMode.Normal;
 	[JsonInclude] public int SnapIndex;
 	[JsonInclude] public ChartType LastSelectedAutogenChartType = ChartType.dance_single;
-	[JsonInclude] public string LastSelectedAutogenPerformedChartConfig = PreferencesPerformedChartConfig.DefaultConfigName;
+	[JsonInclude] public Guid LastSelectedAutogenPerformedChartConfig = PreferencesPerformedChartConfig.DefaultConfigGuid;
 
 	// Debug
 	[JsonInclude] public double DebugSongTime;

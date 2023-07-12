@@ -416,7 +416,7 @@ internal sealed class ImGuiLayoutUtils
 	public static bool DrawSelectableConfigFromList(
 		string title,
 		string elementName,
-		ref string value,
+		ref int selectedIndex,
 		string[] values,
 		Action editAction,
 		Action viewAllAction,
@@ -433,7 +433,7 @@ internal sealed class ImGuiLayoutUtils
 			itemWidth - ConfigFromListEditWidth - ConfigFromListViewAllWidth - ConfigFromListNewWidth - spacing * 3.0f);
 		ImGui.SetNextItemWidth(comboWidth);
 
-		var ret = ComboFromArray(elementTitle, ref value, values);
+		var ret = ComboFromArray(elementTitle, ref selectedIndex, values);
 
 		ImGui.SameLine();
 		if (ImGui.Button($"Edit{elementTitle}", new Vector2(ConfigFromListEditWidth, 0.0f)))
@@ -456,19 +456,11 @@ internal sealed class ImGuiLayoutUtils
 		return ret;
 	}
 
-	public static bool DrawSelectableConfigFromList(
-		bool undoable,
-		string title,
-		object o,
-		string fieldName,
-		string[] values,
-		Action editAction,
-		Action viewAllAction,
-		Action newAction,
-		bool affectsFile,
-		string help = null)
+	public static bool DrawExpressedChartConfig(EditorChart editorChart, string title, string help)
 	{
 		DrawRowTitleAndAdvanceColumn(title);
+
+		var fieldName = nameof(EditorChart.ExpressedChartConfig);
 
 		var elementTitle = GetElementTitle(title, fieldName);
 
@@ -478,37 +470,48 @@ internal sealed class ImGuiLayoutUtils
 			itemWidth - ConfigFromListEditWidth - ConfigFromListViewAllWidth - ConfigFromListNewWidth - spacing * 3.0f);
 		ImGui.SetNextItemWidth(comboWidth);
 
-		var value = GetValueFromFieldOrProperty<string>(o, fieldName);
-		var newValue = value;
-		var ret = ComboFromArray(elementTitle, ref newValue, values);
+		var currentValue = editorChart?.ExpressedChartConfig ?? PreferencesExpressedChartConfig.DefaultDynamicConfigGuid;
+		var configGuids = Preferences.Instance.PreferencesExpressedChartConfig.GetSortedConfigGuids();
+		var configNames = Preferences.Instance.PreferencesExpressedChartConfig.GetSortedConfigNames();
+		var selectedIndex = 0;
+		for (var i = 0; i < configGuids.Length; i++)
+		{
+			if (configGuids[i].Equals(currentValue))
+			{
+				selectedIndex = i;
+				break;
+			}
+		}
+
+		var ret = ComboFromArray(elementTitle, ref selectedIndex, configNames);
 		if (ret)
 		{
-			if (!newValue.Equals(value))
+			var newValue = configGuids[selectedIndex];
+			if (!newValue.Equals(currentValue))
 			{
-				if (undoable)
-					ActionQueue.Instance.Do(
-						new ActionSetObjectFieldOrPropertyReference<string>(o, fieldName, newValue, value, affectsFile));
-				else
-					SetFieldOrPropertyToValue(o, fieldName, newValue);
+				ActionQueue.Instance.Do(
+					new ActionSetObjectFieldOrPropertyValue<Guid>(editorChart, fieldName, newValue, true));
 			}
 		}
 
 		ImGui.SameLine();
 		if (ImGui.Button($"Edit{elementTitle}", new Vector2(ConfigFromListEditWidth, 0.0f)))
 		{
-			editAction();
+			if (editorChart != null)
+				PreferencesExpressedChartConfig.ShowEditUI(editorChart.ExpressedChartConfig);
 		}
 
 		ImGui.SameLine();
 		if (ImGui.Button($"View All{elementTitle}", new Vector2(ConfigFromListViewAllWidth, 0.0f)))
 		{
-			viewAllAction();
+			Preferences.Instance.ShowAutogenConfigsWindow = true;
+			ImGui.SetWindowFocus(UIAutogenConfigs.WindowTitle);
 		}
 
 		ImGui.SameLine();
 		if (ImGui.Button($"New{elementTitle}", new Vector2(ConfigFromListNewWidth, 0.0f)))
 		{
-			newAction();
+			PreferencesExpressedChartConfig.CreateNewConfigAndShowEditUI(editorChart);
 		}
 
 		return ret;

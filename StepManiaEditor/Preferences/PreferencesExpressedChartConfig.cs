@@ -3,9 +3,7 @@ using ImGuiNET;
 using StepManiaLibrary;
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json.Serialization;
-using static System.Diagnostics.Debug;
 
 namespace StepManiaEditor;
 
@@ -13,21 +11,38 @@ namespace StepManiaEditor;
 /// Preferences for the ExpressedChartConfigs.
 /// Holds default configuration and custom user-made configurations.
 /// </summary>
-internal sealed class PreferencesExpressedChartConfig : Notifier<PreferencesExpressedChartConfig>
+internal sealed class PreferencesExpressedChartConfig
 {
-	// Default config names for configs which cannot be edited.
+	// Default config names and guids for configs which cannot be edited.
 	public const string DefaultDynamicConfigName = "Dynamic";
+	public static readonly Guid DefaultDynamicConfigGuid = new("a19d532e-b0ce-4759-ad1c-02ecbbdf2efd");
 	public const string DefaultAggressiveBracketsConfigName = "Aggressive Brackets";
+	public static readonly Guid DefaultAggressiveBracketsConfigGuid = new("da3f6e12-49d1-416b-8db6-0ab413f740b6");
 	public const string DefaultNoBracketsConfigName = "No Brackets";
+	public static readonly Guid DefaultNoBracketsConfigGuid = new("0c0ba200-8f90-4060-8912-e9ea65831ebc");
 
-	// Notifications.
-	public const string NotificationConfigRename = "ConfigRename";
+	private const string NewConfigName = "New Config";
 
 	/// <summary>
 	/// Config object with an associated string name.
 	/// </summary>
 	internal sealed class NamedConfig
 	{
+		public NamedConfig()
+		{
+			Guid = Guid.NewGuid();
+		}
+
+		public NamedConfig(Guid guid)
+		{
+			Guid = guid;
+		}
+
+		/// <summary>
+		/// Guid for this NamedConfig. Not readonly so that it can be set from deserialization.
+		/// </summary>
+		[JsonInclude] public Guid Guid;
+
 		// Preferences.
 		[JsonInclude]
 		public string Name
@@ -40,10 +55,9 @@ internal sealed class PreferencesExpressedChartConfig : Notifier<PreferencesExpr
 					return;
 				if (!string.IsNullOrEmpty(NameInternal) && NameInternal.Equals(value))
 					return;
-				var oldName = NameInternal;
 				NameInternal = value;
 				// Null check around OnNameUpdated because this property is set during deserialization.
-				OnNameUpdated?.Invoke(oldName, NameInternal);
+				OnNameUpdated?.Invoke();
 			}
 		}
 
@@ -70,7 +84,7 @@ internal sealed class PreferencesExpressedChartConfig : Notifier<PreferencesExpr
 		/// <summary>
 		/// Callback function to invoke when the name is updated.
 		/// </summary>
-		private Action<string, string> OnNameUpdated;
+		private Action OnNameUpdated;
 
 		/// <summary>
 		/// Returns a new NamedConfig that is a clone of this NamedConfig.
@@ -88,13 +102,11 @@ internal sealed class PreferencesExpressedChartConfig : Notifier<PreferencesExpr
 		}
 
 		/// <summary>
-		/// Sets functions to use for name validation and calling back to when the name is updated.
+		/// Sets function to use for calling back to when the name is updated.
 		/// </summary>
-		/// <param name="isNewNameValid">Name validation function.</param>
 		/// <param name="onNameUpdated">Callback function to invoke when the name is updated.</param>
-		public void SetNameUpdateFunctions(Func<string, bool> isNewNameValid, Action<string, string> onNameUpdated)
+		public void SetNameUpdatedFunction(Action onNameUpdated)
 		{
-			IsNewNameValid = isNewNameValid;
 			OnNameUpdated = onNameUpdated;
 		}
 
@@ -104,19 +116,19 @@ internal sealed class PreferencesExpressedChartConfig : Notifier<PreferencesExpr
 		/// <returns>True if this is a default config and false otherwise.</returns>
 		public bool IsDefaultConfig()
 		{
-			return IsDefaultName(Name);
+			return IsDefaultGuid(Guid);
 		}
 
 		/// <summary>
-		/// Returns whether the given name identifies a default config.
+		/// Returns whether the given guid identifies a default config.
 		/// </summary>
-		/// <param name="name">Config name.</param>
-		/// <returns>True if this name identifies a default config and false otherwise.</returns>
-		public static bool IsDefaultName(string name)
+		/// <param name="guid">Config Guid.</param>
+		/// <returns>True if this guid identifies a default config and false otherwise.</returns>
+		public static bool IsDefaultGuid(Guid guid)
 		{
-			return name.Equals(DefaultDynamicConfigName)
-			       || name.Equals(DefaultAggressiveBracketsConfigName)
-			       || name.Equals(DefaultNoBracketsConfigName);
+			return guid.Equals(DefaultDynamicConfigGuid)
+			       || guid.Equals(DefaultAggressiveBracketsConfigGuid)
+			       || guid.Equals(DefaultNoBracketsConfigGuid);
 		}
 
 		public bool IsUsingDefaults()
@@ -141,10 +153,14 @@ internal sealed class PreferencesExpressedChartConfig : Notifier<PreferencesExpr
 	}
 
 	// Preferences.
-	[JsonInclude] public string ActiveExpressedChartConfigForWindow;
+	[JsonInclude] public Guid ActiveExpressedChartConfigForWindow;
 	[JsonInclude] public bool ShowExpressedChartListWindow;
-	[JsonInclude] public Dictionary<string, NamedConfig> Configs = new();
+	[JsonInclude] public Dictionary<Guid, NamedConfig> Configs = new();
 
+	/// <summary>
+	/// Sorted array of Config guids to use for UI.
+	/// </summary>
+	private Guid[] SortedConfigGuids;
 	/// <summary>
 	/// Sorted array of Config names to use for UI.
 	/// </summary>
@@ -152,14 +168,14 @@ internal sealed class PreferencesExpressedChartConfig : Notifier<PreferencesExpr
 
 	public static void CreateNewConfigAndShowEditUI(EditorChart editorChart = null)
 	{
-		var newConfigName = Preferences.Instance.PreferencesExpressedChartConfig.GetNewConfigName();
-		ActionQueue.Instance.Do(new ActionAddExpressedChartConfig(newConfigName, editorChart));
-		ShowEditUI(newConfigName);
+		var newConfigGuid = Guid.NewGuid();
+		ActionQueue.Instance.Do(new ActionAddExpressedChartConfig(newConfigGuid, editorChart));
+		ShowEditUI(newConfigGuid);
 	}
 
-	public static void ShowEditUI(string configName)
+	public static void ShowEditUI(Guid configGuid)
 	{
-		Preferences.Instance.PreferencesExpressedChartConfig.ActiveExpressedChartConfigForWindow = configName;
+		Preferences.Instance.PreferencesExpressedChartConfig.ActiveExpressedChartConfigForWindow = configGuid;
 		Preferences.Instance.PreferencesExpressedChartConfig.ShowExpressedChartListWindow = true;
 		ImGui.SetWindowFocus(UIExpressedChartConfig.WindowTitle);
 	}
@@ -170,55 +186,55 @@ internal sealed class PreferencesExpressedChartConfig : Notifier<PreferencesExpr
 	public void PostLoad()
 	{
 		// Set the default configs. These should never be modified so delete them if they exists and re-add it.
-		Configs.Remove(DefaultDynamicConfigName);
-		var defaultDynamicConfig = AddConfig(DefaultDynamicConfigName);
+		Configs.Remove(DefaultDynamicConfigGuid);
+		var defaultDynamicConfig = AddConfig(DefaultDynamicConfigGuid, DefaultDynamicConfigName);
 		defaultDynamicConfig.Description = "Default settings with dynamic bracket parsing";
 		InitializeConfigWithDefaultValues(defaultDynamicConfig.Config);
 
-		Configs.Remove(DefaultAggressiveBracketsConfigName);
-		var defaultAggressiveConfig = AddConfig(DefaultAggressiveBracketsConfigName, false);
+		Configs.Remove(DefaultAggressiveBracketsConfigGuid);
+		var defaultAggressiveConfig = AddConfig(DefaultAggressiveBracketsConfigGuid, DefaultAggressiveBracketsConfigName, false);
 		defaultAggressiveConfig.Description = "Default settings with aggressive bracket parsing";
 		defaultAggressiveConfig.Config.BracketParsingDetermination = BracketParsingDetermination.UseDefaultMethod;
 		defaultAggressiveConfig.Config.DefaultBracketParsingMethod = BracketParsingMethod.Aggressive;
 
-		Configs.Remove(DefaultNoBracketsConfigName);
-		var defaultNoBracketsConfig = AddConfig(DefaultNoBracketsConfigName, false);
+		Configs.Remove(DefaultNoBracketsConfigGuid);
+		var defaultNoBracketsConfig = AddConfig(DefaultNoBracketsConfigGuid, DefaultNoBracketsConfigName, false);
 		defaultNoBracketsConfig.Description = "Default settings that avoid brackets";
 		defaultNoBracketsConfig.Config.BracketParsingDetermination = BracketParsingDetermination.UseDefaultMethod;
 		defaultNoBracketsConfig.Config.DefaultBracketParsingMethod = BracketParsingMethod.NoBrackets;
 
 		// Ensure every NamedConfig is configured and valid.
-		var invalidConfigNames = new List<string>();
+		var invalidConfigGuids = new List<Guid>();
 		foreach (var kvp in Configs)
 		{
 			// Configure the NamedConfig will name update functions.
-			kvp.Value.SetNameUpdateFunctions(IsNewConfigNameValid, OnConfigNameUpdated);
+			kvp.Value.SetNameUpdatedFunction(OnConfigNameUpdated);
 
 			// Validate the ExpressedChartConfig. If this fails, store it for removal.
-			if (!kvp.Value.Config.Validate(kvp.Key))
+			if (!kvp.Value.Config.Validate(kvp.Value.Name))
 			{
-				invalidConfigNames.Add(kvp.Key);
+				invalidConfigGuids.Add(kvp.Key);
 			}
 		}
 
 		// Remove all invalid ExpressedChartConfig objects.
-		foreach (var invalidConfigName in invalidConfigNames)
+		foreach (var invalidConfigGuid in invalidConfigGuids)
 		{
-			Configs.Remove(invalidConfigName);
+			Configs.Remove(invalidConfigGuid);
 		}
 
 		// Ensure the variables for displaying an ExpressedChartConfig don't point to an unknown config.
-		if (ActiveExpressedChartConfigForWindow != null)
+		if (ActiveExpressedChartConfigForWindow != Guid.Empty)
 		{
 			if (!Configs.ContainsKey(ActiveExpressedChartConfigForWindow))
-				ActiveExpressedChartConfigForWindow = null;
+				ActiveExpressedChartConfigForWindow = Guid.Empty;
 		}
 
-		if (ActiveExpressedChartConfigForWindow == null)
+		if (ActiveExpressedChartConfigForWindow == Guid.Empty)
 			ShowExpressedChartListWindow = false;
 
 		// Now that names are loaded, set the sorted array.
-		UpdateSortedConfigNames();
+		UpdateSortedConfigs();
 	}
 
 	private void InitializeConfigWithDefaultValues(ExpressedChartConfig config)
@@ -232,163 +248,130 @@ internal sealed class PreferencesExpressedChartConfig : Notifier<PreferencesExpr
 		config.BalancedBracketsPerMinuteForNoBrackets = NamedConfig.DefaultBalancedBracketsPerMinuteForNoBrackets;
 	}
 
-	public string GetNewConfigName()
-	{
-		var configName = "New Config";
-		if (Configs.ContainsKey(configName))
-		{
-			var index = 1;
-			do
-			{
-				configName = $"New Config ({index})";
-				if (!Configs.ContainsKey(configName))
-					break;
-				index++;
-			} while (true);
-		}
-
-		return configName;
-	}
-
 	public void AddConfig(NamedConfig config)
 	{
-		Assert(IsNewConfigNameValid(config.Name));
-		if (!IsNewConfigNameValid(config.Name))
-			return;
-		Configs[config.Name] = config;
-		UpdateSortedConfigNames();
+		Configs[config.Guid] = config;
+		UpdateSortedConfigs();
+	}
+
+	public NamedConfig AddConfig(Guid guid, string name)
+	{
+		return AddConfig(guid, name, true);
+	}
+
+	public NamedConfig AddConfig(Guid guid)
+	{
+		return AddConfig(guid, NewConfigName, true);
 	}
 
 	public NamedConfig AddConfig(string name)
 	{
-		return AddConfig(name, true);
+		return AddConfig(Guid.NewGuid(), name, true);
 	}
 
-	private NamedConfig AddConfig(string name, bool useDefaultValues)
+	private NamedConfig AddConfig(Guid guid, string name, bool useDefaultValues)
 	{
-		if (!IsNewConfigNameValid(name))
-			return null;
-
-		var config = new NamedConfig();
-		config.SetNameUpdateFunctions(IsNewConfigNameValid, OnConfigNameUpdated);
+		var config = new NamedConfig(guid);
+		config.SetNameUpdatedFunction(OnConfigNameUpdated);
 		config.Name = name;
 		if (useDefaultValues)
 			InitializeConfigWithDefaultValues(config.Config);
-		Configs[name] = config;
+		Configs[config.Guid] = config;
 
-		UpdateSortedConfigNames();
+		UpdateSortedConfigs();
 
 		return config;
 	}
 
-	public void DeleteConfig(string name)
+	public void DeleteConfig(Guid guid)
 	{
-		if (!Configs.TryGetValue(name, out var config))
+		if (!Configs.TryGetValue(guid, out var config))
 			return;
 		if (config.IsDefaultConfig())
 			return;
-		Configs.Remove(name);
+		Configs.Remove(guid);
 
 		// If the actively displayed config is being deleted, remove the variable tracking 
-		if (!string.IsNullOrEmpty(ActiveExpressedChartConfigForWindow)
-		    && ActiveExpressedChartConfigForWindow.Equals(name))
+		if (ActiveExpressedChartConfigForWindow == guid)
 		{
-			ActiveExpressedChartConfigForWindow = null;
+			ActiveExpressedChartConfigForWindow = Guid.Empty;
 			ShowExpressedChartListWindow = false;
 		}
 
-		UpdateSortedConfigNames();
+		UpdateSortedConfigs();
 	}
 
-	public NamedConfig CloneConfig(string name)
+	public NamedConfig CloneConfig(Guid guid)
 	{
-		var existingConfig = GetNamedConfig(name);
-		return existingConfig?.Clone(GetNewConfigName());
+		var existingConfig = GetNamedConfig(guid);
+		return existingConfig?.Clone(NewConfigName);
 	}
 
-	public NamedConfig GetNamedConfig(string name)
+	public NamedConfig GetNamedConfig(Guid guid)
 	{
-		if (string.IsNullOrEmpty(name))
-			return null;
-		if (!Configs.TryGetValue(name, out var config))
+		if (!Configs.TryGetValue(guid, out var config))
 			return null;
 		return config;
 	}
 
-	public ExpressedChartConfig GetConfig(string name)
+	public ExpressedChartConfig GetConfig(Guid guid)
 	{
-		if (string.IsNullOrEmpty(name))
-			return null;
-		if (!Configs.TryGetValue(name, out var config))
+		if (!Configs.TryGetValue(guid, out var config))
 			return null;
 		return config.Config;
 	}
 
-	public bool DoesConfigExist(string name)
+	public bool DoesConfigExist(Guid guid)
 	{
-		return !string.IsNullOrEmpty(name) && Configs.ContainsKey(name);
-	}
-
-	public bool IsNewConfigNameValid(string name)
-	{
-		if (string.IsNullOrEmpty(name))
-			return false;
-		foreach (var kvp in Configs)
-		{
-			if (name.Equals(kvp.Key))
-				return false;
-		}
-
-		return true;
+		return Configs.ContainsKey(guid);
 	}
 
 	/// <summary>
 	/// Called when a NamedConfig's name is updated to a new value.
 	/// </summary>
-	/// <param name="oldName">Old name.</param>
-	/// <param name="newName">New name.</param>
-	private void OnConfigNameUpdated(string oldName, string newName)
+	private void OnConfigNameUpdated()
 	{
-		if (string.IsNullOrEmpty(oldName))
-			return;
-		if (!Configs.ContainsKey(oldName))
-			return;
-
-		// If the preference for the actively displayed config is holding on to the
-		// old name, update it to the new name.
-		if (!string.IsNullOrEmpty(ActiveExpressedChartConfigForWindow)
-		    && ActiveExpressedChartConfigForWindow.Equals(oldName))
-		{
-			ActiveExpressedChartConfigForWindow = newName;
-		}
-
-		// Update the Configs Dictionary with the new name.
-		var config = Configs[oldName];
-		Configs.Remove(oldName);
-		Configs[newName] = config;
-
 		// Update the sort since the name has changed.
-		UpdateSortedConfigNames();
-
-		// Notify Observers.
-		Notify(NotificationConfigRename, this, new Tuple<string, string>(oldName, newName));
+		UpdateSortedConfigs();
 	}
 
-	private void UpdateSortedConfigNames()
+	private void UpdateSortedConfigs()
 	{
-		var keyList = Configs.Keys.ToList();
-		keyList.Sort((lhs, rhs) =>
+		var guidsAndNames = new List<Tuple<Guid, string>>();
+		foreach (var kvp in Configs)
+		{
+			guidsAndNames.Add(new Tuple<Guid, string>(kvp.Key, kvp.Value.Name));
+		}
+
+		guidsAndNames.Sort((lhs, rhs) =>
 		{
 			// The default configs should be sorted first.
-			var lhsDefault = NamedConfig.IsDefaultName(lhs);
-			var rhsDefault = NamedConfig.IsDefaultName(rhs);
+			var lhsDefault = NamedConfig.IsDefaultGuid(lhs.Item1);
+			var rhsDefault = NamedConfig.IsDefaultGuid(rhs.Item1);
 			if (lhsDefault != rhsDefault)
 				return lhsDefault ? -1 : 1;
 
 			// Configs should sort alphabetically.
-			return string.Compare(lhs, rhs, StringComparison.CurrentCulture);
+			var comparison = string.Compare(lhs.Item2, rhs.Item2, StringComparison.CurrentCulture);
+			if (comparison != 0)
+				return comparison;
+
+			// Finally sort by Guid.
+			return lhs.Item1.CompareTo(rhs.Item1);
 		});
-		SortedConfigNames = keyList.ToArray();
+
+		SortedConfigGuids = new Guid[guidsAndNames.Count];
+		SortedConfigNames = new string[guidsAndNames.Count];
+		for (var i = 0; i < guidsAndNames.Count; i++)
+		{
+			SortedConfigGuids[i] = guidsAndNames[i].Item1;
+			SortedConfigNames[i] = guidsAndNames[i].Item2;
+		}
+	}
+
+	public Guid[] GetSortedConfigGuids()
+	{
+		return SortedConfigGuids;
 	}
 
 	public string[] GetSortedConfigNames()

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace StepManiaEditor;
 
@@ -8,15 +9,15 @@ namespace StepManiaEditor;
 internal sealed class ActionDeleteExpressedChartConfig : EditorAction
 {
 	private readonly Editor Editor;
-	private readonly string ConfigName;
+	private readonly Guid ConfigGuid;
 	private readonly PreferencesExpressedChartConfig.NamedConfig NamedConfig;
 	private readonly List<EditorChart> ChartsWithDeletedConfig;
 
-	public ActionDeleteExpressedChartConfig(Editor editor, string configName) : base(false, false)
+	public ActionDeleteExpressedChartConfig(Editor editor, Guid configGuid) : base(false, false)
 	{
 		Editor = editor;
-		ConfigName = configName;
-		NamedConfig = Preferences.Instance.PreferencesExpressedChartConfig.GetNamedConfig(ConfigName);
+		ConfigGuid = configGuid;
+		NamedConfig = Preferences.Instance.PreferencesExpressedChartConfig.GetNamedConfig(ConfigGuid);
 		ChartsWithDeletedConfig = new List<EditorChart>();
 
 		var song = Editor.GetActiveSong();
@@ -25,7 +26,7 @@ internal sealed class ActionDeleteExpressedChartConfig : EditorAction
 			var charts = song.GetCharts();
 			foreach (var chart in charts)
 			{
-				if (chart.ExpressedChartConfig == ConfigName)
+				if (chart.ExpressedChartConfig == ConfigGuid)
 				{
 					ChartsWithDeletedConfig.Add(chart);
 				}
@@ -35,7 +36,7 @@ internal sealed class ActionDeleteExpressedChartConfig : EditorAction
 
 	public override string ToString()
 	{
-		return $"Delete {ConfigName} Expressed Chart Config.";
+		return $"Delete {NamedConfig.Name} Expressed Chart Config.";
 	}
 
 	public override bool AffectsFile()
@@ -51,14 +52,14 @@ internal sealed class ActionDeleteExpressedChartConfig : EditorAction
 			var charts = song.GetCharts();
 			foreach (var chart in charts)
 			{
-				if (chart.ExpressedChartConfig == ConfigName)
+				if (chart.ExpressedChartConfig == ConfigGuid)
 				{
-					chart.ExpressedChartConfig = PreferencesExpressedChartConfig.DefaultDynamicConfigName;
+					chart.ExpressedChartConfig = PreferencesExpressedChartConfig.DefaultDynamicConfigGuid;
 				}
 			}
 		}
 
-		Preferences.Instance.PreferencesExpressedChartConfig.DeleteConfig(ConfigName);
+		Preferences.Instance.PreferencesExpressedChartConfig.DeleteConfig(ConfigGuid);
 	}
 
 	protected override void UndoImplementation()
@@ -67,7 +68,7 @@ internal sealed class ActionDeleteExpressedChartConfig : EditorAction
 
 		foreach (var chart in ChartsWithDeletedConfig)
 		{
-			chart.ExpressedChartConfig = ConfigName;
+			chart.ExpressedChartConfig = ConfigGuid;
 		}
 	}
 }

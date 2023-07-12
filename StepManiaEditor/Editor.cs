@@ -37,8 +37,6 @@ internal sealed class Editor :
 	Fumen.IObserver<EditorSong>,
 	Fumen.IObserver<EditorChart>,
 	Fumen.IObserver<PreferencesOptions>,
-	Fumen.IObserver<PreferencesExpressedChartConfig>,
-	Fumen.IObserver<PreferencesPerformedChartConfig>,
 	Fumen.IObserver<ActionQueue>
 {
 	/// <summary>
@@ -549,7 +547,6 @@ internal sealed class Editor :
 	private void InitializeObservers()
 	{
 		Preferences.Instance.PreferencesOptions.AddObserver(this);
-		Preferences.Instance.PreferencesExpressedChartConfig.AddObserver(this);
 		ActionQueue.Instance.AddObserver(this);
 	}
 
@@ -6291,28 +6288,6 @@ internal sealed class Editor :
 		}
 	}
 
-	public void OnNotify(string eventId, PreferencesExpressedChartConfig options, object payload)
-	{
-		switch (eventId)
-		{
-			case PreferencesExpressedChartConfig.NotificationConfigRename:
-				var payloadNames = (Tuple<string, string>)payload;
-				OnExpressedChartConfigNameChanged(payloadNames.Item1, payloadNames.Item2);
-				break;
-		}
-	}
-
-	public void OnNotify(string eventId, PreferencesPerformedChartConfig options, object payload)
-	{
-		switch (eventId)
-		{
-			case PreferencesPerformedChartConfig.NotificationConfigRename:
-				var payloadNames = (Tuple<string, string>)payload;
-				OnPerformedChartConfigNameChanged(payloadNames.Item1, payloadNames.Item2);
-				break;
-		}
-	}
-
 	public void OnNotify(string eventId, ActionQueue actionQueue, object payload)
 	{
 		switch (eventId)
@@ -6324,27 +6299,6 @@ internal sealed class Editor :
 	}
 
 	#endregion IObserver
-
-	private void OnExpressedChartConfigNameChanged(string oldName, string newName)
-	{
-		// When an Expressed Chart Config name has changed, update all loaded Charts directly without enqueueing actions.
-		// We don't want to introduce unintended actions to be undone / redone. Undoing changing an Expressed Chart Config
-		// name will result in this notification being triggered again.
-		if (ActiveSong != null)
-		{
-			foreach (var chart in ActiveSong.GetCharts())
-			{
-				if (chart.ExpressedChartConfig.Equals(oldName))
-					chart.ExpressedChartConfig = newName;
-			}
-		}
-	}
-
-	private void OnPerformedChartConfigNameChanged(string oldName, string newName)
-	{
-		if (Preferences.Instance.LastSelectedAutogenPerformedChartConfig == oldName)
-			Preferences.Instance.LastSelectedAutogenPerformedChartConfig = newName;
-	}
 
 	private void OnEscape()
 	{

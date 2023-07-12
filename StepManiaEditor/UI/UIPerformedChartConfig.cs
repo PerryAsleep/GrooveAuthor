@@ -59,7 +59,6 @@ internal sealed class UIPerformedChartConfig
 			if (ImGuiLayoutUtils.BeginTable("PerformedChartConfigTable", TitleColumnWidth))
 			{
 				ImGuiLayoutUtils.DrawRowTextInput(true, "Name", namedConfig, nameof(NamedConfig.Name), false,
-					Preferences.Instance.PreferencesPerformedChartConfig.IsNewConfigNameValid,
 					"Configuration name.");
 
 				ImGuiLayoutUtils.DrawRowTextInput(true, "Description", namedConfig, nameof(NamedConfig.Description), false,
@@ -280,7 +279,7 @@ internal sealed class UIPerformedChartConfig
 				if (ImGuiLayoutUtils.DrawRowButton("Delete Performed Chart Config", "Delete",
 					    "Delete this Performed Chart Config."))
 				{
-					ActionQueue.Instance.Do(new ActionDeletePerformedChartConfig(namedConfig.Name));
+					ActionQueue.Instance.Do(new ActionDeletePerformedChartConfig(namedConfig.Guid));
 				}
 
 				ImGuiLayoutUtils.EndTable();
