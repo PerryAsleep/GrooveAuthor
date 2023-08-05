@@ -1,23 +1,24 @@
 ﻿using System;
 using System.Collections.Generic;
+using StepManiaEditor.AutogenConfig;
 
 namespace StepManiaEditor;
 
 /// <summary>
-/// Action to delete an ExpressedChart configuration.
+/// Action to delete an EditorExpressedChartConfig.
 /// </summary>
 internal sealed class ActionDeleteExpressedChartConfig : EditorAction
 {
 	private readonly Editor Editor;
 	private readonly Guid ConfigGuid;
-	private readonly PreferencesExpressedChartConfig.NamedConfig NamedConfig;
+	private readonly EditorExpressedChartConfig Config;
 	private readonly List<EditorChart> ChartsWithDeletedConfig;
 
 	public ActionDeleteExpressedChartConfig(Editor editor, Guid configGuid) : base(false, false)
 	{
 		Editor = editor;
 		ConfigGuid = configGuid;
-		NamedConfig = Preferences.Instance.PreferencesExpressedChartConfig.GetNamedConfig(ConfigGuid);
+		Config = ConfigManager.Instance.GetExpressedChartConfig(ConfigGuid);
 		ChartsWithDeletedConfig = new List<EditorChart>();
 
 		var song = Editor.GetActiveSong();
@@ -36,7 +37,7 @@ internal sealed class ActionDeleteExpressedChartConfig : EditorAction
 
 	public override string ToString()
 	{
-		return $"Delete {NamedConfig.Name} Expressed Chart Config.";
+		return $"Delete {Config.Name} Expressed Chart Config.";
 	}
 
 	public override bool AffectsFile()
@@ -54,17 +55,17 @@ internal sealed class ActionDeleteExpressedChartConfig : EditorAction
 			{
 				if (chart.ExpressedChartConfig == ConfigGuid)
 				{
-					chart.ExpressedChartConfig = PreferencesExpressedChartConfig.DefaultDynamicConfigGuid;
+					chart.ExpressedChartConfig = ConfigManager.DefaultExpressedChartDynamicConfigGuid;
 				}
 			}
 		}
 
-		Preferences.Instance.PreferencesExpressedChartConfig.DeleteConfig(ConfigGuid);
+		ConfigManager.Instance.DeleteExpressedChartConfig(ConfigGuid);
 	}
 
 	protected override void UndoImplementation()
 	{
-		Preferences.Instance.PreferencesExpressedChartConfig.AddConfig(NamedConfig);
+		ConfigManager.Instance.AddExpressedChartConfig(Config);
 
 		foreach (var chart in ChartsWithDeletedConfig)
 		{

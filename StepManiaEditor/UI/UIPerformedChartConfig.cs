@@ -1,15 +1,15 @@
 ﻿using System.Collections.Generic;
 using System.Numerics;
 using ImGuiNET;
+using StepManiaEditor.AutogenConfig;
 using StepManiaLibrary.PerformedChart;
 using static StepManiaEditor.ImGuiUtils;
-using static StepManiaEditor.PreferencesPerformedChartConfig;
 using static StepManiaLibrary.PerformedChart.Config;
 
 namespace StepManiaEditor;
 
 /// <summary>
-/// Class for drawing UI to edit a PerformedChartConfig.
+/// Class for drawing UI to edit an EditorPerformedChartConfig.
 /// </summary>
 internal sealed class UIPerformedChartConfig
 {
@@ -38,30 +38,30 @@ internal sealed class UIPerformedChartConfig
 
 	public void Draw()
 	{
-		var p = Preferences.Instance.PreferencesPerformedChartConfig;
+		var p = Preferences.Instance;
 		if (!p.ShowPerformedChartListWindow)
 			return;
 
-		if (!p.Configs.ContainsKey(p.ActivePerformedChartConfigForWindow))
+		var editorConfig = ConfigManager.Instance.GetPerformedChartConfig(p.ActivePerformedChartConfigForWindow);
+		if (editorConfig == null)
 			return;
-
-		var namedConfig = p.Configs[p.ActivePerformedChartConfigForWindow];
 
 		ImGui.SetNextWindowSize(new Vector2(0, 0), ImGuiCond.FirstUseEver);
 		if (ImGui.Begin(WindowTitle, ref p.ShowPerformedChartListWindow, ImGuiWindowFlags.NoScrollbar))
 		{
-			var disabled = !Editor.CanEdit() || namedConfig.IsDefaultConfig();
+			var disabled = !Editor.CanEdit() || editorConfig.IsDefault();
 			if (disabled)
 				PushDisabled();
 
-			var config = namedConfig.Config;
+			var config = editorConfig.Config;
 
 			if (ImGuiLayoutUtils.BeginTable("PerformedChartConfigTable", TitleColumnWidth))
 			{
-				ImGuiLayoutUtils.DrawRowTextInput(true, "Name", namedConfig, nameof(NamedConfig.Name), false,
+				ImGuiLayoutUtils.DrawRowTextInput(true, "Name", editorConfig, nameof(EditorPerformedChartConfig.Name), false,
 					"Configuration name.");
 
-				ImGuiLayoutUtils.DrawRowTextInput(true, "Description", namedConfig, nameof(NamedConfig.Description), false,
+				ImGuiLayoutUtils.DrawRowTextInput(true, "Description", editorConfig,
+					nameof(EditorPerformedChartConfig.Description), false,
 					"Configuration description.");
 
 				ImGuiLayoutUtils.EndTable();
@@ -100,7 +100,7 @@ internal sealed class UIPerformedChartConfig
 					"When limiting individual step travel distance, the range for tightening."
 					+ "\nThe distance is in panel lengths and takes into account the Movement Compensation values specified above.");
 
-				ImGuiLayoutUtils.DrawRowPerformedChartConfigSpeedTightening(namedConfig, "Speed",
+				ImGuiLayoutUtils.DrawRowPerformedChartConfigSpeedTightening(editorConfig, "Speed",
 					"When limiting individual step travel speed, the speed range over which to ramp up tightening costs."
 					+ "\nAny speed at or above the minimum speed specified by the this range will be subject to tightening."
 					+ "\nIn other words, the tightening does not stop above the final specified tempo."
@@ -246,7 +246,7 @@ internal sealed class UIPerformedChartConfig
 					{
 						ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100);
 						ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed,
-							ImGuiArrowWeightsWidget.GetFullWidth(namedConfig));
+							ImGuiArrowWeightsWidget.GetFullWidth(editorConfig));
 
 						var index = 0;
 						foreach (var chartType in Editor.SupportedChartTypes)
@@ -257,7 +257,7 @@ internal sealed class UIPerformedChartConfig
 							ImGui.Text(GetPrettyEnumString(chartType));
 
 							ImGui.TableSetColumnIndex(1);
-							ArrowWeightsWidgets[index].DrawConfig(namedConfig, chartType);
+							ArrowWeightsWidgets[index].DrawConfig(editorConfig, chartType);
 							index++;
 						}
 
@@ -279,7 +279,7 @@ internal sealed class UIPerformedChartConfig
 				if (ImGuiLayoutUtils.DrawRowButton("Delete Performed Chart Config", "Delete",
 					    "Delete this Performed Chart Config."))
 				{
-					ActionQueue.Instance.Do(new ActionDeletePerformedChartConfig(namedConfig.Guid));
+					ActionQueue.Instance.Do(new ActionDeletePerformedChartConfig(editorConfig.Guid));
 				}
 
 				ImGuiLayoutUtils.EndTable();
@@ -293,7 +293,7 @@ internal sealed class UIPerformedChartConfig
 				if (ImGuiLayoutUtils.DrawRowButton("Restore Defaults", "Restore Defaults",
 					    "Restore config values to their defaults."))
 				{
-					namedConfig.RestoreDefaults();
+					editorConfig.RestoreDefaults();
 				}
 
 				ImGuiLayoutUtils.EndTable();

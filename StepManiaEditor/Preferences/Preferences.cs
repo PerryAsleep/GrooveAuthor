@@ -5,6 +5,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Fumen;
+using StepManiaEditor.AutogenConfig;
 using static Fumen.Converters.SMCommon;
 
 namespace StepManiaEditor;
@@ -92,11 +93,13 @@ internal sealed class Preferences
 	// Animations preferences
 	[JsonInclude] public PreferencesReceptors PreferencesReceptors = new();
 
-	// ExpressedChart preferences
-	[JsonInclude] public PreferencesExpressedChartConfig PreferencesExpressedChartConfig = new();
-
 	// PerformedChart preferences
-	[JsonInclude] public PreferencesPerformedChartConfig PreferencesPerformedChartConfig = new();
+	[JsonInclude] public Guid ActivePerformedChartConfigForWindow;
+	[JsonInclude] public bool ShowPerformedChartListWindow;
+
+	// ExpressedChart preferences
+	[JsonInclude] public Guid ActiveExpressedChartConfigForWindow;
+	[JsonInclude] public bool ShowExpressedChartListWindow;
 
 	// Log preferences
 	[JsonInclude] public bool ShowLogWindow = true;
@@ -115,7 +118,7 @@ internal sealed class Preferences
 	[JsonInclude] public Editor.NoteEntryMode NoteEntryMode = Editor.NoteEntryMode.Normal;
 	[JsonInclude] public int SnapIndex;
 	[JsonInclude] public ChartType LastSelectedAutogenChartType = ChartType.dance_single;
-	[JsonInclude] public Guid LastSelectedAutogenPerformedChartConfig = PreferencesPerformedChartConfig.DefaultConfigGuid;
+	[JsonInclude] public Guid LastSelectedAutogenPerformedChartConfig = ConfigManager.DefaultPerformedChartConfigGuid;
 
 	// Debug
 	[JsonInclude] public double DebugSongTime;
@@ -134,8 +137,6 @@ internal sealed class Preferences
 	{
 		PreferencesReceptors.SetEditor(Editor);
 		PreferencesOptions.PostLoad();
-		PreferencesExpressedChartConfig.PostLoad();
-		PreferencesPerformedChartConfig.PostLoad();
 	}
 
 	private void PreSave()

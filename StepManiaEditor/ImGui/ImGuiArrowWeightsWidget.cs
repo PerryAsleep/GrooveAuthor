@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Numerics;
 using Fumen;
 using ImGuiNET;
+using StepManiaEditor.AutogenConfig;
 using static Fumen.Converters.SMCommon;
-using static StepManiaEditor.PreferencesPerformedChartConfig;
 using static StepManiaEditor.ImGuiUtils;
 
 namespace StepManiaEditor;
@@ -36,7 +36,7 @@ internal sealed class ImGuiArrowWeightsWidget
 		Editor = editor;
 	}
 
-	public static float GetFullWidth(NamedConfig config)
+	public static float GetFullWidth(EditorPerformedChartConfig config)
 	{
 		var numColumns = config.GetMaxNumWeightsForAnyChartType();
 		return numColumns * LaneWidth + (numColumns - 1) * LaneSpacingX;
@@ -49,10 +49,11 @@ internal sealed class ImGuiArrowWeightsWidget
 	/// <param name="values">Numeric values to use for the int drag controls.</param>
 	/// <param name="chartType">ChartType to use for drawing.</param>
 	/// <param name="configForUpdates">
-	/// Optional NamedConfig to use for updates for enabled controls. This is expected to be null when drawing
-	/// an EditorChart's step counts.
+	/// Optional EditorPerformedChartConfig to use for updates for enabled controls.
+	/// This is expected to be null when drawing an EditorChart's step counts.
 	/// </param>
-	private void Draw(IReadOnlyList<int> weights, IReadOnlyList<int> values, ChartType chartType, NamedConfig configForUpdates)
+	private void Draw(IReadOnlyList<int> weights, IReadOnlyList<int> values, ChartType chartType,
+		EditorPerformedChartConfig configForUpdates)
 	{
 		var chartTypeString = ChartTypeString(chartType);
 
@@ -212,14 +213,14 @@ internal sealed class ImGuiArrowWeightsWidget
 	}
 
 	/// <summary>
-	/// Draw the widget representing weights from a PerformedChart NamedConfig.
+	/// Draw the widget representing weights from an EditorPerformedChartConfig.
 	/// These values are typically editable and use vertical slider values that
 	/// are not normalized to the highest value so that they can be slid to larger
 	/// values.
 	/// </summary>
-	/// <param name="config">NamedConfig to use for drawing.</param>
+	/// <param name="config">EditorPerformedChartConfig to use for drawing.</param>
 	/// <param name="chartType">ChartType to use for drawing.</param>
-	public void DrawConfig(NamedConfig config, ChartType chartType)
+	public void DrawConfig(EditorPerformedChartConfig config, ChartType chartType)
 	{
 		var chartTypeString = ChartTypeString(chartType);
 		if (!config.Config.ArrowWeights.TryGetValue(chartTypeString, out var weights))

@@ -1,13 +1,13 @@
 ﻿using System.Numerics;
 using ImGuiNET;
-using StepManiaLibrary;
+using StepManiaEditor.AutogenConfig;
+using StepManiaLibrary.ExpressedChart;
 using static StepManiaEditor.ImGuiUtils;
-using static StepManiaEditor.PreferencesExpressedChartConfig;
 
 namespace StepManiaEditor;
 
 /// <summary>
-/// Class for drawing UI to edit an ExpressedChartConfig.
+/// Class for drawing UI to edit an EditorExpressedChartConfig.
 /// </summary>
 internal sealed class UIExpressedChartConfig
 {
@@ -31,41 +31,41 @@ internal sealed class UIExpressedChartConfig
 
 	public void Draw()
 	{
-		var p = Preferences.Instance.PreferencesExpressedChartConfig;
+		var p = Preferences.Instance;
 		if (!p.ShowExpressedChartListWindow)
 			return;
 
-		if (!p.Configs.ContainsKey(p.ActiveExpressedChartConfigForWindow))
+		var editorConfig = ConfigManager.Instance.GetExpressedChartConfig(p.ActiveExpressedChartConfigForWindow);
+		if (editorConfig == null)
 			return;
-
-		var namedConfig = p.Configs[p.ActiveExpressedChartConfigForWindow];
 
 		ImGui.SetNextWindowSize(new Vector2(0, 0), ImGuiCond.FirstUseEver);
 		if (ImGui.Begin(WindowTitle, ref p.ShowExpressedChartListWindow, ImGuiWindowFlags.NoScrollbar))
 		{
-			var disabled = !Editor.CanEdit() || namedConfig.IsDefaultConfig();
+			var disabled = !Editor.CanEdit() || editorConfig.IsDefault();
 			if (disabled)
 				PushDisabled();
 
 			if (ImGuiLayoutUtils.BeginTable("ExpressedChartConfigTable", TitleColumnWidth))
 			{
-				ImGuiLayoutUtils.DrawRowTextInput(true, "Name", namedConfig, nameof(NamedConfig.Name), false,
+				ImGuiLayoutUtils.DrawRowTextInput(true, "Name", editorConfig, nameof(EditorExpressedChartConfig.Name), false,
 					"Configuration name." +
 					"\nEditing the name will update any loaded Chart that references the old name to reference the new name." +
 					"\nAny unloaded Charts referencing the old name will not be updated and they will default back to the" +
 					"\nDefault config the next time they are loaded.");
 
-				ImGuiLayoutUtils.DrawRowTextInput(true, "Description", namedConfig, nameof(NamedConfig.Description), false,
+				ImGuiLayoutUtils.DrawRowTextInput(true, "Description", editorConfig,
+					nameof(EditorExpressedChartConfig.Description), false,
 					"Configuration description.");
 
-				var config = namedConfig.Config;
+				var config = editorConfig.Config;
 
 				var usingDefaultMethod = config.BracketParsingDetermination == BracketParsingDetermination.UseDefaultMethod;
 				if (!usingDefaultMethod)
 					PushDisabled();
 
 				ImGuiLayoutUtils.DrawRowEnum<BracketParsingMethod>(true, "Default Bracket Parsing Method", config,
-					nameof(ExpressedChartConfig.DefaultBracketParsingMethod), false,
+					nameof(Config.DefaultBracketParsingMethod), false,
 					"The default method to use for parsing brackets." +
 					"\nThis is used if the Bracket Parsing Determination below is set to Use Default Method." +
 					"\nAggressive:  Aggressively interpret steps as brackets. In most cases brackets will" +
@@ -77,7 +77,7 @@ internal sealed class UIExpressedChartConfig
 					PopDisabled();
 
 				ImGuiLayoutUtils.DrawRowEnum<BracketParsingDetermination>(true, "Bracket Parsing Determination", config,
-					nameof(ExpressedChartConfig.BracketParsingDetermination), false,
+					nameof(Config.BracketParsingDetermination), false,
 					"How to make the determination of which Bracket Parsing Method to use." +
 					"\nChoose Method Dynamically: The Bracket Parsing Method will be determined based on the other" +
 					"\n                           values defined below in this configuration." +
@@ -88,19 +88,19 @@ internal sealed class UIExpressedChartConfig
 					PushDisabled();
 
 				ImGuiLayoutUtils.DrawRowInputInt(true, "Min Level for Brackets", config,
-					nameof(ExpressedChartConfig.MinLevelForBrackets), false,
+					nameof(Config.MinLevelForBrackets), false,
 					"When using Choose Method Dynamically for Bracket Parsing Determination, Charts with a" +
 					"\ndifficulty rating under this level will use the No Brackets Bracket Parsing Method.", 0);
 
 				ImGuiLayoutUtils.DrawRowCheckbox(true, "Aggressive Brackets When Unambiguous", config,
-					nameof(ExpressedChartConfig.UseAggressiveBracketsWhenMoreSimultaneousNotesThanCanBeCoveredWithoutBrackets),
+					nameof(Config.UseAggressiveBracketsWhenMoreSimultaneousNotesThanCanBeCoveredWithoutBrackets),
 					false,
 					"When using Choose Method Dynamically for Bracket Parsing Determination, Charts with more" +
 					"\nsimultaneous steps than can be performed without bracketing will use the Aggressive" +
 					"\nBracket Parsing Method.");
 
 				ImGuiLayoutUtils.DrawRowDragDouble(true, "Balanced Bracket Rate For Aggressive", config,
-					nameof(ExpressedChartConfig.BalancedBracketsPerMinuteForAggressiveBrackets), false,
+					nameof(Config.BalancedBracketsPerMinuteForAggressiveBrackets), false,
 					"When using Choose Method Dynamically for Bracket Parsing Determination, and the above" +
 					"\nvalues have still not determined which Bracket Parsing Method to use, then the Chart" +
 					"\nwill be parsed with the Balanced Bracket Parsing Method to determine the number of" +
@@ -109,7 +109,7 @@ internal sealed class UIExpressedChartConfig
 					0.01f, "%.3f", config.BalancedBracketsPerMinuteForNoBrackets);
 
 				ImGuiLayoutUtils.DrawRowDragDouble(true, "Balanced Bracket Rate For No Brackets", config,
-					nameof(ExpressedChartConfig.BalancedBracketsPerMinuteForNoBrackets), false,
+					nameof(Config.BalancedBracketsPerMinuteForNoBrackets), false,
 					"When using Choose Method Dynamically for Bracket Parsing Determination, and the above" +
 					"\nvalues have still not determined which Bracket Parsing Method to use, then the Chart" +
 					"\nwill be parsed with the Balanced Bracket Parsing Method to determine the number of" +
@@ -124,7 +124,7 @@ internal sealed class UIExpressedChartConfig
 					    "Delete this Expressed Chart Config."
 					    + "\nAny Charts using a deleted Expressed Chart Config will be updated to use the Default config."))
 				{
-					ActionQueue.Instance.Do(new ActionDeleteExpressedChartConfig(Editor, namedConfig.Guid));
+					ActionQueue.Instance.Do(new ActionDeleteExpressedChartConfig(Editor, editorConfig.Guid));
 				}
 
 				ImGuiLayoutUtils.EndTable();
@@ -138,7 +138,7 @@ internal sealed class UIExpressedChartConfig
 				if (ImGuiLayoutUtils.DrawRowButton("Restore Defaults", "Restore Defaults",
 					    "Restore config values to their defaults."))
 				{
-					namedConfig.RestoreDefaults();
+					editorConfig.RestoreDefaults();
 				}
 
 				ImGuiLayoutUtils.EndTable();

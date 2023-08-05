@@ -3,9 +3,11 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using Fumen;
 using Fumen.ChartDefinition;
-using StepManiaLibrary;
+using StepManiaEditor.AutogenConfig;
+using StepManiaLibrary.ExpressedChart;
 using StepManiaLibrary.PerformedChart;
 using static Fumen.Converters.SMCommon;
+using Config = StepManiaLibrary.PerformedChart.Config;
 
 namespace StepManiaEditor;
 
@@ -101,8 +103,7 @@ internal sealed class ActionAutogenerateCharts : EditorAction
 			return;
 		}
 
-		var expressedChartConfig =
-			Preferences.Instance.PreferencesExpressedChartConfig.GetConfig(sourceChart.ExpressedChartConfig);
+		var expressedChartConfig = ConfigManager.Instance.GetExpressedChartConfig(sourceChart.ExpressedChartConfig);
 		if (expressedChartConfig == null)
 		{
 			Logger.Error($"{errorString} No {sourceChart.ExpressedChartConfig} Expressed Chart Config defined.");
@@ -133,7 +134,7 @@ internal sealed class ActionAutogenerateCharts : EditorAction
 					var expressedChart = ExpressedChart.CreateFromSMEvents(
 						chart.Layers[0].Events,
 						inputStepGraph,
-						expressedChartConfig,
+						expressedChartConfig.Config,
 						sourceChart.Rating);
 					if (expressedChart == null)
 					{

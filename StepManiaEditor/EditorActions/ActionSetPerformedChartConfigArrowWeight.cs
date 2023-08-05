@@ -1,5 +1,5 @@
-﻿using static Fumen.Converters.SMCommon;
-using static StepManiaEditor.PreferencesPerformedChartConfig;
+﻿using StepManiaEditor.AutogenConfig;
+using static Fumen.Converters.SMCommon;
 
 namespace StepManiaEditor;
 
@@ -8,13 +8,14 @@ namespace StepManiaEditor;
 /// </summary>
 internal sealed class ActionSetPerformedChartConfigArrowWeight : EditorAction
 {
-	private readonly NamedConfig Config;
+	private readonly EditorPerformedChartConfig Config;
 	private readonly ChartType ChartType;
 	private readonly int LaneIndex;
 	private readonly int Weight;
 	private readonly int PreviousWeight;
 
-	public ActionSetPerformedChartConfigArrowWeight(NamedConfig config, ChartType chartType, int laneIndex, int weight,
+	public ActionSetPerformedChartConfigArrowWeight(EditorPerformedChartConfig config, ChartType chartType, int laneIndex,
+		int weight,
 		int previousWeight) : base(false, false)
 	{
 		Config = config;

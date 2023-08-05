@@ -1,5 +1,6 @@
 ﻿using System.Numerics;
 using ImGuiNET;
+using StepManiaEditor.AutogenConfig;
 using static StepManiaEditor.ImGuiUtils;
 
 namespace StepManiaEditor;
@@ -158,8 +159,8 @@ internal sealed class UIAutogenChart
 					"Type of Chart to generate.");
 
 				// Performed Chart Config.
-				var configGuids = Preferences.Instance.PreferencesPerformedChartConfig.GetSortedConfigGuids();
-				var configNames = Preferences.Instance.PreferencesPerformedChartConfig.GetSortedConfigNames();
+				var configGuids = ConfigManager.Instance.GetSortedPerformedChartConfigGuids();
+				var configNames = ConfigManager.Instance.GetSortedPerformedChartConfigNames();
 				var selectedIndex = 0;
 				for (var i = 0; i < configGuids.Length; i++)
 				{
@@ -169,17 +170,17 @@ internal sealed class UIAutogenChart
 						break;
 					}
 				}
-				
+
 				ImGuiLayoutUtils.DrawSelectableConfigFromList("Config", "AutogenChartPerformedChartConfigName",
 					ref selectedIndex, configNames,
-					() => PreferencesPerformedChartConfig.ShowEditUI(Preferences.Instance
+					() => EditorPerformedChartConfig.ShowEditUI(Preferences.Instance
 						.LastSelectedAutogenPerformedChartConfig),
 					() =>
 					{
 						Preferences.Instance.ShowAutogenConfigsWindow = true;
 						ImGui.SetWindowFocus(UIAutogenConfigs.WindowTitle);
 					},
-					PreferencesPerformedChartConfig.CreateNewConfigAndShowEditUI,
+					EditorPerformedChartConfig.CreateNewConfigAndShowEditUI,
 					"Performed Chart Config.");
 				Preferences.Instance.LastSelectedAutogenPerformedChartConfig = configGuids[selectedIndex];
 
@@ -189,7 +190,7 @@ internal sealed class UIAutogenChart
 			ImGui.Separator();
 
 			var performedChartConfig =
-				Preferences.Instance.PreferencesPerformedChartConfig.GetNamedConfig(Preferences.Instance
+				ConfigManager.Instance.GetPerformedChartConfig(Preferences.Instance
 					.LastSelectedAutogenPerformedChartConfig);
 			var canStart = SourceChart != null && performedChartConfig != null;
 

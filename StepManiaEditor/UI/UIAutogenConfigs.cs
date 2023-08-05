@@ -1,5 +1,6 @@
 ﻿using System.Numerics;
 using ImGuiNET;
+using StepManiaEditor.AutogenConfig;
 using static StepManiaEditor.ImGuiUtils;
 
 namespace StepManiaEditor;
@@ -47,20 +48,20 @@ internal sealed class UIAutogenConfigs
 				ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, DeleteWidth);
 			}
 
-			var sortedConfigGuids = p.PreferencesExpressedChartConfig.GetSortedConfigGuids();
+			var sortedConfigGuids = ConfigManager.Instance.GetSortedExpressedChartConfigGuids();
 			var index = 0;
 			foreach (var configGuid in sortedConfigGuids)
 			{
 				ImGui.TableNextRow();
 
 				// Name.
-				var config = p.PreferencesExpressedChartConfig.GetNamedConfig(configGuid);
+				var config = ConfigManager.Instance.GetExpressedChartConfig(configGuid);
 				ImGui.TableSetColumnIndex(0);
 				if (ImGui.Selectable(config.Name, false,
 					    ImGuiSelectableFlags.SpanAllColumns | ImGuiSelectableFlags.AllowItemOverlap))
 				{
-					Preferences.Instance.PreferencesExpressedChartConfig.ActiveExpressedChartConfigForWindow = configGuid;
-					Preferences.Instance.PreferencesExpressedChartConfig.ShowExpressedChartListWindow = true;
+					p.ActiveExpressedChartConfigForWindow = configGuid;
+					p.ShowExpressedChartListWindow = true;
 					ImGui.SetWindowFocus(UIExpressedChartConfig.WindowTitle);
 				}
 
@@ -77,7 +78,7 @@ internal sealed class UIAutogenConfigs
 
 				// Delete button.
 				ImGui.TableSetColumnIndex(3);
-				var disabled = config.IsDefaultConfig();
+				var disabled = config.IsDefault();
 				if (disabled)
 					PushDisabled();
 				if (ImGui.SmallButton($"Delete##ExpressedChartConfig{index}"))
@@ -98,7 +99,7 @@ internal sealed class UIAutogenConfigs
 			{
 				if (ImGuiLayoutUtils.DrawRowButton("New", "New", "Add a new Expressed Chart Config."))
 				{
-					PreferencesExpressedChartConfig.CreateNewConfigAndShowEditUI();
+					EditorExpressedChartConfig.CreateNewConfigAndShowEditUI();
 				}
 
 				ImGuiLayoutUtils.EndTable();
@@ -119,19 +120,19 @@ internal sealed class UIAutogenConfigs
 				ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, DeleteWidth);
 			}
 
-			sortedConfigGuids = p.PreferencesPerformedChartConfig.GetSortedConfigGuids();
+			sortedConfigGuids = ConfigManager.Instance.GetSortedPerformedChartConfigGuids();
 			index = 0;
 			foreach (var configGuid in sortedConfigGuids)
 			{
 				ImGui.TableNextRow();
 
 				// Name.
-				var config = p.PreferencesPerformedChartConfig.GetNamedConfig(configGuid);
+				var config = ConfigManager.Instance.GetPerformedChartConfig(configGuid);
 				ImGui.TableSetColumnIndex(0);
 				if (ImGui.Selectable(config.Name, false,
 					    ImGuiSelectableFlags.SpanAllColumns | ImGuiSelectableFlags.AllowItemOverlap))
 				{
-					PreferencesPerformedChartConfig.ShowEditUI(configGuid);
+					EditorPerformedChartConfig.ShowEditUI(configGuid);
 				}
 
 				// Description.
@@ -147,7 +148,7 @@ internal sealed class UIAutogenConfigs
 
 				// Delete button.
 				ImGui.TableSetColumnIndex(3);
-				var disabled = config.IsDefaultConfig();
+				var disabled = config.IsDefault();
 				if (disabled)
 					PushDisabled();
 				if (ImGui.SmallButton($"Delete##PerformedChartConfig{index}"))
@@ -168,7 +169,7 @@ internal sealed class UIAutogenConfigs
 			{
 				if (ImGuiLayoutUtils.DrawRowButton("New", "New", "Add a new Performed Chart Config."))
 				{
-					PreferencesPerformedChartConfig.CreateNewConfigAndShowEditUI();
+					EditorPerformedChartConfig.CreateNewConfigAndShowEditUI();
 				}
 
 				ImGuiLayoutUtils.EndTable();

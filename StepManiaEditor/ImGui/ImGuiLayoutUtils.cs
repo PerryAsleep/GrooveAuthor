@@ -7,6 +7,7 @@ using StepManiaLibrary.PerformedChart;
 using static Fumen.FumenExtensions;
 using static StepManiaEditor.ImGuiUtils;
 using static StepManiaLibrary.PerformedChart.Config;
+using StepManiaEditor.AutogenConfig;
 
 namespace StepManiaEditor;
 
@@ -470,9 +471,9 @@ internal sealed class ImGuiLayoutUtils
 			itemWidth - ConfigFromListEditWidth - ConfigFromListViewAllWidth - ConfigFromListNewWidth - spacing * 3.0f);
 		ImGui.SetNextItemWidth(comboWidth);
 
-		var currentValue = editorChart?.ExpressedChartConfig ?? PreferencesExpressedChartConfig.DefaultDynamicConfigGuid;
-		var configGuids = Preferences.Instance.PreferencesExpressedChartConfig.GetSortedConfigGuids();
-		var configNames = Preferences.Instance.PreferencesExpressedChartConfig.GetSortedConfigNames();
+		var currentValue = editorChart?.ExpressedChartConfig ?? ConfigManager.DefaultExpressedChartDynamicConfigGuid;
+		var configGuids = ConfigManager.Instance.GetSortedExpressedChartConfigGuids();
+		var configNames = ConfigManager.Instance.GetSortedExpressedChartConfigNames();
 		var selectedIndex = 0;
 		for (var i = 0; i < configGuids.Length; i++)
 		{
@@ -498,7 +499,7 @@ internal sealed class ImGuiLayoutUtils
 		if (ImGui.Button($"Edit{elementTitle}", new Vector2(ConfigFromListEditWidth, 0.0f)))
 		{
 			if (editorChart != null)
-				PreferencesExpressedChartConfig.ShowEditUI(editorChart.ExpressedChartConfig);
+				EditorExpressedChartConfig.ShowEditUI(editorChart.ExpressedChartConfig);
 		}
 
 		ImGui.SameLine();
@@ -511,7 +512,7 @@ internal sealed class ImGuiLayoutUtils
 		ImGui.SameLine();
 		if (ImGui.Button($"New{elementTitle}", new Vector2(ConfigFromListNewWidth, 0.0f)))
 		{
-			PreferencesExpressedChartConfig.CreateNewConfigAndShowEditUI(editorChart);
+			EditorExpressedChartConfig.CreateNewConfigAndShowEditUI(editorChart);
 		}
 
 		return ret;
@@ -1721,7 +1722,7 @@ internal sealed class ImGuiLayoutUtils
 	}
 
 	public static void DrawRowPerformedChartConfigSpeedTightening(
-		PreferencesPerformedChartConfig.NamedConfig config,
+		EditorPerformedChartConfig config,
 		string title,
 		string help)
 	{
@@ -1750,7 +1751,7 @@ internal sealed class ImGuiLayoutUtils
 			{
 				ActionQueue.Instance.Do(
 					new ActionSetObjectFieldOrPropertyValue<int>(config,
-						nameof(PreferencesPerformedChartConfig.NamedConfig.TravelSpeedNoteTypeDenominatorIndex), newIndex,
+						nameof(EditorPerformedChartConfig.TravelSpeedNoteTypeDenominatorIndex), newIndex,
 						false));
 			}
 		}
@@ -1765,8 +1766,8 @@ internal sealed class ImGuiLayoutUtils
 			true,
 			"",
 			config,
-			nameof(PreferencesPerformedChartConfig.NamedConfig.TravelSpeedMinBPM),
-			nameof(PreferencesPerformedChartConfig.NamedConfig.TravelSpeedMaxBPM),
+			nameof(EditorPerformedChartConfig.TravelSpeedMinBPM),
+			nameof(EditorPerformedChartConfig.TravelSpeedMaxBPM),
 			false,
 			rangeWidth,
 			null,

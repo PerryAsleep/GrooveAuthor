@@ -1,25 +1,26 @@
 ﻿using System;
+using StepManiaEditor.AutogenConfig;
 
 namespace StepManiaEditor;
 
 /// <summary>
-/// Action to delete a PerformedChart configuration.
+/// Action to delete an EditorPerformedChartConfig.
 /// </summary>
 internal sealed class ActionDeletePerformedChartConfig : EditorAction
 {
 	private readonly Guid ConfigGuid;
-	private readonly PreferencesPerformedChartConfig.NamedConfig NamedConfig;
+	private readonly EditorPerformedChartConfig Config;
 	private bool LastSelectedAutogenPerformedChartConfigUsedDeletedConfig;
 
 	public ActionDeletePerformedChartConfig(Guid configGuid) : base(false, false)
 	{
 		ConfigGuid = configGuid;
-		NamedConfig = Preferences.Instance.PreferencesPerformedChartConfig.GetNamedConfig(ConfigGuid);
+		Config = ConfigManager.Instance.GetPerformedChartConfig(ConfigGuid);
 	}
 
 	public override string ToString()
 	{
-		return $"Delete {NamedConfig.Name} Performed Chart Config.";
+		return $"Delete {Config.Name} Performed Chart Config.";
 	}
 
 	public override bool AffectsFile()
@@ -31,15 +32,15 @@ internal sealed class ActionDeletePerformedChartConfig : EditorAction
 	{
 		LastSelectedAutogenPerformedChartConfigUsedDeletedConfig =
 			Preferences.Instance.LastSelectedAutogenPerformedChartConfig == ConfigGuid;
-		Preferences.Instance.PreferencesPerformedChartConfig.DeleteConfig(ConfigGuid);
+		ConfigManager.Instance.DeletePerformedChartConfig(ConfigGuid);
 		if (LastSelectedAutogenPerformedChartConfigUsedDeletedConfig)
 			Preferences.Instance.LastSelectedAutogenPerformedChartConfig =
-				PreferencesPerformedChartConfig.DefaultConfigGuid;
+				ConfigManager.DefaultPerformedChartConfigGuid;
 	}
 
 	protected override void UndoImplementation()
 	{
-		Preferences.Instance.PreferencesPerformedChartConfig.AddConfig(NamedConfig);
+		ConfigManager.Instance.AddPerformedChartConfig(Config);
 		if (LastSelectedAutogenPerformedChartConfigUsedDeletedConfig)
 			Preferences.Instance.LastSelectedAutogenPerformedChartConfig = ConfigGuid;
 	}

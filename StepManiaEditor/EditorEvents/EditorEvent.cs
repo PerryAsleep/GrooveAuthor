@@ -20,6 +20,11 @@ namespace StepManiaEditor;
 internal abstract class EditorEvent : IComparable<EditorEvent>
 {
 	/// <summary>
+	/// Static SMEventComparer for comparing EditorEvents.
+	/// </summary>
+	private static readonly SMCommon.SMEventComparer EventComparer = new();
+
+	/// <summary>
 	/// The underlying Event for this EditorEvent.
 	/// Most EditorEvents have one Event.
 	/// Holds have two Events. For Holds this is LaneHoldStartNote. 
@@ -504,7 +509,7 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 			return comparison;
 
 		// Compare using the common Stepmania logic.
-		comparison = SMCommon.SMEventComparer.Compare(ChartEvent, other.ChartEvent);
+		comparison = EventComparer.Compare(ChartEvent, other.ChartEvent);
 		if (comparison != 0)
 			return comparison;
 

@@ -1,4 +1,5 @@
 ﻿using System;
+using StepManiaEditor.AutogenConfig;
 
 namespace StepManiaEditor;
 
@@ -27,17 +28,17 @@ internal sealed class ActionCloneExpressedChartConfig : EditorAction
 
 	protected override void DoImplementation()
 	{
-		var newConfig = Preferences.Instance.PreferencesExpressedChartConfig.CloneConfig(ExistingConfigGuid);
+		var newConfig = ConfigManager.Instance.CloneExpressedChartConfig(ExistingConfigGuid);
 		if (newConfig == null)
 			return;
 		NewConfigGuid = newConfig.Guid;
-		Preferences.Instance.PreferencesExpressedChartConfig.AddConfig(newConfig);
-		PreferencesExpressedChartConfig.ShowEditUI(NewConfigGuid);
+		ConfigManager.Instance.AddExpressedChartConfig(newConfig);
+		EditorExpressedChartConfig.ShowEditUI(NewConfigGuid);
 	}
 
 	protected override void UndoImplementation()
 	{
 		if (NewConfigGuid != Guid.Empty)
-			Preferences.Instance.PreferencesExpressedChartConfig.DeleteConfig(NewConfigGuid);
+			ConfigManager.Instance.DeleteExpressedChartConfig(NewConfigGuid);
 	}
 }

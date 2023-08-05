@@ -10,6 +10,7 @@ using static StepManiaLibrary.Constants;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+using StepManiaEditor.AutogenConfig;
 
 namespace StepManiaEditor;
 
@@ -31,7 +32,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	{
 		public double MusicOffset;
 		public bool ShouldUseChartMusicOffset;
-		public Guid ExpressedChartConfig = PreferencesExpressedChartConfig.DefaultDynamicConfigGuid;
+		public Guid ExpressedChartConfig = ConfigManager.DefaultExpressedChartDynamicConfigGuid;
 	}
 
 	/// <summary>
@@ -393,7 +394,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			Assert(CanBeEdited());
 			if (!CanBeEdited())
 				return;
-			if (Preferences.Instance.PreferencesExpressedChartConfig.DoesConfigExist(value))
+			if (ConfigManager.Instance.GetExpressedChartConfig(value) != null)
 				ExpressedChartConfigInternal = value;
 		}
 	}
@@ -411,7 +412,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 		WorkQueue = new WorkQueue();
 
-		ExpressedChartConfigInternal = PreferencesExpressedChartConfig.DefaultDynamicConfigGuid;
+		ExpressedChartConfigInternal = ConfigManager.DefaultExpressedChartDynamicConfigGuid;
 
 		OriginalChartExtras = chart.Extras;
 		EditorSong = editorSong;
@@ -457,7 +458,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 		WorkQueue = new WorkQueue();
 
-		ExpressedChartConfigInternal = PreferencesExpressedChartConfig.DefaultDynamicConfigGuid;
+		ExpressedChartConfigInternal = ConfigManager.DefaultExpressedChartDynamicConfigGuid;
 
 		EditorSong = editorSong;
 		ChartTypeInternal = chartType;

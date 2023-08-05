@@ -25,6 +25,7 @@ using System.Linq;
 using static StepManiaEditor.EditorSongImageUtils;
 using StepManiaLibrary.PerformedChart;
 using MonoGameExtensions;
+using StepManiaEditor.AutogenConfig;
 
 namespace StepManiaEditor;
 
@@ -269,6 +270,7 @@ internal sealed class Editor :
 		// Load Preferences synchronously so they can be used immediately.
 		Preferences.Load(this);
 
+		InitializeAutogenConfigs();
 		InitializeZoomManager();
 		InitializeEditorPosition();
 		InitializeMusicManager();
@@ -410,6 +412,14 @@ internal sealed class Editor :
 		{
 			Logger.Warn($"Unable to clean up old log files. {e}");
 		}
+	}
+
+	private void InitializeAutogenConfigs()
+	{
+		// Load autogen configs synchronously.
+		// This simplifies loading at the cost of startup time.
+		// Ideally this would be async, but that means deferring loading songs until this operation is complete.
+		ConfigManager.Instance.LoadConfigs();
 	}
 
 	private void InitializeZoomManager()
@@ -748,7 +758,10 @@ internal sealed class Editor :
 	protected override void EndRun()
 	{
 		CloseSong();
+		// Commit preferences to disk.
 		Preferences.Save();
+		// Commit unsaved changes to autogen configs to disk.
+		ConfigManager.Instance.SaveConfigs();
 		Logger.Shutdown();
 
 		ImGuiRenderer.UnbindTexture(TextureAtlasImGuiTexture);
