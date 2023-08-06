@@ -42,7 +42,7 @@ internal sealed class UIPerformedChartConfig
 		if (!p.ShowPerformedChartListWindow)
 			return;
 
-		var editorConfig = ConfigManager.Instance.GetPerformedChartConfig(p.ActivePerformedChartConfigForWindow);
+		var editorConfig = PerformedChartConfigManager.Instance.GetConfig(p.ActivePerformedChartConfigForWindow);
 		if (editorConfig == null)
 			return;
 

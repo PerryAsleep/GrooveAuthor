@@ -13,10 +13,8 @@ namespace StepManiaEditor.AutogenConfig;
 /// EditorPerformedChartConfig is a wrapper around a PerformedChart Config with additional
 /// data and functionality for the editor.
 /// </summary>
-internal sealed class EditorPerformedChartConfig : IEditorConfig, IEquatable<EditorPerformedChartConfig>
+internal sealed class EditorPerformedChartConfig : EditorConfig<Config>, IEquatable<EditorPerformedChartConfig>
 {
-	public const string NewConfigName = "New Config";
-
 	// Default values.
 	public const double DefaultFacingMaxInwardPercentage = 1.0;
 	public const double DefaultFacingInwardPercentageCutoff = 0.34;
@@ -69,28 +67,6 @@ internal sealed class EditorPerformedChartConfig : IEditorConfig, IEquatable<Edi
 		};
 	}
 
-	/// <summary>
-	/// Guid for this EditorPerformedChartConfig.
-	/// Not readonly so that it can be set from deserialization.
-	/// </summary>
-	[JsonInclude] public Guid Guid;
-
-	[JsonInclude]
-	public string Name
-	{
-		get => NameInternal;
-		set
-		{
-			if (!string.IsNullOrEmpty(NameInternal) && NameInternal.Equals(value))
-				return;
-			NameInternal = value;
-			// Null check around OnNameUpdated because this property is set during deserialization.
-			OnNameUpdated?.Invoke();
-		}
-	}
-
-	private string NameInternal;
-
 	[JsonInclude]
 	public int TravelSpeedNoteTypeDenominatorIndex
 	{
@@ -130,129 +106,48 @@ internal sealed class EditorPerformedChartConfig : IEditorConfig, IEquatable<Edi
 
 	private int TravelSpeedMaxBPMInternal = 1;
 
-	[JsonInclude] public string Description;
-
-	/// <summary>
-	/// The PerformedChart Config wrapped by this EditorPerformedChartConfig.
-	/// </summary>
-	[JsonInclude] public Config Config = new();
-
-	/// <summary>
-	/// A cloned EditorPerformedChartConfig to use for comparisons to see
-	/// if this EditorPerformedChartConfig has unsaved changes or not.
-	/// </summary>
-	private EditorPerformedChartConfig LastSavedState;
-
-	/// <summary>
-	/// Callback function to invoke when the name is updated.
-	/// </summary>
-	private Action OnNameUpdated;
-
 	/// <summary>
 	/// Constructor.
 	/// </summary>
 	public EditorPerformedChartConfig()
 	{
-		Guid = Guid.NewGuid();
 	}
 
 	/// <summary>
 	/// Constructor taking a previously generated Guid.
 	/// </summary>
 	/// <param name="guid">Guid for this EditorPerformedChartConfig.</param>
-	public EditorPerformedChartConfig(Guid guid)
+	public EditorPerformedChartConfig(Guid guid) : base(guid)
 	{
-		Guid = guid;
 	}
 
-	/// <summary>
-	/// Returns a new EditorPerformedChartConfig that is a clone of this EditorPerformedChartConfig.
-	/// The Guid of the returned EditorPerformedChartConfig will be unique and the name will be the default new name.
-	/// </summary>
-	/// <returns>Cloned EditorPerformedChartConfig.</returns>
-	public EditorPerformedChartConfig CloneEditorPerformedChartConfig()
-	{
-		return CloneEditorPerformedChartConfig(false);
-	}
+	#region EditorConfig
 
 	/// <summary>
 	/// Returns a new EditorPerformedChartConfig that is a clone of this EditorPerformedChartConfig.
 	/// </summary>
 	/// <param name="snapshot">
 	/// If true then everything on this EditorPerformedChartConfig will be cloned.
-	/// If false then the Guid and Name will be changed.</param>
+	/// If false then the Guid and Name will be changed.
+	/// </param>
 	/// <returns>Cloned EditorPerformedChartConfig.</returns>
-	private EditorPerformedChartConfig CloneEditorPerformedChartConfig(bool snapshot)
+	protected override EditorPerformedChartConfig CloneImplementation(bool snapshot)
 	{
 		return new EditorPerformedChartConfig(snapshot ? Guid : Guid.NewGuid())
 		{
-			Config = Config.Clone(),
-			Name = snapshot ? Name : NewConfigName,
-			Description = Description,
-			OnNameUpdated = OnNameUpdated,
 			TravelSpeedNoteTypeDenominatorIndex = TravelSpeedNoteTypeDenominatorIndex,
 			TravelSpeedMinBPM = TravelSpeedMinBPM,
 			TravelSpeedMaxBPM = TravelSpeedMaxBPM,
 		};
 	}
 
-	/// <summary>
-	/// Validates this EditorPerformedChartConfig and logs any errors on invalid data.
-	/// </summary>
-	/// <returns>True if no errors were found and false otherwise.</returns>
-	public bool Validate()
+	public override bool IsDefault()
 	{
-		var errors = false;
-		if (Guid == Guid.Empty)
-		{
-			Logger.Error($"EditorPerformedChartConfig has no Guid.");
-			errors = true;
-		}
-
-		if (string.IsNullOrEmpty(Name))
-		{
-			Logger.Error($"EditorPerformedChartConfig {Guid} has no name.");
-			errors = true;
-		}
-
-		errors = !Config.Validate(Name) || errors;
-		return !errors;
+		return Guid.Equals(PerformedChartConfigManager.DefaultPerformedChartConfigGuid)
+		       || Guid.Equals(PerformedChartConfigManager.DefaultPerformedChartStaminaGuid);
 	}
 
-	#region IEditorConfig
-
-	public Guid GetGuid()
-	{
-		return Guid;
-	}
-
-	public string GetName()
-	{
-		return Name;
-	}
-
-	public bool IsDefault()
-	{
-		return Guid.Equals(ConfigManager.DefaultPerformedChartConfigGuid)
-		       || Guid.Equals(ConfigManager.DefaultPerformedChartStaminaGuid);
-	}
-
-	public IEditorConfig Clone()
-	{
-		return CloneEditorPerformedChartConfig();
-	}
-
-	public bool HasUnsavedChanges()
-	{
-		return LastSavedState == null || !Equals(LastSavedState);
-	}
-
-	public void UpdateLastSavedState()
-	{
-		LastSavedState = CloneEditorPerformedChartConfig(true);
-	}
-
-	public void InitializeWithDefaultValues()
+	public override void InitializeWithDefaultValues()
 	{
 		Config.Facing.MaxInwardPercentage = DefaultFacingMaxInwardPercentage;
 		Config.Facing.InwardPercentageCutoff = DefaultFacingInwardPercentageCutoff;
@@ -291,16 +186,12 @@ internal sealed class EditorPerformedChartConfig : IEditorConfig, IEquatable<Edi
 		}
 	}
 
-	#endregion IEditorConfig
-
-	/// <summary>
-	/// Sets function to use for calling back to when the name is updated.
-	/// </summary>
-	/// <param name="onNameUpdated">Callback function to invoke when the name is updated.</param>
-	public void SetNameUpdatedFunction(Action onNameUpdated)
+	protected override bool EditorConfigEquals(EditorConfig<Config> other)
 	{
-		OnNameUpdated = onNameUpdated;
+		return Equals(other);
 	}
+
+	#endregion IEditorConfig
 
 	/// <summary>
 	/// Sets the arrow weight for a given lane of a given ChartType.

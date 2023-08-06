@@ -32,7 +32,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	{
 		public double MusicOffset;
 		public bool ShouldUseChartMusicOffset;
-		public Guid ExpressedChartConfig = ConfigManager.DefaultExpressedChartDynamicConfigGuid;
+		public Guid ExpressedChartConfig = ExpressedChartConfigManager.DefaultExpressedChartDynamicConfigGuid;
 	}
 
 	/// <summary>
@@ -394,7 +394,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			Assert(CanBeEdited());
 			if (!CanBeEdited())
 				return;
-			if (ConfigManager.Instance.GetExpressedChartConfig(value) != null)
+			if (ExpressedChartConfigManager.Instance.GetConfig(value) != null)
 				ExpressedChartConfigInternal = value;
 		}
 	}
@@ -412,7 +412,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 		WorkQueue = new WorkQueue();
 
-		ExpressedChartConfigInternal = ConfigManager.DefaultExpressedChartDynamicConfigGuid;
+		ExpressedChartConfigInternal = ExpressedChartConfigManager.DefaultExpressedChartDynamicConfigGuid;
 
 		OriginalChartExtras = chart.Extras;
 		EditorSong = editorSong;
@@ -458,7 +458,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 		WorkQueue = new WorkQueue();
 
-		ExpressedChartConfigInternal = ConfigManager.DefaultExpressedChartDynamicConfigGuid;
+		ExpressedChartConfigInternal = ExpressedChartConfigManager.DefaultExpressedChartDynamicConfigGuid;
 
 		EditorSong = editorSong;
 		ChartTypeInternal = chartType;

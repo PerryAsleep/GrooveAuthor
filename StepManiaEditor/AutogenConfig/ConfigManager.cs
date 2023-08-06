@@ -4,42 +4,38 @@ using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Fumen;
-using StepManiaLibrary.ExpressedChart;
-using Exception = System.Exception;
-using Path = Fumen.Path;
+using StepManiaLibrary;
 
 namespace StepManiaEditor.AutogenConfig;
 
 /// <summary>
-/// Class for managing configurations related to automatically generating charts or patterns.
-/// These configurations are persisted as individual files on disk to support sharing between users.
-/// This class offers synchronous methods to load configurations and save configurations with changes.
-/// This class should be accessed through its static Instance member.
+/// Class for managing all EditorConfig objects of a single type.
+/// Offers synchronous methods for saving and loading EditorConfig objects.
+/// Offers methods for adding and deleting EditorConfig objects.
+/// EditorConfig are persisted as individual files on disk to support sharing between users.
 /// </summary>
-internal sealed class ConfigManager
+/// <typeparam name="TEditorConfig">
+/// Type of EditorConfig objects managed by this class.
+/// </typeparam>
+/// <typeparam name="TConfig">
+/// Type of configuration objects implementing the IConfig interface that are
+/// wrapped by the EditorConfig objects that this class manages.
+/// </typeparam>
+internal abstract class ConfigManager<TEditorConfig, TConfig>
+	where TEditorConfig : EditorConfig<TConfig>
+	where TConfig : IConfig<TConfig>, new()
 {
 	private const string ConfigExtension = "json";
-	private const string PerformedChartConfigPrefix = "pc-";
-	private const string ExpressedChartConfigPrefix = "ec-";
-
-	// Default config names and guids for EditorPerformedChartConfigs which cannot be edited.
-	public const string DefaultPerformedChartConfigName = "Default";
-	public static readonly Guid DefaultPerformedChartConfigGuid = new("6276c906-ea8f-43b3-9500-0ddeac7bdc22");
-	public const string DefaultPerformedChartStaminaConfigName = "Default Stamina";
-	public static readonly Guid DefaultPerformedChartStaminaGuid = new("c0334922-6105-4703-add2-3de261b2ff19");
-
-	// Default config names and guids for EditorExpressedChartConfigs which cannot be edited.
-	public const string DefaultExpressedChartDynamicConfigName = "Dynamic";
-	public static readonly Guid DefaultExpressedChartDynamicConfigGuid = new("a19d532e-b0ce-4759-ad1c-02ecbbdf2efd");
-	public const string DefaultExpressedChartAggressiveBracketsConfigName = "Aggressive Brackets";
-	public static readonly Guid DefaultExpressedChartAggressiveBracketsConfigGuid = new("da3f6e12-49d1-416b-8db6-0ab413f740b6");
-	public const string DefaultExpressedChartNoBracketsConfigName = "No Brackets";
-	public static readonly Guid DefaultExpressedChartNoBracketsConfigGuid = new("0c0ba200-8f90-4060-8912-e9ea65831ebc");
 
 	/// <summary>
-	/// Static Config instance.
+	/// Prefix used on save files for the EditorConfig objects managed by this class.
 	/// </summary>
-	public static ConfigManager Instance { get; private set; } = new();
+	private readonly string ConfigPrefix;
+
+	/// <summary>
+	/// Human readable string for identifying the type of EditorConfig objects managed by this class.
+	/// </summary>
+	private readonly string ConfigTypeReadableName;
 
 	/// <summary>
 	/// Directory for saving and loading configuration files.
@@ -54,19 +50,22 @@ internal sealed class ConfigManager
 	/// <summary>
 	/// ConfigData for all EditorPerformedChartConfig objects.
 	/// </summary>
-	private readonly ConfigData<EditorPerformedChartConfig> PerformedChartConfigData = new();
+	protected readonly ConfigData<TEditorConfig, TConfig> ConfigData = new();
 
 	/// <summary>
-	/// ConfigData for all EditorExpressedChartConfig objects.
+	/// Constructor.
 	/// </summary>
-	private readonly ConfigData<EditorExpressedChartConfig> ExpressedChartConfigData = new();
-
-	/// <summary>
-	/// Private constructor.
-	/// </summary>
-	private ConfigManager()
+	/// <param name="configPrefix">
+	/// Prefix used on save files for the EditorConfig objects managed by this class.
+	/// </param>
+	/// <param name="configTypeReadableName">
+	/// Human readable string for identifying the type of EditorConfig objects managed by this class.
+	/// </param>
+	protected ConfigManager(string configPrefix, string configTypeReadableName)
 	{
-		ConfigDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "AutogenConfigs");
+		ConfigTypeReadableName = configTypeReadableName;
+		ConfigPrefix = configPrefix;
+		ConfigDirectory = Fumen.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "AutogenConfigs");
 		SerializationOptions = new JsonSerializerOptions
 		{
 			Converters =
@@ -83,38 +82,28 @@ internal sealed class ConfigManager
 	#region Save
 
 	/// <summary>
-	/// Synchronously save all config files that have unsaved changes.
+	/// Synchronously save all EditorConfig files that have unsaved changes.
 	/// </summary>
 	public void SaveConfigs()
 	{
-		// Aggregate all configs.
-		var configsAndSaveFiles = new List<Tuple<string, IEditorConfig>>();
-		foreach (var kvp in PerformedChartConfigData.GetConfigs())
-			configsAndSaveFiles.Add(new Tuple<string, IEditorConfig>($"{PerformedChartConfigPrefix}{kvp.Key}.{ConfigExtension}",
-				kvp.Value));
-		foreach (var kvp in ExpressedChartConfigData.GetConfigs())
-			configsAndSaveFiles.Add(new Tuple<string, IEditorConfig>($"{ExpressedChartConfigPrefix}{kvp.Key}.{ConfigExtension}",
-				kvp.Value));
-
 		// Save all configs.
-		foreach (var configAndSaveFile in configsAndSaveFiles)
+		foreach (var kvp in ConfigData.GetConfigs())
 		{
 			// Don't save configs which don't have unsaved changes.
-			if (!configAndSaveFile.Item2.HasUnsavedChanges())
+			if (!kvp.Value.HasUnsavedChanges())
 				continue;
 
-			var saveFileName = Path.Combine(ConfigDirectory, configAndSaveFile.Item1);
-			SaveConfig(saveFileName, configAndSaveFile.Item2);
+			var saveFileName = Fumen.Path.Combine(ConfigDirectory, $"{ConfigPrefix}{kvp.Key}.{ConfigExtension}");
+			SaveConfig(saveFileName, kvp.Value);
 		}
 	}
 
 	/// <summary>
-	/// Synchronously saves an individual IEditorConfig to disk.
+	/// Synchronously saves an individual EditorConfig to disk.
 	/// </summary>
-	/// <typeparam name="T">Type of IEditorConfig to save.</typeparam>
 	/// <param name="fileName">Filename to save to.</param>
-	/// <param name="config">IEditorConfig object to save.</param>
-	private void SaveConfig<T>(string fileName, T config) where T : IEditorConfig
+	/// <param name="config">EditorConfig object to save.</param>
+	private void SaveConfig(string fileName, TEditorConfig config)
 	{
 		Logger.Info($"Saving {fileName}...");
 
@@ -139,11 +128,11 @@ internal sealed class ConfigManager
 	#region Load
 
 	/// <summary>
-	/// Synchronously loads all configuration files from disk.
+	/// Synchronously loads all EditorConfig files from disk.
 	/// </summary>
 	public void LoadConfigs()
 	{
-		Logger.Info("Loading autogen configs...");
+		Logger.Info($"Loading {ConfigTypeReadableName} files...");
 
 		// Create the config directory if it doesn't exist.
 		try
@@ -164,7 +153,7 @@ internal sealed class ConfigManager
 		}
 		catch (Exception e)
 		{
-			Logger.Error($"Failed to search for autogen config files in {ConfigDirectory}. {e}");
+			Logger.Error($"Failed to search for {ConfigTypeReadableName} files in {ConfigDirectory}. {e}");
 			return;
 		}
 
@@ -182,69 +171,47 @@ internal sealed class ConfigManager
 				continue;
 			}
 
-			if (fi.Extension == $".{ConfigExtension}")
+			if (fi.Extension == $".{ConfigExtension}" && fi.Name.StartsWith(ConfigPrefix))
 			{
-				if (fi.Name.StartsWith(PerformedChartConfigPrefix))
-				{
-					var config = (EditorPerformedChartConfig)LoadConfig<EditorPerformedChartConfig>(fi.FullName);
-					if (config != null)
-						PerformedChartConfigData.AddConfig(config);
-				}
-				else if (fi.Name.StartsWith(ExpressedChartConfigPrefix))
-				{
-					var config = (EditorExpressedChartConfig)LoadConfig<EditorExpressedChartConfig>(fi.FullName);
-					if (config != null)
-						ExpressedChartConfigData.AddConfig(config);
-				}
+				var config = LoadConfig(fi.FullName);
+				if (config != null)
+					ConfigData.AddConfig(config);
 			}
 		}
 
-		if (PerformedChartConfigData.GetConfigs().Count == 0 && ExpressedChartConfigData.GetConfigs().Count == 0)
+		if (ConfigData.GetConfigs().Count == 0)
 		{
-			Logger.Info("No autogen configs found.");
+			Logger.Info($"No {ConfigTypeReadableName} configs found.");
 		}
 
 		// Perform any post-load setup.
-		PostLoadPerformedChartConfigs();
-		PostLoadExpressedChartConfigs();
+		PostLoadConfigs();
 
-		// Update the last saved state on all configs.
-		var numPerformedChartConfigs = 0;
-		var numDefaultPerformedChartConfigs = 0;
-		foreach (var config in PerformedChartConfigData.GetConfigs())
+		// Update the last saved state on all EditorConfigs.
+		var numConfigs = 0;
+		var numDefaultConfigs = 0;
+		foreach (var config in ConfigData.GetConfigs())
 		{
-			numPerformedChartConfigs++;
+			numConfigs++;
 			if (config.Value.IsDefault())
-				numDefaultPerformedChartConfigs++;
+				numDefaultConfigs++;
 			config.Value.UpdateLastSavedState();
 		}
 
-		var numExpressedChartConfigs = 0;
-		var numDefaultExpressedChartConfigs = 0;
-		foreach (var config in ExpressedChartConfigData.GetConfigs())
-		{
-			numExpressedChartConfigs++;
-			if (config.Value.IsDefault())
-				numDefaultExpressedChartConfigs++;
-			config.Value.UpdateLastSavedState();
-		}
-
-		Logger.Info($"Loaded {numExpressedChartConfigs} Expressed configs ({numDefaultExpressedChartConfigs} default).");
-		Logger.Info($"Loaded {numPerformedChartConfigs} PerformedChart configs ({numDefaultPerformedChartConfigs} default).");
+		Logger.Info($"Loaded {numConfigs} {ConfigTypeReadableName} configs ({numDefaultConfigs} default).");
 	}
 
 	/// <summary>
-	/// Synchronously loads an individual IEditorConfig from disk.
+	/// Synchronously loads an individual EditorConfig from disk.
 	/// </summary>
-	/// <typeparam name="T">Type of IEditorConfig to load.</typeparam>
 	/// <param name="fileName">Filename to load from.</param>
-	/// <returns>Loaded IEditorConfig object or null if it failed to load.</returns>
-	private IEditorConfig LoadConfig<T>(string fileName) where T : IEditorConfig
+	/// <returns>Loaded EditorConfig object or null if it failed to load.</returns>
+	private TEditorConfig LoadConfig(string fileName)
 	{
 		try
 		{
 			using var openStream = File.OpenRead(fileName);
-			var config = JsonSerializer.Deserialize<T>(openStream, SerializationOptions);
+			var config = JsonSerializer.Deserialize<TEditorConfig>(openStream, SerializationOptions);
 			return config;
 		}
 		catch (Exception e)
@@ -256,281 +223,135 @@ internal sealed class ConfigManager
 	}
 
 	/// <summary>
-	/// Performs post-load initialization of all PerformedChart configurations.
-	/// Creates and adds default configurations.
-	/// Removes any invalid configurations.
+	/// Performs post-load initialization of all EditorConfigs.
+	/// Creates and adds default EditorConfigs.
+	/// Removes any invalid EditorConfigs.
 	/// </summary>
-	private void PostLoadPerformedChartConfigs()
+	private void PostLoadConfigs()
 	{
-		// Add default balanced config. This should never be modified so delete it if it exists and re-add it.
-		PerformedChartConfigData.RemoveConfig(DefaultPerformedChartConfigGuid);
-		var defaultConfig = AddPerformedChartConfig(DefaultPerformedChartConfigGuid, DefaultPerformedChartConfigName);
-		defaultConfig.Description = "Default balanced settings";
-		defaultConfig.InitializeWithDefaultValues();
+		// Add default configurations.
+		AddDefaultConfigs();
 
-		// Add default stamina config. This should never be modified so delete it if it exists and re-add it.
-		PerformedChartConfigData.RemoveConfig(DefaultPerformedChartStaminaGuid);
-		var defaultStaminaConfig =
-			AddPerformedChartConfig(DefaultPerformedChartStaminaGuid, DefaultPerformedChartStaminaConfigName);
-		defaultStaminaConfig.Description = "Default stamina settings.";
-		defaultStaminaConfig.TravelSpeedMinBPM = 99;
-		defaultStaminaConfig.Config.Transitions.Enabled = true;
-		defaultStaminaConfig.Config.Transitions.StepsPerTransitionMin = 32;
-		defaultStaminaConfig.Config.LateralTightening.AbsoluteNPS = 26.666667;
-
-		// Ensure every EditorPerformedChartConfig is configured and valid.
+		// Ensure every EditorConfig is configured and valid.
 		var invalidConfigGuids = new List<Guid>();
-		foreach (var kvp in PerformedChartConfigData.GetConfigs())
+		foreach (var kvp in ConfigData.GetConfigs())
 		{
-			// Configure the EditorPerformedChartConfig will name update functions.
-			kvp.Value.SetNameUpdatedFunction(OnPerformedChartConfigNameUpdated);
+			// Configure the EditorConfig will name update functions.
+			kvp.Value.SetNameUpdatedFunction(OnConfigNameUpdated);
 
 			// Perform post-load initialization on the config object.
-			kvp.Value.Config.Init();
+			kvp.Value.Init();
 
-			// Validate the Config. If this fails, store it for removal.
+			// Validate the EditorConfig. If this fails, store it for removal.
 			if (!kvp.Value.Validate())
 			{
 				invalidConfigGuids.Add(kvp.Key);
 			}
 		}
 
-		// Remove all invalid EditorPerformedChartConfig objects.
+		// Remove all invalid EditorConfig objects.
 		foreach (var invalidConfigGuid in invalidConfigGuids)
 		{
-			PerformedChartConfigData.RemoveConfig(invalidConfigGuid);
+			ConfigData.RemoveConfig(invalidConfigGuid);
 		}
-
-		// Ensure the variables for displaying an EditorPerformedChartConfig don't point to an unknown config.
-		if (Preferences.Instance.ActivePerformedChartConfigForWindow != Guid.Empty)
-		{
-			if (PerformedChartConfigData.GetConfig(Preferences.Instance.ActivePerformedChartConfigForWindow) == null)
-				Preferences.Instance.ActivePerformedChartConfigForWindow = Guid.Empty;
-		}
-
-		if (Preferences.Instance.ActivePerformedChartConfigForWindow == Guid.Empty)
-			Preferences.Instance.ShowPerformedChartListWindow = false;
 
 		// Now that names are loaded, refresh the sorted lists of guids of names.
-		PerformedChartConfigData.UpdateSortedConfigs();
-	}
+		ConfigData.UpdateSortedConfigs();
 
-	/// <summary>
-	/// Performs post-load initialization of all ExpressedChart configurations.
-	/// Creates and adds default configurations.
-	/// Removes any invalid configurations.
-	/// </summary>
-	private void PostLoadExpressedChartConfigs()
-	{
-		// Add the default dynamic config. This should never be modified so delete it if it exists and re-add it.
-		ExpressedChartConfigData.RemoveConfig(DefaultExpressedChartDynamicConfigGuid);
-		var defaultDynamicConfig =
-			AddExpressedChartConfig(DefaultExpressedChartDynamicConfigGuid, DefaultExpressedChartDynamicConfigName);
-		defaultDynamicConfig.Description = "Default settings with dynamic bracket parsing";
-		defaultDynamicConfig.InitializeWithDefaultValues();
-
-		// Add the default aggressive bracket config. This should never be modified so delete it if it exists and re-add it.
-		ExpressedChartConfigData.RemoveConfig(DefaultExpressedChartAggressiveBracketsConfigGuid);
-		var defaultAggressiveConfig = AddExpressedChartConfig(DefaultExpressedChartAggressiveBracketsConfigGuid,
-			DefaultExpressedChartAggressiveBracketsConfigName, false);
-		defaultAggressiveConfig.Description = "Default settings with aggressive bracket parsing";
-		defaultAggressiveConfig.Config.BracketParsingDetermination = BracketParsingDetermination.UseDefaultMethod;
-		defaultAggressiveConfig.Config.DefaultBracketParsingMethod = BracketParsingMethod.Aggressive;
-
-		// Add the default no-brackets config. This should never be modified so delete it if it exists and re-add it.
-		ExpressedChartConfigData.RemoveConfig(DefaultExpressedChartNoBracketsConfigGuid);
-		var defaultNoBracketsConfig = AddExpressedChartConfig(DefaultExpressedChartNoBracketsConfigGuid,
-			DefaultExpressedChartNoBracketsConfigName, false);
-		defaultNoBracketsConfig.Description = "Default settings that avoid brackets";
-		defaultNoBracketsConfig.Config.BracketParsingDetermination = BracketParsingDetermination.UseDefaultMethod;
-		defaultNoBracketsConfig.Config.DefaultBracketParsingMethod = BracketParsingMethod.NoBrackets;
-
-		// Ensure every EditorExpressedChartConfig is configured and valid.
-		var invalidConfigGuids = new List<Guid>();
-		foreach (var kvp in ExpressedChartConfigData.GetConfigs())
-		{
-			// Configure the EditorExpressedChartConfig will name update functions.
-			kvp.Value.SetNameUpdatedFunction(OnExpressedChartConfigNameUpdated);
-
-			// Validate the ExpressedChartConfig. If this fails, store it for removal.
-			if (!kvp.Value.Validate())
-			{
-				invalidConfigGuids.Add(kvp.Key);
-			}
-		}
-
-		// Remove all invalid ExpressedChartConfig objects.
-		foreach (var invalidConfigGuid in invalidConfigGuids)
-		{
-			ExpressedChartConfigData.RemoveConfig(invalidConfigGuid);
-		}
-
-		// Ensure the variables for displaying an EditorExpressedChartConfig don't point to an unknown config.
-		if (Preferences.Instance.ActiveExpressedChartConfigForWindow != Guid.Empty)
-		{
-			if (ExpressedChartConfigData.GetConfig(Preferences.Instance.ActiveExpressedChartConfigForWindow) == null)
-				Preferences.Instance.ActiveExpressedChartConfigForWindow = Guid.Empty;
-		}
-
-		if (Preferences.Instance.ActiveExpressedChartConfigForWindow == Guid.Empty)
-			Preferences.Instance.ShowExpressedChartListWindow = false;
-
-		// Now that names are loaded, refresh the sorted lists of guids of names.
-		ExpressedChartConfigData.UpdateSortedConfigs();
+		OnPostLoadComplete();
 	}
 
 	#endregion Load
 
-	#region PerformedChart
-
-	public void AddPerformedChartConfig(EditorPerformedChartConfig config)
+	public void AddConfig(TEditorConfig config)
 	{
-		PerformedChartConfigData.AddConfig(config);
+		ConfigData.AddConfig(config);
 	}
 
-	public EditorPerformedChartConfig AddPerformedChartConfig(Guid guid, string name)
+	public TEditorConfig AddConfig(Guid guid, string name)
 	{
-		return AddPerformedChartConfig(guid, name, true);
+		return AddConfig(guid, name, true);
 	}
 
-	public EditorPerformedChartConfig AddPerformedChartConfig(Guid guid)
+	public TEditorConfig AddConfig(Guid guid)
 	{
-		return AddPerformedChartConfig(guid, EditorPerformedChartConfig.NewConfigName, true);
+		return AddConfig(guid, EditorConfig<TConfig>.NewConfigName, true);
 	}
 
-	public EditorPerformedChartConfig AddPerformedChartConfig(string name)
+	public TEditorConfig AddConfig(string name)
 	{
-		return AddPerformedChartConfig(Guid.NewGuid(), name, true);
+		return AddConfig(Guid.NewGuid(), name, true);
 	}
 
-	private EditorPerformedChartConfig AddPerformedChartConfig(Guid guid, string name, bool useDefaultValues)
+	protected TEditorConfig AddConfig(Guid guid, string name, bool useDefaultValues)
 	{
-		var config = new EditorPerformedChartConfig(guid);
-		config.SetNameUpdatedFunction(OnPerformedChartConfigNameUpdated);
+		var config = NewEditorConfig(guid);
+		config.SetNameUpdatedFunction(OnConfigNameUpdated);
 		config.Name = name;
 		if (useDefaultValues)
 			config.InitializeWithDefaultValues();
 		config.Config.Init();
-		AddPerformedChartConfig(config);
+		AddConfig(config);
 		return config;
 	}
 
-	public void DeletePerformedChartConfig(Guid guid)
+	public void DeleteConfig(Guid guid)
 	{
-		PerformedChartConfigData.RemoveConfig(guid);
-
-		// If the actively displayed config is being deleted, remove the variable tracking 
-		if (Preferences.Instance.ActivePerformedChartConfigForWindow == guid)
-		{
-			Preferences.Instance.ActivePerformedChartConfigForWindow = Guid.Empty;
-			Preferences.Instance.ShowPerformedChartListWindow = false;
-		}
+		ConfigData.RemoveConfig(guid);
+		OnConfigDeleted(guid);
 	}
 
-	public EditorPerformedChartConfig ClonePerformedChartConfig(Guid guid)
+	public TEditorConfig CloneConfig(Guid guid)
 	{
-		return PerformedChartConfigData.CloneConfig(guid);
+		return ConfigData.CloneConfig(guid);
 	}
 
-	public EditorPerformedChartConfig GetPerformedChartConfig(Guid guid)
+	public TEditorConfig GetConfig(Guid guid)
 	{
-		return PerformedChartConfigData.GetConfig(guid);
+		return ConfigData.GetConfig(guid);
 	}
 
-	public Guid[] GetSortedPerformedChartConfigGuids()
+	public Guid[] GetSortedConfigGuids()
 	{
-		return PerformedChartConfigData.SortedConfigGuids;
+		return ConfigData.SortedConfigGuids;
 	}
 
-	public string[] GetSortedPerformedChartConfigNames()
+	public string[] GetSortedConfigNames()
 	{
-		return PerformedChartConfigData.SortedConfigNames;
+		return ConfigData.SortedConfigNames;
 	}
 
 	/// <summary>
-	/// Called when a EditorPerformedChartConfig's name is updated to a new value.
+	/// Called when an EditorConfig's name is updated to a new value.
 	/// </summary>
-	private void OnPerformedChartConfigNameUpdated()
+	private void OnConfigNameUpdated()
 	{
 		// Update the sort since the name has changed.
-		PerformedChartConfigData.UpdateSortedConfigs();
-	}
-
-	#endregion PerformedChart
-
-	#region ExpressedChart
-
-	public void AddExpressedChartConfig(EditorExpressedChartConfig config)
-	{
-		ExpressedChartConfigData.AddConfig(config);
-	}
-
-	public EditorExpressedChartConfig AddExpressedChartConfig(Guid guid, string name)
-	{
-		return AddExpressedChartConfig(guid, name, true);
-	}
-
-	public EditorExpressedChartConfig AddExpressedChartConfig(Guid guid)
-	{
-		return AddExpressedChartConfig(guid, EditorExpressedChartConfig.NewConfigName, true);
-	}
-
-	public EditorExpressedChartConfig AddExpressedChartConfig(string name)
-	{
-		return AddExpressedChartConfig(Guid.NewGuid(), name, true);
-	}
-
-	private EditorExpressedChartConfig AddExpressedChartConfig(Guid guid, string name, bool useDefaultValues)
-	{
-		var config = new EditorExpressedChartConfig(guid);
-		config.SetNameUpdatedFunction(OnExpressedChartConfigNameUpdated);
-		config.Name = name;
-		if (useDefaultValues)
-			config.InitializeWithDefaultValues();
-		AddExpressedChartConfig(config);
-		return config;
-	}
-
-	public void DeleteExpressedChartConfig(Guid guid)
-	{
-		ExpressedChartConfigData.RemoveConfig(guid);
-
-		// If the actively displayed config is being deleted, remove the variable tracking 
-		if (Preferences.Instance.ActiveExpressedChartConfigForWindow == guid)
-		{
-			Preferences.Instance.ActiveExpressedChartConfigForWindow = Guid.Empty;
-			Preferences.Instance.ShowExpressedChartListWindow = false;
-		}
-	}
-
-	public EditorExpressedChartConfig CloneExpressedChartConfig(Guid guid)
-	{
-		return ExpressedChartConfigData.CloneConfig(guid);
-	}
-
-	public EditorExpressedChartConfig GetExpressedChartConfig(Guid guid)
-	{
-		return ExpressedChartConfigData.GetConfig(guid);
-	}
-
-	public Guid[] GetSortedExpressedChartConfigGuids()
-	{
-		return ExpressedChartConfigData.SortedConfigGuids;
-	}
-
-	public string[] GetSortedExpressedChartConfigNames()
-	{
-		return ExpressedChartConfigData.SortedConfigNames;
+		ConfigData.UpdateSortedConfigs();
 	}
 
 	/// <summary>
-	/// Called when a EditorExpressedChartConfig's name is updated to a new value.
+	/// Creates a new EditorConfig object with the given Guid.
 	/// </summary>
-	private void OnExpressedChartConfigNameUpdated()
-	{
-		// Update the sort since the name has changed.
-		ExpressedChartConfigData.UpdateSortedConfigs();
-	}
+	/// <param name="guid">Guid for new EditorConfig object.</param>
+	/// <returns>New EditorConfig object.</returns>
+	protected abstract TEditorConfig NewEditorConfig(Guid guid);
 
-	#endregion ExpressedChart
+	/// <summary>
+	/// Called when an EditorConfig with the given Guid is deleted so derived
+	/// classes have an opportunity to respond.
+	/// </summary>
+	/// <param name="guid">Guid of deleted EditorConfig.</param>
+	protected abstract void OnConfigDeleted(Guid guid);
+
+	/// <summary>
+	/// Adds all default EditorConfig objects.
+	/// </summary>
+	protected abstract void AddDefaultConfigs();
+
+	/// <summary>
+	/// Called after all EditorConfig objects have been loaded, initialized, and validated.
+	/// Gives derived classes an opportunity to respond.
+	/// </summary>
+	protected abstract void OnPostLoadComplete();
 }

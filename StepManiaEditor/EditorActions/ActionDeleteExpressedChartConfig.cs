@@ -18,7 +18,7 @@ internal sealed class ActionDeleteExpressedChartConfig : EditorAction
 	{
 		Editor = editor;
 		ConfigGuid = configGuid;
-		Config = ConfigManager.Instance.GetExpressedChartConfig(ConfigGuid);
+		Config = ExpressedChartConfigManager.Instance.GetConfig(ConfigGuid);
 		ChartsWithDeletedConfig = new List<EditorChart>();
 
 		var song = Editor.GetActiveSong();
@@ -55,17 +55,17 @@ internal sealed class ActionDeleteExpressedChartConfig : EditorAction
 			{
 				if (chart.ExpressedChartConfig == ConfigGuid)
 				{
-					chart.ExpressedChartConfig = ConfigManager.DefaultExpressedChartDynamicConfigGuid;
+					chart.ExpressedChartConfig = ExpressedChartConfigManager.DefaultExpressedChartDynamicConfigGuid;
 				}
 			}
 		}
 
-		ConfigManager.Instance.DeleteExpressedChartConfig(ConfigGuid);
+		ExpressedChartConfigManager.Instance.DeleteConfig(ConfigGuid);
 	}
 
 	protected override void UndoImplementation()
 	{
-		ConfigManager.Instance.AddExpressedChartConfig(Config);
+		ExpressedChartConfigManager.Instance.AddConfig(Config);
 
 		foreach (var chart in ChartsWithDeletedConfig)
 		{

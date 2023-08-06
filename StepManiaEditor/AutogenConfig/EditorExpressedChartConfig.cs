@@ -1,8 +1,8 @@
 ﻿using System;
-using System.Text.Json.Serialization;
 using Fumen;
 using StepManiaLibrary.ExpressedChart;
 using ImGuiNET;
+using Config = StepManiaLibrary.ExpressedChart.Config;
 
 namespace StepManiaEditor.AutogenConfig;
 
@@ -10,10 +10,8 @@ namespace StepManiaEditor.AutogenConfig;
 /// EditorExpressedChartConfig is a wrapper around an ExpressedChartConfig with additional
 /// data and functionality for the editor.
 /// </summary>
-internal class EditorExpressedChartConfig : IEditorConfig, IEquatable<EditorExpressedChartConfig>
+internal sealed class EditorExpressedChartConfig : EditorConfig<Config>, IEquatable<EditorExpressedChartConfig>
 {
-	public const string NewConfigName = "New Config";
-
 	// Default values.
 	public const BracketParsingMethod DefaultDefaultBracketParsingMethod = BracketParsingMethod.Balanced;
 
@@ -26,157 +24,43 @@ internal class EditorExpressedChartConfig : IEditorConfig, IEquatable<EditorExpr
 	public const double DefaultBalancedBracketsPerMinuteForNoBrackets = 1.0;
 
 	/// <summary>
-	/// Guid for this NamedConfig. Not readonly so that it can be set from deserialization.
-	/// </summary>
-	[JsonInclude] public Guid Guid;
-
-	// Preferences.
-	[JsonInclude]
-	public string Name
-	{
-		get => NameInternal;
-		set
-		{
-			// Null check around IsNewNameValid because this property is set during deserialization.
-			if (!(IsNewNameValid?.Invoke(value) ?? true))
-				return;
-			if (!string.IsNullOrEmpty(NameInternal) && NameInternal.Equals(value))
-				return;
-			NameInternal = value;
-			// Null check around OnNameUpdated because this property is set during deserialization.
-			OnNameUpdated?.Invoke();
-		}
-	}
-
-	private string NameInternal;
-	[JsonInclude] public string Description;
-
-	/// <summary>
-	/// The ExpressedChart Config wrapped by this EditorExpressedChartConfig.
-	/// </summary>
-	[JsonInclude] public Config Config = new();
-
-	/// <summary>
-	/// A cloned EditorExpressedChartConfig to use for comparisons to see
-	/// if this EditorExpressedChartConfig has unsaved changes or not.
-	/// </summary>
-	private EditorExpressedChartConfig LastSavedState;
-
-	/// <summary>
-	/// Function to determine if a new name is valid.
-	/// </summary>
-	private Func<string, bool> IsNewNameValid;
-
-	/// <summary>
-	/// Callback function to invoke when the name is updated.
-	/// </summary>
-	private Action OnNameUpdated;
-
-	/// <summary>
 	/// Constructor.
 	/// </summary>
 	public EditorExpressedChartConfig()
 	{
-		Guid = Guid.NewGuid();
 	}
 
 	/// <summary>
 	/// Constructor taking a previously generated Guid.
 	/// </summary>
-	/// <param name="guid">Guid for this EditorPerformedChartConfig.</param>
-	public EditorExpressedChartConfig(Guid guid)
+	/// <param name="guid">Guid for this EditorExpressedChartConfig.</param>
+	public EditorExpressedChartConfig(Guid guid) : base(guid)
 	{
-		Guid = guid;
 	}
 
-	/// <summary>
-	/// Returns a new EditorExpressedChartConfig that is a clone of this EditorExpressedChartConfig.
-	/// The Guid of the returned EditorExpressedChartConfig will be unique and the name will be the default new name.
-	/// </summary>
-	/// <returns>Cloned EditorExpressedChartConfig.</returns>
-	public EditorExpressedChartConfig CloneEditorExpressedChartConfig()
-	{
-		return CloneEditorExpressedChartConfig(false);
-	}
-
+	#region EditorConfig
 
 	/// <summary>
 	/// Returns a new EditorExpressedChartConfig that is a clone of this EditorExpressedChartConfig.
 	/// </summary>
 	/// <param name="snapshot">
 	/// If true then everything on this EditorExpressedChartConfig will be cloned.
-	/// If false then the Guid and Name will be changed.</param>
+	/// If false then the Guid and Name will be changed.
+	/// </param>
 	/// <returns>Cloned EditorExpressedChartConfig.</returns>
-	private EditorExpressedChartConfig CloneEditorExpressedChartConfig(bool snapshot)
+	protected override EditorExpressedChartConfig CloneImplementation(bool snapshot)
 	{
-		return new EditorExpressedChartConfig(snapshot ? Guid : Guid.NewGuid())
-		{
-			Config = Config.Clone(),
-			Name = snapshot ? Name : NewConfigName,
-			Description = Description,
-			IsNewNameValid = IsNewNameValid,
-			OnNameUpdated = OnNameUpdated,
-		};
+		return new EditorExpressedChartConfig(snapshot ? Guid : Guid.NewGuid());
 	}
 
-	/// <summary>
-	/// Validates this EditorExpressedChartConfig and logs any errors on invalid data.
-	/// </summary>
-	/// <returns>True if no errors were found and false otherwise.</returns>
-	public bool Validate()
+	public override bool IsDefault()
 	{
-		var errors = false;
-		if (Guid == Guid.Empty)
-		{
-			Logger.Error("EditorExpressedChartConfig has no Guid.");
-			errors = true;
-		}
-
-		if (string.IsNullOrEmpty(Name))
-		{
-			Logger.Error($"EditorExpressedChartConfig {Guid} has no name.");
-			errors = true;
-		}
-
-		errors = !Config.Validate(Name) || errors;
-		return !errors;
+		return Guid.Equals(ExpressedChartConfigManager.DefaultExpressedChartDynamicConfigGuid)
+		       || Guid.Equals(ExpressedChartConfigManager.DefaultExpressedChartAggressiveBracketsConfigGuid)
+		       || Guid.Equals(ExpressedChartConfigManager.DefaultExpressedChartNoBracketsConfigGuid);
 	}
 
-	#region IEditorConfig
-
-	public Guid GetGuid()
-	{
-		return Guid;
-	}
-
-	public string GetName()
-	{
-		return Name;
-	}
-
-	public bool IsDefault()
-	{
-		return Guid.Equals(ConfigManager.DefaultExpressedChartDynamicConfigGuid)
-		       || Guid.Equals(ConfigManager.DefaultExpressedChartAggressiveBracketsConfigGuid)
-		       || Guid.Equals(ConfigManager.DefaultExpressedChartNoBracketsConfigGuid);
-	}
-
-	public IEditorConfig Clone()
-	{
-		return CloneEditorExpressedChartConfig();
-	}
-
-	public bool HasUnsavedChanges()
-	{
-		return LastSavedState == null || !Equals(LastSavedState);
-	}
-
-	public void UpdateLastSavedState()
-	{
-		LastSavedState = CloneEditorExpressedChartConfig(true);
-	}
-
-	public void InitializeWithDefaultValues()
+	public override void InitializeWithDefaultValues()
 	{
 		Config.DefaultBracketParsingMethod = DefaultDefaultBracketParsingMethod;
 		Config.BracketParsingDetermination = DefaultBracketParsingDetermination;
@@ -187,16 +71,12 @@ internal class EditorExpressedChartConfig : IEditorConfig, IEquatable<EditorExpr
 		Config.BalancedBracketsPerMinuteForNoBrackets = DefaultBalancedBracketsPerMinuteForNoBrackets;
 	}
 
-	#endregion IEditorConfig
-
-	/// <summary>
-	/// Sets function to use for calling back to when the name is updated.
-	/// </summary>
-	/// <param name="onNameUpdated">Callback function to invoke when the name is updated.</param>
-	public void SetNameUpdatedFunction(Action onNameUpdated)
+	protected override bool EditorConfigEquals(EditorConfig<Config> other)
 	{
-		OnNameUpdated = onNameUpdated;
+		return Equals(other);
 	}
+
+	#endregion EditorConfig
 
 	/// <summary>
 	/// Returns whether or not this EditorExpressedChartConfig is using all default values.

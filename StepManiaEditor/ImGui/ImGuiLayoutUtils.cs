@@ -471,9 +471,10 @@ internal sealed class ImGuiLayoutUtils
 			itemWidth - ConfigFromListEditWidth - ConfigFromListViewAllWidth - ConfigFromListNewWidth - spacing * 3.0f);
 		ImGui.SetNextItemWidth(comboWidth);
 
-		var currentValue = editorChart?.ExpressedChartConfig ?? ConfigManager.DefaultExpressedChartDynamicConfigGuid;
-		var configGuids = ConfigManager.Instance.GetSortedExpressedChartConfigGuids();
-		var configNames = ConfigManager.Instance.GetSortedExpressedChartConfigNames();
+		var currentValue = editorChart?.ExpressedChartConfig ??
+		                   ExpressedChartConfigManager.DefaultExpressedChartDynamicConfigGuid;
+		var configGuids = ExpressedChartConfigManager.Instance.GetSortedConfigGuids();
+		var configNames = ExpressedChartConfigManager.Instance.GetSortedConfigNames();
 		var selectedIndex = 0;
 		for (var i = 0; i < configGuids.Length; i++)
 		{

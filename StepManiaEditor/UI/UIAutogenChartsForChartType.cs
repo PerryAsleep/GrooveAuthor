@@ -118,8 +118,8 @@ internal sealed class UIAutogenChartsForChartType
 					"Type of Charts to generate.");
 
 				// Performed Chart Config.
-				var configGuids = ConfigManager.Instance.GetSortedPerformedChartConfigGuids();
-				var configNames = ConfigManager.Instance.GetSortedPerformedChartConfigNames();
+				var configGuids = PerformedChartConfigManager.Instance.GetSortedConfigGuids();
+				var configNames = PerformedChartConfigManager.Instance.GetSortedConfigNames();
 				var selectedIndex = 0;
 				for (var i = 0; i < configGuids.Length; i++)
 				{
@@ -149,7 +149,7 @@ internal sealed class UIAutogenChartsForChartType
 			ImGui.Separator();
 
 			var performedChartConfig =
-				ConfigManager.Instance.GetPerformedChartConfig(Preferences.Instance
+				PerformedChartConfigManager.Instance.GetConfig(Preferences.Instance
 					.LastSelectedAutogenPerformedChartConfig);
 			var canStart = SourceChartType != null && performedChartConfig != null;
 

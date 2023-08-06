@@ -1,13 +1,22 @@
 ﻿using System;
 using System.Collections.Generic;
+using StepManiaLibrary;
 
 namespace StepManiaEditor.AutogenConfig;
 
 /// <summary>
-/// Data for all IEditorConfig objects of the same type.
+/// Data for all EditorConfig objects of the same type.
 /// </summary>
-/// <typeparam name="T">Type of IEditorConfig objects stored in this instance.</typeparam>
-internal sealed class ConfigData<T> where T : IEditorConfig
+/// <typeparam name="TEditorConfig">
+/// Type of EditorConfig objects stored in this instance.
+/// </typeparam>
+/// <typeparam name="TConfig">
+/// Type of configuration objects implementing the IConfig interface that are
+/// wrapped by the EditorConfig objects that this class manages.
+/// </typeparam>
+internal sealed class ConfigData<TEditorConfig, TConfig>
+	where TEditorConfig : EditorConfig<TConfig>
+	where TConfig : IConfig<TConfig>, new()
 {
 	/// <summary>
 	/// Sorted array of Config guids to use for UI.
@@ -22,11 +31,11 @@ internal sealed class ConfigData<T> where T : IEditorConfig
 	/// <summary>
 	/// All IEditorConfigs of the same type.
 	/// </summary>
-	private readonly Dictionary<Guid, T> Configs = new();
+	private readonly Dictionary<Guid, TEditorConfig> Configs = new();
 
 	public void UpdateSortedConfigs()
 	{
-		var configList = new List<T>();
+		var configList = new List<TEditorConfig>();
 		foreach (var kvp in Configs)
 		{
 			configList.Add(kvp.Value);
@@ -41,7 +50,7 @@ internal sealed class ConfigData<T> where T : IEditorConfig
 				return lhsDefault ? -1 : 1;
 
 			// Configs should sort alphabetically.
-			var comparison = string.Compare(lhs.GetName(), rhs.GetName(), StringComparison.CurrentCulture);
+			var comparison = string.Compare(lhs.Name, rhs.Name, StringComparison.CurrentCulture);
 			if (comparison != 0)
 				return comparison;
 
@@ -54,11 +63,11 @@ internal sealed class ConfigData<T> where T : IEditorConfig
 		for (var i = 0; i < configList.Count; i++)
 		{
 			SortedConfigGuids[i] = configList[i].GetGuid();
-			SortedConfigNames[i] = configList[i].GetName();
+			SortedConfigNames[i] = configList[i].Name;
 		}
 	}
 
-	public void AddConfig(T config)
+	public void AddConfig(TEditorConfig config)
 	{
 		Configs[config.GetGuid()] = config;
 		UpdateSortedConfigs();
@@ -74,20 +83,20 @@ internal sealed class ConfigData<T> where T : IEditorConfig
 		UpdateSortedConfigs();
 	}
 
-	public T GetConfig(Guid guid)
+	public TEditorConfig GetConfig(Guid guid)
 	{
 		if (!Configs.TryGetValue(guid, out var config))
 			return default;
 		return config;
 	}
 
-	public T CloneConfig(Guid guid)
+	public TEditorConfig CloneConfig(Guid guid)
 	{
 		var existingConfig = GetConfig(guid);
-		return (T)existingConfig?.Clone();
+		return (TEditorConfig)existingConfig?.Clone();
 	}
 
-	public IReadOnlyDictionary<Guid, T> GetConfigs()
+	public IReadOnlyDictionary<Guid, TEditorConfig> GetConfigs()
 	{
 		return Configs;
 	}

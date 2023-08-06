@@ -4,14 +4,14 @@ using StepManiaEditor.AutogenConfig;
 namespace StepManiaEditor;
 
 /// <summary>
-/// Action to clone an EditorPerformedChartConfig.
+/// Action to clone an EditorPatternConfig.
 /// </summary>
-internal sealed class ActionClonePerformedChartConfig : EditorAction
+internal sealed class ActionClonePatternConfig : EditorAction
 {
 	private readonly Guid ExistingConfigGuid;
 	private Guid NewConfigGuid = Guid.Empty;
 
-	public ActionClonePerformedChartConfig(Guid existingConfigGuid) : base(false, false)
+	public ActionClonePatternConfig(Guid existingConfigGuid) : base(false, false)
 	{
 		ExistingConfigGuid = existingConfigGuid;
 	}
@@ -28,17 +28,17 @@ internal sealed class ActionClonePerformedChartConfig : EditorAction
 
 	protected override void DoImplementation()
 	{
-		var newConfig = PerformedChartConfigManager.Instance.CloneConfig(ExistingConfigGuid);
+		var newConfig = PatternConfigManager.Instance.CloneConfig(ExistingConfigGuid);
 		if (newConfig == null)
 			return;
 		NewConfigGuid = newConfig.Guid;
-		PerformedChartConfigManager.Instance.AddConfig(newConfig);
-		EditorPerformedChartConfig.ShowEditUI(NewConfigGuid);
+		PatternConfigManager.Instance.AddConfig(newConfig);
+		EditorPatternConfig.ShowEditUI(NewConfigGuid);
 	}
 
 	protected override void UndoImplementation()
 	{
 		if (NewConfigGuid != Guid.Empty)
-			PerformedChartConfigManager.Instance.DeleteConfig(NewConfigGuid);
+			PatternConfigManager.Instance.DeleteConfig(NewConfigGuid);
 	}
 }

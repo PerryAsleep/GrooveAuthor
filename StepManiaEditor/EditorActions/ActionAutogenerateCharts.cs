@@ -103,7 +103,7 @@ internal sealed class ActionAutogenerateCharts : EditorAction
 			return;
 		}
 
-		var expressedChartConfig = ConfigManager.Instance.GetExpressedChartConfig(sourceChart.ExpressedChartConfig);
+		var expressedChartConfig = ExpressedChartConfigManager.Instance.GetConfig(sourceChart.ExpressedChartConfig);
 		if (expressedChartConfig == null)
 		{
 			Logger.Error($"{errorString} No {sourceChart.ExpressedChartConfig} Expressed Chart Config defined.");

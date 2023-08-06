@@ -101,6 +101,10 @@ internal sealed class Preferences
 	[JsonInclude] public Guid ActiveExpressedChartConfigForWindow;
 	[JsonInclude] public bool ShowExpressedChartListWindow;
 
+	// PatternConfig preferences
+	[JsonInclude] public Guid ActivePatternConfigForWindow;
+	[JsonInclude] public bool ShowPatternListWindow;
+
 	// Log preferences
 	[JsonInclude] public bool ShowLogWindow = true;
 	[JsonInclude] public int LogWindowDateDisplay = 1;
@@ -118,7 +122,9 @@ internal sealed class Preferences
 	[JsonInclude] public Editor.NoteEntryMode NoteEntryMode = Editor.NoteEntryMode.Normal;
 	[JsonInclude] public int SnapIndex;
 	[JsonInclude] public ChartType LastSelectedAutogenChartType = ChartType.dance_single;
-	[JsonInclude] public Guid LastSelectedAutogenPerformedChartConfig = ConfigManager.DefaultPerformedChartConfigGuid;
+
+	[JsonInclude] public Guid LastSelectedAutogenPerformedChartConfig =
+		PerformedChartConfigManager.DefaultPerformedChartConfigGuid;
 
 	// Debug
 	[JsonInclude] public double DebugSongTime;

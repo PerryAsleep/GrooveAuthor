@@ -173,6 +173,7 @@ internal sealed class Editor :
 	private UIChartPosition UIChartPosition;
 	private UIExpressedChartConfig UIExpressedChartConfig;
 	private UIPerformedChartConfig UIPerformedChartConfig;
+	private UIPatternConfig UIPatternConfig;
 	private UIAutogenConfigs UIAutogenConfigs;
 	private UIAutogenChart UIAutogenChart;
 	private UIAutogenChartsForChartType UIAutogenChartsForChartType;
@@ -419,7 +420,9 @@ internal sealed class Editor :
 		// Load autogen configs synchronously.
 		// This simplifies loading at the cost of startup time.
 		// Ideally this would be async, but that means deferring loading songs until this operation is complete.
-		ConfigManager.Instance.LoadConfigs();
+		PerformedChartConfigManager.Instance.LoadConfigs();
+		ExpressedChartConfigManager.Instance.LoadConfigs();
+		PatternConfigManager.Instance.LoadConfigs();
 	}
 
 	private void InitializeZoomManager()
@@ -670,6 +673,7 @@ internal sealed class Editor :
 		UIChartPosition = new UIChartPosition(this);
 		UIExpressedChartConfig = new UIExpressedChartConfig(this);
 		UIPerformedChartConfig = new UIPerformedChartConfig(this);
+		UIPatternConfig = new UIPatternConfig(this);
 		UIAutogenConfigs = new UIAutogenConfigs(this);
 		UIAutogenChart = new UIAutogenChart(this);
 		UIAutogenChartsForChartType = new UIAutogenChartsForChartType(this);
@@ -761,7 +765,9 @@ internal sealed class Editor :
 		// Commit preferences to disk.
 		Preferences.Save();
 		// Commit unsaved changes to autogen configs to disk.
-		ConfigManager.Instance.SaveConfigs();
+		PerformedChartConfigManager.Instance.SaveConfigs();
+		ExpressedChartConfigManager.Instance.SaveConfigs();
+		PatternConfigManager.Instance.SaveConfigs();
 		Logger.Shutdown();
 
 		ImGuiRenderer.UnbindTexture(TextureAtlasImGuiTexture);
@@ -3147,6 +3153,7 @@ internal sealed class Editor :
 		UIChartList.Draw(ActiveSong, ActiveChart);
 		UIExpressedChartConfig.Draw();
 		UIPerformedChartConfig.Draw();
+		UIPatternConfig.Draw();
 		UIAutogenConfigs.Draw();
 		UIAutogenChart.Draw();
 		UIAutogenChartsForChartType.Draw();

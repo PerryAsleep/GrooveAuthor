@@ -15,7 +15,7 @@ internal sealed class ActionDeletePerformedChartConfig : EditorAction
 	public ActionDeletePerformedChartConfig(Guid configGuid) : base(false, false)
 	{
 		ConfigGuid = configGuid;
-		Config = ConfigManager.Instance.GetPerformedChartConfig(ConfigGuid);
+		Config = PerformedChartConfigManager.Instance.GetConfig(ConfigGuid);
 	}
 
 	public override string ToString()
@@ -32,15 +32,15 @@ internal sealed class ActionDeletePerformedChartConfig : EditorAction
 	{
 		LastSelectedAutogenPerformedChartConfigUsedDeletedConfig =
 			Preferences.Instance.LastSelectedAutogenPerformedChartConfig == ConfigGuid;
-		ConfigManager.Instance.DeletePerformedChartConfig(ConfigGuid);
+		PerformedChartConfigManager.Instance.DeleteConfig(ConfigGuid);
 		if (LastSelectedAutogenPerformedChartConfigUsedDeletedConfig)
 			Preferences.Instance.LastSelectedAutogenPerformedChartConfig =
-				ConfigManager.DefaultPerformedChartConfigGuid;
+				PerformedChartConfigManager.DefaultPerformedChartConfigGuid;
 	}
 
 	protected override void UndoImplementation()
 	{
-		ConfigManager.Instance.AddPerformedChartConfig(Config);
+		PerformedChartConfigManager.Instance.AddConfig(Config);
 		if (LastSelectedAutogenPerformedChartConfigUsedDeletedConfig)
 			Preferences.Instance.LastSelectedAutogenPerformedChartConfig = ConfigGuid;
 	}

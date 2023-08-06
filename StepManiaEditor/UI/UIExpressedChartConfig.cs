@@ -35,7 +35,7 @@ internal sealed class UIExpressedChartConfig
 		if (!p.ShowExpressedChartListWindow)
 			return;
 
-		var editorConfig = ConfigManager.Instance.GetExpressedChartConfig(p.ActiveExpressedChartConfigForWindow);
+		var editorConfig = ExpressedChartConfigManager.Instance.GetConfig(p.ActiveExpressedChartConfigForWindow);
 		if (editorConfig == null)
 			return;
 

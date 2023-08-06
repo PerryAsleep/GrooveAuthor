@@ -4,25 +4,25 @@ using StepManiaEditor.AutogenConfig;
 namespace StepManiaEditor;
 
 /// <summary>
-/// Action to add an EditorPerformedChartConfig.
+/// Action to add an EditorPatternConfig.
 /// </summary>
-internal sealed class ActionAddPerformedChartConfig : EditorAction
+internal sealed class ActionAddPatternConfig : EditorAction
 {
 	private readonly Guid ConfigGuid;
 
-	public ActionAddPerformedChartConfig() : base(false, false)
+	public ActionAddPatternConfig() : base(false, false)
 	{
 		ConfigGuid = Guid.NewGuid();
 	}
 
-	public ActionAddPerformedChartConfig(Guid configGuid) : base(false, false)
+	public ActionAddPatternConfig(Guid configGuid) : base(false, false)
 	{
 		ConfigGuid = configGuid;
 	}
 
 	public override string ToString()
 	{
-		return "Add Performed Chart Config.";
+		return "Add Pattern Config.";
 	}
 
 	public override bool AffectsFile()
@@ -32,11 +32,11 @@ internal sealed class ActionAddPerformedChartConfig : EditorAction
 
 	protected override void DoImplementation()
 	{
-		PerformedChartConfigManager.Instance.AddConfig(ConfigGuid);
+		PatternConfigManager.Instance.AddConfig(ConfigGuid);
 	}
 
 	protected override void UndoImplementation()
 	{
-		PerformedChartConfigManager.Instance.DeleteConfig(ConfigGuid);
+		PatternConfigManager.Instance.DeleteConfig(ConfigGuid);
 	}
 }
