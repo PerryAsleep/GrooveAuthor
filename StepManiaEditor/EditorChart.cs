@@ -11,6 +11,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using StepManiaEditor.AutogenConfig;
+using Fumen.Converters;
 
 namespace StepManiaEditor;
 
@@ -422,8 +423,9 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			ChartDifficultyTypeInternal = parsedChartDifficultyType;
 		RatingInternal = (int)chart.DifficultyRating;
 
-		NumInputs = Properties[(int)ChartType].NumInputs;
-		NumPlayers = Properties[(int)ChartType].NumPlayers;
+		var chartProperties = GetChartProperties(ChartType);
+		NumInputs = chartProperties.GetNumInputs();
+		NumPlayers = chartProperties.GetNumPlayers();
 
 		chart.Extras.TryGetExtra(TagChartName, out string parsedName, true);
 		NameInternal = parsedName ?? "";
@@ -463,8 +465,9 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		EditorSong = editorSong;
 		ChartTypeInternal = chartType;
 
-		NumInputs = Properties[(int)ChartType].NumInputs;
-		NumPlayers = Properties[(int)ChartType].NumPlayers;
+		var chartProperties = GetChartProperties(ChartType);
+		NumInputs = chartProperties.GetNumInputs();
+		NumPlayers = chartProperties.GetNumPlayers();
 
 		Name = "";
 		Description = "";

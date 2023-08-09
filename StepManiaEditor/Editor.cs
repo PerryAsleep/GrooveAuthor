@@ -130,7 +130,7 @@ internal sealed class Editor :
 	private Action PostSaveFunction;
 	private int OpenRecentIndex;
 
-	public static readonly ChartType[] SupportedChartTypes = new[]
+	public static readonly ChartType[] SupportedChartTypes =
 	{
 		ChartType.dance_single,
 		ChartType.dance_double,
@@ -150,6 +150,8 @@ internal sealed class Editor :
 		ChartType.smx_full,
 		//ChartType.smx_team,
 	};
+
+	private static readonly int MaxNumLanesForAnySupportedChartType = 0;
 
 	private GraphicsDeviceManager Graphics;
 	private SpriteBatch SpriteBatch;
@@ -259,6 +261,21 @@ internal sealed class Editor :
 	private Texture2D LogoAttribution;
 
 	#region Initialization
+
+	/// <summary>
+	/// Static initializer.
+	/// </summary>
+	static Editor()
+	{
+		// Set MaxNumLanesForAnySupportedChartType.
+		MaxNumLanesForAnySupportedChartType = 0;
+		foreach (var chartType in SupportedChartTypes)
+		{
+			MaxNumLanesForAnySupportedChartType = Math.Max(
+				GetChartProperties(chartType).GetNumInputs(),
+				MaxNumLanesForAnySupportedChartType);
+		}
+	}
 
 	/// <summary>
 	/// Constructor.
@@ -839,6 +856,11 @@ internal sealed class Editor :
 			return false;
 
 		return true;
+	}
+
+	public static int GetMaxNumLanesForAnySupportedChartType()
+	{
+		return MaxNumLanesForAnySupportedChartType;
 	}
 
 	#endregion Static Helpers

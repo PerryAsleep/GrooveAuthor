@@ -1,6 +1,7 @@
 ﻿using System.Numerics;
 using ImGuiNET;
 using StepManiaEditor.AutogenConfig;
+using StepManiaLibrary.PerformedChart;
 using static StepManiaEditor.ImGuiUtils;
 
 namespace StepManiaEditor;
@@ -35,6 +36,8 @@ internal sealed class UIPatternConfig
 		if (editorConfig == null)
 			return;
 
+		var currentChartType = Editor.GetActiveChart()?.ChartType;
+
 		ImGui.SetNextWindowSize(new Vector2(0, 0), ImGuiCond.FirstUseEver);
 		if (ImGui.Begin(WindowTitle, ref p.ShowPatternListWindow, ImGuiWindowFlags.NoScrollbar))
 		{
@@ -53,7 +56,17 @@ internal sealed class UIPatternConfig
 					nameof(EditorPatternConfig.Description), false,
 					"Configuration description.");
 
-				// TODO: UI
+				ImGuiLayoutUtils.DrawRowEnum<PatternConfigStartingFootChoice>(true, "Starting Foot", config,
+					nameof(PatternConfig.StartingFootChoice), false,
+					"How to choose the starting foot."
+					+ "\nRandom:    Choose the starting foot randomly."
+					+ "\nAutomatic: Choose the starting foot automatically so that it alternates from the previous steps."
+					+ "\nSpecified: Use a specified starting foot.");
+
+				ImGuiLayoutUtils.DrawRowPatternConfigStartFootChoice(Editor, true, "Left Foot Start Lane", config,
+					currentChartType, true, "TODO");
+				ImGuiLayoutUtils.DrawRowPatternConfigStartFootChoice(Editor, true, "Right Foot Start Lane", config,
+					currentChartType, false, "TODO");
 
 				ImGuiLayoutUtils.EndTable();
 			}

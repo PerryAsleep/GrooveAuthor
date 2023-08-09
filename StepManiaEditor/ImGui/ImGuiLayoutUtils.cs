@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Reflection;
 using ImGuiNET;
 using System.Numerics;
 using StepManiaLibrary.PerformedChart;
@@ -8,6 +7,8 @@ using static Fumen.FumenExtensions;
 using static StepManiaEditor.ImGuiUtils;
 using static StepManiaLibrary.PerformedChart.Config;
 using StepManiaEditor.AutogenConfig;
+using static StepManiaEditor.Utils;
+using static Fumen.Converters.SMCommon;
 
 namespace StepManiaEditor;
 
@@ -53,6 +54,10 @@ internal sealed class ImGuiLayoutUtils
 	public static readonly float NoteTypeComboWidth = UiScaled(60);
 	public static readonly float NotesFromTextWidth = UiScaled(60);
 	public static readonly float BpmTextWidth = UiScaled(20);
+	public static readonly float LaneChoiceEnumWidth = UiScaled(160);
+	public static readonly float ArrowIconWidth = UiScaled(16);
+	public static readonly float ArrowIconHeight = UiScaled(16);
+	public static readonly Vector2 ArrowIconSize = new(ArrowIconWidth, ArrowIconHeight);
 
 	public static void SetFont(ImFontPtr font)
 	{
@@ -1786,6 +1791,141 @@ internal sealed class ImGuiLayoutUtils
 
 	#endregion Step Tightening
 
+	#region Lane Select
+
+	public static void DrawRowPatternConfigStartFootChoice(
+		Editor editor,
+		bool undoable,
+		string title,
+		PatternConfig config,
+		ChartType? chartType,
+		bool left,
+		string help = null)
+	{
+		DrawRowTitleAndAdvanceColumn(title);
+
+		var choice = left ? config.LeftFootStartChoice : config.RightFootStartChoice;
+		var choiceFieldName = left ? nameof(PatternConfig.LeftFootStartChoice) : nameof(PatternConfig.RightFootStartChoice);
+		var valueFieldName =
+			left ? nameof(PatternConfig.LeftFootStartLaneSpecified) : nameof(PatternConfig.RightFootStartLaneSpecified);
+
+		// For simple enum-only choices just draw the enum and help.
+		if (choice != PatternConfigStartFootChoice.SpecifiedLane)
+		{
+			DrawEnum<PatternConfigStartFootChoice>(undoable, title, config, choiceFieldName,
+				ImGui.GetContentRegionAvail().X, null, false, help);
+			return;
+		}
+
+		// For the SpecifiedLane choice, draw the help, then a shorter enum, then the single lane choice control.
+		var laneChoiceWidth = ImGui.GetContentRegionAvail().X - LaneChoiceEnumWidth - ImGui.GetStyle().ItemSpacing.X;
+		DrawEnum<PatternConfigStartFootChoice>(undoable, title, config, choiceFieldName,
+			LaneChoiceEnumWidth, null, false, help);
+		ImGui.SameLine();
+
+		DrawSingleLaneChoice(GetElementTitle(title, valueFieldName), editor, undoable, config, valueFieldName, false,
+			laneChoiceWidth, chartType);
+	}
+
+	private static void DrawSingleLaneChoice(
+		string id,
+		Editor editor,
+		bool undoable,
+		object objectToUpdate,
+		string fieldNameToUpdate,
+		bool affectsFile,
+		float width,
+		ChartType? chartType)
+	{
+		var selectedLane = GetValueFromFieldOrProperty<int>(objectToUpdate, fieldNameToUpdate);
+		var originalSelectedLane = selectedLane;
+
+		var dragIntWidth = width;
+		var defaultXSpacing = ImGui.GetStyle().ItemSpacing.X;
+
+		if (chartType != null)
+		{
+			// Determine the width of the buttons and update the drag int width.
+			var numLanes = GetChartProperties(chartType.Value).GetNumInputs();
+			var buttonHeight = ImGui.GetFontSize() + ImGui.GetStyle().FramePadding.Y * 2;
+			var padding = (int)((buttonHeight - ArrowIconHeight) * 0.5f);
+			var buttonsWidth = numLanes * (ArrowIconWidth + padding * 2);
+			dragIntWidth -= buttonsWidth + defaultXSpacing;
+
+			// Set tighter spacing.
+			var originalItemSpacingX = defaultXSpacing;
+			var originalItemSpacingY = ImGui.GetStyle().ItemSpacing.Y;
+
+			// Remove button color.
+			// This looks better and works around an issue where when using ImageButton
+			// we can't set an odd pixel height, which in practice is needed to match the normal
+			// element height. This looks a pixel off if button colors are enabled.
+			ImGui.PushStyleColor(ImGuiCol.Button, Vector4.Zero);
+
+			// Icons.
+			var textureAtlas = editor.GetTextureAtlas();
+			var imGuiTextureAtlasTexture = editor.GetTextureAtlasImGuiTexture();
+			var (atlasW, atlasH) = textureAtlas.GetDimensions();
+			var icons = ArrowGraphicManager.GetIcons(chartType.Value);
+			var dimIcons = ArrowGraphicManager.GetDimIcons(chartType.Value);
+			for (var lane = 0; lane < numLanes; lane++)
+			{
+				ImGui.SameLine();
+
+				var (x, y, w, h) = textureAtlas.GetSubTextureBounds(selectedLane == lane ? icons[lane] : dimIcons[lane]);
+
+				ImGui.PushID($"##{id}SingleLaneChoice{lane}");
+				if (ImGui.ImageButton(
+					    imGuiTextureAtlasTexture,
+					    ArrowIconSize,
+					    new Vector2(x / (float)atlasW, y / (float)atlasH),
+					    new Vector2((x + w) / (float)atlasW, (y + h) / (float)atlasH),
+					    padding))
+				{
+					selectedLane = lane;
+				}
+
+				ImGui.PopID();
+
+				// We need to set the spacing before calling SameLine.
+				if (lane == 0)
+					ImGui.GetStyle().ItemSpacing.X = 0;
+				else if (lane == numLanes - 1)
+					ImGui.GetStyle().ItemSpacing.X = originalItemSpacingX;
+
+				ImGui.SameLine();
+			}
+
+			// Restore button color.
+			ImGui.PopStyleColor(1);
+
+			// Restore spacing.
+			ImGui.GetStyle().ItemSpacing.X = originalItemSpacingX;
+			ImGui.GetStyle().ItemSpacing.Y = originalItemSpacingY;
+		}
+
+		// Persist new selection if it changed.
+		if (selectedLane != originalSelectedLane)
+		{
+			if (undoable)
+			{
+				ActionQueue.Instance.Do(
+					new ActionSetObjectFieldOrPropertyValue<int>(objectToUpdate, fieldNameToUpdate, selectedLane, affectsFile));
+			}
+			else
+			{
+				SetFieldOrPropertyToValue(objectToUpdate, fieldNameToUpdate, selectedLane);
+			}
+		}
+
+		// Lane value.
+		var maxLane = Editor.GetMaxNumLanesForAnySupportedChartType();
+		DrawDragInt(true, $"##{id}SingleLaneChoiceDragInt", objectToUpdate, fieldNameToUpdate, dragIntWidth, false, "", 0.1f,
+			"%i", 0, maxLane - 1);
+	}
+
+	#endregion Lane Select
+
 	#region Misc Editor Events
 
 	public static double GetMiscEditorEventHeight()
@@ -2147,33 +2287,6 @@ internal sealed class ImGuiLayoutUtils
 	}
 
 	#endregion
-
-	private static void SetFieldOrPropertyToValue<T>(object o, string fieldOrPropertyName, T value)
-	{
-		if (IsField(o, fieldOrPropertyName))
-			o.GetType().GetField(fieldOrPropertyName, BindingFlags.Public | BindingFlags.Instance)?.SetValue(o, value);
-		else
-			o.GetType().GetProperty(fieldOrPropertyName, BindingFlags.Public | BindingFlags.Instance)?.SetValue(o, value);
-	}
-
-	private static T GetValueFromFieldOrProperty<T>(object o, string fieldOrPropertyName)
-	{
-		var value = default(T);
-		if (o == null)
-			return value;
-
-		var isField = IsField(o, fieldOrPropertyName);
-		if (isField)
-			value = (T)(o.GetType().GetField(fieldOrPropertyName)?.GetValue(o) ?? value);
-		else
-			value = (T)(o.GetType().GetProperty(fieldOrPropertyName)?.GetValue(o) ?? value);
-		return value;
-	}
-
-	private static bool IsField(object o, string fieldOrPropertyName)
-	{
-		return o.GetType().GetField(fieldOrPropertyName, BindingFlags.Public | BindingFlags.Instance) != null;
-	}
 
 	private static string GetElementTitle(string title, string fieldOrPropertyName)
 	{

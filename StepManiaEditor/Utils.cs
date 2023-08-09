@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
@@ -346,4 +347,35 @@ public class Utils
 	private static extern int GetWindowThreadProcessId(IntPtr handle, out int processId);
 
 	#endregion Application Focus
+
+	#region Reflection
+
+	public static void SetFieldOrPropertyToValue<T>(object o, string fieldOrPropertyName, T value)
+	{
+		if (IsField(o, fieldOrPropertyName))
+			o.GetType().GetField(fieldOrPropertyName, BindingFlags.Public | BindingFlags.Instance)?.SetValue(o, value);
+		else
+			o.GetType().GetProperty(fieldOrPropertyName, BindingFlags.Public | BindingFlags.Instance)?.SetValue(o, value);
+	}
+
+	public static T GetValueFromFieldOrProperty<T>(object o, string fieldOrPropertyName)
+	{
+		var value = default(T);
+		if (o == null)
+			return value;
+
+		var isField = IsField(o, fieldOrPropertyName);
+		if (isField)
+			value = (T)(o.GetType().GetField(fieldOrPropertyName)?.GetValue(o) ?? value);
+		else
+			value = (T)(o.GetType().GetProperty(fieldOrPropertyName)?.GetValue(o) ?? value);
+		return value;
+	}
+
+	public static bool IsField(object o, string fieldOrPropertyName)
+	{
+		return o.GetType().GetField(fieldOrPropertyName, BindingFlags.Public | BindingFlags.Instance) != null;
+	}
+
+	#endregion Reflection
 }

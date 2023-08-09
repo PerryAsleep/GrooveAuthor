@@ -15,15 +15,15 @@ internal sealed class EditorPatternConfig : EditorConfig<Config>, IEquatable<Edi
 	// Default values.
 	public const int DefaultBeatSubDivision = 4;
 	public const PatternConfigStartingFootChoice DefaultStartingFootChoice = PatternConfigStartingFootChoice.Automatic;
-	public const int DefaultStartingFootSpecified = InvalidArrowIndex;
+	public const int DefaultStartingFootSpecified = L;
 	public const PatternConfigStartFootChoice DefaultLeftFootStartChoice = PatternConfigStartFootChoice.AutomaticNewLane;
-	public const int DefaultLeftFootStartLaneSpecified = InvalidArrowIndex;
+	public const int DefaultLeftFootStartLaneSpecified = 0;
 	public const PatternConfigEndFootChoice DefaultLeftFootEndChoice = PatternConfigEndFootChoice.AutomaticNewLaneToFollowing;
-	public const int DefaultLeftFootEndLaneSpecified = InvalidArrowIndex;
+	public const int DefaultLeftFootEndLaneSpecified = 0;
 	public const PatternConfigStartFootChoice DefaultRightFootStartChoice = PatternConfigStartFootChoice.AutomaticNewLane;
-	public const int DefaultRightFootStartLaneSpecified = InvalidArrowIndex;
+	public const int DefaultRightFootStartLaneSpecified = 0;
 	public const PatternConfigEndFootChoice DefaultRightFootEndChoice = PatternConfigEndFootChoice.AutomaticNewLaneToFollowing;
-	public const int DefaultRightFootEndLaneSpecified = InvalidArrowIndex;
+	public const int DefaultRightFootEndLaneSpecified = 0;
 	public const int DefaultSameArrowStepWeight = 50;
 	public const int DefaultNewArrowStepWeight = 50;
 	public const int DefaultMaxSameArrowsInARowPerFoot = 4;
