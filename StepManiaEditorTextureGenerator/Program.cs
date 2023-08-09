@@ -138,6 +138,18 @@ internal class TextureGeneratorGame : Game
 		"icon-pump-center",
 		"icon-pump-up-right",
 		"icon-pump-down-right",
+		"icon-dance-left-dim",
+		"icon-dance-down-dim",
+		"icon-dance-up-dim",
+		"icon-dance-right-dim",
+		"icon-dance-center-dim",
+		"icon-dance-up-left-dim",
+		"icon-dance-up-right-dim",
+		"icon-pump-down-left-dim",
+		"icon-pump-up-left-dim",
+		"icon-pump-center-dim",
+		"icon-pump-up-right-dim",
+		"icon-pump-down-right-dim",
 	};
 
 	private const string ContentDir = @"..\..\..\..\StepManiaEditor\Content\";

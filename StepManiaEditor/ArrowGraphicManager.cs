@@ -140,7 +140,8 @@ internal abstract class ArrowGraphicManager
 		},
 		[ChartType.pump_double] = new List<string>
 		{
-			"icon-pump-down-left", "icon-pump-up-left",
+			"icon-pump-down-left",
+			"icon-pump-up-left",
 			"icon-pump-center",
 			"icon-pump-up-right",
 			"icon-pump-down-right",
@@ -188,9 +189,24 @@ internal abstract class ArrowGraphicManager
 		},
 	};
 
+	private static readonly Dictionary<ChartType, List<string>> DimArrowIcons;
+
 	static ArrowGraphicManager()
 	{
 		MineColor = new ArrowColorSet(0xFFB7B7B7); // light grey
+
+		// Set up dim arrow icons.
+		DimArrowIcons = new Dictionary<ChartType, List<string>>();
+		foreach (var kvp in ArrowIcons)
+		{
+			var dimList = new List<string>(kvp.Value.Count);
+			foreach (var icon in kvp.Value)
+			{
+				dimList.Add($"{icon}-dim");
+			}
+
+			DimArrowIcons[kvp.Key] = dimList;
+		}
 	}
 
 	public static string GetSelectedTextureId(string textureId)
@@ -203,6 +219,13 @@ internal abstract class ArrowGraphicManager
 	public static List<string> GetIcons(ChartType chartType)
 	{
 		if (ArrowIcons.TryGetValue(chartType, out var icons))
+			return icons;
+		return new List<string>();
+	}
+
+	public static List<string> GetDimIcons(ChartType chartType)
+	{
+		if (DimArrowIcons.TryGetValue(chartType, out var icons))
 			return icons;
 		return new List<string>();
 	}
