@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using ImGuiNET;
 using System.Numerics;
+using ImGuiNET;
+using StepManiaEditor.AutogenConfig;
 using StepManiaLibrary.PerformedChart;
 using static Fumen.FumenExtensions;
 using static StepManiaEditor.ImGuiUtils;
 using static StepManiaLibrary.PerformedChart.Config;
-using StepManiaEditor.AutogenConfig;
 using static StepManiaEditor.Utils;
 using static Fumen.Converters.SMCommon;
 
@@ -1853,6 +1853,41 @@ internal sealed class ImGuiLayoutUtils
 		// For the SpecifiedLane choice, draw the help, then a shorter enum, then the single lane choice control.
 		var laneChoiceWidth = ImGui.GetContentRegionAvail().X - PatternConfigShortEnumWidth - ImGui.GetStyle().ItemSpacing.X;
 		DrawEnum<PatternConfigStartFootChoice>(undoable, title, config, choiceFieldName,
+			PatternConfigShortEnumWidth, null, false, help);
+		ImGui.SameLine();
+
+		DrawSingleLaneChoice(GetElementTitle(title, valueFieldName), editor, undoable, config, valueFieldName, false,
+			laneChoiceWidth, chartType);
+	}
+
+	public static void DrawRowPatternConfigEndFootLaneChoice(
+		Editor editor,
+		bool undoable,
+		string title,
+		EditorPatternConfig editorConfig,
+		ChartType? chartType,
+		bool left,
+		string help = null)
+	{
+		DrawRowTitleAndAdvanceColumn(title);
+
+		var config = editorConfig.Config;
+		var choice = left ? config.LeftFootEndChoice : config.RightFootEndChoice;
+		var choiceFieldName = left ? nameof(PatternConfig.LeftFootEndChoice) : nameof(PatternConfig.RightFootEndChoice);
+		var valueFieldName =
+			left ? nameof(PatternConfig.LeftFootEndLaneSpecified) : nameof(PatternConfig.RightFootEndLaneSpecified);
+
+		// For simple enum-only choices just draw the enum and help.
+		if (choice != PatternConfigEndFootChoice.SpecifiedLane)
+		{
+			DrawEnum<PatternConfigEndFootChoice>(undoable, title, config, choiceFieldName,
+				ImGui.GetContentRegionAvail().X, null, false, help);
+			return;
+		}
+
+		// For the SpecifiedLane choice, draw the help, then a shorter enum, then the single lane choice control.
+		var laneChoiceWidth = ImGui.GetContentRegionAvail().X - PatternConfigShortEnumWidth - ImGui.GetStyle().ItemSpacing.X;
+		DrawEnum<PatternConfigEndFootChoice>(undoable, title, config, choiceFieldName,
 			PatternConfigShortEnumWidth, null, false, help);
 		ImGui.SameLine();
 
