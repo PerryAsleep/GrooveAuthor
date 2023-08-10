@@ -101,6 +101,15 @@ internal sealed class Editor :
 		MostCommonTempo,
 	}
 
+	/// <summary>
+	/// Enumeration for feet.
+	/// </summary>
+	public enum Foot
+	{
+		Left,
+		Right,
+	}
+
 	public class SnapData
 	{
 		public int Rows;

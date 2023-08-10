@@ -45,9 +45,7 @@ internal sealed class UIPatternConfig
 			if (disabled)
 				PushDisabled();
 
-			var config = editorConfig.Config;
-
-			if (ImGuiLayoutUtils.BeginTable("PatternConfigTable", TitleColumnWidth))
+			if (ImGuiLayoutUtils.BeginTable("PatternConfigTableIdentification", TitleColumnWidth))
 			{
 				ImGuiLayoutUtils.DrawRowTextInput(true, "Name", editorConfig, nameof(EditorPatternConfig.Name), false,
 					"Configuration name.");
@@ -56,17 +54,33 @@ internal sealed class UIPatternConfig
 					nameof(EditorPatternConfig.Description), false,
 					"Configuration description.");
 
-				ImGuiLayoutUtils.DrawRowEnum<PatternConfigStartingFootChoice>(true, "Starting Foot", config,
-					nameof(PatternConfig.StartingFootChoice), false,
+				ImGuiLayoutUtils.EndTable();
+			}
+
+			ImGui.Separator();
+			if (ImGuiLayoutUtils.BeginTable("PatternConfigTableStart", TitleColumnWidth))
+			{
+				ImGuiLayoutUtils.DrawRowPatternConfigStartFootChoice(true, "Starting Foot", editorConfig,
 					"How to choose the starting foot."
 					+ "\nRandom:    Choose the starting foot randomly."
 					+ "\nAutomatic: Choose the starting foot automatically so that it alternates from the previous steps."
 					+ "\nSpecified: Use a specified starting foot.");
 
-				ImGuiLayoutUtils.DrawRowPatternConfigStartFootChoice(Editor, true, "Left Foot Start Lane", config,
-					currentChartType, true, "TODO");
-				ImGuiLayoutUtils.DrawRowPatternConfigStartFootChoice(Editor, true, "Right Foot Start Lane", config,
-					currentChartType, false, "TODO");
+				ImGuiLayoutUtils.DrawRowPatternConfigStartFootLaneChoice(Editor, true, "Left Foot Start Lane", editorConfig,
+					currentChartType, true,
+					"Which lane the left foot should start on."
+					+ "\nAutomatic Same Lane: The left foot should start on the same lane it is already on."
+					+ "\nAutomatic New Lane:  The left foot should start with a step to a new lane from the"
+					+ "\n                     lane it is already on."
+					+ "\nSpecified Lane:      The left foot should start on an explicitly specified lane.");
+
+				ImGuiLayoutUtils.DrawRowPatternConfigStartFootLaneChoice(Editor, true, "Right Foot Start Lane", editorConfig,
+					currentChartType, false,
+					"Which lane the right foot should start on."
+					+ "\nAutomatic Same Lane: The right foot should start on the same lane it is already on."
+					+ "\nAutomatic New Lane:  The right foot should start with a step to a new lane from the"
+					+ "\n                     lane it is already on."
+					+ "\nSpecified Lane:      The right foot should start on an explicitly specified lane.");
 
 				ImGuiLayoutUtils.EndTable();
 			}

@@ -54,7 +54,7 @@ internal sealed class ImGuiLayoutUtils
 	public static readonly float NoteTypeComboWidth = UiScaled(60);
 	public static readonly float NotesFromTextWidth = UiScaled(60);
 	public static readonly float BpmTextWidth = UiScaled(20);
-	public static readonly float LaneChoiceEnumWidth = UiScaled(160);
+	public static readonly float PatternConfigShortEnumWidth = UiScaled(160);
 	public static readonly float ArrowIconWidth = UiScaled(16);
 	public static readonly float ArrowIconHeight = UiScaled(16);
 	public static readonly Vector2 ArrowIconSize = new(ArrowIconWidth, ArrowIconHeight);
@@ -1791,19 +1791,52 @@ internal sealed class ImGuiLayoutUtils
 
 	#endregion Step Tightening
 
-	#region Lane Select
+	#region Foot Select
 
 	public static void DrawRowPatternConfigStartFootChoice(
+		bool undoable,
+		string title,
+		EditorPatternConfig editorConfig,
+		string help = null)
+	{
+		DrawRowTitleAndAdvanceColumn(title);
+
+		var config = editorConfig.Config;
+		var choice = config.StartingFootChoice;
+
+		// For simple enum-only choices just draw the enum and help.
+		if (choice != PatternConfigStartingFootChoice.Specified)
+		{
+			DrawEnum<PatternConfigStartingFootChoice>(undoable, title, config, nameof(PatternConfig.StartingFootChoice),
+				ImGui.GetContentRegionAvail().X, null, false, help);
+			return;
+		}
+
+		// For the Specified choice, draw the help, then a shorter enum, then the foot choice enum.
+		var footComboWidth = ImGui.GetContentRegionAvail().X - PatternConfigShortEnumWidth - ImGui.GetStyle().ItemSpacing.X;
+		DrawEnum<PatternConfigStartingFootChoice>(undoable, title, config, nameof(PatternConfig.StartingFootChoice),
+			PatternConfigShortEnumWidth, null, false, help);
+		ImGui.SameLine();
+		DrawEnum<Editor.Foot>(undoable, title, editorConfig, nameof(EditorPatternConfig.StartingFootSpecified),
+			footComboWidth, null, false);
+	}
+
+	#endregion Foot Select
+
+	#region Lane Select
+
+	public static void DrawRowPatternConfigStartFootLaneChoice(
 		Editor editor,
 		bool undoable,
 		string title,
-		PatternConfig config,
+		EditorPatternConfig editorConfig,
 		ChartType? chartType,
 		bool left,
 		string help = null)
 	{
 		DrawRowTitleAndAdvanceColumn(title);
 
+		var config = editorConfig.Config;
 		var choice = left ? config.LeftFootStartChoice : config.RightFootStartChoice;
 		var choiceFieldName = left ? nameof(PatternConfig.LeftFootStartChoice) : nameof(PatternConfig.RightFootStartChoice);
 		var valueFieldName =
@@ -1818,9 +1851,9 @@ internal sealed class ImGuiLayoutUtils
 		}
 
 		// For the SpecifiedLane choice, draw the help, then a shorter enum, then the single lane choice control.
-		var laneChoiceWidth = ImGui.GetContentRegionAvail().X - LaneChoiceEnumWidth - ImGui.GetStyle().ItemSpacing.X;
+		var laneChoiceWidth = ImGui.GetContentRegionAvail().X - PatternConfigShortEnumWidth - ImGui.GetStyle().ItemSpacing.X;
 		DrawEnum<PatternConfigStartFootChoice>(undoable, title, config, choiceFieldName,
-			LaneChoiceEnumWidth, null, false, help);
+			PatternConfigShortEnumWidth, null, false, help);
 		ImGui.SameLine();
 
 		DrawSingleLaneChoice(GetElementTitle(title, valueFieldName), editor, undoable, config, valueFieldName, false,

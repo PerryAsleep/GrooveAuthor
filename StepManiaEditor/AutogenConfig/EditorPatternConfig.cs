@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text.Json.Serialization;
 using ImGuiNET;
 using StepManiaLibrary.PerformedChart;
 using static StepManiaLibrary.Constants;
@@ -15,7 +16,7 @@ internal sealed class EditorPatternConfig : EditorConfig<Config>, IEquatable<Edi
 	// Default values.
 	public const int DefaultBeatSubDivision = 4;
 	public const PatternConfigStartingFootChoice DefaultStartingFootChoice = PatternConfigStartingFootChoice.Automatic;
-	public const int DefaultStartingFootSpecified = L;
+	public const Editor.Foot DefaultStartingFootSpecified = Editor.Foot.Left;
 	public const PatternConfigStartFootChoice DefaultLeftFootStartChoice = PatternConfigStartFootChoice.AutomaticNewLane;
 	public const int DefaultLeftFootStartLaneSpecified = 0;
 	public const PatternConfigEndFootChoice DefaultLeftFootEndChoice = PatternConfigEndFootChoice.AutomaticNewLaneToFollowing;
@@ -27,6 +28,20 @@ internal sealed class EditorPatternConfig : EditorConfig<Config>, IEquatable<Edi
 	public const int DefaultSameArrowStepWeight = 50;
 	public const int DefaultNewArrowStepWeight = 50;
 	public const int DefaultMaxSameArrowsInARowPerFoot = 4;
+
+	[JsonInclude]
+	[JsonPropertyName("EditorStartingFootSpecified")]
+	public Editor.Foot StartingFootSpecified
+	{
+		get => StartingFootSpecifiedInternal;
+		set
+		{
+			StartingFootSpecifiedInternal = value;
+			Config.StartingFootSpecified = StartingFootSpecifiedInternal == Editor.Foot.Left ? L : R;
+		}
+	}
+
+	private Editor.Foot StartingFootSpecifiedInternal;
 
 	/// <summary>
 	/// Constructor.
@@ -55,7 +70,10 @@ internal sealed class EditorPatternConfig : EditorConfig<Config>, IEquatable<Edi
 	/// <returns>Cloned EditorPatternConfig.</returns>
 	protected override EditorPatternConfig CloneImplementation(bool snapshot)
 	{
-		return new EditorPatternConfig(snapshot ? Guid : Guid.NewGuid());
+		return new EditorPatternConfig(snapshot ? Guid : Guid.NewGuid())
+		{
+			StartingFootSpecified = StartingFootSpecified,
+		};
 	}
 
 	public override bool IsDefault()
@@ -68,7 +86,7 @@ internal sealed class EditorPatternConfig : EditorConfig<Config>, IEquatable<Edi
 	{
 		Config.BeatSubDivision = DefaultBeatSubDivision;
 		Config.StartingFootChoice = DefaultStartingFootChoice;
-		Config.StartingFootSpecified = DefaultStartingFootSpecified;
+		StartingFootSpecified = DefaultStartingFootSpecified;
 		Config.LeftFootStartChoice = DefaultLeftFootStartChoice;
 		Config.LeftFootStartLaneSpecified = DefaultLeftFootStartLaneSpecified;
 		Config.LeftFootEndChoice = DefaultLeftFootEndChoice;
@@ -99,7 +117,7 @@ internal sealed class EditorPatternConfig : EditorConfig<Config>, IEquatable<Edi
 	{
 		return Config.BeatSubDivision == DefaultBeatSubDivision
 		       && Config.StartingFootChoice == DefaultStartingFootChoice
-		       && Config.StartingFootSpecified == DefaultStartingFootSpecified
+		       && StartingFootSpecified == DefaultStartingFootSpecified
 		       && Config.LeftFootStartChoice == DefaultLeftFootStartChoice
 		       && Config.LeftFootStartLaneSpecified == DefaultLeftFootStartLaneSpecified
 		       && Config.LeftFootEndChoice == DefaultLeftFootEndChoice
@@ -188,7 +206,7 @@ internal sealed class ActionRestorePatternConfigDefaults : EditorAction
 	private readonly EditorPatternConfig Config;
 	private readonly int PreviousBeatSubDivision;
 	private readonly PatternConfigStartingFootChoice PreviousStartingFootChoice;
-	private readonly int PreviousStartingFootSpecified;
+	private readonly Editor.Foot PreviousStartingFootSpecified;
 	private readonly PatternConfigStartFootChoice PreviousLeftFootStartChoice;
 	private readonly int PreviousLeftFootStartLaneSpecified;
 	private readonly PatternConfigEndFootChoice PreviousLeftFootEndChoice;
@@ -206,7 +224,7 @@ internal sealed class ActionRestorePatternConfigDefaults : EditorAction
 		Config = config;
 		PreviousBeatSubDivision = Config.Config.BeatSubDivision;
 		PreviousStartingFootChoice = Config.Config.StartingFootChoice;
-		PreviousStartingFootSpecified = Config.Config.StartingFootSpecified;
+		PreviousStartingFootSpecified = Config.StartingFootSpecified;
 		PreviousLeftFootStartChoice = Config.Config.LeftFootStartChoice;
 		PreviousLeftFootStartLaneSpecified = Config.Config.LeftFootStartLaneSpecified;
 		PreviousLeftFootEndChoice = Config.Config.LeftFootEndChoice;
@@ -234,7 +252,7 @@ internal sealed class ActionRestorePatternConfigDefaults : EditorAction
 	{
 		Config.Config.BeatSubDivision = EditorPatternConfig.DefaultBeatSubDivision;
 		Config.Config.StartingFootChoice = EditorPatternConfig.DefaultStartingFootChoice;
-		Config.Config.StartingFootSpecified = EditorPatternConfig.DefaultStartingFootSpecified;
+		Config.StartingFootSpecified = EditorPatternConfig.DefaultStartingFootSpecified;
 		Config.Config.LeftFootStartChoice = EditorPatternConfig.DefaultLeftFootStartChoice;
 		Config.Config.LeftFootStartLaneSpecified = EditorPatternConfig.DefaultLeftFootStartLaneSpecified;
 		Config.Config.LeftFootEndChoice = EditorPatternConfig.DefaultLeftFootEndChoice;
@@ -252,7 +270,7 @@ internal sealed class ActionRestorePatternConfigDefaults : EditorAction
 	{
 		Config.Config.BeatSubDivision = PreviousBeatSubDivision;
 		Config.Config.StartingFootChoice = PreviousStartingFootChoice;
-		Config.Config.StartingFootSpecified = PreviousStartingFootSpecified;
+		Config.StartingFootSpecified = PreviousStartingFootSpecified;
 		Config.Config.LeftFootStartChoice = PreviousLeftFootStartChoice;
 		Config.Config.LeftFootStartLaneSpecified = PreviousLeftFootStartLaneSpecified;
 		Config.Config.LeftFootEndChoice = PreviousLeftFootEndChoice;
