@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Text.Json.Serialization;
+using Fumen.Converters;
 using ImGuiNET;
 using StepManiaLibrary.PerformedChart;
+using static StepManiaEditor.AutogenConfig.EditorPatternConfig;
 using static StepManiaLibrary.Constants;
 using Config = StepManiaLibrary.PerformedChart.PatternConfig;
 
@@ -13,8 +15,31 @@ namespace StepManiaEditor.AutogenConfig;
 /// </summary>
 internal sealed class EditorPatternConfig : EditorConfig<Config>, IEquatable<EditorPatternConfig>
 {
+	public enum SubdivisionType
+	{
+		QuarterNotes,
+		EighthNotes,
+		EighthNoteTriplets,
+		SixteenthNotes,
+		SixteenthNoteTriplets,
+		ThirtySecondNotes,
+		ThirtySecondNoteTriplets,
+		SixtyFourthNotes,
+		OneHundredNinetySecondNotes,
+	}
+
+	public static int GetBeatSubdivision(SubdivisionType subdivisionType)
+	{
+		return SMCommon.ValidDenominators[(int)subdivisionType];
+	}
+
+	public static int GetMeasureSubdivision(SubdivisionType subdivisionType)
+	{
+		return GetBeatSubdivision(subdivisionType) * SMCommon.NumBeatsPerMeasure;
+	}
+
 	// Default values.
-	public const int DefaultBeatSubDivision = 4;
+	public const SubdivisionType DefaultPatternType = SubdivisionType.SixteenthNotes;
 	public const PatternConfigStartingFootChoice DefaultStartingFootChoice = PatternConfigStartingFootChoice.Automatic;
 	public const Editor.Foot DefaultStartingFootSpecified = Editor.Foot.Left;
 	public const PatternConfigStartFootChoice DefaultLeftFootStartChoice = PatternConfigStartFootChoice.AutomaticNewLane;
@@ -30,7 +55,19 @@ internal sealed class EditorPatternConfig : EditorConfig<Config>, IEquatable<Edi
 	public const int DefaultMaxSameArrowsInARowPerFoot = 4;
 
 	[JsonInclude]
-	[JsonPropertyName("EditorStartingFootSpecified")]
+	public SubdivisionType PatternType
+	{
+		get => PatternTypeInternal;
+		set
+		{
+			PatternTypeInternal = value;
+			Config.BeatSubDivision = GetBeatSubdivision(PatternTypeInternal);
+		}
+	}
+
+	private SubdivisionType PatternTypeInternal;
+
+	[JsonInclude]
 	public Editor.Foot StartingFootSpecified
 	{
 		get => StartingFootSpecifiedInternal;
@@ -84,7 +121,7 @@ internal sealed class EditorPatternConfig : EditorConfig<Config>, IEquatable<Edi
 
 	public override void InitializeWithDefaultValues()
 	{
-		Config.BeatSubDivision = DefaultBeatSubDivision;
+		PatternType = DefaultPatternType;
 		Config.StartingFootChoice = DefaultStartingFootChoice;
 		StartingFootSpecified = DefaultStartingFootSpecified;
 		Config.LeftFootStartChoice = DefaultLeftFootStartChoice;
@@ -115,7 +152,7 @@ internal sealed class EditorPatternConfig : EditorConfig<Config>, IEquatable<Edi
 	/// </returns>
 	public bool IsUsingDefaults()
 	{
-		return Config.BeatSubDivision == DefaultBeatSubDivision
+		return PatternType == DefaultPatternType
 		       && Config.StartingFootChoice == DefaultStartingFootChoice
 		       && StartingFootSpecified == DefaultStartingFootSpecified
 		       && Config.LeftFootStartChoice == DefaultLeftFootStartChoice
@@ -204,7 +241,7 @@ internal sealed class EditorPatternConfig : EditorConfig<Config>, IEquatable<Edi
 internal sealed class ActionRestorePatternConfigDefaults : EditorAction
 {
 	private readonly EditorPatternConfig Config;
-	private readonly int PreviousBeatSubDivision;
+	private readonly SubdivisionType PreviousPatternType;
 	private readonly PatternConfigStartingFootChoice PreviousStartingFootChoice;
 	private readonly Editor.Foot PreviousStartingFootSpecified;
 	private readonly PatternConfigStartFootChoice PreviousLeftFootStartChoice;
@@ -222,7 +259,7 @@ internal sealed class ActionRestorePatternConfigDefaults : EditorAction
 	public ActionRestorePatternConfigDefaults(EditorPatternConfig config) : base(false, false)
 	{
 		Config = config;
-		PreviousBeatSubDivision = Config.Config.BeatSubDivision;
+		PreviousPatternType = Config.PatternType;
 		PreviousStartingFootChoice = Config.Config.StartingFootChoice;
 		PreviousStartingFootSpecified = Config.StartingFootSpecified;
 		PreviousLeftFootStartChoice = Config.Config.LeftFootStartChoice;
@@ -250,25 +287,25 @@ internal sealed class ActionRestorePatternConfigDefaults : EditorAction
 
 	protected override void DoImplementation()
 	{
-		Config.Config.BeatSubDivision = EditorPatternConfig.DefaultBeatSubDivision;
-		Config.Config.StartingFootChoice = EditorPatternConfig.DefaultStartingFootChoice;
-		Config.StartingFootSpecified = EditorPatternConfig.DefaultStartingFootSpecified;
-		Config.Config.LeftFootStartChoice = EditorPatternConfig.DefaultLeftFootStartChoice;
-		Config.Config.LeftFootStartLaneSpecified = EditorPatternConfig.DefaultLeftFootStartLaneSpecified;
-		Config.Config.LeftFootEndChoice = EditorPatternConfig.DefaultLeftFootEndChoice;
-		Config.Config.LeftFootEndLaneSpecified = EditorPatternConfig.DefaultLeftFootEndLaneSpecified;
-		Config.Config.RightFootStartChoice = EditorPatternConfig.DefaultRightFootStartChoice;
-		Config.Config.RightFootStartLaneSpecified = EditorPatternConfig.DefaultRightFootStartLaneSpecified;
-		Config.Config.RightFootEndChoice = EditorPatternConfig.DefaultRightFootEndChoice;
-		Config.Config.RightFootEndLaneSpecified = EditorPatternConfig.DefaultRightFootEndLaneSpecified;
-		Config.Config.SameArrowStepWeight = EditorPatternConfig.DefaultSameArrowStepWeight;
-		Config.Config.NewArrowStepWeight = EditorPatternConfig.DefaultNewArrowStepWeight;
-		Config.Config.MaxSameArrowsInARowPerFoot = EditorPatternConfig.DefaultMaxSameArrowsInARowPerFoot;
+		Config.PatternType = DefaultPatternType;
+		Config.Config.StartingFootChoice = DefaultStartingFootChoice;
+		Config.StartingFootSpecified = DefaultStartingFootSpecified;
+		Config.Config.LeftFootStartChoice = DefaultLeftFootStartChoice;
+		Config.Config.LeftFootStartLaneSpecified = DefaultLeftFootStartLaneSpecified;
+		Config.Config.LeftFootEndChoice = DefaultLeftFootEndChoice;
+		Config.Config.LeftFootEndLaneSpecified = DefaultLeftFootEndLaneSpecified;
+		Config.Config.RightFootStartChoice = DefaultRightFootStartChoice;
+		Config.Config.RightFootStartLaneSpecified = DefaultRightFootStartLaneSpecified;
+		Config.Config.RightFootEndChoice = DefaultRightFootEndChoice;
+		Config.Config.RightFootEndLaneSpecified = DefaultRightFootEndLaneSpecified;
+		Config.Config.SameArrowStepWeight = DefaultSameArrowStepWeight;
+		Config.Config.NewArrowStepWeight = DefaultNewArrowStepWeight;
+		Config.Config.MaxSameArrowsInARowPerFoot = DefaultMaxSameArrowsInARowPerFoot;
 	}
 
 	protected override void UndoImplementation()
 	{
-		Config.Config.BeatSubDivision = PreviousBeatSubDivision;
+		Config.PatternType = PreviousPatternType;
 		Config.Config.StartingFootChoice = PreviousStartingFootChoice;
 		Config.StartingFootSpecified = PreviousStartingFootSpecified;
 		Config.Config.LeftFootStartChoice = PreviousLeftFootStartChoice;

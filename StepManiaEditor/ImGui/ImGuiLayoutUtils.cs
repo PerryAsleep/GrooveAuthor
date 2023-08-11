@@ -9,6 +9,8 @@ using static StepManiaEditor.ImGuiUtils;
 using static StepManiaLibrary.PerformedChart.Config;
 using static StepManiaEditor.Utils;
 using static Fumen.Converters.SMCommon;
+using static StepManiaEditor.AutogenConfig.EditorPatternConfig;
+using static StepManiaEditor.Editor;
 
 namespace StepManiaEditor;
 
@@ -1817,7 +1819,7 @@ internal sealed class ImGuiLayoutUtils
 		DrawEnum<PatternConfigStartingFootChoice>(undoable, title, config, nameof(PatternConfig.StartingFootChoice),
 			PatternConfigShortEnumWidth, null, false, help);
 		ImGui.SameLine();
-		DrawEnum<Editor.Foot>(undoable, title, editorConfig, nameof(EditorPatternConfig.StartingFootSpecified),
+		DrawEnum<Foot>(undoable, title, editorConfig, nameof(EditorPatternConfig.StartingFootSpecified),
 			footComboWidth, null, false);
 	}
 
@@ -1987,12 +1989,78 @@ internal sealed class ImGuiLayoutUtils
 		}
 
 		// Lane value.
-		var maxLane = Editor.GetMaxNumLanesForAnySupportedChartType();
+		var maxLane = GetMaxNumLanesForAnySupportedChartType();
 		DrawDragInt(true, $"##{id}SingleLaneChoiceDragInt", objectToUpdate, fieldNameToUpdate, dragIntWidth, false, "", 0.1f,
 			"%i", 0, maxLane - 1);
 	}
 
 	#endregion Lane Select
+
+	#region Subdivisions
+
+	public static void DrawRowSubdivisions(
+		bool undoable,
+		string title,
+		object o,
+		string fieldName,
+		bool affectsFile,
+		string help = null)
+	{
+		DrawRowTitleAndAdvanceColumn(title);
+
+		var itemWidth = DrawHelp(help, ImGui.GetContentRegionAvail().X);
+		ImGui.SetNextItemWidth(itemWidth);
+
+		var elementTitle = GetElementTitle(title, fieldName);
+		var currentValue = GetValueFromFieldOrProperty<SubdivisionType>(o, fieldName);
+		var originalValue = currentValue;
+		var currentBeatSubdivision = GetBeatSubdivision(currentValue);
+		var currentMeasureSubdivision = GetMeasureSubdivision(currentValue);
+
+		ImGui.PushStyleColor(ImGuiCol.Text, ArrowGraphicManager.GetArrowColorForSubdivision(currentBeatSubdivision));
+
+		if (ImGui.BeginCombo($"{elementTitle}Combo", $"1/{currentMeasureSubdivision} Notes"))
+		{
+			ImGui.PopStyleColor();
+
+			foreach (var subdivisionType in Enum.GetValues(typeof(SubdivisionType)))
+			{
+				var beatSubdivision = GetBeatSubdivision((SubdivisionType)subdivisionType);
+				var measureSubdivision = GetMeasureSubdivision((SubdivisionType)subdivisionType);
+				ImGui.PushStyleColor(ImGuiCol.Text, ArrowGraphicManager.GetArrowColorForSubdivision(beatSubdivision));
+
+				var isSelected = currentMeasureSubdivision == measureSubdivision;
+				if (ImGui.Selectable($"1/{measureSubdivision} Notes", isSelected))
+				{
+					currentValue = (SubdivisionType)subdivisionType;
+				}
+
+				if (isSelected)
+				{
+					ImGui.SetItemDefaultFocus();
+				}
+
+				ImGui.PopStyleColor();
+			}
+
+			ImGui.EndCombo();
+		}
+		else
+		{
+			ImGui.PopStyleColor();
+		}
+
+		if (currentValue != originalValue)
+		{
+			if (undoable)
+				ActionQueue.Instance.Do(
+					new ActionSetObjectFieldOrPropertyValue<SubdivisionType>(o, fieldName, currentValue, affectsFile));
+			else
+				SetFieldOrPropertyToValue(o, fieldName, currentValue);
+		}
+	}
+
+	#endregion Subdivisions
 
 	#region Misc Editor Events
 

@@ -51,7 +51,7 @@ internal sealed class PatternConfigManager : ConfigManager<EditorPatternConfig, 
 		ConfigData.RemoveConfig(DefaultPatternConfigEighthsGuid);
 		var eighthsConfig = AddConfig(DefaultPatternConfigEighthsGuid, DefaultPatternConfigEighthsName);
 		eighthsConfig.Description = "Default 8th note stream settings";
-		eighthsConfig.Config.BeatSubDivision = 2;
+		eighthsConfig.PatternType = EditorPatternConfig.SubdivisionType.EighthNotes;
 	}
 
 	/// <summary>

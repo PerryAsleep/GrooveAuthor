@@ -84,6 +84,9 @@ internal sealed class UIPatternConfig
 			ImGui.Separator();
 			if (ImGuiLayoutUtils.BeginTable("PatternConfigTableBeat", TitleColumnWidth))
 			{
+				ImGuiLayoutUtils.DrawRowSubdivisions(true, "Note Type", editorConfig, nameof(EditorPatternConfig.PatternType),
+					false, "The types of notes to use when generating the pattern.");
+
 				ImGuiLayoutUtils.EndTable();
 			}
 
