@@ -21,7 +21,7 @@ internal sealed class UIPerformedChartConfig
 	                               + " When generating steps, all possible paths are considered. Costs are assigned to paths"
 	                               + " based on Performed Chart Config values, and the path with the lowest cost is chosen."
 	                               + " Full details on the config values and how they are used to assign costs can be found"
-	                               + " in the online documentation.";
+	                               + " in the documentation.";
 
 	private readonly Editor Editor;
 	private readonly List<ImGuiArrowWeightsWidget> ArrowWeightsWidgets;

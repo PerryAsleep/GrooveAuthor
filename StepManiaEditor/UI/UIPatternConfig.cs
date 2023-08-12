@@ -12,12 +12,13 @@ namespace StepManiaEditor;
 internal sealed class UIPatternConfig
 {
 	private static readonly int TitleColumnWidth = UiScaled(140);
+	private static readonly int StepTypeWeightWidth = UiScaled(26);
 
 	public const string WindowTitle = "Pattern Config";
 
 	public const string HelpText = "Pattern Configs are settings used by GrooveAuthor to generate new step patterns."
 	                               + " Full details on the config values and how they are used to assign costs can be found"
-	                               + " in the online documentation.";
+	                               + " in the documentation.";
 
 	private const string EndChoiceHelpText = "Which lane the {0} foot should end on."
 	                                         + "\nAutomatic Ignore Following Steps:        The {0} foot ending lane should be chosen automatically with"
@@ -91,6 +92,14 @@ internal sealed class UIPatternConfig
 				ImGuiLayoutUtils.DrawRowDragIntWithEnabledCheckbox(true, "Step Repetition Limit", editorConfig.Config,
 					nameof(PatternConfig.MaxSameArrowsInARowPerFoot), nameof(PatternConfig.LimitSameArrowsInARowPerFoot), false,
 					"Maximum number of repeated steps on the same arrow per foot.", 0.1f, "%i", 0, 100);
+
+				ImGuiLayoutUtils.DrawRowDragInt2(true, "Step Type Weights", editorConfig,
+					nameof(EditorPatternConfig.SameArrowStepWeight),
+					nameof(EditorPatternConfig.NewArrowStepWeight), false, "Same", "New", StepTypeWeightWidth,
+					"Weights of step types to use in the pattern."
+					+ "\nSame: Relative weight of same arrow steps."
+					+ "\nNew:  Relative weight of new arrow steps.",
+					0.2f, "%i", 0, 100, 0, 100);
 
 				ImGuiLayoutUtils.EndTable();
 			}

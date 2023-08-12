@@ -4,14 +4,18 @@ using System.Text.Json.Serialization;
 using Fumen;
 using ImGuiNET;
 using StepManiaLibrary;
+using StepManiaLibrary.PerformedChart;
 using static Fumen.Converters.SMCommon;
-using Config = StepManiaLibrary.PerformedChart.Config;
 
 namespace StepManiaEditor.AutogenConfig;
 
 /// <summary>
 /// EditorPerformedChartConfig is a wrapper around a PerformedChart Config with additional
 /// data and functionality for the editor.
+/// TODO: Improve clarity on which fields should be used for edits.
+/// Currently most fields are to be edited directly on the wrapped Config object, but
+/// some need to be edited through this class's properties and this distinction is not
+/// clear or enforced. Config needs to be public for json deserialization.
 /// </summary>
 internal sealed class EditorPerformedChartConfig : EditorConfig<Config>, IEquatable<EditorPerformedChartConfig>
 {

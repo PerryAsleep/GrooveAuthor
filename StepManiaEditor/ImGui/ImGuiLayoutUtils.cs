@@ -600,6 +600,41 @@ internal sealed class ImGuiLayoutUtils
 			PopDisabled();
 	}
 
+	public static void DrawRowDragInt2(
+		bool undoable,
+		string title,
+		object o,
+		string fieldName1,
+		string fieldName2,
+		bool affectsFile,
+		string field1Title,
+		string field2Title,
+		float fieldTitleWidth,
+		string help = null,
+		float speed = 1.0f,
+		string format = "%i",
+		int min1 = int.MinValue,
+		int max1 = int.MaxValue,
+		int min2 = int.MinValue,
+		int max2 = int.MaxValue)
+	{
+		DrawRowTitleAndAdvanceColumn(title);
+
+		var totalWidth = DrawHelp(help, ImGui.GetContentRegionAvail().X);
+		var dragIntWidth = (totalWidth - 2 * fieldTitleWidth - ImGui.GetStyle().ItemSpacing.X * 3) * 0.5f;
+
+		Text(field1Title, fieldTitleWidth);
+		ImGui.SameLine();
+
+		DrawDragInt(undoable, "", o, fieldName1, dragIntWidth, affectsFile, null, speed, format, min1, max1);
+		ImGui.SameLine();
+
+		Text(field2Title, fieldTitleWidth);
+		ImGui.SameLine();
+
+		DrawDragInt(undoable, "", o, fieldName2, dragIntWidth, affectsFile, null, speed, format, min2, max2);
+	}
+
 	public static bool DrawRowDragInt(
 		string title,
 		ref int value,
