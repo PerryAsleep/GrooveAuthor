@@ -1,6 +1,7 @@
 ﻿using System.Numerics;
 using ImGuiNET;
 using StepManiaEditor.AutogenConfig;
+using StepManiaLibrary.PerformedChart;
 using static StepManiaEditor.ImGuiUtils;
 
 namespace StepManiaEditor;
@@ -10,7 +11,7 @@ namespace StepManiaEditor;
 /// </summary>
 internal sealed class UIPatternConfig
 {
-	private static readonly int TitleColumnWidth = UiScaled(240);
+	private static readonly int TitleColumnWidth = UiScaled(140);
 
 	public const string WindowTitle = "Pattern Config";
 
@@ -86,6 +87,10 @@ internal sealed class UIPatternConfig
 			{
 				ImGuiLayoutUtils.DrawRowSubdivisions(true, "Note Type", editorConfig, nameof(EditorPatternConfig.PatternType),
 					false, "The types of notes to use when generating the pattern.");
+
+				ImGuiLayoutUtils.DrawRowDragIntWithEnabledCheckbox(true, "Step Repetition Limit", editorConfig.Config,
+					nameof(PatternConfig.MaxSameArrowsInARowPerFoot), nameof(PatternConfig.LimitSameArrowsInARowPerFoot), false,
+					"Maximum number of repeated steps on the same arrow per foot.", 0.1f, "%i", 0, 100);
 
 				ImGuiLayoutUtils.EndTable();
 			}

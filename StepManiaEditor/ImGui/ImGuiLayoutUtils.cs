@@ -701,6 +701,50 @@ internal sealed class ImGuiLayoutUtils
 		DrawDragInt(undoable, title, o, endFieldName, controlWidth, affectsFile, "", speed, format, minForEnd, max);
 	}
 
+	public static void DrawRowDragIntWithEnabledCheckbox(
+		bool undoable,
+		string title,
+		object o,
+		string fieldName,
+		string enabledFieldName,
+		bool affectsFile,
+		string help = null,
+		float speed = 1.0f,
+		string format = "%i",
+		int min = int.MinValue,
+		int max = int.MaxValue)
+	{
+		title ??= "";
+
+		DrawRowTitleAndAdvanceColumn(title);
+
+		bool enabled;
+
+		var controlWidth = ImGui.GetContentRegionAvail().X - CheckBoxWidth - ImGui.GetStyle().ItemSpacing.X;
+
+		// Draw the checkbox for enabling the other control.
+		if (DrawCheckbox(false, title + "check", o, enabledFieldName, CheckBoxWidth, affectsFile, GetDragHelpText(help)))
+		{
+			if (undoable)
+			{
+				enabled = GetValueFromFieldOrProperty<bool>(o, enabledFieldName);
+				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyValue<bool>(
+					o, enabledFieldName, enabled, !enabled, affectsFile));
+			}
+		}
+
+		enabled = GetValueFromFieldOrProperty<bool>(o, enabledFieldName);
+		if (!enabled)
+			PushDisabled();
+
+		// Control for the int value.
+		ImGui.SameLine();
+		DrawDragInt(undoable, title, o, fieldName, controlWidth, affectsFile, null, speed, format, min, max);
+
+		if (!enabled)
+			PopDisabled();
+	}
+
 	#endregion Drag Int
 
 	#region Slider Int
