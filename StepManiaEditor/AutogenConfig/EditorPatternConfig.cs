@@ -113,6 +113,24 @@ internal sealed class EditorPatternConfig : EditorConfig<Config>, IEquatable<Edi
 	{
 	}
 
+	/// <summary>
+	/// Returns a pretty string representation of the given SubdivisionType.
+	/// </summary>
+	/// <returns>Pretty string representation of the given SubdivisionType for displaying to the user.</returns>
+	public static string GetPrettyString(SubdivisionType type)
+	{
+		return $"1/{GetMeasureSubdivision(type)} Notes";
+	}
+
+	/// <summary>
+	/// Returns a pretty string representation of this EditorPatternConfig for displaying to the user.
+	/// </summary>
+	/// <returns>Pretty string representation of this EditorPatternConfig for displaying to the user.</returns>
+	public string GetPrettyString()
+	{
+		return GetPrettyString(PatternType);
+	}
+
 	#region EditorConfig
 
 	/// <summary>
