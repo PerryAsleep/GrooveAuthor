@@ -68,6 +68,7 @@ internal sealed class MiscEventWidgetLayoutManager
 			{ typeof(EditorMultipliersEvent), new WidgetData() },
 			{ typeof(EditorFakeSegmentEvent), new WidgetData() },
 			{ typeof(EditorLabelEvent), new WidgetData() },
+			{ typeof(EditorPatternEvent), new WidgetData() },
 			{ typeof(EditorPreviewRegionEvent), new WidgetData() },
 			{ typeof(EditorLastSecondHintEvent), new WidgetData() },
 		};
@@ -86,6 +87,7 @@ internal sealed class MiscEventWidgetLayoutManager
 		{
 			typeof(EditorPreviewRegionEvent),
 			typeof(EditorLastSecondHintEvent),
+			typeof(EditorPatternEvent),
 			typeof(EditorTempoEvent),
 			typeof(EditorScrollRateEvent),
 			typeof(EditorInterpolatedRateAlteringEvent),

@@ -24,17 +24,10 @@ internal sealed class ImGuiArrowWeightsWidget
 	private static readonly Vector2 IconSize = new(IconWidth, IconHeight);
 	private static readonly Vector2 IconPadding = new((LaneWidth - IconWidth) * 0.5f, (LaneWidth - IconWidth) * 0.5f);
 
-	private readonly Editor Editor;
-
 	/// <summary>
 	/// Cached weight value for undo / redo.
 	/// </summary>
-	private int CachedValue;
-
-	public ImGuiArrowWeightsWidget(Editor editor)
-	{
-		Editor = editor;
-	}
+	private static int CachedValue;
 
 	public static float GetFullWidth(EditorPerformedChartConfig config)
 	{
@@ -45,6 +38,7 @@ internal sealed class ImGuiArrowWeightsWidget
 	/// <summary>
 	/// Helper method for drawing.
 	/// </summary>
+	/// <param name="editor">Editor to use for texture lookups.</param>
 	/// <param name="weights">Weight values to use for the vertical sliders.</param>
 	/// <param name="values">Numeric values to use for the int drag controls.</param>
 	/// <param name="chartType">ChartType to use for drawing.</param>
@@ -52,7 +46,7 @@ internal sealed class ImGuiArrowWeightsWidget
 	/// Optional EditorPerformedChartConfig to use for updates for enabled controls.
 	/// This is expected to be null when drawing an EditorChart's step counts.
 	/// </param>
-	private void Draw(IReadOnlyList<int> weights, IReadOnlyList<int> values, ChartType chartType,
+	private void Draw(Editor editor, IReadOnlyList<int> weights, IReadOnlyList<int> values, ChartType chartType,
 		EditorPerformedChartConfig configForUpdates)
 	{
 		var chartTypeString = ChartTypeString(chartType);
@@ -140,8 +134,8 @@ internal sealed class ImGuiArrowWeightsWidget
 		}
 
 		// Icon.
-		var textureAtlas = Editor.GetTextureAtlas();
-		var imGuiTextureAtlasTexture = Editor.GetTextureAtlasImGuiTexture();
+		var textureAtlas = editor.GetTextureAtlas();
+		var imGuiTextureAtlasTexture = editor.GetTextureAtlasImGuiTexture();
 		var (atlasW, atlasH) = textureAtlas.GetDimensions();
 		var icons = ArrowGraphicManager.GetIcons(chartType);
 		for (var index = 0; index < numArrows; index++)
@@ -176,8 +170,9 @@ internal sealed class ImGuiArrowWeightsWidget
 	/// These values are not editable and the slider values are normalized to the highest
 	/// value to make the visualization more pronounced.
 	/// </summary>
+	/// <param name="editor">Editor to use for texture lookups.</param>
 	/// <param name="editorChart">EditorChart to use for drawing.</param>
-	public void DrawChartStepCounts(EditorChart editorChart)
+	public void DrawChartStepCounts(Editor editor, EditorChart editorChart)
 	{
 		var stepCountsByLane = editorChart.GetStepCountByLane();
 		var totalStepCount = editorChart.GetStepCount();
@@ -208,7 +203,7 @@ internal sealed class ImGuiArrowWeightsWidget
 		}
 
 		PushDisabled();
-		Draw(weights, values, editorChart.ChartType, null);
+		Draw(editor, weights, values, editorChart.ChartType, null);
 		PopDisabled();
 	}
 
@@ -218,14 +213,15 @@ internal sealed class ImGuiArrowWeightsWidget
 	/// are not normalized to the highest value so that they can be slid to larger
 	/// values.
 	/// </summary>
+	/// <param name="editor">Editor to use for texture lookups.</param>
 	/// <param name="config">EditorPerformedChartConfig to use for drawing.</param>
 	/// <param name="chartType">ChartType to use for drawing.</param>
-	public void DrawConfig(EditorPerformedChartConfig config, ChartType chartType)
+	public void DrawConfig(Editor editor, EditorPerformedChartConfig config, ChartType chartType)
 	{
 		var chartTypeString = ChartTypeString(chartType);
 		if (!config.Config.ArrowWeights.TryGetValue(chartTypeString, out var weights))
 			return;
 		// The weights and values are the same for this config.
-		Draw(weights, weights, chartType, config);
+		Draw(editor, weights, weights, chartType, config);
 	}
 }

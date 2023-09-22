@@ -1,17 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Threading.Tasks;
 using Fumen;
 using Fumen.ChartDefinition;
+using StepManiaEditor.AutogenConfig;
 using static StepManiaEditor.Utils;
 using static Fumen.Converters.SMCommon;
 using static System.Diagnostics.Debug;
 using static StepManiaLibrary.Constants;
-using System.Text.Json;
-using System.Text.Json.Serialization;
-using System.Threading.Tasks;
-using StepManiaEditor.AutogenConfig;
-using Fumen.Converters;
 
 namespace StepManiaEditor;
 
@@ -49,6 +48,9 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	public const string NotificationMusicChanged = "MusicChanged";
 	public const string NotificationMusicOffsetChanged = "MusicOffsetChanged";
 	public const string NotificationEventsDeleted = "EventsDeleted";
+	public const string NotificationEventsMoveStart = "EventsMoveStart";
+	public const string NotificationEventsMoveEnd = "EventsMoveEnd";
+	public const string NotificationPatternRequestEdit = "PatternRequestEdit";
 
 	public const double DefaultTempo = 120.0;
 	public static readonly Fraction DefaultTimeSignature = new(4, 4);
@@ -118,24 +120,29 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	public RedBlackTree<EditorInterpolatedRateAlteringEvent> InterpolatedScrollRateEvents;
 
 	/// <summary>
-	/// Tree of all EditorStopEvents.
+	/// IntervalTree of all EditorStopEvents by time. Stop lengths are in time.
 	/// </summary>
-	private EventTree Stops;
+	private IntervalTree<double, EditorStopEvent> Stops;
 
 	/// <summary>
-	/// Tree of all EditorDelayEvents.
+	/// IntervalTree of all EditorDelayEvents by time. Delay lengths are in time.
 	/// </summary>
-	private EventTree Delays;
+	private IntervalTree<double, EditorDelayEvent> Delays;
 
 	/// <summary>
-	/// Tree of all EditorFakeEvents.
+	/// IntervalTree of all EditorFakeSegmentEvent by time. Fake lengths are in time.
 	/// </summary>
-	private EventTree Fakes;
+	private IntervalTree<double, EditorFakeSegmentEvent> Fakes;
 
 	/// <summary>
-	/// Tree of all EditorWarpEvents.
+	/// IntervalTree of all EditorWarpEvents by row.
 	/// </summary>
-	private EventTree Warps;
+	private IntervalTree<double, EditorWarpEvent> Warps;
+
+	/// <summary>
+	/// IntervalTree of all EditorPatternEvents by row.
+	/// </summary>
+	private IntervalTree<double, EditorPatternEvent> Patterns;
 
 	/// <summary>
 	/// The EditorPreviewRegionEvent.
@@ -526,10 +533,6 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		var holds = new EventTree(this);
 		var rateAlteringEvents = new RateAlteringEventTree(this);
 		var interpolatedScrollRateEvents = new RedBlackTree<EditorInterpolatedRateAlteringEvent>();
-		var stops = new EventTree(this);
-		var delays = new EventTree(this);
-		var fakes = new EventTree(this);
-		var warps = new EventTree(this);
 		var miscEvents = new EventTree(this);
 
 		var pendingHoldStarts = new LaneHoldStartNote[NumInputs];
@@ -565,21 +568,6 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 			switch (editorEvent)
 			{
-				case EditorFakeSegmentEvent fse:
-					fakes.Insert(fse);
-					break;
-				case EditorStopEvent se:
-					rateAlteringEvents.Insert(se);
-					stops.Insert(se);
-					break;
-				case EditorDelayEvent de:
-					rateAlteringEvents.Insert(de);
-					delays.Insert(de);
-					break;
-				case EditorWarpEvent we:
-					rateAlteringEvents.Insert(we);
-					warps.Insert(we);
-					break;
 				case EditorRateAlteringEvent rae:
 					rateAlteringEvents.Insert(rae);
 					break;
@@ -612,19 +600,19 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 					break;
 			}
 
-			if (editorEvent.IsMiscEvent())
+			if (editorEvent != null && editorEvent.IsMiscEvent())
 				miscEvents.Insert(editorEvent);
+
+			editorEvent?.OnAddedToChart();
 		}
 
 		EditorEvents = editorEvents;
 		Holds = holds;
 		RateAlteringEvents = rateAlteringEvents;
 		InterpolatedScrollRateEvents = interpolatedScrollRateEvents;
-		Stops = stops;
-		Delays = delays;
-		Fakes = fakes;
-		Warps = warps;
 		MiscEvents = miscEvents;
+
+		RefreshIntervals();
 
 		CleanRateAlteringEvents();
 
@@ -881,6 +869,43 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		return invalidTimeSignatures;
 	}
 
+	private void RefreshIntervals()
+	{
+		var stops = new IntervalTree<double, EditorStopEvent>();
+		var delays = new IntervalTree<double, EditorDelayEvent>();
+		var fakes = new IntervalTree<double, EditorFakeSegmentEvent>();
+		var warps = new IntervalTree<double, EditorWarpEvent>();
+		var patterns = new IntervalTree<double, EditorPatternEvent>();
+
+		foreach (var editorEvent in EditorEvents)
+		{
+			switch (editorEvent)
+			{
+				case EditorFakeSegmentEvent fse:
+					fakes.Insert(fse, fse.GetChartTime(), fse.GetEndChartTime());
+					break;
+				case EditorStopEvent se:
+					stops.Insert(se, se.GetChartTime(), se.GetEndChartTime());
+					break;
+				case EditorDelayEvent de:
+					delays.Insert(de, de.GetChartTime(), de.GetEndChartTime());
+					break;
+				case EditorWarpEvent we:
+					warps.Insert(we, we.GetChartPosition(), we.GetEndChartPosition());
+					break;
+				case EditorPatternEvent pe:
+					patterns.Insert(pe, pe.GetChartPosition(), pe.GetEndChartPosition());
+					break;
+			}
+		}
+
+		Stops = stops;
+		Delays = delays;
+		Fakes = fakes;
+		Warps = warps;
+		Patterns = patterns;
+	}
+
 	/// <summary>
 	/// Updates the TimeSeconds and MetricPosition values of all Events in this EditorChart.
 	/// If EditorRateAlteringEvents like stops are modified, they affect the timing of all following events.
@@ -900,7 +925,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		// We will re-add these events after updating the normal events.
 		var deletedPreview = DeletePreviewEvent();
 		var deletedLastSecondHint = DeleteLastSecondHintEvent();
-
+		
 		EditorEvents.Validate();
 
 		// Now, update all time values for all normal notes that correspond to Stepmania chart
@@ -919,7 +944,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		// Since holds are treated as one event in the editor and two events in stepmania, we need
 		// to manually update the times for the hold ends since they were not included in the previous
 		// call to SetEventTimeAndMetricPositionsFromRows to update timing. This needs to be done
-		// after we clean the rate altering events because setting their times relies on values cached
+		// after we clean the rate altering events because setting their times rely on values cached
 		// from performing the clean, like SecondsPerRow, RowsPerSecond, etc.
 		foreach (var hold in Holds)
 			((EditorHoldNoteEvent)hold).RefreshHoldEndTime();
@@ -927,11 +952,14 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		EditorEvents.Validate();
 
 		// Finally, re-add any events we deleted above. When re-adding them, we will derive
-		// their positions again using the update timing information.
+		// their positions again using the updated timing information.
 		if (deletedLastSecondHint)
 			AddLastSecondHintEvent();
 		if (deletedPreview)
 			AddPreviewEvent();
+
+		// Reconstruct Intervals.
+		RefreshIntervals();
 
 		EditorEvents.Validate();
 
@@ -1028,6 +1056,66 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	#endregion Time-Based Event Shifting
 
 	#region Position And Time Determination
+
+	public double GetMeasureForChartPosition(double chartPosition)
+	{
+		var rateEvent = FindActiveRateAlteringEventForPosition(chartPosition);
+		if (rateEvent == null)
+			return 0.0;
+		var timeSigEvent = rateEvent.GetTimeSignature();
+		var rowDifference = chartPosition - timeSigEvent.IntegerPosition;
+		var rowsPerMeasure = timeSigEvent.Signature.Numerator *
+		                     (MaxValidDenominator * NumBeatsPerMeasure / timeSigEvent.Signature.Denominator);
+		var measures = rowDifference / rowsPerMeasure;
+		measures += timeSigEvent.MetricPosition.Measure;
+		return measures;
+	}
+
+	public double GetChartPositionForMeasure(int measure)
+	{
+		// We need to search in order to turn a measure into a row.
+		// Do a linear walk of the rate altering events.
+		// Most charts have very few rate altering events.
+		// Needing to get the position from the measure is a very uncommon use case.
+		var rateEventEnumerator = FindActiveRateAlteringEventEnumeratorForPosition(0.0);
+		if (rateEventEnumerator == null)
+			return 0.0;
+
+		var precedingTimeSignature = rateEventEnumerator.Current!.GetTimeSignature();
+		while (measure > precedingTimeSignature.MetricPosition.Measure)
+		{
+			if (!rateEventEnumerator.MoveNext())
+			{
+				break;
+			}
+
+			var atEnd = false;
+			while (rateEventEnumerator.Current.GetTimeSignature() == precedingTimeSignature)
+			{
+				if (!rateEventEnumerator.MoveNext())
+				{
+					atEnd = true;
+					break;
+				}
+			}
+
+			if (atEnd)
+				break;
+
+			var nextTimeSignature = rateEventEnumerator.Current.GetTimeSignature();
+			if (measure < nextTimeSignature.MetricPosition.Measure)
+			{
+				break;
+			}
+
+			precedingTimeSignature = nextTimeSignature;
+		}
+
+		var precedingTimeSignatureEventMeasure = precedingTimeSignature.MetricPosition.Measure;
+		var rowsPerMeasure = precedingTimeSignature.Signature.Numerator *
+		                     (MaxValidDenominator * NumBeatsPerMeasure / precedingTimeSignature.Signature.Denominator);
+		return precedingTimeSignature.IntegerPosition + (measure - precedingTimeSignatureEventMeasure) * rowsPerMeasure;
+	}
 
 	public bool TryGetChartPositionFromTime(double chartTime, ref double chartPosition)
 	{
@@ -1128,93 +1216,54 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	public List<IChartRegion> GetRegionsOverlapping(double chartPosition, double chartTime)
 	{
 		var regions = new List<IChartRegion>();
-		var stop = GetStopEventOverlapping(chartPosition, chartTime);
-		if (stop != null)
-			regions.Add(stop);
-		var delay = GetDelayEventOverlapping(chartPosition, chartTime);
-		if (delay != null)
-			regions.Add(delay);
-		var fake = GetFakeSegmentEventOverlapping(chartPosition, chartTime);
-		if (fake != null)
-			regions.Add(fake);
-		var warp = GetWarpEventOverlapping(chartPosition);
-		if (warp != null)
-			regions.Add(warp);
+		var stops = GetStopEventsOverlapping(chartTime);
+		if (stops != null)
+			regions.AddRange(stops);
+		var delays = GetDelayEventOverlapping(chartTime);
+		if (delays != null)
+			regions.AddRange(delays);
+		var fakes = GetFakeSegmentEventOverlapping(chartTime);
+		if (fakes != null)
+			regions.AddRange(fakes);
+		var warps = GetWarpEventOverlapping(chartPosition);
+		if (warps != null)
+			regions.AddRange(warps);
 		if (PreviewEvent.GetChartTime() <= chartTime &&
 		    PreviewEvent.GetChartTime() + PreviewEvent.GetRegionDuration() >= chartTime)
 			regions.Add(PreviewEvent);
+		var patterns = GetPatternEventsOverlapping(chartPosition);
+		if (patterns?.Count > 0)
+			regions.AddRange(patterns);
 		return regions;
 	}
 
-	private EditorStopEvent GetStopEventOverlapping(double chartPosition, double chartTime)
+	private List<EditorStopEvent> GetStopEventsOverlapping(double chartTime)
 	{
-		if (Stops == null)
-			return null;
-		Stops.FindBestByPosition(chartPosition);
-		var enumerator = Stops.FindBestByPosition(chartPosition);
-		if (enumerator == null)
-			return null;
-		enumerator.MoveNext();
-		if (enumerator.Current != null
-		    && enumerator.Current.GetChartTime() <= chartTime
-		    && enumerator.Current.GetChartTime() + ((EditorStopEvent)enumerator.Current).DoubleValue >= chartTime)
-			return (EditorStopEvent)enumerator.Current;
-
-		return null;
+		return Stops?.FindAllOverlapping(chartTime);
 	}
 
-	private EditorDelayEvent GetDelayEventOverlapping(double chartPosition, double chartTime)
+	private List<EditorDelayEvent> GetDelayEventOverlapping(double chartTime)
 	{
-		if (Delays == null)
-			return null;
-		Delays.FindBestByPosition(chartPosition);
-		var enumerator = Delays.FindBestByPosition(chartPosition);
-		if (enumerator == null)
-			return null;
-		enumerator.MoveNext();
-		if (enumerator.Current != null
-		    && enumerator.Current.GetChartTime() <= chartTime
-		    && enumerator.Current.GetChartTime() + ((EditorDelayEvent)enumerator.Current).DoubleValue >= chartTime)
-			return (EditorDelayEvent)enumerator.Current;
-
-		return null;
+		return Delays?.FindAllOverlapping(chartTime);
 	}
 
-	private EditorFakeSegmentEvent GetFakeSegmentEventOverlapping(double chartPosition, double chartTime)
+	private List<EditorFakeSegmentEvent> GetFakeSegmentEventOverlapping(double chartTime)
 	{
-		if (Fakes == null)
-			return null;
-
-		var enumerator = Fakes.FindBestByPosition(chartPosition);
-		if (enumerator == null)
-			return null;
-		enumerator.MoveNext();
-		if (enumerator.Current != null
-		    && enumerator.Current.GetChartTime() <= chartTime
-		    && enumerator.Current.GetChartTime() + ((EditorFakeSegmentEvent)enumerator.Current).DoubleValue >= chartTime)
-			return (EditorFakeSegmentEvent)enumerator.Current;
-
-		return null;
+		return Fakes?.FindAllOverlapping(chartTime);
 	}
 
-	private EditorWarpEvent GetWarpEventOverlapping(double chartPosition)
+	private List<EditorWarpEvent> GetWarpEventOverlapping(double chartPosition)
 	{
-		if (Warps == null)
-			return null;
-
-		var enumerator = Warps.FindBestByPosition(chartPosition);
-		if (enumerator == null)
-			return null;
-		enumerator.MoveNext();
-		if (enumerator.Current != null
-		    && enumerator.Current.GetRow() <= chartPosition
-		    && enumerator.Current.GetRow() + ((EditorWarpEvent)enumerator.Current).IntValue >= chartPosition)
-			return (EditorWarpEvent)enumerator.Current;
-
-		return null;
+		return Warps?.FindAllOverlapping(chartPosition);
 	}
 
-	public EditorRateAlteringEvent FindActiveRateAlteringEventForTime(double chartTime, bool allowEqualTo = true)
+	private List<EditorPatternEvent> GetPatternEventsOverlapping(double chartPosition)
+	{
+		return Patterns?.FindAllOverlapping(chartPosition);
+	}
+
+	private RedBlackTree<EditorRateAlteringEvent>.IRedBlackTreeEnumerator FindActiveRateAlteringEventEnumeratorForTime(
+		double chartTime, bool allowEqualTo = true)
 	{
 		if (RateAlteringEvents == null)
 			return null;
@@ -1225,17 +1274,24 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		// If there is no preceding event (e.g. SongTime is negative), use the first event.
 		// ReSharper disable once ConvertIfStatementToNullCoalescingExpression
 		if (enumerator == null)
-			enumerator = RateAlteringEvents.GetRedBlackTreeEnumerator();
+			enumerator = RateAlteringEvents.First();
 		// If there is still no event then the Chart is misconfigured as it must have at least a Tempo event.
 		if (enumerator == null)
 			return null;
 
 		// Update the ChartPosition based on the cached rate information.
 		enumerator.MoveNext();
-		return enumerator.Current;
+		return enumerator;
 	}
 
-	public EditorRateAlteringEvent FindActiveRateAlteringEventForPosition(double chartPosition, bool allowEqualTo = true)
+	public EditorRateAlteringEvent FindActiveRateAlteringEventForTime(double chartTime, bool allowEqualTo = true)
+	{
+		var enumerator = FindActiveRateAlteringEventEnumeratorForTime(chartTime, allowEqualTo);
+		return enumerator?.Current;
+	}
+
+	private RedBlackTree<EditorRateAlteringEvent>.IRedBlackTreeEnumerator FindActiveRateAlteringEventEnumeratorForPosition(
+		double chartPosition, bool allowEqualTo = true)
 	{
 		if (RateAlteringEvents == null)
 			return null;
@@ -1246,13 +1302,19 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		// If there is no preceding event (e.g. ChartPosition is negative), use the first event.
 		// ReSharper disable once ConvertIfStatementToNullCoalescingExpression
 		if (enumerator == null)
-			enumerator = RateAlteringEvents.GetRedBlackTreeEnumerator();
+			enumerator = RateAlteringEvents.First();
 		// If there is still no event then the Chart is misconfigured as it must have at least a Tempo event.
 		if (enumerator == null)
 			return null;
 
 		enumerator.MoveNext();
-		return enumerator.Current;
+		return enumerator;
+	}
+
+	public EditorRateAlteringEvent FindActiveRateAlteringEventForPosition(double chartPosition, bool allowEqualTo = true)
+	{
+		var enumerator = FindActiveRateAlteringEventEnumeratorForPosition(chartPosition, allowEqualTo);
+		return enumerator?.Current;
 	}
 
 	/// <summary>
@@ -1335,13 +1397,13 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	/// which overlaps.
 	/// </returns>
 	public EditorHoldNoteEvent[] GetHoldsOverlapping(double chartPosition,
-		RedBlackTree<EditorEvent>.Enumerator explicitEnumerator = null)
+		RedBlackTree<EditorEvent>.IRedBlackTreeEnumerator explicitEnumerator = null)
 	{
 		var holds = new EditorHoldNoteEvent[NumInputs];
 
-		RedBlackTree<EditorEvent>.Enumerator enumerator;
+		RedBlackTree<EditorEvent>.IRedBlackTreeEnumerator enumerator;
 		if (explicitEnumerator != null)
-			enumerator = new RedBlackTree<EditorEvent>.Enumerator(explicitEnumerator);
+			enumerator = explicitEnumerator.Clone();
 		else
 			enumerator = EditorEvents.FindBestByPosition(chartPosition);
 		if (enumerator == null)
@@ -1369,26 +1431,16 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		return holds;
 	}
 
-	public bool CanEventExistAtRow(EditorEvent editorEvent, int row)
-	{
-		if (row < 0)
-			return false;
-
-		// Do not allow time signatures to move to non-measure boundaries.
-		if (editorEvent is EditorTimeSignatureEvent && !IsRowOnMeasureBoundary(row))
-			return false;
-
-		return true;
-	}
-
 	#endregion Finding EditorEvents
 
 	#region EditorEvent Modification Callbacks
 
 	/// <summary>
-	/// Called when an EditorStopEvent's length is modified.
+	/// Called to update an EditorStopEvent's time.
+	/// The EditorChart needs to be responsible for updating Stop time as it can result in the
+	/// Stop changing its relative position to other notes.
 	/// </summary>
-	public void OnStopLengthModified(EditorStopEvent stop, double newLengthSeconds)
+	public void UpdateStopTime(EditorStopEvent stop, double newTime)
 	{
 		Assert(CanBeEdited());
 		if (!CanBeEdited())
@@ -1398,21 +1450,112 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		// and positive notes as occurring before notes at the same position. This means that altering the
 		// sign will alter how notes are sorted, which means we need to remove the stop and re-add it in
 		// order for the EventTree to sort properly.
-		var signChanged = stop.StopEvent.LengthSeconds < 0.0 != newLengthSeconds < 0;
+		// If the sign doesn't change, we still need to update the IntervalTree holding the Stops.
+		var signChanged = stop.StopEvent.LengthSeconds < 0.0 != newTime < 0;
 		if (signChanged)
+		{
 			DeleteEvent(stop);
-		stop.StopEvent.LengthSeconds = newLengthSeconds;
-		if (signChanged)
-			AddEvent(stop);
+		}
+		else
+		{
+			var deleted = Stops.Delete(stop.GetChartTime(), stop.GetEndChartTime());
+			Assert(deleted);
+		}
 
-		// Handle updating timing data.
+		stop.StopEvent.LengthSeconds = newTime;
+
+		if (signChanged)
+		{
+			AddEvent(stop);
+		}
+		else
+		{
+			Stops.Insert(stop, stop.GetChartTime(), stop.GetEndChartTime());
+		}
+
+		// Stops affect timing data.
 		UpdateEventTimingData();
 	}
 
 	/// <summary>
-	/// Called when an EditorRateAlteringEvent's properties are modified.
+	/// Called when an EditorDelayEvent's time is modified.
 	/// </summary>
-	public void OnRateAlteringEventModified(EditorRateAlteringEvent rae)
+	public void OnDelayTimeModified(EditorDelayEvent delay, double oldEndTime, double newEndTime)
+	{
+		Assert(CanBeEdited());
+		if (!CanBeEdited())
+			return;
+
+		// Update the IntervalTree holding this Delay.
+		var deleted = Delays.Delete(delay.GetChartTime(), oldEndTime);
+		Assert(deleted);
+		Delays.Insert(delay, delay.GetChartTime(), newEndTime);
+
+		// Delays affect timing data.
+		UpdateEventTimingData();
+	}
+
+	/// <summary>
+	/// Called when an EditorWarpEvent's length is modified.
+	/// </summary>
+	public void OnWarpLengthModified(EditorWarpEvent warp, double oldEndPosition, double newEndPosition)
+	{
+		Assert(CanBeEdited());
+		if (!CanBeEdited())
+			return;
+
+		// Update the IntervalTree holding this Warp.
+		var deleted = Warps.Delete(warp.GetChartPosition(), oldEndPosition);
+		Assert(deleted);
+		Warps.Insert(warp, warp.GetChartPosition(), newEndPosition);
+
+		// Warps affect timing data.
+		UpdateEventTimingData();
+	}
+
+	/// <summary>
+	/// Called when an EditorFakeSegmentEvent's time is modified.
+	/// </summary>
+	public void OnFakeSegmentTimeModified(EditorFakeSegmentEvent fake, double oldEndTime, double newEndTime)
+	{
+		Assert(CanBeEdited());
+		if (!CanBeEdited())
+			return;
+
+		// Update the IntervalTree holding this Fake.
+		var deleted = Fakes.Delete(fake.GetChartTime(), oldEndTime);
+		Assert(deleted);
+		Fakes.Insert(fake, fake.GetChartTime(), newEndTime);
+	}
+
+	/// <summary>
+	/// Called when an EditorScrollRateEvent's rate is modified.
+	/// </summary>
+	public void OnScrollRateModified(EditorScrollRateEvent _)
+	{
+		Assert(CanBeEdited());
+		if (!CanBeEdited())
+			return;
+
+		UpdateEventTimingData();
+	}
+
+	/// <summary>
+	/// Called when an EditorTempoEvent's tempo is modified.
+	/// </summary>
+	public void OnTempoModified(EditorTempoEvent _)
+	{
+		Assert(CanBeEdited());
+		if (!CanBeEdited())
+			return;
+
+		UpdateEventTimingData();
+	}
+
+	/// <summary>
+	/// Called when an EditorTimeSignatureEvent's signature is modified.
+	/// </summary>
+	public void OnTimeSignatureModified(EditorTimeSignatureEvent _)
 	{
 		Assert(CanBeEdited());
 		if (!CanBeEdited())
@@ -1451,6 +1594,26 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 				next!.PreviousScrollRate = irae.ScrollRateInterpolationEvent.Rate;
 			}
 		}
+	}
+
+	/// <summary>
+	/// Called when an EditorPatternEvent's length is modified.
+	/// </summary>
+	public void OnPatternLengthModified(EditorPatternEvent pattern, double oldEndPosition, double newEndPosition)
+	{
+		Assert(CanBeEdited());
+		if (!CanBeEdited())
+			return;
+
+		// Update the IntervalTree holding the EditorPatternEvents.
+		var deleted = Patterns.Delete(pattern.GetChartPosition(), oldEndPosition);
+		Assert(deleted);
+		Patterns.Insert(pattern, pattern.GetChartPosition(), newEndPosition);
+	}
+
+	public void OnPatternEventRequestEdit(EditorPatternEvent epa)
+	{
+		Notify(NotificationPatternRequestEdit, this, epa);
 	}
 
 	#endregion EditorEvent Modification Callbacks
@@ -1503,7 +1666,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			switch (editorEvent)
 			{
 				case EditorFakeSegmentEvent fse:
-					deleted = Fakes.Delete(fse);
+					deleted = Fakes.Delete(fse.GetChartTime(), fse.GetEndChartTime());
 					Assert(deleted);
 					break;
 				case EditorRateAlteringEvent rae:
@@ -1514,15 +1677,15 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 					switch (rae)
 					{
 						case EditorStopEvent se:
-							deleted = Stops.Delete(se);
+							deleted = Stops.Delete(se.GetChartTime(), se.GetEndChartTime());
 							Assert(deleted);
 							break;
 						case EditorDelayEvent de:
-							deleted = Delays.Delete(de);
+							deleted = Delays.Delete(de.GetChartTime(), de.GetEndChartTime());
 							Assert(deleted);
 							break;
 						case EditorWarpEvent we:
-							deleted = Warps.Delete(we);
+							deleted = Warps.Delete(we.GetChartPosition(), we.GetEndChartPosition());
 							Assert(deleted);
 							break;
 					}
@@ -1557,6 +1720,12 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 						e.Delete();
 					}
 
+					break;
+				}
+				case EditorPatternEvent pe:
+				{
+					deleted = Patterns.Delete(pe.GetChartPosition(), pe.GetEndChartPosition());
+					Assert(deleted);
 					break;
 				}
 			}
@@ -1616,7 +1785,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			switch (editorEvent)
 			{
 				case EditorFakeSegmentEvent fse:
-					Fakes.Insert(fse);
+					Fakes.Insert(fse, fse.GetChartTime(), fse.GetEndChartTime());
 					break;
 				case EditorRateAlteringEvent rae:
 				{
@@ -1625,13 +1794,13 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 					switch (rae)
 					{
 						case EditorStopEvent se:
-							Stops.Insert(se);
+							Stops.Insert(se, se.GetChartTime(), se.GetEndChartTime());
 							break;
 						case EditorDelayEvent de:
-							Delays.Insert(de);
+							Delays.Insert(de, de.GetChartTime(), de.GetEndChartTime());
 							break;
 						case EditorWarpEvent we:
-							Warps.Insert(we);
+							Warps.Insert(we, we.GetChartPosition(), we.GetEndChartPosition());
 							break;
 					}
 
@@ -1659,6 +1828,11 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 						}
 					}
 
+					break;
+				}
+				case EditorPatternEvent pe:
+				{
+					Patterns.Insert(pe, pe.GetChartPosition(), pe.GetEndChartPosition());
 					break;
 				}
 			}
@@ -1800,6 +1974,128 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		}
 
 		return (sideEffectAddedEvents, sideEffectDeletedEvents);
+	}
+
+	/// <summary>
+	/// Attempts to move an event from its current position to a new position.
+	/// This will not move events if the new row is invalid.
+	/// This will not move events if they would conflict with other events.
+	/// This will not move events which could cause other events to be deleted.
+	/// This will not move hold events.
+	/// </summary>
+	/// <param name="editorEvent">EditorEvent to move.</param>
+	/// <param name="newRow">New row to move the event to.</param>
+	/// <returns>True if the event was moved successfully and false otherwise.</returns>
+	public bool MoveEvent(EditorEvent editorEvent, int newRow)
+	{
+		Assert(CanBeEdited());
+		if (!CanBeEdited())
+			return false;
+
+		if (!CanEventBeMovedToRow(editorEvent, newRow))
+			return false;
+
+		Notify(NotificationEventsMoveStart, this, editorEvent);
+		var deletedEvents = DeleteEvent(editorEvent);
+		editorEvent.SetNewPosition(newRow);
+		AddEvent(editorEvent);
+		deletedEvents.Remove(editorEvent);
+		Assert(deletedEvents.Count == 0);
+		Notify(NotificationEventsMoveEnd, this, editorEvent);
+
+		return true;
+	}
+
+	/// <summary>
+	/// Returns whether the given EditorEvent has the potential to cause extra EditorEvent deletions
+	/// if it were to be moved.
+	/// </summary>
+	/// <param name="editorEvent">EditorEvent in question.</param>
+	/// <returns>
+	/// True of the given EditorEvent has the potential to cause extra EditorEvent deletions if it were
+	/// to be moved and false otherwise.
+	/// </returns>
+	public static bool CanEventResultInExtraDeletionsWhenMoved(EditorEvent editorEvent)
+	{
+		return editorEvent is EditorTimeSignatureEvent;
+	}
+
+	/// <summary>
+	/// Returns whether or not the given row is a valid row for the given EditorEvent
+	/// to exist at regardless of other EditorEvents.
+	/// </summary>
+	/// <param name="editorEvent">EditorEvent in question.</param>
+	/// <param name="row">Row in question.</param>
+	/// <returns>True if the given EditorEvent can exist at the given row and false otherwise.</returns>
+	public bool CanEventExistAtRow(EditorEvent editorEvent, int row)
+	{
+		if (row < 0)
+			return false;
+
+		// Do not allow time signatures to move to non-measure boundaries.
+		if (editorEvent is EditorTimeSignatureEvent && !IsRowOnMeasureBoundary(row))
+			return false;
+
+		return true;
+	}
+
+	/// <summary>
+	/// Returns whether or not the given EditorEvent can be moved to the given row.
+	/// This takes into account other EditorEvents which might conflict with the new row.
+	/// This is intended for moving miscellaneous EditorEvents without lanes.
+	/// Not all EditorEvents are supported and this will err on returning false.
+	/// </summary>
+	/// <param name="editorEvent">EditorEvent to move.</param>
+	/// <param name="row">New row for the event.</param>
+	/// <returns>True if the given EditorEvent can be moved to the new row and false otherwise.</returns>
+	public bool CanEventBeMovedToRow(EditorEvent editorEvent, int row)
+	{
+		// The row must be a valid row for this event to exist at regardless of note conflicts.
+		if (!CanEventExistAtRow(editorEvent, row))
+			return false;
+
+		// Don't allow moving events which have the potential to cause extra deletions.
+		if (CanEventResultInExtraDeletionsWhenMoved(editorEvent))
+			return false;
+
+		// If the move keeps it at the same location, it is allowed.
+		if (row == editorEvent.GetRow())
+			return true;
+
+		// If there is already an event of the same type at this row then it is not allowed.
+		var eventsAtRow = EditorEvents.FindEventsAtRow(row);
+		foreach (var e in eventsAtRow)
+		{
+			if (e.GetType() == editorEvent.GetType() && e.GetLane() == editorEvent.GetLane())
+				return false;
+		}
+
+		// If this event is a lane note then it can't overlap a hold.
+		if (editorEvent is EditorTapNoteEvent
+		    || editorEvent is EditorHoldNoteEvent
+		    || editorEvent is EditorMineNoteEvent)
+		{
+			var potentiallyOverlappingHolds = GetHoldsOverlapping(row);
+			foreach (var hold in potentiallyOverlappingHolds)
+			{
+				if (hold.GetLane() == editorEvent.GetLane())
+					return false;
+			}
+		}
+
+		// TODO: Support movement of holds?
+		// If this event is a hold, then the new position can't overlap other notes in the same lane.
+		if (editorEvent is EditorHoldNoteEvent)
+			return false;
+
+		// TODO: Support movement of time signature events?
+		// If this event is a time signature, then the new position must be on a measure boundary
+		// and future events must continue to fall on a time signature boundary.
+		// For now, disallow this kind of movement due to its complexity.
+		if (editorEvent is EditorTimeSignatureEvent)
+			return false;
+
+		return true;
 	}
 
 	#endregion Adding and Deleting EditorEvents

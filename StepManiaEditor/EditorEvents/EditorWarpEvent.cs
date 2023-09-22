@@ -3,6 +3,7 @@ using Fumen.Converters;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGameExtensions;
+using static System.Diagnostics.Debug;
 using static StepManiaEditor.Editor;
 using static StepManiaEditor.Utils;
 
@@ -50,6 +51,11 @@ internal sealed class EditorWarpEvent : EditorRateAlteringEvent, IChartRegion
 	public double GetRegionH()
 	{
 		return RegionH;
+	}
+
+	public double GetRegionZ()
+	{
+		return GetChartPosition() + WarpRegionZOffset;
 	}
 
 	public void SetRegionX(double x)
@@ -104,11 +110,16 @@ internal sealed class EditorWarpEvent : EditorRateAlteringEvent, IChartRegion
 		get => WarpEvent.LengthIntegerPosition;
 		set
 		{
+			Assert(EditorChart.CanBeEdited());
+			if (!EditorChart.CanBeEdited())
+				return;
+
 			if (WarpEvent.LengthIntegerPosition != value && value >= 0)
 			{
+				var oldPosition = GetEndChartPosition();
 				WarpEvent.LengthIntegerPosition = value;
 				WidthDirty = true;
-				EditorChart.OnRateAlteringEventModified(this);
+				EditorChart.OnWarpLengthModified(this, oldPosition, GetEndChartPosition());
 			}
 		}
 	}
@@ -156,6 +167,16 @@ internal sealed class EditorWarpEvent : EditorRateAlteringEvent, IChartRegion
 	public override bool IsSelectableWithModifiers()
 	{
 		return true;
+	}
+
+	public override int GetLength()
+	{
+		return WarpEvent.LengthIntegerPosition;
+	}
+
+	public override double GetEndChartPosition()
+	{
+		return GetChartPosition() + WarpEvent.LengthIntegerPosition;
 	}
 
 	public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)

@@ -254,16 +254,7 @@ internal sealed class UIChartPosition
 
 	private static double GetMeasure(EditorPosition position)
 	{
-		var rateEvent = position.ActiveChart?.FindActiveRateAlteringEventForPosition(position.ChartPosition);
-		if (rateEvent == null)
-			return 0.0;
-		var timeSigEvent = rateEvent.GetTimeSignature();
-		var rowDifference = position.ChartPosition - timeSigEvent.IntegerPosition;
-		var rowsPerMeasure = timeSigEvent.Signature.Numerator *
-		                     (SMCommon.MaxValidDenominator * SMCommon.NumBeatsPerMeasure / timeSigEvent.Signature.Denominator);
-		var measures = rowDifference / rowsPerMeasure;
-		measures += timeSigEvent.MetricPosition.Measure;
-		return measures;
+		return position.ActiveChart?.GetMeasureForChartPosition(position.ChartPosition) ?? 0.0;
 	}
 
 	private static string FormatDouble(double value)

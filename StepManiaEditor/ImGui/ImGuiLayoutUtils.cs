@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Numerics;
 using ImGuiNET;
 using StepManiaEditor.AutogenConfig;
+using StepManiaEditor.EditorActions;
 using StepManiaLibrary.PerformedChart;
 using static Fumen.FumenExtensions;
 using static StepManiaEditor.ImGuiUtils;
@@ -57,6 +58,9 @@ internal sealed class ImGuiLayoutUtils
 	public static readonly float NotesFromTextWidth = UiScaled(60);
 	public static readonly float BpmTextWidth = UiScaled(20);
 	public static readonly float PatternConfigShortEnumWidth = UiScaled(160);
+	public static readonly float ButtonGoWidth = UiScaled(20);
+	public static readonly float ButtonUseCurrentRowWidth = UiScaled(80);
+	public static readonly float TextInclusiveWidth = UiScaled(58);
 	public static readonly float ArrowIconWidth = UiScaled(16);
 	public static readonly float ArrowIconHeight = UiScaled(16);
 	public static readonly Vector2 ArrowIconSize = new(ArrowIconWidth, ArrowIconHeight);
@@ -464,7 +468,7 @@ internal sealed class ImGuiLayoutUtils
 		return ret;
 	}
 
-	public static bool DrawExpressedChartConfig(EditorChart editorChart, string title, string help)
+	public static bool DrawExpressedChartConfigCombo(EditorChart editorChart, string title, string help)
 	{
 		DrawRowTitleAndAdvanceColumn(title);
 
@@ -521,6 +525,126 @@ internal sealed class ImGuiLayoutUtils
 		if (ImGui.Button($"New{elementTitle}", new Vector2(ConfigFromListNewWidth, 0.0f)))
 		{
 			EditorExpressedChartConfig.CreateNewConfigAndShowEditUI(editorChart);
+		}
+
+		return ret;
+	}
+
+	public static bool DrawPatternConfigCombo(bool undoable, string title, object o, string fieldName, string help)
+	{
+		DrawRowTitleAndAdvanceColumn(title);
+
+		var elementTitle = GetElementTitle(title, fieldName);
+
+		var itemWidth = DrawHelp(help, ImGui.GetContentRegionAvail().X);
+		var spacing = ImGui.GetStyle().ItemSpacing.X;
+		var comboWidth = Math.Max(1.0f,
+			itemWidth - ConfigFromListViewAllWidth - ConfigFromListNewWidth - spacing * 2.0f);
+		ImGui.SetNextItemWidth(comboWidth);
+
+		var currentValue = GetValueFromFieldOrProperty<Guid>(o, fieldName);
+		var configGuids = PatternConfigManager.Instance.GetSortedConfigGuids();
+		var configNames = PatternConfigManager.Instance.GetSortedConfigNames();
+		var selectedIndex = 0;
+		for (var i = 0; i < configGuids.Length; i++)
+		{
+			if (configGuids[i].Equals(currentValue))
+			{
+				selectedIndex = i;
+				break;
+			}
+		}
+
+		var ret = ComboFromArray(elementTitle, ref selectedIndex, configNames);
+		if (ret)
+		{
+			var newValue = configGuids[selectedIndex];
+			if (!newValue.Equals(currentValue))
+			{
+				if (undoable)
+				{
+					ActionQueue.Instance.Do(
+						new ActionSetObjectFieldOrPropertyValue<Guid>(o, fieldName, newValue, true));
+				}
+				else
+				{
+					SetFieldOrPropertyToValue(o, fieldName, newValue);
+				}
+			}
+		}
+
+		ImGui.SameLine();
+		if (ImGui.Button($"View All{elementTitle}", new Vector2(ConfigFromListViewAllWidth, 0.0f)))
+		{
+			Preferences.Instance.ShowAutogenConfigsWindow = true;
+			ImGui.SetWindowFocus(UIAutogenConfigs.WindowTitle);
+		}
+
+		ImGui.SameLine();
+		if (ImGui.Button($"New{elementTitle}", new Vector2(ConfigFromListNewWidth, 0.0f)))
+		{
+			// TODO: Also assign to the EditorPatternEvent?
+			CreateNewConfigAndShowEditUI();
+		}
+
+		return ret;
+	}
+
+	public static bool DrawPerformedChartConfigCombo(bool undoable, string title, object o, string fieldName, string help)
+	{
+		DrawRowTitleAndAdvanceColumn(title);
+
+		var elementTitle = GetElementTitle(title, fieldName);
+
+		var itemWidth = DrawHelp(help, ImGui.GetContentRegionAvail().X);
+		var spacing = ImGui.GetStyle().ItemSpacing.X;
+		var comboWidth = Math.Max(1.0f,
+			itemWidth - ConfigFromListViewAllWidth - ConfigFromListNewWidth - spacing * 2.0f);
+		ImGui.SetNextItemWidth(comboWidth);
+
+		var currentValue = GetValueFromFieldOrProperty<Guid>(o, fieldName);
+		var configGuids = PerformedChartConfigManager.Instance.GetSortedConfigGuids();
+		var configNames = PerformedChartConfigManager.Instance.GetSortedConfigNames();
+		var selectedIndex = 0;
+		for (var i = 0; i < configGuids.Length; i++)
+		{
+			if (configGuids[i].Equals(currentValue))
+			{
+				selectedIndex = i;
+				break;
+			}
+		}
+
+		var ret = ComboFromArray(elementTitle, ref selectedIndex, configNames);
+		if (ret)
+		{
+			var newValue = configGuids[selectedIndex];
+			if (!newValue.Equals(currentValue))
+			{
+				if (undoable)
+				{
+					ActionQueue.Instance.Do(
+						new ActionSetObjectFieldOrPropertyValue<Guid>(o, fieldName, newValue, true));
+				}
+				else
+				{
+					SetFieldOrPropertyToValue(o, fieldName, newValue);
+				}
+			}
+		}
+
+		ImGui.SameLine();
+		if (ImGui.Button($"View All{elementTitle}", new Vector2(ConfigFromListViewAllWidth, 0.0f)))
+		{
+			Preferences.Instance.ShowAutogenConfigsWindow = true;
+			ImGui.SetWindowFocus(UIAutogenConfigs.WindowTitle);
+		}
+
+		ImGui.SameLine();
+		if (ImGui.Button($"New{elementTitle}", new Vector2(ConfigFromListNewWidth, 0.0f)))
+		{
+			// TODO: Also assign to the EditorPatternEvent?
+			EditorPerformedChartConfig.CreateNewConfigAndShowEditUI();
 		}
 
 		return ret;
@@ -2098,7 +2222,7 @@ internal sealed class ImGuiLayoutUtils
 
 		ImGui.PushStyleColor(ImGuiCol.Text, ArrowGraphicManager.GetArrowColorForSubdivision(currentBeatSubdivision));
 
-		if (ImGui.BeginCombo($"{elementTitle}Combo", $"1/{currentMeasureSubdivision} Notes"))
+		if (ImGui.BeginCombo($"{elementTitle}Combo", GetPrettyString(currentValue)))
 		{
 			ImGui.PopStyleColor();
 
@@ -2109,7 +2233,7 @@ internal sealed class ImGuiLayoutUtils
 				ImGui.PushStyleColor(ImGuiCol.Text, ArrowGraphicManager.GetArrowColorForSubdivision(beatSubdivision));
 
 				var isSelected = currentMeasureSubdivision == measureSubdivision;
-				if (ImGui.Selectable($"1/{measureSubdivision} Notes", isSelected))
+				if (ImGui.Selectable(GetPrettyString((SubdivisionType)subdivisionType), isSelected))
 				{
 					currentValue = (SubdivisionType)subdivisionType;
 				}
@@ -2352,6 +2476,32 @@ internal sealed class ImGuiLayoutUtils
 		MiscEditorEventWidget(id, e, x, y, width, colorRGBA, selected, canBeDeleted, alpha, help, Func);
 	}
 
+	public static void MiscEditorEventPatternWidget(
+		string id,
+		EditorPatternEvent e,
+		int x,
+		int y,
+		int width,
+		uint colorRGBA,
+		bool selected,
+		float alpha,
+		string help,
+		Action requestEditCallback)
+	{
+		void Func(float elementWidth)
+		{
+			ImGui.PushStyleColor(ImGuiCol.Text, e.GetMiscEventTextColor());
+			if (ImGui.Button($"{e.GetMiscEventText()}##{id}"))
+			{
+				requestEditCallback();
+			}
+
+			ImGui.PopStyleColor(1);
+		}
+
+		MiscEditorEventWidget(id, e, x, y, width, colorRGBA, selected, true, alpha, help, Func);
+	}
+
 	private static void MiscEditorEventWidget(
 		string id,
 		EditorEvent e,
@@ -2463,6 +2613,361 @@ internal sealed class ImGuiLayoutUtils
 	}
 
 	#endregion Misc Editor Events
+
+	#region Chart Position
+
+	public static void DrawRowChartPosition(
+		string title,
+		Editor editor,
+		EditorEvent editorEvent,
+		string help = null)
+	{
+		DrawRowTitleAndAdvanceColumn(title);
+
+		var width = DrawHelp(help, ImGui.GetContentRegionAvail().X);
+		var dragIntWidth = (width - ButtonGoWidth - ButtonUseCurrentRowWidth - ImGui.GetStyle().ItemSpacing.X * 4.0f) / 3.0f;
+
+		// Disable controls if moving the EditorEvent could potentially result in deleting other events.
+		// This would be difficult to maintain and can only happen in rare occasions (time signatures).
+		var positionCanBeChanged = !EditorChart.CanEventResultInExtraDeletionsWhenMoved(editorEvent);
+		if (!positionCanBeChanged)
+			PushDisabled();
+
+		var dragIntCacheKey = GetCacheKey(title, "ChartPositionDragInt");
+
+		// DragInt for row
+		var row = (int)editorEvent.GetChartPosition();
+		var value = row;
+		var rowToCache = row;
+		ImGui.SetNextItemWidth(dragIntWidth);
+		if (DragInt(ref value, GetElementTitle(title, "DragIntRow"), 1.0f, "row %i", 0))
+		{
+			editorEvent.GetEditorChart().MoveEvent(editorEvent, value);
+		}
+
+		if (ImGui.IsItemActivated())
+		{
+			SetCachedValue(dragIntCacheKey, rowToCache);
+		}
+
+		if (ImGui.IsItemDeactivatedAfterEdit())
+		{
+			var originalRow = GetCachedValue<int>(dragIntCacheKey);
+			var newRow = value;
+			if (newRow != originalRow)
+			{
+				ActionQueue.Instance.Do(new ActionMoveEditorEvent(editorEvent, newRow, originalRow));
+			}
+		}
+
+		// DragInt for beat
+		ImGui.SameLine();
+		row = (int)editorEvent.GetChartPosition();
+		value = row / MaxValidDenominator;
+		rowToCache = row;
+		ImGui.SetNextItemWidth(dragIntWidth);
+		if (DragInt(ref value, GetElementTitle(title, "DragIntBeat"), 0.1f, "beat %i", 0))
+		{
+			var newRow = value * MaxValidDenominator;
+			editorEvent.GetEditorChart().MoveEvent(editorEvent, newRow);
+		}
+
+		if (ImGui.IsItemActivated())
+		{
+			SetCachedValue(dragIntCacheKey, rowToCache);
+		}
+
+		if (ImGui.IsItemDeactivatedAfterEdit())
+		{
+			var originalRow = GetCachedValue<int>(dragIntCacheKey);
+			var newRow = value * MaxValidDenominator;
+			if (newRow != originalRow)
+			{
+				ActionQueue.Instance.Do(new ActionMoveEditorEvent(editorEvent, newRow, originalRow));
+			}
+		}
+
+		// DragInt for measure
+		ImGui.SameLine();
+		row = (int)editorEvent.GetChartPosition();
+		value = (int)editorEvent.GetEditorChart().GetMeasureForChartPosition(editorEvent.GetChartPosition());
+		rowToCache = row;
+		ImGui.SetNextItemWidth(dragIntWidth);
+		if (DragInt(ref value, GetElementTitle(title, "DragIntMeasure"), 0.1f, "measure %i", 0))
+		{
+			var newRow = (int)editorEvent.GetEditorChart().GetChartPositionForMeasure(value);
+			editorEvent.GetEditorChart().MoveEvent(editorEvent, newRow);
+		}
+
+		if (ImGui.IsItemActivated())
+		{
+			SetCachedValue(dragIntCacheKey, rowToCache);
+		}
+
+		if (ImGui.IsItemDeactivatedAfterEdit())
+		{
+			var originalRow = GetCachedValue<int>(dragIntCacheKey);
+			var newRow = (int)editorEvent.GetEditorChart().GetChartPositionForMeasure(value);
+			if (newRow != originalRow)
+			{
+				ActionQueue.Instance.Do(new ActionMoveEditorEvent(editorEvent, newRow, originalRow));
+			}
+		}
+
+		// Use current row button
+		ImGui.SameLine();
+		if (ImGui.Button($"Use Current{GetElementTitle(title, "CurrentButton")}", new Vector2(ButtonUseCurrentRowWidth, 0.0f)))
+		{
+			var editorRow = (int)Math.Max(0.0, Math.Round(editor.GetPosition().ChartPosition));
+			if (row != editorRow)
+			{
+				ActionQueue.Instance.Do(new ActionMoveEditorEvent(editorEvent, editorRow, row));
+			}
+		}
+
+		if (!positionCanBeChanged)
+			PopDisabled();
+
+		// Go button
+		ImGui.SameLine();
+		if (ImGui.Button($"Go{GetElementTitle(title, "GoButton")}", new Vector2(ButtonGoWidth, 0.0f)))
+		{
+			editor.GetPosition().ChartPosition = row;
+		}
+	}
+
+	public static void DrawRowChartPositionFromLength(
+		string title,
+		Editor editor,
+		EditorEvent editorEvent,
+		string lengthField,
+		string help = null)
+	{
+		DrawRowTitleAndAdvanceColumn(title);
+
+		var width = DrawHelp(help, ImGui.GetContentRegionAvail().X);
+		var dragIntWidth = (width - ButtonGoWidth - ButtonUseCurrentRowWidth - ImGui.GetStyle().ItemSpacing.X * 4.0f) / 3.0f;
+
+		var dragIntCacheKey = GetCacheKey(title, "ChartPositionFromLengthDragInt");
+
+		var length = GetValueFromFieldOrProperty<int>(editorEvent, lengthField);
+
+		// DragInt for row
+		var startPos = (int)editorEvent.GetChartPosition();
+		var endRow = startPos + length;
+		var value = endRow;
+		var lengthToCache = length;
+		ImGui.SetNextItemWidth(dragIntWidth);
+		if (DragInt(ref value, GetElementTitle(title, "DragIntRow"), 1.0f, "row %i", startPos))
+		{
+			var newLen = Math.Max(0, value - startPos);
+			SetFieldOrPropertyToValue(editorEvent, lengthField, newLen);
+		}
+
+		if (ImGui.IsItemActivated())
+		{
+			SetCachedValue(dragIntCacheKey, lengthToCache);
+		}
+
+		if (ImGui.IsItemDeactivatedAfterEdit())
+		{
+			var originalLen = GetCachedValue<int>(dragIntCacheKey);
+			var newLen = Math.Max(0, value - startPos);
+			if (newLen != originalLen)
+			{
+				ActionQueue.Instance.Do(
+					new ActionSetObjectFieldOrPropertyValue<int>(editorEvent, lengthField, newLen, originalLen, true));
+			}
+		}
+
+		// DragInt for beat
+		ImGui.SameLine();
+		endRow = startPos + length;
+		var startRow = startPos / MaxValidDenominator;
+		value = endRow / MaxValidDenominator;
+		lengthToCache = length;
+		ImGui.SetNextItemWidth(dragIntWidth);
+		if (DragInt(ref value, GetElementTitle(title, "DragIntBeat"), 0.1f, "beat %i", startRow))
+		{
+			var newEndRow = value * MaxValidDenominator;
+			var newLen = Math.Max(0, newEndRow - startPos);
+			SetFieldOrPropertyToValue(editorEvent, lengthField, newLen);
+		}
+
+		if (ImGui.IsItemActivated())
+		{
+			SetCachedValue(dragIntCacheKey, lengthToCache);
+		}
+
+		if (ImGui.IsItemDeactivatedAfterEdit())
+		{
+			var originalLen = GetCachedValue<int>(dragIntCacheKey);
+			var newEndRow = value * MaxValidDenominator;
+			var newLen = Math.Max(0, newEndRow - startPos);
+			if (newLen != originalLen)
+			{
+				ActionQueue.Instance.Do(
+					new ActionSetObjectFieldOrPropertyValue<int>(editorEvent, lengthField, newLen, originalLen, true));
+			}
+		}
+
+		// DragInt for measure
+		ImGui.SameLine();
+		endRow = startPos + length;
+		var startMeasure = (int)editorEvent.GetEditorChart().GetMeasureForChartPosition(startPos);
+		value = (int)editorEvent.GetEditorChart().GetMeasureForChartPosition(endRow);
+		lengthToCache = length;
+		ImGui.SetNextItemWidth(dragIntWidth);
+		if (DragInt(ref value, GetElementTitle(title, "DragIntMeasure"), 0.1f, "measure %i", startMeasure))
+		{
+			var newEndRow = (int)editorEvent.GetEditorChart().GetChartPositionForMeasure(value);
+			var newLen = Math.Max(0, newEndRow - startPos);
+			SetFieldOrPropertyToValue(editorEvent, lengthField, newLen);
+		}
+
+		if (ImGui.IsItemActivated())
+		{
+			SetCachedValue(dragIntCacheKey, lengthToCache);
+		}
+
+		if (ImGui.IsItemDeactivatedAfterEdit())
+		{
+			var originalLen = GetCachedValue<int>(dragIntCacheKey);
+			var newEndRow = (int)editorEvent.GetEditorChart().GetChartPositionForMeasure(value);
+			var newLen = Math.Max(0, newEndRow - startPos);
+			if (newLen != originalLen)
+			{
+				ActionQueue.Instance.Do(
+					new ActionSetObjectFieldOrPropertyValue<int>(editorEvent, lengthField, newLen, originalLen, true));
+			}
+		}
+
+		// Use current row button
+		ImGui.SameLine();
+		if (ImGui.Button($"Use Current{GetElementTitle(title, "CurrentButton")}", new Vector2(ButtonUseCurrentRowWidth, 0.0f)))
+		{
+			var editorPos = (int)Math.Max(0.0, Math.Round(editor.GetPosition().ChartPosition));
+			var newLen = Math.Max(0, editorPos - startPos);
+			if (newLen != length)
+			{
+				ActionQueue.Instance.Do(
+					new ActionSetObjectFieldOrPropertyValue<int>(editorEvent, lengthField, newLen, length, true));
+			}
+		}
+
+		// Go button
+		ImGui.SameLine();
+		if (ImGui.Button($"Go{GetElementTitle(title, "GoButton")}", new Vector2(ButtonGoWidth, 0.0f)))
+		{
+			editor.GetPosition().ChartPosition = endRow;
+		}
+	}
+
+	public static void DrawRowChartPositionLength(
+		bool affectsFile,
+		string title,
+		object o,
+		string lengthField,
+		string help)
+	{
+		DrawRowTitleAndAdvanceColumn(title);
+
+		var width = DrawHelp(help, ImGui.GetContentRegionAvail().X);
+		var dragIntWidth = (width - ImGui.GetStyle().ItemSpacing.X) * 0.5f;
+
+		// DragInts for length.
+		DrawChartPositionLengthDragInts(affectsFile, title, o, lengthField, dragIntWidth);
+	}
+
+	public static void DrawRowChartPositionLength(
+		bool affectsFile,
+		string title,
+		object o,
+		string lengthField,
+		string inclusiveField,
+		string help)
+	{
+		DrawRowTitleAndAdvanceColumn(title);
+
+		var width = DrawHelp(help, ImGui.GetContentRegionAvail().X);
+		var dragIntWidth = (width - TextInclusiveWidth - CheckBoxWidth - ImGui.GetStyle().ItemSpacing.X * 3.0f) * 0.5f;
+
+		// Inclusive checkbox.
+		DrawCheckbox(true, title, o, inclusiveField, CheckBoxWidth, true);
+		ImGui.SameLine();
+		Text("Inclusive", TextInclusiveWidth);
+
+		// DragInts for length.
+		ImGui.SameLine();
+		DrawChartPositionLengthDragInts(affectsFile, title, o, lengthField, dragIntWidth);
+	}
+
+	private static void DrawChartPositionLengthDragInts(
+		bool affectsFile,
+		string title,
+		object o,
+		string lengthField,
+		float dragIntWidth)
+	{
+		var dragIntCacheKey = GetCacheKey(title, "ChartPositionLengthDragInt");
+		var rows = GetValueFromFieldOrProperty<int>(o, lengthField);
+
+		// DragInt for length as row
+		var value = rows;
+		var rowsToCache = rows;
+		ImGui.SetNextItemWidth(dragIntWidth);
+		if (DragInt(ref value, GetElementTitle(title, "DragIntRows"), 1.0f, "%i rows", 0))
+		{
+			SetFieldOrPropertyToValue(o, lengthField, value);
+		}
+
+		if (ImGui.IsItemActivated())
+		{
+			SetCachedValue(dragIntCacheKey, rowsToCache);
+		}
+
+		if (ImGui.IsItemDeactivatedAfterEdit())
+		{
+			var originalRows = GetCachedValue<int>(dragIntCacheKey);
+			var newRows = value;
+			if (newRows != originalRows)
+			{
+				ActionQueue.Instance.Do(
+					new ActionSetObjectFieldOrPropertyValue<int>(o, lengthField, newRows, originalRows, affectsFile));
+			}
+
+			rows = newRows;
+		}
+
+		// DragInt for length as beats
+		ImGui.SameLine();
+		value = rows / MaxValidDenominator;
+		rowsToCache = rows;
+		ImGui.SetNextItemWidth(dragIntWidth);
+		if (DragInt(ref value, GetElementTitle(title, "DragIntBeats"), 0.1f, "%i beats", 0))
+		{
+			var newRows = value * MaxValidDenominator;
+			SetFieldOrPropertyToValue(o, lengthField, newRows);
+		}
+
+		if (ImGui.IsItemActivated())
+		{
+			SetCachedValue(dragIntCacheKey, rowsToCache);
+		}
+
+		if (ImGui.IsItemDeactivatedAfterEdit())
+		{
+			var originalRows = GetCachedValue<int>(dragIntCacheKey);
+			var newRows = value * MaxValidDenominator;
+			if (newRows != originalRows)
+			{
+				ActionQueue.Instance.Do(
+					new ActionSetObjectFieldOrPropertyValue<int>(o, lengthField, newRows, originalRows, affectsFile));
+			}
+		}
+	}
+
+	#endregion Chart Position
 
 	#region Compare Functions
 
@@ -2661,6 +3166,10 @@ internal sealed class ImGuiLayoutUtils
 			else
 				SetFieldOrPropertyToValue(o, fieldName, cachedValue);
 			value = cachedValue;
+
+			// Consider the frame after letting go where the item is deactivated and we add an undoable action
+			// to update the value to be an edit that should return true.
+			result = true;
 		}
 
 		// Always update the cached value if the control is not active.
@@ -2741,6 +3250,9 @@ internal sealed class ImGuiLayoutUtils
 			{
 				ActionQueue.Instance.Do(
 					new ActionSetObjectFieldOrPropertyValue<T>(o, fieldName, value, GetCachedValue<T>(cacheKey), affectsFile));
+				// Consider the frame after letting go where the item is deactivated and we add an undoable action
+				// to update the value to be an edit that should return true.
+				result = true;
 			}
 		}
 

@@ -32,6 +32,8 @@ public class Utils
 	public const uint UIFakesColorRGBA = 0x8A29467A; // dark orange
 	public const uint UILabelColorRGBA = 0x8A68297A; // pink
 
+	public const uint UIPatternColorRGBA = 0x8A6A7A29; // teal
+
 	public const uint UIPreviewColorRGBA = 0x8A7A7A7A; // grey
 	public const uint UILastSecondHintColorRGBA = 0x8A202020; // dark grey
 
@@ -87,7 +89,15 @@ public class Utils
 	public static Color FakeRegionColor = new(0x7A, 0x46, 0x29, 0x7F);
 	public static Color WarpRegionColor = new(0x29, 0x79, 0x7A, 0x7F);
 	public static Color PreviewRegionColor = new(0x7A, 0x7A, 0x7A, 0x7F);
+	public static Color PatternRegionColor = new(0x29, 0x7A, 0x6A, 0x7F);
 	public static Color SelectionRegionColor = new(0xB8, 0xB4, 0x3E, 0x7F);
+
+	public const double StopRegionZOffset = 0.1;
+	public const double DelayRegionZOffset = 0.2;
+	public const double FakeRegionZOffset = 0.3;
+	public const double WarpRegionZOffset = 0.4;
+	public const double PreviewRegionZOffset = 0.5;
+	public const double PatternRegionZOffset = 0.6;
 
 	public static readonly string[] ExpectedAudioFormats = { "mp3", "oga", "ogg", "wav" };
 	public static readonly string[] ExpectedImageFormats = { "bmp", "gif", "jpeg", "jpg", "png", "tif", "tiff", "webp" };

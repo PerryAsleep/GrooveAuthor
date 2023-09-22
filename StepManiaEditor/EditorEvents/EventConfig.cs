@@ -1,6 +1,6 @@
-﻿using Fumen;
+﻿using System.Collections.Generic;
+using Fumen;
 using Fumen.ChartDefinition;
-using System.Collections.Generic;
 using static Fumen.Converters.SMCommon;
 
 namespace StepManiaEditor;
@@ -8,7 +8,7 @@ namespace StepManiaEditor;
 /// <summary>
 /// Configuration class for constructing a new EditorEvent.
 /// Encapsulates creation of raw Stepmania Events.
-/// Encapsulates the need to use Lists to  hold potentially multiple Events.
+/// Encapsulates the need to use Lists to hold potentially multiple Events.
 /// </summary>
 internal sealed class EventConfig
 {
@@ -272,6 +272,18 @@ internal sealed class EventConfig
 		return new EventConfig(chart, new List<Event>
 		{
 			new ScrollRateInterpolation(rate, periodLen, periodTime, preferPeriodAsTime)
+			{
+				IntegerPosition = row,
+				TimeSeconds = chartTime,
+			},
+		}, false, row);
+	}
+
+	public static EventConfig CreatePatternConfig(EditorChart chart, int row, double chartTime)
+	{
+		return new EventConfig(chart, new List<Event>
+		{
+			new Pattern
 			{
 				IntegerPosition = row,
 				TimeSeconds = chartTime,

@@ -148,7 +148,7 @@ internal sealed class UIAutogenChart
 				                    + "\nThis config is defined on the source Chart in the Chart Properties window."
 				                    + "\nChanging it here changes it on the source Chart.";
 				if (SourceChart != null)
-					ImGuiLayoutUtils.DrawExpressedChartConfig(SourceChart, title, help);
+					ImGuiLayoutUtils.DrawExpressedChartConfigCombo(SourceChart, title, help);
 				else
 					ImGuiLayoutUtils.DrawTitleAndText(title, "No available Charts.", help);
 

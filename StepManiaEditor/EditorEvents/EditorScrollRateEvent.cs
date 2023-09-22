@@ -1,6 +1,7 @@
 ﻿using Fumen.ChartDefinition;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGameExtensions;
+using static System.Diagnostics.Debug;
 using static Fumen.FumenExtensions;
 
 namespace StepManiaEditor;
@@ -30,11 +31,15 @@ internal sealed class EditorScrollRateEvent : EditorRateAlteringEvent
 		get => ScrollRateEvent.Rate;
 		set
 		{
+			Assert(EditorChart.CanBeEdited());
+			if (!EditorChart.CanBeEdited())
+				return;
+
 			if (!ScrollRateEvent.Rate.DoubleEquals(value))
 			{
 				ScrollRateEvent.Rate = value;
 				WidthDirty = true;
-				EditorChart.OnRateAlteringEventModified(this);
+				EditorChart.OnScrollRateModified(this);
 			}
 		}
 	}

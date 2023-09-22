@@ -3,6 +3,7 @@ using Fumen.ChartDefinition;
 using Fumen.Converters;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGameExtensions;
+using static System.Diagnostics.Debug;
 
 namespace StepManiaEditor;
 
@@ -30,11 +31,15 @@ internal sealed class EditorTimeSignatureEvent : EditorRateAlteringEvent
 			var (valid, newSignature) = IsValidTimeSignatureString(value);
 			if (valid)
 			{
+				Assert(EditorChart.CanBeEdited());
+				if (!EditorChart.CanBeEdited())
+					return;
+
 				if (!TimeSignatureEvent.Signature.Equals(newSignature))
 				{
 					TimeSignatureEvent.Signature = newSignature;
 					WidthDirty = true;
-					EditorChart.OnRateAlteringEventModified(this);
+					EditorChart.OnTimeSignatureModified(this);
 				}
 			}
 		}

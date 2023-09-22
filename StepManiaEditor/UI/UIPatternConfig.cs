@@ -1,4 +1,5 @@
 ﻿using System.Numerics;
+using Fumen.Converters;
 using ImGuiNET;
 using StepManiaEditor.AutogenConfig;
 using StepManiaLibrary.PerformedChart;
@@ -67,75 +68,86 @@ internal sealed class UIPatternConfig
 		ImGui.SetNextWindowSize(new Vector2(0, 0), ImGuiCond.FirstUseEver);
 		if (ImGui.Begin(WindowTitle, ref p.ShowPatternListWindow, ImGuiWindowFlags.NoScrollbar))
 		{
-			var disabled = !Editor.CanEdit() || editorConfig.IsDefault();
-			if (disabled)
-				PushDisabled();
+			DrawConfig("PatternConfig", Editor, editorConfig, currentChartType, true);
+		}
 
-			if (ImGuiLayoutUtils.BeginTable("PatternConfigTableIdentification", TitleColumnWidth))
-			{
-				ImGuiLayoutUtils.DrawRowTextInput(true, "Name", editorConfig, nameof(EditorPatternConfig.Name), false,
-					"Configuration name.");
+		ImGui.End();
+	}
 
-				ImGuiLayoutUtils.DrawRowTextInput(true, "Description", editorConfig,
-					nameof(EditorPatternConfig.Description), false,
-					"Configuration description.");
+	public static void DrawConfig(string id, Editor editor, EditorPatternConfig editorConfig, SMCommon.ChartType? chartType,
+		bool drawDelete)
+	{
+		var disabled = !editor.CanEdit() || editorConfig.IsDefault();
+		if (disabled)
+			PushDisabled();
 
-				ImGuiLayoutUtils.EndTable();
-			}
+		if (ImGuiLayoutUtils.BeginTable($"PatternConfigTableIdentification##{id}", TitleColumnWidth))
+		{
+			ImGuiLayoutUtils.DrawRowTextInput(true, "Name", editorConfig, nameof(EditorPatternConfig.Name), false,
+				"Configuration name.");
 
+			ImGuiLayoutUtils.DrawRowTextInput(true, "Description", editorConfig,
+				nameof(EditorPatternConfig.Description), false,
+				"Configuration description.");
+
+			ImGuiLayoutUtils.EndTable();
+		}
+
+		ImGui.Separator();
+		if (ImGuiLayoutUtils.BeginTable($"PatternConfigTableBeat##{id}", TitleColumnWidth))
+		{
+			ImGuiLayoutUtils.DrawRowSubdivisions(true, "Note Type", editorConfig, nameof(EditorPatternConfig.PatternType),
+				false, "The types of notes to use when generating the pattern.");
+
+			ImGuiLayoutUtils.DrawRowDragIntWithEnabledCheckbox(true, "Step Repetition Limit", editorConfig.Config,
+				nameof(PatternConfig.MaxSameArrowsInARowPerFoot), nameof(PatternConfig.LimitSameArrowsInARowPerFoot), false,
+				"Maximum number of repeated steps on the same arrow per foot.", 0.1f, "%i", 0, 100);
+
+			ImGuiLayoutUtils.DrawRowDragInt2(true, "Step Type Weights", editorConfig,
+				nameof(EditorPatternConfig.SameArrowStepWeight),
+				nameof(EditorPatternConfig.NewArrowStepWeight), false, "Same", "New", StepTypeWeightWidth,
+				"Weights of step types to use in the pattern."
+				+ "\nSame: Relative weight of same arrow steps."
+				+ "\nNew:  Relative weight of new arrow steps.",
+				0.2f, "%i", 0, 100, 0, 100);
+
+			ImGuiLayoutUtils.EndTable();
+		}
+
+		ImGui.Separator();
+		if (ImGuiLayoutUtils.BeginTable($"PatternConfigTableStart##{id}", TitleColumnWidth))
+		{
+			ImGuiLayoutUtils.DrawRowPatternConfigStartFootChoice(true, "Starting Foot", editorConfig,
+				"How to choose the starting foot."
+				+ "\nRandom:    Choose the starting foot randomly."
+				+ "\nAutomatic: Choose the starting foot automatically so that it alternates from the previous steps."
+				+ "\nSpecified: Use a specified starting foot.");
+
+			ImGuiLayoutUtils.DrawRowPatternConfigStartFootLaneChoice(editor, true, "Left Foot Start Lane", editorConfig,
+				chartType, true, StartChoiceHelpTextLeft);
+
+			ImGuiLayoutUtils.DrawRowPatternConfigStartFootLaneChoice(editor, true, "Right Foot Start Lane", editorConfig,
+				chartType, false, StartChoiceHelpTextRight);
+
+			ImGuiLayoutUtils.EndTable();
+		}
+
+		ImGui.Separator();
+		if (ImGuiLayoutUtils.BeginTable($"PatternConfigTableEnd##{id}", TitleColumnWidth))
+		{
+			ImGuiLayoutUtils.DrawRowPatternConfigEndFootLaneChoice(editor, true, "Left Foot End Lane", editorConfig,
+				chartType, true, EndChoiceHelpTextLeft);
+
+			ImGuiLayoutUtils.DrawRowPatternConfigEndFootLaneChoice(editor, true, "Right Foot End Lane", editorConfig,
+				chartType, false, EndChoiceHelpTextRight);
+
+			ImGuiLayoutUtils.EndTable();
+		}
+
+		if (drawDelete)
+		{
 			ImGui.Separator();
-			if (ImGuiLayoutUtils.BeginTable("PatternConfigTableBeat", TitleColumnWidth))
-			{
-				ImGuiLayoutUtils.DrawRowSubdivisions(true, "Note Type", editorConfig, nameof(EditorPatternConfig.PatternType),
-					false, "The types of notes to use when generating the pattern.");
-
-				ImGuiLayoutUtils.DrawRowDragIntWithEnabledCheckbox(true, "Step Repetition Limit", editorConfig.Config,
-					nameof(PatternConfig.MaxSameArrowsInARowPerFoot), nameof(PatternConfig.LimitSameArrowsInARowPerFoot), false,
-					"Maximum number of repeated steps on the same arrow per foot.", 0.1f, "%i", 0, 100);
-
-				ImGuiLayoutUtils.DrawRowDragInt2(true, "Step Type Weights", editorConfig,
-					nameof(EditorPatternConfig.SameArrowStepWeight),
-					nameof(EditorPatternConfig.NewArrowStepWeight), false, "Same", "New", StepTypeWeightWidth,
-					"Weights of step types to use in the pattern."
-					+ "\nSame: Relative weight of same arrow steps."
-					+ "\nNew:  Relative weight of new arrow steps.",
-					0.2f, "%i", 0, 100, 0, 100);
-
-				ImGuiLayoutUtils.EndTable();
-			}
-
-			ImGui.Separator();
-			if (ImGuiLayoutUtils.BeginTable("PatternConfigTableStart", TitleColumnWidth))
-			{
-				ImGuiLayoutUtils.DrawRowPatternConfigStartFootChoice(true, "Starting Foot", editorConfig,
-					"How to choose the starting foot."
-					+ "\nRandom:    Choose the starting foot randomly."
-					+ "\nAutomatic: Choose the starting foot automatically so that it alternates from the previous steps."
-					+ "\nSpecified: Use a specified starting foot.");
-
-				ImGuiLayoutUtils.DrawRowPatternConfigStartFootLaneChoice(Editor, true, "Left Foot Start Lane", editorConfig,
-					currentChartType, true, StartChoiceHelpTextLeft);
-
-				ImGuiLayoutUtils.DrawRowPatternConfigStartFootLaneChoice(Editor, true, "Right Foot Start Lane", editorConfig,
-					currentChartType, false, StartChoiceHelpTextRight);
-
-				ImGuiLayoutUtils.EndTable();
-			}
-
-			ImGui.Separator();
-			if (ImGuiLayoutUtils.BeginTable("PatternConfigTableEnd", TitleColumnWidth))
-			{
-				ImGuiLayoutUtils.DrawRowPatternConfigEndFootLaneChoice(Editor, true, "Left Foot End Lane", editorConfig,
-					currentChartType, true, EndChoiceHelpTextLeft);
-
-				ImGuiLayoutUtils.DrawRowPatternConfigEndFootLaneChoice(Editor, true, "Right Foot End Lane", editorConfig,
-					currentChartType, false, EndChoiceHelpTextRight);
-
-				ImGuiLayoutUtils.EndTable();
-			}
-
-			ImGui.Separator();
-			if (ImGuiLayoutUtils.BeginTable("PatternConfigDelete", TitleColumnWidth))
+			if (ImGuiLayoutUtils.BeginTable($"PatternConfigDelete##{id}", TitleColumnWidth))
 			{
 				if (ImGuiLayoutUtils.DrawRowButton("Delete Pattern Config", "Delete",
 					    "Delete this Pattern Config."))
@@ -145,25 +157,23 @@ internal sealed class UIPatternConfig
 
 				ImGuiLayoutUtils.EndTable();
 			}
-
-			ImGui.Separator();
-			if (ImGuiLayoutUtils.BeginTable("Pattern Config Restore", TitleColumnWidth))
-			{
-				ImGuiLayoutUtils.DrawTitle("Help", HelpText);
-
-				if (ImGuiLayoutUtils.DrawRowButton("Restore Defaults", "Restore Defaults",
-					    "Restore config values to their defaults."))
-				{
-					editorConfig.RestoreDefaults();
-				}
-
-				ImGuiLayoutUtils.EndTable();
-			}
-
-			if (disabled)
-				PopDisabled();
 		}
 
-		ImGui.End();
+		ImGui.Separator();
+		if (ImGuiLayoutUtils.BeginTable($"PatternConfigRestore##{id}", TitleColumnWidth))
+		{
+			ImGuiLayoutUtils.DrawTitle("Help", HelpText);
+
+			if (ImGuiLayoutUtils.DrawRowButton("Restore Defaults", "Restore Defaults",
+				    "Restore config values to their defaults."))
+			{
+				editorConfig.RestoreDefaults();
+			}
+
+			ImGuiLayoutUtils.EndTable();
+		}
+
+		if (disabled)
+			PopDisabled();
 	}
 }

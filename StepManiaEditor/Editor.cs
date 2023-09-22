@@ -1,31 +1,31 @@
-﻿using Fumen;
+﻿using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using System.Linq;
+using System.Media;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+using Fumen;
+using Fumen.ChartDefinition;
+using Fumen.Converters;
 using ImGuiNET;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Windows.Forms;
-using Fumen.ChartDefinition;
-using Fumen.Converters;
-using StepManiaLibrary;
-using static StepManiaEditor.Utils;
-using static StepManiaEditor.ImGuiUtils;
-using Keys = Microsoft.Xna.Framework.Input.Keys;
-using Path = Fumen.Path;
-using Vector2 = Microsoft.Xna.Framework.Vector2;
-using static Fumen.Converters.SMCommon;
-using System.Text;
-using System.Media;
-using System.IO;
-using System.Linq;
-using static StepManiaEditor.EditorSongImageUtils;
-using StepManiaLibrary.PerformedChart;
 using MonoGameExtensions;
 using StepManiaEditor.AutogenConfig;
+using StepManiaEditor.UI;
+using StepManiaLibrary;
+using StepManiaLibrary.PerformedChart;
+using static StepManiaEditor.Utils;
+using static StepManiaEditor.ImGuiUtils;
+using static Fumen.Converters.SMCommon;
+using static StepManiaEditor.EditorSongImageUtils;
+using Keys = Microsoft.Xna.Framework.Input.Keys;
+using Path = Fumen.Path;
 
 namespace StepManiaEditor;
 
@@ -160,7 +160,7 @@ internal sealed class Editor :
 		//ChartType.smx_team,
 	};
 
-	private static readonly int MaxNumLanesForAnySupportedChartType = 0;
+	private static readonly int MaxNumLanesForAnySupportedChartType;
 
 	private GraphicsDeviceManager Graphics;
 	private SpriteBatch SpriteBatch;
@@ -188,6 +188,7 @@ internal sealed class Editor :
 	private UIAutogenConfigs UIAutogenConfigs;
 	private UIAutogenChart UIAutogenChart;
 	private UIAutogenChartsForChartType UIAutogenChartsForChartType;
+	private UIPatternEvent UIPatternEvent;
 	private ZoomManager ZoomManager;
 	private StaticTextureAtlas TextureAtlas;
 	private IntPtr TextureAtlasImGuiTexture;
@@ -213,11 +214,14 @@ internal sealed class Editor :
 	private readonly List<EditorEvent> VisibleEvents = new();
 	private readonly List<EditorMarkerEvent> VisibleMarkers = new();
 	private readonly List<IChartRegion> VisibleRegions = new();
+	private readonly HashSet<IChartRegion> RegionsOverlappingStart = new();
 	private readonly SelectedRegion SelectedRegion = new();
 	private readonly HashSet<EditorEvent> SelectedEvents = new();
 	private readonly List<EditorEvent> CopiedEvents = new();
 	private EditorEvent LastSelectedEvent;
-	private bool TransformingNotes;
+	private EditorPatternEvent LastSelectedPatternEvent;
+	private bool TransformingSelectedNotes;
+	private readonly List<EditorEvent> MovingNotes = new();
 	private Receptor[] Receptors;
 	private EventSpacingHelper SpacingHelper;
 	private AutoPlayer AutoPlayer;
@@ -703,6 +707,7 @@ internal sealed class Editor :
 		UIAutogenConfigs = new UIAutogenConfigs(this);
 		UIAutogenChart = new UIAutogenChart(this);
 		UIAutogenChartsForChartType = new UIAutogenChartsForChartType(this);
+		UIPatternEvent = new UIPatternEvent(this);
 	}
 
 	/// <summary>
@@ -1956,6 +1961,7 @@ internal sealed class Editor :
 		VisibleEvents.Clear();
 		VisibleMarkers.Clear();
 		VisibleRegions.Clear();
+		RegionsOverlappingStart.Clear();
 		SelectedRegion.ClearPerFrameData();
 
 		if (ActiveChart == null || ActiveChart.EditorEvents == null || ArrowGraphicManager == null)
@@ -2105,7 +2111,8 @@ internal sealed class Editor :
 
 				// Add a region for this event if appropriate.
 				if (nextRateEvent is IChartRegion region)
-					AddRegion(region, ref regionsNeedingToBeAdded, ref addedRegions, previousRateEventY, nextRateEvent, startPosX,
+					AddRegion(region, false, ref regionsNeedingToBeAdded, ref addedRegions, previousRateEventY, nextRateEvent,
+						startPosX,
 						numArrows * arrowW);
 
 				// Update beat markers for the section for the previous rate event.
@@ -2170,7 +2177,8 @@ internal sealed class Editor :
 
 				// Add a region for this event if appropriate.
 				if (e is IChartRegion region)
-					AddRegion(region, ref regionsNeedingToBeAdded, ref addedRegions, previousRateEventY, nextRateEvent, startPosX,
+					AddRegion(region, false, ref regionsNeedingToBeAdded, ref addedRegions, previousRateEventY, nextRateEvent,
+						startPosX,
 						numArrows * arrowW);
 			}
 
@@ -2213,6 +2221,9 @@ internal sealed class Editor :
 
 		// Normal case of needing to complete regions which end beyond the bounds of the screen.
 		EndRegions(ref regionsNeedingToBeAdded, ref addedRegions, previousRateEventY, rateEvent);
+
+		// Sort regions by their z value.
+		VisibleRegions.Sort((lhs, rhs) => lhs.GetRegionZ().CompareTo(rhs.GetRegionZ()));
 
 		// Store the notes and holds so we can render them.
 		VisibleEvents.AddRange(noteEvents);
@@ -2353,7 +2364,7 @@ internal sealed class Editor :
 	/// <param name="chartPosition">Chart position to use for checking.</param>
 	/// <remarks>Helper for UpdateChartEvents.</remarks>
 	/// <returns>List of EditorHoldStartNotes.</returns>
-	private List<EditorHoldNoteEvent> ScanBackwardsForHolds(RedBlackTree<EditorEvent>.Enumerator enumerator,
+	private List<EditorHoldNoteEvent> ScanBackwardsForHolds(RedBlackTree<EditorEvent>.IRedBlackTreeEnumerator enumerator,
 		double chartPosition)
 	{
 		// Get all the holds overlapping the given position.
@@ -2381,6 +2392,7 @@ internal sealed class Editor :
 
 	private void AddRegion(
 		IChartRegion region,
+		bool overlapsStart,
 		ref List<IChartRegion> regionsNeedingToBeAdded,
 		ref HashSet<IChartRegion> addedRegions,
 		double previousRateEventY,
@@ -2396,6 +2408,9 @@ internal sealed class Editor :
 		region.SetRegionY(SpacingHelper.GetRegionY(region, previousRateEventY));
 		region.SetRegionW(w);
 		regionsNeedingToBeAdded.Add(region);
+
+		if (overlapsStart)
+			RegionsOverlappingStart.Add(region);
 
 		// This region may also complete during this rate altering event.
 		CheckForCompletingRegions(ref regionsNeedingToBeAdded, ref addedRegions, previousRateEventY, nextRateEvent);
@@ -2415,7 +2430,29 @@ internal sealed class Editor :
 			    (region.AreRegionUnitsTime() && nextRateEvent.GetChartTime() > regionEnd)
 			    || (!region.AreRegionUnitsTime() && nextRateEvent.GetRow() > regionEnd))
 			{
-				region.SetRegionH(SpacingHelper.GetRegionH(region, previousRateEventY));
+				var h = SpacingHelper.GetRegionH(region, previousRateEventY);
+
+				// If when rendering the first rate altering event we have is something like stop, it will then cause regions
+				// overlapping the start of the viewable area to have positive Y values even when they occur before the stop.
+				// For the normal SpacingHelper math to work, we need to ensure that we do math based on off a preceding rate
+				// altering event and not a following one. But for very long regions (like patterns), we don't really want to
+				// be iterating backwards to find that event to get an accurate start time. Instead just ensure that any region
+				// that actually starts above the screen doesn't render as starting below the top of the screen. This makes the
+				// region bounds technically wrong, but they are wrong already due to similar issues in ending them when they
+				// end beyond the end of the screen. The regions are used for rendering so this is acceptable.
+				if (RegionsOverlappingStart.Contains(region))
+				{
+					var regionY = region.GetRegionY();
+					if (regionY > 0.0)
+					{
+						region.SetRegionY(0.0);
+						h += regionY;
+					}
+
+					RegionsOverlappingStart.Remove(region);
+				}
+
+				region.SetRegionH(h);
 				VisibleRegions.Add(region);
 				addedRegions.Add(region);
 				continue;
@@ -2504,8 +2541,11 @@ internal sealed class Editor :
 		// Check for adding regions which extend through the top of the screen.
 		var regions = ActiveChart.GetRegionsOverlapping(chartPositionAtTopOfScreen, chartTimeAtTopOfScreen);
 		foreach (var region in regions)
-			AddRegion(region, ref regionsNeedingToBeAdded, ref addedRegions, previousRateEventY, nextRateEvent, chartRegionX,
+		{
+			AddRegion(region, true, ref regionsNeedingToBeAdded, ref addedRegions, previousRateEventY, nextRateEvent,
+				chartRegionX,
 				chartRegionW);
+		}
 
 		// Check to see if any regions needing to be added will complete before the next rate altering event.
 		CheckForCompletingRegions(ref regionsNeedingToBeAdded, ref addedRegions, previousRateEventY, nextRateEvent);
@@ -3188,6 +3228,7 @@ internal sealed class Editor :
 		UIAutogenConfigs.Draw();
 		UIAutogenChart.Draw();
 		UIAutogenChartsForChartType.Draw();
+		UIPatternEvent.Draw(LastSelectedPatternEvent);
 
 		UIChartPosition.Draw(
 			GetFocalPointX(),
@@ -3434,6 +3475,9 @@ internal sealed class Editor :
 
 	private void DrawRightClickMenu(int x, int y)
 	{
+		var canEditChart = ActiveChart?.CanBeEdited() ?? false;
+		var canEditSong = ActiveSong?.CanBeEdited() ?? false;
+
 		if (ImGui.BeginPopup("RightClickPopup"))
 		{
 			if (ActiveSong == null)
@@ -3456,6 +3500,9 @@ internal sealed class Editor :
 			{
 				if (ImGui.BeginMenu("Selection"))
 				{
+					if (!canEditChart)
+						PushDisabled();
+
 					if (ImGui.MenuItem("Mirror"))
 					{
 						ActionQueue.Instance.Do(new ActionMirrorSelection(this, ActiveChart, SelectedEvents));
@@ -3583,6 +3630,9 @@ internal sealed class Editor :
 						ImGui.EndMenu();
 					}
 
+					if (!canEditChart)
+						PopDisabled();
+
 					ImGui.EndMenu();
 				}
 			}
@@ -3660,6 +3710,9 @@ internal sealed class Editor :
 			var row = Math.Max(0, Position.GetNearestRow());
 			if (ActiveChart != null)
 			{
+				if (!canEditChart)
+					PushDisabled();
+
 				if (ImGui.BeginMenu("Add Event"))
 				{
 					var nearestMeasureBoundaryRow = ActiveChart.GetNearestMeasureBoundaryRow(row);
@@ -3677,6 +3730,7 @@ internal sealed class Editor :
 					var hasMultipliersEvent = false;
 					var hasTimeSignatureEvent = false;
 					var hasLabelEvent = false;
+					var hasPatternEvent = false;
 
 					foreach (var currentEvent in events)
 					{
@@ -3703,6 +3757,8 @@ internal sealed class Editor :
 						//	hasTimeSignatureEvent = true;
 						else if (currentEvent is EditorLabelEvent)
 							hasLabelEvent = true;
+						else if (currentEvent is EditorPatternEvent)
+							hasPatternEvent = true;
 					}
 
 					foreach (var currentEvent in eventsAtNearestMeasureBoundary)
@@ -3768,6 +3824,9 @@ internal sealed class Editor :
 							nearestMeasureBoundaryRow, nearestMeasureChartTime, EditorChart.DefaultTimeSignature)), true);
 					DrawAddEventMenuItem("Label", !hasLabelEvent, UILabelColorRGBA, EditorLabelEvent.EventShortDescription, row,
 						() => EditorEvent.CreateEvent(EventConfig.CreateLabelConfig(ActiveChart, row, chartTime)));
+					DrawAddEventMenuItem("Pattern", !hasPatternEvent, UIPatternColorRGBA,
+						EditorPatternEvent.EventShortDescription, row,
+						() => EditorEvent.CreateEvent(EventConfig.CreatePatternConfig(ActiveChart, row, chartTime)));
 
 					ImGui.Separator();
 					if (MenuItemWithColor("(Move) Music Preview", true, UIPreviewColorRGBA))
@@ -3789,15 +3848,24 @@ internal sealed class Editor :
 
 					ImGui.EndMenu();
 				}
+
+				if (!canEditChart)
+					PopDisabled();
 			}
 
 			if (ActiveSong != null)
 			{
+				if (!canEditSong)
+					PushDisabled();
+
 				if (ImGui.BeginMenu("New Chart"))
 				{
 					DrawNewChartSelectableList();
 					ImGui.EndMenu();
 				}
+
+				if (!canEditSong)
+					PopDisabled();
 			}
 
 			ImGui.EndPopup();
@@ -4715,10 +4783,12 @@ internal sealed class Editor :
 		ClearSelectedEvents();
 		ActiveSong = null;
 		ActiveChart = null;
+		LastSelectedPatternEvent = null;
 		Position.ActiveChart = null;
 		ArrowGraphicManager = null;
 		Receptors = null;
 		AutoPlayer = null;
+		MovingNotes.Clear();
 		EditorMouseState.SetActiveChart(null);
 		UpdateWindowTitle();
 		ActionQueue.Instance.Clear();
@@ -4760,12 +4830,12 @@ internal sealed class Editor :
 
 	public void OnNoteTransformationBegin()
 	{
-		TransformingNotes = true;
+		TransformingSelectedNotes = true;
 	}
 
 	public void OnNoteTransformationEnd(List<EditorEvent> transformedEvents)
 	{
-		TransformingNotes = false;
+		TransformingSelectedNotes = false;
 
 		// When a transformation ends, set the selection to the transformed notes.
 		// Technically this will deselect notes if the user performed a transform
@@ -4826,22 +4896,35 @@ internal sealed class Editor :
 		ActionQueue.Instance.Do(new ActionDeleteEditorEvents(eventsToDelete, false));
 	}
 
-	private void OnEventsDeleted(List<EditorEvent> deletedEvents)
+	private void OnEventsDeleted(IReadOnlyList<EditorEvent> deletedEvents)
 	{
-		if (SelectedEvents.Count == 0)
-			return;
+		// Don't consider events which are deleted as part of a move.
+		if (MovingNotes.Count > 0)
+		{
+			var deletedEventsToConsider = new List<EditorEvent>();
+			foreach (var deletedEvent in deletedEvents)
+			{
+				if (!MovingNotes.Contains(deletedEvent))
+				{
+					deletedEventsToConsider.Add(deletedEvent);
+				}
+			}
 
-		// When transforming notes we expect selected notes to be moved which requires
-		// deleting them, then modifying them, and then re-adding them. We don't want
-		// to deselect notes when they are moving.
-		if (TransformingNotes)
-			return;
+			deletedEvents = deletedEventsToConsider;
+		}
 
-		// If a selected note was deleted, deselect it.
 		foreach (var deletedEvent in deletedEvents)
 		{
-			if (SelectedEvents.Contains(deletedEvent))
+			// If a selected note was deleted, deselect it.
+			// When transforming notes we expect selected notes to be moved which requires
+			// deleting them, then modifying them, and then re-adding them. We don't want
+			// to deselect notes when they are moving.
+			if (!TransformingSelectedNotes && SelectedEvents.Contains(deletedEvent))
 				DeselectEvent(deletedEvent);
+
+			// If an event was deleted that is in a member variable, remove the reference.
+			if (deletedEvent == LastSelectedPatternEvent)
+				LastSelectedPatternEvent = null;
 		}
 	}
 
@@ -5103,7 +5186,7 @@ internal sealed class Editor :
 		{
 			if (LastSelectedEvent != null && newlySelectedEvents.Count > 0)
 			{
-				EventTree.Enumerator enumerator;
+				EventTree.IRedBlackTreeEnumerator enumerator;
 				EditorEvent end;
 				var firstNewNote = newlySelectedEvents[0];
 				if (firstNewNote.CompareTo(LastSelectedEvent) < 0)
@@ -6319,6 +6402,16 @@ internal sealed class Editor :
 				break;
 			case EditorChart.NotificationEventsDeleted:
 				OnEventsDeleted((List<EditorEvent>)payload);
+				break;
+			case EditorChart.NotificationEventsMoveStart:
+				MovingNotes.Add((EditorPatternEvent)payload);
+				break;
+			case EditorChart.NotificationEventsMoveEnd:
+				MovingNotes.Remove((EditorPatternEvent)payload);
+				break;
+			case EditorChart.NotificationPatternRequestEdit:
+				LastSelectedPatternEvent = (EditorPatternEvent)payload;
+				Preferences.Instance.ShowPatternEventWindow = true;
 				break;
 		}
 	}

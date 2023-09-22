@@ -104,6 +104,7 @@ internal sealed class Preferences
 	// PatternConfig preferences
 	[JsonInclude] public Guid ActivePatternConfigForWindow;
 	[JsonInclude] public bool ShowPatternListWindow;
+	[JsonInclude] public bool ShowPatternEventWindow;
 
 	// Log preferences
 	[JsonInclude] public bool ShowLogWindow = true;

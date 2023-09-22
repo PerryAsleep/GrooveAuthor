@@ -16,7 +16,7 @@ internal class RateAlteringEventTree : RedBlackTree<EditorRateAlteringEvent>
 		Chart = chart;
 	}
 
-	public Enumerator FindBest(EditorPosition p)
+	public IRedBlackTreeEnumerator FindBest(EditorPosition p)
 	{
 		if (Preferences.Instance.PreferencesScroll.SpacingMode == Editor.SpacingMode.ConstantTime)
 			return FindBestByTime(p.ChartTime);
@@ -29,7 +29,7 @@ internal class RateAlteringEventTree : RedBlackTree<EditorRateAlteringEvent>
 	/// that is the least event which follows or is equal to the given time.
 	/// </summary>
 	/// <returns>Enumerator to best EditorRateAlteringEvent or null if a value could not be found.</returns>
-	public Enumerator FindBestByTime(double chartTime)
+	public IRedBlackTreeEnumerator FindBestByTime(double chartTime)
 	{
 		// Set up a dummy event to use for searching.
 		var pos = new EditorDummyRateAlteringEventWithTime(Chart, chartTime);
@@ -49,7 +49,7 @@ internal class RateAlteringEventTree : RedBlackTree<EditorRateAlteringEvent>
 	/// that is the least event which follows or is equal to the given chart position.
 	/// </summary>
 	/// <returns>Enumerator to best EditorRateAlteringEvent or null if a value could not be found.</returns>
-	public Enumerator FindBestByPosition(double chartPosition)
+	public IRedBlackTreeEnumerator FindBestByPosition(double chartPosition)
 	{
 		// Set up a dummy event to use for searching.
 		var pos = new EditorDummyRateAlteringEventWithRow(Chart, chartPosition);
@@ -64,7 +64,7 @@ internal class RateAlteringEventTree : RedBlackTree<EditorRateAlteringEvent>
 	}
 
 	// ReSharper disable UnusedMember.Local
-	private static bool EnsureLessThanTime(Enumerator e, double chartTime)
+	private static bool EnsureLessThanTime(IRedBlackTreeEnumerator e, double chartTime)
 	{
 		while (e.MoveNext() && e.Current!.GetChartTime() < chartTime)
 		{
@@ -77,7 +77,7 @@ internal class RateAlteringEventTree : RedBlackTree<EditorRateAlteringEvent>
 		return UnsetAndReturnIfWasValid(e);
 	}
 
-	private static bool EnsureLessThanOrEqualToTime(Enumerator e, double chartTime)
+	private static bool EnsureLessThanOrEqualToTime(IRedBlackTreeEnumerator e, double chartTime)
 	{
 		while (e.MoveNext() && e.Current!.GetChartTime() <= chartTime)
 		{
@@ -90,7 +90,7 @@ internal class RateAlteringEventTree : RedBlackTree<EditorRateAlteringEvent>
 		return UnsetAndReturnIfWasValid(e);
 	}
 
-	private static bool EnsureGreaterThanTime(Enumerator e, double chartTime)
+	private static bool EnsureGreaterThanTime(IRedBlackTreeEnumerator e, double chartTime)
 	{
 		while (e.MovePrev() && e.Current!.GetChartTime() > chartTime)
 		{
@@ -103,7 +103,7 @@ internal class RateAlteringEventTree : RedBlackTree<EditorRateAlteringEvent>
 		return UnsetAndReturnIfWasValid(e);
 	}
 
-	private static bool EnsureGreaterThanOrEqualToTime(Enumerator e, double chartTime)
+	private static bool EnsureGreaterThanOrEqualToTime(IRedBlackTreeEnumerator e, double chartTime)
 	{
 		while (e.MovePrev() && e.Current!.GetChartTime() >= chartTime)
 		{
@@ -116,7 +116,7 @@ internal class RateAlteringEventTree : RedBlackTree<EditorRateAlteringEvent>
 		return UnsetAndReturnIfWasValid(e);
 	}
 
-	private static bool EnsureLessThanPosition(Enumerator e, double chartPosition)
+	private static bool EnsureLessThanPosition(IRedBlackTreeEnumerator e, double chartPosition)
 	{
 		while (e.MoveNext() && e.Current!.GetChartPosition() < chartPosition)
 		{
@@ -129,7 +129,7 @@ internal class RateAlteringEventTree : RedBlackTree<EditorRateAlteringEvent>
 		return UnsetAndReturnIfWasValid(e);
 	}
 
-	private static bool EnsureLessThanOrEqualToPosition(Enumerator e, double chartPosition)
+	private static bool EnsureLessThanOrEqualToPosition(IRedBlackTreeEnumerator e, double chartPosition)
 	{
 		while (e.MoveNext() && e.Current!.GetChartPosition() <= chartPosition)
 		{
@@ -142,7 +142,7 @@ internal class RateAlteringEventTree : RedBlackTree<EditorRateAlteringEvent>
 		return UnsetAndReturnIfWasValid(e);
 	}
 
-	private static bool EnsureGreaterThanPosition(Enumerator e, double chartPosition)
+	private static bool EnsureGreaterThanPosition(IRedBlackTreeEnumerator e, double chartPosition)
 	{
 		while (e.MovePrev() && e.Current!.GetChartPosition() > chartPosition)
 		{
@@ -155,7 +155,7 @@ internal class RateAlteringEventTree : RedBlackTree<EditorRateAlteringEvent>
 		return UnsetAndReturnIfWasValid(e);
 	}
 
-	private static bool EnsureGreaterThanOrEqualToPosition(Enumerator e, double chartPosition)
+	private static bool EnsureGreaterThanOrEqualToPosition(IRedBlackTreeEnumerator e, double chartPosition)
 	{
 		while (e.MovePrev() && e.Current!.GetChartPosition() >= chartPosition)
 		{
@@ -169,7 +169,7 @@ internal class RateAlteringEventTree : RedBlackTree<EditorRateAlteringEvent>
 	}
 	// ReSharper restore UnusedMember.Local
 
-	private static bool UnsetAndReturnIfWasValid(Enumerator e)
+	private static bool UnsetAndReturnIfWasValid(IRedBlackTreeEnumerator e)
 	{
 		var ret = e.IsCurrentValid();
 		e.Unset();

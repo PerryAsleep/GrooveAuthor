@@ -4,6 +4,7 @@ using Fumen;
 using Fumen.ChartDefinition;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGameExtensions;
+using static System.Diagnostics.Debug;
 
 namespace StepManiaEditor;
 
@@ -43,6 +44,10 @@ internal sealed class EditorInterpolatedRateAlteringEvent : EditorEvent
 		}
 		set
 		{
+			Assert(EditorChart.CanBeEdited());
+			if (!EditorChart.CanBeEdited())
+				return;
+
 			var (valid, rate, periodInt, periodTime, preferTime) = IsValidScrollRateInterpolationString(value);
 			if (valid)
 			{

@@ -2,6 +2,7 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGameExtensions;
+using static System.Diagnostics.Debug;
 using static Fumen.FumenExtensions;
 using static StepManiaEditor.Editor;
 using static StepManiaEditor.Utils;
@@ -49,6 +50,11 @@ internal sealed class EditorStopEvent : EditorRateAlteringEvent, IChartRegion
 	public double GetRegionH()
 	{
 		return RegionH;
+	}
+
+	public double GetRegionZ()
+	{
+		return GetChartPosition() + StopRegionZOffset;
 	}
 
 	public void SetRegionX(double x)
@@ -106,9 +112,13 @@ internal sealed class EditorStopEvent : EditorRateAlteringEvent, IChartRegion
 		get => StopEvent.LengthSeconds;
 		set
 		{
+			Assert(EditorChart.CanBeEdited());
+			if (!EditorChart.CanBeEdited())
+				return;
+
 			if (!StopEvent.LengthSeconds.DoubleEquals(value))
 			{
-				EditorChart.OnStopLengthModified(this, value);
+				EditorChart.UpdateStopTime(this, value);
 				WidthDirty = true;
 			}
 		}
@@ -157,6 +167,11 @@ internal sealed class EditorStopEvent : EditorRateAlteringEvent, IChartRegion
 	public override bool IsSelectableWithModifiers()
 	{
 		return true;
+	}
+
+	public override double GetEndChartTime()
+	{
+		return GetChartTime() + StopEvent.LengthSeconds;
 	}
 
 	public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)

@@ -15,6 +15,7 @@ internal interface IRegion
 	public double GetRegionY();
 	public double GetRegionW();
 	public double GetRegionH();
+	public double GetRegionZ();
 	public Color GetRegionColor();
 
 	public void DrawRegionImpl(TextureAtlas textureAtlas, SpriteBatch spriteBatch, int screenHeight, Color color)

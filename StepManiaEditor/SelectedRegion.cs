@@ -50,6 +50,11 @@ internal sealed class SelectedRegion : IRegion
 		return CurrentY - StartY;
 	}
 
+	public double GetRegionZ()
+	{
+		return 0.0;
+	}
+
 	public Color GetRegionColor()
 	{
 		return SelectionRegionColor;

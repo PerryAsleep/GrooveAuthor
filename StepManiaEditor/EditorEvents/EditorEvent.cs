@@ -1,12 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using Fumen;
 using Fumen.ChartDefinition;
 using Fumen.Converters;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGameExtensions;
+using StepManiaLibrary;
 using static StepManiaLibrary.Constants;
 using static System.Diagnostics.Debug;
-using static Fumen.FumenExtensions;
 
 namespace StepManiaEditor;
 
@@ -22,7 +23,7 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	/// <summary>
 	/// Static SMEventComparer for comparing EditorEvents.
 	/// </summary>
-	private static readonly SMCommon.SMEventComparer EventComparer = new();
+	private static readonly SMCommon.SMEventComparer EventComparer;
 
 	/// <summary>
 	/// The underlying Event for this EditorEvent.
@@ -77,6 +78,16 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	}
 
 	/// <summary>
+	/// Static constructor.
+	/// </summary>
+	static EditorEvent()
+	{
+		// Set up the EventComparer with StepManiaLibrary custom types, including Pattern.
+		var libraryEventOrder = EventOrder.Order;
+		EventComparer = new SMCommon.SMEventComparer(libraryEventOrder);
+	}
+
+	/// <summary>
 	/// Creates an EditorEvent from the given EventConfig.
 	/// </summary>
 	/// <param name="config">EventConfig struct for configuring the EditorEvent.</param>
@@ -84,7 +95,6 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	public static EditorEvent CreateEvent(EventConfig config)
 	{
 		EditorEvent newEvent = null;
-
 		if (config.ChartEvents != null)
 		{
 			// Intentional modification of DestType to preserve StepMania types like mines.
@@ -139,6 +149,9 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 						break;
 					case FakeSegment fs:
 						newEvent = new EditorFakeSegmentEvent(config, fs);
+						break;
+					case Pattern:
+						newEvent = new EditorPatternEvent(config);
 						break;
 				}
 			}
@@ -402,7 +415,7 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	/// Gets a unique identifier for this event to use for ImGui widgets that draw this event.
 	/// </summary>
 	/// <returns>Unique identifier for this event to use for ImGui widgets that draw this event.</returns>
-	protected string GetImGuiId()
+	protected virtual string GetImGuiId()
 	{
 		return $"{ChartEvent.GetType()}{GetLane()}{ChartEvent.IntegerPosition}";
 	}

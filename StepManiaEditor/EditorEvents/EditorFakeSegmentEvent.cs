@@ -2,6 +2,7 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGameExtensions;
+using static System.Diagnostics.Debug;
 using static Fumen.FumenExtensions;
 using static StepManiaEditor.Editor;
 using static StepManiaEditor.Utils;
@@ -47,6 +48,11 @@ internal sealed class EditorFakeSegmentEvent : EditorEvent, IChartRegion
 	public double GetRegionH()
 	{
 		return RegionH;
+	}
+
+	public double GetRegionZ()
+	{
+		return GetChartPosition() + FakeRegionZOffset;
 	}
 
 	public void SetRegionX(double x)
@@ -101,10 +107,16 @@ internal sealed class EditorFakeSegmentEvent : EditorEvent, IChartRegion
 		get => FakeSegmentEvent.LengthSeconds;
 		set
 		{
+			Assert(EditorChart.CanBeEdited());
+			if (!EditorChart.CanBeEdited())
+				return;
+
 			if (!FakeSegmentEvent.LengthSeconds.DoubleEquals(value))
 			{
+				var oldEndTime = GetEndChartTime();
 				FakeSegmentEvent.LengthSeconds = value;
 				WidthDirty = true;
+				EditorChart.OnFakeSegmentTimeModified(this, oldEndTime, GetEndChartTime());
 			}
 		}
 	}
@@ -152,6 +164,18 @@ internal sealed class EditorFakeSegmentEvent : EditorEvent, IChartRegion
 	public override bool IsSelectableWithModifiers()
 	{
 		return true;
+	}
+
+	public override double GetEndChartPosition()
+	{
+		var chartPosition = 0.0;
+		EditorChart.TryGetChartPositionFromTime(GetEndChartTime(), ref chartPosition);
+		return chartPosition;
+	}
+
+	public override double GetEndChartTime()
+	{
+		return GetChartTime() + FakeSegmentEvent.LengthSeconds;
 	}
 
 	public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)

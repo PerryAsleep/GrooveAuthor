@@ -15,10 +15,12 @@ internal sealed class UIChartProperties
 	private static readonly int TitleColumnWidth = UiScaled(100);
 
 	private readonly ImGuiArrowWeightsWidget ArrowWeightsWidget;
+	private readonly Editor Editor;
 
 	public UIChartProperties(Editor editor)
 	{
-		ArrowWeightsWidget = new ImGuiArrowWeightsWidget(editor);
+		Editor = editor;
+		ArrowWeightsWidget = new ImGuiArrowWeightsWidget();
 	}
 
 	public void Draw(EditorChart editorChart)
@@ -85,7 +87,7 @@ internal sealed class UIChartProperties
 			ImGui.Separator();
 			if (ImGuiLayoutUtils.BeginTable("ChartExpressionTable", TitleColumnWidth))
 			{
-				ImGuiLayoutUtils.DrawExpressedChartConfig(editorChart, "Expression",
+				ImGuiLayoutUtils.DrawExpressedChartConfigCombo(editorChart, "Expression",
 					"(Editor Only) Expressed Chart Configuration."
 					+ "\nThis configuration is used by GrooveAuthor to parse the Chart and interpret its steps."
 					+ "\nThis interpretation is used for autogenerating patterns and other Charts.");
@@ -104,7 +106,7 @@ internal sealed class UIChartProperties
 						ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100.0f);
 						ImGui.TableNextRow();
 						ImGui.TableSetColumnIndex(0);
-						ArrowWeightsWidget.DrawChartStepCounts(editorChart);
+						ArrowWeightsWidget.DrawChartStepCounts(Editor, editorChart);
 						ImGui.EndTable();
 					}
 				}

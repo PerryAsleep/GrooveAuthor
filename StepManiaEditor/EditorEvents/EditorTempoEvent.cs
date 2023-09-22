@@ -2,6 +2,7 @@
 using Fumen.Converters;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGameExtensions;
+using static System.Diagnostics.Debug;
 using static Fumen.FumenExtensions;
 
 namespace StepManiaEditor;
@@ -29,6 +30,10 @@ internal sealed class EditorTempoEvent : EditorRateAlteringEvent
 		get => TempoEvent.TempoBPM;
 		set
 		{
+			Assert(EditorChart.CanBeEdited());
+			if (!EditorChart.CanBeEdited())
+				return;
+
 			// TODO: 0.0 and negative bpm handling
 			if (!value.DoubleEquals(0.0))
 			{
@@ -36,7 +41,7 @@ internal sealed class EditorTempoEvent : EditorRateAlteringEvent
 				{
 					TempoEvent.TempoBPM = value;
 					WidthDirty = true;
-					EditorChart.OnRateAlteringEventModified(this);
+					EditorChart.OnTempoModified(this);
 				}
 			}
 		}

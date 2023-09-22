@@ -1,9 +1,9 @@
 ﻿using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
+using MonoGameExtensions;
 using static StepManiaEditor.Editor;
 using static StepManiaEditor.Utils;
 using static Fumen.FumenExtensions;
-using Microsoft.Xna.Framework.Graphics;
-using MonoGameExtensions;
 
 namespace StepManiaEditor;
 
@@ -52,6 +52,11 @@ internal sealed class EditorPreviewRegionEvent : EditorEvent, IChartRegion, Fume
 	public double GetRegionH()
 	{
 		return RegionH;
+	}
+
+	public double GetRegionZ()
+	{
+		return GetChartPosition() + StopRegionZOffset;
 	}
 
 	public void SetRegionX(double x)
@@ -184,6 +189,11 @@ internal sealed class EditorPreviewRegionEvent : EditorEvent, IChartRegion, Fume
 	public override double GetChartTime()
 	{
 		return EditorPosition.GetChartTimeFromSongTime(EditorChart, EditorChart.GetEditorSong().SampleStart);
+	}
+
+	public override double GetEndChartTime()
+	{
+		return GetChartTime() + EditorChart.GetEditorSong().SampleLength;
 	}
 
 	public override bool IsMiscEvent()
