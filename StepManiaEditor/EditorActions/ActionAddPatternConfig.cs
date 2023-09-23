@@ -20,6 +20,11 @@ internal sealed class ActionAddPatternConfig : EditorAction
 		ConfigGuid = configGuid;
 	}
 
+	public Guid GetGuid()
+	{
+		return ConfigGuid;
+	}
+
 	public override string ToString()
 	{
 		return "Add Pattern Config.";

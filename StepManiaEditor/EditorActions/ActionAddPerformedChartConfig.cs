@@ -20,6 +20,11 @@ internal sealed class ActionAddPerformedChartConfig : EditorAction
 		ConfigGuid = configGuid;
 	}
 
+	public Guid GetGuid()
+	{
+		return ConfigGuid;
+	}
+
 	public override string ToString()
 	{
 		return "Add Performed Chart Config.";

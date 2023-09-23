@@ -217,11 +217,16 @@ internal sealed class EditorPatternConfig : EditorConfig<Config>, IEquatable<Edi
 		ActionQueue.Instance.Do(new ActionRestorePatternConfigDefaults(this));
 	}
 
+	public static ActionAddPatternConfig GetCreateNewConfigAction()
+	{
+		return new ActionAddPatternConfig(Guid.NewGuid());
+	}
+
 	public static void CreateNewConfigAndShowEditUI()
 	{
-		var newConfigGuid = Guid.NewGuid();
-		ActionQueue.Instance.Do(new ActionAddPatternConfig(newConfigGuid));
-		ShowEditUI(newConfigGuid);
+		var createAction = GetCreateNewConfigAction();
+		ActionQueue.Instance.Do(createAction);
+		ShowEditUI(createAction.GetGuid());
 	}
 
 	public static void ShowEditUI(Guid configGuid)

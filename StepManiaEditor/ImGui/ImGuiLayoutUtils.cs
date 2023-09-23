@@ -583,8 +583,25 @@ internal sealed class ImGuiLayoutUtils
 		ImGui.SameLine();
 		if (ImGui.Button($"New{elementTitle}", new Vector2(ConfigFromListNewWidth, 0.0f)))
 		{
-			// TODO: Also assign to the EditorPatternEvent?
-			CreateNewConfigAndShowEditUI();
+			var newConfigAction = GetCreateNewConfigAction();
+
+			if (undoable)
+			{
+				var updateObjectAction =
+					new ActionSetObjectFieldOrPropertyValue<Guid>(o, fieldName, newConfigAction.GetGuid(), true);
+
+				var actionMultiple = new ActionMultiple();
+				actionMultiple.EnqueueAndDo(newConfigAction);
+				actionMultiple.EnqueueAndDo(updateObjectAction);
+				ActionQueue.Instance.EnqueueWithoutDoing(actionMultiple);
+			}
+			else
+			{
+				ActionQueue.Instance.Do(newConfigAction);
+				SetFieldOrPropertyToValue(o, fieldName, newConfigAction.GetGuid());
+			}
+
+			ShowEditUI(newConfigAction.GetGuid());
 		}
 
 		return ret;
@@ -643,8 +660,25 @@ internal sealed class ImGuiLayoutUtils
 		ImGui.SameLine();
 		if (ImGui.Button($"New{elementTitle}", new Vector2(ConfigFromListNewWidth, 0.0f)))
 		{
-			// TODO: Also assign to the EditorPatternEvent?
-			EditorPerformedChartConfig.CreateNewConfigAndShowEditUI();
+			var newConfigAction = EditorPerformedChartConfig.GetCreateNewConfigAction();
+
+			if (undoable)
+			{
+				var updateObjectAction =
+					new ActionSetObjectFieldOrPropertyValue<Guid>(o, fieldName, newConfigAction.GetGuid(), true);
+
+				var actionMultiple = new ActionMultiple();
+				actionMultiple.EnqueueAndDo(newConfigAction);
+				actionMultiple.EnqueueAndDo(updateObjectAction);
+				ActionQueue.Instance.EnqueueWithoutDoing(actionMultiple);
+			}
+			else
+			{
+				ActionQueue.Instance.Do(newConfigAction);
+				SetFieldOrPropertyToValue(o, fieldName, newConfigAction.GetGuid());
+			}
+
+			EditorPerformedChartConfig.ShowEditUI(newConfigAction.GetGuid());
 		}
 
 		return ret;

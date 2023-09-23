@@ -309,11 +309,16 @@ internal sealed class EditorPerformedChartConfig : EditorConfig<Config>, IEquata
 		ActionQueue.Instance.Do(new ActionRestorePerformedChartConfigDefaults(this));
 	}
 
+	public static ActionAddPerformedChartConfig GetCreateNewConfigAction()
+	{
+		return new ActionAddPerformedChartConfig(Guid.NewGuid());
+	}
+
 	public static void CreateNewConfigAndShowEditUI()
 	{
-		var newConfigGuid = Guid.NewGuid();
-		ActionQueue.Instance.Do(new ActionAddPerformedChartConfig(newConfigGuid));
-		ShowEditUI(newConfigGuid);
+		var createAction = GetCreateNewConfigAction();
+		ActionQueue.Instance.Do(createAction);
+		ShowEditUI(createAction.GetGuid());
 	}
 
 	public static void ShowEditUI(Guid configGuid)
