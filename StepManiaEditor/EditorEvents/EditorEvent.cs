@@ -5,6 +5,7 @@ using Fumen.ChartDefinition;
 using Fumen.Converters;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGameExtensions;
+using StepManiaEditor.EditorEvents;
 using StepManiaLibrary;
 using static StepManiaLibrary.Constants;
 using static System.Diagnostics.Debug;
@@ -56,13 +57,6 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	private bool BeingEdited;
 
 	/// <summary>
-	/// Whether or not this is a dummy EditorEvent. Dummy events are used for comparing against
-	/// other EditorEvents in sorted data structures. Dummy events always sort before other
-	/// events that would otherwise be equal.
-	/// </summary>
-	protected readonly bool DummyEvent;
-
-	/// <summary>
 	/// The ChartPosition as a double. EditorEvents with a ChartEvent are expected to have
 	/// integer values for their ChartPosition/Row/IntegerPosition. EditorEvents created
 	/// from properties which only include time values may have non-integer ChartPosition
@@ -82,9 +76,13 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	/// </summary>
 	static EditorEvent()
 	{
-		// Set up the EventComparer with StepManiaLibrary custom types, including Pattern.
+		// Set up the EventComparer.
 		var libraryEventOrder = EventOrder.Order;
-		EventComparer = new SMCommon.SMEventComparer(libraryEventOrder);
+		// The editor-specific SearchEvent should come first.
+		var editorEventOrder = new List<string> { nameof(SearchEvent) };
+		// Then, add all StepManiaLibrary Events, which includes Patterns.
+		editorEventOrder.AddRange(libraryEventOrder);
+		EventComparer = new SMCommon.SMEventComparer(editorEventOrder);
 	}
 
 	/// <summary>
@@ -94,6 +92,13 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	/// <returns>New EditorEvent.</returns>
 	public static EditorEvent CreateEvent(EventConfig config)
 	{
+		if (config.EditorChart != null && !config.IsSearchEvent())
+		{
+			Assert(config.EditorChart.CanBeEdited());
+			if (!config.EditorChart.CanBeEdited())
+				return null;
+		}
+
 		EditorEvent newEvent = null;
 		if (config.ChartEvents != null)
 		{
@@ -153,7 +158,21 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 					case Pattern:
 						newEvent = new EditorPatternEvent(config);
 						break;
+					case SearchEvent:
+						newEvent = new EditorSearchEvent(config);
+						break;
 				}
+			}
+		}
+		else
+		{
+			if (config.IsRowOnlySearchEvent)
+			{
+				newEvent = new EditorSearchRateAlteringEventWithRow(config);
+			}
+			else if (config.IsTimeOnlySearchEvent)
+			{
+				newEvent = new EditorSearchRateAlteringEventWithTime(config);
 			}
 		}
 
@@ -170,7 +189,6 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 		EditorChart = config.EditorChart;
 		if (config.ChartEvents?.Count > 0)
 			ChartEvent = config.ChartEvents[0];
-		DummyEvent = config.IsDummyEvent;
 		BeingEdited = config.IsBeingEdited;
 		if (config.UseDoubleChartPosition)
 			ChartPosition = config.ChartPosition;
@@ -442,12 +460,42 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	}
 
 	/// <summary>
-	/// Returns whether or not this event is a dummy event.
+	/// Returns whether or not this event is a standard search event.
+	/// Search events are not added to the EditorChart and are just used for performing
+	/// searches in data structures which require comparisons.
+	/// Standard search events have an underlying Event and can be compared normally against
+	/// other EditorEvents.
 	/// </summary>
-	/// <returns>Whether or not this event is a dummy event.</returns>
-	public bool IsDummyEvent()
+	/// <returns>Whether or not this event is a standard search event.</returns>
+	public virtual bool IsStandardSearchEvent()
 	{
-		return DummyEvent;
+		return false;
+	}
+
+	/// <summary>
+	/// Returns whether or not this event is a search event that can be compared by only ChartTime.
+	/// Search events are not added to the EditorChart and are just used for performing
+	/// searches in data structures which require comparisons.
+	/// </summary>
+	/// <returns>
+	/// Whether or not this event is a search event that can be compared by only ChartTime.
+	/// </returns>
+	public virtual bool IsTimeOnlySearchEvent()
+	{
+		return false;
+	}
+
+	/// <summary>
+	/// Returns whether or not this event is a search event that can be compared by only ChartPosition.
+	/// Search events are not added to the EditorChart and are just used for performing
+	/// searches in data structures which require comparisons.
+	/// </summary>
+	/// <returns>
+	/// Whether or not this event is a search event that can be compared by only ChartPosition.
+	/// </returns>
+	public virtual bool IsRowOnlySearchEvent()
+	{
+		return false;
 	}
 
 	/// <summary>
@@ -481,16 +529,16 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 		if (this == other)
 			return 0;
 
-		// First, compare based on dummy events which are expected to only have either time set
-		// or only have position set. These dummy events are considered to be equal to other events
+		// First, compare based on search events which are expected to only have either time set
+		// or only have position set. These search events are considered to be equal to other events
 		// if their times or positions match.
 		// Note that this means there may be multiple Events which while not equal to each other will
 		// all be considered equal when compared to these events. As such, these should be used carefully.
 		// They are convenient for comparisons, but inappropriate for inserting into data structures
 		// which require predictable sorting.
-		if (this is EditorDummyRateAlteringEventWithRow || other is EditorDummyRateAlteringEventWithRow)
+		if (IsRowOnlySearchEvent() || other.IsRowOnlySearchEvent())
 			return GetChartPosition().CompareTo(other.GetChartPosition());
-		if (this is EditorDummyRateAlteringEventWithTime || other is EditorDummyRateAlteringEventWithTime)
+		if (IsTimeOnlySearchEvent() || other.IsTimeOnlySearchEvent())
 			return GetChartTime().CompareTo(other.GetChartTime());
 
 		// Sort by position as a double first. We position certain EditorEvents that
@@ -526,9 +574,9 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 		if (comparison != 0)
 			return comparison;
 
-		// Dummy events come before other events at the same location.
-		if (DummyEvent != other.DummyEvent)
-			return DummyEvent ? -1 : 1;
+		// Search events come before other events at the same location.
+		if (IsStandardSearchEvent() != other.IsStandardSearchEvent())
+			return IsStandardSearchEvent() ? -1 : 1;
 
 		// Events being edited come after events not being edited.
 		// This sort order is being relied on in EditorChart.FindNoteAt.

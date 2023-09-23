@@ -32,7 +32,8 @@ internal class RateAlteringEventTree : RedBlackTree<EditorRateAlteringEvent>
 	public IRedBlackTreeEnumerator FindBestByTime(double chartTime)
 	{
 		// Set up a dummy event to use for searching.
-		var pos = new EditorDummyRateAlteringEventWithTime(Chart, chartTime);
+		var pos = (EditorRateAlteringEvent)EditorEvent.CreateEvent(
+			EventConfig.CreateSearchEventConfigWithOnlyTime(Chart, chartTime));
 
 		var enumerator = FindGreatestPreceding(pos);
 		if (enumerator != null && EnsureLessThanTime(enumerator, chartTime))
@@ -52,7 +53,8 @@ internal class RateAlteringEventTree : RedBlackTree<EditorRateAlteringEvent>
 	public IRedBlackTreeEnumerator FindBestByPosition(double chartPosition)
 	{
 		// Set up a dummy event to use for searching.
-		var pos = new EditorDummyRateAlteringEventWithRow(Chart, chartPosition);
+		var pos = (EditorRateAlteringEvent)EditorEvent.CreateEvent(
+			EventConfig.CreateSearchEventConfigWithOnlyRow(Chart, chartPosition));
 
 		var enumerator = FindGreatestPreceding(pos);
 		if (enumerator != null && EnsureLessThanPosition(enumerator, chartPosition))

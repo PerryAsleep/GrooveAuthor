@@ -40,7 +40,7 @@ internal class EventTree : RedBlackTree<EditorEvent>
 	/// <returns>Enumerator to best value or null if a value could not be found.</returns>
 	public IRedBlackTreeEnumerator FindBestByPosition(double chartPosition)
 	{
-		var pos = EditorEvent.CreateEvent(EventConfig.CreateDummyConfig(Chart, chartPosition));
+		var pos = EditorEvent.CreateEvent(EventConfig.CreateSearchEventConfig(Chart, chartPosition));
 		var enumerator = FindGreatestPreceding(pos) ?? FindLeastFollowing(pos, true);
 		return enumerator;
 	}
@@ -65,7 +65,7 @@ internal class EventTree : RedBlackTree<EditorEvent>
 
 	public IRedBlackTreeEnumerator FindFirstAfterChartPosition(double chartPosition)
 	{
-		var pos = EditorEvent.CreateEvent(EventConfig.CreateDummyConfig(Chart, chartPosition));
+		var pos = EditorEvent.CreateEvent(EventConfig.CreateSearchEventConfig(Chart, chartPosition));
 		var enumerator = FindLeastFollowing(pos);
 		if (enumerator == null)
 			return null;
@@ -76,7 +76,7 @@ internal class EventTree : RedBlackTree<EditorEvent>
 
 	public EditorEvent FindNoteAt(int row, int lane, bool ignoreNotesBeingEdited)
 	{
-		var pos = EditorEvent.CreateEvent(EventConfig.CreateDummyConfig(Chart, row));
+		var pos = EditorEvent.CreateEvent(EventConfig.CreateSearchEventConfig(Chart, row));
 
 		// Find the first event at the given row.
 		var best = FindLeastFollowing(pos);

@@ -925,7 +925,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		// We will re-add these events after updating the normal events.
 		var deletedPreview = DeletePreviewEvent();
 		var deletedLastSecondHint = DeleteLastSecondHintEvent();
-		
+
 		EditorEvents.Validate();
 
 		// Now, update all time values for all normal notes that correspond to Stepmania chart
@@ -1269,8 +1269,9 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			return null;
 
 		// Given the current song time, get the greatest preceding event which alters the rate of rows to time.
-		var enumerator = RateAlteringEvents.FindGreatestPreceding(
-			new EditorDummyRateAlteringEventWithTime(this, chartTime), allowEqualTo);
+		var pos = (EditorRateAlteringEvent)EditorEvent.CreateEvent(
+			EventConfig.CreateSearchEventConfigWithOnlyTime(this, chartTime));
+		var enumerator = RateAlteringEvents.FindGreatestPreceding(pos, allowEqualTo);
 		// If there is no preceding event (e.g. SongTime is negative), use the first event.
 		// ReSharper disable once ConvertIfStatementToNullCoalescingExpression
 		if (enumerator == null)
@@ -1297,8 +1298,9 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			return null;
 
 		// Given the current song time, get the greatest preceding event which alters the rate of rows to time.
-		var enumerator = RateAlteringEvents.FindGreatestPreceding(
-			new EditorDummyRateAlteringEventWithRow(this, chartPosition), allowEqualTo);
+		var pos = (EditorRateAlteringEvent)EditorEvent.CreateEvent(
+			EventConfig.CreateSearchEventConfigWithOnlyRow(this, chartPosition));
+		var enumerator = RateAlteringEvents.FindGreatestPreceding(pos, allowEqualTo);
 		// If there is no preceding event (e.g. ChartPosition is negative), use the first event.
 		// ReSharper disable once ConvertIfStatementToNullCoalescingExpression
 		if (enumerator == null)

@@ -16,7 +16,11 @@ internal sealed class EventConfig
 	public readonly List<Event> ChartEvents;
 	public readonly bool UseDoubleChartPosition;
 	public readonly double ChartPosition;
-	public readonly bool IsDummyEvent;
+	public readonly double ChartTime;
+	public readonly bool IsStandardSearchEvent;
+	public readonly bool IsTimeOnlySearchEvent;
+	public readonly bool IsRowOnlySearchEvent;
+
 	public bool IsBeingEdited;
 
 	private EventConfig(
@@ -24,14 +28,20 @@ internal sealed class EventConfig
 		List<Event> chartEvents = null,
 		bool useDoubleChartPosition = false,
 		double chartPosition = 0.0,
-		bool isDummyEvent = false,
+		double chartTime = 0.0,
+		bool isStandardSearchEvent = false,
+		bool isTimeOnlySearchEvent = false,
+		bool isRowOnlySearchEvent = false,
 		bool isBeingEdited = false)
 	{
 		EditorChart = editorChart;
 		ChartEvents = chartEvents;
 		UseDoubleChartPosition = useDoubleChartPosition;
 		ChartPosition = chartPosition;
-		IsDummyEvent = isDummyEvent;
+		ChartTime = chartTime;
+		IsStandardSearchEvent = isStandardSearchEvent;
+		IsTimeOnlySearchEvent = isTimeOnlySearchEvent;
+		IsRowOnlySearchEvent = isRowOnlySearchEvent;
 		IsBeingEdited = isBeingEdited;
 	}
 
@@ -46,8 +56,16 @@ internal sealed class EventConfig
 			clonedEvents,
 			false,
 			editorEvent.GetChartPosition(),
-			editorEvent.IsDummyEvent(),
+			editorEvent.GetChartTime(),
+			editorEvent.IsStandardSearchEvent(),
+			editorEvent.IsTimeOnlySearchEvent(),
+			editorEvent.IsRowOnlySearchEvent(),
 			editorEvent.IsBeingEdited());
+	}
+
+	public bool IsSearchEvent()
+	{
+		return IsStandardSearchEvent || IsTimeOnlySearchEvent || IsRowOnlySearchEvent;
 	}
 
 	public static EventConfig CreateConfig(EditorChart chart, Event chartEvent)
@@ -76,7 +94,7 @@ internal sealed class EventConfig
 				IntegerPosition = (int)chartPosition,
 				TimeSeconds = chartTime,
 			},
-		}, true, chartPosition);
+		}, true, chartPosition, chartTime);
 	}
 
 	public static EventConfig CreateTapConfig(
@@ -90,7 +108,7 @@ internal sealed class EventConfig
 				IntegerPosition = row,
 				TimeSeconds = chartTime,
 			},
-		}, false, row);
+		}, false, row, chartTime);
 	}
 
 	public static EventConfig CreateMineConfig(
@@ -105,7 +123,7 @@ internal sealed class EventConfig
 				TimeSeconds = chartTime,
 				SourceType = NoteChars[(int)NoteType.Mine].ToString(),
 			},
-		}, true, chartPosition);
+		}, true, chartPosition, chartTime);
 	}
 
 	public static EventConfig CreateMineConfig(
@@ -120,7 +138,7 @@ internal sealed class EventConfig
 				TimeSeconds = chartTime,
 				SourceType = NoteChars[(int)NoteType.Mine].ToString(),
 			},
-		}, false, row);
+		}, false, row, chartTime);
 	}
 
 	public static EventConfig CreateStopConfig(
@@ -133,7 +151,7 @@ internal sealed class EventConfig
 				IntegerPosition = row,
 				TimeSeconds = chartTime,
 			},
-		}, false, row);
+		}, false, row, chartTime);
 	}
 
 	public static EventConfig CreateDelayConfig(
@@ -146,7 +164,7 @@ internal sealed class EventConfig
 				IntegerPosition = row,
 				TimeSeconds = chartTime,
 			},
-		}, false, row);
+		}, false, row, chartTime);
 	}
 
 	public static EventConfig CreateWarpConfig(
@@ -172,7 +190,7 @@ internal sealed class EventConfig
 				IntegerPosition = row,
 				TimeSeconds = chartTime,
 			},
-		}, false, row);
+		}, false, row, chartTime);
 	}
 
 	public static EventConfig CreateTickCountConfig(
@@ -185,7 +203,7 @@ internal sealed class EventConfig
 				IntegerPosition = row,
 				TimeSeconds = chartTime,
 			},
-		}, false, row);
+		}, false, row, chartTime);
 	}
 
 	public static EventConfig CreateMultipliersConfig(
@@ -212,7 +230,7 @@ internal sealed class EventConfig
 				IntegerPosition = row,
 				TimeSeconds = chartTime,
 			},
-		}, false, row);
+		}, false, row, chartTime);
 	}
 
 	public static EventConfig CreateLabelConfig(
@@ -225,7 +243,7 @@ internal sealed class EventConfig
 				IntegerPosition = row,
 				TimeSeconds = chartTime,
 			},
-		}, false, row);
+		}, false, row, chartTime);
 	}
 
 	public static EventConfig CreateTempoConfig(
@@ -241,7 +259,7 @@ internal sealed class EventConfig
 				IntegerPosition = row,
 				TimeSeconds = chartTime,
 			},
-		}, false, row);
+		}, false, row, chartTime);
 	}
 
 	public static EventConfig CreateScrollRateConfig(
@@ -257,7 +275,7 @@ internal sealed class EventConfig
 				IntegerPosition = row,
 				TimeSeconds = chartTime,
 			},
-		}, false, row);
+		}, false, row, chartTime);
 	}
 
 	public static EventConfig CreateScrollRateInterpolationConfig(
@@ -276,7 +294,7 @@ internal sealed class EventConfig
 				IntegerPosition = row,
 				TimeSeconds = chartTime,
 			},
-		}, false, row);
+		}, false, row, chartTime);
 	}
 
 	public static EventConfig CreatePatternConfig(EditorChart chart, int row, double chartTime)
@@ -288,23 +306,27 @@ internal sealed class EventConfig
 				IntegerPosition = row,
 				TimeSeconds = chartTime,
 			},
-		}, false, row);
+		}, false, row, chartTime);
 	}
 
-	public static EventConfig CreateDummyConfig(EditorChart chart, double chartPosition)
+	public static EventConfig CreateSearchEventConfig(EditorChart chart, double chartPosition)
 	{
-		// The dummy event will not equal any other event in the tree when compared to it.
-		return new EventConfig(chart, new List<Event> { CreateDummyFirstEventForRow((int)chartPosition) }, true, chartPosition,
-			true);
+		return new EventConfig(chart, new List<Event>
+		{
+			new SearchEvent
+			{
+				IntegerPosition = (int)chartPosition,
+			},
+		}, true, chartPosition, 0.0, true);
 	}
 
-	public static EventConfig CreateDummyRateAlteringEventConfig(EditorChart chart)
+	public static EventConfig CreateSearchEventConfigWithOnlyTime(EditorChart chart, double chartTime)
 	{
-		return new EventConfig(chart, null, false, 0.0, true);
+		return new EventConfig(chart, null, false, 0.0, chartTime, false, true);
 	}
 
-	public static EventConfig CreateDummyRateAlteringEventConfigWithRow(EditorChart chart, double row)
+	public static EventConfig CreateSearchEventConfigWithOnlyRow(EditorChart chart, double row)
 	{
-		return new EventConfig(chart, null, true, row, true);
+		return new EventConfig(chart, null, true, row, 0.0, false, false, true);
 	}
 }

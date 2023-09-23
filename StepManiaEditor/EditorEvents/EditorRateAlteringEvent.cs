@@ -173,17 +173,17 @@ internal abstract class EditorRateAlteringEvent : EditorEvent, IComparable<Edito
 }
 
 /// <summary>
-/// Dummy EditorRateAlteringEvent to use when needing to search for EditorRateAlteringEvent
+/// EditorRateAlteringEvent to use when needing to search for EditorRateAlteringEvents
 /// in data structures which require comparing to an input time.
 /// </summary>
-internal sealed class EditorDummyRateAlteringEventWithTime : EditorRateAlteringEvent
+internal sealed class EditorSearchRateAlteringEventWithTime : EditorRateAlteringEvent
 {
 	private readonly double ChartTime;
 
-	public EditorDummyRateAlteringEventWithTime(EditorChart editorChart, double chartTime)
-		: base(EventConfig.CreateDummyRateAlteringEventConfig(editorChart))
+	public EditorSearchRateAlteringEventWithTime(EventConfig config)
+		: base(config)
 	{
-		ChartTime = chartTime;
+		ChartTime = config.ChartTime;
 	}
 
 	public override double GetChartTime()
@@ -205,16 +205,21 @@ internal sealed class EditorDummyRateAlteringEventWithTime : EditorRateAlteringE
 	{
 		return false;
 	}
+
+	public override bool IsTimeOnlySearchEvent()
+	{
+		return true;
+	}
 }
 
 /// <summary>
-/// Dummy EditorRateAlteringEvent to use when needing to search for EditorRateAlteringEvent
+/// EditorRateAlteringEvent to use when needing to search for EditorRateAlteringEvents
 /// in data structures which require comparing to an input row.
 /// </summary>
-internal sealed class EditorDummyRateAlteringEventWithRow : EditorRateAlteringEvent
+internal sealed class EditorSearchRateAlteringEventWithRow : EditorRateAlteringEvent
 {
-	public EditorDummyRateAlteringEventWithRow(EditorChart editorChart, double row)
-		: base(EventConfig.CreateDummyRateAlteringEventConfigWithRow(editorChart, row))
+	public EditorSearchRateAlteringEventWithRow(EventConfig config)
+		: base(config)
 	{
 	}
 
@@ -231,5 +236,10 @@ internal sealed class EditorDummyRateAlteringEventWithRow : EditorRateAlteringEv
 	public override bool IsSelectableWithModifiers()
 	{
 		return false;
+	}
+
+	public override bool IsRowOnlySearchEvent()
+	{
+		return true;
 	}
 }
