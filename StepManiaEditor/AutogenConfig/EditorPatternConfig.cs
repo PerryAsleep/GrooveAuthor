@@ -32,6 +32,8 @@ internal sealed class EditorPatternConfig : EditorConfig<Config>, IEquatable<Edi
 		OneHundredNinetySecondNotes,
 	}
 
+	public const string NotificationPatternTypeChanged = "PatternTypeChanged";
+
 	public static int GetBeatSubdivision(SubdivisionType subdivisionType)
 	{
 		return SMCommon.ValidDenominators[(int)subdivisionType];
@@ -67,6 +69,8 @@ internal sealed class EditorPatternConfig : EditorConfig<Config>, IEquatable<Edi
 		{
 			PatternTypeInternal = value;
 			Config.BeatSubDivision = GetBeatSubdivision(PatternTypeInternal);
+
+			Notify(NotificationPatternTypeChanged, this);
 		}
 	}
 

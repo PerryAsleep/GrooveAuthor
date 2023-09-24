@@ -1,5 +1,5 @@
 ﻿using System;
-using Config = StepManiaLibrary.PerformedChart.Config;
+using StepManiaLibrary.PerformedChart;
 
 namespace StepManiaEditor.AutogenConfig;
 
@@ -43,13 +43,13 @@ internal sealed class PerformedChartConfigManager : ConfigManager<EditorPerforme
 	protected override void AddDefaultConfigs()
 	{
 		// Add default balanced config. This should never be modified so delete it if it exists and re-add it.
-		ConfigData.RemoveConfig(DefaultPerformedChartConfigGuid);
+		DeleteConfig(DefaultPerformedChartConfigGuid);
 		var defaultConfig = AddConfig(DefaultPerformedChartConfigGuid, DefaultPerformedChartConfigName);
 		defaultConfig.Description = "Default balanced settings";
 		defaultConfig.InitializeWithDefaultValues();
 
 		// Add default stamina config. This should never be modified so delete it if it exists and re-add it.
-		ConfigData.RemoveConfig(DefaultPerformedChartStaminaGuid);
+		DeleteConfig(DefaultPerformedChartStaminaGuid);
 		var defaultStaminaConfig = AddConfig(DefaultPerformedChartStaminaGuid, DefaultPerformedChartStaminaConfigName);
 		defaultStaminaConfig.Description = "Default stamina settings.";
 		defaultStaminaConfig.TravelSpeedMinBPM = 99;

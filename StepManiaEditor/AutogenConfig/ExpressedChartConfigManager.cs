@@ -1,6 +1,5 @@
 ﻿using System;
 using StepManiaLibrary.ExpressedChart;
-using Config = StepManiaLibrary.ExpressedChart.Config;
 
 namespace StepManiaEditor.AutogenConfig;
 
@@ -42,14 +41,14 @@ internal sealed class ExpressedChartConfigManager : ConfigManager<EditorExpresse
 	protected override void AddDefaultConfigs()
 	{
 		// Add the default dynamic config. This should never be modified so delete it if it exists and re-add it.
-		ConfigData.RemoveConfig(DefaultExpressedChartDynamicConfigGuid);
+		DeleteConfig(DefaultExpressedChartDynamicConfigGuid);
 		var defaultDynamicConfig =
 			AddConfig(DefaultExpressedChartDynamicConfigGuid, DefaultExpressedChartDynamicConfigName);
 		defaultDynamicConfig.Description = "Default settings with dynamic bracket parsing";
 		defaultDynamicConfig.InitializeWithDefaultValues();
 
 		// Add the default aggressive bracket config. This should never be modified so delete it if it exists and re-add it.
-		ConfigData.RemoveConfig(DefaultExpressedChartAggressiveBracketsConfigGuid);
+		DeleteConfig(DefaultExpressedChartAggressiveBracketsConfigGuid);
 		var defaultAggressiveConfig = AddConfig(DefaultExpressedChartAggressiveBracketsConfigGuid,
 			DefaultExpressedChartAggressiveBracketsConfigName, false);
 		defaultAggressiveConfig.Description = "Default settings with aggressive bracket parsing";
@@ -57,7 +56,7 @@ internal sealed class ExpressedChartConfigManager : ConfigManager<EditorExpresse
 		defaultAggressiveConfig.Config.DefaultBracketParsingMethod = BracketParsingMethod.Aggressive;
 
 		// Add the default no-brackets config. This should never be modified so delete it if it exists and re-add it.
-		ConfigData.RemoveConfig(DefaultExpressedChartNoBracketsConfigGuid);
+		DeleteConfig(DefaultExpressedChartNoBracketsConfigGuid);
 		var defaultNoBracketsConfig = AddConfig(DefaultExpressedChartNoBracketsConfigGuid,
 			DefaultExpressedChartNoBracketsConfigName, false);
 		defaultNoBracketsConfig.Description = "Default settings that avoid brackets";

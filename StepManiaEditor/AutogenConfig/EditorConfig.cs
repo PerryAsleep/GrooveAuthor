@@ -20,9 +20,11 @@ namespace StepManiaEditor.AutogenConfig;
 [JsonDerivedType(typeof(EditorExpressedChartConfig))]
 [JsonDerivedType(typeof(EditorPerformedChartConfig))]
 [JsonDerivedType(typeof(EditorPatternConfig))]
-internal abstract class EditorConfig<TConfig> where TConfig : IConfig<TConfig>, new()
+internal abstract class EditorConfig<TConfig> : Notifier<EditorConfig<TConfig>> where TConfig : IConfig<TConfig>, new()
 {
 	public const string NewConfigName = "New Config";
+
+	public const string NotificationNameChanged = "NameChanged";
 
 	/// <summary>
 	/// Guid for this EditorConfig.
@@ -39,8 +41,8 @@ internal abstract class EditorConfig<TConfig> where TConfig : IConfig<TConfig>, 
 			if (!string.IsNullOrEmpty(NameInternal) && NameInternal.Equals(value))
 				return;
 			NameInternal = value;
-			// Null check around OnNameUpdated because this property is set during deserialization.
-			OnNameUpdated?.Invoke();
+
+			Notify(NotificationNameChanged, this);
 		}
 	}
 
@@ -58,11 +60,6 @@ internal abstract class EditorConfig<TConfig> where TConfig : IConfig<TConfig>, 
 	/// unsaved changes or not.
 	/// </summary>
 	private EditorConfig<TConfig> LastSavedState;
-
-	/// <summary>
-	/// Callback function to invoke when the name is updated.
-	/// </summary>
-	private Action OnNameUpdated;
 
 	/// <summary>
 	/// Constructor.
@@ -124,15 +121,6 @@ internal abstract class EditorConfig<TConfig> where TConfig : IConfig<TConfig>, 
 	}
 
 	/// <summary>
-	/// Sets function to use for calling back to when the name is updated.
-	/// </summary>
-	/// <param name="onNameUpdated">Callback function to invoke when the name is updated.</param>
-	public void SetNameUpdatedFunction(Action onNameUpdated)
-	{
-		OnNameUpdated = onNameUpdated;
-	}
-
-	/// <summary>
 	/// Returns a new EditorConfig that is a clone of this EditorConfig.
 	/// </summary>
 	/// <param name="snapshot">
@@ -150,7 +138,6 @@ internal abstract class EditorConfig<TConfig> where TConfig : IConfig<TConfig>, 
 		clone.Config = Config.Clone();
 		clone.Name = snapshot ? Name : NewConfigName;
 		clone.Description = Description;
-		clone.OnNameUpdated = OnNameUpdated;
 		return clone;
 	}
 

@@ -163,11 +163,13 @@ internal sealed class EditorPreviewRegionEvent : EditorEvent, IChartRegion, Fume
 	public override void OnAddedToChart()
 	{
 		EditorChart.GetEditorSong().AddObserver(this);
+		base.OnAddedToChart();
 	}
 
 	public override void OnRemovedFromChart()
 	{
 		EditorChart.GetEditorSong().RemoveObserver(this);
+		base.OnRemovedFromChart();
 	}
 
 	/// <summary>

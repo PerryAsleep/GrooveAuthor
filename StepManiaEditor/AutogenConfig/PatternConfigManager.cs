@@ -43,12 +43,12 @@ internal sealed class PatternConfigManager : ConfigManager<EditorPatternConfig, 
 	protected override void AddDefaultConfigs()
 	{
 		// Add default balanced config. This should never be modified so delete it if it exists and re-add it.
-		ConfigData.RemoveConfig(DefaultPatternConfigSixteenthsGuid);
+		DeleteConfig(DefaultPatternConfigSixteenthsGuid);
 		var sixteenthsConfig = AddConfig(DefaultPatternConfigSixteenthsGuid, DefaultPatternConfigSixteenthsName);
 		sixteenthsConfig.Description = "Default 16th note stream settings";
 
 		// Add default stamina config. This should never be modified so delete it if it exists and re-add it.
-		ConfigData.RemoveConfig(DefaultPatternConfigEighthsGuid);
+		DeleteConfig(DefaultPatternConfigEighthsGuid);
 		var eighthsConfig = AddConfig(DefaultPatternConfigEighthsGuid, DefaultPatternConfigEighthsName);
 		eighthsConfig.Description = "Default 8th note stream settings";
 		eighthsConfig.PatternType = EditorPatternConfig.SubdivisionType.EighthNotes;

@@ -21,7 +21,7 @@ namespace StepManiaEditor.AutogenConfig;
 /// Type of configuration objects implementing the IConfig interface that are
 /// wrapped by the EditorConfig objects that this class manages.
 /// </typeparam>
-internal abstract class ConfigManager<TEditorConfig, TConfig>
+internal abstract class ConfigManager<TEditorConfig, TConfig> : Fumen.IObserver<EditorConfig<TConfig>>
 	where TEditorConfig : EditorConfig<TConfig>
 	where TConfig : IConfig<TConfig>, new()
 {
@@ -229,6 +229,17 @@ internal abstract class ConfigManager<TEditorConfig, TConfig>
 	/// </summary>
 	private void PostLoadConfigs()
 	{
+		// First, add this as an observer to all configs.
+		// As part of validating and adding default configs below we will add
+		// and delete EditorConfigs, and the act of adding or deleting configs
+		// will add and remove this as an Observer. We want the observation
+		// state to be correct throughout this process.
+		foreach (var kvp in ConfigData.GetConfigs())
+		{
+			// Observe the EditorConfig so we can resort on name changes.
+			kvp.Value.AddObserver(this);
+		}
+
 		// Add default configurations.
 		AddDefaultConfigs();
 
@@ -236,9 +247,6 @@ internal abstract class ConfigManager<TEditorConfig, TConfig>
 		var invalidConfigGuids = new List<Guid>();
 		foreach (var kvp in ConfigData.GetConfigs())
 		{
-			// Configure the EditorConfig will name update functions.
-			kvp.Value.SetNameUpdatedFunction(OnConfigNameUpdated);
-
 			// Perform post-load initialization on the config object.
 			kvp.Value.Init();
 
@@ -252,7 +260,7 @@ internal abstract class ConfigManager<TEditorConfig, TConfig>
 		// Remove all invalid EditorConfig objects.
 		foreach (var invalidConfigGuid in invalidConfigGuids)
 		{
-			ConfigData.RemoveConfig(invalidConfigGuid);
+			DeleteConfig(invalidConfigGuid);
 		}
 
 		// Now that names are loaded, refresh the sorted lists of guids of names.
@@ -265,6 +273,7 @@ internal abstract class ConfigManager<TEditorConfig, TConfig>
 
 	public void AddConfig(TEditorConfig config)
 	{
+		config.AddObserver(this);
 		ConfigData.AddConfig(config);
 	}
 
@@ -286,7 +295,6 @@ internal abstract class ConfigManager<TEditorConfig, TConfig>
 	protected TEditorConfig AddConfig(Guid guid, string name, bool useDefaultValues)
 	{
 		var config = NewEditorConfig(guid);
-		config.SetNameUpdatedFunction(OnConfigNameUpdated);
 		config.Name = name;
 		if (useDefaultValues)
 			config.InitializeWithDefaultValues();
@@ -297,6 +305,8 @@ internal abstract class ConfigManager<TEditorConfig, TConfig>
 
 	public void DeleteConfig(Guid guid)
 	{
+		var config = GetConfig(guid);
+		config?.RemoveObserver(this);
 		ConfigData.RemoveConfig(guid);
 		OnConfigDeleted(guid);
 	}
@@ -319,15 +329,6 @@ internal abstract class ConfigManager<TEditorConfig, TConfig>
 	public string[] GetSortedConfigNames()
 	{
 		return ConfigData.SortedConfigNames;
-	}
-
-	/// <summary>
-	/// Called when an EditorConfig's name is updated to a new value.
-	/// </summary>
-	private void OnConfigNameUpdated()
-	{
-		// Update the sort since the name has changed.
-		ConfigData.UpdateSortedConfigs();
 	}
 
 	/// <summary>
@@ -354,4 +355,17 @@ internal abstract class ConfigManager<TEditorConfig, TConfig>
 	/// Gives derived classes an opportunity to respond.
 	/// </summary>
 	protected abstract void OnPostLoadComplete();
+
+	public void OnNotify(string eventId, EditorConfig<TConfig> config, object payload)
+	{
+		switch (eventId)
+		{
+			case EditorConfig<TConfig>.NotificationNameChanged:
+			{
+				// Update the sort since the name has changed.
+				ConfigData.UpdateSortedConfigs();
+				break;
+			}
+		}
+	}
 }
