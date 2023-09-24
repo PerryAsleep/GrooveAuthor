@@ -47,17 +47,9 @@ internal sealed class ActionDeleteExpressedChartConfig : EditorAction
 
 	protected override void DoImplementation()
 	{
-		var song = Editor.GetActiveSong();
-		if (song != null)
+		foreach (var chart in ChartsWithDeletedConfig)
 		{
-			var charts = song.GetCharts();
-			foreach (var chart in charts)
-			{
-				if (chart.ExpressedChartConfig == ConfigGuid)
-				{
-					chart.ExpressedChartConfig = ExpressedChartConfigManager.DefaultExpressedChartDynamicConfigGuid;
-				}
-			}
+			chart.ExpressedChartConfig = ExpressedChartConfigManager.DefaultExpressedChartDynamicConfigGuid;
 		}
 
 		ExpressedChartConfigManager.Instance.DeleteConfig(ConfigGuid);

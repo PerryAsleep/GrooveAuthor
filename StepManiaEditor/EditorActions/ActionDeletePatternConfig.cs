@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using StepManiaEditor.AutogenConfig;
 
 namespace StepManiaEditor;
@@ -8,13 +9,33 @@ namespace StepManiaEditor;
 /// </summary>
 internal sealed class ActionDeletePatternConfig : EditorAction
 {
+	private readonly Editor Editor;
 	private readonly Guid ConfigGuid;
 	private readonly EditorPatternConfig Config;
+	private readonly List<EditorPatternEvent> EventsWithDeletedConfig;
 
-	public ActionDeletePatternConfig(Guid configGuid) : base(false, false)
+	public ActionDeletePatternConfig(Editor editor, Guid configGuid) : base(false, false)
 	{
+		Editor = editor;
 		ConfigGuid = configGuid;
 		Config = PatternConfigManager.Instance.GetConfig(ConfigGuid);
+		EventsWithDeletedConfig = new List<EditorPatternEvent>();
+
+		var song = Editor.GetActiveSong();
+		if (song != null)
+		{
+			var charts = song.GetCharts();
+			foreach (var chart in charts)
+			{
+				foreach (var pattern in chart.GetPatterns())
+				{
+					if (pattern.PatternConfigGuid == configGuid)
+					{
+						EventsWithDeletedConfig.Add(pattern);
+					}
+				}
+			}
+		}
 	}
 
 	public override string ToString()
@@ -24,16 +45,26 @@ internal sealed class ActionDeletePatternConfig : EditorAction
 
 	public override bool AffectsFile()
 	{
-		return false;
+		return EventsWithDeletedConfig.Count > 0;
 	}
 
 	protected override void DoImplementation()
 	{
+		foreach (var pattern in EventsWithDeletedConfig)
+		{
+			pattern.PatternConfigGuid = PatternConfigManager.DefaultPatternConfigSixteenthsGuid;
+		}
+
 		PatternConfigManager.Instance.DeleteConfig(ConfigGuid);
 	}
 
 	protected override void UndoImplementation()
 	{
 		PatternConfigManager.Instance.AddConfig(Config);
+
+		foreach (var pattern in EventsWithDeletedConfig)
+		{
+			pattern.PatternConfigGuid = ConfigGuid;
+		}
 	}
 }

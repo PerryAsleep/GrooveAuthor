@@ -9,7 +9,7 @@ namespace StepManiaEditor;
 internal sealed class ActionClonePatternConfig : EditorAction
 {
 	private readonly Guid ExistingConfigGuid;
-	private Guid NewConfigGuid = Guid.Empty;
+	private EditorPatternConfig ClonedConfig;
 
 	public ActionClonePatternConfig(Guid existingConfigGuid) : base(false, false)
 	{
@@ -28,17 +28,18 @@ internal sealed class ActionClonePatternConfig : EditorAction
 
 	protected override void DoImplementation()
 	{
-		var newConfig = PatternConfigManager.Instance.CloneConfig(ExistingConfigGuid);
-		if (newConfig == null)
+		// Only clone once. We want a consistent new Guid across undo and redo.
+		ClonedConfig ??= PatternConfigManager.Instance.CloneConfig(ExistingConfigGuid);
+
+		if (ClonedConfig == null)
 			return;
-		NewConfigGuid = newConfig.Guid;
-		PatternConfigManager.Instance.AddConfig(newConfig);
-		EditorPatternConfig.ShowEditUI(NewConfigGuid);
+		PatternConfigManager.Instance.AddConfig(ClonedConfig);
+		EditorPatternConfig.ShowEditUI(ClonedConfig.Guid);
 	}
 
 	protected override void UndoImplementation()
 	{
-		if (NewConfigGuid != Guid.Empty)
-			PatternConfigManager.Instance.DeleteConfig(NewConfigGuid);
+		if (ClonedConfig != null)
+			PatternConfigManager.Instance.DeleteConfig(ClonedConfig.Guid);
 	}
 }

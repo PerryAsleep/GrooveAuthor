@@ -293,7 +293,7 @@ internal sealed class UIPerformedChartConfig
 				if (ImGuiLayoutUtils.DrawRowButton("Delete Performed Chart Config", "Delete",
 					    "Delete this Performed Chart Config."))
 				{
-					ActionQueue.Instance.Do(new ActionDeletePerformedChartConfig(editorConfig.Guid));
+					ActionQueue.Instance.Do(new ActionDeletePerformedChartConfig(editor, editorConfig.Guid));
 				}
 
 				ImGuiLayoutUtils.EndTable();

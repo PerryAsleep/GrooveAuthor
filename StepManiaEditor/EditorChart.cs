@@ -675,6 +675,11 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			$"{ImGuiUtils.GetPrettyEnumString(ChartType)} {ImGuiUtils.GetPrettyEnumString(ChartDifficultyType)} [{Rating}] {Description}";
 	}
 
+	public IEnumerable<EditorPatternEvent> GetPatterns()
+	{
+		return Patterns;
+	}
+
 	#endregion Accessors
 
 	#region Timing Updates

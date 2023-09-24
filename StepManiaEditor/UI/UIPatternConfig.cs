@@ -152,7 +152,7 @@ internal sealed class UIPatternConfig
 				if (ImGuiLayoutUtils.DrawRowButton("Delete Pattern Config", "Delete",
 					    "Delete this Pattern Config."))
 				{
-					ActionQueue.Instance.Do(new ActionDeletePatternConfig(editorConfig.Guid));
+					ActionQueue.Instance.Do(new ActionDeletePatternConfig(editor, editorConfig.Guid));
 				}
 
 				ImGuiLayoutUtils.EndTable();

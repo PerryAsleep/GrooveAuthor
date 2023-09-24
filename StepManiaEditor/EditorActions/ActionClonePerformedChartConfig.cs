@@ -9,7 +9,7 @@ namespace StepManiaEditor;
 internal sealed class ActionClonePerformedChartConfig : EditorAction
 {
 	private readonly Guid ExistingConfigGuid;
-	private Guid NewConfigGuid = Guid.Empty;
+	private EditorPerformedChartConfig ClonedConfig;
 
 	public ActionClonePerformedChartConfig(Guid existingConfigGuid) : base(false, false)
 	{
@@ -28,17 +28,18 @@ internal sealed class ActionClonePerformedChartConfig : EditorAction
 
 	protected override void DoImplementation()
 	{
-		var newConfig = PerformedChartConfigManager.Instance.CloneConfig(ExistingConfigGuid);
-		if (newConfig == null)
+		// Only clone once. We want a consistent new Guid across undo and redo.
+		ClonedConfig ??= PerformedChartConfigManager.Instance.CloneConfig(ExistingConfigGuid);
+
+		if (ClonedConfig == null)
 			return;
-		NewConfigGuid = newConfig.Guid;
-		PerformedChartConfigManager.Instance.AddConfig(newConfig);
-		EditorPerformedChartConfig.ShowEditUI(NewConfigGuid);
+		PerformedChartConfigManager.Instance.AddConfig(ClonedConfig);
+		EditorPerformedChartConfig.ShowEditUI(ClonedConfig.Guid);
 	}
 
 	protected override void UndoImplementation()
 	{
-		if (NewConfigGuid != Guid.Empty)
-			PerformedChartConfigManager.Instance.DeleteConfig(NewConfigGuid);
+		if (ClonedConfig != null)
+			PerformedChartConfigManager.Instance.DeleteConfig(ClonedConfig.Guid);
 	}
 }

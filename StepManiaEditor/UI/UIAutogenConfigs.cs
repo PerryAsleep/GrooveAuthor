@@ -190,7 +190,7 @@ internal sealed class UIAutogenConfigs
 				ImGui.SetWindowFocus(UIPerformedChartConfig.WindowTitle);
 			},
 			(guid) => { ActionQueue.Instance.Do(new ActionClonePerformedChartConfig(guid)); },
-			(guid) => { ActionQueue.Instance.Do(new ActionDeletePerformedChartConfig(guid)); });
+			(guid) => { ActionQueue.Instance.Do(new ActionDeletePerformedChartConfig(editor, guid)); });
 
 		// Set up EditorPatternConfig data for drawing.
 		PatternData = new ConfigData<EditorPatternConfig, StepManiaLibrary.PerformedChart.PatternConfig>(
@@ -206,7 +206,7 @@ internal sealed class UIAutogenConfigs
 				ImGui.SetWindowFocus(UIPatternConfig.WindowTitle);
 			},
 			(guid) => { ActionQueue.Instance.Do(new ActionClonePatternConfig(guid)); },
-			(guid) => { ActionQueue.Instance.Do(new ActionDeletePatternConfig(guid)); });
+			(guid) => { ActionQueue.Instance.Do(new ActionDeletePatternConfig(editor, guid)); });
 	}
 
 	public void Draw()
