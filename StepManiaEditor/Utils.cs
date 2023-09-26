@@ -17,7 +17,7 @@ public class Utils
 	// TODO: Rename / Reorganize. Currently dumping a lot of rendering-related constants in here.
 
 	public const int MaxLogFiles = 10;
-	public const string CustomSavePropertyPrefix = "FE";
+	public const string CustomSavePropertyPrefix = "GA";
 
 	public const uint UITempoColorRGBA = 0x8A297A79; // yellow
 	public const uint UITimeSignatureColorRGBA = 0x8A297A29; // green
