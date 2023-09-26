@@ -95,6 +95,16 @@ internal sealed class ActionQueue : Notifier<ActionQueue>
 	}
 
 	/// <summary>
+	/// Forces the ActionQueue to be in a state where it has unsaved changes.
+	/// This should be called only if actions were taken outside of the queue which forcibly
+	/// changed content, such as altering unreadable content when loading.
+	/// </summary>
+	public void SetHasUnsavedChanges()
+	{
+		LostSavedChanges = true;
+	}
+
+	/// <summary>
 	/// Returns whether an action is currently being done or undone.
 	/// </summary>
 	/// <returns>True if an action is currently being done or undone and false otherwise.</returns>

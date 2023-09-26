@@ -33,6 +33,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		public double MusicOffset;
 		public bool ShouldUseChartMusicOffset;
 		public Guid ExpressedChartConfig = ExpressedChartConfigManager.DefaultExpressedChartDynamicConfigGuid;
+		public Dictionary<int, EditorPatternEvent.Definition> Patterns;
 	}
 
 	/// <summary>
@@ -454,10 +455,10 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		for (var a = 0; a < NumInputs; a++)
 			StepCountsByLane[a] = 0;
 
-		DeserializeCustomChartData(chart);
-
 		// TODO: I wonder if there is an optimization to not do all the tree parsing for inactive charts.
 		SetUpEditorEvents(chart);
+
+		DeserializeCustomChartData(chart);
 	}
 
 	public EditorChart(EditorSong editorSong, ChartType chartType, Fumen.IObserver<EditorChart> observer)
@@ -2215,7 +2216,9 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 					var events = editorEvent.GetEvents();
 					for (var i = 0; i < events.Count; i++)
 					{
-						if (events[i] != null)
+						if (events[i] != null
+						    // Do not include events which aren't normal Stepmania events.
+						    && events[i] is not Pattern)
 						{
 							layer.Events.Add(events[i]);
 						}
@@ -2240,11 +2243,18 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	private void SerializeCustomChartData(Dictionary<string, string> customChartProperties)
 	{
 		// Serialize the custom data.
+		var patterns = new Dictionary<int, EditorPatternEvent.Definition>();
+		foreach (var pattern in Patterns)
+		{
+			patterns[pattern.GetRow()] = pattern.GetDefinition();
+		}
+
 		var customSaveData = new CustomSaveDataV1
 		{
 			MusicOffset = MusicOffset,
 			ShouldUseChartMusicOffset = UsesChartMusicOffset,
 			ExpressedChartConfig = ExpressedChartConfig,
+			Patterns = patterns,
 		};
 		var jsonString = JsonSerializer.Serialize(customSaveData, CustomSaveDataSerializationOptions);
 
@@ -2301,6 +2311,63 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			MusicOffset = customSaveData.MusicOffset;
 			UsesChartMusicOffset = customSaveData.ShouldUseChartMusicOffset;
 			ExpressedChartConfig = customSaveData.ExpressedChartConfig;
+
+			// Add pattern events.
+			var alteredPatterns = false;
+			if (customSaveData.Patterns != null)
+			{
+				foreach (var kvp in customSaveData.Patterns)
+				{
+					// Validate row.
+					var row = kvp.Key;
+					if (row < 0)
+					{
+						alteredPatterns = true;
+						Logger.Warn($"Pattern at invalid row {row}. Ignoring this pattern.");
+						continue;
+					}
+
+					// Validate definition.
+					var definition = kvp.Value;
+					if (definition.Length < 0)
+					{
+						alteredPatterns = true;
+						Logger.Warn($"Pattern at row {row} has an invalid length of {definition.Length}. Ignoring this pattern.");
+						continue;
+					}
+
+					if (PatternConfigManager.Instance.GetConfig(definition.PatternConfigGuid) == null)
+					{
+						alteredPatterns = true;
+						Logger.Warn(
+							$"Pattern at row {row} uses unknown pattern config with guid {definition.PatternConfigGuid}." +
+							$" Updating this pattern to use {PatternConfigManager.DefaultPatternConfigSixteenthsName}.");
+						definition.PatternConfigGuid = PatternConfigManager.DefaultPatternConfigSixteenthsGuid;
+					}
+
+					if (PerformedChartConfigManager.Instance.GetConfig(definition.PerformedChartConfigGuid) == null)
+					{
+						alteredPatterns = true;
+						Logger.Warn(
+							$"Pattern at row {row} uses unknown performed chart config with guid {definition.PerformedChartConfigGuid}." +
+							$" Updating this pattern to use {PerformedChartConfigManager.DefaultPerformedChartConfigName}.");
+						definition.PerformedChartConfigGuid = PerformedChartConfigManager.DefaultPerformedChartConfigGuid;
+					}
+
+					// Add Pattern event.
+					var chartTime = 0.0;
+					TryGetTimeFromChartPosition(row, ref chartTime);
+					var eventConfig = EventConfig.CreatePatternConfig(this, row, chartTime);
+					var pattern = new EditorPatternEvent(eventConfig, definition);
+					AddEvent(pattern);
+				}
+			}
+
+			if (alteredPatterns)
+			{
+				ActionQueue.Instance.SetHasUnsavedChanges();
+			}
+
 			return true;
 		}
 		catch (Exception e)

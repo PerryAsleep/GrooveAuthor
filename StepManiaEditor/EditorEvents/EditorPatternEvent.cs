@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text.Json.Serialization;
 using Fumen.Converters;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -26,25 +27,53 @@ internal sealed class EditorPatternEvent : EditorEvent, IChartRegion,
 		EventShortDescription;
 
 	/// <summary>
+	/// Definition of this an EditorPatternEvent.
+	/// Serialized and deserialized with Chart save data.
+	/// </summary>
+	public class Definition
+	{
+		[JsonInclude] public Guid PatternConfigGuid;
+		[JsonInclude] public Guid PerformedChartConfigGuid;
+		[JsonInclude] public int Length;
+		[JsonInclude] public int RandomSeed;
+		[JsonInclude] public bool EndPositionInclusive;
+
+		/// <summary>
+		/// Returns a new Definition that is a clone of this Definition.
+		/// </summary>
+		public Definition Clone()
+		{
+			// All members are value types.
+			return (Definition)MemberwiseClone();
+		}
+	}
+
+	/// <summary>
+	/// This EditorPatternEvent's Definition;
+	/// </summary>
+	private readonly Definition EventDefinition;
+
+	/// <summary>
 	/// The guid for the EditorPatternConfig that this EditorPatternEvent is using.
 	/// </summary>
+	[JsonInclude]
 	public Guid PatternConfigGuid
 	{
-		get => PatternConfigGuidInternal;
+		get => EventDefinition.PatternConfigGuid;
 		set
 		{
 			Assert(EditorChart.CanBeEdited());
 			if (!EditorChart.CanBeEdited())
 				return;
 
-			if (PatternConfigGuidInternal != value)
+			if (EventDefinition.PatternConfigGuid != value)
 			{
 				// When switching EditorPatternConfigs we need to observe the new one for
 				// changes. We only observe the config if this EditorPatternEvent is added
 				// to the chart.
 				if (AddedToChart)
 					GetPatternConfig().RemoveObserver(this);
-				PatternConfigGuidInternal = value;
+				EventDefinition.PatternConfigGuid = value;
 				if (AddedToChart)
 					GetPatternConfig().AddObserver(this);
 
@@ -54,28 +83,27 @@ internal sealed class EditorPatternEvent : EditorEvent, IChartRegion,
 		}
 	}
 
-	private Guid PatternConfigGuidInternal;
-
 	/// <summary>
 	/// The guid for the EditorPerformedChartConfig that this EditorPatternEvent is using.
 	/// </summary>
+	[JsonInclude]
 	public Guid PerformedChartConfigGuid
 	{
-		get => PerformedChartConfigGuidInternal;
+		get => EventDefinition.PerformedChartConfigGuid;
 		set
 		{
 			Assert(EditorChart.CanBeEdited());
 			if (!EditorChart.CanBeEdited())
 				return;
 
-			if (PerformedChartConfigGuidInternal != value)
+			if (EventDefinition.PerformedChartConfigGuid != value)
 			{
 				// When switching EditorPerformedChartConfigs we need to observe the new one for
 				// changes. We only observe the config if this EditorPatternEvent is added
 				// to the chart.
 				if (AddedToChart)
 					GetPerformedChartConfig().RemoveObserver(this);
-				PerformedChartConfigGuidInternal = value;
+				EventDefinition.PerformedChartConfigGuid = value;
 				if (AddedToChart)
 					GetPerformedChartConfig().AddObserver(this);
 
@@ -85,24 +113,23 @@ internal sealed class EditorPatternEvent : EditorEvent, IChartRegion,
 		}
 	}
 
-	private Guid PerformedChartConfigGuidInternal;
-
 	/// <summary>
 	/// The length of this EditorPatternEvent in rows.
 	/// </summary>
+	[JsonInclude]
 	public int Length
 	{
-		get => LengthInternal;
+		get => EventDefinition.Length;
 		set
 		{
 			Assert(EditorChart.CanBeEdited());
 			if (!EditorChart.CanBeEdited())
 				return;
 
-			if (LengthInternal != value)
+			if (EventDefinition.Length != value)
 			{
 				var oldEndPosition = GetEndChartPosition();
-				LengthInternal = value;
+				EventDefinition.Length = value;
 
 				// Inform the EditorChart of the change so it can update its data structures.
 				EditorChart.OnPatternLengthModified(this, oldEndPosition, GetEndChartPosition());
@@ -110,48 +137,45 @@ internal sealed class EditorPatternEvent : EditorEvent, IChartRegion,
 		}
 	}
 
-	private int LengthInternal;
-
 	/// <summary>
 	/// Random seed for this EditorPatternEvent.
 	/// </summary>
+	[JsonInclude]
 	public int RandomSeed
 	{
-		get => RandomSeedInternal;
+		get => EventDefinition.RandomSeed;
 		set
 		{
 			Assert(EditorChart.CanBeEdited());
 			if (!EditorChart.CanBeEdited())
 				return;
 
-			RandomSeedInternal = value;
+			EventDefinition.RandomSeed = value;
 		}
 	}
-
-	private int RandomSeedInternal;
 
 	/// <summary>
 	/// Whether or not the end position of this EditorPatternEvent is inclusive.
 	/// </summary>
+	[JsonInclude]
 	public bool EndPositionInclusive
 	{
-		get => EndPositionInclusiveInternal;
+		get => EventDefinition.EndPositionInclusive;
 		set
 		{
 			Assert(EditorChart.CanBeEdited());
 			if (!EditorChart.CanBeEdited())
 				return;
 
-			EndPositionInclusiveInternal = value;
+			EventDefinition.EndPositionInclusive = value;
 		}
 	}
-
-	private bool EndPositionInclusiveInternal;
 
 	/// <summary>
 	/// ChartRow of this EditorPatternEvent.
 	/// Exposed via property to allow movement of the event.
 	/// </summary>
+	[JsonInclude]
 	public int ChartRow
 	{
 		get => (int)GetChartPosition();
@@ -262,17 +286,47 @@ internal sealed class EditorPatternEvent : EditorEvent, IChartRegion,
 
 	private bool AddedToChart;
 
+	/// <summary>
+	/// Constructor taking an EventConfig object.
+	/// Will create an EditorPatternEvent with reasonable defaults.
+	/// </summary>
 	public EditorPatternEvent(EventConfig config) : base(config)
 	{
-		PatternConfigGuid = PatternConfigManager.DefaultPatternConfigSixteenthsGuid;
-		PerformedChartConfigGuid = PerformedChartConfigManager.DefaultPerformedChartStaminaGuid;
-		LengthInternal = SMCommon.RowsPerMeasure;
-		RandomSeed = new Random().Next();
-		EndPositionInclusive = false;
+		// Set up EventDefinition with reasonable defaults.
+		EventDefinition = new Definition
+		{
+			PatternConfigGuid = PatternConfigManager.DefaultPatternConfigSixteenthsGuid,
+			PerformedChartConfigGuid = PerformedChartConfigManager.DefaultPerformedChartStaminaGuid,
+			Length = SMCommon.RowsPerMeasure,
+			RandomSeed = new Random().Next(),
+			EndPositionInclusive = false,
+		};
 
 		ResetTimeBasedOnRow();
 
 		WidthDirty = true;
+	}
+
+	/// <summary>
+	/// Constructor taking an EventConfig and a specified Definition.
+	/// </summary>
+	public EditorPatternEvent(EventConfig config, Definition definition) : base(config)
+	{
+		EventDefinition = definition;
+
+		ResetTimeBasedOnRow();
+
+		WidthDirty = true;
+	}
+
+	/// <summary>
+	/// Gets the Definition of this EditorPatternEvent.
+	/// Returned Definition is a copy of this EditorPatternEvent's Definition.
+	/// </summary>
+	/// <returns>Definition for this EditorPatternEvent.</returns>
+	public Definition GetDefinition()
+	{
+		return EventDefinition.Clone();
 	}
 
 	public EditorPatternConfig GetPatternConfig()
