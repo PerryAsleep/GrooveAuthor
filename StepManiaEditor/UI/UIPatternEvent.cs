@@ -48,6 +48,8 @@ internal sealed class UIPatternEvent
 				ImGuiLayoutUtils.DrawRowChartPositionLength(true, "Length", patternEvent, nameof(EditorPatternEvent.Length),
 					nameof(EditorPatternEvent.EndPositionInclusive),
 					"The length of the pattern.");
+				ImGuiLayoutUtils.DrawRowRandomSeed(true, "Random Seed", patternEvent, nameof(EditorPatternEvent.RandomSeed), true,
+					"Random seed to use when generating this Pattern.");
 
 				ImGuiLayoutUtils.DrawPatternConfigCombo(true, "Pattern Config", patternEvent,
 					nameof(EditorPatternEvent.PatternConfigGuid),

@@ -61,6 +61,7 @@ internal sealed class ImGuiLayoutUtils
 	public static readonly float ButtonGoWidth = UiScaled(20);
 	public static readonly float ButtonUseCurrentRowWidth = UiScaled(80);
 	public static readonly float TextInclusiveWidth = UiScaled(58);
+	public static readonly float NewSeedButtonWidth = UiScaled(57);
 	public static readonly float ArrowIconWidth = UiScaled(16);
 	public static readonly float ArrowIconHeight = UiScaled(16);
 	public static readonly Vector2 ArrowIconSize = new(ArrowIconWidth, ArrowIconHeight);
@@ -936,6 +937,43 @@ internal sealed class ImGuiLayoutUtils
 
 		if (!enabled)
 			PopDisabled();
+	}
+
+	public static void DrawRowRandomSeed(
+		bool undoable,
+		string title,
+		object o,
+		string fieldName,
+		bool affectsFile,
+		string help = null,
+		string format = "%i")
+	{
+		title ??= "";
+
+		DrawRowTitleAndAdvanceColumn(title);
+
+		var remainingWidth = DrawHelp(help, ImGui.GetContentRegionAvail().X);
+
+		var controlWidth = remainingWidth - NewSeedButtonWidth - ImGui.GetStyle().ItemSpacing.X;
+		PushDisabled();
+		DrawDragInt(undoable, title, o, fieldName, controlWidth, affectsFile, null, 1.0f, format);
+		PopDisabled();
+
+		ImGui.SameLine();
+		ImGui.SetNextItemWidth(NewSeedButtonWidth);
+		if (ImGui.Button("New Seed"))
+		{
+			var newSeed = new Random().Next();
+			if (undoable)
+			{
+				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyValue<int>(
+					o, fieldName, newSeed, affectsFile));
+			}
+			else
+			{
+				SetFieldOrPropertyToValue(o, fieldName, newSeed);
+			}
+		}
 	}
 
 	#endregion Drag Int
