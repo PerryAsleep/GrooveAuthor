@@ -3430,6 +3430,25 @@ internal sealed class Editor :
 
 				ImGui.Separator();
 
+				var canRegeneratePatterns = ActiveChart != null && ActiveChart.HasPatterns();
+				if (!canRegeneratePatterns)
+					PushDisabled();
+
+				if (ImGui.Selectable("Regenerate all Patterns in Chart (Fixed Seeds)"))
+				{
+					ActionQueue.Instance.Do(new ActionAutoGeneratePatterns(this, ActiveChart, ActiveChart!.GetPatterns(), false));
+				}
+
+				if (ImGui.Selectable("Regenerate all Patterns in Chart (New Seeds)"))
+				{
+					ActionQueue.Instance.Do(new ActionAutoGeneratePatterns(this, ActiveChart, ActiveChart!.GetPatterns(), true));
+				}
+
+				if (!canRegeneratePatterns)
+					PopDisabled();
+
+				ImGui.Separator();
+
 				if (ImGui.MenuItem("Configuration"))
 				{
 					p.ShowAutogenConfigsWindow = true;
