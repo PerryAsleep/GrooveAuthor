@@ -1,4 +1,5 @@
-﻿using System.Numerics;
+﻿using System.Collections.Generic;
+using System.Numerics;
 using ImGuiNET;
 using static StepManiaEditor.ImGuiUtils;
 
@@ -48,7 +49,7 @@ internal sealed class UIPatternEvent
 				ImGuiLayoutUtils.DrawRowChartPositionLength(true, "Length", patternEvent, nameof(EditorPatternEvent.Length),
 					nameof(EditorPatternEvent.EndPositionInclusive),
 					"The length of the pattern.");
-				ImGuiLayoutUtils.DrawRowRandomSeed(true, "Random Seed", patternEvent, nameof(EditorPatternEvent.RandomSeed), true,
+				ImGuiLayoutUtils.DrawRowRandomSeed(true, "Fixed Seed", patternEvent, nameof(EditorPatternEvent.RandomSeed), true,
 					"Random seed to use when generating this Pattern.");
 
 				ImGuiLayoutUtils.DrawPatternConfigCombo(true, "Pattern Config", patternEvent,
@@ -57,6 +58,35 @@ internal sealed class UIPatternEvent
 				ImGuiLayoutUtils.DrawPerformedChartConfigCombo(true, "Performed Chart Config", patternEvent,
 					nameof(EditorPatternEvent.PerformedChartConfigGuid),
 					"The Performed Chart Configuration.");
+
+				ImGuiLayoutUtils.EndTable();
+			}
+
+			ImGui.Separator();
+			if (ImGuiLayoutUtils.BeginTable("PatternEventButtons", TitleColumnWidth))
+			{
+				ImGuiLayoutUtils.DrawRowTwoButtons("Generate",
+					"Generate (Fixed Seed)",
+					() =>
+					{
+						ActionQueue.Instance.Do(new ActionAutoGeneratePatterns(
+							Editor,
+							patternEvent.GetEditorChart(),
+							new List<EditorPatternEvent> { patternEvent },
+							false));
+					},
+					"Generate (New Seed)",
+					() =>
+					{
+						ActionQueue.Instance.Do(new ActionAutoGeneratePatterns(
+							Editor,
+							patternEvent.GetEditorChart(),
+							new List<EditorPatternEvent> { patternEvent },
+							true));
+					},
+					"Generates the pattern. Will regenerate the pattern each time. Using the fixed seed will" +
+					" produce the same pattern each time the pattern is generated, assuming no dependencies" +
+					" have changed. Using a new seed will produce different results each time.");
 
 				ImGuiLayoutUtils.EndTable();
 			}

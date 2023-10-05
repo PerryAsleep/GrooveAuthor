@@ -209,6 +209,32 @@ internal sealed class ImGuiLayoutUtils
 		return ImGui.Button(buttonText);
 	}
 
+	public static void DrawRowTwoButtons(
+		string title,
+		string buttonText1,
+		Action action1,
+		string buttonText2, 
+		Action action2,
+		string help = null)
+	{
+		DrawRowTitleAndAdvanceColumn(title);
+		var remainingWidth = DrawHelp(help, ImGui.GetContentRegionAvail().X);
+
+		var buttonWidth = (remainingWidth - ImGui.GetStyle().ItemSpacing.X) * 0.5f;
+		var buttonWidthVec = new Vector2(buttonWidth, 0.0f);
+
+		if (ImGui.Button(buttonText1, buttonWidthVec))
+		{
+			action1();
+		}
+
+		ImGui.SameLine();
+		if (ImGui.Button(buttonText2, buttonWidthVec))
+		{
+			action2();
+		}
+	}
+
 	#endregion Button
 
 	#region Text Input
@@ -960,8 +986,7 @@ internal sealed class ImGuiLayoutUtils
 		PopDisabled();
 
 		ImGui.SameLine();
-		ImGui.SetNextItemWidth(NewSeedButtonWidth);
-		if (ImGui.Button("New Seed"))
+		if (ImGui.Button("New Seed", new Vector2(NewSeedButtonWidth, 0.0f)))
 		{
 			var newSeed = new Random().Next();
 			if (undoable)

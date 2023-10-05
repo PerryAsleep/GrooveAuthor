@@ -384,6 +384,11 @@ internal sealed class EditorPatternEvent : EditorEvent, IChartRegion,
 		return Length;
 	}
 
+	public override int GetEndRow()
+	{
+		return GetRow() + GetLength();
+	}
+
 	/// <summary>
 	/// Gets a unique identifier for this event to use for ImGui widgets that draw this event.
 	/// </summary>

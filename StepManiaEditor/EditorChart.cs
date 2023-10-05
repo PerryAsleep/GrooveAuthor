@@ -681,6 +681,11 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		return Patterns;
 	}
 
+	public bool HasPatterns()
+	{
+		return Patterns?.Count > 0;
+	}
+
 	#endregion Accessors
 
 	#region Timing Updates
@@ -2183,6 +2188,32 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 	#region Saving
 
+	/// <summary>
+	/// Generates a list of Events from this EditorChart's EditorEvents.
+	/// The list will be sorted appropriately for Stepmania.
+	/// </summary>
+	/// <returns>List of Stepmania Events this EditorChart represents.</returns>
+	public List<Event> GenerateSmEvents()
+	{
+		var smEvents = new List<Event>();
+		foreach (var editorEvent in EditorEvents)
+		{
+			var events = editorEvent.GetEvents();
+			for (var i = 0; i < events.Count; i++)
+			{
+				if (events[i] != null
+				    // Do not include events which aren't normal Stepmania events.
+				    && events[i] is not Pattern)
+				{
+					smEvents.Add(events[i]);
+				}
+			}
+		}
+
+		smEvents.Sort(new SMEventComparer());
+		return smEvents;
+	}
+
 	public void SaveToChart(Action<Chart, Dictionary<string, string>> callback)
 	{
 		var chart = new Chart();
@@ -2210,22 +2241,10 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 				SerializeCustomChartData(customProperties);
 
-				var layer = new Layer();
-				foreach (var editorEvent in EditorEvents)
+				var layer = new Layer
 				{
-					var events = editorEvent.GetEvents();
-					for (var i = 0; i < events.Count; i++)
-					{
-						if (events[i] != null
-						    // Do not include events which aren't normal Stepmania events.
-						    && events[i] is not Pattern)
-						{
-							layer.Events.Add(events[i]);
-						}
-					}
-				}
-
-				layer.Events.Sort(new SMEventComparer());
+					Events = GenerateSmEvents(),
+				};
 				chart.Layers.Add(layer);
 			}),
 			// When complete, call the given callback with the saved data.
