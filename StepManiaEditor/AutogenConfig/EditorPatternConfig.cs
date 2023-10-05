@@ -50,11 +50,17 @@ internal sealed class EditorPatternConfig : EditorConfig<Config>, IEquatable<Edi
 	public const Editor.Foot DefaultStartingFootSpecified = Editor.Foot.Left;
 	public const PatternConfigStartFootChoice DefaultLeftFootStartChoice = PatternConfigStartFootChoice.AutomaticNewLane;
 	public const int DefaultLeftFootStartLaneSpecified = 0;
-	public const PatternConfigEndFootChoice DefaultLeftFootEndChoice = PatternConfigEndFootChoice.AutomaticNewLaneToFollowing;
+
+	public const PatternConfigEndFootChoice DefaultLeftFootEndChoice =
+		PatternConfigEndFootChoice.AutomaticSameOrNewLaneAsFollowing;
+
 	public const int DefaultLeftFootEndLaneSpecified = 0;
 	public const PatternConfigStartFootChoice DefaultRightFootStartChoice = PatternConfigStartFootChoice.AutomaticNewLane;
 	public const int DefaultRightFootStartLaneSpecified = 0;
-	public const PatternConfigEndFootChoice DefaultRightFootEndChoice = PatternConfigEndFootChoice.AutomaticNewLaneToFollowing;
+
+	public const PatternConfigEndFootChoice DefaultRightFootEndChoice =
+		PatternConfigEndFootChoice.AutomaticSameOrNewLaneAsFollowing;
+
 	public const int DefaultRightFootEndLaneSpecified = 0;
 	public const int DefaultSameArrowStepWeight = 25;
 	public const int DefaultNewArrowStepWeight = 75;
