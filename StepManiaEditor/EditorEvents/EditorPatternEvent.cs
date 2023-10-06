@@ -343,7 +343,7 @@ internal sealed class EditorPatternEvent : EditorEvent, IChartRegion,
 	{
 		var patternConfig = GetPatternConfig();
 		var performedChartConfig = GetPerformedChartConfig();
-		return $"{patternConfig.GetPrettyString()} ({patternConfig.Name} {performedChartConfig.Name})";
+		return $"{patternConfig.Name} {performedChartConfig.Name}";
 	}
 
 	public uint GetMiscEventTextColor()
