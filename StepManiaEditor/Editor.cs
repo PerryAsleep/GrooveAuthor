@@ -4915,8 +4915,17 @@ internal sealed class Editor :
 		ActionQueue.Instance.Do(new ActionDeleteEditorEvents(eventsToDelete, false));
 	}
 
+	private void OnEventsAdded(IReadOnlyList<EditorEvent> addedEvents)
+	{
+		// When adding notes, reset the AutoPlayer so it picks up the new state.
+		AutoPlayer?.Stop();
+	}
+
 	private void OnEventsDeleted(IReadOnlyList<EditorEvent> deletedEvents)
 	{
+		// When deleting notes, reset the AutoPlayer so it picks up the new state.
+		AutoPlayer?.Stop();
+
 		// Don't consider events which are deleted as part of a move.
 		if (MovingNotes.Count > 0)
 		{
@@ -6418,6 +6427,9 @@ internal sealed class Editor :
 				break;
 			case EditorChart.NotificationMusicOffsetChanged:
 				OnMusicOffsetChanged();
+				break;
+			case EditorChart.NotificationEventsAdded:
+				OnEventsAdded((List<EditorEvent>)payload);
 				break;
 			case EditorChart.NotificationEventsDeleted:
 				OnEventsDeleted((List<EditorEvent>)payload);

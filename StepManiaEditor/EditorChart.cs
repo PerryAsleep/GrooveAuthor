@@ -48,6 +48,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	public const string NotificationDescriptionChanged = "DescriptionChanged";
 	public const string NotificationMusicChanged = "MusicChanged";
 	public const string NotificationMusicOffsetChanged = "MusicOffsetChanged";
+	public const string NotificationEventsAdded = "EventsAdded";
 	public const string NotificationEventsDeleted = "EventsDeleted";
 	public const string NotificationEventsMoveStart = "EventsMoveStart";
 	public const string NotificationEventsMoveEnd = "EventsMoveEnd";
@@ -1868,6 +1869,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 				UpdateEventTimingData();
 			}
 		}
+
+		Notify(NotificationEventsAdded, this, editorEvents);
 	}
 
 	/// <summary>
