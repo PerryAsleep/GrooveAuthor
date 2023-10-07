@@ -5116,9 +5116,9 @@ internal sealed class Editor :
 						var miscEvent = enumerator.Current;
 						if (miscEvent!.GetChartTime() > adjustedMaxTime)
 							break;
+						MiscEventWidgetLayoutManager.PositionEvent(miscEvent);
 						if (!miscEvent.IsSelectableWithModifiers())
 							continue;
-						MiscEventWidgetLayoutManager.PositionEvent(miscEvent);
 						potentialEvents.Add(miscEvent);
 					}
 
@@ -5190,9 +5190,9 @@ internal sealed class Editor :
 						var miscEvent = enumerator.Current;
 						if (miscEvent!.GetRow() > adjustedMaxPosition)
 							break;
+						MiscEventWidgetLayoutManager.PositionEvent(miscEvent);
 						if (!miscEvent.IsSelectableWithModifiers())
 							continue;
-						MiscEventWidgetLayoutManager.PositionEvent(miscEvent);
 						potentialEvents.Add(miscEvent);
 					}
 
