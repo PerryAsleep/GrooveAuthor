@@ -174,7 +174,7 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 			// Get the surrounding step information and counts per lane so we can provide them to the PerformedChart
 			// pattern generation logic.
 			var previousStepFoot = Constants.InvalidFoot;
-			var previousStepTime = 0.0;
+			var previousStepTime = new double[Constants.NumFeet];
 			var previousFooting = new int[Constants.NumFeet];
 			var followingFooting = new int[Constants.NumFeet];
 			for (var i = 0; i < Constants.NumFeet; i++)
@@ -357,13 +357,13 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 		StepGraph stepGraph,
 		ChartSearchNode node,
 		IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator editorEventEnumerator,
-		out double previousStepTime,
+		out double[] previousStepTime,
 		out int previousStepFoot,
 		out int[] previousFooting)
 	{
 		// Initialize out parameters.
 		previousStepFoot = Constants.InvalidFoot;
-		previousStepTime = 0.0;
+		previousStepTime = new double[Constants.NumFeet];
 		previousFooting = new int[Constants.NumFeet];
 		for (var i = 0; i < Constants.NumFeet; i++)
 		{
@@ -419,7 +419,7 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 
 		// Unused variables, but they simplify the common footing update logic.
 		var followingStepFoot = Constants.InvalidFoot;
-		var followingStepTime = 0.0;
+		var followingStepTime = new double[Constants.NumFeet];
 
 		// The enumerator is already beyond the pattern. We want to back up one to easily examine
 		// the steps following the pattern.
@@ -543,6 +543,7 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 	/// Foot of the first preceding or following step to set.
 	/// </param>
 	/// <param name="stepFootTime">
+	/// Array of time per foot representing the times of the previous or following steps.
 	/// Time of the first preceding of following step to set.
 	/// </param>
 	private static void CheckAndUpdateFooting(
@@ -552,7 +553,7 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 		bool[] steppedLanes,
 		ref int numFeetFound,
 		ref int stepFoot,
-		ref double stepFootTime)
+		ref double[] stepFootTime)
 	{
 		// With the stepped on lanes known, use the GraphNodes to determine which foot stepped
 		// on each lane.
@@ -574,12 +575,10 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 							if (steppedLanes[a] && a == node.GraphNode.State[f, p].Arrow)
 							{
 								if (stepFoot == Constants.InvalidFoot)
-								{
 									stepFoot = f;
-									stepFootTime = node.TimeSeconds;
-								}
 
 								footing[f] = node.GraphNode.State[f, p].Arrow;
+								stepFootTime[f] = node.TimeSeconds;
 								numFeetFound++;
 								break;
 							}
