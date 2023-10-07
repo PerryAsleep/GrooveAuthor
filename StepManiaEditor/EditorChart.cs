@@ -94,32 +94,30 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	/// </summary>
 	private readonly EditorSong EditorSong;
 
-	// TODO: Need a read-only interface for these trees for public exposure.
-
 	/// <summary>
 	/// Tree of all EditorEvents.
 	/// </summary>
-	public EventTree EditorEvents;
+	private EventTree EditorEvents;
 
 	/// <summary>
 	/// Tree of all EditorHoldNoteEvents.
 	/// </summary>
-	public EventTree Holds;
+	private EventTree Holds;
 
 	/// <summary>
 	/// Tree of all miscellaneous EditorEvents. See IsMiscEvent.
 	/// </summary>
-	public EventTree MiscEvents;
+	private EventTree MiscEvents;
 
 	/// <summary>
 	/// Tree of all EditorRateAlteringEvents.
 	/// </summary>
-	public RateAlteringEventTree RateAlteringEvents;
+	private RateAlteringEventTree RateAlteringEvents;
 
 	/// <summary>
 	/// Tree of all EditorInterpolatedRateAlteringEvents.
 	/// </summary>
-	public RedBlackTree<EditorInterpolatedRateAlteringEvent> InterpolatedScrollRateEvents;
+	private RedBlackTree<EditorInterpolatedRateAlteringEvent> InterpolatedScrollRateEvents;
 
 	/// <summary>
 	/// IntervalTree of all EditorStopEvents by time. Stop lengths are in time.
@@ -627,6 +625,56 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 	#region Accessors
 
+	public IReadOnlyEventTree GetEvents()
+	{
+		return EditorEvents;
+	}
+
+	public IReadOnlyEventTree GetHolds()
+	{
+		return Holds;
+	}
+
+	public IReadOnlyEventTree GetMiscEvents()
+	{
+		return MiscEvents;
+	}
+
+	public IReadOnlyRateAlteringEventTree GetRateAlteringEvents()
+	{
+		return RateAlteringEvents;
+	}
+
+	public IReadOnlyRedBlackTree<EditorInterpolatedRateAlteringEvent> GetInterpolatedScrollRateEvents()
+	{
+		return InterpolatedScrollRateEvents;
+	}
+
+	public IReadOnlyIntervalTree<double, EditorStopEvent> GetStops()
+	{
+		return Stops;
+	}
+
+	public IReadOnlyIntervalTree<double, EditorDelayEvent> GetDelays()
+	{
+		return Delays;
+	}
+
+	public IReadOnlyIntervalTree<double, EditorFakeSegmentEvent> GetFakes()
+	{
+		return Fakes;
+	}
+
+	public IReadOnlyIntervalTree<double, EditorWarpEvent> GetWarps()
+	{
+		return Warps;
+	}
+
+	public IReadOnlyIntervalTree<double, EditorPatternEvent> GetPatterns()
+	{
+		return Patterns;
+	}
+
 	public EditorSong GetEditorSong()
 	{
 		return EditorSong;
@@ -677,14 +725,9 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			$"{ImGuiUtils.GetPrettyEnumString(ChartType)} {ImGuiUtils.GetPrettyEnumString(ChartDifficultyType)} [{Rating}] {Description}";
 	}
 
-	public IEnumerable<EditorPatternEvent> GetPatterns()
-	{
-		return Patterns;
-	}
-
 	public bool HasPatterns()
 	{
-		return Patterns?.Count > 0;
+		return Patterns?.GetCount() > 0;
 	}
 
 	#endregion Accessors
@@ -1274,8 +1317,9 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		return Patterns?.FindAllOverlapping(chartPosition);
 	}
 
-	private RedBlackTree<EditorRateAlteringEvent>.IRedBlackTreeEnumerator FindActiveRateAlteringEventEnumeratorForTime(
-		double chartTime, bool allowEqualTo = true)
+	private IReadOnlyRedBlackTree<EditorRateAlteringEvent>.IReadOnlyRedBlackTreeEnumerator
+		FindActiveRateAlteringEventEnumeratorForTime(
+			double chartTime, bool allowEqualTo = true)
 	{
 		if (RateAlteringEvents == null)
 			return null;
@@ -1303,8 +1347,9 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		return enumerator?.Current;
 	}
 
-	private RedBlackTree<EditorRateAlteringEvent>.IRedBlackTreeEnumerator FindActiveRateAlteringEventEnumeratorForPosition(
-		double chartPosition, bool allowEqualTo = true)
+	private IReadOnlyRedBlackTree<EditorRateAlteringEvent>.IReadOnlyRedBlackTreeEnumerator
+		FindActiveRateAlteringEventEnumeratorForPosition(
+			double chartPosition, bool allowEqualTo = true)
 	{
 		if (RateAlteringEvents == null)
 			return null;
@@ -1411,11 +1456,11 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	/// which overlaps.
 	/// </returns>
 	public EditorHoldNoteEvent[] GetHoldsOverlapping(double chartPosition,
-		RedBlackTree<EditorEvent>.IRedBlackTreeEnumerator explicitEnumerator = null)
+		IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator explicitEnumerator = null)
 	{
 		var holds = new EditorHoldNoteEvent[NumInputs];
 
-		RedBlackTree<EditorEvent>.IRedBlackTreeEnumerator enumerator;
+		IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator enumerator;
 		if (explicitEnumerator != null)
 			enumerator = explicitEnumerator.Clone();
 		else
@@ -1709,7 +1754,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 				}
 				case EditorInterpolatedRateAlteringEvent irae:
 				{
-					var e = InterpolatedScrollRateEvents.Find(irae);
+					var e = InterpolatedScrollRateEvents.FindMutable(irae);
 					if (e != null)
 					{
 						e.MoveNext();
@@ -2485,7 +2530,7 @@ internal sealed class ChartComparer : IComparer<EditorChart>
 			return comparison;
 
 		// TODO: This should use note count not event count.
-		return c1.EditorEvents.Count - c2.EditorEvents.Count;
+		return c1.GetEvents().GetCount() - c2.GetEvents().GetCount();
 	}
 
 	int IComparer<EditorChart>.Compare(EditorChart c1, EditorChart c2)

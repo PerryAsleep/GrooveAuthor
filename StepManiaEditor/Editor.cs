@@ -498,6 +498,8 @@ internal sealed class Editor :
 		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Escape }, OnEscape));
 		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Left }, OnDecreaseSnap, true));
 		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Right }, OnIncreaseSnap, true));
+
+		// Navigation
 		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Up }, OnMoveUp, true));
 		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Down }, OnMoveDown, true));
 		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.PageUp }, OnMoveToPreviousMeasure, true, null, true));
@@ -505,6 +507,9 @@ internal sealed class Editor :
 		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Home }, OnMoveToChartStart, false, null, true));
 		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.End }, OnMoveToChartEnd, false, null, true));
 		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.Delete }, OnDelete, false, null, true));
+		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.P }, OnMoveToNextPattern));
+		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.P }, OnMoveToPreviousPattern));
+
 		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.M }, OnToggleNoteEntryMode));
 		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.S }, OnToggleSpacingMode));
 
@@ -1964,7 +1969,7 @@ internal sealed class Editor :
 		RegionsOverlappingStart.Clear();
 		SelectedRegion.ClearPerFrameData();
 
-		if (ActiveChart == null || ActiveChart.EditorEvents == null || ArrowGraphicManager == null)
+		if (ActiveChart == null || ActiveChart.GetEvents() == null || ArrowGraphicManager == null)
 			return;
 
 		// Get an EventSpacingHelper to perform y calculations.
@@ -2022,7 +2027,7 @@ internal sealed class Editor :
 		// Then we need to find the greatest preceding notes by scanning upwards.
 		// Once we find that note, we start iterating downwards while also keeping track of the rate events along the way.
 
-		var rateEnumerator = ActiveChart.RateAlteringEvents.FindBest(Position);
+		var rateEnumerator = ActiveChart.GetRateAlteringEvents().FindBest(Position);
 		if (rateEnumerator == null)
 			return;
 
@@ -2056,7 +2061,7 @@ internal sealed class Editor :
 		var numRateAlteringEventsProcessed = 1;
 
 		// Now that we know the position at the start of the screen we can find the first event to start rendering.
-		var enumerator = ActiveChart.EditorEvents.FindBestByPosition(chartPositionAtTopOfScreen);
+		var enumerator = ActiveChart.GetEvents().FindBestByPosition(chartPositionAtTopOfScreen);
 		if (enumerator == null)
 			return;
 
@@ -2328,7 +2333,7 @@ internal sealed class Editor :
 					0));
 
 			var interpolatedScrollRateEnumerator =
-				ActiveChart.InterpolatedScrollRateEvents.FindGreatestPreceding(ratePosEventForChecking);
+				ActiveChart.GetInterpolatedScrollRateEvents().FindGreatestPreceding(ratePosEventForChecking);
 			if (interpolatedScrollRateEnumerator != null)
 			{
 				interpolatedScrollRateEnumerator.MoveNext();
@@ -2341,7 +2346,7 @@ internal sealed class Editor :
 			else
 			{
 				interpolatedScrollRateEnumerator =
-					ActiveChart.InterpolatedScrollRateEvents.FindLeastFollowing(ratePosEventForChecking, true);
+					ActiveChart.GetInterpolatedScrollRateEvents().FindLeastFollowing(ratePosEventForChecking, true);
 				if (interpolatedScrollRateEnumerator != null)
 				{
 					interpolatedScrollRateEnumerator.MoveNext();
@@ -2364,7 +2369,8 @@ internal sealed class Editor :
 	/// <param name="chartPosition">Chart position to use for checking.</param>
 	/// <remarks>Helper for UpdateChartEvents.</remarks>
 	/// <returns>List of EditorHoldStartNotes.</returns>
-	private List<EditorHoldNoteEvent> ScanBackwardsForHolds(RedBlackTree<EditorEvent>.IRedBlackTreeEnumerator enumerator,
+	private List<EditorHoldNoteEvent> ScanBackwardsForHolds(
+		IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator enumerator,
 		double chartPosition)
 	{
 		// Get all the holds overlapping the given position.
@@ -2769,7 +2775,7 @@ internal sealed class Editor :
 		var focalPointChartTime = Position.ChartTime;
 		var focalPointChartPosition = Position.ChartPosition;
 		var focalPointY = (double)GetFocalPointY();
-		var rateEnumerator = ActiveChart.RateAlteringEvents.FindBest(Position);
+		var rateEnumerator = ActiveChart.GetRateAlteringEvents().FindBest(Position);
 		if (rateEnumerator == null)
 			return (0.0, 0.0);
 		rateEnumerator.MoveNext();
@@ -2983,7 +2989,7 @@ internal sealed class Editor :
 		if (!pMiniMap.ShowMiniMap)
 			return;
 
-		if (ActiveChart == null || ActiveChart.EditorEvents == null || ArrowGraphicManager == null)
+		if (ActiveChart == null || ActiveChart.GetEvents() == null || ArrowGraphicManager == null)
 		{
 			MiniMap.UpdateNoChart();
 			return;
@@ -3034,7 +3040,7 @@ internal sealed class Editor :
 				var chartPosition = 0.0;
 				if (!ActiveChart.TryGetChartPositionFromTime(MiniMap.GetMiniMapAreaStart(), ref chartPosition))
 					break;
-				var enumerator = ActiveChart.EditorEvents.FindBestByPosition(chartPosition);
+				var enumerator = ActiveChart.GetEvents().FindBestByPosition(chartPosition);
 				if (enumerator == null)
 					break;
 
@@ -3125,7 +3131,7 @@ internal sealed class Editor :
 
 				// Add notes
 				chartPosition = MiniMap.GetMiniMapAreaStart();
-				var enumerator = ActiveChart.EditorEvents.FindBestByPosition(chartPosition);
+				var enumerator = ActiveChart.GetEvents().FindBestByPosition(chartPosition);
 				if (enumerator == null)
 					break;
 
@@ -3735,9 +3741,9 @@ internal sealed class Editor :
 				if (ImGui.BeginMenu("Add Event"))
 				{
 					var nearestMeasureBoundaryRow = ActiveChart.GetNearestMeasureBoundaryRow(row);
-					var eventsAtNearestMeasureBoundary = ActiveChart.EditorEvents.FindEventsAtRow(nearestMeasureBoundaryRow);
+					var eventsAtNearestMeasureBoundary = ActiveChart.GetEvents().FindEventsAtRow(nearestMeasureBoundaryRow);
 
-					var events = ActiveChart.EditorEvents.FindEventsAtRow(row);
+					var events = ActiveChart.GetEvents().FindEventsAtRow(row);
 					var hasTempoEvent = false;
 					var hasInterpolatedScrollRateEvent = false;
 					var hasScrollRateEvent = false;
@@ -4984,7 +4990,7 @@ internal sealed class Editor :
 			return;
 
 		EditorEvent lastEvent = null;
-		foreach (var editorEvent in ActiveChart.EditorEvents)
+		foreach (var editorEvent in ActiveChart.GetEvents())
 		{
 			if (isSelectable(editorEvent))
 			{
@@ -5070,7 +5076,7 @@ internal sealed class Editor :
 					var (adjustedMinTime, adjustedMaxTime) = AdjustSelectionTimeRange(minTime, maxTime, halfArrowH);
 					if (adjustedMinTime < adjustedMaxTime)
 					{
-						var enumerator = ActiveChart.EditorEvents.FindFirstAfterChartTime(adjustedMinTime);
+						var enumerator = ActiveChart.GetEvents().FindFirstAfterChartTime(adjustedMinTime);
 						while (enumerator.MoveNext())
 						{
 							if (enumerator.Current!.GetChartTime() > adjustedMaxTime)
@@ -5104,7 +5110,7 @@ internal sealed class Editor :
 					BeginMiscEventWidgetLayoutManagerFrame();
 					var minPosition = 0.0;
 					ActiveChart.TryGetChartPositionFromTime(adjustedMinTime, ref minPosition);
-					var enumerator = ActiveChart.MiscEvents.FindBestByPosition(minPosition);
+					var enumerator = ActiveChart.GetMiscEvents().FindBestByPosition(minPosition);
 					while (enumerator != null && enumerator.MoveNext())
 					{
 						var miscEvent = enumerator.Current;
@@ -5145,7 +5151,7 @@ internal sealed class Editor :
 						AdjustSelectionPositionRange(minPosition, maxPosition, halfArrowH);
 					if (adjustedMinPosition < adjustedMaxPosition)
 					{
-						var enumerator = ActiveChart.EditorEvents.FindFirstAfterChartPosition(adjustedMinPosition);
+						var enumerator = ActiveChart.GetEvents().FindFirstAfterChartPosition(adjustedMinPosition);
 						while (enumerator != null && enumerator.MoveNext())
 						{
 							if (enumerator.Current!.GetRow() > adjustedMaxPosition)
@@ -5178,7 +5184,7 @@ internal sealed class Editor :
 
 					// Loop over the misc events in the selected time range and determine their positions.
 					BeginMiscEventWidgetLayoutManagerFrame();
-					var enumerator = ActiveChart.MiscEvents.FindBestByPosition(adjustedMinPosition);
+					var enumerator = ActiveChart.GetMiscEvents().FindBestByPosition(adjustedMinPosition);
 					while (enumerator != null && enumerator.MoveNext())
 					{
 						var miscEvent = enumerator.Current;
@@ -5214,17 +5220,17 @@ internal sealed class Editor :
 		{
 			if (LastSelectedEvent != null && newlySelectedEvents.Count > 0)
 			{
-				EventTree.IRedBlackTreeEnumerator enumerator;
+				IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator enumerator;
 				EditorEvent end;
 				var firstNewNote = newlySelectedEvents[0];
 				if (firstNewNote.CompareTo(LastSelectedEvent) < 0)
 				{
-					enumerator = ActiveChart.EditorEvents.Find(firstNewNote);
+					enumerator = ActiveChart.GetEvents().Find(firstNewNote);
 					end = LastSelectedEvent;
 				}
 				else
 				{
-					enumerator = ActiveChart.EditorEvents.Find(LastSelectedEvent);
+					enumerator = ActiveChart.GetEvents().Find(LastSelectedEvent);
 					end = firstNewNote;
 				}
 
@@ -5638,6 +5644,18 @@ internal sealed class Editor :
 		UpdateAutoPlayFromScrolling();
 	}
 
+	private void OnMoveToPreviousPattern()
+	{
+		// TODO
+		UpdateAutoPlayFromScrolling();
+	}
+
+	private void OnMoveToNextPattern()
+	{
+		// TODO
+		UpdateAutoPlayFromScrolling();
+	}
+
 	private void OnMoveToChartStart()
 	{
 		if (Preferences.Instance.PreferencesScroll.StopPlaybackWhenScrolling)
@@ -5732,7 +5750,7 @@ internal sealed class Editor :
 		// If there is a tap, mine, or hold start at this location, delete it now.
 		// Deleting immediately feels more responsive than deleting on the input up event.
 		var deletedNote = false;
-		var existingEvent = ActiveChart.EditorEvents.FindNoteAt(row, lane, true);
+		var existingEvent = ActiveChart.GetEvents().FindNoteAt(row, lane, true);
 		if (existingEvent != null && existingEvent.GetRow() == row)
 		{
 			deletedNote = true;
@@ -5807,7 +5825,7 @@ internal sealed class Editor :
 		}
 
 		var row = LaneEditStates[lane].GetEventBeingEdited().GetRow();
-		var existingEvent = ActiveChart.EditorEvents.FindNoteAt(row, lane, true);
+		var existingEvent = ActiveChart.GetEvents().FindNoteAt(row, lane, true);
 
 		var newNoteIsMine = LaneEditStates[lane].GetEventBeingEdited() is EditorMineNoteEvent;
 		var newNoteIsTap = LaneEditStates[lane].GetEventBeingEdited() is EditorTapNoteEvent;
@@ -5926,7 +5944,7 @@ internal sealed class Editor :
 				length = editHold.GetEndRow() - hsnStart.GetRow();
 			}
 
-			existingEvent = ActiveChart.EditorEvents.FindNoteAt(row + length, lane, true);
+			existingEvent = ActiveChart.GetEvents().FindNoteAt(row + length, lane, true);
 			if (existingEvent is EditorHoldNoteEvent hsnEnd
 			    && hsnEnd.GetRow() <= row + length
 			    && hsnEnd.GetEndRow() >= row + length
@@ -5936,7 +5954,7 @@ internal sealed class Editor :
 			}
 
 			// For any event in the same lane within the region of the new hold, delete them.
-			var e = ActiveChart.EditorEvents.FindBestByPosition(row);
+			var e = ActiveChart.GetEvents().FindBestByPosition(row);
 			if (e != null)
 			{
 				while (e.MoveNext() && e.Current!.GetRow() <= row + length)

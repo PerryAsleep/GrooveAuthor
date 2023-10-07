@@ -112,7 +112,7 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 
 				// This could be optimized if the RedBlackTree implemented a clone method or copy constructor.
 				var editorEvents = new EventTree(EditorChart);
-				foreach (var editorEvent in EditorChart.EditorEvents)
+				foreach (var editorEvent in EditorChart.GetEvents())
 				{
 					editorEvents.Insert(editorEvent);
 				}
@@ -356,7 +356,7 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 	private static void GetPrecedingFooting(
 		StepGraph stepGraph,
 		ChartSearchNode node,
-		RedBlackTree<EditorEvent>.IRedBlackTreeEnumerator editorEventEnumerator,
+		IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator editorEventEnumerator,
 		out double previousStepTime,
 		out int previousStepFoot,
 		out int[] previousFooting)
@@ -407,7 +407,7 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 	private static void GetFollowingFooting(
 		StepGraph stepGraph,
 		ChartSearchNode node,
-		RedBlackTree<EditorEvent>.IRedBlackTreeEnumerator editorEventEnumerator,
+		IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator editorEventEnumerator,
 		out int[] followingFooting)
 	{
 		// Initialize out parameters.
@@ -485,7 +485,7 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 	private static void CheckAndUpdateCurrentSteppedLanes(
 		StepGraph stepGraph,
 		ChartSearchNode node,
-		RedBlackTree<EditorEvent>.IRedBlackTreeEnumerator editorEventEnumerator,
+		IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator editorEventEnumerator,
 		ref int positionOfCurrentSteps,
 		ref bool[] currentSteppedLanes,
 		bool scanForward)
@@ -619,7 +619,7 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 			}
 
 			// Accumulate taps, holds, and mines which fall within the pattern region.
-			var enumerator = EditorChart.EditorEvents.FindBestByPosition(startRow);
+			var enumerator = EditorChart.GetEvents().FindBestByPosition(startRow);
 			if (enumerator != null && enumerator.MoveNext())
 			{
 				var row = enumerator.Current!.GetRow();
