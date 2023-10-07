@@ -24,6 +24,7 @@ using static StepManiaEditor.Utils;
 using static StepManiaEditor.ImGuiUtils;
 using static Fumen.Converters.SMCommon;
 using static StepManiaEditor.EditorSongImageUtils;
+using static StepManiaEditor.MiniMap;
 using Keys = Microsoft.Xna.Framework.Input.Keys;
 using Path = Fumen.Path;
 
@@ -3067,14 +3068,14 @@ internal sealed class Editor :
 					{
 						numNotesAdded++;
 						if (MiniMap.AddNote((LaneNote)e.GetFirstEvent(), e.GetChartTime(), e.IsSelected()) ==
-						    MiniMap.AddResult.BelowBottom)
+						    AddResult.BelowBottom)
 							break;
 					}
 					else if (e is EditorMineNoteEvent)
 					{
 						numNotesAdded++;
 						if (MiniMap.AddMine((LaneNote)e.GetFirstEvent(), e.GetChartTime(), e.IsSelected()) ==
-						    MiniMap.AddResult.BelowBottom)
+						    AddResult.BelowBottom)
 							break;
 					}
 					else if (e is EditorHoldNoteEvent hold)
@@ -3085,7 +3086,7 @@ internal sealed class Editor :
 							    hold.GetChartTime(),
 							    hold.GetEndChartTime(),
 							    hold.IsRoll(),
-							    hold.IsSelected()) == MiniMap.AddResult.BelowBottom)
+							    hold.IsSelected()) == AddResult.BelowBottom)
 							break;
 					}
 
@@ -3158,14 +3159,14 @@ internal sealed class Editor :
 					{
 						numNotesAdded++;
 						if (MiniMap.AddNote((LaneNote)e.GetFirstEvent(), e.GetChartPosition(), e.IsSelected()) ==
-						    MiniMap.AddResult.BelowBottom)
+						    AddResult.BelowBottom)
 							break;
 					}
 					else if (e is EditorMineNoteEvent)
 					{
 						numNotesAdded++;
 						if (MiniMap.AddMine((LaneNote)e.GetFirstEvent(), e.GetChartPosition(), e.IsSelected()) ==
-						    MiniMap.AddResult.BelowBottom)
+						    AddResult.BelowBottom)
 							break;
 					}
 					else if (e is EditorHoldNoteEvent hold)
@@ -3176,7 +3177,7 @@ internal sealed class Editor :
 							    hold.GetChartPosition(),
 							    hold.GetEndChartPosition(),
 							    hold.IsRoll(),
-							    hold.IsSelected()) == MiniMap.AddResult.BelowBottom)
+							    hold.IsSelected()) == AddResult.BelowBottom)
 							break;
 					}
 
@@ -3436,8 +3437,8 @@ internal sealed class Editor :
 
 				ImGui.Separator();
 
-				var canRegeneratePatterns = ActiveChart != null && ActiveChart.HasPatterns();
-				if (!canRegeneratePatterns)
+				var hasPatterns = ActiveChart != null && ActiveChart.HasPatterns();
+				if (!hasPatterns)
 					PushDisabled();
 
 				if (ImGui.Selectable("Regenerate all Patterns in Chart (Fixed Seeds)"))
@@ -3450,7 +3451,17 @@ internal sealed class Editor :
 					ActionQueue.Instance.Do(new ActionAutoGeneratePatterns(this, ActiveChart, ActiveChart!.GetPatterns(), true));
 				}
 
-				if (!canRegeneratePatterns)
+				if (ImGui.MenuItem("Next Pattern", "Ctrl+P"))
+				{
+					OnMoveToNextPattern();
+				}
+
+				if (ImGui.MenuItem("Previous Pattern", "Ctrl+Shift+P"))
+				{
+					OnMoveToPreviousPattern();
+				}
+
+				if (!hasPatterns)
 					PopDisabled();
 
 				ImGui.Separator();
@@ -5646,14 +5657,74 @@ internal sealed class Editor :
 
 	private void OnMoveToPreviousPattern()
 	{
-		// TODO
+		if (ActiveChart == null)
+			return;
+		var patterns = ActiveChart.GetPatterns();
+		if (patterns.GetCount() == 0)
+			return;
+
+		// Get the previous pattern.
+		var pattern = patterns.FindGreatestPreceding(Position.ChartPosition);
+
+		// If there is no next pattern, loop to the end.
+		if (pattern == null)
+			pattern = patterns.Last();
+
+		// Get the EditorPatternEvent.
+		if (pattern == null)
+			return;
+		if (!pattern.MoveNext())
+			return;
+		if (!pattern.IsCurrentValid())
+			return;
+		var patternEvent = pattern.Current;
+
+		// Move to the position of the next pattern.
+		var desiredRow = patternEvent!.ChartRow;
+		Position.ChartPosition = desiredRow;
 		UpdateAutoPlayFromScrolling();
+
+		// Select the pattern.
+		OnSelectPattern(patternEvent);
 	}
 
 	private void OnMoveToNextPattern()
 	{
-		// TODO
+		if (ActiveChart == null)
+			return;
+		var patterns = ActiveChart.GetPatterns();
+		if (patterns.GetCount() == 0)
+			return;
+
+		// Get the next pattern.
+		var pattern = patterns.FindLeastFollowing(Position.ChartPosition);
+
+		// If there is no next pattern, loop to the first.
+		if (pattern == null)
+			pattern = patterns.First();
+
+		// Get the EditorPatternEvent.
+		if (pattern == null)
+			return;
+		if (!pattern.MoveNext())
+			return;
+		if (!pattern.IsCurrentValid())
+			return;
+		var patternEvent = pattern.Current;
+
+		// Move to the position of the next pattern.
+		var desiredRow = patternEvent!.ChartRow;
+		Position.ChartPosition = desiredRow;
 		UpdateAutoPlayFromScrolling();
+
+		// Select the pattern.
+		OnSelectPattern(patternEvent);
+	}
+
+	private void OnSelectPattern(EditorPatternEvent pattern)
+	{
+		LastSelectedPatternEvent = pattern;
+		Preferences.Instance.ShowPatternEventWindow = true;
 	}
 
 	private void OnMoveToChartStart()
@@ -6459,8 +6530,7 @@ internal sealed class Editor :
 				MovingNotes.Remove((EditorPatternEvent)payload);
 				break;
 			case EditorChart.NotificationPatternRequestEdit:
-				LastSelectedPatternEvent = (EditorPatternEvent)payload;
-				Preferences.Instance.ShowPatternEventWindow = true;
+				OnSelectPattern((EditorPatternEvent)payload);
 				break;
 		}
 	}
