@@ -389,6 +389,25 @@ internal sealed class EditorPatternEvent : EditorEvent, IChartRegion,
 		return GetRow() + GetLength();
 	}
 
+	public int GetNumSteps()
+	{
+		var patternConfig = GetPatternConfig();
+		var totalRows = GetLength();
+		var beatSubdivisions = EditorPatternConfig.GetBeatSubdivision(patternConfig.PatternType);
+		var totalSteps = totalRows * beatSubdivisions / SMCommon.MaxValidDenominator;
+		var remainder = totalRows * beatSubdivisions % SMCommon.MaxValidDenominator;
+		if (remainder != 0)
+		{
+			totalSteps++;
+		}
+		else if (EndPositionInclusive)
+		{
+			totalSteps++;
+		}
+
+		return Math.Max(0, totalSteps);
+	}
+
 	/// <summary>
 	/// Gets a unique identifier for this event to use for ImGui widgets that draw this event.
 	/// </summary>

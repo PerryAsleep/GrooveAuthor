@@ -176,6 +176,7 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 			var previousStepFoot = Constants.InvalidFoot;
 			var previousStepTime = new double[Constants.NumFeet];
 			var previousFooting = new int[Constants.NumFeet];
+			var followingStepFoot = Constants.InvalidFoot;
 			var followingFooting = new int[Constants.NumFeet];
 			for (var i = 0; i < Constants.NumFeet; i++)
 			{
@@ -215,6 +216,7 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 						stepGraph,
 						currentExpressedChartSearchNode,
 						editorEventEnumerator.Clone(),
+						out followingStepFoot,
 						out followingFooting);
 
 					// Stop the search.
@@ -267,10 +269,31 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 				previousFooting[Constants.R] = stepGraph.GetRoot().State[Constants.R, Constants.DefaultFootPortion].Arrow;
 			}
 
-			// If we don't know what foot to start on, start on the right foot.
+			// If we don't know what foot to start on, choose a starting foot.
 			if (previousStepFoot == Constants.InvalidFoot)
 			{
-				previousStepFoot = Constants.L;
+				// If we know the following foot, choose a starting foot that will lead into it
+				// through alternating.
+				if (followingStepFoot != Constants.InvalidArrowIndex)
+				{
+					var numStepsInPattern = pattern.GetNumSteps();
+
+					// Even number of steps, start on the same foot.
+					if (numStepsInPattern % 2 == 0)
+					{
+						previousStepFoot = Constants.OtherFoot(followingStepFoot);
+					}
+					// Otherwise, start on the opposite foot.
+					else
+					{
+						previousStepFoot = followingStepFoot;
+					}
+				}
+				// Otherwise, start on the right foot.
+				else
+				{
+					previousStepFoot = Constants.L;
+				}
 			}
 
 			// Create a PerformedChart section for the Pattern.
@@ -408,6 +431,7 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 		StepGraph stepGraph,
 		ChartSearchNode node,
 		IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator editorEventEnumerator,
+		out int followingStepFoot,
 		out int[] followingFooting)
 	{
 		// Initialize out parameters.
@@ -418,7 +442,7 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 		}
 
 		// Unused variables, but they simplify the common footing update logic.
-		var followingStepFoot = Constants.InvalidFoot;
+		followingStepFoot = Constants.InvalidFoot;
 		var followingStepTime = new double[Constants.NumFeet];
 
 		// The enumerator is already beyond the pattern. We want to back up one to easily examine
