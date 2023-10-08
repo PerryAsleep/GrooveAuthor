@@ -155,6 +155,10 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 		for (var patternIndex = 0; patternIndex < Patterns.Count; patternIndex++)
 		{
 			var pattern = Patterns[patternIndex];
+			var transitionCutoffPercentage = pattern.GetPerformedChartConfig().Config.Transitions.TransitionCutoffPercentage;
+			var numStepsAtLastTransition = -1;
+			var totalNodeSteps = 0;
+			bool? lastTransitionLeft = null;
 			var nextPattern = patternIndex < Patterns.Count - 1 ? Patterns[patternIndex + 1] : null;
 
 			var errorString = $"Failed to generate {pattern.GetMiscEventText()} pattern at row {pattern.GetRow()}.";
@@ -221,6 +225,21 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 
 					// Stop the search.
 					break;
+				}
+
+				// Track transition information.
+				var isRelease = currentExpressedChartSearchNode.PreviousLink?.GraphLink?.IsRelease() ?? false;
+				if (!isRelease)
+					totalNodeSteps++;
+				stepGraph.GetSide(currentExpressedChartSearchNode.GraphNode, transitionCutoffPercentage, out var leftSide);
+				if (leftSide != null && lastTransitionLeft != leftSide)
+				{
+					if (lastTransitionLeft != null)
+					{
+						numStepsAtLastTransition = totalNodeSteps;
+					}
+
+					lastTransitionLeft = leftSide;
 				}
 
 				// Advance the enumerator for editorEvents and accumulate steps per lane.
@@ -310,6 +329,9 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 				followingFooting,
 				currentLaneCounts,
 				chartEvents,
+				totalNodeSteps,
+				numStepsAtLastTransition,
+				lastTransitionLeft,
 				pattern.GetMiscEventText());
 			if (performedChart == null)
 			{
