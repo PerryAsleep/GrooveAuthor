@@ -364,7 +364,7 @@ internal sealed class EditorPatternEvent : EditorEvent, IChartRegion,
 
 	public override bool IsSelectableWithModifiers()
 	{
-		return false;
+		return true;
 	}
 
 	public override double GetEndChartPosition()
