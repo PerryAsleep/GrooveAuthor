@@ -91,6 +91,28 @@ internal sealed class UIPatternEvent
 				ImGuiLayoutUtils.EndTable();
 			}
 
+			ImGui.Separator();
+			if (ImGuiLayoutUtils.BeginTable("PatternNavigationButtons", TitleColumnWidth))
+			{
+				var multiplePatterns = patternEvent!.GetEditorChart().GetPatterns().GetCount() > 1;
+				if (!multiplePatterns)
+					PushDisabled();
+
+				ImGuiLayoutUtils.DrawRowTwoButtons("Navigate",
+					"Previous Pattern",
+					() => { Editor.OnMoveToPreviousPattern(patternEvent); },
+					"Next Pattern",
+					() => { Editor.OnMoveToNextPattern(patternEvent); },
+					"Navigate to other patterns." +
+					"\nCtrl+P will also navigate to the next pattern." +
+					"\nCtrl+Shift+P will also navigate to the previous pattern.");
+
+				if (!multiplePatterns)
+					PopDisabled();
+
+				ImGuiLayoutUtils.EndTable();
+			}
+
 			var imGuiId = $"PatternEvent{patternEvent!.GetChartPosition()}";
 			var patternConfig = patternEvent.GetPatternConfig();
 			ImGui.Separator();

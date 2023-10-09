@@ -5655,7 +5655,17 @@ internal sealed class Editor :
 		UpdateAutoPlayFromScrolling();
 	}
 
-	private void OnMoveToPreviousPattern()
+	public void OnMoveToPreviousPattern()
+	{
+		OnMoveToNextPattern(Position.ChartPosition);
+	}
+
+	public void OnMoveToPreviousPattern(EditorPatternEvent currentPattern)
+	{
+		OnMoveToPreviousPattern(currentPattern.GetChartPosition());
+	}
+
+	private void OnMoveToPreviousPattern(double chartPosition)
 	{
 		if (ActiveChart == null)
 			return;
@@ -5664,7 +5674,7 @@ internal sealed class Editor :
 			return;
 
 		// Get the previous pattern.
-		var pattern = patterns.FindGreatestPreceding(Position.ChartPosition);
+		var pattern = patterns.FindGreatestPreceding(chartPosition);
 
 		// If there is no next pattern, loop to the end.
 		if (pattern == null)
@@ -5688,7 +5698,17 @@ internal sealed class Editor :
 		OnSelectPattern(patternEvent);
 	}
 
-	private void OnMoveToNextPattern()
+	public void OnMoveToNextPattern()
+	{
+		OnMoveToNextPattern(Position.ChartPosition);
+	}
+
+	public void OnMoveToNextPattern(EditorPatternEvent currentPattern)
+	{
+		OnMoveToNextPattern(currentPattern.GetChartPosition());
+	}
+
+	private void OnMoveToNextPattern(double chartPosition)
 	{
 		if (ActiveChart == null)
 			return;
@@ -5697,7 +5717,7 @@ internal sealed class Editor :
 			return;
 
 		// Get the next pattern.
-		var pattern = patterns.FindLeastFollowing(Position.ChartPosition);
+		var pattern = patterns.FindLeastFollowing(chartPosition);
 
 		// If there is no next pattern, loop to the first.
 		if (pattern == null)
