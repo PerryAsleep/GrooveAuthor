@@ -213,7 +213,7 @@ internal sealed class ImGuiLayoutUtils
 		string title,
 		string buttonText1,
 		Action action1,
-		string buttonText2, 
+		string buttonText2,
 		Action action2,
 		string help = null)
 	{
@@ -2587,13 +2587,20 @@ internal sealed class ImGuiLayoutUtils
 	{
 		void Func(float elementWidth)
 		{
+			var colorPushCount = 1;
 			ImGui.PushStyleColor(ImGuiCol.Text, e.GetMiscEventTextColor());
+			if (alpha < 1.0f)
+			{
+				PushAlpha(ImGuiCol.Text, alpha);
+				colorPushCount++;
+			}
+
 			if (ImGui.Button($"{e.GetMiscEventText()}##{id}"))
 			{
 				requestEditCallback();
 			}
 
-			ImGui.PopStyleColor(1);
+			ImGui.PopStyleColor(colorPushCount);
 		}
 
 		MiscEditorEventWidget(id, e, x, y, width, colorRGBA, selected, true, alpha, help, Func);
