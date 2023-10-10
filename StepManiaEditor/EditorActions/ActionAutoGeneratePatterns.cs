@@ -87,7 +87,7 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 		}
 
 		// Delete all events which overlap regions to fill based on the patterns.
-		DeleteEventsOverlappingPatterns();
+		DeletedEvents.AddRange(ActionDeletePatternNotes.DeleteEventsOverlappingPatterns(EditorChart, Patterns));
 
 		// Asynchronously generate the patterns.
 		DoPatternGenerationAsync(stepGraph, expressedChartConfig.Config);
@@ -638,62 +638,6 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 				if (numFeetFound == Constants.NumFeet)
 					break;
 			}
-		}
-	}
-
-	/// <summary>
-	/// Deletes all EditorEvents in the EditorChart which intersect any of the Patterns.
-	/// Stores all deleted EditorEvents in DeletedEvents.
-	/// </summary>
-	private void DeleteEventsOverlappingPatterns()
-	{
-		foreach (var pattern in Patterns)
-		{
-			var deletedEventsForPattern = new List<EditorEvent>();
-			var startRow = pattern.GetRow();
-			var endRow = pattern.GetEndRow();
-
-			// Accumulate any holds which overlap the start of the pattern.
-			var overlappingHolds = EditorChart.GetHoldsOverlapping(startRow);
-			foreach (var overlappingHold in overlappingHolds)
-			{
-				if (overlappingHold != null)
-				{
-					deletedEventsForPattern.Add(overlappingHold);
-				}
-			}
-
-			// Accumulate taps, holds, and mines which fall within the pattern region.
-			var enumerator = EditorChart.GetEvents().FindBestByPosition(startRow);
-			if (enumerator != null && enumerator.MoveNext())
-			{
-				var row = enumerator.Current!.GetRow();
-				while (row <= endRow)
-				{
-					if (row >= startRow &&
-					    (enumerator.Current is EditorTapNoteEvent
-					     || enumerator.Current is EditorMineNoteEvent
-					     || enumerator.Current is EditorHoldNoteEvent))
-					{
-						if (row < endRow || (pattern.EndPositionInclusive && row == endRow))
-						{
-							deletedEventsForPattern.Add(enumerator.Current);
-						}
-					}
-
-					if (!enumerator.MoveNext())
-						break;
-					row = enumerator.Current.GetRow();
-				}
-			}
-
-			// Store the deleted events for later undoing.
-			DeletedEvents.AddRange(deletedEventsForPattern);
-
-			// Delete the events now rather than waiting to accumulate all events.
-			// These prevents accidentally trying to delete the same event more than once
-			// when patterns overlap.
-			EditorChart.DeleteEvents(deletedEventsForPattern);
 		}
 	}
 }

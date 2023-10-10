@@ -3451,6 +3451,13 @@ internal sealed class Editor :
 					ActionQueue.Instance.Do(new ActionAutoGeneratePatterns(this, ActiveChart, ActiveChart!.GetPatterns(), true));
 				}
 
+				if (ImGui.Selectable("Clear All Patterns"))
+				{
+					ActionQueue.Instance.Do(new ActionDeletePatternNotes(
+						ActiveChart,
+						ActiveChart!.GetPatterns()));
+				}
+
 				if (ImGui.MenuItem("Next Pattern", "Ctrl+P"))
 				{
 					OnMoveToNextPattern();

@@ -65,7 +65,7 @@ internal sealed class UIPatternEvent
 			ImGui.Separator();
 			if (ImGuiLayoutUtils.BeginTable("PatternEventButtons", TitleColumnWidth))
 			{
-				ImGuiLayoutUtils.DrawRowTwoButtons("Generate",
+				ImGuiLayoutUtils.DrawRowTwoButtons("Generate Pattern",
 					"Generate (Fixed Seed)",
 					() =>
 					{
@@ -87,6 +87,51 @@ internal sealed class UIPatternEvent
 					"Generates the pattern. Will regenerate the pattern each time. Using the fixed seed will" +
 					" produce the same pattern each time the pattern is generated, assuming no dependencies" +
 					" have changed. Using a new seed will produce different results each time.");
+
+				if (ImGuiLayoutUtils.DrawRowButton("Clear Pattern", "Clear Pattern",
+					    "Delete all the notes in this pattern's region."))
+				{
+					ActionQueue.Instance.Do(new ActionDeletePatternNotes(
+						patternEvent.GetEditorChart(),
+						new List<EditorPatternEvent> { patternEvent }));
+				}
+
+				ImGuiLayoutUtils.EndTable();
+			}
+
+			ImGui.Separator();
+			if (ImGuiLayoutUtils.BeginTable("PatternGlobalEventButtons", TitleColumnWidth))
+			{
+				ImGuiLayoutUtils.DrawRowTwoButtons("Generate All Patterns",
+					"Generate All (Fixed Seed)",
+					() =>
+					{
+						ActionQueue.Instance.Do(new ActionAutoGeneratePatterns(
+							Editor,
+							patternEvent!.GetEditorChart(),
+							patternEvent.GetEditorChart().GetPatterns(),
+							false));
+					},
+					"Generate All (New Seed)",
+					() =>
+					{
+						ActionQueue.Instance.Do(new ActionAutoGeneratePatterns(
+							Editor,
+							patternEvent!.GetEditorChart(),
+							patternEvent.GetEditorChart().GetPatterns(),
+							true));
+					},
+					"Regenerates all patterns in the chart. Using fixed seeds will" +
+					" produce the same patterns each time the patterns are generated, assuming no dependencies" +
+					" have changed. Using new seeds will produce different results each time.");
+
+				if (ImGuiLayoutUtils.DrawRowButton("Clear All Patterns", "Clear All Patterns",
+					    "Delete all the notes in all of this chart's patterns."))
+				{
+					ActionQueue.Instance.Do(new ActionDeletePatternNotes(
+						patternEvent.GetEditorChart(),
+						patternEvent.GetEditorChart().GetPatterns()));
+				}
 
 				ImGuiLayoutUtils.EndTable();
 			}
