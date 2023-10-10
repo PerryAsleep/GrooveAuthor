@@ -199,7 +199,7 @@ internal sealed class UIAutogenChart
 				PushDisabled();
 			if (ImGui.Button($"Autogen {GetPrettyEnumString(Preferences.Instance.LastSelectedAutogenChartType)} Chart"))
 			{
-				ActionQueue.Instance.Do(new ActionAutogenerateCharts(Editor, SourceChart,
+				ActionQueue.Instance.Do(new ActionAutoGenerateCharts(Editor, SourceChart,
 					Preferences.Instance.LastSelectedAutogenChartType,
 					performedChartConfig!.Config));
 				Close();

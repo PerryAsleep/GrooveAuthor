@@ -14,7 +14,7 @@ namespace StepManiaEditor;
 /// <summary>
 /// Action to autogenerate one or more EditorCharts from existing EditorCharts.
 /// </summary>
-internal sealed class ActionAutogenerateCharts : EditorAction
+internal sealed class ActionAutoGenerateCharts : EditorAction
 {
 	private readonly Editor Editor;
 	private readonly EditorSong EditorSong;
@@ -26,7 +26,7 @@ internal sealed class ActionAutogenerateCharts : EditorAction
 	private readonly List<EditorChart> NewEditorCharts;
 	private int NumComplete;
 
-	public ActionAutogenerateCharts(
+	public ActionAutoGenerateCharts(
 		Editor editor,
 		EditorChart sourceChart,
 		ChartType chartType,
@@ -42,7 +42,7 @@ internal sealed class ActionAutogenerateCharts : EditorAction
 		RandomSeed = new Random().Next();
 	}
 
-	public ActionAutogenerateCharts(
+	public ActionAutoGenerateCharts(
 		Editor editor,
 		IReadOnlyList<EditorChart> sourceCharts,
 		ChartType chartType,

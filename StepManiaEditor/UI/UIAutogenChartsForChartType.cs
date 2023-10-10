@@ -183,7 +183,7 @@ internal sealed class UIAutogenChartsForChartType
 				PushDisabled();
 			if (ImGui.Button(buttonText))
 			{
-				ActionQueue.Instance.Do(new ActionAutogenerateCharts(Editor, sourceCharts,
+				ActionQueue.Instance.Do(new ActionAutoGenerateCharts(Editor, sourceCharts,
 					Preferences.Instance.LastSelectedAutogenChartType, performedChartConfig!.Config));
 				Close();
 			}
