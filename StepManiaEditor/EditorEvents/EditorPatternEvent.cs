@@ -51,7 +51,7 @@ internal sealed class EditorPatternEvent : EditorEvent, IChartRegion,
 	/// <summary>
 	/// This EditorPatternEvent's Definition;
 	/// </summary>
-	private readonly Definition EventDefinition;
+	private Definition EventDefinition;
 
 	/// <summary>
 	/// The guid for the EditorPatternConfig that this EditorPatternEvent is using.
@@ -317,6 +317,17 @@ internal sealed class EditorPatternEvent : EditorEvent, IChartRegion,
 		ResetTimeBasedOnRow();
 
 		WidthDirty = true;
+	}
+
+	/// <summary>
+	/// Clones this event.
+	/// </summary>
+	/// <returns>Newly cloned EditorEvent.</returns>
+	public override EditorEvent Clone()
+	{
+		var clone = (EditorPatternEvent)base.Clone();
+		clone.EventDefinition = EventDefinition.Clone();
+		return clone;
 	}
 
 	/// <summary>

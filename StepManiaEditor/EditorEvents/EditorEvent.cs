@@ -200,7 +200,7 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	/// Clones this event.
 	/// </summary>
 	/// <returns>Newly cloned EditorEvent.</returns>
-	public EditorEvent Clone()
+	public virtual EditorEvent Clone()
 	{
 		var newEvent = CreateEvent(EventConfig.CreateCloneEventConfig(this));
 		newEvent.IsPositionImmutable = IsPositionImmutable;
