@@ -191,8 +191,19 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 	/// <summary>
 	/// Total step count for this EditorChart.
+	/// This does not include fakes and lifts.
 	/// </summary>
 	private int StepCount;
+
+	/// <summary>
+	/// Total fake note count for this EditorChart.
+	/// </summary>
+	private int FakeCount;
+
+	/// <summary>
+	/// Total lift note count for this EditorChart.
+	/// </summary>
+	private int LiftCount;
 
 	#region Properties
 
@@ -450,6 +461,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		DisplayTempo.FromString(chart.Tempo);
 
 		StepCount = 0;
+		FakeCount = 0;
+		LiftCount = 0;
 		StepCountsByLane = new int[NumInputs];
 		for (var a = 0; a < NumInputs; a++)
 			StepCountsByLane[a] = 0;
@@ -487,6 +500,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		Rating = DefaultRating;
 
 		StepCount = 0;
+		FakeCount = 0;
+		LiftCount = 0;
 		StepCountsByLane = new int[NumInputs];
 		for (var a = 0; a < NumInputs; a++)
 			StepCountsByLane[a] = 0;
@@ -1419,7 +1434,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 				continue;
 			}
 
-			if (!(c is EditorTapNoteEvent || c is EditorHoldNoteEvent))
+			if (c is not (EditorTapNoteEvent or EditorHoldNoteEvent or EditorLiftNoteEvent))
 			{
 				continue;
 			}
@@ -2134,7 +2149,9 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		// If this event is a lane note then it can't overlap a hold.
 		if (editorEvent is EditorTapNoteEvent
 		    || editorEvent is EditorHoldNoteEvent
-		    || editorEvent is EditorMineNoteEvent)
+		    || editorEvent is EditorMineNoteEvent
+		    || editorEvent is EditorFakeNoteEvent
+		    || editorEvent is EditorLiftNoteEvent)
 		{
 			var potentiallyOverlappingHolds = GetHoldsOverlapping(row);
 			foreach (var hold in potentiallyOverlappingHolds)
@@ -2165,19 +2182,35 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 	private void UpdateCachedDataForAddedEvent(EditorEvent editorEvent)
 	{
-		if (editorEvent is EditorTapNoteEvent or EditorHoldNoteEvent)
+		switch (editorEvent)
 		{
-			StepCount++;
-			StepCountsByLane[editorEvent.GetLane()]++;
+			case EditorTapNoteEvent or EditorHoldNoteEvent:
+				StepCount++;
+				StepCountsByLane[editorEvent.GetLane()]++;
+				break;
+			case EditorFakeNoteEvent:
+				FakeCount++;
+				break;
+			case EditorLiftNoteEvent:
+				LiftCount++;
+				break;
 		}
 	}
 
 	private void UpdateCachedDataForDeletedEvent(EditorEvent editorEvent)
 	{
-		if (editorEvent is EditorTapNoteEvent or EditorHoldNoteEvent)
+		switch (editorEvent)
 		{
-			StepCount--;
-			StepCountsByLane[editorEvent.GetLane()]--;
+			case EditorTapNoteEvent or EditorHoldNoteEvent:
+				StepCount--;
+				StepCountsByLane[editorEvent.GetLane()]--;
+				break;
+			case EditorFakeNoteEvent:
+				FakeCount--;
+				break;
+			case EditorLiftNoteEvent:
+				LiftCount--;
+				break;
 		}
 	}
 
@@ -2189,6 +2222,16 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	public int[] GetStepCountByLane()
 	{
 		return StepCountsByLane;
+	}
+
+	public int GetFakeCount()
+	{
+		return FakeCount;
+	}
+
+	public int GetLiftCount()
+	{
+		return LiftCount;
 	}
 
 	#endregion Cached Data

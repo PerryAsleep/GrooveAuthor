@@ -1922,7 +1922,8 @@ internal sealed class Editor :
 				// Skip events entirely above the receptors.
 				if (Preferences.Instance.PreferencesReceptors.AutoPlayHideArrows
 				    && visibleEvent.GetEndChartTime() < Position.ChartTime
-				    && (visibleEvent is EditorTapNoteEvent || visibleEvent is EditorHoldNoteEvent))
+				    && (visibleEvent is EditorTapNoteEvent || visibleEvent is EditorHoldNoteEvent ||
+				        visibleEvent is EditorLiftNoteEvent))
 					continue;
 
 				// Cut off hold end notes which intersect the receptors.
@@ -2158,7 +2159,8 @@ internal sealed class Editor :
 			}
 
 			// Record note.
-			if (e is EditorTapNoteEvent || e is EditorHoldNoteEvent || e is EditorMineNoteEvent)
+			if (e is EditorTapNoteEvent or EditorHoldNoteEvent or EditorMineNoteEvent or EditorLiftNoteEvent
+			    or EditorFakeNoteEvent)
 			{
 				noteEvents.Add(e);
 				e.SetDimensions(startPosX + e.GetLane() * arrowW, arrowY, arrowW, arrowH, sizeZoom);
@@ -3064,7 +3066,7 @@ internal sealed class Editor :
 				while (enumerator.MoveNext())
 				{
 					var e = enumerator.Current;
-					if (e is EditorTapNoteEvent)
+					if (e is EditorTapNoteEvent or EditorFakeNoteEvent or EditorLiftNoteEvent)
 					{
 						numNotesAdded++;
 						if (MiniMap.AddNote((LaneNote)e.GetFirstEvent(), e.GetChartTime(), e.IsSelected()) ==
@@ -3155,7 +3157,7 @@ internal sealed class Editor :
 				while (enumerator.MoveNext())
 				{
 					var e = enumerator.Current;
-					if (e is EditorTapNoteEvent)
+					if (e is EditorTapNoteEvent or EditorFakeNoteEvent or EditorLiftNoteEvent)
 					{
 						numNotesAdded++;
 						if (MiniMap.AddNote((LaneNote)e.GetFirstEvent(), e.GetChartPosition(), e.IsSelected()) ==
@@ -3607,10 +3609,66 @@ internal sealed class Editor :
 										e.GetLane()))));
 						}
 
+						if (ImGui.MenuItem("Taps to Fakes"))
+						{
+							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, SelectedEvents,
+								(e) => e is EditorTapNoteEvent,
+								(e) => EditorEvent.CreateEvent(
+									EventConfig.CreateFakeNoteConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(),
+										e.GetLane()))));
+						}
+
+						if (ImGui.MenuItem("Taps to Lifts"))
+						{
+							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, SelectedEvents,
+								(e) => e is EditorTapNoteEvent,
+								(e) => EditorEvent.CreateEvent(
+									EventConfig.CreateLiftNoteConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(),
+										e.GetLane()))));
+						}
+
+						ImGui.Separator();
 						if (ImGui.MenuItem("Mines to Taps"))
 						{
 							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, SelectedEvents,
 								(e) => e is EditorMineNoteEvent,
+								(e) => EditorEvent.CreateEvent(
+									EventConfig.CreateTapConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(),
+										e.GetLane()))));
+						}
+
+						if (ImGui.MenuItem("Mines to Fakes"))
+						{
+							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, SelectedEvents,
+								(e) => e is EditorMineNoteEvent,
+								(e) => EditorEvent.CreateEvent(
+									EventConfig.CreateFakeNoteConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(),
+										e.GetLane()))));
+						}
+
+						if (ImGui.MenuItem("Mines to Lifts"))
+						{
+							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, SelectedEvents,
+								(e) => e is EditorMineNoteEvent,
+								(e) => EditorEvent.CreateEvent(
+									EventConfig.CreateLiftNoteConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(),
+										e.GetLane()))));
+						}
+
+						ImGui.Separator();
+						if (ImGui.MenuItem("Fakes to Taps"))
+						{
+							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, SelectedEvents,
+								(e) => e is EditorFakeNoteEvent,
+								(e) => EditorEvent.CreateEvent(
+									EventConfig.CreateTapConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(),
+										e.GetLane()))));
+						}
+
+						if (ImGui.MenuItem("Lifts to Taps"))
+						{
+							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, SelectedEvents,
+								(e) => e is EditorLiftNoteEvent,
 								(e) => EditorEvent.CreateEvent(
 									EventConfig.CreateTapConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(),
 										e.GetLane()))));
@@ -3695,6 +3753,16 @@ internal sealed class Editor :
 				if (ImGui.Selectable("Mines"))
 				{
 					OnSelectAllImpl((e) => e is EditorMineNoteEvent);
+				}
+
+				if (ImGui.Selectable("Fakes"))
+				{
+					OnSelectAllImpl((e) => e is EditorFakeNoteEvent);
+				}
+
+				if (ImGui.Selectable("Lifts"))
+				{
+					OnSelectAllImpl((e) => e is EditorLiftNoteEvent);
 				}
 
 				if (ImGui.Selectable("Holds"))
@@ -6063,7 +6131,7 @@ internal sealed class Editor :
 						continue;
 					if (e.Current.IsBeingEdited())
 						continue;
-					if (e.Current is EditorTapNoteEvent || e.Current is EditorMineNoteEvent)
+					if (e.Current is EditorTapNoteEvent or EditorMineNoteEvent or EditorFakeNoteEvent or EditorLiftNoteEvent)
 						deleteActions.Add(new ActionDeleteEditorEvents(e.Current));
 					else if (e.Current is EditorHoldNoteEvent innerHold && innerHold.GetEndRow() <= row + length)
 						deleteActions.Add(new ActionDeleteEditorEvents(innerHold));

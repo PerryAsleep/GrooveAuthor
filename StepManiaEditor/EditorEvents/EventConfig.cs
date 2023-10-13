@@ -141,6 +141,66 @@ internal sealed class EventConfig
 		}, false, row, chartTime);
 	}
 
+	public static EventConfig CreateFakeNoteConfig(
+		EditorChart chart, double chartPosition, double chartTime, int lane)
+	{
+		return new EventConfig(chart, new List<Event>
+		{
+			new LaneTapNote
+			{
+				Lane = lane,
+				IntegerPosition = (int)chartPosition,
+				TimeSeconds = chartTime,
+				SourceType = NoteChars[(int)NoteType.Fake].ToString(),
+			},
+		}, true, chartPosition, chartTime);
+	}
+
+	public static EventConfig CreateFakeNoteConfig(
+		EditorChart chart, int row, double chartTime, int lane)
+	{
+		return new EventConfig(chart, new List<Event>
+		{
+			new LaneTapNote
+			{
+				Lane = lane,
+				IntegerPosition = row,
+				TimeSeconds = chartTime,
+				SourceType = NoteChars[(int)NoteType.Fake].ToString(),
+			},
+		}, false, row, chartTime);
+	}
+
+	public static EventConfig CreateLiftNoteConfig(
+		EditorChart chart, double chartPosition, double chartTime, int lane)
+	{
+		return new EventConfig(chart, new List<Event>
+		{
+			new LaneTapNote
+			{
+				Lane = lane,
+				IntegerPosition = (int)chartPosition,
+				TimeSeconds = chartTime,
+				SourceType = NoteChars[(int)NoteType.Lift].ToString(),
+			},
+		}, true, chartPosition, chartTime);
+	}
+
+	public static EventConfig CreateLiftNoteConfig(
+		EditorChart chart, int row, double chartTime, int lane)
+	{
+		return new EventConfig(chart, new List<Event>
+		{
+			new LaneTapNote
+			{
+				Lane = lane,
+				IntegerPosition = row,
+				TimeSeconds = chartTime,
+				SourceType = NoteChars[(int)NoteType.Lift].ToString(),
+			},
+		}, false, row, chartTime);
+	}
+
 	public static EventConfig CreateStopConfig(
 		EditorChart chart, int row, double chartTime, double stopTime)
 	{

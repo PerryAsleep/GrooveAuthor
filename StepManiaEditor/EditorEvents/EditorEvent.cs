@@ -119,11 +119,17 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 				var chartEvent = config.ChartEvents[0];
 				switch (chartEvent)
 				{
-					case LaneTapNote ltn:
-						newEvent = new EditorTapNoteEvent(config, ltn);
-						break;
 					case LaneNote ln when ln.SourceType == SMCommon.NoteChars[(int)SMCommon.NoteType.Mine].ToString():
 						newEvent = new EditorMineNoteEvent(config, ln);
+						break;
+					case LaneTapNote ltn when ltn.SourceType == SMCommon.NoteChars[(int)SMCommon.NoteType.Fake].ToString():
+						newEvent = new EditorFakeNoteEvent(config, ltn);
+						break;
+					case LaneTapNote ltn when ltn.SourceType == SMCommon.NoteChars[(int)SMCommon.NoteType.Lift].ToString():
+						newEvent = new EditorLiftNoteEvent(config, ltn);
+						break;
+					case LaneTapNote ltn:
+						newEvent = new EditorTapNoteEvent(config, ltn);
 						break;
 					case TimeSignature ts:
 						newEvent = new EditorTimeSignatureEvent(config, ts);

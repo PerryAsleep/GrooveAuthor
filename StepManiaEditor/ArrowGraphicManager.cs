@@ -73,6 +73,8 @@ internal abstract class ArrowGraphicManager
 	private static readonly ArrowColorSet MineColor;
 
 	private static readonly string TextureIdMine = "mine";
+	private static readonly string TextureIdFakeMarker = "fake-marker";
+	private static readonly string TextureIdLiftMarker = "lift-marker";
 
 	protected static readonly Dictionary<int, string> SnapTextureByBeatSubdivision = new()
 	{
@@ -315,6 +317,16 @@ internal abstract class ArrowGraphicManager
 	public static string GetMineTexture(int integerPosition, int lane, bool selected)
 	{
 		return GetTextureId(TextureIdMine, selected);
+	}
+
+	public static string GetFakeMarkerTexture(int integerPosition, int lane, bool selected)
+	{
+		return GetTextureId(TextureIdFakeMarker, selected);
+	}
+
+	public static string GetLiftMarkerTexture(int integerPosition, int lane, bool selected)
+	{
+		return GetTextureId(TextureIdLiftMarker, selected);
 	}
 
 	public static string GetSnapIndicatorTexture(int subdivision)

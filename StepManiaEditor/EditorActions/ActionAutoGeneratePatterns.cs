@@ -246,8 +246,8 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 				while (editorEventEnumerator.IsCurrentValid()
 				       && editorEventEnumerator.Current!.GetRow() <= currentExpressedChartSearchNode.Position)
 				{
-					if (editorEventEnumerator.Current is EditorTapNoteEvent
-					    || editorEventEnumerator.Current is EditorHoldNoteEvent)
+					if (editorEventEnumerator.Current is EditorTapNoteEvent or EditorHoldNoteEvent or EditorFakeNoteEvent
+					    or EditorLiftNoteEvent)
 					{
 						currentLaneCounts[editorEventEnumerator.Current.GetLane()]++;
 					}
@@ -551,8 +551,8 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 			{
 				if (editorEventEnumerator.Current.GetRow() == node.Position)
 				{
-					if (editorEventEnumerator.Current is EditorTapNoteEvent ||
-					    editorEventEnumerator.Current is EditorHoldNoteEvent)
+					if (editorEventEnumerator.Current is EditorTapNoteEvent or EditorHoldNoteEvent or EditorFakeNoteEvent
+					    or EditorLiftNoteEvent)
 					{
 						currentSteppedLanes[editorEventEnumerator.Current.GetLane()] = true;
 					}

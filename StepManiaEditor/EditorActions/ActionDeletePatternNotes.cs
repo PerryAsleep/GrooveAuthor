@@ -81,9 +81,8 @@ internal sealed class ActionDeletePatternNotes : EditorAction
 				while (row <= endRow)
 				{
 					if (row >= startRow &&
-					    (enumerator.Current is EditorTapNoteEvent
-					     || enumerator.Current is EditorMineNoteEvent
-					     || enumerator.Current is EditorHoldNoteEvent))
+					    enumerator.Current is EditorTapNoteEvent or EditorMineNoteEvent or EditorHoldNoteEvent
+						    or EditorFakeNoteEvent or EditorLiftNoteEvent)
 					{
 						if (row < endRow || (pattern.EndPositionInclusive && row == endRow))
 						{
