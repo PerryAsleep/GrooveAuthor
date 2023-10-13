@@ -1,5 +1,5 @@
-﻿using System.Drawing.Imaging;
-using System.Drawing;
+﻿using System.Drawing;
+using System.Drawing.Imaging;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Fumen;
@@ -122,6 +122,12 @@ internal class TextureGeneratorGame : Game
 		"itg-hold-solo-start-inactive",
 		"itg-roll-solo-start-active",
 		"itg-roll-solo-start-inactive",
+	};
+
+	private static readonly string[] ArrowSpecialTapMarkerIds = new[]
+	{
+		"fake-marker",
+		"lift-marker",
 	};
 
 	private static readonly string[] IconSubImageIds = new[]
@@ -349,8 +355,9 @@ internal class TextureGeneratorGame : Game
 			return;
 
 		ProcessGridOfImages(arrowsTexture, ArrowSquareSubImageIds, 9, 0, 0, 128, 128, 0);
-		ProcessGridOfImages(arrowsTexture, ArrowSnapSubImageIds, 4, 648, 1032, 40, 40, 8);
+		ProcessGridOfImages(arrowsTexture, ArrowSnapSubImageIds, 4, 776, 1032, 40, 40, 8);
 		ProcessGridOfImages(arrowsTexture, ArrowHoldStartSubImageIds, 4, 128, 1060, 128, 28, 0);
+		ProcessGridOfImages(arrowsTexture, ArrowSpecialTapMarkerIds, 2, 648, 1032, 40, 40, 8);
 
 		// Process hold end caps trimmed to their exact height.
 		// This is done because we use the texture size for determining if a click lands on a hold.
@@ -405,7 +412,9 @@ internal class TextureGeneratorGame : Game
 					!(identifier.Contains("receptor")
 					  || identifier.Contains("snap")
 					  || identifier.Contains("glow")
-					  || identifier.Contains("icon"));
+					  || identifier.Contains("icon")
+					  || identifier.Contains("fake")
+					  || identifier.Contains("lift"));
 
 				// Copy the sub-texture out of the source texture.
 				var subTexture = new Texture2D(GraphicsDevice, w, h);
