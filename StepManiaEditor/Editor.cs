@@ -189,6 +189,7 @@ internal sealed class Editor :
 	private UIAutogenConfigs UIAutogenConfigs;
 	private UIAutogenChart UIAutogenChart;
 	private UIAutogenChartsForChartType UIAutogenChartsForChartType;
+	private UICopyEventsBetweenCharts UICopyEventsBetweenCharts;
 	private UIPatternEvent UIPatternEvent;
 	private ZoomManager ZoomManager;
 	private StaticTextureAtlas TextureAtlas;
@@ -713,6 +714,7 @@ internal sealed class Editor :
 		UIAutogenConfigs = new UIAutogenConfigs(this);
 		UIAutogenChart = new UIAutogenChart(this);
 		UIAutogenChartsForChartType = new UIAutogenChartsForChartType(this);
+		UICopyEventsBetweenCharts = new UICopyEventsBetweenCharts(this);
 		UIPatternEvent = new UIPatternEvent(this);
 	}
 
@@ -2332,8 +2334,7 @@ internal sealed class Editor :
 		if (Preferences.Instance.PreferencesScroll.SpacingMode == SpacingMode.Variable)
 		{
 			var ratePosEventForChecking = (EditorInterpolatedRateAlteringEvent)EditorEvent.CreateEvent(
-				EventConfig.CreateScrollRateInterpolationConfig(ActiveChart, (int)Position.ChartPosition, Position.ChartTime, 0.0,
-					0));
+				EventConfig.CreateInterpolatedRateAlteringSearchEvent(ActiveChart, Position.ChartPosition, Position.ChartTime));
 
 			var interpolatedScrollRateEnumerator =
 				ActiveChart.GetInterpolatedScrollRateEvents().FindGreatestPreceding(ratePosEventForChecking);
@@ -3237,6 +3238,7 @@ internal sealed class Editor :
 		UIAutogenConfigs.Draw();
 		UIAutogenChart.Draw();
 		UIAutogenChartsForChartType.Draw();
+		UICopyEventsBetweenCharts.Draw();
 		UIPatternEvent.Draw(LastSelectedPatternEvent);
 
 		UIChartPosition.Draw(
@@ -3265,6 +3267,8 @@ internal sealed class Editor :
 	private void DrawMainMenuUI()
 	{
 		var p = Preferences.Instance;
+		var canEdit = CanEdit();
+		var canEditSong = canEdit && ActiveSong != null;
 		if (ImGui.BeginMainMenuBar())
 		{
 			if (ImGui.BeginMenu("File"))
@@ -3274,7 +3278,7 @@ internal sealed class Editor :
 					OnNew();
 				}
 
-				if (ImGui.BeginMenu("New Chart", ActiveSong != null))
+				if (ImGui.BeginMenu("New Chart", canEditSong))
 				{
 					DrawNewChartSelectableList();
 					ImGui.EndMenu();
@@ -3303,12 +3307,12 @@ internal sealed class Editor :
 					ImGui.EndMenu();
 				}
 
-				if (ImGui.MenuItem("Reload", "Ctrl+R", false, ActiveSong != null && p.RecentFiles.Count > 0))
+				if (ImGui.MenuItem("Reload", "Ctrl+R", false, canEditSong && p.RecentFiles.Count > 0))
 				{
 					OnReload();
 				}
 
-				if (ImGui.MenuItem("Close", "", false, ActiveSong != null))
+				if (ImGui.MenuItem("Close", "", false, canEditSong))
 				{
 					OnClose();
 				}
@@ -3317,20 +3321,20 @@ internal sealed class Editor :
 				var editorFileName = ActiveSong?.GetFileName();
 				if (!string.IsNullOrEmpty(editorFileName))
 				{
-					if (ImGui.MenuItem($"Save {editorFileName}", "Ctrl+S"))
+					if (ImGui.MenuItem($"Save {editorFileName}", "Ctrl+S", false, canEditSong))
 					{
 						OnSave();
 					}
 				}
 				else
 				{
-					if (ImGui.MenuItem("Save", "Ctrl+S", false, ActiveSong != null))
+					if (ImGui.MenuItem("Save", "Ctrl+S", false, canEditSong))
 					{
 						OnSave();
 					}
 				}
 
-				if (ImGui.MenuItem("Save As...", "Ctrl+Shift+S", false, ActiveSong != null))
+				if (ImGui.MenuItem("Save As...", "Ctrl+Shift+S", false, canEditSong))
 				{
 					OnSaveAs();
 				}
@@ -3421,20 +3425,56 @@ internal sealed class Editor :
 				ImGui.EndMenu();
 			}
 
+			if (ImGui.BeginMenu("Chart"))
+			{
+				if (ImGui.BeginMenu("New Chart", canEditSong))
+				{
+					DrawNewChartSelectableList();
+					ImGui.EndMenu();
+				}
+
+				if (ImGui.MenuItem("View Chart Properties"))
+				{
+					p.ShowChartPropertiesWindow = true;
+					ImGui.SetWindowFocus(UIChartProperties.WindowTitle);
+				}
+
+				if (ImGui.MenuItem("View Chart List"))
+				{
+					p.ShowChartListWindow = true;
+					ImGui.SetWindowFocus(UIChartList.WindowTitle);
+				}
+
+				ImGui.Separator();
+
+				DrawCopyChartEventsMenuItems(ActiveChart);
+
+				ImGui.Separator();
+
+				if (ImGui.MenuItem("Advanced Event Copy..."))
+				{
+					UICopyEventsBetweenCharts.Show();
+					ImGui.SetWindowFocus(UICopyEventsBetweenCharts.WindowTitle);
+				}
+
+				ImGui.EndMenu();
+			}
+
 			if (ImGui.BeginMenu("Autogen"))
 			{
 				var disabled = !CanEdit();
 				if (disabled)
 					PushDisabled();
 
-				if (ImGui.Selectable("Autogen New Chart"))
+				if (ImGui.Selectable("Autogen New Chart..."))
 				{
 					ShowAutogenChartUI(ActiveChart);
 				}
 
-				if (ImGui.Selectable("Autogen New Set of Charts"))
+				if (ImGui.Selectable("Autogen New Set of Charts..."))
 				{
 					UIAutogenChartsForChartType.Show();
+					ImGui.SetWindowFocus(UIAutogenChartsForChartType.WindowTitle);
 				}
 
 				ImGui.Separator();
@@ -3475,7 +3515,7 @@ internal sealed class Editor :
 
 				ImGui.Separator();
 
-				if (ImGui.MenuItem("Configuration"))
+				if (ImGui.MenuItem("Configuration..."))
 				{
 					p.ShowAutogenConfigsWindow = true;
 					ImGui.SetWindowFocus(UIAutogenConfigs.WindowTitle);
@@ -3502,6 +3542,138 @@ internal sealed class Editor :
 		}
 	}
 
+	public void DrawCopyChartEventsMenuItems(EditorChart chart)
+	{
+		var song = chart?.GetEditorSong();
+		var canEditSong = CanEdit() && song != null;
+		var canEditChart = CanEdit() && chart != null;
+		if (ImGui.BeginMenu("Replace this Chart's Timing and Scroll Events From", canEditSong && canEditChart))
+		{
+			UIChartList.DrawChartList(
+				song,
+				chart,
+				null,
+				selectedChart =>
+				{
+					if (chart != selectedChart)
+					{
+						ActionQueue.Instance.Do(new ActionCopyEventsBetweenCharts(
+							selectedChart,
+							UICopyEventsBetweenCharts.GetTimingAndScrollTypes(),
+							new List<EditorChart> { chart }));
+					}
+				},
+				false,
+				null);
+
+			ImGui.EndMenu();
+		}
+
+		if (ImGui.BeginMenu("Replace this Chart's Timing Events From", canEditSong && canEditChart))
+		{
+			UIChartList.DrawChartList(
+				song,
+				chart,
+				null,
+				selectedChart =>
+				{
+					if (chart != selectedChart)
+					{
+						ActionQueue.Instance.Do(new ActionCopyEventsBetweenCharts(
+							selectedChart,
+							UICopyEventsBetweenCharts.GetTimingTypes(),
+							new List<EditorChart> { chart }));
+					}
+				},
+				false,
+				null);
+
+			ImGui.EndMenu();
+		}
+
+		if (ImGui.BeginMenu("Copy this Chart's Timing and Scroll Events To", canEditSong && canEditChart))
+		{
+			if (ImGui.MenuItem("All Charts", canEditSong && canEditChart))
+			{
+				var allOtherCharts = new List<EditorChart>();
+				foreach (var songChart in song!.GetCharts())
+				{
+					if (songChart == chart)
+						continue;
+					allOtherCharts.Add(songChart);
+				}
+
+				if (allOtherCharts.Count > 0)
+				{
+					ActionQueue.Instance.Do(new ActionCopyEventsBetweenCharts(
+						chart,
+						UICopyEventsBetweenCharts.GetTimingAndScrollTypes(),
+						allOtherCharts));
+				}
+			}
+
+			UIChartList.DrawChartList(
+				song,
+				chart,
+				null,
+				selectedChart =>
+				{
+					if (chart != selectedChart)
+					{
+						ActionQueue.Instance.Do(new ActionCopyEventsBetweenCharts(
+							chart,
+							UICopyEventsBetweenCharts.GetTimingAndScrollTypes(),
+							new List<EditorChart> { selectedChart }));
+					}
+				},
+				false,
+				null);
+
+			ImGui.EndMenu();
+		}
+
+		if (ImGui.BeginMenu("Copy this Chart's Timing Events To", canEditSong && canEditChart))
+		{
+			if (ImGui.MenuItem("All Charts", canEditSong && canEditChart))
+			{
+				var allOtherCharts = new List<EditorChart>();
+				foreach (var songChart in song!.GetCharts())
+				{
+					if (songChart == chart)
+						continue;
+					allOtherCharts.Add(songChart);
+				}
+
+				if (allOtherCharts.Count > 0)
+				{
+					ActionQueue.Instance.Do(new ActionCopyEventsBetweenCharts(
+						chart,
+						UICopyEventsBetweenCharts.GetTimingTypes(),
+						allOtherCharts));
+				}
+			}
+
+			UIChartList.DrawChartList(
+				song,
+				chart,
+				null,
+				selectedChart =>
+				{
+					if (chart != selectedChart)
+					{
+						ActionQueue.Instance.Do(new ActionCopyEventsBetweenCharts(
+							chart,
+							UICopyEventsBetweenCharts.GetTimingTypes(),
+							new List<EditorChart> { selectedChart }));
+					}
+				},
+				false,
+				null);
+
+			ImGui.EndMenu();
+		}
+	}
+
 	private void DrawNewChartSelectableList()
 	{
 		foreach (var chartType in SupportedChartTypes)
@@ -3516,6 +3688,7 @@ internal sealed class Editor :
 	public void ShowAutogenChartUI(EditorChart sourceChart = null)
 	{
 		UIAutogenChart.Show(sourceChart);
+		ImGui.SetWindowFocus(UIAutogenChart.WindowTitle);
 	}
 
 	private void DrawRightClickMenu(int x, int y)
@@ -4887,6 +5060,7 @@ internal sealed class Editor :
 		// Close any UI which holds on to Song/Chart state.
 		UIAutogenChart.Close();
 		UIAutogenChartsForChartType.Close();
+		UICopyEventsBetweenCharts.Close();
 
 		StopPlayback();
 		MusicManager.UnloadAsync();

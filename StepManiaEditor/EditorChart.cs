@@ -1891,13 +1891,14 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 						{
 							var next = e.Current;
 							next!.PreviousScrollRate = irae.ScrollRateInterpolationEvent.Rate;
+						}
+
+						if (e.MovePrev())
+						{
 							if (e.MovePrev())
 							{
-								if (e.MovePrev())
-								{
-									var prev = e.Current;
-									irae.PreviousScrollRate = prev!.ScrollRateInterpolationEvent.Rate;
-								}
+								var prev = e.Current;
+								irae.PreviousScrollRate = prev!.ScrollRateInterpolationEvent.Rate;
 							}
 						}
 					}

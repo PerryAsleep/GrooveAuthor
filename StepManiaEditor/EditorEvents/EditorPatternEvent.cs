@@ -323,9 +323,9 @@ internal sealed class EditorPatternEvent : EditorEvent, IChartRegion,
 	/// Clones this event.
 	/// </summary>
 	/// <returns>Newly cloned EditorEvent.</returns>
-	public override EditorEvent Clone()
+	public override EditorEvent Clone(EditorChart chart = null)
 	{
-		var clone = (EditorPatternEvent)base.Clone();
+		var clone = (EditorPatternEvent)base.Clone(chart);
 		clone.EventDefinition = EventDefinition.Clone();
 		return clone;
 	}

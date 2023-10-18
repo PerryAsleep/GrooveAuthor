@@ -12,7 +12,7 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace StepManiaEditor;
 
-public class Utils
+internal sealed class Utils
 {
 	// TODO: Rename / Reorganize. Currently dumping a lot of rendering-related constants in here.
 
@@ -158,6 +158,65 @@ public class Utils
 		}
 
 		return new Vector2(x, y);
+	}
+
+	/// <summary>
+	/// Given a reference to an EditorChart, ensure that that reference is still a valid
+	/// chart for the active EditorSong. If it isn't, set it to the most appropriate
+	/// EditorChart to be used based on the Editor's active chart and song.
+	/// </summary>
+	/// <param name="chart">The EditorChart to set.</param>
+	/// <param name="editor">The Editor to use fallback choices.</param>
+	public static void EnsureChartReferencesValidChartFromActiveSong(ref EditorChart chart, Editor editor)
+	{
+		var song = editor.GetActiveSong();
+
+		// If the chart is set to a valid Chart, ensure that Chart still exists.
+		// If the Chart does not exist, set the chart to null.
+		if (chart != null)
+		{
+			if (song == null)
+			{
+				chart = null;
+			}
+			else
+			{
+				var charts = song.GetCharts();
+				var sourceChartFound = false;
+				foreach (var songChart in charts)
+				{
+					if (chart == songChart)
+					{
+						sourceChartFound = true;
+						break;
+					}
+				}
+
+				if (!sourceChartFound)
+				{
+					chart = null;
+				}
+			}
+		}
+
+		// If the chart is not set, try to set it.
+		if (chart == null)
+		{
+			// Use the active Chart, if one exists.
+			chart = editor.GetActiveChart();
+			if (chart != null)
+				return;
+
+			// Failing that use, use any Chart from the active Song.
+			if (song != null)
+			{
+				var charts = song.GetCharts();
+				if (charts?.Count > 0)
+				{
+					chart = charts[0];
+				}
+			}
+		}
 	}
 
 	#region Color Helpers

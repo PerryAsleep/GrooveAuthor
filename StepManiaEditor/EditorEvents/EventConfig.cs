@@ -20,6 +20,7 @@ internal sealed class EventConfig
 	public readonly bool IsStandardSearchEvent;
 	public readonly bool IsTimeOnlySearchEvent;
 	public readonly bool IsRowOnlySearchEvent;
+	public readonly bool IsInterpolatedRateAlteringSearchEvent;
 
 	public bool IsBeingEdited;
 
@@ -32,6 +33,7 @@ internal sealed class EventConfig
 		bool isStandardSearchEvent = false,
 		bool isTimeOnlySearchEvent = false,
 		bool isRowOnlySearchEvent = false,
+		bool isInterpolatedRateAlteringSearchEvent = false,
 		bool isBeingEdited = false)
 	{
 		EditorChart = editorChart;
@@ -42,17 +44,18 @@ internal sealed class EventConfig
 		IsStandardSearchEvent = isStandardSearchEvent;
 		IsTimeOnlySearchEvent = isTimeOnlySearchEvent;
 		IsRowOnlySearchEvent = isRowOnlySearchEvent;
+		IsInterpolatedRateAlteringSearchEvent = isInterpolatedRateAlteringSearchEvent;
 		IsBeingEdited = isBeingEdited;
 	}
 
-	public static EventConfig CreateCloneEventConfig(EditorEvent editorEvent)
+	public static EventConfig CreateCloneEventConfig(EditorEvent editorEvent, EditorChart editorChart)
 	{
 		var clonedEvents = new List<Event>();
 		foreach (var originalEvent in editorEvent.GetEvents())
 			clonedEvents.Add(originalEvent.Clone());
 
 		return new EventConfig(
-			editorEvent.GetEditorChart(),
+			editorChart,
 			clonedEvents,
 			false,
 			editorEvent.GetChartPosition(),
@@ -60,12 +63,13 @@ internal sealed class EventConfig
 			editorEvent.IsStandardSearchEvent(),
 			editorEvent.IsTimeOnlySearchEvent(),
 			editorEvent.IsRowOnlySearchEvent(),
+			editorEvent.IsInterpolatedRateAlteringSearchEvent(),
 			editorEvent.IsBeingEdited());
 	}
 
 	public bool IsSearchEvent()
 	{
-		return IsStandardSearchEvent || IsTimeOnlySearchEvent || IsRowOnlySearchEvent;
+		return IsStandardSearchEvent || IsTimeOnlySearchEvent || IsRowOnlySearchEvent || IsInterpolatedRateAlteringSearchEvent;
 	}
 
 	public static EventConfig CreateConfig(EditorChart chart, Event chartEvent)
@@ -388,5 +392,10 @@ internal sealed class EventConfig
 	public static EventConfig CreateSearchEventConfigWithOnlyRow(EditorChart chart, double row)
 	{
 		return new EventConfig(chart, null, true, row, 0.0, false, false, true);
+	}
+
+	public static EventConfig CreateInterpolatedRateAlteringSearchEvent(EditorChart chart, double row, double chartTime)
+	{
+		return new EventConfig(chart, null, true, row, chartTime, false, false, false, true);
 	}
 }

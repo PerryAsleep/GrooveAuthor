@@ -202,7 +202,7 @@ internal sealed class UIChartList
 				onSelected(chart);
 			}
 
-			if (ImGui.IsItemClicked(ImGuiMouseButton.Right))
+			if (onRightClick != null && ImGui.IsItemClicked(ImGuiMouseButton.Right))
 			{
 				ImGui.OpenPopup($"ChartRightClickPopup##{index}");
 			}
@@ -240,7 +240,7 @@ internal sealed class UIChartList
 		}
 
 		// If the selectable was right clicked, invoke the right click action.
-		if (ImGui.BeginPopup($"ChartRightClickPopup##{index}"))
+		if (onRightClick != null && ImGui.BeginPopup($"ChartRightClickPopup##{index}"))
 		{
 			onRightClick(chart);
 			ImGui.EndPopup();
@@ -252,15 +252,18 @@ internal sealed class UIChartList
 		var disabled = !Editor.CanChartBeEdited(chart);
 		if (disabled)
 			PushDisabled();
-		if (ImGui.Selectable($"Delete {chart.ChartDifficultyType} Chart"))
+
+		if (ImGui.MenuItem($"Delete {chart.ChartDifficultyType} Chart"))
 		{
 			ChartPendingDelete = chart;
 		}
 
-		if (ImGui.Selectable($"Autogen New Chart From {chart.ChartDifficultyType} Chart"))
+		if (ImGui.MenuItem($"Autogen New Chart From {chart.ChartDifficultyType} Chart..."))
 		{
 			Editor.ShowAutogenChartUI(chart);
 		}
+
+		Editor.DrawCopyChartEventsMenuItems(chart);
 
 		if (disabled)
 			PopDisabled();

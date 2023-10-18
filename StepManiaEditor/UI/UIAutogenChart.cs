@@ -51,68 +51,12 @@ internal sealed class UIAutogenChart
 		SourceChart = null;
 	}
 
-	/// <summary>
-	/// Helper method called before drawing to ensure that the SourceChart is a valid
-	/// Chart that hasn't been deleted, and that, if unset, it set to the best chart to use.
-	/// </summary>
-	private void RefreshSourceChart()
-	{
-		var song = Editor.GetActiveSong();
-
-		// If the SourceChart is set to a valid Chart, ensure that Chart still exists.
-		// If the Chart does not exist, set the SourceChart to null.
-		if (SourceChart != null)
-		{
-			if (song == null)
-			{
-				SourceChart = null;
-			}
-			else
-			{
-				var charts = song.GetCharts();
-				var sourceChartFound = false;
-				foreach (var chart in charts)
-				{
-					if (SourceChart == chart)
-					{
-						sourceChartFound = true;
-						break;
-					}
-				}
-
-				if (!sourceChartFound)
-				{
-					SourceChart = null;
-				}
-			}
-		}
-
-		// If the SourceChart is not set, try to set it.
-		if (SourceChart == null)
-		{
-			// Use the active Chart, if one exists.
-			SourceChart = Editor.GetActiveChart();
-			if (SourceChart != null)
-				return;
-
-			// Failing that use, use any Chart from the active Song.
-			if (song != null)
-			{
-				var charts = song.GetCharts();
-				if (charts?.Count > 0)
-				{
-					SourceChart = charts[0];
-				}
-			}
-		}
-	}
-
 	public void Draw()
 	{
 		if (!Showing)
 			return;
 
-		RefreshSourceChart();
+		Utils.EnsureChartReferencesValidChartFromActiveSong(ref SourceChart, Editor);
 
 		ImGui.SetNextWindowSize(new Vector2(0, 0), ImGuiCond.FirstUseEver);
 		if (ImGui.Begin(WindowTitle, ref Showing, ImGuiWindowFlags.NoScrollbar))

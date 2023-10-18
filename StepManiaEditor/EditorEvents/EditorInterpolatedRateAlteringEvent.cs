@@ -8,7 +8,7 @@ using static System.Diagnostics.Debug;
 
 namespace StepManiaEditor;
 
-internal sealed class EditorInterpolatedRateAlteringEvent : EditorEvent
+internal class EditorInterpolatedRateAlteringEvent : EditorEvent
 {
 	public static readonly string EventShortDescription =
 		"StepMania refers to these events as \"speeds\".\n" +
@@ -178,5 +178,22 @@ internal sealed class EditorInterpolatedRateAlteringEvent : EditorEvent
 			CanBeDeleted(),
 			Alpha,
 			WidgetHelp);
+	}
+}
+
+/// <summary>
+/// EditorInterpolatedRateAlteringEvent to use when needing to search for
+/// EditorInterpolatedRateAlteringEvents in data structures which require comparing to other events.
+/// </summary>
+internal sealed class EditorSearchInterpolatedRateAlteringEvent : EditorInterpolatedRateAlteringEvent
+{
+	public EditorSearchInterpolatedRateAlteringEvent(EventConfig config)
+		: base(config, null)
+	{
+	}
+
+	public override bool IsInterpolatedRateAlteringSearchEvent()
+	{
+		return true;
 	}
 }

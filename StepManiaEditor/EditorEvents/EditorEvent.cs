@@ -180,6 +180,10 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 			{
 				newEvent = new EditorSearchRateAlteringEventWithTime(config);
 			}
+			else if (config.IsInterpolatedRateAlteringSearchEvent)
+			{
+				newEvent = new EditorSearchInterpolatedRateAlteringEvent(config);
+			}
 		}
 
 		Assert(newEvent != null);
@@ -205,10 +209,15 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	/// <summary>
 	/// Clones this event.
 	/// </summary>
+	/// <param name="chart">
+	/// Optional EditorChart to assign to the cloned event.
+	/// If null, this EditorEvent's EditorChart will be used.
+	/// </param>
 	/// <returns>Newly cloned EditorEvent.</returns>
-	public virtual EditorEvent Clone()
+	public virtual EditorEvent Clone(EditorChart chart = null)
 	{
-		var newEvent = CreateEvent(EventConfig.CreateCloneEventConfig(this));
+		var editorChartForNewEvent = chart ?? EditorChart;
+		var newEvent = CreateEvent(EventConfig.CreateCloneEventConfig(this, editorChartForNewEvent));
 		newEvent.IsPositionImmutable = IsPositionImmutable;
 		newEvent.Selected = Selected;
 		newEvent.ChartPosition = ChartPosition;
@@ -503,6 +512,20 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	{
 		return false;
 	}
+
+	/// <summary>
+	/// Returns whether or not this event is a search event that can be compared by only ChartPosition.
+	/// Search events are not added to the EditorChart and are just used for performing
+	/// searches in data structures which require comparisons.
+	/// </summary>
+	/// <returns>
+	/// Whether or not this event is a search event that can be compared by only ChartPosition.
+	/// </returns>
+	public virtual bool IsInterpolatedRateAlteringSearchEvent()
+	{
+		return false;
+	}
+
 
 	/// <summary>
 	/// Called when this event is added to its EditorChart.
