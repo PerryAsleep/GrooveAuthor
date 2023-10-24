@@ -1,6 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+using System.Threading.Tasks;
 using Fumen;
 using Fumen.ChartDefinition;
 using Fumen.Converters;
@@ -10,9 +13,6 @@ using static StepManiaEditor.ImGuiUtils;
 using static Fumen.Converters.SMCommon;
 using static Fumen.Converters.SMWriterBase;
 using static System.Diagnostics.Debug;
-using System.Text.Json.Serialization;
-using System.Text.Json;
-using System.Threading.Tasks;
 
 namespace StepManiaEditor;
 
@@ -641,7 +641,17 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 				continue;
 			}
 
-			var editorChart = new EditorChart(this, chart, chartObserver);
+			EditorChart editorChart;
+			try
+			{
+				editorChart = new EditorChart(this, chart, chartObserver);
+			}
+			catch (Exception e)
+			{
+				Logger.Error($"Failed to set up {chart.Type} chart. {e}");
+				continue;
+			}
+
 			if (!Charts.ContainsKey(editorChart.ChartType))
 				Charts.Add(editorChart.ChartType, new List<EditorChart>());
 			Charts[editorChart.ChartType].Add(editorChart);
@@ -691,7 +701,17 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 		if (!CanBeEdited())
 			return null;
 
-		var chart = new EditorChart(this, chartType, observer);
+		EditorChart chart;
+		try
+		{
+			chart = new EditorChart(this, chartType, observer);
+		}
+		catch (Exception e)
+		{
+			Logger.Error($"Failed add {ChartTypeString(chartType)} chart. {e}");
+			return null;
+		}
+
 		if (!Charts.ContainsKey(chartType))
 			Charts.Add(chartType, new List<EditorChart>());
 		Charts[chartType].Add(chart);

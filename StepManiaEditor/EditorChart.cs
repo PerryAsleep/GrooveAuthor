@@ -467,7 +467,6 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		for (var a = 0; a < NumInputs; a++)
 			StepCountsByLane[a] = 0;
 
-		// TODO: I wonder if there is an optimization to not do all the tree parsing for inactive charts.
 		SetUpEditorEvents(chart);
 
 		DeserializeCustomChartData(chart);
@@ -508,36 +507,12 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 		var tempChart = new Chart();
 		var tempLayer = new Layer();
-		tempLayer.Events.Add(new TimeSignature(editorSong.GetBestChartStartingTimeSignature())
-		{
-			IntegerPosition = 0,
-			MetricPosition = new MetricPosition(0, 0),
-		});
-		tempLayer.Events.Add(new Tempo(editorSong.GetBestChartStartingTempo())
-		{
-			IntegerPosition = 0,
-			MetricPosition = new MetricPosition(0, 0),
-		});
-		tempLayer.Events.Add(new ScrollRate(DefaultScrollRate)
-		{
-			IntegerPosition = 0,
-			MetricPosition = new MetricPosition(0, 0),
-		});
-		tempLayer.Events.Add(new ScrollRateInterpolation(DefaultScrollRate, 0, 0.0, false)
-		{
-			IntegerPosition = 0,
-			MetricPosition = new MetricPosition(0, 0),
-		});
-		tempLayer.Events.Add(new TickCount(DefaultTickCount)
-		{
-			IntegerPosition = 0,
-			MetricPosition = new MetricPosition(0, 0),
-		});
-		tempLayer.Events.Add(new Multipliers(DefaultHitMultiplier, DefaultMissMultiplier)
-		{
-			IntegerPosition = 0,
-			MetricPosition = new MetricPosition(0, 0),
-		});
+		tempLayer.Events.Add(CreateDefaultTimeSignature(EditorSong));
+		tempLayer.Events.Add(CreateDefaultTempo(EditorSong));
+		tempLayer.Events.Add(CreateDefaultScrollRate());
+		tempLayer.Events.Add(CreateDefaultScrollRateInterpolation());
+		tempLayer.Events.Add(CreateDefaultTickCount());
+		tempLayer.Events.Add(CreateDefaultMultipliers());
 		tempChart.Layers.Add(tempLayer);
 		SetUpEditorEvents(tempChart);
 	}
@@ -556,26 +531,14 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		var firstTick = true;
 		var firstMultipliersEvent = true;
 
-		for (var eventIndex = 0; eventIndex < chart.Layers[0].Events.Count; eventIndex++)
+		// We expect there to be events of these types at row 0.
+		// If we don't find them, we will create defaults.
+		var foundFirstTimeSignature = false;
+		var foundFirstTempo = false;
+
+		// Helper method for adding an EditorEvent to this method's local data structures.
+		void AddLocalEvent(Event chartEvent, EditorEvent editorEvent)
 		{
-			var chartEvent = chart.Layers[0].Events[eventIndex];
-			EditorEvent editorEvent;
-
-			switch (chartEvent)
-			{
-				case LaneHoldStartNote hsn:
-					pendingHoldStarts[hsn.Lane] = hsn;
-					continue;
-				case LaneHoldEndNote hen:
-					editorEvent = EditorEvent.CreateEvent(EventConfig.CreateHoldConfig(this, pendingHoldStarts[hen.Lane], hen));
-					pendingHoldStarts[hen.Lane] = null;
-					holds.Insert(editorEvent);
-					break;
-				default:
-					editorEvent = EditorEvent.CreateEvent(EventConfig.CreateConfig(this, chartEvent));
-					break;
-			}
-
 			if (editorEvent != null)
 				editorEvents.Insert(editorEvent);
 
@@ -621,6 +584,60 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			editorEvent?.OnAddedToChart();
 		}
 
+		// Loop over every Event, creating EditorEvents from them.
+		for (var eventIndex = 0; eventIndex < chart.Layers[0].Events.Count; eventIndex++)
+		{
+			var chartEvent = chart.Layers[0].Events[eventIndex];
+			EditorEvent editorEvent;
+
+			switch (chartEvent)
+			{
+				case TimeSignature ts:
+					if (!foundFirstTimeSignature && ts.IntegerPosition == 0)
+						foundFirstTimeSignature = true;
+					editorEvent = EditorEvent.CreateEvent(EventConfig.CreateConfig(this, chartEvent));
+					break;
+				case Tempo t:
+					if (!foundFirstTempo && t.IntegerPosition == 0)
+						foundFirstTempo = true;
+					editorEvent = EditorEvent.CreateEvent(EventConfig.CreateConfig(this, chartEvent));
+					break;
+				case LaneHoldStartNote hsn:
+					pendingHoldStarts[hsn.Lane] = hsn;
+					continue;
+				case LaneHoldEndNote hen:
+					editorEvent = EditorEvent.CreateEvent(EventConfig.CreateHoldConfig(this, pendingHoldStarts[hen.Lane], hen));
+					pendingHoldStarts[hen.Lane] = null;
+					holds.Insert(editorEvent);
+					break;
+				default:
+					editorEvent = EditorEvent.CreateEvent(EventConfig.CreateConfig(this, chartEvent));
+					break;
+			}
+
+			AddLocalEvent(chartEvent, editorEvent);
+		}
+
+		// Ensure needed first events are present.
+		var modifiedChart = false;
+		{
+			// The StepManiaLibrary loading ensures that the chart has valid Time Signatures.
+			// This should never happen, but if it does throw an exception. Adding a default Time Signature is non-trivial.
+			if (!foundFirstTimeSignature)
+			{
+				throw new Exception("No Time Signature found at row 0.");
+			}
+
+			if (!foundFirstTempo)
+			{
+				var chartEvent = CreateDefaultTempo(EditorSong);
+				var editorEvent = EditorEvent.CreateEvent(EventConfig.CreateConfig(this, chartEvent));
+				Logger.Warn($"No Tempo found at row 0. Adding {chartEvent.TempoBPM} BPM Tempo at row 0.");
+				AddLocalEvent(chartEvent, editorEvent);
+				modifiedChart = true;
+			}
+		}
+
 		EditorEvents = editorEvents;
 		Holds = holds;
 		RateAlteringEvents = rateAlteringEvents;
@@ -628,12 +645,71 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		MiscEvents = miscEvents;
 
 		RefreshIntervals();
-
 		CleanRateAlteringEvents();
 
 		// Create events that are not derived from the Chart's Events.
 		AddPreviewEvent();
 		AddLastSecondHintEvent();
+
+		if (modifiedChart)
+		{
+			UpdateEventTimingData();
+			ActionQueue.Instance.SetHasUnsavedChanges();
+		}
+	}
+
+	private static TimeSignature CreateDefaultTimeSignature(EditorSong editorSong)
+	{
+		return new TimeSignature(editorSong.GetBestChartStartingTimeSignature())
+		{
+			IntegerPosition = 0,
+			MetricPosition = new MetricPosition(0, 0),
+		};
+	}
+
+	private static Tempo CreateDefaultTempo(EditorSong editorSong)
+	{
+		return new Tempo(editorSong.GetBestChartStartingTempo())
+		{
+			IntegerPosition = 0,
+			MetricPosition = new MetricPosition(0, 0),
+		};
+	}
+
+	private static ScrollRate CreateDefaultScrollRate()
+	{
+		return new ScrollRate(DefaultScrollRate)
+		{
+			IntegerPosition = 0,
+			MetricPosition = new MetricPosition(0, 0),
+		};
+	}
+
+	private static ScrollRateInterpolation CreateDefaultScrollRateInterpolation()
+	{
+		return new ScrollRateInterpolation(DefaultScrollRate, 0, 0.0, false)
+		{
+			IntegerPosition = 0,
+			MetricPosition = new MetricPosition(0, 0),
+		};
+	}
+
+	private static TickCount CreateDefaultTickCount()
+	{
+		return new TickCount(DefaultTickCount)
+		{
+			IntegerPosition = 0,
+			MetricPosition = new MetricPosition(0, 0),
+		};
+	}
+
+	private static Multipliers CreateDefaultMultipliers()
+	{
+		return new Multipliers(DefaultHitMultiplier, DefaultMissMultiplier)
+		{
+			IntegerPosition = 0,
+			MetricPosition = new MetricPosition(0, 0),
+		};
 	}
 
 	#endregion Constructors
