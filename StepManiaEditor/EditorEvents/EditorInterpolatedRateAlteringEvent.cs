@@ -128,6 +128,11 @@ internal class EditorInterpolatedRateAlteringEvent : EditorEvent
 		return ScrollRateInterpolationEvent.PreferPeriodAsTime;
 	}
 
+	public double GetRate()
+	{
+		return ScrollRateInterpolationEvent.Rate;
+	}
+
 	public double GetInterpolatedScrollRateFromTime(double chartTime)
 	{
 		var eventChartTime = GetChartTime();

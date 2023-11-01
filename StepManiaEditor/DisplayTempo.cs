@@ -1,5 +1,5 @@
-﻿using Fumen.Converters;
-using Fumen;
+﻿using Fumen;
+using Fumen.Converters;
 using static Fumen.Converters.SMCommon;
 
 namespace StepManiaEditor;
@@ -109,5 +109,17 @@ internal sealed class DisplayTempo
 		}
 
 		return "";
+	}
+
+	public bool Matches(DisplayTempo other)
+	{
+		if (ReferenceEquals(null, other))
+			return false;
+		if (ReferenceEquals(this, other))
+			return true;
+		return Mode == other.Mode
+		       && SpecifiedTempoMin.Equals(other.SpecifiedTempoMin)
+		       && SpecifiedTempoMax.Equals(other.SpecifiedTempoMax)
+		       && ShouldAllowEditsOfMax == other.ShouldAllowEditsOfMax;
 	}
 }

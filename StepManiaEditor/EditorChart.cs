@@ -509,10 +509,16 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		var tempLayer = new Layer();
 		tempLayer.Events.Add(CreateDefaultTimeSignature(EditorSong));
 		tempLayer.Events.Add(CreateDefaultTempo(EditorSong));
-		tempLayer.Events.Add(CreateDefaultScrollRate());
-		tempLayer.Events.Add(CreateDefaultScrollRateInterpolation());
-		tempLayer.Events.Add(CreateDefaultTickCount());
-		tempLayer.Events.Add(CreateDefaultMultipliers());
+
+		var isSmFileType = editorSong.GetFileFormat() != null && editorSong.GetFileFormat().Type == FileFormatType.SM;
+		if (!isSmFileType)
+		{
+			tempLayer.Events.Add(CreateDefaultScrollRate());
+			tempLayer.Events.Add(CreateDefaultScrollRateInterpolation());
+			tempLayer.Events.Add(CreateDefaultTickCount());
+			tempLayer.Events.Add(CreateDefaultMultipliers());
+		}
+
 		tempChart.Layers.Add(tempLayer);
 		SetUpEditorEvents(tempChart);
 	}
@@ -528,8 +534,6 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		var pendingHoldStarts = new LaneHoldStartNote[NumInputs];
 		var lastScrollRateInterpolationValue = 1.0;
 		var firstInterpolatedScrollRate = true;
-		var firstTick = true;
-		var firstMultipliersEvent = true;
 
 		// We expect there to be events of these types at row 0.
 		// If we don't find them, we will create defaults.
@@ -559,7 +563,6 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 						irae.PreviousScrollRate = firstInterpolatedScrollRate
 							? scrollRateInterpolation.Rate
 							: lastScrollRateInterpolationValue;
-						irae.IsPositionImmutable = firstInterpolatedScrollRate;
 						interpolatedScrollRateEvents.Insert(irae);
 						lastScrollRateInterpolationValue = scrollRateInterpolation.Rate;
 
@@ -568,14 +571,6 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 					break;
 				}
-				case EditorTickCountEvent tce:
-					tce.IsPositionImmutable = firstTick;
-					firstTick = false;
-					break;
-				case EditorMultipliersEvent me:
-					me.IsPositionImmutable = firstMultipliersEvent;
-					firstMultipliersEvent = false;
-					break;
 			}
 
 			if (editorEvent != null && editorEvent.IsMiscEvent())
@@ -632,7 +627,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			{
 				var chartEvent = CreateDefaultTempo(EditorSong);
 				var editorEvent = EditorEvent.CreateEvent(EventConfig.CreateConfig(this, chartEvent));
-				Logger.Warn($"No Tempo found at row 0. Adding {chartEvent.TempoBPM} BPM Tempo at row 0.");
+				LogWarn($"No Tempo found at row 0. Adding {chartEvent.TempoBPM} BPM Tempo at row 0.");
 				AddLocalEvent(chartEvent, editorEvent);
 				modifiedChart = true;
 			}
@@ -812,6 +807,9 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 	public string GetDescriptiveName()
 	{
+		if (string.IsNullOrEmpty(Description))
+			return
+				$"{ImGuiUtils.GetPrettyEnumString(ChartType)} {ImGuiUtils.GetPrettyEnumString(ChartDifficultyType)} [{Rating}]";
 		return
 			$"{ImGuiUtils.GetPrettyEnumString(ChartType)} {ImGuiUtils.GetPrettyEnumString(ChartDifficultyType)} [{Rating}] {Description}";
 	}
@@ -845,7 +843,6 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 		var warpRowsRemaining = 0;
 		var stopTimeRemaining = 0.0;
-		var isPositionImmutable = false;
 		var lastRowsPerSecond = 1.0;
 		var lastSecondsPerRow = 1.0;
 
@@ -886,6 +883,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 				stopTimeRemaining = Math.Min(0.0, stopTimeRemaining + stopTimeSincePrevious);
 			}
 
+			var isPositionImmutable = false;
+
 			switch (chartEvent)
 			{
 				case Tempo tc:
@@ -924,14 +923,12 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 					// Add to the stop time rather than replace it because overlapping
 					// negative stops stack in Stepmania.
 					stopTimeRemaining += stop.LengthSeconds;
-					isPositionImmutable = false;
 					break;
 				}
 				case Warp warp:
 				{
 					// Intentionally do not stack warps to match Stepmania behavior.
 					warpRowsRemaining = Math.Max(warpRowsRemaining, warp.LengthIntegerPosition);
-					isPositionImmutable = false;
 					break;
 				}
 				case ScrollRate scrollRate:
@@ -947,8 +944,6 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 							previousRateAlteringEvent.UpdateScrollRate(lastScrollRate);
 						}
 					}
-
-					isPositionImmutable = firstScrollRate;
 
 					firstScrollRate = false;
 					break;
@@ -1236,7 +1231,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			}
 
 			var atEnd = false;
-			while (rateEventEnumerator.Current.GetTimeSignature() == precedingTimeSignature)
+			while (ReferenceEquals(rateEventEnumerator.Current.GetTimeSignature(), precedingTimeSignature))
 			{
 				if (!rateEventEnumerator.MoveNext())
 				{
@@ -2357,6 +2352,105 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	#region Saving
 
 	/// <summary>
+	/// Returns whether or not this chart is compatible with the legacy sm format.
+	/// While the sm format doesn't support many event types, some can be safely ignored.
+	/// For a chart to be considered incompatible it must contain events which if
+	/// ignored would produce a chart with different note timing.
+	/// </summary>
+	/// <param name="logIncompatibilities">If true, log incompatibilities as errors.</param>
+	/// <returns>True if this chart is compatible with the sm format and false otherwise.</returns>
+	public bool IsCompatibleWithSmFormat(bool logIncompatibilities)
+	{
+		// Warps affect timing and their presence would result in a busted sm chart.
+		if (Warps.GetCount() > 0)
+		{
+			if (logIncompatibilities)
+				LogError("Chart has Warps. Warps are not compatible with sm files.");
+			return false;
+		}
+
+		// Other events like scroll rate modifiers that can't be saved to a sm chart don't
+		// affect the playability of the chart and can be safely ignored.
+		return true;
+	}
+
+	/// <summary>
+	/// Legacy sm files save timing data per song, not per chart.
+	/// For a song's charts to be able to be saved in an sm file, their timing
+	/// events must be identical.
+	/// </summary>
+	/// <param name="other">EditorChart to compare this EditorChart to.</param>
+	/// <param name="logDifferences">If true, log differences as errors.</param>
+	/// <returns>
+	/// True if this EditorChart's timing events match the given EditorChart and false otherwise.
+	/// </returns>
+	public bool DoSmTimingEventsMatch(EditorChart other, bool logDifferences)
+	{
+		if (other == null)
+			return false;
+
+		var match = true;
+
+		// Charts must use the same music offset.
+		var musicOffset = UsesChartMusicOffset ? MusicOffset : EditorSong.MusicOffset;
+		var otherMusicOffset = other.UsesChartMusicOffset ? other.MusicOffset : other.EditorSong.MusicOffset;
+		if (!musicOffset.DoubleEquals(otherMusicOffset))
+		{
+			if (logDifferences)
+			{
+				LogError(
+					$"Music offset ({musicOffset}) does not match offset ({otherMusicOffset}) from {other.GetDescriptiveName()}.");
+			}
+
+			match = false;
+		}
+
+		// Charts must have the same display bpm.
+		if (!DisplayTempo.Matches(other.DisplayTempo))
+		{
+			if (logDifferences)
+			{
+				LogError(
+					$"Display tempo ({DisplayTempo}) does not match display tempo ({other.DisplayTempo}) from {other.GetDescriptiveName()}.");
+			}
+
+			match = false;
+		}
+
+		// All rate altering events between charts must match.
+		var rateAlteringEventsMatch = true;
+		var numRateAlteringEvents = RateAlteringEvents.GetCount();
+		if (numRateAlteringEvents != other.RateAlteringEvents.GetCount())
+		{
+			rateAlteringEventsMatch = false;
+			match = false;
+		}
+
+		if (match && numRateAlteringEvents > 0)
+		{
+			var enumerator = RateAlteringEvents.First();
+			var otherEnumerator = other.RateAlteringEvents.First();
+			while (enumerator.MoveNext() && otherEnumerator.MoveNext())
+			{
+				var chartEvent = enumerator.Current;
+				var otherChartEvent = otherEnumerator.Current;
+				if (!chartEvent!.Matches(otherChartEvent))
+				{
+					rateAlteringEventsMatch = false;
+					match = false;
+				}
+			}
+		}
+
+		if (!rateAlteringEventsMatch && logDifferences)
+		{
+			LogError($"Timing and scroll events do not match events from {other.GetDescriptiveName()}.");
+		}
+
+		return match;
+	}
+
+	/// <summary>
 	/// Generates a list of Events from this EditorChart's EditorEvents.
 	/// The list will be sorted appropriately for Stepmania.
 	/// </summary>
@@ -2477,7 +2571,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			}
 			default:
 			{
-				Logger.Warn($"Unsupported {versionTag}: {version}.");
+				LogWarn($"Unsupported {versionTag}: {version}.");
 				break;
 			}
 		}
@@ -2510,7 +2604,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 					if (row < 0)
 					{
 						alteredPatterns = true;
-						Logger.Warn($"Pattern at invalid row {row}. Ignoring this pattern.");
+						LogWarn($"Pattern at invalid row {row}. Ignoring this pattern.");
 						continue;
 					}
 
@@ -2519,14 +2613,14 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 					if (definition.Length < 0)
 					{
 						alteredPatterns = true;
-						Logger.Warn($"Pattern at row {row} has an invalid length of {definition.Length}. Ignoring this pattern.");
+						LogWarn($"Pattern at row {row} has an invalid length of {definition.Length}. Ignoring this pattern.");
 						continue;
 					}
 
 					if (PatternConfigManager.Instance.GetConfig(definition.PatternConfigGuid) == null)
 					{
 						alteredPatterns = true;
-						Logger.Warn(
+						LogWarn(
 							$"Pattern at row {row} uses unknown pattern config with guid {definition.PatternConfigGuid}." +
 							$" Updating this pattern to use {PatternConfigManager.DefaultPatternConfigSixteenthsName}.");
 						definition.PatternConfigGuid = PatternConfigManager.DefaultPatternConfigSixteenthsGuid;
@@ -2535,7 +2629,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 					if (PerformedChartConfigManager.Instance.GetConfig(definition.PerformedChartConfigGuid) == null)
 					{
 						alteredPatterns = true;
-						Logger.Warn(
+						LogWarn(
 							$"Pattern at row {row} uses unknown performed chart config with guid {definition.PerformedChartConfigGuid}." +
 							$" Updating this pattern to use {PerformedChartConfigManager.DefaultPerformedChartConfigName}.");
 						definition.PerformedChartConfigGuid = PerformedChartConfigManager.DefaultPerformedChartConfigGuid;
@@ -2559,13 +2653,27 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		}
 		catch (Exception e)
 		{
-			Logger.Warn($"Failed to deserialize {GetCustomPropertyName(TagCustomChartData)} value: \"{customDataString}\". {e}");
+			LogWarn($"Failed to deserialize {GetCustomPropertyName(TagCustomChartData)} value: \"{customDataString}\". {e}");
 		}
 
 		return false;
 	}
 
 	#endregion Custom Data Serialization
+
+	#region Logging
+
+	private void LogWarn(string message)
+	{
+		Logger.Warn($"[{GetDescriptiveName()}] {message}");
+	}
+
+	private void LogError(string message)
+	{
+		Logger.Error($"[{GetDescriptiveName()}] {message}");
+	}
+
+	#endregion Logging
 }
 
 /// <summary>

@@ -71,7 +71,7 @@ internal sealed class UIPatternEvent
 					{
 						ActionQueue.Instance.Do(new ActionAutoGeneratePatterns(
 							Editor,
-							patternEvent.GetEditorChart(),
+							patternEvent!.GetEditorChart(),
 							new List<EditorPatternEvent> { patternEvent },
 							false));
 					},
@@ -80,7 +80,7 @@ internal sealed class UIPatternEvent
 					{
 						ActionQueue.Instance.Do(new ActionAutoGeneratePatterns(
 							Editor,
-							patternEvent.GetEditorChart(),
+							patternEvent!.GetEditorChart(),
 							new List<EditorPatternEvent> { patternEvent },
 							true));
 					},
@@ -92,7 +92,7 @@ internal sealed class UIPatternEvent
 					    "Delete all the notes in this pattern's region."))
 				{
 					ActionQueue.Instance.Do(new ActionDeletePatternNotes(
-						patternEvent.GetEditorChart(),
+						patternEvent!.GetEditorChart(),
 						new List<EditorPatternEvent> { patternEvent }));
 				}
 
@@ -129,7 +129,7 @@ internal sealed class UIPatternEvent
 					    "Delete all the notes in all of this chart's patterns."))
 				{
 					ActionQueue.Instance.Do(new ActionDeletePatternNotes(
-						patternEvent.GetEditorChart(),
+						patternEvent!.GetEditorChart(),
 						patternEvent.GetEditorChart().GetPatterns()));
 				}
 

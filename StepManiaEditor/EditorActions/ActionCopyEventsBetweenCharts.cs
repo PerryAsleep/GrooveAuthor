@@ -33,14 +33,6 @@ internal sealed class ActionCopyEventsBetweenCharts : EditorAction
 		public string OriginalFirstTimeSignatureValue;
 		public EditorTempoEvent DestinationFirstTempo;
 		public double OriginalFirstTempoValue;
-		public EditorScrollRateEvent DestinationFirstScrollRate;
-		public double OriginalFirstScrollRateValue;
-		public EditorInterpolatedRateAlteringEvent DestinationFirstInterpolatedRateAlteringEvent;
-		public string OriginalFirstInterpolatedRateAlteringEventValue;
-		public EditorMultipliersEvent DestinationFirstMultipliers;
-		public string OriginalFirstMultipliersValue;
-		public EditorTickCountEvent DestinationFirstTickCount;
-		public int OriginalFirstTickCountValue;
 	}
 
 	/// <summary>
@@ -203,32 +195,6 @@ internal sealed class ActionCopyEventsBetweenCharts : EditorAction
 							continue;
 						}
 
-						if (t == typeof(EditorScrollRateEvent) && chartState.DestinationFirstScrollRate == null)
-						{
-							chartState.DestinationFirstScrollRate = (EditorScrollRateEvent)chartEvent;
-							continue;
-						}
-
-						if (t == typeof(EditorInterpolatedRateAlteringEvent) &&
-						    chartState.DestinationFirstInterpolatedRateAlteringEvent == null)
-						{
-							chartState.DestinationFirstInterpolatedRateAlteringEvent =
-								(EditorInterpolatedRateAlteringEvent)chartEvent;
-							continue;
-						}
-
-						if (t == typeof(EditorMultipliersEvent) && chartState.DestinationFirstMultipliers == null)
-						{
-							chartState.DestinationFirstMultipliers = (EditorMultipliersEvent)chartEvent;
-							continue;
-						}
-
-						if (t == typeof(EditorTickCountEvent) && chartState.DestinationFirstTickCount == null)
-						{
-							chartState.DestinationFirstTickCount = (EditorTickCountEvent)chartEvent;
-							continue;
-						}
-
 						// Include all other events.
 						eventsToDelete.Add(chartEvent);
 						break;
@@ -257,33 +223,6 @@ internal sealed class ActionCopyEventsBetweenCharts : EditorAction
 				chartState.DestinationFirstTempo.DoubleValue = sourceFirstTempo.DoubleValue;
 			}
 
-			if (sourceFirstScrollRate != null && chartState.DestinationFirstScrollRate != null)
-			{
-				chartState.OriginalFirstScrollRateValue = chartState.DestinationFirstScrollRate.DoubleValue;
-				chartState.DestinationFirstScrollRate.DoubleValue = sourceFirstScrollRate.DoubleValue;
-			}
-
-			if (sourceFirstInterpolatedRateAlteringEvent != null &&
-			    chartState.DestinationFirstInterpolatedRateAlteringEvent != null)
-			{
-				chartState.OriginalFirstInterpolatedRateAlteringEventValue =
-					chartState.DestinationFirstInterpolatedRateAlteringEvent.StringValue;
-				chartState.DestinationFirstInterpolatedRateAlteringEvent.StringValue =
-					sourceFirstInterpolatedRateAlteringEvent.StringValue;
-			}
-
-			if (sourceFirstMultipliers != null && chartState.DestinationFirstMultipliers != null)
-			{
-				chartState.OriginalFirstMultipliersValue = chartState.DestinationFirstMultipliers.StringValue;
-				chartState.DestinationFirstMultipliers.StringValue = sourceFirstMultipliers.StringValue;
-			}
-
-			if (sourceFirstTickCount != null && chartState.DestinationFirstTickCount != null)
-			{
-				chartState.OriginalFirstTickCountValue = chartState.DestinationFirstTickCount.IntValue;
-				chartState.DestinationFirstTickCount.IntValue = sourceFirstTickCount.IntValue;
-			}
-
 			// Add all events minus the special timing events.
 			destChart.AddEvents(chartState.AllAddedEvents);
 
@@ -301,27 +240,6 @@ internal sealed class ActionCopyEventsBetweenCharts : EditorAction
 			destChart.DeleteEvents(chartState.AllAddedEvents);
 
 			// Undo the changes to the special timing events.
-			if (chartState.DestinationFirstTickCount != null)
-			{
-				chartState.DestinationFirstTickCount.IntValue = chartState.OriginalFirstTickCountValue;
-			}
-
-			if (chartState.DestinationFirstMultipliers != null)
-			{
-				chartState.DestinationFirstMultipliers.StringValue = chartState.OriginalFirstMultipliersValue;
-			}
-
-			if (chartState.DestinationFirstInterpolatedRateAlteringEvent != null)
-			{
-				chartState.DestinationFirstInterpolatedRateAlteringEvent.StringValue =
-					chartState.OriginalFirstInterpolatedRateAlteringEventValue;
-			}
-
-			if (chartState.DestinationFirstScrollRate != null)
-			{
-				chartState.DestinationFirstScrollRate.DoubleValue = chartState.OriginalFirstScrollRateValue;
-			}
-
 			if (chartState.DestinationFirstTempo != null)
 			{
 				chartState.DestinationFirstTempo.DoubleValue = chartState.OriginalFirstTempoValue;

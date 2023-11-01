@@ -46,6 +46,19 @@ internal sealed class EditorPatternEvent : EditorEvent, IChartRegion,
 			// All members are value types.
 			return (Definition)MemberwiseClone();
 		}
+
+		public bool Matches(Definition other)
+		{
+			if (ReferenceEquals(null, other))
+				return false;
+			if (ReferenceEquals(this, other))
+				return true;
+			return PatternConfigGuid.Equals(other.PatternConfigGuid)
+			       && PerformedChartConfigGuid.Equals(other.PerformedChartConfigGuid)
+			       && Length == other.Length
+			       && RandomSeed == other.RandomSeed
+			       && EndPositionInclusive == other.EndPositionInclusive;
+		}
 	}
 
 	/// <summary>
@@ -507,5 +520,18 @@ internal sealed class EditorPatternEvent : EditorEvent, IChartRegion,
 			Alpha,
 			WidgetHelp,
 			() => { EditorChart.OnPatternEventRequestEdit(this); });
+	}
+
+	public bool Matches(EditorPatternEvent other)
+	{
+		return base.Matches(other)
+		       && EventDefinition.Matches(other.EventDefinition);
+	}
+
+	public override bool Matches(EditorEvent other)
+	{
+		if (other.GetType() != GetType())
+			return false;
+		return Matches((EditorPatternEvent)other);
 	}
 }

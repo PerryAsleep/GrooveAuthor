@@ -3547,6 +3547,29 @@ internal sealed class Editor :
 		var song = chart?.GetEditorSong();
 		var canEditSong = CanEdit() && song != null;
 		var canEditChart = CanEdit() && chart != null;
+
+		if (ImGui.BeginMenu("Replace this Chart's Non-Step Events From", canEditSong && canEditChart))
+		{
+			UIChartList.DrawChartList(
+				song,
+				chart,
+				null,
+				selectedChart =>
+				{
+					if (chart != selectedChart)
+					{
+						ActionQueue.Instance.Do(new ActionCopyEventsBetweenCharts(
+							selectedChart,
+							UICopyEventsBetweenCharts.GetStepmaniaTypes(),
+							new List<EditorChart> { chart }));
+					}
+				},
+				false,
+				null);
+
+			ImGui.EndMenu();
+		}
+
 		if (ImGui.BeginMenu("Replace this Chart's Timing and Scroll Events From", canEditSong && canEditChart))
 		{
 			UIChartList.DrawChartList(
@@ -3583,6 +3606,47 @@ internal sealed class Editor :
 							selectedChart,
 							UICopyEventsBetweenCharts.GetTimingTypes(),
 							new List<EditorChart> { chart }));
+					}
+				},
+				false,
+				null);
+
+			ImGui.EndMenu();
+		}
+
+		if (ImGui.BeginMenu("Copy this Chart's Non-Step Events To", canEditSong && canEditChart))
+		{
+			if (ImGui.MenuItem("All Charts", canEditSong && canEditChart))
+			{
+				var allOtherCharts = new List<EditorChart>();
+				foreach (var songChart in song!.GetCharts())
+				{
+					if (songChart == chart)
+						continue;
+					allOtherCharts.Add(songChart);
+				}
+
+				if (allOtherCharts.Count > 0)
+				{
+					ActionQueue.Instance.Do(new ActionCopyEventsBetweenCharts(
+						chart,
+						UICopyEventsBetweenCharts.GetStepmaniaTypes(),
+						allOtherCharts));
+				}
+			}
+
+			UIChartList.DrawChartList(
+				song,
+				chart,
+				null,
+				selectedChart =>
+				{
+					if (chart != selectedChart)
+					{
+						ActionQueue.Instance.Do(new ActionCopyEventsBetweenCharts(
+							chart,
+							UICopyEventsBetweenCharts.GetStepmaniaTypes(),
+							new List<EditorChart> { selectedChart }));
 					}
 				},
 				false,
@@ -5181,6 +5245,7 @@ internal sealed class Editor :
 		ActionQueue.Instance.Do(new ActionDeleteEditorEvents(eventsToDelete, false));
 	}
 
+	// ReSharper disable once UnusedParameter.Local
 	private void OnEventsAdded(IReadOnlyList<EditorEvent> addedEvents)
 	{
 		// When adding notes, reset the AutoPlayer so it picks up the new state.
@@ -5923,11 +5988,8 @@ internal sealed class Editor :
 			return;
 
 		// Get the previous pattern.
-		var pattern = patterns.FindGreatestPreceding(chartPosition);
-
 		// If there is no next pattern, loop to the end.
-		if (pattern == null)
-			pattern = patterns.Last();
+		var pattern = patterns.FindGreatestPreceding(chartPosition) ?? patterns.Last();
 
 		// Get the EditorPatternEvent.
 		if (pattern == null)
@@ -5966,11 +6028,8 @@ internal sealed class Editor :
 			return;
 
 		// Get the next pattern.
-		var pattern = patterns.FindLeastFollowing(chartPosition);
-
 		// If there is no next pattern, loop to the first.
-		if (pattern == null)
-			pattern = patterns.First();
+		var pattern = patterns.FindLeastFollowing(chartPosition) ?? patterns.First();
 
 		// Get the EditorPatternEvent.
 		if (pattern == null)

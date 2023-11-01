@@ -1073,6 +1073,43 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 	}
 
 	/// <summary>
+	/// Returns whether or not this song is compatible with the legacy sm format.
+	/// </summary>
+	/// <returns>True if this song is compatible with the sm format and false otherwise.</returns>
+	public bool IsCompatibleWithSmFormat()
+	{
+		if (LastSecondHint > 0.0)
+		{
+			Logger.Error(
+				$"Song has last second hint at {LastSecondHint}. Last second hint values are not compatible with sm files.");
+			return false;
+		}
+
+		EditorChart firstChart = null;
+		foreach (var kvp in Charts)
+		{
+			var charts = kvp.Value;
+			foreach (var chart in charts)
+			{
+				if (!chart.IsCompatibleWithSmFormat(true))
+					return false;
+
+				if (firstChart == null)
+				{
+					firstChart = chart;
+				}
+				else
+				{
+					if (!chart.DoSmTimingEventsMatch(firstChart, true))
+						return false;
+				}
+			}
+		}
+
+		return true;
+	}
+
+	/// <summary>
 	/// Saves this EditorSong to disk.
 	/// Much of the work for saving occurs asynchronously.
 	/// When the saving has completed the given callback will be called.
@@ -1096,9 +1133,12 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 			{
 				Logger.Info($"Saving {fullPath}...");
 
-				// TODO: Check for incompatible features with SM format.
-				if (fileType == FileFormatType.SM)
+				// If saving as an sm file check for incompatibilities and early out.
+				if (fileType == FileFormatType.SM && !IsCompatibleWithSmFormat())
 				{
+					Logger.Error("Song is not compatible with sm format. Address incompatibilities or save as an ssc file.");
+					complete = true;
+					return;
 				}
 
 				var customProperties = new SMWriterCustomProperties();
@@ -1111,8 +1151,13 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 					// Run the code below in a new Task as it is CPU and IO intensive.
 					Task.Run(() =>
 					{
+						// Choose a chart to use for getting the timing events for sm files.
+						// At this point we know all charts share the same timing events.
+						Chart fallbackChart = null;
+						if (fileType == FileFormatType.SM)
+							fallbackChart = song.Charts.Count > 0 ? song.Charts[0] : null;
+
 						song.Extras = new Extras(OriginalSongExtras);
-						// TODO: Remove timing data?
 
 						song.Title = Title;
 						song.TitleTransliteration = TitleTransliteration;
@@ -1139,9 +1184,17 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 						song.PreviewSampleStart = SampleStart;
 						song.PreviewSampleLength = SampleLength;
 
-						// Do not add the display BPM.
-						// We want to use the charts' display BPMs.
-						song.Extras.RemoveSourceExtra(TagDisplayBPM);
+						// For sm files the display BPM must be specified on the song instead of the charts.
+						// Copy one of the charts' values.
+						if (fileType == FileFormatType.SM && fallbackChart != null)
+						{
+							song.Extras.AddDestExtra(TagDisplayBPM, fallbackChart.Tempo);
+						}
+						// Otherwise, remove any DisplayBPM tag which might be present so we only use chart values.
+						else
+						{
+							song.Extras.RemoveSourceExtra(TagDisplayBPM);
+						}
 
 						song.Extras.AddDestExtra(TagSelectable, Selectable.ToString(), true);
 
@@ -1161,8 +1214,7 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 							MeasureSpacingBehavior = MeasureSpacingBehavior.UseLeastCommonMultiple,
 							PropertyEmissionBehavior = PropertyEmissionBehavior.Stepmania,
 							CustomProperties = customProperties,
-							// HACK:
-							FallbackChart = song.Charts.Count > 0 ? song.Charts[0] : null,
+							FallbackChart = fallbackChart,
 						};
 						switch (fileType)
 						{

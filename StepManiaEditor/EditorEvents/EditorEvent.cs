@@ -543,6 +543,21 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	{
 	}
 
+	public virtual bool Matches(EditorEvent other)
+	{
+		if (ReferenceEquals(null, other))
+			return false;
+		if (ReferenceEquals(this, other))
+			return true;
+		if (ChartEvent == null != (other.ChartEvent == null))
+			return false;
+		if (!ChartPosition.DoubleEquals(other.ChartPosition))
+			return false;
+		if (ChartEvent == null)
+			return true;
+		return ChartEvent.Matches(other.ChartEvent);
+	}
+
 	#region IComparable
 
 	private static readonly Dictionary<string, int> CustomEventOrder = new()

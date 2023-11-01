@@ -1,4 +1,5 @@
 ﻿using System;
+using Fumen;
 using Fumen.ChartDefinition;
 
 namespace StepManiaEditor;
@@ -209,6 +210,19 @@ internal sealed class EditorSearchRateAlteringEventWithTime : EditorRateAltering
 	public override bool IsTimeOnlySearchEvent()
 	{
 		return true;
+	}
+
+	public bool Matches(EditorSearchRateAlteringEventWithTime other)
+	{
+		return base.Matches(other)
+		       && ChartTime.DoubleEquals(other.ChartTime);
+	}
+
+	public override bool Matches(EditorEvent other)
+	{
+		if (other.GetType() != GetType())
+			return false;
+		return Matches((EditorSearchRateAlteringEventWithTime)other);
 	}
 }
 

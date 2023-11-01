@@ -93,6 +93,15 @@ internal class UICopyEventsBetweenCharts
 		Editor = editor;
 	}
 
+	public static IEnumerable<Type> GetStepmaniaTypes()
+	{
+		var types = new List<Type>();
+		foreach (var state in State)
+			if (state.IsStepmaniaEvent)
+				types.Add(state.EventType);
+		return types;
+	}
+
 	public static IEnumerable<Type> GetTimingAndScrollTypes()
 	{
 		var types = new List<Type>();

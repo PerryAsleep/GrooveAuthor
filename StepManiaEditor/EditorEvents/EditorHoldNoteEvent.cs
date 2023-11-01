@@ -293,4 +293,19 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 		NextDrawActive = false;
 		NextDrawActiveYCutoffPoint = 0.0;
 	}
+
+	public bool Matches(EditorHoldNoteEvent other)
+	{
+		return base.Matches(other)
+		       && LaneHoldStartNote.Matches(other.LaneHoldStartNote)
+		       && LaneHoldEndNote.Matches(other.LaneHoldEndNote)
+		       && Roll == other.Roll;
+	}
+
+	public override bool Matches(EditorEvent other)
+	{
+		if (other.GetType() != GetType())
+			return false;
+		return Matches((EditorHoldNoteEvent)other);
+	}
 }
