@@ -9,19 +9,17 @@ namespace StepManiaEditor;
 /// </summary>
 internal sealed class ActionDeletePatternConfig : EditorAction
 {
-	private readonly Editor Editor;
 	private readonly Guid ConfigGuid;
 	private readonly EditorPatternConfig Config;
 	private readonly List<EditorPatternEvent> EventsWithDeletedConfig;
 
 	public ActionDeletePatternConfig(Editor editor, Guid configGuid) : base(false, false)
 	{
-		Editor = editor;
 		ConfigGuid = configGuid;
 		Config = PatternConfigManager.Instance.GetConfig(ConfigGuid);
 		EventsWithDeletedConfig = new List<EditorPatternEvent>();
 
-		var song = Editor.GetActiveSong();
+		var song = editor.GetActiveSong();
 		if (song != null)
 		{
 			var charts = song.GetCharts();

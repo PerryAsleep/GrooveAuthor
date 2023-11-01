@@ -446,6 +446,9 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 	/// <param name="editorEventEnumerator">
 	/// The EditorEvent enumerator of the first EditorEvent following the pattern.
 	/// </param>
+	/// <param name="followingStepFoot">
+	/// Out parameter to record the next foot which steps first in the following steps.
+	/// </param>
 	/// <param name="followingFooting">
 	/// Out parameter to record the lane stepped on per foot of the following steps.
 	/// </param>
@@ -475,7 +478,7 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 			editorEventEnumerator.MovePrev();
 
 		// Back up until we precede the row following the pattern.
-		while (editorEventEnumerator.IsCurrentValid() && editorEventEnumerator.Current.GetRow() >= node.Position)
+		while (editorEventEnumerator.IsCurrentValid() && editorEventEnumerator.Current!.GetRow() >= node.Position)
 		{
 			if (!editorEventEnumerator.MovePrev())
 			{
@@ -546,8 +549,8 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 			// Scan the current row, recording the lanes being stepped on at this position.
 			while (editorEventEnumerator.IsCurrentValid() &&
 			       (scanForward
-				       ? editorEventEnumerator.Current.GetRow() <= node.Position
-				       : editorEventEnumerator.Current.GetRow() >= node.Position))
+				       ? editorEventEnumerator.Current!.GetRow() <= node.Position
+				       : editorEventEnumerator.Current!.GetRow() >= node.Position))
 			{
 				if (editorEventEnumerator.Current.GetRow() == node.Position)
 				{

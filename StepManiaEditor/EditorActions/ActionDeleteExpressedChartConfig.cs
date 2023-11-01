@@ -9,19 +9,17 @@ namespace StepManiaEditor;
 /// </summary>
 internal sealed class ActionDeleteExpressedChartConfig : EditorAction
 {
-	private readonly Editor Editor;
 	private readonly Guid ConfigGuid;
 	private readonly EditorExpressedChartConfig Config;
 	private readonly List<EditorChart> ChartsWithDeletedConfig;
 
 	public ActionDeleteExpressedChartConfig(Editor editor, Guid configGuid) : base(false, false)
 	{
-		Editor = editor;
 		ConfigGuid = configGuid;
 		Config = ExpressedChartConfigManager.Instance.GetConfig(ConfigGuid);
 		ChartsWithDeletedConfig = new List<EditorChart>();
 
-		var song = Editor.GetActiveSong();
+		var song = editor.GetActiveSong();
 		if (song != null)
 		{
 			var charts = song.GetCharts();

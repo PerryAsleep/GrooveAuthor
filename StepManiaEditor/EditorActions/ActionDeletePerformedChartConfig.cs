@@ -9,7 +9,6 @@ namespace StepManiaEditor;
 /// </summary>
 internal sealed class ActionDeletePerformedChartConfig : EditorAction
 {
-	private readonly Editor Editor;
 	private readonly Guid ConfigGuid;
 	private readonly EditorPerformedChartConfig Config;
 	private bool LastSelectedAutogenPerformedChartConfigUsedDeletedConfig;
@@ -17,12 +16,11 @@ internal sealed class ActionDeletePerformedChartConfig : EditorAction
 
 	public ActionDeletePerformedChartConfig(Editor editor, Guid configGuid) : base(false, false)
 	{
-		Editor = editor;
 		ConfigGuid = configGuid;
 		Config = PerformedChartConfigManager.Instance.GetConfig(ConfigGuid);
 		EventsWithDeletedConfig = new List<EditorPatternEvent>();
 
-		var song = Editor.GetActiveSong();
+		var song = editor.GetActiveSong();
 		if (song != null)
 		{
 			var charts = song.GetCharts();
