@@ -131,6 +131,23 @@ public class UIOptions
 			}
 
 			ImGui.Separator();
+			if (ImGuiLayoutUtils.BeginTable("Options UI", TitleColumnWidth))
+			{
+				//var defaultDpiScale = GetDpiScaleSystemDefault();
+
+				ImGuiLayoutUtils.DrawRowDragDoubleWithEnabledCheckbox(true, "Custom DPI Scale", p,
+					nameof(PreferencesOptions.DpiScale),
+					nameof(PreferencesOptions.UseCustomDpiScale),
+					false,
+					"Custom DPI scale to use for UI."
+					//+ $"\nIf not specified, the default value for this computer ({defaultDpiScale}) will be used."
+					+ "\nChanges to this value take effect on an application restart.",
+					0.01f, "%.2f", 0.25, 8.0);
+
+				ImGuiLayoutUtils.EndTable();
+			}
+
+			ImGui.Separator();
 			if (ImGuiLayoutUtils.BeginTable("Options Restore", TitleColumnWidth))
 			{
 				if (ImGuiLayoutUtils.DrawRowButton("Restore Defaults", "Restore Defaults",

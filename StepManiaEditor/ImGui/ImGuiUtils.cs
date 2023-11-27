@@ -1,12 +1,13 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Text;
-using ImGuiNET;
-using Microsoft.Xna.Framework.Graphics;
-using System.Collections.Generic;
+using Fumen;
 using Fumen.Converters;
+using ImGuiNET;
 using Microsoft.Win32;
+using Microsoft.Xna.Framework.Graphics;
 using MonoGameExtensions;
 
 namespace StepManiaEditor;
@@ -18,6 +19,7 @@ internal sealed class ImGuiUtils
 {
 	// UI positioning values affected by DPI scaling.
 	private static double DpiScale;
+	private static double DpiScaleSystemDefault;
 	private const int HelpWidth = 18;
 	private const int CloseWidth = 18;
 	private const int MiniMapYPaddingFromTop = 30; // This takes into account a 20 pixel padding for the main menu bar.
@@ -656,21 +658,61 @@ internal sealed class ImGuiUtils
 		// Cache the DPI scale value so queries to the value are consistent for the lifetime
 		// of the application. Some DPI scaling parameters are used only in initialization and
 		// others are used per frame.
-		if (DpiScale != 0.0)
+		if (!DpiScale.DoubleEquals(0.0))
 			return DpiScale;
+
+		// Try to use the DPI scale specified in the preferences.
+		if (Preferences.Instance.PreferencesOptions.UseCustomDpiScale)
+			DpiScale = Preferences.Instance.PreferencesOptions.DpiScale;
+
+		// At some point between when DPI scaling logic was implemented and now the behavior has changed.
+		// Originally, on a 4k display with 2x scaling, the window/viewport/backbuffer would all be 4k.
+		// To scale the UI up based on the Windows scaling factor, we'd determine the scale from the DPI,
+		// then effectively double all the UI values.
+		// At the time of this writing with the same configuration the window/viewport/backbuffer on a 4k
+		// display with 2x scaling are all scaled values (e.g. 1920x1080). Applying a scale on top of that
+		// results in an incorrect looking 4x scale.
+		// I don't know what changed. Could be Windows 10->11, could be a Monogame update.
+		// The logic for getting the resolution is in SharpDX, which is not currently built from source and is
+		// not maintained.
+		// The real fix would be to dig into this further, keep rendering at the monitor's correct unscaled
+		// resolution, and scale the UI up. Until that is done, it is better to avoid trying to automatically
+		// scale the UI. We'll default to always using a UI scale of 1.0 and let the user change their
+		// preferred scale manually.
+
+		// If no DPI scale is specified in the preferences, use the system default DPI scale.
+		//if (DpiScale.DoubleEquals(0.0))
+		//	DpiScale = GetDpiScaleSystemDefault();
+
+		// Ensure the DPI scale is set to a valid value.
+		if (DpiScale <= 0.0)
+			DpiScale = 1.0;
+
+		return DpiScale;
+	}
+
+	public static double GetDpiScaleSystemDefault()
+	{
+		if (!DpiScaleSystemDefault.DoubleEquals(0.0))
+			return DpiScaleSystemDefault;
+
 		try
 		{
 			var dpi = int.Parse((string)Registry.GetValue(
 				@"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\ThemeManager",
 				"LastLoadedDPI", "96") ?? throw new InvalidOperationException());
-			DpiScale = dpi / 96.0;
+			DpiScaleSystemDefault = dpi / 96.0;
 		}
 		catch (Exception)
 		{
-			DpiScale = 1.0;
+			DpiScaleSystemDefault = 1.0;
 		}
 
-		return DpiScale;
+		// Ensure the DPI scale is set to a valid value.
+		if (DpiScaleSystemDefault <= 0.0)
+			DpiScaleSystemDefault = 1.0;
+
+		return DpiScaleSystemDefault;
 	}
 
 	public static int UiScaled(int value)

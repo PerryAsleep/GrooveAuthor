@@ -31,6 +31,8 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 	public const double DefaultAudioOffset = 0.0;
 	public const float DefaultVolume = 1.0f;
 	public const int DefaultUndoHistorySize = 1024;
+	public const bool DefaultUseCustomDpiScale = false;
+	public const double DefaultDpiScale = 1.0;
 
 	// Preferences.
 	[JsonInclude] public bool ShowOptionsWindow;
@@ -43,6 +45,8 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 	[JsonInclude] public bool OpenLastOpenedFileOnLaunch = DefaultOpenLastOpenedFileOnLaunch;
 	[JsonInclude] public double NewSongSyncOffset = DefaultNewSongSyncOffset;
 	[JsonInclude] public double OpenSongSyncOffset = DefaultOpenSongSyncOffset;
+	[JsonInclude] public bool UseCustomDpiScale = DefaultUseCustomDpiScale;
+	[JsonInclude] public double DpiScale = DefaultDpiScale;
 
 	[JsonInclude]
 	public double AudioOffset
@@ -106,7 +110,9 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 		       && OpenSongSyncOffset.DoubleEquals(DefaultOpenSongSyncOffset)
 		       && AudioOffset.DoubleEquals(DefaultAudioOffset)
 		       && Volume.FloatEquals(DefaultVolume)
-		       && UndoHistorySize == DefaultUndoHistorySize;
+		       && UndoHistorySize == DefaultUndoHistorySize
+		       && UseCustomDpiScale == DefaultUseCustomDpiScale
+		       && DpiScale.DoubleEquals(DefaultDpiScale);
 	}
 
 	public void RestoreDefaults()
@@ -185,6 +191,8 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 	private readonly double PreviousAudioOffset;
 	private readonly float PreviousVolume;
 	private readonly int PreviousUndoHistorySize;
+	private readonly bool PreviousUseCustomDpiScale;
+	private readonly double PreviousDpiScale;
 
 	public ActionRestoreOptionPreferenceDefaults() : base(false, false)
 	{
@@ -202,6 +210,8 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 		PreviousAudioOffset = p.AudioOffset;
 		PreviousVolume = p.Volume;
 		PreviousUndoHistorySize = p.UndoHistorySize;
+		PreviousUseCustomDpiScale = p.UseCustomDpiScale;
+		PreviousDpiScale = p.DpiScale;
 	}
 
 	public override bool AffectsFile()
@@ -229,6 +239,8 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 		p.AudioOffset = PreferencesOptions.DefaultAudioOffset;
 		p.Volume = PreferencesOptions.DefaultVolume;
 		p.UndoHistorySize = PreferencesOptions.DefaultUndoHistorySize;
+		p.UseCustomDpiScale = PreferencesOptions.DefaultUseCustomDpiScale;
+		p.DpiScale = PreferencesOptions.DefaultDpiScale;
 	}
 
 	protected override void UndoImplementation()
@@ -246,5 +258,7 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 		p.AudioOffset = PreviousAudioOffset;
 		p.Volume = PreviousVolume;
 		p.UndoHistorySize = PreviousUndoHistorySize;
+		p.UseCustomDpiScale = PreviousUseCustomDpiScale;
+		p.DpiScale = PreviousDpiScale;
 	}
 }
