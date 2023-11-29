@@ -115,19 +115,14 @@ internal sealed class EditorMouseState
 	// Mouse state.
 	private MouseState CurrentMouseState;
 	private MouseState PreviousMouseState;
-	private readonly Dictionary<Button, ButtonState> States;
-
-	public EditorMouseState()
+	private readonly Dictionary<Button, ButtonState> States = new()
 	{
-		States = new Dictionary<Button, ButtonState>
-		{
-			[Button.Left] = new(0),
-			[Button.Right] = new(1),
-			[Button.Middle] = new(2),
-			[Button.X1] = new(3),
-			[Button.X2] = new(4),
-		};
-	}
+		[Button.Left] = new(0),
+		[Button.Right] = new(1),
+		[Button.Middle] = new(2),
+		[Button.X1] = new(3),
+		[Button.X2] = new(4),
+	};
 
 	public void SetActiveChart(EditorChart activeChart)
 	{
