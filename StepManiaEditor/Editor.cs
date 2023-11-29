@@ -201,6 +201,9 @@ internal sealed class Editor :
 
 	private CancellationTokenSource LoadSongCancellationTokenSource;
 	private Task LoadSongTask;
+	private FileSystemWatcher SongFileWatcher;
+	private bool ShowFileChangedPopup;
+	private int GarbageCollectFrame;
 
 	private readonly Dictionary<ChartType, PadData> PadDataByChartType = new();
 	private readonly Dictionary<ChartType, StepGraph> StepGraphByChartType = new();
@@ -1060,6 +1063,14 @@ internal sealed class Editor :
 		stopWatch.Start();
 
 		var currentTime = gameTime.TotalGameTime.TotalSeconds;
+
+		// Perform manual garbage collection.
+		if (GarbageCollectFrame > 0)
+		{
+			GarbageCollectFrame--;
+			if (GarbageCollectFrame == 0)
+				GC.Collect();
+		}
 
 		ActiveSong?.Update();
 		SoundManager.Update();
@@ -3253,6 +3264,13 @@ internal sealed class Editor :
 			ImGui.OpenPopup(GetSavePopupTitle());
 		}
 
+		if (ShowFileChangedPopup)
+		{
+			ShowFileChangedPopup = false;
+			SystemSounds.Exclamation.Play();
+			ImGui.OpenPopup(GetFileChangedPopupTitle());
+		}
+
 		if (CanShowRightClickPopupThisFrame && EditorMouseState.GetButtonState(EditorMouseState.Button.Right).UpThisFrame())
 		{
 			ImGui.OpenPopup("RightClickPopup");
@@ -3262,6 +3280,7 @@ internal sealed class Editor :
 		DrawRightClickMenu((int)lastPos.X, (int)lastPos.Y);
 
 		DrawUnsavedChangesPopup();
+		DrawFileChangedPopup();
 	}
 
 	private void DrawMainMenuUI()
@@ -4290,6 +4309,45 @@ internal sealed class Editor :
 		}
 	}
 
+	private string GetFileChangedPopupTitle()
+	{
+		return "External Modification";
+	}
+
+	private void DrawFileChangedPopup()
+	{
+		if (ImGui.BeginPopupModal(GetFileChangedPopupTitle()))
+		{
+			var fileName = ActiveSong?.GetFileName() ?? "The current song";
+			ImGui.Text($"{fileName} was modified externally.");
+
+			if (ActionQueue.Instance.HasUnsavedChanges())
+			{
+				ImGui.Text("Warning: There are unsaved changes. Reloading will lose these changes.");
+			}
+
+			ImGui.Separator();
+			ImGui.Checkbox("Don't notify on external song file changes.",
+				ref Preferences.Instance.PreferencesOptions.SuppressExternalSongModificationNotification);
+
+			ImGui.Separator();
+
+			if (ImGui.Button("Ignore"))
+			{
+				ImGui.CloseCurrentPopup();
+			}
+
+			ImGui.SameLine();
+			if (ImGui.Button("Reload"))
+			{
+				OnReload(true);
+				ImGui.CloseCurrentPopup();
+			}
+
+			ImGui.EndPopup();
+		}
+	}
+
 	private void DrawDebugUI()
 	{
 		if (ImGui.Begin("Debug"))
@@ -4760,6 +4818,8 @@ internal sealed class Editor :
 				return;
 			}
 
+			StartObservingSongFile(fileName);
+
 			// Set the position and zoom to the last used values for this song.
 			var desiredChartPosition = 0.0;
 			var desiredZoom = 1.0;
@@ -4784,6 +4844,57 @@ internal sealed class Editor :
 		{
 			Logger.Error($"Failed to load {fileName}. {e}");
 		}
+	}
+
+	private void StartObservingSongFile(string fileName)
+	{
+		try
+		{
+			var dir = System.IO.Path.GetDirectoryName(fileName);
+			var file = System.IO.Path.GetFileName(fileName);
+			if (!string.IsNullOrEmpty(dir) && !string.IsNullOrEmpty(file))
+			{
+				SongFileWatcher = new FileSystemWatcher(dir);
+				SongFileWatcher.NotifyFilter = NotifyFilters.LastWrite;
+				SongFileWatcher.Changed += OnSongFileChangedNotification;
+				SongFileWatcher.Filter = file;
+				SongFileWatcher.EnableRaisingEvents = true;
+			}
+		}
+		catch (Exception e)
+		{
+			Logger.Error($"Failed to observe {fileName} for changes: {e}");
+		}
+	}
+
+	private void OnSongFileChangedNotification(object sender, FileSystemEventArgs e)
+	{
+		if (e.ChangeType != WatcherChangeTypes.Changed)
+			return;
+		if (Preferences.Instance.PreferencesOptions.SuppressExternalSongModificationNotification)
+			return;
+		if (ActiveSong == null)
+			return;
+
+		// If we are saving, we expect a notification that the file has changed.
+		if (ActiveSong.IsSaving())
+			return;
+
+		// There is no clean way to identify whether the notification is due to a change originating
+		// from this application or an external application. If we haven't saved recently, assume it
+		// is an external application.
+		var timeSinceLastSave = DateTime.Now - ActiveSong.GetLastSaveCompleteTime();
+		if (timeSinceLastSave.TotalSeconds < 3)
+		{
+			return;
+		}
+
+		ShowFileChangedPopup = true;
+	}
+
+	private void StopObservingSongFile()
+	{
+		SongFileWatcher = null;
 	}
 
 	private Preferences.SavedSongInformation GetMostRecentSavedSongInfoForActiveSong()
@@ -4990,17 +5101,22 @@ internal sealed class Editor :
 
 	private void OnReload()
 	{
-		OpenRecentIndex = 0;
-		OnOpenRecentFile();
+		OnReload(false);
 	}
 
-	private void OnOpenRecentFile()
+	private void OnReload(bool ignoreUnsavedChanges)
+	{
+		OpenRecentIndex = 0;
+		OnOpenRecentFile(ignoreUnsavedChanges);
+	}
+
+	private void OnOpenRecentFile(bool ignoreUnsavedChanges = false)
 	{
 		var p = Preferences.Instance;
 		if (OpenRecentIndex >= p.RecentFiles.Count)
 			return;
 
-		if (ActionQueue.Instance.HasUnsavedChanges())
+		if (!ignoreUnsavedChanges && ActionQueue.Instance.HasUnsavedChanges())
 		{
 			PostSaveFunction = OpenRecentFile;
 			ShowSavePopup = true;
@@ -5121,6 +5237,19 @@ internal sealed class Editor :
 
 	private void UnloadSongResources()
 	{
+		// When unloading everything, perform garbage collection.
+		// We wait two frames because closing the song and unloading resources is often
+		// done in response to a UI click, which happens in the Draw() call. Waiting one
+		// frame would put us in the next Update() call, but we still need one more Draw()
+		// after ActiveSong is no longer set to draw one new frame with no song data.
+		// Performing a manual collection here has a few benefits:
+		// 1) We know the timing of this major unload event. This is an appropriate time to collect as the resources
+		//    unloaded here (particularly the SoundMipMap) are massive.
+		// 2) Immediately after unloading is a good time for a hitch as nothing is animating and no audio is playing.
+		// 3) We do not want random hitches when playing / editing.
+		if (ActiveSong != null)
+			GarbageCollectFrame = 2;
+
 		// Close any UI which holds on to Song/Chart state.
 		UIAutogenChart.Close();
 		UIAutogenChartsForChartType.Close();
@@ -5141,6 +5270,7 @@ internal sealed class Editor :
 		EditorMouseState.SetActiveChart(null);
 		UpdateWindowTitle();
 		ActionQueue.Instance.Clear();
+		StopObservingSongFile();
 	}
 
 	private void UpdateWindowTitle()

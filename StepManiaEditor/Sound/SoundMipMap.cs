@@ -164,19 +164,13 @@ public class SoundMipMap
 	public void Reset()
 	{
 		// Clear data.
-		bool shouldGarbageCollect;
 		lock (MipLevelsLock)
 		{
-			shouldGarbageCollect = MipLevels != null;
 			MipLevelsAllocated = false;
 			MipMapDataLoaded = false;
 			MipLevels = null;
 			NumChannels = 0;
 		}
-
-		// Garbage collect to free the MipLevels data.
-		if (shouldGarbageCollect)
-			GC.Collect();
 	}
 
 	/// <summary>

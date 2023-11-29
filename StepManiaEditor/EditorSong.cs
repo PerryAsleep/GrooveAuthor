@@ -108,6 +108,8 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 	/// </summary>
 	private bool Saving;
 
+	private DateTime LastSaveCompleteTime;
+
 	#region Properties
 
 	public string Title
@@ -1073,6 +1075,15 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 	}
 
 	/// <summary>
+	/// Returns the last time the EditorSong was saved.
+	/// </summary>
+	/// <returns>The last time the EditorSong was saved</returns>
+	public DateTime GetLastSaveCompleteTime()
+	{
+		return LastSaveCompleteTime;
+	}
+
+	/// <summary>
 	/// Returns whether or not this song is compatible with the legacy sm format.
 	/// </summary>
 	/// <returns>True if this song is compatible with the sm format and false otherwise.</returns>
@@ -1286,7 +1297,11 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 			() => complete);
 
 		// Mark that we done saving.
-		WorkQueue.Enqueue(() => { Saving = false; });
+		WorkQueue.Enqueue(() =>
+		{
+			LastSaveCompleteTime = DateTime.Now;
+			Saving = false;
+		});
 	}
 
 	/// <summary>

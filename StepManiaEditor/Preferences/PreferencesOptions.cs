@@ -33,6 +33,7 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 	public const int DefaultUndoHistorySize = 1024;
 	public const bool DefaultUseCustomDpiScale = false;
 	public const double DefaultDpiScale = 1.0;
+	public const bool DefaultSuppressExternalSongModificationNotification = false;
 
 	// Preferences.
 	[JsonInclude] public bool ShowOptionsWindow;
@@ -47,6 +48,7 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 	[JsonInclude] public double OpenSongSyncOffset = DefaultOpenSongSyncOffset;
 	[JsonInclude] public bool UseCustomDpiScale = DefaultUseCustomDpiScale;
 	[JsonInclude] public double DpiScale = DefaultDpiScale;
+	[JsonInclude] public bool SuppressExternalSongModificationNotification;
 
 	[JsonInclude]
 	public double AudioOffset
@@ -112,7 +114,8 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 		       && Volume.FloatEquals(DefaultVolume)
 		       && UndoHistorySize == DefaultUndoHistorySize
 		       && UseCustomDpiScale == DefaultUseCustomDpiScale
-		       && DpiScale.DoubleEquals(DefaultDpiScale);
+		       && DpiScale.DoubleEquals(DefaultDpiScale)
+		       && SuppressExternalSongModificationNotification == DefaultSuppressExternalSongModificationNotification;
 	}
 
 	public void RestoreDefaults()
@@ -193,6 +196,7 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 	private readonly int PreviousUndoHistorySize;
 	private readonly bool PreviousUseCustomDpiScale;
 	private readonly double PreviousDpiScale;
+	private readonly bool PreviousSuppressExternalSongModificationNotification;
 
 	public ActionRestoreOptionPreferenceDefaults() : base(false, false)
 	{
@@ -212,6 +216,7 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 		PreviousUndoHistorySize = p.UndoHistorySize;
 		PreviousUseCustomDpiScale = p.UseCustomDpiScale;
 		PreviousDpiScale = p.DpiScale;
+		PreviousSuppressExternalSongModificationNotification = p.SuppressExternalSongModificationNotification;
 	}
 
 	public override bool AffectsFile()
@@ -241,6 +246,7 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 		p.UndoHistorySize = PreferencesOptions.DefaultUndoHistorySize;
 		p.UseCustomDpiScale = PreferencesOptions.DefaultUseCustomDpiScale;
 		p.DpiScale = PreferencesOptions.DefaultDpiScale;
+		p.SuppressExternalSongModificationNotification = PreferencesOptions.DefaultSuppressExternalSongModificationNotification;
 	}
 
 	protected override void UndoImplementation()
@@ -260,5 +266,6 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 		p.UndoHistorySize = PreviousUndoHistorySize;
 		p.UseCustomDpiScale = PreviousUseCustomDpiScale;
 		p.DpiScale = PreviousDpiScale;
+		p.SuppressExternalSongModificationNotification = PreviousSuppressExternalSongModificationNotification;
 	}
 }
