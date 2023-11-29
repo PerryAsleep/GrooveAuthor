@@ -27,6 +27,7 @@ Building from source requires Windows 10 or greater and Microsoft Visual Studio 
 1. Clone the repository and init submodules.
 	```
 	git clone https://github.com/PerryAsleep/GrooveAuthor.git
+	cd ./GrooveAuthor
 	git submodule update --init --recursive
 	```
 2. Open `GrooveAuthor.sln` and build through Visual Studio.
