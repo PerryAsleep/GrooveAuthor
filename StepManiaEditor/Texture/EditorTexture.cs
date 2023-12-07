@@ -1,8 +1,7 @@
 ﻿using System;
 using System.IO;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Linq;
+using System.Threading.Tasks;
 using Fumen;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGameExtensions;
@@ -25,14 +24,117 @@ namespace StepManiaEditor;
 /// </summary>
 internal sealed class EditorTexture : IDisposable
 {
-	private readonly ImGuiRenderer ImGuiRenderer;
-	private readonly GraphicsDevice GraphicsDevice;
+	/// <summary>
+	/// CancellableTask for loading the EditorTexture.
+	/// </summary>
+	internal sealed class TextureLoadTask : CancellableTask<string>
+	{
+		/// <summary>
+		/// Whether or not to cache the texture color when loading.
+		/// </summary>
+		private readonly bool CacheTextureColor;
 
-	private CancellationTokenSource LoadCancellationTokenSource;
-	private Task LoadTask;
+		/// <summary>
+		/// GraphicsDevice for loading the texture.
+		/// </summary>
+		private readonly GraphicsDevice GraphicsDevice;
+
+		/// <summary>
+		/// The last Texture loaded.
+		/// </summary>
+		private Texture2D Texture;
+
+		/// <summary>
+		/// The color of the last Texture loaded.
+		/// </summary>
+		private uint TextureColor;
+
+		/// <summary>
+		/// Lock for updating and retrieving results.
+		/// </summary>
+		private readonly object Lock = new();
+
+		/// <summary>
+		/// Whether or not to log errors.
+		/// </summary>
+		private bool LogErrors = true;
+
+		public TextureLoadTask(bool cacheTextureColor, GraphicsDevice graphicsDevice)
+		{
+			CacheTextureColor = cacheTextureColor;
+			GraphicsDevice = graphicsDevice;
+		}
+
+		public (Texture2D, uint) GetResults()
+		{
+			lock (Lock)
+			{
+				return (Texture, TextureColor);
+			}
+		}
+
+		public void SetLogErrors(bool logErrors)
+		{
+			LogErrors = logErrors;
+		}
+
+		/// <summary>
+		/// Called when loading has been cancelled.
+		/// </summary>
+		protected override void Cancel()
+		{
+			// No action needed.
+		}
+
+		/// <summary>
+		/// Called when loading should begin.
+		/// </summary>
+		/// <param name="state">File path of the texture to use for loading.</param>
+		protected override async Task DoWork(string state)
+		{
+			// The state used is the path of the file for the texture.
+			var filePath = state;
+			Texture2D texture = null;
+			uint textureColor = 0;
+			try
+			{
+				// Don't try to load video files. We expect them to fail.
+				if (!string.IsNullOrEmpty(filePath) && !IsVideoFile(filePath))
+				{
+					await using var fileStream = File.OpenRead(filePath);
+					texture = Texture2D.FromStream(GraphicsDevice, fileStream);
+				}
+			}
+			catch (Exception e)
+			{
+				if (LogErrors)
+				{
+					Logger.Error($"Failed to load texture from \"{filePath}\". {e.Message}");
+				}
+
+				texture = null;
+			}
+
+			CancellationTokenSource.Token.ThrowIfCancellationRequested();
+
+			if (CacheTextureColor && texture != null)
+			{
+				textureColor = TextureUtils.GetTextureColor(texture);
+			}
+
+			// Save results.
+			lock (Lock)
+			{
+				Texture = texture;
+				TextureColor = textureColor;
+			}
+		}
+	}
+
+	private readonly ImGuiRenderer ImGuiRenderer;
+	private readonly TextureLoadTask LoadTask;
 
 	private string FilePath;
-	private readonly bool CacheTextureColor;
 	private Texture2D TextureMonogame;
 	private Texture2D NewTexture;
 	private uint TextureColor;
@@ -61,11 +163,10 @@ internal sealed class EditorTexture : IDisposable
 		bool cacheTextureColor)
 	{
 		ImGuiId = Id++.ToString();
-		GraphicsDevice = graphicsDevice;
 		ImGuiRenderer = imGuiRenderer;
 		Width = width;
 		Height = height;
-		CacheTextureColor = cacheTextureColor;
+		LoadTask = new TextureLoadTask(cacheTextureColor, graphicsDevice);
 	}
 
 	/// <summary>
@@ -81,13 +182,12 @@ internal sealed class EditorTexture : IDisposable
 		bool cacheTextureColor)
 	{
 		ImGuiId = Id++.ToString();
-		GraphicsDevice = graphicsDevice;
 		ImGuiRenderer = imGuiRenderer;
 		Width = width;
 		Height = height;
 		NewTextureReady = false;
 		NewTexture = null;
-		CacheTextureColor = cacheTextureColor;
+		LoadTask = new TextureLoadTask(cacheTextureColor, graphicsDevice);
 		LoadAsync(filePath);
 	}
 
@@ -145,65 +245,28 @@ internal sealed class EditorTexture : IDisposable
 
 	/// <summary>
 	/// Load the texture from the image located at the specified path.
+	/// Will early-out if the given filePath is already loaded unless force is true.
 	/// </summary>
-	public async void LoadAsync(string filePath)
+	/// <param name="filePath">Path of texture to load.</param>
+	/// <param name="force">If true, load the texture even if it was already loaded.</param>
+	/// <param name="logErrors">If true, log any errors with loading.</param>
+	public async void LoadAsync(string filePath, bool force = false, bool logErrors = true)
 	{
-		if (FilePath == filePath)
+		// Early out.
+		if (FilePath == filePath && !force)
 			return;
-
 		FilePath = filePath;
 
-		if (LoadCancellationTokenSource != null)
-		{
-			if (LoadCancellationTokenSource.IsCancellationRequested)
-				return;
-			LoadCancellationTokenSource?.Cancel();
-			await LoadTask;
-		}
+		LoadTask.SetLogErrors(logErrors);
 
-		filePath = FilePath;
-		Texture2D newTexture = null;
-		uint newTextureColor = 0;
+		// Start the load. If we are already loading, return. The previous call
+		// will use the newly provided file path.
+		var taskComplete = await LoadTask.Start(filePath);
+		if (!taskComplete)
+			return;
 
-		LoadCancellationTokenSource = new CancellationTokenSource();
-		LoadTask = Task.Run(() =>
-		{
-			try
-			{
-				try
-				{
-					// Don't try to load video files. We expect them to fail.
-					if (!string.IsNullOrEmpty(filePath) && !IsVideoFile(filePath))
-					{
-						using var fileStream = File.OpenRead(filePath);
-						newTexture = Texture2D.FromStream(GraphicsDevice, fileStream);
-					}
-					else
-					{
-						newTexture = null;
-					}
-				}
-				catch (Exception e)
-				{
-					Logger.Error($"Failed to load texture from \"{filePath}\". {e}");
-					newTexture = null;
-				}
-
-				if (CacheTextureColor && newTexture != null)
-				{
-					newTextureColor = TextureUtils.GetTextureColor(newTexture);
-				}
-			}
-			catch (OperationCanceledException)
-			{
-			}
-			finally
-			{
-				LoadCancellationTokenSource?.Dispose();
-				LoadCancellationTokenSource = null;
-			}
-		}, LoadCancellationTokenSource.Token);
-		await LoadTask;
+		// Get the newly loaded texture and color.
+		var (newTexture, newTextureColor) = LoadTask.GetResults();
 
 		// We cannot swap textures now because we may be in the middle of submitting
 		// instructions to ImGui. If we were unbind the texture during these calls, ImGui
