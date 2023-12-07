@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Diagnostics;
-using System.Threading;
 using System.Threading.Tasks;
 using FMOD;
 using Fumen;
@@ -44,12 +43,128 @@ internal sealed class MusicManager
 	/// </summary>
 	private class SoundData
 	{
-		private readonly ChannelGroup ChannelGroup;
+		/// <summary>
+		/// State used for performing async loads of sound data.
+		/// </summary>
+		private class SoundLoadState
+		{
+			private readonly string File;
+			private readonly double Offset;
+			private readonly bool GenerateMipMap;
+			private readonly Func<double> GetSoundTimeFunction;
+
+			public SoundLoadState(string file, double offset, bool generateMipMap, Func<double> getSoundTimeFunction)
+			{
+				File = file;
+				Offset = offset;
+				GenerateMipMap = generateMipMap;
+				GetSoundTimeFunction = getSoundTimeFunction;
+			}
+
+			public string GetFile()
+			{
+				return File;
+			}
+
+			public double GetOffset()
+			{
+				return Offset;
+			}
+
+			public bool ShouldGenerateMipMap()
+			{
+				return GenerateMipMap;
+			}
+
+			public Func<double> GetGetSoundTimeFunction()
+			{
+				return GetSoundTimeFunction;
+			}
+		}
+
+		/// <summary>
+		/// CancellableTask for performing async loads of sound data.
+		/// </summary>
+		private sealed class SoundLoadTask : CancellableTask<SoundLoadState>
+		{
+			private readonly SoundData SoundData;
+			private readonly SoundManager SoundManager;
+			private readonly Action<SoundData, double, double> SetSoundPositionAction;
+
+			public SoundLoadTask(SoundData soundData, SoundManager soundManager,
+				Action<SoundData, double, double> setSoundPositionAction)
+			{
+				SoundData = soundData;
+				SoundManager = soundManager;
+				SetSoundPositionAction = setSoundPositionAction;
+			}
+
+			/// <summary>
+			/// Called when loading should begin.
+			/// </summary>
+			/// <param name="state">SoundLoadState to use for loading.</param>
+			protected override async Task DoWork(SoundLoadState state)
+			{
+				// Release the handle to the old sound if it is present.
+				if (SoundData.Sound.hasHandle())
+					SoundManager.ErrCheck(SoundData.Sound.release());
+				SoundData.Sound.handle = IntPtr.Zero;
+
+				// Reset the mip map before loading the new sound because loading the sound
+				// can take a moment and we don't want to continue to render the old audio.
+				SoundData.MipMap?.Reset();
+
+				CancellationTokenSource.Token.ThrowIfCancellationRequested();
+
+				SoundData.File = state.GetFile();
+
+				if (!string.IsNullOrEmpty(SoundData.File))
+				{
+					Logger.Info($"Loading {SoundData.File}...");
+
+					// Load the sound file.
+					// This is not cancelable. According to FMOD: "you can't cancel it"
+					// https://qa.fmod.com/t/reusing-channels/13145/3
+					// Normally this is not a problem, but for hour-long files this is unfortunate.
+					SoundData.SetSound(await SoundManager.LoadAsync(SoundData.File));
+
+					if (state.GetGetSoundTimeFunction() != null)
+						SetSoundPositionAction(SoundData, state.GetGetSoundTimeFunction()(), state.GetOffset());
+					Logger.Info($"Loaded {SoundData.File}.");
+
+					CancellationTokenSource.Token.ThrowIfCancellationRequested();
+
+					// Set up the new sound mip map.
+					if (state.ShouldGenerateMipMap() && SoundData.MipMap != null)
+					{
+						await SoundData.MipMap.CreateMipMapAsync(SoundData.Sound, SoundData.SampleRate,
+							Utils.WaveFormTextureWidth,
+							CancellationTokenSource.Token);
+					}
+
+					CancellationTokenSource.Token.ThrowIfCancellationRequested();
+				}
+			}
+
+			/// <summary>
+			/// Called when loading has been cancelled.
+			/// </summary>
+			protected override void Cancel()
+			{
+				// Upon cancellation release the sound handle and clear the mip map data.
+				if (SoundData.Sound.hasHandle())
+					SoundManager.ErrCheck(SoundData.Sound.release());
+				SoundData.Sound.handle = IntPtr.Zero;
+				SoundData.MipMap?.Reset();
+			}
+		}
+
 		private readonly SoundManager SoundManager;
 
 		// FMOD sound data.
-		public Sound Sound;
-		public Channel Channel;
+		private readonly ChannelGroup ChannelGroup;
+		private Sound Sound;
+		private Channel Channel;
 		private readonly CHANNELCONTROL_CALLBACK ChannelControlCallback;
 
 		// Cached Sound data for length and time calculations.
@@ -59,20 +174,26 @@ internal sealed class MusicManager
 		private uint SampleRate;
 
 		// Loading variables.
-		public string PendingFile;
-		public string File;
-		public CancellationTokenSource LoadCancellationTokenSource;
-		public Task LoadTask;
+		private string File;
+		private readonly SoundLoadTask LoadTask;
 
 		// Optional SoundMipMap.
-		public readonly SoundMipMap MipMap;
+		private readonly SoundMipMap MipMap;
 
 		// Whether or not this SoundData is playing. Not necessarily the same
 		// as the underlying Sound playing since we may want to play a Sound at
 		// a negative time.
-		public bool IsPlaying;
+		private bool Playing;
 
-		public SoundData(SoundManager soundManager, ChannelGroup channelGroup, SoundMipMap mipMap)
+		/// <summary>
+		/// Constructor.
+		/// </summary>
+		/// <param name="soundManager">SoundManager to use for loading sounds.</param>
+		/// <param name="channelGroup">ChannelGroup for playing the Sound.</param>
+		/// <param name="mipMap">Optional SoundMipMap to use with this SoundData.</param>
+		/// <param name="setSoundPositionAction">Optional function to use for setting the Sound's position when loaded.</param>
+		public SoundData(SoundManager soundManager, ChannelGroup channelGroup, SoundMipMap mipMap,
+			Action<SoundData, double, double> setSoundPositionAction)
 		{
 			SoundManager = soundManager;
 			ChannelGroup = channelGroup;
@@ -83,9 +204,26 @@ internal sealed class MusicManager
 				MipMap = mipMap;
 				MipMap.SetLoadParallelism(Preferences.Instance.PreferencesWaveForm.WaveFormLoadingMaxParallelism);
 			}
+
+			LoadTask = new SoundLoadTask(this, soundManager, setSoundPositionAction);
 		}
 
-		public void SetSound(Sound sound)
+		/// <summary>
+		/// Load the sound specified by the given file.
+		/// </summary>
+		/// <param name="file">Sound file to load.</param>
+		/// <param name="offset">The offset to apply</param>
+		/// <param name="generateMipMap">Whether a SoundMipMap should be generated for this sound.</param>
+		/// <param name="getSoundTimeFunction">
+		/// Optional function to use to retrieve the time of the desired time of Sound so that it can be set
+		/// appropriately once loaded.
+		/// </param>
+		public async void LoadAsync(string file, double offset, bool generateMipMap, Func<double> getSoundTimeFunction)
+		{
+			await LoadTask.Start(new SoundLoadState(file, offset, generateMipMap, getSoundTimeFunction));
+		}
+
+		private void SetSound(Sound sound)
 		{
 			Sound = sound;
 
@@ -103,11 +241,10 @@ internal sealed class MusicManager
 			SampleRate = (uint)frequency;
 		}
 
-		public uint GetSampleRate()
-		{
-			return SampleRate;
-		}
-
+		/// <summary>
+		/// Gets the current position of the sound as a time in seconds.
+		/// </summary>
+		/// <returns>Current position of the sound as a time in seconds.</returns>
 		public double GetTimeInSeconds()
 		{
 			if (NumChannels == 0 || SampleRate == 0 || BitsPerSample < 8)
@@ -117,6 +254,15 @@ internal sealed class MusicManager
 			return (double)bytes / NumChannels / (BitsPerSample >> 3) / SampleRate;
 		}
 
+		/// <summary>
+		/// Sets the time of the sound to the given time in seconds.
+		/// The given time may be negative or exceed the length of the sound.
+		/// </summary>
+		/// <param name="timeInSeconds">Desired time of the sound in seconds.</param>
+		/// <returns>
+		/// True if the sound was updated and false otherwise.
+		/// If the sound is not yet loaded, it won't be updated.
+		/// </returns>
 		public bool SetTimeInSeconds(double timeInSeconds)
 		{
 			if (!IsLoaded())
@@ -159,6 +305,10 @@ internal sealed class MusicManager
 			return bytes <= 0 || bytes + sampleSize >= TotalBytes;
 		}
 
+		/// <summary>
+		/// Gets the length of the sound as a time in seconds.
+		/// </summary>
+		/// <returns>Length of the sound as a time in seconds.</returns>
 		public double GetLengthInSeconds()
 		{
 			if (NumChannels == 0 || SampleRate == 0 || BitsPerSample < 8)
@@ -169,6 +319,31 @@ internal sealed class MusicManager
 		public bool IsLoaded()
 		{
 			return Sound.hasHandle();
+		}
+
+		public string GetFile()
+		{
+			return File;
+		}
+
+		public Channel GetChannel()
+		{
+			return Channel;
+		}
+
+		public SoundMipMap GetSoundMipMap()
+		{
+			return MipMap;
+		}
+
+		public void SetIsPlaying(bool playing)
+		{
+			Playing = playing;
+		}
+
+		public bool IsPlaying()
+		{
+			return Playing;
 		}
 
 		/// <summary>
@@ -221,7 +396,6 @@ internal sealed class MusicManager
 		PlayingPreview,
 	}
 
-	private readonly SoundManager SoundManager;
 	private ChannelGroup MusicChannelGroup;
 
 	// SoundData for both the music and preview.
@@ -243,7 +417,7 @@ internal sealed class MusicManager
 	/// <summary>
 	/// Music and preview sound Channel volume.
 	/// </summary>
-	private readonly double MusicVolume = 1.0;
+	private const double MusicVolume = 1.0;
 
 	/// <summary>
 	/// Internal offset for the music.
@@ -260,14 +434,12 @@ internal sealed class MusicManager
 	/// <param name="musicOffset">Offset to use for playing the music.</param>
 	public MusicManager(SoundManager soundManager, double musicOffset)
 	{
-		SoundManager = soundManager;
-
 		// Create a ChannelGroup for music and preview audio.
-		SoundManager.CreateChannelGroup("MusicChannelGroup", out MusicChannelGroup);
+		soundManager.CreateChannelGroup("MusicChannelGroup", out MusicChannelGroup);
 
-		MusicData = new SoundData(SoundManager, MusicChannelGroup, new SoundMipMap());
+		MusicData = new SoundData(soundManager, MusicChannelGroup, new SoundMipMap(), SetSoundPositionInternal);
 		SetMusicOffset(musicOffset);
-		PreviewData = new SoundData(SoundManager, MusicChannelGroup, null);
+		PreviewData = new SoundData(soundManager, MusicChannelGroup, null, SetSoundPositionInternal);
 	}
 
 	/// <summary>
@@ -276,9 +448,12 @@ internal sealed class MusicManager
 	/// <returns>SoundMipMap.</returns>
 	public SoundMipMap GetMusicMipMap()
 	{
-		return MusicData.MipMap;
+		return MusicData.GetSoundMipMap();
 	}
 
+	/// <summary>
+	/// Unload all loaded sounds asynchronously.
+	/// </summary>
 	public void UnloadAsync()
 	{
 		LoadSoundAsync(PreviewData, null);
@@ -339,7 +514,6 @@ internal sealed class MusicManager
 		// Record that we should be using a unique preview file instead of
 		// the music file if we were given a non-empty string.
 		ShouldBeUsingPreviewFile = !string.IsNullOrEmpty(fullPathToMusicFile);
-
 		LoadSoundAsync(PreviewData, fullPathToMusicFile, 0.0, null, force);
 	}
 
@@ -349,100 +523,20 @@ internal sealed class MusicManager
 	/// based on SetSoundPositionInternal, which takes into account MusicManager state.
 	/// We set this before loading the SoundMipMap, in the middle of the async load.
 	/// </summary>
-	private async void LoadSoundAsync(
+	private void LoadSoundAsync(
 		SoundData soundData,
-		string fullPathToMusicFile,
+		string fullPathToSoundFile,
 		double offset = 0.0,
-		Func<double> getMusicTimeFunction = null,
+		Func<double> getSoundTimeFunction = null,
 		bool force = false,
 		bool generateMipMap = true)
 	{
 		// It is common for Charts to re-use the same sound files.
 		// Do not reload the sound file if we were already using it.
-		if (!force && fullPathToMusicFile == soundData.File)
+		if (!force && fullPathToSoundFile == soundData.GetFile())
 			return;
 
-		// Store the sound file we want to load.
-		soundData.PendingFile = fullPathToMusicFile;
-
-		// If we are already loading a sound file, cancel that operation so
-		// we can start the new load.
-		if (soundData.LoadCancellationTokenSource != null)
-		{
-			// If we are already cancelling then return. We don't want multiple
-			// calls to this method to collide. We will end up using the most recently
-			// requested sound file due to the PendingFile variable.
-			if (soundData.LoadCancellationTokenSource.IsCancellationRequested)
-				return;
-
-			// Start the cancellation and wait for it to complete.
-			soundData.LoadCancellationTokenSource?.Cancel();
-			await soundData.LoadTask;
-		}
-
-		// Store the new sound file.
-		soundData.File = soundData.PendingFile;
-		soundData.PendingFile = null;
-
-		// Start an asynchronous series of operations to load the sound and set up the mip map.
-		soundData.LoadCancellationTokenSource = new CancellationTokenSource();
-		soundData.LoadTask = Task.Run(async () =>
-		{
-			try
-			{
-				// Release the handle to the old sound if it is present.
-				if (soundData.Sound.hasHandle())
-					SoundManager.ErrCheck(soundData.Sound.release());
-				soundData.Sound.handle = IntPtr.Zero;
-
-				// Reset the mip map before loading the new sound because loading the sound
-				// can take a moment and we don't want to continue to render the old audio.
-				soundData.MipMap?.Reset();
-
-				soundData.LoadCancellationTokenSource.Token.ThrowIfCancellationRequested();
-
-				if (!string.IsNullOrEmpty(soundData.File))
-				{
-					Logger.Info($"Loading {soundData.File}...");
-
-					// Load the sound file.
-					// This is not cancelable. According to FMOD: "you can't cancel it"
-					// https://qa.fmod.com/t/reusing-channels/13145/3
-					// Normally this is not a problem, but for hour-long files this is unfortunate.
-					soundData.SetSound(await SoundManager.LoadAsync(soundData.File));
-
-					if (getMusicTimeFunction != null)
-						SetSoundPositionInternal(soundData, getMusicTimeFunction(), offset);
-					Logger.Info($"Loaded {soundData.File}.");
-
-					soundData.LoadCancellationTokenSource.Token.ThrowIfCancellationRequested();
-
-					// Set up the new sound mip map.
-					if (generateMipMap && soundData.MipMap != null)
-					{
-						await soundData.MipMap.CreateMipMapAsync(soundData.Sound, soundData.GetSampleRate(),
-							Utils.WaveFormTextureWidth,
-							soundData.LoadCancellationTokenSource.Token);
-					}
-
-					soundData.LoadCancellationTokenSource.Token.ThrowIfCancellationRequested();
-				}
-			}
-			catch (OperationCanceledException)
-			{
-				// Upon cancellation release the sound handle and clear the mip map data.
-				if (soundData.Sound.hasHandle())
-					SoundManager.ErrCheck(soundData.Sound.release());
-				soundData.Sound.handle = IntPtr.Zero;
-				soundData.MipMap?.Reset();
-			}
-			finally
-			{
-				soundData.LoadCancellationTokenSource?.Dispose();
-				soundData.LoadCancellationTokenSource = null;
-			}
-		}, soundData.LoadCancellationTokenSource.Token);
-		await soundData.LoadTask;
+		soundData.LoadAsync(fullPathToSoundFile, offset, generateMipMap, getSoundTimeFunction);
 	}
 
 	/// <summary>
@@ -504,7 +598,7 @@ internal sealed class MusicManager
 	{
 		if (!soundData.SetTimeInSeconds(timeInSeconds + offset))
 			return;
-		if (!soundData.IsPlaying)
+		if (!soundData.IsPlaying())
 			return;
 		if (soundData == MusicData && State == PlayingState.PlayingPreview && ShouldBeUsingPreviewFile)
 			return;
@@ -539,7 +633,7 @@ internal sealed class MusicManager
 		System.Diagnostics.Debug.Assert(State == PlayingState.PlayingNothing || State == PlayingState.PlayingMusic);
 
 		State = PlayingState.PlayingMusic;
-		MusicData.IsPlaying = true;
+		MusicData.SetIsPlaying(true);
 		UpdateSoundPausedState(MusicData, musicTimeInSeconds + MusicOffset);
 	}
 
@@ -549,9 +643,9 @@ internal sealed class MusicManager
 	public void StopPlayback()
 	{
 		State = PlayingState.PlayingNothing;
-		MusicData.IsPlaying = false;
+		MusicData.SetIsPlaying(false);
 		if (MusicData.IsLoaded())
-			SoundManager.ErrCheck(MusicData.Channel.setPaused(true));
+			SoundManager.ErrCheck(MusicData.GetChannel().setPaused(true));
 	}
 
 	/// <summary>
@@ -596,7 +690,7 @@ internal sealed class MusicManager
 	private void RestartPreview()
 	{
 		var soundData = GetPreviewSoundData();
-		soundData.IsPlaying = true;
+		soundData.SetIsPlaying(true);
 		var previewStartTime = ShouldBeUsingPreviewFile ? 0.0 : PreviewStartTime;
 		SetSoundPositionInternal(soundData, previewStartTime, 0.0);
 		PreviewStopwatch = Stopwatch.StartNew();
@@ -612,10 +706,10 @@ internal sealed class MusicManager
 		// Stop playing the preview.
 		var previewSoundData = GetPreviewSoundData();
 		if (previewSoundData.IsLoaded())
-			SoundManager.ErrCheck(previewSoundData.Channel.setPaused(true));
+			SoundManager.ErrCheck(previewSoundData.GetChannel().setPaused(true));
 
 		State = PlayingState.PlayingNothing;
-		previewSoundData.IsPlaying = false;
+		previewSoundData.SetIsPlaying(false);
 		PreviewStopwatch?.Stop();
 		PreviewStopwatch = null;
 
@@ -624,7 +718,7 @@ internal sealed class MusicManager
 		SetMusicTimeInSeconds(DesiredMusicTimeAfterPreview);
 
 		// Reset the music volume in case it was fading out due to the preview.
-		SoundManager.ErrCheck(previewSoundData.Channel.setVolume((float)MusicVolume));
+		SoundManager.ErrCheck(previewSoundData.GetChannel().setVolume((float)MusicVolume));
 	}
 
 	/// <summary>
@@ -666,17 +760,17 @@ internal sealed class MusicManager
 				var vol = (float)Interpolation.Lerp(
 					(float)MusicVolume, 0.0, 0.0, PreviewFadeOutTime,
 					previewTime - (previewLength - PreviewFadeOutTime));
-				SoundManager.ErrCheck(soundData.Channel.setVolume(vol));
+				SoundManager.ErrCheck(soundData.GetChannel().setVolume(vol));
 			}
 			else if (previewTime < PreviewFadeInTime)
 			{
 				var vol = (float)Interpolation.Lerp(
 					0.0, (float)MusicVolume, 0.0, PreviewFadeInTime, previewTime);
-				SoundManager.ErrCheck(soundData.Channel.setVolume(vol));
+				SoundManager.ErrCheck(soundData.GetChannel().setVolume(vol));
 			}
 			else
 			{
-				SoundManager.ErrCheck(soundData.Channel.setVolume((float)MusicVolume));
+				SoundManager.ErrCheck(soundData.GetChannel().setVolume((float)MusicVolume));
 			}
 
 			// Loop.
@@ -709,7 +803,7 @@ internal sealed class MusicManager
 		if (soundData == MusicData && State == PlayingState.PlayingPreview && ShouldBeUsingPreviewFile)
 			return;
 
-		SoundManager.ErrCheck(soundData.Channel.setPaused(musicTimeInSeconds < 0.0));
+		SoundManager.ErrCheck(soundData.GetChannel().setPaused(musicTimeInSeconds < 0.0));
 	}
 
 	/// <summary>

@@ -248,7 +248,17 @@ public class SoundMipMap
 		SampleRate = sampleRate;
 
 		Logger.Info("Generating sound mip map...");
-		var success = await Task.Run(async () => await InternalCreateMipMapAsync(sound, xRange, token), token);
+		bool success;
+		try
+		{
+			success = await InternalCreateMipMapAsync(sound, xRange, token);
+		}
+		catch (OperationCanceledException)
+		{
+			Logger.Info("Cancelled generating sound mip map.");
+			throw;
+		}
+
 		if (!success)
 		{
 			Logger.Warn("Failed generating sound mip map.");
@@ -400,17 +410,27 @@ public class SoundMipMap
 				var startSample = (uint)(i * samplesPerTask);
 				var endSample = (uint)Math.Min(totalNumSamples, (i + 1) * samplesPerTask);
 				tasks[i] = Task.Run(() =>
-					FillMipMapWorker(
-						ptr1,
-						startSample,
-						endSample,
-						bytesPerSample,
-						bytesPerChannelPerSample,
-						highestMipLevelToFillPerTask,
-						xRangePerChannel,
-						format,
-						numFirstPassMipLevels,
-						token), token);
+					{
+						try
+						{
+							FillMipMapWorker(
+								ptr1,
+								startSample,
+								endSample,
+								bytesPerSample,
+								bytesPerChannelPerSample,
+								highestMipLevelToFillPerTask,
+								xRangePerChannel,
+								format,
+								numFirstPassMipLevels,
+								token);
+						}
+						catch (OperationCanceledException)
+						{
+							// Ignored.
+						}
+					},
+					token);
 			}
 
 			await Task.WhenAll(tasks);
