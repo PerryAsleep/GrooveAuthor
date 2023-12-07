@@ -5,12 +5,10 @@ using System.IO;
 using System.Linq;
 using System.Media;
 using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Fumen;
 using Fumen.ChartDefinition;
-using Fumen.Converters;
 using ImGuiNET;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -126,10 +124,6 @@ internal sealed class Editor :
 	private Vector2 FocalPointAtMoveStart;
 	private Vector2 FocalPointMoveOffset;
 
-	private string PendingOpenFileName;
-	private ChartType PendingOpenFileChartType;
-	private ChartDifficultyType PendingOpenFileChartDifficultyType;
-
 	private bool UnsavedChangesLastFrame;
 	private string PendingOpenSongFileName;
 	private string PendingMusicFile;
@@ -199,8 +193,7 @@ internal sealed class Editor :
 	private Effect WaveformColorEffect;
 	private RenderTarget2D[] WaveformRenderTargets;
 
-	private CancellationTokenSource LoadSongCancellationTokenSource;
-	private Task LoadSongTask;
+	private SongLoadTask SongLoadTask;
 	private FileSystemWatcher SongFileWatcher;
 	private bool ShowFileChangedPopup;
 	private int GarbageCollectFrame;
@@ -346,6 +339,7 @@ internal sealed class Editor :
 		InitializeWaveFormRenderer();
 		InitializeMiniMap();
 		InitializeUIHelpers();
+		InitializeSongLoadTask();
 		base.Initialize();
 	}
 
@@ -719,6 +713,11 @@ internal sealed class Editor :
 		UIAutogenChartsForChartType = new UIAutogenChartsForChartType(this);
 		UICopyEventsBetweenCharts = new UICopyEventsBetweenCharts(this);
 		UIPatternEvent = new UIPatternEvent(this);
+	}
+
+	private void InitializeSongLoadTask()
+	{
+		SongLoadTask = new SongLoadTask(this, GraphicsDevice, ImGuiRenderer);
 	}
 
 	/// <summary>
@@ -4728,122 +4727,45 @@ internal sealed class Editor :
 		ChartType chartType,
 		ChartDifficultyType chartDifficultyType)
 	{
-		try
+		CloseSong();
+
+		// Start the load. If we are already loading, return.
+		// The previous call will use the newly provided file state.
+		var taskComplete = await SongLoadTask.Start(new SongLoadState(fileName, chartType, chartDifficultyType));
+		if (!taskComplete)
+			return;
+		var (newActiveSong, newActiveChart, newFileName) = SongLoadTask.GetResults();
+
+		CloseSong();
+
+		// Get the newly loaded song.
+		ActiveSong = newActiveSong;
+		if (ActiveSong == null)
 		{
-			// Store the song file we want to load.
-			PendingOpenFileName = fileName;
-			PendingOpenFileChartType = chartType;
-			PendingOpenFileChartDifficultyType = chartDifficultyType;
-
-			// If we are already loading a song file, cancel that operation so
-			// we can start the new load.
-			if (LoadSongCancellationTokenSource != null)
-			{
-				// If we are already cancelling something then return. We don't want
-				// calls to this method to collide. We will end up using the most recently
-				// requested song file due to the PendingOpenFileName variable.
-				if (LoadSongCancellationTokenSource.IsCancellationRequested)
-					return;
-
-				// Start the cancellation and wait for it to complete.
-				LoadSongCancellationTokenSource?.Cancel();
-				await LoadSongTask;
-			}
-
-			// Use the most recently requested song file.
-			fileName = PendingOpenFileName;
-			chartType = PendingOpenFileChartType;
-			chartDifficultyType = PendingOpenFileChartDifficultyType;
-
-			CloseSong();
-
-			// Start an asynchronous series of operations to load the song.
-			EditorChart newActiveChart = null;
-			EditorSong newActiveSong = null;
-			LoadSongCancellationTokenSource = new CancellationTokenSource();
-			LoadSongTask = Task.Run(async () =>
-			{
-				try
-				{
-					// Load the song file.
-					var reader = Reader.CreateReader(fileName);
-					if (reader == null)
-					{
-						Logger.Error($"Unsupported file format. Cannot parse {fileName}");
-						return;
-					}
-
-					Logger.Info($"Loading {fileName}...");
-					var song = await reader.LoadAsync(LoadSongCancellationTokenSource.Token);
-					if (song == null)
-					{
-						Logger.Error($"Failed to load {fileName}");
-						return;
-					}
-
-					Logger.Info($"Loaded {fileName}");
-
-					LoadSongCancellationTokenSource.Token.ThrowIfCancellationRequested();
-					await Task.Run(() =>
-					{
-						newActiveSong = new EditorSong(
-							fileName,
-							song,
-							GraphicsDevice,
-							ImGuiRenderer,
-							IsChartSupported,
-							this,
-							this);
-					});
-
-					// Select the best Chart to make active.
-					newActiveChart = SelectBestChart(newActiveSong, chartType, chartDifficultyType);
-					LoadSongCancellationTokenSource.Token.ThrowIfCancellationRequested();
-				}
-				catch (OperationCanceledException)
-				{
-					// Upon cancellation null out the Song and ActiveChart.
-					CloseSong();
-				}
-				finally
-				{
-					LoadSongCancellationTokenSource?.Dispose();
-					LoadSongCancellationTokenSource = null;
-				}
-			}, LoadSongCancellationTokenSource.Token);
-			await LoadSongTask;
-			ActiveSong = newActiveSong;
-			if (ActiveSong == null)
-			{
-				return;
-			}
-
-			StartObservingSongFile(fileName);
-
-			// Set the position and zoom to the last used values for this song.
-			var desiredChartPosition = 0.0;
-			var desiredZoom = 1.0;
-			var savedInfo = GetMostRecentSavedSongInfoForActiveSong();
-			if (savedInfo != null)
-			{
-				desiredChartPosition = savedInfo.ChartPosition;
-				desiredZoom = savedInfo.SpacingZoom;
-			}
-
-			// Insert a new entry at the top of the saved recent files.
-			UpdateRecentFilesForActiveSong(desiredChartPosition, desiredZoom);
-
-			OnChartSelected(newActiveChart, false);
-
-			// Set position and zoom.
-			Position.Reset();
-			Position.ChartPosition = desiredChartPosition;
-			ZoomManager.SetZoom(desiredZoom);
+			return;
 		}
-		catch (Exception e)
+
+		StartObservingSongFile(newFileName);
+
+		// Set the position and zoom to the last used values for this song.
+		var desiredChartPosition = 0.0;
+		var desiredZoom = 1.0;
+		var savedInfo = GetMostRecentSavedSongInfoForActiveSong();
+		if (savedInfo != null)
 		{
-			Logger.Error($"Failed to load {fileName}. {e}");
+			desiredChartPosition = savedInfo.ChartPosition;
+			desiredZoom = savedInfo.SpacingZoom;
 		}
+
+		// Insert a new entry at the top of the saved recent files.
+		UpdateRecentFilesForActiveSong(desiredChartPosition, desiredZoom);
+
+		OnChartSelected(newActiveChart, false);
+
+		// Set position and zoom.
+		Position.Reset();
+		Position.ChartPosition = desiredChartPosition;
+		ZoomManager.SetZoom(desiredZoom);
 	}
 
 	private void StartObservingSongFile(string fileName)
@@ -4944,7 +4866,7 @@ internal sealed class Editor :
 	/// <param name="preferredChartType">The preferred ChartType (StepMania StepsType) to use.</param>
 	/// <param name="preferredChartDifficultyType">The preferred DifficultyType to use.</param>
 	/// <returns>Best Chart to use or null if no Charts exist.</returns>
-	private EditorChart SelectBestChart(EditorSong song, ChartType preferredChartType,
+	public EditorChart SelectBestChart(EditorSong song, ChartType preferredChartType,
 		ChartDifficultyType preferredChartDifficultyType)
 	{
 		var preferredChartsByType = song.GetCharts(preferredChartType);
@@ -5259,6 +5181,7 @@ internal sealed class Editor :
 		MusicManager.UnloadAsync();
 		LaneEditStates = Array.Empty<LaneEditState>();
 		ClearSelectedEvents();
+		SongLoadTask.ClearResults();
 		ActiveSong = null;
 		ActiveChart = null;
 		LastSelectedPatternEvent = null;
