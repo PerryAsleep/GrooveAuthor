@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.IO;
 using System.Threading.Tasks;
 using FMOD;
 using Fumen;
@@ -27,7 +28,9 @@ namespace StepManiaEditor;
 /// paused at a specific row, and then playback begins, if the offset were implemented
 /// visually, then the notes would visibly jerk. It may be preferable to a user to
 /// instead have the audio shift instead.
-/// 
+///
+/// Handles automatically reloading sound files if they change externally.
+///
 /// Expected usage:
 ///  Call LoadMusicAsync whenever the music file changes.
 ///  Call LoadMusicPreviewAsync whenever the preview file changes.
@@ -40,6 +43,7 @@ internal sealed class MusicManager
 {
 	/// <summary>
 	/// Common data to the music and preview Sounds that MusicManager manages.
+	/// Handles reloading sound data automatically when the file changes externally.
 	/// </summary>
 	private class SoundData
 	{
@@ -116,21 +120,21 @@ internal sealed class MusicManager
 
 				CancellationTokenSource.Token.ThrowIfCancellationRequested();
 
-				SoundData.File = state.GetFile();
+				var file = state.GetFile();
 
-				if (!string.IsNullOrEmpty(SoundData.File))
+				if (!string.IsNullOrEmpty(file))
 				{
-					Logger.Info($"Loading {SoundData.File}...");
+					Logger.Info($"Loading {file}...");
 
 					// Load the sound file.
 					// This is not cancelable. According to FMOD: "you can't cancel it"
 					// https://qa.fmod.com/t/reusing-channels/13145/3
 					// Normally this is not a problem, but for hour-long files this is unfortunate.
-					SoundData.SetSound(await SoundManager.LoadAsync(SoundData.File));
+					SoundData.SetSound(await SoundManager.LoadAsync(file));
 
 					if (state.GetGetSoundTimeFunction() != null)
 						SetSoundPositionAction(SoundData, state.GetGetSoundTimeFunction()(), state.GetOffset());
-					Logger.Info($"Loaded {SoundData.File}.");
+					Logger.Info($"Loaded {file}.");
 
 					CancellationTokenSource.Token.ThrowIfCancellationRequested();
 
@@ -174,8 +178,9 @@ internal sealed class MusicManager
 		private uint SampleRate;
 
 		// Loading variables.
-		private string File;
+		private SoundLoadState LoadState;
 		private readonly SoundLoadTask LoadTask;
+		private FileSystemWatcher FileWatcher;
 
 		// Optional SoundMipMap.
 		private readonly SoundMipMap MipMap;
@@ -218,9 +223,22 @@ internal sealed class MusicManager
 		/// Optional function to use to retrieve the time of the desired time of Sound so that it can be set
 		/// appropriately once loaded.
 		/// </param>
-		public async void LoadAsync(string file, double offset, bool generateMipMap, Func<double> getSoundTimeFunction)
+		public void LoadAsync(string file, double offset, bool generateMipMap, Func<double> getSoundTimeFunction)
 		{
-			await LoadTask.Start(new SoundLoadState(file, offset, generateMipMap, getSoundTimeFunction));
+			StopObservingFile();
+			LoadState = new SoundLoadState(file, offset, generateMipMap, getSoundTimeFunction);
+			StartObservingFile();
+			LoadAsyncFromLoadState();
+		}
+
+		/// <summary>
+		/// Loads the sound from the LoadState.
+		/// </summary>
+		private async void LoadAsyncFromLoadState()
+		{
+			if (LoadState == null)
+				return;
+			await LoadTask.Start(LoadState);
 		}
 
 		private void SetSound(Sound sound)
@@ -323,7 +341,7 @@ internal sealed class MusicManager
 
 		public string GetFile()
 		{
-			return File;
+			return LoadState?.GetFile();
 		}
 
 		public Channel GetChannel()
@@ -371,6 +389,53 @@ internal sealed class MusicManager
 			}
 
 			return RESULT.OK;
+		}
+
+		/// <summary>
+		/// Start observing the file from the LoadState for external changes.
+		/// </summary>
+		private void StartObservingFile()
+		{
+			var loadStateFile = LoadState?.GetFile();
+			if (string.IsNullOrEmpty(loadStateFile))
+				return;
+
+			try
+			{
+				var fullPath = System.IO.Path.GetFullPath(loadStateFile);
+				var dir = System.IO.Path.GetDirectoryName(fullPath);
+				var file = System.IO.Path.GetFileName(fullPath);
+				if (!string.IsNullOrEmpty(dir) && !string.IsNullOrEmpty(file))
+				{
+					FileWatcher = new FileSystemWatcher(dir);
+					FileWatcher.NotifyFilter = NotifyFilters.LastWrite;
+					FileWatcher.Changed += OnFileChangedNotification;
+					FileWatcher.Filter = file;
+					FileWatcher.EnableRaisingEvents = true;
+				}
+			}
+			catch (Exception e)
+			{
+				Logger.Error($"Failed to observe {loadStateFile} for changes: {e}");
+			}
+		}
+
+		private void OnFileChangedNotification(object sender, FileSystemEventArgs e)
+		{
+			if (e.ChangeType != WatcherChangeTypes.Changed)
+				return;
+			if (string.IsNullOrEmpty(LoadState?.GetFile()))
+				return;
+			Logger.Info($"Reloading {LoadState.GetFile()} due to external modification.");
+			LoadAsyncFromLoadState();
+		}
+
+		/// <summary>
+		/// Stop observing the sound file for external changes.
+		/// </summary>
+		private void StopObservingFile()
+		{
+			FileWatcher = null;
 		}
 	}
 
