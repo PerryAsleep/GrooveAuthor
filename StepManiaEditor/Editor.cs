@@ -798,6 +798,11 @@ internal sealed class Editor :
 			PostSaveFunction = OnExitNoSave;
 			ShowSavePopup = true;
 		}
+		else if (IsSaving())
+		{
+			e.Cancel = true;
+			PostSaveFunction = OnExitNoSave;
+		}
 	}
 
 	protected override void EndRun()
@@ -822,6 +827,10 @@ internal sealed class Editor :
 		{
 			PostSaveFunction = OnExitNoSave;
 			ShowSavePopup = true;
+		}
+		else if (IsSaving())
+		{
+			PostSaveFunction = OnExitNoSave;
 		}
 		else
 		{
