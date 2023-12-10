@@ -218,6 +218,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			Assert(CanBeEdited());
 			if (!CanBeEdited())
 				return;
+			if (ChartDifficultyTypeInternal == value)
+				return;
 			ChartDifficultyTypeInternal = value;
 			Notify(NotificationDifficultyTypeChanged, this);
 		}
@@ -232,6 +234,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		{
 			Assert(CanBeEdited());
 			if (!CanBeEdited())
+				return;
+			if (RatingInternal == value)
 				return;
 			RatingInternal = value;
 			Notify(NotificationRatingChanged, this);
@@ -248,6 +252,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			Assert(CanBeEdited());
 			if (!CanBeEdited())
 				return;
+			if (NameInternal == value)
+				return;
 			NameInternal = value;
 			Notify(NotificationNameChanged, this);
 		}
@@ -262,6 +268,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		{
 			Assert(CanBeEdited());
 			if (!CanBeEdited())
+				return;
+			if (DescriptionInternal == value)
 				return;
 			DescriptionInternal = value;
 			Notify(NotificationDescriptionChanged, this);
@@ -306,7 +314,10 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			Assert(CanBeEdited());
 			if (!CanBeEdited())
 				return;
-			MusicPathInternal = value ?? "";
+			var newMusicPath = value ?? "";
+			if (MusicPath == newMusicPath)
+				return;
+			MusicPathInternal = newMusicPath;
 			Notify(NotificationMusicChanged, this);
 		}
 	}
@@ -424,11 +435,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 	#region Constructors
 
-	public EditorChart(EditorSong editorSong, Chart chart, Fumen.IObserver<EditorChart> observer)
+	public EditorChart(EditorSong editorSong, Chart chart)
 	{
-		if (observer != null)
-			AddObserver(observer);
-
 		WorkQueue = new WorkQueue();
 
 		ExpressedChartConfigInternal = ExpressedChartConfigManager.DefaultExpressedChartDynamicConfigGuid;
@@ -472,11 +480,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		DeserializeCustomChartData(chart);
 	}
 
-	public EditorChart(EditorSong editorSong, ChartType chartType, Fumen.IObserver<EditorChart> observer)
+	public EditorChart(EditorSong editorSong, ChartType chartType)
 	{
-		if (observer != null)
-			AddObserver(observer);
-
 		WorkQueue = new WorkQueue();
 
 		ExpressedChartConfigInternal = ExpressedChartConfigManager.DefaultExpressedChartDynamicConfigGuid;

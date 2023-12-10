@@ -91,9 +91,7 @@ internal sealed class SongLoadTask : CancellableTask<SongLoadState>
 				song,
 				GraphicsDevice,
 				ImGuiRenderer,
-				Editor.IsChartSupported,
-				Editor,
-				Editor);
+				Editor.IsChartSupported);
 		});
 
 		// Select the best Chart to make active.

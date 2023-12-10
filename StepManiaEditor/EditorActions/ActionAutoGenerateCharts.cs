@@ -184,7 +184,7 @@ internal sealed class ActionAutoGenerateCharts : EditorAction
 					newChart.Layers.Add(new Layer { Events = newChartEvents });
 
 					// Create a new EditorChart from the new Chart.
-					newEditorChart = new EditorChart(EditorSong, newChart, Editor);
+					newEditorChart = new EditorChart(EditorSong, newChart);
 				}
 				catch (Exception e)
 				{

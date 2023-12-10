@@ -274,7 +274,11 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 			Assert(CanBeEdited());
 			if (!CanBeEdited())
 				return;
-			MusicPathInternal = value ?? "";
+			var newMusicPath = value ?? "";
+			if (MusicPath == newMusicPath)
+				return;
+
+			MusicPathInternal = newMusicPath;
 			Notify(NotificationMusicChanged, this);
 		}
 	}
@@ -290,7 +294,11 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 			Assert(CanBeEdited());
 			if (!CanBeEdited())
 				return;
-			MusicPreviewPathInternal = value ?? "";
+			var newMusicPreviewPath = value ?? "";
+			if (MusicPreviewPathInternal == newMusicPreviewPath)
+				return;
+
+			MusicPreviewPathInternal = newMusicPreviewPath;
 			Notify(NotificationMusicPreviewChanged, this);
 		}
 	}
@@ -305,6 +313,8 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 		{
 			Assert(CanBeEdited());
 			if (!CanBeEdited())
+				return;
+			if (MusicOffsetInternal.DoubleEquals(value))
 				return;
 
 			DeletePreviewEvents();
@@ -323,6 +333,8 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 		{
 			Assert(CanBeEdited());
 			if (!CanBeEdited())
+				return;
+			if (SyncOffsetInternal.DoubleEquals(value))
 				return;
 
 			DeletePreviewEvents();
@@ -376,12 +388,11 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 			Assert(CanBeEdited());
 			if (!CanBeEdited())
 				return;
+			if (SampleLengthInternal.DoubleEquals(value))
+				return;
 
-			if (!SampleLengthInternal.DoubleEquals(value))
-			{
-				SampleLengthInternal = value;
-				Notify(NotificationSampleLengthChanged, this);
-			}
+			SampleLengthInternal = value;
+			Notify(NotificationSampleLengthChanged, this);
 		}
 	}
 
@@ -525,12 +536,8 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 
 	public EditorSong(
 		GraphicsDevice graphicsDevice,
-		ImGuiRenderer imGuiRenderer,
-		Fumen.IObserver<EditorSong> observer)
+		ImGuiRenderer imGuiRenderer)
 	{
-		if (observer != null)
-			AddObserver(observer);
-
 		WorkQueue = new WorkQueue();
 		WorkQueue.AddObserver(this);
 
@@ -554,13 +561,8 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 		Song song,
 		GraphicsDevice graphicsDevice,
 		ImGuiRenderer imGuiRenderer,
-		Func<Chart, bool> isChartSupported,
-		Fumen.IObserver<EditorSong> observer,
-		Fumen.IObserver<EditorChart> chartObserver)
+		Func<Chart, bool> isChartSupported)
 	{
-		if (observer != null)
-			AddObserver(observer);
-
 		WorkQueue = new WorkQueue();
 		WorkQueue.AddObserver(this);
 
@@ -646,7 +648,7 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 			EditorChart editorChart;
 			try
 			{
-				editorChart = new EditorChart(this, chart, chartObserver);
+				editorChart = new EditorChart(this, chart);
 			}
 			catch (Exception e)
 			{
@@ -697,7 +699,7 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 		return numCharts;
 	}
 
-	public EditorChart AddChart(ChartType chartType, Fumen.IObserver<EditorChart> observer)
+	public EditorChart AddChart(ChartType chartType)
 	{
 		Assert(CanBeEdited());
 		if (!CanBeEdited())
@@ -706,7 +708,7 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 		EditorChart chart;
 		try
 		{
-			chart = new EditorChart(this, chartType, observer);
+			chart = new EditorChart(this, chartType);
 		}
 		catch (Exception e)
 		{
@@ -768,6 +770,38 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 	#endregion EditorChart
 
 	#region Misc
+
+	public void AddObservers(
+		Fumen.IObserver<EditorSong> observer,
+		Fumen.IObserver<EditorChart> chartObserver)
+	{
+		if (observer != null)
+			AddObserver(observer);
+
+		foreach (var editorChartsForChartType in Charts)
+		{
+			foreach (var editorChart in editorChartsForChartType.Value)
+			{
+				editorChart.AddObserver(chartObserver);
+			}
+		}
+	}
+
+	public void RemoveObservers(
+		Fumen.IObserver<EditorSong> observer,
+		Fumen.IObserver<EditorChart> chartObserver)
+	{
+		if (observer != null)
+			RemoveObserver(observer);
+
+		foreach (var editorChartsForChartType in Charts)
+		{
+			foreach (var editorChart in editorChartsForChartType.Value)
+			{
+				editorChart.RemoveObserver(chartObserver);
+			}
+		}
+	}
 
 	public bool CanBeEdited()
 	{

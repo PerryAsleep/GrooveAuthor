@@ -206,8 +206,37 @@ internal sealed class Editor :
 	private double PlaybackStartTime;
 	private Stopwatch PlaybackStopwatch;
 
-	private EditorSong ActiveSong;
-	private EditorChart ActiveChart;
+	private EditorSong ActiveSong
+	{
+		set
+		{
+			Debug.Assert(IsOnMainThread());
+			ActiveSongInternal = value;
+		}
+		get
+		{
+			Debug.Assert(IsOnMainThread());
+			return ActiveSongInternal;
+		}
+	}
+
+	private EditorSong ActiveSongInternal;
+
+	private EditorChart ActiveChart
+	{
+		set
+		{
+			Debug.Assert(IsOnMainThread());
+			ActiveChartInternal = value;
+		}
+		get
+		{
+			Debug.Assert(IsOnMainThread());
+			return ActiveChartInternal;
+		}
+	}
+
+	private EditorChart ActiveChartInternal;
 
 	private readonly List<EditorEvent> VisibleEvents = new();
 	private readonly List<EditorMarkerEvent> VisibleMarkers = new();
@@ -257,6 +286,7 @@ internal sealed class Editor :
 	private double UpdateTimeChartEvents;
 	private double DrawTimeTotal;
 	private bool ShowImGuiTestWindow = true;
+	private readonly int MainThreadId;
 
 	// Logger
 	private string LogFilePath;
@@ -298,6 +328,9 @@ internal sealed class Editor :
 
 		// Load Preferences synchronously so they can be used immediately.
 		Preferences.Load(this);
+
+		// Record main thread id.
+		MainThreadId = Environment.CurrentManagedThreadId;
 
 		InitializeAutogenConfigs();
 		InitializeZoomManager();
@@ -898,6 +931,15 @@ internal sealed class Editor :
 
 	#endregion Static Helpers
 
+	#region Helpers
+
+	public bool IsOnMainThread()
+	{
+		return Environment.CurrentManagedThreadId == MainThreadId;
+	}
+
+	#endregion Helpers
+
 	#region Texture Atlas
 
 	public TextureAtlas GetTextureAtlas()
@@ -1066,6 +1108,8 @@ internal sealed class Editor :
 	/// </summary>
 	protected override void Update(GameTime gameTime)
 	{
+		Debug.Assert(IsOnMainThread());
+
 		// Time the Update method.
 		var stopWatch = new Stopwatch();
 		stopWatch.Start();
@@ -1629,6 +1673,8 @@ internal sealed class Editor :
 
 	protected override void Draw(GameTime gameTime)
 	{
+		Debug.Assert(IsOnMainThread());
+
 		var stopWatch = new Stopwatch();
 		stopWatch.Start();
 
@@ -1983,8 +2029,6 @@ internal sealed class Editor :
 	/// </remarks>
 	private void UpdateChartEvents()
 	{
-		// TODO: Crash when switching songs from doubles to singles.
-
 		// Clear the current state of visible events
 		VisibleEvents.Clear();
 		VisibleMarkers.Clear();
@@ -4745,6 +4789,8 @@ internal sealed class Editor :
 			return;
 		var (newActiveSong, newActiveChart, newFileName) = SongLoadTask.GetResults();
 
+		Debug.Assert(IsOnMainThread());
+
 		CloseSong();
 
 		// Get the newly loaded song.
@@ -4754,6 +4800,10 @@ internal sealed class Editor :
 			return;
 		}
 
+		// Observe the song and its charts.
+		ActiveSong.AddObservers(this, this);
+
+		// Observe the song file for changes.
 		StartObservingSongFile(newFileName);
 
 		// Set the position and zoom to the last used values for this song.
@@ -5084,8 +5134,11 @@ internal sealed class Editor :
 
 	private void OnNewNoSave()
 	{
+		Debug.Assert(IsOnMainThread());
+
 		CloseSong();
-		ActiveSong = new EditorSong(GraphicsDevice, ImGuiRenderer, this);
+		ActiveSong = new EditorSong(GraphicsDevice, ImGuiRenderer);
+		ActiveSong.AddObservers(this, this);
 
 		if (!string.IsNullOrEmpty(PendingMusicFile))
 		{
@@ -5168,6 +5221,8 @@ internal sealed class Editor :
 
 	private void UnloadSongResources()
 	{
+		Debug.Assert(IsOnMainThread());
+
 		// When unloading everything, perform garbage collection.
 		// We wait two frames because closing the song and unloading resources is often
 		// done in response to a UI click, which happens in the Draw() call. Waiting one
@@ -5180,6 +5235,8 @@ internal sealed class Editor :
 		// 3) We do not want random hitches when playing / editing.
 		if (ActiveSong != null)
 			GarbageCollectFrame = 2;
+
+		ActiveSong?.RemoveObservers(this, this);
 
 		// Close any UI which holds on to Song/Chart state.
 		UIAutogenChart.Close();
@@ -5207,6 +5264,8 @@ internal sealed class Editor :
 
 	private void UpdateWindowTitle()
 	{
+		Debug.Assert(IsOnMainThread());
+
 		if (Window == null)
 			return;
 		var hasUnsavedChanges = ActionQueue.Instance.HasUnsavedChanges();
@@ -6656,6 +6715,8 @@ internal sealed class Editor :
 
 	public void OnChartSelected(EditorChart chart, bool undoable = true)
 	{
+		Debug.Assert(IsOnMainThread());
+
 		if (ActiveSong == null || ActiveChart == chart)
 			return;
 
@@ -6714,9 +6775,12 @@ internal sealed class Editor :
 
 	public EditorChart AddChart(ChartType chartType, bool selectNewChart)
 	{
+		Debug.Assert(IsOnMainThread());
+
 		if (ActiveSong == null)
 			return null;
-		var chart = ActiveSong.AddChart(chartType, this);
+		var chart = ActiveSong.AddChart(chartType);
+		chart?.AddObserver(this);
 		if (selectNewChart)
 			OnChartSelected(chart, false);
 		return chart;
@@ -6724,9 +6788,12 @@ internal sealed class Editor :
 
 	public EditorChart AddChart(EditorChart chart, bool selectNewChart)
 	{
+		Debug.Assert(IsOnMainThread());
+
 		if (ActiveSong == null)
 			return null;
 		ActiveSong.AddChart(chart);
+		chart.AddObserver(this);
 		if (selectNewChart)
 			OnChartSelected(chart, false);
 		return chart;
@@ -6734,8 +6801,11 @@ internal sealed class Editor :
 
 	public void DeleteChart(EditorChart chart, EditorChart chartToSelect)
 	{
+		Debug.Assert(IsOnMainThread());
+
 		if (ActiveSong == null)
 			return;
+		chart.RemoveObserver(this);
 		ActiveSong.DeleteChart(chart);
 
 		if (chartToSelect != null)
