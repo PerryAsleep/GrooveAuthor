@@ -5082,9 +5082,7 @@ internal sealed class Editor :
 
 	private void OnReload()
 	{
-		SoundManager.PlayTestDspSound();
-
-		//OnReload(false);
+		OnReload(false);
 	}
 
 	private void OnReload(bool ignoreUnsavedChanges)

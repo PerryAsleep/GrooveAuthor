@@ -385,7 +385,7 @@ internal sealed class MusicManager
 				SoundManager.ErrCheck(Channel.setPaused(true));
 
 				// Now that we have a new Channel, set its callback to this function.
-				Channel.setCallback(ChannelControlCallback);
+				SoundManager.ErrCheck(Channel.setCallback(ChannelControlCallback));
 			}
 
 			return RESULT.OK;
@@ -467,6 +467,8 @@ internal sealed class MusicManager
 	private readonly SoundData MusicData;
 	private readonly SoundData PreviewData;
 
+	private readonly MusicDsp MusicDsp;
+
 	// State.
 	private PlayingState State = PlayingState.PlayingNothing;
 
@@ -505,6 +507,8 @@ internal sealed class MusicManager
 		MusicData = new SoundData(soundManager, MusicChannelGroup, new SoundMipMap(), SetSoundPositionInternal);
 		SetMusicOffset(musicOffset);
 		PreviewData = new SoundData(soundManager, MusicChannelGroup, null, SetSoundPositionInternal);
+
+		MusicDsp = new MusicDsp(soundManager);
 	}
 
 	/// <summary>

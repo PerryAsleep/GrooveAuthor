@@ -10,6 +10,27 @@ namespace StepManiaEditor;
 
 internal sealed class MusicDsp
 {
+	/// <summary>
+	/// Internal state of the MusicManager.
+	/// </summary>
+	private enum PlayingState
+	{
+		PlayingNothing,
+
+		/// <summary>
+		/// Playing the song music.
+		/// Not necessarily the same as MusicData.IsPlaying since we may be
+		/// leveraging the music SoundData to play the preview.
+		/// </summary>
+		PlayingMusic,
+
+		/// <summary>
+		/// Playing the song preview.
+		/// Not necessarily the same as PreviewData.IsPlaying since we may be
+		/// leveraging the music SoundData to play the preview.
+		/// </summary>
+		PlayingPreview,
+	}
 
 	private class SoundData
 	{
@@ -21,16 +42,24 @@ internal sealed class MusicDsp
 	}
 
 	private readonly SoundManager SoundManager;
+	private readonly Func<double> GetMusicTimeFunction;
 
 	private readonly SoundData AssistTickData = new();
 	private readonly SoundData MusicData = new();
+	private int SampleIndex = 0;
 	private List<int> NextAssistTickStartMusicSamples = null;
 	private readonly object NextAssistTickTimesLock = new();
 
-	public MusicDsp(SoundManager soundManager, int bufferNumSamples)
+	// State.
+	private PlayingState State = PlayingState.PlayingNothing;
+
+	public MusicDsp(SoundManager soundManager, Func<double> getMusicTimeFunction)
 	{
 		SoundManager = soundManager;
+		GetMusicTimeFunction = getMusicTimeFunction;
 		LoadAssistTick();
+		// TODO: Disposable?
+		CreateDsp();
 	}
 
 	private async void LoadAssistTick()
@@ -77,6 +106,36 @@ internal sealed class MusicDsp
 		}
 	}
 
+	private int GetMusicSampleIndexFromTime()
+	{
+		var musicTimeInSeconds = GetMusicTimeFunction();
+		MusicData.
+	}
+
+	public void StartMusic()
+	{
+		System.Diagnostics.Debug.Assert(State == PlayingState.PlayingNothing || State == PlayingState.PlayingMusic);
+		State = PlayingState.PlayingMusic;
+
+		var musicTimeInSeconds = GetMusicTimeFunction();
+		lock (MusicData.Lock)
+		{
+			MusicData.Playing = true;
+			MusicData.SampleIndex = 0;
+		}
+	}
+
+	public void StopMusic()
+	{
+		State = PlayingState.PlayingNothing;
+
+		lock (MusicData.Lock)
+		{
+			MusicData.Playing = false;
+			MusicData.SampleIndex = 0;
+		}
+	}
+
 	public void Update(IReadOnlyEventTree chartEvents)
 	{
 
@@ -95,79 +154,157 @@ internal sealed class MusicDsp
 		int inChannels,
 		ref int outChannels)
 	{
+		// TODO: Will the number channels be a problem? Can we force it to 2?
+		// TODO: Will different sample rates between the sounds be a problem? Can we force them to be equal?
+
 		IntPtr userData;
 		FMOD.DSP_STATE_FUNCTIONS functions = (DSP_STATE_FUNCTIONS)Marshal.PtrToStructure(dsp_state.functions, typeof(DSP_STATE_FUNCTIONS));
 		functions.getuserdata(ref dsp_state, out userData);
 		GCHandle objHandle = GCHandle.FromIntPtr(userData);
 		MusicDsp obj = objHandle.Target as MusicDsp;
 
+		int sampleIndexStartInclusive = 0;
+		int sampleIndexEndExclusive = 0;
+
+		float* outFloatBuffer = (float*)outBufferIntPtr.ToPointer();
+
 		// Get music data.
 		float[] musicData = null;
 		int musicNumChannels = 0;
 		int musicSampleIndex = 0;
-		var musicNumSamples = MusicData.Data.Length / MusicData.NumChannels;
-		var lastMusicSampleToUse = 0;
+		var musicNumSamples = 0;
+		var lastMusicSampleToUseExclusive = 0;
 		var musicPlaying = false;
 		lock (MusicData.Lock)
 		{
-			musicPlaying = MusicData.Playing;
-			if (musicPlaying)
+			if (MusicData.Data != null)
 			{
-				musicData = MusicData.Data;
-				musicNumChannels = MusicData.NumChannels;
-				musicSampleIndex = MusicData.SampleIndex;
-				lastMusicSampleToUse = musicSampleIndex + (int)length - 1;
-				MusicData.SampleIndex += (int)length;
-
-				if (MusicData.SampleIndex > musicNumSamples)
+				musicNumSamples = MusicData.Data.Length / MusicData.NumChannels;
+				musicPlaying = MusicData.Playing;
+				if (musicPlaying)
 				{
-					MusicData.SampleIndex = musicNumSamples;
-					lastMusicSampleToUse = musicNumSamples - 1;
+					// Update the sample index used for tracking the position of all sounds.
+					sampleIndexStartInclusive = SampleIndex;
+					sampleIndexEndExclusive = sampleIndexStartInclusive + (int)length;
+					SampleIndex += (int)length;
+
+					musicData = MusicData.Data;
+					musicNumChannels = MusicData.NumChannels;
+					musicSampleIndex = MusicData.SampleIndex;
+
+					// Update the sample index of the music.
+					lastMusicSampleToUseExclusive = musicSampleIndex + (int)length;
+					MusicData.SampleIndex += (int)length;
+					if (MusicData.SampleIndex > musicNumSamples)
+					{
+						MusicData.SampleIndex = musicNumSamples;
+						lastMusicSampleToUseExclusive = musicNumSamples;
+					}
 				}
 			}
 		}
 
-		// Get assist tick data.
-		List<int> nextAssistTickTimesLock = null;
+		// Get assist tick start times that are relevant for this callback.
+		List<int> nextAssistTickTimes = null;
+		var nextAssistTickIndex = 0;
 		lock (NextAssistTickTimesLock)
 		{
-			nextAssistTickTimesLock = NextAssistTickStartMusicSamples;
+			nextAssistTickTimes = NextAssistTickStartMusicSamples;
 		}
 
+		// Get the assist tick data.
 		float[] assistTickData = null;
-		int asistTickNumChannels = 0;
+		var assistTickNumChannels = 0;
+		var assistTickNumSamples = 0;
+		var assistTickSampleIndex = 0;
+		var assistTickPlaying = false;
 		lock (AssistTickData.Lock)
 		{
-			assistTickData = AssistTickData.Data;
-			asistTickNumChannels = AssistTickData.NumChannels;
-
-			if (!musicPlaying)
+			if (AssistTickData.Data != null)
 			{
-				AssistTickData.Playing = false;
-				AssistTickData.SampleIndex = 0;
-			}
-			else
-			{
+				// Capture assist tick sound data for rendering.
+				assistTickNumSamples = AssistTickData.Data.Length / AssistTickData.NumChannels;
+				assistTickData = AssistTickData.Data;
+				assistTickNumChannels = AssistTickData.NumChannels;
+				assistTickSampleIndex = AssistTickData.SampleIndex;
+				assistTickPlaying = AssistTickData.Playing;
 
+				// If music isn't playing, the assist tick sound shouldn't play either.
+				if (!musicPlaying)
+				{
+					AssistTickData.Playing = false;
+					AssistTickData.SampleIndex = 0;
+				}
+
+				// If music is playing, then the assist tick sound may also play.
+				else
+				{
+					// We need to advance the SampleIndex on the AssistTickData.
+					// There may be multiple assist ticks played during this callback. We need to advance the
+					// SampleIndex to the end of the final tick that will play during this callback.
+					// The final tick will be denoted by the last index in NextAssistTickStartMusicSamples.
+					var lastNextTickStartInRange = 0;
+					for (var nextTickTimeIndex = nextAssistTickTimes.Count - 1; nextTickTimeIndex >= 0; nextTickTimeIndex--)
+					{
+						if (nextAssistTickTimes[nextTickTimeIndex] < sampleIndexEndExclusive)
+						{
+							lastNextTickStartInRange = nextAssistTickTimes[nextTickTimeIndex];
+							break;
+						}
+					}
+
+					// Update SampleIndex.
+					if (lastNextTickStartInRange >= 0)
+					{
+						var remainingSamplesAfterLastNextTickStart = sampleIndexEndExclusive - lastNextTickStartInRange;
+						AssistTickData.SampleIndex = remainingSamplesAfterLastNextTickStart;
+					}
+					else
+					{
+						if (AssistTickData.Playing)
+						{
+							AssistTickData.SampleIndex += (sampleIndexEndExclusive - sampleIndexStartInclusive);
+						}
+					}
+
+					if (AssistTickData.SampleIndex >= assistTickNumSamples)
+					{
+						AssistTickData.SampleIndex = 0;
+						AssistTickData.Playing = false;
+					}
+				}
 			}
 		}
 
+		// Early out.
 		if (!musicPlaying)
 			return RESULT.OK;
 
+		// Render the music and the assist ticks together.
 		var musicValuesForSample = new float[outChannels];
+		var assistTickValuesForSample = new float[outChannels];
 
-		for (var sampleIndex = 0; sampleIndex < length; sampleIndex++)
+		for (var relativeSampleIndex = 0; relativeSampleIndex < length; relativeSampleIndex++)
 		{
+			// Check for starting a new assist tick.
+			if (nextAssistTickTimes != null && nextAssistTickIndex < nextAssistTickTimes.Count)
+			{
+				if (musicSampleIndex == nextAssistTickTimes[nextAssistTickIndex])
+				{
+					assistTickSampleIndex = 0;
+					assistTickPlaying = true;
+					nextAssistTickIndex++;
+				}
+			}
+
 			// Get the values for the music for this sample.
-			if (sampleIndex <= lastMusicSampleToUse)
+			if (musicSampleIndex < lastMusicSampleToUseExclusive)
 			{
 				for (var channelIndex = 0; channelIndex < outChannels; channelIndex++)
 				{
-					// TODO: Will the number channels be a problem? Can we force it to 2?
 					if (channelIndex < musicNumChannels)
 					{
-						musicValuesForSample[channelIndex] = musicData[sampleIndex * musicNumChannels + channelIndex];
+						musicValuesForSample[channelIndex] = musicData[musicSampleIndex * musicNumChannels + channelIndex];
 					}
 					else
 					{
@@ -184,8 +321,37 @@ internal sealed class MusicDsp
 			}
 
 			// Get the values for the assist tick clap for this sample.
-		}
+			if (assistTickPlaying)
+			{
+				for (var channelIndex = 0; channelIndex < outChannels; channelIndex++)
+				{
+					if (channelIndex < assistTickNumChannels)
+					{
+						assistTickValuesForSample[channelIndex] = assistTickData[assistTickSampleIndex * assistTickNumChannels + channelIndex];
+					}
+					else
+					{
+						assistTickValuesForSample[channelIndex] = 0.0f;
+					}
+				}
 
+				assistTickSampleIndex++;
+				if (assistTickSampleIndex >= assistTickNumSamples)
+				{
+					assistTickSampleIndex = 0;
+					assistTickPlaying = false;
+				}
+			}
+
+			// Render the results.
+			for (var channelIndex = 0; channelIndex < outChannels; channelIndex++)
+			{
+				outFloatBuffer[relativeSampleIndex * outChannels + channelIndex] =
+					musicValuesForSample[channelIndex] + assistTickValuesForSample[channelIndex];
+			}
+
+			musicSampleIndex++;
+		}
 
 		return RESULT.OK;
 	}
