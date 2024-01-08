@@ -1,14 +1,12 @@
 ﻿using System;
-using System.Diagnostics;
-using System.IO;
-using System.Threading.Tasks;
+using System.Collections.Generic;
 using FMOD;
 using Fumen;
 
 namespace StepManiaEditor;
 
 /// <summary>
-/// Class for managing the music sound and preview sound.
+/// Class for managing the music sound, preview sound, and assist tick sounds.
 /// 
 /// Offers idempotent asynchronous methods for loading sound files from disk.
 /// 
@@ -34,411 +32,13 @@ namespace StepManiaEditor;
 /// Expected usage:
 ///  Call LoadMusicAsync whenever the music file changes.
 ///  Call LoadMusicPreviewAsync whenever the preview file changes.
-///  Call SetPreviewParameters whenever the preview range parameters change.
 ///  Call Update once each frame.
 ///  Call StartPlayback and StopPlayback to start and stop playing the music.
 ///  Call StartPreviewPlayback and StopPreviewPlayback to start and stop playing the preview.
+///  Call Shutdown at the end of the session.
 /// </summary>
 internal sealed class MusicManager
 {
-	/// <summary>
-	/// Common data to the music and preview Sounds that MusicManager manages.
-	/// Handles reloading sound data automatically when the file changes externally.
-	/// </summary>
-	private class SoundData
-	{
-		/// <summary>
-		/// State used for performing async loads of sound data.
-		/// </summary>
-		private class SoundLoadState
-		{
-			private readonly string File;
-			private readonly double Offset;
-			private readonly bool GenerateMipMap;
-			private readonly Func<double> GetSoundTimeFunction;
-
-			public SoundLoadState(string file, double offset, bool generateMipMap, Func<double> getSoundTimeFunction)
-			{
-				File = file;
-				Offset = offset;
-				GenerateMipMap = generateMipMap;
-				GetSoundTimeFunction = getSoundTimeFunction;
-			}
-
-			public string GetFile()
-			{
-				return File;
-			}
-
-			public double GetOffset()
-			{
-				return Offset;
-			}
-
-			public bool ShouldGenerateMipMap()
-			{
-				return GenerateMipMap;
-			}
-
-			public Func<double> GetGetSoundTimeFunction()
-			{
-				return GetSoundTimeFunction;
-			}
-		}
-
-		/// <summary>
-		/// CancellableTask for performing async loads of sound data.
-		/// </summary>
-		private sealed class SoundLoadTask : CancellableTask<SoundLoadState>
-		{
-			private readonly SoundData SoundData;
-			private readonly SoundManager SoundManager;
-			private readonly Action<SoundData, double, double> SetSoundPositionAction;
-
-			public SoundLoadTask(SoundData soundData, SoundManager soundManager,
-				Action<SoundData, double, double> setSoundPositionAction)
-			{
-				SoundData = soundData;
-				SoundManager = soundManager;
-				SetSoundPositionAction = setSoundPositionAction;
-			}
-
-			/// <summary>
-			/// Called when loading should begin.
-			/// </summary>
-			/// <param name="state">SoundLoadState to use for loading.</param>
-			protected override async Task DoWork(SoundLoadState state)
-			{
-				// Release the handle to the old sound if it is present.
-				if (SoundData.Sound.hasHandle())
-					SoundManager.ErrCheck(SoundData.Sound.release());
-				SoundData.Sound.handle = IntPtr.Zero;
-
-				// Reset the mip map before loading the new sound because loading the sound
-				// can take a moment and we don't want to continue to render the old audio.
-				SoundData.MipMap?.Reset();
-
-				CancellationTokenSource.Token.ThrowIfCancellationRequested();
-
-				var file = state.GetFile();
-
-				if (!string.IsNullOrEmpty(file))
-				{
-					Logger.Info($"Loading {file}...");
-
-					// Load the sound file.
-					// This is not cancelable. According to FMOD: "you can't cancel it"
-					// https://qa.fmod.com/t/reusing-channels/13145/3
-					// Normally this is not a problem, but for hour-long files this is unfortunate.
-					SoundData.SetSound(await SoundManager.LoadAsync(file));
-
-					if (state.GetGetSoundTimeFunction() != null)
-						SetSoundPositionAction(SoundData, state.GetGetSoundTimeFunction()(), state.GetOffset());
-					Logger.Info($"Loaded {file}.");
-
-					CancellationTokenSource.Token.ThrowIfCancellationRequested();
-
-					// Set up the new sound mip map.
-					if (state.ShouldGenerateMipMap() && SoundData.MipMap != null)
-					{
-						await SoundData.MipMap.CreateMipMapAsync(SoundData.Sound, SoundData.SampleRate,
-							Utils.WaveFormTextureWidth,
-							CancellationTokenSource.Token);
-					}
-
-					CancellationTokenSource.Token.ThrowIfCancellationRequested();
-				}
-			}
-
-			/// <summary>
-			/// Called when loading has been cancelled.
-			/// </summary>
-			protected override void Cancel()
-			{
-				// Upon cancellation release the sound handle and clear the mip map data.
-				if (SoundData.Sound.hasHandle())
-					SoundManager.ErrCheck(SoundData.Sound.release());
-				SoundData.Sound.handle = IntPtr.Zero;
-				SoundData.MipMap?.Reset();
-			}
-		}
-
-		private readonly SoundManager SoundManager;
-
-		// FMOD sound data.
-		private readonly ChannelGroup ChannelGroup;
-		private Sound Sound;
-		private Channel Channel;
-		private readonly CHANNELCONTROL_CALLBACK ChannelControlCallback;
-
-		// Cached Sound data for length and time calculations.
-		private int NumChannels;
-		private int BitsPerSample;
-		private uint TotalBytes;
-		private uint SampleRate;
-
-		// Loading variables.
-		private SoundLoadState LoadState;
-		private readonly SoundLoadTask LoadTask;
-		private FileSystemWatcher FileWatcher;
-
-		// Optional SoundMipMap.
-		private readonly SoundMipMap MipMap;
-
-		// Whether or not this SoundData is playing. Not necessarily the same
-		// as the underlying Sound playing since we may want to play a Sound at
-		// a negative time.
-		private bool Playing;
-
-		/// <summary>
-		/// Constructor.
-		/// </summary>
-		/// <param name="soundManager">SoundManager to use for loading sounds.</param>
-		/// <param name="channelGroup">ChannelGroup for playing the Sound.</param>
-		/// <param name="mipMap">Optional SoundMipMap to use with this SoundData.</param>
-		/// <param name="setSoundPositionAction">Optional function to use for setting the Sound's position when loaded.</param>
-		public SoundData(SoundManager soundManager, ChannelGroup channelGroup, SoundMipMap mipMap,
-			Action<SoundData, double, double> setSoundPositionAction)
-		{
-			SoundManager = soundManager;
-			ChannelGroup = channelGroup;
-			ChannelControlCallback = ChannelCallback;
-
-			if (mipMap != null)
-			{
-				MipMap = mipMap;
-				MipMap.SetLoadParallelism(Preferences.Instance.PreferencesWaveForm.WaveFormLoadingMaxParallelism);
-			}
-
-			LoadTask = new SoundLoadTask(this, soundManager, setSoundPositionAction);
-		}
-
-		/// <summary>
-		/// Load the sound specified by the given file.
-		/// </summary>
-		/// <param name="file">Sound file to load.</param>
-		/// <param name="offset">The offset to apply</param>
-		/// <param name="generateMipMap">Whether a SoundMipMap should be generated for this sound.</param>
-		/// <param name="getSoundTimeFunction">
-		/// Optional function to use to retrieve the time of the desired time of Sound so that it can be set
-		/// appropriately once loaded.
-		/// </param>
-		public void LoadAsync(string file, double offset, bool generateMipMap, Func<double> getSoundTimeFunction)
-		{
-			StopObservingFile();
-			LoadState = new SoundLoadState(file, offset, generateMipMap, getSoundTimeFunction);
-			StartObservingFile();
-			LoadAsyncFromLoadState();
-		}
-
-		/// <summary>
-		/// Loads the sound from the LoadState.
-		/// </summary>
-		private async void LoadAsyncFromLoadState()
-		{
-			if (LoadState == null)
-				return;
-			await LoadTask.Start(LoadState);
-		}
-
-		private void SetSound(Sound sound)
-		{
-			Sound = sound;
-
-			// Play the sound in order to assign it to a Channel.
-			SoundManager.PlaySound(Sound, ChannelGroup, out Channel);
-
-			// Register a callback for the newly assigned Channel so we can respond to it becoming
-			// invalid when the sound reaches its end.
-			SoundManager.ErrCheck(Channel.setCallback(ChannelControlCallback));
-
-			// Record information about this Sound.
-			SoundManager.ErrCheck(Sound.getFormat(out _, out _, out NumChannels, out BitsPerSample));
-			SoundManager.ErrCheck(Sound.getLength(out TotalBytes, TIMEUNIT.PCMBYTES));
-			SoundManager.ErrCheck(Channel.getFrequency(out var frequency));
-			SampleRate = (uint)frequency;
-		}
-
-		/// <summary>
-		/// Gets the current position of the sound as a time in seconds.
-		/// </summary>
-		/// <returns>Current position of the sound as a time in seconds.</returns>
-		public double GetTimeInSeconds()
-		{
-			if (NumChannels == 0 || SampleRate == 0 || BitsPerSample < 8)
-				return 0.0;
-
-			SoundManager.ErrCheck(Channel.getPosition(out var bytes, TIMEUNIT.PCMBYTES));
-			return (double)bytes / NumChannels / (BitsPerSample >> 3) / SampleRate;
-		}
-
-		/// <summary>
-		/// Sets the time of the sound to the given time in seconds.
-		/// The given time may be negative or exceed the length of the sound.
-		/// </summary>
-		/// <param name="timeInSeconds">Desired time of the sound in seconds.</param>
-		/// <returns>
-		/// True if the sound was updated and false otherwise.
-		/// If the sound is not yet loaded, it won't be updated.
-		/// </returns>
-		public bool SetTimeInSeconds(double timeInSeconds)
-		{
-			if (!IsLoaded())
-				return false;
-
-			// Set the position.
-			uint bytes = 0;
-			if (timeInSeconds >= 0.0)
-				bytes = (uint)(timeInSeconds * NumChannels * (BitsPerSample >> 3) * SampleRate);
-			if (bytes >= TotalBytes)
-				bytes = TotalBytes - 1;
-			SoundManager.ErrCheck(Channel.setPosition(bytes, TIMEUNIT.PCMBYTES));
-			return true;
-		}
-
-		/// <summary>
-		/// Returns whether the sound is at its minimum or maximum position.
-		/// Sets the out parameter to the time of the sound in seconds.
-		/// This allows for checking if the sound is at its bounds, and getting the time with
-		/// one call. With multiple calls, the sound's time may change between calls.
-		/// </summary>
-		/// <param name="timeInSeconds">Time in seconds of the sound.</param>
-		/// <returns>True if the sound at the minimum or maximum position and false otherwise.</returns>
-		public bool IsAtMinOrMaxPosition(out double timeInSeconds)
-		{
-			timeInSeconds = 0.0;
-			if (NumChannels == 0 || SampleRate == 0 || BitsPerSample < 8)
-				return true;
-			SoundManager.ErrCheck(Channel.getPosition(out var bytes, TIMEUNIT.PCMBYTES));
-
-			// Determine the time in seconds to return to the caller.
-			timeInSeconds = (double)bytes / NumChannels / (BitsPerSample >> 3) / SampleRate;
-
-			// Consider the sound to be at the maximum position if it is within one sample of the end.
-			// In practice calling setPosition on a Channel will result in the position returned by
-			// getPosition to be floored to the nearest sample boundary. It is also the case that when
-			// playing the sound normally, getPosition will return the total number of bytes when called
-			// when the sound has completed, though setPosition cannot be called with that value.
-			var sampleSize = NumChannels * (BitsPerSample >> 3);
-			return bytes <= 0 || bytes + sampleSize >= TotalBytes;
-		}
-
-		/// <summary>
-		/// Gets the length of the sound as a time in seconds.
-		/// </summary>
-		/// <returns>Length of the sound as a time in seconds.</returns>
-		public double GetLengthInSeconds()
-		{
-			if (NumChannels == 0 || SampleRate == 0 || BitsPerSample < 8)
-				return 0.0;
-			return (double)TotalBytes / NumChannels / (BitsPerSample >> 3) / SampleRate;
-		}
-
-		public bool IsLoaded()
-		{
-			return Sound.hasHandle();
-		}
-
-		public string GetFile()
-		{
-			return LoadState?.GetFile();
-		}
-
-		public Channel GetChannel()
-		{
-			return Channel;
-		}
-
-		public SoundMipMap GetSoundMipMap()
-		{
-			return MipMap;
-		}
-
-		public void SetIsPlaying(bool playing)
-		{
-			Playing = playing;
-		}
-
-		public bool IsPlaying()
-		{
-			return Playing;
-		}
-
-		/// <summary>
-		/// Callback from FMOD for responding to Channel events.
-		/// </summary>
-		private RESULT ChannelCallback(
-			IntPtr channelControl,
-			CHANNELCONTROL_TYPE controlType,
-			CHANNELCONTROL_CALLBACK_TYPE callbackType,
-			IntPtr commandData1,
-			IntPtr commandData2)
-		{
-			// When a Channel ends it is no longer valid.
-			if (callbackType == CHANNELCONTROL_CALLBACK_TYPE.END)
-			{
-				// Start playing the sound again to get a new Channel from FMOD.
-				SoundManager.PlaySound(Sound, ChannelGroup, out Channel);
-
-				// Set the Channel to be paused at the end of the sound.
-				SoundManager.ErrCheck(Channel.setPosition(TotalBytes - 1, TIMEUNIT.PCMBYTES));
-				SoundManager.ErrCheck(Channel.setPaused(true));
-
-				// Now that we have a new Channel, set its callback to this function.
-				Channel.setCallback(ChannelControlCallback);
-			}
-
-			return RESULT.OK;
-		}
-
-		/// <summary>
-		/// Start observing the file from the LoadState for external changes.
-		/// </summary>
-		private void StartObservingFile()
-		{
-			var loadStateFile = LoadState?.GetFile();
-			if (string.IsNullOrEmpty(loadStateFile))
-				return;
-
-			try
-			{
-				var fullPath = System.IO.Path.GetFullPath(loadStateFile);
-				var dir = System.IO.Path.GetDirectoryName(fullPath);
-				var file = System.IO.Path.GetFileName(fullPath);
-				if (!string.IsNullOrEmpty(dir) && !string.IsNullOrEmpty(file))
-				{
-					FileWatcher = new FileSystemWatcher(dir);
-					FileWatcher.NotifyFilter = NotifyFilters.LastWrite;
-					FileWatcher.Changed += OnFileChangedNotification;
-					FileWatcher.Filter = file;
-					FileWatcher.EnableRaisingEvents = true;
-				}
-			}
-			catch (Exception e)
-			{
-				Logger.Error($"Failed to observe {loadStateFile} for changes: {e}");
-			}
-		}
-
-		private void OnFileChangedNotification(object sender, FileSystemEventArgs e)
-		{
-			if (e.ChangeType != WatcherChangeTypes.Changed)
-				return;
-			if (string.IsNullOrEmpty(LoadState?.GetFile()))
-				return;
-			Logger.Info($"Reloading {LoadState.GetFile()} due to external modification.");
-			LoadAsyncFromLoadState();
-		}
-
-		/// <summary>
-		/// Stop observing the sound file for external changes.
-		/// </summary>
-		private void StopObservingFile()
-		{
-			FileWatcher = null;
-		}
-	}
-
 	/// <summary>
 	/// Internal state of the MusicManager.
 	/// </summary>
@@ -461,28 +61,109 @@ internal sealed class MusicManager
 		PlayingPreview,
 	}
 
-	private ChannelGroup MusicChannelGroup;
-
-	// SoundData for both the music and preview.
-	private readonly SoundData MusicData;
-	private readonly SoundData PreviewData;
-
-	// State.
-	private PlayingState State = PlayingState.PlayingNothing;
-
-	// Preview playback variables.
-	private bool ShouldBeUsingPreviewFile;
-	private Stopwatch PreviewStopwatch;
-	private double PreviewStartTime;
-	private double PreviewLength;
-	private double DesiredMusicTimeAfterPreview;
-	private double PreviewFadeInTime;
-	private double PreviewFadeOutTime = 1.5;
+	/// <summary>
+	/// Name of the DSP this class manages.
+	/// </summary>
+	private const string DspName = "MusicDsp";
 
 	/// <summary>
-	/// Music and preview sound Channel volume.
+	/// SoundManager for low level sound management.
 	/// </summary>
-	private const double MusicVolume = 1.0;
+	private readonly SoundManager SoundManager;
+
+	/// <summary>
+	/// SoundPlaybackState for the assist tick sound.
+	/// </summary>
+	private readonly SoundPlaybackState AssistTickData;
+
+	/// <summary>
+	/// SoundPlaybackState for the current music.
+	/// </summary>
+	private readonly SoundPlaybackState MusicData;
+
+	/// <summary>
+	/// SoundPlaybackState for the current preview music.
+	/// </summary>
+	private readonly SoundPlaybackState PreviewData;
+
+	/// <summary>
+	/// Sample rate for all sounds managed through this class.
+	/// In practice, this is the FMOD engine sample rate, which by default is 48,000hz.
+	/// </summary>
+	private readonly uint SampleRate;
+
+	/// <summary>
+	/// The current sample index of the music.
+	/// This may be negative or greater than the music's sample range.
+	/// This is used to control timing of all sounds needing to play relative to the music.
+	/// </summary>
+	private int SampleIndex;
+
+	/// <summary>
+	/// List of sample indexes of upcoming assist ticks to play.
+	/// </summary>
+	private List<int> NextAssistTickStartMusicSamples;
+
+	/// <summary>
+	/// Lock for thread safe mutations of members needed in the DSP callback.
+	/// </summary>
+	private readonly object Lock = new();
+
+	/// <summary>
+	/// Internal state.
+	/// </summary>
+	private PlayingState State = PlayingState.PlayingNothing;
+
+	/// <summary>
+	/// Whether or not a distinct sound file should be used for the preview sound.
+	/// Typically, the preview is a region of the music rather than a distinct sound.
+	/// </summary>
+	private bool ShouldBeUsingPreviewFile;
+
+	/// <summary>
+	/// When using the music sound for the preview, the sample index of the preview start.
+	/// </summary>
+	private int PreviewStartSampleIndex;
+
+	/// <summary>
+	/// When using the music sound for the preview, the length in samples of the preview.
+	/// </summary>
+	private int PreviewLengthSamples;
+
+	/// <summary>
+	/// When using the music sound for the preview, the length in samples of the period over which to fade in.
+	/// </summary>
+	private int PreviewFadeInTimeSamples;
+
+	/// <summary>
+	/// When using the music sound for the preview, the length in samples of the period over which to fade out.
+	/// </summary>
+	private int PreviewFadeOutTimeSamples;
+
+	/// <summary>
+	/// The main volume.
+	/// </summary>
+	private float MainVolume = 1.0f;
+
+	/// <summary>
+	/// The music volume.
+	/// </summary>
+	private float MusicVolume = 1.0f;
+
+	/// <summary>
+	/// The assist tick volume.
+	/// </summary>
+	private float AssistTickVolume = 1.0f;
+
+	/// <summary>
+	/// The assist tick attack time in seconds.
+	/// </summary>
+	private float AssistTickAttackTime;
+
+	/// <summary>
+	/// Whether or not to play assist tick sounds.
+	/// </summary>
+	private bool UseAssistTick;
 
 	/// <summary>
 	/// Internal offset for the music.
@@ -499,13 +180,36 @@ internal sealed class MusicManager
 	/// <param name="musicOffset">Offset to use for playing the music.</param>
 	public MusicManager(SoundManager soundManager, double musicOffset)
 	{
-		// Create a ChannelGroup for music and preview audio.
-		soundManager.CreateChannelGroup("MusicChannelGroup", out MusicChannelGroup);
-
-		MusicData = new SoundData(soundManager, MusicChannelGroup, new SoundMipMap(), SetSoundPositionInternal);
+		SoundManager = soundManager;
+		SampleRate = SoundManager.GetSampleRate();
 		SetMusicOffset(musicOffset);
-		PreviewData = new SoundData(soundManager, MusicChannelGroup, null, SetSoundPositionInternal);
+
+		// Create a ChannelGroup for music and preview audio.
+		SoundManager.CreateChannelGroup("DspChannelGroup", out var dspChannelGroup);
+
+		AssistTickData = new SoundPlaybackState(new EditorSound(SoundManager, null, SampleRate, false));
+		MusicData = new SoundPlaybackState(new EditorSound(SoundManager, new SoundMipMap(), SampleRate, true));
+		PreviewData = new SoundPlaybackState(new EditorSound(SoundManager, null, SampleRate, true));
+
+		SetPreviewParameters(0.0, 0.0, 0.0, 1.5);
+
+		// Load the assist tick sound.
+		AssistTickData.GetSound().LoadAsync("assist-tick.wav", false);
+
+		// Create the DSP.
+		SoundManager.CreateDsp(DspName, dspChannelGroup, DspRead, this);
 	}
+
+	/// <summary>
+	/// Shut down the MusicManager.
+	/// Disposes of any resources needing disposal.
+	/// </summary>
+	public void Shutdown()
+	{
+		SoundManager.DestroyDsp(DspName);
+	}
+
+	#region Accessors
 
 	/// <summary>
 	/// Gets the SoundMipMap for the currently loaded music.
@@ -513,8 +217,30 @@ internal sealed class MusicManager
 	/// <returns>SoundMipMap.</returns>
 	public SoundMipMap GetMusicMipMap()
 	{
-		return MusicData.GetSoundMipMap();
+		return MusicData.GetSound().GetSoundMipMap();
 	}
+
+	/// <summary>
+	/// Gets the length of the music in seconds.
+	/// </summary>
+	/// <returns>Length of the music in seconds.</returns>
+	public double GetMusicLengthInSeconds()
+	{
+		return MusicData.GetSound().GetLengthInSeconds();
+	}
+
+	/// <summary>
+	/// Gets the current time of the music in seconds.
+	/// </summary>
+	/// <returns>Current time of the music in seconds.</returns>
+	public double GetMusicSongTime()
+	{
+		return GetTimeFromSampleIndex(SampleIndex, MusicOffset);
+	}
+
+	#endregion Accessors
+
+	#region Loading
 
 	/// <summary>
 	/// Unload all loaded sounds asynchronously.
@@ -537,10 +263,6 @@ internal sealed class MusicManager
 	/// <param name="fullPathToMusicFile">
 	/// Full path to the audio file representing the music.
 	/// </param>
-	/// <param name="getMusicTimeFunction">
-	/// Function to be called to get the music time so that it can be set appropriate immediately
-	/// after loading is complete.
-	/// </param>
 	/// <param name="force">
 	/// If true then the music will be loaded even if the given path is the same
 	/// as the previously loaded music. If false, then the sound will not by loaded if
@@ -551,11 +273,10 @@ internal sealed class MusicManager
 	/// </param>
 	public void LoadMusicAsync(
 		string fullPathToMusicFile,
-		Func<double> getMusicTimeFunction,
 		bool force = false,
 		bool generateMipMap = true)
 	{
-		LoadSoundAsync(MusicData, fullPathToMusicFile, MusicOffset, getMusicTimeFunction, force, generateMipMap);
+		LoadSoundAsync(MusicData, fullPathToMusicFile, force, generateMipMap);
 	}
 
 	/// <summary>
@@ -579,7 +300,7 @@ internal sealed class MusicManager
 		// Record that we should be using a unique preview file instead of
 		// the music file if we were given a non-empty string.
 		ShouldBeUsingPreviewFile = !string.IsNullOrEmpty(fullPathToMusicFile);
-		LoadSoundAsync(PreviewData, fullPathToMusicFile, 0.0, null, force);
+		LoadSoundAsync(PreviewData, fullPathToMusicFile, force);
 	}
 
 	/// <summary>
@@ -588,87 +309,49 @@ internal sealed class MusicManager
 	/// based on SetSoundPositionInternal, which takes into account MusicManager state.
 	/// We set this before loading the SoundMipMap, in the middle of the async load.
 	/// </summary>
-	private void LoadSoundAsync(
-		SoundData soundData,
+	private static void LoadSoundAsync(
+		SoundPlaybackState soundData,
 		string fullPathToSoundFile,
-		double offset = 0.0,
-		Func<double> getSoundTimeFunction = null,
 		bool force = false,
 		bool generateMipMap = true)
 	{
 		// It is common for Charts to re-use the same sound files.
 		// Do not reload the sound file if we were already using it.
-		if (!force && fullPathToSoundFile == soundData.GetFile())
+		if (!force && fullPathToSoundFile == soundData.GetSound().GetFile())
 			return;
 
-		soundData.LoadAsync(fullPathToSoundFile, offset, generateMipMap, getSoundTimeFunction);
+		soundData.GetSound().LoadAsync(fullPathToSoundFile, generateMipMap);
+	}
+
+	#endregion Loading
+
+	#region Unit Conversion
+
+	/// <summary>
+	/// Given a time in seconds and an offset, return the sample index.
+	/// </summary>
+	/// <param name="time">Time in seconds.</param>
+	/// <param name="offset">Offset in seconds.</param>
+	/// <returns>Sample index.</returns>
+	private int GetSampleIndexFromTime(double time, double offset)
+	{
+		return (int)((time + offset) * SampleRate);
 	}
 
 	/// <summary>
-	/// Returns whether or not the music sound is loaded.
+	/// Given a sample index and an offset, return the time in seconds.
 	/// </summary>
-	/// <returns>Whether or not the music sound is loaded.</returns>
-	public bool IsMusicLoaded()
+	/// <param name="sampleIndex">Sample index.</param>
+	/// <param name="offset">Offset in seconds.</param>
+	/// <returns>Time in seconds.</returns>
+	private double GetTimeFromSampleIndex(int sampleIndex, double offset)
 	{
-		return MusicData.IsLoaded();
+		return (double)sampleIndex / SampleRate - offset;
 	}
 
-	/// <summary>
-	/// Returns whether the music is at its minimum or maximum position.
-	/// Sets the out parameter to the time of the music in seconds.
-	/// This allows for checking if the sound is at its bounds, and getting the time with
-	/// one call. With multiple calls, the sound's time may change between calls.
-	/// </summary>
-	/// <param name="timeInSeconds">Time in seconds of the music.</param>
-	/// <returns>True if the music at the minimum or maximum position and false otherwise.</returns>
-	public bool IsMusicAtMinOrMaxPosition(out double timeInSeconds)
-	{
-		var result = MusicData.IsAtMinOrMaxPosition(out timeInSeconds);
-		timeInSeconds -= MusicOffset;
-		return result;
-	}
+	#endregion Unit Converstion
 
-	/// <summary>
-	/// Sets the music to the given time in seconds.
-	/// If a preview is playing that uses the music file, then the given value will
-	/// be set after the preview is stopped.
-	/// The given time my be negative or outside the time range of the music sound.
-	/// </summary>
-	/// <param name="musicTimeInSeconds">The desired music time in seconds.</param>
-	public void SetMusicTimeInSeconds(double musicTimeInSeconds)
-	{
-		// If we are using the music file to play a preview we do not
-		// want to set the position as it will interfere with the preview playback.
-		// Rather than require the caller to check this, just store the desired
-		// time and set it after the preview completes.
-		if (State == PlayingState.PlayingPreview)
-		{
-			DesiredMusicTimeAfterPreview = musicTimeInSeconds;
-			return;
-		}
-
-		SetSoundPositionInternal(MusicData, musicTimeInSeconds, MusicOffset);
-	}
-
-	/// <summary>
-	/// Private internal method for setting the music sound to a desired time in seconds.
-	/// Used for both setting the time for the music and for the preview when the preview
-	/// uses the music file instead of an independent preview file.
-	/// The given time my be negative or outside the time range of the music sound.
-	/// </summary>
-	/// <param name="soundData">Sound data to set the time on.</param>
-	/// <param name="timeInSeconds">Sound time in seconds.</param>
-	/// <param name="offset">Offset to be added to the time.</param>
-	private void SetSoundPositionInternal(SoundData soundData, double timeInSeconds, double offset)
-	{
-		if (!soundData.SetTimeInSeconds(timeInSeconds + offset))
-			return;
-		if (!soundData.IsPlaying())
-			return;
-		if (soundData == MusicData && State == PlayingState.PlayingPreview && ShouldBeUsingPreviewFile)
-			return;
-		UpdateSoundPausedState(soundData, timeInSeconds + offset);
-	}
+	#region Configuration
 
 	/// <summary>
 	/// Sets parameters used for playing the preview when it uses the music file instead
@@ -680,11 +363,70 @@ internal sealed class MusicManager
 	/// <param name="fadeOutTime">Time in seconds over which to fade out the preview when playing.</param>
 	public void SetPreviewParameters(double startTime, double length, double fadeInTime, double fadeOutTime)
 	{
-		PreviewStartTime = startTime;
-		PreviewLength = length;
-		PreviewFadeInTime = fadeInTime;
-		PreviewFadeOutTime = fadeOutTime;
+		PreviewStartSampleIndex = GetSampleIndexFromTime(startTime, 0.0);
+		PreviewLengthSamples = GetSampleIndexFromTime(length, 0.0);
+		PreviewFadeInTimeSamples = GetSampleIndexFromTime(fadeInTime, 0.0);
+		PreviewFadeOutTimeSamples = GetSampleIndexFromTime(fadeOutTime, 0.0);
 	}
+
+	/// <summary>
+	/// Sets the offset to be used when playing the music.
+	/// Changes to this value will not have an effect until the next time the music is played.
+	/// </summary>
+	/// <param name="offset">New music offset value.</param>
+	public void SetMusicOffset(double offset)
+	{
+		MusicOffset = offset;
+	}
+
+	/// <summary>
+	/// Sets the main volume.
+	/// </summary>
+	/// <param name="volume">Desired volume. Will be clamped to be between 0.0f and 1.0f.</param>
+	public void SetMainVolume(float volume)
+	{
+		MainVolume = Math.Clamp(volume, 0.0f, 1.0f);
+	}
+
+	/// <summary>
+	/// Sets the music and preview volume.
+	/// </summary>
+	/// <param name="volume">Desired volume. Will be clamped to be between 0.0f and 1.0f.</param>
+	public void SetMusicVolume(float volume)
+	{
+		MusicVolume = Math.Clamp(volume, 0.0f, 1.0f);
+	}
+
+	/// <summary>
+	/// Sets the assist tick volume.
+	/// </summary>
+	/// <param name="volume">Desired volume. Will be clamped to be between 0.0f and 1.0f.</param>
+	public void SetAssistTickVolume(float volume)
+	{
+		AssistTickVolume = Math.Clamp(volume, 0.0f, 1.0f);
+	}
+
+	/// <summary>
+	/// Sets the attack time of the assist tick sound.
+	/// </summary>
+	/// <param name="attackTime">Assist tick attack time. Will be clamped to be at least 0.0f.</param>
+	public void SetAssistTickAttackTime(float attackTime)
+	{
+		AssistTickAttackTime = Math.Max(0.0f, attackTime);
+	}
+
+	/// <summary>
+	/// Sets whether or not to play assist tick sounds.
+	/// </summary>
+	/// <param name="useAssistTick">Whether or not to play assist tick sounds.</param>
+	public void SetUseAssistTick(bool useAssistTick)
+	{
+		UseAssistTick = useAssistTick;
+	}
+
+	#endregion Configuration
+
+	#region Playback Controls
 
 	/// <summary>
 	/// Start playing the music.
@@ -696,10 +438,14 @@ internal sealed class MusicManager
 	public void StartPlayback(double musicTimeInSeconds)
 	{
 		System.Diagnostics.Debug.Assert(State == PlayingState.PlayingNothing || State == PlayingState.PlayingMusic);
-
 		State = PlayingState.PlayingMusic;
-		MusicData.SetIsPlaying(true);
-		UpdateSoundPausedState(MusicData, musicTimeInSeconds + MusicOffset);
+
+		lock (Lock)
+		{
+			var sampleIndex = GetSampleIndexFromTime(musicTimeInSeconds, MusicOffset);
+			SampleIndex = sampleIndex;
+			MusicData.StartPlaying(SampleIndex);
+		}
 	}
 
 	/// <summary>
@@ -708,9 +454,7 @@ internal sealed class MusicManager
 	public void StopPlayback()
 	{
 		State = PlayingState.PlayingNothing;
-		MusicData.SetIsPlaying(false);
-		if (MusicData.IsLoaded())
-			SoundManager.ErrCheck(MusicData.GetChannel().setPaused(true));
+		MusicData.StopPlaying(true);
 	}
 
 	/// <summary>
@@ -730,35 +474,20 @@ internal sealed class MusicManager
 	{
 		System.Diagnostics.Debug.Assert(State == PlayingState.PlayingNothing);
 
-		var soundData = GetPreviewSoundData();
+		var neededSoundData = ShouldBeUsingPreviewFile ? PreviewData : MusicData;
 
 		// If the sound file is not loaded yet, just ignore the request.
-		if (!soundData.IsLoaded())
+		if (!neededSoundData.GetSound().IsLoaded())
 			return false;
 
-		// Don't play anything if the range is not valid. We want to avoid
-		// a buzzing artifact by looping every frame.
-		if (!ShouldBeUsingPreviewFile && PreviewLength <= 0.0)
+		// Don't play anything if the range is not valid.
+		if (!ShouldBeUsingPreviewFile && PreviewLengthSamples <= 0)
 			return false;
 
-		DesiredMusicTimeAfterPreview = MusicData.GetTimeInSeconds() - MusicOffset;
 		State = PlayingState.PlayingPreview;
+		PreviewData.StartPlaying(ShouldBeUsingPreviewFile ? 0 : PreviewStartSampleIndex);
 
-		RestartPreview();
 		return true;
-	}
-
-	/// <summary>
-	/// Restart the preview sound either due to it starting playback for
-	/// the first time, or needed to restart due to looping.
-	/// </summary>
-	private void RestartPreview()
-	{
-		var soundData = GetPreviewSoundData();
-		soundData.SetIsPlaying(true);
-		var previewStartTime = ShouldBeUsingPreviewFile ? 0.0 : PreviewStartTime;
-		SetSoundPositionInternal(soundData, previewStartTime, 0.0);
-		PreviewStopwatch = Stopwatch.StartNew();
 	}
 
 	/// <summary>
@@ -767,146 +496,527 @@ internal sealed class MusicManager
 	public void StopPreviewPlayback()
 	{
 		System.Diagnostics.Debug.Assert(State == PlayingState.PlayingPreview);
-
-		// Stop playing the preview.
-		var previewSoundData = GetPreviewSoundData();
-		if (previewSoundData.IsLoaded())
-			SoundManager.ErrCheck(previewSoundData.GetChannel().setPaused(true));
-
+		PreviewData.StopPlaying();
 		State = PlayingState.PlayingNothing;
-		previewSoundData.SetIsPlaying(false);
-		PreviewStopwatch?.Stop();
-		PreviewStopwatch = null;
-
-		// When stopping the preview, set the music position back to what it should
-		// be set to.
-		SetMusicTimeInSeconds(DesiredMusicTimeAfterPreview);
-
-		// Reset the music volume in case it was fading out due to the preview.
-		SoundManager.ErrCheck(previewSoundData.GetChannel().setVolume((float)MusicVolume));
 	}
+
+	/// <summary>
+	/// Sets the music to the given time in seconds.
+	/// If a preview is playing that uses the music file, then the given value will
+	/// be set after the preview is stopped.
+	/// The given time my be negative or outside the time range of the music sound.
+	/// </summary>
+	/// <param name="musicTimeInSeconds">The desired music time in seconds.</param>
+	public void SetMusicTimeInSeconds(double musicTimeInSeconds)
+	{
+		lock (Lock)
+		{
+			SampleIndex = GetSampleIndexFromTime(musicTimeInSeconds, MusicOffset);
+			SetSoundTimeInternal(MusicData, musicTimeInSeconds, MusicOffset);
+		}
+	}
+
+	/// <summary>
+	/// Private internal method for setting the music sound to a desired time in seconds.
+	/// Used for both setting the time for the music and for the preview when the preview
+	/// uses the music file instead of an independent preview file.
+	/// The given time my be negative or outside the time range of the music sound.
+	/// </summary>
+	/// <param name="soundData">Sound data to set the time on.</param>
+	/// <param name="timeInSeconds">Sound time in seconds.</param>
+	/// <param name="offset">Offset to be added to the time.</param>
+	private void SetSoundTimeInternal(SoundPlaybackState soundData, double timeInSeconds, double offset)
+	{
+		soundData.SetSampleIndex(GetSampleIndexFromTime(timeInSeconds, offset));
+	}
+
+	#endregion Playback Controls
+
+	#region Update
 
 	/// <summary>
 	/// Perform time-dependent updates.
 	/// </summary>
-	/// <param name="musicTimeInSeconds">The desired music time in seconds.</param>
-	public void Update(double musicTimeInSeconds)
+	public void Update(EditorChart chart)
 	{
-		// If the music is playing, then we need to update the paused state based on whether
-		// the desired music time is a valid time to set the music to.
-		if (State == PlayingState.PlayingMusic)
+		// Set next assist tick times.
+		UpdateNextAssistTickTimes(chart);
+	}
+
+	/// <summary>
+	/// Updates the internal list of next assist tick times to consider when
+	/// processing in the DSP. This list is meant to be small, while comfortably
+	/// covering all ticks in the next DSP calls for a frame. This timing is loose
+	/// so the list will be an overestimate, potentially including more ticks than
+	/// needed.
+	/// </summary>
+	/// <param name="chart">The current EditorChart to add assist tick sounds for.</param>
+	private void UpdateNextAssistTickTimes(EditorChart chart)
+	{
+		// Early out.
+		if (!UseAssistTick)
 		{
-			UpdateSoundPausedState(MusicData, musicTimeInSeconds + MusicOffset);
+			NextAssistTickStartMusicSamples = null;
+			return;
 		}
 
-		// If playing the preview we are either playing a sample range of the music file, or
-		// playing an independent preview file. In both cases, fading and looping of the preview
-		// is controlled here.
-		if (State == PlayingState.PlayingPreview)
-		{
-			var soundData = GetPreviewSoundData();
-			var previewTime = PreviewStopwatch.Elapsed.TotalSeconds;
-			var previewStartTime = ShouldBeUsingPreviewFile ? 0.0 : PreviewStartTime;
-			var previewLength = ShouldBeUsingPreviewFile ? soundData.GetLengthInSeconds() : PreviewLength;
+		// When getting the next assist tick times we need to look ahead to ensure we capture enough
+		// time so that the next tick is covered, and the next DSP callback is covered. One second
+		// is very safely over both.
+		const float lookAheadTime = 1.0f;
 
-			// If the preview is configured to begin before the music starts, check
-			// for starting the playback.
-			if (previewStartTime < 0.0)
+		// When getting the next assist tick times we need to account for potentially starting playback mid-tick.
+		var precedingTimeCompensation = AssistTickData.GetSound().GetLengthInSeconds();
+
+		var nextAssistTickStartMusicSamples = new List<int>();
+		if (chart != null)
+		{
+			var chartEvents = chart.GetEvents();
+
+			// We want to get the time that the music is playing, which is offset from the song time.
+			// To accomplish this, we pass in a 0.0 offset parameter when getting the time.
+			var currentSongTime = GetTimeFromSampleIndex(SampleIndex, 0.0) - precedingTimeCompensation;
+			var currentChartTime = EditorPosition.GetChartTimeFromSongTime(chart, currentSongTime);
+			var enumerator = chartEvents.FindFirstAfterChartTime(currentChartTime);
+			if (enumerator != null)
 			{
-				if (previewTime > -previewStartTime)
+				var previousEventSoundTime = 0.0;
+				while (enumerator.MoveNext())
 				{
-					UpdateSoundPausedState(soundData, 0.0);
+					var editorEvent = enumerator.Current;
+					var chartTime = editorEvent!.GetChartTime();
+					if (chartTime > currentChartTime + lookAheadTime)
+						break;
+
+					// Only tick for taps and holds.
+					if (editorEvent is EditorTapNoteEvent || editorEvent is EditorHoldNoteEvent)
+					{
+						var songTime = EditorPosition.GetSongTimeFromChartTime(chart, chartTime);
+
+						// It is very common for more than one event to occur at the same time. We only want
+						// to record one time in this case.
+						if (nextAssistTickStartMusicSamples.Count > 0 && songTime <= previousEventSoundTime)
+							continue;
+						previousEventSoundTime = songTime;
+
+						// Record the assist tick time, taking into account the attack time.
+						nextAssistTickStartMusicSamples.Add(GetSampleIndexFromTime(songTime - AssistTickAttackTime, 0.0));
+					}
+				}
+			}
+		}
+
+		// Store the results into the NextAssistTickStartMusicSamples member for the DSP.
+		lock (Lock)
+		{
+			NextAssistTickStartMusicSamples =
+				nextAssistTickStartMusicSamples.Count > 0 ? nextAssistTickStartMusicSamples : null;
+		}
+	}
+
+	#endregion Update
+
+	#region DSP
+
+	/// <summary>
+	/// Callback from FMOD to render audio.
+	/// From FMOD: This callback receives an input signal, allows the user to filter or process the data and write it to the output.
+	/// </summary>
+	/// <param name="dspState">
+	/// DSP plugin state.
+	/// </param>
+	/// <param name="inBufferIntPtr">
+	/// Incoming floating point -1.0 to +1.0 ranged data. Data will be interleaved if inChannels is greater than 1.
+	/// </param>
+	/// <param name="outBufferIntPtr">
+	/// Outgoing floating point -1.0 to +1.0 ranged data. The dsp writer must write to this pointer else there will be silence.
+	/// Data must be interleaved if outChannels is greater than 1.
+	/// </param>
+	/// <param name="length">
+	/// Length of the incoming and outgoing buffers.
+	/// Units: Samples.
+	/// </param>
+	/// <param name="inChannels">
+	/// Number of channels of interleaved PCM data in the inBufferIntPtr parameter. Example: 1 = mono, 2 = stereo, 6 = 5.1.
+	/// </param>
+	/// <param name="outChannels">
+	/// Number of channels of interleaved PCM data in the outBufferIntPtr parameter. Example: 1 = mono, 2 = stereo, 6 = 5.1.
+	/// </param>
+	/// <returns>
+	/// FMOD RESULT.
+	/// </returns>
+	private unsafe RESULT DspRead(
+		ref DSP_STATE dspState,
+		IntPtr inBufferIntPtr,
+		IntPtr outBufferIntPtr,
+		uint length,
+		int inChannels,
+		ref int outChannels)
+	{
+		var outFloatBuffer = (float*)outBufferIntPtr.ToPointer();
+
+		// Render the preview if we are playing it.
+		if (RenderPreview(outFloatBuffer, length, ref outChannels))
+			return RESULT.OK;
+
+		// Otherwise, render the music and any ticks.
+		RenderMusicAndTicks(outFloatBuffer, length, ref outChannels);
+		return RESULT.OK;
+	}
+
+	/// <summary>
+	/// Renders the preview into the given float buffer.
+	/// </summary>
+	/// <param name="buffer">Output float buffer.</param>
+	/// <param name="length">Length of the buffer in samples.</param>
+	/// <param name="outChannels">Number of channels in the buffer.</param>
+	/// <returns>True if the preview is playing and rendered and false otherwise.</returns>
+	private unsafe bool RenderPreview(float* buffer, uint length, ref int outChannels)
+	{
+		// Get the preview data.
+		float[] previewData = null;
+		var previewNumChannels = 0;
+		int previewSampleIndex;
+		var previewSoundStartSampleInclusive = 0;
+		var previewSoundEndSampleExclusive = 0;
+		bool previewPlaying;
+		lock (PreviewData.GetLock())
+		{
+			previewPlaying = PreviewData.IsPlaying();
+			previewSampleIndex = PreviewData.GetSampleIndex();
+			if (previewPlaying)
+			{
+				// Get the preview data either from a preview file, or the music file.
+				if (ShouldBeUsingPreviewFile)
+				{
+					(previewNumChannels, previewData) = PreviewData.GetSound().GetSampleData();
+					previewSoundStartSampleInclusive = 0;
+					if (previewData != null)
+						previewSoundEndSampleExclusive = previewData.Length / previewNumChannels;
+				}
+				else
+				{
+					lock (MusicData.GetLock())
+					{
+						(previewNumChannels, previewData) = MusicData.GetSound().GetSampleData();
+						previewSoundStartSampleInclusive = PreviewStartSampleIndex;
+						previewSoundEndSampleExclusive = PreviewStartSampleIndex + PreviewLengthSamples;
+					}
+				}
+
+				// Write at least as many channels as the preview sound contains.
+				if (previewNumChannels > outChannels)
+					outChannels = previewNumChannels;
+
+				// Update the preview tracking for the next call.
+				var endPreviewSample = (int)(previewSampleIndex + length);
+				while (endPreviewSample >= previewSoundEndSampleExclusive)
+				{
+					endPreviewSample -= previewSoundEndSampleExclusive - previewSoundStartSampleInclusive;
+				}
+
+				PreviewData.SetSampleIndex(endPreviewSample);
+			}
+		}
+
+		if (!previewPlaying)
+			return false;
+
+		// By default the preview plays at the music volume.
+		var defaultVolume = MusicVolume * MainVolume;
+
+		// If the preview is playing, render it.
+		for (var relativeSampleIndex = 0; relativeSampleIndex < length; relativeSampleIndex++)
+		{
+			// Adjust the volume based on fading in and out.
+			var volume = defaultVolume;
+			if (previewSampleIndex > previewSoundEndSampleExclusive - PreviewFadeOutTimeSamples)
+			{
+				volume *= Interpolation.Lerp(1.0f, 0.0f, 0, PreviewFadeOutTimeSamples,
+					previewSampleIndex - (previewSoundEndSampleExclusive - PreviewFadeOutTimeSamples));
+			}
+			else if (previewSampleIndex < previewSoundStartSampleInclusive + PreviewFadeInTimeSamples)
+			{
+				volume *= Interpolation.Lerp(0.0f, 1.0f, 0, PreviewFadeInTimeSamples,
+					previewSampleIndex - previewSoundStartSampleInclusive);
+			}
+
+			// Write to the output buffer.
+			for (var channelIndex = 0; channelIndex < outChannels; channelIndex++)
+			{
+				if (channelIndex < previewNumChannels)
+				{
+					buffer[relativeSampleIndex * outChannels + channelIndex] =
+						previewData![previewSampleIndex * previewNumChannels + channelIndex] * volume;
+				}
+				else
+				{
+					buffer[relativeSampleIndex * outChannels + channelIndex] = 0.0f;
 				}
 			}
 
-			// Fade preview music in and out.
-			if (previewTime > previewLength - PreviewFadeOutTime)
+			// Advance preview sample index and loop if needed.
+			previewSampleIndex++;
+			if (previewSampleIndex >= previewSoundEndSampleExclusive)
 			{
-				var vol = (float)Interpolation.Lerp(
-					(float)MusicVolume, 0.0, 0.0, PreviewFadeOutTime,
-					previewTime - (previewLength - PreviewFadeOutTime));
-				SoundManager.ErrCheck(soundData.GetChannel().setVolume(vol));
+				previewSampleIndex -= previewSoundEndSampleExclusive - previewSoundStartSampleInclusive;
 			}
-			else if (previewTime < PreviewFadeInTime)
+		}
+
+		return true;
+	}
+
+	/// <summary>
+	/// Renders the music and any ticks into the given float buffer.
+	/// </summary>
+	/// <param name="buffer">Output float buffer.</param>
+	/// <param name="length">Length of the buffer in samples.</param>
+	/// <param name="outChannels">Number of channels in the buffer.</param>
+	/// <returns>True if the music is playing and rendered and false otherwise.</returns>
+	private unsafe bool RenderMusicAndTicks(float* buffer, uint length, ref int outChannels)
+	{
+		// Get the music data.
+		float[] musicData;
+		int musicNumChannels;
+		var musicSampleIndex = 0;
+		var lastMusicSampleToUseExclusive = 0;
+		bool musicPlaying;
+		var sampleIndexStartInclusive = 0;
+		var sampleIndexEndExclusive = 0;
+		lock (MusicData.GetLock())
+		{
+			(musicNumChannels, musicData) = MusicData.GetSound().GetSampleData();
+			if (musicNumChannels > outChannels)
+				outChannels = musicNumChannels;
+			musicPlaying = MusicData.IsPlaying();
+
+			// Update the sample indexes.
+			if (musicPlaying)
 			{
-				var vol = (float)Interpolation.Lerp(
-					0.0, (float)MusicVolume, 0.0, PreviewFadeInTime, previewTime);
-				SoundManager.ErrCheck(soundData.GetChannel().setVolume(vol));
+				// Update the sample index used for tracking the position of all sounds.
+				lock (Lock)
+				{
+					musicSampleIndex = SampleIndex;
+					sampleIndexStartInclusive = SampleIndex;
+					sampleIndexEndExclusive = sampleIndexStartInclusive + (int)length;
+					if (musicData != null)
+						lastMusicSampleToUseExclusive = musicData.Length / musicNumChannels;
+					SampleIndex += (int)length;
+					MusicData.SetSampleIndex(SampleIndex);
+				}
+			}
+		}
+
+		// Get assist tick start times that are relevant for this callback.
+		List<int> nextAssistTickTimes = null;
+		var nextAssistTickIndex = 0;
+		lock (Lock)
+		{
+			if (NextAssistTickStartMusicSamples != null)
+			{
+				nextAssistTickTimes = new List<int>(NextAssistTickStartMusicSamples.Count);
+				foreach (var nextAssistTickTime in NextAssistTickStartMusicSamples)
+				{
+					// Intentionally include times which precede the sample range for this callback.
+					if (nextAssistTickTime >= sampleIndexEndExclusive)
+						break;
+					nextAssistTickTimes.Add(nextAssistTickTime);
+				}
+			}
+		}
+
+		// Get the assist tick data.
+		float[] assistTickData;
+		int assistTickNumChannels;
+		var assistTickNumSamples = 0;
+		var assistTickSampleIndex = 0;
+		var assistTickPlaying = false;
+		lock (AssistTickData.GetLock())
+		{
+			(assistTickNumChannels, assistTickData) = AssistTickData.GetSound().GetSampleData();
+
+			if (assistTickData != null)
+			{
+				// Capture assist tick sound data for rendering.
+				assistTickNumSamples = assistTickData.Length / assistTickNumChannels;
+				assistTickSampleIndex = AssistTickData.GetSampleIndex();
+				assistTickPlaying = AssistTickData.IsPlaying();
+
+				// If music isn't playing, the assist tick sound shouldn't play either.
+				if (!musicPlaying)
+				{
+					AssistTickData.StopPlaying();
+				}
+
+				// If music is playing, then the assist tick sound may also play.
+				else
+				{
+					// It is possible to start playing the music mid-tick. In this case
+					// we should start playing the tick and set the sample index accordingly.
+					if (!assistTickPlaying && nextAssistTickTimes != null)
+					{
+						// Check the potential ticks, which can start before this callback's sample range.
+						for (var nextTickTimeIndex = 0; nextTickTimeIndex < nextAssistTickTimes.Count; nextTickTimeIndex++)
+						{
+							// If this tick starts within the sample range of this callback we are done checking.
+							var potentialTickStartSample = nextAssistTickTimes[nextTickTimeIndex];
+							if (potentialTickStartSample >= sampleIndexStartInclusive)
+							{
+								break;
+							}
+
+							// If the assist tick overlaps the start sample of this callback, it represents a tick
+							// which should have started in the past that we need to partially render.
+							if (potentialTickStartSample < sampleIndexStartInclusive
+							    && potentialTickStartSample + assistTickNumSamples > sampleIndexStartInclusive)
+							{
+								assistTickPlaying = true;
+								assistTickSampleIndex = sampleIndexStartInclusive - potentialTickStartSample;
+							}
+						}
+
+						// If we found a partial tick that should be playing, update the AssistTickData.
+						if (assistTickPlaying)
+						{
+							AssistTickData.StartPlaying(assistTickSampleIndex);
+						}
+					}
+
+					// We need to advance the SampleIndex on the AssistTickData for the next callback.
+					// This is done here instead of loop over all samples below to minimize the amount of work
+					// done in the lock.
+					// There may be multiple assist ticks played during this callback. We need to advance the
+					// SampleIndex to the end of the final tick that will play during this callback.
+					// The final tick will be denoted by the last index in NextAssistTickStartMusicSamples.
+					var lastNextTickStartInRange = -1;
+					if (nextAssistTickTimes != null)
+					{
+						for (var nextTickTimeIndex = nextAssistTickTimes.Count - 1; nextTickTimeIndex >= 0; nextTickTimeIndex--)
+						{
+							if (nextAssistTickTimes[nextTickTimeIndex] < sampleIndexEndExclusive)
+							{
+								lastNextTickStartInRange = nextAssistTickTimes[nextTickTimeIndex];
+								break;
+							}
+						}
+					}
+
+					if (lastNextTickStartInRange >= 0)
+					{
+						AssistTickData.StartPlaying(sampleIndexEndExclusive - lastNextTickStartInRange);
+					}
+					else
+					{
+						if (AssistTickData.IsPlaying())
+						{
+							AssistTickData.SetSampleIndex(AssistTickData.GetSampleIndex() +
+							                              (sampleIndexEndExclusive - sampleIndexStartInclusive));
+						}
+					}
+
+					if (AssistTickData.GetSampleIndex() >= assistTickNumSamples)
+					{
+						AssistTickData.StopPlaying();
+					}
+				}
+			}
+		}
+
+		// Early out now that we have updated the tracking members.
+		if (!musicPlaying)
+		{
+			var outBufferLen = length * outChannels;
+			for (var i = 0; i < outBufferLen; i++)
+				buffer[i] = 0.0f;
+			return false;
+		}
+
+		// Advance the next tick times such that the next one doesn't precede the sample range.
+		if (nextAssistTickTimes != null)
+		{
+			while (nextAssistTickIndex < nextAssistTickTimes.Count && nextAssistTickTimes[nextAssistTickIndex] < musicSampleIndex)
+			{
+				nextAssistTickIndex++;
+			}
+		}
+
+		// Render the music and the assist ticks together.
+		var musicValuesForSample = new float[outChannels];
+		var assistTickValuesForSample = new float[outChannels];
+		for (var relativeSampleIndex = 0; relativeSampleIndex < length; relativeSampleIndex++)
+		{
+			// Check for starting a new assist tick.
+			if (nextAssistTickTimes != null && nextAssistTickIndex < nextAssistTickTimes.Count)
+			{
+				if (musicSampleIndex == nextAssistTickTimes[nextAssistTickIndex])
+				{
+					assistTickSampleIndex = 0;
+					assistTickPlaying = true;
+					nextAssistTickIndex++;
+				}
+			}
+
+			// Get the values for the music for this sample.
+			if (musicSampleIndex >= 0 && musicSampleIndex < lastMusicSampleToUseExclusive)
+			{
+				for (var channelIndex = 0; channelIndex < outChannels; channelIndex++)
+				{
+					if (channelIndex < musicNumChannels)
+					{
+						musicValuesForSample[channelIndex] =
+							musicData![musicSampleIndex * musicNumChannels + channelIndex] * MusicVolume;
+					}
+					else
+					{
+						musicValuesForSample[channelIndex] = 0.0f;
+					}
+				}
 			}
 			else
 			{
-				SoundManager.ErrCheck(soundData.GetChannel().setVolume((float)MusicVolume));
+				for (var channelIndex = 0; channelIndex < outChannels; channelIndex++)
+				{
+					musicValuesForSample[channelIndex] = 0.0f;
+				}
 			}
 
-			// Loop.
-			if (previewTime > previewLength)
+			// Get the values for the assist tick clap for this sample.
+			if (UseAssistTick && assistTickPlaying)
 			{
-				RestartPreview();
+				for (var channelIndex = 0; channelIndex < outChannels; channelIndex++)
+				{
+					if (channelIndex < assistTickNumChannels)
+					{
+						assistTickValuesForSample[channelIndex] =
+							assistTickData![assistTickSampleIndex * assistTickNumChannels + channelIndex] * AssistTickVolume;
+					}
+					else
+					{
+						assistTickValuesForSample[channelIndex] = 0.0f;
+					}
+				}
+
+				assistTickSampleIndex++;
+				if (assistTickSampleIndex >= assistTickNumSamples)
+				{
+					assistTickSampleIndex = 0;
+					assistTickPlaying = false;
+				}
 			}
+
+			// Render the results.
+			for (var channelIndex = 0; channelIndex < outChannels; channelIndex++)
+			{
+				// There is no need to clamp here. FMOD will clamp later internally.
+				buffer[relativeSampleIndex * outChannels + channelIndex] =
+					(musicValuesForSample[channelIndex] + assistTickValuesForSample[channelIndex]) * MainVolume;
+			}
+
+			musicSampleIndex++;
 		}
+
+		return true;
 	}
 
-	/// <summary>
-	/// Sets the given SoundData to be paused or unpaused based on the desired
-	/// time.
-	/// FMOD can't set a Sound Channel time to less than 0.0, however the
-	/// desired time may be less than 0.0. To work around this behavior, we
-	/// pause the channel when wanting to behave like it is before 0.0, and
-	/// then unpause it when it reaches 0.0.
-	/// </summary>
-	/// <param name="soundData">SoundData to pause or unpause.</param>
-	/// <param name="musicTimeInSeconds">Desired sound time in seconds.</param>
-	private void UpdateSoundPausedState(SoundData soundData, double musicTimeInSeconds)
-	{
-		// Early out if the sound is not loaded yet.
-		if (!soundData.IsLoaded())
-			return;
-
-		// Do not affect the sound if we are playing a preview using a unique preview file
-		// and the sound provided above is the music sound data. We do not want to unpause
-		// it while the preview is playing.
-		if (soundData == MusicData && State == PlayingState.PlayingPreview && ShouldBeUsingPreviewFile)
-			return;
-
-		SoundManager.ErrCheck(soundData.GetChannel().setPaused(musicTimeInSeconds < 0.0));
-	}
-
-	/// <summary>
-	/// Gets the length of the music in seconds.
-	/// </summary>
-	/// <returns>Length of the music in seconds.</returns>
-	public double GetMusicLengthInSeconds()
-	{
-		return MusicData.GetLengthInSeconds();
-	}
-
-	/// <summary>
-	/// Gets the appropriate SoundData object to use for the preview based on whether
-	/// we should be using a unique preview file or the music sound file.
-	/// </summary>
-	/// <returns></returns>
-	private SoundData GetPreviewSoundData()
-	{
-		return ShouldBeUsingPreviewFile ? PreviewData : MusicData;
-	}
-
-	/// <summary>
-	/// Sets the offset to be used when playing the music.
-	/// Changes to this value will not have an effect until the next time the music is played.
-	/// </summary>
-	/// <param name="offset">New music offset value.</param>
-	public void SetMusicOffset(double offset)
-	{
-		MusicOffset = offset;
-	}
-
-	/// <summary>
-	/// Sets the Volume all sounds managed through this MusicManager.
-	/// </summary>
-	/// <param name="volume">Volume as a value between 0.0f and 1.0f.</param>
-	public void SetVolume(float volume)
-	{
-		// Set the volume on the MusicChannelGroup to control all sounds.
-		SoundManager.ErrCheck(MusicChannelGroup.setVolume(volume));
-	}
+	#endregion DSP
 }

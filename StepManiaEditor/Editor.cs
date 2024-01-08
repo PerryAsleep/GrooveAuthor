@@ -196,6 +196,7 @@ internal sealed class Editor :
 	private SongLoadTask SongLoadTask;
 	private FileSystemWatcher SongFileWatcher;
 	private bool ShowFileChangedPopup;
+	private bool ShouldCheckForShowingSongFileChangedNotification;
 	private int GarbageCollectFrame;
 
 	private readonly Dictionary<ChartType, PadData> PadDataByChartType = new();
@@ -499,8 +500,13 @@ internal sealed class Editor :
 
 	private void InitializeMusicManager()
 	{
-		MusicManager = new MusicManager(SoundManager, Preferences.Instance.PreferencesOptions.AudioOffset);
-		MusicManager.SetVolume(Preferences.Instance.PreferencesOptions.Volume);
+		var p = Preferences.Instance.PreferencesOptions;
+		MusicManager = new MusicManager(SoundManager, p.AudioOffset);
+		MusicManager.SetMainVolume(p.MainVolume);
+		MusicManager.SetMusicVolume(p.MusicVolume);
+		MusicManager.SetAssistTickVolume(p.AssistTickVolume);
+		MusicManager.SetAssistTickAttackTime(p.AssistTickAttackTime);
+		MusicManager.SetUseAssistTick(p.UseAssistTick);
 	}
 
 	private void InitializeGraphics()
@@ -841,6 +847,7 @@ internal sealed class Editor :
 	protected override void EndRun()
 	{
 		CloseSong();
+		MusicManager.Shutdown();
 		// Commit preferences to disk.
 		Preferences.Save();
 		// Commit unsaved changes to autogen configs to disk.
@@ -1148,6 +1155,8 @@ internal sealed class Editor :
 			UpdateWindowTitle();
 		}
 
+		CheckForShowingSongFileChangedNotification();
+
 		// Update splash screen timer.
 		UpdateSplashTime(gameTime);
 
@@ -1206,30 +1215,27 @@ internal sealed class Editor :
 
 			Position.SongTime = PlaybackStartTime + PlaybackStopwatch.Elapsed.TotalSeconds;
 
-			MusicManager.Update(Position.SongTime);
-			if (MusicManager.IsMusicLoaded())
+			MusicManager.Update(ActiveChart);
+
+			// The goal is to set the SongTime to match the actual time of the music
+			// being played through FMOD. Querying the time from FMOD does not have high
+			// enough precision, so we need to use our own timer.
+			// The best C# timer for this task is a StopWatch, but StopWatches have been
+			// reported to drift, sometimes up to a half a second per hour. If we detect
+			// it has drifted significantly by comparing it to the time from FMOD, then
+			// snap it back.
+			var maxDeviation = 0.1;
+			var musicSongTime = MusicManager.GetMusicSongTime();
+
+			if (Position.SongTime - musicSongTime > maxDeviation)
 			{
-				// The goal is to set the SongTime to match the actual time of the music
-				// being played through FMOD. Querying the time from FMOD does not have high
-				// enough precision, so we need to use our own timer.
-				// The best C# timer for this task is a StopWatch, but StopWatches have been
-				// reported to drift, sometimes up to a half a second per hour. If we detect
-				// it has drifted significantly by comparing it to the time from FMOD, then
-				// snap it back.
-				var maxDeviation = 0.1;
-				if (CanMusicBeUsedToDetermineSongTime(out var musicSongTime))
-				{
-					if (Position.SongTime - musicSongTime > maxDeviation)
-					{
-						PlaybackStartTime -= 0.5 * maxDeviation;
-						Position.SongTime = PlaybackStartTime + PlaybackStopwatch.Elapsed.TotalSeconds;
-					}
-					else if (musicSongTime - Position.SongTime > maxDeviation)
-					{
-						PlaybackStartTime += 0.5 * maxDeviation;
-						Position.SongTime = PlaybackStartTime + PlaybackStopwatch.Elapsed.TotalSeconds;
-					}
-				}
+				PlaybackStartTime -= 0.5 * maxDeviation;
+				Position.SongTime = PlaybackStartTime + PlaybackStopwatch.Elapsed.TotalSeconds;
+			}
+			else if (musicSongTime - Position.SongTime > maxDeviation)
+			{
+				PlaybackStartTime += 0.5 * maxDeviation;
+				Position.SongTime = PlaybackStartTime + PlaybackStopwatch.Elapsed.TotalSeconds;
 			}
 
 			Position.SetDesiredPositionToCurrent();
@@ -1238,7 +1244,7 @@ internal sealed class Editor :
 		}
 		else
 		{
-			MusicManager.Update(Position.SongTime);
+			MusicManager.Update(ActiveChart);
 		}
 	}
 
@@ -1518,25 +1524,6 @@ internal sealed class Editor :
 
 	#region Playing Music
 
-	/// <summary>
-	/// Returns whether the music can be used to determine the song time.
-	/// The music can normally be used to determine the song time, but it cannot be used if
-	/// it is before the start or after the end.
-	/// </summary>
-	/// <param name="musicSongTime">The song time as determined from querying the music.</param>
-	/// <returns>Whether the music can be used to determine the song time.</returns>
-	private bool CanMusicBeUsedToDetermineSongTime(out double musicSongTime)
-	{
-		musicSongTime = 0.0;
-		if (!MusicManager.IsMusicLoaded())
-			return false;
-		var musicLen = MusicManager.GetMusicLengthInSeconds();
-		var musicWithinRangeToUseForSongTime = !MusicManager.IsMusicAtMinOrMaxPosition(out musicSongTime);
-		// To use the music to determine the song time the song time and the music must be within the bounds
-		// of the music.
-		return Position.SongTime >= 0.0 && Position.SongTime < musicLen && musicWithinRangeToUseForSongTime;
-	}
-
 	private void StartPlayback()
 	{
 		if (Playing)
@@ -1544,14 +1531,7 @@ internal sealed class Editor :
 
 		StopPreview();
 
-		if (!CanMusicBeUsedToDetermineSongTime(out var musicSongTime))
-		{
-			PlaybackStartTime = Position.SongTime;
-		}
-		else
-		{
-			PlaybackStartTime = musicSongTime;
-		}
+		PlaybackStartTime = MusicManager.GetMusicSongTime();
 
 		PlaybackStopwatch = new Stopwatch();
 		PlaybackStopwatch.Start();
@@ -1615,8 +1595,7 @@ internal sealed class Editor :
 	private void OnMusicChanged()
 	{
 		StopPreview();
-		MusicManager.LoadMusicAsync(GetFullPathToMusicFile(), GetSongTime, false,
-			Preferences.Instance.PreferencesWaveForm.EnableWaveForm);
+		MusicManager.LoadMusicAsync(GetFullPathToMusicFile(), false, Preferences.Instance.PreferencesWaveForm.EnableWaveForm);
 	}
 
 	private void OnMusicPreviewChanged()
@@ -1648,9 +1627,29 @@ internal sealed class Editor :
 			StartPlayback();
 	}
 
-	private void OnVolumeChanged()
+	private void OnMainVolumeChanged()
 	{
-		MusicManager.SetVolume(Preferences.Instance.PreferencesOptions.Volume);
+		MusicManager.SetMainVolume(Preferences.Instance.PreferencesOptions.MainVolume);
+	}
+
+	private void OnMusicVolumeChanged()
+	{
+		MusicManager.SetMusicVolume(Preferences.Instance.PreferencesOptions.MusicVolume);
+	}
+
+	private void OnAssistTickVolumeChanged()
+	{
+		MusicManager.SetAssistTickVolume(Preferences.Instance.PreferencesOptions.AssistTickVolume);
+	}
+
+	private void OnAssistTickAttackTimeChanged()
+	{
+		MusicManager.SetAssistTickAttackTime(Preferences.Instance.PreferencesOptions.AssistTickAttackTime);
+	}
+
+	private void OnUseAssistTickChanged()
+	{
+		MusicManager.SetUseAssistTick(Preferences.Instance.PreferencesOptions.UseAssistTick);
 	}
 
 	#endregion Playing Music
@@ -4423,7 +4422,7 @@ internal sealed class Editor :
 			if (ImGui.Button("Reload Song"))
 			{
 				StopPreview();
-				MusicManager.LoadMusicAsync(GetFullPathToMusicFile(), GetSongTime, true,
+				MusicManager.LoadMusicAsync(GetFullPathToMusicFile(), true,
 					Preferences.Instance.PreferencesWaveForm.EnableWaveForm);
 			}
 
@@ -4854,6 +4853,19 @@ internal sealed class Editor :
 			return;
 		if (Preferences.Instance.PreferencesOptions.SuppressExternalSongModificationNotification)
 			return;
+
+		// Check for showing a notification on the main thread.
+		// This method is called from a separate thread and we don't want to access ActiveSong outside of
+		// the main thread.
+		ShouldCheckForShowingSongFileChangedNotification = true;
+	}
+
+	private void CheckForShowingSongFileChangedNotification()
+	{
+		if (!ShouldCheckForShowingSongFileChangedNotification)
+			return;
+		ShouldCheckForShowingSongFileChangedNotification = false;
+
 		if (ActiveSong == null)
 			return;
 
@@ -7002,8 +7014,20 @@ internal sealed class Editor :
 			case PreferencesOptions.NotificationAudioOffsetChanged:
 				OnAudioOffsetChanged();
 				break;
-			case PreferencesOptions.NotificationVolumeChanged:
-				OnVolumeChanged();
+			case PreferencesOptions.NotificationMainVolumeChanged:
+				OnMainVolumeChanged();
+				break;
+			case PreferencesOptions.NotificationMusicVolumeChanged:
+				OnMusicVolumeChanged();
+				break;
+			case PreferencesOptions.NotificationAssistTickVolumeChanged:
+				OnAssistTickVolumeChanged();
+				break;
+			case PreferencesOptions.NotificationAssistTickAttackTimeChanged:
+				OnAssistTickAttackTimeChanged();
+				break;
+			case PreferencesOptions.NotificationUseAssistTickChanged:
+				OnUseAssistTickChanged();
 				break;
 			case PreferencesOptions.NotificationUndoHistorySizeChanged:
 				OnUndoHistorySizeChanged();

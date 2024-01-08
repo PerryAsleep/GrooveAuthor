@@ -8,7 +8,11 @@ namespace StepManiaEditor;
 internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 {
 	public const string NotificationAudioOffsetChanged = "AudioOffsetChanged";
-	public const string NotificationVolumeChanged = "VolumeChanged";
+	public const string NotificationMainVolumeChanged = "MainVolumeChanged";
+	public const string NotificationMusicVolumeChanged = "MusicVolumeChanged";
+	public const string NotificationAssistTickVolumeChanged = "AssistTickVolumeChanged";
+	public const string NotificationAssistTickAttackTimeChanged = "AssistTickAttackTimeChanged";
+	public const string NotificationUseAssistTickChanged = "UseAssistTickChanged";
 	public const string NotificationUndoHistorySizeChanged = "UndoHistorySizeChanged";
 
 	// Default values.
@@ -29,7 +33,11 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 	public const double DefaultNewSongSyncOffset = 0.009;
 	public const double DefaultOpenSongSyncOffset = 0.009;
 	public const double DefaultAudioOffset = 0.0;
-	public const float DefaultVolume = 1.0f;
+	public const float DefaultMainVolume = 1.0f;
+	public const float DefaultMusicVolume = 0.5f;
+	public const float DefaultAssistTickVolume = 1.0f;
+	public const float DefaultAssistTickAttackTime = 0.0f;
+	public const bool DefaultUseAssistTick = false;
 	public const int DefaultUndoHistorySize = 1024;
 	public const bool DefaultUseCustomDpiScale = false;
 	public const double DefaultDpiScale = 1.0;
@@ -65,15 +73,71 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 	}
 
 	[JsonInclude]
-	public float Volume
+	public float MainVolume
 	{
-		get => VolumeInternal;
+		get => MainVolumeInternal;
 		set
 		{
-			if (!VolumeInternal.FloatEquals(value))
+			if (!MainVolumeInternal.FloatEquals(value))
 			{
-				VolumeInternal = value;
-				Notify(NotificationVolumeChanged, this);
+				MainVolumeInternal = value;
+				Notify(NotificationMainVolumeChanged, this);
+			}
+		}
+	}
+
+	[JsonInclude]
+	public float MusicVolume
+	{
+		get => MusicVolumeInternal;
+		set
+		{
+			if (!MusicVolumeInternal.FloatEquals(value))
+			{
+				MusicVolumeInternal = value;
+				Notify(NotificationMusicVolumeChanged, this);
+			}
+		}
+	}
+
+	[JsonInclude]
+	public float AssistTickVolume
+	{
+		get => AssistTickVolumeInternal;
+		set
+		{
+			if (!AssistTickVolumeInternal.FloatEquals(value))
+			{
+				AssistTickVolumeInternal = value;
+				Notify(NotificationAssistTickVolumeChanged, this);
+			}
+		}
+	}
+
+	[JsonInclude]
+	public float AssistTickAttackTime
+	{
+		get => AssistTickAttackTimeInternal;
+		set
+		{
+			if (!AssistTickAttackTimeInternal.FloatEquals(value))
+			{
+				AssistTickAttackTimeInternal = value;
+				Notify(NotificationAssistTickAttackTimeChanged, this);
+			}
+		}
+	}
+
+	[JsonInclude]
+	public bool UseAssistTick
+	{
+		get => UseAssistTickInternal;
+		set
+		{
+			if (UseAssistTickInternal != value)
+			{
+				UseAssistTickInternal = value;
+				Notify(NotificationUseAssistTickChanged, this);
 			}
 		}
 	}
@@ -92,8 +156,12 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 		}
 	}
 
-	private float VolumeInternal = DefaultVolume;
+	private float MainVolumeInternal = DefaultMainVolume;
+	private float MusicVolumeInternal = DefaultMusicVolume;
+	private float AssistTickVolumeInternal = DefaultAssistTickVolume;
 	private double AudioOffsetInternal = DefaultAudioOffset;
+	private float AssistTickAttackTimeInternal = DefaultAssistTickAttackTime;
+	private bool UseAssistTickInternal = DefaultUseAssistTick;
 	private int UndoHistorySizeInternal = DefaultUndoHistorySize;
 
 	// Strings are serialized, but converted to an array of booleans for UI.
@@ -111,7 +179,11 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 		       && NewSongSyncOffset.DoubleEquals(DefaultNewSongSyncOffset)
 		       && OpenSongSyncOffset.DoubleEquals(DefaultOpenSongSyncOffset)
 		       && AudioOffset.DoubleEquals(DefaultAudioOffset)
-		       && Volume.FloatEquals(DefaultVolume)
+		       && MainVolume.FloatEquals(DefaultMainVolume)
+		       && MusicVolume.FloatEquals(DefaultMusicVolume)
+		       && AssistTickVolume.FloatEquals(DefaultAssistTickVolume)
+		       && AssistTickAttackTime.FloatEquals(DefaultAssistTickAttackTime)
+		       && UseAssistTick == DefaultUseAssistTick
 		       && UndoHistorySize == DefaultUndoHistorySize
 		       && UseCustomDpiScale == DefaultUseCustomDpiScale
 		       && DpiScale.DoubleEquals(DefaultDpiScale)
@@ -192,7 +264,11 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 	private readonly double PreviousNewSongSyncOffset;
 	private readonly double PreviousOpenSongSyncOffset;
 	private readonly double PreviousAudioOffset;
-	private readonly float PreviousVolume;
+	private readonly float PreviousMainVolume;
+	private readonly float PreviousMusicVolume;
+	private readonly float PreviousAssistTickVolume;
+	private readonly float PreviousAssistTickAttackTime;
+	private readonly bool PreviousUseAssistTick;
 	private readonly int PreviousUndoHistorySize;
 	private readonly bool PreviousUseCustomDpiScale;
 	private readonly double PreviousDpiScale;
@@ -212,7 +288,11 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 		PreviousNewSongSyncOffset = p.NewSongSyncOffset;
 		PreviousOpenSongSyncOffset = p.OpenSongSyncOffset;
 		PreviousAudioOffset = p.AudioOffset;
-		PreviousVolume = p.Volume;
+		PreviousMainVolume = p.MainVolume;
+		PreviousMusicVolume = p.MusicVolume;
+		PreviousAssistTickVolume = p.AssistTickVolume;
+		PreviousAssistTickAttackTime = p.AssistTickAttackTime;
+		PreviousUseAssistTick = p.UseAssistTick;
 		PreviousUndoHistorySize = p.UndoHistorySize;
 		PreviousUseCustomDpiScale = p.UseCustomDpiScale;
 		PreviousDpiScale = p.DpiScale;
@@ -242,7 +322,11 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 		p.NewSongSyncOffset = PreferencesOptions.DefaultNewSongSyncOffset;
 		p.OpenSongSyncOffset = PreferencesOptions.DefaultOpenSongSyncOffset;
 		p.AudioOffset = PreferencesOptions.DefaultAudioOffset;
-		p.Volume = PreferencesOptions.DefaultVolume;
+		p.MainVolume = PreferencesOptions.DefaultMainVolume;
+		p.MusicVolume = PreferencesOptions.DefaultMusicVolume;
+		p.AssistTickVolume = PreferencesOptions.DefaultAssistTickVolume;
+		p.AssistTickAttackTime = PreferencesOptions.DefaultAssistTickAttackTime;
+		p.UseAssistTick = PreferencesOptions.DefaultUseAssistTick;
 		p.UndoHistorySize = PreferencesOptions.DefaultUndoHistorySize;
 		p.UseCustomDpiScale = PreferencesOptions.DefaultUseCustomDpiScale;
 		p.DpiScale = PreferencesOptions.DefaultDpiScale;
@@ -262,7 +346,11 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 		p.NewSongSyncOffset = PreviousNewSongSyncOffset;
 		p.OpenSongSyncOffset = PreviousOpenSongSyncOffset;
 		p.AudioOffset = PreviousAudioOffset;
-		p.Volume = PreviousVolume;
+		p.MainVolume = PreviousMainVolume;
+		p.MusicVolume = PreviousMusicVolume;
+		p.AssistTickVolume = PreviousAssistTickVolume;
+		p.AssistTickAttackTime = PreviousAssistTickAttackTime;
+		p.UseAssistTick = PreviousUseAssistTick;
 		p.UndoHistorySize = PreviousUndoHistorySize;
 		p.UseCustomDpiScale = PreviousUseCustomDpiScale;
 		p.DpiScale = PreviousDpiScale;
