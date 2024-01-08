@@ -124,8 +124,20 @@ public class UIOptions
 					+ "\nDecreasing this value will cause the audio to play later.",
 					0.0001f, "%.6f seconds");
 
-				ImGuiLayoutUtils.DrawRowSliderFloat(true, "Volume", p, nameof(PreferencesOptions.Volume), 0.0f, 1.0f, false,
+				ImGuiLayoutUtils.DrawRowSliderFloat(true, "Main Volume", p, nameof(PreferencesOptions.MainVolume), 0.0f, 1.0f, false,
 					"Volume of all audio.");
+				ImGuiLayoutUtils.DrawRowSliderFloat(true, "Song Volume", p, nameof(PreferencesOptions.MusicVolume), 0.0f, 1.0f, false,
+					"Volume of the music.");
+				ImGuiLayoutUtils.DrawRowCheckbox(true, "Assist Tick", p, nameof(PreferencesOptions.UseAssistTick), false,
+					"Whether or not to use assist tick.");
+				ImGuiLayoutUtils.DrawRowSliderFloat(true, "Assist Tick Volume", p, nameof(PreferencesOptions.AssistTickVolume), 0.0f, 1.0f, false,
+					"Volume of assist ticks.");
+				ImGuiLayoutUtils.DrawRowDragFloat(true, "Assist Tick Attack Time", p, nameof(PreferencesOptions.AssistTickAttackTime), false,
+					"Attack time in seconds of the assist tick sound."
+					+ "\nAttack time is the time from the start of the sound file to the point at which a listener would"
+					+ "\nconsider it to start. This should not be modified unless you change the assist tick file to use"
+					+ "\na different sound.",
+					0.0001f, "%.6f seconds", 0.0f);
 
 				ImGuiLayoutUtils.EndTable();
 			}

@@ -234,18 +234,15 @@ public class SoundMipMap
 	/// Creates the mip map data for the given Sound.
 	/// </summary>
 	/// <param name="sound">Sound to create mip map data for.</param>
-	/// <param name="sampleRate">Sample rate of sound in hz.</param>
 	/// <param name="xRange">Total x range in pixels for all channels.</param>
 	/// <param name="token">CancellationToken for cancelling this Task.</param>
-	public async Task CreateMipMapAsync(Sound sound, uint sampleRate, int xRange, CancellationToken token)
+	public async Task CreateMipMapAsync(Sound sound, int xRange, CancellationToken token)
 	{
 		if (!sound.hasHandle())
 		{
 			Logger.Warn("Cannot create sound mip map data. Invalid sound handle.");
 			return;
 		}
-
-		SampleRate = sampleRate;
 
 		Logger.Info("Generating sound mip map...");
 		bool success;
@@ -283,6 +280,9 @@ public class SoundMipMap
 	private async Task<bool> InternalCreateMipMapAsync(Sound sound, int xRange, CancellationToken token)
 	{
 		// Get the sound data from FMOD.
+		if (!SoundManager.ErrCheck(sound.getDefaults(out var soundFrequency, out var _)))
+			return false;
+		SampleRate = (uint)soundFrequency;
 		if (!SoundManager.ErrCheck(sound.getLength(out var length, TIMEUNIT.PCMBYTES)))
 			return false;
 		if (!SoundManager.ErrCheck(sound.getFormat(out _, out var format, out var numChannels, out var bits)))
@@ -294,27 +294,8 @@ public class SoundMipMap
 		try
 		{
 			// Early outs for data that can't be parsed.
-			if (format != SOUND_FORMAT.PCM8
-			    && format != SOUND_FORMAT.PCM16
-			    && format != SOUND_FORMAT.PCM24
-			    && format != SOUND_FORMAT.PCM32
-			    && format != SOUND_FORMAT.PCMFLOAT)
+			if (!SoundManager.ValidateFormat(format, numChannels, bits))
 			{
-				Logger.Warn($"Unsupported sound format: {format:G}");
-				SoundManager.ErrCheck(sound.unlock(ptr1, ptr2, len1, len2));
-				return false;
-			}
-
-			if (numChannels < 1)
-			{
-				Logger.Warn($"Sound has {numChannels} channels. Expected at least one.");
-				SoundManager.ErrCheck(sound.unlock(ptr1, ptr2, len1, len2));
-				return false;
-			}
-
-			if (bits < 1)
-			{
-				Logger.Warn($"Sound has {bits} bits per sample. Expected at least one.");
 				SoundManager.ErrCheck(sound.unlock(ptr1, ptr2, len1, len2));
 				return false;
 			}
@@ -371,33 +352,36 @@ public class SoundMipMap
 			// Allocate memory for all the MipLevels.
 			// While looping over the MipLevels, determine how many tasks to split up loading into
 			// and how many samples to loop over per task.
-			MipLevels = new MipLevel[numMipLevels];
-			var mipSampleSize = 1u;
-			var previousNumSamples = 0u;
-			for (var mipLevelIndex = 0; mipLevelIndex < numMipLevels; mipLevelIndex++)
+			lock (MipLevelsLock)
 			{
-				// Allocate memory for the mip level.
-				var numSamples = totalNumSamples / mipSampleSize;
-				if (totalNumSamples % mipSampleSize != 0)
-					numSamples++;
-				MipLevels[mipLevelIndex] = new MipLevel(numSamples, (uint)numChannels);
-
-				// If this mip level divides the data by the number of parallel workers desired,
-				// record information about this level for the tasks.
-				if (previousNumSamples > LoadParallelism && numSamples <= LoadParallelism)
+				MipLevels = new MipLevel[numMipLevels];
+				var mipSampleSize = 1u;
+				var previousNumSamples = 0u;
+				for (var mipLevelIndex = 0; mipLevelIndex < numMipLevels; mipLevelIndex++)
 				{
-					highestMipLevelToFillPerTask = mipLevelIndex;
-					samplesPerTask = mipSampleSize;
-					numTasks = numSamples;
+					// Allocate memory for the mip level.
+					var numSamples = totalNumSamples / mipSampleSize;
+					if (totalNumSamples % mipSampleSize != 0)
+						numSamples++;
+					MipLevels[mipLevelIndex] = new MipLevel(numSamples, (uint)numChannels);
+
+					// If this mip level divides the data by the number of parallel workers desired,
+					// record information about this level for the tasks.
+					if (previousNumSamples > LoadParallelism && numSamples <= LoadParallelism)
+					{
+						highestMipLevelToFillPerTask = mipLevelIndex;
+						samplesPerTask = mipSampleSize;
+						numTasks = numSamples;
+					}
+
+					previousNumSamples = numSamples;
+					mipSampleSize <<= 1;
+
+					token.ThrowIfCancellationRequested();
 				}
 
-				previousNumSamples = numSamples;
-				mipSampleSize <<= 1;
-
-				token.ThrowIfCancellationRequested();
+				MipLevelsAllocated = true;
 			}
-
-			MipLevelsAllocated = true;
 
 			// Divide up the mip map generation into parallel tasks.
 			// Each task must operate on a completely independent set of MipLevel data.
@@ -571,56 +555,13 @@ public class SoundMipMap
 	{
 		var ptr = (byte*)intPtr.ToPointer();
 
-		// Constants for converting sound formats to floats.
-		const float invPcm8Max = 1.0f / byte.MaxValue;
-		const float invPcm16Max = 1.0f / short.MaxValue;
-		const float invPcm24Max = 1.0f / 8388607;
-		const float invPcm32Max = 1.0f / int.MaxValue;
-
 		var maxValuePerChannel = (ushort)(xRangePerChannel - 1);
 
 		// Loop over every sample for every channel.
 		var sampleIndex = startSample;
 
 		// Get a function for parsing samples.
-		// In practice this more performant than using the switch in the loop below.
-		Func<long, float> parseSample;
-		switch (format)
-		{
-			case SOUND_FORMAT.PCM8:
-			{
-				parseSample = i => ptr[i] * invPcm8Max;
-				break;
-			}
-			case SOUND_FORMAT.PCM16:
-			{
-				parseSample = i => (ptr[i]
-				                    + (short)(ptr[i + 1] << 8)) * invPcm16Max;
-				break;
-			}
-			case SOUND_FORMAT.PCM24:
-			{
-				parseSample = i => (((ptr[i] << 8)
-				                     + (ptr[i + 1] << 16)
-				                     + (ptr[i + 2] << 24)) >> 8) * invPcm24Max;
-				break;
-			}
-			case SOUND_FORMAT.PCM32:
-			{
-				parseSample = i => (ptr[i]
-				                    + (ptr[i + 1] << 8)
-				                    + (ptr[i + 2] << 16)
-				                    + (ptr[i + 3] << 24)) * invPcm32Max;
-				break;
-			}
-			case SOUND_FORMAT.PCMFLOAT:
-			{
-				parseSample = i => ((float*)ptr)[i >> 2];
-				break;
-			}
-			default:
-				return;
-		}
+		var parseSample = SoundManager.GetParseSampleFunc(format, ptr);
 
 		// Set the first previous tracking values.
 		var previousValues = new float[NumChannels];
@@ -694,8 +635,8 @@ public class SoundMipMap
 
 			sampleIndex++;
 
-			// Every 15 seconds of audio assuming 44.1kHz.
-			if (sampleIndex % 661500 == 0)
+			// Periodically check for cancellation.
+			if (sampleIndex % 524288 == 0)
 				token.ThrowIfCancellationRequested();
 		}
 	}
