@@ -38,7 +38,7 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 	public const float DefaultAssistTickVolume = 1.0f;
 	public const float DefaultAssistTickAttackTime = 0.0f;
 	public const bool DefaultUseAssistTick = false;
-	public const int DefaultDspBufferSize = 1024;
+	public const int DefaultDspBufferSize = 512;
 	public const int DefaultDspNumBuffers = 4;
 	public const int DefaultUndoHistorySize = 1024;
 	public const bool DefaultUseCustomDpiScale = false;
