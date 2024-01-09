@@ -90,6 +90,9 @@ internal sealed class Preferences
 	// Option preferences
 	[JsonInclude] public PreferencesOptions PreferencesOptions = new();
 
+	// Audio preferences
+	[JsonInclude] public PreferencesAudio PreferencesAudio = new();
+
 	// Animations preferences
 	[JsonInclude] public PreferencesReceptors PreferencesReceptors = new();
 

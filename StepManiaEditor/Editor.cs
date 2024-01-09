@@ -37,6 +37,7 @@ internal sealed class Editor :
 	Fumen.IObserver<EditorSong>,
 	Fumen.IObserver<EditorChart>,
 	Fumen.IObserver<PreferencesOptions>,
+	Fumen.IObserver<PreferencesAudio>,
 	Fumen.IObserver<ActionQueue>
 {
 	/// <summary>
@@ -501,13 +502,13 @@ internal sealed class Editor :
 
 	private void InitializeSoundManager()
 	{
-		var p = Preferences.Instance.PreferencesOptions;
+		var p = Preferences.Instance.PreferencesAudio;
 		SoundManager = new SoundManager((uint)p.DspBufferSize, p.DspNumBuffers);
 	}
 
 	private void InitializeMusicManager()
 	{
-		var p = Preferences.Instance.PreferencesOptions;
+		var p = Preferences.Instance.PreferencesAudio;
 		MusicManager = new MusicManager(SoundManager, p.AudioOffset);
 		MusicManager.SetMainVolume(p.MainVolume);
 		MusicManager.SetMusicVolume(p.MusicVolume);
@@ -640,6 +641,7 @@ internal sealed class Editor :
 	private void InitializeObservers()
 	{
 		Preferences.Instance.PreferencesOptions.AddObserver(this);
+		Preferences.Instance.PreferencesAudio.AddObserver(this);
 		ActionQueue.Instance.AddObserver(this);
 	}
 
@@ -1209,12 +1211,12 @@ internal sealed class Editor :
 			}
 		}
 
-		var pOptions = Preferences.Instance.PreferencesOptions;
+		var pAudio = Preferences.Instance.PreferencesAudio;
 		MusicManager.SetPreviewParameters(
 			ActiveSong?.SampleStart ?? 0.0,
 			ActiveSong?.SampleLength ?? 0.0,
-			pOptions.PreviewFadeInTime,
-			pOptions.PreviewFadeOutTime);
+			pAudio.PreviewFadeInTime,
+			pAudio.PreviewFadeOutTime);
 
 		if (Playing)
 		{
@@ -1627,7 +1629,7 @@ internal sealed class Editor :
 		var playing = Playing;
 		if (playing)
 			StopPlayback();
-		MusicManager.SetMusicOffset(Preferences.Instance.PreferencesOptions.AudioOffset);
+		MusicManager.SetMusicOffset(Preferences.Instance.PreferencesAudio.AudioOffset);
 		MusicManager.SetMusicTimeInSeconds(Position.SongTime);
 		if (playing)
 			StartPlayback();
@@ -1635,27 +1637,27 @@ internal sealed class Editor :
 
 	private void OnMainVolumeChanged()
 	{
-		MusicManager.SetMainVolume(Preferences.Instance.PreferencesOptions.MainVolume);
+		MusicManager.SetMainVolume(Preferences.Instance.PreferencesAudio.MainVolume);
 	}
 
 	private void OnMusicVolumeChanged()
 	{
-		MusicManager.SetMusicVolume(Preferences.Instance.PreferencesOptions.MusicVolume);
+		MusicManager.SetMusicVolume(Preferences.Instance.PreferencesAudio.MusicVolume);
 	}
 
 	private void OnAssistTickVolumeChanged()
 	{
-		MusicManager.SetAssistTickVolume(Preferences.Instance.PreferencesOptions.AssistTickVolume);
+		MusicManager.SetAssistTickVolume(Preferences.Instance.PreferencesAudio.AssistTickVolume);
 	}
 
 	private void OnAssistTickAttackTimeChanged()
 	{
-		MusicManager.SetAssistTickAttackTime(Preferences.Instance.PreferencesOptions.AssistTickAttackTime);
+		MusicManager.SetAssistTickAttackTime(Preferences.Instance.PreferencesAudio.AssistTickAttackTime);
 	}
 
 	private void OnUseAssistTickChanged()
 	{
-		MusicManager.SetUseAssistTick(Preferences.Instance.PreferencesOptions.UseAssistTick);
+		MusicManager.SetUseAssistTick(Preferences.Instance.PreferencesAudio.UseAssistTick);
 	}
 
 	#endregion Playing Music
@@ -7017,26 +7019,33 @@ internal sealed class Editor :
 	{
 		switch (eventId)
 		{
-			case PreferencesOptions.NotificationAudioOffsetChanged:
-				OnAudioOffsetChanged();
-				break;
-			case PreferencesOptions.NotificationMainVolumeChanged:
-				OnMainVolumeChanged();
-				break;
-			case PreferencesOptions.NotificationMusicVolumeChanged:
-				OnMusicVolumeChanged();
-				break;
-			case PreferencesOptions.NotificationAssistTickVolumeChanged:
-				OnAssistTickVolumeChanged();
-				break;
-			case PreferencesOptions.NotificationAssistTickAttackTimeChanged:
-				OnAssistTickAttackTimeChanged();
-				break;
-			case PreferencesOptions.NotificationUseAssistTickChanged:
-				OnUseAssistTickChanged();
-				break;
 			case PreferencesOptions.NotificationUndoHistorySizeChanged:
 				OnUndoHistorySizeChanged();
+				break;
+		}
+	}
+
+	public void OnNotify(string eventId, PreferencesAudio audio, object payload)
+	{
+		switch (eventId)
+		{
+			case PreferencesAudio.NotificationAudioOffsetChanged:
+				OnAudioOffsetChanged();
+				break;
+			case PreferencesAudio.NotificationMainVolumeChanged:
+				OnMainVolumeChanged();
+				break;
+			case PreferencesAudio.NotificationMusicVolumeChanged:
+				OnMusicVolumeChanged();
+				break;
+			case PreferencesAudio.NotificationAssistTickVolumeChanged:
+				OnAssistTickVolumeChanged();
+				break;
+			case PreferencesAudio.NotificationAssistTickAttackTimeChanged:
+				OnAssistTickAttackTimeChanged();
+				break;
+			case PreferencesAudio.NotificationUseAssistTickChanged:
+				OnUseAssistTickChanged();
 				break;
 		}
 	}
