@@ -29,9 +29,12 @@ public class SoundManager
 	/// <summary>
 	/// Constructor.
 	/// </summary>
-	public SoundManager()
+	/// <param name="dspBufferSize">Size of the DSP buffers in samples.</param>
+	/// <param name="dspNumBuffers">Number of DSP buffers.</param>
+	public SoundManager(uint dspBufferSize, int dspNumBuffers)
 	{
 		ErrCheck(Factory.System_Create(out System));
+		ErrCheck(System.setDSPBufferSize(dspBufferSize, dspNumBuffers));
 		ErrCheck(System.init(100, INITFLAGS.NORMAL, IntPtr.Zero));
 		//System.setOutput(OUTPUTTYPE.WAVWRITER);
 	}

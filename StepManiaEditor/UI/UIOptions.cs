@@ -14,6 +14,13 @@ public class UIOptions
 	private static readonly int TitleColumnWidth = UiScaled(160);
 	private static readonly float ButtonSyncWidth = UiScaled(60);
 
+	private readonly SoundManager SoundManager;
+
+	public UIOptions(SoundManager soundManager)
+	{
+		SoundManager = soundManager;
+	}
+
 	public void Draw()
 	{
 		var p = Preferences.Instance.PreferencesOptions;
@@ -64,18 +71,6 @@ public class UIOptions
 			}
 
 			ImGui.Separator();
-			if (ImGuiLayoutUtils.BeginTable("Options Preview", TitleColumnWidth))
-			{
-				ImGuiLayoutUtils.DrawRowDragDouble(true, "Preview Fade In", p, nameof(PreferencesOptions.PreviewFadeInTime),
-					false,
-					"Time over which the preview should fade in when previewing the song.", 0.001f, "%.3f seconds", 0.0);
-				ImGuiLayoutUtils.DrawRowDragDouble(true, "Preview Fade Out", p, nameof(PreferencesOptions.PreviewFadeOutTime),
-					false,
-					"Time over which the preview should fade out when previewing the song.", 0.001f, "%.3f seconds", 0.0);
-				ImGuiLayoutUtils.EndTable();
-			}
-
-			ImGui.Separator();
 			if (ImGuiLayoutUtils.BeginTable("Options Sync", TitleColumnWidth))
 			{
 				ImGuiLayoutUtils.DrawRowDragDoubleWithTwoButtons(true, "New Song Sync", p,
@@ -108,6 +103,31 @@ public class UIOptions
 			ImGui.Separator();
 			if (ImGuiLayoutUtils.BeginTable("Options Audio", TitleColumnWidth))
 			{
+				ImGuiLayoutUtils.DrawRowSliderFloat(true, "Main Volume", p, nameof(PreferencesOptions.MainVolume), 0.0f, 1.0f,
+					false,
+					"Volume of all audio.");
+				ImGuiLayoutUtils.DrawRowSliderFloat(true, "Song Volume", p, nameof(PreferencesOptions.MusicVolume), 0.0f, 1.0f,
+					false,
+					"Volume of the music.");
+				ImGuiLayoutUtils.DrawRowDragDouble(true, "Preview Fade In Time", p, nameof(PreferencesOptions.PreviewFadeInTime),
+					false,
+					"Time over which the preview should fade in when previewing the song.", 0.001f, "%.3f seconds", 0.0);
+				ImGuiLayoutUtils.DrawRowDragDouble(true, "Preview Fade Out Time", p, nameof(PreferencesOptions.PreviewFadeOutTime),
+					false,
+					"Time over which the preview should fade out when previewing the song.", 0.001f, "%.3f seconds", 0.0);
+				ImGuiLayoutUtils.DrawRowCheckbox(true, "Assist Tick", p, nameof(PreferencesOptions.UseAssistTick), false,
+					"Whether or not to use assist tick.");
+				ImGuiLayoutUtils.DrawRowSliderFloat(true, "Assist Tick Volume", p, nameof(PreferencesOptions.AssistTickVolume),
+					0.0f, 1.0f, false,
+					"Volume of assist ticks.");
+				ImGuiLayoutUtils.DrawRowDragFloat(true, "Assist Tick Attack Time", p,
+					nameof(PreferencesOptions.AssistTickAttackTime), false,
+					"Attack time in seconds of the assist tick sound."
+					+ "\nAttack time is the time from the start of the sound file to the point at which a listener would"
+					+ "\nconsider it to start. This should not be modified unless you change the assist tick file to use"
+					+ "\na different sound.",
+					0.0001f, "%.6f seconds", 0.0f);
+
 				ImGuiLayoutUtils.DrawRowDragDouble(true, "Audio Offset", p, nameof(PreferencesOptions.AudioOffset), false,
 					"Offset used when playing songs through GrooveAuthor."
 					+ "\nIf the audio and visuals appear out of sync when playing a song, adjusting this value can"
@@ -124,20 +144,31 @@ public class UIOptions
 					+ "\nDecreasing this value will cause the audio to play later.",
 					0.0001f, "%.6f seconds");
 
-				ImGuiLayoutUtils.DrawRowSliderFloat(true, "Main Volume", p, nameof(PreferencesOptions.MainVolume), 0.0f, 1.0f, false,
-					"Volume of all audio.");
-				ImGuiLayoutUtils.DrawRowSliderFloat(true, "Song Volume", p, nameof(PreferencesOptions.MusicVolume), 0.0f, 1.0f, false,
-					"Volume of the music.");
-				ImGuiLayoutUtils.DrawRowCheckbox(true, "Assist Tick", p, nameof(PreferencesOptions.UseAssistTick), false,
-					"Whether or not to use assist tick.");
-				ImGuiLayoutUtils.DrawRowSliderFloat(true, "Assist Tick Volume", p, nameof(PreferencesOptions.AssistTickVolume), 0.0f, 1.0f, false,
-					"Volume of assist ticks.");
-				ImGuiLayoutUtils.DrawRowDragFloat(true, "Assist Tick Attack Time", p, nameof(PreferencesOptions.AssistTickAttackTime), false,
-					"Attack time in seconds of the assist tick sound."
-					+ "\nAttack time is the time from the start of the sound file to the point at which a listener would"
-					+ "\nconsider it to start. This should not be modified unless you change the assist tick file to use"
-					+ "\na different sound.",
-					0.0001f, "%.6f seconds", 0.0f);
+				var sampleRate = SoundManager.GetSampleRate();
+				var audioLatency = (int)((p.DspNumBuffers - 1.5) * p.DspBufferSize / sampleRate * 1000);
+				var audioLatencyString =
+					$"\nThe current estimated audio latency is ~{audioLatency}ms (({p.DspNumBuffers} - 1.5)buffers * {p.DspBufferSize}samples/buffer / {sampleRate}samples/s).";
+				var audioBufferDescription =
+					"\nThis value should only be modified if you know what you are doing and have performance/latency needs."
+					+ "\nLowering this value too much may cause stuttering and increase CPU demand."
+					+ "\nIncreasing this value may cause audio to sound delayed."
+					+ $"\nThe sample rate of the application is {sampleRate}hz."
+					+ audioLatencyString
+					+ "\nChanges to this value take effect after restarting the application.";
+
+				ImGuiLayoutUtils.DrawRowDragInt(true, "Audio Num Buffers", p, nameof(PreferencesOptions.DspNumBuffers), false,
+					"Number of audio buffers in the audio ring buffer."
+					+ audioBufferDescription,
+					0.1f,
+					"%i buffers",
+					2, 32);
+				ImGuiLayoutUtils.DrawRowDragInt(true, "Audio Buffer Size", p, nameof(PreferencesOptions.DspBufferSize), false,
+					"Number of audio buffers in the audio ring buffer."
+					+ "\nUnits are samples."
+					+ audioBufferDescription,
+					1.0f,
+					"%i samples",
+					32, 8192);
 
 				ImGuiLayoutUtils.EndTable();
 			}

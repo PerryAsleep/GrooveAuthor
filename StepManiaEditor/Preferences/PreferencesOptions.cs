@@ -38,6 +38,8 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 	public const float DefaultAssistTickVolume = 1.0f;
 	public const float DefaultAssistTickAttackTime = 0.0f;
 	public const bool DefaultUseAssistTick = false;
+	public const int DefaultDspBufferSize = 1024;
+	public const int DefaultDspNumBuffers = 4;
 	public const int DefaultUndoHistorySize = 1024;
 	public const bool DefaultUseCustomDpiScale = false;
 	public const double DefaultDpiScale = 1.0;
@@ -57,6 +59,8 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 	[JsonInclude] public bool UseCustomDpiScale = DefaultUseCustomDpiScale;
 	[JsonInclude] public double DpiScale = DefaultDpiScale;
 	[JsonInclude] public bool SuppressExternalSongModificationNotification;
+	[JsonInclude] public int DspBufferSize = DefaultDspBufferSize;
+	[JsonInclude] public int DspNumBuffers = DefaultDspNumBuffers;
 
 	[JsonInclude]
 	public double AudioOffset
@@ -183,6 +187,8 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 		       && MusicVolume.FloatEquals(DefaultMusicVolume)
 		       && AssistTickVolume.FloatEquals(DefaultAssistTickVolume)
 		       && AssistTickAttackTime.FloatEquals(DefaultAssistTickAttackTime)
+		       && DspBufferSize == DefaultDspBufferSize
+		       && DspNumBuffers == DefaultDspNumBuffers
 		       && UseAssistTick == DefaultUseAssistTick
 		       && UndoHistorySize == DefaultUndoHistorySize
 		       && UseCustomDpiScale == DefaultUseCustomDpiScale
@@ -269,6 +275,8 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 	private readonly float PreviousAssistTickVolume;
 	private readonly float PreviousAssistTickAttackTime;
 	private readonly bool PreviousUseAssistTick;
+	private readonly int PreviousDspBufferSize;
+	private readonly int PreviousDspNumBuffers;
 	private readonly int PreviousUndoHistorySize;
 	private readonly bool PreviousUseCustomDpiScale;
 	private readonly double PreviousDpiScale;
@@ -293,6 +301,8 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 		PreviousAssistTickVolume = p.AssistTickVolume;
 		PreviousAssistTickAttackTime = p.AssistTickAttackTime;
 		PreviousUseAssistTick = p.UseAssistTick;
+		PreviousDspBufferSize = p.DspBufferSize;
+		PreviousDspNumBuffers = p.DspNumBuffers;
 		PreviousUndoHistorySize = p.UndoHistorySize;
 		PreviousUseCustomDpiScale = p.UseCustomDpiScale;
 		PreviousDpiScale = p.DpiScale;
@@ -327,6 +337,8 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 		p.AssistTickVolume = PreferencesOptions.DefaultAssistTickVolume;
 		p.AssistTickAttackTime = PreferencesOptions.DefaultAssistTickAttackTime;
 		p.UseAssistTick = PreferencesOptions.DefaultUseAssistTick;
+		p.DspBufferSize = PreferencesOptions.DefaultDspBufferSize;
+		p.DspNumBuffers = PreferencesOptions.DefaultDspNumBuffers;
 		p.UndoHistorySize = PreferencesOptions.DefaultUndoHistorySize;
 		p.UseCustomDpiScale = PreferencesOptions.DefaultUseCustomDpiScale;
 		p.DpiScale = PreferencesOptions.DefaultDpiScale;
@@ -351,6 +363,8 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 		p.AssistTickVolume = PreviousAssistTickVolume;
 		p.AssistTickAttackTime = PreviousAssistTickAttackTime;
 		p.UseAssistTick = PreviousUseAssistTick;
+		p.DspBufferSize = PreviousDspBufferSize;
+		p.DspNumBuffers = PreviousDspNumBuffers;
 		p.UndoHistorySize = PreviousUndoHistorySize;
 		p.UseCustomDpiScale = PreviousUseCustomDpiScale;
 		p.DpiScale = PreviousDpiScale;

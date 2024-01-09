@@ -161,7 +161,7 @@ internal sealed class Editor :
 	private SpriteBatch SpriteBatch;
 	private ImGuiRenderer ImGuiRenderer;
 	private WaveFormRenderer WaveFormRenderer;
-	private readonly SoundManager SoundManager = new();
+	private SoundManager SoundManager;
 	private MusicManager MusicManager;
 	private MiniMap MiniMap;
 	private ArrowGraphicManager ArrowGraphicManager;
@@ -336,6 +336,7 @@ internal sealed class Editor :
 		InitializeAutogenConfigs();
 		InitializeZoomManager();
 		InitializeEditorPosition();
+		InitializeSoundManager();
 		InitializeMusicManager();
 		InitializeGraphics();
 		InitializeKeyCommandManager();
@@ -496,6 +497,12 @@ internal sealed class Editor :
 	private void InitializeEditorPosition()
 	{
 		Position = new EditorPosition(OnPositionChanged);
+	}
+
+	private void InitializeSoundManager()
+	{
+		var p = Preferences.Instance.PreferencesOptions;
+		SoundManager = new SoundManager((uint)p.DspBufferSize, p.DspNumBuffers);
 	}
 
 	private void InitializeMusicManager()
@@ -742,7 +749,7 @@ internal sealed class Editor :
 		UISelectionPreferences = new UISelectionPreferences();
 		UIMiniMapPreferences = new UIMiniMapPreferences();
 		UIReceptorPreferences = new UIReceptorPreferences(this);
-		UIOptions = new UIOptions();
+		UIOptions = new UIOptions(SoundManager);
 		UIChartPosition = new UIChartPosition(this);
 		UIExpressedChartConfig = new UIExpressedChartConfig(this);
 		UIPerformedChartConfig = new UIPerformedChartConfig(this);
@@ -1531,10 +1538,9 @@ internal sealed class Editor :
 
 		StopPreview();
 
-		PlaybackStartTime = MusicManager.GetMusicSongTime();
-
 		PlaybackStopwatch = new Stopwatch();
 		PlaybackStopwatch.Start();
+		PlaybackStartTime = Position.SongTime;
 		MusicManager.StartPlayback(Position.SongTime);
 
 		Playing = true;
