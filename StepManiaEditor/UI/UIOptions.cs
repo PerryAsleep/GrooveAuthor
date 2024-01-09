@@ -112,7 +112,8 @@ public class UIOptions
 				ImGuiLayoutUtils.DrawRowDragDouble(true, "Preview Fade In Time", p, nameof(PreferencesOptions.PreviewFadeInTime),
 					false,
 					"Time over which the preview should fade in when previewing the song.", 0.001f, "%.3f seconds", 0.0);
-				ImGuiLayoutUtils.DrawRowDragDouble(true, "Preview Fade Out Time", p, nameof(PreferencesOptions.PreviewFadeOutTime),
+				ImGuiLayoutUtils.DrawRowDragDouble(true, "Preview Fade Out Time", p,
+					nameof(PreferencesOptions.PreviewFadeOutTime),
 					false,
 					"Time over which the preview should fade out when previewing the song.", 0.001f, "%.3f seconds", 0.0);
 				ImGuiLayoutUtils.DrawRowCheckbox(true, "Assist Tick", p, nameof(PreferencesOptions.UseAssistTick), false,
