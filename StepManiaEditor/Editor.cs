@@ -186,6 +186,9 @@ internal sealed class Editor :
 	private UIAutogenChartsForChartType UIAutogenChartsForChartType;
 	private UICopyEventsBetweenCharts UICopyEventsBetweenCharts;
 	private UIPatternEvent UIPatternEvent;
+#if DEBUG
+	private UIDebug UIDebug;
+#endif
 	private ZoomManager ZoomManager;
 	private StaticTextureAtlas TextureAtlas;
 	private IntPtr TextureAtlasImGuiTexture;
@@ -287,7 +290,8 @@ internal sealed class Editor :
 	private double UpdateTimeMiniMap;
 	private double UpdateTimeChartEvents;
 	private double DrawTimeTotal;
-	private bool ShowImGuiTestWindow = true;
+	private double MonoGameFrameTime;
+	private bool ShowImGuiTestWindow = false;
 	private readonly int MainThreadId;
 
 	// Logger
@@ -761,6 +765,9 @@ internal sealed class Editor :
 		UIAutogenChartsForChartType = new UIAutogenChartsForChartType(this);
 		UICopyEventsBetweenCharts = new UICopyEventsBetweenCharts(this);
 		UIPatternEvent = new UIPatternEvent(this);
+#if DEBUG
+		UIDebug = new UIDebug(this);
+#endif
 	}
 
 	private void InitializeSongLoadTask()
@@ -1131,6 +1138,7 @@ internal sealed class Editor :
 		stopWatch.Start();
 
 		var currentTime = gameTime.TotalGameTime.TotalSeconds;
+		MonoGameFrameTime = gameTime.ElapsedGameTime.TotalSeconds;
 
 		// Perform manual garbage collection.
 		if (GarbageCollectFrame > 0)
@@ -3281,13 +3289,11 @@ internal sealed class Editor :
 	{
 		DrawMainMenuUI();
 
-		DrawDebugUI();
-
-		if (ShowImGuiTestWindow)
-		{
-			ImGui.SetNextWindowPos(new System.Numerics.Vector2(650, 20), ImGuiCond.FirstUseEver);
-			ImGui.ShowDemoWindow(ref ShowImGuiTestWindow);
-		}
+#if DEBUG
+		UIDebug.Draw();
+#endif
+		DrawPerformanceMetrics();
+		DrawImGuiTestWindow();
 
 		UIAbout.Draw();
 		UILog.Draw(LogBuffer, LogBufferLock, LogFilePath);
@@ -3498,8 +3504,21 @@ internal sealed class Editor :
 					ImGui.SetWindowFocus(UILog.WindowTitle);
 				}
 
+				ImGui.Separator();
+				if (ImGui.MenuItem("Performance Metrics"))
+				{
+					p.ShowPerformanceWindow = true;
+					ImGui.SetWindowFocus("Performance");
+				}
+#if DEBUG
 				if (ImGui.MenuItem("ImGui Demo Window"))
 					ShowImGuiTestWindow = true;
+				if (ImGui.MenuItem("Debug Window"))
+				{
+					Preferences.Instance.ShowDebugWindow = true;
+					ImGui.SetWindowFocus(UIDebug.WindowTitle);
+				}
+#endif
 				ImGui.EndMenu();
 			}
 
@@ -4407,11 +4426,16 @@ internal sealed class Editor :
 		}
 	}
 
-	private void DrawDebugUI()
+	private void DrawPerformanceMetrics()
 	{
-		if (ImGui.Begin("Debug"))
+		// TODO: Improve this UI. Put it in its own class.
+
+		var p = Preferences.Instance;
+		if (!p.ShowPerformanceWindow)
+			return;
+
+		if (ImGui.Begin("Performance", ref p.ShowPerformanceWindow))
 		{
-			ImGui.Checkbox("Render Chart", ref RenderChart);
 			ImGui.Text($"Update Time:       {UpdateTimeTotal:F6} seconds");
 			ImGui.Text($"  Waveform:        {UpdateTimeWaveForm:F6} seconds");
 			ImGui.Text($"  Mini Map:        {UpdateTimeMiniMap:F6} seconds");
@@ -4419,35 +4443,31 @@ internal sealed class Editor :
 			ImGui.Text($"Draw Time:         {DrawTimeTotal:F6} seconds");
 			ImGui.Text($"Total Time:        {UpdateTimeTotal + DrawTimeTotal:F6} seconds");
 			ImGui.Text($"Total FPS:         {1.0f / (UpdateTimeTotal + DrawTimeTotal):F6}");
-			ImGui.Text($"Actual Time:       {1.0f / ImGui.GetIO().Framerate:F6} seconds");
-			ImGui.Text($"Actual FPS:        {ImGui.GetIO().Framerate:F6}");
-			if (ImGui.Button("Splash"))
-			{
-				LoadSplashTextures();
-				SplashTime = TotalSplashTime;
-			}
 
-			if (ImGui.Button("Reload Song"))
-			{
-				StopPreview();
-				MusicManager.LoadMusicAsync(GetFullPathToMusicFile(), true,
-					Preferences.Instance.PreferencesWaveForm.EnableWaveForm);
-			}
+			// The ImGui frame uses accurate timers but it is captured at a variable time (via BeforeLayout).
+			// It is an average of the previous 60 frames. Monogame's frame timer is captured at a better time
+			// (at the start of a tick, which is very shortly after the previous frame was presented) but it
+			// is noisy.
+			// TODO: Implement an accurate frame timer.
+			var imGuiFrameRate = ImGui.GetIO().Framerate;
+			ImGui.Text($"Actual Time (IMGUI):  {1.0f / imGuiFrameRate:F6} seconds");
+			ImGui.Text($"Actual FPS (IMGUI):   {imGuiFrameRate:F6}");
 
-			if (ImGui.Button("Save Time and Zoom"))
-			{
-				Preferences.Instance.DebugSongTime = Position.SongTime;
-				Preferences.Instance.DebugZoom = ZoomManager.GetSpacingZoom();
-			}
-
-			if (ImGui.Button("Load Time and Zoom"))
-			{
-				Position.SongTime = Preferences.Instance.DebugSongTime;
-				ZoomManager.SetZoom(Preferences.Instance.DebugZoom);
-			}
+			ImGui.Text($"Actual Time (MG):     {MonoGameFrameTime:F6} seconds");
+			ImGui.Text($"Actual FPS (MG):      {1.0f / MonoGameFrameTime:F6}");
 		}
 
 		ImGui.End();
+	}
+
+	[Conditional("DEBUG")]
+	private void DrawImGuiTestWindow()
+	{
+		if (ShowImGuiTestWindow)
+		{
+			ImGui.SetNextWindowPos(new System.Numerics.Vector2(650, 20), ImGuiCond.FirstUseEver);
+			ImGui.ShowDemoWindow(ref ShowImGuiTestWindow);
+		}
 	}
 
 	/// <summary>
@@ -7081,4 +7101,42 @@ internal sealed class Editor :
 		else if (SelectedEvents.Count > 0)
 			ClearSelectedEvents();
 	}
+
+	#region Debug
+
+#if DEBUG
+	[Conditional("DEBUG")]
+	public void DebugShowSplashSequence()
+	{
+		LoadSplashTextures();
+		SplashTime = TotalSplashTime;
+	}
+
+	[Conditional("DEBUG")]
+	public void DebugSaveTimeAndZoom()
+	{
+		Preferences.Instance.DebugSongTime = Position.SongTime;
+		Preferences.Instance.DebugZoom = ZoomManager.GetSpacingZoom();
+	}
+
+	[Conditional("DEBUG")]
+	public void DebugLoadTimeAndZoom()
+	{
+		Position.SongTime = Preferences.Instance.DebugSongTime;
+		ZoomManager.SetZoom(Preferences.Instance.DebugZoom);
+	}
+
+	[Conditional("DEBUG")]
+	public void DebugSetShouldRenderChart(bool renderChart)
+	{
+		RenderChart = renderChart;
+	}
+
+	public bool DebugGetShouldRenderChart()
+	{
+		return RenderChart;
+	}
+#endif
+
+	#endregion Debug
 }
