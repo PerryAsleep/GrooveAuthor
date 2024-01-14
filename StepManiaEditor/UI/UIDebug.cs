@@ -21,7 +21,7 @@ internal sealed class UIDebug
 		if (!p.ShowDebugWindow)
 			return;
 
-		if (ImGui.Begin("Debug", ref p.ShowDebugWindow))
+		if (ImGui.Begin(WindowTitle, ref p.ShowDebugWindow))
 		{
 			var renderChart = Editor.DebugGetShouldRenderChart();
 			ImGui.Checkbox("Render Chart", ref renderChart);
@@ -40,6 +40,21 @@ internal sealed class UIDebug
 			if (ImGui.Button("Load Time and Zoom"))
 			{
 				Editor.DebugLoadTimeAndZoom();
+			}
+
+			if (Editor.IsVSyncEnabled())
+			{
+				if (ImGui.Button("Disable VSync"))
+				{
+					Editor.SetVSyncEnabled(false);
+				}
+			}
+			else
+			{
+				if (ImGui.Button("Enable VSync"))
+				{
+					Editor.SetVSyncEnabled(true);
+				}
 			}
 		}
 

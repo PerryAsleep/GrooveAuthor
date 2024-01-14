@@ -186,6 +186,7 @@ internal sealed class Editor :
 	private UIAutogenChartsForChartType UIAutogenChartsForChartType;
 	private UICopyEventsBetweenCharts UICopyEventsBetweenCharts;
 	private UIPatternEvent UIPatternEvent;
+	private UIPerformance UIPerformance;
 #if DEBUG
 	private UIDebug UIDebug;
 #endif
@@ -283,15 +284,31 @@ internal sealed class Editor :
 	private Cursor CurrentDesiredCursor = Cursors.Default;
 	private Cursor PreviousDesiredCursor = Cursors.Default;
 
+	// Performance Monitoring
+	private const string PerfIdEditorCPU = "Editor CPU";
+	private const string PerfIdUpdate = "Update";
+	private const string PerfIdChartEvents = "Chart Events";
+	private const string PerfIdMiniMap = "Mini Map";
+	private const string PerfIdWaveform = "Waveform";
+	private const string PerfIdDraw = "Draw";
+	private const string PerfIdPresent = "Present";
+
+	private readonly string[] PerfTimings =
+	{
+		PerfIdEditorCPU,
+		PerfIdUpdate,
+		PerfIdChartEvents,
+		PerfIdMiniMap,
+		PerfIdWaveform,
+		PerfIdDraw,
+		PerfIdPresent,
+	};
+
+	private PerformanceMonitor PerformanceMonitor;
+
 	// Debug
 	private bool RenderChart = true;
-	private double UpdateTimeTotal;
-	private double UpdateTimeWaveForm;
-	private double UpdateTimeMiniMap;
-	private double UpdateTimeChartEvents;
-	private double DrawTimeTotal;
-	private double MonoGameFrameTime;
-	private bool ShowImGuiTestWindow = false;
+	private bool ShowImGuiTestWindow;
 	private readonly int MainThreadId;
 
 	// Logger
@@ -351,6 +368,7 @@ internal sealed class Editor :
 		InitializeVSync();
 		InitializeSnapLevels();
 		InitializeObservers();
+		InitializePerformanceMonitor();
 
 		// Update the window title immediately.
 		UpdateWindowTitle();
@@ -649,6 +667,12 @@ internal sealed class Editor :
 		ActionQueue.Instance.AddObserver(this);
 	}
 
+	private void InitializePerformanceMonitor()
+	{
+		PerformanceMonitor = new PerformanceMonitor(1024, PerfTimings);
+		PerformanceMonitor.SetEnabled(!Preferences.Instance.PreferencesPerformance.PerformanceMonitorPaused);
+	}
+
 	private void InitializeWindowSize()
 	{
 		var p = Preferences.Instance;
@@ -765,6 +789,7 @@ internal sealed class Editor :
 		UIAutogenChartsForChartType = new UIAutogenChartsForChartType(this);
 		UICopyEventsBetweenCharts = new UICopyEventsBetweenCharts(this);
 		UIPatternEvent = new UIPatternEvent(this);
+		UIPerformance = new UIPerformance(PerformanceMonitor);
 #if DEBUG
 		UIDebug = new UIDebug(this);
 #endif
@@ -911,6 +936,24 @@ internal sealed class Editor :
 	}
 
 	#endregion Shutdown
+
+	#region Graphics
+
+	public bool IsVSyncEnabled()
+	{
+		return Graphics.SynchronizeWithVerticalRetrace;
+	}
+
+	public void SetVSyncEnabled(bool enabled)
+	{
+		if (enabled != Graphics.SynchronizeWithVerticalRetrace)
+		{
+			Graphics.SynchronizeWithVerticalRetrace = enabled;
+			Graphics.ApplyChanges();
+		}
+	}
+
+	#endregion Graphics
 
 	#region Static Helpers
 
@@ -1133,55 +1176,58 @@ internal sealed class Editor :
 	{
 		Debug.Assert(IsOnMainThread());
 
-		// Time the Update method.
-		var stopWatch = new Stopwatch();
-		stopWatch.Start();
+		var previousPresentTime = PreviousPresentTime;
+		PerformanceMonitor.SetTime(PerfIdPresent, previousPresentTime.Ticks);
 
-		var currentTime = gameTime.TotalGameTime.TotalSeconds;
-		MonoGameFrameTime = gameTime.ElapsedGameTime.TotalSeconds;
-
-		// Perform manual garbage collection.
-		if (GarbageCollectFrame > 0)
+		PerformanceMonitor.SetEnabled(!Preferences.Instance.PreferencesPerformance.PerformanceMonitorPaused);
+		PerformanceMonitor.BeginFrame(gameTime.TotalGameTime.Ticks);
+		PerformanceMonitor.StartTiming(PerfIdEditorCPU);
+		PerformanceMonitor.Time(PerfIdUpdate, () =>
 		{
-			GarbageCollectFrame--;
-			if (GarbageCollectFrame == 0)
-				GC.Collect();
-		}
+			var currentTime = gameTime.TotalGameTime.TotalSeconds;
 
-		ActiveSong?.Update();
-		SoundManager.Update();
+			// Perform manual garbage collection.
+			if (GarbageCollectFrame > 0)
+			{
+				GarbageCollectFrame--;
+				if (GarbageCollectFrame == 0)
+					GC.Collect();
+			}
 
-		ProcessInput(gameTime, currentTime);
+			ActiveSong?.Update();
+			SoundManager.Update();
 
-		ZoomManager.Update(currentTime);
-		UpdateMusicAndPosition(currentTime);
-		UpdateTimeChartEvents = Fumen.Utils.Timed(() =>
-		{
-			UpdateChartEvents();
-			UpdateAutoPlay();
+			ProcessInput(gameTime, currentTime);
+
+			ZoomManager.Update(currentTime);
+			UpdateMusicAndPosition(currentTime);
+
+			PerformanceMonitor.Time(PerfIdChartEvents, () =>
+			{
+				UpdateChartEvents();
+				UpdateAutoPlay();
+			});
+
+			PerformanceMonitor.Time(PerfIdMiniMap, UpdateMiniMap);
+			PerformanceMonitor.Time(PerfIdWaveform, UpdateWaveFormRenderer);
+
+			UpdateReceptors();
+
+			// Update the Window title if the state of unsaved changes has changed.
+			var hasUnsavedChanges = ActionQueue.Instance.HasUnsavedChanges();
+			if (UnsavedChangesLastFrame != hasUnsavedChanges)
+			{
+				UnsavedChangesLastFrame = hasUnsavedChanges;
+				UpdateWindowTitle();
+			}
+
+			CheckForShowingSongFileChangedNotification();
+
+			// Update splash screen timer.
+			UpdateSplashTime(gameTime);
+
+			base.Update(gameTime);
 		});
-		UpdateTimeMiniMap = Fumen.Utils.Timed(UpdateMiniMap);
-		UpdateTimeWaveForm = Fumen.Utils.Timed(UpdateWaveFormRenderer);
-		UpdateReceptors();
-
-		// Update the Window title if the state of unsaved changes has changed.
-		var hasUnsavedChanges = ActionQueue.Instance.HasUnsavedChanges();
-		if (UnsavedChangesLastFrame != hasUnsavedChanges)
-		{
-			UnsavedChangesLastFrame = hasUnsavedChanges;
-			UpdateWindowTitle();
-		}
-
-		CheckForShowingSongFileChangedNotification();
-
-		// Update splash screen timer.
-		UpdateSplashTime(gameTime);
-
-		base.Update(gameTime);
-
-		// Record total update time.
-		stopWatch.Stop();
-		UpdateTimeTotal = stopWatch.Elapsed.TotalSeconds;
 	}
 
 	private void UpdateSplashTime(GameTime gameTime)
@@ -1537,6 +1583,26 @@ internal sealed class Editor :
 		}
 	}
 
+	private void OnEscape()
+	{
+		if (CancelLaneInput())
+			return;
+		if (MovingFocalPoint)
+		{
+			MovingFocalPoint = false;
+			Preferences.Instance.PreferencesReceptors.PositionX = (int)FocalPointAtMoveStart.X;
+			Preferences.Instance.PreferencesReceptors.PositionY = (int)FocalPointAtMoveStart.Y;
+			return;
+		}
+
+		if (IsPlayingPreview())
+			StopPreview();
+		else if (Playing)
+			StopPlayback();
+		else if (SelectedEvents.Count > 0)
+			ClearSelectedEvents();
+	}
+
 	#endregion Input Processing
 
 	#region Playing Music
@@ -1689,50 +1755,47 @@ internal sealed class Editor :
 	protected override void Draw(GameTime gameTime)
 	{
 		Debug.Assert(IsOnMainThread());
-
-		var stopWatch = new Stopwatch();
-		stopWatch.Start();
-
-		// Draw anything which rendering to custom render targets first.
-		PreDrawToRenderTargets();
-
-		DrawBackground();
-		if (Preferences.Instance.PreferencesDark.DarkBgDrawOrder == PreferencesDark.DrawOrder.AfterBackground)
-			DrawDarkBackground();
-
-		DrawWaveForm();
-		if (Preferences.Instance.PreferencesDark.DarkBgDrawOrder == PreferencesDark.DrawOrder.AfterWaveForm)
-			DrawDarkBackground();
-
-		ImGui.PushFont(ImGuiFont);
-
-		SpriteBatch.Begin(SpriteSortMode.Deferred, BlendState.NonPremultiplied);
-
-		DrawMiniMap();
-		if (RenderChart)
+		PerformanceMonitor.Time(PerfIdDraw, () =>
 		{
-			DrawMeasureMarkers();
-			DrawRegions();
-			DrawReceptors();
-			DrawSnapIndicators();
-			DrawChartEvents();
-			DrawReceptorForegroundEffects();
-			DrawSelectedRegion();
-		}
+			// Draw anything which rendering to custom render targets first.
+			PreDrawToRenderTargets();
 
-		SpriteBatch.End();
+			DrawBackground();
+			if (Preferences.Instance.PreferencesDark.DarkBgDrawOrder == PreferencesDark.DrawOrder.AfterBackground)
+				DrawDarkBackground();
 
-		DrawGui();
+			DrawWaveForm();
+			if (Preferences.Instance.PreferencesDark.DarkBgDrawOrder == PreferencesDark.DrawOrder.AfterWaveForm)
+				DrawDarkBackground();
 
-		ImGui.PopFont();
-		ImGuiRenderer.AfterLayout();
+			ImGui.PushFont(ImGuiFont);
 
-		DrawSplash();
+			SpriteBatch.Begin(SpriteSortMode.Deferred, BlendState.NonPremultiplied);
 
-		base.Draw(gameTime);
+			DrawMiniMap();
+			if (RenderChart)
+			{
+				DrawMeasureMarkers();
+				DrawRegions();
+				DrawReceptors();
+				DrawSnapIndicators();
+				DrawChartEvents();
+				DrawReceptorForegroundEffects();
+				DrawSelectedRegion();
+			}
 
-		stopWatch.Stop();
-		DrawTimeTotal = stopWatch.Elapsed.TotalSeconds;
+			SpriteBatch.End();
+
+			DrawGui();
+
+			ImGui.PopFont();
+			ImGuiRenderer.AfterLayout();
+
+			DrawSplash();
+
+			base.Draw(gameTime);
+		});
+		PerformanceMonitor.EndTiming(PerfIdEditorCPU);
 	}
 
 	/// <summary>
@@ -3292,7 +3355,7 @@ internal sealed class Editor :
 #if DEBUG
 		UIDebug.Draw();
 #endif
-		DrawPerformanceMetrics();
+		UIPerformance.Draw();
 		DrawImGuiTestWindow();
 
 		UIAbout.Draw();
@@ -3507,7 +3570,7 @@ internal sealed class Editor :
 				ImGui.Separator();
 				if (ImGui.MenuItem("Performance Metrics"))
 				{
-					p.ShowPerformanceWindow = true;
+					p.PreferencesPerformance.ShowPerformanceWindow = true;
 					ImGui.SetWindowFocus("Performance");
 				}
 #if DEBUG
@@ -4424,40 +4487,6 @@ internal sealed class Editor :
 
 			ImGui.EndPopup();
 		}
-	}
-
-	private void DrawPerformanceMetrics()
-	{
-		// TODO: Improve this UI. Put it in its own class.
-
-		var p = Preferences.Instance;
-		if (!p.ShowPerformanceWindow)
-			return;
-
-		if (ImGui.Begin("Performance", ref p.ShowPerformanceWindow))
-		{
-			ImGui.Text($"Update Time:       {UpdateTimeTotal:F6} seconds");
-			ImGui.Text($"  Waveform:        {UpdateTimeWaveForm:F6} seconds");
-			ImGui.Text($"  Mini Map:        {UpdateTimeMiniMap:F6} seconds");
-			ImGui.Text($"  Chart Events:    {UpdateTimeChartEvents:F6} seconds");
-			ImGui.Text($"Draw Time:         {DrawTimeTotal:F6} seconds");
-			ImGui.Text($"Total Time:        {UpdateTimeTotal + DrawTimeTotal:F6} seconds");
-			ImGui.Text($"Total FPS:         {1.0f / (UpdateTimeTotal + DrawTimeTotal):F6}");
-
-			// The ImGui frame uses accurate timers but it is captured at a variable time (via BeforeLayout).
-			// It is an average of the previous 60 frames. Monogame's frame timer is captured at a better time
-			// (at the start of a tick, which is very shortly after the previous frame was presented) but it
-			// is noisy.
-			// TODO: Implement an accurate frame timer.
-			var imGuiFrameRate = ImGui.GetIO().Framerate;
-			ImGui.Text($"Actual Time (IMGUI):  {1.0f / imGuiFrameRate:F6} seconds");
-			ImGui.Text($"Actual FPS (IMGUI):   {imGuiFrameRate:F6}");
-
-			ImGui.Text($"Actual Time (MG):     {MonoGameFrameTime:F6} seconds");
-			ImGui.Text($"Actual FPS (MG):      {1.0f / MonoGameFrameTime:F6}");
-		}
-
-		ImGui.End();
 	}
 
 	[Conditional("DEBUG")]
@@ -7082,26 +7111,6 @@ internal sealed class Editor :
 
 	#endregion IObserver
 
-	private void OnEscape()
-	{
-		if (CancelLaneInput())
-			return;
-		if (MovingFocalPoint)
-		{
-			MovingFocalPoint = false;
-			Preferences.Instance.PreferencesReceptors.PositionX = (int)FocalPointAtMoveStart.X;
-			Preferences.Instance.PreferencesReceptors.PositionY = (int)FocalPointAtMoveStart.Y;
-			return;
-		}
-
-		if (IsPlayingPreview())
-			StopPreview();
-		else if (Playing)
-			StopPlayback();
-		else if (SelectedEvents.Count > 0)
-			ClearSelectedEvents();
-	}
-
 	#region Debug
 
 #if DEBUG
@@ -7136,6 +7145,7 @@ internal sealed class Editor :
 	{
 		return RenderChart;
 	}
+
 #endif
 
 	#endregion Debug
