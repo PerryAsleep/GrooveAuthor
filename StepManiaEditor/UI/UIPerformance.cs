@@ -13,7 +13,7 @@ internal sealed class UIPerformance
 {
 	public const string WindowTitle = "Performance";
 
-	private static readonly int TitleColumnWidth = UiScaled(120);
+	private static readonly int TitleColumnWidth = UiScaled(150);
 	private static readonly float PlotHeight = UiScaled(80);
 
 	private readonly PerformanceMonitor PerformanceMonitor;
@@ -70,7 +70,6 @@ internal sealed class UIPerformance
 			// At startup we may have no frames to display. In that case don't draw anything.
 			if (numFrames > 0)
 			{
-				var timingTypes = PerformanceMonitor.GetTimingTypes();
 				var frameIndex = 0;
 				var greatestTime = 0.0f;
 
@@ -170,16 +169,20 @@ internal sealed class UIPerformance
 						if (maxTimeDisplay.FloatEquals(float.MaxValue))
 							maxTimeDisplay = MaxTimePerTiming[i];
 
+						ImGui.PushStyleColor(ImGuiCol.FrameBg, PerformanceTimings.PerfPlotColors[i]);
+
 						ImGuiLayoutUtils.DrawRowPlot(
-							timingTypes[i],
+							PerformanceTimings.PerfUserFacingNames[i],
 							ref TimingValues[i],
 							numFrames,
 							$"{TimingAverages[i] * 1000:F6} ms avg ({TimingLastFrameValues[i] * 1000:F6} ms current)",
 							maxTime,
 							PlotHeight,
 							numTimingsPerFrame * 4,
-							$"{PerformanceTimings.PerfDescriptions[i]}\nOut of {maxTimeDisplay * 1000:F6} ms."
+							$"{PerformanceTimings.PerfUserFacingDescriptions[i]}\nOut of {maxTimeDisplay * 1000:F6} ms."
 						);
+
+						ImGui.PopStyleColor();
 					}
 
 					ImGuiLayoutUtils.EndTable();
