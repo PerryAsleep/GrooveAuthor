@@ -31,19 +31,22 @@ internal sealed class PreferencesPerformance
 	}
 
 	// Default values.
+	public const int DefaultMaxFramesToDraw = 512;
 	public const FrameMaxTimeMode DefaultFrameMaxTimeMode = FrameMaxTimeMode.Shared;
 	public const double DefaultExplicitFrameMaxTime = 1.0 / 60;
 	public const bool DefaultPerformanceMonitorPaused = false;
 
 	// Preferences.
 	[JsonInclude] public bool ShowPerformanceWindow;
-	[JsonInclude] public FrameMaxTimeMode FrameMaxTime;
+	[JsonInclude] public int MaxFramesToDraw = DefaultMaxFramesToDraw;
+	[JsonInclude] public FrameMaxTimeMode FrameMaxTime = DefaultFrameMaxTimeMode;
 	[JsonInclude] public double ExplicitFrameMaxTime = DefaultExplicitFrameMaxTime;
 	[JsonInclude] public bool PerformanceMonitorPaused = DefaultPerformanceMonitorPaused;
 
 	public bool IsUsingDefaults()
 	{
-		return FrameMaxTime == DefaultFrameMaxTimeMode
+		return MaxFramesToDraw == DefaultMaxFramesToDraw
+		       && FrameMaxTime == DefaultFrameMaxTimeMode
 		       && ExplicitFrameMaxTime.DoubleEquals(DefaultExplicitFrameMaxTime)
 		       && PerformanceMonitorPaused == DefaultPerformanceMonitorPaused;
 	}
@@ -62,6 +65,7 @@ internal sealed class PreferencesPerformance
 /// </summary>
 internal sealed class ActionRestorePerformancePreferenceDefaults : EditorAction
 {
+	private readonly int PreviousMaxFramesToDraw;
 	private readonly FrameMaxTimeMode PreviousFrameMaxTime;
 	private readonly double PreviousExplicitFrameMaxTime;
 	private readonly bool PreviousPerformanceMonitorPaused;
@@ -69,6 +73,7 @@ internal sealed class ActionRestorePerformancePreferenceDefaults : EditorAction
 	public ActionRestorePerformancePreferenceDefaults() : base(false, false)
 	{
 		var p = Preferences.Instance.PreferencesPerformance;
+		PreviousMaxFramesToDraw = p.MaxFramesToDraw;
 		PreviousFrameMaxTime = p.FrameMaxTime;
 		PreviousExplicitFrameMaxTime = p.ExplicitFrameMaxTime;
 		PreviousPerformanceMonitorPaused = p.PerformanceMonitorPaused;
@@ -87,6 +92,7 @@ internal sealed class ActionRestorePerformancePreferenceDefaults : EditorAction
 	protected override void DoImplementation()
 	{
 		var p = Preferences.Instance.PreferencesPerformance;
+		p.MaxFramesToDraw = DefaultMaxFramesToDraw;
 		p.FrameMaxTime = DefaultFrameMaxTimeMode;
 		p.ExplicitFrameMaxTime = DefaultExplicitFrameMaxTime;
 		p.PerformanceMonitorPaused = DefaultPerformanceMonitorPaused;
@@ -95,6 +101,7 @@ internal sealed class ActionRestorePerformancePreferenceDefaults : EditorAction
 	protected override void UndoImplementation()
 	{
 		var p = Preferences.Instance.PreferencesPerformance;
+		p.MaxFramesToDraw = PreviousMaxFramesToDraw;
 		p.FrameMaxTime = PreviousFrameMaxTime;
 		p.ExplicitFrameMaxTime = PreviousExplicitFrameMaxTime;
 		p.PerformanceMonitorPaused = PreviousPerformanceMonitorPaused;

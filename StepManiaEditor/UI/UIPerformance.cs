@@ -65,6 +65,9 @@ internal sealed class UIPerformance
 				}
 
 				numFrames++;
+
+				if (numFrames >= p.MaxFramesToDraw)
+					break;
 			}
 
 			// At startup we may have no frames to display. In that case don't draw anything.
@@ -136,10 +139,15 @@ internal sealed class UIPerformance
 					var disabledTime = p.FrameMaxTime != PreferencesPerformance.FrameMaxTimeMode.Explicit;
 					if (disabledTime)
 						PushDisabled();
-					ImGuiLayoutUtils.DrawRowDragDouble(true, "Plot Max Time", p, nameof(p.ExplicitFrameMaxTime), false,
+					ImGuiLayoutUtils.DrawRowDragDouble(true, "Plot Max Time", p,
+						nameof(PreferencesPerformance.ExplicitFrameMaxTime), false,
 						"Explicit max time to use for all plots.", 0.0001F, "%.6f seconds", 0.0, 1.0);
 					if (disabledTime)
 						PopDisabled();
+
+					ImGuiLayoutUtils.DrawRowDragInt(true, "Plot Num Frames", p, nameof(PreferencesPerformance.MaxFramesToDraw),
+						false,
+						"Number of frames to draw in the plots.", 1F, "%i frames", 2, PerformanceMonitor.GetMaxNumFrames());
 
 					ImGuiLayoutUtils.EndTable();
 				}
