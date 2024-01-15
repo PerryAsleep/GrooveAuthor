@@ -110,6 +110,7 @@ internal sealed class PreferencesAudio : Notifier<PreferencesAudio>
 		}
 	}
 
+	[JsonInclude] public bool ShowAudioPreferencesWindow;
 	[JsonInclude] public int DspBufferSize = DefaultDspBufferSize;
 	[JsonInclude] public int DspNumBuffers = DefaultDspNumBuffers;
 	[JsonInclude] public double PreviewFadeInTime = DefaultPreviewFadeInTime;

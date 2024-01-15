@@ -177,6 +177,7 @@ internal sealed class Editor :
 	private UIMiniMapPreferences UIMiniMapPreferences;
 	private UIReceptorPreferences UIReceptorPreferences;
 	private UIOptions UIOptions;
+	private UIAudioPreferences UIAudioPreferences;
 	private UIChartPosition UIChartPosition;
 	private UIExpressedChartConfig UIExpressedChartConfig;
 	private UIPerformedChartConfig UIPerformedChartConfig;
@@ -760,7 +761,8 @@ internal sealed class Editor :
 		UISelectionPreferences = new UISelectionPreferences();
 		UIMiniMapPreferences = new UIMiniMapPreferences();
 		UIReceptorPreferences = new UIReceptorPreferences(this);
-		UIOptions = new UIOptions(SoundManager);
+		UIOptions = new UIOptions();
+		UIAudioPreferences = new UIAudioPreferences(SoundManager);
 		UIChartPosition = new UIChartPosition(this);
 		UIExpressedChartConfig = new UIExpressedChartConfig(this);
 		UIPerformedChartConfig = new UIPerformedChartConfig(this);
@@ -3348,6 +3350,7 @@ internal sealed class Editor :
 		UIMiniMapPreferences.Draw();
 		UIReceptorPreferences.Draw();
 		UIOptions.Draw();
+		UIAudioPreferences.Draw();
 
 		UISongProperties.Draw(ActiveSong);
 		UIChartProperties.Draw(ActiveChart);
@@ -3664,6 +3667,17 @@ internal sealed class Editor :
 
 				if (disabled)
 					PopDisabled();
+
+				ImGui.EndMenu();
+			}
+
+			if (ImGui.BeginMenu("Audio"))
+			{
+				if (ImGui.MenuItem("Audio Preferences"))
+				{
+					p.PreferencesAudio.ShowAudioPreferencesWindow = true;
+					ImGui.SetWindowFocus(UIAudioPreferences.WindowTitle);
+				}
 
 				ImGui.EndMenu();
 			}
