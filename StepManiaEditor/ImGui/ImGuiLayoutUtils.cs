@@ -3073,6 +3073,35 @@ internal sealed class ImGuiLayoutUtils
 
 	#endregion Chart Position
 
+	#region Plot
+
+	public static void DrawRowPlot(
+		string title,
+		ref float values,
+		int numValues,
+		string overlayText,
+		float maxValue,
+		float height,
+		int stride,
+		string help = null)
+	{
+		DrawRowTitleAndAdvanceColumn(title);
+		ImGui.SetNextItemWidth(DrawHelp(help, ImGui.GetContentRegionAvail().X));
+
+		ImGui.PlotLines(
+			"",
+			ref values,
+			numValues,
+			0,
+			overlayText,
+			0.0f,
+			maxValue,
+			new Vector2(0.0f, height),
+			stride);
+	}
+
+	#endregion Plot
+
 	#region Compare Functions
 
 	private static bool IntCompare(int a, int b)

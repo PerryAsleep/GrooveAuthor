@@ -285,25 +285,6 @@ internal sealed class Editor :
 	private Cursor PreviousDesiredCursor = Cursors.Default;
 
 	// Performance Monitoring
-	private const string PerfIdEditorCPU = "Editor CPU";
-	private const string PerfIdUpdate = "Update";
-	private const string PerfIdChartEvents = "Chart Events";
-	private const string PerfIdMiniMap = "Mini Map";
-	private const string PerfIdWaveform = "Waveform";
-	private const string PerfIdDraw = "Draw";
-	private const string PerfIdPresent = "Present";
-
-	private readonly string[] PerfTimings =
-	{
-		PerfIdEditorCPU,
-		PerfIdUpdate,
-		PerfIdChartEvents,
-		PerfIdMiniMap,
-		PerfIdWaveform,
-		PerfIdDraw,
-		PerfIdPresent,
-	};
-
 	private PerformanceMonitor PerformanceMonitor;
 
 	// Debug
@@ -669,7 +650,7 @@ internal sealed class Editor :
 
 	private void InitializePerformanceMonitor()
 	{
-		PerformanceMonitor = new PerformanceMonitor(1024, PerfTimings);
+		PerformanceMonitor = new PerformanceMonitor(1024, PerformanceTimings.PerfTimings);
 		PerformanceMonitor.SetEnabled(!Preferences.Instance.PreferencesPerformance.PerformanceMonitorPaused);
 	}
 
@@ -1177,12 +1158,12 @@ internal sealed class Editor :
 		Debug.Assert(IsOnMainThread());
 
 		var previousPresentTime = PreviousPresentTime;
-		PerformanceMonitor.SetTime(PerfIdPresent, previousPresentTime.Ticks);
+		PerformanceMonitor.SetTime(PerformanceTimings.Present, previousPresentTime.Ticks);
 
 		PerformanceMonitor.SetEnabled(!Preferences.Instance.PreferencesPerformance.PerformanceMonitorPaused);
 		PerformanceMonitor.BeginFrame(gameTime.TotalGameTime.Ticks);
-		PerformanceMonitor.StartTiming(PerfIdEditorCPU);
-		PerformanceMonitor.Time(PerfIdUpdate, () =>
+		PerformanceMonitor.StartTiming(PerformanceTimings.EditorCPU);
+		PerformanceMonitor.Time(PerformanceTimings.Update, () =>
 		{
 			var currentTime = gameTime.TotalGameTime.TotalSeconds;
 
@@ -1202,14 +1183,14 @@ internal sealed class Editor :
 			ZoomManager.Update(currentTime);
 			UpdateMusicAndPosition(currentTime);
 
-			PerformanceMonitor.Time(PerfIdChartEvents, () =>
+			PerformanceMonitor.Time(PerformanceTimings.ChartEvents, () =>
 			{
 				UpdateChartEvents();
 				UpdateAutoPlay();
 			});
 
-			PerformanceMonitor.Time(PerfIdMiniMap, UpdateMiniMap);
-			PerformanceMonitor.Time(PerfIdWaveform, UpdateWaveFormRenderer);
+			PerformanceMonitor.Time(PerformanceTimings.MiniMap, UpdateMiniMap);
+			PerformanceMonitor.Time(PerformanceTimings.Waveform, UpdateWaveFormRenderer);
 
 			UpdateReceptors();
 
@@ -1755,7 +1736,7 @@ internal sealed class Editor :
 	protected override void Draw(GameTime gameTime)
 	{
 		Debug.Assert(IsOnMainThread());
-		PerformanceMonitor.Time(PerfIdDraw, () =>
+		PerformanceMonitor.Time(PerformanceTimings.Draw, () =>
 		{
 			// Draw anything which rendering to custom render targets first.
 			PreDrawToRenderTargets();
@@ -1795,7 +1776,7 @@ internal sealed class Editor :
 
 			base.Draw(gameTime);
 		});
-		PerformanceMonitor.EndTiming(PerfIdEditorCPU);
+		PerformanceMonitor.EndTiming(PerformanceTimings.EditorCPU);
 	}
 
 	/// <summary>

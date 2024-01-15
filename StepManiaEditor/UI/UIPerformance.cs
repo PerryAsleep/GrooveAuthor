@@ -14,7 +14,7 @@ internal sealed class UIPerformance
 	public const string WindowTitle = "Performance";
 
 	private static readonly int TitleColumnWidth = UiScaled(120);
-	private static readonly Vector2 PlotSize = new(0.0f, UiScaled(80));
+	private static readonly float PlotHeight = UiScaled(80);
 
 	private readonly PerformanceMonitor PerformanceMonitor;
 
@@ -162,21 +162,27 @@ internal sealed class UIPerformance
 
 				// Draw a plot per timing type.
 				ImGui.Separator();
-				for (var i = 0; i < numTimingsPerFrame; i++)
+				if (ImGuiLayoutUtils.BeginTable("Performance Overview", TitleColumnWidth))
 				{
-					var maxTimeDisplay = maxTime;
-					if (maxTimeDisplay.FloatEquals(float.MaxValue))
-						maxTimeDisplay = MaxTimePerTiming[i];
-					ImGui.PlotLines(
-						$"{timingTypes[i]} (out of {maxTimeDisplay * 1000:F6} ms)",
-						ref TimingValues[i],
-						numFrames,
-						0,
-						$"{TimingAverages[i] * 1000:F6} ms avg ({TimingLastFrameValues[i] * 1000:F6} ms current)",
-						0.0f,
-						maxTime,
-						PlotSize,
-						numTimingsPerFrame * 4);
+					for (var i = 0; i < numTimingsPerFrame; i++)
+					{
+						var maxTimeDisplay = maxTime;
+						if (maxTimeDisplay.FloatEquals(float.MaxValue))
+							maxTimeDisplay = MaxTimePerTiming[i];
+
+						ImGuiLayoutUtils.DrawRowPlot(
+							timingTypes[i],
+							ref TimingValues[i],
+							numFrames,
+							$"{TimingAverages[i] * 1000:F6} ms avg ({TimingLastFrameValues[i] * 1000:F6} ms current)",
+							maxTime,
+							PlotHeight,
+							numTimingsPerFrame * 4,
+							$"{PerformanceTimings.PerfDescriptions[i]}\nOut of {maxTimeDisplay * 1000:F6} ms."
+						);
+					}
+
+					ImGuiLayoutUtils.EndTable();
 				}
 			}
 		}
