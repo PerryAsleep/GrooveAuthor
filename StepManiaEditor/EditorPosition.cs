@@ -1,5 +1,5 @@
-﻿using Fumen;
-using System;
+﻿using System;
+using Fumen;
 
 namespace StepManiaEditor;
 
@@ -12,7 +12,20 @@ namespace StepManiaEditor;
 /// </summary>
 internal sealed class EditorPosition
 {
-	public EditorChart ActiveChart;
+	private EditorChart ActiveChartInternal;
+
+	public EditorChart ActiveChart
+	{
+		get => ActiveChartInternal;
+		set
+		{
+			ActiveChartInternal = value;
+			// Different charts may have different timing events.
+			// When changing charts, reset the Song time to ensure other values are correct.
+			SongTime = SongTimeInternal;
+		}
+	}
+
 	private readonly Action OnPositionChanged;
 
 	private double SongTimeInternal;
