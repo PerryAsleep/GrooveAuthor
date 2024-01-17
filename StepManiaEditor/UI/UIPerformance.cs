@@ -71,7 +71,19 @@ internal sealed class UIPerformance
 			}
 
 			// At startup we may have no frames to display. In that case don't draw anything.
-			if (numFrames > 0)
+			if (numFrames == 0)
+			{
+				// We could have no frames because the performance monitor is disabled.
+				// In that case add a button to re-enable it.
+				if (p.PerformanceMonitorPaused)
+				{
+					if (ImGui.Button("Enable Performance Metrics"))
+					{
+						p.PerformanceMonitorPaused = false;
+					}
+				}
+			}
+			else
 			{
 				var frameIndex = 0;
 				var greatestTime = 0.0f;
