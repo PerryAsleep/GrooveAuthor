@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using FMOD;
 using Fumen;
+using Fumen.Converters;
 
 namespace StepManiaEditor;
 
@@ -67,6 +69,13 @@ internal sealed class MusicManager
 	private const string DspName = "MusicDsp";
 
 	/// <summary>
+	/// When getting the next tick times we need to look ahead to ensure we capture enough
+	/// time so that the next tick is covered, and the next DSP callback is covered. One
+	/// second is very safely over both.
+	/// </summary>
+	private const float TickLookAheadTime = 1.0f;
+
+	/// <summary>
 	/// SoundManager for low level sound management.
 	/// </summary>
 	private readonly SoundManager SoundManager;
@@ -75,6 +84,11 @@ internal sealed class MusicManager
 	/// SoundPlaybackState for the assist tick sound.
 	/// </summary>
 	private readonly SoundPlaybackState AssistTickData;
+
+	/// <summary>
+	/// SoundPlaybackState for the beat tick sound.
+	/// </summary>
+	private readonly SoundPlaybackState BeatTickData;
 
 	/// <summary>
 	/// SoundPlaybackState for the current music.
@@ -103,6 +117,11 @@ internal sealed class MusicManager
 	/// List of sample indexes of upcoming assist ticks to play.
 	/// </summary>
 	private List<int> NextAssistTickStartMusicSamples;
+
+	/// <summary>
+	/// List of sample indexes of upcoming beat ticks to play.
+	/// </summary>
+	private List<int> NextBeatTickStartMusicSamples;
 
 	/// <summary>
 	/// Lock for thread safe mutations of members needed in the DSP callback.
@@ -156,14 +175,39 @@ internal sealed class MusicManager
 	private float AssistTickVolume = 1.0f;
 
 	/// <summary>
+	/// The beat tick volume.
+	/// </summary>
+	private float BeatTickVolume = 1.0f;
+
+	/// <summary>
 	/// The assist tick attack time in seconds.
 	/// </summary>
 	private float AssistTickAttackTime;
 
 	/// <summary>
+	/// Whether or not to skip playing individual assist tick sounds if they occur at the same time as a beat tick.
+	/// </summary>
+	private bool SkipAssistTicksOnBeatTicks;
+
+	/// <summary>
+	/// The beat tick attack time in seconds.
+	/// </summary>
+	private float BeatTickAttackTime;
+
+	/// <summary>
 	/// Whether or not to play assist tick sounds.
 	/// </summary>
 	private bool UseAssistTick;
+
+	/// <summary>
+	/// Whether or not to play beat tick sounds.
+	/// </summary>
+	private bool UseBeatTick;
+
+	/// <summary>
+	/// Whether or not to skip playing individual beat tick sounds if they occur at the same time as an assist tick.
+	/// </summary>
+	private bool SkipBeatTicksOnAssistTicks;
 
 	/// <summary>
 	/// Internal offset for the music.
@@ -188,13 +232,15 @@ internal sealed class MusicManager
 		SoundManager.CreateChannelGroup("DspChannelGroup", out var dspChannelGroup);
 
 		AssistTickData = new SoundPlaybackState(new EditorSound(SoundManager, null, SampleRate, false));
+		BeatTickData = new SoundPlaybackState(new EditorSound(SoundManager, null, SampleRate, false));
 		MusicData = new SoundPlaybackState(new EditorSound(SoundManager, new SoundMipMap(), SampleRate, true));
 		PreviewData = new SoundPlaybackState(new EditorSound(SoundManager, null, SampleRate, true));
 
 		SetPreviewParameters(0.0, 0.0, 0.0, 1.5);
 
-		// Load the assist tick sound.
+		// Load the tick sounds.
 		AssistTickData.GetSound().LoadAsync("assist-tick.wav", false);
+		BeatTickData.GetSound().LoadAsync("beat-tick.wav", false);
 
 		// Create the DSP.
 		SoundManager.CreateDsp(DspName, dspChannelGroup, DspRead, this);
@@ -424,6 +470,59 @@ internal sealed class MusicManager
 		UseAssistTick = useAssistTick;
 	}
 
+	/// <summary>
+	/// Sets whether or not to skip playing individual assist tick sounds if they occur
+	/// at the same time as a beat tick.
+	/// </summary>
+	/// <param name="skipAssistTicksOnBeatTicks">
+	/// Whether or not to skip playing individual assist tick sounds if they occur at
+	/// the same time as a beat tick.
+	/// </param>
+	public void SetSkipAssistTicksOnBeatTicks(bool skipAssistTicksOnBeatTicks)
+	{
+		SkipAssistTicksOnBeatTicks = skipAssistTicksOnBeatTicks;
+	}
+
+	/// <summary>
+	/// Sets the beat tick volume.
+	/// </summary>
+	/// <param name="volume">Desired volume. Will be clamped to be between 0.0f and 1.0f.</param>
+	public void SetBeatTickVolume(float volume)
+	{
+		BeatTickVolume = Math.Clamp(volume, 0.0f, 1.0f);
+	}
+
+	/// <summary>
+	/// Sets the attack time of the beat tick sound.
+	/// </summary>
+	/// <param name="attackTime">Assist tick attack time. Will be clamped to be at least 0.0f.</param>
+	public void SetBeatTickAttackTime(float attackTime)
+	{
+		BeatTickAttackTime = Math.Max(0.0f, attackTime);
+	}
+
+	/// <summary>
+	/// Sets whether or not to play beat tick sounds.
+	/// </summary>
+	/// <param name="useBeatTick">Whether or not to play beat tick sounds.</param>
+	public void SetUseBeatTick(bool useBeatTick)
+	{
+		UseBeatTick = useBeatTick;
+	}
+
+	/// <summary>
+	/// Sets whether or not to skip playing individual beat tick sounds if they occur
+	/// at the same time as an assist ticks.
+	/// </summary>
+	/// <param name="skipBeatTicksOnAssistTicks">
+	/// Whether or not to skip playing individual beat tick sounds if they occur at
+	/// the same time as an assist tick.
+	/// </param>
+	public void SetSkipBeatTicksOnAssistTicks(bool skipBeatTicksOnAssistTicks)
+	{
+		SkipBeatTicksOnAssistTicks = skipBeatTicksOnAssistTicks;
+	}
+
 	#endregion Configuration
 
 	#region Playback Controls
@@ -539,8 +638,28 @@ internal sealed class MusicManager
 	/// </summary>
 	public void Update(EditorChart chart)
 	{
-		// Set next assist tick times.
-		UpdateNextAssistTickTimes(chart);
+		// Record beat ticks first. Record assist ticks second, skipping any that occur on beat ticks.
+		if (SkipAssistTicksOnBeatTicks)
+		{
+			var beatTickRows = new List<int>();
+			UpdateNextBeatTickTimes(chart, beatTickRows, null);
+			UpdateNextAssistTickTimes(chart, null, beatTickRows);
+		}
+
+		// Record assist ticks first. Record beats ticks second, skipping any that occur on assist ticks.
+		else if (SkipBeatTicksOnAssistTicks)
+		{
+			var assistTickRows = new List<int>();
+			UpdateNextAssistTickTimes(chart, assistTickRows, null);
+			UpdateNextBeatTickTimes(chart, null, assistTickRows);
+		}
+
+		// Record both assist ticks and beat ticks, even if they overlap.
+		else
+		{
+			UpdateNextAssistTickTimes(chart, null, null);
+			UpdateNextBeatTickTimes(chart, null, null);
+		}
 	}
 
 	/// <summary>
@@ -551,7 +670,9 @@ internal sealed class MusicManager
 	/// needed.
 	/// </summary>
 	/// <param name="chart">The current EditorChart to add assist tick sounds for.</param>
-	private void UpdateNextAssistTickTimes(EditorChart chart)
+	/// <param name="rowsToRecord">List to populate with rows that have ticks. Will be ignore if list is null.</param>
+	/// <param name="rowsToSkip">List of rows to skip recording ticks for. Will be ignore if list is null.</param>
+	private void UpdateNextAssistTickTimes(EditorChart chart, List<int> rowsToRecord, List<int> rowsToSkip)
 	{
 		// Early out.
 		if (!UseAssistTick)
@@ -560,18 +681,13 @@ internal sealed class MusicManager
 			return;
 		}
 
-		// When getting the next assist tick times we need to look ahead to ensure we capture enough
-		// time so that the next tick is covered, and the next DSP callback is covered. One second
-		// is very safely over both.
-		const float lookAheadTime = 1.0f;
-
-		// When getting the next assist tick times we need to account for potentially starting playback mid-tick.
-		var precedingTimeCompensation = AssistTickData.GetSound().GetLengthInSeconds();
-
 		var nextAssistTickStartMusicSamples = new List<int>();
 		if (chart != null)
 		{
 			var chartEvents = chart.GetEvents();
+
+			// When getting the next assist tick times we need to account for potentially starting playback mid-tick.
+			var precedingTimeCompensation = AssistTickData.GetSound().GetLengthInSeconds();
 
 			// We want to get the time that the music is playing, which is offset from the song time.
 			// To accomplish this, we pass in a 0.0 offset parameter when getting the time.
@@ -580,12 +696,12 @@ internal sealed class MusicManager
 			var enumerator = chartEvents.FindFirstAfterChartTime(currentChartTime);
 			if (enumerator != null)
 			{
-				var previousEventSoundTime = 0.0;
+				var previousEventRecordedTime = 0.0;
 				while (enumerator.MoveNext())
 				{
 					var editorEvent = enumerator.Current;
 					var chartTime = editorEvent!.GetChartTime();
-					if (chartTime > currentChartTime + lookAheadTime)
+					if (chartTime > currentChartTime + TickLookAheadTime)
 						break;
 
 					// Only tick for taps and holds.
@@ -595,12 +711,31 @@ internal sealed class MusicManager
 
 						// It is very common for more than one event to occur at the same time. We only want
 						// to record one time in this case.
-						if (nextAssistTickStartMusicSamples.Count > 0 && songTime <= previousEventSoundTime)
+						if (nextAssistTickStartMusicSamples.Count > 0 && songTime <= previousEventRecordedTime)
 							continue;
-						previousEventSoundTime = songTime;
+
+						// Check for skipping this row.
+						var play = true;
+						if (rowsToSkip != null)
+						{
+							var row = editorEvent.GetRow();
+							for (var i = 0; i < rowsToSkip.Count; i++)
+							{
+								if (row == rowsToSkip[i])
+								{
+									play = false;
+									break;
+								}
+							}
+						}
 
 						// Record the assist tick time, taking into account the attack time.
-						nextAssistTickStartMusicSamples.Add(GetSampleIndexFromTime(songTime - AssistTickAttackTime, 0.0));
+						if (play)
+						{
+							previousEventRecordedTime = songTime;
+							nextAssistTickStartMusicSamples.Add(GetSampleIndexFromTime(songTime - AssistTickAttackTime, 0.0));
+							rowsToRecord?.Add(editorEvent.GetRow());
+						}
 					}
 				}
 			}
@@ -611,6 +746,79 @@ internal sealed class MusicManager
 		{
 			NextAssistTickStartMusicSamples =
 				nextAssistTickStartMusicSamples.Count > 0 ? nextAssistTickStartMusicSamples : null;
+		}
+	}
+
+	/// <summary>
+	/// Updates the internal list of next beat tick times to consider when
+	/// processing in the DSP. This list is meant to be small, while comfortably
+	/// covering all ticks in the next DSP calls for a frame. This timing is loose
+	/// so the list will be an overestimate, potentially including more ticks than
+	/// needed.
+	/// </summary>
+	/// <param name="chart">The current EditorChart to add beat tick sounds for.</param>
+	/// <param name="rowsToRecord">List to populate with rows that have ticks. Will be ignore if list is null.</param>
+	/// <param name="rowsToSkip">List of rows to skip recording ticks for. Will be ignore if list is null.</param>
+	private void UpdateNextBeatTickTimes(EditorChart chart, List<int> rowsToRecord, List<int> rowsToSkip)
+	{
+		// Early out.
+		if (!UseBeatTick)
+		{
+			NextBeatTickStartMusicSamples = null;
+			return;
+		}
+
+		var nextBeatTickStartMusicSamples = new List<int>();
+		if (chart != null)
+		{
+			// When getting the next beat tick times we need to account for potentially starting playback mid-tick.
+			var precedingTimeCompensation = BeatTickData.GetSound().GetLengthInSeconds();
+
+			// We want to get the time that the music is playing, which is offset from the song time.
+			// To accomplish this, we pass in a 0.0 offset parameter when getting the time.
+			var currentSongTime = GetTimeFromSampleIndex(SampleIndex, 0.0) - precedingTimeCompensation;
+			var position = new EditorPosition(null)
+			{
+				ActiveChart = chart,
+				SongTime = currentSongTime,
+			};
+			var chartPositionRow = (int)position.ChartPosition;
+			var beatRow = chartPositionRow / SMCommon.MaxValidDenominator * SMCommon.MaxValidDenominator;
+			position.ChartPosition = beatRow;
+			while (position.SongTime < currentSongTime + TickLookAheadTime)
+			{
+				// Check for skipping this row.
+				var play = true;
+				if (rowsToSkip != null)
+				{
+					var row = (int)position.ChartPosition;
+					for (var i = 0; i < rowsToSkip.Count; i++)
+					{
+						if (row == rowsToSkip[i])
+						{
+							play = false;
+							break;
+						}
+					}
+				}
+
+				// Record the beat tick time, taking into account the attack time.
+				if (play)
+				{
+					nextBeatTickStartMusicSamples.Add(GetSampleIndexFromTime(position.SongTime - BeatTickAttackTime, 0.0));
+					rowsToRecord?.Add((int)position.ChartPosition);
+				}
+
+				beatRow += SMCommon.MaxValidDenominator;
+				position.ChartPosition = beatRow;
+			}
+		}
+
+		// Store the results into the NextBeatTickStartMusicSamples member for the DSP.
+		lock (Lock)
+		{
+			NextBeatTickStartMusicSamples =
+				nextBeatTickStartMusicSamples.Count > 0 ? nextBeatTickStartMusicSamples : null;
 		}
 	}
 
@@ -807,120 +1015,13 @@ internal sealed class MusicManager
 			}
 		}
 
-		// Get assist tick start times that are relevant for this callback.
-		List<int> nextAssistTickTimes = null;
-		var nextAssistTickIndex = 0;
-		lock (Lock)
-		{
-			if (NextAssistTickStartMusicSamples != null)
-			{
-				nextAssistTickTimes = new List<int>(NextAssistTickStartMusicSamples.Count);
-				foreach (var nextAssistTickTime in NextAssistTickStartMusicSamples)
-				{
-					// Intentionally include times which precede the sample range for this callback.
-					if (nextAssistTickTime >= sampleIndexEndExclusive)
-						break;
-					nextAssistTickTimes.Add(nextAssistTickTime);
-				}
-			}
-		}
-
-		// Get the assist tick data.
-		float[] assistTickData;
-		int assistTickNumChannels;
-		var assistTickNumSamples = 0;
-		var assistTickSampleIndex = 0;
-		var assistTickPlaying = false;
-		lock (AssistTickData.GetLock())
-		{
-			(assistTickNumChannels, assistTickData) = AssistTickData.GetSound().GetSampleData();
-
-			if (assistTickData != null)
-			{
-				// Capture assist tick sound data for rendering.
-				assistTickNumSamples = assistTickData.Length / assistTickNumChannels;
-				assistTickSampleIndex = AssistTickData.GetSampleIndex();
-				assistTickPlaying = AssistTickData.IsPlaying();
-
-				// If music isn't playing, the assist tick sound shouldn't play either.
-				if (!musicPlaying)
-				{
-					AssistTickData.StopPlaying();
-				}
-
-				// If music is playing, then the assist tick sound may also play.
-				else
-				{
-					// It is possible to start playing the music mid-tick. In this case
-					// we should start playing the tick and set the sample index accordingly.
-					if (!assistTickPlaying && nextAssistTickTimes != null)
-					{
-						// Check the potential ticks, which can start before this callback's sample range.
-						for (var nextTickTimeIndex = 0; nextTickTimeIndex < nextAssistTickTimes.Count; nextTickTimeIndex++)
-						{
-							// If this tick starts within the sample range of this callback we are done checking.
-							var potentialTickStartSample = nextAssistTickTimes[nextTickTimeIndex];
-							if (potentialTickStartSample >= sampleIndexStartInclusive)
-							{
-								break;
-							}
-
-							// If the assist tick overlaps the start sample of this callback, it represents a tick
-							// which should have started in the past that we need to partially render.
-							if (potentialTickStartSample < sampleIndexStartInclusive
-							    && potentialTickStartSample + assistTickNumSamples > sampleIndexStartInclusive)
-							{
-								assistTickPlaying = true;
-								assistTickSampleIndex = sampleIndexStartInclusive - potentialTickStartSample;
-							}
-						}
-
-						// If we found a partial tick that should be playing, update the AssistTickData.
-						if (assistTickPlaying)
-						{
-							AssistTickData.StartPlaying(assistTickSampleIndex);
-						}
-					}
-
-					// We need to advance the SampleIndex on the AssistTickData for the next callback.
-					// This is done here instead of loop over all samples below to minimize the amount of work
-					// done in the lock.
-					// There may be multiple assist ticks played during this callback. We need to advance the
-					// SampleIndex to the end of the final tick that will play during this callback.
-					// The final tick will be denoted by the last index in NextAssistTickStartMusicSamples.
-					var lastNextTickStartInRange = -1;
-					if (nextAssistTickTimes != null)
-					{
-						for (var nextTickTimeIndex = nextAssistTickTimes.Count - 1; nextTickTimeIndex >= 0; nextTickTimeIndex--)
-						{
-							if (nextAssistTickTimes[nextTickTimeIndex] < sampleIndexEndExclusive)
-							{
-								lastNextTickStartInRange = nextAssistTickTimes[nextTickTimeIndex];
-								break;
-							}
-						}
-					}
-
-					if (lastNextTickStartInRange >= 0)
-					{
-						AssistTickData.StartPlaying(sampleIndexEndExclusive - lastNextTickStartInRange);
-					}
-					else
-					{
-						if (AssistTickData.IsPlaying())
-						{
-							AssistTickData.SetSampleIndex(AssistTickData.GetSampleIndex() +
-							                              (sampleIndexEndExclusive - sampleIndexStartInclusive));
-						}
-					}
-
-					if (AssistTickData.GetSampleIndex() >= assistTickNumSamples)
-					{
-						AssistTickData.StopPlaying();
-					}
-				}
-			}
-		}
+		// Get the tick data.
+		var nextAssistTickTimes = GetNextTickTimes(NextAssistTickStartMusicSamples, sampleIndexEndExclusive);
+		var (assistTickData, assistTickNumChannels, assistTickNumSamples, assistTickSampleIndex, assistTickPlaying) =
+			UpdateTicks(AssistTickData, musicPlaying, nextAssistTickTimes, sampleIndexStartInclusive, sampleIndexEndExclusive);
+		var nextBeatTickTimes = GetNextTickTimes(NextBeatTickStartMusicSamples, sampleIndexEndExclusive);
+		var (beatTickData, beatTickNumChannels, beatTickNumSamples, beatTickSampleIndex, beatTickPlaying) =
+			UpdateTicks(BeatTickData, musicPlaying, nextBeatTickTimes, sampleIndexStartInclusive, sampleIndexEndExclusive);
 
 		// Early out now that we have updated the tracking members.
 		if (!musicPlaying)
@@ -931,46 +1032,26 @@ internal sealed class MusicManager
 			return false;
 		}
 
-		// Advance the next tick times such that the next one doesn't precede the sample range.
-		if (nextAssistTickTimes != null)
-		{
-			while (nextAssistTickIndex < nextAssistTickTimes.Count && nextAssistTickTimes[nextAssistTickIndex] < musicSampleIndex)
-			{
-				nextAssistTickIndex++;
-			}
-		}
+		// Advance the next tick times such that the next ones don't precede the sample range.
+		var nextAssistTickIndex = GetFirstTickInRange(nextAssistTickTimes, musicSampleIndex);
+		var nextBeatTickIndex = GetFirstTickInRange(nextBeatTickTimes, musicSampleIndex);
 
 		// Render the music and the assist ticks together.
 		var musicValuesForSample = new float[outChannels];
 		var assistTickValuesForSample = new float[outChannels];
+		var beatTickValuesForSample = new float[outChannels];
 		for (var relativeSampleIndex = 0; relativeSampleIndex < length; relativeSampleIndex++)
 		{
-			// Check for starting a new assist tick.
-			if (nextAssistTickTimes != null && nextAssistTickIndex < nextAssistTickTimes.Count)
-			{
-				if (musicSampleIndex == nextAssistTickTimes[nextAssistTickIndex])
-				{
-					assistTickSampleIndex = 0;
-					assistTickPlaying = true;
-					nextAssistTickIndex++;
-				}
-			}
+			// Check for starting new ticks.
+			CheckForStartingTick(nextAssistTickTimes, musicSampleIndex, ref nextAssistTickIndex, ref assistTickSampleIndex,
+				ref assistTickPlaying);
+			CheckForStartingTick(nextBeatTickTimes, musicSampleIndex, ref nextBeatTickIndex, ref beatTickSampleIndex,
+				ref beatTickPlaying);
 
 			// Get the values for the music for this sample.
 			if (musicSampleIndex >= 0 && musicSampleIndex < lastMusicSampleToUseExclusive)
 			{
-				for (var channelIndex = 0; channelIndex < outChannels; channelIndex++)
-				{
-					if (channelIndex < musicNumChannels)
-					{
-						musicValuesForSample[channelIndex] =
-							musicData![musicSampleIndex * musicNumChannels + channelIndex] * MusicVolume;
-					}
-					else
-					{
-						musicValuesForSample[channelIndex] = 0.0f;
-					}
-				}
+				Mix(musicValuesForSample, musicNumChannels, musicData, musicNumChannels, musicSampleIndex, MusicVolume);
 			}
 			else
 			{
@@ -980,42 +1061,311 @@ internal sealed class MusicManager
 				}
 			}
 
-			// Get the values for the assist tick clap for this sample.
-			if (UseAssistTick && assistTickPlaying)
-			{
-				for (var channelIndex = 0; channelIndex < outChannels; channelIndex++)
-				{
-					if (channelIndex < assistTickNumChannels)
-					{
-						assistTickValuesForSample[channelIndex] =
-							assistTickData![assistTickSampleIndex * assistTickNumChannels + channelIndex] * AssistTickVolume;
-					}
-					else
-					{
-						assistTickValuesForSample[channelIndex] = 0.0f;
-					}
-				}
-
-				assistTickSampleIndex++;
-				if (assistTickSampleIndex >= assistTickNumSamples)
-				{
-					assistTickSampleIndex = 0;
-					assistTickPlaying = false;
-				}
-			}
+			// Get the values for the ticks for this sample.
+			if (UseAssistTick)
+				GetTickValuesForSample(assistTickValuesForSample, outChannels, assistTickData, assistTickNumSamples,
+					assistTickNumChannels, AssistTickVolume, ref assistTickSampleIndex, ref assistTickPlaying);
+			if (UseBeatTick)
+				GetTickValuesForSample(beatTickValuesForSample, outChannels, beatTickData, beatTickNumSamples,
+					beatTickNumChannels, BeatTickVolume, ref beatTickSampleIndex, ref beatTickPlaying);
 
 			// Render the results.
 			for (var channelIndex = 0; channelIndex < outChannels; channelIndex++)
 			{
 				// There is no need to clamp here. FMOD will clamp later internally.
 				buffer[relativeSampleIndex * outChannels + channelIndex] =
-					(musicValuesForSample[channelIndex] + assistTickValuesForSample[channelIndex]) * MainVolume;
+					(musicValuesForSample[channelIndex] + assistTickValuesForSample[channelIndex] +
+					 beatTickValuesForSample[channelIndex]) * MainVolume;
 			}
 
 			musicSampleIndex++;
 		}
 
 		return true;
+	}
+
+	/// <summary>
+	/// Given a SoundPlaybackState, update it such that it is in a correct state for being at the end of
+	/// the range of samples processed by the current DSP callback. This is done prior to rendering any
+	/// audio as updating the state requires locking and we want to lock for as short a time as possible.
+	/// While updating the SoundPlaybackState, also determine and return some variables needed for rendering.
+	/// </summary>
+	/// <remarks>Helper for RenderMusicAndTicks.</remarks>
+	/// <param name="playbackData">SoundPlaybackState to update.</param>
+	/// <param name="musicPlaying">
+	/// Whether or not music is playing. Tick sounds are stopped when music is not playing.
+	/// </param>
+	/// <param name="nextTickTimes">
+	/// List of times in sample indexes when ticks should start.
+	/// Some may precede the callback sample range in order to support starting a sound mid-playback.
+	/// Some may exceed teh callback sample range.</param>
+	/// <param name="sampleIndexStartInclusive">
+	/// The inclusive start sample index of the range relevant for the current DSP callback.
+	/// </param>
+	/// <param name="sampleIndexEndExclusive">
+	/// The exclusive end sample index of the range relevant for the current DSP callback.
+	/// </param>
+	/// <returns>
+	/// Tuple with the following values:
+	///  1: Sample data as float array from the SoundPlaybackState's sound.
+	///  2: Number of channels of the of the SoundPlaybackState's sound.
+	///  3: Number of samples in the SoundPlaybackState's sound.
+	///  4: The index relative to the SoundPlaybackState's sound's sample data that should be used
+	///     at the start of the DSP callback range for rendering.
+	///  5: Whether or not this sound should be playing at teh start of the DSP callback range for rendering.
+	/// </returns>
+	private static (float[], int, int, int, bool) UpdateTicks(
+		SoundPlaybackState playbackData,
+		bool musicPlaying,
+		List<int> nextTickTimes,
+		int sampleIndexStartInclusive,
+		int sampleIndexEndExclusive)
+	{
+		// Get the tick data.
+		float[] sampleData;
+		int numChannels;
+		var numSamples = 0;
+		var sampleIndex = 0;
+		var playing = false;
+		lock (playbackData.GetLock())
+		{
+			(numChannels, sampleData) = playbackData.GetSound().GetSampleData();
+
+			if (sampleData != null)
+			{
+				// Capture assist tick sound data for rendering.
+				numSamples = sampleData.Length / numChannels;
+				sampleIndex = playbackData.GetSampleIndex();
+				playing = playbackData.IsPlaying();
+
+				// If music isn't playing, the assist tick sound shouldn't play either.
+				if (!musicPlaying)
+				{
+					playbackData.StopPlaying();
+					playing = false;
+				}
+
+				// If music is playing, then the assist tick sound may also play.
+				else
+				{
+					// It is possible to start playing the music mid-tick. In this case
+					// we should start playing the tick and set the sample index accordingly.
+					if (!playing && nextTickTimes != null)
+					{
+						// Check the potential ticks, which can start before this callback's sample range.
+						for (var nextTickTimeIndex = 0; nextTickTimeIndex < nextTickTimes.Count; nextTickTimeIndex++)
+						{
+							// If this tick starts within the sample range of this callback we are done checking.
+							var potentialTickStartSample = nextTickTimes[nextTickTimeIndex];
+							if (potentialTickStartSample >= sampleIndexStartInclusive)
+							{
+								break;
+							}
+
+							// If the assist tick overlaps the start sample of this callback, it represents a tick
+							// which should have started in the past that we need to partially render.
+							if (potentialTickStartSample < sampleIndexStartInclusive
+							    && potentialTickStartSample + numSamples > sampleIndexStartInclusive)
+							{
+								playing = true;
+								sampleIndex = sampleIndexStartInclusive - potentialTickStartSample;
+							}
+						}
+
+						// If we found a partial tick that should be playing, update the playbackData.
+						if (playing)
+						{
+							playbackData.StartPlaying(sampleIndex);
+						}
+					}
+
+					// We need to advance the SampleIndex on the playbackData for the next callback.
+					// This is done here instead of loop over all samples below to minimize the amount of work
+					// done in the lock.
+					// There may be multiple assist ticks played during this callback. We need to advance the
+					// SampleIndex to the end of the final tick that will play during this callback.
+					// The final tick will be denoted by the last index in NextAssistTickStartMusicSamples.
+					var lastNextTickStartInRange = -1;
+					if (nextTickTimes != null)
+					{
+						for (var nextTickTimeIndex = nextTickTimes.Count - 1; nextTickTimeIndex >= 0; nextTickTimeIndex--)
+						{
+							if (nextTickTimes[nextTickTimeIndex] < sampleIndexEndExclusive)
+							{
+								lastNextTickStartInRange = nextTickTimes[nextTickTimeIndex];
+								break;
+							}
+						}
+					}
+
+					if (lastNextTickStartInRange >= 0)
+					{
+						playbackData.StartPlaying(sampleIndexEndExclusive - lastNextTickStartInRange);
+					}
+					else
+					{
+						if (playbackData.IsPlaying())
+						{
+							playbackData.SetSampleIndex(playbackData.GetSampleIndex() +
+							                            (sampleIndexEndExclusive - sampleIndexStartInclusive));
+						}
+					}
+
+					if (playbackData.GetSampleIndex() >= numSamples)
+					{
+						playbackData.StopPlaying();
+					}
+				}
+			}
+		}
+
+		return (sampleData, numChannels, numSamples, sampleIndex, playing);
+	}
+
+	/// <summary>
+	/// Given a list of potential next times which may include more than needed, return a pruned list containing
+	/// only those tick times which do not exceed the sample range for the current DSP callback.
+	/// </summary>
+	/// <remarks>Helper for RenderMusicAndTicks.</remarks>
+	/// <param name="potentialNextTickTimes">Potential next tick times to prune.</param>
+	/// <param name="sampleIndexEndExclusive">The exclusive end sample index of the current DSP callback.</param>
+	/// <returns>Pruned list of next tick times. May be null.</returns>
+	private List<int> GetNextTickTimes(List<int> potentialNextTickTimes, int sampleIndexEndExclusive)
+	{
+		List<int> nextTimes = null;
+		lock (Lock)
+		{
+			if (potentialNextTickTimes != null)
+			{
+				nextTimes = new List<int>(potentialNextTickTimes.Count);
+				foreach (var nextAssistTickTime in potentialNextTickTimes)
+				{
+					// Intentionally include times which precede the sample range for this callback.
+					if (nextAssistTickTime >= sampleIndexEndExclusive)
+						break;
+					nextTimes.Add(nextAssistTickTime);
+				}
+			}
+		}
+
+		return nextTimes;
+	}
+
+	/// <summary>
+	/// Gets the index in the given nextTickTimes list of the first time which is at or after the given musicSampleIndex.
+	/// </summary>
+	/// <remarks>Helper for RenderMusicAndTicks.</remarks>
+	/// <param name="nextTickTimes">List of next tick times as sample index relative to music.</param>
+	/// <param name="musicSampleIndex">Sample index of the music.</param>
+	/// <returns>The index in nextTickTimes of the first tick occurring at or after the musicSampleIndex.</returns>
+	private static int GetFirstTickInRange(List<int> nextTickTimes, int musicSampleIndex)
+	{
+		var nextTickIndex = 0;
+		if (nextTickTimes != null)
+		{
+			while (nextTickIndex < nextTickTimes.Count && nextTickTimes[nextTickIndex] < musicSampleIndex)
+			{
+				nextTickIndex++;
+			}
+		}
+
+		return nextTickIndex;
+	}
+
+	/// <summary>
+	/// Checks for starting the next tick from the list of next ticks based on the current music sample index.
+	/// </summary>
+	/// <remarks>Helper for RenderMusicAndTicks.</remarks>
+	/// <param name="nextTickTimes">List of next tick times as sample index relative to music.</param>
+	/// <param name="musicSampleIndex">The current music sample index.</param>
+	/// <param name="nextTickIndex">The index of the current next tick. Will be updated if advancing into a new tick.</param>
+	/// <param name="tickSampleIndex">The current tick sample index. Will be reset if advancing into a new tick.</param>
+	/// <param name="tickPlaying">The current state of whether the tick is playing or not. Will be set true if advancing into a new tick.</param>
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	private static void CheckForStartingTick(List<int> nextTickTimes, int musicSampleIndex, ref int nextTickIndex,
+		ref int tickSampleIndex, ref bool tickPlaying)
+	{
+		if (nextTickTimes != null && nextTickIndex < nextTickTimes.Count)
+		{
+			if (musicSampleIndex == nextTickTimes[nextTickIndex])
+			{
+				tickSampleIndex = 0;
+				tickPlaying = true;
+				nextTickIndex++;
+			}
+		}
+	}
+
+	/// <summary>
+	/// Records a tick sample to the output buffer and advances the tick sample index.
+	/// </summary>
+	/// <remarks>Helper for RenderMusicAndTicks.</remarks>
+	/// <param name="outputValuesForSample">Output buffer to store final per-channel samples.</param>
+	/// <param name="numOutputChannels">Number of output channels.</param>
+	/// <param name="tickSampleData">Sample data for the tick sound.</param>
+	/// <param name="tickNumSamples">Number of samples in the tick sound.</param>
+	/// <param name="numTickChannels">Number of channels in the tick sound.</param>
+	/// <param name="volume">Desired output volume of the sound.</param>
+	/// <param name="tickSampleIndex">The current tick sample index. Will be updated.</param>
+	/// <param name="tickPlaying">Whether the current tick is playing. Will be updated.</param>
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	private static void GetTickValuesForSample(
+		float[] outputValuesForSample,
+		int numOutputChannels,
+		float[] tickSampleData,
+		int tickNumSamples,
+		int numTickChannels,
+		float volume,
+		ref int tickSampleIndex,
+		ref bool tickPlaying)
+	{
+		if (!tickPlaying)
+			return;
+
+		Mix(outputValuesForSample, numOutputChannels, tickSampleData, numTickChannels, tickSampleIndex, volume);
+
+		// Advance the sample index and update the playing flag if we are no longer playing.
+		tickSampleIndex++;
+		if (tickSampleIndex >= tickNumSamples)
+		{
+			tickSampleIndex = 0;
+			tickPlaying = false;
+		}
+	}
+
+	/// <summary>
+	/// Mixes one sample of the given input data into the given output data.
+	/// </summary>
+	/// <param name="output">Output data to mix into.</param>
+	/// <param name="numOutputChannels">Number of channels in the output data.</param>
+	/// <param name="input">Input data to mix from.</param>
+	/// <param name="numInputChannels">Number of channels in the input data.</param>
+	/// <param name="sampleIndex">The sample index to mix.</param>
+	/// <param name="volume">Volume to mix at.</param>
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	private static void Mix(float[] output, int numOutputChannels, float[] input, int numInputChannels, int sampleIndex,
+		float volume)
+	{
+		for (var channelIndex = 0; channelIndex < numOutputChannels; channelIndex++)
+		{
+			// If the sound has data on this channel, use it.
+			if (channelIndex < numInputChannels)
+			{
+				output[channelIndex] =
+					input![sampleIndex * numInputChannels + channelIndex] * volume;
+			}
+			// Fix mono sounds being mixed into more channels.
+			else if (numInputChannels == 1)
+			{
+				output[channelIndex] =
+					input![sampleIndex] * volume;
+			}
+			// For more complex mixing, don't make assumptions about how it should be mixed.
+			else
+			{
+				output[channelIndex] = 0.0f;
+			}
+		}
 	}
 
 	#endregion DSP

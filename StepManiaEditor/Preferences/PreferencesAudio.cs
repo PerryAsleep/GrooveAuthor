@@ -11,14 +11,24 @@ internal sealed class PreferencesAudio : Notifier<PreferencesAudio>
 	public const string NotificationAssistTickVolumeChanged = "AssistTickVolumeChanged";
 	public const string NotificationAssistTickAttackTimeChanged = "AssistTickAttackTimeChanged";
 	public const string NotificationUseAssistTickChanged = "UseAssistTickChanged";
+	public const string NotificationSkipAssistTickOnBeatTickChanged = "SkipAssistTickOnBeatTickChanged";
+	public const string NotificationBeatTickVolumeChanged = "BeatTickVolumeChanged";
+	public const string NotificationBeatTickAttackTimeChanged = "BeatTickAttackTimeChanged";
+	public const string NotificationUseBeatTickChanged = "UseBeatTickChanged";
+	public const string NotificationSkipBeatTickOnAssistTickChanged = "SkipBeatTickOnAssistTickChanged";
 
 	// Default values.
 	public const double DefaultAudioOffset = 0.0;
 	public const float DefaultMainVolume = 1.0f;
 	public const float DefaultMusicVolume = 0.5f;
-	public const float DefaultAssistTickVolume = 1.0f;
+	public const float DefaultAssistTickVolume = 0.7f;
 	public const float DefaultAssistTickAttackTime = 0.0f;
 	public const bool DefaultUseAssistTick = false;
+	public const bool DefaultSkipAssistTickOnBeatTick = false;
+	public const float DefaultBeatTickVolume = 1.0f;
+	public const float DefaultBeatTickAttackTime = 0.001f;
+	public const bool DefaultUseBeatTick = false;
+	public const bool DefaultSkipBeatTickOnAssistTick = true;
 	public const int DefaultDspBufferSize = 512;
 	public const int DefaultDspNumBuffers = 4;
 	public const double DefaultPreviewFadeInTime = 0.0;
@@ -110,6 +120,76 @@ internal sealed class PreferencesAudio : Notifier<PreferencesAudio>
 		}
 	}
 
+	[JsonInclude]
+	public bool SkipAssistTickOnBeatTick
+	{
+		get => SkipAssistTickOnBeatTickInternal;
+		set
+		{
+			if (SkipAssistTickOnBeatTickInternal != value)
+			{
+				SkipAssistTickOnBeatTickInternal = value;
+				Notify(NotificationSkipAssistTickOnBeatTickChanged, this);
+			}
+		}
+	}
+
+	[JsonInclude]
+	public float BeatTickVolume
+	{
+		get => BeatTickVolumeInternal;
+		set
+		{
+			if (!BeatTickVolumeInternal.FloatEquals(value))
+			{
+				BeatTickVolumeInternal = value;
+				Notify(NotificationBeatTickVolumeChanged, this);
+			}
+		}
+	}
+
+	[JsonInclude]
+	public float BeatTickAttackTime
+	{
+		get => BeatTickAttackTimeInternal;
+		set
+		{
+			if (!BeatTickAttackTimeInternal.FloatEquals(value))
+			{
+				BeatTickAttackTimeInternal = value;
+				Notify(NotificationBeatTickAttackTimeChanged, this);
+			}
+		}
+	}
+
+	[JsonInclude]
+	public bool UseBeatTick
+	{
+		get => UseBeatTickInternal;
+		set
+		{
+			if (UseBeatTickInternal != value)
+			{
+				UseBeatTickInternal = value;
+				Notify(NotificationUseBeatTickChanged, this);
+			}
+		}
+	}
+
+	[JsonInclude]
+	public bool SkipBeatTickOnAssistTick
+	{
+		get => SkipBeatTickOnAssistTickInternal;
+		set
+		{
+			if (SkipBeatTickOnAssistTickInternal != value)
+			{
+				SkipBeatTickOnAssistTickInternal = value;
+				Notify(NotificationSkipBeatTickOnAssistTickChanged, this);
+			}
+		}
+	}
+
 	[JsonInclude] public bool ShowAudioPreferencesWindow;
 	[JsonInclude] public int DspBufferSize = DefaultDspBufferSize;
 	[JsonInclude] public int DspNumBuffers = DefaultDspNumBuffers;
@@ -118,10 +198,15 @@ internal sealed class PreferencesAudio : Notifier<PreferencesAudio>
 
 	private float MainVolumeInternal = DefaultMainVolume;
 	private float MusicVolumeInternal = DefaultMusicVolume;
-	private float AssistTickVolumeInternal = DefaultAssistTickVolume;
 	private double AudioOffsetInternal = DefaultAudioOffset;
+	private float AssistTickVolumeInternal = DefaultAssistTickVolume;
 	private float AssistTickAttackTimeInternal = DefaultAssistTickAttackTime;
 	private bool UseAssistTickInternal = DefaultUseAssistTick;
+	private bool SkipAssistTickOnBeatTickInternal = DefaultSkipAssistTickOnBeatTick;
+	private float BeatTickVolumeInternal = DefaultBeatTickVolume;
+	private float BeatTickAttackTimeInternal = DefaultBeatTickAttackTime;
+	private bool UseBeatTickInternal = DefaultUseBeatTick;
+	private bool SkipBeatTickOnAssistTickInternal = DefaultSkipBeatTickOnAssistTick;
 
 	public bool IsUsingDefaults()
 	{
@@ -131,9 +216,14 @@ internal sealed class PreferencesAudio : Notifier<PreferencesAudio>
 			&& MusicVolume.FloatEquals(DefaultMusicVolume)
 			&& AssistTickVolume.FloatEquals(DefaultAssistTickVolume)
 			&& AssistTickAttackTime.FloatEquals(DefaultAssistTickAttackTime)
+			&& UseAssistTick == DefaultUseAssistTick
+			&& SkipAssistTickOnBeatTick == DefaultSkipAssistTickOnBeatTick
+			&& BeatTickVolume.FloatEquals(DefaultBeatTickVolume)
+			&& BeatTickAttackTime.FloatEquals(DefaultBeatTickAttackTime)
+			&& UseBeatTick == DefaultUseBeatTick
+			&& SkipBeatTickOnAssistTick == DefaultSkipBeatTickOnAssistTick
 			&& DspBufferSize == DefaultDspBufferSize
 			&& DspNumBuffers == DefaultDspNumBuffers
-			&& UseAssistTick == DefaultUseAssistTick
 			&& PreviewFadeInTime.DoubleEquals(DefaultPreviewFadeInTime)
 			&& PreviewFadeOutTime.DoubleEquals(DefaultPreviewFadeOutTime);
 	}
@@ -158,6 +248,11 @@ internal sealed class ActionRestoreAudioPreferenceDefaults : EditorAction
 	private readonly float PreviousAssistTickVolume;
 	private readonly float PreviousAssistTickAttackTime;
 	private readonly bool PreviousUseAssistTick;
+	private readonly bool PreviousSkipAssistTickOnBeatTick;
+	private readonly float PreviousBeatTickVolume;
+	private readonly float PreviousBeatTickAttackTime;
+	private readonly bool PreviousUseBeatTick;
+	private readonly bool PreviousSkipBeatTickOnAssistTick;
 	private readonly int PreviousDspBufferSize;
 	private readonly int PreviousDspNumBuffers;
 	private readonly double PreviousPreviewFadeInTime;
@@ -172,6 +267,11 @@ internal sealed class ActionRestoreAudioPreferenceDefaults : EditorAction
 		PreviousAssistTickVolume = p.AssistTickVolume;
 		PreviousAssistTickAttackTime = p.AssistTickAttackTime;
 		PreviousUseAssistTick = p.UseAssistTick;
+		PreviousSkipAssistTickOnBeatTick = p.SkipAssistTickOnBeatTick;
+		PreviousBeatTickVolume = p.BeatTickVolume;
+		PreviousBeatTickAttackTime = p.BeatTickAttackTime;
+		PreviousUseBeatTick = p.UseBeatTick;
+		PreviousSkipBeatTickOnAssistTick = p.SkipBeatTickOnAssistTick;
 		PreviousDspBufferSize = p.DspBufferSize;
 		PreviousDspNumBuffers = p.DspNumBuffers;
 		PreviousPreviewFadeInTime = p.PreviewFadeInTime;
@@ -197,6 +297,11 @@ internal sealed class ActionRestoreAudioPreferenceDefaults : EditorAction
 		p.AssistTickVolume = PreferencesAudio.DefaultAssistTickVolume;
 		p.AssistTickAttackTime = PreferencesAudio.DefaultAssistTickAttackTime;
 		p.UseAssistTick = PreferencesAudio.DefaultUseAssistTick;
+		p.SkipAssistTickOnBeatTick = PreferencesAudio.DefaultSkipAssistTickOnBeatTick;
+		p.BeatTickVolume = PreferencesAudio.DefaultBeatTickVolume;
+		p.BeatTickAttackTime = PreferencesAudio.DefaultBeatTickAttackTime;
+		p.UseBeatTick = PreferencesAudio.DefaultUseBeatTick;
+		p.SkipBeatTickOnAssistTick = PreferencesAudio.DefaultSkipBeatTickOnAssistTick;
 		p.DspBufferSize = PreferencesAudio.DefaultDspBufferSize;
 		p.DspNumBuffers = PreferencesAudio.DefaultDspNumBuffers;
 		p.PreviewFadeInTime = PreferencesAudio.DefaultPreviewFadeInTime;
@@ -212,6 +317,11 @@ internal sealed class ActionRestoreAudioPreferenceDefaults : EditorAction
 		p.AssistTickVolume = PreviousAssistTickVolume;
 		p.AssistTickAttackTime = PreviousAssistTickAttackTime;
 		p.UseAssistTick = PreviousUseAssistTick;
+		p.SkipAssistTickOnBeatTick = PreviousSkipAssistTickOnBeatTick;
+		p.BeatTickVolume = PreviousBeatTickVolume;
+		p.BeatTickAttackTime = PreviousBeatTickAttackTime;
+		p.UseBeatTick = PreviousUseBeatTick;
+		p.SkipBeatTickOnAssistTick = PreviousSkipBeatTickOnAssistTick;
 		p.DspBufferSize = PreviousDspBufferSize;
 		p.DspNumBuffers = PreviousDspNumBuffers;
 		p.PreviewFadeInTime = PreviousPreviewFadeInTime;

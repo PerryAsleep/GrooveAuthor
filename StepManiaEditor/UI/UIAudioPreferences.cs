@@ -46,9 +46,19 @@ internal sealed class UIAudioPreferences
 					nameof(PreferencesAudio.PreviewFadeOutTime),
 					false,
 					"Time over which the preview should fade out when previewing the song.", 0.001f, "%.3f seconds", 0.0);
+
+				ImGuiLayoutUtils.EndTable();
+			}
+
+			ImGui.Separator();
+			if (ImGuiLayoutUtils.BeginTable("Assist Tick Table", TitleColumnWidth))
+			{
 				ImGuiLayoutUtils.DrawRowCheckbox(true, "Assist Tick", p, nameof(PreferencesAudio.UseAssistTick),
 					false,
 					"Whether or not to use assist tick.");
+				ImGuiLayoutUtils.DrawRowCheckbox(true, "Skip on Beat Tick", p, nameof(PreferencesAudio.SkipAssistTickOnBeatTick),
+					false,
+					"Whether or not to skip playing assist tick sounds when a beat tick sound plays.");
 				ImGuiLayoutUtils.DrawRowSliderFloat(true, "Assist Tick Volume", p,
 					nameof(PreferencesAudio.AssistTickVolume),
 					0.0f, 1.0f, false,
@@ -61,6 +71,37 @@ internal sealed class UIAudioPreferences
 					+ "\na different sound.",
 					0.0001f, "%.6f seconds", 0.0f);
 
+				ImGuiLayoutUtils.EndTable();
+			}
+
+			ImGui.Separator();
+			if (ImGuiLayoutUtils.BeginTable("Beat Tick Table", TitleColumnWidth))
+			{
+				ImGuiLayoutUtils.DrawRowCheckbox(true, "Beat Tick", p, nameof(PreferencesAudio.UseBeatTick),
+					false,
+					"Whether or not to use beat tick.");
+				ImGuiLayoutUtils.DrawRowCheckbox(true, "Skip on Assist Tick", p,
+					nameof(PreferencesAudio.SkipBeatTickOnAssistTick),
+					false,
+					"Whether or not to skip playing beat tick sounds when an assist tick sound plays.");
+				ImGuiLayoutUtils.DrawRowSliderFloat(true, "Beat Tick Volume", p,
+					nameof(PreferencesAudio.BeatTickVolume),
+					0.0f, 1.0f, false,
+					"Volume of beat ticks.");
+				ImGuiLayoutUtils.DrawRowDragFloat(true, "Beat Tick Attack Time", p,
+					nameof(PreferencesAudio.BeatTickAttackTime), false,
+					"Attack time in seconds of the beat tick sound."
+					+ "\nAttack time is the time from the start of the sound file to the point at which a listener would"
+					+ "\nconsider it to start. This should not be modified unless you change the beat tick file to use"
+					+ "\na different sound.",
+					0.0001f, "%.6f seconds", 0.0f);
+
+				ImGuiLayoutUtils.EndTable();
+			}
+
+			ImGui.Separator();
+			if (ImGuiLayoutUtils.BeginTable("Advanced Audio", TitleColumnWidth))
+			{
 				ImGuiLayoutUtils.DrawRowDragDouble(true, "Audio Offset", p, nameof(PreferencesAudio.AudioOffset),
 					false,
 					"Offset used when playing songs through GrooveAuthor."
@@ -109,6 +150,18 @@ internal sealed class UIAudioPreferences
 
 				ImGuiLayoutUtils.EndTable();
 			}
+		}
+
+		ImGui.Separator();
+		if (ImGuiLayoutUtils.BeginTable("Audio Preferences Restore", TitleColumnWidth))
+		{
+			if (ImGuiLayoutUtils.DrawRowButton("Restore Defaults", "Restore Defaults",
+				    "Restore all audio preferences to their default values."))
+			{
+				p.RestoreDefaults();
+			}
+
+			ImGuiLayoutUtils.EndTable();
 		}
 
 		ImGui.End();

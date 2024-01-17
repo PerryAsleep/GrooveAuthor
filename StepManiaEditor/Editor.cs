@@ -519,6 +519,11 @@ internal sealed class Editor :
 		MusicManager.SetAssistTickVolume(p.AssistTickVolume);
 		MusicManager.SetAssistTickAttackTime(p.AssistTickAttackTime);
 		MusicManager.SetUseAssistTick(p.UseAssistTick);
+		MusicManager.SetSkipAssistTicksOnBeatTicks(p.SkipAssistTickOnBeatTick);
+		MusicManager.SetBeatTickVolume(p.BeatTickVolume);
+		MusicManager.SetBeatTickAttackTime(p.BeatTickAttackTime);
+		MusicManager.SetUseBeatTick(p.UseBeatTick);
+		MusicManager.SetSkipBeatTicksOnAssistTicks(p.SkipBeatTickOnAssistTick);
 	}
 
 	private void InitializeGraphics()
@@ -1715,6 +1720,31 @@ internal sealed class Editor :
 	private void OnUseAssistTickChanged()
 	{
 		MusicManager.SetUseAssistTick(Preferences.Instance.PreferencesAudio.UseAssistTick);
+	}
+
+	private void OnSkipAssistTickOnBeatTickChanged()
+	{
+		MusicManager.SetSkipAssistTicksOnBeatTicks(Preferences.Instance.PreferencesAudio.SkipAssistTickOnBeatTick);
+	}
+
+	private void OnBeatTickVolumeChanged()
+	{
+		MusicManager.SetBeatTickVolume(Preferences.Instance.PreferencesAudio.BeatTickVolume);
+	}
+
+	private void OnBeatTickAttackTimeChanged()
+	{
+		MusicManager.SetBeatTickAttackTime(Preferences.Instance.PreferencesAudio.BeatTickAttackTime);
+	}
+
+	private void OnUseBeatTickChanged()
+	{
+		MusicManager.SetUseBeatTick(Preferences.Instance.PreferencesAudio.UseBeatTick);
+	}
+
+	private void OnSkipBeatTickOnAssistTickChanged()
+	{
+		MusicManager.SetSkipBeatTicksOnAssistTicks(Preferences.Instance.PreferencesAudio.SkipBeatTickOnAssistTick);
 	}
 
 	#endregion Playing Music
@@ -7090,6 +7120,21 @@ internal sealed class Editor :
 				break;
 			case PreferencesAudio.NotificationUseAssistTickChanged:
 				OnUseAssistTickChanged();
+				break;
+			case PreferencesAudio.NotificationSkipAssistTickOnBeatTickChanged:
+				OnSkipAssistTickOnBeatTickChanged();
+				break;
+			case PreferencesAudio.NotificationBeatTickVolumeChanged:
+				OnBeatTickVolumeChanged();
+				break;
+			case PreferencesAudio.NotificationBeatTickAttackTimeChanged:
+				OnBeatTickAttackTimeChanged();
+				break;
+			case PreferencesAudio.NotificationUseBeatTickChanged:
+				OnUseBeatTickChanged();
+				break;
+			case PreferencesAudio.NotificationSkipBeatTickOnAssistTickChanged:
+				OnSkipBeatTickOnAssistTickChanged();
 				break;
 		}
 	}
