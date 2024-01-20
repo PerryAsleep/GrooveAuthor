@@ -168,10 +168,14 @@ internal class ZoomManager : Fumen.IObserver<PreferencesScroll>
 		if (scrollDelta.FloatEquals(0.0f))
 			return false;
 
+		var scrollMultiplier = Interpolation.Lerp(1.0, pScroll.ZoomMultiplier, 0.0, 1.0, Math.Abs(scrollDelta));
+		if (scrollDelta < 0.0)
+			scrollMultiplier *= -1;
+
 		// Adjust zoom.
 		if (scrollShouldZoom)
 		{
-			ZoomData.StartInterpolation(currentTime, pScroll.ZoomMultiplier * scrollDelta);
+			ZoomData.StartInterpolation(currentTime, scrollMultiplier);
 			return true;
 		}
 
@@ -181,13 +185,13 @@ internal class ZoomManager : Fumen.IObserver<PreferencesScroll>
 			switch (pScroll.SpacingMode)
 			{
 				case SpacingMode.ConstantTime:
-					ConstantTimeSpacingData.StartInterpolation(currentTime, SpacingDataScrollFactor * scrollDelta);
+					ConstantTimeSpacingData.StartInterpolation(currentTime, scrollMultiplier);
 					break;
 				case SpacingMode.ConstantRow:
-					ConstantRowSpacingData.StartInterpolation(currentTime, SpacingDataScrollFactor * scrollDelta);
+					ConstantRowSpacingData.StartInterpolation(currentTime, scrollMultiplier);
 					break;
 				case SpacingMode.Variable:
-					VariableSpacingData.StartInterpolation(currentTime, SpacingDataScrollFactor * scrollDelta);
+					VariableSpacingData.StartInterpolation(currentTime, scrollMultiplier);
 					break;
 			}
 

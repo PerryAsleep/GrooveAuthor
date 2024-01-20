@@ -1421,7 +1421,7 @@ internal sealed class Editor :
 		PreviousDesiredCursor = CurrentDesiredCursor;
 
 		// Process input for scrolling and zooming.
-		ProcessInputForScrollingAndZooming(currentTime);
+		ProcessInputForScrollingAndZooming(currentTime, gameTime.ElapsedGameTime.TotalSeconds);
 	}
 
 	/// <summary>
@@ -1521,21 +1521,26 @@ internal sealed class Editor :
 	/// Processes input for scrolling and zooming.
 	/// </summary>
 	/// <remarks>Helper for ProcessInput.</remarks>
-	private void ProcessInputForScrollingAndZooming(double currentTime)
+	private void ProcessInputForScrollingAndZooming(double currentTime, double deltaTime)
 	{
 		var pScroll = Preferences.Instance.PreferencesScroll;
 		var scrollDelta = (float)EditorMouseState.ScrollDeltaSinceLastFrame() / EditorMouseState.GetDefaultScrollDetentValue();
 
+		// When starting interpolation start at the time from the previous frame. This lets one frame of
+		// movement occur this frame. For input like touch pads and smooth scroll wheels we can receive input
+		// each frame, in which case we want to ensure each frame moves.
+		var startTimeForInput = currentTime - deltaTime;
+
 		// Process input for zoom controls.
-		var zoomManagerCaptureInput = ZoomManager.ProcessInput(currentTime, KeyCommandManager, scrollDelta);
+		var zoomManagerCaptureInput = ZoomManager.ProcessInput(startTimeForInput, KeyCommandManager, scrollDelta);
 
 		// If the input was used for controlling zoom levels do not continue to process it.
 		if (zoomManagerCaptureInput || scrollDelta.FloatEquals(0.0f))
 			return;
 
 		// Adjust position.
-		var timeDelta = pScroll.ScrollWheelTime / ZoomManager.GetSpacingZoom() * (scrollDelta > 0.0f ? -1.0f : 1.0f);
-		var rowDelta = pScroll.ScrollWheelRows / ZoomManager.GetSpacingZoom() * (scrollDelta > 0.0f ? -1.0f : 1.0f);
+		var timeDelta = pScroll.ScrollWheelTime / ZoomManager.GetSpacingZoom() * -scrollDelta;
+		var rowDelta = pScroll.ScrollWheelRows / ZoomManager.GetSpacingZoom() * -scrollDelta;
 		if (Playing)
 		{
 			PlaybackStartTime += timeDelta;
@@ -1557,12 +1562,14 @@ internal sealed class Editor :
 			if (SnapLevels[Preferences.Instance.SnapIndex].Rows == 0)
 			{
 				if (pScroll.SpacingMode == SpacingMode.ConstantTime)
-					Position.BeginSongTimeInterpolation(currentTime, timeDelta);
+					Position.BeginSongTimeInterpolation(startTimeForInput, timeDelta);
 				else
-					Position.BeginChartPositionInterpolation(currentTime, rowDelta);
+					Position.BeginChartPositionInterpolation(startTimeForInput, rowDelta);
 			}
 			else
 			{
+				// TODO: On touch pads where scroll delta will be small, we may want to accumulate more scroll
+				// before moving. Without doing that on a touch pad we end up scrolling very fast.
 				if (scrollDelta > 0.0f)
 					OnMoveUp();
 				else
