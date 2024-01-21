@@ -166,6 +166,7 @@ internal sealed class Editor :
 	private MusicManager MusicManager;
 	private MiniMap MiniMap;
 	private ArrowGraphicManager ArrowGraphicManager;
+	private UILog UILog;
 	private UIAbout UIAbout;
 	private UISongProperties UISongProperties;
 	private UIChartProperties UIChartProperties;
@@ -757,6 +758,7 @@ internal sealed class Editor :
 
 	private void InitializeUIHelpers()
 	{
+		UILog = new UILog(this);
 		UIAbout = new UIAbout();
 		UISongProperties = new UISongProperties(this, GraphicsDevice, ImGuiRenderer);
 		UIChartProperties = new UIChartProperties(this);

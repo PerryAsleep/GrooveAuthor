@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Text;
 using System.Numerics;
+using System.Text;
 using Fumen;
 using ImGuiNET;
 using static StepManiaEditor.ImGuiUtils;
@@ -39,13 +39,25 @@ internal class UILog
 	private static readonly int WrapTextWidth = UiScaled(24);
 	private static readonly Vector2 ButtonSize = new(UiScaled(50), 0.0f);
 	private static readonly Vector2 DefaultSize = new(UiScaled(561), UiScaled(300));
+	private static readonly int DefaultWindowY = UiScaled(21);
+	private static readonly int DefaultWindowX = UiScaled(1768);
 
-	public static void Draw(LinkedList<Logger.LogMessage> logBuffer, object logBufferLock, string logFilePath)
+	private readonly Editor Editor;
+
+	public UILog(Editor editor)
+	{
+		Editor = editor;
+	}
+
+	public void Draw(LinkedList<Logger.LogMessage> logBuffer, object logBufferLock, string logFilePath)
 	{
 		if (!Preferences.Instance.ShowLogWindow)
 			return;
 
 		ImGui.SetNextWindowSize(DefaultSize, ImGuiCond.FirstUseEver);
+		ImGui.SetNextWindowPos(
+			new Vector2(Math.Min(DefaultWindowX, UiScaled(Editor.GetViewportWidth()) - DefaultSize.X), DefaultWindowY),
+			ImGuiCond.FirstUseEver);
 		if (ImGui.Begin(WindowTitle, ref Preferences.Instance.ShowLogWindow, ImGuiWindowFlags.NoScrollbar))
 		{
 			lock (logBufferLock)

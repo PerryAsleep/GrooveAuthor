@@ -14,7 +14,7 @@ internal sealed class UIChartProperties
 
 	private static readonly int TitleColumnWidth = UiScaled(100);
 	private static readonly Vector2 DefaultPosition = new(UiScaled(0), UiScaled(835));
-	private static readonly Vector2 DefaultSize = new(UiScaled(622), UiScaled(0));
+	private static readonly Vector2 DefaultSize = new(UiScaled(622), UiScaled(419));
 
 	private readonly ImGuiArrowWeightsWidget ArrowWeightsWidget;
 	private readonly Editor Editor;
