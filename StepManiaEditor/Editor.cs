@@ -1783,6 +1783,9 @@ internal sealed class Editor :
 			// Draw anything which rendering to custom render targets first.
 			PreDrawToRenderTargets();
 
+			// Prior to rendering set the render target to the screen.
+			GraphicsDevice.SetRenderTarget(null, true);
+
 			DrawBackground();
 			if (Preferences.Instance.PreferencesDark.DarkBgDrawOrder == PreferencesDark.DrawOrder.AfterBackground)
 				DrawDarkBackground();
@@ -1828,9 +1831,7 @@ internal sealed class Editor :
 	/// </summary>
 	private void PreDrawToRenderTargets()
 	{
-		GraphicsDevice.Clear(Color.Transparent);
 		PreDrawWaveFormToRenderTargets();
-		GraphicsDevice.SetRenderTarget(null);
 	}
 
 	/// <summary>
