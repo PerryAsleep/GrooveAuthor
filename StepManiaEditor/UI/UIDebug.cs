@@ -1,5 +1,4 @@
 ﻿#if DEBUG
-
 using ImGuiNET;
 
 namespace StepManiaEditor;
@@ -26,6 +25,10 @@ internal sealed class UIDebug
 			var renderChart = Editor.DebugGetShouldRenderChart();
 			ImGui.Checkbox("Render Chart", ref renderChart);
 			Editor.DebugSetShouldRenderChart(renderChart);
+
+			var renderMarkers = Editor.DebugGetShouldRenderMarkers();
+			ImGui.Checkbox("Render Markers", ref renderMarkers);
+			Editor.DebugSetShouldRenderMarkers(renderMarkers);
 
 			if (ImGui.Button("Splash"))
 			{

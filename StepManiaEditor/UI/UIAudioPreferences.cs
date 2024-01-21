@@ -1,4 +1,5 @@
-﻿using ImGuiNET;
+﻿using System.Numerics;
+using ImGuiNET;
 using static StepManiaEditor.ImGuiUtils;
 
 namespace StepManiaEditor;
@@ -25,7 +26,7 @@ internal sealed class UIAudioPreferences
 		if (!p.ShowAudioPreferencesWindow)
 			return;
 
-		ImGui.SetNextWindowSize(System.Numerics.Vector2.Zero, ImGuiCond.FirstUseEver);
+		ImGui.SetNextWindowSize(Vector2.Zero, ImGuiCond.FirstUseEver);
 		if (ImGui.Begin(WindowTitle, ref p.ShowAudioPreferencesWindow, ImGuiWindowFlags.None))
 		{
 			if (ImGuiLayoutUtils.BeginTable("Audio", TitleColumnWidth))

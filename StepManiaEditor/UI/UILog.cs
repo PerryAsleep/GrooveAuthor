@@ -31,8 +31,6 @@ internal class UILog
 		new(1.0f, 0.0f, 0.0f, 1.0f),
 	};
 
-	private static readonly int WindowW = UiScaled(400);
-	private static readonly int WindowH = UiScaled(100);
 	private static readonly int LevelWidth = UiScaled(60);
 	private static readonly int LevelTextWidth = UiScaled(32);
 	private static readonly int TimeWidth = UiScaled(170);
@@ -40,13 +38,14 @@ internal class UILog
 	private static readonly int WrapCheckBoxWidth = UiScaled(20);
 	private static readonly int WrapTextWidth = UiScaled(24);
 	private static readonly Vector2 ButtonSize = new(UiScaled(50), 0.0f);
+	private static readonly Vector2 DefaultSize = new(UiScaled(561), UiScaled(300));
 
 	public static void Draw(LinkedList<Logger.LogMessage> logBuffer, object logBufferLock, string logFilePath)
 	{
 		if (!Preferences.Instance.ShowLogWindow)
 			return;
 
-		ImGui.SetNextWindowSize(new Vector2(WindowW, WindowH), ImGuiCond.FirstUseEver);
+		ImGui.SetNextWindowSize(DefaultSize, ImGuiCond.FirstUseEver);
 		if (ImGui.Begin(WindowTitle, ref Preferences.Instance.ShowLogWindow, ImGuiWindowFlags.NoScrollbar))
 		{
 			lock (logBufferLock)

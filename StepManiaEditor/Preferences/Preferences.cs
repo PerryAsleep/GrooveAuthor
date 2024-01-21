@@ -70,7 +70,7 @@ internal sealed class Preferences
 	[JsonInclude] public int WindowWidth = 1920;
 	[JsonInclude] public int WindowHeight = 1080;
 	[JsonInclude] public bool WindowFullScreen;
-	[JsonInclude] public bool WindowMaximized;
+	[JsonInclude] public bool WindowMaximized = true;
 
 	// Waveform preferences
 	[JsonInclude] public PreferencesWaveForm PreferencesWaveForm = new();
@@ -116,11 +116,11 @@ internal sealed class Preferences
 	[JsonInclude] public bool ShowLogWindow = true;
 	[JsonInclude] public int LogWindowDateDisplay = 1;
 	[JsonInclude] public LogLevel LogWindowLevel = LogLevel.Info;
-	[JsonInclude] public bool LogWindowLineWrap;
+	[JsonInclude] public bool LogWindowLineWrap = true;
 
 	// Misc
-	[JsonInclude] public bool ShowSongPropertiesWindow;
-	[JsonInclude] public bool ShowChartPropertiesWindow;
+	[JsonInclude] public bool ShowSongPropertiesWindow = true;
+	[JsonInclude] public bool ShowChartPropertiesWindow = true;
 	[JsonInclude] public bool ShowAutogenConfigsWindow;
 	[JsonInclude] public bool ShowChartListWindow;
 	[JsonInclude] public bool ShowAboutWindow;

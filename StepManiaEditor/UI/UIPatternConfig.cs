@@ -65,7 +65,7 @@ internal sealed class UIPatternConfig
 
 		var currentChartType = Editor.GetActiveChart()?.ChartType;
 
-		ImGui.SetNextWindowSize(new Vector2(0, 0), ImGuiCond.FirstUseEver);
+		ImGui.SetNextWindowSize(Vector2.Zero, ImGuiCond.FirstUseEver);
 		if (ImGui.Begin(WindowTitle, ref p.ShowPatternListWindow, ImGuiWindowFlags.NoScrollbar))
 		{
 			DrawConfig("PatternConfig", Editor, editorConfig, currentChartType, true);

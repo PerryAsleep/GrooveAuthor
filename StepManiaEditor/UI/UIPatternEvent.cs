@@ -33,7 +33,7 @@ internal sealed class UIPatternEvent
 
 		// TODO: should we show more than one of these at a time? Might need to push the id.
 
-		ImGui.SetNextWindowSize(new Vector2(0, 0), ImGuiCond.FirstUseEver);
+		ImGui.SetNextWindowSize(Vector2.Zero, ImGuiCond.FirstUseEver);
 		if (ImGui.Begin(WindowTitle, ref Preferences.Instance.ShowPatternEventWindow, ImGuiWindowFlags.NoScrollbar))
 		{
 			var disabled = !Editor.CanEdit();

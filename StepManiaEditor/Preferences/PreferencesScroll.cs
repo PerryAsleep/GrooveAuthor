@@ -27,7 +27,7 @@ internal sealed class PreferencesScroll : Notifier<PreferencesScroll>
 	public const double DefaultScrollInterpolationDuration = 0.1;
 
 	// Preferences.
-	[JsonInclude] public bool ShowScrollControlPreferencesWindow = true;
+	[JsonInclude] public bool ShowScrollControlPreferencesWindow;
 	[JsonInclude] public Editor.SpacingMode SpacingMode = DefaultSpacingMode;
 
 	[JsonInclude]

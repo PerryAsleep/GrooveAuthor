@@ -3,7 +3,6 @@ using System.Numerics;
 using Fumen;
 using ImGuiNET;
 using Microsoft.Xna.Framework.Graphics;
-using Path = Fumen.Path;
 using static StepManiaEditor.Utils;
 using static StepManiaEditor.ImGuiUtils;
 using static StepManiaEditor.EditorSongImageUtils;
@@ -28,6 +27,8 @@ internal sealed class UISongProperties
 	private static readonly float ButtonGoWidth = UiScaled(20);
 	private static readonly float ButtonSyncWidth = UiScaled(60);
 	private static readonly float ButtonApplyItgOffsetWidth = UiScaled(110);
+	private static readonly Vector2 DefaultPosition = new(UiScaled(0), UiScaled(21));
+	private static readonly Vector2 DefaultSize = new(UiScaled(622), UiScaled(0));
 
 	public UISongProperties(Editor editor, GraphicsDevice graphicsDevice, ImGuiRenderer imGuiRenderer)
 	{
@@ -43,7 +44,8 @@ internal sealed class UISongProperties
 		if (!Preferences.Instance.ShowSongPropertiesWindow)
 			return;
 
-		ImGui.SetNextWindowSize(new Vector2(0, 0), ImGuiCond.FirstUseEver);
+		ImGui.SetNextWindowPos(DefaultPosition, ImGuiCond.FirstUseEver);
+		ImGui.SetNextWindowSize(DefaultSize, ImGuiCond.FirstUseEver);
 		if (ImGui.Begin(WindowTitle, ref Preferences.Instance.ShowSongPropertiesWindow, ImGuiWindowFlags.NoScrollbar))
 		{
 			var disabled = !Editor.CanSongBeEdited(EditorSong);

@@ -13,6 +13,8 @@ internal sealed class UIChartProperties
 	public const string WindowTitle = "Chart Properties";
 
 	private static readonly int TitleColumnWidth = UiScaled(100);
+	private static readonly Vector2 DefaultPosition = new(UiScaled(0), UiScaled(835));
+	private static readonly Vector2 DefaultSize = new(UiScaled(622), UiScaled(0));
 
 	private readonly ImGuiArrowWeightsWidget ArrowWeightsWidget;
 	private readonly Editor Editor;
@@ -28,7 +30,8 @@ internal sealed class UIChartProperties
 		if (!Preferences.Instance.ShowChartPropertiesWindow)
 			return;
 
-		ImGui.SetNextWindowSize(new Vector2(0, 0), ImGuiCond.FirstUseEver);
+		ImGui.SetNextWindowPos(DefaultPosition, ImGuiCond.FirstUseEver);
+		ImGui.SetNextWindowSize(DefaultSize, ImGuiCond.FirstUseEver);
 		if (ImGui.Begin(WindowTitle, ref Preferences.Instance.ShowChartPropertiesWindow, ImGuiWindowFlags.NoScrollbar))
 		{
 			var disabled = !Editor.CanChartBeEdited(editorChart);

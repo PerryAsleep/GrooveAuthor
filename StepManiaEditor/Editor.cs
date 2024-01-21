@@ -290,6 +290,7 @@ internal sealed class Editor :
 
 	// Debug
 	private bool RenderChart = true;
+	private bool RenderMarkers = true;
 	private bool ShowImGuiTestWindow;
 	private readonly int MainThreadId;
 
@@ -1795,7 +1796,8 @@ internal sealed class Editor :
 			DrawMiniMap();
 			if (RenderChart)
 			{
-				DrawMeasureMarkers();
+				if (RenderMarkers)
+					DrawMeasureMarkers();
 				DrawRegions();
 				DrawReceptors();
 				DrawSnapIndicators();
@@ -7191,6 +7193,17 @@ internal sealed class Editor :
 	public bool DebugGetShouldRenderChart()
 	{
 		return RenderChart;
+	}
+
+	[Conditional("DEBUG")]
+	public void DebugSetShouldRenderMarkers(bool renderMarkers)
+	{
+		RenderMarkers = renderMarkers;
+	}
+
+	public bool DebugGetShouldRenderMarkers()
+	{
+		return RenderMarkers;
 	}
 
 #endif

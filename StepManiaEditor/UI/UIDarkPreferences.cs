@@ -19,7 +19,7 @@ internal sealed class UIDarkPreferences
 		if (!p.ShowDarkPreferencesWindow)
 			return;
 
-		ImGui.SetNextWindowSize(new Vector2(0, 0), ImGuiCond.FirstUseEver);
+		ImGui.SetNextWindowSize(Vector2.Zero, ImGuiCond.FirstUseEver);
 		if (ImGui.Begin(WindowTitle, ref p.ShowDarkPreferencesWindow, ImGuiWindowFlags.NoScrollbar))
 			DrawContents();
 		ImGui.End();

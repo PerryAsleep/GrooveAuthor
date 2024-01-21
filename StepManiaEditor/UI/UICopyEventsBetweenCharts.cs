@@ -153,7 +153,7 @@ internal class UICopyEventsBetweenCharts
 
 		var numSelectedTypes = 0;
 
-		ImGui.SetNextWindowSize(new Vector2(0, 0), ImGuiCond.FirstUseEver);
+		ImGui.SetNextWindowSize(Vector2.Zero, ImGuiCond.FirstUseEver);
 		if (ImGui.Begin(WindowTitle, ref Showing, ImGuiWindowFlags.NoScrollbar))
 		{
 			// Explanation

@@ -18,10 +18,10 @@ internal sealed class PreferencesReceptors
 	public const bool DefaultTapRimEffect = true;
 	public const bool DefaultTapShrinkEffect = true;
 	public const bool DefaultPulseReceptorsWithTempo = true;
-	public const bool DefaultCenterHorizontally = true;
+	public const bool DefaultCenterHorizontally = false;
 	public const bool DefaultLockPosition = false;
-	public const int DefaultPositionX = 960;
-	public const int DefaultPositionY = 100;
+	public const int DefaultPositionX = 1134;
+	public const int DefaultPositionY = 110;
 
 	// Preferences.
 	[JsonInclude] public bool ShowReceptorPreferencesWindow;

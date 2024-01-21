@@ -38,7 +38,7 @@ internal sealed class UIExpressedChartConfig
 		if (editorConfig == null)
 			return;
 
-		ImGui.SetNextWindowSize(new Vector2(0, 0), ImGuiCond.FirstUseEver);
+		ImGui.SetNextWindowSize(Vector2.Zero, ImGuiCond.FirstUseEver);
 		if (ImGui.Begin(WindowTitle, ref p.ShowExpressedChartListWindow, ImGuiWindowFlags.NoScrollbar))
 		{
 			var disabled = !Editor.CanEdit() || editorConfig.IsDefault();

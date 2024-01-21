@@ -19,7 +19,7 @@ internal sealed class UISelectionPreferences
 		if (!p.ShowSelectionControlPreferencesWindow)
 			return;
 
-		ImGui.SetNextWindowSize(new Vector2(0, 0), ImGuiCond.FirstUseEver);
+		ImGui.SetNextWindowSize(Vector2.Zero, ImGuiCond.FirstUseEver);
 		if (ImGui.Begin(WindowTitle, ref p.ShowSelectionControlPreferencesWindow, ImGuiWindowFlags.NoScrollbar))
 		{
 			if (ImGuiLayoutUtils.BeginTable("Selection", TitleColumnWidth))
