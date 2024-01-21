@@ -753,6 +753,7 @@ internal sealed class Editor :
 	{
 		var p = Preferences.Instance;
 		MiniMap = new MiniMap(GraphicsDevice, new Rectangle(0, 0, 0, 0));
+		MiniMap.SetFadeOutPercentage(0.9);
 		MiniMap.SetSelectMode(p.PreferencesMiniMap.MiniMapSelectMode);
 	}
 

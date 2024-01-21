@@ -110,38 +110,38 @@ internal sealed class MiniMap
 	/// <summary>
 	/// RGBA color of the chart background.
 	/// </summary>
-	private static readonly uint BackgroundColor = 0xFF1E1E1E;
+	private const uint BackgroundColor = 0xFF1E1E1E;
 
 	/// <summary>
 	/// RGBA color of the rim border.
 	/// </summary>
-	private static readonly uint RimColor = 0xFFFFFFFF;
+	private const uint RimColor = 0xFFFFFFFF;
 
 	/// <summary>
 	/// RGBA color of the line separating the areas outside of the Chart content from
 	/// the area representing the Chart content.
 	/// </summary>
-	private static readonly uint ContentMarkerColor = 0xFFFFFFFF;
+	private const uint ContentMarkerColor = 0xFFFFFFFF;
 
 	/// <summary>
 	/// RGBA color of the area outside of the Chart content.
 	/// </summary>
-	private static readonly uint OutsideContentRangeColor = 0xFF020202;
+	private const uint OutsideContentRangeColor = 0xFF020202;
 
 	/// <summary>
 	/// RGBA color of the normal editor area.
 	/// </summary>
-	private static readonly uint EditorAreaColor = 0xFF303030;
+	private const uint EditorAreaColor = 0xFF303030;
 
 	/// <summary>
 	/// RGBA color of the editor area when the mouse is over it but it is not being held.
 	/// </summary>
-	private static readonly uint EditorAreaMouseOverColor = 0xFF373737;
+	private const uint EditorAreaMouseOverColor = 0xFF373737;
 
 	/// <summary>
 	/// RGBA color of the editor area when it is being held.
 	/// </summary>
-	private static readonly uint EditorAreaSelectedColor = 0xFF3E3E3E;
+	private const uint EditorAreaSelectedColor = 0xFF3E3E3E;
 
 	/// <summary>
 	/// Textures to render to. Array for double buffering.
@@ -203,6 +203,11 @@ internal sealed class MiniMap
 	/// Spacing between each note in pixels.
 	/// </summary>
 	private uint NoteSpacing;
+
+	/// <summary>
+	/// Percentage of Editor Area to MiniMap Area over which to start fading out.
+	/// </summary>
+	private double FadeOutPercentage = 1.0;
 
 	/// <summary>
 	/// Cached x positions of each lane in pixels relative to Bounds.
@@ -274,6 +279,17 @@ internal sealed class MiniMap
 	public MiniMap(GraphicsDevice graphicsDevice, Rectangle bounds)
 	{
 		UpdateBounds(graphicsDevice, bounds);
+	}
+
+	/// <summary>
+	/// Sets the percentage of the Editor Area compared to the MiniMap area over which to start fading out.
+	/// </summary>
+	/// <param name="fadeOutPercentage">
+	/// Percentage of the Editor Area compared to the MiniMap area over which to start fading out.
+	/// </param>
+	public void SetFadeOutPercentage(double fadeOutPercentage)
+	{
+		FadeOutPercentage = Math.Clamp(fadeOutPercentage, 0.0, 1.0);
 	}
 
 	/// <summary>
@@ -807,6 +823,11 @@ internal sealed class MiniMap
 
 		SetMiniMapAreaFromEditorArea();
 
+		// If we are zoomed out so far that the MiniMap Area can't fit the Editor Areas or scroll
+		// then we can't render anything meaningful and we should early-ouy.
+		if (GetEditorAreaPercentageOfMiniMapArea() >= 1.0)
+			return;
+
 		Array.Copy(ClearData, ColorData, Bounds.Width * Bounds.Height);
 
 		// TODO: There is a lot of copy/paste logic around blending colors below. Could be cleaned up.
@@ -909,7 +930,37 @@ internal sealed class MiniMap
 	{
 		if (Bounds.Height <= 0 || Bounds.Width <= 0)
 			return;
+
+		// If we are zoomed out so far that the MiniMap Area can't fit the Editor Areas or scroll
+		// then we can't render anything meaningful and we should early-ouy.
+		var editorAreaPercentage = GetEditorAreaPercentageOfMiniMapArea();
+		if (editorAreaPercentage >= 1.0)
+			return;
+
+		// Fade out if configured to do so.
+		if (editorAreaPercentage >= FadeOutPercentage)
+		{
+			var alphaPercentage = Fumen.Interpolation.Lerp(1.0, 0.0, FadeOutPercentage, 1.0, editorAreaPercentage);
+			var alphaByte = (byte)(alphaPercentage * byte.MaxValue);
+			var alphaColor = (uint)alphaByte << 24;
+			for (var i = 0; i < ColorData.Length; i++)
+			{
+				ColorData[i] = (ColorData[i] & 0x00FFFFFF) | alphaColor;
+			}
+		}
+
 		Textures[TextureIndex].SetData(ColorData);
+	}
+
+	/// <summary>
+	/// Gets the Editor Area as a percentage of the MiniMap Area.
+	/// If this is greater than or equal to 1.0 then we can't rendering a meaningful representation
+	/// or scroll so we should not render.
+	/// </summary>
+	/// <returns>Editor Area as a percentage of the MiniMap Area.</returns>
+	private double GetEditorAreaPercentageOfMiniMapArea()
+	{
+		return (EditorAreaEnd - EditorAreaStart) / MiniMapAreaRange;
 	}
 
 	/// <summary>
@@ -919,6 +970,11 @@ internal sealed class MiniMap
 	public void Draw(SpriteBatch spriteBatch)
 	{
 		if (Bounds.Height <= 0 || Bounds.Width <= 0)
+			return;
+
+		// If we are zoomed out so far that the MiniMap Area can't fit the Editor Areas or scroll
+		// then we can't render anything meaningful and we should early-ouy.
+		if (GetEditorAreaPercentageOfMiniMapArea() >= 1.0)
 			return;
 
 		// Draw the current texture.
