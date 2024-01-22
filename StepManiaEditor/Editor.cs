@@ -1767,6 +1767,7 @@ internal sealed class Editor :
 				Preferences.Instance.PreferencesAudio,
 				nameof(PreferencesAudio.UseBeatTick), !Preferences.Instance.PreferencesAudio.UseBeatTick, false));
 	}
+
 	private void OnUseBeatTickChanged()
 	{
 		MusicManager.SetUseBeatTick(Preferences.Instance.PreferencesAudio.UseBeatTick);
