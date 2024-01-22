@@ -4806,19 +4806,25 @@ internal sealed class Editor :
 		if (ActiveSong == null)
 			return;
 
-		var saveFileDialog1 = new SaveFileDialog();
-		saveFileDialog1.Filter = "SSC File|*.ssc|SM File|*.sm";
-		saveFileDialog1.Title = "Save As...";
-		saveFileDialog1.FilterIndex = 0;
+		var saveFileDialog = new SaveFileDialog();
+		saveFileDialog.Filter = "SSC File|*.ssc|SM File|*.sm";
+		saveFileDialog.Title = "Save As...";
+		saveFileDialog.FilterIndex = 0;
 		if (ActiveSong.GetFileFormat() != null && ActiveSong.GetFileFormat().Type == FileFormatType.SM)
 		{
-			saveFileDialog1.FilterIndex = 2;
+			saveFileDialog.FilterIndex = 2;
 		}
 
-		if (saveFileDialog1.ShowDialog() != DialogResult.OK)
+		var songDirectory = ActiveSong.GetFileDirectory();
+		if (!string.IsNullOrEmpty(songDirectory))
+			saveFileDialog.InitialDirectory = songDirectory;
+		else
+			saveFileDialog.InitialDirectory = Preferences.Instance.OpenFileDialogInitialDirectory;
+
+		if (saveFileDialog.ShowDialog() != DialogResult.OK)
 			return;
 
-		var fullPath = saveFileDialog1.FileName;
+		var fullPath = saveFileDialog.FileName;
 		var extension = System.IO.Path.GetExtension(fullPath);
 		var fileFormat = FileFormat.GetFileFormatByExtension(extension);
 		if (fileFormat == null)

@@ -424,7 +424,7 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 			Assert(CanBeEdited());
 			if (!CanBeEdited())
 				return;
-			Banner.Path = value;
+			Banner.UpdatePath(FileDirectory, value);
 		}
 	}
 
@@ -443,7 +443,7 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 			Assert(CanBeEdited());
 			if (!CanBeEdited())
 				return;
-			Background.Path = value;
+			Background.UpdatePath(FileDirectory, value);
 		}
 	}
 
@@ -462,7 +462,7 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 			Assert(CanBeEdited());
 			if (!CanBeEdited())
 				return;
-			Jacket.Path = value;
+			Jacket.UpdatePath(FileDirectory, value);
 		}
 	}
 
@@ -481,7 +481,7 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 			Assert(CanBeEdited());
 			if (!CanBeEdited())
 				return;
-			CDImage.Path = value;
+			CDImage.UpdatePath(FileDirectory, value);
 		}
 	}
 
@@ -500,7 +500,7 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 			Assert(CanBeEdited());
 			if (!CanBeEdited())
 				return;
-			DiscImage.Path = value;
+			DiscImage.UpdatePath(FileDirectory, value);
 		}
 	}
 
@@ -519,7 +519,7 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 			Assert(CanBeEdited());
 			if (!CanBeEdited())
 				return;
-			CDTitle.Path = value;
+			CDTitle.UpdatePath(FileDirectory, value);
 		}
 	}
 
@@ -1044,18 +1044,12 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 		MusicPreviewPath = UpdateRelativePath(oldFullPath, newFullPath, MusicPreviewPath);
 		LyricsPath = UpdateRelativePath(oldFullPath, newFullPath, LyricsPath);
 		PreviewVideoPath = UpdateRelativePath(oldFullPath, newFullPath, PreviewVideoPath);
-		if (Banner != null)
-			Banner.Path = UpdateRelativePath(oldFullPath, newFullPath, Banner.Path);
-		if (Background != null)
-			Background.Path = UpdateRelativePath(oldFullPath, newFullPath, Background.Path);
-		if (Jacket != null)
-			Jacket.Path = UpdateRelativePath(oldFullPath, newFullPath, Jacket.Path);
-		if (CDImage != null)
-			CDImage.Path = UpdateRelativePath(oldFullPath, newFullPath, CDImage.Path);
-		if (DiscImage != null)
-			DiscImage.Path = UpdateRelativePath(oldFullPath, newFullPath, DiscImage.Path);
-		if (CDTitle != null)
-			CDTitle.Path = UpdateRelativePath(oldFullPath, newFullPath, CDTitle.Path);
+		Banner?.UpdatePath(FileDirectory, UpdateRelativePath(oldFullPath, newFullPath, Banner.Path));
+		Background?.UpdatePath(FileDirectory, UpdateRelativePath(oldFullPath, newFullPath, Background.Path));
+		Jacket?.UpdatePath(FileDirectory, UpdateRelativePath(oldFullPath, newFullPath, Jacket.Path));
+		CDImage?.UpdatePath(FileDirectory, UpdateRelativePath(oldFullPath, newFullPath, CDImage.Path));
+		DiscImage?.UpdatePath(FileDirectory, UpdateRelativePath(oldFullPath, newFullPath, DiscImage.Path));
+		CDTitle?.UpdatePath(FileDirectory, UpdateRelativePath(oldFullPath, newFullPath, CDTitle.Path));
 	}
 
 	/// <summary>

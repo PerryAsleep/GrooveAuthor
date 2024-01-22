@@ -363,7 +363,7 @@ internal sealed class MusicManager
 	{
 		// It is common for Charts to re-use the same sound files.
 		// Do not reload the sound file if we were already using it.
-		if (!force && fullPathToSoundFile == soundData.GetSound().GetFile())
+		if (!force && Path.ArePathsEqual(fullPathToSoundFile, soundData.GetSound().GetFile()))
 			return;
 
 		soundData.GetSound().LoadAsync(fullPathToSoundFile, generateMipMap);
