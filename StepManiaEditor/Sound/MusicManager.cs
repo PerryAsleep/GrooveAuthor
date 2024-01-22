@@ -991,19 +991,19 @@ internal sealed class MusicManager
 		bool musicPlaying;
 		var sampleIndexStartInclusive = 0;
 		var sampleIndexEndExclusive = 0;
-		lock (MusicData.GetLock())
+		lock (Lock)
 		{
-			(musicNumChannels, musicData) = MusicData.GetSound().GetSampleData();
-			if (musicNumChannels > outChannels)
-				outChannels = musicNumChannels;
-			musicPlaying = MusicData.IsPlaying();
-
-			// Update the sample indexes.
-			if (musicPlaying)
+			lock (MusicData.GetLock())
 			{
-				// Update the sample index used for tracking the position of all sounds.
-				lock (Lock)
+				(musicNumChannels, musicData) = MusicData.GetSound().GetSampleData();
+				if (musicNumChannels > outChannels)
+					outChannels = musicNumChannels;
+				musicPlaying = MusicData.IsPlaying();
+
+				// Update the sample indexes.
+				if (musicPlaying)
 				{
+					// Update the sample index used for tracking the position of all sounds.
 					musicSampleIndex = SampleIndex;
 					sampleIndexStartInclusive = SampleIndex;
 					sampleIndexEndExclusive = sampleIndexStartInclusive + (int)length;
