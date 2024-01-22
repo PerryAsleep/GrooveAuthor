@@ -570,6 +570,9 @@ internal sealed class Editor :
 		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.M }, OnToggleNoteEntryMode));
 		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.S }, OnToggleSpacingMode));
 
+		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.A }, OnToggleAssistTick));
+		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.B }, OnToggleBeatTick));
+
 		// Note Shifting
 		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.LeftAlt, Keys.Left }, OnShiftSelectedNotesLeft, true));
 		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftControl, Keys.LeftShift, Keys.Left }, OnShiftSelectedNotesLeftAndWrap, true));
@@ -1728,6 +1731,14 @@ internal sealed class Editor :
 		MusicManager.SetAssistTickAttackTime(Preferences.Instance.PreferencesAudio.AssistTickAttackTime);
 	}
 
+	private void OnToggleAssistTick()
+	{
+		ActionQueue.Instance.Do(
+			new ActionSetObjectFieldOrPropertyValue<bool>(
+				Preferences.Instance.PreferencesAudio,
+				nameof(PreferencesAudio.UseAssistTick), !Preferences.Instance.PreferencesAudio.UseAssistTick, false));
+	}
+
 	private void OnUseAssistTickChanged()
 	{
 		MusicManager.SetUseAssistTick(Preferences.Instance.PreferencesAudio.UseAssistTick);
@@ -1748,6 +1759,14 @@ internal sealed class Editor :
 		MusicManager.SetBeatTickAttackTime(Preferences.Instance.PreferencesAudio.BeatTickAttackTime);
 	}
 
+
+	private void OnToggleBeatTick()
+	{
+		ActionQueue.Instance.Do(
+			new ActionSetObjectFieldOrPropertyValue<bool>(
+				Preferences.Instance.PreferencesAudio,
+				nameof(PreferencesAudio.UseBeatTick), !Preferences.Instance.PreferencesAudio.UseBeatTick, false));
+	}
 	private void OnUseBeatTickChanged()
 	{
 		MusicManager.SetUseBeatTick(Preferences.Instance.PreferencesAudio.UseBeatTick);
