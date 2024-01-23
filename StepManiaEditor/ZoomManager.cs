@@ -150,8 +150,8 @@ internal class ZoomManager : Fumen.IObserver<PreferencesScroll>
 	public bool ProcessInput(double currentTime, KeyCommandManager keyCommandManager, float scrollDelta)
 	{
 		var pScroll = Preferences.Instance.PreferencesScroll;
-		var scrollShouldZoom = keyCommandManager.IsKeyDown(Keys.LeftControl);
-		var scrollShouldScaleDefaultSpacing = !scrollShouldZoom && keyCommandManager.IsKeyDown(Keys.LeftShift);
+		var scrollShouldZoom = keyCommandManager.IsControlDown();
+		var scrollShouldScaleDefaultSpacing = !scrollShouldZoom && keyCommandManager.IsShiftDown();
 
 		// Hack.
 		if (keyCommandManager.IsKeyDown(Keys.OemPlus))

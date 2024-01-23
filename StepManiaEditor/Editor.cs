@@ -642,12 +642,84 @@ internal sealed class Editor :
 			true));
 	}
 
-	private void AddKeyCommand(string category, string name, Keys[] input, Action callback, bool repeat = false,
+	/// <summary>
+	/// Helper to add a key command and register it for the controls UI.
+	/// </summary>
+	private void AddKeyCommand(
+		string category,
+		string name,
+		Keys[] input,
+		Action callback,
+		bool repeat = false,
 		Action releaseCallback = null,
 		bool independent = false)
 	{
-		KeyCommandManager.Register(new KeyCommandManager.Command(input, callback, repeat, releaseCallback, independent));
+		// Register the command, potentially multiple times due to left and right modifier keys.
+		var adjustedInput = new Keys[input.Length];
+		RegisterKeyCommand(input, adjustedInput, 0, callback, repeat, releaseCallback, independent);
+		// Add the command to the UI.
 		UIControls.AddCommand(category, name, input);
+	}
+
+	/// <summary>
+	/// Recursive helper to register multiple commands for inputs with left modifier keys so they include
+	/// right modifier keys as well.
+	/// </summary>
+	private void RegisterKeyCommand(
+		Keys[] input,
+		Keys[] adjustedInput,
+		int inputIndex,
+		Action callback,
+		bool repeat = false,
+		Action releaseCallback = null,
+		bool independent = false)
+	{
+		if (inputIndex == adjustedInput.Length)
+		{
+			KeyCommandManager.Register(new KeyCommandManager.Command(adjustedInput, callback, repeat, releaseCallback,
+				independent));
+			return;
+		}
+
+		switch (input[inputIndex])
+		{
+			case Keys.LeftControl:
+			{
+				adjustedInput[inputIndex] = Keys.LeftControl;
+				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback, independent);
+				adjustedInput[inputIndex] = Keys.RightControl;
+				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback, independent);
+				break;
+			}
+			case Keys.LeftShift:
+			{
+				adjustedInput[inputIndex] = Keys.LeftShift;
+				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback, independent);
+				adjustedInput[inputIndex] = Keys.RightShift;
+				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback, independent);
+				break;
+			}
+			case Keys.LeftAlt:
+			{
+				adjustedInput[inputIndex] = Keys.LeftAlt;
+				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback, independent);
+				adjustedInput[inputIndex] = Keys.RightAlt;
+				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback, independent);
+				break;
+			}
+			case Keys.LeftWindows:
+			{
+				adjustedInput[inputIndex] = Keys.LeftWindows;
+				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback, independent);
+				adjustedInput[inputIndex] = Keys.RightWindows;
+				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback, independent);
+				break;
+			}
+			default:
+				adjustedInput[inputIndex] = input[inputIndex];
+				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback, independent);
+				break;
+		}
 	}
 
 	private void InitializeContentManager()
@@ -1494,7 +1566,7 @@ internal sealed class Editor :
 			var newX = EditorMouseState.X() - (int)FocalPointMoveOffset.X;
 			var newY = EditorMouseState.Y() - (int)FocalPointMoveOffset.Y;
 
-			if (KeyCommandManager.IsKeyDown(Keys.LeftShift))
+			if (KeyCommandManager.IsShiftDown())
 			{
 				if (Math.Abs(newX - FocalPointAtMoveStart.X) > Math.Abs(newY - FocalPointAtMoveStart.Y))
 				{
@@ -5644,7 +5716,7 @@ internal sealed class Editor :
 		// Collect the newly selected notes.
 		var newlySelectedEvents = new List<EditorEvent>();
 
-		var alt = KeyCommandManager.IsKeyDown(Keys.LeftAlt);
+		var alt = KeyCommandManager.IsAltDown();
 		Func<EditorEvent, bool> isSelectable = alt
 			? (e) => e.IsSelectableWithModifiers()
 			: (e) => e.IsSelectableWithoutModifiers();
@@ -5838,8 +5910,8 @@ internal sealed class Editor :
 			}
 		}
 
-		var ctrl = KeyCommandManager.IsKeyDown(Keys.LeftControl);
-		var shift = KeyCommandManager.IsKeyDown(Keys.LeftShift);
+		var ctrl = KeyCommandManager.IsControlDown();
+		var shift = KeyCommandManager.IsShiftDown();
 
 		// If holding shift, select everything from the previously selected note
 		// to the newly selected notes, in addition to the newly selected notes.
@@ -6491,7 +6563,7 @@ internal sealed class Editor :
 			var chartTime = 0.0;
 			ActiveChart.TryGetTimeFromChartPosition(row, ref chartTime);
 
-			if (KeyCommandManager.IsKeyDown(Keys.LeftShift))
+			if (KeyCommandManager.IsShiftDown())
 			{
 				var config = EventConfig.CreateMineConfig(ActiveChart, row, chartTime, lane);
 				config.IsBeingEdited = true;
@@ -6719,7 +6791,7 @@ internal sealed class Editor :
 				    || (laneEditState.GetEventBeingEdited() is EditorHoldNoteEvent h
 				        && (holdStartRow != h.GetRow() || holdEndRow != h.GetEndRow())))
 				{
-					var roll = KeyCommandManager.IsKeyDown(Keys.LeftShift);
+					var roll = KeyCommandManager.IsShiftDown();
 					LaneEditStates[lane].SetEditingHold(ActiveChart, lane, holdStartRow, laneEditState.GetStartingRow(),
 						holdEndRow - holdStartRow, roll);
 				}

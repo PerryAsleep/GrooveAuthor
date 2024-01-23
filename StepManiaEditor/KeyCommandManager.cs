@@ -58,7 +58,8 @@ public class KeyCommandManager
 		public Command(Keys[] input, Action callback, bool repeat = false, Action releaseCallback = null,
 			bool independent = false)
 		{
-			Input = input;
+			Input = new Keys[input.Length];
+			Array.Copy(input, Input, input.Length);
 			Callback = callback;
 			ReleaseCallback = releaseCallback;
 			Repeat = repeat;
@@ -249,6 +250,26 @@ public class KeyCommandManager
 		// so that we can sort the commands the next time we update.
 		Commands.Add(new CommandState(command));
 		CommandsDirty = true;
+	}
+
+	public bool IsControlDown()
+	{
+		return IsKeyDown(Keys.LeftControl) || IsKeyDown(Keys.RightControl);
+	}
+
+	public bool IsShiftDown()
+	{
+		return IsKeyDown(Keys.LeftShift) || IsKeyDown(Keys.RightShift);
+	}
+
+	public bool IsAltDown()
+	{
+		return IsKeyDown(Keys.LeftAlt) || IsKeyDown(Keys.RightAlt);
+	}
+
+	public bool IsWinDown()
+	{
+		return IsKeyDown(Keys.LeftWindows) || IsKeyDown(Keys.RightWindows);
 	}
 
 	public bool IsKeyDown(Keys key)
