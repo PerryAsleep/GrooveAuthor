@@ -136,7 +136,6 @@ internal sealed class ImGuiLayoutUtils
 
 		ImGui.TableSetColumnIndex(1);
 		ImGui.SetNextItemWidth(DrawHelp(help, ImGui.GetContentRegionAvail().X));
-		ImGui.SameLine();
 		ImGui.Text(text);
 	}
 
