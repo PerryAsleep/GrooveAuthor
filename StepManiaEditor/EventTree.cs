@@ -118,8 +118,12 @@ internal class EventTree : RedBlackTree<EditorEvent>, IReadOnlyEventTree
 				continue;
 			if (ignoreNotesBeingEdited && best.Current.IsBeingEdited())
 				continue;
-			if (best.Current.GetRow() <= row && best.Current.GetEndRow() >= row)
-				return best.Current;
+			if (best.Current.GetRow() <= row)
+			{
+				if (best.Current.GetEndRow() >= row)
+					return best.Current;
+				return null;
+			}
 		} while (best.MovePrev());
 
 		return null;
