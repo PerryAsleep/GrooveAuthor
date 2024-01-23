@@ -18,7 +18,7 @@ internal sealed class SoundPlaybackState
 	/// <summary>
 	/// The current sample index of the EditorSound.
 	/// </summary>
-	private int SampleIndex;
+	private long SampleIndex;
 
 	/// <summary>
 	/// Whether or not the EditorSound is playing.
@@ -52,7 +52,7 @@ internal sealed class SoundPlaybackState
 	/// Start playing the sound at the given sample index.
 	/// </summary>
 	/// <param name="sampleIndex">Sample index to start playing at.</param>
-	public void StartPlaying(int sampleIndex)
+	public void StartPlaying(long sampleIndex)
 	{
 		lock (Lock)
 		{
@@ -75,10 +75,10 @@ internal sealed class SoundPlaybackState
 			Playing = false;
 			if (!keepSampleIndex)
 			{
-				SampleIndex = 0;
+				SampleIndex = 0L;
 			}
 
-			SampleIndex = 0;
+			SampleIndex = 0L;
 		}
 	}
 
@@ -99,7 +99,7 @@ internal sealed class SoundPlaybackState
 	/// Will clamp the given index to be within the valid sample range.
 	/// </summary>
 	/// <param name="sampleIndex">Sample index to set.</param>
-	public void SetSampleIndex(int sampleIndex)
+	public void SetSampleIndex(long sampleIndex)
 	{
 		lock (Lock)
 		{
@@ -108,12 +108,12 @@ internal sealed class SoundPlaybackState
 			if (numChannels > 0 && sampleData != null)
 			{
 				var numSamples = sampleData.Length / numChannels;
-				SampleIndex = Math.Clamp(sampleIndex, 0, numSamples);
+				SampleIndex = Math.Clamp(sampleIndex, 0L, numSamples);
 			}
 			// If we do not have data yet just clamp the lower bound.
 			else
 			{
-				SampleIndex = Math.Max(sampleIndex, 0);
+				SampleIndex = Math.Max(sampleIndex, 0L);
 			}
 		}
 	}
@@ -122,7 +122,7 @@ internal sealed class SoundPlaybackState
 	/// Gets the current sample index of the SoundPlaybackState.
 	/// </summary>
 	/// <returns>Current sample index of the SoundPlaybackState.</returns>
-	public int GetSampleIndex()
+	public long GetSampleIndex()
 	{
 		lock (Lock)
 		{

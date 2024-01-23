@@ -111,17 +111,17 @@ internal sealed class MusicManager
 	/// This may be negative or greater than the music's sample range.
 	/// This is used to control timing of all sounds needing to play relative to the music.
 	/// </summary>
-	private int SampleIndex;
+	private long SampleIndex;
 
 	/// <summary>
 	/// List of sample indexes of upcoming assist ticks to play.
 	/// </summary>
-	private List<int> NextAssistTickStartMusicSamples;
+	private List<long> NextAssistTickStartMusicSamples;
 
 	/// <summary>
 	/// List of sample indexes of upcoming beat ticks to play.
 	/// </summary>
-	private List<int> NextBeatTickStartMusicSamples;
+	private List<long> NextBeatTickStartMusicSamples;
 
 	/// <summary>
 	/// Lock for thread safe mutations of members needed in the DSP callback.
@@ -142,22 +142,22 @@ internal sealed class MusicManager
 	/// <summary>
 	/// When using the music sound for the preview, the sample index of the preview start.
 	/// </summary>
-	private int PreviewStartSampleIndex;
+	private long PreviewStartSampleIndex;
 
 	/// <summary>
 	/// When using the music sound for the preview, the length in samples of the preview.
 	/// </summary>
-	private int PreviewLengthSamples;
+	private long PreviewLengthSamples;
 
 	/// <summary>
 	/// When using the music sound for the preview, the length in samples of the period over which to fade in.
 	/// </summary>
-	private int PreviewFadeInTimeSamples;
+	private long PreviewFadeInTimeSamples;
 
 	/// <summary>
 	/// When using the music sound for the preview, the length in samples of the period over which to fade out.
 	/// </summary>
-	private int PreviewFadeOutTimeSamples;
+	private long PreviewFadeOutTimeSamples;
 
 	/// <summary>
 	/// The main volume.
@@ -379,9 +379,9 @@ internal sealed class MusicManager
 	/// <param name="time">Time in seconds.</param>
 	/// <param name="offset">Offset in seconds.</param>
 	/// <returns>Sample index.</returns>
-	private int GetSampleIndexFromTime(double time, double offset)
+	private long GetSampleIndexFromTime(double time, double offset)
 	{
-		return (int)((time + offset) * SampleRate);
+		return (long)((time + offset) * SampleRate);
 	}
 
 	/// <summary>
@@ -390,7 +390,7 @@ internal sealed class MusicManager
 	/// <param name="sampleIndex">Sample index.</param>
 	/// <param name="offset">Offset in seconds.</param>
 	/// <returns>Time in seconds.</returns>
-	private double GetTimeFromSampleIndex(int sampleIndex, double offset)
+	private double GetTimeFromSampleIndex(long sampleIndex, double offset)
 	{
 		return (double)sampleIndex / SampleRate - offset;
 	}
@@ -641,7 +641,7 @@ internal sealed class MusicManager
 		// Record beat ticks first. Record assist ticks second, skipping any that occur on beat ticks.
 		if (SkipAssistTicksOnBeatTicks)
 		{
-			var beatTickRows = new List<int>();
+			var beatTickRows = new List<long>();
 			UpdateNextBeatTickTimes(chart, beatTickRows, null);
 			UpdateNextAssistTickTimes(chart, null, beatTickRows);
 		}
@@ -649,7 +649,7 @@ internal sealed class MusicManager
 		// Record assist ticks first. Record beats ticks second, skipping any that occur on assist ticks.
 		else if (SkipBeatTicksOnAssistTicks)
 		{
-			var assistTickRows = new List<int>();
+			var assistTickRows = new List<long>();
 			UpdateNextAssistTickTimes(chart, assistTickRows, null);
 			UpdateNextBeatTickTimes(chart, null, assistTickRows);
 		}
@@ -672,7 +672,7 @@ internal sealed class MusicManager
 	/// <param name="chart">The current EditorChart to add assist tick sounds for.</param>
 	/// <param name="rowsToRecord">List to populate with rows that have ticks. Will be ignore if list is null.</param>
 	/// <param name="rowsToSkip">List of rows to skip recording ticks for. Will be ignore if list is null.</param>
-	private void UpdateNextAssistTickTimes(EditorChart chart, List<int> rowsToRecord, List<int> rowsToSkip)
+	private void UpdateNextAssistTickTimes(EditorChart chart, List<long> rowsToRecord, List<long> rowsToSkip)
 	{
 		// Early out.
 		if (!UseAssistTick)
@@ -681,7 +681,7 @@ internal sealed class MusicManager
 			return;
 		}
 
-		var nextAssistTickStartMusicSamples = new List<int>();
+		var nextAssistTickStartMusicSamples = new List<long>();
 		if (chart != null)
 		{
 			var chartEvents = chart.GetEvents();
@@ -759,7 +759,7 @@ internal sealed class MusicManager
 	/// <param name="chart">The current EditorChart to add beat tick sounds for.</param>
 	/// <param name="rowsToRecord">List to populate with rows that have ticks. Will be ignore if list is null.</param>
 	/// <param name="rowsToSkip">List of rows to skip recording ticks for. Will be ignore if list is null.</param>
-	private void UpdateNextBeatTickTimes(EditorChart chart, List<int> rowsToRecord, List<int> rowsToSkip)
+	private void UpdateNextBeatTickTimes(EditorChart chart, List<long> rowsToRecord, List<long> rowsToSkip)
 	{
 		// Early out.
 		if (!UseBeatTick)
@@ -768,7 +768,7 @@ internal sealed class MusicManager
 			return;
 		}
 
-		var nextBeatTickStartMusicSamples = new List<int>();
+		var nextBeatTickStartMusicSamples = new List<long>();
 		if (chart != null)
 		{
 			// When getting the next beat tick times we need to account for potentially starting playback mid-tick.
@@ -782,7 +782,7 @@ internal sealed class MusicManager
 				ActiveChart = chart,
 				SongTime = currentSongTime,
 			};
-			var chartPositionRow = (int)position.ChartPosition;
+			var chartPositionRow = (long)position.ChartPosition;
 			var beatRow = chartPositionRow / SMCommon.MaxValidDenominator * SMCommon.MaxValidDenominator;
 			position.ChartPosition = beatRow;
 			while (position.SongTime < currentSongTime + TickLookAheadTime)
@@ -791,7 +791,7 @@ internal sealed class MusicManager
 				var play = true;
 				if (rowsToSkip != null)
 				{
-					var row = (int)position.ChartPosition;
+					var row = (long)position.ChartPosition;
 					for (var i = 0; i < rowsToSkip.Count; i++)
 					{
 						if (row == rowsToSkip[i])
@@ -806,7 +806,7 @@ internal sealed class MusicManager
 				if (play)
 				{
 					nextBeatTickStartMusicSamples.Add(GetSampleIndexFromTime(position.SongTime - BeatTickAttackTime, 0.0));
-					rowsToRecord?.Add((int)position.ChartPosition);
+					rowsToRecord?.Add((long)position.ChartPosition);
 				}
 
 				beatRow += SMCommon.MaxValidDenominator;
@@ -884,9 +884,9 @@ internal sealed class MusicManager
 		// Get the preview data.
 		float[] previewData = null;
 		var previewNumChannels = 0;
-		int previewSampleIndex;
-		var previewSoundStartSampleInclusive = 0;
-		var previewSoundEndSampleExclusive = 0;
+		long previewSampleIndex;
+		var previewSoundStartSampleInclusive = 0L;
+		var previewSoundEndSampleExclusive = 0L;
 		bool previewPlaying;
 		lock (PreviewData.GetLock())
 		{
@@ -917,7 +917,7 @@ internal sealed class MusicManager
 					outChannels = previewNumChannels;
 
 				// Update the preview tracking for the next call.
-				var endPreviewSample = (int)(previewSampleIndex + length);
+				var endPreviewSample = previewSampleIndex + length;
 				while (endPreviewSample >= previewSoundEndSampleExclusive)
 				{
 					endPreviewSample -= previewSoundEndSampleExclusive - previewSoundStartSampleInclusive;
@@ -940,12 +940,12 @@ internal sealed class MusicManager
 			var volume = defaultVolume;
 			if (previewSampleIndex > previewSoundEndSampleExclusive - PreviewFadeOutTimeSamples)
 			{
-				volume *= Interpolation.Lerp(1.0f, 0.0f, 0, PreviewFadeOutTimeSamples,
+				volume *= Interpolation.Lerp(1.0f, 0.0f, 0L, PreviewFadeOutTimeSamples,
 					previewSampleIndex - (previewSoundEndSampleExclusive - PreviewFadeOutTimeSamples));
 			}
 			else if (previewSampleIndex < previewSoundStartSampleInclusive + PreviewFadeInTimeSamples)
 			{
-				volume *= Interpolation.Lerp(0.0f, 1.0f, 0, PreviewFadeInTimeSamples,
+				volume *= Interpolation.Lerp(0.0f, 1.0f, 0L, PreviewFadeInTimeSamples,
 					previewSampleIndex - previewSoundStartSampleInclusive);
 			}
 
@@ -986,11 +986,11 @@ internal sealed class MusicManager
 		// Get the music data.
 		float[] musicData;
 		int musicNumChannels;
-		var musicSampleIndex = 0;
-		var lastMusicSampleToUseExclusive = 0;
+		var musicSampleIndex = 0L;
+		var lastMusicSampleToUseExclusive = 0L;
 		bool musicPlaying;
-		var sampleIndexStartInclusive = 0;
-		var sampleIndexEndExclusive = 0;
+		var sampleIndexStartInclusive = 0L;
+		var sampleIndexEndExclusive = 0L;
 		lock (Lock)
 		{
 			lock (MusicData.GetLock())
@@ -1006,10 +1006,10 @@ internal sealed class MusicManager
 					// Update the sample index used for tracking the position of all sounds.
 					musicSampleIndex = SampleIndex;
 					sampleIndexStartInclusive = SampleIndex;
-					sampleIndexEndExclusive = sampleIndexStartInclusive + (int)length;
+					sampleIndexEndExclusive = sampleIndexStartInclusive + length;
 					if (musicData != null)
 						lastMusicSampleToUseExclusive = musicData.Length / musicNumChannels;
-					SampleIndex += (int)length;
+					SampleIndex += length;
 					MusicData.SetSampleIndex(SampleIndex);
 				}
 			}
@@ -1049,7 +1049,7 @@ internal sealed class MusicManager
 				ref beatTickPlaying);
 
 			// Get the values for the music for this sample.
-			if (musicSampleIndex >= 0 && musicSampleIndex < lastMusicSampleToUseExclusive)
+			if (musicSampleIndex >= 0L && musicSampleIndex < lastMusicSampleToUseExclusive)
 			{
 				Mix(musicValuesForSample, musicNumChannels, musicData, musicNumChannels, musicSampleIndex, MusicVolume);
 			}
@@ -1114,18 +1114,18 @@ internal sealed class MusicManager
 	///     at the start of the DSP callback range for rendering.
 	///  5: Whether or not this sound should be playing at teh start of the DSP callback range for rendering.
 	/// </returns>
-	private static (float[], int, int, int, bool) UpdateTicks(
+	private static (float[], int, long, long, bool) UpdateTicks(
 		SoundPlaybackState playbackData,
 		bool musicPlaying,
-		List<int> nextTickTimes,
-		int sampleIndexStartInclusive,
-		int sampleIndexEndExclusive)
+		List<long> nextTickTimes,
+		long sampleIndexStartInclusive,
+		long sampleIndexEndExclusive)
 	{
 		// Get the tick data.
 		float[] sampleData;
 		int numChannels;
-		var numSamples = 0;
-		var sampleIndex = 0;
+		var numSamples = 0L;
+		var sampleIndex = 0L;
 		var playing = false;
 		lock (playbackData.GetLock())
 		{
@@ -1185,7 +1185,7 @@ internal sealed class MusicManager
 					// There may be multiple assist ticks played during this callback. We need to advance the
 					// SampleIndex to the end of the final tick that will play during this callback.
 					// The final tick will be denoted by the last index in NextAssistTickStartMusicSamples.
-					var lastNextTickStartInRange = -1;
+					var lastNextTickStartInRange = -1L;
 					if (nextTickTimes != null)
 					{
 						for (var nextTickTimeIndex = nextTickTimes.Count - 1; nextTickTimeIndex >= 0; nextTickTimeIndex--)
@@ -1198,7 +1198,7 @@ internal sealed class MusicManager
 						}
 					}
 
-					if (lastNextTickStartInRange >= 0)
+					if (lastNextTickStartInRange >= 0L)
 					{
 						playbackData.StartPlaying(sampleIndexEndExclusive - lastNextTickStartInRange);
 					}
@@ -1230,14 +1230,14 @@ internal sealed class MusicManager
 	/// <param name="potentialNextTickTimes">Potential next tick times to prune.</param>
 	/// <param name="sampleIndexEndExclusive">The exclusive end sample index of the current DSP callback.</param>
 	/// <returns>Pruned list of next tick times. May be null.</returns>
-	private List<int> GetNextTickTimes(List<int> potentialNextTickTimes, int sampleIndexEndExclusive)
+	private List<long> GetNextTickTimes(List<long> potentialNextTickTimes, long sampleIndexEndExclusive)
 	{
-		List<int> nextTimes = null;
+		List<long> nextTimes = null;
 		lock (Lock)
 		{
 			if (potentialNextTickTimes != null)
 			{
-				nextTimes = new List<int>(potentialNextTickTimes.Count);
+				nextTimes = new List<long>(potentialNextTickTimes.Count);
 				foreach (var nextAssistTickTime in potentialNextTickTimes)
 				{
 					// Intentionally include times which precede the sample range for this callback.
@@ -1258,7 +1258,7 @@ internal sealed class MusicManager
 	/// <param name="nextTickTimes">List of next tick times as sample index relative to music.</param>
 	/// <param name="musicSampleIndex">Sample index of the music.</param>
 	/// <returns>The index in nextTickTimes of the first tick occurring at or after the musicSampleIndex.</returns>
-	private static int GetFirstTickInRange(List<int> nextTickTimes, int musicSampleIndex)
+	private static int GetFirstTickInRange(List<long> nextTickTimes, long musicSampleIndex)
 	{
 		var nextTickIndex = 0;
 		if (nextTickTimes != null)
@@ -1282,14 +1282,14 @@ internal sealed class MusicManager
 	/// <param name="tickSampleIndex">The current tick sample index. Will be reset if advancing into a new tick.</param>
 	/// <param name="tickPlaying">The current state of whether the tick is playing or not. Will be set true if advancing into a new tick.</param>
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	private static void CheckForStartingTick(List<int> nextTickTimes, int musicSampleIndex, ref int nextTickIndex,
-		ref int tickSampleIndex, ref bool tickPlaying)
+	private static void CheckForStartingTick(List<long> nextTickTimes, long musicSampleIndex, ref int nextTickIndex,
+		ref long tickSampleIndex, ref bool tickPlaying)
 	{
 		if (nextTickTimes != null && nextTickIndex < nextTickTimes.Count)
 		{
 			if (musicSampleIndex == nextTickTimes[nextTickIndex])
 			{
-				tickSampleIndex = 0;
+				tickSampleIndex = 0L;
 				tickPlaying = true;
 				nextTickIndex++;
 			}
@@ -1313,10 +1313,10 @@ internal sealed class MusicManager
 		float[] outputValuesForSample,
 		int numOutputChannels,
 		float[] tickSampleData,
-		int tickNumSamples,
+		long tickNumSamples,
 		int numTickChannels,
 		float volume,
-		ref int tickSampleIndex,
+		ref long tickSampleIndex,
 		ref bool tickPlaying)
 	{
 		if (!tickPlaying)
@@ -1328,7 +1328,7 @@ internal sealed class MusicManager
 		tickSampleIndex++;
 		if (tickSampleIndex >= tickNumSamples)
 		{
-			tickSampleIndex = 0;
+			tickSampleIndex = 0L;
 			tickPlaying = false;
 		}
 	}
@@ -1343,7 +1343,7 @@ internal sealed class MusicManager
 	/// <param name="sampleIndex">The sample index to mix.</param>
 	/// <param name="volume">Volume to mix at.</param>
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	private static void Mix(float[] output, int numOutputChannels, float[] input, int numInputChannels, int sampleIndex,
+	private static void Mix(float[] output, int numOutputChannels, float[] input, int numInputChannels, long sampleIndex,
 		float volume)
 	{
 		for (var channelIndex = 0; channelIndex < numOutputChannels; channelIndex++)
