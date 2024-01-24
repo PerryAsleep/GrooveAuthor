@@ -6,6 +6,35 @@
 
 [<img src="StepManiaEditor/docs/screenshot-01.png" width="100%"/>](StepManiaEditor/docs/screenshot-01.png)
 
+## Highlights
+
+### Robust Chart Generation
+`GrooveAuthor` can add more charts to your existing songs almost instantly. It understands modern tech and has incredibly detailed controls for fine-tuning autogen content. All the functionality from [StepManiaChartGenerator](https://github.com/PerryAsleep/StepManiaChartGenerator) is available in-editor.
+
+![Alt Text](StepManiaEditor/docs/autogen-tech.gif)
+
+![Alt Text](StepManiaEditor/docs/autogen-stamina.gif)
+
+### Intelligent Pattern Generation
+`GrooveAuthor` can generate patterns that integrate seamlessly with your chart. It offers a deep suite of controls so patterns come out just the way you want.
+
+![Alt Text](StepManiaEditor/docs/pattern-generation.gif)
+
+### SSC Gimmicks
+`GrooveAuthor` renders `ssc` effects accurately.
+
+![Alt Text](StepManiaEditor/docs/ssc-gimmicks.gif)
+
+### Smooth Zoom
+`GrooveAuthor` supports near-infinite zooming with 100% accurate waveform rendering and offset compensation.
+
+![Alt Text](StepManiaEditor/docs/smooth-zoom.gif)
+
+### Performant
+Other editors stutter or lock up when editing long files but `GrooveAuthor` is built from the ground up to be responsive and fast with all content. `GrooveAuthor` can handle anything from the 2-hour long "90's Dance Megamix" to "24 hours of 100 bpm stream".
+
+![Alt Text](StepManiaEditor/docs/large-file-edits.gif)
+
 ## Features
 
 - Open source.
