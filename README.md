@@ -59,7 +59,15 @@ Building from source requires Windows 10 or greater and Microsoft Visual Studio 
 	cd ./GrooveAuthor
 	git submodule update --init --recursive
 	```
-2. Open `GrooveAuthor.sln` and build through Visual Studio.
+2. Open `GrooveAuthor.sln` with Visual Studio.
+3. Set `StepManiaEditor` as your Startup Project and build.
+
+### Troubleshooting
+
+If you experience errors building related to `dotnet tool restore` or `mgcb-editor-windows` you may need to:
+1. Delete the directories beginning with `dotnet-mgcb` in `%USERPROFILE%\.nuget\packages\`
+2. In Visual Studio open the PowerShell through Tools > Command Line > Developer PowerShell.
+3. Run `cd .\StepManiaEditor` then `dotnet tool restore`
 
 ## License
 
