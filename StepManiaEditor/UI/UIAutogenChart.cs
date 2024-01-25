@@ -59,7 +59,7 @@ internal sealed class UIAutogenChart
 		Utils.EnsureChartReferencesValidChartFromActiveSong(ref SourceChart, Editor);
 
 		ImGui.SetNextWindowSize(Vector2.Zero, ImGuiCond.FirstUseEver);
-		if (ImGui.Begin(WindowTitle, ref Showing, ImGuiWindowFlags.NoScrollbar))
+		if (ImGui.Begin(WindowTitle, ref Showing, ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoCollapse))
 		{
 			if (ImGuiLayoutUtils.BeginTable("Autogen Contents", TitleWidth))
 			{

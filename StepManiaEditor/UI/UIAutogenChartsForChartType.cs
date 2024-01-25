@@ -90,7 +90,7 @@ internal sealed class UIAutogenChartsForChartType
 		RefreshSourceChartType();
 
 		ImGui.SetNextWindowSize(Vector2.Zero, ImGuiCond.FirstUseEver);
-		if (ImGui.Begin(WindowTitle, ref Showing, ImGuiWindowFlags.NoScrollbar))
+		if (ImGui.Begin(WindowTitle, ref Showing, ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoCollapse))
 		{
 			if (ImGuiLayoutUtils.BeginTable("Autogen Contents", TitleWidth))
 			{
