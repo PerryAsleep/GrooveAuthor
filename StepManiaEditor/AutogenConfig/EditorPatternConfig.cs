@@ -156,6 +156,7 @@ internal sealed class EditorPatternConfig : EditorConfig<Config>, IEquatable<Edi
 		return new EditorPatternConfig(snapshot ? Guid : Guid.NewGuid())
 		{
 			StartingFootSpecified = StartingFootSpecified,
+			PatternTypeInternal = PatternTypeInternal,
 		};
 	}
 
