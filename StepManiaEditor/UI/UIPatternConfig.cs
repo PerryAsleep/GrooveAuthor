@@ -111,6 +111,11 @@ internal sealed class UIPatternConfig
 				+ "\nNew:  Relative weight of new arrow steps.",
 				0.2f, "%i", 0, 100, 0, 100);
 
+			ImGuiLayoutUtils.DrawRowDragInt(true, "Step Type Check Period", editorConfig.Config,
+				nameof(PatternConfig.StepTypeCheckPeriod),
+				false, "Period in steps at which costs for deviating from the desired Step Type Weights are evaluated.", 1F,
+				"%i steps", 0, 512);
+
 			ImGuiLayoutUtils.EndTable();
 		}
 

@@ -64,6 +64,7 @@ internal sealed class EditorPatternConfig : EditorConfig<Config>, IEquatable<Edi
 	public const int DefaultRightFootEndLaneSpecified = 0;
 	public const int DefaultSameArrowStepWeight = 25;
 	public const int DefaultNewArrowStepWeight = 75;
+	public const int DefaultStepTypeCheckPeriod = 16;
 	public const bool DefaultLimitSameArrowsInARowPerFoot = true;
 	public const int DefaultMaxSameArrowsInARowPerFoot = 4;
 
@@ -181,6 +182,7 @@ internal sealed class EditorPatternConfig : EditorConfig<Config>, IEquatable<Edi
 		Config.RightFootEndLaneSpecified = DefaultRightFootEndLaneSpecified;
 		SameArrowStepWeight = DefaultSameArrowStepWeight;
 		NewArrowStepWeight = DefaultNewArrowStepWeight;
+		Config.StepTypeCheckPeriod = DefaultStepTypeCheckPeriod;
 		Config.LimitSameArrowsInARowPerFoot = DefaultLimitSameArrowsInARowPerFoot;
 		Config.MaxSameArrowsInARowPerFoot = DefaultMaxSameArrowsInARowPerFoot;
 	}
@@ -213,6 +215,7 @@ internal sealed class EditorPatternConfig : EditorConfig<Config>, IEquatable<Edi
 		       && Config.RightFootEndLaneSpecified == DefaultRightFootEndLaneSpecified
 		       && SameArrowStepWeight == DefaultSameArrowStepWeight
 		       && NewArrowStepWeight == DefaultNewArrowStepWeight
+		       && Config.StepTypeCheckPeriod == DefaultStepTypeCheckPeriod
 		       && Config.LimitSameArrowsInARowPerFoot == DefaultLimitSameArrowsInARowPerFoot
 		       && Config.MaxSameArrowsInARowPerFoot == DefaultMaxSameArrowsInARowPerFoot;
 	}
@@ -308,6 +311,7 @@ internal sealed class ActionRestorePatternConfigDefaults : EditorAction
 	private readonly int PreviousRightFootEndLaneSpecified;
 	private readonly int PreviousSameArrowStepWeight;
 	private readonly int PreviousNewArrowStepWeight;
+	private readonly int PreviousStepTypeCheckPeriod;
 	private readonly bool PreviousLimitSameArrowsInARowPerFoot;
 	private readonly int PreviousMaxSameArrowsInARowPerFoot;
 
@@ -327,6 +331,7 @@ internal sealed class ActionRestorePatternConfigDefaults : EditorAction
 		PreviousRightFootEndLaneSpecified = Config.Config.RightFootEndLaneSpecified;
 		PreviousSameArrowStepWeight = Config.SameArrowStepWeight;
 		PreviousNewArrowStepWeight = Config.NewArrowStepWeight;
+		PreviousStepTypeCheckPeriod = Config.Config.StepTypeCheckPeriod;
 		PreviousLimitSameArrowsInARowPerFoot = Config.Config.LimitSameArrowsInARowPerFoot;
 		PreviousMaxSameArrowsInARowPerFoot = Config.Config.MaxSameArrowsInARowPerFoot;
 	}
@@ -356,6 +361,7 @@ internal sealed class ActionRestorePatternConfigDefaults : EditorAction
 		Config.Config.RightFootEndLaneSpecified = DefaultRightFootEndLaneSpecified;
 		Config.SameArrowStepWeight = DefaultSameArrowStepWeight;
 		Config.NewArrowStepWeight = DefaultNewArrowStepWeight;
+		Config.Config.StepTypeCheckPeriod = DefaultStepTypeCheckPeriod;
 		Config.Config.LimitSameArrowsInARowPerFoot = DefaultLimitSameArrowsInARowPerFoot;
 		Config.Config.MaxSameArrowsInARowPerFoot = DefaultMaxSameArrowsInARowPerFoot;
 	}
@@ -375,6 +381,7 @@ internal sealed class ActionRestorePatternConfigDefaults : EditorAction
 		Config.Config.RightFootEndLaneSpecified = PreviousRightFootEndLaneSpecified;
 		Config.SameArrowStepWeight = PreviousSameArrowStepWeight;
 		Config.NewArrowStepWeight = PreviousNewArrowStepWeight;
+		Config.Config.StepTypeCheckPeriod = PreviousStepTypeCheckPeriod;
 		Config.Config.LimitSameArrowsInARowPerFoot = PreviousLimitSameArrowsInARowPerFoot;
 		Config.Config.MaxSameArrowsInARowPerFoot = PreviousMaxSameArrowsInARowPerFoot;
 	}
