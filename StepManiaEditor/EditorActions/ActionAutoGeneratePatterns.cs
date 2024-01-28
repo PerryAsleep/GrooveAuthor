@@ -252,10 +252,13 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 				while (editorEventEnumerator.IsCurrentValid()
 				       && editorEventEnumerator.Current!.GetRow() <= currentExpressedChartSearchNode.Position)
 				{
-					if (editorEventEnumerator.Current is EditorTapNoteEvent or EditorHoldNoteEvent or EditorFakeNoteEvent
-					    or EditorLiftNoteEvent)
+					if (!pattern.IgnorePrecedingDistribution)
 					{
-						currentLaneCounts[editorEventEnumerator.Current.GetLane()]++;
+						if (editorEventEnumerator.Current is EditorTapNoteEvent or EditorHoldNoteEvent or EditorFakeNoteEvent
+						    or EditorLiftNoteEvent)
+						{
+							currentLaneCounts[editorEventEnumerator.Current.GetLane()]++;
+						}
 					}
 
 					editorEventEnumerator.MoveNext();

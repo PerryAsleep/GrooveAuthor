@@ -10,7 +10,7 @@ namespace StepManiaEditor.UI;
 /// </summary>
 internal sealed class UIPatternEvent
 {
-	private static readonly int TitleColumnWidth = UiScaled(140);
+	private static readonly int TitleColumnWidth = UiScaled(180);
 
 	public const string WindowTitle = "Pattern Event Properties";
 
@@ -54,7 +54,11 @@ internal sealed class UIPatternEvent
 					"Whether or not the end position of the pattern is inclusive.");
 				ImGuiLayoutUtils.DrawRowChartPositionLength(true, "Length", patternEvent, nameof(EditorPatternEvent.Length),
 					"The length of the pattern.");
-
+				ImGuiLayoutUtils.DrawRowCheckbox(true, "Ignore Preceding Distribution", patternEvent,
+					nameof(EditorPatternEvent.IgnorePrecedingDistribution), false,
+					"When patterns are generated, at every step the distribution of all preceding steps is considered so"
+					+ "\nthat the Arrow Weights of the Performed Chart Config can be matched."
+					+ "\nIf this option is checked, steps preceding the pattern will not be considered.");
 				ImGuiLayoutUtils.EndTable();
 			}
 

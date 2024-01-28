@@ -39,6 +39,7 @@ internal sealed class EditorPatternEvent : EditorEvent, IChartRegion,
 		[JsonInclude] public int RandomSeed;
 		[JsonInclude] public bool StartPositionInclusive;
 		[JsonInclude] public bool EndPositionInclusive;
+		[JsonInclude] public bool IgnorePrecedingDistribution;
 
 		/// <summary>
 		/// Returns a new Definition that is a clone of this Definition.
@@ -60,7 +61,8 @@ internal sealed class EditorPatternEvent : EditorEvent, IChartRegion,
 			       && Length == other.Length
 			       && RandomSeed == other.RandomSeed
 			       && StartPositionInclusive == other.StartPositionInclusive
-			       && EndPositionInclusive == other.EndPositionInclusive;
+			       && EndPositionInclusive == other.EndPositionInclusive
+			       && IgnorePrecedingDistribution == other.IgnorePrecedingDistribution;
 		}
 	}
 
@@ -205,6 +207,24 @@ internal sealed class EditorPatternEvent : EditorEvent, IChartRegion,
 	}
 
 	/// <summary>
+	/// Whether or not the this pattern should ignore preceding steps when determining
+	/// how steps should be distributed.
+	/// </summary>
+	[JsonInclude]
+	public bool IgnorePrecedingDistribution
+	{
+		get => EventDefinition.IgnorePrecedingDistribution;
+		set
+		{
+			Assert(EditorChart.CanBeEdited());
+			if (!EditorChart.CanBeEdited())
+				return;
+
+			EventDefinition.IgnorePrecedingDistribution = value;
+		}
+	}
+
+	/// <summary>
 	/// ChartRow of this EditorPatternEvent.
 	/// Exposed via property to allow movement of the event.
 	/// </summary>
@@ -334,6 +354,7 @@ internal sealed class EditorPatternEvent : EditorEvent, IChartRegion,
 			RandomSeed = new Random().Next(),
 			StartPositionInclusive = true,
 			EndPositionInclusive = false,
+			IgnorePrecedingDistribution = false,
 		};
 
 		ResetTimeBasedOnRow();
