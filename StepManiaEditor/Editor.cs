@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Media;
@@ -332,6 +333,8 @@ internal sealed class Editor :
 	/// </summary>
 	public Editor()
 	{
+		InitializeCulture();
+
 		// Create a logger first so we can log any startup messages.
 		InitializeLogger();
 
@@ -385,6 +388,13 @@ internal sealed class Editor :
 		InitializeKeyCommandManager();
 		InitializeSongLoadTask();
 		base.Initialize();
+	}
+
+	private void InitializeCulture()
+	{
+		// Default the application culture to the invariant culture to ensure consistent parsing in all file I/O.
+		CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
+		CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
 	}
 
 	private void InitializeLogger()
