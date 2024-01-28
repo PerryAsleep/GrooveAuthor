@@ -62,6 +62,7 @@ internal sealed class ImGuiLayoutUtils
 	public static readonly float ButtonUseCurrentRowWidth = UiScaled(80);
 	public static readonly float TextInclusiveWidth = UiScaled(58);
 	public static readonly float NewSeedButtonWidth = UiScaled(57);
+	public static readonly float NewSeedAndRegenerateButtonWidth = UiScaled(152);
 	public static readonly float ArrowIconWidth = UiScaled(16);
 	public static readonly float ArrowIconHeight = UiScaled(16);
 	public static readonly Vector2 ArrowIconSize = new(ArrowIconWidth, ArrowIconHeight);
@@ -206,6 +207,24 @@ internal sealed class ImGuiLayoutUtils
 		DrawRowTitleAndAdvanceColumn(title);
 		ImGui.SetNextItemWidth(DrawHelp(help, ImGui.GetContentRegionAvail().X));
 		return ImGui.Button(buttonText);
+	}
+
+	public static void DrawRowTwoButtons(
+		string title,
+		string buttonText1,
+		Action action1,
+		string help = null)
+	{
+		DrawRowTitleAndAdvanceColumn(title);
+		var remainingWidth = DrawHelp(help, ImGui.GetContentRegionAvail().X);
+
+		var buttonWidth = (remainingWidth - ImGui.GetStyle().ItemSpacing.X) * 0.5f;
+		var buttonWidthVec = new Vector2(buttonWidth, 0.0f);
+
+		if (ImGui.Button(buttonText1, buttonWidthVec))
+		{
+			action1();
+		}
 	}
 
 	public static void DrawRowTwoButtons(
@@ -970,6 +989,8 @@ internal sealed class ImGuiLayoutUtils
 		object o,
 		string fieldName,
 		bool affectsFile,
+		EditorPatternEvent patternEvent,
+		Editor editor,
 		string help = null,
 		string format = "%i")
 	{
@@ -979,7 +1000,8 @@ internal sealed class ImGuiLayoutUtils
 
 		var remainingWidth = DrawHelp(help, ImGui.GetContentRegionAvail().X);
 
-		var controlWidth = remainingWidth - NewSeedButtonWidth - ImGui.GetStyle().ItemSpacing.X;
+		var controlWidth = remainingWidth - NewSeedButtonWidth - NewSeedAndRegenerateButtonWidth -
+		                   ImGui.GetStyle().ItemSpacing.X * 2;
 		PushDisabled();
 		DrawDragInt(undoable, title, o, fieldName, controlWidth, affectsFile, null, 1.0f, format);
 		PopDisabled();
@@ -996,6 +1018,33 @@ internal sealed class ImGuiLayoutUtils
 			else
 			{
 				SetFieldOrPropertyToValue(o, fieldName, newSeed);
+			}
+		}
+
+		ImGui.SameLine();
+		if (ImGui.Button("New Seed and Regenerate", new Vector2(NewSeedAndRegenerateButtonWidth, 0.0f)))
+		{
+			var newSeed = new Random().Next();
+			if (undoable)
+			{
+				// Ideally these would be combined into an ActionMultiple, but ActionAutoGeneratePatterns
+				// is async.
+				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyValue<int>(
+					o, fieldName, newSeed, affectsFile));
+				ActionQueue.Instance.Do(new ActionAutoGeneratePatterns(
+					editor,
+					patternEvent!.GetEditorChart(),
+					new List<EditorPatternEvent> { patternEvent },
+					false));
+			}
+			else
+			{
+				SetFieldOrPropertyToValue(o, fieldName, newSeed);
+				ActionQueue.Instance.Do(new ActionAutoGeneratePatterns(
+					editor,
+					patternEvent!.GetEditorChart(),
+					new List<EditorPatternEvent> { patternEvent },
+					false));
 			}
 		}
 	}

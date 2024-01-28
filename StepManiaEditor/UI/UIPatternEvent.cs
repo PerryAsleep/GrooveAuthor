@@ -40,18 +40,27 @@ internal sealed class UIPatternEvent
 			if (disabled)
 				PushDisabled();
 
-			if (ImGuiLayoutUtils.BeginTable("PatternEventTable", TitleColumnWidth))
+			if (ImGuiLayoutUtils.BeginTable("PatternEventPositionTable", TitleColumnWidth))
 			{
 				ImGuiLayoutUtils.DrawRowChartPosition("Start", Editor, patternEvent,
 					"The start position of the pattern.");
+				ImGuiLayoutUtils.DrawRowCheckbox(true, "Start Inclusive", patternEvent,
+					nameof(EditorPatternEvent.StartPositionInclusive), false,
+					"Whether or not the start position of the pattern is inclusive.");
 				ImGuiLayoutUtils.DrawRowChartPositionFromLength("End", Editor, patternEvent, nameof(EditorPatternEvent.Length),
 					"The end position of the pattern.");
+				ImGuiLayoutUtils.DrawRowCheckbox(true, "End Inclusive", patternEvent,
+					nameof(EditorPatternEvent.EndPositionInclusive), false,
+					"Whether or not the end position of the pattern is inclusive.");
 				ImGuiLayoutUtils.DrawRowChartPositionLength(true, "Length", patternEvent, nameof(EditorPatternEvent.Length),
-					nameof(EditorPatternEvent.EndPositionInclusive),
 					"The length of the pattern.");
-				ImGuiLayoutUtils.DrawRowRandomSeed(true, "Fixed Seed", patternEvent, nameof(EditorPatternEvent.RandomSeed), true,
-					"Random seed to use when generating this Pattern.");
 
+				ImGuiLayoutUtils.EndTable();
+			}
+
+			ImGui.Separator();
+			if (ImGuiLayoutUtils.BeginTable("PatternEventConfigTable", TitleColumnWidth))
+			{
 				ImGuiLayoutUtils.DrawPatternConfigCombo(true, "Pattern Config", patternEvent,
 					nameof(EditorPatternEvent.PatternConfigGuid),
 					"The Pattern Configuration.");
@@ -65,28 +74,19 @@ internal sealed class UIPatternEvent
 			ImGui.Separator();
 			if (ImGuiLayoutUtils.BeginTable("PatternEventButtons", TitleColumnWidth))
 			{
-				ImGuiLayoutUtils.DrawRowTwoButtons("Generate Pattern",
-					"Generate (Fixed Seed)",
-					() =>
-					{
-						ActionQueue.Instance.Do(new ActionAutoGeneratePatterns(
-							Editor,
-							patternEvent!.GetEditorChart(),
-							new List<EditorPatternEvent> { patternEvent },
-							false));
-					},
-					"Generate (New Seed)",
-					() =>
-					{
-						ActionQueue.Instance.Do(new ActionAutoGeneratePatterns(
-							Editor,
-							patternEvent!.GetEditorChart(),
-							new List<EditorPatternEvent> { patternEvent },
-							true));
-					},
-					"Generates the pattern. Will regenerate the pattern each time. Using the fixed seed will" +
-					" produce the same pattern each time the pattern is generated, assuming no dependencies" +
-					" have changed. Using a new seed will produce different results each time.");
+				ImGuiLayoutUtils.DrawRowRandomSeed(true, "Seed", patternEvent, nameof(EditorPatternEvent.RandomSeed), true,
+					patternEvent, Editor,
+					"Random seed to use when generating this Pattern.");
+
+				if (ImGuiLayoutUtils.DrawRowButton("Generate Pattern",
+					    "Generate Pattern", "Generate the pattern using the current seed."))
+				{
+					ActionQueue.Instance.Do(new ActionAutoGeneratePatterns(
+						Editor,
+						patternEvent!.GetEditorChart(),
+						new List<EditorPatternEvent> { patternEvent },
+						false));
+				}
 
 				if (ImGuiLayoutUtils.DrawRowButton("Clear Pattern", "Clear Pattern",
 					    "Delete all the notes in this pattern's region."))
@@ -94,43 +94,6 @@ internal sealed class UIPatternEvent
 					ActionQueue.Instance.Do(new ActionDeletePatternNotes(
 						patternEvent!.GetEditorChart(),
 						new List<EditorPatternEvent> { patternEvent }));
-				}
-
-				ImGuiLayoutUtils.EndTable();
-			}
-
-			ImGui.Separator();
-			if (ImGuiLayoutUtils.BeginTable("PatternGlobalEventButtons", TitleColumnWidth))
-			{
-				ImGuiLayoutUtils.DrawRowTwoButtons("Generate All Patterns",
-					"Generate All (Fixed Seed)",
-					() =>
-					{
-						ActionQueue.Instance.Do(new ActionAutoGeneratePatterns(
-							Editor,
-							patternEvent!.GetEditorChart(),
-							patternEvent.GetEditorChart().GetPatterns(),
-							false));
-					},
-					"Generate All (New Seed)",
-					() =>
-					{
-						ActionQueue.Instance.Do(new ActionAutoGeneratePatterns(
-							Editor,
-							patternEvent!.GetEditorChart(),
-							patternEvent.GetEditorChart().GetPatterns(),
-							true));
-					},
-					"Regenerates all patterns in the chart. Using fixed seeds will" +
-					" produce the same patterns each time the patterns are generated, assuming no dependencies" +
-					" have changed. Using new seeds will produce different results each time.");
-
-				if (ImGuiLayoutUtils.DrawRowButton("Clear All Patterns", "Clear All Patterns",
-					    "Delete all the notes in all of this chart's patterns."))
-				{
-					ActionQueue.Instance.Do(new ActionDeletePatternNotes(
-						patternEvent!.GetEditorChart(),
-						patternEvent.GetEditorChart().GetPatterns()));
 				}
 
 				ImGuiLayoutUtils.EndTable();

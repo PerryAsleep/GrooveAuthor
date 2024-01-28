@@ -155,13 +155,19 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 		for (var patternIndex = 0; patternIndex < Patterns.Count; patternIndex++)
 		{
 			var pattern = Patterns[patternIndex];
+			var errorString = $"Failed to generate {pattern.GetMiscEventText()} pattern at row {pattern.GetRow()}.";
+
+			if (pattern.GetNumSteps() <= 0)
+			{
+				Logger.Warn($"{errorString} Pattern range is too short to generate steps.");
+				continue;
+			}
+
 			var transitionCutoffPercentage = pattern.GetPerformedChartConfig().Config.Transitions.TransitionCutoffPercentage;
 			var numStepsAtLastTransition = -1;
 			var totalNodeSteps = 0;
 			bool? lastTransitionLeft = null;
 			var nextPattern = patternIndex < Patterns.Count - 1 ? Patterns[patternIndex + 1] : null;
-
-			var errorString = $"Failed to generate {pattern.GetMiscEventText()} pattern at row {pattern.GetRow()}.";
 
 			// Create an ExpressedChart.
 			var expressedChart = CreateFromSMEvents(
@@ -189,7 +195,7 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 			}
 
 			var currentLaneCounts = new int[stepGraph.NumArrows];
-			var patternRow = pattern.GetRow();
+			var firstStepRow = pattern.GetFirstStepRow();
 
 			// Loop over all ExpressedChart search nodes.
 			// The nodes give us GraphNodes, which let us determine which arrows are associated with which feet.
@@ -202,7 +208,7 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 			{
 				// This search node follows the pattern.
 				// Check for updating following footing.
-				if (currentExpressedChartSearchNode.Position >= patternRow)
+				if (currentExpressedChartSearchNode.Position >= firstStepRow)
 				{
 					foundPreviousFooting = true;
 
@@ -319,9 +325,8 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 			var performedChart = PerformedChart.CreateWithPattern(stepGraph,
 				pattern.GetPatternConfig().Config,
 				pattern.GetPerformedChartConfig().Config,
-				pattern.GetRow(),
-				pattern.GetEndRow(),
-				pattern.EndPositionInclusive,
+				pattern.GetFirstStepRow(),
+				pattern.GetLastStepRow(),
 				UseNewSeeds ? new Random().Next() : pattern.RandomSeed,
 				previousStepFoot,
 				previousStepTime,
@@ -347,17 +352,18 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 			// overlap this pattern. In that case we do not want to add the notes from
 			// this pattern which overlap, and we instead want to let the next pattern
 			// generate those notes.
-			if (nextPattern != null
-			    && (nextPattern.GetRow() < pattern.GetEndRow()
-			        || (pattern.EndPositionInclusive && nextPattern.GetRow() == pattern.GetEndRow())))
+			if (nextPattern != null && nextPattern.GetNumSteps() > 0)
 			{
-				smEventsToAdd = new List<Event>();
-				var nextPatternRow = nextPattern.GetRow();
-				foreach (var smEvent in smEvents)
+				var nextPatternStartRow = nextPattern.GetFirstStepRow();
+				if (nextPatternStartRow <= pattern.GetEndRow())
 				{
-					if (smEvent.IntegerPosition >= nextPatternRow)
-						break;
-					smEventsToAdd.Add(smEvent);
+					smEventsToAdd = new List<Event>();
+					foreach (var smEvent in smEvents)
+					{
+						if (smEvent.IntegerPosition >= nextPatternStartRow)
+							break;
+						smEventsToAdd.Add(smEvent);
+					}
 				}
 			}
 

@@ -5,6 +5,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGameExtensions;
 using StepManiaEditor.AutogenConfig;
+using StepManiaLibrary.PerformedChart;
 using static StepManiaEditor.Editor;
 using static StepManiaEditor.Utils;
 using static System.Diagnostics.Debug;
@@ -16,8 +17,8 @@ namespace StepManiaEditor;
 /// The Pattern is rendered as an IRegion and also as a miscellaneous editor event widget.
 /// </summary>
 internal sealed class EditorPatternEvent : EditorEvent, IChartRegion,
-	Fumen.IObserver<EditorConfig<StepManiaLibrary.PerformedChart.Config>>,
-	Fumen.IObserver<EditorConfig<StepManiaLibrary.PerformedChart.PatternConfig>>
+	Fumen.IObserver<EditorConfig<Config>>,
+	Fumen.IObserver<EditorConfig<PatternConfig>>
 {
 	public static readonly string EventShortDescription =
 		"Patterns are automatically generated sequences of steps.";
@@ -36,6 +37,7 @@ internal sealed class EditorPatternEvent : EditorEvent, IChartRegion,
 		[JsonInclude] public Guid PerformedChartConfigGuid;
 		[JsonInclude] public int Length;
 		[JsonInclude] public int RandomSeed;
+		[JsonInclude] public bool StartPositionInclusive;
 		[JsonInclude] public bool EndPositionInclusive;
 
 		/// <summary>
@@ -57,6 +59,7 @@ internal sealed class EditorPatternEvent : EditorEvent, IChartRegion,
 			       && PerformedChartConfigGuid.Equals(other.PerformedChartConfigGuid)
 			       && Length == other.Length
 			       && RandomSeed == other.RandomSeed
+			       && StartPositionInclusive == other.StartPositionInclusive
 			       && EndPositionInclusive == other.EndPositionInclusive;
 		}
 	}
@@ -164,6 +167,23 @@ internal sealed class EditorPatternEvent : EditorEvent, IChartRegion,
 				return;
 
 			EventDefinition.RandomSeed = value;
+		}
+	}
+
+	/// <summary>
+	/// Whether or not the start position of this EditorPatternEvent is inclusive.
+	/// </summary>
+	[JsonInclude]
+	public bool StartPositionInclusive
+	{
+		get => EventDefinition.StartPositionInclusive;
+		set
+		{
+			Assert(EditorChart.CanBeEdited());
+			if (!EditorChart.CanBeEdited())
+				return;
+
+			EventDefinition.StartPositionInclusive = value;
 		}
 	}
 
@@ -312,6 +332,7 @@ internal sealed class EditorPatternEvent : EditorEvent, IChartRegion,
 			PerformedChartConfigGuid = PerformedChartConfigManager.DefaultPerformedChartStaminaGuid,
 			Length = SMCommon.RowsPerMeasure,
 			RandomSeed = new Random().Next(),
+			StartPositionInclusive = true,
 			EndPositionInclusive = false,
 		};
 
@@ -413,23 +434,67 @@ internal sealed class EditorPatternEvent : EditorEvent, IChartRegion,
 		return GetRow() + GetLength();
 	}
 
-	public int GetNumSteps()
+	/// <summary>
+	/// Gets the spacing between steps in this pattern in rows.
+	/// </summary>
+	/// <returns>Spacing between steps in this pattern in rows.</returns>
+	public int GetStepSpacing()
 	{
 		var patternConfig = GetPatternConfig();
-		var totalRows = GetLength();
-		var beatSubdivisions = EditorPatternConfig.GetBeatSubdivision(patternConfig.PatternType);
-		var totalSteps = totalRows * beatSubdivisions / SMCommon.MaxValidDenominator;
-		var remainder = totalRows * beatSubdivisions % SMCommon.MaxValidDenominator;
-		if (remainder != 0)
-		{
-			totalSteps++;
-		}
-		else if (EndPositionInclusive)
-		{
-			totalSteps++;
-		}
+		return SMCommon.MaxValidDenominator / EditorPatternConfig.GetBeatSubdivision(patternConfig.PatternType);
+	}
 
-		return Math.Max(0, totalSteps);
+	/// <summary>
+	/// Gets the row of the first possible step within this pattern.
+	/// It is not guaranteed for this step to be within the pattern if the start position
+	/// is exclusive and the pattern is shorter than its spacing.
+	/// </summary>
+	/// <returns>Row if the first possible step within this pattern.</returns>
+	public int GetFirstStepRow()
+	{
+		// The first step of a pattern will be when the pattern starts if it is inclusive.
+		var startRow = GetRow();
+		if (StartPositionInclusive)
+			return startRow;
+
+		// If it is exclusive we need to advance one step.
+		return startRow + GetStepSpacing();
+	}
+
+	/// <summary>
+	/// Gets the row of the last possible step within this pattern.
+	/// It is not guaranteed for this step to be within the pattern if the pattern is
+	/// exclusive on both ends and the pattern is not longer than its spacing.
+	/// </summary>
+	/// <returns>Row of the last possible step within this pattern.</returns>
+	public int GetLastStepRow()
+	{
+		var spacing = GetStepSpacing();
+		var startRow = GetRow();
+		var len = GetLength();
+		var lastStepRow = startRow + len / spacing * spacing;
+		if (EndPositionInclusive)
+			return lastStepRow;
+
+		// If the end position is exclusive and the last step is at that end position, we need to 
+		// back up one step.
+		if (lastStepRow == startRow + len)
+			lastStepRow -= spacing;
+		return lastStepRow;
+	}
+
+	/// <summary>
+	/// Gets the number of steps within this pattern.
+	/// </summary>
+	/// <returns>The number of steps within this pattern.</returns>
+	public int GetNumSteps()
+	{
+		var first = GetFirstStepRow();
+		var last = GetLastStepRow();
+		// For poorly constructed short patterns it is possible for the first step to be beyond the end of the pattern region.
+		if (first > last)
+			return 0;
+		return Math.Max(0, (last - first) / GetStepSpacing() + 1);
 	}
 
 	/// <summary>
@@ -474,7 +539,7 @@ internal sealed class EditorPatternEvent : EditorEvent, IChartRegion,
 	/// <summary>
 	/// Notification handler for the EditorPerformedChartConfig.
 	/// </summary>
-	public void OnNotify(string eventId, EditorConfig<StepManiaLibrary.PerformedChart.Config> config, object payload)
+	public void OnNotify(string eventId, EditorConfig<Config> config, object payload)
 	{
 		switch (eventId)
 		{
@@ -490,7 +555,7 @@ internal sealed class EditorPatternEvent : EditorEvent, IChartRegion,
 	/// <summary>
 	/// Notification handler for the EditorPatternConfig.
 	/// </summary>
-	public void OnNotify(string eventId, EditorConfig<StepManiaLibrary.PerformedChart.PatternConfig> config, object payload)
+	public void OnNotify(string eventId, EditorConfig<PatternConfig> config, object payload)
 	{
 		switch (eventId)
 		{

@@ -59,9 +59,12 @@ internal sealed class ActionDeletePatternNotes : EditorAction
 		var deletedEvents = new List<EditorEvent>();
 		foreach (var pattern in patterns)
 		{
+			if (pattern.GetNumSteps() <= 0)
+				continue;
+
 			var deletedEventsForPattern = new List<EditorEvent>();
-			var startRow = pattern.GetRow();
-			var endRow = pattern.GetEndRow();
+			var startRow = pattern.GetFirstStepRow();
+			var endRow = pattern.GetLastStepRow();
 
 			// Accumulate any holds which overlap the start of the pattern.
 			var overlappingHolds = editorChart.GetHoldsOverlapping(startRow);
@@ -84,10 +87,7 @@ internal sealed class ActionDeletePatternNotes : EditorAction
 					    enumerator.Current is EditorTapNoteEvent or EditorMineNoteEvent or EditorHoldNoteEvent
 						    or EditorFakeNoteEvent or EditorLiftNoteEvent)
 					{
-						if (row < endRow || (pattern.EndPositionInclusive && row == endRow))
-						{
-							deletedEventsForPattern.Add(enumerator.Current);
-						}
+						deletedEventsForPattern.Add(enumerator.Current);
 					}
 
 					if (!enumerator.MoveNext())
