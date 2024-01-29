@@ -12,8 +12,10 @@ internal sealed class PerformedChartConfigManager : ConfigManager<EditorPerforme
 	// Default config names and guids for EditorPerformedChartConfigs which cannot be edited.
 	public const string DefaultPerformedChartConfigName = "Default Chart: Balanced";
 	public static readonly Guid DefaultPerformedChartConfigGuid = new("6276c906-ea8f-43b3-9500-0ddeac7bdc22");
-	public const string DefaultPerformedChartStaminaConfigName = "Default Chart: Stamina";
-	public static readonly Guid DefaultPerformedChartStaminaGuid = new("c0334922-6105-4703-add2-3de261b2ff19");
+	public const string DefaultPerformedChartStaminaSpConfigName = "Default Chart: Stamina (SP)";
+	public static readonly Guid DefaultPerformedChartStaminaSpGuid = new("aa41f2c5-4da1-41ad-b645-b18ed7c11d47");
+	public const string DefaultPerformedChartStaminaDpConfigName = "Default Chart: Stamina (DP)";
+	public static readonly Guid DefaultPerformedChartStaminaDpGuid = new("c0334922-6105-4703-add2-3de261b2ff19");
 
 	public const string DefaultPerformedChartPatternBalancedConfigName = "Default Pattern: Balanced";
 	public static readonly Guid DefaultPerformedChartPatternBalancedGuid = new("41a7f76e-596a-4fbe-bf6e-6a77a898e4a1");
@@ -57,14 +59,24 @@ internal sealed class PerformedChartConfigManager : ConfigManager<EditorPerforme
 		defaultConfig.ShortName = "Balanced";
 		defaultConfig.Description = "Default chart generation settings. Balanced.";
 
-		DeleteConfig(DefaultPerformedChartStaminaGuid);
-		var defaultStaminaConfig = AddDefaultConfig(DefaultPerformedChartStaminaGuid, DefaultPerformedChartStaminaConfigName);
-		defaultStaminaConfig.Description = "Default chart generation settings. Good for stamina.";
-		defaultStaminaConfig.ShortName = "Stamina";
-		defaultStaminaConfig.TravelSpeedMinBPM = 99;
-		defaultStaminaConfig.Config.Transitions.Enabled = true;
-		defaultStaminaConfig.Config.Transitions.StepsPerTransitionMin = 32;
-		defaultStaminaConfig.Config.LateralTightening.AbsoluteNPS = 26.666667;
+		DeleteConfig(DefaultPerformedChartStaminaSpGuid);
+		var defaultSpStaminaConfig = AddDefaultConfig(DefaultPerformedChartStaminaSpGuid, DefaultPerformedChartStaminaSpConfigName);
+		defaultSpStaminaConfig.Description = "Default chart generation settings. Good for singles stamina.";
+		defaultSpStaminaConfig.ShortName = "Stamina (SP)";
+		defaultSpStaminaConfig.Config.StepTightening.SpeedTighteningEnabled = false;
+		defaultSpStaminaConfig.Config.StepTightening.DistanceTighteningEnabled = false;
+		defaultSpStaminaConfig.Config.StepTightening.StretchTighteningEnabled = false;
+		defaultSpStaminaConfig.Config.LateralTightening.Enabled = false;
+		defaultSpStaminaConfig.Config.Transitions.Enabled = false;
+
+		DeleteConfig(DefaultPerformedChartStaminaDpGuid);
+		var defaultDpStaminaConfig = AddDefaultConfig(DefaultPerformedChartStaminaDpGuid, DefaultPerformedChartStaminaDpConfigName);
+		defaultDpStaminaConfig.Description = "Default chart generation settings. Good for doubles stamina.";
+		defaultDpStaminaConfig.ShortName = "Stamina (DP)";
+		defaultDpStaminaConfig.TravelSpeedMinBPM = 99;
+		defaultDpStaminaConfig.Config.Transitions.Enabled = true;
+		defaultDpStaminaConfig.Config.Transitions.StepsPerTransitionMin = 32;
+		defaultDpStaminaConfig.Config.LateralTightening.AbsoluteNPS = 26.666667;
 
 		DeleteConfig(DefaultPerformedChartPatternBalancedGuid);
 		var defaultPatternBalancedConfig = AddDefaultConfig(DefaultPerformedChartPatternBalancedGuid,
