@@ -38,7 +38,7 @@ internal sealed class ActionDeletePatternConfig : EditorAction
 
 	public override string ToString()
 	{
-		return $"Delete {Config.Name} Pattern Config.";
+		return $"Delete {Config} Pattern Config.";
 	}
 
 	public override bool AffectsFile()

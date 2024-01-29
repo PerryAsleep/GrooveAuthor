@@ -40,7 +40,7 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 	public override string ToString()
 	{
 		if (Patterns.Count == 1)
-			return $"Autogenerate {Patterns[0].GetPatternConfig().GetPrettyString()} Pattern at row {Patterns[0].ChartRow}.";
+			return $"Autogenerate \"{Patterns[0].GetPatternConfig()}\" Pattern at row {Patterns[0].ChartRow}.";
 		return $"Autogenerate {Patterns.Count} Patterns.";
 	}
 

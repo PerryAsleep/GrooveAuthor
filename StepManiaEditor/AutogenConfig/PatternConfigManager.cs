@@ -31,10 +31,11 @@ internal sealed class PatternConfigManager : ConfigManager<EditorPatternConfig, 
 	/// Creates a new EditorPatternConfig object with the given Guid.
 	/// </summary>
 	/// <param name="guid">Guid for new EditorPatternConfig object.</param>
+	/// <param name="isDefaultConfig">Whether or not this EditorConfig is a default configuration.</param>
 	/// <returns>New EditorPatternConfig object.</returns>
-	protected override EditorPatternConfig NewEditorConfig(Guid guid)
+	protected override EditorPatternConfig NewEditorConfig(Guid guid, bool isDefaultConfig)
 	{
-		return new EditorPatternConfig(guid);
+		return new EditorPatternConfig(guid, isDefaultConfig);
 	}
 
 	/// <summary>
@@ -42,15 +43,13 @@ internal sealed class PatternConfigManager : ConfigManager<EditorPatternConfig, 
 	/// </summary>
 	protected override void AddDefaultConfigs()
 	{
-		// Add default balanced config. This should never be modified so delete it if it exists and re-add it.
+		// Add default 16th note config.
 		DeleteConfig(DefaultPatternConfigSixteenthsGuid);
-		var sixteenthsConfig = AddConfig(DefaultPatternConfigSixteenthsGuid, DefaultPatternConfigSixteenthsName);
-		sixteenthsConfig.Description = "Default 16th note stream settings";
+		AddDefaultConfig(DefaultPatternConfigSixteenthsGuid, DefaultPatternConfigSixteenthsName);
 
-		// Add default stamina config. This should never be modified so delete it if it exists and re-add it.
+		// Add default 8th note config.
 		DeleteConfig(DefaultPatternConfigEighthsGuid);
-		var eighthsConfig = AddConfig(DefaultPatternConfigEighthsGuid, DefaultPatternConfigEighthsName);
-		eighthsConfig.Description = "Default 8th note stream settings";
+		var eighthsConfig = AddDefaultConfig(DefaultPatternConfigEighthsGuid, DefaultPatternConfigEighthsName);
 		eighthsConfig.PatternType = EditorPatternConfig.SubdivisionType.EighthNotes;
 	}
 

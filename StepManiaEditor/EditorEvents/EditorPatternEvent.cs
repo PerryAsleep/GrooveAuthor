@@ -349,7 +349,7 @@ internal sealed class EditorPatternEvent : EditorEvent, IChartRegion,
 		EventDefinition = new Definition
 		{
 			PatternConfigGuid = PatternConfigManager.DefaultPatternConfigSixteenthsGuid,
-			PerformedChartConfigGuid = PerformedChartConfigManager.DefaultPerformedChartStaminaGuid,
+			PerformedChartConfigGuid = PerformedChartConfigManager.DefaultPerformedChartPatternBalancedGuid,
 			Length = SMCommon.RowsPerMeasure,
 			RandomSeed = new Random().Next(),
 			StartPositionInclusive = true,
@@ -409,7 +409,15 @@ internal sealed class EditorPatternEvent : EditorEvent, IChartRegion,
 	{
 		var patternConfig = GetPatternConfig();
 		var performedChartConfig = GetPerformedChartConfig();
-		return $"{patternConfig.Name} {performedChartConfig.Name}";
+
+		var patternName = patternConfig.Name;
+		if (string.IsNullOrEmpty(patternName))
+			patternName = patternConfig.ToString();
+		var pccName = performedChartConfig.ShortName;
+		if (string.IsNullOrEmpty(pccName))
+			pccName = performedChartConfig.ToString();
+
+		return $"{patternName}, {pccName}";
 	}
 
 	public uint GetMiscEventTextColor()

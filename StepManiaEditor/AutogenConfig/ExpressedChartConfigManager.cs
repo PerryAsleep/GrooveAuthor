@@ -29,10 +29,11 @@ internal sealed class ExpressedChartConfigManager : ConfigManager<EditorExpresse
 	/// Creates a new EditorPerformedChartConfig object with the given Guid.
 	/// </summary>
 	/// <param name="guid">Guid for new EditorPerformedChartConfig object.</param>
+	/// <param name="isDefaultConfig">Whether or not this EditorConfig is a default configuration.</param>
 	/// <returns>New EditorPerformedChartConfig object.</returns>
-	protected override EditorExpressedChartConfig NewEditorConfig(Guid guid)
+	protected override EditorExpressedChartConfig NewEditorConfig(Guid guid, bool isDefaultConfig)
 	{
-		return new EditorExpressedChartConfig(guid);
+		return new EditorExpressedChartConfig(guid, isDefaultConfig);
 	}
 
 	/// <summary>
@@ -43,25 +44,32 @@ internal sealed class ExpressedChartConfigManager : ConfigManager<EditorExpresse
 		// Add the default dynamic config. This should never be modified so delete it if it exists and re-add it.
 		DeleteConfig(DefaultExpressedChartDynamicConfigGuid);
 		var defaultDynamicConfig =
-			AddConfig(DefaultExpressedChartDynamicConfigGuid, DefaultExpressedChartDynamicConfigName);
-		defaultDynamicConfig.Description = "Default settings with dynamic bracket parsing";
-		defaultDynamicConfig.InitializeWithDefaultValues();
+			AddDefaultConfig(DefaultExpressedChartDynamicConfigGuid, DefaultExpressedChartDynamicConfigName);
+		defaultDynamicConfig.Description = "Default settings with dynamic bracket parsing.";
 
 		// Add the default aggressive bracket config. This should never be modified so delete it if it exists and re-add it.
 		DeleteConfig(DefaultExpressedChartAggressiveBracketsConfigGuid);
-		var defaultAggressiveConfig = AddConfig(DefaultExpressedChartAggressiveBracketsConfigGuid,
-			DefaultExpressedChartAggressiveBracketsConfigName, false);
-		defaultAggressiveConfig.Description = "Default settings with aggressive bracket parsing";
+		var defaultAggressiveConfig = AddDefaultConfig(DefaultExpressedChartAggressiveBracketsConfigGuid,
+			DefaultExpressedChartAggressiveBracketsConfigName);
+		defaultAggressiveConfig.Description = "Default settings with aggressive bracket parsing.";
 		defaultAggressiveConfig.Config.BracketParsingDetermination = BracketParsingDetermination.UseDefaultMethod;
 		defaultAggressiveConfig.Config.DefaultBracketParsingMethod = BracketParsingMethod.Aggressive;
+		defaultAggressiveConfig.Config.MinLevelForBrackets = 0;
+		defaultAggressiveConfig.Config.UseAggressiveBracketsWhenMoreSimultaneousNotesThanCanBeCoveredWithoutBrackets = false;
+		defaultAggressiveConfig.Config.BalancedBracketsPerMinuteForAggressiveBrackets = 0.0;
+		defaultAggressiveConfig.Config.BalancedBracketsPerMinuteForNoBrackets = 0.0;
 
 		// Add the default no-brackets config. This should never be modified so delete it if it exists and re-add it.
 		DeleteConfig(DefaultExpressedChartNoBracketsConfigGuid);
-		var defaultNoBracketsConfig = AddConfig(DefaultExpressedChartNoBracketsConfigGuid,
-			DefaultExpressedChartNoBracketsConfigName, false);
-		defaultNoBracketsConfig.Description = "Default settings that avoid brackets";
+		var defaultNoBracketsConfig = AddDefaultConfig(DefaultExpressedChartNoBracketsConfigGuid,
+			DefaultExpressedChartNoBracketsConfigName);
+		defaultNoBracketsConfig.Description = "Default settings that avoid brackets.";
 		defaultNoBracketsConfig.Config.BracketParsingDetermination = BracketParsingDetermination.UseDefaultMethod;
 		defaultNoBracketsConfig.Config.DefaultBracketParsingMethod = BracketParsingMethod.NoBrackets;
+		defaultNoBracketsConfig.Config.MinLevelForBrackets = 0;
+		defaultNoBracketsConfig.Config.UseAggressiveBracketsWhenMoreSimultaneousNotesThanCanBeCoveredWithoutBrackets = false;
+		defaultNoBracketsConfig.Config.BalancedBracketsPerMinuteForAggressiveBrackets = 0.0;
+		defaultNoBracketsConfig.Config.BalancedBracketsPerMinuteForNoBrackets = 0.0;
 	}
 
 	/// <summary>

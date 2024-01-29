@@ -35,7 +35,7 @@ internal sealed class ActionDeleteExpressedChartConfig : EditorAction
 
 	public override string ToString()
 	{
-		return $"Delete {Config.Name} Expressed Chart Config.";
+		return $"Delete {Config} Expressed Chart Config.";
 	}
 
 	public override bool AffectsFile()

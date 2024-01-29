@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Text;
 using System.Text.Json.Serialization;
 using Fumen.Converters;
 using ImGuiNET;
@@ -66,7 +67,7 @@ internal sealed class EditorPatternConfig : EditorConfig<Config>, IEquatable<Edi
 	public const int DefaultNewArrowStepWeight = 75;
 	public const int DefaultStepTypeCheckPeriod = 16;
 	public const bool DefaultLimitSameArrowsInARowPerFoot = true;
-	public const int DefaultMaxSameArrowsInARowPerFoot = 4;
+	public const int DefaultMaxSameArrowsInARowPerFoot = 3;
 
 	[JsonInclude]
 	public SubdivisionType PatternType
@@ -120,27 +121,148 @@ internal sealed class EditorPatternConfig : EditorConfig<Config>, IEquatable<Edi
 	/// Constructor taking a previously generated Guid.
 	/// </summary>
 	/// <param name="guid">Guid for this EditorPatternConfig.</param>
-	public EditorPatternConfig(Guid guid) : base(guid)
+	/// <param name="isDefaultConfig">Whether or not this EditorConfig is a default configuration.</param>
+	public EditorPatternConfig(Guid guid, bool isDefaultConfig) : base(guid, isDefaultConfig)
 	{
 	}
+
+	#region String Representataion
 
 	/// <summary>
 	/// Returns a pretty string representation of the given SubdivisionType.
 	/// </summary>
 	/// <returns>Pretty string representation of the given SubdivisionType for displaying to the user.</returns>
-	public static string GetPrettyString(SubdivisionType type)
+	public static string GetPrettySubdivisionString(SubdivisionType type)
 	{
 		return $"1/{GetMeasureSubdivision(type)} Notes";
 	}
 
 	/// <summary>
-	/// Returns a pretty string representation of this EditorPatternConfig for displaying to the user.
+	/// Returns whether or not the string representation of this EditorConfig should be
+	/// rendered with color when possible. See also GetStringColor.
 	/// </summary>
-	/// <returns>Pretty string representation of this EditorPatternConfig for displaying to the user.</returns>
-	public string GetPrettyString()
+	/// <returns>
+	/// True if the string representation of this EditorConfig should bre rendered with
+	/// color when possible and false otherwise.
+	/// </returns>
+	public override bool ShouldUseColorForString()
 	{
-		return GetPrettyString(PatternType);
+		// Patterns use colored text to indicate the subdivision type.
+		return true;
 	}
+
+	/// <summary>
+	/// The color of the string representation of this EditorConfig when it should be colored.
+	/// See also ShouldUseColorForString.
+	/// </summary>
+	/// <returns>The color of the string representation of this EditorConfig.</returns>
+	public override uint GetStringColor()
+	{
+		// Patterns should be colored based on the subdivision type.
+		return ArrowGraphicManager.GetArrowColorForSubdivision(Config.BeatSubDivision);
+	}
+
+	/// <summary>
+	/// Gets the string representation of this EditorPatternConfig.
+	/// </summary>
+	/// <returns>String representation of this EditorPatternConfig.</returns>
+	public override string ToString()
+	{
+		var sb = new StringBuilder();
+
+		// Custom name.
+		if (!string.IsNullOrEmpty(Name))
+			sb.Append($"{Name}: ");
+
+		// Note type.
+		sb.Append($"1/{GetMeasureSubdivision(PatternType)}");
+
+		// Repetition Limit.
+		if (Config.LimitSameArrowsInARowPerFoot)
+			sb.Append($" {Config.MaxSameArrowsInARowPerFoot}");
+
+		// Distribution and check period.
+		sb.Append($" {SameArrowStepWeight}/{NewArrowStepWeight}");
+		if (Config.StepTypeCheckPeriod > 1)
+			sb.Append($"x{Config.StepTypeCheckPeriod}");
+		sb.Append(' ');
+
+		// Starting foot.
+		switch (Config.StartingFootChoice)
+		{
+			case PatternConfigStartingFootChoice.Specified:
+				sb.Append(Config.StartingFootSpecified == L ? 'L' : 'R');
+				break;
+			case PatternConfigStartingFootChoice.Automatic:
+				sb.Append('A');
+				break;
+			case PatternConfigStartingFootChoice.Random:
+				sb.Append('?');
+				break;
+		}
+
+		// Starting footing.
+		var l = GetPatternConfigStartFootChoiceStr(Config.LeftFootStartChoice, Config.LeftFootStartLaneSpecified);
+		var r = GetPatternConfigStartFootChoiceStr(Config.RightFootStartChoice, Config.RightFootStartLaneSpecified);
+		sb.Append($" [{l}|{r}]");
+
+		// Ending footing.
+		l = GetPatternConfigEndFootChoiceStr(Config.LeftFootEndChoice, Config.LeftFootEndLaneSpecified);
+		r = GetPatternConfigEndFootChoiceStr(Config.RightFootEndChoice, Config.RightFootEndLaneSpecified);
+		sb.Append($"->[{l}|{r}]");
+
+		return sb.ToString();
+	}
+
+	/// <summary>
+	/// Returns a short string representation of the given PatternConfigStartFootChoice.
+	/// Helper for ToString.
+	/// </summary>
+	/// <param name="choice">PatternConfigStartFootChoice.</param>
+	/// <param name="specified">Specified value for when the given choice is SpecifiedLane.</param>
+	/// <returns>Short string representation of the given PatternConfigStartFootChoice</returns>
+	private static string GetPatternConfigStartFootChoiceStr(PatternConfigStartFootChoice choice, int specified)
+	{
+		switch (choice)
+		{
+			case PatternConfigStartFootChoice.SpecifiedLane:
+				return specified.ToString();
+			case PatternConfigStartFootChoice.AutomaticNewLane:
+				return "N";
+			case PatternConfigStartFootChoice.AutomaticSameLane:
+				return "S";
+			default:
+				return "";
+		}
+	}
+
+	/// <summary>
+	/// Returns a short string representation of the given PatternConfigEndFootChoice.
+	/// Helper for ToString.
+	/// </summary>
+	/// <param name="choice">PatternConfigEndFootChoice.</param>
+	/// <param name="specified">Specified value for when the given choice is SpecifiedLane.</param>
+	/// <returns>Short string representation of the given PatternConfigEndFootChoice</returns>
+	private static string GetPatternConfigEndFootChoiceStr(PatternConfigEndFootChoice choice, int specified)
+	{
+		switch (choice)
+		{
+			case PatternConfigEndFootChoice.SpecifiedLane:
+				return specified.ToString();
+			case PatternConfigEndFootChoice.AutomaticIgnoreFollowingSteps:
+				return "I";
+			case PatternConfigEndFootChoice.AutomaticNewLaneToFollowing:
+				return "N";
+			case PatternConfigEndFootChoice.AutomaticSameLaneToFollowing:
+				return "S";
+			case PatternConfigEndFootChoice.AutomaticSameOrNewLaneAsFollowing:
+				return "A";
+			default:
+				return "";
+		}
+	}
+
+	#endregion String Representataion
 
 	#region EditorConfig
 
@@ -154,17 +276,11 @@ internal sealed class EditorPatternConfig : EditorConfig<Config>, IEquatable<Edi
 	/// <returns>Cloned EditorPatternConfig.</returns>
 	protected override EditorPatternConfig CloneImplementation(bool snapshot)
 	{
-		return new EditorPatternConfig(snapshot ? Guid : Guid.NewGuid())
+		return new EditorPatternConfig(snapshot ? Guid : Guid.NewGuid(), false)
 		{
 			StartingFootSpecified = StartingFootSpecified,
 			PatternTypeInternal = PatternTypeInternal,
 		};
-	}
-
-	public override bool IsDefault()
-	{
-		return Guid.Equals(PatternConfigManager.DefaultPatternConfigSixteenthsGuid)
-		       || Guid.Equals(PatternConfigManager.DefaultPatternConfigEighthsGuid);
 	}
 
 	public override void InitializeWithDefaultValues()
@@ -190,6 +306,16 @@ internal sealed class EditorPatternConfig : EditorConfig<Config>, IEquatable<Edi
 	protected override bool EditorConfigEquals(EditorConfig<Config> other)
 	{
 		return Equals(other);
+	}
+
+	/// <summary>
+	/// Returns the name newly created EditorPatternConfigs should use.
+	/// </summary>
+	/// <returns>The name newly created EditorPatternConfigs should use.</returns>
+	public override string GetNewConfigName()
+	{
+		// EditorPatternConfigs by default don't use names and rely on the details exposed in their ToString representation.
+		return null;
 	}
 
 	#endregion EditorConfig
@@ -343,7 +469,7 @@ internal sealed class ActionRestorePatternConfigDefaults : EditorAction
 
 	public override string ToString()
 	{
-		return $"Restore {Config.Name} Pattern Config to default values.";
+		return $"Restore \"{Config}\" Pattern Config to default values.";
 	}
 
 	protected override void DoImplementation()

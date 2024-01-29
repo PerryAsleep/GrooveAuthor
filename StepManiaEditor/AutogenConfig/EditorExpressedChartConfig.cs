@@ -1,8 +1,7 @@
 ﻿using System;
 using Fumen;
-using StepManiaLibrary.ExpressedChart;
 using ImGuiNET;
-using Config = StepManiaLibrary.ExpressedChart.Config;
+using StepManiaLibrary.ExpressedChart;
 
 namespace StepManiaEditor.AutogenConfig;
 
@@ -34,7 +33,8 @@ internal sealed class EditorExpressedChartConfig : EditorConfig<Config>, IEquata
 	/// Constructor taking a previously generated Guid.
 	/// </summary>
 	/// <param name="guid">Guid for this EditorExpressedChartConfig.</param>
-	public EditorExpressedChartConfig(Guid guid) : base(guid)
+	/// <param name="isDefaultConfig">Whether or not this EditorConfig is a default configuration.</param>
+	public EditorExpressedChartConfig(Guid guid, bool isDefaultConfig) : base(guid, isDefaultConfig)
 	{
 	}
 
@@ -50,14 +50,7 @@ internal sealed class EditorExpressedChartConfig : EditorConfig<Config>, IEquata
 	/// <returns>Cloned EditorExpressedChartConfig.</returns>
 	protected override EditorExpressedChartConfig CloneImplementation(bool snapshot)
 	{
-		return new EditorExpressedChartConfig(snapshot ? Guid : Guid.NewGuid());
-	}
-
-	public override bool IsDefault()
-	{
-		return Guid.Equals(ExpressedChartConfigManager.DefaultExpressedChartDynamicConfigGuid)
-		       || Guid.Equals(ExpressedChartConfigManager.DefaultExpressedChartAggressiveBracketsConfigGuid)
-		       || Guid.Equals(ExpressedChartConfigManager.DefaultExpressedChartNoBracketsConfigGuid);
+		return new EditorExpressedChartConfig(snapshot ? Guid : Guid.NewGuid(), false);
 	}
 
 	public override void InitializeWithDefaultValues()
@@ -195,7 +188,7 @@ internal sealed class ActionRestoreExpressedChartConfigDefaults : EditorAction
 
 	public override string ToString()
 	{
-		return $"Restore {Config.Name} Expressed Chart Config to default values.";
+		return $"Restore {Config} Expressed Chart Config to default values.";
 	}
 
 	protected override void DoImplementation()

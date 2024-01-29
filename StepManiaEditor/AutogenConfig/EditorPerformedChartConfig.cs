@@ -111,6 +111,11 @@ internal sealed class EditorPerformedChartConfig : EditorConfig<Config>, IEquata
 	private int TravelSpeedMaxBPMInternal = 1;
 
 	/// <summary>
+	/// Optional short string representation of this EditorPerformedChartConfig.
+	/// </summary>
+	public string ShortName { get; set; }
+
+	/// <summary>
 	/// Constructor.
 	/// </summary>
 	public EditorPerformedChartConfig()
@@ -121,7 +126,8 @@ internal sealed class EditorPerformedChartConfig : EditorConfig<Config>, IEquata
 	/// Constructor taking a previously generated Guid.
 	/// </summary>
 	/// <param name="guid">Guid for this EditorPerformedChartConfig.</param>
-	public EditorPerformedChartConfig(Guid guid) : base(guid)
+	/// <param name="isDefaultConfig">Whether or not this EditorConfig is a default configuration.</param>
+	public EditorPerformedChartConfig(Guid guid, bool isDefaultConfig) : base(guid, isDefaultConfig)
 	{
 	}
 
@@ -137,18 +143,12 @@ internal sealed class EditorPerformedChartConfig : EditorConfig<Config>, IEquata
 	/// <returns>Cloned EditorPerformedChartConfig.</returns>
 	protected override EditorPerformedChartConfig CloneImplementation(bool snapshot)
 	{
-		return new EditorPerformedChartConfig(snapshot ? Guid : Guid.NewGuid())
+		return new EditorPerformedChartConfig(snapshot ? Guid : Guid.NewGuid(), false)
 		{
 			TravelSpeedNoteTypeDenominatorIndex = TravelSpeedNoteTypeDenominatorIndex,
 			TravelSpeedMinBPM = TravelSpeedMinBPM,
 			TravelSpeedMaxBPM = TravelSpeedMaxBPM,
 		};
-	}
-
-	public override bool IsDefault()
-	{
-		return Guid.Equals(PerformedChartConfigManager.DefaultPerformedChartConfigGuid)
-		       || Guid.Equals(PerformedChartConfigManager.DefaultPerformedChartStaminaGuid);
 	}
 
 	public override void InitializeWithDefaultValues()
@@ -460,7 +460,7 @@ internal sealed class ActionRestorePerformedChartConfigDefaults : EditorAction
 
 	public override string ToString()
 	{
-		return $"Restore {Config.Name} Performed Chart Config to default values.";
+		return $"Restore {Config} Performed Chart Config to default values.";
 	}
 
 	protected override void DoImplementation()

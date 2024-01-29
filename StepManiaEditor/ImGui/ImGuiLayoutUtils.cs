@@ -575,7 +575,7 @@ internal sealed class ImGuiLayoutUtils
 		return ret;
 	}
 
-	public static bool DrawPatternConfigCombo(bool undoable, string title, object o, string fieldName, string help)
+	public static void DrawPatternConfigCombo(bool undoable, string title, object o, string fieldName, string help)
 	{
 		DrawRowTitleAndAdvanceColumn(title);
 
@@ -589,7 +589,6 @@ internal sealed class ImGuiLayoutUtils
 
 		var currentValue = GetValueFromFieldOrProperty<Guid>(o, fieldName);
 		var configGuids = PatternConfigManager.Instance.GetSortedConfigGuids();
-		var configNames = PatternConfigManager.Instance.GetSortedConfigNames();
 		var selectedIndex = 0;
 		for (var i = 0; i < configGuids.Length; i++)
 		{
@@ -600,21 +599,52 @@ internal sealed class ImGuiLayoutUtils
 			}
 		}
 
-		var ret = ComboFromArray(elementTitle, ref selectedIndex, configNames);
-		if (ret)
+		var selectedConfig = PatternConfigManager.Instance.GetConfig(configGuids[selectedIndex]);
+		var newValue = currentValue;
+
+		ImGui.PushStyleColor(ImGuiCol.Text, selectedConfig.GetStringColor());
+
+		if (ImGui.BeginCombo($"{elementTitle}Combo", selectedConfig.ToString()))
 		{
-			var newValue = configGuids[selectedIndex];
-			if (!newValue.Equals(currentValue))
+			ImGui.PopStyleColor();
+
+			for (var i = 0; i < configGuids.Length; i++)
 			{
-				if (undoable)
+				var config = PatternConfigManager.Instance.GetConfig(configGuids[i]);
+
+				ImGui.PushStyleColor(ImGuiCol.Text, config.GetStringColor());
+
+				var isSelected = i == selectedIndex;
+				if (ImGui.Selectable(config.ToString(), isSelected))
 				{
-					ActionQueue.Instance.Do(
-						new ActionSetObjectFieldOrPropertyValue<Guid>(o, fieldName, newValue, true));
+					currentValue = configGuids[i];
 				}
-				else
+
+				if (isSelected)
 				{
-					SetFieldOrPropertyToValue(o, fieldName, newValue);
+					ImGui.SetItemDefaultFocus();
 				}
+
+				ImGui.PopStyleColor();
+			}
+
+			ImGui.EndCombo();
+		}
+		else
+		{
+			ImGui.PopStyleColor();
+		}
+
+		if (!newValue.Equals(currentValue))
+		{
+			if (undoable)
+			{
+				ActionQueue.Instance.Do(
+					new ActionSetObjectFieldOrPropertyValue<Guid>(o, fieldName, newValue, true));
+			}
+			else
+			{
+				SetFieldOrPropertyToValue(o, fieldName, newValue);
 			}
 		}
 
@@ -648,8 +678,6 @@ internal sealed class ImGuiLayoutUtils
 
 			ShowEditUI(newConfigAction.GetGuid());
 		}
-
-		return ret;
 	}
 
 	public static bool DrawPerformedChartConfigCombo(bool undoable, string title, object o, string fieldName, string help)
@@ -2367,7 +2395,7 @@ internal sealed class ImGuiLayoutUtils
 
 		ImGui.PushStyleColor(ImGuiCol.Text, ArrowGraphicManager.GetArrowColorForSubdivision(currentBeatSubdivision));
 
-		if (ImGui.BeginCombo($"{elementTitle}Combo", GetPrettyString(currentValue)))
+		if (ImGui.BeginCombo($"{elementTitle}Combo", GetPrettySubdivisionString(currentValue)))
 		{
 			ImGui.PopStyleColor();
 
@@ -2378,7 +2406,7 @@ internal sealed class ImGuiLayoutUtils
 				ImGui.PushStyleColor(ImGuiCol.Text, ArrowGraphicManager.GetArrowColorForSubdivision(beatSubdivision));
 
 				var isSelected = currentMeasureSubdivision == measureSubdivision;
-				if (ImGui.Selectable(GetPrettyString((SubdivisionType)subdivisionType), isSelected))
+				if (ImGui.Selectable(GetPrettySubdivisionString((SubdivisionType)subdivisionType), isSelected))
 				{
 					currentValue = (SubdivisionType)subdivisionType;
 				}

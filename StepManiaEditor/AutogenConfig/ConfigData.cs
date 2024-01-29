@@ -50,7 +50,7 @@ internal sealed class ConfigData<TEditorConfig, TConfig>
 				return lhsDefault ? -1 : 1;
 
 			// Configs should sort alphabetically.
-			var comparison = string.Compare(lhs.Name, rhs.Name, StringComparison.CurrentCulture);
+			var comparison = string.Compare(lhs.ToString(), rhs.ToString(), StringComparison.CurrentCulture);
 			if (comparison != 0)
 				return comparison;
 
@@ -63,7 +63,7 @@ internal sealed class ConfigData<TEditorConfig, TConfig>
 		for (var i = 0; i < configList.Count; i++)
 		{
 			SortedConfigGuids[i] = configList[i].GetGuid();
-			SortedConfigNames[i] = configList[i].Name;
+			SortedConfigNames[i] = configList[i].ToString();
 		}
 	}
 

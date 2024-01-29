@@ -271,6 +271,11 @@ internal abstract class ConfigManager<TEditorConfig, TConfig> : Fumen.IObserver<
 
 	#endregion Load
 
+	protected TEditorConfig AddDefaultConfig(Guid guid, string name)
+	{
+		return AddConfig(guid, name, true, true);
+	}
+
 	public void AddConfig(TEditorConfig config)
 	{
 		config.AddObserver(this);
@@ -279,23 +284,23 @@ internal abstract class ConfigManager<TEditorConfig, TConfig> : Fumen.IObserver<
 
 	public TEditorConfig AddConfig(Guid guid, string name)
 	{
-		return AddConfig(guid, name, true);
+		return AddConfig(guid, name, true, false);
 	}
 
 	public TEditorConfig AddConfig(Guid guid)
 	{
-		return AddConfig(guid, EditorConfig<TConfig>.NewConfigName, true);
+		return AddConfig(guid, null, true, false);
 	}
 
 	public TEditorConfig AddConfig(string name)
 	{
-		return AddConfig(Guid.NewGuid(), name, true);
+		return AddConfig(Guid.NewGuid(), name, true, false);
 	}
 
-	protected TEditorConfig AddConfig(Guid guid, string name, bool useDefaultValues)
+	protected TEditorConfig AddConfig(Guid guid, string name, bool useDefaultValues, bool isDefaultConfig)
 	{
-		var config = NewEditorConfig(guid);
-		config.Name = name;
+		var config = NewEditorConfig(guid, isDefaultConfig);
+		config.Name = name ?? config.GetNewConfigName();
 		if (useDefaultValues)
 			config.InitializeWithDefaultValues();
 		config.Config.Init();
@@ -336,7 +341,8 @@ internal abstract class ConfigManager<TEditorConfig, TConfig> : Fumen.IObserver<
 	/// </summary>
 	/// <param name="guid">Guid for new EditorConfig object.</param>
 	/// <returns>New EditorConfig object.</returns>
-	protected abstract TEditorConfig NewEditorConfig(Guid guid);
+	/// <param name="isDefaultConfig">Whether or not this EditorConfig is a default configuration.</param>
+	protected abstract TEditorConfig NewEditorConfig(Guid guid, bool isDefaultConfig);
 
 	/// <summary>
 	/// Called when an EditorConfig with the given Guid is deleted so derived

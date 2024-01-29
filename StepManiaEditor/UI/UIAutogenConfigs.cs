@@ -14,8 +14,8 @@ internal sealed class UIAutogenConfigs
 {
 	public const string WindowTitle = "Autogen Configs";
 
-	private static readonly int AddConfigTitleWidth = UiScaled(120);
-	private static readonly int NameWidth = UiScaled(120);
+	private static readonly int AddConfigTitleWidth = UiScaled(220);
+	private static readonly int NameWidth = UiScaled(220);
 	private static readonly int CloneWidth = UiScaled(39);
 	private static readonly int DeleteWidth = UiScaled(45);
 
@@ -33,6 +33,7 @@ internal sealed class UIAutogenConfigs
 		private readonly string Title;
 		private readonly string HumanReadableConfigType;
 		private readonly string HelpText;
+		private readonly bool ShowDescription;
 		private readonly Action NewAction;
 		private readonly Action<Guid> ClickAction;
 		private readonly Action<Guid> CloneAction;
@@ -46,6 +47,7 @@ internal sealed class UIAutogenConfigs
 			string title,
 			string humanReadableConfigType,
 			string helpText,
+			bool showDescription,
 			Action newAction,
 			Action<Guid> clickAction,
 			Action<Guid> cloneAction,
@@ -55,6 +57,7 @@ internal sealed class UIAutogenConfigs
 			Title = title;
 			HumanReadableConfigType = humanReadableConfigType;
 			HelpText = helpText;
+			ShowDescription = showDescription;
 			NewAction = newAction;
 			ClickAction = clickAction;
 			CloneAction = cloneAction;
@@ -72,13 +75,26 @@ internal sealed class UIAutogenConfigs
 			HelpMarker(HelpText);
 
 			// EditorConfig table setup.
-			var ret = ImGui.BeginTable(Title, 4, ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders);
-			if (ret)
+			if (ShowDescription)
 			{
-				ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, NameWidth);
-				ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100);
-				ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, CloneWidth);
-				ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, DeleteWidth);
+				var ret = ImGui.BeginTable(Title, 4, ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders);
+				if (ret)
+				{
+					ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, NameWidth);
+					ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100);
+					ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, CloneWidth);
+					ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, DeleteWidth);
+				}
+			}
+			else
+			{
+				var ret = ImGui.BeginTable(Title, 3, ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders);
+				if (ret)
+				{
+					ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100);
+					ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, CloneWidth);
+					ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, DeleteWidth);
+				}
 			}
 
 			var typeName = typeof(TEditorConfig).FullName;
@@ -89,28 +105,39 @@ internal sealed class UIAutogenConfigs
 			{
 				ImGui.TableNextRow();
 
-				// Name.
+				var col = 0;
 				var config = ConfigManager.GetConfig(configGuid);
-				ImGui.TableSetColumnIndex(0);
-				if (ImGui.Selectable(config.Name, false,
+
+				// Name.
+				if (config.ShouldUseColorForString())
+					ImGui.PushStyleColor(ImGuiCol.Text, config.GetStringColor());
+				ImGui.TableSetColumnIndex(col++);
+				if (ImGui.Selectable(config.ToString(), false,
 					    ImGuiSelectableFlags.SpanAllColumns | ImGuiSelectableFlags.AllowItemOverlap))
 				{
 					ClickAction(configGuid);
 				}
 
+				if (config.ShouldUseColorForString())
+					ImGui.PopStyleColor();
+
 				// Description.
-				ImGui.TableSetColumnIndex(1);
-				ImGui.Text(config.Description ?? "");
+				if (ShowDescription)
+				{
+					ImGui.TableSetColumnIndex(col++);
+					ImGui.Text(config.Description ?? "");
+				}
 
 				// Clone button.
-				ImGui.TableSetColumnIndex(2);
+				ImGui.TableSetColumnIndex(col++);
 				if (ImGui.SmallButton($"Clone##{typeName}Config{index}"))
 				{
 					CloneAction(configGuid);
 				}
 
 				// Delete button.
-				ImGui.TableSetColumnIndex(3);
+				// ReSharper disable once RedundantAssignment
+				ImGui.TableSetColumnIndex(col++);
 				var disabled = config.IsDefault();
 				if (disabled)
 					PushDisabled();
@@ -166,6 +193,7 @@ internal sealed class UIAutogenConfigs
 			"Expressed Chart Configs",
 			"Expressed Chart Config",
 			UIExpressedChartConfig.HelpText,
+			true,
 			() => { EditorExpressedChartConfig.CreateNewConfigAndShowEditUI(); },
 			(guid) =>
 			{
@@ -182,6 +210,7 @@ internal sealed class UIAutogenConfigs
 			"Performed Chart Configs",
 			"Performed Chart Config",
 			UIPerformedChartConfig.HelpText,
+			true,
 			EditorPerformedChartConfig.CreateNewConfigAndShowEditUI,
 			(guid) =>
 			{
@@ -198,6 +227,7 @@ internal sealed class UIAutogenConfigs
 			"Pattern Configs",
 			"Pattern Config",
 			UIPatternConfig.HelpText,
+			false,
 			EditorPatternConfig.CreateNewConfigAndShowEditUI,
 			(guid) =>
 			{

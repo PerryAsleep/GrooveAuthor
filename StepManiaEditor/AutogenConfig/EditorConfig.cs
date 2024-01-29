@@ -22,8 +22,6 @@ namespace StepManiaEditor.AutogenConfig;
 [JsonDerivedType(typeof(EditorPatternConfig))]
 internal abstract class EditorConfig<TConfig> : Notifier<EditorConfig<TConfig>> where TConfig : IConfig<TConfig>, new()
 {
-	public const string NewConfigName = "New Config";
-
 	public const string NotificationNameChanged = "NameChanged";
 
 	/// <summary>
@@ -62,6 +60,11 @@ internal abstract class EditorConfig<TConfig> : Notifier<EditorConfig<TConfig>> 
 	private EditorConfig<TConfig> LastSavedState;
 
 	/// <summary>
+	/// Whether or not this EditorConfig is a default configuration that cannot be edited.
+	/// </summary>
+	private readonly bool DefaultConfig;
+
+	/// <summary>
 	/// Constructor.
 	/// </summary>
 	protected EditorConfig()
@@ -76,6 +79,17 @@ internal abstract class EditorConfig<TConfig> : Notifier<EditorConfig<TConfig>> 
 	protected EditorConfig(Guid guid)
 	{
 		Guid = guid;
+	}
+
+	/// <summary>
+	/// Constructor taking a previously generated Guid.
+	/// </summary>
+	/// <param name="guid">Guid for this EditorConfig.</param>
+	/// <param name="isDefaultConfig">Whether or not this EditorConfig is a default configuration.</param>
+	protected EditorConfig(Guid guid, bool isDefaultConfig)
+	{
+		Guid = guid;
+		DefaultConfig = isDefaultConfig;
 	}
 
 	/// <summary>
@@ -101,13 +115,7 @@ internal abstract class EditorConfig<TConfig> : Notifier<EditorConfig<TConfig>> 
 			errors = true;
 		}
 
-		if (string.IsNullOrEmpty(Name))
-		{
-			Logger.Error($"Config {Guid} has no name.");
-			errors = true;
-		}
-
-		errors = !Config.Validate(Name) || errors;
+		errors = !Config.Validate(ToString()) || errors;
 		return !errors;
 	}
 
@@ -136,7 +144,7 @@ internal abstract class EditorConfig<TConfig> : Notifier<EditorConfig<TConfig>> 
 
 		// Clone base EditorConfig values.
 		clone.Config = Config.Clone();
-		clone.Name = snapshot ? Name : NewConfigName;
+		clone.Name = snapshot ? Name : GetNewConfigName();
 		clone.Description = Description;
 		return clone;
 	}
@@ -174,7 +182,10 @@ internal abstract class EditorConfig<TConfig> : Notifier<EditorConfig<TConfig>> 
 	/// <returns>
 	/// True if this configuration is a default configuration and false otherwise.
 	/// </returns>
-	public abstract bool IsDefault();
+	public bool IsDefault()
+	{
+		return DefaultConfig;
+	}
 
 	/// <summary>
 	/// Clone this EditorConfig.
@@ -196,4 +207,45 @@ internal abstract class EditorConfig<TConfig> : Notifier<EditorConfig<TConfig>> 
 	/// <param name="other">Other EditorConfig to compare to.</param>
 	/// <returns>True if other equals this and false otherwise.</returns>
 	protected abstract bool EditorConfigEquals(EditorConfig<TConfig> other);
+
+	/// <summary>
+	/// Returns the name newly created EditorConfigs should use.
+	/// </summary>
+	/// <returns>The name newly created EditorConfigs should use.</returns>
+	public virtual string GetNewConfigName()
+	{
+		return "New Config";
+	}
+
+	/// <summary>
+	/// Returns whether or not the string representation of this EditorConfig should be
+	/// rendered with color when possible. See also GetStringColor.
+	/// </summary>
+	/// <returns>
+	/// True if the string representation of this EditorConfig should bre rendered with
+	/// color when possible and false otherwise.
+	/// </returns>
+	public virtual bool ShouldUseColorForString()
+	{
+		return false;
+	}
+
+	/// <summary>
+	/// The color of the string representation of this EditorConfig when it should be colored.
+	/// See also ShouldUseColorForString.
+	/// </summary>
+	/// <returns>The color of the string representation of this EditorConfig.</returns>
+	public virtual uint GetStringColor()
+	{
+		return 0;
+	}
+
+	/// <summary>
+	/// Returns the string representation of this EditorConfig.
+	/// </summary>
+	/// <returns>String representation of this EditorConfig.</returns>
+	public override string ToString()
+	{
+		return Name;
+	}
 }

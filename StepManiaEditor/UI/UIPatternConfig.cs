@@ -83,12 +83,8 @@ internal sealed class UIPatternConfig
 
 		if (ImGuiLayoutUtils.BeginTable($"PatternConfigTableIdentification##{id}", TitleColumnWidth))
 		{
-			ImGuiLayoutUtils.DrawRowTextInput(true, "Name", editorConfig, nameof(EditorPatternConfig.Name), false,
-				"Configuration name.");
-
-			ImGuiLayoutUtils.DrawRowTextInput(true, "Description", editorConfig,
-				nameof(EditorPatternConfig.Description), false,
-				"Configuration description.");
+			ImGuiLayoutUtils.DrawRowTextInput(true, "Custom Name", editorConfig, nameof(EditorPatternConfig.Name), false,
+				"Optional custom name for identifying this Pattern Config.");
 
 			ImGuiLayoutUtils.EndTable();
 		}
