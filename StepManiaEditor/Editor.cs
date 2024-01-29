@@ -1010,9 +1010,9 @@ internal sealed class Editor :
 		// Commit preferences to disk.
 		Preferences.Save();
 		// Commit unsaved changes to autogen configs to disk.
-		PerformedChartConfigManager.Instance.SaveConfigs();
-		ExpressedChartConfigManager.Instance.SaveConfigs();
-		PatternConfigManager.Instance.SaveConfigs();
+		PerformedChartConfigManager.Instance.SynchronizeToDisk();
+		ExpressedChartConfigManager.Instance.SynchronizeToDisk();
+		PatternConfigManager.Instance.SynchronizeToDisk();
 		Logger.Shutdown();
 
 		ImGuiRenderer.UnbindTexture(TextureAtlasImGuiTexture);

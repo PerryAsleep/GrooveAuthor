@@ -82,9 +82,19 @@ internal abstract class ConfigManager<TEditorConfig, TConfig> : Fumen.IObserver<
 	#region Save
 
 	/// <summary>
+	/// Synchronously synchronize all config changes to disk.
+	/// This will save changed configs and delete removed configs.
+	/// </summary>
+	public void SynchronizeToDisk()
+	{
+		SaveConfigs();
+		DeleteRemovedConfigs();
+	}
+
+	/// <summary>
 	/// Synchronously save all EditorConfig files that have unsaved changes.
 	/// </summary>
-	public void SaveConfigs()
+	private void SaveConfigs()
 	{
 		// Save all configs.
 		foreach (var kvp in ConfigData.GetConfigs())
@@ -119,8 +129,87 @@ internal abstract class ConfigManager<TEditorConfig, TConfig> : Fumen.IObserver<
 			return;
 		}
 
-
 		Logger.Info($"Saved {fileName}.");
+	}
+
+	/// <summary>
+	/// Synchronously delete any config files on disk which are not loaded.
+	/// </summary>
+	private void DeleteRemovedConfigs()
+	{
+		var guidLength = Guid.Empty.ToString().Length;
+		const string extensionWithSeparator = $".{ConfigExtension}";
+
+		// Find all files in the directory.
+		string[] files;
+		try
+		{
+			files = Directory.GetFiles(ConfigDirectory);
+		}
+		catch (Exception e)
+		{
+			Logger.Error($"Failed to search for {ConfigTypeReadableName} files in {ConfigDirectory}. {e}");
+			return;
+		}
+
+		// Loop over every file in the config directory and delete configs which are no longer referenced.
+		foreach (var file in files)
+		{
+			FileInfo fi;
+			try
+			{
+				fi = new FileInfo(file);
+			}
+			catch (Exception e)
+			{
+				Logger.Warn($"Could not get file info for \"{file}\". {e}");
+				continue;
+			}
+
+			// If the file name matches a config file name, check to see if we have a reference to it.
+			if (fi.Extension == extensionWithSeparator
+			    && fi.Name.StartsWith(ConfigPrefix)
+			    && fi.Name.Length == ConfigPrefix.Length + guidLength + extensionWithSeparator.Length)
+			{
+				// Parse the guid.
+				Guid configGuid;
+				try
+				{
+					var configGuidStr = fi.Name.Substring(ConfigPrefix.Length, guidLength);
+					configGuid = Guid.Parse(configGuidStr);
+				}
+				catch
+				{
+					continue;
+				}
+
+				// See if we have a reference to it.
+				var found = false;
+				foreach (var kvp in ConfigData.GetConfigs())
+				{
+					if (kvp.Key == configGuid)
+					{
+						found = true;
+						break;
+					}
+				}
+
+				// If we don't have a reference to it, delete it.
+				if (!found)
+				{
+					try
+					{
+						Logger.Info($"Deleting {fi.Name}...");
+						File.Delete(fi.FullName);
+						Logger.Info($"Deleted {fi.Name}.");
+					}
+					catch (Exception e)
+					{
+						Logger.Error($"Failed to delete {fi.Name}. {e}");
+					}
+				}
+			}
+		}
 	}
 
 	#endregion Save
