@@ -617,7 +617,7 @@ internal sealed class ImGuiLayoutUtils
 				var isSelected = i == selectedIndex;
 				if (ImGui.Selectable(config.ToString(), isSelected))
 				{
-					currentValue = configGuids[i];
+					newValue = configGuids[i];
 				}
 
 				if (isSelected)
