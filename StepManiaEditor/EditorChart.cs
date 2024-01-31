@@ -2661,8 +2661,9 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 						alteredPatterns = true;
 						LogWarn(
 							$"Pattern at row {row} uses unknown performed chart config with guid {definition.PerformedChartConfigGuid}." +
-							$" Updating this pattern to use {PerformedChartConfigManager.DefaultPerformedChartConfigName}.");
-						definition.PerformedChartConfigGuid = PerformedChartConfigManager.DefaultPerformedChartConfigGuid;
+							$" Updating this pattern to use {PerformedChartConfigManager.DefaultPerformedChartPatternBalancedConfigName}.");
+						definition.PerformedChartConfigGuid =
+							PerformedChartConfigManager.DefaultPerformedChartPatternBalancedGuid;
 					}
 
 					// Add Pattern event.
