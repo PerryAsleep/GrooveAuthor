@@ -2337,6 +2337,31 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 	#endregion Misc
 
+	#region Pattern Helpers
+
+	/// <summary>
+	/// Gets the StepMania Events from this chart that affect timing. See SMCommon.DoesEventAffectTiming.
+	/// </summary>
+	/// <returns>The StepMania Events from this chart that affect timing.</returns>
+	public List<Event> GetSmTimingEvents()
+	{
+		var smTimingEvents = new List<Event>();
+		foreach (var rateAlteringEvent in RateAlteringEvents)
+		{
+			var events = rateAlteringEvent.GetEvents();
+			for (var i = 0; i < events.Count; i++)
+			{
+				if (DoesEventAffectTiming(events[i]))
+					smTimingEvents.Add(events[i]);
+			}
+		}
+
+		smTimingEvents.Sort(new SMEventComparer());
+		return smTimingEvents;
+	}
+
+	#endregion Pattern Helpers
+
 	#region IObserver
 
 	public void OnNotify(string eventId, WorkQueue notifier, object payload)

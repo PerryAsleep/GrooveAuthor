@@ -518,9 +518,20 @@ internal sealed class EditorPatternEvent : EditorEvent, IChartRegion,
 	/// <returns>The number of steps within this pattern.</returns>
 	public int GetNumSteps()
 	{
+		return GetNumStepsBeforeRow(int.MaxValue);
+	}
+
+	/// <summary>
+	/// Gets the number of steps within this pattern that occur before the given row.
+	/// </summary>
+	/// <returns>The number of steps within this pattern that occur before the given row.</returns>
+	public int GetNumStepsBeforeRow(int row)
+	{
 		var first = GetFirstStepRow();
 		var last = GetLastStepRow();
-		// For poorly constructed short patterns it is possible for the first step to be beyond the end of the pattern region.
+		var spacing = GetStepSpacing();
+		if (last >= row)
+			last -= ((last - row) / spacing + 1) * spacing;
 		if (first > last)
 			return 0;
 		return Math.Max(0, (last - first) / GetStepSpacing() + 1);
