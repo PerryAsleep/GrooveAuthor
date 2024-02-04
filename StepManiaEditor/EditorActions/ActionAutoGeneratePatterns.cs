@@ -48,7 +48,7 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 	/// <summary>
 	/// All EditorEvents deleted as a result of the last time this action was run.
 	/// </summary>
-	private readonly List<EditorEvent> DeletedEvents = new();
+	private ActionDeletePatternNotes.Alterations Deletions;
 
 	/// <summary>
 	/// All EditorEvents added as a result of the last time this action was run.
@@ -90,16 +90,17 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 	{
 		// To undo this action synchronously delete the newly added events and re-add the deleted events.
 		EditorChart.DeleteEvents(AddedEvents);
-		EditorChart.AddEvents(DeletedEvents);
+		Deletions.Undo(EditorChart);
 	}
 
 	protected override void DoImplementation()
 	{
 		// Check for redo and avoid doing the work again.
-		if (AddedEvents.Count > 0 || DeletedEvents.Count > 0)
+		if (AddedEvents.Count > 0 || Deletions != null)
 		{
-			EditorChart.DeleteEvents(DeletedEvents);
-			EditorChart.AddEvents(AddedEvents);
+			Deletions.Redo(EditorChart);
+			if (AddedEvents.Count > 0)
+				EditorChart.AddEvents(AddedEvents);
 			OnDone();
 			return;
 		}
@@ -131,7 +132,7 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 		}
 
 		// Delete all events which overlap regions to fill based on the patterns.
-		DeletedEvents.AddRange(ActionDeletePatternNotes.DeleteEventsOverlappingPatterns(EditorChart, Patterns));
+		Deletions = ActionDeletePatternNotes.DeleteEventsOverlappingPatterns(EditorChart, Patterns);
 
 		// Asynchronously generate the patterns.
 		DoPatternGenerationAsync(stepGraph, expressedChartConfig.Config);

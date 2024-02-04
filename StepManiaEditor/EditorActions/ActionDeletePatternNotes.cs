@@ -7,9 +7,68 @@ namespace StepManiaEditor;
 /// </summary>
 internal sealed class ActionDeletePatternNotes : EditorAction
 {
+	/// <summary>
+	/// Class to hold all alterations from deleting the events in a pattern region.
+	/// Includes deleted events and shortened holds.
+	/// </summary>
+	public class Alterations
+	{
+		/// <summary>
+		/// Shortened hold information.
+		/// </summary>
+		public class ShortenedHold
+		{
+			public readonly int OldLength;
+			public readonly int NewLength;
+			public EditorHoldNoteEvent Hold;
+
+			public ShortenedHold(int oldLength, int newLength, EditorHoldNoteEvent hold)
+			{
+				OldLength = oldLength;
+				NewLength = newLength;
+				Hold = hold;
+			}
+
+			public void Undo()
+			{
+				Hold.SetLength(OldLength);
+			}
+
+			public void Redo()
+			{
+				Hold.SetLength(NewLength);
+			}
+		}
+
+		public readonly List<EditorEvent> DeletedEvents;
+		public readonly List<ShortenedHold> ShortenedHolds;
+
+		public Alterations(List<EditorEvent> deletedEvents, List<ShortenedHold> shortenedHolds)
+		{
+			DeletedEvents = deletedEvents;
+			ShortenedHolds = shortenedHolds;
+		}
+
+		public void Undo(EditorChart editorChart)
+		{
+			if (DeletedEvents.Count > 0)
+				editorChart.AddEvents(DeletedEvents);
+			foreach (var hold in ShortenedHolds)
+				hold.Undo();
+		}
+
+		public void Redo(EditorChart editorChart)
+		{
+			if (DeletedEvents.Count > 0)
+				editorChart.DeleteEvents(DeletedEvents);
+			foreach (var hold in ShortenedHolds)
+				hold.Redo();
+		}
+	}
+
 	private readonly EditorChart EditorChart;
 	private readonly List<EditorPatternEvent> Patterns;
-	private readonly List<EditorEvent> DeletedEvents = new();
+	private Alterations ActionAlterations;
 
 	public ActionDeletePatternNotes(
 		EditorChart editorChart,
@@ -34,29 +93,31 @@ internal sealed class ActionDeletePatternNotes : EditorAction
 
 	protected override void DoImplementation()
 	{
-		if (DeletedEvents.Count > 0)
+		if (ActionAlterations != null)
 		{
-			EditorChart.DeleteEvents(DeletedEvents);
+			ActionAlterations.Redo(EditorChart);
 			return;
 		}
 
-		DeletedEvents.AddRange(DeleteEventsOverlappingPatterns(EditorChart, Patterns));
+		ActionAlterations = DeleteEventsOverlappingPatterns(EditorChart, Patterns);
 	}
 
 	protected override void UndoImplementation()
 	{
-		EditorChart.AddEvents(DeletedEvents);
+		ActionAlterations.Undo(EditorChart);
 	}
 
 	/// <summary>
 	/// Deletes all EditorEvents in the given EditorChart which intersect any of the given Patterns.
+	/// Shortens holds which precede the patterns but overlap them.
 	/// </summary>
-	/// <returns>All deleted EditorEvents.</returns>
-	public static List<EditorEvent> DeleteEventsOverlappingPatterns(
+	/// <returns>Alterations representing all changes.</returns>
+	public static Alterations DeleteEventsOverlappingPatterns(
 		EditorChart editorChart,
 		IEnumerable<EditorPatternEvent> patterns)
 	{
 		var deletedEvents = new List<EditorEvent>();
+		var shortenedHolds = new List<Alterations.ShortenedHold>();
 		foreach (var pattern in patterns)
 		{
 			if (pattern.GetNumSteps() <= 0)
@@ -72,7 +133,25 @@ internal sealed class ActionDeletePatternNotes : EditorAction
 			{
 				if (overlappingHold != null)
 				{
-					deletedEventsForPattern.Add(overlappingHold);
+					var holdStart = overlappingHold.GetRow();
+
+					// This hold starts before the pattern and can be cut short.
+					if (holdStart < startRow - 1)
+					{
+						var desiredEnd = startRow - pattern.GetStepSpacing();
+						var newLength = desiredEnd - holdStart;
+						if (newLength < 1)
+							newLength = startRow - holdStart - 1;
+						shortenedHolds.Add(new Alterations.ShortenedHold(overlappingHold.GetLength(), newLength,
+							overlappingHold));
+						overlappingHold.SetLength(newLength);
+					}
+
+					// This hold starts within the pattern and needs to be deleted.
+					else
+					{
+						deletedEventsForPattern.Add(overlappingHold);
+					}
 				}
 			}
 
@@ -83,12 +162,8 @@ internal sealed class ActionDeletePatternNotes : EditorAction
 				var row = enumerator.Current!.GetRow();
 				while (row <= endRow)
 				{
-					if (row >= startRow &&
-					    enumerator.Current is EditorTapNoteEvent or EditorMineNoteEvent or EditorHoldNoteEvent
-						    or EditorFakeNoteEvent or EditorLiftNoteEvent)
-					{
+					if (row >= startRow && enumerator.Current.IsLaneNote())
 						deletedEventsForPattern.Add(enumerator.Current);
-					}
 
 					if (!enumerator.MoveNext())
 						break;
@@ -102,6 +177,6 @@ internal sealed class ActionDeletePatternNotes : EditorAction
 			deletedEvents.AddRange(editorChart.DeleteEvents(deletedEventsForPattern));
 		}
 
-		return deletedEvents;
+		return new Alterations(deletedEvents, shortenedHolds);
 	}
 }
