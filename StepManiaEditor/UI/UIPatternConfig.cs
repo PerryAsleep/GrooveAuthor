@@ -30,7 +30,7 @@ internal sealed class UIPatternConfig
 	                                         + "\n                                         that it ends on a lane that can step to its following step's"
 	                                         + "\n                                         lane."
 	                                         + "\nAutomatic Same Or New Lane As Following: The {0} foot ending lane should be chosen automatically such"
-	                                         + "\n                                         that it ends on the same lane as its following step or it ends."
+	                                         + "\n                                         that it ends on the same lane as its following step or it ends"
 	                                         + "\n                                         on a lane that can step to its following step's lane."
 	                                         + "\nSpecified Lane:                          The {0} foot should end on an explicitly specified lane.";
 
@@ -38,10 +38,14 @@ internal sealed class UIPatternConfig
 	private static readonly string EndChoiceHelpTextRight = string.Format(EndChoiceHelpText, "right");
 
 	private const string StartChoiceHelpText = "Which lane the {0} foot should start on."
-	                                           + "\nAutomatic Same Lane: The {0} foot should start on the same lane it is already on."
-	                                           + "\nAutomatic New Lane:  The {0} foot should start with a step to a new lane from the"
-	                                           + "\n                     lane it is already on."
-	                                           + "\nSpecified Lane:      The {0} foot should start on an explicitly specified lane.";
+	                                           + "\nAutomatic Same Lane:        The {0} foot should start on the same lane it is already on."
+	                                           + "\nAutomatic New Lane:         The {0} foot should start with a step to a new lane from the"
+	                                           + "\n                            lane it is already on."
+	                                           + "\nAutomatic Same Or New Lane: The {0} foot should start either on the same lane it was"
+	                                           + "\n                            already on, or with a step to a new lane fome the lane it is"
+	                                           + "\n                            already on."
+	                                           + "\n                            lane it is already on."
+	                                           + "\nSpecified Lane:             The {0} foot should start on an explicitly specified lane.";
 
 	private static readonly string StartChoiceHelpTextLeft = string.Format(StartChoiceHelpText, "left");
 	private static readonly string StartChoiceHelpTextRight = string.Format(StartChoiceHelpText, "right");

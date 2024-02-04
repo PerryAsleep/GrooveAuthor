@@ -49,14 +49,14 @@ internal sealed class EditorPatternConfig : EditorConfig<Config>, IEquatable<Edi
 	public const SubdivisionType DefaultPatternType = SubdivisionType.SixteenthNotes;
 	public const PatternConfigStartingFootChoice DefaultStartingFootChoice = PatternConfigStartingFootChoice.Automatic;
 	public const Editor.Foot DefaultStartingFootSpecified = Editor.Foot.Left;
-	public const PatternConfigStartFootChoice DefaultLeftFootStartChoice = PatternConfigStartFootChoice.AutomaticNewLane;
+	public const PatternConfigStartFootChoice DefaultLeftFootStartChoice = PatternConfigStartFootChoice.AutomaticSameOrNewLane;
 	public const int DefaultLeftFootStartLaneSpecified = 0;
 
 	public const PatternConfigEndFootChoice DefaultLeftFootEndChoice =
 		PatternConfigEndFootChoice.AutomaticSameOrNewLaneAsFollowing;
 
 	public const int DefaultLeftFootEndLaneSpecified = 0;
-	public const PatternConfigStartFootChoice DefaultRightFootStartChoice = PatternConfigStartFootChoice.AutomaticNewLane;
+	public const PatternConfigStartFootChoice DefaultRightFootStartChoice = PatternConfigStartFootChoice.AutomaticSameOrNewLane;
 	public const int DefaultRightFootStartLaneSpecified = 0;
 
 	public const PatternConfigEndFootChoice DefaultRightFootEndChoice =
@@ -231,6 +231,8 @@ internal sealed class EditorPatternConfig : EditorConfig<Config>, IEquatable<Edi
 				return "N";
 			case PatternConfigStartFootChoice.AutomaticSameLane:
 				return "S";
+			case PatternConfigStartFootChoice.AutomaticSameOrNewLane:
+				return "A";
 			default:
 				return "";
 		}
