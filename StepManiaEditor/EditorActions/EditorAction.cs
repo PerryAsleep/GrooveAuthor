@@ -9,6 +9,8 @@ namespace StepManiaEditor;
 /// EditorActions may be synchronous or asynchronous.
 /// To do or undo an EditorAction, it must not currently be asynchronously being done or undone.
 /// Attempting to do or undo a currently running asynchronous EditorAction will have no effect.
+/// For asynchronous actions which need to synchronize with the main application loop, call Update
+/// on the main loop.
 /// </summary>
 internal abstract class EditorAction
 {
@@ -180,5 +182,13 @@ internal abstract class EditorAction
 	public void SetNumPreviousActionsAffectingFile(int actions)
 	{
 		NumPreviousActionsAffectingFile = actions;
+	}
+
+	/// <summary>
+	/// Perform any needed updates on the main thread.
+	/// Intended to allow asynchronous actions to periodically commit work.
+	/// </summary>
+	public virtual void Update()
+	{
 	}
 }

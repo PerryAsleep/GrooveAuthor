@@ -20,6 +20,16 @@ internal sealed class EditorFakeNoteEvent : EditorEvent
 		return LaneTapNote.Lane;
 	}
 
+	public override bool IsStep()
+	{
+		return true;
+	}
+
+	public override bool IsLaneNote()
+	{
+		return true;
+	}
+
 	public override bool IsMiscEvent()
 	{
 		return false;

@@ -20,6 +20,21 @@ internal sealed class EditorTapNoteEvent : EditorEvent
 		return LaneTapNote.Lane;
 	}
 
+	public override bool IsStep()
+	{
+		return true;
+	}
+
+	public override bool IsLaneNote()
+	{
+		return true;
+	}
+
+	public override bool IsConsumedByReceptors()
+	{
+		return true;
+	}
+
 	public override bool IsMiscEvent()
 	{
 		return false;

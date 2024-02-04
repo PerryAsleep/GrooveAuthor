@@ -526,6 +526,35 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 		return false;
 	}
 
+	/// <summary>
+	/// Returns whether or not this event is a step.
+	/// Steps are taps, holds/rolls, lifts, and fakes.
+	/// </summary>
+	/// <returns>True if this event is a step and false otherwise.</returns>
+	public virtual bool IsStep()
+	{
+		return false;
+	}
+
+	/// <summary>
+	/// Returns whether or not this event is a visible note in a lane.
+	/// Lane notes are taps, holds/rolls, lifts, fakes, and mines.
+	/// </summary>
+	/// <returns>True if this event is a lane note and false otherwise.</returns>
+	public virtual bool IsLaneNote()
+	{
+		return false;
+	}
+
+	/// <summary>
+	/// Returns whether or not this note becomes consumed by the receptors during play.
+	/// Taps, holds, and lifts are consumed by the receptors
+	/// </summary>
+	/// <returns>True if this event is consumed by the receptors and false otherwise.</returns>
+	public virtual bool IsConsumedByReceptors()
+	{
+		return false;
+	}
 
 	/// <summary>
 	/// Called when this event is added to its EditorChart.

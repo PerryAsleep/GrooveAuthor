@@ -2360,6 +2360,80 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		return smTimingEvents;
 	}
 
+	/// <summary>
+	/// Gets the StepMania events from the chart within a given range that do not affect timing.
+	/// Will include holds which start before the start of the range but overlap it.
+	/// Will include holds which start in the range but end after it.
+	/// Will exclude Pattern events.
+	/// These events are not guaranteed to be sorted.
+	/// </summary>
+	/// <param name="startRowInclusive">Inclusive start row of range.</param>
+	/// <param name="endRowInclusive">Inclusive end row of range.</param>
+	/// <returns>List of Stepmania Events this EditorChart represents.</returns>
+	public (List<Event>, List<EditorEvent>) GetEventsInRangeForPattern(int startRowInclusive, int endRowInclusive)
+	{
+		var smEvents = new List<Event>();
+		var editorEvents = new List<EditorEvent>();
+		if (endRowInclusive < startRowInclusive)
+			return (smEvents, editorEvents);
+
+		// Check for holds which overlap the start of the range.
+		var overlappingHolds = GetHoldsOverlapping(startRowInclusive);
+		for (var lane = 0; lane < overlappingHolds.Length; lane++)
+		{
+			var hold = overlappingHolds[lane];
+			if (hold == null)
+				continue;
+			editorEvents.Add(hold);
+			var events = hold.GetEvents();
+			for (var i = 0; i < events.Count; i++)
+			{
+				if (events[i] == null)
+					continue;
+				smEvents.Add(events[i]);
+			}
+		}
+
+		// Check for events within the range.
+		var enumerator = EditorEvents.FindFirstAtOrAfterChartPosition(startRowInclusive);
+		if (enumerator != null)
+		{
+			while (enumerator.MoveNext())
+			{
+				var editorEvent = enumerator.Current;
+				// If we have advanced beyond the end of the range we are done.
+				var row = editorEvent!.GetRow();
+				if (row > endRowInclusive)
+					break;
+
+				// Skip holds that start at the start of the range as we have captured them above.
+				if (row == startRowInclusive && editorEvent is EditorHoldNoteEvent)
+					continue;
+
+				// Don't consider pattern events.
+				if (editorEvent is EditorPatternEvent)
+					continue;
+
+				// Check the StepMania events for this EditorEvent.
+				var events = editorEvent.GetEvents();
+				var addedAny = false;
+				for (var i = 0; i < events.Count; i++)
+				{
+					if (events[i] == null || DoesEventAffectTiming(events[i]))
+						continue;
+					smEvents.Add(events[i]);
+					addedAny = true;
+				}
+
+				// Add the EditorEvent if we added any of the StepMania events.
+				if (addedAny)
+					editorEvents.Add(editorEvent);
+			}
+		}
+
+		return (smEvents, editorEvents);
+	}
+
 	#endregion Pattern Helpers
 
 	#region IObserver

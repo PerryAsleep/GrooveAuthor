@@ -14,8 +14,10 @@ namespace StepManiaEditor;
 internal interface IReadOnlyEventTree : IReadOnlyRedBlackTree<EditorEvent>
 {
 	IReadOnlyRedBlackTreeEnumerator FindBestByPosition(double chartPosition);
+	IReadOnlyRedBlackTreeEnumerator FindFirstBeforeChartPosition(double chartPosition);
 	IReadOnlyRedBlackTreeEnumerator FindFirstAfterChartTime(double chartTime);
 	IReadOnlyRedBlackTreeEnumerator FindFirstAfterChartPosition(double chartPosition);
+	IReadOnlyRedBlackTreeEnumerator FindFirstAtOrAfterChartPosition(double chartPosition);
 	EditorEvent FindNoteAt(int row, int lane, bool ignoreNotesBeingEdited);
 	List<EditorEvent> FindEventsAtRow(int row);
 }
@@ -59,6 +61,17 @@ internal class EventTree : RedBlackTree<EditorEvent>, IReadOnlyEventTree
 		return enumerator;
 	}
 
+	public IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator FindFirstBeforeChartPosition(double chartPosition)
+	{
+		var pos = EditorEvent.CreateEvent(EventConfig.CreateSearchEventConfig(Chart, chartPosition));
+		var enumerator = FindGreatestPreceding(pos, true);
+		if (enumerator == null)
+			return null;
+
+		EnsureLessThanPosition(enumerator, chartPosition);
+		return enumerator;
+	}
+
 	public IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator FindFirstAfterChartTime(double chartTime)
 	{
 		// Events are sorted by row, so we need to convert the time to row to find an event.
@@ -85,6 +98,18 @@ internal class EventTree : RedBlackTree<EditorEvent>, IReadOnlyEventTree
 			return null;
 
 		EnsureGreaterThanPosition(enumerator, chartPosition);
+		return enumerator;
+	}
+
+	public IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator FindFirstAtOrAfterChartPosition(
+		double chartPosition)
+	{
+		var pos = EditorEvent.CreateEvent(EventConfig.CreateSearchEventConfig(Chart, chartPosition));
+		var enumerator = FindLeastFollowing(pos, true);
+		if (enumerator == null)
+			return null;
+
+		EnsureGreaterThanOrEqualToPosition(enumerator, chartPosition);
 		return enumerator;
 	}
 

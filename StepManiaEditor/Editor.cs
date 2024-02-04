@@ -1312,6 +1312,8 @@ internal sealed class Editor :
 					GC.Collect();
 			}
 
+			ActionQueue.Instance.Update();
+
 			ActiveSong?.Update();
 			SoundManager.Update();
 
@@ -2236,8 +2238,7 @@ internal sealed class Editor :
 				// Skip events entirely above the receptors.
 				if (Preferences.Instance.PreferencesReceptors.AutoPlayHideArrows
 				    && visibleEvent.GetEndChartTime() < Position.ChartTime
-				    && (visibleEvent is EditorTapNoteEvent || visibleEvent is EditorHoldNoteEvent ||
-				        visibleEvent is EditorLiftNoteEvent))
+				    && visibleEvent.IsConsumedByReceptors())
 					continue;
 
 				// Cut off hold end notes which intersect the receptors.
@@ -2471,8 +2472,7 @@ internal sealed class Editor :
 			}
 
 			// Record note.
-			if (e is EditorTapNoteEvent or EditorHoldNoteEvent or EditorMineNoteEvent or EditorLiftNoteEvent
-			    or EditorFakeNoteEvent)
+			if (e!.IsLaneNote())
 			{
 				noteEvents.Add(e);
 				e.SetDimensions(startPosX + e.GetLane() * arrowW, arrowY, arrowW, arrowH, sizeZoom);

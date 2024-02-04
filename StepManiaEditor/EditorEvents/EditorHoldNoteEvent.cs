@@ -139,6 +139,21 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 		LaneHoldStartNote.SourceType = Roll ? SMCommon.NoteChars[(int)SMCommon.NoteType.RollStart].ToString() : string.Empty;
 	}
 
+	public override bool IsStep()
+	{
+		return true;
+	}
+
+	public override bool IsLaneNote()
+	{
+		return true;
+	}
+
+	public override bool IsConsumedByReceptors()
+	{
+		return true;
+	}
+
 	public override bool IsMiscEvent()
 	{
 		return false;

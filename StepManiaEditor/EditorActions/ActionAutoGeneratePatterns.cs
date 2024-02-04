@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text;
 using System.Threading.Tasks;
 using Fumen;
 using Fumen.ChartDefinition;
 using StepManiaEditor.AutogenConfig;
 using StepManiaLibrary;
+using StepManiaLibrary.ExpressedChart;
 using StepManiaLibrary.PerformedChart;
 using static Fumen.Converters.SMCommon;
 using static StepManiaLibrary.ExpressedChart.ExpressedChart;
@@ -17,12 +19,54 @@ namespace StepManiaEditor;
 /// </summary>
 internal sealed class ActionAutoGeneratePatterns : EditorAction
 {
+	/// <summary>
+	/// When searching for surrounding footing for a pattern, extend this many number steps beyond the bounds
+	/// of the pattern in both directions.
+	/// </summary>
+	private const int NumStepsToSearchBeyondPattern = 32;
+
+	/// <summary>
+	/// Number of milliseconds to wait for when synchronizing generated events between the work task and the main thread.
+	/// </summary>
+	private const int WaitTimeMs = 2;
+
+	/// <summary>
+	/// Editor.
+	/// </summary>
 	private readonly Editor Editor;
+
+	/// <summary>
+	/// EditorChart to generate events within.
+	/// </summary>
 	private readonly EditorChart EditorChart;
+
+	/// <summary>
+	/// All the patterns to generate in this action.
+	/// </summary>
 	private readonly List<EditorPatternEvent> Patterns;
+
+	/// <summary>
+	/// Whether or not to use new seeds when generating patterns.
+	/// </summary>
 	private readonly bool UseNewSeeds;
+
+	/// <summary>
+	/// All EditorEvents deleted as a result of the last time this action was run.
+	/// </summary>
 	private readonly List<EditorEvent> DeletedEvents = new();
+
+	/// <summary>
+	/// All EditorEvents added as a result of the last time this action was run.
+	/// </summary>
 	private readonly List<EditorEvent> AddedEvents = new();
+
+	/// <summary>
+	/// While the action is running asynchronously, each pattern will commit new events to this list.
+	/// On the main thread we will commit these to the EditorChart. Only one pattern's events can be
+	/// queued at a time as subsequent patterns rely on the previous pattern results being available in
+	/// the EditorChart.
+	/// </summary>
+	private List<EditorEvent> IncrementalEvents;
 
 	public ActionAutoGeneratePatterns(
 		Editor editor,
@@ -67,6 +111,7 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 			return;
 		}
 
+		// Early out. It's easier to do this here than adding similar checks throughout.
 		if (Patterns.Count == 0)
 		{
 			OnDone();
@@ -100,40 +145,26 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 	}
 
 	/// <summary>
+	/// Update call from the main thread.
+	/// </summary>
+	public override void Update()
+	{
+		// If we have uncommitted events from a pattern, commit them to the EditorChart.
+		if (IncrementalEvents != null)
+		{
+			EditorChart.AddEvents(IncrementalEvents);
+			IncrementalEvents = null;
+		}
+	}
+
+	/// <summary>
 	/// Performs the bulk of the event generation logic.
-	/// This logic is run asynchronously and when it is complete the generated EditorEvents
+	/// Each pattern is run asynchronously and when it is complete the generated EditorEvents
 	/// are added back to the EditorChart synchronously.
 	/// </summary>
 	/// <param name="stepGraph">The StepGraph for the EditorChart.</param>
 	/// <param name="expressedChartConfig">The ExpressedChart Config for the EditorChart.</param>
 	private async void DoPatternGenerationAsync(StepGraph stepGraph, Config expressedChartConfig)
-	{
-		// Generate patterns asynchronously.
-		await Task.Run(() =>
-		{
-			try
-			{
-				GeneratePatterns(stepGraph, expressedChartConfig);
-			}
-			catch (Exception e)
-			{
-				Logger.Error($"Failed to generate patterns. {e}");
-			}
-		});
-
-		// Async work is done, add the newly generated EditorEvents.
-		EditorChart.AddEvents(AddedEvents);
-		OnDone();
-	}
-
-	/// <summary>
-	/// Generates all EditorEvents for all patterns.
-	/// Does not modify the EditorChart.
-	/// Accumulates new EditorEvents in AddedEvents.
-	/// </summary>
-	/// <param name="stepGraph">StepGraph of the associated chart.</param>
-	/// <param name="expressedChartConfig">ExpressedChart Config for the chart.</param>
-	private void GeneratePatterns(StepGraph stepGraph, Config expressedChartConfig)
 	{
 		// Get the timing events. These are needed by the PerformedChart to properly time new events to support
 		// generation logic which relies on time.
@@ -142,318 +173,229 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 		// Get the NPS. This is needed by the PerformedChart to properly account for relative density.
 		var nps = GetNps();
 
-		// Create Events from the EditorChart
-		var chartEvents = EditorChart.GenerateSmEvents();
+		// Set up some trackers
+		var lastRowCapturedForLaneCounts = -1;
+		var currentLaneCounts = new int[stepGraph.NumArrows];
+		var totalStepsBeforePattern = 0;
 
-		// TODO: Potential optimization: Don't get more events than needed to generate the fist pattern.
-		// We should cap this to safely determine following footing, without going to the end of the chart.
-		var editorEvents = new EventTree(EditorChart);
-		foreach (var editorEvent in EditorChart.GetEvents())
+		await Task.Run(async () =>
 		{
-			editorEvents.Insert(editorEvent);
-		}
-
-		// Generate EditorEvents for each pattern in order.
-		for (var patternIndex = 0; patternIndex < Patterns.Count; patternIndex++)
-		{
-			var pattern = Patterns[patternIndex];
-			var errorString = $"Failed to generate {pattern.GetMiscEventText()} pattern at row {pattern.GetRow()}.";
-
-			if (pattern.GetNumSteps() <= 0)
+			try
 			{
-				Logger.Warn($"{errorString} Pattern range is too short to generate steps.");
-				continue;
-			}
-
-			var transitionCutoffPercentage = pattern.GetPerformedChartConfig().Config.Transitions.TransitionCutoffPercentage;
-			var numStepsAtLastTransition = -1;
-			var totalNodeSteps = 0;
-			bool? lastTransitionLeft = null;
-			var nextPattern = patternIndex < Patterns.Count - 1 ? Patterns[patternIndex + 1] : null;
-
-			// Create an ExpressedChart.
-			// TODO: Potential optimization: Only consider the surrounding notes from the pattern.
-			// This will involve also getting the previous rate altering event so we can include the
-			// correct tempo, etc.
-			var expressedChart = CreateFromSMEvents(
-				chartEvents,
-				stepGraph,
-				expressedChartConfig,
-				EditorChart.Rating);
-			if (expressedChart == null)
-			{
-				Logger.Error($"{errorString} Could not create Expressed Chart.");
-				continue;
-			}
-
-			// Get the surrounding step information and counts per lane so we can provide them to the PerformedChart
-			// pattern generation logic.
-			var previousStepFoot = Constants.InvalidFoot;
-			var previousStepTime = new double[Constants.NumFeet];
-			var previousFooting = new int[Constants.NumFeet];
-			var followingStepFoot = Constants.InvalidFoot;
-			var followingFooting = new int[Constants.NumFeet];
-			for (var i = 0; i < Constants.NumFeet; i++)
-			{
-				previousFooting[i] = Constants.InvalidFoot;
-				followingFooting[i] = Constants.InvalidFoot;
-			}
-
-			var currentLaneCounts = new int[stepGraph.NumArrows];
-			var firstStepRow = pattern.GetFirstStepRow();
-
-			// Loop over all ExpressedChart search nodes.
-			// The nodes give us GraphNodes, which let us determine which arrows are associated with which feet.
-			var currentExpressedChartSearchNode = expressedChart.GetRootSearchNode();
-			ChartSearchNode previousExpressedChartSearchNode = null;
-			var foundPreviousFooting = false;
-			// TODO: Potential optimization: Only consider the surrounding notes from the pattern.
-			var editorEventEnumerator = editorEvents.First();
-			editorEventEnumerator.MoveNext();
-			while (currentExpressedChartSearchNode != null)
-			{
-				// This search node follows the pattern.
-				// Check for updating following footing.
-				if (currentExpressedChartSearchNode.Position >= firstStepRow)
+				// Generate each pattern.
+				for (var patternIndex = 0; patternIndex < Patterns.Count; patternIndex++)
 				{
-					foundPreviousFooting = true;
-
-					// Now that we have passed into the range of the pattern, back up to check the preceding notes.
-					GetPrecedingFooting(
+					var pattern = Patterns[patternIndex];
+					var nextPattern = patternIndex < Patterns.Count - 1 ? Patterns[patternIndex + 1] : null;
+					(lastRowCapturedForLaneCounts, totalStepsBeforePattern) = await GeneratePatternAsync(
+						pattern,
+						nextPattern,
 						stepGraph,
-						previousExpressedChartSearchNode,
-						editorEventEnumerator.Clone(),
-						out previousStepTime,
-						out previousStepFoot,
-						out previousFooting);
-
-					// Scan forward to get the following footing.
-					GetFollowingFooting(
-						stepGraph,
-						currentExpressedChartSearchNode,
-						editorEventEnumerator.Clone(),
-						out followingStepFoot,
-						out followingFooting);
-
-					// Stop the search.
-					break;
+						expressedChartConfig,
+						nps,
+						timingEvents,
+						currentLaneCounts,
+						lastRowCapturedForLaneCounts,
+						totalStepsBeforePattern);
 				}
 
-				// Track transition information.
-				var isRelease = currentExpressedChartSearchNode.PreviousLink?.GraphLink?.IsRelease() ?? false;
-				if (!isRelease)
-					totalNodeSteps++;
-				stepGraph.GetSide(currentExpressedChartSearchNode.GraphNode, transitionCutoffPercentage, out var leftSide);
-				if (leftSide != null && lastTransitionLeft != leftSide)
-				{
-					if (lastTransitionLeft != null)
-					{
-						numStepsAtLastTransition = totalNodeSteps;
-					}
-
-					lastTransitionLeft = leftSide;
-				}
-
-				// Advance the enumerator for editorEvents and accumulate steps per lane.
-				while (editorEventEnumerator.IsCurrentValid()
-				       && editorEventEnumerator.Current!.GetRow() <= currentExpressedChartSearchNode.Position)
-				{
-					if (!pattern.IgnorePrecedingDistribution)
-					{
-						if (editorEventEnumerator.Current is EditorTapNoteEvent or EditorHoldNoteEvent or EditorFakeNoteEvent
-						    or EditorLiftNoteEvent)
-						{
-							currentLaneCounts[editorEventEnumerator.Current.GetLane()]++;
-						}
-					}
-
-					editorEventEnumerator.MoveNext();
-				}
-
-				previousExpressedChartSearchNode = currentExpressedChartSearchNode;
-				currentExpressedChartSearchNode = currentExpressedChartSearchNode.GetNextNode();
+				// Wait for all the events to be committed to the EditorChart back on the main thread.
+				while (IncrementalEvents != null)
+					await Task.Delay(WaitTimeMs);
 			}
-
-			// In the case where no notes follow the pattern, check for finding the preceding footing.
-			if (!foundPreviousFooting)
+			catch (Exception e)
 			{
-				if (previousExpressedChartSearchNode != null)
-				{
-					GetPrecedingFooting(
-						stepGraph,
-						previousExpressedChartSearchNode,
-						editorEventEnumerator.Clone(),
-						out previousStepTime,
-						out previousStepFoot,
-						out previousFooting);
-				}
+				Logger.Error($"Failed to generate patterns. {e}");
 			}
+		});
 
-			// If there are no previous notes, use the default position.
-			if (previousFooting[Constants.L] == Constants.InvalidArrowIndex)
-				previousFooting[Constants.L] = stepGraph.GetRoot().State[Constants.L, Constants.DefaultFootPortion].Arrow;
-			if (previousFooting[Constants.R] == Constants.InvalidArrowIndex)
-				previousFooting[Constants.R] = stepGraph.GetRoot().State[Constants.R, Constants.DefaultFootPortion].Arrow;
-
-			// Due to the above logic to assign footing to the default state it is possible
-			// for both feet to be assigned to the same arrow. Correct that.
-			if (previousFooting[Constants.L] == previousFooting[Constants.R])
-			{
-				previousFooting[Constants.L] = stepGraph.GetRoot().State[Constants.L, Constants.DefaultFootPortion].Arrow;
-				previousFooting[Constants.R] = stepGraph.GetRoot().State[Constants.R, Constants.DefaultFootPortion].Arrow;
-			}
-
-			// If we don't know what foot to start on, choose a starting foot.
-			if (previousStepFoot == Constants.InvalidFoot)
-			{
-				// If we know the following foot, choose a starting foot that will lead into it
-				// through alternating.
-				if (followingStepFoot != Constants.InvalidArrowIndex)
-				{
-					var numStepsInPattern = pattern.GetNumSteps();
-
-					// Even number of steps, start on the same foot.
-					if (numStepsInPattern % 2 == 0)
-					{
-						previousStepFoot = Constants.OtherFoot(followingStepFoot);
-					}
-					// Otherwise, start on the opposite foot.
-					else
-					{
-						previousStepFoot = followingStepFoot;
-					}
-				}
-				// Otherwise, start on the right foot.
-				else
-				{
-					previousStepFoot = Constants.L;
-				}
-			}
-
-			// Create a PerformedChart section for the Pattern.
-			var performedChart = PerformedChart.CreateWithPattern(stepGraph,
-				pattern.GetPatternConfig().Config,
-				pattern.GetPerformedChartConfig().Config,
-				pattern.GetFirstStepRow(),
-				pattern.GetLastStepRow(),
-				UseNewSeeds ? new Random().Next() : pattern.RandomSeed,
-				previousStepFoot,
-				previousStepTime,
-				previousFooting,
-				followingFooting,
-				currentLaneCounts,
-				timingEvents,
-				totalNodeSteps,
-				numStepsAtLastTransition,
-				lastTransitionLeft,
-				nps,
-				pattern.GetMiscEventText());
-			if (performedChart == null)
-			{
-				Logger.Error($"{errorString} Could not create Performed Chart.");
-				continue;
-			}
-
-			// Convert this PerformedChart section to Stepmania Events.
-			var smEvents = performedChart.CreateSMChartEvents();
-			var smEventsToAdd = smEvents;
-
-			// Check for excluding some Events. It is possible that future patterns will
-			// overlap this pattern. In that case we do not want to add the notes from
-			// this pattern which overlap, and we instead want to let the next pattern
-			// generate those notes.
-			if (nextPattern != null && nextPattern.GetNumSteps() > 0)
-			{
-				var nextPatternStartRow = nextPattern.GetFirstStepRow();
-				if (nextPatternStartRow <= pattern.GetEndRow())
-				{
-					smEventsToAdd = new List<Event>();
-					foreach (var smEvent in smEvents)
-					{
-						if (smEvent.IntegerPosition >= nextPatternStartRow)
-							break;
-						smEventsToAdd.Add(smEvent);
-					}
-				}
-			}
-
-			// Update the running list of all Events.
-			chartEvents.AddRange(smEventsToAdd);
-			chartEvents.Sort(new SMEventComparer());
-			// TODO: Potential Optimization: only update times on smEventsToAdd.
-			// Note that this is technically mutating existing Events that are unrelated to the patterns.
-			// We shouldn't be doing this, but it should also have no effect because if it did that would mean
-			// existing event timing was wrong.
-			SetEventTimeAndMetricPositionsFromRows(chartEvents);
-
-			// Convert new events to EditorEvents.
-			var newEditorEvents = new List<EditorEvent>();
-			foreach (var smEvent in smEventsToAdd)
-			{
-				var newEditorEvent = EditorEvent.CreateEvent(EventConfig.CreateConfig(EditorChart, smEvent));
-				newEditorEvents.Add(newEditorEvent);
-				editorEvents.Insert(newEditorEvent);
-			}
-
-			// Update the running list of all added EditorEvents.
-			AddedEvents.AddRange(newEditorEvents);
-		}
+		OnDone();
 	}
 
 	/// <summary>
-	/// Helper function to get the preceding footing of a pattern.
-	/// If preceding steps are brackets only the DefaultFootPortion (Heel)'s lane will be used.
+	/// Generates new EditorEvents for a pattern. Does not modify the EditorChart.
+	/// Newly generated events are stored in IncrementalEvents.
+	/// If IncrementalEvents is not yet null, this method will wait.
 	/// </summary>
+	/// <param name="pattern">The EditorPatternEvent to generate notes for.</param>
+	/// <param name="nextPattern">The next EditorPatternEvent following this one which will be generated. May be null.</param>
 	/// <param name="stepGraph">StepGraph of the associated chart.</param>
-	/// <param name="node">The ChartSearchNode of the last event preceding the pattern.</param>
-	/// <param name="editorEventEnumerator">
-	/// The EditorEvent enumerator of the last EditorEvent preceding the pattern.
+	/// <param name="expressedChartConfig">ExpressedChart Config for the chart.</param>
+	/// <param name="nps">Notes per second of the chart with all patterns generated.</param>
+	/// <param name="timingEvents">All the StepMania Events in the chart which affect timing.</param>
+	/// <param name="currentLaneCounts">
+	/// The count of steps per lane in the chart going up to lastRowCapturedForLaneCounts.
+	/// This will be updated by calling this function.
 	/// </param>
-	/// <param name="previousStepTime">
-	/// Out parameter to record the time of the most recent preceding step.
+	/// <param name="lastRowCapturedForLaneCounts">
+	/// The last row that was scanned to for updating currentLaneCounts and totalStepsBeforePattern.
 	/// </param>
-	/// <param name="previousStepFoot">
-	/// Out parameter to record the foot used to step on the most recent preceding step.
+	/// <param name="totalStepsBeforePattern">
+	/// The total number of steps in the chart going up to lastRowCapturedForLaneCounts.
 	/// </param>
-	/// <param name="previousFooting">
-	/// Out parameter to record the lane stepped on per foot of the preceding steps.
-	/// </param>
-	private static void GetPrecedingFooting(
+	/// <returns>Updated values for lastRowCapturedForLaneCounts and totalStepsBeforePattern.</returns>
+	private async Task<(int, int)> GeneratePatternAsync(
+		EditorPatternEvent pattern,
+		EditorPatternEvent nextPattern,
 		StepGraph stepGraph,
-		ChartSearchNode node,
-		IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator editorEventEnumerator,
-		out double[] previousStepTime,
-		out int previousStepFoot,
-		out int[] previousFooting)
+		Config expressedChartConfig,
+		double nps,
+		List<Event> timingEvents,
+		int[] currentLaneCounts,
+		int lastRowCapturedForLaneCounts,
+		int totalStepsBeforePattern)
 	{
-		// Initialize out parameters.
-		previousStepFoot = Constants.InvalidFoot;
-		previousStepTime = new double[Constants.NumFeet];
-		previousFooting = new int[Constants.NumFeet];
-		for (var i = 0; i < Constants.NumFeet; i++)
+		var errorString = $"Failed to generate {pattern.GetMiscEventText()} pattern at row {pattern.GetRow()}.";
+
+		// Ensure this pattern is long enough to generate steps.
+		if (pattern.GetNumSteps() <= 0)
 		{
-			previousFooting[i] = Constants.InvalidFoot;
+			Logger.Warn($"{errorString} Pattern range is too short to generate steps.");
+			return (lastRowCapturedForLaneCounts, totalStepsBeforePattern);
 		}
 
-		// Scan backwards.
-		var numFeetFound = 0;
-		var positionOfCurrentSteps = -1;
-		var currentSteppedLanes = new bool[stepGraph.NumArrows];
-		while (node != null)
+		// If we are already waiting on the main thread to consume the last IncrementalEvents, then wait.
+		// We need the EditorChart to be updated so we can query it again with the new steps.
+		while (IncrementalEvents != null)
+			await Task.Delay(WaitTimeMs);
+
+		// Update the trackers for steps and steps per row to capture any new steps up to this pattern.
+		UpdatePrecedingLaneCounts(ref lastRowCapturedForLaneCounts, ref totalStepsBeforePattern, currentLaneCounts, pattern);
+
+		// Get the range of rows to consider for this pattern.
+		var (rangeRowStart, rangeRowEnd) = GetRowRangeToConsiderForPattern(pattern);
+		var rangeStartsAfterStartOfChart = rangeRowStart > 0;
+
+		// Now that we have a range, get the following EditorEvents and StepMania Events.
+		var (smEvents, editorEvents) = EditorChart.GetEventsInRangeForPattern(pattern.GetLastStepRow() + 1, rangeRowEnd);
+		smEvents.AddRange(timingEvents);
+		smEvents.Sort(new SMEventComparer());
+
+		// Create an ExpressedChart from the following events to determine the following footing.
+		var expressedChart = CreateFromSMEvents(smEvents, stepGraph, expressedChartConfig, EditorChart.Rating);
+		if (expressedChart == null)
 		{
-			// If we have scanned backwards into a new row, update the currently stepped on lanes for that row.
-			CheckAndUpdateCurrentSteppedLanes(stepGraph, node, editorEventEnumerator, ref positionOfCurrentSteps,
-				ref currentSteppedLanes, false);
+			Logger.Error($"{errorString} Could not create Expressed Chart.");
+			return (lastRowCapturedForLaneCounts, totalStepsBeforePattern);
+		}
 
-			// Update the tracked footing based on the currently stepped on lanes.
-			CheckAndUpdateFooting(stepGraph, node, previousFooting, currentSteppedLanes, ref numFeetFound, ref previousStepFoot,
-				ref previousStepTime);
+		// Get the following footing. This is done first as following footing can affect previous footing.
+		GetFollowingFooting(pattern, stepGraph, expressedChart, editorEvents, out var followingStepFoot,
+			out var followingFooting);
 
-			if (numFeetFound == Constants.NumFeet)
-				break;
+		// Get the preceding EditorEvents and StepMania Events.
+		(smEvents, editorEvents) = EditorChart.GetEventsInRangeForPattern(rangeRowStart, pattern.GetFirstStepRow() - 1);
+		smEvents.AddRange(timingEvents);
+		smEvents.Sort(new SMEventComparer());
 
-			// Advance.
-			node = node.PreviousNode;
+		// Create an ExpressedChart encompassing the notes preceding the pattern.
+		expressedChart = CreateFromSMEvents(smEvents, stepGraph, expressedChartConfig, EditorChart.Rating);
+		if (expressedChart == null)
+		{
+			Logger.Error($"{errorString} Could not create Expressed Chart.");
+			return (lastRowCapturedForLaneCounts, totalStepsBeforePattern);
+		}
+
+		// Use the ExpressedChart to determine the previous footing and transition information.
+		GetPrecedingFootingAndTransitions(
+			pattern,
+			stepGraph,
+			expressedChart,
+			editorEvents,
+			totalStepsBeforePattern,
+			rangeStartsAfterStartOfChart,
+			followingStepFoot,
+			out var previousStepFoot,
+			out var previousStepTime,
+			out var previousFooting,
+			out var numStepsAtLastTransition,
+			out var lastTransitionLeft);
+
+		// Now that we know all the needed previous and following step information, create a PerformedChart for the pattern.
+		var performedChart = PerformedChart.CreateWithPattern(stepGraph,
+			pattern.GetPatternConfig().Config,
+			pattern.GetPerformedChartConfig().Config,
+			pattern.GetFirstStepRow(),
+			pattern.GetLastStepRow(),
+			UseNewSeeds ? new Random().Next() : pattern.RandomSeed,
+			previousStepFoot,
+			previousStepTime,
+			previousFooting,
+			followingFooting,
+			pattern.IgnorePrecedingDistribution ? new int[stepGraph.NumArrows] : currentLaneCounts,
+			timingEvents,
+			totalStepsBeforePattern,
+			numStepsAtLastTransition,
+			lastTransitionLeft,
+			nps,
+			pattern.GetMiscEventText());
+		if (performedChart == null)
+		{
+			Logger.Error($"{errorString} Could not create Performed Chart.");
+			return (lastRowCapturedForLaneCounts, totalStepsBeforePattern);
+		}
+
+		//LogDebugInfo(pattern, previousStepFoot, followingStepFoot, lastTransitionLeft, currentLaneCounts, previousFooting,
+		//	followingFooting, totalStepsBeforePattern, numStepsAtLastTransition, nps);
+
+		// Convert this PerformedChart section to Stepmania Events.
+		var newSmEvents = performedChart.CreateSMChartEvents();
+
+		// Check for excluding some Events. It is possible that future patterns will
+		// overlap this pattern. In that case we do not want to add the notes from
+		// this pattern which overlap, and we instead want to let the next pattern
+		// generate those notes.
+		RemoveEventsWhichOverlapNextPattern(pattern, nextPattern, newSmEvents);
+
+		// Add EditorEvents for the new StepMania events.
+		var newEvents = new List<EditorEvent>();
+		foreach (var smEvent in newSmEvents)
+			newEvents.Add(EditorEvent.CreateEvent(EventConfig.CreateConfig(EditorChart, smEvent)));
+		AddedEvents.AddRange(newEvents);
+
+		// Commit these events to IncrementalEvents so they can be set on the EditorChart on the main thread.
+		IncrementalEvents = newEvents;
+
+		return (lastRowCapturedForLaneCounts, totalStepsBeforePattern);
+	}
+
+	/// <summary>
+	/// Updates counters for total steps and steps per lane going up to the given pattern.
+	/// </summary>
+	/// <param name="lastRowCapturedForLaneCounts">
+	/// The last row that was tracked up to previously. This will be updated as we advance to the next pattern.
+	/// </param>
+	/// <param name="totalStepCount">Total step count to update.</param>
+	/// <param name="laneCounts">Lane counts to update.</param>
+	/// <param name="pattern">The pattern to advance up to.</param>
+	private static void UpdatePrecedingLaneCounts(
+		ref int lastRowCapturedForLaneCounts,
+		ref int totalStepCount,
+		int[] laneCounts,
+		EditorPatternEvent pattern)
+	{
+		var patternFirstStepRow = pattern.GetFirstStepRow();
+		if (lastRowCapturedForLaneCounts >= patternFirstStepRow)
+			return;
+
+		var editorChart = pattern.GetEditorChart();
+		var editorEventEnum = editorChart.GetEvents().FindFirstAtOrAfterChartPosition(lastRowCapturedForLaneCounts);
+		if (editorEventEnum != null)
+		{
+			while (editorEventEnum.MoveNext())
+			{
+				var editorEvent = editorEventEnum.Current;
+				var row = editorEvent!.GetRow();
+				if (row >= patternFirstStepRow)
+					break;
+				lastRowCapturedForLaneCounts = row;
+				if (editorEvent.IsStep())
+				{
+					var lane = editorEvent.GetLane();
+					laneCounts[lane]++;
+					totalStepCount++;
+				}
+			}
 		}
 	}
 
@@ -461,10 +403,11 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 	/// Helper function to get the following footing of a pattern.
 	/// If following steps are brackets only the DefaultFootPortion (Heel)'s lane will be used.
 	/// </summary>
+	/// <param name="pattern">EditorPatternEvent to find the following footing of.</param>
 	/// <param name="stepGraph">StepGraph of the associated chart.</param>
-	/// <param name="node">The ChartSearchNode of the first event following the pattern.</param>
-	/// <param name="editorEventEnumerator">
-	/// The EditorEvent enumerator of the first EditorEvent following the pattern.
+	/// <param name="expressedChart">ExpressedChart associated with the following steps.</param>
+	/// <param name="editorEvents">
+	/// List of EditorEvents encompassing a range that extends beyond the pattern.
 	/// </param>
 	/// <param name="followingStepFoot">
 	/// Out parameter to record the next foot which steps first in the following steps.
@@ -473,48 +416,36 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 	/// Out parameter to record the lane stepped on per foot of the following steps.
 	/// </param>
 	private static void GetFollowingFooting(
+		EditorPatternEvent pattern,
 		StepGraph stepGraph,
-		ChartSearchNode node,
-		IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator editorEventEnumerator,
+		ExpressedChart expressedChart,
+		List<EditorEvent> editorEvents,
 		out int followingStepFoot,
 		out int[] followingFooting)
 	{
+		// Get the first ExpressedChart node that follows the pattern.
+		var node = expressedChart.GetRootSearchNode();
+		while (node != null && node.Position < pattern.GetLastStepRow())
+			node = node.GetNextNode();
+
 		// Initialize out parameters.
 		followingFooting = new int[Constants.NumFeet];
 		for (var i = 0; i < Constants.NumFeet; i++)
-		{
 			followingFooting[i] = Constants.InvalidFoot;
-		}
-
-		// Unused variables, but they simplify the common footing update logic.
 		followingStepFoot = Constants.InvalidFoot;
+
+		// Unused variable, but it simplifies the common footing update logic.
 		var followingStepTime = new double[Constants.NumFeet];
 
-		// The enumerator is already beyond the pattern. We want to back up one to easily examine
-		// the steps following the pattern.
-
-		// If the enumerator has moved beyond the final note, back it up one.
-		if (!editorEventEnumerator.IsCurrentValid())
-			editorEventEnumerator.MovePrev();
-
-		// Back up until we precede the row following the pattern.
-		while (editorEventEnumerator.IsCurrentValid() && editorEventEnumerator.Current!.GetRow() >= node.Position)
-		{
-			if (!editorEventEnumerator.MovePrev())
-			{
-				editorEventEnumerator.MoveNext();
-				break;
-			}
-		}
-
 		// Scan forwards.
+		var editorEventIndex = 0;
 		var numFeetFound = 0;
 		var positionOfCurrentSteps = -1;
 		var currentSteppedLanes = new bool[stepGraph.NumArrows];
 		while (node != null)
 		{
 			// If we have scanned forward into a new row, update the currently stepped on lanes for that row.
-			CheckAndUpdateCurrentSteppedLanes(stepGraph, node, editorEventEnumerator, ref positionOfCurrentSteps,
+			CheckAndUpdateCurrentSteppedLanes(stepGraph, node, editorEvents, ref editorEventIndex, ref positionOfCurrentSteps,
 				ref currentSteppedLanes, true);
 
 			// Update the tracked footing based on the currently stepped on lanes.
@@ -530,6 +461,243 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 	}
 
 	/// <summary>
+	/// Helper function to get the preceding footing of a pattern, and information about the preceding transition.
+	/// </summary>
+	/// <param name="pattern">EditorPatternEvent to find the preceding information of.</param>
+	/// <param name="stepGraph">StepGraph of the associated chart.</param>
+	/// <param name="expressedChart">ExpressedChart associated with the preceding steps.</param>
+	/// <param name="editorEvents">
+	/// List of EditorEvents encompassing a range that extends before the pattern.
+	/// </param>
+	/// <param name="totalStepsBeforePattern">
+	/// Total number of steps before the pattern.
+	/// </param>
+	/// <param name="rangeStartsAfterStartOfChart">
+	/// Whether or not the range of the preceding steps starts after the start of the chart.
+	/// </param>
+	/// <param name="followingStepFoot">
+	/// Which foot makes the first step following this pattern.
+	/// </param>
+	/// <param name="previousStepFoot">
+	/// Out parameter to record the foot used to step on the most recent preceding step.
+	/// </param>
+	/// <param name="previousStepTime">
+	/// Out parameter to record the time of the most recent preceding step.
+	/// </param>
+	/// <param name="previousFooting">
+	/// Out parameter to record the lane stepped on per foot of the preceding steps.
+	/// </param>
+	/// <param name="numStepsAtLastTransition">
+	/// Out parameter to hold the number of steps in the chart the last transition occurred at.
+	/// </param>
+	/// <param name="lastTransitionLeft">
+	/// Out parameter to record whether the last transition is in the left direction.
+	/// Null if unknown.
+	/// </param>
+	private static void GetPrecedingFootingAndTransitions(
+		EditorPatternEvent pattern,
+		StepGraph stepGraph,
+		ExpressedChart expressedChart,
+		List<EditorEvent> editorEvents,
+		int totalStepsBeforePattern,
+		bool rangeStartsAfterStartOfChart,
+		int followingStepFoot,
+		out int previousStepFoot,
+		out double[] previousStepTime,
+		out int[] previousFooting,
+		out int numStepsAtLastTransition,
+		out bool? lastTransitionLeft)
+	{
+		// Initialize out variables.
+		previousStepFoot = Constants.InvalidFoot;
+		previousStepTime = new double[Constants.NumFeet];
+		previousFooting = new int[Constants.NumFeet];
+		for (var i = 0; i < Constants.NumFeet; i++)
+			previousFooting[i] = Constants.InvalidFoot;
+
+		// Set up transition checking variables.
+		var transitionCutoffPercentage = pattern.GetPerformedChartConfig().Config.Transitions.TransitionCutoffPercentage;
+		numStepsAtLastTransition = Math.Max(0,
+			totalStepsBeforePattern - pattern.GetPerformedChartConfig().Config.Transitions.StepsPerTransitionMin);
+		var currentStepsInRegionBeforePattern = 0;
+		lastTransitionLeft = null;
+
+		// Loop over all ExpressedChart search nodes.
+		// The nodes give us GraphNodes, which let us determine which arrows are associated with which feet.
+		var currentExpressedChartSearchNode = expressedChart.GetRootSearchNode();
+		ChartSearchNode previousExpressedChartSearchNode = null;
+		var editorEventIndex = 0;
+		var sumOfLanesBeforePattern = 0;
+		var numStepsCheckedBeforePattern = 0;
+		var firstStepRow = pattern.GetFirstStepRow();
+		var stepsIntoPrecedingRangeOfLastTransition = -1;
+		while (currentExpressedChartSearchNode != null)
+		{
+			if (currentExpressedChartSearchNode.Position >= firstStepRow)
+				break;
+
+			// Track transition information.
+			var isStep = !(currentExpressedChartSearchNode.PreviousLink?.GraphLink?.IsRelease() ?? true);
+			if (isStep)
+				currentStepsInRegionBeforePattern++;
+			stepGraph.GetSide(currentExpressedChartSearchNode.GraphNode, transitionCutoffPercentage, out var leftSide);
+			if (leftSide != null && lastTransitionLeft != leftSide)
+			{
+				if (lastTransitionLeft != null)
+					stepsIntoPrecedingRangeOfLastTransition = currentStepsInRegionBeforePattern;
+				lastTransitionLeft = leftSide;
+			}
+
+			// Advance within the EditorEvents list.
+			while (editorEventIndex < editorEvents.Count &&
+			       editorEvents[editorEventIndex].GetRow() <= currentExpressedChartSearchNode.Position)
+			{
+				if (editorEvents[editorEventIndex].IsStep())
+				{
+					sumOfLanesBeforePattern += editorEvents[editorEventIndex].GetLane();
+					numStepsCheckedBeforePattern++;
+				}
+
+				editorEventIndex++;
+			}
+
+			previousExpressedChartSearchNode = currentExpressedChartSearchNode;
+			currentExpressedChartSearchNode = currentExpressedChartSearchNode.GetNextNode();
+		}
+
+		// If we found a transition, convert it to an absolute step count.
+		if (stepsIntoPrecedingRangeOfLastTransition != -1)
+			numStepsAtLastTransition = totalStepsBeforePattern - currentStepsInRegionBeforePattern +
+			                           stepsIntoPrecedingRangeOfLastTransition;
+
+		// There is a situation where we might check all preceding steps and not find a transition but we are
+		// deep into the chart and we need to set lastTransitionLeft. Guess the last transition direction based on
+		// the distribution of steps within the region we checked.
+		if (lastTransitionLeft == null && rangeStartsAfterStartOfChart && numStepsCheckedBeforePattern > 0)
+		{
+			var averageLane = (double)sumOfLanesBeforePattern / numStepsCheckedBeforePattern;
+			lastTransitionLeft = averageLane < stepGraph.NumArrows * 0.5;
+		}
+
+		// Scan backwards for the preceding footing.
+		if (previousExpressedChartSearchNode != null)
+		{
+			// Ensure the editorEventIndex is still within the range if the events so we can scan backwards.
+			editorEventIndex = Math.Min(editorEventIndex, editorEvents.Count - 1);
+			editorEventIndex = Math.Max(editorEventIndex, 0);
+
+			GetPrecedingFooting(
+				stepGraph,
+				previousExpressedChartSearchNode,
+				editorEvents,
+				editorEventIndex,
+				out previousStepTime,
+				out previousStepFoot,
+				out previousFooting);
+		}
+
+		// If there are no previous notes, use the default position.
+		if (previousFooting[Constants.L] == Constants.InvalidArrowIndex)
+			previousFooting[Constants.L] = stepGraph.GetRoot().State[Constants.L, Constants.DefaultFootPortion].Arrow;
+		if (previousFooting[Constants.R] == Constants.InvalidArrowIndex)
+			previousFooting[Constants.R] = stepGraph.GetRoot().State[Constants.R, Constants.DefaultFootPortion].Arrow;
+
+		// Due to the above logic to assign footing to the default state it is possible
+		// for both feet to be assigned to the same arrow. Correct that.
+		if (previousFooting[Constants.L] == previousFooting[Constants.R])
+		{
+			previousFooting[Constants.L] = stepGraph.GetRoot().State[Constants.L, Constants.DefaultFootPortion].Arrow;
+			previousFooting[Constants.R] = stepGraph.GetRoot().State[Constants.R, Constants.DefaultFootPortion].Arrow;
+		}
+
+		// If we don't know what foot to start on, choose a starting foot.
+		if (previousStepFoot == Constants.InvalidFoot)
+		{
+			// If we know the following foot, choose a starting foot that will lead into it
+			// through alternating.
+			if (followingStepFoot != Constants.InvalidArrowIndex)
+			{
+				var numStepsInPattern = pattern.GetNumSteps();
+
+				// Even number of steps, start on the same foot.
+				if (numStepsInPattern % 2 == 0)
+				{
+					previousStepFoot = Constants.OtherFoot(followingStepFoot);
+				}
+				// Otherwise, start on the opposite foot.
+				else
+				{
+					previousStepFoot = followingStepFoot;
+				}
+			}
+			// Otherwise, start on the right foot.
+			else
+			{
+				previousStepFoot = Constants.L;
+			}
+		}
+	}
+
+	/// <summary>
+	/// Helper function to get the preceding footing of a pattern.
+	/// If preceding steps are brackets only the DefaultFootPortion (Heel)'s lane will be used.
+	/// </summary>
+	/// <param name="stepGraph">StepGraph of the associated chart.</param>
+	/// <param name="node">The ChartSearchNode of the last event preceding the pattern.</param>
+	/// <param name="editorEvents">
+	/// List of EditorEvents encompassing a range that extends beyond the pattern in both directions.
+	/// </param>
+	/// <param name="editorEventIndex">
+	/// The current index into the EditorEvents List.
+	/// </param>
+	/// <param name="previousStepTime">
+	/// Out parameter to record the time of the most recent preceding step.
+	/// </param>
+	/// <param name="previousStepFoot">
+	/// Out parameter to record the foot used to step on the most recent preceding step.
+	/// </param>
+	/// <param name="previousFooting">
+	/// Out parameter to record the lane stepped on per foot of the preceding steps.
+	/// </param>
+	private static void GetPrecedingFooting(
+		StepGraph stepGraph,
+		ChartSearchNode node,
+		IReadOnlyList<EditorEvent> editorEvents,
+		int editorEventIndex,
+		out double[] previousStepTime,
+		out int previousStepFoot,
+		out int[] previousFooting)
+	{
+		// Initialize out parameters.
+		previousStepFoot = Constants.InvalidFoot;
+		previousStepTime = new double[Constants.NumFeet];
+		previousFooting = new int[Constants.NumFeet];
+		for (var i = 0; i < Constants.NumFeet; i++)
+			previousFooting[i] = Constants.InvalidFoot;
+
+		// Scan backwards.
+		var numFeetFound = 0;
+		var positionOfCurrentSteps = -1;
+		var currentSteppedLanes = new bool[stepGraph.NumArrows];
+		while (node != null)
+		{
+			// If we have scanned backwards into a new row, update the currently stepped on lanes for that row.
+			CheckAndUpdateCurrentSteppedLanes(stepGraph, node, editorEvents, ref editorEventIndex, ref positionOfCurrentSteps,
+				ref currentSteppedLanes, false);
+
+			// Update the tracked footing based on the currently stepped on lanes.
+			CheckAndUpdateFooting(stepGraph, node, previousFooting, currentSteppedLanes, ref numFeetFound, ref previousStepFoot,
+				ref previousStepTime);
+
+			if (numFeetFound == Constants.NumFeet)
+				break;
+
+			// Advance.
+			node = node.PreviousNode;
+		}
+	}
+
+	/// <summary>
 	/// Helper function for updating an array of currently stepped on lanes when scanning and the row changes.
 	/// The currently stepped on lanes are used for determining footing when comparing against a GraphNode.
 	/// </summary>
@@ -538,8 +706,11 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 	/// Current ChartSearchNode. If the position of the current steps doesn't equal this node's position
 	/// then the currentSteppedLanes will be updated accordingly.
 	/// </param>
-	/// <param name="editorEventEnumerator">
-	/// Enumerator of the EditorEvents to use for scanning to determine which lanes are stepped on.
+	/// <param name="editorEvents">
+	/// List of EditorEvents encompassing a range that extends beyond the pattern in both directions.
+	/// </param>
+	/// <param name="editorEventIndex">
+	/// The current index into the EditorEvents List.
 	/// </param>
 	/// <param name="positionOfCurrentSteps">
 	/// Last position of the currentSteppedLanes. Will be updated if currentSteppedLanes are updated.
@@ -554,7 +725,8 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 	private static void CheckAndUpdateCurrentSteppedLanes(
 		StepGraph stepGraph,
 		ChartSearchNode node,
-		IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator editorEventEnumerator,
+		IReadOnlyList<EditorEvent> editorEvents,
+		ref int editorEventIndex,
 		ref int positionOfCurrentSteps,
 		ref bool[] currentSteppedLanes,
 		bool scanForward)
@@ -567,24 +739,20 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 				currentSteppedLanes[i] = false;
 
 			// Scan the current row, recording the lanes being stepped on at this position.
-			while (editorEventEnumerator.IsCurrentValid() &&
-			       (scanForward
-				       ? editorEventEnumerator.Current!.GetRow() <= node.Position
-				       : editorEventEnumerator.Current!.GetRow() >= node.Position))
+			while (editorEventIndex >= 0 && editorEventIndex < editorEvents.Count
+			                             && (scanForward
+				                             ? editorEvents[editorEventIndex].GetRow() <= node.Position
+				                             : editorEvents[editorEventIndex].GetRow() >= node.Position))
 			{
-				if (editorEventEnumerator.Current.GetRow() == node.Position)
+				if (editorEvents[editorEventIndex].GetRow() == node.Position)
 				{
-					if (editorEventEnumerator.Current is EditorTapNoteEvent or EditorHoldNoteEvent or EditorFakeNoteEvent
-					    or EditorLiftNoteEvent)
+					if (editorEvents[editorEventIndex].IsStep())
 					{
-						currentSteppedLanes[editorEventEnumerator.Current.GetLane()] = true;
+						currentSteppedLanes[editorEvents[editorEventIndex].GetLane()] = true;
 					}
 				}
 
-				if (scanForward)
-					editorEventEnumerator.MoveNext();
-				else
-					editorEventEnumerator.MovePrev();
+				editorEventIndex += scanForward ? 1 : -1;
 			}
 
 			// Update the position we have recorded steps for.
@@ -665,6 +833,103 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 	}
 
 	/// <summary>
+	/// Removes Events generated by the given pattern which overlap those which will be generated by
+	/// the given next pattern.
+	/// </summary>
+	/// <param name="pattern">Current pattern which generated events.</param>
+	/// <param name="nextPattern">Next pattern which will generate events.</param>
+	/// <param name="patternEvents">
+	/// The events generated by the current pattern.
+	/// This will be modified.
+	/// </param>
+	private static void RemoveEventsWhichOverlapNextPattern(
+		EditorPatternEvent pattern,
+		EditorPatternEvent nextPattern,
+		List<Event> patternEvents)
+	{
+		if (nextPattern == null || nextPattern.GetNumSteps() == 0)
+			return;
+
+		var nextPatternStartRow = nextPattern.GetFirstStepRow();
+		if (nextPatternStartRow > pattern.GetLastStepRow())
+			return;
+
+		for (var i = 0; i < patternEvents.Count; i++)
+		{
+			if (patternEvents[i].IntegerPosition >= nextPatternStartRow)
+			{
+				patternEvents.RemoveRange(i, patternEvents.Count - i);
+				return;
+			}
+		}
+	}
+
+	/// <summary>
+	/// Given an EditorPatternEvent, gets a range of rows to consider for determining previous and following
+	/// footing, and previous transition information.
+	/// </summary>
+	/// <param name="pattern">The EditorPatternEvent to consider.</param>
+	/// <returns>
+	/// Tuple representing an inclusive row range around the pattern to consider.
+	/// </returns>
+	private static (int start, int end) GetRowRangeToConsiderForPattern(EditorPatternEvent pattern)
+	{
+		var editorChart = pattern.GetEditorChart();
+
+		// Extend earlier than the pattern start. We do this so that we have enough prior steps
+		// to interpret the previous footing, and also so that we can know when the last transition occurred.
+		var patternFirstStepRow = pattern.GetFirstStepRow();
+		var rangeStart = patternFirstStepRow;
+		var transitionConfig = pattern.GetPerformedChartConfig().Config.Transitions;
+		var transitionExtension = transitionConfig.IsEnabled() ? Math.Max(0, transitionConfig.StepsPerTransitionMin) : 0;
+		var stepsToBackUp = Math.Max(transitionExtension, NumStepsToSearchBeyondPattern);
+		var editorEventEnum = editorChart.GetEvents().FindFirstBeforeChartPosition(patternFirstStepRow);
+		if (editorEventEnum != null)
+		{
+			var numStepsBeyondPattern = 0;
+			var finalRow = -1;
+			while (editorEventEnum.MovePrev())
+			{
+				var row = editorEventEnum.Current!.GetRow();
+				if (finalRow != -1 && row < finalRow)
+					break;
+				rangeStart = row;
+				if (editorEventEnum.Current.GetRow() < patternFirstStepRow && editorEventEnum.Current.IsStep())
+				{
+					numStepsBeyondPattern++;
+					if (numStepsBeyondPattern == stepsToBackUp)
+						finalRow = row;
+				}
+			}
+		}
+
+		// Extend beyond the end of the pattern so we can interpret the following footing.
+		var patternLastStepRow = pattern.GetLastStepRow();
+		var rangeEnd = patternLastStepRow;
+		editorEventEnum = editorChart.GetEvents().FindFirstAtOrAfterChartPosition(patternLastStepRow);
+		if (editorEventEnum != null)
+		{
+			var numStepsBeyondPattern = 0;
+			var finalRow = -1;
+			while (editorEventEnum.MoveNext())
+			{
+				var row = editorEventEnum.Current!.GetRow();
+				if (finalRow != -1 && row > finalRow)
+					break;
+				rangeEnd = row;
+				if (editorEventEnum.Current.GetRow() > patternLastStepRow && editorEventEnum.Current.IsStep())
+				{
+					numStepsBeyondPattern++;
+					if (numStepsBeyondPattern == NumStepsToSearchBeyondPattern)
+						finalRow = row;
+				}
+			}
+		}
+
+		return (rangeStart, rangeEnd);
+	}
+
+	/// <summary>
 	/// Gets the notes per second of the chart including the notes from the patterns for this action.
 	/// </summary>
 	/// <returns>Notes per second of the chart including the notes from the patterns for this action.</returns>
@@ -727,5 +992,61 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 		}
 
 		return lastStepTime;
+	}
+
+	/// <summary>
+	/// Log debug information about a pattern.
+	/// </summary>
+	// ReSharper disable once UnusedMember.Local
+	private static void LogDebugInfo(
+		EditorPatternEvent pattern,
+		int previousStepFoot,
+		int followingStepFoot,
+		bool? lastTransitionLeft,
+		int[] currentLaneCounts,
+		int[] previousFooting,
+		int[] followingFooting,
+		int totalStepsBeforePattern,
+		int numStepsAtLastTransition,
+		double nps)
+	{
+		string GetLaneString(int lane)
+		{
+			return lane == Constants.InvalidArrowIndex ? "?" : lane.ToString();
+		}
+
+		string GetFootString(int foot)
+		{
+			return foot == Constants.InvalidFoot ? "Unknown" : foot == Constants.L ? "Left" : "Right";
+		}
+
+		var transitionDirectionString = "Unknown";
+		if (lastTransitionLeft != null)
+			transitionDirectionString = lastTransitionLeft.Value ? "Left" : "Right";
+
+		var stepsPerLaneStringStringBuilder = new StringBuilder();
+		var first = true;
+		foreach (var count in currentLaneCounts)
+		{
+			if (!first)
+				stepsPerLaneStringStringBuilder.Append(',');
+			stepsPerLaneStringStringBuilder.Append(count);
+			first = false;
+		}
+
+		var stepsPerLaneString = stepsPerLaneStringStringBuilder.ToString();
+
+		Logger.Info($"Pattern [{pattern.GetRow()}-{pattern.GetRow() + pattern.GetLength()}] Generation Info:"
+		            + $"\n\tFirst Step Row: {pattern.GetFirstStepRow()}"
+		            + $"\n\tLast Step Row: {pattern.GetLastStepRow()}"
+		            + $"\n\tPreceding Footing: L:{GetLaneString(previousFooting[Constants.L])}, R:{GetLaneString(previousFooting[Constants.R])}"
+		            + $"\n\tPreceding Step: {GetFootString(previousStepFoot)}"
+		            + $"\n\tFollowing Footing: L:{GetLaneString(followingFooting[Constants.L])}, R:{GetLaneString(followingFooting[Constants.R])}"
+		            + $"\n\tFollowing Step: {GetFootString(followingStepFoot)}"
+		            + $"\n\tLast Transition: {totalStepsBeforePattern - numStepsAtLastTransition} steps ago"
+		            + $"\n\tLast Transition Direction: {transitionDirectionString}"
+		            + $"\n\tTotal Steps before pattern: {totalStepsBeforePattern}"
+		            + $"\n\tSteps per lane before pattern: {stepsPerLaneString}"
+		            + $"\n\tChart NPS: {nps}");
 	}
 }

@@ -20,6 +20,11 @@ internal sealed class EditorMineNoteEvent : EditorEvent
 		return LaneNote.Lane;
 	}
 
+	public override bool IsLaneNote()
+	{
+		return true;
+	}
+
 	public override bool IsMiscEvent()
 	{
 		return false;
