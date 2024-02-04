@@ -3816,12 +3816,29 @@ internal sealed class Editor :
 
 				if (ImGui.Selectable("Regenerate all Patterns in Chart (Fixed Seeds)"))
 				{
-					ActionQueue.Instance.Do(new ActionAutoGeneratePatterns(this, ActiveChart, ActiveChart!.GetPatterns(), false));
+					ActionQueue.Instance.Do(new ActionAutoGeneratePatterns(this, ActiveChart, ActiveChart!.GetPatterns()));
 				}
 
 				if (ImGui.Selectable("Regenerate all Patterns in Chart (New Seeds)"))
 				{
-					ActionQueue.Instance.Do(new ActionAutoGeneratePatterns(this, ActiveChart, ActiveChart!.GetPatterns(), true));
+					// Generate and commit new seeds as one action. This needs to be separate from the pattern
+					// regeneration as generating patterns is asynchronous.
+					var patterns = ActiveChart.GetPatterns();
+					if (patterns != null && patterns.GetCount() > 0)
+					{
+						var newSeedsAction = new ActionMultiple();
+						var random = new Random();
+						foreach (var pattern in ActiveChart.GetPatterns())
+						{
+							newSeedsAction.EnqueueAndDo(new ActionSetObjectFieldOrPropertyValue<int>(
+								pattern, nameof(EditorPatternEvent.RandomSeed), random.Next(), true));
+						}
+
+						ActionQueue.Instance.EnqueueWithoutDoing(newSeedsAction);
+					}
+
+					// Regenerate the patterns.
+					ActionQueue.Instance.Do(new ActionAutoGeneratePatterns(this, ActiveChart, patterns));
 				}
 
 				if (ImGui.Selectable("Clear All Patterns"))

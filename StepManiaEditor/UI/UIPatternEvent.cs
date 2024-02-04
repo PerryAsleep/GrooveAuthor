@@ -88,8 +88,7 @@ internal sealed class UIPatternEvent
 					ActionQueue.Instance.Do(new ActionAutoGeneratePatterns(
 						Editor,
 						patternEvent!.GetEditorChart(),
-						new List<EditorPatternEvent> { patternEvent },
-						false));
+						new List<EditorPatternEvent> { patternEvent }));
 				}
 
 				if (ImGuiLayoutUtils.DrawRowButton("Clear Pattern", "Clear Pattern",

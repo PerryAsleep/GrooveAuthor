@@ -46,11 +46,6 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 	private readonly List<EditorPatternEvent> Patterns;
 
 	/// <summary>
-	/// Whether or not to use new seeds when generating patterns.
-	/// </summary>
-	private readonly bool UseNewSeeds;
-
-	/// <summary>
 	/// All EditorEvents deleted as a result of the last time this action was run.
 	/// </summary>
 	private readonly List<EditorEvent> DeletedEvents = new();
@@ -71,14 +66,12 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 	public ActionAutoGeneratePatterns(
 		Editor editor,
 		EditorChart editorChart,
-		IEnumerable<EditorPatternEvent> allPatterns,
-		bool useNewSeeds) : base(true, false)
+		IEnumerable<EditorPatternEvent> allPatterns) : base(true, false)
 	{
 		Editor = editor;
 		EditorChart = editorChart;
 		Patterns = new List<EditorPatternEvent>();
 		Patterns.AddRange(allPatterns);
-		UseNewSeeds = useNewSeeds;
 	}
 
 	public override string ToString()
@@ -317,7 +310,7 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 			pattern.GetPerformedChartConfig().Config,
 			pattern.GetFirstStepRow(),
 			pattern.GetLastStepRow(),
-			UseNewSeeds ? new Random().Next() : pattern.RandomSeed,
+			pattern.RandomSeed,
 			previousStepFoot,
 			previousStepTime,
 			previousFooting,

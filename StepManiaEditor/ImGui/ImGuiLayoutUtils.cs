@@ -1062,8 +1062,7 @@ internal sealed class ImGuiLayoutUtils
 				ActionQueue.Instance.Do(new ActionAutoGeneratePatterns(
 					editor,
 					patternEvent!.GetEditorChart(),
-					new List<EditorPatternEvent> { patternEvent },
-					false));
+					new List<EditorPatternEvent> { patternEvent }));
 			}
 			else
 			{
@@ -1071,8 +1070,7 @@ internal sealed class ImGuiLayoutUtils
 				ActionQueue.Instance.Do(new ActionAutoGeneratePatterns(
 					editor,
 					patternEvent!.GetEditorChart(),
-					new List<EditorPatternEvent> { patternEvent },
-					false));
+					new List<EditorPatternEvent> { patternEvent }));
 			}
 		}
 	}
