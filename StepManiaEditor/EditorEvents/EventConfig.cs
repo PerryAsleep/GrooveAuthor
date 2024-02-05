@@ -125,7 +125,7 @@ internal sealed class EventConfig
 				Lane = lane,
 				IntegerPosition = (int)chartPosition,
 				TimeSeconds = chartTime,
-				SourceType = NoteChars[(int)NoteType.Mine].ToString(),
+				SourceType = NoteStrings[(int)NoteType.Mine],
 			},
 		}, true, chartPosition, chartTime);
 	}
@@ -140,7 +140,7 @@ internal sealed class EventConfig
 				Lane = lane,
 				IntegerPosition = row,
 				TimeSeconds = chartTime,
-				SourceType = NoteChars[(int)NoteType.Mine].ToString(),
+				SourceType = NoteStrings[(int)NoteType.Mine],
 			},
 		}, false, row, chartTime);
 	}
@@ -155,7 +155,7 @@ internal sealed class EventConfig
 				Lane = lane,
 				IntegerPosition = (int)chartPosition,
 				TimeSeconds = chartTime,
-				SourceType = NoteChars[(int)NoteType.Fake].ToString(),
+				SourceType = NoteStrings[(int)NoteType.Fake],
 			},
 		}, true, chartPosition, chartTime);
 	}
@@ -170,7 +170,7 @@ internal sealed class EventConfig
 				Lane = lane,
 				IntegerPosition = row,
 				TimeSeconds = chartTime,
-				SourceType = NoteChars[(int)NoteType.Fake].ToString(),
+				SourceType = NoteStrings[(int)NoteType.Fake],
 			},
 		}, false, row, chartTime);
 	}
@@ -185,7 +185,7 @@ internal sealed class EventConfig
 				Lane = lane,
 				IntegerPosition = (int)chartPosition,
 				TimeSeconds = chartTime,
-				SourceType = NoteChars[(int)NoteType.Lift].ToString(),
+				SourceType = NoteStrings[(int)NoteType.Lift],
 			},
 		}, true, chartPosition, chartTime);
 	}
@@ -200,7 +200,7 @@ internal sealed class EventConfig
 				Lane = lane,
 				IntegerPosition = row,
 				TimeSeconds = chartTime,
-				SourceType = NoteChars[(int)NoteType.Lift].ToString(),
+				SourceType = NoteStrings[(int)NoteType.Lift],
 			},
 		}, false, row, chartTime);
 	}

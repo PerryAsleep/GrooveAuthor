@@ -42,7 +42,7 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 	{
 		LaneHoldStartNote = startEvent;
 		LaneHoldEndNote = endEvent;
-		Roll = LaneHoldStartNote.SourceType == SMCommon.NoteChars[(int)SMCommon.NoteType.RollStart].ToString();
+		Roll = LaneHoldStartNote.SourceType == SMCommon.NoteStrings[(int)SMCommon.NoteType.RollStart];
 	}
 
 	/// <summary>
@@ -136,7 +136,7 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 	public void SetIsRoll(bool roll)
 	{
 		Roll = roll;
-		LaneHoldStartNote.SourceType = Roll ? SMCommon.NoteChars[(int)SMCommon.NoteType.RollStart].ToString() : string.Empty;
+		LaneHoldStartNote.SourceType = Roll ? SMCommon.NoteStrings[(int)SMCommon.NoteType.RollStart] : string.Empty;
 	}
 
 	public override bool IsStep()
