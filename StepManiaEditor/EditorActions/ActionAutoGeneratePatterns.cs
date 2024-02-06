@@ -26,11 +26,6 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 	private const int NumStepsToSearchBeyondPattern = 32;
 
 	/// <summary>
-	/// Number of milliseconds to wait for when synchronizing generated events between the work task and the main thread.
-	/// </summary>
-	private const int WaitTimeMs = 2;
-
-	/// <summary>
 	/// Editor.
 	/// </summary>
 	private readonly Editor Editor;
@@ -54,14 +49,6 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 	/// All EditorEvents added as a result of the last time this action was run.
 	/// </summary>
 	private readonly List<EditorEvent> AddedEvents = new();
-
-	/// <summary>
-	/// While the action is running asynchronously, each pattern will commit new events to this list.
-	/// On the main thread we will commit these to the EditorChart. Only one pattern's events can be
-	/// queued at a time as subsequent patterns rely on the previous pattern results being available in
-	/// the EditorChart.
-	/// </summary>
-	private List<EditorEvent> IncrementalEvents;
 
 	public ActionAutoGeneratePatterns(
 		Editor editor,
@@ -139,19 +126,6 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 	}
 
 	/// <summary>
-	/// Update call from the main thread.
-	/// </summary>
-	public override void Update()
-	{
-		// If we have uncommitted events from a pattern, commit them to the EditorChart.
-		if (IncrementalEvents != null)
-		{
-			EditorChart.AddEvents(IncrementalEvents);
-			IncrementalEvents = null;
-		}
-	}
-
-	/// <summary>
 	/// Performs the bulk of the event generation logic.
 	/// Each pattern is run asynchronously and when it is complete the generated EditorEvents
 	/// are added back to the EditorChart synchronously.
@@ -172,16 +146,19 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 		var currentLaneCounts = new int[stepGraph.NumArrows];
 		var totalStepsBeforePattern = 0;
 
-		await Task.Run(async () =>
+		// Generate each pattern.
+		for (var patternIndex = 0; patternIndex < Patterns.Count; patternIndex++)
 		{
-			try
+			var pattern = Patterns[patternIndex];
+			var nextPattern = patternIndex < Patterns.Count - 1 ? Patterns[patternIndex + 1] : null;
+			List<EditorEvent> patternEvents = null;
+
+			// Asynchronously generate the events.
+			await Task.Run(() =>
 			{
-				// Generate each pattern.
-				for (var patternIndex = 0; patternIndex < Patterns.Count; patternIndex++)
+				try
 				{
-					var pattern = Patterns[patternIndex];
-					var nextPattern = patternIndex < Patterns.Count - 1 ? Patterns[patternIndex + 1] : null;
-					(lastRowCapturedForLaneCounts, totalStepsBeforePattern) = await GeneratePatternAsync(
+					patternEvents = GeneratePatternAsync(
 						pattern,
 						nextPattern,
 						stepGraph,
@@ -189,19 +166,23 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 						nps,
 						timingEvents,
 						currentLaneCounts,
-						lastRowCapturedForLaneCounts,
-						totalStepsBeforePattern);
+						ref lastRowCapturedForLaneCounts,
+						ref totalStepsBeforePattern);
 				}
+				catch (Exception e)
+				{
+					Logger.Error($"Failed to generate patterns. {e}");
+				}
+			});
 
-				// Wait for all the events to be committed to the EditorChart back on the main thread.
-				while (IncrementalEvents != null)
-					await Task.Delay(WaitTimeMs);
-			}
-			catch (Exception e)
-			{
-				Logger.Error($"Failed to generate patterns. {e}");
-			}
-		});
+			// Synchronously add the events.
+			// Due to the application being a Windows Forms application we know this continuation after the
+			// above async operation will occur on the calling (main) thread. These continuations occur separately
+			// from the Application's Idle EventHandler, which control the main tick function. So no extra
+			// synchronization work is needed to ensure these are added safely on the main thread.
+			if (patternEvents != null)
+				EditorChart.AddEvents(patternEvents);
+		}
 
 		OnDone();
 	}
@@ -223,12 +204,14 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 	/// </param>
 	/// <param name="lastRowCapturedForLaneCounts">
 	/// The last row that was scanned to for updating currentLaneCounts and totalStepsBeforePattern.
+	/// Will be updated.
 	/// </param>
 	/// <param name="totalStepsBeforePattern">
 	/// The total number of steps in the chart going up to lastRowCapturedForLaneCounts.
+	/// Will be updated.
 	/// </param>
-	/// <returns>Updated values for lastRowCapturedForLaneCounts and totalStepsBeforePattern.</returns>
-	private async Task<(int, int)> GeneratePatternAsync(
+	/// <returns>Newly generated EditorEvents.</returns>
+	private List<EditorEvent> GeneratePatternAsync(
 		EditorPatternEvent pattern,
 		EditorPatternEvent nextPattern,
 		StepGraph stepGraph,
@@ -236,8 +219,8 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 		double nps,
 		List<Event> timingEvents,
 		int[] currentLaneCounts,
-		int lastRowCapturedForLaneCounts,
-		int totalStepsBeforePattern)
+		ref int lastRowCapturedForLaneCounts,
+		ref int totalStepsBeforePattern)
 	{
 		var errorString = $"Failed to generate {pattern.GetMiscEventText()} pattern at row {pattern.GetRow()}.";
 
@@ -245,13 +228,8 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 		if (pattern.GetNumSteps() <= 0)
 		{
 			Logger.Warn($"{errorString} Pattern range is too short to generate steps.");
-			return (lastRowCapturedForLaneCounts, totalStepsBeforePattern);
+			return null;
 		}
-
-		// If we are already waiting on the main thread to consume the last IncrementalEvents, then wait.
-		// We need the EditorChart to be updated so we can query it again with the new steps.
-		while (IncrementalEvents != null)
-			await Task.Delay(WaitTimeMs);
 
 		// Update the trackers for steps and steps per row to capture any new steps up to this pattern.
 		UpdatePrecedingLaneCounts(ref lastRowCapturedForLaneCounts, ref totalStepsBeforePattern, currentLaneCounts, pattern);
@@ -270,7 +248,7 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 		if (expressedChart == null)
 		{
 			Logger.Error($"{errorString} Could not create Expressed Chart.");
-			return (lastRowCapturedForLaneCounts, totalStepsBeforePattern);
+			return null;
 		}
 
 		// Get the following footing. This is done first as following footing can affect previous footing.
@@ -287,7 +265,7 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 		if (expressedChart == null)
 		{
 			Logger.Error($"{errorString} Could not create Expressed Chart.");
-			return (lastRowCapturedForLaneCounts, totalStepsBeforePattern);
+			return null;
 		}
 
 		// Use the ExpressedChart to determine the previous footing and transition information.
@@ -326,7 +304,7 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 		if (performedChart == null)
 		{
 			Logger.Error($"{errorString} Could not create Performed Chart.");
-			return (lastRowCapturedForLaneCounts, totalStepsBeforePattern);
+			return null;
 		}
 
 		//LogDebugInfo(pattern, previousStepFoot, followingStepFoot, lastTransitionLeft, currentLaneCounts, previousFooting,
@@ -347,10 +325,7 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 			newEvents.Add(EditorEvent.CreateEvent(EventConfig.CreateConfig(EditorChart, smEvent)));
 		AddedEvents.AddRange(newEvents);
 
-		// Commit these events to IncrementalEvents so they can be set on the EditorChart on the main thread.
-		IncrementalEvents = newEvents;
-
-		return (lastRowCapturedForLaneCounts, totalStepsBeforePattern);
+		return newEvents;
 	}
 
 	/// <summary>

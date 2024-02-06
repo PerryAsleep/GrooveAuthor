@@ -1312,8 +1312,6 @@ internal sealed class Editor :
 					GC.Collect();
 			}
 
-			ActionQueue.Instance.Update();
-
 			ActiveSong?.Update();
 			SoundManager.Update();
 

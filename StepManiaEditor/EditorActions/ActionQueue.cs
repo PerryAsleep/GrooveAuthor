@@ -21,7 +21,6 @@ namespace StepManiaEditor;
 ///  Call OnSaved when the underlying file is saved so that the ActionQueue can
 ///   report whether or not there are unsaved changes in the queue.
 ///  Call HasUnsavedChanges to determine if there are unsaved changes in the queue.
-///  Call Update once per frame from the main thread.
 /// </summary>
 internal sealed class ActionQueue : Notifier<ActionQueue>
 {
@@ -250,17 +249,5 @@ internal sealed class ActionQueue : Notifier<ActionQueue>
 		}
 
 		return repushed;
-	}
-
-	/// <summary>
-	/// Perform any needed updates on the main thread of a currently running asynchronous action.
-	/// </summary>
-	public void Update()
-	{
-		// Update the currently running action.
-		if (IsDoingOrUndoing())
-		{
-			LastAction.Update();
-		}
 	}
 }
