@@ -17,7 +17,7 @@ internal sealed class UIControls
 {
 	public const string WindowTitle = "Controls";
 
-	private static readonly int TitleColumnWidth = UiScaled(240);
+	private static readonly int TitleColumnWidth = UiScaled(260);
 	private static readonly Vector2 DefaultSize = new(UiScaled(538), UiScaled(800));
 
 	/// <summary>

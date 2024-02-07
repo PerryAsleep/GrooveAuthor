@@ -607,8 +607,14 @@ internal sealed class Editor :
 		AddKeyCommand(navigation, "Move To Next Measure", new[] { Keys.PageDown }, OnMoveToNextMeasure, true, null, true);
 		AddKeyCommand(navigation, "Move To Chart Start", new[] { Keys.Home }, OnMoveToChartStart, false, null, true);
 		AddKeyCommand(navigation, "Move To Chart End", new[] { Keys.End }, OnMoveToChartEnd, false, null, true);
-		AddKeyCommand(navigation, "Move To Next Pattern", new[] { Keys.LeftControl, Keys.P }, OnMoveToNextPattern);
-		AddKeyCommand(navigation, "Move To Previous Pattern", new[] { Keys.LeftControl, Keys.LeftShift, Keys.P }, OnMoveToPreviousPattern);
+
+		const string patterns = "Patterns";
+		AddKeyCommand(patterns, "Move To Next Pattern", new[] { Keys.LeftControl, Keys.P }, OnMoveToNextPattern, true);
+		AddKeyCommand(patterns, "Move To Previous Pattern", new[] { Keys.LeftControl, Keys.LeftShift, Keys.P }, OnMoveToPreviousPattern, true);
+		AddKeyCommand(patterns, "Regenerate All Patterns (Fixed Seeds)", new[] { Keys.LeftAlt, Keys.P }, OnRegenerateAllPatterns);
+		AddKeyCommand(patterns, "Regenerate All Patterns (New Seeds)", new[] { Keys.LeftAlt, Keys.LeftShift, Keys.P }, OnRegenerateAllPatternsWithNewSeeds);
+		AddKeyCommand(patterns, "Regenerate Selected Patterns (Fixed Seeds)", new[] { Keys.LeftControl, Keys.LeftAlt, Keys.P }, OnRegenerateSelectedPatterns);
+		AddKeyCommand(patterns, "Regenerate Selected Patterns (New Seeds)", new[] { Keys.LeftControl, Keys.LeftAlt, Keys.LeftShift, Keys.P }, OnRegenerateSelectedPatternsWithNewSeeds);
 
 		const string editSelection = "Edit Selection";
 		AddKeyCommand(editSelection, "Delete", new[] { Keys.Delete }, OnDelete, false, null, true);
@@ -3811,31 +3817,14 @@ internal sealed class Editor :
 				if (!hasPatterns)
 					PushDisabled();
 
-				if (ImGui.Selectable("Regenerate all Patterns (Fixed Seeds)"))
+				if (ImGui.MenuItem("Regenerate All Patterns (Fixed Seeds)", "Alt+P"))
 				{
-					ActionQueue.Instance.Do(new ActionAutoGeneratePatterns(this, ActiveChart, ActiveChart!.GetPatterns()));
+					OnRegenerateAllPatterns();
 				}
 
-				if (ImGui.Selectable("Regenerate all Patterns (New Seeds)"))
+				if (ImGui.MenuItem("Regenerate All Patterns (New Seeds)", "Alt+Shift+P"))
 				{
-					// Generate and commit new seeds as one action. This needs to be separate from the pattern
-					// regeneration as generating patterns is asynchronous.
-					var patterns = ActiveChart.GetPatterns();
-					if (patterns != null && patterns.GetCount() > 0)
-					{
-						var newSeedsAction = new ActionMultiple();
-						var random = new Random();
-						foreach (var pattern in ActiveChart.GetPatterns())
-						{
-							newSeedsAction.EnqueueAndDo(new ActionSetObjectFieldOrPropertyValue<int>(
-								pattern, nameof(EditorPatternEvent.RandomSeed), random.Next(), true));
-						}
-
-						ActionQueue.Instance.EnqueueWithoutDoing(newSeedsAction);
-					}
-
-					// Regenerate the patterns.
-					ActionQueue.Instance.Do(new ActionAutoGeneratePatterns(this, ActiveChart, patterns));
+					OnRegenerateAllPatternsWithNewSeeds();
 				}
 
 				if (ImGui.Selectable("Clear All Patterns"))
@@ -3847,46 +3836,25 @@ internal sealed class Editor :
 
 				ImGui.Separator();
 
-				List<EditorPatternEvent> selectedPatterns = null;
 				var hasSelectedPatterns = Selection.HasSelectedPatterns();
 				if (!hasSelectedPatterns)
-				{
 					PushDisabled();
-				}
-				else
-				{
-					selectedPatterns = Selection.GetSelectedPatterns().ToList();
-					selectedPatterns.Sort();
-				}
 
-				if (ImGui.Selectable("Regenerate Selected Patterns (Fixed Seeds)"))
+				if (ImGui.MenuItem("Regenerate Selected Patterns (Fixed Seeds)", "Ctrl+Alt+P"))
 				{
-					ActionQueue.Instance.Do(new ActionAutoGeneratePatterns(this, ActiveChart, selectedPatterns));
+					OnRegenerateSelectedPatterns();
 				}
 
-				if (ImGui.Selectable("Regenerate Selected Patterns (New Seeds)"))
+				if (ImGui.MenuItem("Regenerate Selected Patterns (New Seeds)", "Ctrl+Alt+Shift+P"))
 				{
-					// Generate and commit new seeds as one action. This needs to be separate from the pattern
-					// regeneration as generating patterns is asynchronous.
-					var newSeedsAction = new ActionMultiple();
-					var random = new Random();
-					foreach (var pattern in selectedPatterns)
-					{
-						newSeedsAction.EnqueueAndDo(new ActionSetObjectFieldOrPropertyValue<int>(
-							pattern, nameof(EditorPatternEvent.RandomSeed), random.Next(), true));
-					}
-
-					ActionQueue.Instance.EnqueueWithoutDoing(newSeedsAction);
-
-					// Regenerate the patterns.
-					ActionQueue.Instance.Do(new ActionAutoGeneratePatterns(this, ActiveChart, selectedPatterns));
+					OnRegenerateSelectedPatternsWithNewSeeds();
 				}
 
 				if (ImGui.Selectable("Clear Selected Patterns"))
 				{
 					ActionQueue.Instance.Do(new ActionDeletePatternNotes(
 						ActiveChart,
-						selectedPatterns));
+						Selection.GetSelectedPatterns()));
 				}
 
 				if (!hasSelectedPatterns)
@@ -6391,7 +6359,7 @@ internal sealed class Editor :
 
 	public void OnMoveToPreviousPattern()
 	{
-		OnMoveToNextPattern(Position.ChartPosition);
+		OnMoveToPreviousPattern(Position.ChartPosition);
 	}
 
 	public void OnMoveToPreviousPattern(EditorPatternEvent currentPattern)
@@ -7225,6 +7193,60 @@ internal sealed class Editor :
 	}
 
 	#endregion Drag and Drop
+
+	#region Patterns
+
+	private void OnRegenerateSelectedPatterns()
+	{
+		RegeneratePatterns(Selection.GetSelectedPatterns(), false);
+	}
+
+	private void OnRegenerateSelectedPatternsWithNewSeeds()
+	{
+		if (ActiveChart == null)
+			return;
+		RegeneratePatterns(Selection.GetSelectedPatterns(), true);
+	}
+
+	private void OnRegenerateAllPatterns()
+	{
+		if (ActiveChart == null)
+			return;
+		RegeneratePatterns(ActiveChart.GetPatterns(), false);
+	}
+
+	private void OnRegenerateAllPatternsWithNewSeeds()
+	{
+		if (ActiveChart == null)
+			return;
+		RegeneratePatterns(ActiveChart.GetPatterns(), true);
+	}
+
+	private void RegeneratePatterns(IEnumerable<EditorPatternEvent> patterns, bool useNewSeeds)
+	{
+		if (patterns == null || !patterns.Any())
+			return;
+
+		if (useNewSeeds)
+		{
+			// Generate and commit new seeds as one action. This needs to be separate from the pattern
+			// regeneration as generating patterns is asynchronous.
+			var newSeedsAction = new ActionMultiple();
+			var random = new Random();
+			foreach (var pattern in patterns)
+			{
+				newSeedsAction.EnqueueAndDo(new ActionSetObjectFieldOrPropertyValue<int>(
+					pattern, nameof(EditorPatternEvent.RandomSeed), random.Next(), true));
+			}
+
+			ActionQueue.Instance.EnqueueWithoutDoing(newSeedsAction);
+		}
+
+		// Regenerate the patterns.
+		ActionQueue.Instance.Do(new ActionAutoGeneratePatterns(this, ActiveChart, patterns));
+	}
+
+	#endregion Patterns
 
 	#region IObserver
 
