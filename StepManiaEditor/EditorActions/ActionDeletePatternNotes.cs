@@ -77,6 +77,7 @@ internal sealed class ActionDeletePatternNotes : EditorAction
 		EditorChart = editorChart;
 		Patterns = new List<EditorPatternEvent>();
 		Patterns.AddRange(allPatterns);
+		Patterns.Sort();
 	}
 
 	public override string ToString()

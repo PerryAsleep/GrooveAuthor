@@ -59,6 +59,7 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 		EditorChart = editorChart;
 		Patterns = new List<EditorPatternEvent>();
 		Patterns.AddRange(allPatterns);
+		Patterns.Sort();
 	}
 
 	public override string ToString()

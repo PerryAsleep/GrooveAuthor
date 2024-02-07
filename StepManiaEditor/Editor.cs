@@ -254,9 +254,8 @@ internal sealed class Editor :
 	private readonly List<IChartRegion> VisibleRegions = new();
 	private readonly HashSet<IChartRegion> RegionsOverlappingStart = new();
 	private readonly SelectedRegion SelectedRegion = new();
-	private readonly HashSet<EditorEvent> SelectedEvents = new();
 	private readonly List<EditorEvent> CopiedEvents = new();
-	private EditorEvent LastSelectedEvent;
+	private readonly Selection Selection = new();
 	private EditorPatternEvent LastSelectedPatternEvent;
 	private bool TransformingSelectedNotes;
 	private readonly List<EditorEvent> MovingNotes = new();
@@ -1724,8 +1723,8 @@ internal sealed class Editor :
 			StopPreview();
 		else if (Playing)
 			StopPlayback();
-		else if (SelectedEvents.Count > 0)
-			ClearSelectedEvents();
+		else if (Selection.HasSelectedEvents())
+			Selection.ClearSelectedEvents();
 	}
 
 	#endregion Input Processing
@@ -3812,12 +3811,12 @@ internal sealed class Editor :
 				if (!hasPatterns)
 					PushDisabled();
 
-				if (ImGui.Selectable("Regenerate all Patterns in Chart (Fixed Seeds)"))
+				if (ImGui.Selectable("Regenerate all Patterns (Fixed Seeds)"))
 				{
 					ActionQueue.Instance.Do(new ActionAutoGeneratePatterns(this, ActiveChart, ActiveChart!.GetPatterns()));
 				}
 
-				if (ImGui.Selectable("Regenerate all Patterns in Chart (New Seeds)"))
+				if (ImGui.Selectable("Regenerate all Patterns (New Seeds)"))
 				{
 					// Generate and commit new seeds as one action. This needs to be separate from the pattern
 					// regeneration as generating patterns is asynchronous.
@@ -3845,6 +3844,55 @@ internal sealed class Editor :
 						ActiveChart,
 						ActiveChart!.GetPatterns()));
 				}
+
+				ImGui.Separator();
+
+				List<EditorPatternEvent> selectedPatterns = null;
+				var hasSelectedPatterns = Selection.HasSelectedPatterns();
+				if (!hasSelectedPatterns)
+				{
+					PushDisabled();
+				}
+				else
+				{
+					selectedPatterns = Selection.GetSelectedPatterns().ToList();
+					selectedPatterns.Sort();
+				}
+
+				if (ImGui.Selectable("Regenerate Selected Patterns (Fixed Seeds)"))
+				{
+					ActionQueue.Instance.Do(new ActionAutoGeneratePatterns(this, ActiveChart, selectedPatterns));
+				}
+
+				if (ImGui.Selectable("Regenerate Selected Patterns (New Seeds)"))
+				{
+					// Generate and commit new seeds as one action. This needs to be separate from the pattern
+					// regeneration as generating patterns is asynchronous.
+					var newSeedsAction = new ActionMultiple();
+					var random = new Random();
+					foreach (var pattern in selectedPatterns)
+					{
+						newSeedsAction.EnqueueAndDo(new ActionSetObjectFieldOrPropertyValue<int>(
+							pattern, nameof(EditorPatternEvent.RandomSeed), random.Next(), true));
+					}
+
+					ActionQueue.Instance.EnqueueWithoutDoing(newSeedsAction);
+
+					// Regenerate the patterns.
+					ActionQueue.Instance.Do(new ActionAutoGeneratePatterns(this, ActiveChart, selectedPatterns));
+				}
+
+				if (ImGui.Selectable("Clear Selected Patterns"))
+				{
+					ActionQueue.Instance.Do(new ActionDeletePatternNotes(
+						ActiveChart,
+						selectedPatterns));
+				}
+
+				if (!hasSelectedPatterns)
+					PopDisabled();
+
+				ImGui.Separator();
 
 				if (ImGui.MenuItem("Next Pattern", "Ctrl+P"))
 				{
@@ -4140,8 +4188,9 @@ internal sealed class Editor :
 			                       && x <= GetFocalPointX() + (WaveFormTextureWidth >> 1);
 			var isInReceptorArea = Receptor.IsInReceptorArea(x, y, GetFocalPoint(), ZoomManager.GetSizeZoom(), TextureAtlas,
 				ArrowGraphicManager, ActiveChart);
+			var selectedEvents = Selection.GetSelectedEvents();
 
-			if (SelectedEvents.Count > 0)
+			if (Selection.HasSelectedEvents())
 			{
 				if (ImGui.BeginMenu("Selection"))
 				{
@@ -4150,17 +4199,17 @@ internal sealed class Editor :
 
 					if (ImGui.MenuItem("Mirror"))
 					{
-						ActionQueue.Instance.Do(new ActionMirrorSelection(this, ActiveChart, SelectedEvents));
+						ActionQueue.Instance.Do(new ActionMirrorSelection(this, ActiveChart, selectedEvents));
 					}
 
 					if (ImGui.MenuItem("Flip"))
 					{
-						ActionQueue.Instance.Do(new ActionFlipSelection(this, ActiveChart, SelectedEvents));
+						ActionQueue.Instance.Do(new ActionFlipSelection(this, ActiveChart, selectedEvents));
 					}
 
 					if (ImGui.MenuItem("Mirror and Flip"))
 					{
-						ActionQueue.Instance.Do(new ActionMirrorAndFlipSelection(this, ActiveChart, SelectedEvents));
+						ActionQueue.Instance.Do(new ActionMirrorAndFlipSelection(this, ActiveChart, selectedEvents));
 					}
 
 					if (ImGui.MenuItem("Shift Right"))
@@ -4202,7 +4251,7 @@ internal sealed class Editor :
 					{
 						if (ImGui.MenuItem("Taps to Mines"))
 						{
-							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, SelectedEvents,
+							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
 								(e) => e is EditorTapNoteEvent,
 								(e) => EditorEvent.CreateEvent(
 									EventConfig.CreateMineConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(),
@@ -4211,7 +4260,7 @@ internal sealed class Editor :
 
 						if (ImGui.MenuItem("Taps to Fakes"))
 						{
-							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, SelectedEvents,
+							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
 								(e) => e is EditorTapNoteEvent,
 								(e) => EditorEvent.CreateEvent(
 									EventConfig.CreateFakeNoteConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(),
@@ -4220,7 +4269,7 @@ internal sealed class Editor :
 
 						if (ImGui.MenuItem("Taps to Lifts"))
 						{
-							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, SelectedEvents,
+							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
 								(e) => e is EditorTapNoteEvent,
 								(e) => EditorEvent.CreateEvent(
 									EventConfig.CreateLiftNoteConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(),
@@ -4230,7 +4279,7 @@ internal sealed class Editor :
 						ImGui.Separator();
 						if (ImGui.MenuItem("Mines to Taps"))
 						{
-							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, SelectedEvents,
+							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
 								(e) => e is EditorMineNoteEvent,
 								(e) => EditorEvent.CreateEvent(
 									EventConfig.CreateTapConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(),
@@ -4239,7 +4288,7 @@ internal sealed class Editor :
 
 						if (ImGui.MenuItem("Mines to Fakes"))
 						{
-							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, SelectedEvents,
+							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
 								(e) => e is EditorMineNoteEvent,
 								(e) => EditorEvent.CreateEvent(
 									EventConfig.CreateFakeNoteConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(),
@@ -4248,7 +4297,7 @@ internal sealed class Editor :
 
 						if (ImGui.MenuItem("Mines to Lifts"))
 						{
-							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, SelectedEvents,
+							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
 								(e) => e is EditorMineNoteEvent,
 								(e) => EditorEvent.CreateEvent(
 									EventConfig.CreateLiftNoteConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(),
@@ -4258,7 +4307,7 @@ internal sealed class Editor :
 						ImGui.Separator();
 						if (ImGui.MenuItem("Fakes to Taps"))
 						{
-							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, SelectedEvents,
+							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
 								(e) => e is EditorFakeNoteEvent,
 								(e) => EditorEvent.CreateEvent(
 									EventConfig.CreateTapConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(),
@@ -4267,7 +4316,7 @@ internal sealed class Editor :
 
 						if (ImGui.MenuItem("Lifts to Taps"))
 						{
-							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, SelectedEvents,
+							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
 								(e) => e is EditorLiftNoteEvent,
 								(e) => EditorEvent.CreateEvent(
 									EventConfig.CreateTapConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(),
@@ -4277,7 +4326,7 @@ internal sealed class Editor :
 						ImGui.Separator();
 						if (ImGui.MenuItem("Holds to Rolls"))
 						{
-							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, SelectedEvents,
+							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
 								(e) => e is EditorHoldNoteEvent hn && !hn.IsRoll(),
 								(e) => EditorHoldNoteEvent.CreateHold(ActiveChart, e.GetLane(), e.GetRow(), e.GetLength(),
 									true)));
@@ -4285,7 +4334,7 @@ internal sealed class Editor :
 
 						if (ImGui.MenuItem("Holds to Taps"))
 						{
-							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, SelectedEvents,
+							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
 								(e) => e is EditorHoldNoteEvent hn && !hn.IsRoll(),
 								(e) => EditorEvent.CreateEvent(
 									EventConfig.CreateTapConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(),
@@ -4294,7 +4343,7 @@ internal sealed class Editor :
 
 						if (ImGui.MenuItem("Holds to Mines"))
 						{
-							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, SelectedEvents,
+							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
 								(e) => e is EditorHoldNoteEvent hn && !hn.IsRoll(),
 								(e) => EditorEvent.CreateEvent(
 									EventConfig.CreateMineConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(),
@@ -4304,7 +4353,7 @@ internal sealed class Editor :
 						ImGui.Separator();
 						if (ImGui.MenuItem("Rolls to Holds"))
 						{
-							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, SelectedEvents,
+							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
 								(e) => e is EditorHoldNoteEvent hn && hn.IsRoll(),
 								(e) => EditorHoldNoteEvent.CreateHold(ActiveChart, e.GetLane(), e.GetRow(), e.GetLength(),
 									false)));
@@ -4312,7 +4361,7 @@ internal sealed class Editor :
 
 						if (ImGui.MenuItem("Rolls to Taps"))
 						{
-							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, SelectedEvents,
+							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
 								(e) => e is EditorHoldNoteEvent hn && hn.IsRoll(),
 								(e) => EditorEvent.CreateEvent(
 									EventConfig.CreateTapConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(),
@@ -4321,7 +4370,7 @@ internal sealed class Editor :
 
 						if (ImGui.MenuItem("Rolls to Mines"))
 						{
-							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, SelectedEvents,
+							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
 								(e) => e is EditorHoldNoteEvent hn && hn.IsRoll(),
 								(e) => EditorEvent.CreateEvent(
 									EventConfig.CreateMineConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(),
@@ -4388,6 +4437,11 @@ internal sealed class Editor :
 				if (ImGui.MenuItem("Notes and Miscellaneous Events", "Ctrl+Shift+A"))
 				{
 					OnSelectAllShift();
+				}
+
+				if (ImGui.Selectable("Patterns"))
+				{
+					OnSelectAllImpl((e) => e is EditorPatternEvent);
 				}
 
 				ImGui.EndMenu();
@@ -5524,7 +5578,7 @@ internal sealed class Editor :
 		StopPlayback();
 		MusicManager.UnloadAsync();
 		LaneEditStates = Array.Empty<LaneEditState>();
-		ClearSelectedEvents();
+		Selection.ClearSelectedEvents();
 		SongLoadTask.ClearResults();
 		ActiveSong = null;
 		ActiveChart = null;
@@ -5593,35 +5647,7 @@ internal sealed class Editor :
 		// events. However, this logic also guarantees that after a transform,
 		// including transforms initiated from undo and redo, the selection contains
 		// the modified notes.
-		SetSelectEvents(transformedEvents);
-	}
-
-	private void SelectEvent(EditorEvent e, bool setLastSelected)
-	{
-		if (setLastSelected)
-			LastSelectedEvent = e;
-		if (e.IsSelected())
-			return;
-		e.Select();
-		SelectedEvents.Add(e);
-	}
-
-	private void DeselectEvent(EditorEvent e)
-	{
-		if (!e.IsSelected())
-			return;
-		if (LastSelectedEvent == e)
-			LastSelectedEvent = null;
-		e.Deselect();
-		SelectedEvents.Remove(e);
-	}
-
-	private void ClearSelectedEvents()
-	{
-		foreach (var selectedEvent in SelectedEvents)
-			selectedEvent.Deselect();
-		SelectedEvents.Clear();
-		LastSelectedEvent = null;
+		Selection.SetSelectEvents(transformedEvents);
 	}
 
 	private void OnDelete()
@@ -5629,10 +5655,10 @@ internal sealed class Editor :
 		if (EditEarlyOut())
 			return;
 
-		if (ActiveChart == null || SelectedEvents.Count < 1)
+		if (ActiveChart == null || !Selection.HasSelectedEvents())
 			return;
 		var eventsToDelete = new List<EditorEvent>();
-		foreach (var editorEvent in SelectedEvents)
+		foreach (var editorEvent in Selection.GetSelectedEvents())
 		{
 			if (!editorEvent.CanBeDeleted())
 				continue;
@@ -5677,20 +5703,13 @@ internal sealed class Editor :
 			// When transforming notes we expect selected notes to be moved which requires
 			// deleting them, then modifying them, and then re-adding them. We don't want
 			// to deselect notes when they are moving.
-			if (!TransformingSelectedNotes && SelectedEvents.Contains(deletedEvent))
-				DeselectEvent(deletedEvent);
+			if (!TransformingSelectedNotes)
+				Selection.DeselectEvent(deletedEvent);
 
 			// If an event was deleted that is in a member variable, remove the reference.
 			if (deletedEvent == LastSelectedPatternEvent)
 				LastSelectedPatternEvent = null;
 		}
-	}
-
-	private void SetSelectEvents(List<EditorEvent> selectedEvents)
-	{
-		ClearSelectedEvents();
-		foreach (var selectedEvent in selectedEvents)
-			SelectEvent(selectedEvent, true);
 	}
 
 	public void OnSelectAll()
@@ -5718,13 +5737,13 @@ internal sealed class Editor :
 		{
 			if (isSelectable(editorEvent))
 			{
-				SelectEvent(editorEvent, false);
+				Selection.SelectEvent(editorEvent, false);
 				lastEvent = editorEvent;
 			}
 		}
 
 		if (lastEvent != null)
-			SelectEvent(lastEvent, true);
+			Selection.SelectEvent(lastEvent, true);
 	}
 
 	/// <summary>
@@ -5737,6 +5756,8 @@ internal sealed class Editor :
 			SelectedRegion.Stop();
 			return;
 		}
+
+		var lastSelectedEvent = Selection.GetLastSelectedEvent();
 
 		// Collect the newly selected notes.
 		var newlySelectedEvents = new List<EditorEvent>();
@@ -5942,19 +5963,19 @@ internal sealed class Editor :
 		// to the newly selected notes, in addition to the newly selected notes.
 		if (shift)
 		{
-			if (LastSelectedEvent != null && newlySelectedEvents.Count > 0)
+			if (lastSelectedEvent != null && newlySelectedEvents.Count > 0)
 			{
 				IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator enumerator;
 				EditorEvent end;
 				var firstNewNote = newlySelectedEvents[0];
-				if (firstNewNote.CompareTo(LastSelectedEvent) < 0)
+				if (firstNewNote.CompareTo(lastSelectedEvent) < 0)
 				{
 					enumerator = ActiveChart.GetEvents().Find(firstNewNote);
-					end = LastSelectedEvent;
+					end = lastSelectedEvent;
 				}
 				else
 				{
-					enumerator = ActiveChart.GetEvents().Find(LastSelectedEvent);
+					enumerator = ActiveChart.GetEvents().Find(lastSelectedEvent);
 					end = firstNewNote;
 				}
 
@@ -5963,9 +5984,9 @@ internal sealed class Editor :
 					var checkLane = Preferences.Instance.PreferencesSelection.RegionMode ==
 					                PreferencesSelection.SelectionRegionMode.TimeOrPositionAndLane;
 					var minLane = Math.Min(newlySelectedEvents[0].GetLane(),
-						Math.Min(LastSelectedEvent.GetLane(), newlySelectedEvents[^1].GetLane()));
+						Math.Min(lastSelectedEvent.GetLane(), newlySelectedEvents[^1].GetLane()));
 					var maxLane = Math.Max(newlySelectedEvents[0].GetLane(),
-						Math.Max(LastSelectedEvent.GetLane(), newlySelectedEvents[^1].GetLane()));
+						Math.Max(lastSelectedEvent.GetLane(), newlySelectedEvents[^1].GetLane()));
 
 					while (enumerator.MoveNext())
 					{
@@ -5975,7 +5996,7 @@ internal sealed class Editor :
 							if (!checkLane ||
 							    (enumerator.Current!.GetLane() >= minLane && enumerator.Current.GetLane() <= maxLane))
 							{
-								SelectEvent(enumerator.Current, last);
+								Selection.SelectEvent(enumerator.Current, last);
 							}
 						}
 
@@ -5988,7 +6009,7 @@ internal sealed class Editor :
 			// Select the newly selected notes.
 			for (var i = 0; i < newlySelectedEvents.Count; i++)
 			{
-				SelectEvent(newlySelectedEvents[i], i == newlySelectedEvents.Count - 1);
+				Selection.SelectEvent(newlySelectedEvents[i], i == newlySelectedEvents.Count - 1);
 			}
 		}
 
@@ -5998,9 +6019,9 @@ internal sealed class Editor :
 			for (var i = 0; i < newlySelectedEvents.Count; i++)
 			{
 				if (newlySelectedEvents[i].IsSelected())
-					DeselectEvent(newlySelectedEvents[i]);
+					Selection.DeselectEvent(newlySelectedEvents[i]);
 				else
-					SelectEvent(newlySelectedEvents[i], i == newlySelectedEvents.Count - 1);
+					Selection.SelectEvent(newlySelectedEvents[i], i == newlySelectedEvents.Count - 1);
 			}
 		}
 
@@ -6008,10 +6029,10 @@ internal sealed class Editor :
 		// selected notes.
 		else
 		{
-			ClearSelectedEvents();
+			Selection.ClearSelectedEvents();
 			for (var i = 0; i < newlySelectedEvents.Count; i++)
 			{
-				SelectEvent(newlySelectedEvents[i], i == newlySelectedEvents.Count - 1);
+				Selection.SelectEvent(newlySelectedEvents[i], i == newlySelectedEvents.Count - 1);
 			}
 		}
 
@@ -6172,28 +6193,28 @@ internal sealed class Editor :
 	{
 		if (EditEarlyOut())
 			return;
-		ActionQueue.Instance.Do(new ActionShiftSelectionLane(this, ActiveChart, SelectedEvents, false, false));
+		ActionQueue.Instance.Do(new ActionShiftSelectionLane(this, ActiveChart, Selection.GetSelectedEvents(), false, false));
 	}
 
 	private void OnShiftSelectedNotesLeftAndWrap()
 	{
 		if (EditEarlyOut())
 			return;
-		ActionQueue.Instance.Do(new ActionShiftSelectionLane(this, ActiveChart, SelectedEvents, false, true));
+		ActionQueue.Instance.Do(new ActionShiftSelectionLane(this, ActiveChart, Selection.GetSelectedEvents(), false, true));
 	}
 
 	private void OnShiftSelectedNotesRight()
 	{
 		if (EditEarlyOut())
 			return;
-		ActionQueue.Instance.Do(new ActionShiftSelectionLane(this, ActiveChart, SelectedEvents, true, false));
+		ActionQueue.Instance.Do(new ActionShiftSelectionLane(this, ActiveChart, Selection.GetSelectedEvents(), true, false));
 	}
 
 	private void OnShiftSelectedNotesRightAndWrap()
 	{
 		if (EditEarlyOut())
 			return;
-		ActionQueue.Instance.Do(new ActionShiftSelectionLane(this, ActiveChart, SelectedEvents, true, true));
+		ActionQueue.Instance.Do(new ActionShiftSelectionLane(this, ActiveChart, Selection.GetSelectedEvents(), true, true));
 	}
 
 	private void OnShiftSelectedNotesEarlier()
@@ -6203,7 +6224,7 @@ internal sealed class Editor :
 		var rows = SnapLevels[Preferences.Instance.SnapIndex].Rows;
 		if (rows == 0)
 			rows = MaxValidDenominator;
-		ActionQueue.Instance.Do(new ActionShiftSelectionRow(this, ActiveChart, SelectedEvents, -rows));
+		ActionQueue.Instance.Do(new ActionShiftSelectionRow(this, ActiveChart, Selection.GetSelectedEvents(), -rows));
 	}
 
 	private void OnShiftSelectedNotesLater()
@@ -6213,7 +6234,7 @@ internal sealed class Editor :
 		var rows = SnapLevels[Preferences.Instance.SnapIndex].Rows;
 		if (rows == 0)
 			rows = MaxValidDenominator;
-		ActionQueue.Instance.Do(new ActionShiftSelectionRow(this, ActiveChart, SelectedEvents, rows));
+		ActionQueue.Instance.Do(new ActionShiftSelectionRow(this, ActiveChart, Selection.GetSelectedEvents(), rows));
 	}
 
 	#endregion Selection
@@ -6223,11 +6244,11 @@ internal sealed class Editor :
 	private void OnCopy()
 	{
 		// Do not alter the currently copied events if nothing is selected.
-		if (SelectedEvents.Count == 0)
+		if (!Selection.HasSelectedEvents())
 			return;
 
 		CopiedEvents.Clear();
-		foreach (var selectedEvent in SelectedEvents)
+		foreach (var selectedEvent in Selection.GetSelectedEvents())
 			CopiedEvents.Add(selectedEvent);
 		CopiedEvents.Sort();
 	}
@@ -7006,7 +7027,7 @@ internal sealed class Editor :
 			return;
 		}
 
-		ClearSelectedEvents();
+		Selection.ClearSelectedEvents();
 		ActiveChart = chart;
 
 		// The Position needs to know about the active chart for doing time and row calculations.
