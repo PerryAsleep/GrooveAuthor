@@ -97,7 +97,9 @@ internal sealed class UIPerformance
 					foreach (var timingData in frameData.GetTimingData())
 					{
 						var time = (float)timingData.GetSeconds();
-						greatestTime = Math.Max(greatestTime, time);
+
+						if (frameIndex < numFrames)
+							greatestTime = Math.Max(greatestTime, time);
 
 						if (frameIndex == 0)
 						{
