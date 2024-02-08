@@ -563,8 +563,10 @@ internal sealed class Editor :
 
 		const string fileIo = "File I/O";
 		AddKeyCommand(fileIo, "Open", new[] { Keys.LeftControl, Keys.O }, OnOpen);
+		AddKeyCommand(fileIo, "Open Containing Folder", new[] { Keys.LeftControl, Keys.LeftShift, Keys.O }, OnOpenContainingFolder);
 		AddKeyCommand(fileIo, "Save As", new[] { Keys.LeftControl, Keys.LeftShift, Keys.S }, OnSaveAs, false, null, true);
 		AddKeyCommand(fileIo, "Save", new[] { Keys.LeftControl, Keys.S }, OnSave);
+
 		AddKeyCommand(fileIo, "New", new[] { Keys.LeftControl, Keys.N }, OnNew);
 		AddKeyCommand(fileIo, "Reload", new[] { Keys.LeftControl, Keys.R }, OnReload);
 
@@ -3600,7 +3602,8 @@ internal sealed class Editor :
 	{
 		var p = Preferences.Instance;
 		var canEdit = CanEdit();
-		var canEditSong = canEdit && ActiveSong != null;
+		var hasSong = ActiveSong != null;
+		var canEditSong = canEdit && hasSong;
 		if (ImGui.BeginMainMenuBar())
 		{
 			if (ImGui.BeginMenu("File"))
@@ -3637,6 +3640,11 @@ internal sealed class Editor :
 					}
 
 					ImGui.EndMenu();
+				}
+
+				if (ImGui.MenuItem("Open Containing Folder", "Ctrl+Shift+O", false, hasSong))
+				{
+					OnOpenContainingFolder();
 				}
 
 				if (ImGui.MenuItem("Reload", "Ctrl+R", false, canEditSong && p.RecentFiles.Count > 0))
@@ -5352,6 +5360,29 @@ internal sealed class Editor :
 		}
 
 		return fullPath;
+	}
+
+	private void OnOpenContainingFolder()
+	{
+		if (ActiveSong == null)
+			return;
+		var dir = ActiveSong.GetFileDirectory();
+		if (string.IsNullOrEmpty(dir))
+			return;
+		try
+		{
+			var psi = new ProcessStartInfo()
+			{
+				FileName = "explorer.exe",
+				WorkingDirectory = dir,
+				ArgumentList = { dir },
+			};
+			Process.Start(psi);
+		}
+		catch (Exception e)
+		{
+			Logger.Error($"Failed to open {dir}. {e}");
+		}
 	}
 
 	private void OnOpen()
