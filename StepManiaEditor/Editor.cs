@@ -6328,7 +6328,8 @@ internal sealed class Editor :
 		}
 		else
 		{
-			Position.ChartPosition = Position.ChartPosition / rows * rows + rows;
+			var newChartPosition = (int)Position.ChartPosition / rows * rows + rows;
+			Position.ChartPosition = newChartPosition;
 			UpdateAutoPlayFromScrolling();
 		}
 	}
