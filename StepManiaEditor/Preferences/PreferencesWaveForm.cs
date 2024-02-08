@@ -22,7 +22,7 @@ internal sealed class PreferencesWaveForm
 	public static readonly Vector4 DefaultWaveFormSparseColor = new(0.0f, 0.350f, 0.164f, 0.8f);
 	public static readonly Vector4 DefaultWaveFormBackgroundColor = new(0.0f, 0.0f, 0.0f, 0.0f);
 	public const float DefaultWaveFormMaxXPercentagePerChannel = 0.9f;
-	public const int DefaultWaveFormLoadingMaxParallelism = 8;
+	public static int DefaultWaveFormLoadingMaxParallelism { get; private set; } = 8;
 	public const float DefaultDenseScale = 6.0f;
 	public const bool DefaultAntiAlias = true;
 	public const float DefaultAntiAliasSubpix = 0.2f;
@@ -40,12 +40,25 @@ internal sealed class PreferencesWaveForm
 	[JsonInclude] public Vector4 WaveFormSparseColor = DefaultWaveFormSparseColor;
 	[JsonInclude] public Vector4 WaveFormBackgroundColor = DefaultWaveFormBackgroundColor;
 	[JsonInclude] public float WaveFormMaxXPercentagePerChannel = DefaultWaveFormMaxXPercentagePerChannel;
-	[JsonInclude] public int WaveFormLoadingMaxParallelism = DefaultWaveFormLoadingMaxParallelism;
+	[JsonInclude] public int WaveFormLoadingMaxParallelism; // Defaulted in PostLoad.
 	[JsonInclude] public float DenseScale = DefaultDenseScale;
 	[JsonInclude] public bool AntiAlias = DefaultAntiAlias;
 	[JsonInclude] public float AntiAliasSubpix = DefaultAntiAliasSubpix;
 	[JsonInclude] public float AntiAliasEdgeThreshold = DefaultAntiAliasEdgeThreshold;
 	[JsonInclude] public float AntiAliasEdgeThresholdMin = DefaultAntiAliasEdgeThresholdMin;
+
+	public static void InitializeRuntimeDefaults(int defaultWaveformLoadParallelism)
+	{
+		DefaultWaveFormLoadingMaxParallelism = defaultWaveformLoadParallelism;
+	}
+
+	public void PostLoad()
+	{
+		if (WaveFormLoadingMaxParallelism == 0)
+		{
+			WaveFormLoadingMaxParallelism = DefaultWaveFormLoadingMaxParallelism;
+		}
+	}
 
 	public bool IsUsingDefaults()
 	{

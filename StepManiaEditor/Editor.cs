@@ -337,8 +337,7 @@ internal sealed class Editor :
 		// Create a logger first so we can log any startup messages.
 		InitializeLogger();
 
-		// Load Preferences synchronously so they can be used immediately.
-		Preferences.Load(this);
+		InitializePreferences();
 
 		// Record main thread id.
 		MainThreadId = Environment.CurrentManagedThreadId;
@@ -495,6 +494,18 @@ internal sealed class Editor :
 		{
 			Logger.Warn($"Unable to clean up old log files. {e}");
 		}
+	}
+
+	private void InitializePreferences()
+	{
+		// Set default preference values which are only known at runtime.
+		// Set the default waveform load parallelism to a little under the logical processor count.
+		// When starting up there are a lot of loads occurring asynchronously.
+		var defaultWaveformLoadParallelism = Math.Max(2, Environment.ProcessorCount - 6);
+		PreferencesWaveForm.InitializeRuntimeDefaults(defaultWaveformLoadParallelism);
+
+		// Load Preferences synchronously so they can be used immediately.
+		Preferences.Load(this);
 	}
 
 	private void InitializeAutogenConfigs()

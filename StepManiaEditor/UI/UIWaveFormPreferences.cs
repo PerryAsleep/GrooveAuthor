@@ -1,4 +1,5 @@
-﻿using System.Numerics;
+﻿using System;
+using System.Numerics;
 using ImGuiNET;
 using static StepManiaEditor.ImGuiUtils;
 
@@ -122,7 +123,8 @@ internal sealed class UIWaveFormPreferences
 				    "Number of threads to use for loading the waveform." +
 				    "\nSetting this to a low value will result in slower waveform loads." +
 				    "\nSetting this to a high value will result in faster waveform up loads up to the point your" +
-				    "\nCPU is saturated, at which point performance will degrade."))
+				    "\nCPU is saturated, at which point performance will degrade." +
+				    $"\nYour computer has {Environment.ProcessorCount} logical processors."))
 			{
 				MusicManager.GetMusicMipMap().SetLoadParallelism(p.WaveFormLoadingMaxParallelism);
 			}
