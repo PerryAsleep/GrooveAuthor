@@ -2659,6 +2659,9 @@ internal sealed class ImGuiLayoutUtils
 		string help,
 		Action requestEditCallback)
 	{
+		if (alpha <= 0.0f)
+			return;
+
 		void Func(float elementWidth)
 		{
 			var colorPushCount = 1;
