@@ -66,6 +66,8 @@ internal sealed class ImGuiLayoutUtils
 	public static readonly float ArrowIconWidth = UiScaled(16);
 	public static readonly float ArrowIconHeight = UiScaled(16);
 	public static readonly Vector2 ArrowIconSize = new(ArrowIconWidth, ArrowIconHeight);
+	public static readonly float ButtonApplyTimingWidth = UiScaled(80);
+	public static readonly float ButtonApplyTimingAndScrollWidth = UiScaled(138);
 
 	public static void SetFont(ImFontPtr font)
 	{
@@ -3152,23 +3154,23 @@ internal sealed class ImGuiLayoutUtils
 
 	#region Chart Select
 
-	public static void DrawRowChartSelect(
+	public static void DrawRowTimingChart(
 		bool undoable,
 		string title,
 		EditorSong song,
-		object o,
-		string fieldName,
 		string help = null)
 	{
 		DrawRowTitleAndAdvanceColumn(title);
 
 		var remainingWidth = DrawHelp(help, ImGui.GetContentRegionAvail().X);
+		var comboWidth = Math.Max(1.0f,
+			remainingWidth - ButtonApplyTimingWidth - ButtonApplyTimingAndScrollWidth - ImGui.GetStyle().ItemSpacing.X * 2);
 
-		if (o != null)
+		if (song != null)
 		{
-			ImGui.SetNextItemWidth(remainingWidth);
+			ImGui.SetNextItemWidth(comboWidth);
 
-			var chart = GetValueFromFieldOrProperty<EditorChart>(o, fieldName);
+			var chart = song.TimingChart;
 
 			var selectedName = chart?.GetDescriptiveName() ?? "None";
 			if (ImGui.BeginCombo("", selectedName))
@@ -3184,11 +3186,11 @@ internal sealed class ImGuiLayoutUtils
 							if (undoable)
 							{
 								ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReferenceNoClone<EditorChart>(
-									o, fieldName, selectedChart, true));
+									song, nameof(EditorSong.TimingChart), selectedChart, true));
 							}
 							else
 							{
-								SetFieldOrPropertyToValue(o, fieldName, selectedChart);
+								song.TimingChart = selectedChart;
 							}
 						}
 					},
@@ -3196,6 +3198,54 @@ internal sealed class ImGuiLayoutUtils
 					null);
 				ImGui.EndCombo();
 			}
+
+			if (chart == null)
+				PushDisabled();
+
+			ImGui.SameLine();
+			if (ImGui.Button($"Apply Timing{GetElementTitle(title, "ApplyTimingButton")}",
+				    new Vector2(ButtonApplyTimingWidth, 0.0f)))
+			{
+				var allOtherCharts = new List<EditorChart>();
+				foreach (var songChart in song!.GetCharts())
+				{
+					if (songChart == chart)
+						continue;
+					allOtherCharts.Add(songChart);
+				}
+
+				if (allOtherCharts.Count > 0)
+				{
+					ActionQueue.Instance.Do(new ActionCopyEventsBetweenCharts(
+						chart,
+						UICopyEventsBetweenCharts.GetTimingTypes(),
+						allOtherCharts));
+				}
+			}
+
+			ImGui.SameLine();
+			if (ImGui.Button($"Apply Timing + Scroll{GetElementTitle(title, "ApplyTimingAndScrollButton")}",
+				    new Vector2(ButtonApplyTimingAndScrollWidth, 0.0f)))
+			{
+				var allOtherCharts = new List<EditorChart>();
+				foreach (var songChart in song!.GetCharts())
+				{
+					if (songChart == chart)
+						continue;
+					allOtherCharts.Add(songChart);
+				}
+
+				if (allOtherCharts.Count > 0)
+				{
+					ActionQueue.Instance.Do(new ActionCopyEventsBetweenCharts(
+						chart,
+						UICopyEventsBetweenCharts.GetTimingAndScrollTypes(),
+						allOtherCharts));
+				}
+			}
+
+			if (chart == null)
+				PopDisabled();
 		}
 	}
 

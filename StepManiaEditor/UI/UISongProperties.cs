@@ -221,16 +221,18 @@ internal sealed class UISongProperties
 					,
 					0.0001f, "%.6f seconds", 0.0);
 
-				ImGuiLayoutUtils.DrawRowChartSelect(true, "Timing Chart", EditorSong, EditorSong, nameof(EditorSong.TimingChart),
-					"(Editor Only) The Chart which should be used for song timing data." +
-					"\nThere is a bug in Stepmania where even if all Charts specify valid timing data, Stepmania" +
-					"\nwill still use timing data defined on the song instead of the selected Chart for beat-driven" +
+				ImGuiLayoutUtils.DrawRowTimingChart(true, "Timing Chart", EditorSong,
+					"(Editor Only) The chart which should be used for song timing data." +
+					"\nThere is a bug in Stepmania where even if all charts specify valid timing data, Stepmania" +
+					"\nwill still use timing data defined on the song instead of the selected chart for beat-driven" +
 					"\nanimations like the receptors pulsing and the cursor bouncing on the song wheel. If no timing" +
 					"\ndata is defined on the song, these animations will play at 60bpm. To work around this bug," +
 					"\ntiming data like the tempo must also be defined on the song. This field tells GrooveAuthor" +
-					"\nwhich Chart to use for the song timing data." +
-					"\n\nAdditionally, when saving an sm file which does not support Chart-level timing, this field" +
-					"\nis used to determine which Chart to use for the song timing data.");
+					"\nwhich chart to use for the song timing data." +
+					"\n\nAdditionally, when saving an sm file which does not support chart-level timing, this field" +
+					"\nis used to determine which chart to use for the song timing data." +
+					"\n\nApply Timing: Will apply the timing events from this chart to all other charts." +
+					"\nApply Timing + Scroll: Will apply the timing and scroll events from this chart to all other charts.");
 
 				ImGuiLayoutUtils.EndTable();
 			}
