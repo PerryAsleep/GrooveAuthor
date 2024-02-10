@@ -193,6 +193,7 @@ internal sealed class ActionQueue : Notifier<ActionQueue>
 		LastSavedIndex = -1;
 		LostSavedChanges = false;
 		CurrentChangeCount = 0;
+		LastSavedChangeCount = 0;
 		UpdateLastAction(null);
 		Actions.Reset();
 	}
