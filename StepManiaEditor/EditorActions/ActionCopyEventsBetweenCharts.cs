@@ -123,10 +123,6 @@ internal sealed class ActionCopyEventsBetweenCharts : EditorAction
 			// Record special timing events.
 			EditorTimeSignatureEvent sourceFirstTimeSignature = null;
 			EditorTempoEvent sourceFirstTempo = null;
-			EditorScrollRateEvent sourceFirstScrollRate = null;
-			EditorInterpolatedRateAlteringEvent sourceFirstInterpolatedRateAlteringEvent = null;
-			EditorMultipliersEvent sourceFirstMultipliers = null;
-			EditorTickCountEvent sourceFirstTickCount = null;
 
 			// Clone the events to copy into the destination chart.
 			chartState.AllAddedEvents = new List<EditorEvent>(eventsToAdd.Count);
@@ -142,30 +138,6 @@ internal sealed class ActionCopyEventsBetweenCharts : EditorAction
 				if (eventToClone is EditorTempoEvent te && sourceFirstTempo == null)
 				{
 					sourceFirstTempo = te;
-					continue;
-				}
-
-				if (eventToClone is EditorScrollRateEvent sre && sourceFirstScrollRate == null)
-				{
-					sourceFirstScrollRate = sre;
-					continue;
-				}
-
-				if (eventToClone is EditorInterpolatedRateAlteringEvent irae && sourceFirstInterpolatedRateAlteringEvent == null)
-				{
-					sourceFirstInterpolatedRateAlteringEvent = irae;
-					continue;
-				}
-
-				if (eventToClone is EditorMultipliersEvent me && sourceFirstMultipliers == null)
-				{
-					sourceFirstMultipliers = me;
-					continue;
-				}
-
-				if (eventToClone is EditorTickCountEvent tce && sourceFirstTickCount == null)
-				{
-					sourceFirstTickCount = tce;
 					continue;
 				}
 
