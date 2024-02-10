@@ -5044,11 +5044,12 @@ internal sealed class Editor :
 		if (EditEarlyOut())
 			return;
 
-		editorSong.Save(fileType, fullPath, () =>
+		editorSong.Save(fileType, fullPath, (success) =>
 		{
 			UpdateWindowTitle();
 			UpdateRecentFilesForActiveSong(Position.ChartPosition, ZoomManager.GetSpacingZoom());
-			ActionQueue.Instance.OnSaved();
+			if (success)
+				ActionQueue.Instance.OnSaved();
 			TryInvokePostSaveFunction();
 		});
 	}
@@ -5235,95 +5236,6 @@ internal sealed class Editor :
 				pOptions.RecentFilesHistorySize,
 				p.RecentFiles.Count - pOptions.RecentFilesHistorySize);
 		}
-	}
-
-	/// <summary>
-	/// Helper method when loading a Song to select the best Chart to be the active Chart.
-	/// </summary>
-	/// <param name="song">Song.</param>
-	/// <param name="preferredChartType">The preferred ChartType (StepMania StepsType) to use.</param>
-	/// <param name="preferredChartDifficultyType">The preferred DifficultyType to use.</param>
-	/// <returns>Best Chart to use or null if no Charts exist.</returns>
-	public EditorChart SelectBestChart(EditorSong song, ChartType preferredChartType,
-		ChartDifficultyType preferredChartDifficultyType)
-	{
-		var preferredChartsByType = song.GetCharts(preferredChartType);
-		var hasChartsOfPreferredType = preferredChartsByType != null;
-
-		// Choose the preferred chart, if it exists.
-		if (hasChartsOfPreferredType)
-		{
-			foreach (var chart in preferredChartsByType)
-			{
-				if (chart.ChartDifficultyType == preferredChartDifficultyType)
-					return chart;
-			}
-		}
-
-		var orderedDifficultyTypes = new[]
-		{
-			ChartDifficultyType.Challenge,
-			ChartDifficultyType.Hard,
-			ChartDifficultyType.Medium,
-			ChartDifficultyType.Easy,
-			ChartDifficultyType.Beginner,
-			ChartDifficultyType.Edit,
-		};
-
-		// If the preferred chart doesn't exist, try to choose the highest difficulty type
-		// of the preferred chart type.
-		if (hasChartsOfPreferredType)
-		{
-			foreach (var currentDifficultyType in orderedDifficultyTypes)
-			{
-				foreach (var chart in preferredChartsByType)
-				{
-					if (chart.ChartDifficultyType == currentDifficultyType)
-						return chart;
-				}
-			}
-		}
-
-		// No charts of the specified type exist. Try the next best type.
-		var nextBestChartType = ChartType.dance_single;
-		var hasNextBestChartType = true;
-		if (preferredChartType == ChartType.dance_single)
-			nextBestChartType = ChartType.dance_double;
-		else if (preferredChartType == ChartType.dance_double)
-			nextBestChartType = ChartType.dance_single;
-		else if (preferredChartType == ChartType.pump_single)
-			nextBestChartType = ChartType.pump_double;
-		else if (preferredChartType == ChartType.pump_double)
-			nextBestChartType = ChartType.pump_single;
-		else
-			hasNextBestChartType = false;
-		if (hasNextBestChartType)
-		{
-			var nextBestChartsByType = song.GetCharts(nextBestChartType);
-			if (nextBestChartsByType != null)
-			{
-				foreach (var currentDifficultyType in orderedDifficultyTypes)
-				{
-					foreach (var chart in nextBestChartsByType)
-					{
-						if (chart.ChartDifficultyType == currentDifficultyType)
-							return chart;
-					}
-				}
-			}
-		}
-
-		// At this point, just return the first chart we have.
-		foreach (var supportedChartType in SupportedChartTypes)
-		{
-			var charts = song.GetCharts(supportedChartType);
-			if (charts?.Count > 0)
-			{
-				return charts[0];
-			}
-		}
-
-		return null;
 	}
 
 	private string GetFullPathToMusicFile()
@@ -7124,7 +7036,7 @@ internal sealed class Editor :
 		}
 		else if (ActiveChart == chart)
 		{
-			var newActiveChart = SelectBestChart(ActiveSong, ActiveChart.ChartType, ActiveChart.ChartDifficultyType);
+			var newActiveChart = ActiveSong.SelectBestChart(ActiveChart.ChartType, ActiveChart.ChartDifficultyType);
 			OnChartSelected(newActiveChart, false);
 		}
 	}

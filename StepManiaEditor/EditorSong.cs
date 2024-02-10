@@ -46,6 +46,8 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 	private class CustomSaveDataV1
 	{
 		public double SyncOffset;
+		public ChartType? DefaultChartType;
+		public int DefaultChartIndex;
 	}
 
 	/// <summary>
@@ -85,6 +87,12 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 	/// All EditorCharts for this EditorSong.
 	/// </summary>
 	private readonly Dictionary<ChartType, List<EditorChart>> Charts = new();
+
+	/// <summary>
+	/// The EditorChart to use for song timing data.
+	/// StepMania requires some timing data to be persisted at the Song level.
+	/// </summary>
+	private EditorChart TimingChartInternal;
 
 	/// <summary>
 	/// Charts from the original Song that are unsupported in the editor.
@@ -412,6 +420,41 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 
 	private Selectable SelectableInternal = Selectable.YES;
 
+	public EditorChart TimingChart
+	{
+		get => TimingChartInternal;
+		set
+		{
+			Assert(CanBeEdited());
+			if (!CanBeEdited())
+				return;
+			var found = false;
+			if (value != null)
+			{
+				foreach (var kvp in Charts)
+				{
+					foreach (var chart in kvp.Value)
+					{
+						if (chart == value)
+						{
+							found = true;
+							break;
+						}
+					}
+
+					if (found)
+						break;
+				}
+
+				Assert(found);
+				if (!found)
+					return;
+			}
+
+			TimingChartInternal = value;
+		}
+	}
+
 	#endregion Properties
 
 	#region EditorImageData
@@ -635,8 +678,6 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 
 		SyncOffsetInternal = Preferences.Instance.PreferencesOptions.OpenSongSyncOffset;
 
-		DeserializeCustomSongData(song);
-
 		foreach (var chart in song.Charts)
 		{
 			if (!isChartSupported(chart))
@@ -665,6 +706,8 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 				editorChart.CopyDisplayTempo(displayTempo);
 			}
 		}
+
+		DeserializeCustomSongData(song);
 
 		UpdateChartSortInternal();
 	}
@@ -719,6 +762,9 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 		if (!Charts.ContainsKey(chartType))
 			Charts.Add(chartType, new List<EditorChart>());
 		Charts[chartType].Add(chart);
+
+		TimingChart ??= chart;
+
 		UpdateChartSortInternal();
 		return chart;
 	}
@@ -747,6 +793,11 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 		Charts[chart.ChartType].Remove(chart);
 		if (Charts[chart.ChartType].Count == 0)
 			Charts.Remove(chart.ChartType);
+
+		// When deleting the timing Chart, choose a new one.
+		if (chart == TimingChart)
+			ChooseTimingChart();
+
 		UpdateChartSortInternal();
 	}
 
@@ -768,6 +819,108 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 	}
 
 	#endregion EditorChart
+
+	#region Default Chart Selection
+
+	/// <summary>
+	/// Resets the TimingChart to a good default based on the user's preferences.
+	/// </summary>
+	private void ChooseTimingChart()
+	{
+		var p = Preferences.Instance.PreferencesOptions;
+		TimingChart = SelectBestChart(p.DefaultStepsType, p.DefaultDifficultyType);
+	}
+
+	/// <summary>
+	/// Returns the best EditorChart to use based on the user's preferences and the available EditorCharts for this EditorSong.
+	/// </summary>
+	/// <param name="preferredChartType">The preferred ChartType (StepMania StepsType) to use.</param>
+	/// <param name="preferredChartDifficultyType">The preferred DifficultyType to use.</param>
+	/// <returns>Best EditorChart to use or null if no valid EditorCharts exist.</returns>
+	public EditorChart SelectBestChart(
+		ChartType preferredChartType,
+		ChartDifficultyType preferredChartDifficultyType)
+	{
+		var preferredChartsByType = GetCharts(preferredChartType);
+		var hasChartsOfPreferredType = preferredChartsByType != null;
+
+		// Choose the preferred chart, if it exists.
+		if (hasChartsOfPreferredType)
+		{
+			foreach (var chart in preferredChartsByType)
+			{
+				if (chart.ChartDifficultyType == preferredChartDifficultyType)
+					return chart;
+			}
+		}
+
+		var orderedDifficultyTypes = new[]
+		{
+			ChartDifficultyType.Challenge,
+			ChartDifficultyType.Hard,
+			ChartDifficultyType.Medium,
+			ChartDifficultyType.Easy,
+			ChartDifficultyType.Beginner,
+			ChartDifficultyType.Edit,
+		};
+
+		// If the preferred chart doesn't exist, try to choose the highest difficulty type
+		// of the preferred chart type.
+		if (hasChartsOfPreferredType)
+		{
+			foreach (var currentDifficultyType in orderedDifficultyTypes)
+			{
+				foreach (var chart in preferredChartsByType)
+				{
+					if (chart.ChartDifficultyType == currentDifficultyType)
+						return chart;
+				}
+			}
+		}
+
+		// No charts of the specified type exist. Try the next best type.
+		var nextBestChartType = ChartType.dance_single;
+		var hasNextBestChartType = true;
+		if (preferredChartType == ChartType.dance_single)
+			nextBestChartType = ChartType.dance_double;
+		else if (preferredChartType == ChartType.dance_double)
+			nextBestChartType = ChartType.dance_single;
+		else if (preferredChartType == ChartType.pump_single)
+			nextBestChartType = ChartType.pump_double;
+		else if (preferredChartType == ChartType.pump_double)
+			nextBestChartType = ChartType.pump_single;
+		else
+			hasNextBestChartType = false;
+		if (hasNextBestChartType)
+		{
+			var nextBestChartsByType = GetCharts(nextBestChartType);
+			if (nextBestChartsByType != null)
+			{
+				foreach (var currentDifficultyType in orderedDifficultyTypes)
+				{
+					foreach (var chart in nextBestChartsByType)
+					{
+						if (chart.ChartDifficultyType == currentDifficultyType)
+							return chart;
+					}
+				}
+			}
+		}
+
+		// At this point, just return the first chart we have.
+		foreach (var supportedChartType in Editor.SupportedChartTypes)
+		{
+			var charts = GetCharts(supportedChartType);
+			if (charts?.Count > 0)
+			{
+				return charts[0];
+			}
+		}
+
+		return null;
+	}
+
+	#endregion Default Chart Selection
 
 	#region Misc
 
@@ -1114,15 +1267,23 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 	/// <summary>
 	/// Returns whether or not this song is compatible with the legacy sm format.
 	/// </summary>
-	/// <returns>True if this song is compatible with the sm format and false otherwise.</returns>
-	public bool IsCompatibleWithSmFormat()
+	/// <returns>
+	/// Tuple with the following values:
+	///  compatible: Whether or not the song is compatible with the sm format.
+	///  timingMatches: Whether the timing of all the charts matches.
+	/// </returns>
+	public (bool compatible, bool timingMatches) IsCompatibleWithSmFormat()
 	{
+		// LastSecondHint values aren't compatible with the sm format but can be safely ignored.
 		if (LastSecondHint > 0.0)
 		{
 			Logger.Warn(
 				$"Song has last second hint at {LastSecondHint}. Last second hint values are not compatible with sm files and will be omitted.");
 		}
 
+		// Check each chart.
+		var compatible = true;
+		var timingMatches = true;
 		EditorChart firstChart = null;
 		foreach (var kvp in Charts)
 		{
@@ -1130,7 +1291,7 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 			foreach (var chart in charts)
 			{
 				if (!chart.IsCompatibleWithSmFormat(true))
-					return false;
+					compatible = false;
 
 				if (firstChart == null)
 				{
@@ -1138,13 +1299,15 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 				}
 				else
 				{
+					// Check for a log incompatible timing events, but allow the chart to be saved since we will use the
+					// TimingChart for the timing data.
 					if (!chart.DoSmTimingEventsMatch(firstChart, true))
-						return false;
+						timingMatches = false;
 				}
 			}
 		}
 
-		return true;
+		return (compatible, timingMatches);
 	}
 
 	/// <summary>
@@ -1154,11 +1317,15 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 	/// </summary>
 	/// <param name="fileType">FileFormatType to save as.</param>
 	/// <param name="fullPath">Full path to the file to save to.</param>
-	/// <param name="callback">Action to call when saving is complete.</param>
-	public void Save(FileFormatType fileType, string fullPath, Action callback)
+	/// <param name="callback">
+	/// Action to call when saving is complete.
+	/// The parameter represents whether saving succeeded.
+	/// </param>
+	public void Save(FileFormatType fileType, string fullPath, Action<bool> callback)
 	{
 		// Variable to track completion when all asynchronous operations have finished.
 		var complete = false;
+		var success = false;
 
 		// Mark that we are saving.
 		WorkQueue.Enqueue(() => { Saving = true; });
@@ -1172,15 +1339,27 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 				Logger.Info($"Saving {fullPath}...");
 
 				// If saving as an sm file check for incompatibilities and early out.
-				if (fileType == FileFormatType.SM && !IsCompatibleWithSmFormat())
+				if (fileType == FileFormatType.SM)
 				{
-					Logger.Error("Song is not compatible with sm format. Address incompatibilities or save as an ssc file.");
-					complete = true;
-					return;
+					var (compatible, timingMatches) = IsCompatibleWithSmFormat();
+
+					if (!compatible)
+					{
+						Logger.Error("Song is not compatible with sm format. Address incompatibilities or save as an ssc file.");
+						complete = true;
+						return;
+					}
+
+					if (!timingMatches)
+					{
+						Logger.Warn(
+							$"The charts in this song have different timing events. sm files do not support this. The saved charts will all use the timing events from {TimingChart.GetDescriptiveName()}.");
+					}
 				}
 
 				var customProperties = new SMWriterCustomProperties();
 				var song = new Song();
+				var fallbackChartIndex = -1;
 
 				// Action to call when all EditorCharts have completed saving to Chart objects.
 				// This Action will be invoked on the main thread.
@@ -1189,11 +1368,9 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 					// Run the code below in a new Task as it is CPU and IO intensive.
 					Task.Run(() =>
 					{
-						// Choose a chart to use for getting the timing events for sm files.
-						// At this point we know all charts share the same timing events.
-						Chart fallbackChart = null;
-						if (fileType == FileFormatType.SM)
-							fallbackChart = song.Charts.Count > 0 ? song.Charts[0] : null;
+						var fallbackChart = fallbackChartIndex >= 0 && fallbackChartIndex < song.Charts.Count
+							? song.Charts[fallbackChartIndex]
+							: null;
 
 						song.Extras = new Extras(OriginalSongExtras);
 
@@ -1257,10 +1434,10 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 						switch (fileType)
 						{
 							case FileFormatType.SM:
-								new SMWriter(config).Save();
+								success = new SMWriter(config).Save();
 								break;
 							case FileFormatType.SSC:
-								new SSCWriter(config).Save();
+								success = new SSCWriter(config).Save();
 								break;
 							default:
 								Logger.Error("Unsupported file format. Cannot save.");
@@ -1301,6 +1478,8 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 					{
 						foreach (var editorChart in editorChartsForChartType.Value)
 						{
+							if (editorChart == TimingChartInternal)
+								fallbackChartIndex = chartIndex;
 							editorCharts[chartIndex] = editorChart;
 							chartIndex++;
 						}
@@ -1319,7 +1498,7 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 				}
 			}),
 			// Callback to caller when saving is complete.
-			callback,
+			() => callback(success),
 			// Custom completion check.
 			() => complete);
 
@@ -1382,10 +1561,31 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 	/// <param name="customSongProperties">Dictionary of custom song properties to serialize into.</param>
 	private void SerializeCustomSongData(Dictionary<string, string> customSongProperties)
 	{
+		// Convert the TimingChart into a ChartType and index for serialization.
+		ChartType? defaultChartType = null;
+		var defaultChartIndex = 0;
+		if (TimingChart != null)
+		{
+			defaultChartType = TimingChart.ChartType;
+			if (Charts.TryGetValue(defaultChartType.Value, out var chartsForType))
+			{
+				for (var i = 0; i < chartsForType.Count; i++)
+				{
+					if (chartsForType[i] == TimingChart)
+					{
+						defaultChartIndex = i;
+						break;
+					}
+				}
+			}
+		}
+
 		// Serialize the custom data.
 		var customSaveData = new CustomSaveDataV1
 		{
 			SyncOffset = SyncOffset,
+			DefaultChartType = defaultChartType,
+			DefaultChartIndex = defaultChartIndex,
 		};
 		var jsonString = JsonSerializer.Serialize(customSaveData, CustomSaveDataSerializationOptions);
 
@@ -1438,7 +1638,27 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 		{
 			var customSaveData =
 				JsonSerializer.Deserialize<CustomSaveDataV1>(customDataString, CustomSaveDataSerializationOptions);
+
 			SyncOffset = customSaveData.SyncOffset;
+
+			var defaultChartSet = false;
+			if (customSaveData.DefaultChartType != null)
+			{
+				if (Charts.TryGetValue(customSaveData.DefaultChartType.Value, out var chartList))
+				{
+					if (customSaveData.DefaultChartIndex >= 0 && customSaveData.DefaultChartIndex < chartList.Count)
+					{
+						defaultChartSet = true;
+						TimingChart = chartList[customSaveData.DefaultChartIndex];
+					}
+				}
+			}
+
+			if (!defaultChartSet)
+			{
+				ChooseTimingChart();
+			}
+
 			return true;
 		}
 		catch (Exception e)

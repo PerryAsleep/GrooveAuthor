@@ -2502,7 +2502,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		{
 			if (logDifferences)
 			{
-				LogError(
+				LogWarn(
 					$"Music offset ({musicOffset}) does not match offset ({otherMusicOffset}) from {other.GetDescriptiveName()}.");
 			}
 
@@ -2514,7 +2514,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		{
 			if (logDifferences)
 			{
-				LogError(
+				LogWarn(
 					$"Display tempo ({DisplayTempo}) does not match display tempo ({other.DisplayTempo}) from {other.GetDescriptiveName()}.");
 			}
 
@@ -2548,7 +2548,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 		if (!rateAlteringEventsMatch && logDifferences)
 		{
-			LogError($"Timing and scroll events do not match events from {other.GetDescriptiveName()}.");
+			LogWarn($"Timing and scroll events do not match events from {other.GetDescriptiveName()}.");
 		}
 
 		return match;

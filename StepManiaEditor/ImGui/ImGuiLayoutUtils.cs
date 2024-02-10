@@ -3150,6 +3150,57 @@ internal sealed class ImGuiLayoutUtils
 
 	#endregion Chart Position
 
+	#region Chart Select
+
+	public static void DrawRowChartSelect(
+		bool undoable,
+		string title,
+		EditorSong song,
+		object o,
+		string fieldName,
+		string help = null)
+	{
+		DrawRowTitleAndAdvanceColumn(title);
+
+		var remainingWidth = DrawHelp(help, ImGui.GetContentRegionAvail().X);
+
+		if (o != null)
+		{
+			ImGui.SetNextItemWidth(remainingWidth);
+
+			var chart = GetValueFromFieldOrProperty<EditorChart>(o, fieldName);
+
+			var selectedName = chart?.GetDescriptiveName() ?? "None";
+			if (ImGui.BeginCombo("", selectedName))
+			{
+				UIChartList.DrawChartList(
+					song,
+					chart,
+					null,
+					selectedChart =>
+					{
+						if (chart != selectedChart)
+						{
+							if (undoable)
+							{
+								ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReferenceNoClone<EditorChart>(
+									o, fieldName, selectedChart, true));
+							}
+							else
+							{
+								SetFieldOrPropertyToValue(o, fieldName, selectedChart);
+							}
+						}
+					},
+					false,
+					null);
+				ImGui.EndCombo();
+			}
+		}
+	}
+
+	#endregion Chart Select
+
 	#region Plot
 
 	public static void DrawRowPlot(

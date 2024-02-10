@@ -95,7 +95,7 @@ internal sealed class SongLoadTask : CancellableTask<SongLoadState>
 		});
 
 		// Select the best Chart to make active.
-		var newActiveChart = Editor.SelectBestChart(newActiveSong, state.GetChartType(), state.GetChartDifficultyType());
+		var newActiveChart = newActiveSong.SelectBestChart(state.GetChartType(), state.GetChartDifficultyType());
 		CancellationTokenSource.Token.ThrowIfCancellationRequested();
 
 		// Save results
