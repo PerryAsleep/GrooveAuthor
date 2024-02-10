@@ -1119,9 +1119,8 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 	{
 		if (LastSecondHint > 0.0)
 		{
-			Logger.Error(
-				$"Song has last second hint at {LastSecondHint}. Last second hint values are not compatible with sm files.");
-			return false;
+			Logger.Warn(
+				$"Song has last second hint at {LastSecondHint}. Last second hint values are not compatible with sm files and will be omitted.");
 		}
 
 		EditorChart firstChart = null;
