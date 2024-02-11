@@ -709,6 +709,9 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 
 		DeserializeCustomSongData(song);
 
+		if (TimingChart == null)
+			ChooseTimingChart();
+
 		UpdateChartSortInternal();
 	}
 
@@ -1655,22 +1658,15 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 
 			SyncOffset = customSaveData.SyncOffset;
 
-			var defaultChartSet = false;
 			if (customSaveData.DefaultChartType != null)
 			{
 				if (Charts.TryGetValue(customSaveData.DefaultChartType.Value, out var chartList))
 				{
 					if (customSaveData.DefaultChartIndex >= 0 && customSaveData.DefaultChartIndex < chartList.Count)
 					{
-						defaultChartSet = true;
 						TimingChart = chartList[customSaveData.DefaultChartIndex];
 					}
 				}
-			}
-
-			if (!defaultChartSet)
-			{
-				ChooseTimingChart();
 			}
 
 			return true;
