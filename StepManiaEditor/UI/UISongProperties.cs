@@ -28,7 +28,7 @@ internal sealed class UISongProperties
 	private static readonly float ButtonSyncWidth = UiScaled(60);
 	private static readonly float ButtonApplyItgOffsetWidth = UiScaled(110);
 	private static readonly Vector2 DefaultPosition = new(UiScaled(0), UiScaled(21));
-	private static readonly Vector2 DefaultSize = new(UiScaled(622), UiScaled(0));
+	private static readonly Vector2 DefaultSize = new(UiScaled(622), UiScaled(610));
 
 	public UISongProperties(Editor editor, GraphicsDevice graphicsDevice, ImGuiRenderer imGuiRenderer)
 	{
@@ -82,12 +82,8 @@ internal sealed class UISongProperties
 				ImGuiLayoutUtils.DrawRowTextInputWithTransliteration(true, "Artist", EditorSong, nameof(EditorSong.Artist),
 					nameof(EditorSong.ArtistTransliteration), true,
 					"The artist who composed the song.");
-				ImGuiLayoutUtils.DrawRowTextInput(true, "Genre", EditorSong, nameof(EditorSong.Genre), true,
-					"The genre of the song.");
 				ImGuiLayoutUtils.DrawRowTextInput(true, "Credit", EditorSong, nameof(EditorSong.Credit), true,
 					"Who this file should be credited to.");
-				ImGuiLayoutUtils.DrawRowTextInput(true, "Origin", EditorSong, nameof(EditorSong.Origin), true,
-					"(Uncommon) What game this song originated from.");
 				ImGuiLayoutUtils.EndTable();
 			}
 
@@ -109,29 +105,6 @@ internal sealed class UISongProperties
 					ClearCDTitle, true,
 					"The CD title graphic is most commonly used as a logo for the file author."
 					+ "\nDimensions are arbitrary.");
-
-				ImGuiLayoutUtils.DrawRowFileBrowse("Jacket", EditorSong, nameof(EditorSong.CDTitlePath), BrowseJacket,
-					ClearJacket, true,
-					"(Uncommon) Jacket graphic."
-					+ "\nMeant for themes which display songs with jacket assets in the song wheel like DDR X2."
-					+ "\nTypically square, but dimensions are arbitrary.");
-
-				ImGuiLayoutUtils.DrawRowFileBrowse("CD Image", EditorSong, nameof(EditorSong.CDTitlePath), BrowseCDImage,
-					ClearCDImage, true,
-					"(Uncommon) CD image graphic."
-					+ "\nOriginally meant to capture song select graphics which looked like CDs from the original DDR."
-					+ "\nTypically square, but dimensions are arbitrary.");
-
-				ImGuiLayoutUtils.DrawRowFileBrowse("Disc Image", EditorSong, nameof(EditorSong.CDTitlePath), BrowseDiscImage,
-					ClearDiscImage, true,
-					"(Uncommon) Disc Image graphic."
-					+ "\nOriginally meant to capture PIU song select graphics, which were discs in very old versions."
-					+ "\nMore modern PIU uses rectangular banners, but dimensions are arbitrary.");
-
-				ImGuiLayoutUtils.DrawRowFileBrowse("Preview Video", EditorSong, nameof(EditorSong.PreviewVideoPath),
-					BrowsePreviewVideoFile, ClearPreviewVideoFile, true,
-					"(Uncommon) The preview video file." +
-					"\nMeant for themes based on PIU where videos play on the song select screen.");
 				ImGuiLayoutUtils.EndTable();
 			}
 
@@ -154,10 +127,6 @@ internal sealed class UISongProperties
 					+ "\nApplying a 9ms offset through clicking the button is not idempotent.",
 					0.0001f, "%.6f seconds");
 
-				ImGuiLayoutUtils.DrawRowFileBrowse("Preview File", EditorSong, nameof(EditorSong.MusicPreviewPath),
-					BrowseMusicPreviewFile, ClearMusicPreviewFile, true,
-					"(Uncommon) An audio file to use for a preview instead of playing a range from the music file.");
-
 				ImGuiLayoutUtils.DrawRowDragDoubleWithTwoButtons(true, "Preview Start", EditorSong,
 					nameof(EditorSong.SampleStart), true,
 					SetPreviewStartFromCurrentTime, "Use Current Time", ButtonSetWidth,
@@ -172,9 +141,6 @@ internal sealed class UISongProperties
 					"Music preview length.\n" +
 					EditorPreviewRegionEvent.PreviewDescription,
 					0.0001f, "%.6f seconds", 0.0);
-				if (ImGuiLayoutUtils.DrawRowButton(null, Editor.IsPlayingPreview() ? "Stop Preview" : "Play Preview",
-					    "Toggle Preview playback. Playback can be toggled with the P key."))
-					Editor.OnTogglePlayPreview();
 
 				ImGuiLayoutUtils.DrawRowDragDoubleWithTwoButtons(true, "End Hint", EditorSong, nameof(EditorSong.LastSecondHint),
 					true,
@@ -182,21 +148,6 @@ internal sealed class UISongProperties
 					JumpToLastSecondHint, "Go", ButtonGoWidth,
 					EditorLastSecondHintEvent.LastSecondHintDescription,
 					0.0001f, "%.6f seconds", 0.0);
-
-				ImGuiLayoutUtils.EndTable();
-			}
-
-			ImGui.Separator();
-			if (ImGuiLayoutUtils.BeginTable("SongMiscTable", TitleColumnWidth))
-			{
-				ImGuiLayoutUtils.DrawRowEnum<Selectable>(true, "Selectable", EditorSong, nameof(EditorSong.Selectable), true,
-					"(Uncommon) Under what conditions this song should be selectable." +
-					"\nMeant to capture stage requirements from DDR like extra stage and one more extra stage." +
-					"\nLeave as YES if you are unsure what to use.");
-
-				ImGuiLayoutUtils.DrawRowFileBrowse("Lyrics", EditorSong, nameof(EditorSong.LyricsPath), BrowseLyricsFile,
-					ClearLyricsFile, true,
-					"(Uncommon) Lyrics file for displaying lyrics while the song plays.");
 
 				ImGuiLayoutUtils.EndTable();
 			}
@@ -235,6 +186,75 @@ internal sealed class UISongProperties
 					"\nApply Timing + Scroll: Will apply the timing and scroll events from this chart to all other charts.");
 
 				ImGuiLayoutUtils.EndTable();
+			}
+
+			ImGui.Separator();
+			if (ImGui.CollapsingHeader("Uncommon Properties"))
+			{
+				if (ImGuiLayoutUtils.BeginTable("UncommonProperties", TitleColumnWidth))
+				{
+					ImGuiLayoutUtils.DrawRowTextInput(true, "Genre", EditorSong, nameof(EditorSong.Genre), true,
+						"The genre of the song.");
+
+					ImGuiLayoutUtils.DrawRowTextInput(true, "Origin", EditorSong, nameof(EditorSong.Origin), true,
+						"What game this song originated from.");
+
+					ImGuiLayoutUtils.EndTable();
+				}
+
+				ImGui.Separator();
+				if (ImGuiLayoutUtils.BeginTable("UncommonPreview", TitleColumnWidth))
+				{
+					ImGuiLayoutUtils.DrawRowFileBrowse("Preview File", EditorSong, nameof(EditorSong.MusicPreviewPath),
+						BrowseMusicPreviewFile, ClearMusicPreviewFile, true,
+						"An audio file to use for a preview instead of playing a range from the music file.");
+
+					ImGuiLayoutUtils.EndTable();
+				}
+
+				ImGui.Separator();
+				if (ImGuiLayoutUtils.BeginTable("UncommonAssets", TitleColumnWidth))
+				{
+					ImGuiLayoutUtils.DrawRowFileBrowse("Jacket", EditorSong, nameof(EditorSong.CDTitlePath), BrowseJacket,
+						ClearJacket, true,
+						"Jacket graphic."
+						+ "\nMeant for themes which display songs with jacket assets in the song wheel like DDR X2."
+						+ "\nTypically square, but dimensions are arbitrary.");
+
+					ImGuiLayoutUtils.DrawRowFileBrowse("CD Image", EditorSong, nameof(EditorSong.CDTitlePath), BrowseCDImage,
+						ClearCDImage, true,
+						"CD image graphic."
+						+ "\nOriginally meant to capture song select graphics which looked like CDs from the original DDR."
+						+ "\nTypically square, but dimensions are arbitrary.");
+
+					ImGuiLayoutUtils.DrawRowFileBrowse("Disc Image", EditorSong, nameof(EditorSong.CDTitlePath), BrowseDiscImage,
+						ClearDiscImage, true,
+						"Disc Image graphic."
+						+ "\nOriginally meant to capture PIU song select graphics, which were discs in very old versions."
+						+ "\nMore modern PIU uses rectangular banners, but dimensions are arbitrary.");
+
+					ImGuiLayoutUtils.DrawRowFileBrowse("Preview Video", EditorSong, nameof(EditorSong.PreviewVideoPath),
+						BrowsePreviewVideoFile, ClearPreviewVideoFile, true,
+						"The preview video file." +
+						"\nMeant for themes based on PIU where videos play on the song select screen.");
+
+					ImGuiLayoutUtils.EndTable();
+				}
+
+				ImGui.Separator();
+				if (ImGuiLayoutUtils.BeginTable("UncommonMisc", TitleColumnWidth))
+				{
+					ImGuiLayoutUtils.DrawRowEnum<Selectable>(true, "Selectable", EditorSong, nameof(EditorSong.Selectable), true,
+						"Under what conditions this song should be selectable." +
+						"\nMeant to capture stage requirements from DDR like extra stage and one more extra stage." +
+						"\nLeave as YES if you are unsure what to use.");
+
+					ImGuiLayoutUtils.DrawRowFileBrowse("Lyrics", EditorSong, nameof(EditorSong.LyricsPath), BrowseLyricsFile,
+						ClearLyricsFile, true,
+						"Lyrics file for displaying lyrics while the song plays.");
+
+					ImGuiLayoutUtils.EndTable();
+				}
 			}
 
 			if (disabled)

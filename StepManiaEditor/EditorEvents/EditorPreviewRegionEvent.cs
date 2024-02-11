@@ -15,7 +15,7 @@ namespace StepManiaEditor;
 internal sealed class EditorPreviewRegionEvent : EditorEvent, IChartRegion, Fumen.IObserver<EditorSong>
 {
 	public static readonly string PreviewDescription =
-		"The music Preview plays when a player scrolls to this song in StepMania.";
+		"The music Preview plays when a player scrolls to this song in StepMania.\nThe Preview can be played with the P key.";
 
 	public static readonly string EventShortDescription =
 		PreviewDescription +

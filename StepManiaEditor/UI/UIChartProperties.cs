@@ -13,8 +13,8 @@ internal sealed class UIChartProperties
 	public const string WindowTitle = "Chart Properties";
 
 	private static readonly int TitleColumnWidth = UiScaled(100);
-	private static readonly Vector2 DefaultPosition = new(UiScaled(0), UiScaled(835));
-	private static readonly Vector2 DefaultSize = new(UiScaled(622), UiScaled(419));
+	private static readonly Vector2 DefaultPosition = new(UiScaled(0), UiScaled(631));
+	private static readonly Vector2 DefaultSize = new(UiScaled(622), UiScaled(241));
 
 	private readonly ImGuiArrowWeightsWidget ArrowWeightsWidget;
 	private readonly Editor Editor;
@@ -57,8 +57,6 @@ internal sealed class UIChartProperties
 					"Chart description.");
 				ImGuiLayoutUtils.DrawRowTextInput(true, "Credit", editorChart, nameof(EditorChart.Credit), true,
 					"Who this chart should be credited to.");
-				ImGuiLayoutUtils.DrawRowTextInput(true, "Style", editorChart, nameof(EditorChart.Style), true,
-					"(Uncommon) Originally meant to denote \"Pad\" versus \"Keyboard\" charts.");
 
 				if (editorChart != null)
 					ImGuiLayoutUtils.DrawRowDisplayTempo(true, editorChart, editorChart.GetMinTempo(), editorChart.GetMaxTempo());
@@ -69,52 +67,63 @@ internal sealed class UIChartProperties
 			}
 
 			ImGui.Separator();
-			if (ImGuiLayoutUtils.BeginTable("ChartMusicTable", TitleColumnWidth))
+			if (ImGui.CollapsingHeader("Uncommon Properties"))
 			{
-				ImGuiLayoutUtils.DrawRowFileBrowse("Music", editorChart, nameof(EditorChart.MusicPath),
-					() => BrowseMusicFile(editorChart),
-					() => ClearMusicFile(editorChart),
-					true,
-					"(Uncommon) The audio file to use for this chart, overriding the song music." +
-					"\nIn most cases all charts use the same music and it is defined at the song level.");
-
-				ImGuiLayoutUtils.DrawRowDragDoubleWithEnabledCheckbox(true, "Music Offset", editorChart,
-					nameof(EditorChart.MusicOffset), nameof(EditorChart.UsesChartMusicOffset), true,
-					"(Uncommon) The music offset from the start of the chart." +
-					"\nIn most cases all charts use the same music offset and it is defined at the song level.",
-					0.0001f, "%.6f seconds");
-
-				ImGuiLayoutUtils.EndTable();
-			}
-
-			ImGui.Separator();
-			if (ImGuiLayoutUtils.BeginTable("ChartExpressionTable", TitleColumnWidth))
-			{
-				ImGuiLayoutUtils.DrawExpressedChartConfigCombo(editorChart, "Expression",
-					"(Editor Only) Expressed Chart Configuration."
-					+ "\nThis configuration is used by GrooveAuthor to parse the Chart and interpret its steps."
-					+ "\nThis interpretation is used for autogenerating patterns and other Charts.");
-				ImGuiLayoutUtils.EndTable();
-			}
-
-			ImGui.Separator();
-			if (ImGuiLayoutUtils.BeginTable("ChartDetailsTable", TitleColumnWidth))
-			{
-				ImGuiLayoutUtils.DrawTitle("Distribution", "Distribution of steps across lanes.");
-				if (editorChart != null)
+				if (ImGuiLayoutUtils.BeginTable("UncommonChartProperties", TitleColumnWidth))
 				{
-					var width = ImGui.GetContentRegionAvail().X;
-					if (ImGui.BeginTable("DistributionInnerTable", 1, ImGuiTableFlags.None, new Vector2(width, 0), width))
-					{
-						ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100.0f);
-						ImGui.TableNextRow();
-						ImGui.TableSetColumnIndex(0);
-						ArrowWeightsWidget.DrawChartStepCounts(Editor, editorChart);
-						ImGui.EndTable();
-					}
+					ImGuiLayoutUtils.DrawRowTextInput(true, "Style", editorChart, nameof(EditorChart.Style), true,
+						"Originally meant to denote \"Pad\" versus \"Keyboard\" charts.");
+					ImGuiLayoutUtils.EndTable();
 				}
 
-				ImGuiLayoutUtils.EndTable();
+				ImGui.Separator();
+				if (ImGuiLayoutUtils.BeginTable("MusicProperties", TitleColumnWidth))
+				{
+					ImGuiLayoutUtils.DrawRowFileBrowse("Music", editorChart, nameof(EditorChart.MusicPath),
+						() => BrowseMusicFile(editorChart),
+						() => ClearMusicFile(editorChart),
+						true,
+						"The audio file to use for this chart, overriding the song music." +
+						"\nIn most cases all charts use the same music and it is defined at the song level.");
+
+					ImGuiLayoutUtils.DrawRowDragDoubleWithEnabledCheckbox(true, "Music Offset", editorChart,
+						nameof(EditorChart.MusicOffset), nameof(EditorChart.UsesChartMusicOffset), true,
+						"The music offset from the start of the chart." +
+						"\nIn most cases all charts use the same music offset and it is defined at the song level.",
+						0.0001f, "%.6f seconds");
+
+					ImGuiLayoutUtils.EndTable();
+				}
+
+				ImGui.Separator();
+				if (ImGuiLayoutUtils.BeginTable("ChartExpressionTable", TitleColumnWidth))
+				{
+					ImGuiLayoutUtils.DrawExpressedChartConfigCombo(editorChart, "Expression",
+						"(Editor Only) Expressed Chart Configuration."
+						+ "\nThis configuration is used by GrooveAuthor to parse the Chart and interpret its steps."
+						+ "\nThis interpretation is used for autogenerating patterns and other Charts.");
+					ImGuiLayoutUtils.EndTable();
+				}
+
+				ImGui.Separator();
+				if (ImGuiLayoutUtils.BeginTable("ChartDetailsTable", TitleColumnWidth))
+				{
+					ImGuiLayoutUtils.DrawTitle("Distribution", "Distribution of steps across lanes.");
+					if (editorChart != null)
+					{
+						var width = ImGui.GetContentRegionAvail().X;
+						if (ImGui.BeginTable("DistributionInnerTable", 1, ImGuiTableFlags.None, new Vector2(width, 0), width))
+						{
+							ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100.0f);
+							ImGui.TableNextRow();
+							ImGui.TableSetColumnIndex(0);
+							ArrowWeightsWidget.DrawChartStepCounts(Editor, editorChart);
+							ImGui.EndTable();
+						}
+					}
+
+					ImGuiLayoutUtils.EndTable();
+				}
 			}
 
 			if (disabled)

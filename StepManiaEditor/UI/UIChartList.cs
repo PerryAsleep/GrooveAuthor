@@ -14,6 +14,8 @@ internal sealed class UIChartList
 	private static readonly int TypeWidth = UiScaled(60);
 	private static readonly int RatingWidth = UiScaled(16);
 	private static readonly int AddChartWidth = UiScaled(86);
+	private static readonly Vector2 DefaultPosition = new(UiScaled(0), UiScaled(872));
+	private static readonly Vector2 DefaultSize = new(UiScaled(622), UiScaled(208));
 
 	private EditorChart ChartPendingDelete;
 
@@ -27,7 +29,8 @@ internal sealed class UIChartList
 		if (!Preferences.Instance.ShowChartListWindow)
 			return;
 
-		ImGui.SetNextWindowSize(Vector2.Zero, ImGuiCond.FirstUseEver);
+		ImGui.SetNextWindowPos(DefaultPosition, ImGuiCond.FirstUseEver);
+		ImGui.SetNextWindowSize(DefaultSize, ImGuiCond.FirstUseEver);
 		if (ImGui.Begin(WindowTitle, ref Preferences.Instance.ShowChartListWindow, ImGuiWindowFlags.NoScrollbar))
 		{
 			var disabled = !Editor.CanSongBeEdited(editorSong);
