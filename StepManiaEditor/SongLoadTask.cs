@@ -43,7 +43,6 @@ internal sealed class SongLoadState
 /// </summary>
 internal sealed class SongLoadTask : CancellableTask<SongLoadState>
 {
-	private readonly Editor Editor;
 	private readonly GraphicsDevice GraphicsDevice;
 	private readonly ImGuiRenderer ImGuiRenderer;
 
@@ -53,9 +52,8 @@ internal sealed class SongLoadTask : CancellableTask<SongLoadState>
 	private EditorChart ActiveChart;
 	private string ActiveFileName;
 
-	public SongLoadTask(Editor editor, GraphicsDevice graphicsDevice, ImGuiRenderer imGuiRenderer)
+	public SongLoadTask(GraphicsDevice graphicsDevice, ImGuiRenderer imGuiRenderer)
 	{
-		Editor = editor;
 		GraphicsDevice = graphicsDevice;
 		ImGuiRenderer = imGuiRenderer;
 	}

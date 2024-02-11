@@ -933,7 +933,7 @@ internal sealed class Editor :
 
 	private void InitializeSongLoadTask()
 	{
-		SongLoadTask = new SongLoadTask(this, GraphicsDevice, ImGuiRenderer);
+		SongLoadTask = new SongLoadTask(GraphicsDevice, ImGuiRenderer);
 	}
 
 	/// <summary>
