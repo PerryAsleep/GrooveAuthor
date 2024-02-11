@@ -467,9 +467,20 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		CreditInternal = chart.Author ?? "";
 		chart.Extras.TryGetExtra(TagMusic, out string musicPath, true);
 		MusicPathInternal = musicPath;
-		UsesChartMusicOffsetInternal = chart.Extras.TryGetExtra(TagOffset, out double musicOffset, true);
-		if (UsesChartMusicOffset)
-			MusicOffsetInternal = musicOffset;
+
+		// Only set this chart to be using an explicit offset if it both has an offset
+		// and that offset is different than the song's offset. It is common for charts
+		// to have explicit offsets that are copies of the song's, and in those cases we
+		// don't want to treat the chart as overriding the song.
+		var chartHasExplicitMusicOffset = chart.Extras.TryGetExtra(TagOffset, out double musicOffset, true);
+		if (chartHasExplicitMusicOffset)
+		{
+			if (!musicOffset.DoubleEquals(editorSong.MusicOffset))
+			{
+				UsesChartMusicOffsetInternal = true;
+				MusicOffsetInternal = musicOffset;
+			}
+		}
 
 		DisplayTempoFromChart = !string.IsNullOrEmpty(chart.Tempo);
 		DisplayTempo.FromString(chart.Tempo);
@@ -2590,8 +2601,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		var match = true;
 
 		// Charts must use the same music offset.
-		var musicOffset = UsesChartMusicOffset ? MusicOffset : EditorSong.MusicOffset;
-		var otherMusicOffset = other.UsesChartMusicOffset ? other.MusicOffset : other.EditorSong.MusicOffset;
+		var musicOffset = GetMusicOffset();
+		var otherMusicOffset = other.GetMusicOffset();
 		if (!musicOffset.DoubleEquals(otherMusicOffset))
 		{
 			if (logDifferences)
@@ -2693,11 +2704,11 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 				chart.Extras.AddDestExtra(TagChartStyle, Style, true);
 				chart.Author = Credit;
 				chart.Extras.AddDestExtra(TagMusic, MusicPath, true);
-				if (UsesChartMusicOffset)
-					chart.Extras.AddDestExtra(TagOffset, MusicOffset, true);
-				else
-					chart.Extras.RemoveSourceExtra(TagOffset);
 				chart.Tempo = DisplayTempo.ToString();
+
+				// Always set the chart's music offset. Clear any existing extra tag that may be stale.
+				chart.ChartOffsetFromMusic = GetMusicOffset();
+				chart.Extras.RemoveSourceExtra(TagOffset);
 
 				SerializeCustomChartData(customProperties);
 
