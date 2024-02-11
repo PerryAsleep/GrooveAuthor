@@ -94,6 +94,16 @@ public class UIOptions
 			}
 
 			ImGui.Separator();
+			if (ImGuiLayoutUtils.BeginTable("Options Background", TitleColumnWidth))
+			{
+				ImGuiLayoutUtils.DrawRowCheckbox(true, "Hide Song Background", p,
+					nameof(PreferencesOptions.HideSongBackground), false,
+					"Whether or not to hide the song's Background image in the editor.");
+
+				ImGuiLayoutUtils.EndTable();
+			}
+
+			ImGui.Separator();
 			if (ImGuiLayoutUtils.BeginTable("Options UI", TitleColumnWidth))
 			{
 				//var defaultDpiScale = GetDpiScaleSystemDefault();

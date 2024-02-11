@@ -2050,6 +2050,13 @@ internal sealed class Editor :
 
 	private void DrawBackground()
 	{
+		// If the background should be hidden, just clear with black and return.
+		if (Preferences.Instance.PreferencesOptions.HideSongBackground)
+		{
+			GraphicsDevice.Clear(Color.Black);
+			return;
+		}
+
 		// If there is no background image, just clear with black and return.
 		if (!(ActiveSong?.GetBackground()?.GetTexture()?.IsBound() ?? false))
 		{
@@ -2078,6 +2085,21 @@ internal sealed class Editor :
 		if (!p.ShowDarkBg)
 			return;
 
+		var (x, w) = GetDarkBgXAndW();
+
+		SpriteBatch.Begin();
+		TextureAtlas.Draw("dark-bg", SpriteBatch, new Rectangle(x, 0, w, GetViewportHeight()),
+			new Color(p.Color.X, p.Color.Y, p.Color.Z, p.Color.W));
+		SpriteBatch.End();
+	}
+
+	private (int, int) GetDarkBgXAndW()
+	{
+		var x = 0;
+		var w = 0;
+		if (ActiveChart == null || ArrowGraphicManager == null)
+			return (x, w);
+
 		var (receptorTextureId, _) = ArrowGraphicManager.GetReceptorTexture(0);
 		var (receptorTextureWidth, _) = TextureAtlas.GetDimensions(receptorTextureId);
 		var zoom = ZoomManager.GetSizeZoom();
@@ -2093,8 +2115,7 @@ internal sealed class Editor :
 		var waveformWCurrent = WaveFormRenderer.GetScaledWaveFormWidth(ZoomManager.GetSpacingZoom());
 		var waveformXCurrent = (int)(waveformXMax + waveformWMax * 0.5f - waveformWCurrent * 0.5f);
 
-		var x = 0;
-		var w = 0;
+		var p = Preferences.Instance.PreferencesDark;
 		switch (p.Size)
 		{
 			case PreferencesDark.SizeMode.WaveFormWidthMax:
@@ -2123,10 +2144,7 @@ internal sealed class Editor :
 				break;
 		}
 
-		SpriteBatch.Begin();
-		TextureAtlas.Draw("dark-bg", SpriteBatch, new Rectangle(x, 0, w, GetViewportHeight()),
-			new Color(p.Color.X, p.Color.Y, p.Color.Z, p.Color.W));
-		SpriteBatch.End();
+		return (x, w);
 	}
 
 	private void DrawReceptors()
@@ -4182,6 +4200,13 @@ internal sealed class Editor :
 			var isInWaveFormArea = Preferences.Instance.PreferencesWaveForm.ShowWaveForm
 			                       && x >= GetFocalPointX() - (WaveFormTextureWidth >> 1)
 			                       && x <= GetFocalPointX() + (WaveFormTextureWidth >> 1);
+			var isInDarkArea = false;
+			if (Preferences.Instance.PreferencesDark.ShowDarkBg)
+			{
+				var (darkX, darkW) = GetDarkBgXAndW();
+				isInDarkArea = x >= darkX && x <= darkX + darkW;
+			}
+
 			var isInReceptorArea = Receptor.IsInReceptorArea(x, y, GetFocalPoint(), ZoomManager.GetSizeZoom(), TextureAtlas,
 				ArrowGraphicManager, ActiveChart);
 			var selectedEvents = Selection.GetSelectedEvents();
@@ -4443,6 +4468,7 @@ internal sealed class Editor :
 				ImGui.EndMenu();
 			}
 
+			var anyObjectHovered = false;
 			if (isInMiniMapArea)
 			{
 				if (ImGui.BeginMenu("Mini Map Preferences"))
@@ -4450,6 +4476,8 @@ internal sealed class Editor :
 					UIMiniMapPreferences.DrawContents();
 					ImGui.EndMenu();
 				}
+
+				anyObjectHovered = true;
 			}
 			else if (isInReceptorArea)
 			{
@@ -4458,14 +4486,50 @@ internal sealed class Editor :
 					UIReceptorPreferences.DrawContents();
 					ImGui.EndMenu();
 				}
+
+				anyObjectHovered = true;
 			}
-			else if (isInWaveFormArea)
+			else
 			{
-				if (ImGui.BeginMenu("Waveform Preferences"))
+				if (isInWaveFormArea)
 				{
-					UIWaveFormPreferences.DrawContents();
+					if (ImGui.BeginMenu("Waveform Preferences"))
+					{
+						UIWaveFormPreferences.DrawContents();
+						ImGui.EndMenu();
+					}
+
+					anyObjectHovered = true;
+				}
+
+				if (isInDarkArea)
+				{
+					if (ImGui.BeginMenu("Dark Preferences"))
+					{
+						UIDarkPreferences.DrawContents();
+						ImGui.EndMenu();
+					}
+
+					anyObjectHovered = true;
+				}
+			}
+
+			if (!anyObjectHovered)
+			{
+				var o = Preferences.Instance.PreferencesOptions;
+				var hideBg = o.HideSongBackground;
+				if (ImGui.Checkbox("Hide Background", ref hideBg))
+				{
+					if (hideBg != o.HideSongBackground)
+					{
+						ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyValue<bool>(o,
+							nameof(PreferencesOptions.HideSongBackground), hideBg, false));
+					}
+
 					ImGui.EndMenu();
 				}
+
+				anyObjectHovered = true;
 			}
 
 			var row = Math.Max(0, Position.GetNearestRow());
