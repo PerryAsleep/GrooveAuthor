@@ -196,9 +196,4 @@ internal sealed class EditorSearchInterpolatedRateAlteringEvent : EditorInterpol
 		: base(config, null)
 	{
 	}
-
-	public override bool IsInterpolatedRateAlteringSearchEvent()
-	{
-		return true;
-	}
 }

@@ -255,6 +255,96 @@ internal sealed class ImGuiLayoutUtils
 		}
 	}
 
+	public static void DrawRowTwoButtons(
+		string title,
+		string buttonText1,
+		Action action1,
+		bool action1Enabled,
+		string buttonText2,
+		Action action2,
+		bool action2Enabled,
+		string help = null)
+	{
+		DrawRowTitleAndAdvanceColumn(title);
+		var remainingWidth = DrawHelp(help, ImGui.GetContentRegionAvail().X);
+
+		var buttonWidth = (remainingWidth - ImGui.GetStyle().ItemSpacing.X) * 0.5f;
+		var buttonWidthVec = new Vector2(buttonWidth, 0.0f);
+
+		if (!action1Enabled)
+			PushDisabled();
+		if (ImGui.Button(buttonText1, buttonWidthVec))
+		{
+			action1();
+		}
+
+		if (!action1Enabled)
+			PopDisabled();
+
+		ImGui.SameLine();
+		if (!action2Enabled)
+			PushDisabled();
+		if (ImGui.Button(buttonText2, buttonWidthVec))
+		{
+			action2();
+		}
+
+		if (!action2Enabled)
+			PopDisabled();
+	}
+
+	public static void DrawRowThreeButtons(
+		string title,
+		string buttonText1,
+		Action action1,
+		bool action1Enabled,
+		string buttonText2,
+		Action action2,
+		bool action2Enabled,
+		string buttonText3,
+		Action action3,
+		bool action3Enabled,
+		string help = null)
+	{
+		DrawRowTitleAndAdvanceColumn(title);
+		var remainingWidth = DrawHelp(help, ImGui.GetContentRegionAvail().X);
+
+		var buttonWidth = (remainingWidth - ImGui.GetStyle().ItemSpacing.X) / 3.0f;
+		var buttonWidthVec = new Vector2(buttonWidth, 0.0f);
+
+		if (!action1Enabled)
+			PushDisabled();
+		if (ImGui.Button(buttonText1, buttonWidthVec))
+		{
+			action1();
+		}
+
+		if (!action1Enabled)
+			PopDisabled();
+
+		ImGui.SameLine();
+		if (!action2Enabled)
+			PushDisabled();
+		if (ImGui.Button(buttonText2, buttonWidthVec))
+		{
+			action2();
+		}
+
+		if (!action2Enabled)
+			PopDisabled();
+
+		ImGui.SameLine();
+		if (!action3Enabled)
+			PushDisabled();
+		if (ImGui.Button(buttonText3, buttonWidthVec))
+		{
+			action3();
+		}
+
+		if (!action3Enabled)
+			PopDisabled();
+	}
+
 	#endregion Button
 
 	#region Text Input

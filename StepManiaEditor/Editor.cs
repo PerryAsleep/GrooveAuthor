@@ -1249,6 +1249,8 @@ internal sealed class Editor :
 	{
 		if (ActiveSong != null && !ActiveSong.CanBeEdited())
 			return false;
+		if (ActiveSong != null && !ActiveSong.CanAllChartsBeEdited())
+			return false;
 		if (ActiveChart != null && !ActiveChart.CanBeEdited())
 			return false;
 		if (ActionQueue.Instance.IsDoingOrUndoing())
@@ -3603,6 +3605,7 @@ internal sealed class Editor :
 		var p = Preferences.Instance;
 		var canEdit = CanEdit();
 		var hasSong = ActiveSong != null;
+		var hasChart = ActiveChart != null;
 		var canEditSong = canEdit && hasSong;
 		if (ImGui.BeginMainMenuBar())
 		{
@@ -3611,12 +3614,6 @@ internal sealed class Editor :
 				if (ImGui.MenuItem("New Song", "Ctrl+N"))
 				{
 					OnNew();
-				}
-
-				if (ImGui.BeginMenu("New Chart", canEditSong))
-				{
-					DrawNewChartSelectableList();
-					ImGui.EndMenu();
 				}
 
 				ImGui.Separator();
@@ -3786,6 +3783,18 @@ internal sealed class Editor :
 					ImGui.EndMenu();
 				}
 
+				if (ImGui.MenuItem("Clone Current Chart", canEditSong && hasChart))
+				{
+					ActionQueue.Instance.Do(new ActionCloneChart(this, ActiveChart));
+				}
+
+				if (ImGui.MenuItem("Autogen New Chart...", canEditSong && hasChart))
+				{
+					ShowAutogenChartUI(ActiveChart);
+				}
+
+				ImGui.Separator();
+
 				if (ImGui.MenuItem("View Chart Properties"))
 				{
 					p.ShowChartPropertiesWindow = true;
@@ -3815,16 +3824,16 @@ internal sealed class Editor :
 
 			if (ImGui.BeginMenu("Autogen"))
 			{
-				var disabled = !CanEdit();
+				var disabled = !canEdit;
 				if (disabled)
 					PushDisabled();
 
-				if (ImGui.Selectable("Autogen New Chart..."))
+				if (ImGui.MenuItem("Autogen New Chart...", hasChart))
 				{
 					ShowAutogenChartUI(ActiveChart);
 				}
 
-				if (ImGui.Selectable("Autogen New Set of Charts..."))
+				if (ImGui.MenuItem("Autogen New Set of Charts...", hasChart))
 				{
 					UIAutogenChartsForChartType.Show();
 					ImGui.SetWindowFocus(UIAutogenChartsForChartType.WindowTitle);

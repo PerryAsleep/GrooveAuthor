@@ -100,7 +100,7 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 		}
 
 		EditorEvent newEvent = null;
-		if (config.ChartEvents != null)
+		if (config.ChartEvents != null && config.ChartEvents.Count > 0)
 		{
 			// Intentional modification of DestType to preserve StepMania types like mines.
 			foreach (var chartEvent in config.ChartEvents)
@@ -172,17 +172,33 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 		}
 		else
 		{
-			if (config.IsRowOnlySearchEvent)
+			switch (config.SpecialEventType)
 			{
-				newEvent = new EditorSearchRateAlteringEventWithRow(config);
-			}
-			else if (config.IsTimeOnlySearchEvent)
-			{
-				newEvent = new EditorSearchRateAlteringEventWithTime(config);
-			}
-			else if (config.IsInterpolatedRateAlteringSearchEvent)
-			{
-				newEvent = new EditorSearchInterpolatedRateAlteringEvent(config);
+				case EventConfig.SpecialType.TimeOnlySearch:
+				{
+					newEvent = new EditorSearchRateAlteringEventWithTime(config);
+					break;
+				}
+				case EventConfig.SpecialType.RowSearch:
+				{
+					newEvent = new EditorSearchRateAlteringEventWithRow(config);
+					break;
+				}
+				case EventConfig.SpecialType.InterpolatedRateAlteringSearch:
+				{
+					newEvent = new EditorSearchInterpolatedRateAlteringEvent(config);
+					break;
+				}
+				case EventConfig.SpecialType.Preview:
+				{
+					newEvent = new EditorPreviewRegionEvent(config);
+					break;
+				}
+				case EventConfig.SpecialType.LastSecondHint:
+				{
+					newEvent = new EditorLastSecondHintEvent(config);
+					break;
+				}
 			}
 		}
 
@@ -509,19 +525,6 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	/// Whether or not this event is a search event that can be compared by only ChartPosition.
 	/// </returns>
 	public virtual bool IsRowOnlySearchEvent()
-	{
-		return false;
-	}
-
-	/// <summary>
-	/// Returns whether or not this event is a search event that can be compared by only ChartPosition.
-	/// Search events are not added to the EditorChart and are just used for performing
-	/// searches in data structures which require comparisons.
-	/// </summary>
-	/// <returns>
-	/// Whether or not this event is a search event that can be compared by only ChartPosition.
-	/// </returns>
-	public virtual bool IsInterpolatedRateAlteringSearchEvent()
 	{
 		return false;
 	}

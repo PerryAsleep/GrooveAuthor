@@ -18,6 +18,7 @@ internal sealed class UIChartList
 	private static readonly Vector2 DefaultSize = new(UiScaled(622), UiScaled(208));
 
 	private EditorChart ChartPendingDelete;
+	private EditorChart ChartPendingClone;
 
 	public UIChartList(Editor editor)
 	{
@@ -38,6 +39,7 @@ internal sealed class UIChartList
 				PushDisabled();
 
 			ChartPendingDelete = null;
+			ChartPendingClone = null;
 
 			var numCharts = DrawChartList(
 				editorSong,
@@ -50,9 +52,14 @@ internal sealed class UIChartList
 			if (ChartPendingDelete != null)
 			{
 				ActionQueue.Instance.Do(new ActionDeleteChart(Editor, ChartPendingDelete));
+				ChartPendingDelete = null;
 			}
 
-			ChartPendingDelete = null;
+			if (ChartPendingClone != null)
+			{
+				ActionQueue.Instance.Do(new ActionCloneChart(Editor, ChartPendingClone));
+				ChartPendingClone = null;
+			}
 
 			if (numCharts == 0)
 			{
@@ -62,10 +69,19 @@ internal sealed class UIChartList
 			ImGui.Separator();
 			if (ImGuiLayoutUtils.BeginTable("ChartAddTable", AddChartWidth))
 			{
-				if (ImGuiLayoutUtils.DrawRowButton("Add Chart", "Add Chart"))
-				{
-					ImGui.OpenPopup("AddChartPopup");
-				}
+				var cloneEnabled = editorChart != null;
+
+				ImGuiLayoutUtils.DrawRowThreeButtons("Add New Chart",
+					"New Chart...",
+					() => { ImGui.OpenPopup("AddChartPopup"); },
+					true,
+					"Clone Current Chart",
+					() => { ActionQueue.Instance.Do(new ActionCloneChart(Editor, editorChart)); },
+					cloneEnabled,
+					"Autogen New Chart...",
+					() => { Editor.ShowAutogenChartUI(editorChart); },
+					cloneEnabled,
+					"Add a new blank chart or create a new chart using an existing chart as a starting point.");
 
 				if (ImGui.BeginPopup("AddChartPopup"))
 				{
@@ -259,6 +275,11 @@ internal sealed class UIChartList
 		if (ImGui.MenuItem($"Delete {chart.ChartDifficultyType} Chart"))
 		{
 			ChartPendingDelete = chart;
+		}
+
+		if (ImGui.MenuItem($"Clone {chart.ChartDifficultyType} Chart"))
+		{
+			ChartPendingClone = chart;
 		}
 
 		if (ImGui.MenuItem($"Autogen New Chart From {chart.ChartDifficultyType} Chart..."))

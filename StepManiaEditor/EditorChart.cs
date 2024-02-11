@@ -435,6 +435,12 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 	#region Constructors
 
+	/// <summary>
+	/// Construct an EditorChart from the given Stepmania Chart.
+	/// Can throw an exception if the Chart is malformed.
+	/// </summary>
+	/// <param name="editorSong">Parent EditorSong.</param>
+	/// <param name="chart">Chart to use.</param>
 	public EditorChart(EditorSong editorSong, Chart chart)
 	{
 		WorkQueue = new WorkQueue();
@@ -480,6 +486,12 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		DeserializeCustomChartData(chart);
 	}
 
+	/// <summary>
+	/// Construct an EditorChart of the given ChartType.
+	/// Will create the minimum set of needed events for a valid chart.
+	/// </summary>
+	/// <param name="editorSong">Parent EditorSong.</param>
+	/// <param name="chartType">ChartType to create.</param>
 	public EditorChart(EditorSong editorSong, ChartType chartType)
 	{
 		WorkQueue = new WorkQueue();
@@ -528,6 +540,48 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		SetUpEditorEvents(tempChart);
 	}
 
+	/// <summary>
+	/// Copy Constructor.
+	/// Will clone the given EditorChart's events.
+	/// </summary>
+	/// <param name="other">Other EditorChart to clone.</param>
+	public EditorChart(EditorChart other)
+	{
+		WorkQueue = new WorkQueue();
+
+		ExpressedChartConfigInternal = other.ExpressedChartConfigInternal;
+
+		EditorSong = other.EditorSong;
+		ChartTypeInternal = other.ChartTypeInternal;
+
+		NumInputs = other.NumInputs;
+		NumPlayers = other.NumPlayers;
+
+		Name = other.Name;
+		Description = other.Description;
+		Style = other.Style;
+		Credit = other.Credit;
+		MusicPath = other.MusicPath;
+		UsesChartMusicOffset = other.UsesChartMusicOffsetInternal;
+		DisplayTempoFromChart = other.DisplayTempoFromChart;
+		ChartDifficultyTypeInternal = other.ChartDifficultyTypeInternal;
+
+		Rating = other.Rating;
+
+		StepCount = 0;
+		FakeCount = 0;
+		LiftCount = 0;
+		StepCountsByLane = new int[NumInputs];
+		for (var a = 0; a < NumInputs; a++)
+			StepCountsByLane[a] = 0;
+
+		SetUpEditorEvents(other);
+	}
+
+	/// <summary>
+	/// Sets up this EditorChart's EditorEvent data structures from a Stepmania Chart.
+	/// </summary>
+	/// <param name="chart">Stepmania Chart to use for creating EditorEvents.</param>
 	private void SetUpEditorEvents(Chart chart)
 	{
 		var editorEvents = new EventTree(this);
@@ -656,6 +710,47 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			UpdateEventTimingData();
 			ActionQueue.Instance.SetHasUnsavedChanges();
 		}
+	}
+
+	/// <summary>
+	/// Sets up this EditorChart's EditorEvent data structures from another EditorChart.
+	/// </summary>
+	/// <param name="other">Other EditorChart to use for copying EditorEvents.</param>
+	private void SetUpEditorEvents(EditorChart other)
+	{
+		var events = new List<EditorEvent>();
+		foreach (var chartEvent in other.GetEvents())
+			events.Add(chartEvent.Clone(this));
+
+		var editorEvents = new EventTree(this);
+		var holds = new EventTree(this);
+		var rateAlteringEvents = new RateAlteringEventTree(this);
+		var interpolatedScrollRateEvents = new RedBlackTree<EditorInterpolatedRateAlteringEvent>();
+		var miscEvents = new EventTree(this);
+
+		foreach (var editorEvent in events)
+		{
+			editorEvents.Insert(editorEvent);
+			UpdateCachedDataForAddedEvent(editorEvent);
+			if (editorEvent is EditorRateAlteringEvent rae)
+				rateAlteringEvents.Insert(rae);
+			if (editorEvent.IsMiscEvent())
+				miscEvents.Insert(editorEvent);
+			if (editorEvent is EditorPreviewRegionEvent pe)
+				PreviewEvent = pe;
+			if (editorEvent is EditorLastSecondHintEvent lse)
+				LastSecondHintEvent = lse;
+			editorEvent.OnAddedToChart();
+		}
+
+		EditorEvents = editorEvents;
+		Holds = holds;
+		RateAlteringEvents = rateAlteringEvents;
+		InterpolatedScrollRateEvents = interpolatedScrollRateEvents;
+		MiscEvents = miscEvents;
+
+		RefreshIntervals();
+		CleanRateAlteringEvents();
 	}
 
 	private static TimeSignature CreateDefaultTimeSignature(EditorSong editorSong)
@@ -1152,9 +1247,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		if (!EditorSong.IsUsingSongForPreview())
 			return;
 		var previewChartTime = EditorPosition.GetChartTimeFromSongTime(this, EditorSong.SampleStart);
-		var chartPosition = 0.0;
-		TryGetChartPositionFromTime(previewChartTime, ref chartPosition);
-		PreviewEvent = new EditorPreviewRegionEvent(this, chartPosition);
+		PreviewEvent = (EditorPreviewRegionEvent)EditorEvent.CreateEvent(EventConfig.CreatePreviewConfig(this, previewChartTime));
 		AddEvent(PreviewEvent);
 	}
 
@@ -1195,7 +1288,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			return;
 		var chartPosition = 0.0;
 		TryGetChartPositionFromTime(EditorSong.LastSecondHint, ref chartPosition);
-		LastSecondHintEvent = new EditorLastSecondHintEvent(this, chartPosition);
+		LastSecondHintEvent =
+			(EditorLastSecondHintEvent)EditorEvent.CreateEvent(EventConfig.CreateLastSecondHintConfig(this, chartPosition));
 		AddEvent(LastSecondHintEvent);
 	}
 

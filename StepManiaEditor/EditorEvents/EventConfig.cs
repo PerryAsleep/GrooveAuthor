@@ -12,16 +12,25 @@ namespace StepManiaEditor;
 /// </summary>
 internal sealed class EventConfig
 {
+	/// <summary>
+	/// Types of EditorEvents which don't map to Stepmania Events.
+	/// </summary>
+	public enum SpecialType
+	{
+		None,
+		TimeOnlySearch,
+		RowSearch,
+		InterpolatedRateAlteringSearch,
+		Preview,
+		LastSecondHint,
+	}
+
 	public readonly EditorChart EditorChart;
 	public readonly List<Event> ChartEvents;
 	public readonly bool UseDoubleChartPosition;
 	public readonly double ChartPosition;
 	public readonly double ChartTime;
-	public readonly bool IsStandardSearchEvent;
-	public readonly bool IsTimeOnlySearchEvent;
-	public readonly bool IsRowOnlySearchEvent;
-	public readonly bool IsInterpolatedRateAlteringSearchEvent;
-
+	public readonly SpecialType SpecialEventType;
 	public bool IsBeingEdited;
 
 	private EventConfig(
@@ -30,10 +39,7 @@ internal sealed class EventConfig
 		bool useDoubleChartPosition = false,
 		double chartPosition = 0.0,
 		double chartTime = 0.0,
-		bool isStandardSearchEvent = false,
-		bool isTimeOnlySearchEvent = false,
-		bool isRowOnlySearchEvent = false,
-		bool isInterpolatedRateAlteringSearchEvent = false,
+		SpecialType specialType = SpecialType.None,
 		bool isBeingEdited = false)
 	{
 		EditorChart = editorChart;
@@ -41,10 +47,7 @@ internal sealed class EventConfig
 		UseDoubleChartPosition = useDoubleChartPosition;
 		ChartPosition = chartPosition;
 		ChartTime = chartTime;
-		IsStandardSearchEvent = isStandardSearchEvent;
-		IsTimeOnlySearchEvent = isTimeOnlySearchEvent;
-		IsRowOnlySearchEvent = isRowOnlySearchEvent;
-		IsInterpolatedRateAlteringSearchEvent = isInterpolatedRateAlteringSearchEvent;
+		SpecialEventType = specialType;
 		IsBeingEdited = isBeingEdited;
 	}
 
@@ -52,7 +55,30 @@ internal sealed class EventConfig
 	{
 		var clonedEvents = new List<Event>();
 		foreach (var originalEvent in editorEvent.GetEvents())
-			clonedEvents.Add(originalEvent.Clone());
+		{
+			if (originalEvent != null)
+				clonedEvents.Add(originalEvent.Clone());
+		}
+
+		var specialType = SpecialType.None;
+		switch (editorEvent)
+		{
+			case EditorSearchRateAlteringEventWithTime:
+				specialType = SpecialType.TimeOnlySearch;
+				break;
+			case EditorSearchRateAlteringEventWithRow:
+				specialType = SpecialType.RowSearch;
+				break;
+			case EditorSearchInterpolatedRateAlteringEvent:
+				specialType = SpecialType.InterpolatedRateAlteringSearch;
+				break;
+			case EditorPreviewRegionEvent:
+				specialType = SpecialType.Preview;
+				break;
+			case EditorLastSecondHintEvent:
+				specialType = SpecialType.LastSecondHint;
+				break;
+		}
 
 		return new EventConfig(
 			editorChart,
@@ -60,26 +86,26 @@ internal sealed class EventConfig
 			false,
 			editorEvent.GetChartPosition(),
 			editorEvent.GetChartTime(),
-			editorEvent.IsStandardSearchEvent(),
-			editorEvent.IsTimeOnlySearchEvent(),
-			editorEvent.IsRowOnlySearchEvent(),
-			editorEvent.IsInterpolatedRateAlteringSearchEvent(),
+			specialType,
 			editorEvent.IsBeingEdited());
 	}
 
 	public bool IsSearchEvent()
 	{
-		return IsStandardSearchEvent || IsTimeOnlySearchEvent || IsRowOnlySearchEvent || IsInterpolatedRateAlteringSearchEvent;
+		if (SpecialEventType == SpecialType.TimeOnlySearch
+		    || SpecialEventType == SpecialType.RowSearch
+		    || SpecialEventType == SpecialType.InterpolatedRateAlteringSearch)
+			return true;
+
+		if (ChartEvents != null && ChartEvents.Count == 1 && ChartEvents[0] is SearchEvent)
+			return true;
+
+		return false;
 	}
 
 	public static EventConfig CreateConfig(EditorChart chart, Event chartEvent)
 	{
 		return new EventConfig(chart, new List<Event> { chartEvent });
-	}
-
-	public static EventConfig CreateConfigNoEvent(EditorChart chart, double chartPosition)
-	{
-		return new EventConfig(chart, null, true, chartPosition);
 	}
 
 	public static EventConfig CreateHoldConfig(EditorChart chart, LaneHoldStartNote start, LaneHoldEndNote end)
@@ -373,6 +399,18 @@ internal sealed class EventConfig
 		}, false, row, chartTime);
 	}
 
+	public static EventConfig CreatePreviewConfig(EditorChart chart, double chartTime)
+	{
+		var chartPosition = 0.0;
+		chart.TryGetChartPositionFromTime(chartTime, ref chartPosition);
+		return new EventConfig(chart, null, true, chartPosition, chartTime, SpecialType.Preview);
+	}
+
+	public static EventConfig CreateLastSecondHintConfig(EditorChart chart, double chartPosition)
+	{
+		return new EventConfig(chart, null, true, chartPosition, 0.0, SpecialType.LastSecondHint);
+	}
+
 	public static EventConfig CreateSearchEventConfig(EditorChart chart, double chartPosition)
 	{
 		return new EventConfig(chart, new List<Event>
@@ -381,21 +419,21 @@ internal sealed class EventConfig
 			{
 				IntegerPosition = (int)chartPosition,
 			},
-		}, true, chartPosition, 0.0, true);
+		}, true, chartPosition);
 	}
 
 	public static EventConfig CreateSearchEventConfigWithOnlyTime(EditorChart chart, double chartTime)
 	{
-		return new EventConfig(chart, null, false, 0.0, chartTime, false, true);
+		return new EventConfig(chart, null, false, 0.0, chartTime, SpecialType.TimeOnlySearch);
 	}
 
 	public static EventConfig CreateSearchEventConfigWithOnlyRow(EditorChart chart, double row)
 	{
-		return new EventConfig(chart, null, true, row, 0.0, false, false, true);
+		return new EventConfig(chart, null, true, row, 0.0, SpecialType.RowSearch);
 	}
 
 	public static EventConfig CreateInterpolatedRateAlteringSearchEvent(EditorChart chart, double row, double chartTime)
 	{
-		return new EventConfig(chart, null, true, row, chartTime, false, false, false, true);
+		return new EventConfig(chart, null, true, row, chartTime, SpecialType.InterpolatedRateAlteringSearch);
 	}
 }

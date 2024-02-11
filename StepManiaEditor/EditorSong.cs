@@ -966,6 +966,20 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 		return WorkQueue.IsEmpty();
 	}
 
+	public bool CanAllChartsBeEdited()
+	{
+		foreach (var kvp in Charts)
+		{
+			foreach (var chart in kvp.Value)
+			{
+				if (!chart.CanBeEdited())
+					return false;
+			}
+		}
+
+		return true;
+	}
+
 	public double GetBestChartStartingTempo()
 	{
 		var histogram = new Dictionary<double, int>();

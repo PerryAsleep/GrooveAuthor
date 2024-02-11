@@ -145,8 +145,7 @@ internal sealed class EditorPreviewRegionEvent : EditorEvent, IChartRegion, Fume
 		}
 	}
 
-	public EditorPreviewRegionEvent(EditorChart editorChart, double chartPosition)
-		: base(EventConfig.CreateConfigNoEvent(editorChart, chartPosition))
+	public EditorPreviewRegionEvent(EventConfig config) : base(config)
 	{
 		WidthDirty = true;
 

@@ -65,8 +65,7 @@ internal sealed class EditorLastSecondHintEvent : EditorEvent
 		}
 	}
 
-	public EditorLastSecondHintEvent(EditorChart editorChart, double chartPosition)
-		: base(EventConfig.CreateConfigNoEvent(editorChart, chartPosition))
+	public EditorLastSecondHintEvent(EventConfig config) : base(config)
 	{
 		WidthDirty = true;
 
