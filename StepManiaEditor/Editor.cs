@@ -5665,11 +5665,24 @@ internal sealed class Editor :
 		ActionQueue.Instance.Do(new ActionDeleteEditorEvents(eventsToDelete, false));
 	}
 
-	// ReSharper disable once UnusedParameter.Local
 	private void OnEventsAdded(IReadOnlyList<EditorEvent> addedEvents)
 	{
 		// When adding notes, reset the AutoPlayer so it picks up the new state.
 		AutoPlayer?.Stop();
+
+		// When adding a pattern, select it.
+		// If multiple patterns were added, select the last one.
+		if (addedEvents != null)
+		{
+			for (var i = addedEvents.Count - 1; i >= 0; i--)
+			{
+				if (addedEvents[i] is EditorPatternEvent pattern)
+				{
+					OnSelectPattern(pattern);
+					break;
+				}
+			}
+		}
 	}
 
 	private void OnEventsDeleted(IReadOnlyList<EditorEvent> deletedEvents)
