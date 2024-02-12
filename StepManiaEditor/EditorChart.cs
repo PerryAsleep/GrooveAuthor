@@ -110,6 +110,11 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	private EventTree MiscEvents;
 
 	/// <summary>
+	/// Tree of all EditorLabelEvents.
+	/// </summary>
+	private EventTree Labels;
+
+	/// <summary>
 	/// Tree of all EditorRateAlteringEvents.
 	/// </summary>
 	private RateAlteringEventTree RateAlteringEvents;
@@ -600,6 +605,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		var rateAlteringEvents = new RateAlteringEventTree(this);
 		var interpolatedScrollRateEvents = new RedBlackTree<EditorInterpolatedRateAlteringEvent>();
 		var miscEvents = new EventTree(this);
+		var labels = new EventTree(this);
 
 		var pendingHoldStarts = new LaneHoldStartNote[NumInputs];
 		var lastScrollRateInterpolationValue = 1.0;
@@ -675,6 +681,10 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 					pendingHoldStarts[hen.Lane] = null;
 					holds.Insert(editorEvent);
 					break;
+				case Label:
+					editorEvent = EditorEvent.CreateEvent(EventConfig.CreateConfig(this, chartEvent));
+					labels.Insert(editorEvent);
+					break;
 				default:
 					editorEvent = EditorEvent.CreateEvent(EventConfig.CreateConfig(this, chartEvent));
 					break;
@@ -708,6 +718,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		RateAlteringEvents = rateAlteringEvents;
 		InterpolatedScrollRateEvents = interpolatedScrollRateEvents;
 		MiscEvents = miscEvents;
+		Labels = labels;
 
 		RefreshIntervals();
 		CleanRateAlteringEvents();
@@ -738,6 +749,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		var rateAlteringEvents = new RateAlteringEventTree(this);
 		var interpolatedScrollRateEvents = new RedBlackTree<EditorInterpolatedRateAlteringEvent>();
 		var miscEvents = new EventTree(this);
+		var labels = new EventTree(this);
 
 		foreach (var editorEvent in events)
 		{
@@ -751,6 +763,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 				PreviewEvent = pe;
 			if (editorEvent is EditorLastSecondHintEvent lse)
 				LastSecondHintEvent = lse;
+			if (editorEvent is EditorLabelEvent)
+				labels.Insert(editorEvent);
 			editorEvent.OnAddedToChart();
 		}
 
@@ -759,6 +773,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		RateAlteringEvents = rateAlteringEvents;
 		InterpolatedScrollRateEvents = interpolatedScrollRateEvents;
 		MiscEvents = miscEvents;
+		Labels = labels;
 
 		RefreshIntervals();
 		CleanRateAlteringEvents();
@@ -835,6 +850,11 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	public IReadOnlyEventTree GetMiscEvents()
 	{
 		return MiscEvents;
+	}
+
+	public IReadOnlyEventTree GetLabels()
+	{
+		return Labels;
 	}
 
 	public IReadOnlyRateAlteringEventTree GetRateAlteringEvents()
@@ -1918,6 +1938,12 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 				Assert(deleted);
 			}
 
+			if (editorEvent is EditorLabelEvent)
+			{
+				deleted = Labels.Delete(editorEvent);
+				Assert(deleted);
+			}
+
 			switch (editorEvent)
 			{
 				case EditorFakeSegmentEvent fse:
@@ -2036,6 +2062,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			EditorEvents.Insert(editorEvent);
 			if (editorEvent.IsMiscEvent())
 				MiscEvents.Insert(editorEvent);
+			if (editorEvent is EditorLabelEvent)
+				Labels.Insert(editorEvent);
 
 			switch (editorEvent)
 			{

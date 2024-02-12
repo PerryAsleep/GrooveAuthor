@@ -18,6 +18,8 @@ internal interface IReadOnlyEventTree : IReadOnlyRedBlackTree<EditorEvent>
 	IReadOnlyRedBlackTreeEnumerator FindFirstAfterChartTime(double chartTime);
 	IReadOnlyRedBlackTreeEnumerator FindFirstAfterChartPosition(double chartPosition);
 	IReadOnlyRedBlackTreeEnumerator FindFirstAtOrAfterChartPosition(double chartPosition);
+	EditorEvent FindPreviousEventWithLooping(double chartPosition);
+	EditorEvent FindNextEventWithLooping(double chartPosition);
 	EditorEvent FindNoteAt(int row, int lane, bool ignoreNotesBeingEdited);
 	List<EditorEvent> FindEventsAtRow(int row);
 }
@@ -167,6 +169,38 @@ internal class EventTree : RedBlackTree<EditorEvent>, IReadOnlyEventTree
 		}
 
 		return events;
+	}
+
+	public EditorEvent FindPreviousEventWithLooping(double chartPosition)
+	{
+		if (GetCount() == 0)
+			return null;
+
+		var enumerator = FindFirstBeforeChartPosition(chartPosition);
+		if (enumerator != null && enumerator.MoveNext() && enumerator.IsCurrentValid())
+			return enumerator.Current;
+
+		enumerator = Last();
+		if (enumerator != null && enumerator.MoveNext() && enumerator.IsCurrentValid())
+			return enumerator.Current;
+
+		return null;
+	}
+
+	public EditorEvent FindNextEventWithLooping(double chartPosition)
+	{
+		if (GetCount() == 0)
+			return null;
+
+		var enumerator = FindFirstAfterChartPosition(chartPosition);
+		if (enumerator != null && enumerator.MoveNext() && enumerator.IsCurrentValid())
+			return enumerator.Current;
+
+		enumerator = First();
+		if (enumerator != null && enumerator.MoveNext() && enumerator.IsCurrentValid())
+			return enumerator.Current;
+
+		return null;
 	}
 
 	public new void Insert(EditorEvent data)

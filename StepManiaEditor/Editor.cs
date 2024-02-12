@@ -620,6 +620,8 @@ internal sealed class Editor :
 		AddKeyCommand(navigation, "Move To Next Measure", new[] { Keys.PageDown }, OnMoveToNextMeasure, true, null, true);
 		AddKeyCommand(navigation, "Move To Chart Start", new[] { Keys.Home }, OnMoveToChartStart, false, null, true);
 		AddKeyCommand(navigation, "Move To Chart End", new[] { Keys.End }, OnMoveToChartEnd, false, null, true);
+		AddKeyCommand(navigation, "Move To Next Label", new[] { Keys.LeftControl, Keys.L }, OnMoveToNextLabel, true);
+		AddKeyCommand(navigation, "Move To Previous Label", new[] { Keys.LeftControl, Keys.LeftShift, Keys.L }, OnMoveToPreviousLabel, true);
 
 		const string patterns = "Patterns";
 		AddKeyCommand(patterns, "Move To Next Pattern", new[] { Keys.LeftControl, Keys.P }, OnMoveToNextPattern, true);
@@ -6395,6 +6397,38 @@ internal sealed class Editor :
 		var rows = sig.Numerator * (MaxValidDenominator * NumBeatsPerMeasure / sig.Denominator);
 		Position.ChartPosition += rows;
 
+		UpdateAutoPlayFromScrolling();
+	}
+
+	public void OnMoveToPreviousLabel()
+	{
+		OnMoveToPreviousLabel(Position.ChartPosition);
+	}
+
+	public void OnMoveToPreviousLabel(double chartPosition)
+	{
+		var label = ActiveChart?.GetLabels()?.FindPreviousEventWithLooping(chartPosition);
+		if (label == null)
+			return;
+		
+		var desiredRow = label.GetRow();
+		Position.ChartPosition = desiredRow;
+		UpdateAutoPlayFromScrolling();
+	}
+
+	public void OnMoveToNextLabel()
+	{
+		OnMoveToNextLabel(Position.ChartPosition);
+	}
+
+	public void OnMoveToNextLabel(double chartPosition)
+	{
+		var label = ActiveChart?.GetLabels()?.FindNextEventWithLooping(chartPosition);
+		if (label == null)
+			return;
+
+		var desiredRow = label.GetRow();
+		Position.ChartPosition = desiredRow;
 		UpdateAutoPlayFromScrolling();
 	}
 
