@@ -127,27 +127,27 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	/// <summary>
 	/// IntervalTree of all EditorStopEvents by time. Stop lengths are in time.
 	/// </summary>
-	private IntervalTree<double, EditorStopEvent> Stops;
+	private EventIntervalTree<EditorStopEvent> Stops;
 
 	/// <summary>
 	/// IntervalTree of all EditorDelayEvents by time. Delay lengths are in time.
 	/// </summary>
-	private IntervalTree<double, EditorDelayEvent> Delays;
+	private EventIntervalTree<EditorDelayEvent> Delays;
 
 	/// <summary>
 	/// IntervalTree of all EditorFakeSegmentEvent by time. Fake lengths are in time.
 	/// </summary>
-	private IntervalTree<double, EditorFakeSegmentEvent> Fakes;
+	private EventIntervalTree<EditorFakeSegmentEvent> Fakes;
 
 	/// <summary>
 	/// IntervalTree of all EditorWarpEvents by row.
 	/// </summary>
-	private IntervalTree<double, EditorWarpEvent> Warps;
+	private EventIntervalTree<EditorWarpEvent> Warps;
 
 	/// <summary>
 	/// IntervalTree of all EditorPatternEvents by row.
 	/// </summary>
-	private IntervalTree<double, EditorPatternEvent> Patterns;
+	private EventIntervalTree<EditorPatternEvent> Patterns;
 
 	/// <summary>
 	/// The EditorPreviewRegionEvent.
@@ -867,29 +867,34 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		return InterpolatedScrollRateEvents;
 	}
 
-	public IReadOnlyIntervalTree<double, EditorStopEvent> GetStops()
+	public IReadOnlyEventIntervalTree<EditorStopEvent> GetStops()
 	{
 		return Stops;
 	}
 
-	public IReadOnlyIntervalTree<double, EditorDelayEvent> GetDelays()
+	public IReadOnlyEventIntervalTree<EditorDelayEvent> GetDelays()
 	{
 		return Delays;
 	}
 
-	public IReadOnlyIntervalTree<double, EditorFakeSegmentEvent> GetFakes()
+	public IReadOnlyEventIntervalTree<EditorFakeSegmentEvent> GetFakes()
 	{
 		return Fakes;
 	}
 
-	public IReadOnlyIntervalTree<double, EditorWarpEvent> GetWarps()
+	public IReadOnlyEventIntervalTree<EditorWarpEvent> GetWarps()
 	{
 		return Warps;
 	}
 
-	public IReadOnlyIntervalTree<double, EditorPatternEvent> GetPatterns()
+	public IReadOnlyEventIntervalTree<EditorPatternEvent> GetPatterns()
 	{
 		return Patterns;
+	}
+
+	public EditorPreviewRegionEvent GetPreview()
+	{
+		return PreviewEvent;
 	}
 
 	public EditorSong GetEditorSong()
@@ -1143,11 +1148,11 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 	private void RefreshIntervals()
 	{
-		var stops = new IntervalTree<double, EditorStopEvent>();
-		var delays = new IntervalTree<double, EditorDelayEvent>();
-		var fakes = new IntervalTree<double, EditorFakeSegmentEvent>();
-		var warps = new IntervalTree<double, EditorWarpEvent>();
-		var patterns = new IntervalTree<double, EditorPatternEvent>();
+		var stops = new EventIntervalTree<EditorStopEvent>();
+		var delays = new EventIntervalTree<EditorDelayEvent>();
+		var fakes = new EventIntervalTree<EditorFakeSegmentEvent>();
+		var warps = new EventIntervalTree<EditorWarpEvent>();
+		var patterns = new EventIntervalTree<EditorPatternEvent>();
 
 		foreach (var editorEvent in EditorEvents)
 		{

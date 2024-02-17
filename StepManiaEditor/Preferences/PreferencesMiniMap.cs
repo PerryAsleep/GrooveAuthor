@@ -22,6 +22,11 @@ internal sealed class PreferencesMiniMap
 	public const Editor.SpacingMode DefaultMiniMapSpacingModeForVariable = Editor.SpacingMode.ConstantTime;
 	public const uint DefaultMiniMapVisibleTimeRange = 240;
 	public const uint DefaultMiniMapVisibleRowRange = 24576;
+	public const bool DefaultShowPatterns = true;
+	public const uint DefaultPatternsWidth = 8;
+	public const bool DefaultShowPreview = true;
+	public const uint DefaultPreviewWidth = 8;
+	public const bool DefaultShowLabels = true;
 
 	// Preferences.
 	[JsonInclude] public bool ShowMiniMapPreferencesWindow;
@@ -36,6 +41,11 @@ internal sealed class PreferencesMiniMap
 	[JsonInclude] public Editor.SpacingMode MiniMapSpacingModeForVariable = DefaultMiniMapSpacingModeForVariable;
 	[JsonInclude] public uint MiniMapVisibleTimeRange = DefaultMiniMapVisibleTimeRange;
 	[JsonInclude] public uint MiniMapVisibleRowRange = DefaultMiniMapVisibleRowRange;
+	[JsonInclude] public bool ShowPatterns = DefaultShowPatterns;
+	[JsonInclude] public uint PatternsWidth = DefaultPatternsWidth;
+	[JsonInclude] public bool ShowPreview = DefaultShowPreview;
+	[JsonInclude] public uint PreviewWidth = DefaultPreviewWidth;
+	[JsonInclude] public bool ShowLabels = DefaultShowLabels;
 
 	public bool IsUsingDefaults()
 	{
@@ -49,7 +59,12 @@ internal sealed class PreferencesMiniMap
 		       && MiniMapPosition == DefaultMiniMapPosition
 		       && MiniMapSpacingModeForVariable == DefaultMiniMapSpacingModeForVariable
 		       && MiniMapVisibleTimeRange == DefaultMiniMapVisibleTimeRange
-		       && MiniMapVisibleRowRange == DefaultMiniMapVisibleRowRange;
+		       && MiniMapVisibleRowRange == DefaultMiniMapVisibleRowRange
+		       && ShowPatterns == DefaultShowPatterns
+		       && PatternsWidth == DefaultPatternsWidth
+		       && ShowPreview == DefaultShowPreview
+		       && PreviewWidth == DefaultPreviewWidth
+		       && ShowLabels == DefaultShowLabels;
 	}
 
 	public void RestoreDefaults()
@@ -77,6 +92,11 @@ internal sealed class ActionRestoreMiniMapPreferenceDefaults : EditorAction
 	private readonly Editor.SpacingMode PreviousMiniMapSpacingModeForVariable;
 	private readonly uint PreviousMiniMapVisibleTimeRange;
 	private readonly uint PreviousMiniMapVisibleRowRange;
+	private readonly bool PreviousShowPatterns;
+	private readonly uint PreviousPatternsWidth;
+	private readonly bool PreviousShowPreview;
+	private readonly uint PreviousPreviewWidth;
+	private readonly bool PreviousShowLabels;
 
 	public ActionRestoreMiniMapPreferenceDefaults() : base(false, false)
 	{
@@ -92,6 +112,11 @@ internal sealed class ActionRestoreMiniMapPreferenceDefaults : EditorAction
 		PreviousMiniMapSpacingModeForVariable = p.MiniMapSpacingModeForVariable;
 		PreviousMiniMapVisibleTimeRange = p.MiniMapVisibleTimeRange;
 		PreviousMiniMapVisibleRowRange = p.MiniMapVisibleRowRange;
+		PreviousShowPatterns = p.ShowPatterns;
+		PreviousPatternsWidth = p.PatternsWidth;
+		PreviousShowPreview = p.ShowPreview;
+		PreviousPreviewWidth = p.PreviewWidth;
+		PreviousShowLabels = p.ShowLabels;
 	}
 
 	public override bool AffectsFile()
@@ -118,6 +143,11 @@ internal sealed class ActionRestoreMiniMapPreferenceDefaults : EditorAction
 		p.MiniMapSpacingModeForVariable = PreferencesMiniMap.DefaultMiniMapSpacingModeForVariable;
 		p.MiniMapVisibleTimeRange = PreferencesMiniMap.DefaultMiniMapVisibleTimeRange;
 		p.MiniMapVisibleRowRange = PreferencesMiniMap.DefaultMiniMapVisibleRowRange;
+		p.ShowPatterns = PreferencesMiniMap.DefaultShowPatterns;
+		p.PatternsWidth = PreferencesMiniMap.DefaultPatternsWidth;
+		p.ShowPreview = PreferencesMiniMap.DefaultShowPreview;
+		p.PreviewWidth = PreferencesMiniMap.DefaultPreviewWidth;
+		p.ShowLabels = PreferencesMiniMap.DefaultShowLabels;
 	}
 
 	protected override void UndoImplementation()
@@ -134,5 +164,10 @@ internal sealed class ActionRestoreMiniMapPreferenceDefaults : EditorAction
 		p.MiniMapSpacingModeForVariable = PreviousMiniMapSpacingModeForVariable;
 		p.MiniMapVisibleTimeRange = PreviousMiniMapVisibleTimeRange;
 		p.MiniMapVisibleRowRange = PreviousMiniMapVisibleRowRange;
+		p.ShowPatterns = PreviousShowPatterns;
+		p.PatternsWidth = PreviousPatternsWidth;
+		p.ShowPreview = PreviousShowPreview;
+		p.PreviewWidth = PreviousPreviewWidth;
+		p.ShowLabels = PreviousShowLabels;
 	}
 }

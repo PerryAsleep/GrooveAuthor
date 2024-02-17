@@ -1,4 +1,5 @@
 ﻿using System;
+using Fumen;
 using Fumen.ChartDefinition;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -22,8 +23,7 @@ namespace StepManiaEditor;
 ///    editor area and the full area.
 ///
 /// Expected Usage:
-///  Configure with SetNumLanes, SetLaneSpacing, and UpdateBounds.
-///  Each frame call UpdateBegin, followed by AddHold/AddNote/AddMine as needed. Finally call UpdateEnd.
+///  Each frame call UpdateBegin, followed by the various Add functions as needed. Finally call UpdateEnd.
 ///  Alternatively, call UpdateNoChart if there is no data to display.
 ///  Call Draw to render.
 ///  For input processing call MouseDown, MouseMove, and MouseUp.
@@ -144,6 +144,26 @@ internal sealed class MiniMap
 	private const uint EditorAreaSelectedColor = 0xFF3E3E3E;
 
 	/// <summary>
+	/// RGBA color of the cursor line.
+	/// </summary>
+	private const uint CursorColor = 0xFF8D8D8D;
+
+	/// <summary>
+	/// RGBA color of labels.
+	/// </summary>
+	private static readonly uint LabelColor;
+
+	/// <summary>
+	/// RGBA color of patterns.
+	/// </summary>
+	private static readonly uint PatternColor;
+
+	/// <summary>
+	/// RGBA color of the music preview.
+	/// </summary>
+	private static readonly uint PreviewColor;
+
+	/// <summary>
 	/// Textures to render to. Array for double buffering.
 	/// </summary>
 	private Texture2D[] Textures;
@@ -203,6 +223,16 @@ internal sealed class MiniMap
 	/// Spacing between each note in pixels.
 	/// </summary>
 	private uint NoteSpacing;
+
+	/// <summary>
+	/// Width of a pattern region in pixels.
+	/// </summary>
+	private uint PatternWidth = 2;
+
+	/// <summary>
+	/// Width of the preview region in pixels.
+	/// </summary>
+	private uint PreviewWidth = 2;
 
 	/// <summary>
 	/// Percentage of Editor Area to MiniMap Area over which to start fading out.
@@ -272,6 +302,17 @@ internal sealed class MiniMap
 	private ArrowGraphicManager ArrowGraphicManager;
 
 	/// <summary>
+	/// Static initializer.
+	/// </summary>
+	static MiniMap()
+	{
+		// Configure colors based on their UI colors.
+		LabelColor = ColorUtils.ColorRGBAMultiply(Utils.UILabelColorRGBA | 0xFF000000, 1.5f);
+		PatternColor = Utils.UIPatternColorRGBA | 0xFF000000;
+		PreviewColor = Utils.UIPreviewColorRGBA | 0xFF000000;
+	}
+
+	/// <summary>
 	/// Constructor.
 	/// </summary>
 	/// <param name="graphicsDevice">GraphicsDevice for rendering.</param>
@@ -319,6 +360,24 @@ internal sealed class MiniMap
 
 		if (dirty)
 			UpdateLaneXPositions();
+	}
+
+	/// <summary>
+	/// Set the width to display patterns in pixels.
+	/// </summary>
+	/// <param name="patternWidth">Pattern width in pixels.</param>
+	public void SetPatternWidth(uint patternWidth)
+	{
+		PatternWidth = patternWidth;
+	}
+
+	/// <summary>
+	/// Set the width to display the  music preview in pixels.
+	/// </summary>
+	/// <param name="previewWidth">Music preview width in pixels.</param>
+	public void SetPreviewWidth(uint previewWidth)
+	{
+		PreviewWidth = previewWidth;
 	}
 
 	/// <summary>
@@ -627,7 +686,7 @@ internal sealed class MiniMap
 	/// Add a note represented by the given LaneNote to the MiniMap.
 	/// </summary>
 	/// <param name="chartEvent">LaneNote to add.</param>
-	/// <param name="position">Position in Chart space. Can be time, row, or variable.</param>
+	/// <param name="position">Position in Chart space. Can be time or row.</param>
 	/// <param name="selected">Whether or not the note is selected.</param>
 	/// <returns>AddResult describing if the note was added.</returns>
 	public AddResult AddNote(LaneNote chartEvent, double position, bool selected)
@@ -642,7 +701,7 @@ internal sealed class MiniMap
 	/// Add a mine represented by the given LaneNote to the MiniMap.
 	/// </summary>
 	/// <param name="chartEvent">LaneNote to add.</param>
-	/// <param name="position">Position in Chart space. Can be time, row, or variable.</param>
+	/// <param name="position">Position in Chart space. Can be time or row.</param>
 	/// <param name="selected">Whether or not the mine is selected.</param>
 	/// <returns>AddResult describing if the note was added.</returns>
 	public AddResult AddMine(LaneNote chartEvent, double position, bool selected)
@@ -654,59 +713,73 @@ internal sealed class MiniMap
 	}
 
 	/// <summary>
-	/// Helper method for adding a short, non-hold note.
+	/// Add a cursor marker line to the MiniMap.
 	/// </summary>
-	/// <param name="y">Y position in pixels relative to Bounds.</param>
-	/// <param name="x">X position in pixels relative to Bounds.</param>
-	/// <param name="color">AGBR color of note to add.</param>
-	/// <returns>AddResult describing if the note was added.</returns>
-	private AddResult AddShortNote(double y, uint x, uint color)
+	/// <param name="position">Position in Chart space. Can be time or row.</param>
+	/// <returns></returns>
+	public AddResult AddCursor(double position)
 	{
-		return AddHorizontalLine(y, x, (uint)Math.Min(Bounds.Width - (RimWidth << 1), NoteWidth), color);
+		return AddHorizontalLine(
+			GetYPixelRelativeToBounds(position),
+			RimWidth,
+			(uint)(Bounds.Width - (RimWidth << 1)),
+			CursorColor);
 	}
 
 	/// <summary>
-	/// Helper method for adding a horizontal 1-pixel tall line.
+	/// Add a label marker line to the MiniMap.
 	/// </summary>
-	/// <param name="y">Y position in pixels relative to Bounds.</param>
-	/// <param name="x">X position in pixels relative to Bounds.</param>
-	/// <param name="w">Width in pixels.</param>
-	/// <param name="color">AGBR color of line.</param>
-	/// <returns>AddResult describing if the line was added.</returns>
-	private AddResult AddHorizontalLine(double y, uint x, uint w, uint color)
+	/// <param name="position">Position in Chart space. Can be time or row.</param>
+	/// <returns>AddResult describing if the label was added.</returns>
+	public AddResult AddLabel(double position)
 	{
-		var yInt = (int)y;
+		return AddHorizontalLine(
+			GetYPixelRelativeToBounds(position),
+			RimWidth,
+			(uint)(Bounds.Width - (RimWidth << 1)),
+			LabelColor);
+	}
 
-		if (yInt < RimWidth)
-			return AddResult.AboveTop;
-		if (yInt >= Bounds.Height - RimWidth)
-			return AddResult.BelowBottom;
-		if (w == 0)
-			return AddResult.InRange;
+	/// <summary>
+	/// Add a pattern region to the MiniMap.
+	/// </summary>
+	/// <param name="startPosition">Start position of the pattern in Chart space. Can be time or row.</param>
+	/// <param name="endPosition">End position of the pattern in Chart space. Can be time or row.</param>
+	/// <returns>AddResult describing if the pattern was added.</returns>
+	public AddResult AddPattern(double startPosition, double endPosition)
+	{
+		return AddRect(
+			(uint)Math.Max(RimWidth, Bounds.Width - RimWidth - PatternWidth),
+			(uint)(Bounds.Width - RimWidth - 1),
+			GetYPixelRelativeToBounds(startPosition),
+			GetYPixelRelativeToBounds(endPosition),
+			PatternColor
+		);
+	}
 
-		var percent = 1.0 - (y - yInt);
-
-		var c1 = Utils.ColorRGBAInterpolateBGR(ColorData[yInt * Bounds.Width + x], color, (float)percent);
-		for (var i = x; i < x + w; i++)
-			ColorData[yInt * Bounds.Width + i] = c1;
-
-		yInt++;
-		if (yInt < Bounds.Height - RimWidth)
-		{
-			var c2 = Utils.ColorRGBAInterpolateBGR(ColorData[yInt * Bounds.Width + x], color, (float)(1.0 - percent));
-			for (var i = x; i < x + w; i++)
-				ColorData[yInt * Bounds.Width + i] = c2;
-		}
-
-		return AddResult.InRange;
+	/// <summary>
+	/// Add a preview region to the MiniMap.
+	/// </summary>
+	/// <param name="startPosition">Start position of the preview in Chart space. Can be time or row.</param>
+	/// <param name="endPosition">End position of the preview in Chart space. Can be time or row.</param>
+	/// <returns>AddResult describing if the preview was added.</returns>
+	public AddResult AddPreview(double startPosition, double endPosition)
+	{
+		return AddRect(
+			RimWidth,
+			(uint)Math.Min(Bounds.Width - RimWidth - 1, RimWidth + PreviewWidth - 1),
+			GetYPixelRelativeToBounds(startPosition),
+			GetYPixelRelativeToBounds(endPosition),
+			PreviewColor
+		);
 	}
 
 	/// <summary>
 	/// Add a hold or roll note to the MiniMap.
 	/// </summary>
 	/// <param name="start">LaneHoldStartNote representing the start of the hold.</param>
-	/// <param name="startPosition">Start position of the hold in Chart space. Can be time, row, or variable.</param>
-	/// <param name="endPosition">End position of the hold in Chart space. Can be time, row, or variable.</param>
+	/// <param name="startPosition">Start position of the hold in Chart space. Can be time or row.</param>
+	/// <param name="endPosition">End position of the hold in Chart space. Can be time or row.</param>
 	/// <param name="roll">Whether or not the hold is a roll.</param>
 	/// <param name="selected">Whether or not the hold is selected.</param>
 	/// <returns>AddResult describing if the hold was added.</returns>
@@ -766,6 +839,127 @@ internal sealed class MiniMap
 			// Set the color.
 			for (var j = x; j < x + w; j++)
 				ColorData[y * Bounds.Width + j] = color;
+
+			i++;
+			y++;
+		}
+
+		return AddResult.InRange;
+	}
+
+	/// <summary>
+	/// Helper method for adding a short, non-hold note.
+	/// </summary>
+	/// <param name="y">Y position in pixels relative to Bounds.</param>
+	/// <param name="x">X position in pixels relative to Bounds.</param>
+	/// <param name="color">Color of note to add.</param>
+	/// <returns>AddResult describing if the note was added.</returns>
+	private AddResult AddShortNote(double y, uint x, uint color)
+	{
+		return AddHorizontalLine(y, x, (uint)Math.Min(Bounds.Width - (RimWidth << 1), NoteWidth), color);
+	}
+
+	/// <summary>
+	/// Helper method for adding a horizontal 1-pixel tall line.
+	/// </summary>
+	/// <param name="y">Y position in pixels relative to Bounds.</param>
+	/// <param name="x">X position in pixels relative to Bounds.</param>
+	/// <param name="w">Width in pixels.</param>
+	/// <param name="color">Color of line.</param>
+	/// <returns>AddResult describing if the line was added.</returns>
+	private AddResult AddHorizontalLine(double y, uint x, uint w, uint color)
+	{
+		var yInt = (int)y;
+
+		if (yInt < RimWidth)
+			return AddResult.AboveTop;
+		if (yInt >= Bounds.Height - RimWidth)
+			return AddResult.BelowBottom;
+		if (w == 0)
+			return AddResult.InRange;
+
+		var percent = (float)(1.0 - (y - yInt));
+		var i = yInt * Bounds.Width + x;
+		var iEnd = i + w;
+		var previousData = 0u;
+		var c = 0u;
+		for (; i < iEnd; i++)
+		{
+			if (ColorData[i] != previousData)
+			{
+				previousData = ColorData[i];
+				c = Utils.ColorRGBAInterpolateBGR(ColorData[i], color, percent);
+			}
+
+			ColorData[i] = c;
+		}
+
+		yInt++;
+		if (yInt >= Bounds.Height - RimWidth)
+			return AddResult.InRange;
+
+		percent = 1.0f - percent;
+		i = yInt * Bounds.Width + x;
+		iEnd = i + w;
+		previousData = 0u;
+		c = 0u;
+		for (; i < iEnd; i++)
+		{
+			if (ColorData[i] != previousData)
+			{
+				previousData = ColorData[i];
+				c = Utils.ColorRGBAInterpolateBGR(ColorData[i], color, percent);
+			}
+
+			ColorData[i] = c;
+		}
+
+		return AddResult.InRange;
+	}
+
+	/// <summary>
+	/// Helper method for adding a colored rectangle.
+	/// </summary>
+	/// <param name="startX">Inclusive start x position in pixels.</param>
+	/// <param name="endX">Inclusive end x position in pixels.</param>
+	/// <param name="startY">Start y position in pixels.</param>
+	/// <param name="endY">End y position in pixels.</param>
+	/// <param name="color">Color of the rectangle.</param>
+	/// <returns>AddResult describing if the rectangle was added.</returns>
+	private AddResult AddRect(uint startX, uint endX, double startY, double endY, uint color)
+	{
+		var y = (int)startY;
+		if (y >= Bounds.Height - RimWidth)
+			return AddResult.BelowBottom;
+		if (endY < RimWidth)
+			return AddResult.AboveTop;
+		if (endX < startX)
+			return AddResult.InRange;
+
+		var i = 0;
+		if (y < RimWidth)
+		{
+			i += RimWidth - y;
+			y = RimWidth;
+		}
+
+		while (y < endY)
+		{
+			if (y >= Bounds.Height - RimWidth)
+			{
+				break;
+			}
+
+			var destColor = color;
+			if (i == 0)
+				destColor = Utils.ColorRGBAInterpolateBGR(color, ColorData[y * Bounds.Width + startX],
+					(float)(startY - (int)startY));
+			else if (y + 1 >= endY)
+				destColor = Utils.ColorRGBAInterpolateBGR(color, ColorData[y * Bounds.Width + startX], (float)(1.0 - (endY - y)));
+
+			// Set the color.
+			for (var j = startX; j <= endX; j++)
+				ColorData[y * Bounds.Width + j] = destColor;
 
 			i++;
 			y++;
@@ -940,7 +1134,7 @@ internal sealed class MiniMap
 		// Fade out if configured to do so.
 		if (editorAreaPercentage >= FadeOutPercentage)
 		{
-			var alphaPercentage = Fumen.Interpolation.Lerp(1.0, 0.0, FadeOutPercentage, 1.0, editorAreaPercentage);
+			var alphaPercentage = Interpolation.Lerp(1.0, 0.0, FadeOutPercentage, 1.0, editorAreaPercentage);
 			var alphaByte = (byte)(alphaPercentage * byte.MaxValue);
 			var alphaColor = (uint)alphaByte << 24;
 			for (var i = 0; i < ColorData.Length; i++)

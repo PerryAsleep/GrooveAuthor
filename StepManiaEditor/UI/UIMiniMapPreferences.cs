@@ -65,6 +65,27 @@ internal sealed class UIMiniMapPreferences
 		}
 
 		ImGui.Separator();
+		if (ImGuiLayoutUtils.BeginTable("MiniMap Extra Notes", TitleColumnWidth))
+		{
+			ImGuiLayoutUtils.DrawRowCheckbox(true, "Show Patterns", p, nameof(PreferencesMiniMap.ShowPatterns), false,
+				"Whether or not to show pattern regions in the mini map.");
+			ImGuiLayoutUtils.DrawRowSliderUInt(true, "Pattern Width", p, nameof(PreferencesMiniMap.PatternsWidth), 1, 128,
+				false, "%i pixels", ImGuiSliderFlags.None,
+				"The width of the pattern regions in the mini map in pixels.");
+
+			ImGuiLayoutUtils.DrawRowCheckbox(true, "Show Preview", p, nameof(PreferencesMiniMap.ShowPreview), false,
+				"Whether or not to show the preview region in the mini map.");
+			ImGuiLayoutUtils.DrawRowSliderUInt(true, "Preview Width", p, nameof(PreferencesMiniMap.PreviewWidth), 1, 128,
+				false, "%i pixels", ImGuiSliderFlags.None,
+				"The width of the preview region in the mini map in pixels.");
+
+			ImGuiLayoutUtils.DrawRowCheckbox(true, "Show Labels", p, nameof(PreferencesMiniMap.ShowLabels), false,
+				"Whether or not to show labels in the mini map.");
+
+			ImGuiLayoutUtils.EndTable();
+		}
+
+		ImGui.Separator();
 		if (ImGuiLayoutUtils.BeginTable("MiniMap Selection", TitleColumnWidth))
 		{
 			ImGuiLayoutUtils.DrawRowEnum<MiniMap.SelectMode>(true, "Select Mode", p, nameof(PreferencesMiniMap.MiniMapSelectMode),

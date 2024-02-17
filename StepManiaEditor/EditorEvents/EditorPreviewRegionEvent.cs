@@ -197,6 +197,14 @@ internal sealed class EditorPreviewRegionEvent : EditorEvent, IChartRegion, Fume
 		return GetChartTime() + EditorChart.GetEditorSong().SampleLength;
 	}
 
+	public override double GetEndChartPosition()
+	{
+		var chartPosition = 0.0;
+		if (EditorChart.TryGetChartPositionFromTime(GetEndChartTime(), ref chartPosition))
+			return chartPosition;
+		return GetChartPosition();
+	}
+
 	public override bool IsMiscEvent()
 	{
 		return true;

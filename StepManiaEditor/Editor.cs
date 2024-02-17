@@ -3320,11 +3320,12 @@ internal sealed class Editor :
 			new Rectangle(x, GetMiniMapYPaddingFromTop(), (int)p.PreferencesMiniMap.MiniMapWidth, h));
 	}
 
-	private void UpdateMiniMapLaneSpacing()
+	private void UpdateMiniMapSpacing()
 	{
-		MiniMap.SetLaneSpacing(
-			Preferences.Instance.PreferencesMiniMap.MiniMapNoteWidth,
-			Preferences.Instance.PreferencesMiniMap.MiniMapNoteSpacing);
+		var p = Preferences.Instance.PreferencesMiniMap;
+		MiniMap.SetLaneSpacing(p.MiniMapNoteWidth, p.MiniMapNoteSpacing);
+		MiniMap.SetPatternWidth(p.PatternsWidth);
+		MiniMap.SetPreviewWidth(p.PreviewWidth);
 	}
 
 	private SpacingMode GetMiniMapSpacingMode()
@@ -3341,204 +3342,224 @@ internal sealed class Editor :
 		if (!pMiniMap.ShowMiniMap)
 			return;
 
-		if (ActiveChart == null || ActiveChart.GetEvents() == null || ArrowGraphicManager == null)
+		if (ActiveChart?.GetEvents() == null || ArrowGraphicManager == null)
 		{
 			MiniMap.UpdateNoChart();
 			return;
 		}
 
 		UpdateMiniMapBounds();
-		UpdateMiniMapLaneSpacing();
+		UpdateMiniMapSpacing();
 
 		var pScroll = Preferences.Instance.PreferencesScroll;
 
 		MiniMap.SetSelectMode(pMiniMap.MiniMapSelectMode);
+		MiniMap.SetNumLanes((uint)ActiveChart.NumInputs);
 
-		switch (GetMiniMapSpacingMode())
+		var screenHeight = GetViewportHeight();
+		var spacingZoom = ZoomManager.GetSpacingZoom();
+		var chartTime = Position.ChartTime;
+		var chartPosition = Position.ChartPosition;
+		var spaceByRow = GetMiniMapSpacingMode() == SpacingMode.ConstantRow;
+
+		// Configure the region to show in the mini map.
+		if (!spaceByRow)
 		{
-			case SpacingMode.ConstantTime:
+			// Editor Area. The visible time range.
+			var pps = pScroll.TimeBasedPixelsPerSecond * spacingZoom;
+			var editorAreaTimeStart = chartTime - GetFocalPointY() / pps;
+			var editorAreaTimeEnd = editorAreaTimeStart + screenHeight / pps;
+			var editorAreaTimeRange = editorAreaTimeEnd - editorAreaTimeStart;
+
+			// Determine the end time.
+			var maxTimeFromChart = ActiveChart.GetEndChartTime();
+
+			// Full Area. The time from the chart, extended in both directions by the editor range.
+			var fullAreaTimeStart = ActiveChart.GetStartChartTime() - editorAreaTimeRange;
+			var fullAreaTimeEnd = maxTimeFromChart + editorAreaTimeRange;
+
+			// Content Area. The time from the chart.
+			var contentAreaTimeStart = ActiveChart.GetStartChartTime();
+			var contentAreaTimeEnd = maxTimeFromChart;
+
+			// Update the MiniMap with the ranges.
+			MiniMap.UpdateBegin(
+				fullAreaTimeStart, fullAreaTimeEnd,
+				contentAreaTimeStart, contentAreaTimeEnd,
+				pMiniMap.MiniMapVisibleTimeRange,
+				editorAreaTimeStart, editorAreaTimeEnd,
+				ArrowGraphicManager);
+		}
+		else
+		{
+			// Editor Area. The visible row range.
+			var ppr = pScroll.RowBasedPixelsPerRow * spacingZoom;
+			var editorAreaRowStart = chartPosition - GetFocalPointY() / ppr;
+			var editorAreaRowEnd = editorAreaRowStart + screenHeight / ppr;
+			var editorAreaRowRange = editorAreaRowEnd - editorAreaRowStart;
+
+			// Determine the end row.
+			var maxRowFromChart = ActiveChart.GetEndPosition();
+
+			// Full Area. The area from the chart, extended in both directions by the editor range.
+			var fullAreaRowStart = 0.0 - editorAreaRowRange;
+			var fullAreaRowEnd = maxRowFromChart + editorAreaRowRange;
+
+			// Content Area. The rows from the chart.
+			var contentAreaTimeStart = 0.0;
+			var contentAreaTimeEnd = maxRowFromChart;
+
+			// Update the MiniMap with the ranges.
+			MiniMap.SetNumLanes((uint)ActiveChart.NumInputs);
+			MiniMap.UpdateBegin(
+				fullAreaRowStart, fullAreaRowEnd,
+				contentAreaTimeStart, contentAreaTimeEnd,
+				pMiniMap.MiniMapVisibleRowRange,
+				editorAreaRowStart, editorAreaRowEnd,
+				ArrowGraphicManager);
+		}
+
+		// Add cursor.
+		MiniMap.AddCursor(spaceByRow ? chartPosition : chartTime);
+
+		// Set the chartPosition to the top of the area so we can use it for scanning down for notes to add.
+		if (spaceByRow)
+			chartPosition = MiniMap.GetMiniMapAreaStart();
+		else
+			ActiveChart.TryGetChartPositionFromTime(MiniMap.GetMiniMapAreaStart(), ref chartPosition);
+
+		// Add patterns.
+		if (pMiniMap.ShowPatterns)
+		{
+			var patterns = ActiveChart.GetPatterns();
+			var patternEnumerator = patterns.FindBestByPosition(chartPosition);
+			EditorPatternEvent eventNeedingToBeAdded = null;
+			var eventNeedingToBeAddedEndRow = 0;
+			var eventNeedingToBeAddedEndChartTime = 0.0;
+			while (patternEnumerator != null && patternEnumerator.MoveNext())
 			{
-				var screenHeight = GetViewportHeight();
-				var spacingZoom = ZoomManager.GetSpacingZoom();
-				var pps = pScroll.TimeBasedPixelsPerSecond * spacingZoom;
-				var time = Position.ChartTime;
+				var currentEvent = patternEnumerator.Current!;
 
-				// Editor Area. The visible time range.
-				var editorAreaTimeStart = time - GetFocalPointY() / pps;
-				var editorAreaTimeEnd = editorAreaTimeStart + screenHeight / pps;
-				var editorAreaTimeRange = editorAreaTimeEnd - editorAreaTimeStart;
-
-				// Determine the end time.
-				var maxTimeFromChart = ActiveChart.GetEndChartTime();
-
-				// Full Area. The time from the chart, extended in both directions by the editor range.
-				var fullAreaTimeStart = ActiveChart.GetStartChartTime() - editorAreaTimeRange;
-				var fullAreaTimeEnd = maxTimeFromChart + editorAreaTimeRange;
-
-				// Content Area. The time from the chart.
-				var contentAreaTimeStart = ActiveChart.GetStartChartTime();
-				var contentAreaTimeEnd = maxTimeFromChart;
-
-				// Update the MiniMap with the ranges.
-				MiniMap.SetNumLanes((uint)ActiveChart.NumInputs);
-				MiniMap.UpdateBegin(
-					fullAreaTimeStart, fullAreaTimeEnd,
-					contentAreaTimeStart, contentAreaTimeEnd,
-					pMiniMap.MiniMapVisibleTimeRange,
-					editorAreaTimeStart, editorAreaTimeEnd,
-					ArrowGraphicManager);
-
-				// Add notes
-				var chartPosition = 0.0;
-				if (!ActiveChart.TryGetChartPositionFromTime(MiniMap.GetMiniMapAreaStart(), ref chartPosition))
-					break;
-				var enumerator = ActiveChart.GetEvents().FindBestByPosition(chartPosition);
-				if (enumerator == null)
-					break;
-
-				var numNotesAdded = 0;
-
-				// Scan backwards until we have checked every lane for a long note which may
-				// be extending through the given start row.
-				var holdStartNotes = ScanBackwardsForHolds(enumerator, chartPosition);
-				foreach (var hsn in holdStartNotes)
+				// Check if a pattern currently under consideration should be combined into this one.
+				if (eventNeedingToBeAdded != null)
 				{
-					MiniMap.AddHold(
-						(LaneHoldStartNote)hsn.GetFirstEvent(),
-						hsn.GetChartTime(),
-						hsn.GetEndChartTime(),
-						hsn.IsRoll(),
-						hsn.IsSelected());
-					numNotesAdded++;
-				}
-
-				while (enumerator.MoveNext())
-				{
-					var e = enumerator.Current;
-					if (e is EditorTapNoteEvent or EditorFakeNoteEvent or EditorLiftNoteEvent)
+					// If the pattern under consideration aligns with this pattern, extend it.
+					if (eventNeedingToBeAddedEndRow == currentEvent.GetRow())
 					{
-						numNotesAdded++;
-						if (MiniMap.AddNote((LaneNote)e.GetFirstEvent(), e.GetChartTime(), e.IsSelected()) ==
-						    AddResult.BelowBottom)
-							break;
-					}
-					else if (e is EditorMineNoteEvent)
-					{
-						numNotesAdded++;
-						if (MiniMap.AddMine((LaneNote)e.GetFirstEvent(), e.GetChartTime(), e.IsSelected()) ==
-						    AddResult.BelowBottom)
-							break;
-					}
-					else if (e is EditorHoldNoteEvent hold)
-					{
-						numNotesAdded++;
-						if (MiniMap.AddHold(
-							    (LaneHoldStartNote)hold.GetFirstEvent(),
-							    hold.GetChartTime(),
-							    hold.GetEndChartTime(),
-							    hold.IsRoll(),
-							    hold.IsSelected()) == AddResult.BelowBottom)
-							break;
+						eventNeedingToBeAddedEndRow = currentEvent.GetEndRow();
+						eventNeedingToBeAddedEndChartTime = currentEvent.GetEndChartTime();
+						continue;
 					}
 
-					if (numNotesAdded > MiniMapMaxNotesToDraw)
+					// Otherwise, complete the pattern and continue.
+					if (MiniMap.AddPattern(
+						    spaceByRow ? eventNeedingToBeAdded.GetRow() : eventNeedingToBeAdded.GetChartTime(),
+						    spaceByRow ? eventNeedingToBeAddedEndRow : eventNeedingToBeAddedEndChartTime) ==
+					    AddResult.BelowBottom)
 						break;
 				}
 
-				break;
+				// Record information about this pattern but do not submit it yet.
+				// We want to check the pattern to see if it lines up with this one.
+				eventNeedingToBeAdded = patternEnumerator.Current!;
+				eventNeedingToBeAddedEndRow = eventNeedingToBeAdded.GetEndRow();
+				eventNeedingToBeAddedEndChartTime = eventNeedingToBeAdded.GetEndChartTime();
 			}
 
-			case SpacingMode.ConstantRow:
+			// When done looping checking for completing any current pattern under consideration.
+			if (eventNeedingToBeAdded != null)
 			{
-				var screenHeight = GetViewportHeight();
-
-				var chartPosition = Position.ChartPosition;
-				var spacingZoom = ZoomManager.GetSpacingZoom();
-				var ppr = pScroll.RowBasedPixelsPerRow * spacingZoom;
-
-				// Editor Area. The visible row range.
-				var editorAreaRowStart = chartPosition - GetFocalPointY() / ppr;
-				var editorAreaRowEnd = editorAreaRowStart + screenHeight / ppr;
-				var editorAreaRowRange = editorAreaRowEnd - editorAreaRowStart;
-
-				// Determine the end row.
-				var maxRowFromChart = ActiveChart.GetEndPosition();
-
-				// Full Area. The area from the chart, extended in both directions by the editor range.
-				var fullAreaRowStart = 0.0 - editorAreaRowRange;
-				var fullAreaRowEnd = maxRowFromChart + editorAreaRowRange;
-
-				// Content Area. The rows from the chart.
-				var contentAreaTimeStart = 0.0;
-				var contentAreaTimeEnd = maxRowFromChart;
-
-				// Update the MiniMap with the ranges.
-				MiniMap.SetNumLanes((uint)ActiveChart.NumInputs);
-				MiniMap.UpdateBegin(
-					fullAreaRowStart, fullAreaRowEnd,
-					contentAreaTimeStart, contentAreaTimeEnd,
-					pMiniMap.MiniMapVisibleRowRange,
-					editorAreaRowStart, editorAreaRowEnd,
-					ArrowGraphicManager);
-
-				// Add notes
-				chartPosition = MiniMap.GetMiniMapAreaStart();
-				var enumerator = ActiveChart.GetEvents().FindBestByPosition(chartPosition);
-				if (enumerator == null)
-					break;
-
-				var numNotesAdded = 0;
-
-				// Scan backwards until we have checked every lane for a long note which may
-				// be extending through the given start row.
-				var holdStartNotes = ScanBackwardsForHolds(enumerator, chartPosition);
-				foreach (var hsn in holdStartNotes)
-				{
-					MiniMap.AddHold(
-						(LaneHoldStartNote)hsn.GetFirstEvent(),
-						hsn.GetChartPosition(),
-						hsn.GetEndChartPosition(),
-						hsn.IsRoll(),
-						hsn.IsSelected());
-					numNotesAdded++;
-				}
-
-				while (enumerator.MoveNext())
-				{
-					var e = enumerator.Current;
-					if (e is EditorTapNoteEvent or EditorFakeNoteEvent or EditorLiftNoteEvent)
-					{
-						numNotesAdded++;
-						if (MiniMap.AddNote((LaneNote)e.GetFirstEvent(), e.GetChartPosition(), e.IsSelected()) ==
-						    AddResult.BelowBottom)
-							break;
-					}
-					else if (e is EditorMineNoteEvent)
-					{
-						numNotesAdded++;
-						if (MiniMap.AddMine((LaneNote)e.GetFirstEvent(), e.GetChartPosition(), e.IsSelected()) ==
-						    AddResult.BelowBottom)
-							break;
-					}
-					else if (e is EditorHoldNoteEvent hold)
-					{
-						numNotesAdded++;
-						if (MiniMap.AddHold(
-							    (LaneHoldStartNote)hold.GetFirstEvent(),
-							    hold.GetChartPosition(),
-							    hold.GetEndChartPosition(),
-							    hold.IsRoll(),
-							    hold.IsSelected()) == AddResult.BelowBottom)
-							break;
-					}
-
-					if (numNotesAdded > MiniMapMaxNotesToDraw)
-						break;
-				}
-
-
-				break;
+				MiniMap.AddPattern(
+					spaceByRow ? eventNeedingToBeAdded.GetRow() : eventNeedingToBeAdded.GetChartTime(),
+					spaceByRow ? eventNeedingToBeAddedEndRow : eventNeedingToBeAddedEndChartTime);
 			}
+		}
+
+		// Add preview.
+		if (pMiniMap.ShowPreview)
+		{
+			var preview = ActiveChart.GetPreview();
+			if (spaceByRow)
+				MiniMap.AddPreview(preview.GetChartPosition(), preview.GetEndChartPosition());
+			else
+				MiniMap.AddPreview(preview.GetChartTime(), preview.GetEndChartTime());
+		}
+
+		// Add labels.
+		if (pMiniMap.ShowLabels)
+		{
+			var labels = ActiveChart.GetLabels();
+			var labelEnumerator = labels.FindBestByPosition(chartPosition);
+			while (labelEnumerator != null && labelEnumerator.MoveNext())
+			{
+				// Don't add labels at row 0. They don't look good over the song start line in the mini map.
+				if (labelEnumerator.Current!.GetRow() == 0)
+					continue;
+				if (MiniMap.AddLabel(spaceByRow
+					    ? labelEnumerator.Current!.GetChartPosition()
+					    : labelEnumerator.Current!.GetChartTime()) == AddResult.BelowBottom)
+					break;
+			}
+		}
+
+		// Add notes.
+		var enumerator = ActiveChart.GetEvents().FindBestByPosition(chartPosition);
+		if (enumerator == null)
+		{
+			MiniMap.UpdateEnd();
+			return;
+		}
+
+		var numNotesAdded = 0;
+
+		// Scan backwards until we have checked every lane for a long note which may
+		// be extending through the given start row.
+		var holdStartNotes = ScanBackwardsForHolds(enumerator, chartPosition);
+		foreach (var hsn in holdStartNotes)
+		{
+			MiniMap.AddHold(
+				(LaneHoldStartNote)hsn.GetFirstEvent(),
+				spaceByRow ? hsn.GetChartPosition() : hsn.GetChartTime(),
+				spaceByRow ? hsn.GetEndChartPosition() : hsn.GetEndChartTime(),
+				hsn.IsRoll(),
+				hsn.IsSelected());
+			numNotesAdded++;
+		}
+
+		// Add normal notes.
+		while (enumerator.MoveNext())
+		{
+			var e = enumerator.Current;
+			if (e is EditorTapNoteEvent or EditorFakeNoteEvent or EditorLiftNoteEvent)
+			{
+				numNotesAdded++;
+				if (MiniMap.AddNote((LaneNote)e.GetFirstEvent(), spaceByRow ? e.GetChartPosition() : e.GetChartTime(),
+					    e.IsSelected()) ==
+				    AddResult.BelowBottom)
+					break;
+			}
+			else if (e is EditorMineNoteEvent)
+			{
+				numNotesAdded++;
+				if (MiniMap.AddMine((LaneNote)e.GetFirstEvent(), spaceByRow ? e.GetChartPosition() : e.GetChartTime(),
+					    e.IsSelected()) ==
+				    AddResult.BelowBottom)
+					break;
+			}
+			else if (e is EditorHoldNoteEvent hold)
+			{
+				numNotesAdded++;
+				if (MiniMap.AddHold(
+					    (LaneHoldStartNote)hold.GetFirstEvent(),
+					    spaceByRow ? hold.GetChartPosition() : hold.GetChartTime(),
+					    spaceByRow ? hold.GetEndChartPosition() : hold.GetEndChartTime(),
+					    hold.IsRoll(),
+					    hold.IsSelected()) == AddResult.BelowBottom)
+					break;
+			}
+
+			if (numNotesAdded > MiniMapMaxNotesToDraw)
+				break;
 		}
 
 		MiniMap.UpdateEnd();
@@ -6410,7 +6431,7 @@ internal sealed class Editor :
 		var label = ActiveChart?.GetLabels()?.FindPreviousEventWithLooping(chartPosition);
 		if (label == null)
 			return;
-		
+
 		var desiredRow = label.GetRow();
 		Position.ChartPosition = desiredRow;
 		UpdateAutoPlayFromScrolling();
