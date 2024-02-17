@@ -6255,7 +6255,10 @@ internal sealed class Editor :
 		var rows = SnapLevels[Preferences.Instance.SnapIndex].Rows;
 		if (rows == 0)
 			rows = MaxValidDenominator;
-		ActionQueue.Instance.Do(new ActionShiftSelectionRow(this, ActiveChart, Selection.GetSelectedEvents(), -rows));
+		var events = Selection.GetSelectedEvents();
+		if (!events.Any())
+			return;
+		ActionQueue.Instance.Do(new ActionShiftSelectionRow(this, ActiveChart, events, -rows));
 	}
 
 	private void OnShiftSelectedNotesLater()
@@ -6265,7 +6268,10 @@ internal sealed class Editor :
 		var rows = SnapLevels[Preferences.Instance.SnapIndex].Rows;
 		if (rows == 0)
 			rows = MaxValidDenominator;
-		ActionQueue.Instance.Do(new ActionShiftSelectionRow(this, ActiveChart, Selection.GetSelectedEvents(), rows));
+		var events = Selection.GetSelectedEvents();
+		if (!events.Any())
+			return;
+		ActionQueue.Instance.Do(new ActionShiftSelectionRow(this, ActiveChart, events, rows));
 	}
 
 	#endregion Selection

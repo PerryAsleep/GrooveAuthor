@@ -123,7 +123,10 @@ internal sealed class ActionShiftSelectionRow : EditorAction
 			// If shifting the row would put this event at an invalid position, then remove it.
 			var newRow = editorEvent.GetRow() + Rows;
 			if (!Chart.CanEventExistAtRow(editorEvent, newRow))
+			{
+				EventsWhichCouldNotBeTransformed.Add(editorEvent);
 				continue;
+			}
 
 			// If the event can be moved, update the position.
 			editorEvent.SetNewPosition(newRow);
