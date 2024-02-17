@@ -560,6 +560,12 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	}
 
 	/// <summary>
+	/// Returns a short string representation of this type of EditorEvent.
+	/// </summary>
+	/// <returns>Short string representation of this type of EditorEvent</returns>
+	public abstract string GetShortTypeName();
+
+	/// <summary>
 	/// Called when this event is added to its EditorChart.
 	/// An event may be added and removed repeatedly with undoing and redoing actions.
 	/// </summary>

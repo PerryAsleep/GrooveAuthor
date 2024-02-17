@@ -79,6 +79,11 @@ internal sealed class EditorLastSecondHintEvent : EditorEvent
 		IsPositionImmutable = true;
 	}
 
+	public override string GetShortTypeName()
+	{
+		return "Last Second Hint";
+	}
+
 	public override bool IsMiscEvent()
 	{
 		return true;

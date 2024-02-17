@@ -18,8 +18,7 @@ internal sealed class ActionChangeHoldLength : EditorAction
 
 	public override string ToString()
 	{
-		var typeStr = Hold.IsRoll() ? "roll" : "hold";
-		return $"Change {typeStr} length from to {OriginalLength} to {NewLength}.";
+		return $"Change {Hold.GetShortTypeName()} length from to {OriginalLength} to {NewLength}.";
 	}
 
 	public override bool AffectsFile()

@@ -89,6 +89,11 @@ internal sealed class EditorTimeSignatureEvent : EditorRateAlteringEvent
 		WidthDirty = true;
 	}
 
+	public override string GetShortTypeName()
+	{
+		return "Time Signature";
+	}
+
 	public override bool IsMiscEvent()
 	{
 		return true;

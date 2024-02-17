@@ -66,6 +66,11 @@ internal sealed class EditorTickCountEvent : EditorEvent
 		set => WidthInternal = value;
 	}
 
+	public override string GetShortTypeName()
+	{
+		return "Ticks";
+	}
+
 	public override bool IsMiscEvent()
 	{
 		return true;

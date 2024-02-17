@@ -156,6 +156,11 @@ internal sealed class EditorDelayEvent : EditorRateAlteringEvent, IChartRegion
 		WidthDirty = true;
 	}
 
+	public override string GetShortTypeName()
+	{
+		return "Delay";
+	}
+
 	public override bool IsMiscEvent()
 	{
 		return true;

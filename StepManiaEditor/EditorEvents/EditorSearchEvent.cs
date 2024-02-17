@@ -11,6 +11,11 @@ internal sealed class EditorSearchEvent : EditorEvent
 	{
 	}
 
+	public override string GetShortTypeName()
+	{
+		return "Search";
+	}
+
 	public override bool IsMiscEvent()
 	{
 		return false;

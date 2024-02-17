@@ -81,6 +81,11 @@ internal sealed class EditorLabelEvent : EditorEvent
 		WidthDirty = true;
 	}
 
+	public override string GetShortTypeName()
+	{
+		return "Label";
+	}
+
 	public override bool IsMiscEvent()
 	{
 		return true;

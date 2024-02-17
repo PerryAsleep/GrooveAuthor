@@ -16,8 +16,8 @@ internal sealed class ActionChangeHoldType : EditorAction
 
 	public override string ToString()
 	{
-		var originalType = Roll ? "hold" : "roll";
-		var newType = Roll ? "roll" : "hold";
+		var originalType = Roll ? "Hold" : "Roll";
+		var newType = Roll ? "Roll" : "Hold";
 		return $"Change {originalType} to {newType}.";
 	}
 

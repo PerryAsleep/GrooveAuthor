@@ -74,6 +74,11 @@ internal sealed class EditorScrollRateEvent : EditorRateAlteringEvent
 		WidthDirty = true;
 	}
 
+	public override string GetShortTypeName()
+	{
+		return "Scroll Rate";
+	}
+
 	public override bool IsMiscEvent()
 	{
 		return true;

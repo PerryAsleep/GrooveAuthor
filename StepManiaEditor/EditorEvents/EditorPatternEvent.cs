@@ -426,6 +426,11 @@ internal sealed class EditorPatternEvent : EditorEvent, IChartRegion,
 		return ArrowGraphicManager.GetArrowColorForSubdivision(EditorPatternConfig.GetBeatSubdivision(patternConfig.PatternType));
 	}
 
+	public override string GetShortTypeName()
+	{
+		return "Pattern";
+	}
+
 	public override bool IsMiscEvent()
 	{
 		return true;

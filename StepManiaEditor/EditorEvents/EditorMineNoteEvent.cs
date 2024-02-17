@@ -15,6 +15,11 @@ internal sealed class EditorMineNoteEvent : EditorEvent
 		LaneNote = chartEvent;
 	}
 
+	public override string GetShortTypeName()
+	{
+		return "Mine";
+	}
+
 	public override int GetLane()
 	{
 		return LaneNote.Lane;

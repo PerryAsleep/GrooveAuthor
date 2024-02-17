@@ -154,6 +154,11 @@ internal sealed class EditorStopEvent : EditorRateAlteringEvent, IChartRegion
 		WidthDirty = true;
 	}
 
+	public override string GetShortTypeName()
+	{
+		return "Stop";
+	}
+
 	public override bool IsMiscEvent()
 	{
 		return true;

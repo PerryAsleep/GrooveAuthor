@@ -26,7 +26,9 @@ internal sealed class ActionAddEditorEvent : EditorAction
 
 	public override string ToString()
 	{
-		return $"Add {EditorEvent.GetType()}.";
+		if (EditorEvent.IsLaneNote())
+			return $"Add {EditorEvent.GetShortTypeName()} to lane {EditorEvent.GetLane()} at row {EditorEvent.GetRow()}.";
+		return $"Add {EditorEvent.GetShortTypeName()} at row {EditorEvent.GetRow()}.";
 	}
 
 	public override bool AffectsFile()

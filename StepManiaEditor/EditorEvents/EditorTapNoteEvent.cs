@@ -15,6 +15,11 @@ internal sealed class EditorTapNoteEvent : EditorEvent
 		LaneTapNote = chartEvent;
 	}
 
+	public override string GetShortTypeName()
+	{
+		return "Tap";
+	}
+
 	public override int GetLane()
 	{
 		return LaneTapNote.Lane;

@@ -87,6 +87,11 @@ internal abstract class EditorRateAlteringEvent : EditorEvent, IComparable<Edito
 		SecondsPerRow = secondsPerRow;
 	}
 
+	public override string GetShortTypeName()
+	{
+		return "Rate Altering Event";
+	}
+
 	/// <summary>
 	/// Updates this event's scroll rate.
 	/// When initializing rate altering events some events' scroll rates may not be known

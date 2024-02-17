@@ -73,6 +73,11 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 		return hold;
 	}
 
+	public override string GetShortTypeName()
+	{
+		return IsRoll() ? "Roll" : "Hold";
+	}
+
 	public override int GetLane()
 	{
 		return LaneHoldStartNote.Lane;

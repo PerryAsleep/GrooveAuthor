@@ -33,7 +33,13 @@ internal sealed class ActionDeleteEditorEvents : EditorAction
 	{
 		var count = EditorEvents.Count;
 		if (EditorEvents.Count == 1)
-			return $"Delete {EditorEvents[0].GetType()}.";
+		{
+			var editorEvent = EditorEvents[0];
+			if (editorEvent.IsLaneNote())
+				return $"Delete {editorEvent.GetShortTypeName()} on lane {editorEvent.GetLane()} at row {editorEvent.GetRow()}.";
+			return $"Delete {editorEvent.GetShortTypeName()} at row {editorEvent.GetRow()}.";
+		}
+
 		return $"Delete {count} events.";
 	}
 

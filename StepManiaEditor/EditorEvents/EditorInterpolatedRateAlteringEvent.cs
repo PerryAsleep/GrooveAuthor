@@ -123,6 +123,11 @@ internal class EditorInterpolatedRateAlteringEvent : EditorEvent
 		WidthDirty = true;
 	}
 
+	public override string GetShortTypeName()
+	{
+		return "Interpolated Scroll Rate";
+	}
+
 	public bool InterpolatesByTime()
 	{
 		return ScrollRateInterpolationEvent.PreferPeriodAsTime;

@@ -77,6 +77,11 @@ internal sealed class EditorTempoEvent : EditorRateAlteringEvent
 		set => WidthInternal = value;
 	}
 
+	public override string GetShortTypeName()
+	{
+		return "Tempo";
+	}
+
 	public override bool IsMiscEvent()
 	{
 		return true;

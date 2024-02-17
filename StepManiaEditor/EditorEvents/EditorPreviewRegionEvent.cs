@@ -205,6 +205,11 @@ internal sealed class EditorPreviewRegionEvent : EditorEvent, IChartRegion, Fume
 		return GetChartPosition();
 	}
 
+	public override string GetShortTypeName()
+	{
+		return "Preview";
+	}
+
 	public override bool IsMiscEvent()
 	{
 		return true;

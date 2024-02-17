@@ -31,8 +31,7 @@ internal sealed class ActionAddHoldEvent : EditorAction
 
 	public override string ToString()
 	{
-		var typeStr = Hold.IsRoll() ? "roll" : "hold";
-		return $"Add {typeStr}.";
+		return $"Add {Hold.GetShortTypeName()} to lane {Hold.GetLane()} at row {Hold.GetRow()}.";
 	}
 
 	public override bool AffectsFile()

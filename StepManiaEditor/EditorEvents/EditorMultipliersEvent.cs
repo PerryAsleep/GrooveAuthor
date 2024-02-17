@@ -78,6 +78,11 @@ internal sealed class EditorMultipliersEvent : EditorEvent
 		return (true, hitMultiplier, missMultiplier);
 	}
 
+	public override string GetShortTypeName()
+	{
+		return "Multipliers";
+	}
+
 	public string GetMultipliersString()
 	{
 		return $"{MultipliersEvent.HitMultiplier}x/{MultipliersEvent.MissMultiplier}x";

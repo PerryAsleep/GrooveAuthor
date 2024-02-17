@@ -154,6 +154,11 @@ internal sealed class EditorWarpEvent : EditorRateAlteringEvent, IChartRegion
 		WidthDirty = true;
 	}
 
+	public override string GetShortTypeName()
+	{
+		return "Warp";
+	}
+
 	public override bool IsMiscEvent()
 	{
 		return true;

@@ -151,6 +151,11 @@ internal sealed class EditorFakeSegmentEvent : EditorEvent, IChartRegion
 		WidthDirty = true;
 	}
 
+	public override string GetShortTypeName()
+	{
+		return "Fake Segment";
+	}
+
 	public override bool IsMiscEvent()
 	{
 		return true;
