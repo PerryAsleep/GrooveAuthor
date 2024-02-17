@@ -6339,11 +6339,6 @@ internal sealed class Editor :
 		p.SnapIndex--;
 		if (p.SnapIndex < 0)
 			p.SnapIndex = SnapLevels.Length - 1;
-
-		if (SnapLevels[p.SnapIndex].Rows == 0)
-			Logger.Info("Snap off");
-		else
-			Logger.Info($"Snap to 1/{MaxValidDenominator / SnapLevels[p.SnapIndex].Rows * 4}");
 	}
 
 	private void OnIncreaseSnap()
@@ -6352,11 +6347,6 @@ internal sealed class Editor :
 		p.SnapIndex++;
 		if (p.SnapIndex >= SnapLevels.Length)
 			p.SnapIndex = 0;
-
-		if (SnapLevels[p.SnapIndex].Rows == 0)
-			Logger.Info("Snap off");
-		else
-			Logger.Info($"Snap to 1/{MaxValidDenominator / SnapLevels[p.SnapIndex].Rows * 4}");
 	}
 
 	private void OnMoveUp()
