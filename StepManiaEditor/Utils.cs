@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
@@ -221,24 +222,30 @@ internal sealed class Utils
 
 	#region Color Helpers
 
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static uint ColorRGBAInterpolate(uint startColor, uint endColor, float endPercent)
 	{
-		var startPercent = 1.0f - endPercent;
-		return (uint)((startColor & 0xFF) * startPercent + (endColor & 0xFF) * endPercent)
-		       | ((uint)(((startColor >> 8) & 0xFF) * startPercent + ((endColor >> 8) & 0xFF) * endPercent) << 8)
-		       | ((uint)(((startColor >> 16) & 0xFF) * startPercent + ((endColor >> 16) & 0xFF) * endPercent) << 16)
-		       | ((uint)(((startColor >> 24) & 0xFF) * startPercent + ((endColor >> 24) & 0xFF) * endPercent) << 24);
+		return (uint)((startColor & 0xFF) + ((int)(endColor & 0xFF) - (int)(startColor & 0xFF)) * endPercent)
+		       | ((uint)(((startColor >> 8) & 0xFF) +
+		                 ((int)((endColor >> 8) & 0xFF) - (int)((startColor >> 8) & 0xFF)) * endPercent) << 8)
+		       | ((uint)(((startColor >> 16) & 0xFF) +
+		                 ((int)((endColor >> 16) & 0xFF) - (int)((startColor >> 16) & 0xFF)) * endPercent) << 16)
+		       | ((uint)(((startColor >> 24) & 0xFF) +
+		                 ((int)((endColor >> 24) & 0xFF) - (int)((startColor >> 24) & 0xFF)) * endPercent) << 24);
 	}
 
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static uint ColorRGBAInterpolateBGR(uint startColor, uint endColor, float endPercent)
 	{
-		var startPercent = 1.0f - endPercent;
-		return (uint)((startColor & 0xFF) * startPercent + (endColor & 0xFF) * endPercent)
-		       | ((uint)(((startColor >> 8) & 0xFF) * startPercent + ((endColor >> 8) & 0xFF) * endPercent) << 8)
-		       | ((uint)(((startColor >> 16) & 0xFF) * startPercent + ((endColor >> 16) & 0xFF) * endPercent) << 16)
+		return (uint)((startColor & 0xFF) + ((int)(endColor & 0xFF) - (int)(startColor & 0xFF)) * endPercent)
+		       | ((uint)(((startColor >> 8) & 0xFF) +
+		                 ((int)((endColor >> 8) & 0xFF) - (int)((startColor >> 8) & 0xFF)) * endPercent) << 8)
+		       | ((uint)(((startColor >> 16) & 0xFF) +
+		                 ((int)((endColor >> 16) & 0xFF) - (int)((startColor >> 16) & 0xFF)) * endPercent) << 16)
 		       | (endColor & 0xFF000000);
 	}
 
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static uint ColorRGBAMultiply(uint color, float multiplier)
 	{
 		return (uint)Math.Min((color & 0xFF) * multiplier, byte.MaxValue)
@@ -247,16 +254,19 @@ internal sealed class Utils
 		       | (color & 0xFF000000);
 	}
 
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static ushort ToBGR565(float r, float g, float b)
 	{
 		return (ushort)(((ushort)(r * 31) << 11) + ((ushort)(g * 63) << 5) + (ushort)(b * 31));
 	}
 
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static ushort ToBGR565(Color c)
 	{
 		return ToBGR565((float)c.R / byte.MaxValue, (float)c.G / byte.MaxValue, (float)c.B / byte.MaxValue);
 	}
 
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static ushort ToBGR565(uint rgba)
 	{
 		return ToBGR565(
@@ -265,6 +275,7 @@ internal sealed class Utils
 			(byte)(rgba & 0x000000FF) / (float)byte.MaxValue);
 	}
 
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static uint ToRGBA(float r, float g, float b, float a)
 	{
 		return ((uint)(byte)(a * byte.MaxValue) << 24)
@@ -273,6 +284,7 @@ internal sealed class Utils
 		       + (byte)(r * byte.MaxValue);
 	}
 
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	public static (float, float, float, float) ToFloats(uint rgba)
 	{
 		return ((byte)(rgba & 0x000000FF) / (float)byte.MaxValue,

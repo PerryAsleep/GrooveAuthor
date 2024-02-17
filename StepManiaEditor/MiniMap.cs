@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.CompilerServices;
 using Fumen;
 using Fumen.ChartDefinition;
 using Microsoft.Xna.Framework;
@@ -285,6 +286,11 @@ internal sealed class MiniMap
 	/// MiniMap area range (height) value. Units are in Chart space (e.g. time or position) and not pixel space.
 	/// </summary>
 	private double MiniMapAreaRange;
+
+	/// <summary>
+	/// Cached value of Bounds.Height / MiniMapAreaRange.
+	/// </summary>
+	private double HeightOverMiniMapAreaRange;
 
 	/// <summary>
 	/// Editor area start y value. Units are in Chart space (e.g. time or position) and not pixel space.
@@ -1015,6 +1021,8 @@ internal sealed class MiniMap
 		if (Bounds.Height <= 0 || Bounds.Width <= 0)
 			return;
 
+		HeightOverMiniMapAreaRange = Bounds.Height / MiniMapAreaRange;
+
 		SetMiniMapAreaFromEditorArea();
 
 		// If we are zoomed out so far that the MiniMap Area can't fit the Editor Areas or scroll
@@ -1183,9 +1191,10 @@ internal sealed class MiniMap
 	/// </summary>
 	/// <param name="position">Y position in Chart space.</param>
 	/// <returns>Y position in screen space relative to the bounds of the MiniMap.</returns>
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	private double GetYPixelRelativeToBounds(double position)
 	{
-		return (position - MiniMapAreaStart) * Bounds.Height / MiniMapAreaRange;
+		return (position - MiniMapAreaStart) * HeightOverMiniMapAreaRange;
 	}
 
 	/// <summary>
