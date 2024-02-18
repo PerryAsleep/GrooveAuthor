@@ -447,7 +447,9 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 				}
 
 				Assert(found);
+				// ReSharper disable once ConditionIsAlwaysTrueOrFalse
 				if (!found)
+					// ReSharper disable once HeuristicUnreachableCode
 					return;
 			}
 
