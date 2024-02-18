@@ -122,7 +122,7 @@ internal sealed class UISongProperties
 					EditorSong?.SyncOffset.DoubleEquals(0.0) ?? false,
 					"The music offset from the start of the chart."
 					+ "\nClicking the Apply 9ms Offset button will add an additional 9ms to the offset and"
-					+ "\nset the Song Sync (below) to account for the 9ms offset so that GrooveAuthor can"
+					+ $"\nset the Song Sync (below) to account for the 9ms offset so that {Editor.GetAppName()} can"
 					+ "\ncompensate and keep the arrows and Waveform in sync."
 					+ "\nApplying a 9ms offset through clicking the button is not idempotent.",
 					0.0001f, "%.6f seconds");
@@ -161,7 +161,7 @@ internal sealed class UISongProperties
 					SetSyncDdr, "0ms (DDR)", ButtonSyncWidth,
 					"(Editor Only) Adjust visuals to account for this song's sync." +
 					"\nIf the song sync is not 0, then the arrows will appear shifted from the Waveform." +
-					"\nIf this song has a built in sync, then set this value so GrooveAuthor can account for it" +
+					$"\nIf this song has a built in sync, then set this value so {Editor.GetAppName()} can account for it" +
 					"\nso the arrows and the Waveform line up perfectly." +
 					"\n9ms (ITG): (More Common) Most custom content uses a 9ms offset to account for a bug in ITG2." +
 					"\n           If this song is synced with a 9ms offset then use this option." +
@@ -178,7 +178,7 @@ internal sealed class UISongProperties
 					"\nwill still use timing data defined on the song instead of the selected chart for beat-driven" +
 					"\nanimations like the receptors pulsing and the cursor bouncing on the song wheel. If no timing" +
 					"\ndata is defined on the song, these animations will play at 60bpm. To work around this bug," +
-					"\ntiming data like the tempo must also be defined on the song. This field tells GrooveAuthor" +
+					$"\ntiming data like the tempo must also be defined on the song. This field tells {Editor.GetAppName()}" +
 					"\nwhich chart to use for the song timing data." +
 					"\n\nAdditionally, when saving an sm file which does not support chart-level timing, this field" +
 					"\nis used to determine which chart to use for the song timing data." +

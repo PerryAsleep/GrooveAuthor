@@ -39,7 +39,7 @@ public class UIOptions
 			{
 				ImGuiLayoutUtils.DrawRowCheckbox(true, "Open Last File On Launch", p,
 					nameof(PreferencesOptions.OpenLastOpenedFileOnLaunch), false,
-					"Whether or not to open the last opened file when launching GrooveAuthor.");
+					$"Whether or not to open the last opened file when launching {Editor.GetAppName()}.");
 				ImGuiLayoutUtils.DrawRowSliderInt(true, "File History Size", p,
 					nameof(PreferencesOptions.RecentFilesHistorySize), 0, 50, false,
 					"Number of files to remember in the history used for opening recent files.");
@@ -124,7 +124,7 @@ public class UIOptions
 	{
 		ImGuiLayoutUtils.DrawRowStepGraphMultiSelection(undoable, "Startup Step Graphs", Preferences.Instance.PreferencesOptions,
 			nameof(PreferencesOptions.StartupStepGraphs), false,
-			"Step Graphs will be created for the selected chart types when GrooveAuthor starts." +
+			$"Step Graphs will be created for the selected chart types when {Editor.GetAppName()} starts." +
 			"\nStep Graphs are used to generate patterns and convert charts from one type to another.");
 	}
 

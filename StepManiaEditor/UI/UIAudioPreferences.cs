@@ -105,7 +105,7 @@ internal sealed class UIAudioPreferences
 			{
 				ImGuiLayoutUtils.DrawRowDragDouble(true, "Audio Offset", p, nameof(PreferencesAudio.AudioOffset),
 					false,
-					"Offset used when playing songs through GrooveAuthor."
+					$"Offset used when playing songs through {Editor.GetAppName()}."
 					+ "\nIf the audio and visuals appear out of sync when playing a song, adjusting this value can"
 					+ "\ncompensate for this lag and bring the two in sync."
 					+ "\nNote that setting this to a nonzero value will cause the audio to play at an earlier or later"

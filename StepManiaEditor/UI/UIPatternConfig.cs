@@ -17,9 +17,10 @@ internal sealed class UIPatternConfig
 
 	public const string WindowTitle = "Pattern Config";
 
-	public const string HelpText = "Pattern Configs are settings used by GrooveAuthor to generate new step patterns."
-	                               + " Full details on the config values and how they are used to assign costs can be found"
-	                               + " in the documentation.";
+	public static readonly string HelpText =
+		$"Pattern Configs are settings used by {Editor.GetAppName()} to generate new step patterns."
+		+ " Full details on the config values and how they are used to assign costs can be found"
+		+ " in the documentation.";
 
 	private const string EndChoiceHelpText = "Which lane the {0} foot should end on."
 	                                         + "\nAutomatic Ignore Following Steps:        The {0} foot ending lane should be chosen automatically with"

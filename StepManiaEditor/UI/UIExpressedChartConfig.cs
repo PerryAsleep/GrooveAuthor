@@ -15,11 +15,12 @@ internal sealed class UIExpressedChartConfig
 
 	public const string WindowTitle = "Expressed Chart Config";
 
-	public const string HelpText = "Expressed Chart Configs are settings used by GrooveAuthor to interpret Charts."
-	                               + " This is used for autogenerating patterns and new Charts as those actions require understanding how the body moves to perform a Chart."
-	                               + " An Expressed Chart Config can be assigned to a Chart in the Chart Properties window."
-	                               + " Charts will default to using the Dynamic Expressed Chart Config."
-	                               + " The default Expressed Chart Configs cannot be edited.";
+	public static readonly string HelpText =
+		$"Expressed Chart Configs are settings used by {Editor.GetAppName()} to interpret Charts."
+		+ " This is used for autogenerating patterns and new Charts as those actions require understanding how the body moves to perform a Chart."
+		+ " An Expressed Chart Config can be assigned to a Chart in the Chart Properties window."
+		+ " Charts will default to using the Dynamic Expressed Chart Config."
+		+ " The default Expressed Chart Configs cannot be edited.";
 
 	private readonly Editor Editor;
 

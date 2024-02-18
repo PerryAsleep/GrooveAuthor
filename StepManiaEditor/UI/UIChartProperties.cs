@@ -100,7 +100,7 @@ internal sealed class UIChartProperties
 				{
 					ImGuiLayoutUtils.DrawExpressedChartConfigCombo(editorChart, "Expression",
 						"(Editor Only) Expressed Chart Configuration."
-						+ "\nThis configuration is used by GrooveAuthor to parse the Chart and interpret its steps."
+						+ $"\nThis configuration is used by {Editor.GetAppName()} to parse the Chart and interpret its steps."
 						+ "\nThis interpretation is used for autogenerating patterns and other Charts.");
 					ImGuiLayoutUtils.EndTable();
 				}
