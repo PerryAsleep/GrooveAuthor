@@ -14,7 +14,8 @@ internal sealed class UIChartList
 	private static readonly int TypeWidth = UiScaled(60);
 	private static readonly int RatingWidth = UiScaled(16);
 	private static readonly int AddChartWidth = UiScaled(86);
-	private static readonly Vector2 DefaultPosition = new(UiScaled(0), UiScaled(872));
+	private static readonly float DefaultPositionX = UiScaled(0);
+	private static readonly float DefaultPositionY = UiScaled(872);
 	private static readonly Vector2 DefaultSize = new(UiScaled(622), UiScaled(208));
 
 	private EditorChart ChartPendingDelete;
@@ -30,7 +31,20 @@ internal sealed class UIChartList
 		if (!Preferences.Instance.ShowChartListWindow)
 			return;
 
-		ImGui.SetNextWindowPos(DefaultPosition, ImGuiCond.FirstUseEver);
+		// We always try to show UIChartList on first launch. If showing it would put it off the screen, then don't show it.
+		if (Preferences.Instance.FirstTimeTryingToShowChartListWindow)
+		{
+			Preferences.Instance.FirstTimeTryingToShowChartListWindow = false;
+			if (DefaultPositionY > UiScaled(Editor.GetViewportHeight()))
+			{
+				Preferences.Instance.ShowChartListWindow = false;
+				return;
+			}
+		}
+
+		var defaultPosition = new Vector2(DefaultPositionX,
+			Math.Max(0, Math.Min(UiScaled(Editor.GetViewportHeight()) - DefaultSize.Y, DefaultPositionY)));
+		ImGui.SetNextWindowPos(defaultPosition, ImGuiCond.FirstUseEver);
 		ImGui.SetNextWindowSize(DefaultSize, ImGuiCond.FirstUseEver);
 		if (ImGui.Begin(WindowTitle, ref Preferences.Instance.ShowChartListWindow, ImGuiWindowFlags.NoScrollbar))
 		{

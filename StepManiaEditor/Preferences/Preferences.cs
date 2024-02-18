@@ -127,6 +127,7 @@ internal sealed class Preferences
 	[JsonInclude] public bool ShowChartPropertiesWindow = true;
 	[JsonInclude] public bool ShowAutogenConfigsWindow;
 	[JsonInclude] public bool ShowChartListWindow = true;
+	[JsonInclude] public bool FirstTimeTryingToShowChartListWindow = true;
 	[JsonInclude] public bool ShowAboutWindow;
 	[JsonInclude] public bool ShowDebugWindow;
 	[JsonInclude] public bool ShowControlsWindow;
