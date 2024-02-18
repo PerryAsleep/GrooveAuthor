@@ -25,14 +25,8 @@ public class UIOptions
 		{
 			if (ImGuiLayoutUtils.BeginTable("Options Step Type", TitleColumnWidth))
 			{
-				ImGuiLayoutUtils.DrawRowSelectableTree(true, "Startup Step Graphs", p,
-					nameof(PreferencesOptions.StartupChartTypesBools), false, Editor.SupportedChartTypes,
-					"Step graphs will be created for the selected charts when GrooveAuthor starts." +
-					"\nStep graphs are used to generate patterns and convert charts from one type to another.");
-
-				ImGuiLayoutUtils.DrawRowEnum<SMCommon.ChartType>(true, "Default Type", p,
-					nameof(PreferencesOptions.DefaultStepsType), false,
-					"When opening a song the default chart type will be used for selecting an initial chart.");
+				DrawStartupStepGraphs(true);
+				DrawDefaultType(true);
 				ImGuiLayoutUtils.DrawRowEnum<SMCommon.ChartDifficultyType>(true, "Default Difficulty", p,
 					nameof(PreferencesOptions.DefaultDifficultyType), false,
 					"When opening a song the default difficulty will be used for selecting an initial chart.");
@@ -66,29 +60,8 @@ public class UIOptions
 			ImGui.Separator();
 			if (ImGuiLayoutUtils.BeginTable("Options Sync", TitleColumnWidth))
 			{
-				ImGuiLayoutUtils.DrawRowDragDoubleWithTwoButtons(true, "New Song Sync", p,
-					nameof(PreferencesOptions.NewSongSyncOffset), false,
-					SetNewSongSyncItg, "9ms (ITG)", ButtonSyncWidth,
-					SetNewSongSyncDdr, "0ms (DDR)", ButtonSyncWidth,
-					"The song sync to use when creating new songs."
-					+ "\nThis is an editor-only value used to visually compensate for songs with built-in offsets."
-					+ "\nIf you tend to work with content synced for ITG2 with a 9ms offset, set this to 9ms."
-					+ "\nIf you tend to work with content with a null sync value, set this to 0ms."
-					+ "\nThe song sync value is configurable per song. This value is only used for setting the"
-					+ "\nstarting song sync value when creating a new song.",
-					0.0001f, "%.6f seconds", 0.0);
-
-				ImGuiLayoutUtils.DrawRowDragDoubleWithTwoButtons(true, "Default Song Sync", p,
-					nameof(PreferencesOptions.OpenSongSyncOffset), false,
-					SetDefaultSongSyncItg, "9ms (ITG)", ButtonSyncWidth,
-					SetDefaultSongSyncDdr, "0ms (DDR)", ButtonSyncWidth,
-					"The song sync to use when opening songs that don't have a specified sync offset."
-					+ "\nThis is an editor-only value used to visually compensate for songs with built-in offsets."
-					+ "\nIf you tend to work with content synced for ITG2 with a 9ms offset, set this to 9ms."
-					+ "\nIf you tend to work with content with a null sync value, set this to 0ms."
-					+ "\nThe song sync value is configurable per song. This value is only used for setting the"
-					+ "\nsong sync value when opening songs that don't have a specified song sync offset.",
-					0.0001f, "%.6f seconds", 0.0);
+				DrawNewSongSync(true);
+				DrawDefaultSongSync(true);
 
 				ImGuiLayoutUtils.EndTable();
 			}
@@ -147,25 +120,70 @@ public class UIOptions
 		ImGui.End();
 	}
 
-	private void SetNewSongSyncItg()
+	public static void DrawStartupStepGraphs(bool undoable)
+	{
+		ImGuiLayoutUtils.DrawRowStepGraphMultiSelection(undoable, "Startup Step Graphs", Preferences.Instance.PreferencesOptions,
+			nameof(PreferencesOptions.StartupStepGraphs), false,
+			"Step Graphs will be created for the selected chart types when GrooveAuthor starts." +
+			"\nStep Graphs are used to generate patterns and convert charts from one type to another.");
+	}
+
+	public static void DrawDefaultType(bool undoable)
+	{
+		ImGuiLayoutUtils.DrawRowEnum(undoable, "Default Type", Preferences.Instance.PreferencesOptions,
+			nameof(PreferencesOptions.DefaultStepsType), Editor.SupportedChartTypes, false,
+			"When opening a song the default chart type will be used for selecting an initial chart.");
+	}
+
+	public static void DrawNewSongSync(bool undoable)
+	{
+		ImGuiLayoutUtils.DrawRowDragDoubleWithTwoButtons(undoable, "New Song Sync", Preferences.Instance.PreferencesOptions,
+			nameof(PreferencesOptions.NewSongSyncOffset), false,
+			SetNewSongSyncItg, "9ms (ITG)", ButtonSyncWidth,
+			SetNewSongSyncDdr, "0ms (DDR)", ButtonSyncWidth,
+			"The song sync to use when creating new songs."
+			+ "\nThis is an editor-only value used to visually compensate for songs with built-in offsets."
+			+ "\nIf you tend to work with content synced for ITG2 with a 9ms offset, set this to 9ms."
+			+ "\nIf you tend to work with content with a null sync value, set this to 0ms."
+			+ "\nThe song sync value is configurable per song. This value is only used for setting the"
+			+ "\nstarting song sync value when creating a new song.",
+			0.0001f, "%.6f seconds", 0.0);
+	}
+
+	public static void DrawDefaultSongSync(bool undoable)
+	{
+		ImGuiLayoutUtils.DrawRowDragDoubleWithTwoButtons(undoable, "Default Song Sync", Preferences.Instance.PreferencesOptions,
+			nameof(PreferencesOptions.OpenSongSyncOffset), false,
+			SetDefaultSongSyncItg, "9ms (ITG)", ButtonSyncWidth,
+			SetDefaultSongSyncDdr, "0ms (DDR)", ButtonSyncWidth,
+			"The song sync to use when opening songs that don't have a specified sync offset."
+			+ "\nThis is an editor-only value used to visually compensate for songs with built-in offsets."
+			+ "\nIf you tend to work with content synced for ITG2 with a 9ms offset, set this to 9ms."
+			+ "\nIf you tend to work with content with a null sync value, set this to 0ms."
+			+ "\nThe song sync value is configurable per song. This value is only used for setting the"
+			+ "\nsong sync value when opening songs that don't have a specified song sync offset.",
+			0.0001f, "%.6f seconds", 0.0);
+	}
+
+	private static void SetNewSongSyncItg()
 	{
 		ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyValue<double>(
 			Preferences.Instance.PreferencesOptions, nameof(PreferencesOptions.NewSongSyncOffset), 0.009, false));
 	}
 
-	private void SetNewSongSyncDdr()
+	private static void SetNewSongSyncDdr()
 	{
 		ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyValue<double>(
 			Preferences.Instance.PreferencesOptions, nameof(PreferencesOptions.NewSongSyncOffset), 0.0, false));
 	}
 
-	private void SetDefaultSongSyncItg()
+	private static void SetDefaultSongSyncItg()
 	{
 		ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyValue<double>(
 			Preferences.Instance.PreferencesOptions, nameof(PreferencesOptions.OpenSongSyncOffset), 0.009, false));
 	}
 
-	private void SetDefaultSongSyncDdr()
+	private static void SetDefaultSongSyncDdr()
 	{
 		ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyValue<double>(
 			Preferences.Instance.PreferencesOptions, nameof(PreferencesOptions.OpenSongSyncOffset), 0.0, false));

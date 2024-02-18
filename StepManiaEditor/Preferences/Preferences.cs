@@ -72,6 +72,10 @@ internal sealed class Preferences
 	[JsonInclude] public bool WindowFullScreen;
 	[JsonInclude] public bool WindowMaximized = true;
 
+	// FTUE state
+	[JsonInclude] public Version LastCompletedFtueVersion;
+	[JsonInclude] public int FtueIndex;
+
 	// Waveform preferences
 	[JsonInclude] public PreferencesWaveForm PreferencesWaveForm = new();
 
@@ -151,13 +155,11 @@ internal sealed class Preferences
 	private void PostLoad()
 	{
 		PreferencesReceptors.SetEditor(Editor);
-		PreferencesOptions.PostLoad();
 		PreferencesWaveForm.PostLoad();
 	}
 
 	private void PreSave()
 	{
-		PreferencesOptions.PreSave();
 	}
 
 	/// <summary>

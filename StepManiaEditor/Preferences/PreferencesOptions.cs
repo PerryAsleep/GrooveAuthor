@@ -1,4 +1,4 @@
-﻿using System.Linq;
+﻿using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using Fumen;
 using static Fumen.Converters.SMCommon;
@@ -14,13 +14,12 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 	public const ChartType DefaultDefaultStepsType = ChartType.dance_single;
 	public const ChartDifficultyType DefaultDefaultDifficultyType = ChartDifficultyType.Challenge;
 
-	public static readonly ChartType[] DefaultStartupChartTypes =
+	public static readonly HashSet<ChartType> DefaultStartupStepGraphs = new()
 	{
 		ChartType.dance_single,
 		ChartType.dance_double,
 	};
 
-	public static bool[] DefaultStartupChartTypesBools;
 	public const bool DefaultOpenLastOpenedFileOnLaunch = true;
 	public const double DefaultNewSongSyncOffset = 0.009;
 	public const double DefaultOpenSongSyncOffset = 0.009;
@@ -35,7 +34,7 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 	[JsonInclude] public int RecentFilesHistorySize = DefaultRecentFilesHistorySize;
 	[JsonInclude] public ChartType DefaultStepsType = DefaultDefaultStepsType;
 	[JsonInclude] public ChartDifficultyType DefaultDifficultyType = DefaultDefaultDifficultyType;
-	[JsonInclude] public ChartType[] StartupChartTypes = (ChartType[])DefaultStartupChartTypes.Clone();
+	[JsonInclude] public HashSet<ChartType> StartupStepGraphs = new(DefaultStartupStepGraphs);
 	[JsonInclude] public bool OpenLastOpenedFileOnLaunch = DefaultOpenLastOpenedFileOnLaunch;
 	[JsonInclude] public double NewSongSyncOffset = DefaultNewSongSyncOffset;
 	[JsonInclude] public double OpenSongSyncOffset = DefaultOpenSongSyncOffset;
@@ -60,15 +59,12 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 
 	private int UndoHistorySizeInternal = DefaultUndoHistorySize;
 
-	// Strings are serialized, but converted to an array of booleans for UI.
-	[JsonIgnore] public bool[] StartupChartTypesBools;
-
 	public bool IsUsingDefaults()
 	{
 		return RecentFilesHistorySize == DefaultRecentFilesHistorySize
 		       && DefaultStepsType == DefaultDefaultStepsType
 		       && DefaultDifficultyType == DefaultDefaultDifficultyType
-		       && StartupChartTypesBools.SequenceEqual(DefaultStartupChartTypesBools)
+		       && StartupStepGraphs.SetEquals(DefaultStartupStepGraphs)
 		       && OpenLastOpenedFileOnLaunch == DefaultOpenLastOpenedFileOnLaunch
 		       && NewSongSyncOffset.DoubleEquals(DefaultNewSongSyncOffset)
 		       && OpenSongSyncOffset.DoubleEquals(DefaultOpenSongSyncOffset)
@@ -86,56 +82,6 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 			return;
 		ActionQueue.Instance.Do(new ActionRestoreOptionPreferenceDefaults());
 	}
-
-	public void PostLoad()
-	{
-		// Set up StartupChartTypesBools from StartupChartTypes.
-		StartupChartTypesBools = new bool[Editor.SupportedChartTypes.Length];
-		DefaultStartupChartTypesBools = new bool[Editor.SupportedChartTypes.Length];
-		foreach (var chartType in StartupChartTypes)
-		{
-			StartupChartTypesBools[FindSupportedChartTypeIndex(chartType)] = true;
-		}
-
-		foreach (var chartType in DefaultStartupChartTypes)
-		{
-			DefaultStartupChartTypesBools[FindSupportedChartTypeIndex(chartType)] = true;
-		}
-	}
-
-	public void PreSave()
-	{
-		// Set up StartupChartTypes from StartupChartTypesBools.
-		var count = 0;
-		for (var i = 0; i < StartupChartTypesBools.Length; i++)
-		{
-			if (StartupChartTypesBools[i])
-				count++;
-		}
-
-		StartupChartTypes = new ChartType[count];
-		count = 0;
-		for (var i = 0; i < StartupChartTypesBools.Length; i++)
-		{
-			if (StartupChartTypesBools[i])
-			{
-				StartupChartTypes[count++] = Editor.SupportedChartTypes[i];
-			}
-		}
-	}
-
-	private int FindSupportedChartTypeIndex(ChartType chartType)
-	{
-		for (var i = 0; i < Editor.SupportedChartTypes.Length; i++)
-		{
-			if (Editor.SupportedChartTypes[i] == chartType)
-			{
-				return i;
-			}
-		}
-
-		return 0;
-	}
 }
 
 /// <summary>
@@ -146,7 +92,7 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 	private readonly int PreviousRecentFilesHistorySize;
 	private readonly ChartType PreviousDefaultStepsType;
 	private readonly ChartDifficultyType PreviousDefaultDifficultyType;
-	private readonly bool[] PreviousStartupChartTypesBools;
+	private readonly HashSet<ChartType> PreviousStartupStepGraphs;
 	private readonly bool PreviousOpenLastOpenedFileOnLaunch;
 	private readonly double PreviousNewSongSyncOffset;
 	private readonly double PreviousOpenSongSyncOffset;
@@ -163,13 +109,14 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 		PreviousRecentFilesHistorySize = p.RecentFilesHistorySize;
 		PreviousDefaultStepsType = p.DefaultStepsType;
 		PreviousDefaultDifficultyType = p.DefaultDifficultyType;
-		PreviousStartupChartTypesBools = (bool[])p.StartupChartTypesBools.Clone();
+		PreviousStartupStepGraphs = new HashSet<ChartType>(p.StartupStepGraphs);
 		PreviousOpenLastOpenedFileOnLaunch = p.OpenLastOpenedFileOnLaunch;
 		PreviousNewSongSyncOffset = p.NewSongSyncOffset;
 		PreviousOpenSongSyncOffset = p.OpenSongSyncOffset;
 		PreviousUndoHistorySize = p.UndoHistorySize;
 		PreviousUseCustomDpiScale = p.UseCustomDpiScale;
 		PreviousDpiScale = p.DpiScale;
+		PreviousSuppressExternalSongModificationNotification = p.SuppressExternalSongModificationNotification;
 		PreviousHideSongBackground = p.HideSongBackground;
 	}
 
@@ -189,7 +136,7 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 		p.RecentFilesHistorySize = PreferencesOptions.DefaultRecentFilesHistorySize;
 		p.DefaultStepsType = PreferencesOptions.DefaultDefaultStepsType;
 		p.DefaultDifficultyType = PreferencesOptions.DefaultDefaultDifficultyType;
-		p.StartupChartTypesBools = (bool[])PreferencesOptions.DefaultStartupChartTypesBools.Clone();
+		p.StartupStepGraphs = new HashSet<ChartType>(PreferencesOptions.DefaultStartupStepGraphs);
 		p.OpenLastOpenedFileOnLaunch = PreferencesOptions.DefaultOpenLastOpenedFileOnLaunch;
 		p.NewSongSyncOffset = PreferencesOptions.DefaultNewSongSyncOffset;
 		p.OpenSongSyncOffset = PreferencesOptions.DefaultOpenSongSyncOffset;
@@ -206,7 +153,7 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 		p.RecentFilesHistorySize = PreviousRecentFilesHistorySize;
 		p.DefaultStepsType = PreviousDefaultStepsType;
 		p.DefaultDifficultyType = PreviousDefaultDifficultyType;
-		p.StartupChartTypesBools = (bool[])PreviousStartupChartTypesBools.Clone();
+		p.StartupStepGraphs = new HashSet<ChartType>(PreviousStartupStepGraphs);
 		p.OpenLastOpenedFileOnLaunch = PreviousOpenLastOpenedFileOnLaunch;
 		p.NewSongSyncOffset = PreviousNewSongSyncOffset;
 		p.OpenSongSyncOffset = PreviousOpenSongSyncOffset;

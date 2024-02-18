@@ -1,6 +1,6 @@
 ﻿using System.Diagnostics;
 
-const string fumenDevenv = "FUMEN_DEVENV";
+const string fumenDevEnv = "FUMEN_DEVENV";
 const string fumen7Z = "FUMEN_7Z";
 
 const string appName = "GrooveAuthor";
@@ -39,10 +39,11 @@ Dictionary<string, string> docsDocumentationReplacements = new()
 	{ "(https://perryasleep.github.io/StepManiaChartGenerator/StepManiaChartGenerator/docs/", "(" },
 	{ "(StepManiaEditor/docs/", "(" },
 	{ "(../../StepManiaLibrary/docs/", "(StepManiaLibrary/" },
+	{ "../Content/logo.svg", "logo.svg" },
 };
 
 static void CopyDirectory(string sourceDir, string destinationDir,
-	IReadOnlyDictionary<string, string> documentationReplacements = null)
+	IReadOnlyDictionary<string, string>? documentationReplacements = null)
 {
 	var dir = new DirectoryInfo(sourceDir);
 	if (!dir.Exists)
@@ -86,11 +87,11 @@ static void ReplaceTextInFile(string fileName, IReadOnlyDictionary<string, strin
 	File.WriteAllText(fileName, text);
 }
 
-var devEnvPath = Environment.GetEnvironmentVariable(fumenDevenv);
+var devEnvPath = Environment.GetEnvironmentVariable(fumenDevEnv);
 if (string.IsNullOrEmpty(devEnvPath))
 {
 	Console.WriteLine(
-		$"{fumenDevenv} is not defined. Please set {fumenDevenv} in your environment variables to the path of your devenv.exe executable.");
+		$"{fumenDevEnv} is not defined. Please set {fumenDevEnv} in your environment variables to the path of your devenv.exe executable.");
 	return 1;
 }
 

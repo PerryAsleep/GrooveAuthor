@@ -42,6 +42,8 @@ internal sealed class Editor :
 	Fumen.IObserver<PreferencesAudio>,
 	Fumen.IObserver<ActionQueue>
 {
+	public const string GitHubUrl = "https://github.com/PerryAsleep/GrooveAuthor";
+
 	/// <summary>
 	/// How to space Chart Events when rendering.
 	/// </summary>
@@ -192,6 +194,7 @@ internal sealed class Editor :
 	private UICopyEventsBetweenCharts UICopyEventsBetweenCharts;
 	private UIPatternEvent UIPatternEvent;
 	private UIPerformance UIPerformance;
+	private UIFTUE UIFTUE;
 #if DEBUG
 	private UIDebug UIDebug;
 #endif
@@ -928,6 +931,7 @@ internal sealed class Editor :
 		UICopyEventsBetweenCharts = new UICopyEventsBetweenCharts(this);
 		UIPatternEvent = new UIPatternEvent(this);
 		UIPerformance = new UIPerformance(PerformanceMonitor);
+		UIFTUE = new UIFTUE(this);
 #if DEBUG
 		UIDebug = new UIDebug(this);
 #endif
@@ -3580,6 +3584,8 @@ internal sealed class Editor :
 	{
 		DrawMainMenuUI();
 
+		UIFTUE.Draw();
+
 #if DEBUG
 		UIDebug.Draw();
 #endif
@@ -3981,6 +3987,22 @@ internal sealed class Editor :
 				{
 					p.ShowControlsWindow = true;
 					ImGui.SetWindowFocus(WindowTitle);
+				}
+
+				if (ImGui.Selectable("Documentation"))
+				{
+					OnOpenDocumentation();
+				}
+
+				if (ImGui.Selectable($"Open {GetAppName()} on GitHub"))
+				{
+					OnOpenGitHub();
+				}
+
+				if (ImGui.Selectable("Show Intro Dialogs"))
+				{
+					Preferences.Instance.LastCompletedFtueVersion = null;
+					Preferences.Instance.FtueIndex = 0;
 				}
 
 				ImGui.EndMenu();
@@ -4552,6 +4574,7 @@ internal sealed class Editor :
 					ImGui.EndMenu();
 				}
 
+				// ReSharper disable once RedundantAssignment
 				anyObjectHovered = true;
 			}
 
@@ -4904,22 +4927,21 @@ internal sealed class Editor :
 
 		// Create StepGraphs.
 		var pOptions = Preferences.Instance.PreferencesOptions;
-		var validStepGraphTypes = new HashSet<ChartType>();
-		for (var i = 0; i < pOptions.StartupChartTypes.Length; i++)
+		var validStepGraphTypes = new List<ChartType>();
+		foreach (var chartType in SupportedChartTypes)
 		{
-			var chartType = pOptions.StartupChartTypes[i];
-			if (PadDataByChartType.TryGetValue(chartType, out var padData) && padData != null)
-				validStepGraphTypes.Add(chartType);
+			if (pOptions.StartupStepGraphs.Contains(chartType))
+			{
+				if (PadDataByChartType.TryGetValue(chartType, out var padData) && padData != null)
+					validStepGraphTypes.Add(chartType);
+			}
 		}
 
-		ChartType[] validStepGraphArray = null;
 		if (validStepGraphTypes.Count > 0)
 		{
-			validStepGraphArray = validStepGraphTypes.ToArray();
-
-			var stepGraphTasks = new Task<StepGraph>[validStepGraphArray.Length];
+			var stepGraphTasks = new Task<StepGraph>[validStepGraphTypes.Count];
 			var index = 0;
-			foreach (var stepGraphType in validStepGraphArray)
+			foreach (var stepGraphType in validStepGraphTypes)
 			{
 				stepGraphTasks[index++] = CreateStepGraph(stepGraphType);
 			}
@@ -4927,19 +4949,16 @@ internal sealed class Editor :
 			await Task.WhenAll(stepGraphTasks);
 			for (var i = 0; i < validStepGraphTypes.Count; i++)
 			{
-				StepGraphByChartType[validStepGraphArray[i]] = stepGraphTasks[i].Result;
+				StepGraphByChartType[validStepGraphTypes[i]] = stepGraphTasks[i].Result;
 			}
-		}
 
-		// Set up root nodes.
-		if (validStepGraphArray != null)
-		{
+			// Set up root nodes.
 			var rootNodesByChartType = new Dictionary<ChartType, List<List<GraphNode>>>();
 			await Task.Run(() =>
 			{
-				for (var i = 0; i < validStepGraphArray.Length; i++)
+				for (var i = 0; i < validStepGraphTypes.Count; i++)
 				{
-					var chartType = validStepGraphArray[i];
+					var chartType = validStepGraphTypes[i];
 					var rootNodes = new List<List<GraphNode>>();
 					var stepGraph = StepGraphByChartType[chartType];
 					var found = true;
@@ -5390,6 +5409,36 @@ internal sealed class Editor :
 		catch (Exception e)
 		{
 			Logger.Error($"Failed to open {dir}. {e}");
+		}
+	}
+
+	public void OnOpenDocumentation()
+	{
+		try
+		{
+			var tocFile = Path.Combine(new[] { AppContext.BaseDirectory, "docs", "TableOfContents.md" });
+
+			// Fallback for local builds.
+			if (!File.Exists(tocFile))
+				tocFile = Path.Combine(new[] { AppContext.BaseDirectory, "..\\..\\..", "docs", "TableOfContents.md" });
+
+			Process.Start("explorer.exe", tocFile);
+		}
+		catch (Exception e)
+		{
+			Logger.Error($"Failed to open documentation. {e}");
+		}
+	}
+
+	public static void OnOpenGitHub()
+	{
+		try
+		{
+			Process.Start("explorer.exe", GitHubUrl);
+		}
+		catch (Exception e)
+		{
+			Logger.Error($"Failed to open {GitHubUrl}. {e}");
 		}
 	}
 

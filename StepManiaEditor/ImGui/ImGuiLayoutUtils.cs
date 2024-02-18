@@ -12,6 +12,7 @@ using static StepManiaEditor.Utils;
 using static Fumen.Converters.SMCommon;
 using static StepManiaEditor.AutogenConfig.EditorPatternConfig;
 using static StepManiaEditor.Editor;
+using static System.Diagnostics.Debug;
 
 namespace StepManiaEditor;
 
@@ -39,6 +40,8 @@ internal sealed class ImGuiLayoutUtils
 	private const string DragHelpText = "\nShift+drag for large adjustments.\nAlt+drag for small adjustments.";
 
 	private static ImFontPtr ImGuiFont;
+
+	private static readonly List<ChartType?> StartupStepGraphOptions;
 
 	public static readonly float CheckBoxWidth = UiScaled(20);
 	public static readonly float FileBrowseXWidth = UiScaled(20);
@@ -68,6 +71,42 @@ internal sealed class ImGuiLayoutUtils
 	public static readonly Vector2 ArrowIconSize = new(ArrowIconWidth, ArrowIconHeight);
 	public static readonly float ButtonApplyTimingWidth = UiScaled(80);
 	public static readonly float ButtonApplyTimingAndScrollWidth = UiScaled(138);
+
+	static ImGuiLayoutUtils()
+	{
+		// Initialize the StartupStepGraphOptions List.
+		// The size is 18 because we want 3 columns and the max rows per column is 6 from the dance types.
+		const int stepGraphListSize = 18;
+		StartupStepGraphOptions = new List<ChartType?>(stepGraphListSize);
+		for (var i = 0; i < stepGraphListSize; i++)
+			StartupStepGraphOptions.Add(null);
+
+		var numAddedDanceTypes = 0;
+		var numAddedPumpTypes = 0;
+		var numAddedSmxTypes = 0;
+		for (var i = 0; i < SupportedChartTypes.Length; i++)
+		{
+			if (IsDanceType(SupportedChartTypes[i]))
+			{
+				StartupStepGraphOptions[numAddedDanceTypes * 3] = SupportedChartTypes[i];
+				numAddedDanceTypes++;
+			}
+			else if (IsPumpType(SupportedChartTypes[i]))
+			{
+				StartupStepGraphOptions[1 + numAddedPumpTypes * 3] = SupportedChartTypes[i];
+				numAddedPumpTypes++;
+			}
+			else if (IsSmxType(SupportedChartTypes[i]))
+			{
+				StartupStepGraphOptions[2 + numAddedSmxTypes * 3] = SupportedChartTypes[i];
+				numAddedSmxTypes++;
+			}
+			else
+			{
+				Assert(false, $"Unexpected ChartType {SupportedChartTypes[i]} in Editor.SupportedChartTypes.");
+			}
+		}
+	}
 
 	public static void SetFont(ImFontPtr font)
 	{
@@ -1876,60 +1915,123 @@ internal sealed class ImGuiLayoutUtils
 
 	#endregion Enum
 
-	#region Selectable
+	#region Step Graph Selection
 
-	public static bool DrawRowSelectableTree<T>(bool undoable, string title, object o, string fieldName, bool affectsFile,
+	public static void DrawRowStepGraphMultiSelection(bool undoable, string title, object o, string fieldName, bool affectsFile,
 		string help = null)
-		where T : Enum
 	{
+		var originalValues = GetValueFromFieldOrProperty<HashSet<ChartType>>(o, fieldName);
+
+		// Draw the title and help.
 		DrawRowTitleAndAdvanceColumn(title);
-		return DrawSelectableTree<T>(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, affectsFile, help);
+		DrawHelp(help, ImGui.GetContentRegionAvail().X);
+
+		// Start a new table with one column. The first row is buttons, the second is a sub-table for choosing types.
+		if (ImGui.BeginTable("StepGraph Outer Table", 1))
+		{
+			// First row of buttons.
+			ImGui.TableNextRow();
+			ImGui.TableSetColumnIndex(0);
+			if (ImGui.Button("Select All"))
+			{
+				if (undoable)
+				{
+					var allSet = new HashSet<ChartType>();
+					foreach (var chartType in SupportedChartTypes)
+						allSet.Add(chartType);
+
+					ActionQueue.Instance.Do(
+						new ActionSetObjectFieldOrPropertyReferenceNoClone<HashSet<ChartType>>(o, fieldName, allSet,
+							affectsFile));
+				}
+				else
+				{
+					originalValues.Clear();
+					foreach (var chartType in SupportedChartTypes)
+						originalValues.Add(chartType);
+				}
+			}
+
+			// Second row with a sub-table.
+			ImGui.TableNextRow();
+			ImGui.TableSetColumnIndex(0);
+			if (ImGui.BeginTable("StepGraph Inner Table", 3))
+			{
+				for (var i = 0; i < StartupStepGraphOptions.Count;)
+				{
+					// If we reach a row with no valid types, stop adding rows.
+					var rowIsEmpty = true;
+					for (var col = 0; col < 3; col++)
+					{
+						if (StartupStepGraphOptions[i + col] != null)
+						{
+							rowIsEmpty = false;
+							break;
+						}
+					}
+
+					if (rowIsEmpty)
+						break;
+
+					// Start a new row.
+					ImGui.TableNextRow();
+					for (var col = 0; col < 3; col++, i++)
+					{
+						// Start a new column.
+						ImGui.TableSetColumnIndex(col);
+						if (StartupStepGraphOptions[i] != null)
+						{
+							var originalValue = originalValues.Contains(StartupStepGraphOptions[i].Value);
+							var value = originalValue;
+							if (ImGui.Checkbox(GetPrettyEnumString(StartupStepGraphOptions[i].Value), ref value) &&
+							    value != originalValue)
+							{
+								// Update the value with an undoable action.
+								if (undoable)
+								{
+									// Replace the set with a new set.
+									var newValues = new HashSet<ChartType>();
+									foreach (var chartType in SupportedChartTypes)
+									{
+										if (chartType == StartupStepGraphOptions[i].Value)
+										{
+											if (value)
+												newValues.Add(chartType);
+										}
+										else
+										{
+											if (originalValues.Contains(chartType))
+											{
+												newValues.Add(chartType);
+											}
+										}
+									}
+
+									ActionQueue.Instance.Do(
+										new ActionSetObjectFieldOrPropertyReferenceNoClone<HashSet<ChartType>>(o, fieldName,
+											newValues, affectsFile));
+								}
+								// Update the value directly.
+								else
+								{
+									if (value)
+										originalValues.Add(StartupStepGraphOptions[i].Value);
+									else
+										originalValues.Remove(StartupStepGraphOptions[i].Value);
+								}
+							}
+						}
+					}
+				}
+
+				ImGui.EndTable();
+			}
+
+			ImGui.EndTable();
+		}
 	}
 
-	public static bool DrawSelectableTree<T>(bool undoable, string title, object o, string fieldName, float width,
-		bool affectsFile, string help = null) where T : Enum
-	{
-		var value = GetValueFromFieldOrProperty<bool[]>(o, fieldName);
-
-		var itemWidth = DrawHelp(help, width);
-		ImGui.SetNextItemWidth(itemWidth);
-
-		var (ret, originalValues) = SelectableTree<T>(title, ref value);
-		if (ret && undoable)
-			ActionQueue.Instance.Do(
-				new ActionSetObjectFieldOrPropertyReference<bool[]>(o, fieldName, (bool[])value.Clone(), originalValues,
-					affectsFile));
-
-		return ret;
-	}
-
-	public static bool DrawRowSelectableTree<T>(bool undoable, string title, object o, string fieldName, bool affectsFile,
-		T[] validChoices, string help = null)
-		where T : Enum
-	{
-		DrawRowTitleAndAdvanceColumn(title);
-		return DrawSelectableTree(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, affectsFile, validChoices,
-			help);
-	}
-
-	public static bool DrawSelectableTree<T>(bool undoable, string title, object o, string fieldName, float width,
-		bool affectsFile, T[] validChoices, string help = null) where T : Enum
-	{
-		var value = GetValueFromFieldOrProperty<bool[]>(o, fieldName);
-
-		var itemWidth = DrawHelp(help, width);
-		ImGui.SetNextItemWidth(itemWidth);
-
-		var (ret, originalValues) = SelectableTree(title, validChoices, ref value);
-		if (ret && undoable)
-			ActionQueue.Instance.Do(
-				new ActionSetObjectFieldOrPropertyReference<bool[]>(o, fieldName, (bool[])value.Clone(), originalValues,
-					affectsFile));
-
-		return ret;
-	}
-
-	#endregion Selectable
+	#endregion Step Graph Selection
 
 	#region Color Edit 3
 
