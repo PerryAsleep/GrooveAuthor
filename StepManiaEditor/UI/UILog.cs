@@ -38,7 +38,8 @@ internal class UILog
 	private static readonly int WrapCheckBoxWidth = UiScaled(20);
 	private static readonly int WrapTextWidth = UiScaled(24);
 	private static readonly Vector2 ButtonSize = new(UiScaled(50), 0.0f);
-	private static readonly Vector2 DefaultSize = new(UiScaled(561), UiScaled(300));
+	private static readonly int DefaultWidth = UiScaled(561);
+	private static readonly int DefaultHeight = UiScaled(300);
 	private static readonly int DefaultWindowY = UiScaled(21);
 	private static readonly int DefaultWindowX = UiScaled(1768);
 
@@ -54,10 +55,12 @@ internal class UILog
 		if (!Preferences.Instance.ShowLogWindow)
 			return;
 
-		ImGui.SetNextWindowSize(DefaultSize, ImGuiCond.FirstUseEver);
-		ImGui.SetNextWindowPos(
-			new Vector2(Math.Min(DefaultWindowX, UiScaled(Editor.GetViewportWidth()) - DefaultSize.X), DefaultWindowY),
-			ImGuiCond.FirstUseEver);
+		var viewportWidth = UiScaled(Editor.GetViewportWidth());
+		var logPosition = new Vector2(Math.Min(DefaultWindowX, viewportWidth - DefaultWidth), DefaultWindowY);
+		var logWidth = Math.Max(DefaultWidth, viewportWidth - logPosition.X);
+		var logSize = new Vector2(logWidth, DefaultHeight);
+		ImGui.SetNextWindowSize(logSize, ImGuiCond.FirstUseEver);
+		ImGui.SetNextWindowPos(logPosition, ImGuiCond.FirstUseEver);
 		if (ImGui.Begin(WindowTitle, ref Preferences.Instance.ShowLogWindow, ImGuiWindowFlags.NoScrollbar))
 		{
 			lock (logBufferLock)
