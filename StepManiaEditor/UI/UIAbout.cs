@@ -1,5 +1,5 @@
-﻿using System.Numerics;
-using ImGuiNET;
+﻿using ImGuiNET;
+using static StepManiaEditor.ImGuiUtils;
 
 namespace StepManiaEditor;
 
@@ -120,14 +120,15 @@ THE SOFTWARE.";
 
 	public const string WindowTitle = "About";
 
+	private static readonly float DefaultWidth = UiScaled(513);
+
 	public void Draw()
 	{
 		var p = Preferences.Instance;
 		if (!p.ShowAboutWindow)
 			return;
 
-		ImGui.SetNextWindowSize(Vector2.Zero, ImGuiCond.FirstUseEver);
-		if (ImGui.Begin(WindowTitle, ref p.ShowAboutWindow))
+		if (BeginWindow(WindowTitle, ref p.ShowAboutWindow, DefaultWidth))
 		{
 			var appName = Editor.GetAppName();
 			var version = Editor.GetAppVersion();

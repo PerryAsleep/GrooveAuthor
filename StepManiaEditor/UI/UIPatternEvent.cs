@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Numerics;
 using ImGuiNET;
 using static StepManiaEditor.ImGuiUtils;
 
@@ -11,6 +10,7 @@ namespace StepManiaEditor.UI;
 internal sealed class UIPatternEvent
 {
 	private static readonly int TitleColumnWidth = UiScaled(180);
+	private static readonly int DefaultWidth = UiScaled(460);
 
 	public const string WindowTitle = "Pattern Event Properties";
 
@@ -33,8 +33,7 @@ internal sealed class UIPatternEvent
 
 		// TODO: should we show more than one of these at a time? Might need to push the id.
 
-		ImGui.SetNextWindowSize(Vector2.Zero, ImGuiCond.FirstUseEver);
-		if (ImGui.Begin(WindowTitle, ref Preferences.Instance.ShowPatternEventWindow, ImGuiWindowFlags.NoScrollbar))
+		if (BeginWindow(WindowTitle, ref Preferences.Instance.ShowPatternEventWindow, DefaultWidth))
 		{
 			var disabled = !Editor.CanEdit();
 			if (disabled)

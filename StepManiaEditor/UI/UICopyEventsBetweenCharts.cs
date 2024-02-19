@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Numerics;
 using ImGuiNET;
 using static StepManiaEditor.ImGuiUtils;
 
@@ -14,6 +13,7 @@ internal class UICopyEventsBetweenCharts
 	public const string WindowTitle = "Copy Events";
 
 	private static readonly int TitleColumnWidth = UiScaled(100);
+	private static readonly int DefaultWidth = UiScaled(460);
 
 	/// <summary>
 	/// State associated with each Type of EditorEvent that can be copied.
@@ -153,8 +153,7 @@ internal class UICopyEventsBetweenCharts
 
 		var numSelectedTypes = 0;
 
-		ImGui.SetNextWindowSize(Vector2.Zero, ImGuiCond.FirstUseEver);
-		if (ImGui.Begin(WindowTitle, ref Showing, ImGuiWindowFlags.NoScrollbar))
+		if (BeginWindow(WindowTitle, ref Showing, DefaultWidth))
 		{
 			// Explanation
 			ImGui.TextWrapped(
@@ -301,16 +300,19 @@ internal class UICopyEventsBetweenCharts
 
 			// Determine whether the events can by copied.
 			var canCopy = numSelectedTypes > 0 && SourceChart != null;
-			switch (DestinationType)
+			if (canCopy)
 			{
-				case CopyToType.AllCharts:
-					if (Editor.GetActiveSong().GetNumCharts() < 2)
-						canCopy = false;
-					break;
-				case CopyToType.SingleChart:
-					if (DestinationChart == null || DestinationChart == SourceChart)
-						canCopy = false;
-					break;
+				switch (DestinationType)
+				{
+					case CopyToType.AllCharts:
+						if (Editor.GetActiveSong()?.GetNumCharts() < 2)
+							canCopy = false;
+						break;
+					case CopyToType.SingleChart:
+						if (DestinationChart == null || DestinationChart == SourceChart)
+							canCopy = false;
+						break;
+				}
 			}
 
 			// Confirm button.

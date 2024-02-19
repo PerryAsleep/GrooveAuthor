@@ -1,5 +1,4 @@
-﻿using System.Numerics;
-using ImGuiNET;
+﻿using ImGuiNET;
 using static StepManiaEditor.ImGuiUtils;
 
 namespace StepManiaEditor;
@@ -12,6 +11,7 @@ internal sealed class UISelectionPreferences
 	public const string WindowTitle = "Selection Preferences";
 
 	private static readonly int TitleColumnWidth = UiScaled(120);
+	private static readonly int DefaultWidth = UiScaled(460);
 
 	public void Draw()
 	{
@@ -19,8 +19,7 @@ internal sealed class UISelectionPreferences
 		if (!p.ShowSelectionControlPreferencesWindow)
 			return;
 
-		ImGui.SetNextWindowSize(Vector2.Zero, ImGuiCond.FirstUseEver);
-		if (ImGui.Begin(WindowTitle, ref p.ShowSelectionControlPreferencesWindow, ImGuiWindowFlags.NoScrollbar))
+		if (BeginWindow(WindowTitle, ref p.ShowSelectionControlPreferencesWindow, DefaultWidth))
 		{
 			if (ImGuiLayoutUtils.BeginTable("Selection", TitleColumnWidth))
 			{
@@ -34,14 +33,14 @@ internal sealed class UISelectionPreferences
 				ImGuiLayoutUtils.DrawRowEnum<PreferencesSelection.SelectionRegionMode>(true, "Click Mode", p,
 					nameof(PreferencesSelection.RegionMode), false,
 					"How notes should be selected when clicking a subsequent note while holding shift."
-					+ "\nFor all options notes are selected by time when the Spacing Mode is Constant Time and Row is used when the"
-					+ "\nSpacing Mode is Constant Row or Variable."
-					+ "\nTime Or Position:          Select all notes in between the previously selected note and the newly selected note"
-					+ "\n                           by time or row."
-					+ "\nTime Or Position And Lane: Select all notes in between the previously selected note and the newly selected note"
-					+ "\n                           by time or row, and additionally restrict the selection to notes whose lanes are within"
-					+ "\n                           the lanes in between the lanes of the previously selected note and the newly selected"
-					+ "\n                           note.");
+					+ "\nFor all options notes are selected by time when the Spacing Mode is Constant Time and Row is used when"
+					+ "\nthe Spacing Mode is Constant Row or Variable."
+					+ "\nTime Or Position:          Select all notes in between the previously selected note and the newly"
+					+ "\n                           selected note by time or row."
+					+ "\nTime Or Position And Lane: Select all notes in between the previously selected note and the newly"
+					+ "\n                           selected note by time or row, and additionally restrict the selection to"
+					+ "\n                           notes whose lanes are within the lanes in between the lanes of the"
+					+ "\n                           previously selected note and the newly selected note.");
 
 				ImGuiLayoutUtils.EndTable();
 			}

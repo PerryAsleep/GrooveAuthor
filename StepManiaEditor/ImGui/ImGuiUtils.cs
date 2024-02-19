@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Text;
 using Fumen;
@@ -32,6 +33,7 @@ internal sealed class ImGuiUtils
 	private const int BannerWidth = 418;
 	private const int BannerHeight = 164;
 
+	private static Editor Editor;
 	private static readonly Dictionary<Type, string[]> EnumStringsCacheByType = new();
 
 	private class EnumByAllowedValueCacheData
@@ -54,6 +56,11 @@ internal sealed class ImGuiUtils
 		{
 			ValidNoteTypeStrings[i] = $"1/{SMCommon.ValidDenominators[i] * SMCommon.NumBeatsPerMeasure}";
 		}
+	}
+
+	public static void Init(Editor editor)
+	{
+		Editor = editor;
 	}
 
 	[DllImport("msvcrt.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl)]
@@ -320,7 +327,7 @@ internal sealed class ImGuiUtils
 		var min = ImGui.GetCursorScreenPos();
 		min.X -= ImGui.GetStyle().FramePadding.X;
 		min.Y -= (int)(ImGui.GetStyle().ItemSpacing.Y * 0.5);
-		var max = new System.Numerics.Vector2(
+		var max = new Vector2(
 			min.X + ImGui.GetContentRegionAvail().X + ImGui.GetStyle().FramePadding.X * 2,
 			min.Y + ImGui.GetFrameHeight() + ImGui.GetStyle().ItemSpacing.Y - ImGui.GetStyle().FramePadding.Y * 2);
 		ImGui.GetWindowDrawList().AddRectFilled(min, max, color);
@@ -361,7 +368,7 @@ internal sealed class ImGuiUtils
 	public static void Text(string text, float width, bool disabled = false)
 	{
 		// Wrap the text in Table in order to control the size precisely.
-		if (ImGui.BeginTable(text, 1, ImGuiTableFlags.None, new System.Numerics.Vector2(width, 0), width))
+		if (ImGui.BeginTable(text, 1, ImGuiTableFlags.None, new Vector2(width, 0), width))
 		{
 			ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100.0f);
 			ImGui.TableNextRow();
@@ -546,16 +553,16 @@ internal sealed class ImGuiUtils
 		ImGui.GetStyle().FramePadding.Y = 0;
 
 		// Begin a child so we can add dummy items to offset the image.
-		if (ImGui.BeginChild(id, new System.Numerics.Vector2(totalWidth, totalHeight)))
+		if (ImGui.BeginChild(id, new Vector2(totalWidth, totalHeight)))
 		{
 			// Offset in Y.
 			if (yOffset > 0.0f)
-				ImGui.Dummy(new System.Numerics.Vector2(width, yOffset));
+				ImGui.Dummy(new Vector2(width, yOffset));
 
 			// Offset in X.
 			if (xOffset > 0.0f)
 			{
-				ImGui.Dummy(new System.Numerics.Vector2(xOffset, size.Y));
+				ImGui.Dummy(new Vector2(xOffset, size.Y));
 				ImGui.SameLine();
 			}
 
@@ -590,6 +597,37 @@ internal sealed class ImGuiUtils
 		               | (byte)(color->X * byte.MaxValue);
 		ImGui.PushStyleColor(col, newColor);
 	}
+
+	#region Window Placement
+
+	public static bool BeginWindow(string title, ref bool showWindow, float width, ImGuiWindowFlags flags = ImGuiWindowFlags.None)
+	{
+		var screenWidth = Editor.GetViewportWidth();
+		var x = (screenWidth - width) * 0.5f;
+		ImGui.SetNextWindowPos(new Vector2(x, 100.0f), ImGuiCond.FirstUseEver);
+		ImGui.SetNextWindowSize(new Vector2(width, 0.0f), ImGuiCond.FirstUseEver);
+		return ImGui.Begin(title, ref showWindow, ImGuiWindowFlags.NoScrollbar | flags);
+	}
+
+	public static bool BeginWindow(string title, ref bool showWindow, float width, float height,
+		ImGuiWindowFlags flags = ImGuiWindowFlags.None)
+	{
+		return BeginWindow(title, ref showWindow, new Vector2(width, height), flags);
+	}
+
+	public static bool BeginWindow(string title, ref bool showWindow, Vector2 size,
+		ImGuiWindowFlags flags = ImGuiWindowFlags.None)
+	{
+		var screenWidth = Editor.GetViewportWidth();
+		var screenHeight = Editor.GetViewportHeight();
+		var x = Math.Max(0.0f, (screenWidth - size.X) * 0.5f);
+		var y = Math.Max(0.0f, (screenHeight - size.Y) * 0.5f);
+		ImGui.SetNextWindowPos(new Vector2(x, y), ImGuiCond.FirstUseEver);
+		ImGui.SetNextWindowSize(size, ImGuiCond.FirstUseEver);
+		return ImGui.Begin(title, ref showWindow, ImGuiWindowFlags.NoScrollbar | flags);
+	}
+
+	#endregion Window Placement
 
 	#region UI Position and DPI Scaling
 

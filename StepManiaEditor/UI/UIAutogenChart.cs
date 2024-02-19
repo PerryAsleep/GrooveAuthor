@@ -1,5 +1,4 @@
-﻿using System.Numerics;
-using ImGuiNET;
+﻿using ImGuiNET;
 using StepManiaEditor.AutogenConfig;
 using static StepManiaEditor.ImGuiUtils;
 
@@ -13,6 +12,7 @@ internal sealed class UIAutogenChart
 	public const string WindowTitle = "Autogen Chart";
 
 	private static readonly int TitleWidth = UiScaled(100);
+	private static readonly int DefaultWidth = UiScaled(560);
 
 	private readonly Editor Editor;
 
@@ -58,8 +58,7 @@ internal sealed class UIAutogenChart
 
 		Utils.EnsureChartReferencesValidChartFromActiveSong(ref SourceChart, Editor);
 
-		ImGui.SetNextWindowSize(Vector2.Zero, ImGuiCond.FirstUseEver);
-		if (ImGui.Begin(WindowTitle, ref Showing, ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoCollapse))
+		if (BeginWindow(WindowTitle, ref Showing, DefaultWidth, ImGuiWindowFlags.NoCollapse))
 		{
 			if (ImGuiLayoutUtils.BeginTable("Autogen Contents", TitleWidth))
 			{

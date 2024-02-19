@@ -1,5 +1,4 @@
-﻿using System.Numerics;
-using Fumen.Converters;
+﻿using Fumen.Converters;
 using ImGuiNET;
 using StepManiaEditor.AutogenConfig;
 using StepManiaLibrary.PerformedChart;
@@ -14,6 +13,7 @@ internal sealed class UIPatternConfig
 {
 	private static readonly int TitleColumnWidth = UiScaled(140);
 	private static readonly int StepTypeWeightWidth = UiScaled(26);
+	private static readonly int DefaultWidth = UiScaled(460);
 
 	public const string WindowTitle = "Pattern Config";
 
@@ -70,8 +70,7 @@ internal sealed class UIPatternConfig
 
 		var currentChartType = Editor.GetActiveChart()?.ChartType;
 
-		ImGui.SetNextWindowSize(Vector2.Zero, ImGuiCond.FirstUseEver);
-		if (ImGui.Begin(WindowTitle, ref p.ShowPatternListWindow, ImGuiWindowFlags.NoScrollbar))
+		if (BeginWindow(WindowTitle, ref p.ShowPatternListWindow, DefaultWidth))
 		{
 			DrawConfig("PatternConfig", Editor, editorConfig, currentChartType, true);
 		}

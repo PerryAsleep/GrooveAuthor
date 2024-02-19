@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Numerics;
 using ImGuiNET;
 using StepManiaEditor.AutogenConfig;
 using StepManiaLibrary;
@@ -18,6 +17,7 @@ internal sealed class UIAutogenConfigs
 	private static readonly int NameWidth = UiScaled(220);
 	private static readonly int CloneWidth = UiScaled(39);
 	private static readonly int DeleteWidth = UiScaled(45);
+	private static readonly int DefaultWidth = UiScaled(780);
 
 	/// <summary>
 	/// Class for storing data per EditorConfig type and drawing a list of EditorConfigs
@@ -245,8 +245,7 @@ internal sealed class UIAutogenConfigs
 		if (!p.ShowAutogenConfigsWindow)
 			return;
 
-		ImGui.SetNextWindowSize(Vector2.Zero, ImGuiCond.FirstUseEver);
-		if (ImGui.Begin(WindowTitle, ref p.ShowAutogenConfigsWindow, ImGuiWindowFlags.NoScrollbar))
+		if (BeginWindow(WindowTitle, ref p.ShowAutogenConfigsWindow, DefaultWidth))
 		{
 			ExpressedChartData.Draw();
 			PerformedChartData.Draw();

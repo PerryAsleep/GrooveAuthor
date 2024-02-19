@@ -1,5 +1,4 @@
-﻿using System.Numerics;
-using ImGuiNET;
+﻿using ImGuiNET;
 using static StepManiaEditor.ImGuiUtils;
 
 namespace StepManiaEditor;
@@ -14,6 +13,7 @@ internal sealed class UIReceptorPreferences
 	private readonly Editor Editor;
 
 	private static readonly int TitleColumnWidth = UiScaled(120);
+	private static readonly int DefaultWidth = UiScaled(460);
 
 	public UIReceptorPreferences(Editor editor)
 	{
@@ -26,8 +26,7 @@ internal sealed class UIReceptorPreferences
 		if (!p.ShowReceptorPreferencesWindow)
 			return;
 
-		ImGui.SetNextWindowSize(Vector2.Zero, ImGuiCond.FirstUseEver);
-		if (ImGui.Begin(WindowTitle, ref p.ShowReceptorPreferencesWindow, ImGuiWindowFlags.NoScrollbar))
+		if (BeginWindow(WindowTitle, ref p.ShowReceptorPreferencesWindow, DefaultWidth))
 			DrawContents();
 		ImGui.End();
 	}

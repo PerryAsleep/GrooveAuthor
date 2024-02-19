@@ -1,5 +1,4 @@
-﻿using System.Numerics;
-using Fumen.Converters;
+﻿using Fumen.Converters;
 using ImGuiNET;
 using static StepManiaEditor.ImGuiUtils;
 
@@ -13,6 +12,7 @@ internal sealed class UIScrollPreferences
 	public const string WindowTitle = "Scroll Preferences";
 
 	private static readonly int TitleColumnWidth = UiScaled(120);
+	private static readonly int DefaultWidth = UiScaled(460);
 
 	public void Draw()
 	{
@@ -20,8 +20,7 @@ internal sealed class UIScrollPreferences
 		if (!p.ShowScrollControlPreferencesWindow)
 			return;
 
-		ImGui.SetNextWindowSize(Vector2.Zero, ImGuiCond.FirstUseEver);
-		if (ImGui.Begin(WindowTitle, ref p.ShowScrollControlPreferencesWindow, ImGuiWindowFlags.NoScrollbar))
+		if (BeginWindow(WindowTitle, ref p.ShowScrollControlPreferencesWindow, DefaultWidth))
 		{
 			if (ImGuiLayoutUtils.BeginTable("Scroll", TitleColumnWidth))
 			{
@@ -37,9 +36,9 @@ internal sealed class UIScrollPreferences
 					+ "\n                        Rates that are less than or equal 0 will be ignored."
 					+ "\n                        Best option to match ssc file scroll gimmicks."
 					+ "\n                        Bad option for sm file stutter gimmicks as they momentarily double the tempo."
-					+ "\nMost Common Tempo:      The wave form will match the most common tempo in the Chart, ignoring rate changes."
-					+ "\n                        Best option to achieve smooth scrolling when the Chart is effectively one tempo"
-					+ "\n                        but has brief scroll rate gimmicks.");
+					+ "\nMost Common Tempo:      The wave form will match the most common tempo in the Chart, ignoring rate"
+					+ "\n                        changes. Best option to achieve smooth scrolling when the Chart is"
+					+ "\n                        effectively one tempo but has brief scroll rate gimmicks.");
 
 				ImGuiLayoutUtils.EndTable();
 			}

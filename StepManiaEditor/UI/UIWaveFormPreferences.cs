@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Numerics;
 using ImGuiNET;
 using static StepManiaEditor.ImGuiUtils;
 
@@ -20,6 +19,7 @@ internal sealed class UIWaveFormPreferences
 	}
 
 	private static readonly int TitleColumnWidth = UiScaled(120);
+	private static readonly int DefaultWidth = UiScaled(460);
 
 	private readonly MusicManager MusicManager;
 
@@ -34,8 +34,7 @@ internal sealed class UIWaveFormPreferences
 		if (!p.ShowWaveFormPreferencesWindow)
 			return;
 
-		ImGui.SetNextWindowSize(Vector2.Zero, ImGuiCond.FirstUseEver);
-		if (ImGui.Begin(WindowTitle, ref p.ShowWaveFormPreferencesWindow, ImGuiWindowFlags.NoScrollbar))
+		if (BeginWindow(WindowTitle, ref p.ShowWaveFormPreferencesWindow, DefaultWidth))
 			DrawContents();
 		ImGui.End();
 	}

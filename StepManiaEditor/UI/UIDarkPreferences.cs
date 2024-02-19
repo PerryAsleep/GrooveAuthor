@@ -1,5 +1,4 @@
-﻿using System.Numerics;
-using ImGuiNET;
+﻿using ImGuiNET;
 using static StepManiaEditor.ImGuiUtils;
 
 namespace StepManiaEditor;
@@ -12,6 +11,7 @@ internal sealed class UIDarkPreferences
 	public const string WindowTitle = "Dark Preferences";
 
 	private static readonly int TitleColumnWidth = UiScaled(120);
+	private static readonly int DefaultWidth = UiScaled(460);
 
 	public void Draw()
 	{
@@ -19,8 +19,7 @@ internal sealed class UIDarkPreferences
 		if (!p.ShowDarkPreferencesWindow)
 			return;
 
-		ImGui.SetNextWindowSize(Vector2.Zero, ImGuiCond.FirstUseEver);
-		if (ImGui.Begin(WindowTitle, ref p.ShowDarkPreferencesWindow, ImGuiWindowFlags.NoScrollbar))
+		if (BeginWindow(WindowTitle, ref p.ShowDarkPreferencesWindow, DefaultWidth))
 			DrawContents();
 		ImGui.End();
 	}

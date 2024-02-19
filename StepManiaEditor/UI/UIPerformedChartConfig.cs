@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Numerics;
 using ImGuiNET;
 using StepManiaEditor.AutogenConfig;
 using StepManiaLibrary.PerformedChart;
@@ -14,6 +13,7 @@ namespace StepManiaEditor;
 internal sealed class UIPerformedChartConfig
 {
 	private static readonly int TitleColumnWidth = UiScaled(200);
+	private static readonly int DefaultWidth = UiScaled(460);
 
 	public const string WindowTitle = "Performed Chart Config";
 
@@ -51,8 +51,7 @@ internal sealed class UIPerformedChartConfig
 		if (editorConfig == null)
 			return;
 
-		ImGui.SetNextWindowSize(Vector2.Zero, ImGuiCond.FirstUseEver);
-		if (ImGui.Begin(WindowTitle, ref p.ShowPerformedChartListWindow, ImGuiWindowFlags.NoScrollbar))
+		if (BeginWindow(WindowTitle, ref p.ShowPerformedChartListWindow, DefaultWidth))
 		{
 			DrawConfig("UIPerformedChartConfig", Editor, editorConfig, true);
 		}

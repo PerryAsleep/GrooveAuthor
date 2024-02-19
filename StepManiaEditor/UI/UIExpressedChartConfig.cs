@@ -1,5 +1,4 @@
-﻿using System.Numerics;
-using ImGuiNET;
+﻿using ImGuiNET;
 using StepManiaEditor.AutogenConfig;
 using StepManiaLibrary.ExpressedChart;
 using static StepManiaEditor.ImGuiUtils;
@@ -12,6 +11,7 @@ namespace StepManiaEditor;
 internal sealed class UIExpressedChartConfig
 {
 	private static readonly int TitleColumnWidth = UiScaled(240);
+	private static readonly int DefaultWidth = UiScaled(460);
 
 	public const string WindowTitle = "Expressed Chart Config";
 
@@ -39,8 +39,7 @@ internal sealed class UIExpressedChartConfig
 		if (editorConfig == null)
 			return;
 
-		ImGui.SetNextWindowSize(Vector2.Zero, ImGuiCond.FirstUseEver);
-		if (ImGui.Begin(WindowTitle, ref p.ShowExpressedChartListWindow, ImGuiWindowFlags.NoScrollbar))
+		if (BeginWindow(WindowTitle, ref p.ShowExpressedChartListWindow, DefaultWidth))
 		{
 			var disabled = !Editor.CanEdit() || editorConfig.IsDefault();
 			if (disabled)

@@ -335,16 +335,15 @@ internal sealed class Editor :
 	/// </summary>
 	public Editor()
 	{
+		// Record main thread id.
+		MainThreadId = Environment.CurrentManagedThreadId;
+
 		InitializeCulture();
 
 		// Create a logger first so we can log any startup messages.
 		InitializeLogger();
-
 		InitializePreferences();
-
-		// Record main thread id.
-		MainThreadId = Environment.CurrentManagedThreadId;
-
+		InitializeImGuiUtils();
 		InitializeAutogenConfigs();
 		InitializeZoomManager();
 		InitializeEditorPosition();
@@ -509,6 +508,11 @@ internal sealed class Editor :
 
 		// Load Preferences synchronously so they can be used immediately.
 		Preferences.Load(this);
+	}
+
+	private void InitializeImGuiUtils()
+	{
+		Init(this);
 	}
 
 	private void InitializeAutogenConfigs()

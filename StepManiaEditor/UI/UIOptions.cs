@@ -13,6 +13,7 @@ public class UIOptions
 
 	private static readonly int TitleColumnWidth = UiScaled(160);
 	private static readonly float ButtonSyncWidth = UiScaled(60);
+	private static readonly int DefaultWidth = UiScaled(606);
 
 	public void Draw()
 	{
@@ -20,8 +21,7 @@ public class UIOptions
 		if (!p.ShowOptionsWindow)
 			return;
 
-		ImGui.SetNextWindowSize(System.Numerics.Vector2.Zero, ImGuiCond.FirstUseEver);
-		if (ImGui.Begin(WindowTitle, ref p.ShowOptionsWindow, ImGuiWindowFlags.None))
+		if (BeginWindow(WindowTitle, ref p.ShowOptionsWindow, DefaultWidth))
 		{
 			if (ImGuiLayoutUtils.BeginTable("Options Step Type", TitleColumnWidth))
 			{

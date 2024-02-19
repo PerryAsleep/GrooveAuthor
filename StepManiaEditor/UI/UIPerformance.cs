@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Numerics;
 using Fumen;
 using ImGuiNET;
 using static StepManiaEditor.ImGuiUtils;
@@ -15,6 +14,7 @@ internal sealed class UIPerformance
 
 	private static readonly int TitleColumnWidth = UiScaled(150);
 	private static readonly float PlotHeight = UiScaled(80);
+	private static readonly int DefaultWidth = UiScaled(1024);
 
 	private readonly PerformanceMonitor PerformanceMonitor;
 
@@ -45,8 +45,7 @@ internal sealed class UIPerformance
 		if (!p.ShowPerformanceWindow)
 			return;
 
-		ImGui.SetNextWindowSize(Vector2.Zero, ImGuiCond.FirstUseEver);
-		if (ImGui.Begin(WindowTitle, ref p.ShowPerformanceWindow))
+		if (BeginWindow(WindowTitle, ref p.ShowPerformanceWindow, DefaultWidth))
 		{
 			// Compute how many frames have data that can be displayed, and the average time over the last second.
 			var frameTimeLastSecond = 0.0;

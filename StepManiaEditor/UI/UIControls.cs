@@ -144,8 +144,7 @@ internal sealed class UIControls
 		if (!Preferences.Instance.ShowControlsWindow)
 			return;
 
-		ImGui.SetNextWindowSize(DefaultSize, ImGuiCond.FirstUseEver);
-		if (ImGui.Begin(WindowTitle, ref Preferences.Instance.ShowControlsWindow, ImGuiWindowFlags.None))
+		if (BeginWindow(WindowTitle, ref Preferences.Instance.ShowControlsWindow, DefaultSize))
 		{
 			foreach (var category in Categories)
 			{
