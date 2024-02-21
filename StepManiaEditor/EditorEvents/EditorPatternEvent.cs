@@ -357,8 +357,6 @@ internal sealed class EditorPatternEvent : EditorEvent, IChartRegion,
 			IgnorePrecedingDistribution = false,
 		};
 
-		ResetTimeBasedOnRow();
-
 		WidthDirty = true;
 	}
 
