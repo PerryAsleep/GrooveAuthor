@@ -101,10 +101,8 @@ internal class ActionPasteEvents : EditorAction
 			if (!Chart.CanEventExistAtRow(editorEvent, newRow))
 				continue;
 
-			// Clone the event, and set the new position. Deselect the event as the Editor is
-			// responsible for managing which events are selected.
+			// Clone the event, and set the new position. Cloned events are not selected.
 			var newEvent = editorEvent.Clone();
-			newEvent.Deselect();
 			newEvent.SetNewPosition(newRow);
 
 			// Add the new event and record the side effects so they can be undone.

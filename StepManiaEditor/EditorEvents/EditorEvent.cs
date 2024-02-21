@@ -235,7 +235,6 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 		var editorChartForNewEvent = chart ?? EditorChart;
 		var newEvent = CreateEvent(EventConfig.CreateCloneEventConfig(this, editorChartForNewEvent));
 		newEvent.IsPositionImmutable = IsPositionImmutable;
-		newEvent.Selected = Selected;
 		newEvent.ChartPosition = ChartPosition;
 		return newEvent;
 	}

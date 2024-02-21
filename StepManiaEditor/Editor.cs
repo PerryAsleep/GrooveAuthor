@@ -6277,12 +6277,16 @@ internal sealed class Editor :
 	{
 		if (EditEarlyOut())
 			return;
+		if (!Selection.HasSelectedEvents())
+			return;
 		ActionQueue.Instance.Do(new ActionShiftSelectionLane(this, ActiveChart, Selection.GetSelectedEvents(), false, false));
 	}
 
 	private void OnShiftSelectedNotesLeftAndWrap()
 	{
 		if (EditEarlyOut())
+			return;
+		if (!Selection.HasSelectedEvents())
 			return;
 		ActionQueue.Instance.Do(new ActionShiftSelectionLane(this, ActiveChart, Selection.GetSelectedEvents(), false, true));
 	}
@@ -6291,12 +6295,16 @@ internal sealed class Editor :
 	{
 		if (EditEarlyOut())
 			return;
+		if (!Selection.HasSelectedEvents())
+			return;
 		ActionQueue.Instance.Do(new ActionShiftSelectionLane(this, ActiveChart, Selection.GetSelectedEvents(), true, false));
 	}
 
 	private void OnShiftSelectedNotesRightAndWrap()
 	{
 		if (EditEarlyOut())
+			return;
+		if (!Selection.HasSelectedEvents())
 			return;
 		ActionQueue.Instance.Do(new ActionShiftSelectionLane(this, ActiveChart, Selection.GetSelectedEvents(), true, true));
 	}
@@ -6311,7 +6319,7 @@ internal sealed class Editor :
 		var events = Selection.GetSelectedEvents();
 		if (!events.Any())
 			return;
-		ActionQueue.Instance.Do(new ActionShiftSelectionRow(this, ActiveChart, events, -rows));
+		ActionQueue.Instance.Do(new ActionShiftSelectionRow(this, ActiveChart, Selection.GetSelectedEvents(), -rows));
 	}
 
 	private void OnShiftSelectedNotesLater()
@@ -6321,10 +6329,9 @@ internal sealed class Editor :
 		var rows = SnapLevels[Preferences.Instance.SnapIndex].Rows;
 		if (rows == 0)
 			rows = MaxValidDenominator;
-		var events = Selection.GetSelectedEvents();
-		if (!events.Any())
+		if (!Selection.HasSelectedEvents())
 			return;
-		ActionQueue.Instance.Do(new ActionShiftSelectionRow(this, ActiveChart, events, rows));
+		ActionQueue.Instance.Do(new ActionShiftSelectionRow(this, ActiveChart, Selection.GetSelectedEvents(), rows));
 	}
 
 	#endregion Selection
