@@ -193,7 +193,7 @@ internal sealed class EditorTexture : IDisposable
 
 	~EditorTexture()
 	{
-		Dispose();
+		Dispose(false);
 	}
 
 	public void Dispose()
@@ -202,23 +202,21 @@ internal sealed class EditorTexture : IDisposable
 		GC.SuppressFinalize(this);
 	}
 
+	// ReSharper disable once UnusedParameter.Local
 	private void Dispose(bool disposing)
 	{
 		if (Disposed)
 			return;
 
-		if (disposing)
+		lock (TextureSwapLock)
 		{
-			lock (TextureSwapLock)
+			if (Bound)
 			{
-				if (Bound)
-				{
-					Bound = false;
-					ImGuiRenderer.UnbindTexture(TextureImGui);
-				}
-
-				TextureMonogame = null;
+				Bound = false;
+				ImGuiRenderer.UnbindTexture(TextureImGui);
 			}
+
+			TextureMonogame = null;
 		}
 
 		Disposed = true;

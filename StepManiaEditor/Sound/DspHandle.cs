@@ -37,7 +37,7 @@ internal sealed class DspHandle : IDisposable
 
 	~DspHandle()
 	{
-		Dispose();
+		Dispose(false);
 	}
 
 	public void Dispose()
@@ -46,16 +46,12 @@ internal sealed class DspHandle : IDisposable
 		GC.SuppressFinalize(this);
 	}
 
+	// ReSharper disable once UnusedParameter.Local
 	private void Dispose(bool disposing)
 	{
 		if (Disposed)
 			return;
-
-		if (disposing)
-		{
-			Handle.Free();
-		}
-
+		Handle.Free();
 		Disposed = true;
 	}
 

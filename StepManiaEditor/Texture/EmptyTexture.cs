@@ -35,7 +35,7 @@ internal sealed class EmptyTexture : IDisposable
 
 	~EmptyTexture()
 	{
-		Dispose();
+		Dispose(false);
 	}
 
 	public void Dispose()
@@ -44,16 +44,14 @@ internal sealed class EmptyTexture : IDisposable
 		GC.SuppressFinalize(this);
 	}
 
+	// ReSharper disable once UnusedParameter.Local
 	private void Dispose(bool disposing)
 	{
 		if (Disposed)
 			return;
 
-		if (disposing)
-		{
-			ImGuiRenderer.UnbindTexture(TextureImGui);
-			TextureMonogame = null;
-		}
+		ImGuiRenderer.UnbindTexture(TextureImGui);
+		TextureMonogame = null;
 
 		Disposed = true;
 	}
