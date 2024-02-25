@@ -103,9 +103,9 @@ internal sealed class UIPatternConfig
 				nameof(PatternConfig.MaxSameArrowsInARowPerFoot), nameof(PatternConfig.LimitSameArrowsInARowPerFoot), false,
 				"Maximum number of repeated steps on the same arrow per foot.", 0.1f, "%i", 0, 100);
 
-			ImGuiLayoutUtils.DrawRowDragInt2(true, "Step Type Weights", editorConfig,
-				nameof(EditorPatternConfig.SameArrowStepWeight),
-				nameof(EditorPatternConfig.NewArrowStepWeight), false, "Same", "New", StepTypeWeightWidth,
+			ImGuiLayoutUtils.DrawRowDragInt2(true, "Step Type Weights", editorConfig.Config,
+				nameof(PatternConfig.SameArrowStepWeight),
+				nameof(PatternConfig.NewArrowStepWeight), false, "Same", "New", StepTypeWeightWidth,
 				"Weights of step types to use in the pattern."
 				+ "\nSame: Relative weight of same arrow steps."
 				+ "\nNew:  Relative weight of new arrow steps.",

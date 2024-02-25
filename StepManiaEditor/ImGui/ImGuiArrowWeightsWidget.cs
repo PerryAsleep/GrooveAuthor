@@ -89,7 +89,7 @@ internal sealed class ImGuiArrowWeightsWidget
 			// Draw the slider
 			ImGui.VSliderInt($"##{chartTypeString}v{index}", ArrowWeightWidgetSliderSize, ref weight, 0, 100, "");
 			weight = Math.Clamp(weight, 0, 100);
-			configForUpdates?.SetArrowWeight(chartType, index, weight);
+			configForUpdates?.Config.SetArrowWeight(chartType, index, weight);
 
 			if (ImGui.IsItemActivated())
 			{
@@ -116,7 +116,7 @@ internal sealed class ImGuiArrowWeightsWidget
 			ImGui.SetNextItemWidth(LaneWidth);
 			ImGui.DragInt($"##{chartTypeString}{index}", ref value, 1, 0, 100);
 			value = Math.Clamp(value, 0, 100);
-			configForUpdates?.SetArrowWeight(chartType, index, value);
+			configForUpdates?.Config.SetArrowWeight(chartType, index, value);
 
 			if (ImGui.IsItemActivated())
 			{

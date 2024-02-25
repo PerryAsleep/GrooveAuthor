@@ -63,6 +63,19 @@ internal sealed class ImGuiUtils
 		Editor = editor;
 	}
 
+	/// <summary>
+	/// This struct corresponds to ImGuiTableColumnSortSpecs in Dear ImGui.
+	/// In ImGuiNET, the corresponding struct does not use a correct layout.
+	/// </summary>
+	[StructLayout(LayoutKind.Explicit, Size = 12)]
+	public struct NativeImGuiTableColumnSortSpecs
+	{
+		[FieldOffset(0)] public uint ColumnUserID;
+		[FieldOffset(4)] public short ColumnIndex;
+		[FieldOffset(6)] public short SortOrder;
+		[FieldOffset(8)] public byte SortDirection;
+	}
+
 	[DllImport("msvcrt.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl)]
 	private static extern int _snwprintf_s([MarshalAs(UnmanagedType.LPWStr)] StringBuilder sb, IntPtr sizeOfBuffer, IntPtr count,
 		string format, int p);

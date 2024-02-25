@@ -7,22 +7,25 @@ namespace StepManiaEditor.AutogenConfig;
 
 /// <summary>
 /// Editor-specific configuration data for various autogen behaviors.
-/// EditorConfig objects wrap StepManiaLibrary IConfig objects, with additional data
+/// EditorConfig objects wrap StepManiaLibrary Config objects, with additional data
 /// and functionality for the editor.
 /// EditorConfig objects have a Guid, name, and description.
 /// Instances of this class are managed through ConfigManager.
 /// JsonDerivedType attributes are present to support derived type serialization.
 /// </summary>
 /// <typeparam name="TConfig">
-/// Type of configuration objects implementing the IConfig interface that are
-/// wrapped by this class.
+/// Type of StepManiaLibrary Config objects wrapped by this class.
 /// </typeparam>
 [JsonDerivedType(typeof(EditorExpressedChartConfig))]
 [JsonDerivedType(typeof(EditorPerformedChartConfig))]
 [JsonDerivedType(typeof(EditorPatternConfig))]
-internal abstract class EditorConfig<TConfig> : Notifier<EditorConfig<TConfig>> where TConfig : IConfig<TConfig>, new()
+internal abstract class EditorConfig<TConfig> :
+	Notifier<EditorConfig<TConfig>>,
+	Fumen.IObserver<Config>
+	where TConfig : Config, new()
 {
 	public const string NotificationNameChanged = "NameChanged";
+	public const string ConfigChanged = "ConfigChanged";
 
 	/// <summary>
 	/// Guid for this EditorConfig.
@@ -39,7 +42,6 @@ internal abstract class EditorConfig<TConfig> : Notifier<EditorConfig<TConfig>> 
 			if (!string.IsNullOrEmpty(NameInternal) && NameInternal.Equals(value))
 				return;
 			NameInternal = value;
-
 			Notify(NotificationNameChanged, this);
 		}
 	}
@@ -49,7 +51,7 @@ internal abstract class EditorConfig<TConfig> : Notifier<EditorConfig<TConfig>> 
 	[JsonInclude] public string Description;
 
 	/// <summary>
-	/// StepManiaLibrary IConfig object wrapped by this class.
+	/// StepManiaLibrary Config object wrapped by this class.
 	/// </summary>
 	[JsonInclude] public TConfig Config = new();
 
@@ -120,12 +122,13 @@ internal abstract class EditorConfig<TConfig> : Notifier<EditorConfig<TConfig>> 
 	}
 
 	/// <summary>
-	/// Performs any post-load initialization on the StepManiaLibrary IConfig object managed
+	/// Performs any post-load initialization on the StepManiaLibrary Config object managed
 	/// by this object.
 	/// </summary>
-	public void Init()
+	public virtual void Init()
 	{
 		Config.Init();
+		Config.AddObserver(this);
 	}
 
 	/// <summary>
@@ -143,9 +146,10 @@ internal abstract class EditorConfig<TConfig> : Notifier<EditorConfig<TConfig>> 
 		var clone = CloneImplementation(snapshot);
 
 		// Clone base EditorConfig values.
-		clone.Config = Config.Clone();
+		clone.Config = (TConfig)Config.Clone();
 		clone.Name = snapshot ? Name : GetNewConfigName();
 		clone.Description = Description;
+		clone.Init();
 		return clone;
 	}
 
@@ -238,6 +242,15 @@ internal abstract class EditorConfig<TConfig> : Notifier<EditorConfig<TConfig>> 
 	public virtual uint GetStringColor()
 	{
 		return 0;
+	}
+
+	/// <summary>
+	/// Notification handler for underlying StepManiaLibrary Config object changes.
+	/// </summary>
+	public virtual void OnNotify(string eventId, Config notifier, object payload)
+	{
+		// Bubble up the notification to any Observers.
+		Notify(ConfigChanged, this);
 	}
 
 	/// <summary>

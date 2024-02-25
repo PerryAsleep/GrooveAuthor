@@ -27,12 +27,12 @@ internal sealed class ActionSetPerformedChartConfigArrowWeight : EditorAction
 
 	protected override void DoImplementation()
 	{
-		Config.SetArrowWeight(ChartType, LaneIndex, Weight);
+		Config.Config.SetArrowWeight(ChartType, LaneIndex, Weight);
 	}
 
 	protected override void UndoImplementation()
 	{
-		Config.SetArrowWeight(ChartType, LaneIndex, PreviousWeight);
+		Config.Config.SetArrowWeight(ChartType, LaneIndex, PreviousWeight);
 	}
 
 	public override bool AffectsFile()

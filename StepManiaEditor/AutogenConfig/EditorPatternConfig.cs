@@ -69,6 +69,15 @@ internal sealed class EditorPatternConfig : EditorConfig<Config>, IEquatable<Edi
 	public const bool DefaultLimitSameArrowsInARowPerFoot = true;
 	public const int DefaultMaxSameArrowsInARowPerFoot = 3;
 
+	// Cached string representation.
+	private string StringRepresentation = "";
+	private string NoteTypeString = "";
+	private string StepTypeString = "";
+	private string StepTypeCheckPeriodString = "";
+	private string StartingFootString = "";
+	private string StartingFootingString = "";
+	private string EndingFootingString = "";
+
 	[JsonInclude]
 	public SubdivisionType PatternType
 	{
@@ -88,26 +97,6 @@ internal sealed class EditorPatternConfig : EditorConfig<Config>, IEquatable<Edi
 	{
 		get => Config.StartingFootSpecified == L ? Editor.Foot.Left : Editor.Foot.Right;
 		set => Config.StartingFootSpecified = value == Editor.Foot.Left ? L : R;
-	}
-
-	public int SameArrowStepWeight
-	{
-		get => Config.SameArrowStepWeight;
-		set
-		{
-			Config.SameArrowStepWeight = value;
-			Config.RefreshStepWeightsNormalized();
-		}
-	}
-
-	public int NewArrowStepWeight
-	{
-		get => Config.NewArrowStepWeight;
-		set
-		{
-			Config.NewArrowStepWeight = value;
-			Config.RefreshStepWeightsNormalized();
-		}
 	}
 
 	/// <summary>
@@ -168,6 +157,48 @@ internal sealed class EditorPatternConfig : EditorConfig<Config>, IEquatable<Edi
 	/// <returns>String representation of this EditorPatternConfig.</returns>
 	public override string ToString()
 	{
+		return StringRepresentation;
+	}
+
+	public string GetNoteTypeString()
+	{
+		return NoteTypeString;
+	}
+
+	public string GetStepTypeString()
+	{
+		return StepTypeString;
+	}
+
+	public string GetStepTypeCheckPeriodString()
+	{
+		return StepTypeCheckPeriodString;
+	}
+
+	public string GetStartingFootString()
+	{
+		return StartingFootString;
+	}
+
+	public string GetStartFootingString()
+	{
+		return StartingFootingString;
+	}
+
+	public string GetEndFootingString()
+	{
+		return EndingFootingString;
+	}
+
+	private void RebuildStringRepresentation()
+	{
+		RebuildNoteTypeString();
+		RebuildStepTypeString();
+		RebuildStepTypeCheckPeriodString();
+		RebuildStartingFootString();
+		RebuildStartFootingString();
+		RebuildEndFootingString();
+
 		var sb = new StringBuilder();
 
 		// Custom name.
@@ -175,43 +206,74 @@ internal sealed class EditorPatternConfig : EditorConfig<Config>, IEquatable<Edi
 			sb.Append($"{Name}: ");
 
 		// Note type.
-		sb.Append($"1/{GetMeasureSubdivision(PatternType)}");
+		sb.Append(NoteTypeString);
 
 		// Repetition Limit.
 		if (Config.LimitSameArrowsInARowPerFoot)
 			sb.Append($" {Config.MaxSameArrowsInARowPerFoot}");
 
 		// Distribution and check period.
-		sb.Append($" {SameArrowStepWeight}/{NewArrowStepWeight}");
-		if (Config.StepTypeCheckPeriod > 1)
-			sb.Append($"x{Config.StepTypeCheckPeriod}");
-		sb.Append(' ');
+		sb.Append($" {StepTypeString}{StepTypeCheckPeriodString} ");
 
 		// Starting foot.
+		sb.Append(StartingFootString);
+
+		// Starting and ending footing.
+		sb.Append($" {StartingFootingString}->{EndingFootingString}");
+
+		StringRepresentation = sb.ToString();
+
+		Notify(NotificationNameChanged, this);
+	}
+
+	public void RebuildNoteTypeString()
+	{
+		NoteTypeString = $"1/{GetMeasureSubdivision(PatternType)}";
+	}
+
+	public void RebuildStepTypeString()
+	{
+		StepTypeString = $"{Config.SameArrowStepWeight}/{Config.NewArrowStepWeight}";
+	}
+
+	public void RebuildStepTypeCheckPeriodString()
+	{
+		if (Config.StepTypeCheckPeriod > 1)
+			StepTypeCheckPeriodString = $"x{Config.StepTypeCheckPeriod}";
+		else
+			StepTypeCheckPeriodString = "";
+	}
+
+	public void RebuildStartingFootString()
+	{
 		switch (Config.StartingFootChoice)
 		{
 			case PatternConfigStartingFootChoice.Specified:
-				sb.Append(Config.StartingFootSpecified == L ? 'L' : 'R');
-				break;
+				StartingFootString = Config.StartingFootSpecified == L ? "L" : "R";
+				return;
 			case PatternConfigStartingFootChoice.Automatic:
-				sb.Append('A');
-				break;
+				StartingFootString = "A";
+				return;
 			case PatternConfigStartingFootChoice.Random:
-				sb.Append('?');
-				break;
+				StartingFootString = "?";
+				return;
 		}
 
-		// Starting footing.
+		StartingFootString = "";
+	}
+
+	public void RebuildStartFootingString()
+	{
 		var l = GetPatternConfigStartFootChoiceStr(Config.LeftFootStartChoice, Config.LeftFootStartLaneSpecified);
 		var r = GetPatternConfigStartFootChoiceStr(Config.RightFootStartChoice, Config.RightFootStartLaneSpecified);
-		sb.Append($" [{l}|{r}]");
+		StartingFootingString = $"[{l}|{r}]";
+	}
 
-		// Ending footing.
-		l = GetPatternConfigEndFootChoiceStr(Config.LeftFootEndChoice, Config.LeftFootEndLaneSpecified);
-		r = GetPatternConfigEndFootChoiceStr(Config.RightFootEndChoice, Config.RightFootEndLaneSpecified);
-		sb.Append($"->[{l}|{r}]");
-
-		return sb.ToString();
+	public void RebuildEndFootingString()
+	{
+		var l = GetPatternConfigEndFootChoiceStr(Config.LeftFootEndChoice, Config.LeftFootEndLaneSpecified);
+		var r = GetPatternConfigEndFootChoiceStr(Config.RightFootEndChoice, Config.RightFootEndLaneSpecified);
+		EndingFootingString = $"[{l}|{r}]";
 	}
 
 	/// <summary>
@@ -268,6 +330,12 @@ internal sealed class EditorPatternConfig : EditorConfig<Config>, IEquatable<Edi
 
 	#region EditorConfig
 
+	public override void Init()
+	{
+		RebuildStringRepresentation();
+		base.Init();
+	}
+
 	/// <summary>
 	/// Returns a new EditorPatternConfig that is a clone of this EditorPatternConfig.
 	/// </summary>
@@ -298,8 +366,8 @@ internal sealed class EditorPatternConfig : EditorConfig<Config>, IEquatable<Edi
 		Config.RightFootStartLaneSpecified = DefaultRightFootStartLaneSpecified;
 		Config.RightFootEndChoice = DefaultRightFootEndChoice;
 		Config.RightFootEndLaneSpecified = DefaultRightFootEndLaneSpecified;
-		SameArrowStepWeight = DefaultSameArrowStepWeight;
-		NewArrowStepWeight = DefaultNewArrowStepWeight;
+		Config.SameArrowStepWeight = DefaultSameArrowStepWeight;
+		Config.NewArrowStepWeight = DefaultNewArrowStepWeight;
 		Config.StepTypeCheckPeriod = DefaultStepTypeCheckPeriod;
 		Config.LimitSameArrowsInARowPerFoot = DefaultLimitSameArrowsInARowPerFoot;
 		Config.MaxSameArrowsInARowPerFoot = DefaultMaxSameArrowsInARowPerFoot;
@@ -318,6 +386,16 @@ internal sealed class EditorPatternConfig : EditorConfig<Config>, IEquatable<Edi
 	{
 		// EditorPatternConfigs by default don't use names and rely on the details exposed in their ToString representation.
 		return null;
+	}
+
+	/// <summary>
+	/// Notification handler for underlying StepManiaLibrary Config object changes.
+	/// </summary>
+	public override void OnNotify(string eventId, StepManiaLibrary.Config notifier, object payload)
+	{
+		// When anything about the config changes, rebuild the string representation.
+		RebuildStringRepresentation();
+		base.OnNotify(eventId, notifier, payload);
 	}
 
 	#endregion EditorConfig
@@ -341,8 +419,8 @@ internal sealed class EditorPatternConfig : EditorConfig<Config>, IEquatable<Edi
 		       && Config.RightFootStartLaneSpecified == DefaultRightFootStartLaneSpecified
 		       && Config.RightFootEndChoice == DefaultRightFootEndChoice
 		       && Config.RightFootEndLaneSpecified == DefaultRightFootEndLaneSpecified
-		       && SameArrowStepWeight == DefaultSameArrowStepWeight
-		       && NewArrowStepWeight == DefaultNewArrowStepWeight
+		       && Config.SameArrowStepWeight == DefaultSameArrowStepWeight
+		       && Config.NewArrowStepWeight == DefaultNewArrowStepWeight
 		       && Config.StepTypeCheckPeriod == DefaultStepTypeCheckPeriod
 		       && Config.LimitSameArrowsInARowPerFoot == DefaultLimitSameArrowsInARowPerFoot
 		       && Config.MaxSameArrowsInARowPerFoot == DefaultMaxSameArrowsInARowPerFoot;
@@ -425,7 +503,7 @@ internal sealed class EditorPatternConfig : EditorConfig<Config>, IEquatable<Edi
 /// </summary>
 internal sealed class ActionRestorePatternConfigDefaults : EditorAction
 {
-	private readonly EditorPatternConfig Config;
+	private readonly EditorPatternConfig EditorConfig;
 	private readonly SubdivisionType PreviousPatternType;
 	private readonly PatternConfigStartingFootChoice PreviousStartingFootChoice;
 	private readonly Editor.Foot PreviousStartingFootSpecified;
@@ -443,25 +521,27 @@ internal sealed class ActionRestorePatternConfigDefaults : EditorAction
 	private readonly bool PreviousLimitSameArrowsInARowPerFoot;
 	private readonly int PreviousMaxSameArrowsInARowPerFoot;
 
-	public ActionRestorePatternConfigDefaults(EditorPatternConfig config) : base(false, false)
+	public ActionRestorePatternConfigDefaults(EditorPatternConfig editorConfig) : base(false, false)
 	{
-		Config = config;
-		PreviousPatternType = Config.PatternType;
-		PreviousStartingFootChoice = Config.Config.StartingFootChoice;
-		PreviousStartingFootSpecified = Config.StartingFootSpecified;
-		PreviousLeftFootStartChoice = Config.Config.LeftFootStartChoice;
-		PreviousLeftFootStartLaneSpecified = Config.Config.LeftFootStartLaneSpecified;
-		PreviousLeftFootEndChoice = Config.Config.LeftFootEndChoice;
-		PreviousLeftFootEndLaneSpecified = Config.Config.LeftFootEndLaneSpecified;
-		PreviousRightFootStartChoice = Config.Config.RightFootStartChoice;
-		PreviousRightFootStartLaneSpecified = Config.Config.RightFootStartLaneSpecified;
-		PreviousRightFootEndChoice = Config.Config.RightFootEndChoice;
-		PreviousRightFootEndLaneSpecified = Config.Config.RightFootEndLaneSpecified;
-		PreviousSameArrowStepWeight = Config.SameArrowStepWeight;
-		PreviousNewArrowStepWeight = Config.NewArrowStepWeight;
-		PreviousStepTypeCheckPeriod = Config.Config.StepTypeCheckPeriod;
-		PreviousLimitSameArrowsInARowPerFoot = Config.Config.LimitSameArrowsInARowPerFoot;
-		PreviousMaxSameArrowsInARowPerFoot = Config.Config.MaxSameArrowsInARowPerFoot;
+		EditorConfig = editorConfig;
+		var config = EditorConfig.Config;
+
+		PreviousPatternType = editorConfig.PatternType;
+		PreviousStartingFootChoice = config.StartingFootChoice;
+		PreviousStartingFootSpecified = editorConfig.StartingFootSpecified;
+		PreviousLeftFootStartChoice = config.LeftFootStartChoice;
+		PreviousLeftFootStartLaneSpecified = config.LeftFootStartLaneSpecified;
+		PreviousLeftFootEndChoice = config.LeftFootEndChoice;
+		PreviousLeftFootEndLaneSpecified = config.LeftFootEndLaneSpecified;
+		PreviousRightFootStartChoice = config.RightFootStartChoice;
+		PreviousRightFootStartLaneSpecified = config.RightFootStartLaneSpecified;
+		PreviousRightFootEndChoice = config.RightFootEndChoice;
+		PreviousRightFootEndLaneSpecified = config.RightFootEndLaneSpecified;
+		PreviousSameArrowStepWeight = config.SameArrowStepWeight;
+		PreviousNewArrowStepWeight = config.NewArrowStepWeight;
+		PreviousStepTypeCheckPeriod = config.StepTypeCheckPeriod;
+		PreviousLimitSameArrowsInARowPerFoot = config.LimitSameArrowsInARowPerFoot;
+		PreviousMaxSameArrowsInARowPerFoot = config.MaxSameArrowsInARowPerFoot;
 	}
 
 	public override bool AffectsFile()
@@ -471,47 +551,51 @@ internal sealed class ActionRestorePatternConfigDefaults : EditorAction
 
 	public override string ToString()
 	{
-		return $"Restore \"{Config}\" Pattern Config to default values.";
+		return $"Restore \"{EditorConfig}\" Pattern Config to default values.";
 	}
 
 	protected override void DoImplementation()
 	{
-		Config.PatternType = DefaultPatternType;
-		Config.Config.StartingFootChoice = DefaultStartingFootChoice;
-		Config.StartingFootSpecified = DefaultStartingFootSpecified;
-		Config.Config.LeftFootStartChoice = DefaultLeftFootStartChoice;
-		Config.Config.LeftFootStartLaneSpecified = DefaultLeftFootStartLaneSpecified;
-		Config.Config.LeftFootEndChoice = DefaultLeftFootEndChoice;
-		Config.Config.LeftFootEndLaneSpecified = DefaultLeftFootEndLaneSpecified;
-		Config.Config.RightFootStartChoice = DefaultRightFootStartChoice;
-		Config.Config.RightFootStartLaneSpecified = DefaultRightFootStartLaneSpecified;
-		Config.Config.RightFootEndChoice = DefaultRightFootEndChoice;
-		Config.Config.RightFootEndLaneSpecified = DefaultRightFootEndLaneSpecified;
-		Config.SameArrowStepWeight = DefaultSameArrowStepWeight;
-		Config.NewArrowStepWeight = DefaultNewArrowStepWeight;
-		Config.Config.StepTypeCheckPeriod = DefaultStepTypeCheckPeriod;
-		Config.Config.LimitSameArrowsInARowPerFoot = DefaultLimitSameArrowsInARowPerFoot;
-		Config.Config.MaxSameArrowsInARowPerFoot = DefaultMaxSameArrowsInARowPerFoot;
+		var config = EditorConfig.Config;
+
+		EditorConfig.PatternType = DefaultPatternType;
+		config.StartingFootChoice = DefaultStartingFootChoice;
+		EditorConfig.StartingFootSpecified = DefaultStartingFootSpecified;
+		config.LeftFootStartChoice = DefaultLeftFootStartChoice;
+		config.LeftFootStartLaneSpecified = DefaultLeftFootStartLaneSpecified;
+		config.LeftFootEndChoice = DefaultLeftFootEndChoice;
+		config.LeftFootEndLaneSpecified = DefaultLeftFootEndLaneSpecified;
+		config.RightFootStartChoice = DefaultRightFootStartChoice;
+		config.RightFootStartLaneSpecified = DefaultRightFootStartLaneSpecified;
+		config.RightFootEndChoice = DefaultRightFootEndChoice;
+		config.RightFootEndLaneSpecified = DefaultRightFootEndLaneSpecified;
+		config.SameArrowStepWeight = DefaultSameArrowStepWeight;
+		config.NewArrowStepWeight = DefaultNewArrowStepWeight;
+		config.StepTypeCheckPeriod = DefaultStepTypeCheckPeriod;
+		config.LimitSameArrowsInARowPerFoot = DefaultLimitSameArrowsInARowPerFoot;
+		config.MaxSameArrowsInARowPerFoot = DefaultMaxSameArrowsInARowPerFoot;
 	}
 
 	protected override void UndoImplementation()
 	{
-		Config.PatternType = PreviousPatternType;
-		Config.Config.StartingFootChoice = PreviousStartingFootChoice;
-		Config.StartingFootSpecified = PreviousStartingFootSpecified;
-		Config.Config.LeftFootStartChoice = PreviousLeftFootStartChoice;
-		Config.Config.LeftFootStartLaneSpecified = PreviousLeftFootStartLaneSpecified;
-		Config.Config.LeftFootEndChoice = PreviousLeftFootEndChoice;
-		Config.Config.LeftFootEndLaneSpecified = PreviousLeftFootEndLaneSpecified;
-		Config.Config.RightFootStartChoice = PreviousRightFootStartChoice;
-		Config.Config.RightFootStartLaneSpecified = PreviousRightFootStartLaneSpecified;
-		Config.Config.RightFootEndChoice = PreviousRightFootEndChoice;
-		Config.Config.RightFootEndLaneSpecified = PreviousRightFootEndLaneSpecified;
-		Config.SameArrowStepWeight = PreviousSameArrowStepWeight;
-		Config.NewArrowStepWeight = PreviousNewArrowStepWeight;
-		Config.Config.StepTypeCheckPeriod = PreviousStepTypeCheckPeriod;
-		Config.Config.LimitSameArrowsInARowPerFoot = PreviousLimitSameArrowsInARowPerFoot;
-		Config.Config.MaxSameArrowsInARowPerFoot = PreviousMaxSameArrowsInARowPerFoot;
+		var config = EditorConfig.Config;
+
+		EditorConfig.PatternType = PreviousPatternType;
+		config.StartingFootChoice = PreviousStartingFootChoice;
+		EditorConfig.StartingFootSpecified = PreviousStartingFootSpecified;
+		config.LeftFootStartChoice = PreviousLeftFootStartChoice;
+		config.LeftFootStartLaneSpecified = PreviousLeftFootStartLaneSpecified;
+		config.LeftFootEndChoice = PreviousLeftFootEndChoice;
+		config.LeftFootEndLaneSpecified = PreviousLeftFootEndLaneSpecified;
+		config.RightFootStartChoice = PreviousRightFootStartChoice;
+		config.RightFootStartLaneSpecified = PreviousRightFootStartLaneSpecified;
+		config.RightFootEndChoice = PreviousRightFootEndChoice;
+		config.RightFootEndLaneSpecified = PreviousRightFootEndLaneSpecified;
+		config.SameArrowStepWeight = PreviousSameArrowStepWeight;
+		config.NewArrowStepWeight = PreviousNewArrowStepWeight;
+		config.StepTypeCheckPeriod = PreviousStepTypeCheckPeriod;
+		config.LimitSameArrowsInARowPerFoot = PreviousLimitSameArrowsInARowPerFoot;
+		config.MaxSameArrowsInARowPerFoot = PreviousMaxSameArrowsInARowPerFoot;
 	}
 }
 

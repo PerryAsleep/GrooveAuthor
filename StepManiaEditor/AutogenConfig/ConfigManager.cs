@@ -18,14 +18,18 @@ namespace StepManiaEditor.AutogenConfig;
 /// Type of EditorConfig objects managed by this class.
 /// </typeparam>
 /// <typeparam name="TConfig">
-/// Type of configuration objects implementing the IConfig interface that are
-/// wrapped by the EditorConfig objects that this class manages.
+/// Type of StepManiaLibrary Config objects  wrapped by the EditorConfig objects that
+/// this class manages.
 /// </typeparam>
-internal abstract class ConfigManager<TEditorConfig, TConfig> : Fumen.IObserver<EditorConfig<TConfig>>
+internal abstract class ConfigManager<TEditorConfig, TConfig> : Notifier<ConfigManager<TEditorConfig, TConfig>>,
+	Fumen.IObserver<EditorConfig<TConfig>>
 	where TEditorConfig : EditorConfig<TConfig>
-	where TConfig : IConfig<TConfig>, new()
+	where TConfig : Config, new()
 {
 	private const string ConfigExtension = "json";
+
+	public const string NotificationConfigAdded = "ConfigAdded";
+	public const string NotificationConfigDeleted = "ConfigDeleted";
 
 	/// <summary>
 	/// Prefix used on save files for the EditorConfig objects managed by this class.
@@ -48,7 +52,7 @@ internal abstract class ConfigManager<TEditorConfig, TConfig> : Fumen.IObserver<
 	private readonly JsonSerializerOptions SerializationOptions;
 
 	/// <summary>
-	/// ConfigData for all EditorPerformedChartConfig objects.
+	/// ConfigData for all EditorConfig objects.
 	/// </summary>
 	protected readonly ConfigData<TEditorConfig, TConfig> ConfigData = new();
 
@@ -369,6 +373,7 @@ internal abstract class ConfigManager<TEditorConfig, TConfig> : Fumen.IObserver<
 	{
 		config.AddObserver(this);
 		ConfigData.AddConfig(config);
+		Notify(NotificationConfigAdded, this, config.Guid);
 	}
 
 	public TEditorConfig AddConfig(Guid guid, string name)
@@ -403,6 +408,7 @@ internal abstract class ConfigManager<TEditorConfig, TConfig> : Fumen.IObserver<
 		config?.RemoveObserver(this);
 		ConfigData.RemoveConfig(guid);
 		OnConfigDeleted(guid);
+		Notify(NotificationConfigAdded, this, guid);
 	}
 
 	public TEditorConfig CloneConfig(Guid guid)
@@ -415,14 +421,29 @@ internal abstract class ConfigManager<TEditorConfig, TConfig> : Fumen.IObserver<
 		return ConfigData.GetConfig(guid);
 	}
 
-	public Guid[] GetSortedConfigGuids()
+	public IEnumerable<TEditorConfig> GetSortedConfigs()
 	{
-		return ConfigData.SortedConfigGuids;
+		return ConfigData.GetSortedConfigs();
 	}
 
 	public string[] GetSortedConfigNames()
 	{
-		return ConfigData.SortedConfigNames;
+		return ConfigData.GetSortedConfigNames();
+	}
+
+	public Guid[] GetSortedConfigGuids()
+	{
+		return ConfigData.GetSortedConfigGuids();
+	}
+
+	public void SetConfigComparer(IComparer<TEditorConfig> comparer)
+	{
+		ConfigData.SetComparer(comparer);
+	}
+
+	public void SortConfigs()
+	{
+		ConfigData.UpdateSortedConfigs();
 	}
 
 	/// <summary>

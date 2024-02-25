@@ -24,16 +24,15 @@ internal sealed class UIAutogenConfigs
 	/// for that type.
 	/// </summary>
 	/// <typeparam name="TEditorConfig">Type of EditorConfig.</typeparam>
-	/// <typeparam name="TConfig">Type of IConfig wrapped by the EditorConfig.</typeparam>
+	/// <typeparam name="TConfig">Type of StepManiaLibrary Config wrapped by the EditorConfig.</typeparam>
 	private class ConfigData<TEditorConfig, TConfig>
 		where TEditorConfig : EditorConfig<TConfig>
-		where TConfig : IConfig<TConfig>, new()
+		where TConfig : Config, new()
 	{
 		private readonly ConfigManager<TEditorConfig, TConfig> ConfigManager;
 		private readonly string Title;
 		private readonly string HumanReadableConfigType;
 		private readonly string HelpText;
-		private readonly bool ShowDescription;
 		private readonly Action NewAction;
 		private readonly Action<Guid> ClickAction;
 		private readonly Action<Guid> CloneAction;
@@ -47,7 +46,6 @@ internal sealed class UIAutogenConfigs
 			string title,
 			string humanReadableConfigType,
 			string helpText,
-			bool showDescription,
 			Action newAction,
 			Action<Guid> clickAction,
 			Action<Guid> cloneAction,
@@ -57,7 +55,6 @@ internal sealed class UIAutogenConfigs
 			Title = title;
 			HumanReadableConfigType = humanReadableConfigType;
 			HelpText = helpText;
-			ShowDescription = showDescription;
 			NewAction = newAction;
 			ClickAction = clickAction;
 			CloneAction = cloneAction;
@@ -74,85 +71,68 @@ internal sealed class UIAutogenConfigs
 			ImGui.SameLine();
 			HelpMarker(HelpText);
 
-			// EditorConfig table setup.
-			if (ShowDescription)
-			{
-				var ret = ImGui.BeginTable(Title, 4, ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders);
-				if (ret)
-				{
-					ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, NameWidth);
-					ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100);
-					ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, CloneWidth);
-					ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, DeleteWidth);
-				}
-			}
-			else
-			{
-				var ret = ImGui.BeginTable(Title, 3, ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders);
-				if (ret)
-				{
-					ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100);
-					ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, CloneWidth);
-					ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, DeleteWidth);
-				}
-			}
-
 			var typeName = typeof(TEditorConfig).FullName;
 
-			var sortedConfigGuids = ConfigManager.GetSortedConfigGuids();
-			var index = 0;
-			foreach (var configGuid in sortedConfigGuids)
+			// EditorConfig table setup.
+			if (ImGui.BeginTable(Title, 4, ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders))
 			{
-				ImGui.TableNextRow();
+				ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, NameWidth);
+				ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100);
+				ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, CloneWidth);
+				ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, DeleteWidth);
 
-				var col = 0;
-				var config = ConfigManager.GetConfig(configGuid);
-
-				// Name.
-				if (config.ShouldUseColorForString())
-					ImGui.PushStyleColor(ImGuiCol.Text, config.GetStringColor());
-				ImGui.TableSetColumnIndex(col++);
-				if (ImGui.Selectable(config.ToString(), false,
-					    ImGuiSelectableFlags.SpanAllColumns | ImGuiSelectableFlags.AllowItemOverlap))
+				var sortedConfigGuids = ConfigManager.GetSortedConfigGuids();
+				var index = 0;
+				foreach (var configGuid in sortedConfigGuids)
 				{
-					ClickAction(configGuid);
-				}
+					ImGui.TableNextRow();
 
-				if (config.ShouldUseColorForString())
-					ImGui.PopStyleColor();
+					var col = 0;
+					var config = ConfigManager.GetConfig(configGuid);
 
-				// Description.
-				if (ShowDescription)
-				{
+					// Name.
+					if (config.ShouldUseColorForString())
+						ImGui.PushStyleColor(ImGuiCol.Text, config.GetStringColor());
+					ImGui.TableSetColumnIndex(col++);
+					if (ImGui.Selectable(config.ToString(), false,
+						    ImGuiSelectableFlags.SpanAllColumns | ImGuiSelectableFlags.AllowItemOverlap))
+					{
+						ClickAction(configGuid);
+					}
+
+					if (config.ShouldUseColorForString())
+						ImGui.PopStyleColor();
+
+					// Description.
 					ImGui.TableSetColumnIndex(col++);
 					ImGui.Text(config.Description ?? "");
+
+					// Clone button.
+					ImGui.TableSetColumnIndex(col++);
+					if (ImGui.SmallButton($"Clone##{typeName}Config{index}"))
+					{
+						CloneAction(configGuid);
+					}
+
+					// Delete button.
+					// ReSharper disable once RedundantAssignment
+					ImGui.TableSetColumnIndex(col++);
+					var disabled = config.IsDefault();
+					if (disabled)
+						PushDisabled();
+					if (ImGui.SmallButton($"Delete##{typeName}Config{index}"))
+					{
+						DeleteAction(configGuid);
+					}
+
+					if (disabled)
+						PopDisabled();
+
+					index++;
 				}
 
-				// Clone button.
-				ImGui.TableSetColumnIndex(col++);
-				if (ImGui.SmallButton($"Clone##{typeName}Config{index}"))
-				{
-					CloneAction(configGuid);
-				}
-
-				// Delete button.
-				// ReSharper disable once RedundantAssignment
-				ImGui.TableSetColumnIndex(col++);
-				var disabled = config.IsDefault();
-				if (disabled)
-					PushDisabled();
-				if (ImGui.SmallButton($"Delete##{typeName}Config{index}"))
-				{
-					DeleteAction(configGuid);
-				}
-
-				if (disabled)
-					PopDisabled();
-
-				index++;
+				ImGui.EndTable();
 			}
-
-			ImGui.EndTable();
 
 			// Section to add a new EditorConfig.
 			if (ImGuiLayoutUtils.BeginTable($"Add{typeName}Table", AddConfigTitleWidth))
@@ -180,7 +160,7 @@ internal sealed class UIAutogenConfigs
 	/// <summary>
 	/// ConfigData for drawing list of all EditorPatternConfig data.
 	/// </summary>
-	private readonly ConfigData<EditorPatternConfig, StepManiaLibrary.PerformedChart.PatternConfig> PatternData;
+	private readonly UIPatternConfigTable PatternConfigTable;
 
 	/// <summary>
 	/// Constructor
@@ -193,7 +173,6 @@ internal sealed class UIAutogenConfigs
 			"Expressed Chart Configs",
 			"Expressed Chart Config",
 			UIExpressedChartConfig.HelpText,
-			true,
 			() => { EditorExpressedChartConfig.CreateNewConfigAndShowEditUI(); },
 			(guid) =>
 			{
@@ -210,7 +189,6 @@ internal sealed class UIAutogenConfigs
 			"Performed Chart Configs",
 			"Performed Chart Config",
 			UIPerformedChartConfig.HelpText,
-			true,
 			EditorPerformedChartConfig.CreateNewConfigAndShowEditUI,
 			(guid) =>
 			{
@@ -222,21 +200,7 @@ internal sealed class UIAutogenConfigs
 			(guid) => { ActionQueue.Instance.Do(new ActionDeletePerformedChartConfig(editor, guid)); });
 
 		// Set up EditorPatternConfig data for drawing.
-		PatternData = new ConfigData<EditorPatternConfig, StepManiaLibrary.PerformedChart.PatternConfig>(
-			PatternConfigManager.Instance,
-			"Pattern Configs",
-			"Pattern Config",
-			UIPatternConfig.HelpText,
-			false,
-			EditorPatternConfig.CreateNewConfigAndShowEditUI,
-			(guid) =>
-			{
-				Preferences.Instance.ActivePatternConfigForWindow = guid;
-				Preferences.Instance.ShowPatternListWindow = true;
-				ImGui.SetWindowFocus(UIPatternConfig.WindowTitle);
-			},
-			(guid) => { ActionQueue.Instance.Do(new ActionClonePatternConfig(guid)); },
-			(guid) => { ActionQueue.Instance.Do(new ActionDeletePatternConfig(editor, guid)); });
+		PatternConfigTable = new UIPatternConfigTable(editor, PatternConfigManager.Instance);
 	}
 
 	public void Draw()
@@ -249,7 +213,7 @@ internal sealed class UIAutogenConfigs
 		{
 			ExpressedChartData.Draw();
 			PerformedChartData.Draw();
-			PatternData.Draw();
+			PatternConfigTable.Draw();
 		}
 
 		ImGui.End();

@@ -11,13 +11,41 @@ namespace StepManiaEditor.AutogenConfig;
 /// Type of EditorConfig objects stored in this instance.
 /// </typeparam>
 /// <typeparam name="TConfig">
-/// Type of configuration objects implementing the IConfig interface that are
-/// wrapped by the EditorConfig objects that this class manages.
+/// Type of StepManiaLibrary Config objects wrapped by the EditorConfig objects that this class manages.
 /// </typeparam>
-internal sealed class ConfigData<TEditorConfig, TConfig>
+internal sealed class ConfigData<TEditorConfig, TConfig> :
+	Fumen.IObserver<EditorConfig<TConfig>>
 	where TEditorConfig : EditorConfig<TConfig>
-	where TConfig : IConfig<TConfig>, new()
+	where TConfig : Config, new()
 {
+	/// <summary>
+	/// Class to use by default for comparing TEditorConfig instances.
+	/// </summary>
+	private class DefaultComparer : IComparer<TEditorConfig>
+	{
+		public int Compare(TEditorConfig lhs, TEditorConfig rhs)
+		{
+			// The default configs should be sorted first.
+			var lhsDefault = lhs!.IsDefault();
+			var rhsDefault = rhs!.IsDefault();
+			if (lhsDefault != rhsDefault)
+				return lhsDefault ? -1 : 1;
+
+			// Configs should sort alphabetically.
+			var comparison = string.Compare(lhs.ToString(), rhs.ToString(), StringComparison.CurrentCulture);
+			if (comparison != 0)
+				return comparison;
+
+			// Finally sort by Guid.
+			return lhs.GetGuid().CompareTo(rhs.GetGuid());
+		}
+	}
+
+	/// <summary>
+	/// All IEditorConfigs of the same type by Guid.
+	/// </summary>
+	private readonly Dictionary<Guid, TEditorConfig> Configs = new();
+
 	/// <summary>
 	/// Sorted array of Config guids to use for UI.
 	/// </summary>
@@ -29,47 +57,46 @@ internal sealed class ConfigData<TEditorConfig, TConfig>
 	public string[] SortedConfigNames;
 
 	/// <summary>
-	/// All IEditorConfigs of the same type.
+	/// All IEditorConfigs of the same type, sorted.
 	/// </summary>
-	private readonly Dictionary<Guid, TEditorConfig> Configs = new();
+	private readonly List<TEditorConfig> SortedConfigs = new();
+
+	/// <summary>
+	/// Comparer to use for sorting TEditorConfig instances.
+	/// </summary>
+	private IComparer<TEditorConfig> Comparer;
+
+	public ConfigData()
+	{
+		SetComparer(new DefaultComparer());
+	}
+
+	public void SetComparer(IComparer<TEditorConfig> comparer)
+	{
+		Comparer = comparer;
+		UpdateSortedConfigs();
+	}
 
 	public void UpdateSortedConfigs()
 	{
-		var configList = new List<TEditorConfig>();
+		SortedConfigs.Clear();
 		foreach (var kvp in Configs)
+			SortedConfigs.Add(kvp.Value);
+		SortedConfigs.Sort(Comparer);
+
+		SortedConfigGuids = new Guid[SortedConfigs.Count];
+		SortedConfigNames = new string[SortedConfigs.Count];
+		for (var i = 0; i < SortedConfigs.Count; i++)
 		{
-			configList.Add(kvp.Value);
-		}
-
-		configList.Sort((lhs, rhs) =>
-		{
-			// The default configs should be sorted first.
-			var lhsDefault = lhs.IsDefault();
-			var rhsDefault = rhs.IsDefault();
-			if (lhsDefault != rhsDefault)
-				return lhsDefault ? -1 : 1;
-
-			// Configs should sort alphabetically.
-			var comparison = string.Compare(lhs.ToString(), rhs.ToString(), StringComparison.CurrentCulture);
-			if (comparison != 0)
-				return comparison;
-
-			// Finally sort by Guid.
-			return lhs.GetGuid().CompareTo(rhs.GetGuid());
-		});
-
-		SortedConfigGuids = new Guid[configList.Count];
-		SortedConfigNames = new string[configList.Count];
-		for (var i = 0; i < configList.Count; i++)
-		{
-			SortedConfigGuids[i] = configList[i].GetGuid();
-			SortedConfigNames[i] = configList[i].ToString();
+			SortedConfigGuids[i] = SortedConfigs[i].GetGuid();
+			SortedConfigNames[i] = SortedConfigs[i].ToString();
 		}
 	}
 
 	public void AddConfig(TEditorConfig config)
 	{
 		Configs[config.GetGuid()] = config;
+		config.AddObserver(this);
 		UpdateSortedConfigs();
 	}
 
@@ -79,6 +106,7 @@ internal sealed class ConfigData<TEditorConfig, TConfig>
 			return;
 		if (config.IsDefault())
 			return;
+		config.RemoveObserver(this);
 		Configs.Remove(guid);
 		UpdateSortedConfigs();
 	}
@@ -99,5 +127,29 @@ internal sealed class ConfigData<TEditorConfig, TConfig>
 	public IReadOnlyDictionary<Guid, TEditorConfig> GetConfigs()
 	{
 		return Configs;
+	}
+
+	public IEnumerable<TEditorConfig> GetSortedConfigs()
+	{
+		return SortedConfigs;
+	}
+
+	public string[] GetSortedConfigNames()
+	{
+		return SortedConfigNames;
+	}
+
+	public Guid[] GetSortedConfigGuids()
+	{
+		return SortedConfigGuids;
+	}
+
+	/// <summary>
+	/// Notification handler for underling EditorConfig changes.
+	/// </summary>
+	public void OnNotify(string eventId, EditorConfig<TConfig> notifier, object payload)
+	{
+		// If any EditorConfig changes for any reason, update the sort.
+		UpdateSortedConfigs();
 	}
 }

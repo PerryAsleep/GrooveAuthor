@@ -3,7 +3,6 @@ using ImGuiNET;
 using StepManiaEditor.AutogenConfig;
 using StepManiaLibrary.PerformedChart;
 using static StepManiaEditor.ImGuiUtils;
-using static StepManiaLibrary.PerformedChart.Config;
 
 namespace StepManiaEditor;
 

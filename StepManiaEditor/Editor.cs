@@ -170,6 +170,8 @@ internal sealed class Editor :
 	private MusicManager MusicManager;
 	private MiniMap MiniMap;
 	private ArrowGraphicManager ArrowGraphicManager;
+
+	// UI
 	private UILog UILog;
 	private UIAbout UIAbout;
 	private UIControls UIControls;
@@ -198,6 +200,9 @@ internal sealed class Editor :
 #if DEBUG
 	private UIDebug UIDebug;
 #endif
+
+	private readonly UIPatternComparer PatternComparer = new();
+
 	private ZoomManager ZoomManager;
 	private StaticTextureAtlas TextureAtlas;
 	private IntPtr TextureAtlasImGuiTexture;
@@ -517,6 +522,8 @@ internal sealed class Editor :
 
 	private void InitializeAutogenConfigs()
 	{
+		PatternConfigManager.Instance.SetConfigComparer(PatternComparer);
+
 		// Load autogen configs synchronously.
 		// This simplifies loading at the cost of startup time.
 		// Ideally this would be async, but that means deferring loading songs until this operation is complete.
@@ -4897,6 +4904,11 @@ internal sealed class Editor :
 		SpriteBatch.Draw(LogoAttribution, destinationRect, logoColor);
 
 		SpriteBatch.End();
+	}
+
+	public UIPatternComparer GetPatternComparer()
+	{
+		return PatternComparer;
 	}
 
 	#endregion Gui Rendering

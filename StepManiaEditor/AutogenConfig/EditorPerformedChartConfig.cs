@@ -4,7 +4,6 @@ using System.Text.Json.Serialization;
 using Fumen;
 using ImGuiNET;
 using StepManiaLibrary;
-using StepManiaLibrary.PerformedChart;
 using static Fumen.Converters.SMCommon;
 
 namespace StepManiaEditor.AutogenConfig;
@@ -17,7 +16,9 @@ namespace StepManiaEditor.AutogenConfig;
 /// some need to be edited through this class's properties and this distinction is not
 /// clear or enforced. Config needs to be public for json deserialization.
 /// </summary>
-internal sealed class EditorPerformedChartConfig : EditorConfig<Config>, IEquatable<EditorPerformedChartConfig>
+internal sealed class EditorPerformedChartConfig :
+	EditorConfig<StepManiaLibrary.PerformedChart.Config>,
+	IEquatable<EditorPerformedChartConfig>
 {
 	// Default values.
 	public const double DefaultFacingMaxInwardPercentage = 1.0;
@@ -190,32 +191,12 @@ internal sealed class EditorPerformedChartConfig : EditorConfig<Config>, IEquata
 		}
 	}
 
-	protected override bool EditorConfigEquals(EditorConfig<Config> other)
+	protected override bool EditorConfigEquals(EditorConfig<StepManiaLibrary.PerformedChart.Config> other)
 	{
 		return Equals(other);
 	}
 
 	#endregion IEditorConfig
-
-	/// <summary>
-	/// Sets the arrow weight for a given lane of a given ChartType.
-	/// Will update normalized weights.
-	/// </summary>
-	/// <param name="chartType">ChartType to set the arrow weight for.</param>
-	/// <param name="laneIndex">Lane index to set the arrow weight for.</param>
-	/// <param name="weight">New weight</param>
-	public void SetArrowWeight(ChartType chartType, int laneIndex, int weight)
-	{
-		var chartTypeString = ChartTypeString(chartType);
-		if (!Config.ArrowWeights.TryGetValue(chartTypeString, out var weights))
-			return;
-		if (laneIndex < 0 || laneIndex >= weights.Count)
-			return;
-		if (weights[laneIndex] == weight)
-			return;
-		weights[laneIndex] = weight;
-		Config.RefreshArrowWeightsNormalized(chartTypeString);
-	}
 
 	/// <summary>
 	/// Updates the Config's StepTightening speed values from this EditorPerformedChartConfig's BPM values.
