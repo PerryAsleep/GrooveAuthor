@@ -226,17 +226,17 @@ internal sealed class EditorPatternConfig : EditorConfig<Config>, IEquatable<Edi
 		Notify(NotificationNameChanged, this);
 	}
 
-	public void RebuildNoteTypeString()
+	private void RebuildNoteTypeString()
 	{
 		NoteTypeString = $"1/{GetMeasureSubdivision(PatternType)}";
 	}
 
-	public void RebuildStepTypeString()
+	private void RebuildStepTypeString()
 	{
 		StepTypeString = $"{Config.SameArrowStepWeight}/{Config.NewArrowStepWeight}";
 	}
 
-	public void RebuildStepTypeCheckPeriodString()
+	private void RebuildStepTypeCheckPeriodString()
 	{
 		if (Config.StepTypeCheckPeriod > 1)
 			StepTypeCheckPeriodString = $"x{Config.StepTypeCheckPeriod}";
@@ -244,7 +244,7 @@ internal sealed class EditorPatternConfig : EditorConfig<Config>, IEquatable<Edi
 			StepTypeCheckPeriodString = "";
 	}
 
-	public void RebuildStartingFootString()
+	private void RebuildStartingFootString()
 	{
 		switch (Config.StartingFootChoice)
 		{
@@ -262,14 +262,14 @@ internal sealed class EditorPatternConfig : EditorConfig<Config>, IEquatable<Edi
 		StartingFootString = "";
 	}
 
-	public void RebuildStartFootingString()
+	private void RebuildStartFootingString()
 	{
 		var l = GetPatternConfigStartFootChoiceStr(Config.LeftFootStartChoice, Config.LeftFootStartLaneSpecified);
 		var r = GetPatternConfigStartFootChoiceStr(Config.RightFootStartChoice, Config.RightFootStartLaneSpecified);
 		StartingFootingString = $"[{l}|{r}]";
 	}
 
-	public void RebuildEndFootingString()
+	private void RebuildEndFootingString()
 	{
 		var l = GetPatternConfigEndFootChoiceStr(Config.LeftFootEndChoice, Config.LeftFootEndLaneSpecified);
 		var r = GetPatternConfigEndFootChoiceStr(Config.RightFootEndChoice, Config.RightFootEndLaneSpecified);

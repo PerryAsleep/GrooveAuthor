@@ -1,7 +1,6 @@
 ﻿using System;
 using ImGuiNET;
 using StepManiaEditor.AutogenConfig;
-using StepManiaLibrary.PerformedChart;
 using static StepManiaEditor.ImGuiUtils;
 
 namespace StepManiaEditor;
@@ -30,21 +29,42 @@ internal sealed class UIPatternConfigTable
 		Delete,
 	}
 
-	private readonly ConfigManager<EditorPatternConfig, PatternConfig> ConfigManager;
 	private readonly Editor Editor;
 	private readonly UIPatternComparer Comparer;
 	private bool HasSorted;
 
+	private static readonly ColumnData[] TableColumnData;
+
 	/// <summary>
 	/// Constructor.
 	/// </summary>
-	public UIPatternConfigTable(
-		Editor editor,
-		ConfigManager<EditorPatternConfig, PatternConfig> configManager)
+	public UIPatternConfigTable(Editor editor)
 	{
 		Editor = editor;
-		ConfigManager = configManager;
 		Comparer = Editor.GetPatternComparer();
+	}
+
+	static UIPatternConfigTable()
+	{
+		var count = Enum.GetNames(typeof(Column)).Length;
+		TableColumnData = new ColumnData[count];
+		TableColumnData[(int)Column.NoteType] = new ColumnData("Note", "Note Type", ImGuiTableColumnFlags.WidthFixed);
+		TableColumnData[(int)Column.RepetitionLimit] =
+			new ColumnData("Limit", "Step Repetition Limit", ImGuiTableColumnFlags.WidthFixed);
+		TableColumnData[(int)Column.StepType] = new ColumnData("Same/New", "Step Type Weights",
+			ImGuiTableColumnFlags.WidthFixed | ImGuiTableColumnFlags.DefaultHide);
+		TableColumnData[(int)Column.StepTypeCheckPeriod] =
+			new ColumnData("Period", "Step Type Check Period", ImGuiTableColumnFlags.WidthFixed);
+		TableColumnData[(int)Column.StartingFoot] = new ColumnData("Foot", "Starting Foot", ImGuiTableColumnFlags.WidthFixed);
+		TableColumnData[(int)Column.StartingFooting] =
+			new ColumnData("Start", "Starting Footing For Each Foot", ImGuiTableColumnFlags.WidthFixed);
+		TableColumnData[(int)Column.EndingFooting] =
+			new ColumnData("End", "Ending Footing For Each Foot", ImGuiTableColumnFlags.WidthFixed);
+		TableColumnData[(int)Column.Name] = new ColumnData("Custom Name", null, ImGuiTableColumnFlags.WidthStretch);
+		TableColumnData[(int)Column.Clone] =
+			new ColumnData("Clone", null, ImGuiTableColumnFlags.WidthFixed | ImGuiTableColumnFlags.NoSort);
+		TableColumnData[(int)Column.Delete] =
+			new ColumnData("Delete", null, ImGuiTableColumnFlags.WidthFixed | ImGuiTableColumnFlags.NoSort);
 	}
 
 	/// <summary>
@@ -52,12 +72,20 @@ internal sealed class UIPatternConfigTable
 	/// </summary>
 	public void Draw()
 	{
-		// Section title.
-		ImGui.Text("Pattern Configs");
-		ImGui.SameLine();
-		HelpMarker(UIPatternConfig.HelpText);
+		var configManager = PatternConfigManager.Instance;
 
-		// EditorConfig table setup.
+		// Title table.
+		if (ImGuiLayoutUtils.BeginTable("EditorPatternConfigTitleTable", AddConfigTitleWidth))
+		{
+			ImGuiLayoutUtils.DrawRowTwoButtons("Pattern Configs",
+				"Help", () => Documentation.OpenDocumentation(Documentation.Page.PatternGeneration), true,
+				"New", EditorPatternConfig.CreateNewConfigAndShowEditUI, true,
+				UIPatternConfig.HelpText);
+
+			ImGuiLayoutUtils.EndTable();
+		}
+
+		// Config table.
 		if (ImGui.BeginTable("Pattern Configs", 10,
 			    ImGuiTableFlags.RowBg
 			    | ImGuiTableFlags.Borders
@@ -67,27 +95,14 @@ internal sealed class UIPatternConfigTable
 			    | ImGuiTableFlags.Sortable
 			    | ImGuiTableFlags.SortMulti))
 		{
-			ImGui.TableSetupColumn("Note", ImGuiTableColumnFlags.WidthFixed, 0.0f, (uint)Column.NoteType);
-			ImGui.TableSetupColumn("Limit", ImGuiTableColumnFlags.WidthFixed, 0.0f, (uint)Column.RepetitionLimit);
-			ImGui.TableSetupColumn("Same/New", ImGuiTableColumnFlags.WidthFixed, 0.0f, (uint)Column.StepType);
-			ImGui.TableSetupColumn("Period", ImGuiTableColumnFlags.WidthFixed, 0.0f, (uint)Column.StepTypeCheckPeriod);
-			ImGui.TableSetupColumn("Foot", ImGuiTableColumnFlags.WidthFixed, 0.0f, (uint)Column.StartingFoot);
-			ImGui.TableSetupColumn("Start", ImGuiTableColumnFlags.WidthFixed, 0.0f, (uint)Column.StartingFooting);
-			ImGui.TableSetupColumn("End", ImGuiTableColumnFlags.WidthFixed, 0.0f, (uint)Column.EndingFooting);
-			ImGui.TableSetupColumn("Custom Name", ImGuiTableColumnFlags.WidthStretch, 0.0f, (uint)Column.Name);
-			ImGui.TableSetupColumn("Clone", ImGuiTableColumnFlags.WidthFixed | ImGuiTableColumnFlags.NoSort, 0.0f,
-				(uint)Column.Clone);
-			ImGui.TableSetupColumn("Delete", ImGuiTableColumnFlags.WidthFixed | ImGuiTableColumnFlags.NoSort, 0.0f,
-				(uint)Column.Delete);
-			ImGui.TableSetupScrollFreeze(0, 1);
-			ImGui.TableHeadersRow();
+			BeginTable(TableColumnData);
 
 			// Sort the list if the table is dirty due to user manipulation.
 			var sortSpecsPtr = ImGui.TableGetSortSpecs();
 			if (!HasSorted || sortSpecsPtr.SpecsDirty)
 			{
 				Comparer.SetSortSpecs(sortSpecsPtr);
-				ConfigManager.SortConfigs();
+				configManager.SortConfigs();
 				sortSpecsPtr.SpecsDirty = false;
 				HasSorted = true;
 			}
@@ -96,7 +111,7 @@ internal sealed class UIPatternConfigTable
 			var index = 0;
 			var configToDelete = Guid.Empty;
 			var configToClone = Guid.Empty;
-			foreach (var config in ConfigManager.GetSortedConfigs())
+			foreach (var config in configManager.GetSortedConfigs())
 			{
 				ImGui.TableNextRow();
 
@@ -172,17 +187,6 @@ internal sealed class UIPatternConfigTable
 				ActionQueue.Instance.Do(new ActionDeletePatternConfig(Editor, configToDelete));
 
 			ImGui.EndTable();
-		}
-
-		// Section to add a new EditorConfig.
-		if (ImGuiLayoutUtils.BeginTable("AddEditorPatternTable", AddConfigTitleWidth))
-		{
-			if (ImGuiLayoutUtils.DrawRowButton("New", "New", "Add a new Pattern Config."))
-			{
-				EditorPatternConfig.CreateNewConfigAndShowEditUI();
-			}
-
-			ImGuiLayoutUtils.EndTable();
 		}
 	}
 }

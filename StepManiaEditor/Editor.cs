@@ -42,8 +42,6 @@ internal sealed class Editor :
 	Fumen.IObserver<PreferencesAudio>,
 	Fumen.IObserver<ActionQueue>
 {
-	public const string GitHubUrl = "https://github.com/PerryAsleep/GrooveAuthor";
-
 	/// <summary>
 	/// How to space Chart Events when rendering.
 	/// </summary>
@@ -202,6 +200,7 @@ internal sealed class Editor :
 #endif
 
 	private readonly UIPatternComparer PatternComparer = new();
+	private readonly UIPerformedChartComparer PerformedChartComparer = new();
 
 	private ZoomManager ZoomManager;
 	private StaticTextureAtlas TextureAtlas;
@@ -523,6 +522,7 @@ internal sealed class Editor :
 	private void InitializeAutogenConfigs()
 	{
 		PatternConfigManager.Instance.SetConfigComparer(PatternComparer);
+		PerformedChartConfigManager.Instance.SetConfigComparer(PerformedChartComparer);
 
 		// Load autogen configs synchronously.
 		// This simplifies loading at the cost of startup time.
@@ -4002,12 +4002,12 @@ internal sealed class Editor :
 
 				if (ImGui.Selectable("Documentation"))
 				{
-					OnOpenDocumentation();
+					Documentation.OpenDocumentation();
 				}
 
 				if (ImGui.Selectable($"Open {GetAppName()} on GitHub"))
 				{
-					OnOpenGitHub();
+					Documentation.OpenGitHub();
 				}
 
 				if (ImGui.Selectable("Show Intro Dialogs"))
@@ -4911,6 +4911,11 @@ internal sealed class Editor :
 		return PatternComparer;
 	}
 
+	public UIPerformedChartComparer GetPerformedChartComparer()
+	{
+		return PerformedChartComparer;
+	}
+
 	#endregion Gui Rendering
 
 	#region StepGraphs
@@ -5425,36 +5430,6 @@ internal sealed class Editor :
 		catch (Exception e)
 		{
 			Logger.Error($"Failed to open {dir}. {e}");
-		}
-	}
-
-	public void OnOpenDocumentation()
-	{
-		try
-		{
-			var tocFile = Path.Combine(new[] { AppContext.BaseDirectory, "docs", "TableOfContents.md" });
-
-			// Fallback for local builds.
-			if (!File.Exists(tocFile))
-				tocFile = Path.Combine(new[] { AppContext.BaseDirectory, "..\\..\\..", "docs", "TableOfContents.md" });
-
-			Process.Start("explorer.exe", tocFile);
-		}
-		catch (Exception e)
-		{
-			Logger.Error($"Failed to open documentation. {e}");
-		}
-	}
-
-	public static void OnOpenGitHub()
-	{
-		try
-		{
-			Process.Start("explorer.exe", GitHubUrl);
-		}
-		catch (Exception e)
-		{
-			Logger.Error($"Failed to open {GitHubUrl}. {e}");
 		}
 	}
 

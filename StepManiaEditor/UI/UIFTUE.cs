@@ -196,13 +196,13 @@ internal sealed class UIFTUE
 					    "Documentation is written in Markdown. VSCode is a good application for viewing Markdown."
 					    + " Alternatively, documentation can be viewed on GitHub."))
 				{
-					Editor.OnOpenDocumentation();
+					Documentation.OpenDocumentation();
 				}
 
 				if (ImGuiLayoutUtils.DrawRowButton("GitHub", $"Open {Editor.GetAppName()} on GitHub",
-					    $"Open the GitHub page for {Editor.GetAppName()}: {Editor.GitHubUrl}"))
+					    $"Open the GitHub page for {Editor.GetAppName()}: {Documentation.GitHubUrl}"))
 				{
-					Editor.OnOpenGitHub();
+					Documentation.OpenGitHub();
 				}
 
 				ImGuiLayoutUtils.EndTable();

@@ -642,6 +642,49 @@ internal sealed class ImGuiUtils
 
 	#endregion Window Placement
 
+	#region Table Headers
+
+	public class ColumnData
+	{
+		public ColumnData(string name, string toolTip, ImGuiTableColumnFlags flags)
+		{
+			Name = name;
+			ToolTipText = toolTip;
+			Flags = flags;
+		}
+
+		public readonly string Name;
+		public readonly string ToolTipText;
+		public readonly ImGuiTableColumnFlags Flags;
+	}
+
+	public static void BeginTable(ColumnData[] columnData)
+	{
+		for (uint i = 0; i < columnData.Length; i++)
+		{
+			var colData = columnData[i];
+			ImGui.TableSetupColumn(colData.Name, colData.Flags, 0.0f, i);
+		}
+
+		// Construct headers manually in order to add tool tips.
+		ImGui.TableNextRow(ImGuiTableRowFlags.Headers);
+		for (var i = 0; i < columnData.Length; i++)
+		{
+			if (!ImGui.TableSetColumnIndex(i))
+				continue;
+			var colData = columnData[i];
+			ImGui.PushID(i);
+			ImGui.TableHeader(colData.Name);
+			if (!string.IsNullOrEmpty(colData.ToolTipText))
+				ToolTip(colData.ToolTipText);
+			ImGui.PopID();
+		}
+
+		ImGui.TableSetupScrollFreeze(0, 1);
+	}
+
+	#endregion Table Headers
+
 	#region UI Position and DPI Scaling
 
 	public static double GetDpiScale()

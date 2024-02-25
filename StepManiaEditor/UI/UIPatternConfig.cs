@@ -19,8 +19,7 @@ internal sealed class UIPatternConfig
 
 	public static readonly string HelpText =
 		$"Pattern Configs are settings used by {Editor.GetAppName()} to generate new step patterns."
-		+ " Full details on the config values and how they are used to assign costs can be found"
-		+ " in the documentation.";
+		+ " Full details can be found in the documentation.";
 
 	private const string EndChoiceHelpText = "Which lane the {0} foot should end on."
 	                                         + "\nAutomatic Ignore Following Steps:        The {0} foot ending lane should be chosen automatically with"
@@ -167,7 +166,16 @@ internal sealed class UIPatternConfig
 		ImGui.Separator();
 		if (ImGuiLayoutUtils.BeginTable($"PatternConfigRestore##{id}", TitleColumnWidth))
 		{
-			ImGuiLayoutUtils.DrawTitle("Help", HelpText);
+			// Never disabled the documentation button.
+			if (disabled)
+				PopDisabled();
+			if (ImGuiLayoutUtils.DrawRowButton("Help", "Open Documentation", HelpText))
+			{
+				Documentation.OpenDocumentation(Documentation.Page.PatternGeneration);
+			}
+
+			if (disabled)
+				PushDisabled();
 
 			if (ImGuiLayoutUtils.DrawRowButton("Restore Defaults", "Restore Defaults",
 				    "Restore config values to their defaults."))

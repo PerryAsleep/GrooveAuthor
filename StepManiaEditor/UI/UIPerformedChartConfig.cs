@@ -18,10 +18,8 @@ internal sealed class UIPerformedChartConfig
 
 	public static readonly string HelpText =
 		$"Performed Chart Configs are settings used by {Editor.GetAppName()} to generate Charts and patterns."
-		+ " When generating steps, all possible paths are considered. Costs are assigned to paths"
-		+ " based on Performed Chart Config values, and the path with the lowest cost is chosen."
-		+ " Full details on the config values and how they are used to assign costs can be found"
-		+ " in the documentation.";
+		+ " These settings are used to control how new steps are performed when their types and timings are"
+		+ " already known. Full details can be found in the documentation.";
 
 	private readonly Editor Editor;
 	private static readonly List<ImGuiArrowWeightsWidget> ArrowWeightsWidgets;
@@ -152,17 +150,17 @@ internal sealed class UIPerformedChartConfig
 				"Speed in panel lengths per second over which continuous lateral movement will be subject to lateral tightening "
 				+ "costs based on the NPS checks below."
 				+ "\nSet this to a high value to disable lateral tightening.",
-				0.0001f, "%.6f", 0.0, 100.0);
+				0.0001f, "%.6f panels/s", 0.0, 100.0);
 			ImGuiLayoutUtils.DrawRowDragDouble(true, "Relative NPS", config.LateralTightening,
 				nameof(Config.LateralTightening.RelativeNPS), false,
 				"Multiplier. If the notes per second of a section of steps is over the chart's average notes per second multiplied "
 				+ "by this value then the section is considered to be fast enough to apply a lateral body movement cost to.",
-				0.0001f, "%.6f", 0.0, 100.0);
+				0.0001f, "%.6f notes/s", 0.0, 100.0);
 			ImGuiLayoutUtils.DrawRowDragDouble(true, "Absolute NPS", config.LateralTightening,
 				nameof(Config.LateralTightening.AbsoluteNPS), false,
 				"Absolute notes per second value. If the notes per second of a section of steps is over this value then the section "
 				+ "is considered to be fast enough to apply a lateral body movement cost to.",
-				0.0001f, "%.6f", 0.0, 100.0);
+				0.0001f, "%.6f notes/s", 0.0, 100.0);
 			ImGuiLayoutUtils.EndTable();
 
 			if (lateralTighteningDisabled)
@@ -302,7 +300,16 @@ internal sealed class UIPerformedChartConfig
 		ImGui.Separator();
 		if (ImGuiLayoutUtils.BeginTable($"PerformedChartConfigRestore##{id}", TitleColumnWidth))
 		{
-			ImGuiLayoutUtils.DrawTitle("Help", HelpText);
+			// Never disabled the documentation button.
+			if (disabled)
+				PopDisabled();
+			if (ImGuiLayoutUtils.DrawRowButton("Help", "Open Documentation", HelpText))
+			{
+				Documentation.OpenDocumentation(Documentation.Page.PerformedChartConfigs);
+			}
+
+			if (disabled)
+				PushDisabled();
 
 			if (ImGuiLayoutUtils.DrawRowButton("Restore Defaults", "Restore Defaults",
 				    "Restore config values to their defaults."))

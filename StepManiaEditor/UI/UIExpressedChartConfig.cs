@@ -17,10 +17,10 @@ internal sealed class UIExpressedChartConfig
 
 	public static readonly string HelpText =
 		$"Expressed Chart Configs are settings used by {Editor.GetAppName()} to interpret Charts."
-		+ " This is used for autogenerating patterns and new Charts as those actions require understanding how the body moves to perform a Chart."
+		+ " Autogenerating new charts from existing charts requires interpreting the existing chart."
+		+ " Autogenerating patterns requires interpreting surrounding steps so the pattern can integrate nicely."
 		+ " An Expressed Chart Config can be assigned to a Chart in the Chart Properties window."
-		+ " Charts will default to using the Dynamic Expressed Chart Config."
-		+ " The default Expressed Chart Configs cannot be edited.";
+		+ " Full details can be found in the documentation.";
 
 	private readonly Editor Editor;
 
@@ -132,7 +132,16 @@ internal sealed class UIExpressedChartConfig
 			ImGui.Separator();
 			if (ImGuiLayoutUtils.BeginTable("Expressed Chart Config Restore", TitleColumnWidth))
 			{
-				ImGuiLayoutUtils.DrawTitle("Help", HelpText);
+				// Never disabled the documentation button.
+				if (disabled)
+					PopDisabled();
+				if (ImGuiLayoutUtils.DrawRowButton("Help", "Open Documentation", HelpText))
+				{
+					Documentation.OpenDocumentation(Documentation.Page.ExpressedChartConfigs);
+				}
+
+				if (disabled)
+					PushDisabled();
 
 				if (ImGuiLayoutUtils.DrawRowButton("Restore Defaults", "Restore Defaults",
 					    "Restore config values to their defaults."))

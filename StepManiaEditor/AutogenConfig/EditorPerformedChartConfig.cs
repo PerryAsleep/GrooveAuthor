@@ -132,7 +132,199 @@ internal sealed class EditorPerformedChartConfig :
 	{
 	}
 
+	#region String Representataion
+
+	// Cached string representation.
+	//private string StringRepresentation = "";
+	private string TransitionMinString = "";
+	private string TransitionMaxString = "";
+	private string FacingInwardLimitString = "";
+	private string FacingOutwardLimitString = "";
+	private string LateralSpeedString = "";
+	private string LateralRelativeNPSString = "";
+	private string LateralAbsoluteNPSString = "";
+	private string StepDistanceMinString = "";
+	private string StepStretchMinString = "";
+	private string StepSpeedMinString = "";
+
+	public string GetTransitionMinString()
+	{
+		return TransitionMinString;
+	}
+
+	public string GetTransitionMaxString()
+	{
+		return TransitionMaxString;
+	}
+
+	public string GetFacingInwardLimitString()
+	{
+		return FacingInwardLimitString;
+	}
+
+	public string GetFacingOutwardLimitString()
+	{
+		return FacingOutwardLimitString;
+	}
+
+	public string GetLateralSpeedString()
+	{
+		return LateralSpeedString;
+	}
+
+	public string GetLateralRelativeNPSString()
+	{
+		return LateralRelativeNPSString;
+	}
+
+	public string GetLateralAbsoluteNPSString()
+	{
+		return LateralAbsoluteNPSString;
+	}
+
+	public string GetStepDistanceMinString()
+	{
+		return StepDistanceMinString;
+	}
+
+	public string GetStepStretchMinString()
+	{
+		return StepStretchMinString;
+	}
+
+	public string GetStepSpeedMinString()
+	{
+		return StepSpeedMinString;
+	}
+
+	private void RebuildStringRepresentation()
+	{
+		RebuildTransitionMinString();
+		RebuildTransitionMaxString();
+		RebuildFacingInwardString();
+		RebuildFacingOutwardString();
+		RebuildLateralSpeedString();
+		RebuildLateralRelativeNPSString();
+		RebuildLateralAbsoluteNPSString();
+		RebuildStepDistanceMinString();
+		RebuildStepStretchMinString();
+		RebuildStepSpeedMinString();
+	}
+
+	private void RebuildTransitionMinString()
+	{
+		if (Config.Transitions.IsEnabled())
+		{
+			TransitionMinString = $"{Config.Transitions.StepsPerTransitionMin}";
+			return;
+		}
+		TransitionMinString = "";
+	}
+
+	private void RebuildTransitionMaxString()
+	{
+		if (Config.Transitions.IsEnabled())
+		{
+			TransitionMaxString = $"{Config.Transitions.StepsPerTransitionMax}";
+			return;
+		}
+		TransitionMaxString = "";
+	}
+
+	private void RebuildFacingInwardString()
+	{
+		if (Config.Facing.MaxInwardPercentage < 1.0)
+		{
+			FacingInwardLimitString = $"{(int)(Config.Facing.MaxInwardPercentage * 100.0)}%";
+			return;
+		}
+		FacingInwardLimitString = "";
+	}
+
+	private void RebuildFacingOutwardString()
+	{
+		if (Config.Facing.MaxOutwardPercentage < 1.0)
+		{
+			FacingOutwardLimitString = $"{(int)(Config.Facing.MaxOutwardPercentage * 100.0)}%";
+			return;
+		}
+		FacingOutwardLimitString = "";
+	}
+
+	private void RebuildLateralSpeedString()
+	{
+		if (Config.LateralTightening.IsEnabled())
+		{
+			LateralSpeedString = $"{Config.LateralTightening.Speed:F2}p/s";
+			return;
+		}
+		LateralSpeedString = "";
+	}
+
+	private void RebuildLateralRelativeNPSString()
+	{
+		if (Config.LateralTightening.IsEnabled())
+		{
+			LateralRelativeNPSString = $"{Config.LateralTightening.RelativeNPS:F2}n/s";
+			return;
+		}
+		LateralRelativeNPSString = "";
+	}
+
+	private void RebuildLateralAbsoluteNPSString()
+	{
+		if (Config.LateralTightening.IsEnabled())
+		{
+			LateralAbsoluteNPSString = $"{Config.LateralTightening.AbsoluteNPS:F2}n/s";
+			return;
+		}
+		LateralAbsoluteNPSString = "";
+	}
+
+	private void RebuildStepDistanceMinString()
+	{
+		if (Config.StepTightening.IsDistanceTighteningEnabled())
+		{
+			StepDistanceMinString = $"{Config.StepTightening.DistanceMin:F2}";
+			return;
+		}
+		StepDistanceMinString = "";
+	}
+
+	private void RebuildStepStretchMinString()
+	{
+		if (Config.StepTightening.IsStretchTighteningEnabled())
+		{
+			StepStretchMinString = $"{Config.StepTightening.StretchDistanceMin:F2}";
+			return;
+		}
+		StepStretchMinString = "";
+	}
+
+	private void RebuildStepSpeedMinString()
+	{
+		if (Config.StepTightening.IsSpeedTighteningEnabled())
+		{
+			StepSpeedMinString = $"{TravelSpeedMinBPM}bpm";
+			return;
+		}
+		StepSpeedMinString = "";
+	}
+
+	public uint GetSpeedStringColor()
+	{
+		return ArrowGraphicManager.GetArrowColorForSubdivision(ValidDenominators[TravelSpeedNoteTypeDenominatorIndex]);
+	}
+
+	#endregion String Representataion
+
 	#region EditorConfig
+
+	public override void Init()
+	{
+		RebuildStringRepresentation();
+		base.Init();
+	}
 
 	/// <summary>
 	/// Returns a new EditorPerformedChartConfig that is a clone of this EditorPerformedChartConfig.
@@ -194,6 +386,16 @@ internal sealed class EditorPerformedChartConfig :
 	protected override bool EditorConfigEquals(EditorConfig<StepManiaLibrary.PerformedChart.Config> other)
 	{
 		return Equals(other);
+	}
+
+	/// <summary>
+	/// Notification handler for underlying StepManiaLibrary Config object changes.
+	/// </summary>
+	public override void OnNotify(string eventId, Config notifier, object payload)
+	{
+		// When anything about the config changes, rebuild the string representation.
+		RebuildStringRepresentation();
+		base.OnNotify(eventId, notifier, payload);
 	}
 
 	#endregion IEditorConfig
