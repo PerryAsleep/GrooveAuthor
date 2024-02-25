@@ -6580,6 +6580,7 @@ internal sealed class Editor :
 	{
 		LastSelectedPatternEvent = pattern;
 		Preferences.Instance.ShowPatternEventWindow = true;
+		ImGui.SetWindowFocus(UIPatternEvent.WindowTitle);
 	}
 
 	private void OnMoveToChartStart()
