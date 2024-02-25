@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Text;
 using System.Text.Json.Serialization;
 using Fumen;
 using ImGuiNET;
@@ -49,6 +50,20 @@ internal sealed class EditorPerformedChartConfig :
 	public const double DefaultTransitionsCutoffPercentage = 0.5;
 
 	public static readonly Dictionary<string, List<int>> DefaultArrowWeights;
+
+	// Cached string representation.
+	private string StringRepresentation = "";
+	private string Abbreviation = "";
+	private string TransitionMinString = "";
+	private string TransitionMaxString = "";
+	private string FacingInwardLimitString = "";
+	private string FacingOutwardLimitString = "";
+	private string LateralSpeedString = "";
+	private string LateralRelativeNPSString = "";
+	private string LateralAbsoluteNPSString = "";
+	private string StepDistanceMinString = "";
+	private string StepStretchMinString = "";
+	private string StepSpeedMinString = "";
 
 	/// <summary>
 	/// Static initializer.
@@ -134,18 +149,19 @@ internal sealed class EditorPerformedChartConfig :
 
 	#region String Representataion
 
-	// Cached string representation.
-	//private string StringRepresentation = "";
-	private string TransitionMinString = "";
-	private string TransitionMaxString = "";
-	private string FacingInwardLimitString = "";
-	private string FacingOutwardLimitString = "";
-	private string LateralSpeedString = "";
-	private string LateralRelativeNPSString = "";
-	private string LateralAbsoluteNPSString = "";
-	private string StepDistanceMinString = "";
-	private string StepStretchMinString = "";
-	private string StepSpeedMinString = "";
+	/// <summary>
+	/// Gets the string representation of this EditorPerformedChartConfig.
+	/// </summary>
+	/// <returns>String representation of this EditorPerformedChartConfig.</returns>
+	public override string ToString()
+	{
+		return StringRepresentation;
+	}
+
+	public string GetAbbreviation()
+	{
+		return Abbreviation;
+	}
 
 	public string GetTransitionMinString()
 	{
@@ -209,6 +225,49 @@ internal sealed class EditorPerformedChartConfig :
 		RebuildStepDistanceMinString();
 		RebuildStepStretchMinString();
 		RebuildStepSpeedMinString();
+
+		// Update Abbreviation.
+		var sb = new StringBuilder();
+
+		var abbreviationEmpty = true;
+		if (!string.IsNullOrEmpty(StepDistanceMinString))
+		{
+			sb.Append($"{StepDistanceMinString}S");
+			abbreviationEmpty = false;
+		}
+
+		if (!string.IsNullOrEmpty(TransitionMinString))
+		{
+			if (!abbreviationEmpty)
+				sb.Append(' ');
+			sb.Append($"{TransitionMinString}T");
+			abbreviationEmpty = false;
+		}
+
+		if (!string.IsNullOrEmpty(FacingInwardLimitString))
+		{
+			if (!abbreviationEmpty)
+				sb.Append(' ');
+			sb.Append(FacingInwardLimitString);
+			abbreviationEmpty = false;
+		}
+
+		Abbreviation = abbreviationEmpty ? "" : sb.ToString();
+
+		// Set StringRepresentation from Name and Abbreviation.
+		if (!string.IsNullOrEmpty(Name))
+		{
+			if (!abbreviationEmpty)
+				StringRepresentation = $"{Name}: {Abbreviation}";
+			else
+				StringRepresentation = Name;
+		}
+		else
+		{
+			StringRepresentation = Abbreviation;
+		}
+
+		Notify(NotificationNameChanged, this);
 	}
 
 	private void RebuildTransitionMinString()
@@ -218,6 +277,7 @@ internal sealed class EditorPerformedChartConfig :
 			TransitionMinString = $"{Config.Transitions.StepsPerTransitionMin}";
 			return;
 		}
+
 		TransitionMinString = "";
 	}
 
@@ -228,6 +288,7 @@ internal sealed class EditorPerformedChartConfig :
 			TransitionMaxString = $"{Config.Transitions.StepsPerTransitionMax}";
 			return;
 		}
+
 		TransitionMaxString = "";
 	}
 
@@ -238,6 +299,7 @@ internal sealed class EditorPerformedChartConfig :
 			FacingInwardLimitString = $"{(int)(Config.Facing.MaxInwardPercentage * 100.0)}%";
 			return;
 		}
+
 		FacingInwardLimitString = "";
 	}
 
@@ -248,6 +310,7 @@ internal sealed class EditorPerformedChartConfig :
 			FacingOutwardLimitString = $"{(int)(Config.Facing.MaxOutwardPercentage * 100.0)}%";
 			return;
 		}
+
 		FacingOutwardLimitString = "";
 	}
 
@@ -258,6 +321,7 @@ internal sealed class EditorPerformedChartConfig :
 			LateralSpeedString = $"{Config.LateralTightening.Speed:F2}p/s";
 			return;
 		}
+
 		LateralSpeedString = "";
 	}
 
@@ -268,6 +332,7 @@ internal sealed class EditorPerformedChartConfig :
 			LateralRelativeNPSString = $"{Config.LateralTightening.RelativeNPS:F2}n/s";
 			return;
 		}
+
 		LateralRelativeNPSString = "";
 	}
 
@@ -278,6 +343,7 @@ internal sealed class EditorPerformedChartConfig :
 			LateralAbsoluteNPSString = $"{Config.LateralTightening.AbsoluteNPS:F2}n/s";
 			return;
 		}
+
 		LateralAbsoluteNPSString = "";
 	}
 
@@ -288,6 +354,7 @@ internal sealed class EditorPerformedChartConfig :
 			StepDistanceMinString = $"{Config.StepTightening.DistanceMin:F2}";
 			return;
 		}
+
 		StepDistanceMinString = "";
 	}
 
@@ -298,6 +365,7 @@ internal sealed class EditorPerformedChartConfig :
 			StepStretchMinString = $"{Config.StepTightening.StretchDistanceMin:F2}";
 			return;
 		}
+
 		StepStretchMinString = "";
 	}
 
@@ -308,6 +376,7 @@ internal sealed class EditorPerformedChartConfig :
 			StepSpeedMinString = $"{TravelSpeedMinBPM}bpm";
 			return;
 		}
+
 		StepSpeedMinString = "";
 	}
 
@@ -396,6 +465,14 @@ internal sealed class EditorPerformedChartConfig :
 		// When anything about the config changes, rebuild the string representation.
 		RebuildStringRepresentation();
 		base.OnNotify(eventId, notifier, payload);
+	}
+
+	/// <summary>
+	/// Called when this EditorConfig's Name changes.
+	/// </summary>
+	protected override void OnNameChanged()
+	{
+		RebuildStringRepresentation();
 	}
 
 	#endregion IEditorConfig

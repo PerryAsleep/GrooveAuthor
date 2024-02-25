@@ -42,6 +42,7 @@ internal abstract class EditorConfig<TConfig> :
 			if (!string.IsNullOrEmpty(NameInternal) && NameInternal.Equals(value))
 				return;
 			NameInternal = value;
+			OnNameChanged();
 			Notify(NotificationNameChanged, this);
 		}
 	}
@@ -260,5 +261,12 @@ internal abstract class EditorConfig<TConfig> :
 	public override string ToString()
 	{
 		return Name;
+	}
+
+	/// <summary>
+	/// Called when this EditorConfig's Name changes.
+	/// </summary>
+	protected virtual void OnNameChanged()
+	{
 	}
 }

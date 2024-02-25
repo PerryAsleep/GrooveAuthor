@@ -38,7 +38,7 @@ internal sealed class UIPatternComparer : IComparer<EditorPatternConfig>
 			for (var specIndex = 0; specIndex < sortSpecs.SpecsCount; specIndex++)
 			{
 				var spec = p[specIndex];
-				SortSpecs.Add(new((UIPatternConfigTable.Column)spec.ColumnUserID, (ImGuiSortDirection)spec.SortDirection));
+				SortSpecs.Add(new Spec((UIPatternConfigTable.Column)spec.ColumnUserID, (ImGuiSortDirection)spec.SortDirection));
 			}
 		}
 	}
@@ -48,7 +48,7 @@ internal sealed class UIPatternComparer : IComparer<EditorPatternConfig>
 		var p1 = ep1!.Config;
 		var p2 = ep2!.Config;
 
-		foreach(var spec in SortSpecs)
+		foreach (var spec in SortSpecs)
 		{
 			var comparison = 0;
 			switch (spec.Column)
@@ -73,10 +73,19 @@ internal sealed class UIPatternComparer : IComparer<EditorPatternConfig>
 						comparison = p1.StartingFootSpecified.CompareTo(p2.StartingFootSpecified);
 					break;
 				case UIPatternConfigTable.Column.StartingFooting:
-					comparison = string.Compare(ep1.GetStartFootingString(), ep2.GetStartFootingString(), StringComparison.Ordinal);
+					comparison = string.Compare(ep1.GetStartFootingString(), ep2.GetStartFootingString(),
+						StringComparison.Ordinal);
 					break;
 				case UIPatternConfigTable.Column.EndingFooting:
 					comparison = string.Compare(ep1.GetEndFootingString(), ep2.GetEndFootingString(), StringComparison.Ordinal);
+					break;
+				case UIPatternConfigTable.Column.Abbreviation:
+					if (ep1.GetAbbreviation() != null && ep2.GetAbbreviation() != null)
+						comparison = string.Compare(ep1.GetAbbreviation(), ep2.GetAbbreviation(), StringComparison.Ordinal);
+					else if (!string.IsNullOrEmpty(ep1.GetAbbreviation()))
+						comparison = 1;
+					else if (!string.IsNullOrEmpty(ep2.GetAbbreviation()))
+						comparison = -1;
 					break;
 				case UIPatternConfigTable.Column.Name:
 					if (ep1.Name != null && ep2.Name != null)

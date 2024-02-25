@@ -27,6 +27,7 @@ internal sealed class UIPerformedChartConfigTable
 		TransitionMax,
 		FacingInwardLimit,
 		FacingOutwardLimit,
+		Abbreviation,
 		Name,
 		Clone,
 		Delete,
@@ -61,7 +62,9 @@ internal sealed class UIPerformedChartConfigTable
 		TableColumnData[(int)Column.FacingInwardLimit] = new ColumnData("F In", "Max Percentage Of Inward Facing Steps",
 			ImGuiTableColumnFlags.WidthFixed);
 		TableColumnData[(int)Column.FacingOutwardLimit] = new ColumnData("F Out", "Max Percentage Of Outward Facing Steps",
-			ImGuiTableColumnFlags.WidthFixed);
+			ImGuiTableColumnFlags.WidthFixed | ImGuiTableColumnFlags.DefaultHide);
+		TableColumnData[(int)Column.Abbreviation] = new ColumnData("Abbreviation",
+			"Abbreviation Of Important Configuration Information", ImGuiTableColumnFlags.WidthFixed);
 		TableColumnData[(int)Column.Name] = new ColumnData("Custom Name", null, ImGuiTableColumnFlags.WidthStretch);
 		TableColumnData[(int)Column.Clone] =
 			new ColumnData("Clone", null, ImGuiTableColumnFlags.WidthFixed | ImGuiTableColumnFlags.NoSort);
@@ -97,7 +100,7 @@ internal sealed class UIPerformedChartConfigTable
 		}
 
 		// Config table.
-		if (ImGui.BeginTable("Performed Chart Configs", 13,
+		if (ImGui.BeginTable("Performed Chart Configs", TableColumnData.Length,
 			    ImGuiTableFlags.RowBg
 			    | ImGuiTableFlags.Borders
 			    | ImGuiTableFlags.Resizable
@@ -160,6 +163,8 @@ internal sealed class UIPerformedChartConfigTable
 				ImGui.TextUnformatted(config.GetFacingInwardLimitString());
 				ImGui.TableNextColumn();
 				ImGui.TextUnformatted(config.GetFacingOutwardLimitString());
+				ImGui.TableNextColumn();
+				ImGui.Text(config.GetAbbreviation() ?? "");
 				ImGui.TableNextColumn();
 				ImGui.Text(config.Name ?? "");
 				if (!string.IsNullOrEmpty(config.Description))

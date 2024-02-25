@@ -24,6 +24,7 @@ internal sealed class UIPatternConfigTable
 		StartingFoot,
 		StartingFooting,
 		EndingFooting,
+		Abbreviation,
 		Name,
 		Clone,
 		Delete,
@@ -60,6 +61,8 @@ internal sealed class UIPatternConfigTable
 			new ColumnData("Start", "Starting Footing For Each Foot", ImGuiTableColumnFlags.WidthFixed);
 		TableColumnData[(int)Column.EndingFooting] =
 			new ColumnData("End", "Ending Footing For Each Foot", ImGuiTableColumnFlags.WidthFixed);
+		TableColumnData[(int)Column.Abbreviation] =
+			new ColumnData("Abbreviation", "Abbreviation Of Configuration", ImGuiTableColumnFlags.WidthFixed);
 		TableColumnData[(int)Column.Name] = new ColumnData("Custom Name", null, ImGuiTableColumnFlags.WidthStretch);
 		TableColumnData[(int)Column.Clone] =
 			new ColumnData("Clone", null, ImGuiTableColumnFlags.WidthFixed | ImGuiTableColumnFlags.NoSort);
@@ -86,7 +89,7 @@ internal sealed class UIPatternConfigTable
 		}
 
 		// Config table.
-		if (ImGui.BeginTable("Pattern Configs", 10,
+		if (ImGui.BeginTable("Pattern Configs", TableColumnData.Length,
 			    ImGuiTableFlags.RowBg
 			    | ImGuiTableFlags.Borders
 			    | ImGuiTableFlags.Resizable
@@ -130,31 +133,20 @@ internal sealed class UIPatternConfigTable
 
 				ImGui.PopStyleColor();
 
-				// Repeat
 				ImGui.TableNextColumn();
 				ImGui.Text(config.Config.MaxSameArrowsInARowPerFoot.ToString());
-
-				// Step type distribution
 				ImGui.TableNextColumn();
 				ImGui.Text(config.GetStepTypeString());
-
-				// Distribution period
 				ImGui.TableNextColumn();
 				ImGui.Text(config.GetStepTypeCheckPeriodString());
-
-				// Starting foot
 				ImGui.TableNextColumn();
 				ImGui.Text(config.GetStartingFootString());
-
-				// Starting footing
 				ImGui.TableNextColumn();
 				ImGui.Text(config.GetStartFootingString());
-
-				// Ending footing
 				ImGui.TableNextColumn();
 				ImGui.Text(config.GetEndFootingString());
-
-				// Name
+				ImGui.TableNextColumn();
+				ImGui.Text(config.GetAbbreviation() ?? "");
 				ImGui.TableNextColumn();
 				ImGui.Text(config.Name ?? "");
 

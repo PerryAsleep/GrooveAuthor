@@ -63,6 +63,16 @@ internal sealed class UIPerformedChartComparer : IComparer<EditorPerformedChartC
 						comparison = -1;
 					break;
 				}
+				case UIPerformedChartConfigTable.Column.Abbreviation:
+				{
+					if (ep1.GetAbbreviation() != null && ep2.GetAbbreviation() != null)
+						comparison = string.Compare(ep1.GetAbbreviation(), ep2.GetAbbreviation(), StringComparison.Ordinal);
+					else if (!string.IsNullOrEmpty(ep1.GetAbbreviation()))
+						comparison = 1;
+					else if (!string.IsNullOrEmpty(ep2.GetAbbreviation()))
+						comparison = -1;
+					break;
+				}
 				case UIPerformedChartConfigTable.Column.StepSpeedMin:
 				{
 					var bpm1 = p1.StepTightening.IsSpeedTighteningEnabled() ? ep1.TravelSpeedMinBPM : 0;

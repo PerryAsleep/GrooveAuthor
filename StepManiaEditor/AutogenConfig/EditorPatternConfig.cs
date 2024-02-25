@@ -71,6 +71,7 @@ internal sealed class EditorPatternConfig : EditorConfig<Config>, IEquatable<Edi
 
 	// Cached string representation.
 	private string StringRepresentation = "";
+	private string Abbreviation = "";
 	private string NoteTypeString = "";
 	private string StepTypeString = "";
 	private string StepTypeCheckPeriodString = "";
@@ -160,6 +161,11 @@ internal sealed class EditorPatternConfig : EditorConfig<Config>, IEquatable<Edi
 		return StringRepresentation;
 	}
 
+	public string GetAbbreviation()
+	{
+		return Abbreviation;
+	}
+
 	public string GetNoteTypeString()
 	{
 		return NoteTypeString;
@@ -199,11 +205,8 @@ internal sealed class EditorPatternConfig : EditorConfig<Config>, IEquatable<Edi
 		RebuildStartFootingString();
 		RebuildEndFootingString();
 
+		// Update Abbreviation.
 		var sb = new StringBuilder();
-
-		// Custom name.
-		if (!string.IsNullOrEmpty(Name))
-			sb.Append($"{Name}: ");
 
 		// Note type.
 		sb.Append(NoteTypeString);
@@ -221,7 +224,13 @@ internal sealed class EditorPatternConfig : EditorConfig<Config>, IEquatable<Edi
 		// Starting and ending footing.
 		sb.Append($" {StartingFootingString}->{EndingFootingString}");
 
-		StringRepresentation = sb.ToString();
+		Abbreviation = sb.ToString();
+
+		// Set StringRepresentation from Name and Abbreviation.
+		if (!string.IsNullOrEmpty(Name))
+			StringRepresentation = $"{Name}: {Abbreviation}";
+		else
+			StringRepresentation = Abbreviation;
 
 		Notify(NotificationNameChanged, this);
 	}
@@ -396,6 +405,14 @@ internal sealed class EditorPatternConfig : EditorConfig<Config>, IEquatable<Edi
 		// When anything about the config changes, rebuild the string representation.
 		RebuildStringRepresentation();
 		base.OnNotify(eventId, notifier, payload);
+	}
+
+	/// <summary>
+	/// Called when this EditorConfig's Name changes.
+	/// </summary>
+	protected override void OnNameChanged()
+	{
+		RebuildStringRepresentation();
 	}
 
 	#endregion EditorConfig
