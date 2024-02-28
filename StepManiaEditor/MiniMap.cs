@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Runtime.CompilerServices;
 using Fumen;
 using Fumen.ChartDefinition;
 using Microsoft.Xna.Framework;
@@ -236,6 +235,11 @@ internal sealed class MiniMap
 	private uint PreviewWidth = 2;
 
 	/// <summary>
+	/// Whether or not to quantize positions.
+	/// </summary>
+	private bool QuantizePositions = true;
+
+	/// <summary>
 	/// Percentage of Editor Area to MiniMap Area over which to start fading out.
 	/// </summary>
 	private double FadeOutPercentage = 1.0;
@@ -281,6 +285,12 @@ internal sealed class MiniMap
 	/// MiniMap area start y value. Units are in Chart space (e.g. time or position) and not pixel space.
 	/// </summary>
 	private double MiniMapAreaStart;
+
+	/// <summary>
+	/// MiniMap area start y value. Units are in Chart space (e.g. time or position) and not pixel space.
+	/// This value will always be unquantized whereas MiniMapAreaStart may or may not be quantized depending on settings.
+	/// </summary>
+	private double MiniMapAreaStartUnquantized;
 
 	/// <summary>
 	/// MiniMap area range (height) value. Units are in Chart space (e.g. time or position) and not pixel space.
@@ -337,6 +347,15 @@ internal sealed class MiniMap
 	public void SetFadeOutPercentage(double fadeOutPercentage)
 	{
 		FadeOutPercentage = Math.Clamp(fadeOutPercentage, 0.0, 1.0);
+	}
+
+	/// <summary>
+	/// Sets whether or not to quantize positions on the MiniMap.
+	/// </summary>
+	/// <param name="quantizePositions">Whether or not to quantize positions on the MiniMap.</param>
+	public void SetShouldQuantizePositions(bool quantizePositions)
+	{
+		QuantizePositions = quantizePositions;
 	}
 
 	/// <summary>
@@ -494,8 +513,9 @@ internal sealed class MiniMap
 		if (!IsScreenPositionInMiniMapBounds(screenX, screenY))
 			return false;
 
-		var editorStartYPixel = GetYPixelRelativeToBounds(EditorAreaStart);
-		var editorEndYPixel = GetYPixelRelativeToBounds(EditorAreaEnd);
+		// Force unquantized positions since the editor area is never quantized.
+		var editorStartYPixel = GetYPixelRelativeToBounds(EditorAreaStart, true);
+		var editorEndYPixel = GetYPixelRelativeToBounds(EditorAreaEnd, true);
 
 		var relativePosY = screenY - Bounds.Y;
 
@@ -545,9 +565,10 @@ internal sealed class MiniMap
 						{
 							Grabbed = true;
 							// When grabbing the editor region we need to record where on that region it was grabbed so when
-							// the mouse moves the editor region moves naturally.
-							editorStartYPixel = GetYPixelRelativeToBounds(EditorAreaStart);
-							editorEndYPixel = GetYPixelRelativeToBounds(EditorAreaEnd);
+							// the mouse moves the editor region moves naturally. Force unquantized positions since the
+							// editor area is never quantized.
+							editorStartYPixel = GetYPixelRelativeToBounds(EditorAreaStart, true);
+							editorEndYPixel = GetYPixelRelativeToBounds(EditorAreaEnd, true);
 							GrabbedPositionAsPercentageOfEditorArea =
 								(relativePosY - editorStartYPixel) / (editorEndYPixel - editorStartYPixel);
 						}
@@ -618,7 +639,8 @@ internal sealed class MiniMap
 
 		// Determine what percentage the editor pixel range is at with respect to the bounds.
 		var selectedPixel = screenY - Bounds.Y;
-		var editorAreaPixelRange = GetYPixelRelativeToBounds(EditorAreaEnd) - GetYPixelRelativeToBounds(EditorAreaStart);
+		var editorAreaPixelRange =
+			GetYPixelRelativeToBounds(EditorAreaEnd, true) - GetYPixelRelativeToBounds(EditorAreaStart, true);
 		var editorStartYPixel = selectedPixel - editorAreaPixelRange * GrabbedPositionAsPercentageOfEditorArea;
 		var editorStartPositionRange = Bounds.Height - editorAreaPixelRange;
 		var percentage = editorStartYPixel / editorStartPositionRange;
@@ -628,7 +650,7 @@ internal sealed class MiniMap
 		{
 			var miniMapStartPositionRange = FullAreaEnd - FullAreaStart - MiniMapAreaRange;
 			var percentageForMiniMap = Math.Min(1.0, Math.Max(0.0, percentage));
-			MiniMapAreaStart = FullAreaStart + percentageForMiniMap * miniMapStartPositionRange;
+			SetMiniMapAreaStart(FullAreaStart + percentageForMiniMap * miniMapStartPositionRange);
 		}
 
 		// Put the editor area at the appropriate location based on the MiniMap area.
@@ -648,7 +670,7 @@ internal sealed class MiniMap
 		// place, at the start of the full area.
 		if (MiniMapAreaRange >= FullAreaEnd - FullAreaStart)
 		{
-			MiniMapAreaStart = FullAreaStart;
+			SetMiniMapAreaStart(FullAreaStart);
 			return;
 		}
 
@@ -658,7 +680,27 @@ internal sealed class MiniMap
 		var percentage = (EditorAreaStart - FullAreaStart) / (FullAreaEnd - FullAreaStart - (EditorAreaEnd - EditorAreaStart));
 		var miniMapStartPositionRange = FullAreaEnd - FullAreaStart - MiniMapAreaRange;
 		var percentageForMiniMap = Math.Min(1.0, Math.Max(0.0, percentage));
-		MiniMapAreaStart = FullAreaStart + percentageForMiniMap * miniMapStartPositionRange;
+		SetMiniMapAreaStart(FullAreaStart + percentageForMiniMap * miniMapStartPositionRange);
+	}
+
+	/// <summary>
+	/// Sets MiniMapAreaStart and MiniMapAreaStartUnquantized to the given value.
+	/// MiniMapAreaStart will be quantized depending on the value of QuantizePositions.
+	/// MiniMapAreaStartUnquantized will store the unquantized value.
+	/// </summary>
+	private void SetMiniMapAreaStart(double miniMapAreaStart)
+	{
+		MiniMapAreaStartUnquantized = miniMapAreaStart;
+		MiniMapAreaStart = MiniMapAreaStartUnquantized;
+		if (QuantizePositions)
+		{
+			var chartSpacePerPixel = MiniMapAreaRange / Bounds.Height;
+			var numPixels = (int)(MiniMapAreaStart / chartSpacePerPixel);
+			var remainder = MiniMapAreaStart / (numPixels * chartSpacePerPixel);
+			if (remainder >= 0.5)
+				numPixels++;
+			MiniMapAreaStart = numPixels * chartSpacePerPixel;
+		}
 	}
 
 	/// <summary>
@@ -725,11 +767,14 @@ internal sealed class MiniMap
 	/// <returns></returns>
 	public AddResult AddCursor(double position)
 	{
+		// Force the use of an unquantized position for the cursor.
+		// This is because it should look locked in with the editor area and we never
+		// quantize the editor area.
 		return AddHorizontalLine(
-			GetYPixelRelativeToBounds(position),
+			GetYPixelRelativeToBounds(position, true),
 			RimWidth,
 			(uint)(Bounds.Width - (RimWidth << 1)),
-			CursorColor);
+			CursorColor, true);
 	}
 
 	/// <summary>
@@ -824,23 +869,32 @@ internal sealed class MiniMap
 				break;
 			}
 
-			// Determine the note color by blending the head and body.
-			var noteColor = i == 0 ? headColor : bodyColor;
-			if (i == 1)
+			uint color;
+			if (QuantizePositions)
 			{
-				var spaceToWorkWith = 1.0;
-				if (yEnd < y + 1.0)
-					spaceToWorkWith = yEnd - y;
-				noteColor = Utils.ColorRGBAInterpolateBGR(bodyColor, headColor,
-					(float)((yStart - (int)yStart) / spaceToWorkWith));
+				color = i == 0 ? headColor : bodyColor;
 			}
+			else
+			{
+				// Determine the note color by blending the head and body.
+				var noteColor = i == 0 ? headColor : bodyColor;
+				if (i == 1)
+				{
+					var spaceToWorkWith = 1.0;
+					if (yEnd < y + 1.0)
+						spaceToWorkWith = yEnd - y;
+					noteColor = Utils.ColorRGBAInterpolateBGR(bodyColor, headColor,
+						(float)((yStart - (int)yStart) / spaceToWorkWith));
+				}
 
-			// Blend the note color with the background color.
-			var color = noteColor;
-			if (i == 0)
-				color = Utils.ColorRGBAInterpolateBGR(noteColor, ColorData[y * Bounds.Width + x], (float)(yStart - (int)yStart));
-			else if (y + 1 >= yEnd)
-				color = Utils.ColorRGBAInterpolateBGR(noteColor, ColorData[y * Bounds.Width + x], (float)(1.0 - (yEnd - y)));
+				// Blend the note color with the background color.
+				color = noteColor;
+				if (i == 0)
+					color = Utils.ColorRGBAInterpolateBGR(noteColor, ColorData[y * Bounds.Width + x],
+						(float)(yStart - (int)yStart));
+				else if (y + 1 >= yEnd)
+					color = Utils.ColorRGBAInterpolateBGR(noteColor, ColorData[y * Bounds.Width + x], (float)(1.0 - (yEnd - y)));
+			}
 
 			// Set the color.
 			for (var j = x; j < x + w; j++)
@@ -872,8 +926,11 @@ internal sealed class MiniMap
 	/// <param name="x">X position in pixels relative to Bounds.</param>
 	/// <param name="w">Width in pixels.</param>
 	/// <param name="color">Color of line.</param>
+	/// <param name="forceUnquantized">
+	/// If true, then even when configured to use quantized positions return an unquantized result.
+	/// </param>
 	/// <returns>AddResult describing if the line was added.</returns>
-	private AddResult AddHorizontalLine(double y, uint x, uint w, uint color)
+	private AddResult AddHorizontalLine(double y, uint x, uint w, uint color, bool forceUnquantized = false)
 	{
 		var yInt = (int)y;
 
@@ -884,9 +941,17 @@ internal sealed class MiniMap
 		if (w == 0)
 			return AddResult.InRange;
 
-		var percent = (float)(1.0 - (y - yInt));
 		var i = yInt * Bounds.Width + x;
 		var iEnd = i + w;
+
+		if (QuantizePositions && !forceUnquantized)
+		{
+			for (; i < iEnd; i++)
+				ColorData[i] = color;
+			return AddResult.InRange;
+		}
+
+		var percent = (float)(1.0 - (y - yInt));
 		var previousData = 0u;
 		var c = 0u;
 		for (; i < iEnd; i++)
@@ -957,11 +1022,15 @@ internal sealed class MiniMap
 			}
 
 			var destColor = color;
-			if (i == 0)
-				destColor = Utils.ColorRGBAInterpolateBGR(color, ColorData[y * Bounds.Width + startX],
-					(float)(startY - (int)startY));
-			else if (y + 1 >= endY)
-				destColor = Utils.ColorRGBAInterpolateBGR(color, ColorData[y * Bounds.Width + startX], (float)(1.0 - (endY - y)));
+			if (!QuantizePositions)
+			{
+				if (i == 0)
+					destColor = Utils.ColorRGBAInterpolateBGR(color, ColorData[y * Bounds.Width + startX],
+						(float)(startY - (int)startY));
+				else if (y + 1 >= endY)
+					destColor = Utils.ColorRGBAInterpolateBGR(color, ColorData[y * Bounds.Width + startX],
+						(float)(1.0 - (endY - y)));
+			}
 
 			// Set the color.
 			for (var j = startX; j <= endX; j++)
@@ -1079,8 +1148,14 @@ internal sealed class MiniMap
 		}
 
 		// Draw the editor area.
-		var editorStartYPixel = GetYPixelRelativeToBounds(EditorAreaStart);
-		var editorEndYPixel = GetYPixelRelativeToBounds(EditorAreaEnd);
+		// Force this to use unquantized positions. If we don't do this then when using quantized positions the editor
+		// area will briefly move up and down as it scrolls downwards. This is because the mini map area is slowly moving up
+		// while the editor area is moving down even more slowly. Calculations for position are done relative to the mini map
+		// area. So the mini map effectively pulls the editor area up while it is also scrolling down. This causes it to
+		// shake up and down while it gradually moves down. Using unquantized positions fixes this, and it looks better to keep
+		// the editor area blended as it isn't subject to the same pulsing artifacts that can occur with 1 pixel tall markers.
+		var editorStartYPixel = GetYPixelRelativeToBounds(EditorAreaStart, true);
+		var editorEndYPixel = GetYPixelRelativeToBounds(EditorAreaEnd, true);
 		if (editorEndYPixel < editorStartYPixel + 1.0)
 			editorEndYPixel = editorStartYPixel + 1.0;
 		var editorClearData = Grabbed ? ClearDataEditorSelectedArea :
@@ -1190,21 +1265,28 @@ internal sealed class MiniMap
 	/// to the bounds of the MiniMap.
 	/// </summary>
 	/// <param name="position">Y position in Chart space.</param>
+	/// <param name="forceUnquantized">
+	/// If true, then even when configured to use quantized positions return an unquantized result.
+	/// </param>
 	/// <returns>Y position in screen space relative to the bounds of the MiniMap.</returns>
-	[MethodImpl(MethodImplOptions.AggressiveInlining)]
-	private double GetYPixelRelativeToBounds(double position)
+	private double GetYPixelRelativeToBounds(double position, bool forceUnquantized = false)
 	{
-		return (position - MiniMapAreaStart) * HeightOverMiniMapAreaRange;
+		return QuantizePositions && !forceUnquantized
+			? (int)((position - MiniMapAreaStart) * HeightOverMiniMapAreaRange + 0.5)
+			: (position - MiniMapAreaStartUnquantized) * HeightOverMiniMapAreaRange;
 	}
 
 	/// <summary>
 	/// Given a Y position in Chart space, return the Y position in screen space.
 	/// </summary>
 	/// <param name="position">Y position in Chart space.</param>
+	/// <param name="forceUnquantized">
+	/// If true, then even when configured to use quantized positions return an unquantized result.
+	/// </param>
 	/// <returns>Y position in screen space.</returns>
-	private double GetYPixelRelativeToScreen(double position)
+	private double GetYPixelRelativeToScreen(double position, bool forceUnquantized)
 	{
-		return GetYPixelRelativeToBounds(position) + Bounds.Y;
+		return GetYPixelRelativeToBounds(position, forceUnquantized) + Bounds.Y;
 	}
 
 	/// <summary>
@@ -1239,10 +1321,11 @@ internal sealed class MiniMap
 	/// <returns>Whether or not the screen position is within the editor bounds.</returns>
 	private bool IsScreenPositionInEditorBounds(int screenX, int screenY)
 	{
+		// Force unquantized positions since we are comparing to the editor area which is never quantized.
 		return IsScreenPositionInMiniMapBounds(screenX, screenY)
 		       && screenX >= Bounds.X
 		       && screenX <= Bounds.X + Bounds.Width
-		       && screenY >= GetYPixelRelativeToScreen(EditorAreaStart)
-		       && screenY <= GetYPixelRelativeToScreen(EditorAreaEnd);
+		       && screenY >= GetYPixelRelativeToScreen(EditorAreaStart, true)
+		       && screenY <= GetYPixelRelativeToScreen(EditorAreaEnd, true);
 	}
 }

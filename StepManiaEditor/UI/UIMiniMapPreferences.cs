@@ -60,6 +60,12 @@ internal sealed class UIMiniMapPreferences
 				32, false, "%i pixels", ImGuiSliderFlags.None,
 				"The spacing between notes in the mini map in pixels.");
 
+			ImGuiLayoutUtils.DrawRowCheckbox(true, "Quantize Positions", p, nameof(PreferencesMiniMap.QuantizePositions), false,
+				"If true then elements on the mini map will be quantized to pixel boundaries."
+				+ " This will result in a crisp image that will have a choppier scroll."
+				+ " If false then elements will blend smoothly between pixel boundaries."
+				+ " This will result in a smooth scroll but colors may appear to pulse as they blend.");
+
 			ImGuiLayoutUtils.EndTable();
 		}
 

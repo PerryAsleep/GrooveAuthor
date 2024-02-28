@@ -27,6 +27,7 @@ internal sealed class PreferencesMiniMap
 	public const bool DefaultShowPreview = true;
 	public const uint DefaultPreviewWidth = 8;
 	public const bool DefaultShowLabels = true;
+	public const bool DefaultQuantizePositions = false;
 
 	// Preferences.
 	[JsonInclude] public bool ShowMiniMapPreferencesWindow;
@@ -46,6 +47,7 @@ internal sealed class PreferencesMiniMap
 	[JsonInclude] public bool ShowPreview = DefaultShowPreview;
 	[JsonInclude] public uint PreviewWidth = DefaultPreviewWidth;
 	[JsonInclude] public bool ShowLabels = DefaultShowLabels;
+	[JsonInclude] public bool QuantizePositions = DefaultQuantizePositions;
 
 	public bool IsUsingDefaults()
 	{
@@ -64,7 +66,8 @@ internal sealed class PreferencesMiniMap
 		       && PatternsWidth == DefaultPatternsWidth
 		       && ShowPreview == DefaultShowPreview
 		       && PreviewWidth == DefaultPreviewWidth
-		       && ShowLabels == DefaultShowLabels;
+		       && ShowLabels == DefaultShowLabels
+		       && QuantizePositions == DefaultQuantizePositions;
 	}
 
 	public void RestoreDefaults()
@@ -97,6 +100,7 @@ internal sealed class ActionRestoreMiniMapPreferenceDefaults : EditorAction
 	private readonly bool PreviousShowPreview;
 	private readonly uint PreviousPreviewWidth;
 	private readonly bool PreviousShowLabels;
+	private readonly bool PreviousQuantizePositions;
 
 	public ActionRestoreMiniMapPreferenceDefaults() : base(false, false)
 	{
@@ -117,6 +121,7 @@ internal sealed class ActionRestoreMiniMapPreferenceDefaults : EditorAction
 		PreviousShowPreview = p.ShowPreview;
 		PreviousPreviewWidth = p.PreviewWidth;
 		PreviousShowLabels = p.ShowLabels;
+		PreviousQuantizePositions = p.QuantizePositions;
 	}
 
 	public override bool AffectsFile()
@@ -148,6 +153,7 @@ internal sealed class ActionRestoreMiniMapPreferenceDefaults : EditorAction
 		p.ShowPreview = PreferencesMiniMap.DefaultShowPreview;
 		p.PreviewWidth = PreferencesMiniMap.DefaultPreviewWidth;
 		p.ShowLabels = PreferencesMiniMap.DefaultShowLabels;
+		p.QuantizePositions = PreferencesMiniMap.DefaultQuantizePositions;
 	}
 
 	protected override void UndoImplementation()
@@ -169,5 +175,6 @@ internal sealed class ActionRestoreMiniMapPreferenceDefaults : EditorAction
 		p.ShowPreview = PreviousShowPreview;
 		p.PreviewWidth = PreviousPreviewWidth;
 		p.ShowLabels = PreviousShowLabels;
+		p.QuantizePositions = PreviousQuantizePositions;
 	}
 }

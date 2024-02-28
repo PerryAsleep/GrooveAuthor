@@ -3338,6 +3338,7 @@ internal sealed class Editor :
 	private void UpdateMiniMapSpacing()
 	{
 		var p = Preferences.Instance.PreferencesMiniMap;
+		MiniMap.SetShouldQuantizePositions(p.QuantizePositions);
 		MiniMap.SetLaneSpacing(p.MiniMapNoteWidth, p.MiniMapNoteSpacing);
 		MiniMap.SetPatternWidth(p.PatternsWidth);
 		MiniMap.SetPreviewWidth(p.PreviewWidth);
