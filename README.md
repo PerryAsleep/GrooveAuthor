@@ -9,33 +9,35 @@
 ## Highlights
 
 ### Robust Chart Generation
-`GrooveAuthor` can add more charts to your existing songs almost instantly. It understands modern tech and has incredibly detailed controls for fine-tuning autogen content. All the functionality from [StepManiaChartGenerator](https://github.com/PerryAsleep/StepManiaChartGenerator) is available in-editor.
+`GrooveAuthor` can add more charts to your existing songs almost instantly through [chart generation](StepManiaEditor/docs/ChartGeneration.md). It understands modern tech and has incredibly detailed controls for fine-tuning autogen content.
 
-![Alt Text](StepManiaEditor/docs/autogen-tech.gif)
+![Autogen Tech](StepManiaEditor/docs/autogen-tech.gif "GrooveAuthor can interpret modern tech and instantly make new kinds of charts.") 
 
-![Alt Text](StepManiaEditor/docs/autogen-stamina.gif)
+![Autogen SMX](StepManiaEditor/docs/autogen-smx.gif "GrooveAuthor supports all modern chart types, including StepManiaX.")
 
 ### Intelligent Pattern Generation
-`GrooveAuthor` can generate patterns that integrate seamlessly with your chart. It offers a deep suite of controls so patterns come out just the way you want.
+`GrooveAuthor` can [generate patterns](StepManiaEditor/docs/PatternGeneration.md) that integrate seamlessly with any chart. It offers a deep suite of controls so patterns come out just the way you want.
 
-![Alt Text](StepManiaEditor/docs/pattern-generation.gif)
+![Pattern Generation](StepManiaEditor/docs/pattern-generation.gif "Patterns are automatically generated sequences of steps in a chart.")
+
+![Pattern Generation SMX](StepManiaEditor/docs/pattern-generation-smx.gif "Patterns integrate seamlessly with existing steps and work for all chart types.")
 
 ### SSC Gimmicks
 `GrooveAuthor` renders `ssc` effects accurately.
 
-![Alt Text](StepManiaEditor/docs/ssc-gimmicks.gif)
+![SSC Gimmicks](StepManiaEditor/docs/ssc-gimmicks.gif)
 
 ### Smooth Zoom
 `GrooveAuthor` supports near-infinite zooming with 100% accurate waveform rendering and offset compensation.
 
-![Alt Text](StepManiaEditor/docs/smooth-zoom.gif)
+![Smooth Zoom](StepManiaEditor/docs/smooth-zoom.gif)
 
 ### Performant
 Other editors stutter or lock up when editing long files but `GrooveAuthor` is built from the ground up to be responsive and fast with all content. `GrooveAuthor` can handle anything from the 2-hour long "90's Dance Megamix" to "24 hours of 100 bpm stream".
 
-![Alt Text](StepManiaEditor/docs/large-file-edits.gif)
+![Large File Edits](StepManiaEditor/docs/large-file-edits.gif)
 
-## Features
+## Features 
 
 - Open source.
 - Support for all major dance game layouts including [StepManiaX](https://stepmaniax.com/) layouts.
@@ -48,6 +50,10 @@ Other editors stutter or lock up when editing long files but `GrooveAuthor` is b
 ## Installation
 
 `GrooveAuthor` is in-development and does not yet have any releases.
+
+## Documentation
+
+See the [Table of Contents](StepManiaEditor/docs/TableOfContents.md).
 
 ## Building From Source
 
