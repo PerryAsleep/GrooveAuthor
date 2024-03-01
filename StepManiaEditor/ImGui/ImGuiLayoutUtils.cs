@@ -2661,6 +2661,9 @@ internal sealed class ImGuiLayoutUtils
 		int min = int.MinValue,
 		int max = int.MaxValue)
 	{
+		if (alpha <= 0.0f)
+			return;
+
 		void Func(float elementWidth)
 		{
 			DrawDragInt(true, $"##{id}", e, fieldName, elementWidth, true, "", speed, format, min, max);
@@ -2691,6 +2694,9 @@ internal sealed class ImGuiLayoutUtils
 		double min = double.MinValue,
 		double max = double.MaxValue)
 	{
+		if (alpha <= 0.0f)
+			return;
+
 		void Func(float elementWidth)
 		{
 			DrawDragDouble(true, $"##{id}", e, fieldName, elementWidth, "", speed, format, true, min, max);
@@ -2715,6 +2721,9 @@ internal sealed class ImGuiLayoutUtils
 		double min = double.MinValue,
 		double max = double.MaxValue)
 	{
+		if (alpha <= 0.0f)
+			return;
+
 		void Func(float elementWidth)
 		{
 			DrawDragDouble(true, $"##{id}", e, fieldName, elementWidth, "", speed, format, true, min, max);
@@ -2744,6 +2753,9 @@ internal sealed class ImGuiLayoutUtils
 		float alpha,
 		string help)
 	{
+		if (alpha <= 0.0f)
+			return;
+
 		void Func(float elementWidth)
 		{
 			DrawTimeSignatureInput(true, $"##{id}", e, fieldName, elementWidth, true);
@@ -2765,6 +2777,9 @@ internal sealed class ImGuiLayoutUtils
 		float alpha,
 		string help)
 	{
+		if (alpha <= 0.0f)
+			return;
+
 		void Func(float elementWidth)
 		{
 			DrawMultipliersInput(true, $"##{id}", e, fieldName, elementWidth, true);
@@ -2786,6 +2801,9 @@ internal sealed class ImGuiLayoutUtils
 		float alpha,
 		string help)
 	{
+		if (alpha <= 0.0f)
+			return;
+
 		void Func(float elementWidth)
 		{
 			DrawLabelInput(true, $"##{id}", e, fieldName, elementWidth, true);
@@ -2811,6 +2829,9 @@ internal sealed class ImGuiLayoutUtils
 		double min = double.MinValue,
 		double max = double.MaxValue)
 	{
+		if (alpha <= 0.0f)
+			return;
+
 		void Func(float elementWidth)
 		{
 			DrawDragDoubleCached(true, $"##{id}", e, fieldName, elementWidth, "", speed, format, true, min, max);
@@ -2832,6 +2853,9 @@ internal sealed class ImGuiLayoutUtils
 		float alpha,
 		string help)
 	{
+		if (alpha <= 0.0f)
+			return;
+
 		void Func(float elementWidth)
 		{
 			DrawScrollRateInterpolationInput(true, $"##{id}", e, fieldName, elementWidth, true);
