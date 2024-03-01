@@ -397,7 +397,7 @@ internal abstract class ConfigManager<TEditorConfig, TConfig> : Notifier<ConfigM
 		config.Name = name ?? config.GetNewConfigName();
 		if (useDefaultValues)
 			config.InitializeWithDefaultValues();
-		config.Config.Init();
+		config.Init();
 		AddConfig(config);
 		return config;
 	}
