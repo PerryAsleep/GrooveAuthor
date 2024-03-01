@@ -7,7 +7,7 @@ Patterns are automatically generated sequences of steps in a chart.
 
 ## Prerequisites
 
-Pattern generation requires the [StepGraph File](../../StepManiaLibrary/StepManiaLibrary/docs/StepGraphs.md#stepgraph-files) for the chart's [ChartType](../../StepManiaLibrary/StepManiaLibrary/docs/ChartType.md) to be loaded. GrooveAuthor loads StepGraph Files based on the `Startup Step Graphs` defined in the `Options`.
+Pattern generation requires the [StepGraph File](https://github.com/PerryAsleep/StepManiaLibrary/tree/main/StepManiaLibrary/docs/StepGraphs.md#stepgraph-files) for the chart's [ChartType](https://github.com/PerryAsleep/StepManiaLibrary/tree/main/StepManiaLibrary/docs/ChartType.md) to be loaded. GrooveAuthor loads StepGraph Files based on the `Startup Step Graphs` defined in the `Options`.
 
 ![Startup Step Graphs in Options](startup-step-graphs.png "Startup Step Graphs in Options need to be set before generating Patterns.")
 
@@ -73,7 +73,7 @@ Patterns reference two types of [Autogen Configs](AutogenConfigs.md): [Pattern C
 
 ### Applying Config Rules
 
-When generating steps, many rules are at play and they can almost never all be satisfied perfectly. See [Performed Chart Determination](../../StepManiaLibrary/StepManiaLibrary/docs/PerformedChart.md#performedchart-determination) and [Pattern Determination](../../StepManiaLibrary/StepManiaLibrary/docs/PerformedChart.md#pattern-determination) for specifics on how these rules are combined in order to generate the best pattern.
+When generating steps, many rules are at play and they can almost never all be satisfied perfectly. See [Performed Chart Determination](https://github.com/PerryAsleep/StepManiaLibrary/tree/main/StepManiaLibrary/docs/PerformedChart.md#performedchart-determination) and [Pattern Determination](https://github.com/PerryAsleep/StepManiaLibrary/tree/main/StepManiaLibrary/docs/PerformedChart.md#pattern-determination) for specifics on how these rules are combined in order to generate the best pattern.
 
 ## Saving
 

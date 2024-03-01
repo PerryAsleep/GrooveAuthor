@@ -8,7 +8,7 @@ Chart Generation is the process of generating new charts from existing charts. T
 
 ## Prerequisites
 
-Chart generation requires the [StepGraph Files](../../StepManiaLibrary/StepManiaLibrary/docs/StepGraphs.md#stepgraph-files) for the [ChartTypes](../../StepManiaLibrary/StepManiaLibrary/docs/ChartType.md) involved to be loaded. GrooveAuthor loads StepGraph Files based on the `Startup Step Graphs` defined in the `Options`.
+Chart generation requires the [StepGraph Files](https://github.com/PerryAsleep/StepManiaLibrary/tree/main/StepManiaLibrary/docs/StepGraphs.md#stepgraph-files) for the [ChartTypes](https://github.com/PerryAsleep/StepManiaLibrary/tree/main/StepManiaLibrary/docs/ChartType.md) involved to be loaded. GrooveAuthor loads StepGraph Files based on the `Startup Step Graphs` defined in the `Options`.
 
 ![Startup Step Graphs in Options](startup-step-graphs.png "Startup Step Graphs in Options need to be set before generating charts.")
 
@@ -38,7 +38,7 @@ All of these options will present the `Autogen Chart` window.
 
 ![Expression](chart-generation-autogen-chart-expression.png "Expression specifies which Expressed Chart Config to use.")
 
-`New Chart Type` specifies the [ChartType](../../StepManiaLibrary/StepManiaLibrary/docs/ChartType.md) to generate.
+`New Chart Type` specifies the [ChartType](https://github.com/PerryAsleep/StepManiaLibrary/tree/main/StepManiaLibrary/docs/ChartType.md) to generate.
 
 ![New Chart Type](chart-generation-autogen-chart-new-chart-type.png "New Chart Type specifies the chart type to generate.")
 
@@ -64,11 +64,11 @@ This will open the `Autogen Charts` window.
 
 ![Autogen Charts Window](chart-generation-autogen-charts-window.png "The Autogen Charts Window.")
 
-`Source Type` specifies which [ChartType](../../StepManiaLibrary/StepManiaLibrary/docs/ChartType.md) to use as input. For example if your song has four `dance-single` charts and `Dance Single` is used as the `Source Type`, four new charts will be generated.
+`Source Type` specifies which [ChartType](https://github.com/PerryAsleep/StepManiaLibrary/tree/main/StepManiaLibrary/docs/ChartType.md) to use as input. For example if your song has four `dance-single` charts and `Dance Single` is used as the `Source Type`, four new charts will be generated.
 
 ![Source Type](chart-generation-autogen-charts-source-type.png "Source Type identifies the input charts for generation.")
 
-`New Type` specifies the [ChartType](../../StepManiaLibrary/StepManiaLibrary/docs/ChartType.md) of the charts to generate.
+`New Type` specifies the [ChartType](https://github.com/PerryAsleep/StepManiaLibrary/tree/main/StepManiaLibrary/docs/ChartType.md) of the charts to generate.
 
 ![New Type](chart-generation-autogen-charts-new-type.png "New Type specifies the chart type of the charts to generate.")
 

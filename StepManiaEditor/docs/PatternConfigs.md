@@ -4,11 +4,11 @@ Pattern Configs are a kind of [Autogen Config](AutogenConfigs.md) that define se
 
 ## StepManiaLibrary
 
-`GrooveAuthor` uses [StepManiaLibrary](https://github.com/PerryAsleep/StepManiaLibrary) for autogen functionality. The `StepManiaLibrary` [Pattern](../../StepManiaLibrary/StepManiaLibrary/docs/Pattern.md) documentation accurately describes the `GrooveAuthor` functionality, though it is written assuming rules are defined in `json` rather than through the GUI that `GrooveAuthor` provides.
+`GrooveAuthor` uses [StepManiaLibrary](https://github.com/PerryAsleep/StepManiaLibrary) for autogen functionality. The `StepManiaLibrary` [Pattern](https://github.com/PerryAsleep/StepManiaLibrary/tree/main/StepManiaLibrary/docs/Pattern.md) documentation accurately describes the `GrooveAuthor` functionality, though it is written assuming rules are defined in `json` rather than through the GUI that `GrooveAuthor` provides.
 
 ## Applying Config Rules
 
-When generating steps, many rules are at play and they can almost never all be satisfied perfectly. See [Performed Chart Determination](../../StepManiaLibrary/StepManiaLibrary/docs/PerformedChart.md#performedchart-determination) and [Pattern Determination](../../StepManiaLibrary/StepManiaLibrary/docs/PerformedChart.md#pattern-determination) for specifics on how these rules are combined in order to generate the best pattern.
+When generating steps, many rules are at play and they can almost never all be satisfied perfectly. See [Performed Chart Determination](https://github.com/PerryAsleep/StepManiaLibrary/tree/main/StepManiaLibrary/docs/PerformedChart.md#performedchart-determination) and [Pattern Determination](https://github.com/PerryAsleep/StepManiaLibrary/tree/main/StepManiaLibrary/docs/PerformedChart.md#pattern-determination) for specifics on how these rules are combined in order to generate the best pattern.
 
 ## Pattern Config Window
 

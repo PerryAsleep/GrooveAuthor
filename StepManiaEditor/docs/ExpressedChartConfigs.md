@@ -4,7 +4,7 @@ Expressed Chart Configs are a kind of [Autogen Config](AutogenConfigs.md) that d
 
 ## StepManiaLibrary
 
-`GrooveAuthor` uses [StepManiaLibrary](https://github.com/PerryAsleep/StepManiaLibrary) for autogen functionality. The `StepManiaLibrary` [Expressed Chart](../../StepManiaLibrary/StepManiaLibrary/docs/ExpressedChart.md) documentation accurately describes the `GrooveAuthor` functionality, though it is written assuming rules are defined in `json` rather than through the GUI that `GrooveAuthor` provides.
+`GrooveAuthor` uses [StepManiaLibrary](https://github.com/PerryAsleep/StepManiaLibrary) for autogen functionality. The `StepManiaLibrary` [Expressed Chart](https://github.com/PerryAsleep/StepManiaLibrary/tree/main/StepManiaLibrary/docs/ExpressedChart.md) documentation accurately describes the `GrooveAuthor` functionality, though it is written assuming rules are defined in `json` rather than through the GUI that `GrooveAuthor` provides.
 
 ## Configuring Expressed Chart Configs Per Chart
 
@@ -32,6 +32,6 @@ Expressed Chart Configs are edited through the `Expressed Chart Config` window. 
 
 ### Other Settings
 
-The other settings control how the chart is parsed. Details on these settings can be found in the `StepManiaLibrary` [Expressed Chart](../../StepManiaLibrary/StepManiaLibrary/docs/ExpressedChart.md) documentation.
+The other settings control how the chart is parsed. Details on these settings can be found in the `StepManiaLibrary` [Expressed Chart](https://github.com/PerryAsleep/StepManiaLibrary/tree/main/StepManiaLibrary/docs/ExpressedChart.md) documentation.
 
 ![Expressed Chart Config Settings](expressed-chart-config-window-settings.png "These settings control how a chart is parsed.")
