@@ -38,7 +38,7 @@ Dictionary<string, string> docsDocumentationReplacements = new()
 	{ "https://github.com/PerryAsleep/StepManiaLibrary/tree/main/StepManiaLibrary/docs/", "StepManiaLibrary/" },
 	{ "(https://perryasleep.github.io/StepManiaChartGenerator/StepManiaChartGenerator/docs/", "(" },
 	{ "(StepManiaEditor/docs/", "(" },
-	{ "(../../StepManiaLibrary/docs/", "(StepManiaLibrary/" },
+	{ "(https://github.com/PerryAsleep/StepManiaLibrary/tree/main/StepManiaLibrary/docs/", "(StepManiaLibrary/" },
 	{ "../Content/logo.svg", "logo.svg" },
 };
 
