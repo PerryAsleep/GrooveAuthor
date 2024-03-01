@@ -15,6 +15,7 @@ internal sealed class Documentation
 	{
 		TableOfContents,
 		PatternGeneration,
+		PatternConfigs,
 		PerformedChartConfigs,
 		ExpressedChartConfigs,
 	}
@@ -26,9 +27,10 @@ internal sealed class Documentation
 		var count = Enum.GetNames(typeof(Page)).Length;
 		DocumentationFiles = new string[count];
 		DocumentationFiles[(int)Page.TableOfContents] = "TableOfContents.md";
+		DocumentationFiles[(int)Page.PatternConfigs] = "PatternConfigs.md";
 		DocumentationFiles[(int)Page.PatternGeneration] = "PatternGeneration.md";
-		DocumentationFiles[(int)Page.PerformedChartConfigs] = "PerformedChartConfig.md";
-		DocumentationFiles[(int)Page.ExpressedChartConfigs] = "ExpressedChartConfig.md";
+		DocumentationFiles[(int)Page.PerformedChartConfigs] = "PerformedChartConfigs.md";
+		DocumentationFiles[(int)Page.ExpressedChartConfigs] = "ExpressedChartConfigs.md";
 	}
 
 	/// <summary>

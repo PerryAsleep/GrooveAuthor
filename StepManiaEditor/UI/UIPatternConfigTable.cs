@@ -81,7 +81,7 @@ internal sealed class UIPatternConfigTable
 		if (ImGuiLayoutUtils.BeginTable("EditorPatternConfigTitleTable", AddConfigTitleWidth))
 		{
 			ImGuiLayoutUtils.DrawRowTwoButtons("Pattern Configs",
-				"Help", () => Documentation.OpenDocumentation(Documentation.Page.PatternGeneration), true,
+				"Help", () => Documentation.OpenDocumentation(Documentation.Page.PatternConfigs), true,
 				"New", EditorPatternConfig.CreateNewConfigAndShowEditUI, true,
 				UIPatternConfig.HelpText);
 

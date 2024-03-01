@@ -171,7 +171,7 @@ internal sealed class UIPatternConfig
 				PopDisabled();
 			if (ImGuiLayoutUtils.DrawRowButton("Help", "Open Documentation", HelpText))
 			{
-				Documentation.OpenDocumentation(Documentation.Page.PatternGeneration);
+				Documentation.OpenDocumentation(Documentation.Page.PatternConfigs);
 			}
 
 			if (disabled)
