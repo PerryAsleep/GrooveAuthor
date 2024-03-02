@@ -12,7 +12,7 @@ internal sealed class UIFTUE
 {
 	private static readonly int TitleColumnWidth = UiScaled(160);
 	private static readonly float DefaultWidth = UiScaled(622);
-	private static readonly float DefaultHeightLarge = UiScaled(410);
+	private static readonly float DefaultHeightLarge = UiScaled(395);
 	private static readonly Vector2 DefaultSizeLarge = new(DefaultWidth, DefaultHeightLarge);
 	private static readonly float DefaultHeightMedium = UiScaled(220);
 	private static readonly Vector2 DefaultSizeMedium = new(DefaultWidth, DefaultHeightMedium);
@@ -160,8 +160,8 @@ internal sealed class UIFTUE
 		if (OpenWindow($"Welcome##{version}StepGraphs", FtueWindowSize.Large))
 		{
 			ImGui.TextWrapped(
-				$"{Editor.GetAppName()} has features which rely on understanding how pads are laid out and how the body moves."
-				+ " These include advanced features like automatic chart generation and step generation, and simpler features like mirroring steps."
+				$"{Editor.GetAppName()} has automatic chart generation and step generation features which rely on understanding how pads"
+				+ " are laid out and how the body moves."
 				+ $" {Editor.GetAppName()} uses Step Graph files to support these features."
 				+ $" Step Graph files for all supported chart types are provided with {Editor.GetAppName()}, but they need to be loaded in order to be used."
 				+ " These files can be large."
