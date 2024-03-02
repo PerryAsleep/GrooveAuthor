@@ -13,6 +13,7 @@ public class UIOptions
 
 	private static readonly int TitleColumnWidth = UiScaled(160);
 	private static readonly float ButtonSyncWidth = UiScaled(60);
+	private static readonly float ButtonHelpWidth = UiScaled(32);
 	private static readonly int DefaultWidth = UiScaled(606);
 
 	public void Draw()
@@ -137,10 +138,11 @@ public class UIOptions
 
 	public static void DrawNewSongSync(bool undoable)
 	{
-		ImGuiLayoutUtils.DrawRowDragDoubleWithTwoButtons(undoable, "New Song Sync", Preferences.Instance.PreferencesOptions,
+		ImGuiLayoutUtils.DrawRowDragDoubleWithThreeButtons(undoable, "New Song Sync", Preferences.Instance.PreferencesOptions,
 			nameof(PreferencesOptions.NewSongSyncOffset), false,
 			SetNewSongSyncItg, "9ms (ITG)", ButtonSyncWidth,
 			SetNewSongSyncDdr, "0ms (DDR)", ButtonSyncWidth,
+			() => Documentation.OpenDocumentation(Documentation.Page.SongSync), "Help", ButtonHelpWidth,
 			"The song sync to use when creating new songs."
 			+ "\nThis is an editor-only value used to visually compensate for songs with built-in offsets."
 			+ "\nIf you tend to work with content synced for ITG2 with a 9ms offset, set this to 9ms."
@@ -152,10 +154,11 @@ public class UIOptions
 
 	public static void DrawDefaultSongSync(bool undoable)
 	{
-		ImGuiLayoutUtils.DrawRowDragDoubleWithTwoButtons(undoable, "Default Song Sync", Preferences.Instance.PreferencesOptions,
+		ImGuiLayoutUtils.DrawRowDragDoubleWithThreeButtons(undoable, "Default Song Sync", Preferences.Instance.PreferencesOptions,
 			nameof(PreferencesOptions.OpenSongSyncOffset), false,
 			SetDefaultSongSyncItg, "9ms (ITG)", ButtonSyncWidth,
 			SetDefaultSongSyncDdr, "0ms (DDR)", ButtonSyncWidth,
+			() => Documentation.OpenDocumentation(Documentation.Page.SongSync), "Help", ButtonHelpWidth,
 			"The song sync to use when opening songs that don't have a specified sync offset."
 			+ "\nThis is an editor-only value used to visually compensate for songs with built-in offsets."
 			+ "\nIf you tend to work with content synced for ITG2 with a 9ms offset, set this to 9ms."

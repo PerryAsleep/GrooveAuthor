@@ -1666,6 +1666,51 @@ internal sealed class ImGuiLayoutUtils
 		}
 	}
 
+	public static void DrawRowDragDoubleWithThreeButtons(
+		bool undoable,
+		string title,
+		object o,
+		string fieldName,
+		bool affectsFile,
+		Action action1,
+		string text1,
+		float width1,
+		Action action2,
+		string text2,
+		float width2,
+		Action action3,
+		string text3,
+		float width3,
+		string help = null,
+		float speed = 0.0001f,
+		string format = "%.6f",
+		double min = double.MinValue,
+		double max = double.MaxValue)
+	{
+		DrawRowTitleAndAdvanceColumn(title);
+
+		var dragDoubleWidth = ImGui.GetContentRegionAvail().X - width1 - width2 - width3 - ImGui.GetStyle().ItemSpacing.X * 3;
+		DrawDragDouble(undoable, title, o, fieldName, dragDoubleWidth, help, speed, format, affectsFile, min, max);
+
+		ImGui.SameLine();
+		if (ImGui.Button($"{text1}{GetElementTitle(title, fieldName)}", new Vector2(width1, 0.0f)))
+		{
+			action1();
+		}
+
+		ImGui.SameLine();
+		if (ImGui.Button($"{text2}{GetElementTitle(title, fieldName)}", new Vector2(width2, 0.0f)))
+		{
+			action2();
+		}
+
+		ImGui.SameLine();
+		if (ImGui.Button($"{text3}{GetElementTitle(title, fieldName)}", new Vector2(width3, 0.0f)))
+		{
+			action3();
+		}
+	}
+
 	private static bool DrawDragDouble(
 		bool undoable,
 		string title,

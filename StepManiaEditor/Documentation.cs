@@ -18,6 +18,7 @@ internal sealed class Documentation
 		PatternConfigs,
 		PerformedChartConfigs,
 		ExpressedChartConfigs,
+		SongSync,
 	}
 
 	private static readonly string[] DocumentationFiles;
@@ -31,6 +32,7 @@ internal sealed class Documentation
 		DocumentationFiles[(int)Page.PatternGeneration] = "PatternGeneration.md";
 		DocumentationFiles[(int)Page.PerformedChartConfigs] = "PerformedChartConfigs.md";
 		DocumentationFiles[(int)Page.ExpressedChartConfigs] = "ExpressedChartConfigs.md";
+		DocumentationFiles[(int)Page.SongSync] = "SongSync.md";
 	}
 
 	/// <summary>

@@ -26,6 +26,7 @@ internal sealed class UISongProperties
 	private static readonly float ButtonSetWidth = UiScaled(108);
 	private static readonly float ButtonGoWidth = UiScaled(20);
 	private static readonly float ButtonSyncWidth = UiScaled(60);
+	private static readonly float ButtonHelpWidth = UiScaled(32);
 	private static readonly float ButtonApplyItgOffsetWidth = UiScaled(110);
 	private static readonly Vector2 DefaultPosition = new(UiScaled(0), UiScaled(21));
 	private static readonly Vector2 DefaultSize = new(UiScaled(622), UiScaled(610));
@@ -155,21 +156,20 @@ internal sealed class UISongProperties
 			ImGui.Separator();
 			if (ImGuiLayoutUtils.BeginTable("SongCustomOptionsTable", TitleColumnWidth))
 			{
-				ImGuiLayoutUtils.DrawRowDragDoubleWithTwoButtons(true, "Song Sync", EditorSong, nameof(EditorSong.SyncOffset),
+				ImGuiLayoutUtils.DrawRowDragDoubleWithThreeButtons(true, "Song Sync", EditorSong, nameof(EditorSong.SyncOffset),
 					true,
 					SetSyncItg, "9ms (ITG)", ButtonSyncWidth,
 					SetSyncDdr, "0ms (DDR)", ButtonSyncWidth,
+					() => Documentation.OpenDocumentation(Documentation.Page.SongSync), "Help", ButtonHelpWidth,
 					"(Editor Only) Adjust visuals to account for this song's sync." +
-					"\nIf the song sync is not 0, then the arrows will appear shifted from the Waveform." +
-					$"\nIf this song has a built in sync, then set this value so {Editor.GetAppName()} can account for it" +
-					"\nso the arrows and the Waveform line up perfectly." +
+					"\nIf this song has a built in sync other than 0ms, then the notes will appear shifted from" +
+					"\nthe Waveform and sound effects like assist ticks will be off. Set this value to the song's" +
+					$"\nbuilt in sync so {Editor.GetAppName()} can compensate for it." +
 					"\n9ms (ITG): (More Common) Most custom content uses a 9ms offset to account for a bug in ITG2." +
 					"\n           If this song is synced with a 9ms offset then use this option." +
 					"\n0ms (DDR): (Less Common) Use this option of the song has no sync offset built in and is" +
 					"\n           already synced perfectly." +
-					"\nThe default song sync value can be set in the Options menu." +
-					"\nSee https://itgwiki.dominick.cc/en/packs-and-simfiles/the-9ms-bias for more information."
-					,
+					"\nThe default song sync value can be set in the Options menu.",
 					0.0001f, "%.6f seconds", 0.0);
 
 				ImGuiLayoutUtils.DrawRowTimingChart(true, "Timing Chart", EditorSong,

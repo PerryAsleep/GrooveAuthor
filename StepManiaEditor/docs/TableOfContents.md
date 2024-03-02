@@ -4,10 +4,18 @@
 
 More documentation will be coming soon.
 
-- Autogen
-  - [Chart Generation](ChartGeneration.md)
-  - [Pattern Generation](PatternGeneration.md)
-  - [Autogen Configuration](AutogenConfigs.md)
-    - [Performed Chart Configs](PerformedChartConfigs.md)
-    - [Pattern Configs](PatternConfigs.md)
-    - [Expressed Chart Configs](ExpressedChartConfigs.md)
+## Sync
+
+ - [Song Sync](SongSync.md)
+
+## Autogen
+
+- [Chart Generation](ChartGeneration.md)
+- [Pattern Generation](PatternGeneration.md)
+
+### Autogen Configuration
+
+- [Autogen Configuration](AutogenConfigs.md)
+- [Performed Chart Configs](PerformedChartConfigs.md)
+- [Pattern Configs](PatternConfigs.md)
+- [Expressed Chart Configs](ExpressedChartConfigs.md)
