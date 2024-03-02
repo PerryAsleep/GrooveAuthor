@@ -134,9 +134,15 @@ internal sealed class ActionQueue : Notifier<ActionQueue>
 	{
 		Assert(!IsDoingOrUndoing());
 
+		// Log before doing the action in case the call to Do logs.
+		if (editorAction.IsDoAsync())
+			Logger.Info($"Starting {editorAction}");
+		else
+			Logger.Info(editorAction.ToString());
+
 		// Do the action and enqueue it.
 		editorAction.Do();
-		EnqueueWithoutDoing(editorAction);
+		EnqueueWithoutDoing(editorAction, false);
 	}
 
 	/// <summary>
@@ -145,12 +151,25 @@ internal sealed class ActionQueue : Notifier<ActionQueue>
 	/// <param name="editorAction">EditorAction to enqueue.</param>
 	public void EnqueueWithoutDoing(EditorAction editorAction)
 	{
+		EnqueueWithoutDoing(editorAction, true);
+	}
+
+	/// <summary>
+	/// Enqueue given EditorAction and add it to the queue of EditorAction for undo and redo without doing the action.
+	/// </summary>
+	/// <param name="editorAction">EditorAction to enqueue.</param>
+	/// <param name="log">Whether to log information about the action starting.</param>
+	private void EnqueueWithoutDoing(EditorAction editorAction, bool log)
+	{
 		Assert(!IsDoingOrUndoing());
 
-		if (editorAction.IsDoAsync())
-			Logger.Info($"Starting {editorAction}");
-		else
-			Logger.Info(editorAction.ToString());
+		if (log)
+		{
+			if (editorAction.IsDoAsync())
+				Logger.Info($"Starting {editorAction}");
+			else
+				Logger.Info(editorAction.ToString());
+		}
 
 		var lastAction = Actions.GetCurrent();
 		if (lastAction != null)
