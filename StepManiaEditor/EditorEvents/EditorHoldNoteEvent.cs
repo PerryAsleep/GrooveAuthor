@@ -237,11 +237,11 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 
 		// Record the cap position for drawing later.
 		var capY = y;
-		var minimumCapY = bodyY;
+		var minimumCapY = (int)(bodyY + 0.5);
 		if (arrowGraphicManager.AreHoldCapsCentered())
 		{
 			y += (int)(capH * 0.5f);
-			minimumCapY = Y;
+			minimumCapY = (int)(Y + 0.5);
 		}
 
 		// Adjust the starting y value so we don't needlessly loop when zoomed in and a large
