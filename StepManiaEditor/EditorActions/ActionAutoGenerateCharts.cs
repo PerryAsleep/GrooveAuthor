@@ -82,16 +82,16 @@ internal sealed class ActionAutoGenerateCharts : EditorAction
 	{
 		var errorString = $"Failed to autogenerate {ImGuiUtils.GetPrettyEnumString(ChartType)} Chart.";
 
-		if (!Editor.GetStepGraph(sourceChart.ChartType, out var inputStepGraph) || inputStepGraph == null)
+		if (!Editor.GetStepGraph(sourceChart.ChartType, out var inputStepGraph, true) || inputStepGraph == null)
 		{
-			Logger.Error($"{errorString} No {ImGuiUtils.GetPrettyEnumString(sourceChart.ChartType)} StepGraph is loaded.");
+			Logger.Error(errorString);
 			OnChartAutogenComplete(index, null);
 			return;
 		}
 
-		if (!Editor.GetStepGraph(ChartType, out var outputStepGraph) || outputStepGraph == null)
+		if (!Editor.GetStepGraph(ChartType, out var outputStepGraph, true) || outputStepGraph == null)
 		{
-			Logger.Error($"{errorString} No {ImGuiUtils.GetPrettyEnumString(ChartType)} StepGraph is loaded.");
+			Logger.Error(errorString);
 			OnChartAutogenComplete(index, null);
 			return;
 		}

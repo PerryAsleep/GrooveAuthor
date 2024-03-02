@@ -103,9 +103,9 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 		var errorString = Patterns.Count == 1 ? "Failed to generate pattern." : "Failed to generate patterns.";
 
 		// Get the StepGraph.
-		if (!Editor.GetStepGraph(EditorChart.ChartType, out var stepGraph) || stepGraph == null)
+		if (!Editor.GetStepGraph(EditorChart.ChartType, out var stepGraph, true) || stepGraph == null)
 		{
-			Logger.Error($"{errorString} No {ImGuiUtils.GetPrettyEnumString(EditorChart.ChartType)} StepGraph is loaded.");
+			Logger.Error(errorString);
 			OnDone();
 			return;
 		}

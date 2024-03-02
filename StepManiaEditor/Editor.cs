@@ -5089,9 +5089,16 @@ internal sealed class Editor :
 		return null;
 	}
 
-	public bool GetStepGraph(ChartType chartType, out StepGraph stepGraph)
+	public bool GetStepGraph(ChartType chartType, out StepGraph stepGraph, bool logErrorOnFailure)
 	{
-		return StepGraphByChartType.TryGetValue(chartType, out stepGraph);
+		var result = StepGraphByChartType.TryGetValue(chartType, out stepGraph) && stepGraph != null;
+		if (!result && logErrorOnFailure)
+		{
+			Logger.Error($"No {GetPrettyEnumString(chartType)} StepGraph is loaded."
+			             + " You can specify which StepGraphs are loaded in the Options window.");
+		}
+
+		return result;
 	}
 
 	public bool GetStepGraphRootNodes(ChartType chartType, out List<List<GraphNode>> rootNodes)
