@@ -294,8 +294,8 @@ internal sealed class Editor :
 	private SpriteFont Font;
 
 	// Cursor
-	private Cursor CurrentDesiredCursor = Cursors.Default;
-	private Cursor PreviousDesiredCursor = Cursors.Default;
+	private MouseCursor CurrentDesiredCursor = MouseCursor.Arrow;
+	private MouseCursor PreviousDesiredCursor = MouseCursor.Arrow;
 
 	// Performance Monitoring
 	private PerformanceMonitor PerformanceMonitor;
@@ -1512,7 +1512,7 @@ internal sealed class Editor :
 	{
 		var inFocus = IsApplicationFocused();
 
-		CurrentDesiredCursor = Cursors.Default;
+		CurrentDesiredCursor = MouseCursor.Arrow;
 		CanShowRightClickPopupThisFrame = false;
 
 		SelectedRegion.UpdateTime(currentTime);
@@ -1572,7 +1572,7 @@ internal sealed class Editor :
 			ProcessInputForMovingFocalPoint(inReceptorArea);
 			// Update cursor based on whether the receptors could be grabbed.
 			if (inReceptorArea && !Preferences.Instance.PreferencesReceptors.LockPosition)
-				CurrentDesiredCursor = Cursors.SizeAll;
+				CurrentDesiredCursor = MouseCursor.SizeAll;
 		}
 
 		// Process input for selecting a region.
@@ -1586,9 +1586,9 @@ internal sealed class Editor :
 		// behavior like indicating resizeability at the edges of the window. But not setting every frame
 		// causes it to go back to the Default. Set it every frame only if it setting it to something
 		// other than the Default.
-		if (CurrentDesiredCursor != PreviousDesiredCursor || CurrentDesiredCursor != Cursors.Default)
+		if (CurrentDesiredCursor != PreviousDesiredCursor || CurrentDesiredCursor != MouseCursor.Arrow)
 		{
-			Cursor.Current = CurrentDesiredCursor;
+			Mouse.SetCursor(CurrentDesiredCursor);
 		}
 
 		PreviousDesiredCursor = CurrentDesiredCursor;
