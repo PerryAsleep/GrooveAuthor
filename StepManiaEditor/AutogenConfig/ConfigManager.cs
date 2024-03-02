@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading.Tasks;
 using Fumen;
 using StepManiaLibrary;
 
@@ -221,9 +222,9 @@ internal abstract class ConfigManager<TEditorConfig, TConfig> : Notifier<ConfigM
 	#region Load
 
 	/// <summary>
-	/// Synchronously loads all EditorConfig files from disk.
+	/// Asynchronously loads all EditorConfig files from disk.
 	/// </summary>
-	public void LoadConfigs()
+	public async Task LoadConfigsAsync()
 	{
 		Logger.Info($"Loading {ConfigTypeReadableName} files...");
 
@@ -251,6 +252,7 @@ internal abstract class ConfigManager<TEditorConfig, TConfig> : Notifier<ConfigM
 		}
 
 		// Loop over every file in the config directory and load each config.
+		var tasks = new List<Task<TEditorConfig>>();
 		foreach (var file in files)
 		{
 			FileInfo fi;
@@ -266,7 +268,16 @@ internal abstract class ConfigManager<TEditorConfig, TConfig> : Notifier<ConfigM
 
 			if (fi.Extension == $".{ConfigExtension}" && fi.Name.StartsWith(ConfigPrefix))
 			{
-				var config = LoadConfig(fi.FullName);
+				tasks.Add(LoadConfigAsync(fi.FullName));
+			}
+		}
+
+		if (tasks.Count > 0)
+		{
+			await Task.WhenAll(tasks);
+			foreach (var task in tasks)
+			{
+				var config = task.Result;
 				if (config != null)
 					ConfigData.AddConfig(config);
 			}
@@ -295,16 +306,16 @@ internal abstract class ConfigManager<TEditorConfig, TConfig> : Notifier<ConfigM
 	}
 
 	/// <summary>
-	/// Synchronously loads an individual EditorConfig from disk.
+	/// Asynchronously loads an individual EditorConfig from disk.
 	/// </summary>
 	/// <param name="fileName">Filename to load from.</param>
 	/// <returns>Loaded EditorConfig object or null if it failed to load.</returns>
-	private TEditorConfig LoadConfig(string fileName)
+	private async Task<TEditorConfig> LoadConfigAsync(string fileName)
 	{
 		try
 		{
-			using var openStream = File.OpenRead(fileName);
-			var config = JsonSerializer.Deserialize<TEditorConfig>(openStream, SerializationOptions);
+			await using var openStream = File.OpenRead(fileName);
+			var config = await JsonSerializer.DeserializeAsync<TEditorConfig>(openStream, SerializationOptions);
 			return config;
 		}
 		catch (Exception e)

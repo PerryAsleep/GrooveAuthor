@@ -136,6 +136,8 @@ internal sealed class Editor :
 	private bool ShowSavePopup;
 	private Action PostSaveFunction;
 	private int OpenRecentIndex;
+	private bool AutogenConfigsLoaded;
+	private bool HasCheckedForAutoLoadingLastSong;
 
 	public static readonly ChartType[] SupportedChartTypes =
 	{
@@ -348,7 +350,7 @@ internal sealed class Editor :
 		InitializeLogger();
 		InitializePreferences();
 		InitializeImGuiUtils();
-		InitializeAutogenConfigs();
+		InitializeAutogenConfigsAsync();
 		InitializeZoomManager();
 		InitializeEditorPosition();
 		InitializeSoundManager();
@@ -519,17 +521,19 @@ internal sealed class Editor :
 		Init(this);
 	}
 
-	private void InitializeAutogenConfigs()
+	private async void InitializeAutogenConfigsAsync()
 	{
 		PatternConfigManager.Instance.SetConfigComparer(PatternComparer);
 		PerformedChartConfigManager.Instance.SetConfigComparer(PerformedChartComparer);
 
-		// Load autogen configs synchronously.
-		// This simplifies loading at the cost of startup time.
-		// Ideally this would be async, but that means deferring loading songs until this operation is complete.
-		PerformedChartConfigManager.Instance.LoadConfigs();
-		ExpressedChartConfigManager.Instance.LoadConfigs();
-		PatternConfigManager.Instance.LoadConfigs();
+		// Load autogen configs asynchronously.
+		await Task.WhenAll(new List<Task>(3)
+		{
+			PerformedChartConfigManager.Instance.LoadConfigsAsync(),
+			ExpressedChartConfigManager.Instance.LoadConfigsAsync(),
+			PatternConfigManager.Instance.LoadConfigsAsync(),
+		});
+		AutogenConfigsLoaded = true;
 	}
 
 	private void InitializeZoomManager()
@@ -1348,6 +1352,8 @@ internal sealed class Editor :
 				if (GarbageCollectFrame == 0)
 					GC.Collect();
 			}
+
+			CheckForAutoLoadingLastSong();
 
 			ActiveSong?.Update();
 			SoundManager.Update();
@@ -3666,17 +3672,18 @@ internal sealed class Editor :
 		var hasSong = ActiveSong != null;
 		var hasChart = ActiveChart != null;
 		var canEditSong = canEdit && hasSong;
+		var canOpen = CanLoadSongs();
 		if (ImGui.BeginMainMenuBar())
 		{
 			if (ImGui.BeginMenu("File"))
 			{
-				if (ImGui.MenuItem("New Song", "Ctrl+N"))
+				if (ImGui.MenuItem("New Song", "Ctrl+N", false, canOpen))
 				{
 					OnNew();
 				}
 
 				ImGui.Separator();
-				if (ImGui.MenuItem("Open", "Ctrl+O"))
+				if (ImGui.MenuItem("Open", "Ctrl+O", false, canOpen))
 				{
 					OnOpen();
 				}
@@ -3688,7 +3695,7 @@ internal sealed class Editor :
 						var recentFile = p.RecentFiles[i];
 						var fileNameWithPath = recentFile.FileName;
 						var fileName = System.IO.Path.GetFileName(fileNameWithPath);
-						if (ImGui.MenuItem(fileName))
+						if (ImGui.MenuItem(fileName, canOpen))
 						{
 							OpenRecentIndex = i;
 							OnOpenRecentFile();
@@ -3703,7 +3710,7 @@ internal sealed class Editor :
 					OnOpenContainingFolder();
 				}
 
-				if (ImGui.MenuItem("Reload", "Ctrl+R", false, canEditSong && p.RecentFiles.Count > 0))
+				if (ImGui.MenuItem("Reload", "Ctrl+R", false, canOpen && canEditSong && p.RecentFiles.Count > 0))
 				{
 					OnReload();
 				}
@@ -5101,6 +5108,28 @@ internal sealed class Editor :
 
 	#region Save and Load
 
+	private bool CanLoadSongs()
+	{
+		// Songs may reference patterns which require autogen configs to be loaded.
+		return AutogenConfigsLoaded;
+	}
+
+	private void CheckForAutoLoadingLastSong()
+	{
+		if (HasCheckedForAutoLoadingLastSong || !CanLoadSongs())
+			return;
+
+		// If we have a saved file to open, open it now.
+		if (Preferences.Instance.PreferencesOptions.OpenLastOpenedFileOnLaunch
+		    && Preferences.Instance.RecentFiles.Count > 0)
+		{
+			OpenRecentIndex = 0;
+			OnOpenRecentFile();
+		}
+
+		HasCheckedForAutoLoadingLastSong = true;
+	}
+
 	private bool IsSaving()
 	{
 		return ActiveSong?.IsSaving() ?? false;
@@ -5196,6 +5225,9 @@ internal sealed class Editor :
 	/// </summary>
 	private void OpenSongFile()
 	{
+		if (!CanLoadSongs())
+			return;
+
 		var pOptions = Preferences.Instance.PreferencesOptions;
 		using var openFileDialog = new OpenFileDialog();
 		openFileDialog.InitialDirectory = Preferences.Instance.OpenFileDialogInitialDirectory;
@@ -5224,6 +5256,9 @@ internal sealed class Editor :
 		ChartType chartType,
 		ChartDifficultyType chartDifficultyType)
 	{
+		if (!CanLoadSongs())
+			return;
+
 		CloseSong();
 
 		// Start the load. If we are already loading, return.
@@ -5436,6 +5471,9 @@ internal sealed class Editor :
 
 	private void OnOpen()
 	{
+		if (!CanLoadSongs())
+			return;
+
 		if (ActionQueue.Instance.HasUnsavedChanges())
 		{
 			PostSaveFunction = OpenSongFile;
@@ -5449,6 +5487,9 @@ internal sealed class Editor :
 
 	private void OnOpenFile(string songFile)
 	{
+		if (!CanLoadSongs())
+			return;
+
 		PendingOpenSongFileName = songFile;
 		if (ActionQueue.Instance.HasUnsavedChanges())
 		{
@@ -5478,12 +5519,17 @@ internal sealed class Editor :
 
 	private void OnReload(bool ignoreUnsavedChanges)
 	{
+		if (!CanLoadSongs())
+			return;
 		OpenRecentIndex = 0;
 		OnOpenRecentFile(ignoreUnsavedChanges);
 	}
 
 	private void OnOpenRecentFile(bool ignoreUnsavedChanges = false)
 	{
+		if (!CanLoadSongs())
+			return;
+
 		var p = Preferences.Instance;
 		if (OpenRecentIndex >= p.RecentFiles.Count)
 			return;
@@ -5501,6 +5547,9 @@ internal sealed class Editor :
 
 	private void OpenRecentFile()
 	{
+		if (!CanLoadSongs())
+			return;
+
 		var p = Preferences.Instance;
 		if (OpenRecentIndex >= p.RecentFiles.Count)
 			return;
@@ -5512,6 +5561,9 @@ internal sealed class Editor :
 
 	private void OnNew()
 	{
+		if (!CanLoadSongs())
+			return;
+
 		if (ActionQueue.Instance.HasUnsavedChanges())
 		{
 			PostSaveFunction = OnNewNoSave;
@@ -5526,6 +5578,9 @@ internal sealed class Editor :
 	private void OnNewNoSave()
 	{
 		Debug.Assert(IsOnMainThread());
+
+		if (!CanLoadSongs())
+			return;
 
 		CloseSong();
 		ActiveSong = new EditorSong(GraphicsDevice, ImGuiRenderer);
