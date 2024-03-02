@@ -1644,11 +1644,6 @@ internal sealed class Editor :
 		{
 			MovingFocalPoint = false;
 			FocalPointMoveOffset = new Vector2();
-			ActionQueue.Instance.EnqueueWithoutDoing(new ActionMoveFocalPoint(
-				(int)FocalPointAtMoveStart.X,
-				(int)FocalPointAtMoveStart.Y,
-				Preferences.Instance.PreferencesReceptors.PositionX,
-				Preferences.Instance.PreferencesReceptors.PositionY));
 		}
 	}
 
@@ -1899,10 +1894,7 @@ internal sealed class Editor :
 
 	private void OnToggleAssistTick()
 	{
-		ActionQueue.Instance.Do(
-			new ActionSetObjectFieldOrPropertyValue<bool>(
-				Preferences.Instance.PreferencesAudio,
-				nameof(PreferencesAudio.UseAssistTick), !Preferences.Instance.PreferencesAudio.UseAssistTick, false));
+		Preferences.Instance.PreferencesAudio.UseAssistTick = !Preferences.Instance.PreferencesAudio.UseAssistTick;
 	}
 
 	private void OnUseAssistTickChanged()
@@ -1925,13 +1917,9 @@ internal sealed class Editor :
 		MusicManager.SetBeatTickAttackTime(Preferences.Instance.PreferencesAudio.BeatTickAttackTime);
 	}
 
-
 	private void OnToggleBeatTick()
 	{
-		ActionQueue.Instance.Do(
-			new ActionSetObjectFieldOrPropertyValue<bool>(
-				Preferences.Instance.PreferencesAudio,
-				nameof(PreferencesAudio.UseBeatTick), !Preferences.Instance.PreferencesAudio.UseBeatTick, false));
+		Preferences.Instance.PreferencesAudio.UseBeatTick = !Preferences.Instance.PreferencesAudio.UseBeatTick;
 	}
 
 	private void OnUseBeatTickChanged()
