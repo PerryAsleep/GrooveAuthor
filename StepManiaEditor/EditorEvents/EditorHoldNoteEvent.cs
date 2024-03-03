@@ -142,6 +142,7 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 	{
 		Roll = roll;
 		LaneHoldStartNote.SourceType = Roll ? SMCommon.NoteStrings[(int)SMCommon.NoteType.RollStart] : string.Empty;
+		LaneHoldStartNote.DestType = LaneHoldStartNote.SourceType;
 	}
 
 	public override bool IsStep()
