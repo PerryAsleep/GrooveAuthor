@@ -50,6 +50,11 @@ internal class UILog
 		Editor = editor;
 	}
 
+	public static Vector4 GetColor(LogLevel level)
+	{
+		return LogWindowLevelColors[(int)level];
+	}
+
 	public void Draw(LinkedList<Logger.LogMessage> logBuffer, object logBufferLock, string logFilePath)
 	{
 		if (!Preferences.Instance.ShowLogWindow)

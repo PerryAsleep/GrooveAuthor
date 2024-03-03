@@ -133,7 +133,6 @@ internal sealed class Editor :
 	private string PendingImageFile;
 	private string PendingVideoFile;
 	private string PendingLyricsFile;
-	private bool ShowSavePopup;
 	private Action PostSaveFunction;
 	private int OpenRecentIndex;
 	private bool AutogenConfigsLoaded;
@@ -214,7 +213,6 @@ internal sealed class Editor :
 
 	private SongLoadTask SongLoadTask;
 	private FileSystemWatcher SongFileWatcher;
-	private bool ShowFileChangedPopup;
 	private bool ShouldCheckForShowingSongFileChangedNotification;
 	private int GarbageCollectFrame;
 
@@ -947,6 +945,7 @@ internal sealed class Editor :
 		UIPatternEvent = new UIPatternEvent(this);
 		UIPerformance = new UIPerformance(PerformanceMonitor);
 		UIFTUE = new UIFTUE(this);
+		UIModals.Init(this);
 #if DEBUG
 		UIDebug = new UIDebug(this);
 #endif
@@ -1033,7 +1032,7 @@ internal sealed class Editor :
 		{
 			e.Cancel = true;
 			PostSaveFunction = OnExitNoSave;
-			ShowSavePopup = true;
+			ShowUnsavedChangesModal();
 		}
 		else if (IsSaving())
 		{
@@ -1064,7 +1063,7 @@ internal sealed class Editor :
 		if (ActionQueue.Instance.HasUnsavedChanges())
 		{
 			PostSaveFunction = OnExitNoSave;
-			ShowSavePopup = true;
+			ShowUnsavedChangesModal();
 		}
 		else if (IsSaving())
 		{
@@ -3627,20 +3626,6 @@ internal sealed class Editor :
 			Graphics.PreferredBackBufferHeight - GetChartPositionUIYPaddingFromBottom() - (int)(UIChartPosition.Height * 0.5),
 			SnapLevels[Preferences.Instance.SnapIndex]);
 
-		if (ShowSavePopup)
-		{
-			ShowSavePopup = false;
-			SystemSounds.Exclamation.Play();
-			ImGui.OpenPopup(GetSavePopupTitle());
-		}
-
-		if (ShowFileChangedPopup)
-		{
-			ShowFileChangedPopup = false;
-			SystemSounds.Exclamation.Play();
-			ImGui.OpenPopup(GetFileChangedPopupTitle());
-		}
-
 		if (CanShowRightClickPopupThisFrame && EditorMouseState.GetButtonState(EditorMouseState.Button.Right).UpThisFrame())
 		{
 			ImGui.OpenPopup("RightClickPopup");
@@ -3649,8 +3634,7 @@ internal sealed class Editor :
 		var lastPos = EditorMouseState.GetButtonState(EditorMouseState.Button.Right).GetLastClickUpPosition();
 		DrawRightClickMenu((int)lastPos.X, (int)lastPos.Y);
 
-		DrawUnsavedChangesPopup();
-		DrawFileChangedPopup();
+		UIModals.Draw();
 	}
 
 	private void DrawMainMenuUI()
@@ -4771,24 +4755,18 @@ internal sealed class Editor :
 		ToolTip(toolTipText);
 	}
 
-	private string GetSavePopupTitle()
+	private void ShowUnsavedChangesModal()
 	{
-		var appName = GetAppName();
-		return $"{appName}##save";
-	}
+		var message = string.IsNullOrEmpty(ActiveSong.Title)
+			? "Do you want to save your changes?\n\nYour changes will be lost if you don't save them."
+			: $"Do you want to save the changes you made to {ActiveSong.Title}?\n\nYour changes will be lost if you don't save them.";
 
-	private void DrawUnsavedChangesPopup()
-	{
-		if (ImGui.BeginPopupModal(GetSavePopupTitle()))
-		{
-			if (!string.IsNullOrEmpty(ActiveSong.Title))
-				ImGui.Text(
-					$"Do you want to save the changes you made to {ActiveSong.Title}?\nYour changes will be lost if you don't save them.");
-			else
-				ImGui.Text("Do you want to save your changes?\nYour changes will be lost if you don't save them.");
-
-			ImGui.Separator();
-			if (ImGui.Button("Save"))
+		UIModals.OpenModalThreeButtons(
+			"Unsaved Changes",
+			message,
+			"Cancel", () => { PostSaveFunction = null; },
+			"Don't Save", TryInvokePostSaveFunction,
+			"Save", () =>
 			{
 				if (CanSaveWithoutLocationPrompt())
 				{
@@ -4798,65 +4776,30 @@ internal sealed class Editor :
 				{
 					OnSaveAs();
 				}
-
-				ImGui.CloseCurrentPopup();
-			}
-
-			ImGui.SameLine();
-			if (ImGui.Button("Don't Save"))
-			{
-				TryInvokePostSaveFunction();
-				ImGui.CloseCurrentPopup();
-			}
-
-			ImGui.SetItemDefaultFocus();
-			ImGui.SameLine();
-			if (ImGui.Button("Cancel"))
-			{
-				ImGui.CloseCurrentPopup();
-			}
-
-			ImGui.EndPopup();
-		}
+			});
 	}
 
-	private string GetFileChangedPopupTitle()
+	private void ShowFileChangedModal()
 	{
-		return "External Modification";
-	}
+		var fileName = ActiveSong?.GetFileName() ?? "The current song";
 
-	private void DrawFileChangedPopup()
-	{
-		if (ImGui.BeginPopupModal(GetFileChangedPopupTitle()))
-		{
-			var fileName = ActiveSong?.GetFileName() ?? "The current song";
-			ImGui.Text($"{fileName} was modified externally.");
-
-			if (ActionQueue.Instance.HasUnsavedChanges())
+		UIModals.OpenModalTwoButtons(
+			"External Modification",
+			$"{fileName} was modified externally.",
+			"Ignore", () => { },
+			"Reload", () => { OnReload(true); },
+			() =>
 			{
-				ImGui.Text("Warning: There are unsaved changes. Reloading will lose these changes.");
-			}
+				if (ActionQueue.Instance.HasUnsavedChanges())
+				{
+					ImGui.TextColored(UILog.GetColor(LogLevel.Warn),
+						"Warning: There are unsaved changes. Reloading will lose these changes.");
+					ImGui.Separator();
+				}
 
-			ImGui.Separator();
-			ImGui.Checkbox("Don't notify on external song file changes.",
-				ref Preferences.Instance.PreferencesOptions.SuppressExternalSongModificationNotification);
-
-			ImGui.Separator();
-
-			if (ImGui.Button("Ignore"))
-			{
-				ImGui.CloseCurrentPopup();
-			}
-
-			ImGui.SameLine();
-			if (ImGui.Button("Reload"))
-			{
-				OnReload(true);
-				ImGui.CloseCurrentPopup();
-			}
-
-			ImGui.EndPopup();
-		}
+				ImGui.Checkbox("Don't notify on external song file changes.",
+					ref Preferences.Instance.PreferencesOptions.SuppressExternalSongModificationNotification);
+			});
 	}
 
 	[Conditional("DEBUG")]
@@ -5210,7 +5153,20 @@ internal sealed class Editor :
 			UpdateWindowTitle();
 			UpdateRecentFilesForActiveSong(Position.ChartPosition, ZoomManager.GetSpacingZoom());
 			if (success)
+			{
 				ActionQueue.Instance.OnSaved();
+			}
+			else
+			{
+				var fileName = editorSong?.GetFileName();
+				if (string.IsNullOrEmpty(fileName))
+					fileName = "file";
+				UIModals.OpenModalOneButton(
+					"Save Failure",
+					$"Failed to save {fileName}. Check the log for details.",
+					"Okay", () => { });
+			}
+
 			TryInvokePostSaveFunction();
 		});
 	}
@@ -5357,7 +5313,7 @@ internal sealed class Editor :
 			return;
 		}
 
-		ShowFileChangedPopup = true;
+		ShowFileChangedModal();
 	}
 
 	private void StopObservingSongFile()
@@ -5472,7 +5428,7 @@ internal sealed class Editor :
 		if (ActionQueue.Instance.HasUnsavedChanges())
 		{
 			PostSaveFunction = OpenSongFile;
-			ShowSavePopup = true;
+			ShowUnsavedChangesModal();
 		}
 		else
 		{
@@ -5489,7 +5445,7 @@ internal sealed class Editor :
 		if (ActionQueue.Instance.HasUnsavedChanges())
 		{
 			PostSaveFunction = OnOpenFileNoSave;
-			ShowSavePopup = true;
+			ShowUnsavedChangesModal();
 		}
 		else
 		{
@@ -5532,7 +5488,7 @@ internal sealed class Editor :
 		if (!ignoreUnsavedChanges && ActionQueue.Instance.HasUnsavedChanges())
 		{
 			PostSaveFunction = OpenRecentFile;
-			ShowSavePopup = true;
+			ShowUnsavedChangesModal();
 		}
 		else
 		{
@@ -5562,7 +5518,7 @@ internal sealed class Editor :
 		if (ActionQueue.Instance.HasUnsavedChanges())
 		{
 			PostSaveFunction = OnNewNoSave;
-			ShowSavePopup = true;
+			ShowUnsavedChangesModal();
 		}
 		else
 		{
@@ -5636,7 +5592,7 @@ internal sealed class Editor :
 		if (ActionQueue.Instance.HasUnsavedChanges())
 		{
 			PostSaveFunction = OnCloseNoSave;
-			ShowSavePopup = true;
+			ShowUnsavedChangesModal();
 		}
 		else
 		{
