@@ -1,7 +1,7 @@
-﻿using ImGuiNET;
+﻿using System.Collections.Generic;
+using ImGuiNET;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Input;
-using System.Collections.Generic;
-using Vector2 = Microsoft.Xna.Framework.Vector2;
 
 namespace StepManiaEditor;
 
@@ -105,6 +105,11 @@ internal sealed class EditorMouseState
 		{
 			return LastClickUpPosition;
 		}
+
+		public bool ClickedThisFrame()
+		{
+			return UpThisFrame() && LastClickUpPosition == LastClickDownPosition;
+		}
 	}
 
 	/// <summary>
@@ -115,13 +120,14 @@ internal sealed class EditorMouseState
 	// Mouse state.
 	private MouseState CurrentMouseState;
 	private MouseState PreviousMouseState;
+
 	private readonly Dictionary<Button, ButtonState> States = new()
 	{
-		[Button.Left] = new(0),
-		[Button.Right] = new(1),
-		[Button.Middle] = new(2),
-		[Button.X1] = new(3),
-		[Button.X2] = new(4),
+		[Button.Left] = new ButtonState(0),
+		[Button.Right] = new ButtonState(1),
+		[Button.Middle] = new ButtonState(2),
+		[Button.X1] = new ButtonState(3),
+		[Button.X2] = new ButtonState(4),
 	};
 
 	public void SetActiveChart(EditorChart activeChart)

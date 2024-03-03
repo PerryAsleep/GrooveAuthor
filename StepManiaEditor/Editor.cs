@@ -1661,9 +1661,13 @@ internal sealed class Editor :
 	private void ProcessInputForSelectedRegion(double currentTime)
 	{
 		var sizeZoom = ZoomManager.GetSizeZoom();
+		var button = EditorMouseState.GetButtonState(EditorMouseState.Button.Left);
+
+		// Receptors can interfere with clicking on notes. If there was a click, let the SelectedRegion process it.
+		var forceStartRegionFromClick = button.ClickedThisFrame() && !SelectedRegion.IsActive();
 
 		// Starting a selection.
-		if (EditorMouseState.GetButtonState(EditorMouseState.Button.Left).DownThisFrame())
+		if (button.DownThisFrame() || forceStartRegionFromClick)
 		{
 			var y = EditorMouseState.Y();
 			var (chartTime, chartPosition) = FindChartTimeAndRowForScreenY(y);
@@ -1679,14 +1683,14 @@ internal sealed class Editor :
 		}
 
 		// Dragging a selection.
-		if (EditorMouseState.GetButtonState(EditorMouseState.Button.Left).Down() && SelectedRegion.IsActive())
+		if ((button.Down() && SelectedRegion.IsActive()) || forceStartRegionFromClick)
 		{
 			var xInChartSpace = (EditorMouseState.X() - GetFocalPointX()) / sizeZoom;
 			SelectedRegion.UpdatePerFrameValues(xInChartSpace, EditorMouseState.Y(), sizeZoom, GetFocalPointX());
 		}
 
 		// Releasing a selection.
-		if (EditorMouseState.GetButtonState(EditorMouseState.Button.Left).Up() && SelectedRegion.IsActive())
+		if ((button.Up() && SelectedRegion.IsActive()) || forceStartRegionFromClick)
 		{
 			FinishSelectedRegion();
 		}
