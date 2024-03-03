@@ -782,12 +782,22 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 							if (steppedLanes[a] && a == node.GraphNode.State[f, p].Arrow)
 							{
 								if (stepFoot == Constants.InvalidFoot)
+								{
 									stepFoot = f;
+								}
 
-								footing[f] = node.GraphNode.State[f, p].Arrow;
-								stepFootTime[f] = node.TimeSeconds;
-								numFeetFound++;
-								break;
+								// If we already had a different foot assigned at the same time it means this is a jump and we don't know the footing.
+								else if (stepFoot != f && stepFootTime[stepFoot].DoubleEquals(node.TimeSeconds))
+								{
+									stepFoot = Constants.InvalidFoot;
+								}
+
+								if (footing[f] == Constants.InvalidArrowIndex)
+								{
+									footing[f] = node.GraphNode.State[f, p].Arrow;
+									stepFootTime[f] = node.TimeSeconds;
+									numFeetFound++;
+								}
 							}
 						}
 					}
