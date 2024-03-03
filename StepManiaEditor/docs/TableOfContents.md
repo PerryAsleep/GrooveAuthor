@@ -4,9 +4,10 @@
 
 More documentation will be coming soon.
 
-## Sync
+## Sync and Timing
 
  - [Song Sync](SongSync.md)
+ - [Song And Chart Timing](SongAndChartTiming.md)
 
 ## Autogen
 
