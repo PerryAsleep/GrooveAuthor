@@ -1551,6 +1551,7 @@ internal sealed class Editor :
 			// ImGui may want the mouse on a release when we are selecting. Stop selecting in that case.
 			if (SelectedRegion.IsActive())
 				FinishSelectedRegion();
+			UpdateCursor();
 			return;
 		}
 
@@ -1583,6 +1584,14 @@ internal sealed class Editor :
 		// Process right click popup eligibility.
 		CanShowRightClickPopupThisFrame = !MiniMapCapturingMouse && !MovingFocalPoint && !MovingFocalPoint;
 
+		UpdateCursor();
+
+		// Process input for scrolling and zooming.
+		ProcessInputForScrollingAndZooming(currentTime, gameTime.ElapsedGameTime.TotalSeconds);
+	}
+
+	private void UpdateCursor()
+	{
 		// Setting the cursor every frame prevents it from changing to support normal application
 		// behavior like indicating resizeability at the edges of the window. But not setting every frame
 		// causes it to go back to the Default. Set it every frame only if it setting it to something
@@ -1593,9 +1602,6 @@ internal sealed class Editor :
 		}
 
 		PreviousDesiredCursor = CurrentDesiredCursor;
-
-		// Process input for scrolling and zooming.
-		ProcessInputForScrollingAndZooming(currentTime, gameTime.ElapsedGameTime.TotalSeconds);
 	}
 
 	/// <summary>
