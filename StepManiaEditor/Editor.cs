@@ -616,6 +616,8 @@ internal sealed class Editor :
 		AddKeyCommand(general, "Cancel / Go Back", new[] { Keys.Escape }, OnEscape);
 		AddKeyCommand(general, "Toggle Note Entry Mode", new[] { Keys.M }, OnToggleNoteEntryMode);
 		AddKeyCommand(general, "Toggle Spacing Mode", new[] { Keys.S }, OnToggleSpacingMode);
+		AddKeyCommand(general, "Move To Previous Chart", new[] { Keys.LeftControl, Keys.LeftAlt, Keys.Left }, OnMoveToPreviousChart);
+		AddKeyCommand(general, "Move To Next Chart", new[] { Keys.LeftControl, Keys.LeftAlt, Keys.Right }, OnMoveToNextChart);
 		UIControls.AddCommand(general, "Context Menu", "Right Mouse Button");
 		UIControls.AddCommand(general, "Exit", "Alt+F4");
 
@@ -6362,6 +6364,50 @@ internal sealed class Editor :
 	#endregion Copy Paste
 
 	#region Chart Navigation
+
+	private void OnMoveToPreviousChart()
+	{
+		if (ActiveSong == null || ActiveChart == null)
+			return;
+
+		var index = 0;
+		var sortedCharts = ActiveSong.GetSortedCharts();
+		foreach (var chart in sortedCharts)
+		{
+			if (chart == ActiveChart)
+			{
+				var previousIndex = index - 1;
+				if (previousIndex < 0)
+					previousIndex = sortedCharts.Count - 1;
+				if (previousIndex != index)
+					OnChartSelected(sortedCharts[previousIndex]);
+				return;
+			}
+
+			index++;
+		}
+	}
+
+	private void OnMoveToNextChart()
+	{
+		if (ActiveSong == null || ActiveChart == null)
+			return;
+
+		var index = 0;
+		var sortedCharts = ActiveSong.GetSortedCharts();
+		foreach (var chart in sortedCharts)
+		{
+			if (chart == ActiveChart)
+			{
+				var nextIndex = (index + 1) % sortedCharts.Count;
+				if (nextIndex != index)
+					OnChartSelected(sortedCharts[nextIndex]);
+				return;
+			}
+
+			index++;
+		}
+	}
 
 	private void OnToggleSpacingMode()
 	{

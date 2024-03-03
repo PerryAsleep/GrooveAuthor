@@ -823,6 +823,20 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 		}
 	}
 
+	public List<EditorChart> GetSortedCharts()
+	{
+		var sortedCharts = new List<EditorChart>();
+		foreach (var chartType in Editor.SupportedChartTypes)
+		{
+			if (Charts.TryGetValue(chartType, out var charts))
+			{
+				sortedCharts.AddRange(charts);
+			}
+		}
+
+		return sortedCharts;
+	}
+
 	#endregion EditorChart
 
 	#region Default Chart Selection
