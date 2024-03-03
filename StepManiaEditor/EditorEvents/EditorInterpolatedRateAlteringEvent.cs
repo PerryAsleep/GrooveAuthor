@@ -138,6 +138,13 @@ internal class EditorInterpolatedRateAlteringEvent : EditorEvent
 		return ScrollRateInterpolationEvent.Rate;
 	}
 
+	public bool IsInstant()
+	{
+		return InterpolatesByTime()
+			? ScrollRateInterpolationEvent.PeriodTimeSeconds.DoubleEquals(0.0)
+			: ScrollRateInterpolationEvent.PeriodLengthIntegerPosition == 0;
+	}
+
 	public double GetInterpolatedScrollRateFromTime(double chartTime)
 	{
 		var eventChartTime = GetChartTime();

@@ -94,6 +94,16 @@ internal sealed class EditorMultipliersEvent : EditorEvent
 		WidthDirty = true;
 	}
 
+	public int GetHitMultiplier()
+	{
+		return MultipliersEvent.HitMultiplier;
+	}
+
+	public int GetMissMultiplier()
+	{
+		return MultipliersEvent.MissMultiplier;
+	}
+
 	public override bool IsMiscEvent()
 	{
 		return true;

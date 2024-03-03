@@ -55,7 +55,7 @@ internal class UICopyEventsBetweenCharts
 		new(typeof(EditorWarpEvent), "Warps", true, false, true),
 		new(typeof(EditorScrollRateEvent), "Scroll Rates", false, true, true),
 		new(typeof(EditorInterpolatedRateAlteringEvent), "Interpolated Scroll Rates", false, true, true),
-		new(typeof(EditorFakeSegmentEvent), "Fake Segments", false, false, true),
+		new(typeof(EditorFakeSegmentEvent), "Fake Region", false, false, true),
 		new(typeof(EditorMultipliersEvent), "Multipliers", false, false, true),
 		new(typeof(EditorTickCountEvent), "Tick Counts", false, false, true),
 		new(typeof(EditorLabelEvent), "Labels", false, false, true),

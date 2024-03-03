@@ -192,7 +192,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	/// <summary>
 	/// Total step counts by lane for this EditorChart.
 	/// </summary>
-	private readonly int[] StepCountsByLane;
+	private int[] StepCountsByLane;
 
 	/// <summary>
 	/// Total step count for this EditorChart.
@@ -209,6 +209,11 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	/// Total lift note count for this EditorChart.
 	/// </summary>
 	private int LiftCount;
+
+	/// <summary>
+	/// Total multipliers count for this EditorChart.
+	/// </summary>
+	private int MultipliersCount;
 
 	#region Properties
 
@@ -490,12 +495,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		DisplayTempoFromChart = !string.IsNullOrEmpty(chart.Tempo);
 		DisplayTempo.FromString(chart.Tempo);
 
-		StepCount = 0;
-		FakeCount = 0;
-		LiftCount = 0;
-		StepCountsByLane = new int[NumInputs];
-		for (var a = 0; a < NumInputs; a++)
-			StepCountsByLane[a] = 0;
+		ClearCachedStepData();
 
 		SetUpEditorEvents(chart);
 
@@ -531,12 +531,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 		Rating = DefaultRating;
 
-		StepCount = 0;
-		FakeCount = 0;
-		LiftCount = 0;
-		StepCountsByLane = new int[NumInputs];
-		for (var a = 0; a < NumInputs; a++)
-			StepCountsByLane[a] = 0;
+		ClearCachedStepData();
 
 		var tempChart = new Chart();
 		var tempLayer = new Layer();
@@ -584,14 +579,20 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 		Rating = other.Rating;
 
+		ClearCachedStepData();
+
+		SetUpEditorEvents(other);
+	}
+
+	private void ClearCachedStepData()
+	{
 		StepCount = 0;
 		FakeCount = 0;
 		LiftCount = 0;
+		MultipliersCount = 0;
 		StepCountsByLane = new int[NumInputs];
 		for (var a = 0; a < NumInputs; a++)
 			StepCountsByLane[a] = 0;
-
-		SetUpEditorEvents(other);
 	}
 
 	/// <summary>
@@ -2409,6 +2410,9 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			case EditorLiftNoteEvent:
 				LiftCount++;
 				break;
+			case EditorMultipliersEvent:
+				MultipliersCount++;
+				break;
 		}
 	}
 
@@ -2425,6 +2429,9 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 				break;
 			case EditorLiftNoteEvent:
 				LiftCount--;
+				break;
+			case EditorMultipliersEvent:
+				MultipliersCount--;
 				break;
 		}
 	}
@@ -2447,6 +2454,11 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	public int GetLiftCount()
 	{
 		return LiftCount;
+	}
+
+	public int GetMultipliersCount()
+	{
+		return MultipliersCount;
 	}
 
 	#endregion Cached Data
@@ -2603,17 +2615,84 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	/// <returns>True if this chart is compatible with the sm format and false otherwise.</returns>
 	public bool IsCompatibleWithSmFormat(bool logIncompatibilities)
 	{
+		var compatible = true;
+
 		// Warps affect timing and their presence would result in a busted sm chart.
 		if (Warps.GetCount() > 0)
 		{
 			if (logIncompatibilities)
 				LogError("Chart has Warps. Warps are not compatible with sm files.");
-			return false;
+			compatible = false;
 		}
 
-		// Other events like scroll rate modifiers that can't be saved to a sm chart don't
-		// affect the playability of the chart and can be safely ignored.
-		return true;
+		// Warn on other events which aren't supported but can be ignored.
+		if (logIncompatibilities)
+		{
+			// Fake Segments
+			if (Fakes.GetCount() > 0)
+			{
+				LogWarn("Chart has Fake Regions. Fake Regions are not compatible with sm files.");
+			}
+
+			// Multipliers.
+			if (GetMultipliersCount() > 0)
+			{
+				var hasIncompatibleMultipliers = true;
+				if (GetMultipliersCount() == 1)
+				{
+					foreach (var editorEvent in EditorEvents)
+					{
+						if (editorEvent.GetRow() > 0)
+							break;
+						if (editorEvent is EditorMultipliersEvent m)
+						{
+							if (m.GetRow() == 0 && m.GetHitMultiplier() == DefaultHitMultiplier &&
+							    m.GetHitMultiplier() == DefaultMissMultiplier)
+							{
+								hasIncompatibleMultipliers = false;
+								break;
+							}
+						}
+					}
+				}
+
+				if (hasIncompatibleMultipliers)
+				{
+					LogWarn("Chart has Combo Multipliers. Combo Multipliers are not compatible with sm files.");
+				}
+			}
+
+			// Scroll rate events.
+			foreach (var rateAlteringEvent in RateAlteringEvents)
+			{
+				if (rateAlteringEvent is EditorScrollRateEvent sre)
+				{
+					// Ignore the default scroll rate event.
+					if (sre.GetRow() == 0 && sre.GetScrollRate().DoubleEquals(DefaultScrollRate))
+					{
+						continue;
+					}
+
+					LogWarn("Chart has Scroll Rates. Scroll Rates are not compatible with sm files.");
+					break;
+				}
+			}
+
+			// Interpolated scroll rate events.
+			foreach (var irae in InterpolatedScrollRateEvents)
+			{
+				// Ignore the default interpolated scroll rate event.
+				if (irae.GetRow() == 0 && irae.GetRate().DoubleEquals(DefaultScrollRate) && irae.IsInstant())
+				{
+					continue;
+				}
+
+				LogWarn("Chart has Interpolated Scroll Rates. Interpolated Scroll Rates are not compatible with sm files.");
+				break;
+			}
+		}
+
+		return compatible;
 	}
 
 	/// <summary>

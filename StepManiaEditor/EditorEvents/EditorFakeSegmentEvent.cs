@@ -153,7 +153,7 @@ internal sealed class EditorFakeSegmentEvent : EditorEvent, IChartRegion
 
 	public override string GetShortTypeName()
 	{
-		return "Fake Segment";
+		return "Fake Region";
 	}
 
 	public override bool IsMiscEvent()
