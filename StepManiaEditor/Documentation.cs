@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Diagnostics;
-using System.IO;
 
 namespace StepManiaEditor;
 
@@ -35,37 +34,24 @@ internal sealed class Documentation
 		DocumentationFiles[(int)Page.SongSync] = "SongSync.md";
 	}
 
+	private static string GetDocumentationBaseUrl()
+	{
+#if RELEASE
+		var version = Utils.GetAppVersion();
+		var tree = $"{version.Major}.{version.Minor}.{version.Build}";
+#else
+		const string tree = "main";
+#endif
+		return $"{GitHubUrl}/tree/{tree}/StepManiaEditor/docs/";
+	}
+
 	/// <summary>
 	/// Open a documentation page with an external application.
 	/// </summary>
 	/// <param name="page">Type of page to open.</param>
 	public static void OpenDocumentation(Page page = Page.TableOfContents)
 	{
-		var file = DocumentationFiles[(int)page];
-		try
-		{
-			// By default use the file in the docs folder from the packaged build.
-			var documentationFile = Path.Combine(new[] { AppContext.BaseDirectory, "docs", file });
-
-			// Fallback for local builds.
-			if (!File.Exists(documentationFile))
-			{
-				documentationFile = Path.Combine(new[] { AppContext.BaseDirectory, "..\\..\\..", "docs", file });
-			}
-
-			// Couldn't find the file.
-			if (!File.Exists(documentationFile))
-			{
-				Fumen.Logger.Warn($"Failed to open documentation. Couldn't find {file}.");
-				return;
-			}
-
-			Process.Start("explorer.exe", documentationFile);
-		}
-		catch (Exception e)
-		{
-			Fumen.Logger.Error($"Failed to open documentation. {e}");
-		}
+		OpenUrl($"{GetDocumentationBaseUrl()}{DocumentationFiles[(int)page]}");
 	}
 
 	/// <summary>
@@ -73,13 +59,18 @@ internal sealed class Documentation
 	/// </summary>
 	public static void OpenGitHub()
 	{
+		OpenUrl(GitHubUrl);
+	}
+
+	private static void OpenUrl(string url)
+	{
 		try
 		{
-			Process.Start("explorer.exe", GitHubUrl);
+			Process.Start("explorer.exe", url);
 		}
 		catch (Exception e)
 		{
-			Fumen.Logger.Error($"Failed to open {GitHubUrl}. {e}");
+			Fumen.Logger.Error($"Failed to open {url}. {e}");
 		}
 	}
 }

@@ -193,8 +193,7 @@ internal sealed class UIFTUE
 			if (ImGuiLayoutUtils.BeginTable("Final Links", TitleColumnWidth))
 			{
 				if (ImGuiLayoutUtils.DrawRowButton("Documentation", "Open Documentation",
-					    "Documentation is written in Markdown. VSCode is a good application for viewing Markdown."
-					    + " Alternatively, documentation can be viewed on GitHub."))
+					    $"Open the online documentation for {Utils.GetAppName()}."))
 				{
 					Documentation.OpenDocumentation();
 				}

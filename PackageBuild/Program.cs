@@ -5,42 +5,11 @@ const string fumen7Z = "FUMEN_7Z";
 
 const string appName = "GrooveAuthor";
 const string projectName = "StepManiaEditor";
-const string readmeName = "README.md";
-const string licenseName = "LICENSE";
-const string logoName = "logo.svg";
 const string relativeProjectRoot = "..\\..\\..\\..";
-const string relativeReadme = $"..\\..\\..\\..\\{readmeName}";
-const string relativeLicense = $"..\\..\\..\\..\\{licenseName}";
-const string relativeLogo = $"..\\..\\..\\..\\{projectName}\\Content\\{logoName}";
-const string relativeDocsPath = $"..\\..\\..\\..\\{projectName}\\docs";
-const string relativeLibraryDocsPath = "..\\..\\..\\..\\StepManiaLibrary\\StepManiaLibrary\\docs";
 const string relativeSlnPath = $"{relativeProjectRoot}\\{appName}.sln";
 const string relativeExeFolderPath = $"{relativeProjectRoot}\\{projectName}\\bin\\Release\\net7.0-windows";
 const string relativeExePath = $"{relativeExeFolderPath}\\{appName}.exe";
 const string relativeReleasesFolderPath = $"{relativeProjectRoot}\\Releases";
-
-// Replacements in the Readme document, which will be one level up from docs/
-Dictionary<string, string> readmeDocumentationReplacements = new()
-{
-	{ "(https://github.com/PerryAsleep/StepManiaLibrary/blob/main/StepManiaLibrary/docs/", "(docs/StepManiaLibrary/" },
-	{ "(https://github.com/PerryAsleep/StepManiaLibrary/tree/main/StepManiaLibrary/docs/", "(docs/StepManiaLibrary/" },
-	{ "(https://perryasleep.github.io/GrooveAuthor/StepManiaEditor/docs/", "(docs/" },
-	{ "(StepManiaEditor/docs/", "(docs/" },
-	{ "(StepManiaLibrary/StepManiaLibrary/docs/", "(docs/StepManiaLibrary/" },
-	{ "<img src=\"StepManiaEditor/docs/", "<img src=\"docs/" },
-	{ "StepManiaEditor/Content/logo.svg", "docs/logo.svg" },
-};
-
-// Replacements for files in the docs/ folder
-Dictionary<string, string> docsDocumentationReplacements = new()
-{
-	{ "https://github.com/PerryAsleep/StepManiaLibrary/blob/main/StepManiaLibrary/docs/", "StepManiaLibrary/" },
-	{ "https://github.com/PerryAsleep/StepManiaLibrary/tree/main/StepManiaLibrary/docs/", "StepManiaLibrary/" },
-	{ "(https://perryasleep.github.io/StepManiaChartGenerator/StepManiaChartGenerator/docs/", "(" },
-	{ "(StepManiaEditor/docs/", "(" },
-	{ "(https://github.com/PerryAsleep/StepManiaLibrary/tree/main/StepManiaLibrary/docs/", "(StepManiaLibrary/" },
-	{ "../Content/logo.svg", "logo.svg" },
-};
 
 static void CopyDirectory(string sourceDir, string destinationDir,
 	IReadOnlyDictionary<string, string>? documentationReplacements = null)
@@ -146,25 +115,6 @@ if (Directory.Exists(tempDirectory))
 Directory.CreateDirectory(tempDirectory);
 Console.WriteLine("Copying Release product to temporary directory.");
 CopyDirectory(relativeExeFolderPath, tempDirectory);
-
-// Copy documentation.
-var destinationReadme = Path.Combine(tempDirectory, readmeName);
-File.Copy(relativeReadme, destinationReadme);
-ReplaceTextInFile(destinationReadme, readmeDocumentationReplacements);
-
-var destinationLicense = Path.Combine(tempDirectory, licenseName);
-File.Copy(relativeLicense, destinationLicense);
-
-var destinationDocsDir = Path.Combine(tempDirectory, "docs");
-Directory.CreateDirectory(destinationDocsDir);
-CopyDirectory(relativeDocsPath, destinationDocsDir, docsDocumentationReplacements);
-
-var destinationLogo = Path.Combine(destinationDocsDir, logoName);
-File.Copy(relativeLogo, destinationLogo);
-
-var destinationDocsLibraryDir = Path.Combine(destinationDocsDir, "StepManiaLibrary");
-Directory.CreateDirectory(destinationDocsLibraryDir);
-CopyDirectory(relativeLibraryDocsPath, destinationDocsLibraryDir);
 
 // Remove existing release package.
 var packageFile =
