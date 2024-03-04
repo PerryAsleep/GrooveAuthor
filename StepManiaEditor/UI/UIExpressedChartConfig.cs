@@ -16,7 +16,7 @@ internal sealed class UIExpressedChartConfig
 	public const string WindowTitle = "Expressed Chart Config";
 
 	public static readonly string HelpText =
-		$"Expressed Chart Configs are settings used by {Editor.GetAppName()} to interpret Charts."
+		$"Expressed Chart Configs are settings used by {Utils.GetAppName()} to interpret Charts."
 		+ " Autogenerating new charts from existing charts requires interpreting the existing chart."
 		+ " Autogenerating patterns requires interpreting surrounding steps so the pattern can integrate nicely."
 		+ " An Expressed Chart Config can be assigned to a Chart in the Chart Properties window."

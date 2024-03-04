@@ -287,6 +287,8 @@ internal sealed class Editor :
 
 	private uint MaxScreenHeight;
 
+	private string FormTitle;
+
 	// Fonts
 	private ImFontPtr ImGuiFont;
 	private SpriteFont Font;
@@ -1114,16 +1116,6 @@ internal sealed class Editor :
 	#endregion Graphics
 
 	#region Static Helpers
-
-	public static string GetAppName()
-	{
-		return System.Reflection.Assembly.GetExecutingAssembly().GetName().Name;
-	}
-
-	public static Version GetAppVersion()
-	{
-		return System.Reflection.Assembly.GetExecutingAssembly().GetName().Version;
-	}
 
 	public static bool IsChartSupported(Chart chart)
 	{
@@ -5700,7 +5692,14 @@ internal sealed class Editor :
 
 		sb.Append(" - ");
 		sb.Append(appName);
-		Window.Title = sb.ToString();
+		var newTitle = sb.ToString();
+
+		// Accessing the title is an expensive operation.
+		if (!string.Equals(FormTitle, newTitle))
+		{
+			FormTitle = newTitle;
+			Window.Title = FormTitle;
+		}
 	}
 
 	#endregion Save and Load

@@ -130,8 +130,8 @@ THE SOFTWARE.";
 
 		if (BeginWindow(WindowTitle, ref p.ShowAboutWindow, DefaultWidth))
 		{
-			var appName = Editor.GetAppName();
-			var version = Editor.GetAppVersion();
+			var appName = Utils.GetAppName();
+			var version = Utils.GetAppVersion();
 
 			ImGui.Text($"{appName} v{version}");
 			if (ImGui.CollapsingHeader("License"))

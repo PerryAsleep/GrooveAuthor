@@ -47,7 +47,7 @@ internal sealed class UIFTUE
 	public void Draw()
 	{
 		var p = Preferences.Instance;
-		var version = Editor.GetAppVersion();
+		var version = Utils.GetAppVersion();
 		var maxVersionWithFtue = new Version(0, 1, 0, 0);
 
 		if (p.LastCompletedFtueVersion != null && version >= maxVersionWithFtue)
@@ -94,8 +94,8 @@ internal sealed class UIFTUE
 	{
 		if (OpenWindow($"Welcome##{version}", FtueWindowSize.Small))
 		{
-			ImGui.Text($"Thank you for installing {Editor.GetAppName()}."
-			           + $"\n\nPlease take a moment to set a few options so {Editor.GetAppName()} can provide you with the best experience.");
+			ImGui.Text($"Thank you for installing {Utils.GetAppName()}."
+			           + $"\n\nPlease take a moment to set a few options so {Utils.GetAppName()} can provide you with the best experience.");
 			DrawNextButton();
 			ImGui.EndPopup();
 		}
@@ -141,7 +141,7 @@ internal sealed class UIFTUE
 	{
 		if (OpenWindow($"Welcome##{version}DefaultSync", FtueWindowSize.Small))
 		{
-			ImGui.Text($"When opening existing songs with unknown sync, what default sync should {Editor.GetAppName()} use?");
+			ImGui.Text($"When opening existing songs with unknown sync, what default sync should {Utils.GetAppName()} use?");
 
 			ImGui.Separator();
 			if (ImGuiLayoutUtils.BeginTable("Default Song Sync", TitleColumnWidth))
@@ -160,12 +160,12 @@ internal sealed class UIFTUE
 		if (OpenWindow($"Welcome##{version}StepGraphs", FtueWindowSize.Large))
 		{
 			ImGui.TextWrapped(
-				$"{Editor.GetAppName()} has automatic chart generation and step generation features which rely on understanding how pads"
+				$"{Utils.GetAppName()} has automatic chart generation and step generation features which rely on understanding how pads"
 				+ " are laid out and how the body moves."
-				+ $" {Editor.GetAppName()} uses Step Graph files to support these features."
-				+ $" Step Graph files for all supported chart types are provided with {Editor.GetAppName()}, but they need to be loaded in order to be used."
+				+ $" {Utils.GetAppName()} uses Step Graph files to support these features."
+				+ $" Step Graph files for all supported chart types are provided with {Utils.GetAppName()}, but they need to be loaded in order to be used."
 				+ " These files can be large."
-				+ $"\n\nWhich Step Graph files should {Editor.GetAppName()} load by default?"
+				+ $"\n\nWhich Step Graph files should {Utils.GetAppName()} load by default?"
 				+ "\n\nIf you want to work freely with all chart types, select everything below. This will use more memory."
 				+ " If you only ever work with a few chart types, you can save memory and improve startup performance by selecting only the types you work with."
 				+ "\n\nThis can be changed at any time, but requires an application restart to take effect.");
@@ -199,8 +199,8 @@ internal sealed class UIFTUE
 					Documentation.OpenDocumentation();
 				}
 
-				if (ImGuiLayoutUtils.DrawRowButton("GitHub", $"Open {Editor.GetAppName()} on GitHub",
-					    $"Open the GitHub page for {Editor.GetAppName()}: {Documentation.GitHubUrl}"))
+				if (ImGuiLayoutUtils.DrawRowButton("GitHub", $"Open {Utils.GetAppName()} on GitHub",
+					    $"Open the GitHub page for {Utils.GetAppName()}: {Documentation.GitHubUrl}"))
 				{
 					Documentation.OpenGitHub();
 				}
@@ -209,7 +209,7 @@ internal sealed class UIFTUE
 			}
 
 			ImGui.Separator();
-			ImGui.TextWrapped($"Thank you, and I hope you enjoy {Editor.GetAppName()}."
+			ImGui.TextWrapped($"Thank you, and I hope you enjoy {Utils.GetAppName()}."
 			                  + "\n-Perry");
 
 			DrawNavigationButtons();

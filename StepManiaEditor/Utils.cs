@@ -108,6 +108,9 @@ internal sealed class Utils
 
 	public static readonly string[] ExpectedLyricsFormats = { "lrc" };
 
+	private static string AppName;
+	private static Version AppVersion;
+
 	public enum HorizontalAlignment
 	{
 		Left,
@@ -125,6 +128,16 @@ internal sealed class Utils
 	public static string GetCustomPropertyName(string key)
 	{
 		return CustomSavePropertyPrefix + key;
+	}
+
+	public static string GetAppName()
+	{
+		return AppName ??= Assembly.GetExecutingAssembly().GetName().Name;
+	}
+
+	public static Version GetAppVersion()
+	{
+		return AppVersion ??= Assembly.GetExecutingAssembly().GetName().Version;
 	}
 
 	public static Vector2 GetDrawPos(

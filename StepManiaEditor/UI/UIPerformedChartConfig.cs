@@ -17,7 +17,7 @@ internal sealed class UIPerformedChartConfig
 	public const string WindowTitle = "Performed Chart Config";
 
 	public static readonly string HelpText =
-		$"Performed Chart Configs are settings used by {Editor.GetAppName()} to generate Charts and patterns."
+		$"Performed Chart Configs are settings used by {Utils.GetAppName()} to generate Charts and patterns."
 		+ " These settings are used to control how new steps are performed when their types and timings are"
 		+ " already known. Full details can be found in the documentation.";
 

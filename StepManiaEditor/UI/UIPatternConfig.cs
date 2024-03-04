@@ -18,7 +18,7 @@ internal sealed class UIPatternConfig
 	public const string WindowTitle = "Pattern Config";
 
 	public static readonly string HelpText =
-		$"Pattern Configs are settings used by {Editor.GetAppName()} to generate new step patterns."
+		$"Pattern Configs are settings used by {Utils.GetAppName()} to generate new step patterns."
 		+ " Full details can be found in the documentation.";
 
 	private const string EndChoiceHelpText = "Which lane the {0} foot should end on."
