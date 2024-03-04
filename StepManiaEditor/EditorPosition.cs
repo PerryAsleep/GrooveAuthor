@@ -35,10 +35,30 @@ internal sealed class EditorPosition
 		get => SongTimeInternal;
 		set
 		{
-			SongTimeInternal = value;
-			ChartTimeInternal = GetChartTimeFromSongTime(ActiveChart, SongTimeInternal);
-			ActiveChart?.TryGetChartPositionFromTime(ChartTimeInternal, ref ChartPositionInternal);
-			OnPositionChanged?.Invoke();
+			var changed = false;
+			if (!SongTimeInternal.DoubleEquals(value))
+			{
+				changed = true;
+				SongTimeInternal = value;
+			}
+
+			var newChartTime = GetChartTimeFromSongTime(ActiveChart, SongTimeInternal);
+			if (!ChartTimeInternal.DoubleEquals(newChartTime))
+			{
+				changed = true;
+				ChartTimeInternal = newChartTime;
+			}
+
+			var newChartPosition = ChartPositionInternal;
+			ActiveChart?.TryGetChartPositionFromTime(ChartTimeInternal, ref newChartPosition);
+			if (!ChartPositionInternal.DoubleEquals(newChartPosition))
+			{
+				changed = true;
+				ChartPositionInternal = newChartPosition;
+			}
+
+			if (changed)
+				OnPositionChanged?.Invoke();
 		}
 	}
 
@@ -49,10 +69,31 @@ internal sealed class EditorPosition
 		get => ChartTimeInternal;
 		set
 		{
-			ChartTimeInternal = value;
-			ActiveChart?.TryGetChartPositionFromTime(ChartTimeInternal, ref ChartPositionInternal);
-			SongTimeInternal = GetSongTimeFromChartTime(ActiveChart, ChartTimeInternal);
-			OnPositionChanged?.Invoke();
+			var changed = false;
+
+			if (!ChartTimeInternal.DoubleEquals(value))
+			{
+				changed = true;
+				ChartTimeInternal = value;
+			}
+
+			var newChartPosition = ChartPositionInternal;
+			ActiveChart?.TryGetChartPositionFromTime(ChartTimeInternal, ref newChartPosition);
+			if (!ChartPositionInternal.DoubleEquals(newChartPosition))
+			{
+				changed = true;
+				ChartPositionInternal = newChartPosition;
+			}
+
+			var newSongTime = GetSongTimeFromChartTime(ActiveChart, ChartTimeInternal);
+			if (!SongTimeInternal.DoubleEquals(newSongTime))
+			{
+				changed = true;
+				SongTimeInternal = newSongTime;
+			}
+
+			if (changed)
+				OnPositionChanged?.Invoke();
 		}
 	}
 
@@ -63,10 +104,31 @@ internal sealed class EditorPosition
 		get => ChartPositionInternal;
 		set
 		{
-			ChartPositionInternal = value;
-			ActiveChart?.TryGetTimeFromChartPosition(ChartPositionInternal, ref ChartTimeInternal);
-			SongTimeInternal = GetSongTimeFromChartTime(ActiveChart, ChartTimeInternal);
-			OnPositionChanged?.Invoke();
+			var changed = false;
+
+			if (!ChartPositionInternal.DoubleEquals(value))
+			{
+				changed = true;
+				ChartPositionInternal = value;
+			}
+
+			var newChartTime = ChartTimeInternal;
+			ActiveChart?.TryGetTimeFromChartPosition(ChartPositionInternal, ref newChartTime);
+			if (!ChartTimeInternal.DoubleEquals(newChartTime))
+			{
+				changed = true;
+				ChartTimeInternal = newChartTime;
+			}
+
+			var newSongTime = GetSongTimeFromChartTime(ActiveChart, ChartTimeInternal);
+			if (!SongTimeInternal.DoubleEquals(newSongTime))
+			{
+				changed = true;
+				SongTimeInternal = newSongTime;
+			}
+
+			if (changed)
+				OnPositionChanged?.Invoke();
 		}
 	}
 
