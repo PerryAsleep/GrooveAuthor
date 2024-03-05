@@ -6,6 +6,7 @@ using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Fumen;
 using StepManiaLibrary;
+using Path = Fumen.Path;
 
 namespace StepManiaEditor.AutogenConfig;
 
@@ -58,6 +59,11 @@ internal abstract class ConfigManager<TEditorConfig, TConfig> : Notifier<ConfigM
 	protected readonly ConfigData<TEditorConfig, TConfig> ConfigData = new();
 
 	/// <summary>
+	/// All explicitly deleted configs.
+	/// </summary>
+	private readonly HashSet<Guid> DeletedConfigs = new();
+
+	/// <summary>
 	/// Constructor.
 	/// </summary>
 	/// <param name="configPrefix">
@@ -70,7 +76,7 @@ internal abstract class ConfigManager<TEditorConfig, TConfig> : Notifier<ConfigM
 	{
 		ConfigTypeReadableName = configTypeReadableName;
 		ConfigPrefix = configPrefix;
-		ConfigDirectory = Fumen.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "AutogenConfigs");
+		ConfigDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "AutogenConfigs");
 		SerializationOptions = new JsonSerializerOptions
 		{
 			Converters =
@@ -108,7 +114,7 @@ internal abstract class ConfigManager<TEditorConfig, TConfig> : Notifier<ConfigM
 			if (!kvp.Value.HasUnsavedChanges())
 				continue;
 
-			var saveFileName = Fumen.Path.Combine(ConfigDirectory, $"{ConfigPrefix}{kvp.Key}.{ConfigExtension}");
+			var saveFileName = Path.Combine(ConfigDirectory, $"{ConfigPrefix}{kvp.Key}.{ConfigExtension}");
 			SaveConfig(saveFileName, kvp.Value);
 		}
 	}
@@ -138,81 +144,23 @@ internal abstract class ConfigManager<TEditorConfig, TConfig> : Notifier<ConfigM
 	}
 
 	/// <summary>
-	/// Synchronously delete any config files on disk which are not loaded.
+	/// Synchronously delete any config files from disk which were deleted this session.
 	/// </summary>
 	private void DeleteRemovedConfigs()
 	{
-		var guidLength = Guid.Empty.ToString().Length;
-		const string extensionWithSeparator = $".{ConfigExtension}";
-
-		// Find all files in the directory.
-		string[] files;
-		try
+		foreach (var guid in DeletedConfigs)
 		{
-			files = Directory.GetFiles(ConfigDirectory);
-		}
-		catch (Exception e)
-		{
-			Logger.Error($"Failed to search for {ConfigTypeReadableName} files in {ConfigDirectory}. {e}");
-			return;
-		}
-
-		// Loop over every file in the config directory and delete configs which are no longer referenced.
-		foreach (var file in files)
-		{
-			FileInfo fi;
+			var fileName = $"{ConfigPrefix}{guid}.{ConfigExtension}";
 			try
 			{
-				fi = new FileInfo(file);
+				var filePath = Path.Combine(ConfigDirectory, fileName);
+				Logger.Info($"Deleting {fileName}...");
+				File.Delete(filePath);
+				Logger.Info($"Deleted {fileName}.");
 			}
 			catch (Exception e)
 			{
-				Logger.Warn($"Could not get file info for \"{file}\". {e}");
-				continue;
-			}
-
-			// If the file name matches a config file name, check to see if we have a reference to it.
-			if (fi.Extension == extensionWithSeparator
-			    && fi.Name.StartsWith(ConfigPrefix)
-			    && fi.Name.Length == ConfigPrefix.Length + guidLength + extensionWithSeparator.Length)
-			{
-				// Parse the guid.
-				Guid configGuid;
-				try
-				{
-					var configGuidStr = fi.Name.Substring(ConfigPrefix.Length, guidLength);
-					configGuid = Guid.Parse(configGuidStr);
-				}
-				catch
-				{
-					continue;
-				}
-
-				// See if we have a reference to it.
-				var found = false;
-				foreach (var kvp in ConfigData.GetConfigs())
-				{
-					if (kvp.Key == configGuid)
-					{
-						found = true;
-						break;
-					}
-				}
-
-				// If we don't have a reference to it, delete it.
-				if (!found)
-				{
-					try
-					{
-						Logger.Info($"Deleting {fi.Name}...");
-						File.Delete(fi.FullName);
-						Logger.Info($"Deleted {fi.Name}.");
-					}
-					catch (Exception e)
-					{
-						Logger.Error($"Failed to delete {fi.Name}. {e}");
-					}
-				}
+				Logger.Error($"Failed to delete {fileName}. {e}");
 			}
 		}
 	}
@@ -367,6 +315,10 @@ internal abstract class ConfigManager<TEditorConfig, TConfig> : Notifier<ConfigM
 			DeleteConfig(invalidConfigGuid);
 		}
 
+		// Do not treat any invalid configs as intentionally deleted. We want to err on
+		// keeping these files around when we close.
+		DeletedConfigs.Clear();
+
 		// Now that names are loaded, refresh the sorted lists of guids of names.
 		ConfigData.UpdateSortedConfigs();
 
@@ -385,6 +337,9 @@ internal abstract class ConfigManager<TEditorConfig, TConfig> : Notifier<ConfigM
 		config.AddObserver(this);
 		ConfigData.AddConfig(config);
 		Notify(NotificationConfigAdded, this, config.Guid);
+
+		// Remove any record of this config being deleted.
+		DeletedConfigs.Remove(config.Guid);
 	}
 
 	public TEditorConfig AddConfig(Guid guid, string name)
@@ -420,6 +375,10 @@ internal abstract class ConfigManager<TEditorConfig, TConfig> : Notifier<ConfigM
 		ConfigData.RemoveConfig(guid);
 		OnConfigDeleted(guid);
 		Notify(NotificationConfigAdded, this, guid);
+
+		// Record this config as being intentionally deleted so we can consider it
+		// for deletion from disk later.
+		DeletedConfigs.Add(guid);
 	}
 
 	public TEditorConfig CloneConfig(Guid guid)
