@@ -134,7 +134,7 @@ internal sealed class UIWaveFormPreferences
 		ImGui.Separator();
 		if (ImGuiLayoutUtils.BeginTable("Waveform Antialiasing", TitleColumnWidth))
 		{
-			ImGuiLayoutUtils.DrawRowCheckbox("Antialias", ref p.AntiAlias,
+			ImGuiLayoutUtils.DrawRowCheckbox(true, "Antialias", p, nameof(PreferencesWaveForm.AntiAlias), false,
 				"Whether or not to use FXAA.");
 
 			ImGuiLayoutUtils.DrawRowSliderFloat(true, "Subpix", p, nameof(PreferencesWaveForm.AntiAliasSubpix), 0.0f, 1.0f, false,

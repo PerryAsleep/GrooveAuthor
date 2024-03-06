@@ -57,7 +57,7 @@ internal sealed class UIScrollPreferences
 				ImGuiLayoutUtils.DrawRowDragDouble(true, "Scroll Anim Time", p, nameof(p.ScrollInterpolationDuration), false,
 					"The amount of time in seconds to spend animating from one position to another when scrolling with the scroll wheel.",
 					0.0001f, "%.6f", 0.0, 1.0);
-				ImGuiLayoutUtils.DrawRowCheckbox("Stop On Scroll", ref p.StopPlaybackWhenScrolling,
+				ImGuiLayoutUtils.DrawRowCheckbox(true, "Stop On Scroll", p, nameof(p.StopPlaybackWhenScrolling), false,
 					"Stop song playback when manually scrolling the chart.");
 				ImGuiLayoutUtils.EndTable();
 			}
