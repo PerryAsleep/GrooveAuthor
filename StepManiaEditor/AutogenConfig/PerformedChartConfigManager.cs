@@ -75,7 +75,7 @@ internal sealed class PerformedChartConfigManager : ConfigManager<EditorPerforme
 		defaultDpStaminaConfig.ShortName = "Stamina (DP)";
 		defaultDpStaminaConfig.TravelSpeedMinBPM = 99;
 		defaultDpStaminaConfig.Config.Transitions.Enabled = true;
-		defaultDpStaminaConfig.Config.Transitions.StepsPerTransitionMin = 32;
+		defaultDpStaminaConfig.Config.Transitions.StepsPerTransitionMin = 16;
 		defaultDpStaminaConfig.Config.LateralTightening.AbsoluteNPS = 26.666667;
 
 		DeleteConfig(DefaultPerformedChartPatternBalancedGuid);
@@ -84,7 +84,7 @@ internal sealed class PerformedChartConfigManager : ConfigManager<EditorPerforme
 		defaultPatternBalancedConfig.ShortName = "Balanced";
 		defaultPatternBalancedConfig.Description = "Default pattern generation settings. Balanced.";
 		defaultPatternBalancedConfig.Config.Transitions.Enabled = true;
-		defaultPatternBalancedConfig.Config.Transitions.StepsPerTransitionMin = 32;
+		defaultPatternBalancedConfig.Config.Transitions.StepsPerTransitionMin = 16;
 		defaultPatternBalancedConfig.Config.LateralTightening.Enabled = false;
 		defaultPatternBalancedConfig.Config.StepTightening.SpeedTighteningEnabled = false;
 		defaultPatternBalancedConfig.Config.StepTightening.DistanceTighteningEnabled = true;
@@ -96,7 +96,7 @@ internal sealed class PerformedChartConfigManager : ConfigManager<EditorPerforme
 		defaultPatternNoCandleConfig.ShortName = "No Candles";
 		defaultPatternNoCandleConfig.Description = "Default pattern generation settings. No candles.";
 		defaultPatternNoCandleConfig.Config.Transitions.Enabled = true;
-		defaultPatternNoCandleConfig.Config.Transitions.StepsPerTransitionMin = 32;
+		defaultPatternNoCandleConfig.Config.Transitions.StepsPerTransitionMin = 16;
 		defaultPatternNoCandleConfig.Config.LateralTightening.Enabled = false;
 		defaultPatternNoCandleConfig.Config.StepTightening.SpeedTighteningEnabled = false;
 		defaultPatternNoCandleConfig.Config.StepTightening.DistanceTighteningEnabled = true;
@@ -108,7 +108,7 @@ internal sealed class PerformedChartConfigManager : ConfigManager<EditorPerforme
 		defaultPatternNoInwardConfig.ShortName = "No Inward";
 		defaultPatternNoInwardConfig.Description = "Default pattern generation settings. No inward-facing orientations.";
 		defaultPatternNoInwardConfig.Config.Transitions.Enabled = true;
-		defaultPatternNoInwardConfig.Config.Transitions.StepsPerTransitionMin = 32;
+		defaultPatternNoInwardConfig.Config.Transitions.StepsPerTransitionMin = 16;
 		defaultPatternNoInwardConfig.Config.LateralTightening.Enabled = false;
 		defaultPatternNoInwardConfig.Config.StepTightening.SpeedTighteningEnabled = false;
 		defaultPatternNoInwardConfig.Config.StepTightening.DistanceTighteningEnabled = true;
