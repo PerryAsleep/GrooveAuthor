@@ -136,7 +136,7 @@ internal sealed class ActionRestoreWaveFormPreferenceDefaults : EditorAction
 
 	public override string ToString()
 	{
-		return "Restore Waveform default preferences.";
+		return "Restore Waveform Preferences to default values.";
 	}
 
 	protected override void DoImplementation()

@@ -1,5 +1,6 @@
 ﻿using System.Diagnostics;
 using System.Reflection;
+using static StepManiaEditor.EditorActionUtils;
 
 namespace StepManiaEditor;
 
@@ -87,7 +88,7 @@ internal sealed class ActionSetObjectFieldOrPropertyReferenceNoClone<T> : Editor
 
 	public override string ToString()
 	{
-		return $"Set {O.GetType()} {FieldOrPropertyName} '{PreviousValue}' > '{Value}'.";
+		return GetSetFieldOrPropertyStringForClass(O, FieldOrPropertyName, PreviousValue, Value);
 	}
 
 	protected override void DoImplementation()

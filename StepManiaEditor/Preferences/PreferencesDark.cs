@@ -1,5 +1,5 @@
-﻿using System.Text.Json.Serialization;
-using System.Numerics;
+﻿using System.Numerics;
+using System.Text.Json.Serialization;
 using static StepManiaEditor.PreferencesDark;
 
 namespace StepManiaEditor;
@@ -81,7 +81,7 @@ internal sealed class ActionRestoreDarkBgPreferenceDefaults : EditorAction
 
 	public override string ToString()
 	{
-		return "Restore dark background default preferences.";
+		return "Restore Dark Preferences to default values.";
 	}
 
 	protected override void DoImplementation()

@@ -176,7 +176,7 @@ internal sealed class ActionRestoreScrollPreferenceDefaults : EditorAction
 
 	public override string ToString()
 	{
-		return "Restore scroll default preferences.";
+		return "Restore Scroll Preferences to default values.";
 	}
 
 	protected override void DoImplementation()

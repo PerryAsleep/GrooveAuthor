@@ -131,7 +131,7 @@ internal sealed class ActionRestoreMiniMapPreferenceDefaults : EditorAction
 
 	public override string ToString()
 	{
-		return "Restore Mini Map default preferences.";
+		return "Restore Mini Map Preferences to default values.";
 	}
 
 	protected override void DoImplementation()

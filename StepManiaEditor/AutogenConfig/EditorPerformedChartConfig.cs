@@ -150,6 +150,19 @@ internal sealed class EditorPerformedChartConfig :
 	#region String Representataion
 
 	/// <summary>
+	/// Get a string to use in log statements for identifying this config object.
+	/// </summary>
+	/// <returns>String to use in log statements for identifying this config object.</returns>
+	public string GetLogString()
+	{
+		if (!string.IsNullOrEmpty(ShortName))
+			return ShortName;
+		if (!string.IsNullOrEmpty(Name))
+			return Name;
+		return GetAbbreviation();
+	}
+
+	/// <summary>
 	/// Gets the string representation of this EditorPerformedChartConfig.
 	/// </summary>
 	/// <returns>String representation of this EditorPerformedChartConfig.</returns>

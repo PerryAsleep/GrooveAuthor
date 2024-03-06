@@ -39,4 +39,10 @@ internal sealed class ActionSetPerformedChartConfigArrowWeight : EditorAction
 	{
 		return false;
 	}
+
+	public override string ToString()
+	{
+		return
+			$"Set {Config.GetLogString()} {ChartTypeString(ChartType)} Arrow Weight [{LaneIndex}] From {PreviousWeight} To {Weight}.";
+	}
 }

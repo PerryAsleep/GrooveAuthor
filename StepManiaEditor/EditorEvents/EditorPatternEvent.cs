@@ -411,11 +411,7 @@ internal sealed class EditorPatternEvent : EditorEvent, IChartRegion,
 		var patternName = patternConfig.Name;
 		if (string.IsNullOrEmpty(patternName))
 			patternName = patternConfig.GetAbbreviation();
-		var pccName = performedChartConfig.ShortName;
-		if (string.IsNullOrEmpty(pccName))
-			pccName = performedChartConfig.Name;
-		if (string.IsNullOrEmpty(pccName))
-			pccName = performedChartConfig.GetAbbreviation();
+		var pccName = performedChartConfig.GetLogString();
 
 		return $"{patternName}, {pccName}";
 	}

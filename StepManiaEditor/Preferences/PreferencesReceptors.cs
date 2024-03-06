@@ -153,7 +153,7 @@ internal sealed class ActionRestoreAnimationsPreferenceDefaults : EditorAction
 
 	public override string ToString()
 	{
-		return "Restore animation default preferences.";
+		return "Restore Animation Preferences to default values.";
 	}
 
 	protected override void DoImplementation()

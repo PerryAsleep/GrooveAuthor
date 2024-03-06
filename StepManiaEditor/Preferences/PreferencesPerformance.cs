@@ -86,7 +86,7 @@ internal sealed class ActionRestorePerformancePreferenceDefaults : EditorAction
 
 	public override string ToString()
 	{
-		return "Restore performance monitoring default preferences.";
+		return "Restore Performance Monitoring Preferences to default values.";
 	}
 
 	protected override void DoImplementation()

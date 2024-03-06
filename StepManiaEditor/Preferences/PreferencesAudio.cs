@@ -285,7 +285,7 @@ internal sealed class ActionRestoreAudioPreferenceDefaults : EditorAction
 
 	public override string ToString()
 	{
-		return "Restore audio default preferences.";
+		return "Restore Audio Preferences to default values.";
 	}
 
 	protected override void DoImplementation()

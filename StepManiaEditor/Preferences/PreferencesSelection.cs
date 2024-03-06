@@ -67,7 +67,7 @@ internal sealed class ActionRestoreSelectionPreferenceDefaults : EditorAction
 
 	public override string ToString()
 	{
-		return "Restore selection default preferences.";
+		return "Restore Selection Preferences to default values.";
 	}
 
 	protected override void DoImplementation()
