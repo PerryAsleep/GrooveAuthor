@@ -10,7 +10,7 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 	public const string NotificationUndoHistorySizeChanged = "UndoHistorySizeChanged";
 
 	// Default values.
-	public const int DefaultRecentFilesHistorySize = 10;
+	public const int DefaultRecentFilesHistorySize = 20;
 	public const ChartType DefaultDefaultStepsType = ChartType.dance_single;
 	public const ChartDifficultyType DefaultDefaultDifficultyType = ChartDifficultyType.Challenge;
 

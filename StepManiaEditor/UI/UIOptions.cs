@@ -41,9 +41,9 @@ public class UIOptions
 				ImGuiLayoutUtils.DrawRowCheckbox(true, "Open Last File On Launch", p,
 					nameof(PreferencesOptions.OpenLastOpenedFileOnLaunch), false,
 					$"Whether or not to open the last opened file when launching {Utils.GetAppName()}.");
-				ImGuiLayoutUtils.DrawRowSliderInt(true, "File History Size", p,
-					nameof(PreferencesOptions.RecentFilesHistorySize), 0, 50, false,
-					"Number of files to remember in the history used for opening recent files.");
+				ImGuiLayoutUtils.DrawRowDragInt(true, "File History Size", p,
+					nameof(PreferencesOptions.RecentFilesHistorySize), false,
+					"Number of files to remember in the history used for opening recent files.", 1.0f, "%i", 0, 100);
 
 				ImGuiLayoutUtils.EndTable();
 			}
@@ -51,9 +51,9 @@ public class UIOptions
 			ImGui.Separator();
 			if (ImGuiLayoutUtils.BeginTable("Options Undo", TitleColumnWidth))
 			{
-				ImGuiLayoutUtils.DrawRowInputInt(true, "Undo History Size", p,
+				ImGuiLayoutUtils.DrawRowDragInt(true, "Undo History Size", p,
 					nameof(PreferencesOptions.UndoHistorySize), false,
-					"Number of actions which can be stored in the undo history.", 1, 32768);
+					"Number of actions which can be stored in the undo history.", 1.0f, "%i", 1, 32768);
 
 				ImGuiLayoutUtils.EndTable();
 			}
