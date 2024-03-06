@@ -1,7 +1,6 @@
 ﻿using System;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using Color = Microsoft.Xna.Framework.Color;
-using Vector2 = Microsoft.Xna.Framework.Vector2;
 using static Fumen.FumenExtensions;
 
 namespace StepManiaEditor;
@@ -46,12 +45,12 @@ public class WaveFormRenderer
 	/// <summary>
 	/// Width of texture in pixels.
 	/// </summary>
-	private readonly uint Width;
+	private uint Width;
 
 	/// <summary>
 	/// Height of texture in pixels.
 	/// </summary>
-	private readonly uint Height;
+	private uint Height;
 
 	/// <summary>
 	/// The y focal point for orienting the waveform and controlling zooming.
@@ -68,22 +67,22 @@ public class WaveFormRenderer
 	/// <summary>
 	/// Textures to render to. Array for double buffering.
 	/// </summary>
-	private readonly Texture2D[] Textures;
+	private Texture2D[] Textures;
 
 	/// <summary>
 	/// BGR565 data to set on the texture after updating each frame.
 	/// </summary>
-	private readonly ushort[] BGR565Data;
+	private ushort[] BGR565Data;
 
 	/// <summary>
 	/// One row of dense colored pixels, used for copying memory quickly into the data buffer instead of looping.
 	/// </summary>
-	private readonly ushort[] DenseLine;
+	private ushort[] DenseLine;
 
 	/// <summary>
 	/// One row of sparse colored pixels, used for copying memory quickly into the data buffer instead of looping.
 	/// </summary>
-	private readonly ushort[] SparseLine;
+	private ushort[] SparseLine;
 
 	/// <summary>
 	/// Index into Textures array to control which texture we write to while the other is being rendered.
@@ -144,6 +143,17 @@ public class WaveFormRenderer
 	/// <param name="height">Texture height in pixels.</param>
 	public WaveFormRenderer(GraphicsDevice graphicsDevice, uint width, uint height)
 	{
+		Resize(graphicsDevice, width, height);
+	}
+
+	/// <summary>
+	/// Resize the WaveForm.
+	/// </summary>
+	/// <param name="graphicsDevice">GraphicsDevice to use for creating textures.</param>
+	/// <param name="width">Texture width in pixels.</param>
+	/// <param name="height">Texture height in pixels.</param>
+	public void Resize(GraphicsDevice graphicsDevice, uint width, uint height)
+	{
 		Width = width;
 		Height = height;
 
@@ -163,6 +173,8 @@ public class WaveFormRenderer
 			DenseLine[i] = ColorDense;
 			SparseLine[i] = ColorSparse;
 		}
+
+		InvalidateLastFrameData();
 	}
 
 	/// <summary>

@@ -896,18 +896,23 @@ internal sealed class Editor :
 	private void InitializeWaveFormRenderer()
 	{
 		var p = Preferences.Instance;
-		WaveFormRenderer = new WaveFormRenderer(GraphicsDevice, WaveFormTextureWidth, MaxScreenHeight);
+		WaveFormRenderer = new WaveFormRenderer(GraphicsDevice, WaveFormTextureWidth, (uint)Math.Max(1, GetViewportHeight()));
 		WaveFormRenderer.SetColors(WaveFormColorDense, WaveFormColorSparse);
 		WaveFormRenderer.SetXPerChannelScale(p.PreferencesWaveForm.WaveFormMaxXPercentagePerChannel);
 		WaveFormRenderer.SetSoundMipMap(MusicManager.GetMusicMipMap());
 		WaveFormRenderer.SetFocalPointY(GetFocalPointY());
+		RecreateWaveformRenderTargets();
+	}
+
+	private void RecreateWaveformRenderTargets()
+	{
 		WaveformRenderTargets = new RenderTarget2D[2];
 		for (var i = 0; i < 2; i++)
 		{
 			WaveformRenderTargets[i] = new RenderTarget2D(
 				GraphicsDevice,
 				WaveFormTextureWidth,
-				(int)MaxScreenHeight,
+				Math.Max(1, GetViewportHeight()),
 				false,
 				GraphicsDevice.PresentationParameters.BackBufferFormat,
 				DepthFormat.Depth24);
@@ -1222,6 +1227,10 @@ internal sealed class Editor :
 
 		// Update focal point.
 		Preferences.Instance.PreferencesReceptors.ClampViewportPositions();
+
+		// Resize the Waveform.
+		WaveFormRenderer.Resize(GraphicsDevice, WaveFormTextureWidth, (uint)Math.Max(1, GetViewportHeight()));
+		RecreateWaveformRenderTargets();
 	}
 
 	public int GetViewportWidth()
