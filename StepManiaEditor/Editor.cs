@@ -5171,7 +5171,7 @@ internal sealed class Editor :
 		if (EditEarlyOut())
 			return;
 
-		editorSong.Save(fileType, fullPath, (success) =>
+		editorSong?.Save(fileType, fullPath, (success) =>
 		{
 			UpdateWindowTitle();
 			UpdateRecentFilesForActiveSong(Position.ChartPosition, ZoomManager.GetSpacingZoom());
@@ -5181,7 +5181,7 @@ internal sealed class Editor :
 			}
 			else
 			{
-				var fileName = editorSong?.GetFileName();
+				var fileName = editorSong.GetFileName();
 				if (string.IsNullOrEmpty(fileName))
 					fileName = "file";
 				UIModals.OpenModalOneButton(
