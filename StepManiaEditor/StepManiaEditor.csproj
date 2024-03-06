@@ -19,8 +19,11 @@
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 	</PropertyGroup>
 	<ItemGroup>
+		<Compile Remove="docs\**" />
 		<Compile Remove="MonoGame\**" />
+		<EmbeddedResource Remove="docs\**" />
 		<EmbeddedResource Remove="MonoGame\**" />
+		<None Remove="docs\**" />
 		<None Remove="MonoGame\**" />
 	</ItemGroup>
 	<ItemGroup>
