@@ -1556,34 +1556,44 @@ internal sealed class Editor :
 			return;
 		}
 
-		var inReceptorArea = Receptor.IsInReceptorArea(
-			EditorMouseState.X(),
-			EditorMouseState.Y(),
-			GetFocalPoint(),
-			ZoomManager.GetSizeZoom(),
-			TextureAtlas,
-			ArrowGraphicManager,
-			ActiveChart);
+		var mouseX = EditorMouseState.X();
+		var mouseY = EditorMouseState.Y();
+		var atEdgeOfScreen = mouseX <= 0 || mouseX >= GetViewportWidth() - 1 || mouseY <= 0 || mouseY >= GetViewportHeight() - 1;
+		var downThisFrame = EditorMouseState.GetButtonState(EditorMouseState.Button.Left).DownThisFrame();
+		var clickingToDragWindowEdge = atEdgeOfScreen && downThisFrame;
 
-		// Process input for the mini map.
-		if (!SelectedRegion.IsActive() && !MovingFocalPoint)
-			ProcessInputForMiniMap();
-
-		// Process input for grabbing the receptors and moving the focal point.
-		if (!SelectedRegion.IsActive() && !MiniMapCapturingMouse)
+		// If the user has clicked this frame and they are at the edge of screen treat that as an intent to resize the window.
+		if (!clickingToDragWindowEdge)
 		{
-			ProcessInputForMovingFocalPoint(inReceptorArea);
-			// Update cursor based on whether the receptors could be grabbed.
-			if (inReceptorArea && !Preferences.Instance.PreferencesReceptors.LockPosition)
-				CurrentDesiredCursor = MouseCursor.SizeAll;
+			var inReceptorArea = Receptor.IsInReceptorArea(
+				mouseX,
+				mouseY,
+				GetFocalPoint(),
+				ZoomManager.GetSizeZoom(),
+				TextureAtlas,
+				ArrowGraphicManager,
+				ActiveChart);
+
+			// Process input for the mini map.
+			if (!SelectedRegion.IsActive() && !MovingFocalPoint)
+				ProcessInputForMiniMap();
+
+			// Process input for grabbing the receptors and moving the focal point.
+			if (!SelectedRegion.IsActive() && !MiniMapCapturingMouse)
+			{
+				ProcessInputForMovingFocalPoint(inReceptorArea);
+				// Update cursor based on whether the receptors could be grabbed.
+				if (inReceptorArea && !Preferences.Instance.PreferencesReceptors.LockPosition)
+					CurrentDesiredCursor = MouseCursor.SizeAll;
+			}
+
+			// Process input for selecting a region.
+			if (!MiniMapCapturingMouse && !MovingFocalPoint)
+				ProcessInputForSelectedRegion(currentTime);
+
+			// Process right click popup eligibility.
+			CanShowRightClickPopupThisFrame = !MiniMapCapturingMouse && !MovingFocalPoint;
 		}
-
-		// Process input for selecting a region.
-		if (!MiniMapCapturingMouse && !MovingFocalPoint)
-			ProcessInputForSelectedRegion(currentTime);
-
-		// Process right click popup eligibility.
-		CanShowRightClickPopupThisFrame = !MiniMapCapturingMouse && !MovingFocalPoint && !MovingFocalPoint;
 
 		UpdateCursor();
 
