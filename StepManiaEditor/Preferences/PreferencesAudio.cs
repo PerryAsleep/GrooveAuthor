@@ -24,11 +24,11 @@ internal sealed class PreferencesAudio : Notifier<PreferencesAudio>
 	public const float DefaultAssistTickVolume = 0.7f;
 	public const float DefaultAssistTickAttackTime = 0.0f;
 	public const bool DefaultUseAssistTick = false;
-	public const bool DefaultSkipAssistTickOnBeatTick = false;
-	public const float DefaultBeatTickVolume = 1.0f;
-	public const float DefaultBeatTickAttackTime = 0.001f;
+	public const bool DefaultSkipAssistTickOnBeatTick = true;
+	public const float DefaultBeatTickVolume = 0.95f;
+	public const float DefaultBeatTickAttackTime = 0.0f;
 	public const bool DefaultUseBeatTick = false;
-	public const bool DefaultSkipBeatTickOnAssistTick = true;
+	public const bool DefaultSkipBeatTickOnAssistTick = false;
 	public const int DefaultDspBufferSize = 512;
 	public const int DefaultDspNumBuffers = 4;
 	public const double DefaultPreviewFadeInTime = 0.0;
