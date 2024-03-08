@@ -281,6 +281,7 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 			out var previousStepFoot,
 			out var previousStepTime,
 			out var previousFooting,
+			out var numSameArrowStepsInARow,
 			out var numStepsAtLastTransition,
 			out var lastTransitionLeft);
 
@@ -296,6 +297,7 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 			previousFooting,
 			followingFooting,
 			pattern.IgnorePrecedingDistribution ? new int[stepGraph.NumArrows] : currentLaneCounts,
+			numSameArrowStepsInARow,
 			timingEvents,
 			totalStepsBeforePattern,
 			numStepsAtLastTransition,
@@ -475,6 +477,7 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 		out int previousStepFoot,
 		out double[] previousStepTime,
 		out int[] previousFooting,
+		out int[] numSameArrowStepsInARow,
 		out int numStepsAtLastTransition,
 		out bool? lastTransitionLeft)
 	{
@@ -482,8 +485,11 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 		previousStepFoot = Constants.InvalidFoot;
 		previousStepTime = new double[Constants.NumFeet];
 		previousFooting = new int[Constants.NumFeet];
+		numSameArrowStepsInARow = new int[Constants.NumFeet];
 		for (var i = 0; i < Constants.NumFeet; i++)
+		{
 			previousFooting[i] = Constants.InvalidFoot;
+		}
 
 		// Set up transition checking variables.
 		var transitionCutoffPercentage = pattern.GetPerformedChartConfig().Config.Transitions.TransitionCutoffPercentage;
@@ -506,8 +512,40 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 			if (currentExpressedChartSearchNode.Position >= firstStepRow)
 				break;
 
+			// Track same arrow steps in a row per foot.
+			var link = currentExpressedChartSearchNode.PreviousLink?.GraphLink;
+			if (link != null)
+			{
+				if (link.IsSingleStep(out var stepType, out var stepFoot))
+				{
+					if (stepType == StepType.SameArrow)
+					{
+						numSameArrowStepsInARow[stepFoot]++;
+					}
+					else
+					{
+						numSameArrowStepsInARow[stepFoot] = 0;
+					}
+				}
+				else
+				{
+					for (var foot = 0; foot < Constants.NumFeet; foot++)
+					{
+						if (link.InvolvesStepWithFoot(foot))
+							numSameArrowStepsInARow[foot] = 0;
+					}
+				}
+			}
+			else
+			{
+				for (var foot = 0; foot < Constants.NumFeet; foot++)
+				{
+					numSameArrowStepsInARow[foot] = 0;
+				}
+			}
+
 			// Track transition information.
-			var isStep = !(currentExpressedChartSearchNode.PreviousLink?.GraphLink?.IsRelease() ?? true);
+			var isStep = !(link?.IsRelease() ?? true);
 			if (isStep)
 				currentStepsInRegionBeforePattern++;
 			stepGraph.GetSide(currentExpressedChartSearchNode.GraphNode, transitionCutoffPercentage, out var leftSide);
