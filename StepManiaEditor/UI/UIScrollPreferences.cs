@@ -25,21 +25,7 @@ internal sealed class UIScrollPreferences
 			if (ImGuiLayoutUtils.BeginTable("Scroll", TitleColumnWidth))
 			{
 				DrawSpacingModeRow("Spacing Mode");
-
-				ImGuiLayoutUtils.DrawRowEnum<Editor.WaveFormScrollMode>(true, "Waveform Scroll Mode", p,
-					nameof(PreferencesScroll.RowBasedWaveFormScrollMode), false,
-					"How the wave form should scroll when the Chart does not scroll with Constant Time."
-					+ "\nCurrent Tempo:          The wave form will match the current tempo, ignoring rate changes."
-					+ "\n                        Best option for Charts which have legitimate musical tempo changes."
-					+ "\n                        Bad option for sm file stutter gimmicks as they momentarily double the tempo."
-					+ "\nCurrent Tempo And Rate: The wave form will match the current tempo and rate."
-					+ "\n                        Rates that are less than or equal 0 will be ignored."
-					+ "\n                        Best option to match ssc file scroll gimmicks."
-					+ "\n                        Bad option for sm file stutter gimmicks as they momentarily double the tempo."
-					+ "\nMost Common Tempo:      The wave form will match the most common tempo in the Chart, ignoring rate"
-					+ "\n                        changes. Best option to achieve smooth scrolling when the Chart is"
-					+ "\n                        effectively one tempo but has brief scroll rate gimmicks.");
-
+				DrawWaveFormScrollMode();
 				ImGuiLayoutUtils.EndTable();
 			}
 
@@ -148,6 +134,24 @@ internal sealed class UIScrollPreferences
 		}
 
 		ImGui.End();
+	}
+
+	public static void DrawWaveFormScrollMode()
+	{
+		ImGuiLayoutUtils.DrawRowEnum<Editor.WaveFormScrollMode>(true, "Waveform Scroll Mode",
+			Preferences.Instance.PreferencesScroll,
+			nameof(PreferencesScroll.RowBasedWaveFormScrollMode), false,
+			"How the wave form should scroll when the Chart does not scroll with Constant Time."
+			+ "\nCurrent Tempo:          The wave form will match the current tempo, ignoring rate changes."
+			+ "\n                        Best option for Charts which have legitimate musical tempo changes."
+			+ "\n                        Bad option for sm file stutter gimmicks as they momentarily double the tempo."
+			+ "\nCurrent Tempo And Rate: The wave form will match the current tempo and rate."
+			+ "\n                        Rates that are less than or equal 0 will be ignored."
+			+ "\n                        Best option to match ssc file scroll gimmicks."
+			+ "\n                        Bad option for sm file stutter gimmicks as they momentarily double the tempo."
+			+ "\nMost Common Tempo:      The wave form will match the most common tempo in the Chart, ignoring rate"
+			+ "\n                        changes. Best option to achieve smooth scrolling when the Chart is"
+			+ "\n                        effectively one tempo but has brief scroll rate gimmicks.");
 	}
 
 	public static void DrawSpacingModeRow(string title)

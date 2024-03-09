@@ -60,6 +60,8 @@ internal sealed class UIWaveFormPreferences
 		ImGui.Separator();
 		if (ImGuiLayoutUtils.BeginTable("Waveform", TitleColumnWidth))
 		{
+			UIScrollPreferences.DrawWaveFormScrollMode();
+
 			ImGuiLayoutUtils.DrawRowCheckbox(true, "Scale Width", p,
 				nameof(PreferencesWaveForm.WaveFormScaleXWhenZooming), false,
 				"When zooming, whether the waveform should scale its width to match" +
