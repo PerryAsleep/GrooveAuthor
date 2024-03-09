@@ -38,7 +38,7 @@ internal sealed class Documentation
 	{
 #if RELEASE
 		var version = Utils.GetAppVersion();
-		var tree = $"{version.Major}.{version.Minor}.{version.Build}";
+		var tree = $"v{version.Major}.{version.Minor}.{version.Build}";
 #else
 		const string tree = "main";
 #endif
