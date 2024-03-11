@@ -1664,6 +1664,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 	/// <summary>
 	/// Gets all the holds overlapping the given chart position.
+	/// Does not include holds being edited.
 	/// </summary>
 	/// <param name="chartPosition">Chart position to find overlapping holds for.</param>
 	/// <param name="explicitEnumerator">
@@ -1695,7 +1696,9 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		while (enumerator.MovePrev() && numLanesChecked < NumInputs)
 		{
 			var e = enumerator.Current;
-			var lane = e!.GetLane();
+			if (e!.IsBeingEdited())
+				continue;
+			var lane = e.GetLane();
 			if (lane >= 0)
 			{
 				if (!lanesChecked[lane])
@@ -2363,11 +2366,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		}
 
 		// If this event is a lane note then it can't overlap a hold.
-		if (editorEvent is EditorTapNoteEvent
-		    || editorEvent is EditorHoldNoteEvent
-		    || editorEvent is EditorMineNoteEvent
-		    || editorEvent is EditorFakeNoteEvent
-		    || editorEvent is EditorLiftNoteEvent)
+		if (editorEvent.IsLaneNote())
 		{
 			var potentiallyOverlappingHolds = GetHoldsOverlapping(row);
 			foreach (var hold in potentiallyOverlappingHolds)

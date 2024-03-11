@@ -2452,7 +2452,7 @@ internal sealed class Editor :
 		// Scan backwards until we have checked every lane for a long note which may
 		// be extending through the given start row. We cannot add the end events yet because
 		// we do not know at what position they will end until we scan down.
-		var holdsNeedingToBeCompleted = new EditorHoldNoteEvent[ActiveChart.NumInputs];
+		var holdsNeedingToBeCompleted = new HashSet<EditorHoldNoteEvent>();
 		var holdNotes = ScanBackwardsForHolds(enumerator, chartPositionAtTopOfScreen);
 		foreach (var hn in holdNotes)
 		{
@@ -2467,7 +2467,7 @@ internal sealed class Editor :
 				sizeZoom);
 			noteEvents.Add(hn);
 
-			holdsNeedingToBeCompleted[hn.GetLane()] = hn;
+			holdsNeedingToBeCompleted.Add(hn);
 		}
 
 		var hasNextRateEvent = rateEnumerator.MoveNext();
@@ -2551,7 +2551,7 @@ internal sealed class Editor :
 				{
 					// Record that there is in an in-progress hold that will need to be ended.
 					if (!CheckForCompletingHold(hn, previousRateEventY, nextRateEvent))
-						holdsNeedingToBeCompleted[e.GetLane()] = hn;
+						holdsNeedingToBeCompleted.Add(hn);
 				}
 			}
 			else
@@ -2993,17 +2993,28 @@ internal sealed class Editor :
 	/// </summary>
 	/// <remarks>Helper for UpdateChartEvents.</remarks>
 	private void CheckForCompletingHolds(
-		EditorHoldNoteEvent[] holds,
+		HashSet<EditorHoldNoteEvent> holds,
 		double previousRateEventY,
 		EditorRateAlteringEvent nextRateEvent)
 	{
-		for (var i = 0; i < holds.Length; i++)
+		if (holds.Count == 0)
+			return;
+
+		List<EditorHoldNoteEvent> holdsToRemove = null;
+		foreach (var hold in holds)
 		{
-			if (holds[i] == null)
-				continue;
-			if (CheckForCompletingHold(holds[i], previousRateEventY, nextRateEvent))
-				holds[i] = null;
+			if (CheckForCompletingHold(hold, previousRateEventY, nextRateEvent))
+			{
+				holdsToRemove ??= new List<EditorHoldNoteEvent>();
+				holdsToRemove.Add(hold);
+			}
 		}
+
+		if (holdsToRemove == null)
+			return;
+
+		foreach (var hold in holdsToRemove)
+			holds.Remove(hold);
 	}
 
 	/// <summary>
