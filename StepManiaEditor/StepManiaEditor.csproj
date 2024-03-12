@@ -105,6 +105,6 @@
 		<Exec Command="dotnet tool restore" />
 	</Target>
 	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
-		<Exec Command="call $(ProjectDir)build.bat &quot;$(ProjectDir)&quot; &quot;$(TargetDir)&quot;" />
+		<Exec Command="call &quot;$(ProjectDir)build.bat&quot; &quot;$(ProjectDir)&quot; &quot;$(TargetDir)&quot;" />
 	</Target>
 </Project>
