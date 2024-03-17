@@ -42,7 +42,7 @@ internal sealed class Documentation
 #else
 		const string tree = "main";
 #endif
-		return $"{GitHubUrl}/tree/{tree}/StepManiaEditor/docs/";
+		return $"{GitHubUrl}/blob/{tree}/StepManiaEditor/docs/";
 	}
 
 	/// <summary>
