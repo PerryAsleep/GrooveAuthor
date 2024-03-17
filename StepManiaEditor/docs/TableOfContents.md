@@ -2,8 +2,6 @@
 
 # Table of Contents
 
-More documentation will be coming soon.
-
 ## Sync and Timing
 
  - [Song Sync](SongSync.md)
