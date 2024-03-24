@@ -79,6 +79,7 @@ public class KeyCommandManager
 		private double StartTimeAnyHeld = UnsetTime;
 		private double StartTimeLastHeld = UnsetTime;
 		private double NextTriggerTime = UnsetTime;
+		private bool ActivatedWhileOtherBlockingCommandActive;
 		private bool Active;
 
 		public CommandState(Command command)
@@ -101,8 +102,10 @@ public class KeyCommandManager
 		/// </summary>
 		/// <param name="timeInSeconds">Current time in seconds.</param>
 		/// <param name="anyOthersBlocking">Whether or not any other Commands are active and blocking.</param>
+		/// <param name="keyCommandManager">Parent KeyCommandManager to use for checking input against previous state.</param>
 		/// <param name="state">KeyboardState for checking input keys.</param>
-		public void Update(double timeInSeconds, bool anyOthersBlocking, ref KeyboardState state)
+		public void Update(double timeInSeconds, bool anyOthersBlocking, KeyCommandManager keyCommandManager,
+			ref KeyboardState state)
 		{
 			var canActivate = !anyOthersBlocking || Command.Independent;
 
@@ -116,17 +119,39 @@ public class KeyCommandManager
 				{
 					allUp = false;
 					if (StartTimeAnyHeld < 0)
+					{
 						StartTimeAnyHeld = timeInSeconds;
-					if (last && StartTimeLastHeld < 0)
-						StartTimeLastHeld = timeInSeconds;
+					}
+
+					if (last)
+					{
+						// If the last key in the sequence is being pressed now, but another command
+						// is blocking input then record that scenario. In the future, when keys are
+						// released and the other command no longer blocks, we do not want this command
+						// to interpret remaining held keys as valid for activation. For example if
+						// someone were to hold Ctrl+S, then release Ctrl and S is still held, we do not
+						// want to activate a command that just requires pressing S.
+						// See also https://github.com/PerryAsleep/GrooveAuthor/issues/7
+						if (keyCommandManager.IsKeyDownThisFrame(Command.Input[i]) && !canActivate)
+							ActivatedWhileOtherBlockingCommandActive = true;
+
+						if (StartTimeLastHeld < 0)
+							StartTimeLastHeld = timeInSeconds;
+					}
 				}
 				else
 				{
 					allDown = false;
 					if (last)
+					{
 						StartTimeLastHeld = UnsetTime;
+						ActivatedWhileOtherBlockingCommandActive = false;
+					}
 				}
 			}
+
+			// Do not activate if this command was activated while another command was active.
+			canActivate &= !ActivatedWhileOtherBlockingCommandActive;
 
 			// If all the keys are down and the final key in the sequence was the last key pressed,
 			// then the inputs for this Command are active.
@@ -145,6 +170,7 @@ public class KeyCommandManager
 			if (allUp)
 			{
 				StartTimeAnyHeld = UnsetTime;
+				ActivatedWhileOtherBlockingCommandActive = false;
 			}
 
 			// Handle activating.
@@ -180,6 +206,7 @@ public class KeyCommandManager
 			StartTimeLastHeld = UnsetTime;
 			NextTriggerTime = UnsetTime;
 			Active = false;
+			ActivatedWhileOtherBlockingCommandActive = false;
 		}
 	}
 
@@ -189,6 +216,8 @@ public class KeyCommandManager
 	private List<CommandState> Commands = new();
 
 	private bool CommandsDirty;
+
+	private KeyboardState PreviousState;
 
 	/// <summary>
 	/// Cancels all commands.
@@ -235,9 +264,11 @@ public class KeyCommandManager
 		// Handle each Command.
 		foreach (var command in Commands)
 		{
-			command.Update(timeInSeconds, anyActive, ref state);
+			command.Update(timeInSeconds, anyActive, this, ref state);
 			anyActive |= command.IsActiveAndShouldBlockOtherCommands();
 		}
+
+		PreviousState = state;
 	}
 
 	/// <summary>
@@ -250,6 +281,11 @@ public class KeyCommandManager
 		// so that we can sort the commands the next time we update.
 		Commands.Add(new CommandState(command));
 		CommandsDirty = true;
+	}
+
+	public bool IsKeyDownThisFrame(Keys key)
+	{
+		return IsKeyDown(key) && !PreviousState.IsKeyDown(key);
 	}
 
 	public bool IsControlDown()
