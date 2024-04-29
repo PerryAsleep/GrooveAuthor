@@ -92,7 +92,18 @@ internal sealed class EditorSound : Notifier<EditorSound>
 			var file = state.GetFile();
 			if (!string.IsNullOrEmpty(file))
 			{
-				Logger.Info($"Loading {file}...");
+				// For logging, get the file name without the path.
+				var fileName = file;
+				try
+				{
+					fileName = System.IO.Path.GetFileName(file);
+				}
+				catch (Exception)
+				{
+					// Ignored
+				}
+
+				Logger.Info($"Loading {fileName}...");
 
 				// Load the sound file.
 				// This is not cancelable. According to FMOD: "you can't cancel it"
@@ -100,11 +111,11 @@ internal sealed class EditorSound : Notifier<EditorSound>
 				// Normally this is not a problem, but for hour-long files this is unfortunate.
 				var fmodSound = await SoundManager.LoadAsync(file);
 				CancellationTokenSource.Token.ThrowIfCancellationRequested();
-				Logger.Info($"Loaded {file}.");
+				Logger.Info($"Loaded {fileName}.");
 
 				try
 				{
-					Logger.Info($"Parsing {file}...");
+					Logger.Info($"Parsing {fileName}...");
 
 					// Allocate and set the sample buffer immediately so we can start playing it as we write to it.
 					SoundManager.AllocateSampleBuffer(fmodSound, Sound.SampleRate, out var samples, out var numChannels);
@@ -130,7 +141,7 @@ internal sealed class EditorSound : Notifier<EditorSound>
 					// Run the parsing tasks.
 					await Task.WhenAll(parsingTasks);
 
-					Logger.Info($"Parsed {file}.");
+					Logger.Info($"Parsed {fileName}.");
 				}
 				finally
 				{

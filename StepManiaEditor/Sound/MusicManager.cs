@@ -239,8 +239,8 @@ internal sealed class MusicManager
 		SetPreviewParameters(0.0, 0.0, 0.0, 1.5);
 
 		// Load the tick sounds.
-		AssistTickData.GetSound().LoadAsync("assist-tick.wav", false);
-		BeatTickData.GetSound().LoadAsync("beat-tick.wav", false);
+		AssistTickData.GetSound().LoadAsync(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "assist-tick.wav"), false);
+		BeatTickData.GetSound().LoadAsync(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "beat-tick.wav"), false);
 
 		// Create the DSP.
 		SoundManager.CreateDsp(DspName, dspChannelGroup, DspRead, this);
