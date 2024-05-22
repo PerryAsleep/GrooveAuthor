@@ -425,6 +425,21 @@ internal sealed class ImGuiLayoutUtils
 		DrawTextInput(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, affectsFile, validationFunc, help);
 	}
 
+	public static void DrawRowTextInputWithOneButton(bool undoable, string title, object o, string fieldName, bool affectsFile,
+		Action buttonAction, string buttonText, float buttonWidth, string help = null)
+	{
+		DrawRowTitleAndAdvanceColumn(title);
+
+		var textInputWidth = ImGui.GetContentRegionAvail().X - buttonWidth - ImGui.GetStyle().ItemSpacing.X;
+		DrawTextInput(undoable, title, o, fieldName, textInputWidth, affectsFile, null, help);
+
+		ImGui.SameLine();
+		if (ImGui.Button($"{buttonText}{GetElementTitle(title, fieldName)}", new Vector2(buttonWidth, 0.0f)))
+		{
+			buttonAction();
+		}
+	}
+
 	public static void DrawRowTextInputWithTransliteration(bool undoable, string title, object o, string fieldName,
 		string transliterationFieldName, bool affectsFile, string help = null)
 	{

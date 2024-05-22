@@ -15,6 +15,7 @@ internal sealed class UIChartProperties
 	private static readonly int TitleColumnWidth = UiScaled(100);
 	private static readonly Vector2 DefaultPosition = new(UiScaled(0), UiScaled(631));
 	private static readonly Vector2 DefaultSize = new(UiScaled(622), UiScaled(241));
+	private static readonly int UseStreamButtonWidth = UiScaled(80);
 
 	private readonly ImGuiArrowWeightsWidget ArrowWeightsWidget;
 	private readonly Editor Editor;
@@ -53,7 +54,9 @@ internal sealed class UIChartProperties
 					"Chart rating.", 1);
 				ImGuiLayoutUtils.DrawRowTextInput(true, "Name", editorChart, nameof(EditorChart.Name), true,
 					"Chart name.");
-				ImGuiLayoutUtils.DrawRowTextInput(true, "Description", editorChart, nameof(EditorChart.Description), true,
+				ImGuiLayoutUtils.DrawRowTextInputWithOneButton(true, "Description", editorChart, nameof(EditorChart.Description),
+					true,
+					() => CopyChartStreamToDescription(editorChart), "Use Stream", UseStreamButtonWidth,
 					"Chart description.");
 				ImGuiLayoutUtils.DrawRowTextInput(true, "Credit", editorChart, nameof(EditorChart.Credit), true,
 					"Who this chart should be credited to.");
@@ -157,5 +160,16 @@ internal sealed class UIChartProperties
 		if (!string.IsNullOrEmpty(editorChart.MusicPath))
 			ActionQueue.Instance.Do(
 				new ActionSetObjectFieldOrPropertyReference<string>(editorChart, nameof(EditorChart.MusicPath), "", true));
+	}
+
+	private static void CopyChartStreamToDescription(EditorChart editorChart)
+	{
+		var streamBreakdown = editorChart.GetStreamBreakdown();
+		var description = editorChart.Description;
+		if (streamBreakdown == description)
+			return;
+		ActionQueue.Instance.Do(
+			new ActionSetObjectFieldOrPropertyReference<string>(editorChart, nameof(EditorChart.Description),
+				editorChart.GetStreamBreakdown(), true));
 	}
 }
