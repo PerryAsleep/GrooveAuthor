@@ -7459,6 +7459,9 @@ internal sealed class Editor :
 		if (patterns == null || !patterns.Any())
 			return;
 
+		if (EditEarlyOut())
+			return;
+
 		if (useNewSeeds)
 		{
 			// Generate and commit new seeds as one action. This needs to be separate from the pattern
