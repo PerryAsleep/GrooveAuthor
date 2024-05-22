@@ -154,7 +154,7 @@ internal sealed class UIControls
 					{
 						foreach (var command in category.Commands)
 						{
-							ImGuiLayoutUtils.DrawTitleAndText(command.Name, command.Input);
+							ImGuiLayoutUtils.DrawRowTitleAndText(command.Name, command.Input);
 						}
 
 						ImGuiLayoutUtils.EndTable();

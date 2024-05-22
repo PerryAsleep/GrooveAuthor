@@ -63,6 +63,11 @@ internal sealed class ImGuiUtils
 		Editor = editor;
 	}
 
+	public static string GetSubdivisionTypeString(SubdivisionType subdivisionType)
+	{
+		return ValidNoteTypeStrings[(int)subdivisionType];
+	}
+
 	/// <summary>
 	/// This struct corresponds to ImGuiTableColumnSortSpecs in Dear ImGui.
 	/// In ImGuiNET, the corresponding struct does not use a correct layout.

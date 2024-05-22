@@ -116,6 +116,9 @@ internal sealed class Preferences
 	// Performance monitoring preferences
 	[JsonInclude] public PreferencesPerformance PreferencesPerformance = new();
 
+	// Stream breakdown preferences
+	[JsonInclude] public PreferencesStream PreferencesStream = new();
+
 	// Log preferences
 	[JsonInclude] public bool ShowLogWindow = true;
 	[JsonInclude] public int LogWindowDateDisplay = 1;

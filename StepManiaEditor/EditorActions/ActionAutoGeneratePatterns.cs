@@ -459,6 +459,9 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 	/// <param name="previousFooting">
 	/// Out parameter to record the lane stepped on per foot of the preceding steps.
 	/// </param>
+	/// <param name="numSameArrowStepsInARow">
+	/// Out parameter to record the number of SameArrow steps in a row per foot of the preceding steps.
+	/// </param>
 	/// <param name="numStepsAtLastTransition">
 	/// Out parameter to hold the number of steps in the chart the last transition occurred at.
 	/// </param>

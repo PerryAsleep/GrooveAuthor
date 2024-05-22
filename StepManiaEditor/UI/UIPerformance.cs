@@ -131,13 +131,13 @@ internal sealed class UIPerformance
 				// Draw UI controls.
 				if (ImGuiLayoutUtils.BeginTable("Performance Overview", TitleColumnWidth))
 				{
-					ImGuiLayoutUtils.DrawTitleAndText("Avg Frame Time", $"{frameMsOverLastSecond:F6} ms",
+					ImGuiLayoutUtils.DrawRowTitleAndText("Avg Frame Time", $"{frameMsOverLastSecond:F6} ms",
 						"Average frame time over the last second.");
-					ImGuiLayoutUtils.DrawTitleAndText("Avg FPS", $"{1.0 / frameTimeLastSecond:F6} ms",
+					ImGuiLayoutUtils.DrawRowTitleAndText("Avg FPS", $"{1.0 / frameTimeLastSecond:F6} ms",
 						"Average frames per second over the last second.");
-					ImGuiLayoutUtils.DrawTitleAndText("Frame Time", $"{FrameTimeValues[0] * 1000:F6} ms",
+					ImGuiLayoutUtils.DrawRowTitleAndText("Frame Time", $"{FrameTimeValues[0] * 1000:F6} ms",
 						"Time of the last frame.");
-					ImGuiLayoutUtils.DrawTitleAndText("FPS", $"{1.0 / FrameTimeValues[0]:F6} ms",
+					ImGuiLayoutUtils.DrawRowTitleAndText("FPS", $"{1.0 / FrameTimeValues[0]:F6} ms",
 						"Frames per second of the last frame.");
 					ImGuiLayoutUtils.DrawRowCheckbox(true, "Paused", p, nameof(PreferencesPerformance.PerformanceMonitorPaused),
 						false,

@@ -122,6 +122,13 @@ internal sealed class UIChartProperties
 						}
 					}
 
+					var noteType = GetSubdivisionTypeString(Preferences.Instance.PreferencesStream.NoteType);
+					var steps = Utils.GetMeasureSubdivision(Preferences.Instance.PreferencesStream.NoteType);
+					ImGuiLayoutUtils.DrawRowStream("Stream", editorChart?.GetStreamBreakdown() ?? "",
+						$"Breakdown of {noteType} note stream."
+						+ $"\nThis follows ITGmania / Simply Love rules where a measure is {SMCommon.RowsPerMeasure} rows and a measure"
+						+ $"\nwith at least {steps} steps is considered stream regardless of if the individual steps are {noteType} notes.");
+
 					ImGuiLayoutUtils.EndTable();
 				}
 			}

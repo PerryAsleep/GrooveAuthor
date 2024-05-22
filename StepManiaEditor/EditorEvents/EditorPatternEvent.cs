@@ -419,7 +419,7 @@ internal sealed class EditorPatternEvent : EditorEvent, IChartRegion,
 	public uint GetMiscEventTextColor()
 	{
 		var patternConfig = GetPatternConfig();
-		return ArrowGraphicManager.GetArrowColorForSubdivision(EditorPatternConfig.GetBeatSubdivision(patternConfig.PatternType));
+		return ArrowGraphicManager.GetArrowColorForSubdivision(GetBeatSubdivision(patternConfig.PatternType));
 	}
 
 	public override string GetShortTypeName()
@@ -471,7 +471,7 @@ internal sealed class EditorPatternEvent : EditorEvent, IChartRegion,
 	public int GetStepSpacing()
 	{
 		var patternConfig = GetPatternConfig();
-		return SMCommon.MaxValidDenominator / EditorPatternConfig.GetBeatSubdivision(patternConfig.PatternType);
+		return SMCommon.MaxValidDenominator / GetBeatSubdivision(patternConfig.PatternType);
 	}
 
 	/// <summary>

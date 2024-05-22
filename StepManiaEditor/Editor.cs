@@ -3642,6 +3642,7 @@ internal sealed class Editor :
 		UIReceptorPreferences.Draw();
 		UIOptions.Draw();
 		UIAudioPreferences.Draw();
+		UIStreamPreferences.Draw();
 
 		UISongProperties.Draw(ActiveSong);
 		UIChartProperties.Draw(ActiveChart);
@@ -3820,6 +3821,12 @@ internal sealed class Editor :
 				{
 					p.PreferencesReceptors.ShowReceptorPreferencesWindow = true;
 					ImGui.SetWindowFocus(UIReceptorPreferences.WindowTitle);
+				}
+
+				if (ImGui.MenuItem("Stream Preferences"))
+				{
+					p.PreferencesStream.ShowStreamPreferencesWindow = true;
+					ImGui.SetWindowFocus(UIStreamPreferences.WindowTitle);
 				}
 
 				ImGui.Separator();
