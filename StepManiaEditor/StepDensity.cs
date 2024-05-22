@@ -85,6 +85,7 @@ internal sealed class StepDensity : Fumen.IObserver<PreferencesStream>, Fumen.IO
 		var sb = new StringBuilder();
 		var first = true;
 		var previousStreamLastMeasure = 0;
+		var anyStreams = false;
 		foreach (var stream in Streams)
 		{
 			var streamLength = stream.Item2 - stream.Item1 + 1;
@@ -108,11 +109,15 @@ internal sealed class StepDensity : Fumen.IObserver<PreferencesStream>, Fumen.IO
 				}
 			}
 
+			anyStreams = true;
 			sb.Append(streamLength);
 
 			previousStreamLastMeasure = stream.Item2;
 			first = false;
 		}
+
+		if (!anyStreams)
+			return "No Streams";
 
 		return sb.ToString();
 	}

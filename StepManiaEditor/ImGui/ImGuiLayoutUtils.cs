@@ -3584,8 +3584,11 @@ internal sealed class ImGuiLayoutUtils
 
 		var remainingWidth = DrawHelp(help, ImGui.GetContentRegionAvail().X);
 		var textWidth = remainingWidth - ButtonSettingsSize.X - ButtonCopySize.X - ImGui.GetStyle().ItemSpacing.X * 2;
+
+		PushDisabled();
 		ImGui.SetNextItemWidth(textWidth);
-		Text(stream, textWidth);
+		ImGui.InputText(GetElementTitle(title), ref stream, 1024);
+		PopDisabled();
 
 		ImGui.SameLine();
 		if (ImGui.Button("Settings", ButtonSettingsSize))

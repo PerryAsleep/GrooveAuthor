@@ -385,6 +385,13 @@ internal sealed class ImGuiUtils
 	/// <param name="disabled">Whether or not the element should be disabled.</param>
 	public static void Text(string text, float width, bool disabled = false)
 	{
+		// The table below will render a line / border if the text is empty.
+		if (string.IsNullOrEmpty(text))
+		{
+			ImGui.Dummy(new Vector2(width, 0));
+			return;
+		}
+
 		// Wrap the text in Table in order to control the size precisely.
 		if (ImGui.BeginTable(text, 1, ImGuiTableFlags.None, new Vector2(width, 0), width))
 		{
