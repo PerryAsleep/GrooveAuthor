@@ -1,5 +1,6 @@
 ﻿using ImGuiNET;
 using static StepManiaEditor.ImGuiUtils;
+using static StepManiaEditor.PreferencesStream;
 
 namespace StepManiaEditor;
 
@@ -35,13 +36,39 @@ internal sealed class UIStreamPreferences
 
 				ImGuiLayoutUtils.DrawRowDragInt(true, "Short Break Length", p,
 					nameof(PreferencesStream.ShortBreakCutoff), false,
-					"Breaks at or under this many measures will be considered short breaks for stream notation.", 0.1F, "%i measures", 0, 64);
+					"Breaks at or under this many measures will be considered short breaks for stream notation.", 0.1F,
+					"%i measures", 0, 64);
 
-				ImGuiLayoutUtils.DrawRowCharacterInput(true, "Short Break Mark", p, nameof(PreferencesStream.ShortBreakCharacter), false,
+				ImGuiLayoutUtils.DrawRowCharacterInput(true, "Short Break Mark", p, nameof(PreferencesStream.ShortBreakCharacter),
+					false,
 					"Character to use to represent short breaks in stream notation.");
 
-				ImGuiLayoutUtils.DrawRowCharacterInput(true, "Long Break Mark", p, nameof(PreferencesStream.LongBreakCharacter), false,
+				ImGuiLayoutUtils.DrawRowCharacterInput(true, "Long Break Mark", p, nameof(PreferencesStream.LongBreakCharacter),
+					false,
 					"Character to use to represent long breaks in stream notation.");
+
+				ImGuiLayoutUtils.EndTable();
+			}
+
+			ImGui.Separator();
+			if (ImGuiLayoutUtils.BeginTable("Density", TitleColumnWidth))
+			{
+				ImGuiLayoutUtils.DrawRowCheckbox(true, "Show Density Graph", p, nameof(PreferencesStream.ShowDensityGraph), false,
+					"Whether or not to show the density graph.");
+
+				ImGuiLayoutUtils.DrawRowEnum<DensityColorMode>(true, "Color Mode", p,
+					nameof(PreferencesStream.DensityGraphColorMode), false,
+					"How to color the density graph.");
+
+				ImGuiLayoutUtils.DrawRowColorEdit4(true, "High Color", p,
+					nameof(PreferencesStream.DensityGraphHighColor),
+					ImGuiColorEditFlags.AlphaPreviewHalf | ImGuiColorEditFlags.AlphaBar, false,
+					"High color for the density graph.");
+
+				ImGuiLayoutUtils.DrawRowColorEdit4(true, "Low Color", p,
+					nameof(PreferencesStream.DensityGraphLowColor),
+					ImGuiColorEditFlags.AlphaPreviewHalf | ImGuiColorEditFlags.AlphaBar, false,
+					"Low color for the density graph.");
 
 				ImGuiLayoutUtils.EndTable();
 			}
@@ -50,7 +77,7 @@ internal sealed class UIStreamPreferences
 			if (ImGuiLayoutUtils.BeginTable("Stream Restore", TitleColumnWidth))
 			{
 				if (ImGuiLayoutUtils.DrawRowButton("Restore Defaults", "Restore Defaults",
-						"Restore all stream preferences to their default values."))
+					    "Restore all stream preferences to their default values."))
 				{
 					p.RestoreDefaults();
 				}

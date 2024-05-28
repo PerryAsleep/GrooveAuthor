@@ -971,6 +971,11 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		return Patterns?.GetCount() > 0;
 	}
 
+	public StepDensity GetStepDensity()
+	{
+		return StepDensity;
+	}
+
 	#endregion Accessors
 
 	#region Timing Updates

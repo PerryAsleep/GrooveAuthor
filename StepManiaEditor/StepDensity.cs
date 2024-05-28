@@ -12,22 +12,35 @@ namespace StepManiaEditor;
 /// <summary>
 /// StepDensity provides density-related information about an EditorChart including:
 ///  - Stream breakdown strings
-///  - TODO: density visualization
+///  - Aggregate Measure data for density visualizations. See StepDensityEffect.
 /// Expected Usage:
 ///  Construct with EditorChart.
 ///  Call AddEvent/AddEvents when EditorEvents are added to the EditorChart.
 ///  Call DeleteEvent/DeleteEvents when EditorEvents are deleted from the EditorChart.
 /// </summary>
-internal sealed class StepDensity : Fumen.IObserver<PreferencesStream>, Fumen.IObserver<EditorChart>
+internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<PreferencesStream>, Fumen.IObserver<EditorChart>
 {
+	public const string NotificationMeasuresChanged = "MeasuresChanged";
+
+	/// <summary>
+	/// Always keep at least 256 measures allocated to avoid unnecessary reallocation.
+	/// Measures are small and this will capture most normal-length songs.
+	/// </summary>
+	private const int MinMeasuresCapacity = 256;
+
 	/// <summary>
 	/// Data per measure.
 	/// </summary>
-	private class Measure
+	public readonly struct Measure
 	{
-		public double StartTime;
-		public double EndTime;
-		public int Steps;
+		public Measure(double startTime, byte steps)
+		{
+			StartTime = startTime;
+			Steps = steps;
+		}
+
+		public readonly double StartTime;
+		public readonly byte Steps;
 	}
 
 	/// <summary>
@@ -41,14 +54,9 @@ internal sealed class StepDensity : Fumen.IObserver<PreferencesStream>, Fumen.IO
 	private readonly int[] MeasuresByStepCount = new int[RowsPerMeasure];
 
 	/// <summary>
-	/// The greatest step count for any measure.
-	/// </summary>
-	private int GreatestStepCountPerMeasure;
-
-	/// <summary>
 	/// All Measures in the EditorChart.
 	/// </summary>
-	private readonly List<Measure> Measures = new();
+	private readonly DynamicArray<Measure> Measures = new(MinMeasuresCapacity);
 
 	/// <summary>
 	/// Stream breakdown represented as an IntervalTree.
@@ -68,11 +76,16 @@ internal sealed class StepDensity : Fumen.IObserver<PreferencesStream>, Fumen.IO
 		ResizeMeasures();
 		RecomputeMeasureTiming();
 		RecomputeStreams(true);
+		Notify(NotificationMeasuresChanged, this);
 	}
 
-	public int GetGreatestStepCountPerMeasure()
+	/// <summary>
+	/// Returns the array of all Measures.
+	/// </summary>
+	/// <returns>All Measures.</returns>
+	public IReadOnlyDynamicArray<Measure> GetMeasures()
 	{
-		return GreatestStepCountPerMeasure;
+		return Measures;
 	}
 
 	/// <summary>
@@ -139,7 +152,7 @@ internal sealed class StepDensity : Fumen.IObserver<PreferencesStream>, Fumen.IO
 			return;
 
 		AddEventInternal(editorEvent);
-		RefreshGreatestStepCountPerMeasure();
+		Notify(NotificationMeasuresChanged, this);
 	}
 
 	/// <summary>
@@ -152,7 +165,7 @@ internal sealed class StepDensity : Fumen.IObserver<PreferencesStream>, Fumen.IO
 		ResizeMeasures();
 		foreach (var editorEvent in editorEvents)
 			AddEventInternal(editorEvent);
-		RefreshGreatestStepCountPerMeasure();
+		Notify(NotificationMeasuresChanged, this);
 	}
 
 	/// <summary>
@@ -169,7 +182,7 @@ internal sealed class StepDensity : Fumen.IObserver<PreferencesStream>, Fumen.IO
 		var measureNumber = GetMeasureNumber(editorEvent);
 		var previousSteps = Measures[measureNumber].Steps;
 		var newSteps = previousSteps + 1;
-		Measures[measureNumber].Steps = newSteps;
+		Measures[measureNumber] = new Measure(Measures[measureNumber].StartTime, (byte)newSteps);
 
 		// Update the measure count by step number so we can update the greatest step count per measure.
 		var newStepCountForMeasure = Measures[measureNumber].Steps;
@@ -235,7 +248,7 @@ internal sealed class StepDensity : Fumen.IObserver<PreferencesStream>, Fumen.IO
 
 		ResizeMeasures();
 		DeleteEventInternal(editorEvent);
-		RefreshGreatestStepCountPerMeasure();
+		Notify(NotificationMeasuresChanged, this);
 	}
 
 	/// <summary>
@@ -248,7 +261,7 @@ internal sealed class StepDensity : Fumen.IObserver<PreferencesStream>, Fumen.IO
 		ResizeMeasures();
 		foreach (var editorEvent in editorEvents)
 			DeleteEventInternal(editorEvent);
-		RefreshGreatestStepCountPerMeasure();
+		Notify(NotificationMeasuresChanged, this);
 	}
 
 	/// <summary>
@@ -263,12 +276,13 @@ internal sealed class StepDensity : Fumen.IObserver<PreferencesStream>, Fumen.IO
 
 		// Update the step count for the this step's measure.
 		var measureNumber = GetMeasureNumber(editorEvent);
-		var previousSteps = Measures[measureNumber].Steps;
+		var previousSteps = measureNumber < Measures.GetSize() ? Measures[measureNumber].Steps : 1;
 		var newSteps = previousSteps - 1;
-		Measures[measureNumber].Steps = newSteps;
+		if (measureNumber < Measures.GetSize())
+			Measures[measureNumber] = new Measure(Measures[measureNumber].StartTime, (byte)newSteps);
 
 		// Update the measure count by step number so we can update the greatest step count per measure.
-		var newStepCountForMeasure = Measures[measureNumber].Steps;
+		var newStepCountForMeasure = measureNumber < Measures.GetSize() ? Measures[measureNumber].Steps : 0;
 		MeasuresByStepCount[newStepCountForMeasure + 1]--;
 		MeasuresByStepCount[newStepCountForMeasure]++;
 
@@ -323,17 +337,12 @@ internal sealed class StepDensity : Fumen.IObserver<PreferencesStream>, Fumen.IO
 	private void RecomputeMeasureTiming()
 	{
 		var t = 0.0;
-		for (var m = 0; m < Measures.Count; m++)
+		var numMeasures = Measures.GetSize();
+		for (var m = 0; m < numMeasures; m++)
 		{
-			if (m == 0)
-			{
-				EditorChart.TryGetTimeFromChartPosition(m * RowsPerMeasure, ref t);
-				Measures[m].StartTime = t;
-			}
-			else
-			{
-				Measures[m].StartTime = Measures[m - 1].EndTime;
-			}
+			EditorChart.TryGetTimeFromChartPosition(m * RowsPerMeasure, ref t);
+			var steps = Measures[m].Steps;
+			Measures[m] = new Measure(t, steps);
 		}
 	}
 
@@ -342,39 +351,14 @@ internal sealed class StepDensity : Fumen.IObserver<PreferencesStream>, Fumen.IO
 	/// </summary>
 	private void ResizeMeasures()
 	{
-		var lastMeasure = GetLastMeasureNumber();
-		var size = lastMeasure + 1;
+		var newSize = GetLastMeasureNumber() + 1;
+		Measures.UpdateCapacity(Math.Max(MinMeasuresCapacity, newSize));
 
-		// Add measures.
-		while (Measures.Count < size)
+		var t = 0.0;
+		while (Measures.GetSize() < newSize)
 		{
-			var m = new Measure();
-			if (Measures.Count > 0)
-				m.StartTime = Measures[^1].EndTime;
-			else
-				EditorChart.TryGetTimeFromChartPosition(0, ref m.StartTime);
-			EditorChart.TryGetTimeFromChartPosition((Measures.Count + 1) * RowsPerMeasure, ref m.EndTime);
-			Measures.Add(m);
-		}
-
-		// Remove measures.
-		if (Measures.Count > size)
-			Measures.RemoveRange(size, Measures.Count - size);
-	}
-
-	/// <summary>
-	/// Refreshes the GreatestStepCountPerMeasure based on MeasuresByStepCount.
-	/// </summary>
-	private void RefreshGreatestStepCountPerMeasure()
-	{
-		GreatestStepCountPerMeasure = 0;
-		for (var i = RowsPerMeasure - 1; i >= 0; i--)
-		{
-			if (MeasuresByStepCount[i] > 0)
-			{
-				GreatestStepCountPerMeasure = i;
-				break;
-			}
+			EditorChart.TryGetTimeFromChartPosition(Measures.GetSize() * RowsPerMeasure, ref t);
+			Measures.Add(new Measure(t, 0));
 		}
 	}
 
@@ -390,12 +374,18 @@ internal sealed class StepDensity : Fumen.IObserver<PreferencesStream>, Fumen.IO
 		var currentStepsPerMeasure = 0;
 		var lastStreamMeasureStart = -1;
 		var lastStreamMeasure = -1;
+
 		foreach (var editorEvent in EditorChart.GetEvents())
 		{
 			var measureNumber = GetMeasureNumber(editorEvent);
 
 			if (measureNumber > currentMeasure)
 			{
+				if (initializeMeasureSteps && currentMeasure >= 0 && currentStepsPerMeasure > 0)
+				{
+					Measures[currentMeasure] = new Measure(Measures[currentMeasure].StartTime, (byte)currentStepsPerMeasure);
+				}
+
 				// This measure did not stream
 				if (currentStepsPerMeasure < minNotesPerMeasureForStream)
 				{
@@ -426,10 +416,13 @@ internal sealed class StepDensity : Fumen.IObserver<PreferencesStream>, Fumen.IO
 						lastStreamMeasureStart = measureNumber;
 					lastStreamMeasure = measureNumber;
 				}
-
-				if (initializeMeasureSteps)
-					Measures[measureNumber].Steps++;
 			}
+		}
+
+		// Commit any final step count per measure.
+		if (initializeMeasureSteps && currentMeasure >= 0 && currentStepsPerMeasure > 0)
+		{
+			Measures[currentMeasure] = new Measure(Measures[currentMeasure].StartTime, (byte)currentStepsPerMeasure);
 		}
 
 		// Commit any final stream.
@@ -440,7 +433,7 @@ internal sealed class StepDensity : Fumen.IObserver<PreferencesStream>, Fumen.IO
 		}
 	}
 
-	#region Measure Determination
+	#region Measure Number Determination
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
 	private static int GetMeasureNumber(EditorEvent editorEvent)
@@ -460,7 +453,15 @@ internal sealed class StepDensity : Fumen.IObserver<PreferencesStream>, Fumen.IO
 		return GetMeasureNumber((int)EditorChart.GetEndPosition());
 	}
 
-	#endregion Measure Determination
+	public double GetLastMeasurePlusOneTime()
+	{
+		var time = 0.0;
+		var row = (GetLastMeasureNumber() + 1) * RowsPerMeasure;
+		EditorChart.TryGetTimeFromChartPosition(row, ref time);
+		return time;
+	}
+
+	#endregion Measure Number Determination
 
 	#region IObserver
 
@@ -482,6 +483,7 @@ internal sealed class StepDensity : Fumen.IObserver<PreferencesStream>, Fumen.IO
 			// When timing changes we need to recompute all measure timing.
 			case EditorChart.NotificationTimingChanged:
 				RecomputeMeasureTiming();
+				Notify(NotificationMeasuresChanged, this);
 				break;
 		}
 	}

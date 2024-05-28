@@ -210,6 +210,7 @@ internal sealed class Editor :
 	private Effect FxaaEffect;
 	private Effect WaveformColorEffect;
 	private RenderTarget2D[] WaveformRenderTargets;
+	private StepDensityEffect StepDensityEffect;
 
 	private SongLoadTask SongLoadTask;
 	private FileSystemWatcher SongFileWatcher;
@@ -389,6 +390,7 @@ internal sealed class Editor :
 		InitializeGuiDpiScale();
 		InitializeScreenHeight();
 		InitializeWaveFormRenderer();
+		InitializeStepDensityEffect();
 		InitializeMiniMap();
 		InitializeUIHelpers();
 		InitializeKeyCommandManager();
@@ -917,6 +919,11 @@ internal sealed class Editor :
 				GraphicsDevice.PresentationParameters.BackBufferFormat,
 				DepthFormat.Depth24);
 		}
+	}
+
+	private void InitializeStepDensityEffect()
+	{
+		StepDensityEffect = new StepDensityEffect(GraphicsDevice);
 	}
 
 	private void InitializeMiniMap()
@@ -2014,6 +2021,8 @@ internal sealed class Editor :
 
 			ImGui.PopFont();
 			ImGuiRenderer.AfterLayout();
+
+			DrawDensity();
 
 			DrawSplash();
 
@@ -4886,14 +4895,9 @@ internal sealed class Editor :
 		SpriteBatch.End();
 	}
 
-	public UIPatternComparer GetPatternComparer()
+	private void DrawDensity()
 	{
-		return PatternComparer;
-	}
-
-	public UIPerformedChartComparer GetPerformedChartComparer()
-	{
-		return PerformedChartComparer;
+		StepDensityEffect.Draw();
 	}
 
 	#endregion Gui Rendering
@@ -5695,6 +5699,8 @@ internal sealed class Editor :
 		AutoPlayer = null;
 		MovingNotes.Clear();
 		EditorMouseState.SetActiveChart(null);
+		StepDensityEffect.SetStepDensity(null);
+		StepDensityEffect.ResetBufferCapacities();
 		UpdateWindowTitle();
 		ActionQueue.Instance.Clear();
 		StopObservingSongFile();
@@ -7236,6 +7242,7 @@ internal sealed class Editor :
 
 		Selection.ClearSelectedEvents();
 		ActiveChart = chart;
+		StepDensityEffect.SetStepDensity(ActiveChart.GetStepDensity());
 
 		// The Position needs to know about the active chart for doing time and row calculations.
 		Position.ActiveChart = ActiveChart;
@@ -7483,6 +7490,16 @@ internal sealed class Editor :
 
 		// Regenerate the patterns.
 		ActionQueue.Instance.Do(new ActionAutoGeneratePatterns(this, ActiveChart, patterns));
+	}
+
+	public UIPatternComparer GetPatternComparer()
+	{
+		return PatternComparer;
+	}
+
+	public UIPerformedChartComparer GetPerformedChartComparer()
+	{
+		return PerformedChartComparer;
 	}
 
 	#endregion Patterns

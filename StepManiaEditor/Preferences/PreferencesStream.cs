@@ -1,4 +1,5 @@
-﻿using System.Text.Json.Serialization;
+﻿using System.Numerics;
+using System.Text.Json.Serialization;
 using Fumen;
 using static StepManiaEditor.PreferencesStream;
 
@@ -10,6 +11,14 @@ namespace StepManiaEditor;
 internal sealed class PreferencesStream : Notifier<PreferencesStream>
 {
 	public const string NotificationNoteTypeChanged = "NoteTypeChanged";
+	public const string NotificationDensityColorModeChanged = "DensityColorModeChanged";
+	public const string NotificationDensityColorsChanged = "DensityColorsChanged";
+
+	public enum DensityColorMode
+	{
+		ColorByDensity,
+		ColorByHeight,
+	}
 
 	// Default values.
 	public const SubdivisionType DefaultNoteType = SubdivisionType.SixteenthNotes;
@@ -18,6 +27,11 @@ internal sealed class PreferencesStream : Notifier<PreferencesStream>
 	public const int DefaultShortBreakCutoff = 4;
 	public const char DefaultShortBreakCharacter = '-';
 	public const char DefaultLongBreakCharacter = '|';
+
+	public static readonly bool DefaultShowDensityGraph = true;
+	public static readonly Vector4 DefaultDensityGraphLowColor = new(0.337f, 0.612f, 0.839f, 1.0f);
+	public static readonly Vector4 DefaultDensityGraphHighColor = new(0.306f, 0.788f, 0.690f, 1.0f);
+	public static readonly DensityColorMode DefaultDensityGraphColorMode = DensityColorMode.ColorByDensity;
 
 	// Preferences.
 	[JsonInclude] public bool ShowStreamPreferencesWindow;
@@ -41,8 +55,54 @@ internal sealed class PreferencesStream : Notifier<PreferencesStream>
 	[JsonInclude] public int ShortBreakCutoff = DefaultShortBreakCutoff;
 	[JsonInclude] public char ShortBreakCharacter = DefaultShortBreakCharacter;
 	[JsonInclude] public char LongBreakCharacter = DefaultLongBreakCharacter;
+	[JsonInclude] public bool ShowDensityGraph = DefaultShowDensityGraph;
+
+	[JsonInclude]
+	public Vector4 DensityGraphLowColor
+	{
+		get => DensityGraphLowColorInternal;
+		set
+		{
+			if (DensityGraphLowColorInternal != value)
+			{
+				DensityGraphLowColorInternal = value;
+				Notify(NotificationDensityColorsChanged, this);
+			}
+		}
+	}
+
+	[JsonInclude]
+	public Vector4 DensityGraphHighColor
+	{
+		get => DensityGraphHighColorInternal;
+		set
+		{
+			if (DensityGraphHighColorInternal != value)
+			{
+				DensityGraphHighColorInternal = value;
+				Notify(NotificationDensityColorsChanged, this);
+			}
+		}
+	}
+
+	[JsonInclude]
+	public DensityColorMode DensityGraphColorMode
+	{
+		get => DensityGraphColorModeInternal;
+		set
+		{
+			if (DensityGraphColorModeInternal != value)
+			{
+				DensityGraphColorModeInternal = value;
+				Notify(NotificationDensityColorModeChanged, this);
+			}
+		}
+	}
 
 	private SubdivisionType NoteTypeInternal = DefaultNoteType;
+	private DensityColorMode DensityGraphColorModeInternal = DefaultDensityGraphColorMode;
+	private Vector4 DensityGraphLowColorInternal = DefaultDensityGraphLowColor;
+	private Vector4 DensityGraphHighColorInternal = DefaultDensityGraphHighColor;
 
 	public bool IsUsingDefaults()
 	{
@@ -51,7 +111,11 @@ internal sealed class PreferencesStream : Notifier<PreferencesStream>
 		       && MinimumLengthToConsiderStream == DefaultMinimumLengthToConsiderStream
 		       && ShortBreakCutoff == DefaultShortBreakCutoff
 		       && ShortBreakCharacter == DefaultShortBreakCharacter
-		       && LongBreakCharacter == DefaultLongBreakCharacter;
+		       && LongBreakCharacter == DefaultLongBreakCharacter
+		       && ShowDensityGraph == DefaultShowDensityGraph
+		       && DensityGraphLowColor == DefaultDensityGraphLowColor
+		       && DensityGraphHighColor == DefaultDensityGraphHighColor
+		       && DensityGraphColorMode == DefaultDensityGraphColorMode;
 	}
 
 	public void RestoreDefaults()
@@ -74,6 +138,10 @@ internal sealed class ActionRestoreStreamPreferenceDefaults : EditorAction
 	private readonly int PreviousShortBreakCutoff;
 	private readonly char PreviousShortBreakCharacter;
 	private readonly char PreviousLongBreakCharacter;
+	private readonly bool PreviousShowDensityGraph;
+	private readonly Vector4 PreviousDensityGraphLowColor;
+	private readonly Vector4 PreviousDensityGraphHighColor;
+	private readonly DensityColorMode PreviousDensityGraphColorMode;
 
 	public ActionRestoreStreamPreferenceDefaults() : base(false, false)
 	{
@@ -84,6 +152,10 @@ internal sealed class ActionRestoreStreamPreferenceDefaults : EditorAction
 		PreviousShortBreakCutoff = p.ShortBreakCutoff;
 		PreviousShortBreakCharacter = p.ShortBreakCharacter;
 		PreviousLongBreakCharacter = p.LongBreakCharacter;
+		PreviousShowDensityGraph = p.ShowDensityGraph;
+		PreviousDensityGraphLowColor = p.DensityGraphLowColor;
+		PreviousDensityGraphHighColor = p.DensityGraphHighColor;
+		PreviousDensityGraphColorMode = p.DensityGraphColorMode;
 	}
 
 	public override bool AffectsFile()
@@ -105,6 +177,10 @@ internal sealed class ActionRestoreStreamPreferenceDefaults : EditorAction
 		p.ShortBreakCutoff = DefaultShortBreakCutoff;
 		p.ShortBreakCharacter = DefaultShortBreakCharacter;
 		p.LongBreakCharacter = DefaultLongBreakCharacter;
+		p.ShowDensityGraph = DefaultShowDensityGraph;
+		p.DensityGraphLowColor = DefaultDensityGraphLowColor;
+		p.DensityGraphHighColor = DefaultDensityGraphHighColor;
+		p.DensityGraphColorMode = DefaultDensityGraphColorMode;
 	}
 
 	protected override void UndoImplementation()
@@ -116,5 +192,9 @@ internal sealed class ActionRestoreStreamPreferenceDefaults : EditorAction
 		p.ShortBreakCutoff = PreviousShortBreakCutoff;
 		p.ShortBreakCharacter = PreviousShortBreakCharacter;
 		p.LongBreakCharacter = PreviousLongBreakCharacter;
+		p.ShowDensityGraph = PreviousShowDensityGraph;
+		p.DensityGraphLowColor = PreviousDensityGraphLowColor;
+		p.DensityGraphHighColor = PreviousDensityGraphHighColor;
+		p.DensityGraphColorMode = PreviousDensityGraphColorMode;
 	}
 }
