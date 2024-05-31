@@ -923,7 +923,7 @@ internal sealed class Editor :
 
 	private void InitializeStepDensityEffect()
 	{
-		StepDensityEffect = new StepDensityEffect(GraphicsDevice);
+		StepDensityEffect = new StepDensityEffect(Graphics, GraphicsDevice);
 	}
 
 	private void InitializeMiniMap()
@@ -1240,14 +1240,46 @@ internal sealed class Editor :
 		RecreateWaveformRenderTargets();
 	}
 
+	/// <summary>
+	/// Gets the viewport width.
+	/// These dimensions include window dressing like the the title bar.
+	/// </summary>
+	/// <returns>Viewport width in pixels.</returns>
 	public int GetViewportWidth()
 	{
 		return Graphics.GraphicsDevice.Viewport.Width;
 	}
 
+	/// <summary>
+	/// Gets the viewport width.
+	/// These dimensions include window dressing like the the title bar.
+	/// </summary>
+	/// <returns>Viewport width in pixels.</returns>
 	public int GetViewportHeight()
 	{
 		return Graphics.GraphicsDevice.Viewport.Height;
+	}
+
+	/// <summary>
+	/// Gets the back buffer width.
+	/// These dimensions only include the application's rendered area and do not
+	/// include window dressing like the the title bar.
+	/// </summary>
+	/// <returns>Back buffer width in pixels.</returns>
+	public int GetBackBufferWidth()
+	{
+		return Graphics.PreferredBackBufferWidth;
+	}
+
+	/// <summary>
+	/// Gets the back buffer height.
+	/// These dimensions only include the application's rendered area and do not
+	/// include window dressing like the the title bar.
+	/// </summary>
+	/// <returns>Back buffer height in pixels.</returns>
+	public int GetBackBufferHeight()
+	{
+		return Graphics.PreferredBackBufferHeight;
 	}
 
 	#endregion Window Resizing
@@ -1381,6 +1413,8 @@ internal sealed class Editor :
 			PerformanceMonitor.Time(PerformanceTimings.MiniMap, UpdateMiniMap);
 			PerformanceMonitor.Time(PerformanceTimings.Waveform, UpdateWaveFormRenderer);
 
+			UpdateDensityGraphBounds();
+
 			UpdateReceptors();
 
 			// Update the Window title if the state of unsaved changes has changed.
@@ -1490,6 +1524,69 @@ internal sealed class Editor :
 				receptor.Update(Playing, Position.ChartPosition);
 			}
 		}
+	}
+
+	private void UpdateDensityGraphBounds()
+	{
+		var p = Preferences.Instance.PreferencesStream;
+		var focalPointX = GetFocalPointX();
+		var sizeZoom = ZoomManager.GetSizeZoom();
+		var screenW = GetBackBufferWidth();
+		var screenH = GetBackBufferHeight();
+		var topPadding = GetMenuBarHeight();
+		var x = 0;
+		var y = 0;
+		var w = 0;
+		var h = 0;
+		var orientation = StepDensityEffect.Orientation.Vertical;
+		switch (p.DensityGraphPositionValue)
+		{
+			case PreferencesStream.DensityGraphPosition.RightSideOfWindow:
+				w = p.DensityGraphHeight;
+				x = screenW - w - p.DensityGraphPositionOffset;
+				h = screenH - topPadding + p.DensityGraphWidthOffset * 2;
+				y = topPadding - p.DensityGraphWidthOffset;
+				break;
+			case PreferencesStream.DensityGraphPosition.RightOfChartArea:
+				w = p.DensityGraphHeight;
+				x = focalPointX + (WaveFormTextureWidth >> 1) + p.DensityGraphPositionOffset;
+				h = screenH - topPadding + p.DensityGraphWidthOffset * 2;
+				y = topPadding - p.DensityGraphWidthOffset;
+				break;
+			case PreferencesStream.DensityGraphPosition.MountedToWaveForm:
+				w = p.DensityGraphHeight;
+				if (Preferences.Instance.PreferencesWaveForm.WaveFormScaleXWhenZooming)
+					x = (int)(focalPointX + (WaveFormTextureWidth >> 1) * sizeZoom + p.DensityGraphPositionOffset);
+				else
+					x = focalPointX + (WaveFormTextureWidth >> 1) + p.DensityGraphPositionOffset;
+				h = screenH - topPadding + p.DensityGraphWidthOffset * 2;
+				y = topPadding - p.DensityGraphWidthOffset;
+				break;
+			case PreferencesStream.DensityGraphPosition.MountedToChart:
+				var receptorBounds =
+					Receptor.GetBounds(GetFocalPoint(), sizeZoom, TextureAtlas, ArrowGraphicManager, ActiveChart);
+				w = p.DensityGraphHeight;
+				x = receptorBounds.Item1 + receptorBounds.Item3 + p.DensityGraphPositionOffset;
+				h = screenH - topPadding + p.DensityGraphWidthOffset * 2;
+				y = topPadding - p.DensityGraphWidthOffset;
+				break;
+			case PreferencesStream.DensityGraphPosition.TopOfWaveForm:
+				x = focalPointX - (WaveFormTextureWidth >> 1) - p.DensityGraphWidthOffset;
+				w = WaveFormTextureWidth + p.DensityGraphWidthOffset * 2;
+				y = topPadding + p.DensityGraphPositionOffset;
+				h = p.DensityGraphHeight;
+				orientation = StepDensityEffect.Orientation.Horizontal;
+				break;
+			case PreferencesStream.DensityGraphPosition.BottomOfWaveForm:
+				x = focalPointX - (WaveFormTextureWidth >> 1) - p.DensityGraphWidthOffset;
+				w = WaveFormTextureWidth + p.DensityGraphWidthOffset * 2;
+				y = screenH - p.DensityGraphHeight - p.DensityGraphPositionOffset;
+				h = p.DensityGraphHeight;
+				orientation = StepDensityEffect.Orientation.Horizontal;
+				break;
+		}
+
+		StepDensityEffect.UpdateBounds(new Rectangle(x, y, w, h), orientation);
 	}
 
 	private void UpdateWaveFormRenderer()
@@ -2017,12 +2114,13 @@ internal sealed class Editor :
 
 			SpriteBatch.End();
 
+			DrawDensity();
+
 			DrawGui();
 
 			ImGui.PopFont();
-			ImGuiRenderer.AfterLayout();
 
-			DrawDensity();
+			ImGuiRenderer.AfterLayout();
 
 			DrawSplash();
 
@@ -3333,7 +3431,7 @@ internal sealed class Editor :
 		{
 			case MiniMap.Position.RightSideOfWindow:
 			{
-				x = Graphics.PreferredBackBufferWidth - (int)p.PreferencesMiniMap.MiniMapXPadding -
+				x = GetBackBufferWidth() - (int)p.PreferencesMiniMap.MiniMapXPadding -
 				    (int)p.PreferencesMiniMap.MiniMapWidth;
 				break;
 			}
@@ -3364,7 +3462,7 @@ internal sealed class Editor :
 			}
 		}
 
-		var h = Math.Max(0, Graphics.PreferredBackBufferHeight - GetMiniMapYPaddingFromTop() - GetMiniMapYPaddingFromBottom());
+		var h = Math.Max(0, GetBackBufferHeight() - GetMiniMapYPaddingFromTop() - GetMiniMapYPaddingFromBottom());
 
 		MiniMap.UpdateBounds(
 			GraphicsDevice,

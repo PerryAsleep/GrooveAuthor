@@ -23,8 +23,8 @@ internal sealed class ImGuiUtils
 	private static double DpiScaleSystemDefault;
 	private const int HelpWidth = 18;
 	private const int CloseWidth = 18;
-	private const int MiniMapYPaddingFromTop = 30; // This takes into account a 20 pixel padding for the main menu bar.
-	private const int MiniMapYPaddingFromBottom = 10;
+	private const int MenuBarHeight = 20;
+	private const int MiniMapYPadding = 10;
 	private const int ChartPositionUIYPaddingFromBottom = 10;
 	private const int CDTitleWidth = 164;
 	private const int CDTitleHeight = 164;
@@ -776,14 +776,19 @@ internal sealed class ImGuiUtils
 		return UiScaled(CloseWidth);
 	}
 
+	public static int GetMenuBarHeight()
+	{
+		return UiScaled(MenuBarHeight);
+	}
+
 	public static int GetMiniMapYPaddingFromTop()
 	{
-		return UiScaled(MiniMapYPaddingFromTop);
+		return UiScaled(MenuBarHeight + MiniMapYPadding);
 	}
 
 	public static int GetMiniMapYPaddingFromBottom()
 	{
-		return UiScaled(MiniMapYPaddingFromBottom);
+		return UiScaled(MiniMapYPadding);
 	}
 
 	public static int GetChartPositionUIYPaddingFromBottom()

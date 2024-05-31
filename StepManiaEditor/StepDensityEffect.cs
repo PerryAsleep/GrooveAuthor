@@ -14,6 +14,7 @@ namespace StepManiaEditor;
 /// StepDensityEffect renders a density graph for an EditorChart's StepDensity.
 /// Expected Usage:
 ///  Call SetStepDensity to update the StepDensity to render.
+///  Call UpdateBounds to set the bounds of the effect.
 ///  Call Draw once each frame to render the effect.
 ///  Call ResetBufferCapacities to reset capacities for internal rendering buffers.
 /// </summary>
@@ -22,6 +23,15 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 	private const int MinNumMeasures = 256;
 	private const int MinNumVertices = 2048;
 	private const int MinNumIndices = 6288;
+
+	/// <summary>
+	/// Orientation of the effect.
+	/// </summary>
+	public enum Orientation
+	{
+		Vertical,
+		Horizontal,
+	}
 
 	/// <summary>
 	/// Data for communicating state from calls to update the measures to the long-running
@@ -37,7 +47,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 		private float Height;
 		private Color LowColor;
 		private Color HighColor;
-		private DensityColorMode ColorMode;
+		private DensityGraphColorMode ColorMode;
 
 		private bool HasNewEnqueuedData;
 		private bool ShouldResetCapacities;
@@ -54,7 +64,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 			float height,
 			Color lowColor,
 			Color highColor,
-			DensityColorMode colorMode)
+			DensityGraphColorMode colorMode)
 		{
 			lock (Lock)
 			{
@@ -84,7 +94,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 			ref float height,
 			ref Color lowColor,
 			ref Color highColor,
-			ref DensityColorMode colorMode)
+			ref DensityGraphColorMode colorMode)
 		{
 			lock (Lock)
 			{
@@ -138,6 +148,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 		}
 	}
 
+	private readonly GraphicsDeviceManager Graphics;
 	private readonly GraphicsDevice GraphicsDevice;
 	private readonly BasicEffect DensityEffect;
 
@@ -173,28 +184,24 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 	/// </summary>
 	private StepDensity StepDensity;
 
-	// TODO: Size and position properly.
-	private readonly float Width = 600.0f;
-	private readonly float Height = 100.0f;
+	private Rectangle Bounds;
+	private Orientation EffectOrientation = Orientation.Horizontal;
 
 	private bool Disposed;
 
 	/// <summary>
 	/// Constructor.
 	/// </summary>
+	/// <param name="graphics">GraphicsDeviceManager to use for the effect.</param>
 	/// <param name="graphicsDevice">GraphicsDevice to use for the effect.</param>
-	public StepDensityEffect(GraphicsDevice graphicsDevice)
+	public StepDensityEffect(GraphicsDeviceManager graphics, GraphicsDevice graphicsDevice)
 	{
 		// Set up the Effect for rendering.
-		// TODO: Size and position properly.
+		Graphics = graphics;
 		GraphicsDevice = graphicsDevice;
-		var viewport = GraphicsDevice.Viewport;
 		DensityEffect = new BasicEffect(GraphicsDevice);
 		DensityEffect.VertexColorEnabled = true;
 		DensityEffect.World = Matrix.Identity;
-		DensityEffect.View = Matrix.CreateLookAt(new Vector3(0, 0, 1), Vector3.Zero, Vector3.Up);
-		DensityEffect.Projection =
-			Matrix.CreateScale(1, 1, 1) * Matrix.CreateOrthographic(viewport.Width, viewport.Height, -10, 10);
 
 		// Observe relevant preferences so the effect can be updated accordingly.
 		Preferences.Instance.PreferencesStream.AddObserver(this);
@@ -264,10 +271,42 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 	}
 
 	/// <summary>
+	/// Update the bounds of the effect.
+	/// </summary>
+	/// <param name="bounds">Bound in screen space for the effect to occupy.</param>
+	/// <param name="orientation">The orientation of the effect.</param>
+	public void UpdateBounds(Rectangle bounds, Orientation orientation)
+	{
+		var dimensionsDirty = bounds.Width != Bounds.Width
+		                      || bounds.Height != Bounds.Height
+		                      || orientation != EffectOrientation;
+		Bounds = bounds;
+		EffectOrientation = orientation;
+		if (!dimensionsDirty)
+			return;
+		RefreshPrimitives();
+	}
+
+	/// <summary>
 	/// Draw the density graph.
 	/// </summary>
 	public void Draw()
 	{
+		if (!Preferences.Instance.PreferencesStream.ShowDensityGraph)
+			return;
+
+		var viewportW = Graphics.PreferredBackBufferWidth;
+		var viewportH = Graphics.PreferredBackBufferHeight;
+		var x = (viewportW >> 1) - Bounds.X;
+		var y = (viewportH >> 1) - (viewportH - Bounds.Height - Bounds.Y);
+		DensityEffect.Projection = Matrix.CreateOrthographic(viewportW, viewportH, -10, 10);
+
+		// The primitives are always generated horizontally. For vertical orientation we rotate the view.
+		if (EffectOrientation == Orientation.Vertical)
+			DensityEffect.View = Matrix.CreateLookAt(new Vector3(y, x, 1), new Vector3(y, x, 0), Vector3.Left);
+		else
+			DensityEffect.View = Matrix.CreateLookAt(new Vector3(x, y, 1), new Vector3(x, y, 0), Vector3.Up);
+
 		lock (PrimitiveLock)
 		{
 			if (NumPrimitives == 0)
@@ -281,6 +320,8 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 			}
 		}
 	}
+
+	#region Primitive Generation
 
 	/// <summary>
 	/// Long-running task to update the primitives used for rendering.
@@ -296,7 +337,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 		var height = 0.0f;
 		var lowColor = Color.White;
 		var highColor = Color.White;
-		var colorMode = DensityColorMode.ColorByDensity;
+		var colorMode = DensityGraphColorMode.ColorByDensity;
 
 		// Loop continuously, yielding when there is no work.
 		while (true)
@@ -402,7 +443,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 					// We need to record two new vertices for this measure.
 					c = ColorUtils.Interpolate(lowColor, highColor, yPercent);
 					vertices.Add(new VertexPositionColor(new Vector3(x, 0.0f, 0.0f),
-						colorMode == DensityColorMode.ColorByDensity ? c : lowColor));
+						colorMode == DensityGraphColorMode.ColorByDensity ? c : lowColor));
 					previousMeasureLowIndex = vertices.GetSize() - 1;
 					vertices.Add(new VertexPositionColor(new Vector3(x, y, 0.0f), c));
 					previousMeasureHighIndex = vertices.GetSize() - 1;
@@ -416,14 +457,14 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 				// Add two vertices and two triangles.
 				c = ColorUtils.Interpolate(lowColor, highColor, yPercent);
 				vertices.Add(new VertexPositionColor(new Vector3(x, 0.0f, 0.0f),
-					colorMode == DensityColorMode.ColorByDensity ? c : lowColor));
+					colorMode == DensityGraphColorMode.ColorByDensity ? c : lowColor));
 				vertices.Add(new VertexPositionColor(new Vector3(x, y, 0.0f), c));
 				indices.Add(previousMeasureLowIndex);
 				indices.Add(previousMeasureHighIndex);
 				indices.Add(vertices.GetSize() - 2);
 				indices.Add(previousMeasureHighIndex);
-				indices.Add(vertices.GetSize() - 2);
 				indices.Add(vertices.GetSize() - 1);
+				indices.Add(vertices.GetSize() - 2);
 				numPrimitives += 2;
 				previousMeasureLowIndex = vertices.GetSize() - 2;
 				previousMeasureHighIndex = vertices.GetSize() - 1;
@@ -474,18 +515,37 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 	private void RefreshPrimitives()
 	{
 		var p = Preferences.Instance.PreferencesStream;
+
+		// Avoid doing unnecessary computations when we don't show the density graph.
+		if (!p.ShowDensityGraph)
+			return;
+
 		var lowColor = new Color(p.DensityGraphLowColor);
 		var highColor = new Color(p.DensityGraphHighColor);
+
+		var w = Bounds.Width;
+		var h = Bounds.Height;
+
+		// For vertical orientation we still render horizontally but then rotate the view matrix
+		// prior to rendering. This keeps the primitive generation logic simple.
+		if (EffectOrientation == Orientation.Vertical)
+		{
+			w = Bounds.Height;
+			h = Bounds.Width;
+		}
+
 		if (StepDensity == null)
 		{
-			State.EnqueueData(null, 0.0, Width, Height, lowColor, highColor, p.DensityGraphColorMode);
+			State.EnqueueData(null, 0.0, w, h, lowColor, highColor, p.DensityGraphColorModeValue);
 		}
 		else
 		{
-			State.EnqueueData(StepDensity.GetMeasures(), StepDensity.GetLastMeasurePlusOneTime(), Width, Height, lowColor,
-				highColor, p.DensityGraphColorMode);
+			State.EnqueueData(StepDensity.GetMeasures(), StepDensity.GetLastMeasurePlusOneTime(), w, h, lowColor,
+				highColor, p.DensityGraphColorModeValue);
 		}
 	}
+
+	#endregion Primitive Generation
 
 	#region IObserver
 
@@ -503,8 +563,9 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 	{
 		switch (eventId)
 		{
-			case NotificationDensityColorsChanged:
-			case NotificationDensityColorModeChanged:
+			case NotificationDensityGraphColorsChanged:
+			case NotificationDensityGraphColorModeChanged:
+			case NotificationShowDensityGraphChanged:
 				RefreshPrimitives();
 				break;
 		}
