@@ -41,6 +41,7 @@ internal sealed class PreferencesStream : Notifier<PreferencesStream>
 	public const char DefaultLongBreakCharacter = '|';
 
 	public static readonly bool DefaultShowDensityGraph = true;
+	public static readonly Vector4 DefaultDensityGraphBackgroundColor = new(0.078f, 0.078f, 0.078f, 1.0f);
 	public static readonly Vector4 DefaultDensityGraphLowColor = new(0.337f, 0.612f, 0.839f, 1.0f);
 	public static readonly Vector4 DefaultDensityGraphHighColor = new(0.306f, 0.788f, 0.690f, 1.0f);
 	public static readonly DensityGraphColorMode DefaultDensityGraphColorModeValue = DensityGraphColorMode.ColorByDensity;
@@ -136,12 +137,26 @@ internal sealed class PreferencesStream : Notifier<PreferencesStream>
 		}
 	}
 
+	[JsonInclude]
+	public Vector4 DensityGraphBackgroundColor
+	{
+		get => DensityGraphBackgroundColorInternal;
+		set
+		{
+			if (DensityGraphBackgroundColorInternal != value)
+			{
+				DensityGraphBackgroundColorInternal = value;
+				Notify(NotificationDensityGraphColorsChanged, this);
+			}
+		}
+	}
+
 	private SubdivisionType NoteTypeInternal = DefaultNoteType;
 	private bool ShowDensityGraphInternal = DefaultShowDensityGraph;
 	private DensityGraphColorMode DensityGraphColorModeValueInternal = DefaultDensityGraphColorModeValue;
 	private Vector4 DensityGraphLowColorInternal = DefaultDensityGraphLowColor;
 	private Vector4 DensityGraphHighColorInternal = DefaultDensityGraphHighColor;
-
+	private Vector4 DensityGraphBackgroundColorInternal = DefaultDensityGraphHighColor;
 
 	public bool IsUsingDefaults()
 	{
@@ -158,7 +173,8 @@ internal sealed class PreferencesStream : Notifier<PreferencesStream>
 		       && DensityGraphWidthOffset == DefaultDensityGraphWidthOffset
 		       && DensityGraphColorModeValue == DefaultDensityGraphColorModeValue
 		       && DensityGraphLowColor == DefaultDensityGraphLowColor
-		       && DensityGraphHighColor == DefaultDensityGraphHighColor;
+		       && DensityGraphHighColor == DefaultDensityGraphHighColor
+		       && DensityGraphBackgroundColor == DefaultDensityGraphBackgroundColor;
 	}
 
 	public void RestoreDefaults()
@@ -189,6 +205,7 @@ internal sealed class ActionRestoreStreamPreferenceDefaults : EditorAction
 	private readonly DensityGraphColorMode PreviousDensityGraphColorModeValue;
 	private readonly Vector4 PreviousDensityGraphLowColor;
 	private readonly Vector4 PreviousDensityGraphHighColor;
+	private readonly Vector4 PreviousDensityGraphBackgroundColor;
 
 	public ActionRestoreStreamPreferenceDefaults() : base(false, false)
 	{
@@ -207,6 +224,7 @@ internal sealed class ActionRestoreStreamPreferenceDefaults : EditorAction
 		PreviousDensityGraphColorModeValue = p.DensityGraphColorModeValue;
 		PreviousDensityGraphLowColor = p.DensityGraphLowColor;
 		PreviousDensityGraphHighColor = p.DensityGraphHighColor;
+		PreviousDensityGraphBackgroundColor = p.DensityGraphBackgroundColor;
 	}
 
 	public override bool AffectsFile()
@@ -236,6 +254,7 @@ internal sealed class ActionRestoreStreamPreferenceDefaults : EditorAction
 		p.DensityGraphColorModeValue = DefaultDensityGraphColorModeValue;
 		p.DensityGraphLowColor = DefaultDensityGraphLowColor;
 		p.DensityGraphHighColor = DefaultDensityGraphHighColor;
+		p.DensityGraphBackgroundColor = DefaultDensityGraphBackgroundColor;
 	}
 
 	protected override void UndoImplementation()
@@ -255,5 +274,6 @@ internal sealed class ActionRestoreStreamPreferenceDefaults : EditorAction
 		p.DensityGraphColorModeValue = PreviousDensityGraphColorModeValue;
 		p.DensityGraphLowColor = PreviousDensityGraphLowColor;
 		p.DensityGraphHighColor = PreviousDensityGraphHighColor;
+		p.DensityGraphBackgroundColor = PreviousDensityGraphBackgroundColor;
 	}
 }

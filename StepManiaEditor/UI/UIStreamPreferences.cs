@@ -86,6 +86,11 @@ internal sealed class UIStreamPreferences
 					ImGuiColorEditFlags.AlphaPreviewHalf | ImGuiColorEditFlags.AlphaBar, false,
 					"Low color for the density graph.");
 
+				ImGuiLayoutUtils.DrawRowColorEdit4(true, "Background Color", p,
+					nameof(PreferencesStream.DensityGraphBackgroundColor),
+					ImGuiColorEditFlags.AlphaPreviewHalf | ImGuiColorEditFlags.AlphaBar, false,
+					"Background color for the density graph.");
+
 				ImGuiLayoutUtils.EndTable();
 			}
 

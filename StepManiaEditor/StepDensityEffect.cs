@@ -47,6 +47,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 		private float Height;
 		private Color LowColor;
 		private Color HighColor;
+		private Color BackgroundColor;
 		private DensityGraphColorMode ColorMode;
 
 		private bool HasNewEnqueuedData;
@@ -64,6 +65,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 			float height,
 			Color lowColor,
 			Color highColor,
+			Color backgroundColor,
 			DensityGraphColorMode colorMode)
 		{
 			lock (Lock)
@@ -81,6 +83,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 				Height = height;
 				LowColor = lowColor;
 				HighColor = highColor;
+				BackgroundColor = backgroundColor;
 				ColorMode = colorMode;
 			}
 		}
@@ -94,6 +97,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 			ref float height,
 			ref Color lowColor,
 			ref Color highColor,
+			ref Color backgroundColor,
 			ref DensityGraphColorMode colorMode)
 		{
 			lock (Lock)
@@ -122,6 +126,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 				height = Height;
 				lowColor = LowColor;
 				highColor = HighColor;
+				backgroundColor = BackgroundColor;
 				colorMode = ColorMode;
 
 				HasNewEnqueuedData = false;
@@ -303,9 +308,9 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 
 		// The primitives are always generated horizontally. For vertical orientation we rotate the view.
 		if (EffectOrientation == Orientation.Vertical)
-			DensityEffect.View = Matrix.CreateLookAt(new Vector3(y, x, 1), new Vector3(y, x, 0), Vector3.Left);
+			DensityEffect.View = Matrix.CreateLookAt(new Vector3(y, x, 2), new Vector3(y, x, 0), Vector3.Left);
 		else
-			DensityEffect.View = Matrix.CreateLookAt(new Vector3(x, y, 1), new Vector3(x, y, 0), Vector3.Up);
+			DensityEffect.View = Matrix.CreateLookAt(new Vector3(x, y, 2), new Vector3(x, y, 0), Vector3.Up);
 
 		lock (PrimitiveLock)
 		{
@@ -319,6 +324,8 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 					Indices.GetArray(), 0, NumPrimitives);
 			}
 		}
+
+		// Draw primitives for current time visible area and current time line.
 	}
 
 	#region Primitive Generation
@@ -337,7 +344,9 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 		var height = 0.0f;
 		var lowColor = Color.White;
 		var highColor = Color.White;
+		var backgroundColor = Color.Black;
 		var colorMode = DensityGraphColorMode.ColorByDensity;
+		const float rimW = 1.0f;
 
 		// Loop continuously, yielding when there is no work.
 		while (true)
@@ -351,7 +360,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 
 				// Try to pop any enqueued data. If there is data to process then break out and process it below.
 				if (State.TryPopEnqueuedData(ref measures, ref vertices, ref indices, ref finalTime, ref width, ref height,
-					    ref lowColor, ref highColor, ref colorMode))
+					    ref lowColor, ref highColor, ref backgroundColor, ref colorMode))
 					break;
 				await Task.Yield();
 			}
@@ -359,9 +368,22 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 			// Begin processing new data.
 			var numPrimitives = 0;
 
-			// Early out due to no measures.
-			if (measures.GetSize() == 0)
+			// Early out on invalid bounds.
+			if (height < 0.0f || width < 0.0f)
 			{
+				UpdatePrimitives(vertices, indices, numPrimitives);
+				continue;
+			}
+
+			// Add the background primitives.
+			AddBackground(vertices, indices, ref numPrimitives, width, height, ref backgroundColor);
+
+			// Early out due to no measures or not enough area to render measures
+			if (measures.GetSize() == 0 || height <= rimW * 2 || width <= rimW * 2)
+			{
+				// Add the rim primitives.
+				AddRim(vertices, indices, ref numPrimitives, rimW, width, height);
+
 				UpdatePrimitives(vertices, indices, numPrimitives);
 				continue;
 			}
@@ -383,6 +405,10 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 			var previousMeasureHasVerticesWithNoTriangle = false;
 			var previousMeasureStepsPerSecond = 0.0;
 			var previousPreviousMeasureStepsPerSecond = 0.0;
+			var minX = rimW;
+			var minY = rimW;
+			var stepHeight = height - rimW * 2;
+			var stepWidth = width - rimW * 2;
 			for (var i = 0; i < measures.GetSize(); i++)
 			{
 				double measureTime;
@@ -393,8 +419,8 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 				var stepsPerSecond = measures[i].Steps / measureTime;
 
 				var yPercent = (float)(stepsPerSecond / greatestStepsPerSecond);
-				var y = yPercent * height;
-				var x = (float)(measures[i].StartTime / finalTime) * width;
+				var y = minY + yPercent * stepHeight;
+				var x = minX + (float)(measures[i].StartTime / finalTime) * stepWidth;
 
 				// Special Case: No Steps.
 				if (measures[i].Steps == 0)
@@ -442,7 +468,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 				{
 					// We need to record two new vertices for this measure.
 					c = ColorUtils.Interpolate(lowColor, highColor, yPercent);
-					vertices.Add(new VertexPositionColor(new Vector3(x, 0.0f, 0.0f),
+					vertices.Add(new VertexPositionColor(new Vector3(x, minY, 0.0f),
 						colorMode == DensityGraphColorMode.ColorByDensity ? c : lowColor));
 					previousMeasureLowIndex = vertices.GetSize() - 1;
 					vertices.Add(new VertexPositionColor(new Vector3(x, y, 0.0f), c));
@@ -456,7 +482,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 				// Normal case: The previous measure had steps and this measure has a different number of steps.
 				// Add two vertices and two triangles.
 				c = ColorUtils.Interpolate(lowColor, highColor, yPercent);
-				vertices.Add(new VertexPositionColor(new Vector3(x, 0.0f, 0.0f),
+				vertices.Add(new VertexPositionColor(new Vector3(x, minY, 0.0f),
 					colorMode == DensityGraphColorMode.ColorByDensity ? c : lowColor));
 				vertices.Add(new VertexPositionColor(new Vector3(x, y, 0.0f), c));
 				indices.Add(previousMeasureLowIndex);
@@ -476,16 +502,94 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 			// If we made it to the end and there was a measure with unfinished vertices then add one more triangle.
 			if (previousMeasureHasVerticesWithNoTriangle)
 			{
-				vertices.Add(new VertexPositionColor(new Vector3(width, 0.0f, 0.0f), lowColor));
+				vertices.Add(new VertexPositionColor(new Vector3(stepWidth, minY, 0.0f), lowColor));
 				indices.Add(previousMeasureLowIndex);
 				indices.Add(previousMeasureHighIndex);
 				indices.Add(vertices.GetSize() - 1);
 				numPrimitives++;
 			}
 
+			// Add the rim primitives.
+			AddRim(vertices, indices, ref numPrimitives, rimW, width, height);
+
 			// Save results.
 			UpdatePrimitives(vertices, indices, numPrimitives);
 		}
+	}
+
+	private static void AddBackground(
+		DynamicArray<VertexPositionColor> vertices,
+		DynamicArray<int> indices,
+		ref int numPrimitives,
+		float width,
+		float height,
+		ref Color backgroundColor)
+	{
+		const float backgroundZ = -1.0f;
+
+		var rimIndexStart = vertices.GetSize();
+		vertices.Add(new VertexPositionColor(new Vector3(0.0f, height, backgroundZ), backgroundColor));
+		vertices.Add(new VertexPositionColor(new Vector3(0.0f, 0.0f, backgroundZ), backgroundColor));
+		vertices.Add(new VertexPositionColor(new Vector3(width, 0.0f, backgroundZ), backgroundColor));
+		vertices.Add(new VertexPositionColor(new Vector3(width, height, backgroundZ), backgroundColor));
+		indices.Add(rimIndexStart);
+		indices.Add(rimIndexStart + 2);
+		indices.Add(rimIndexStart + 1);
+		indices.Add(rimIndexStart + 0);
+		indices.Add(rimIndexStart + 3);
+		indices.Add(rimIndexStart + 2);
+		numPrimitives += 2;
+	}
+
+	private static void AddRim(
+		DynamicArray<VertexPositionColor> vertices,
+		DynamicArray<int> indices,
+		ref int numPrimitives,
+		float rimW,
+		float width,
+		float height)
+	{
+		const float rimZ = 2.0f;
+		var rimColor = Color.White;
+
+		var rimIndexStart = vertices.GetSize();
+		vertices.Add(new VertexPositionColor(new Vector3(0.0f, height, rimZ), rimColor));
+		vertices.Add(new VertexPositionColor(new Vector3(0.0f, 0.0f, rimZ), rimColor));
+		vertices.Add(new VertexPositionColor(new Vector3(rimW, 0.0f, rimZ), rimColor));
+		vertices.Add(new VertexPositionColor(new Vector3(rimW, height, rimZ), rimColor));
+		vertices.Add(new VertexPositionColor(new Vector3(rimW, height - rimW, rimZ), rimColor));
+		vertices.Add(new VertexPositionColor(new Vector3(width - rimW, height, rimZ), rimColor));
+		vertices.Add(new VertexPositionColor(new Vector3(width - rimW, height - rimW, rimZ), rimColor));
+		vertices.Add(new VertexPositionColor(new Vector3(rimW, rimW, rimZ), rimColor));
+		vertices.Add(new VertexPositionColor(new Vector3(width - rimW, rimW, rimZ), rimColor));
+		vertices.Add(new VertexPositionColor(new Vector3(width - rimW, 0.0f, rimZ), rimColor));
+		vertices.Add(new VertexPositionColor(new Vector3(width, height, rimZ), rimColor));
+		vertices.Add(new VertexPositionColor(new Vector3(width, 0.0f, rimZ), rimColor));
+		indices.Add(rimIndexStart + 1);
+		indices.Add(rimIndexStart);
+		indices.Add(rimIndexStart + 2);
+		indices.Add(rimIndexStart);
+		indices.Add(rimIndexStart + 3);
+		indices.Add(rimIndexStart + 2);
+		indices.Add(rimIndexStart + 3);
+		indices.Add(rimIndexStart + 5);
+		indices.Add(rimIndexStart + 6);
+		indices.Add(rimIndexStart + 4);
+		indices.Add(rimIndexStart + 3);
+		indices.Add(rimIndexStart + 6);
+		indices.Add(rimIndexStart + 2);
+		indices.Add(rimIndexStart + 7);
+		indices.Add(rimIndexStart + 9);
+		indices.Add(rimIndexStart + 7);
+		indices.Add(rimIndexStart + 8);
+		indices.Add(rimIndexStart + 9);
+		indices.Add(rimIndexStart + 9);
+		indices.Add(rimIndexStart + 5);
+		indices.Add(rimIndexStart + 11);
+		indices.Add(rimIndexStart + 5);
+		indices.Add(rimIndexStart + 10);
+		indices.Add(rimIndexStart + 11);
+		numPrimitives += 8;
 	}
 
 	/// <summary>
@@ -522,6 +626,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 
 		var lowColor = new Color(p.DensityGraphLowColor);
 		var highColor = new Color(p.DensityGraphHighColor);
+		var backgroundColor = new Color(p.DensityGraphBackgroundColor);
 
 		var w = Bounds.Width;
 		var h = Bounds.Height;
@@ -536,12 +641,12 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 
 		if (StepDensity == null)
 		{
-			State.EnqueueData(null, 0.0, w, h, lowColor, highColor, p.DensityGraphColorModeValue);
+			State.EnqueueData(null, 0.0, w, h, lowColor, highColor, backgroundColor, p.DensityGraphColorModeValue);
 		}
 		else
 		{
 			State.EnqueueData(StepDensity.GetMeasures(), StepDensity.GetLastMeasurePlusOneTime(), w, h, lowColor,
-				highColor, p.DensityGraphColorModeValue);
+				highColor, backgroundColor, p.DensityGraphColorModeValue);
 		}
 	}
 
