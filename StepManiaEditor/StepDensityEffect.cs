@@ -302,15 +302,20 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 
 		var viewportW = Graphics.PreferredBackBufferWidth;
 		var viewportH = Graphics.PreferredBackBufferHeight;
-		var x = (viewportW >> 1) - Bounds.X;
-		var y = (viewportH >> 1) - (viewportH - Bounds.Height - Bounds.Y);
+		var x = (int)(viewportW * 0.5 - Bounds.X + 0.5);
 		DensityEffect.Projection = Matrix.CreateOrthographic(viewportW, viewportH, -10, 10);
 
 		// The primitives are always generated horizontally. For vertical orientation we rotate the view.
 		if (EffectOrientation == Orientation.Vertical)
+		{
+			var y = (int)(viewportH * 0.5) - Bounds.Y;
 			DensityEffect.View = Matrix.CreateLookAt(new Vector3(y, x, 2), new Vector3(y, x, 0), Vector3.Left);
+		}
 		else
+		{
+			var y = Bounds.Y + Bounds.Height - (int)(viewportH * 0.5);
 			DensityEffect.View = Matrix.CreateLookAt(new Vector3(x, y, 2), new Vector3(x, y, 0), Vector3.Up);
+		}
 
 		lock (PrimitiveLock)
 		{

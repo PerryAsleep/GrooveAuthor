@@ -160,6 +160,7 @@ internal sealed class Preferences
 	{
 		PreferencesReceptors.SetEditor(Editor);
 		PreferencesWaveForm.PostLoad();
+		PreferencesStream.PostLoad();
 	}
 
 	private void PreSave()
