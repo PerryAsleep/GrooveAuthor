@@ -4757,6 +4757,12 @@ internal sealed class Editor :
 					ImGui.EndMenu();
 				}
 
+				if (ImGui.BeginMenu("Stream Preferences"))
+				{
+					UIStreamPreferences.DrawContents();
+					ImGui.EndMenu();
+				}
+
 				anyObjectHovered = true;
 			}
 			else if (isInReceptorArea)

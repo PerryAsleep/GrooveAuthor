@@ -10,6 +10,7 @@ namespace StepManiaEditor;
 internal sealed class PreferencesStream : Notifier<PreferencesStream>
 {
 	public const string NotificationNoteTypeChanged = "NoteTypeChanged";
+	public const string NotificationStreamTextParametersChanged = "StreamTextParametersChanged";
 
 	// Default values.
 	public const SubdivisionType DefaultNoteType = SubdivisionType.SixteenthNotes;
@@ -36,13 +37,82 @@ internal sealed class PreferencesStream : Notifier<PreferencesStream>
 		}
 	}
 
-	[JsonInclude] public bool ShowBreakLengths = DefaultShowBreakLengths;
-	[JsonInclude] public int MinimumLengthToConsiderStream = DefaultMinimumLengthToConsiderStream;
-	[JsonInclude] public int ShortBreakCutoff = DefaultShortBreakCutoff;
-	[JsonInclude] public char ShortBreakCharacter = DefaultShortBreakCharacter;
-	[JsonInclude] public char LongBreakCharacter = DefaultLongBreakCharacter;
+	[JsonInclude]
+	public bool ShowBreakLengths
+	{
+		get => ShowBreakLengthsInternal;
+		set
+		{
+			if (ShowBreakLengthsInternal != value)
+			{
+				ShowBreakLengthsInternal = value;
+				Notify(NotificationStreamTextParametersChanged, this);
+			}
+		}
+	}
+
+	[JsonInclude]
+	public int MinimumLengthToConsiderStream
+	{
+		get => MinimumLengthToConsiderStreamInternal;
+		set
+		{
+			if (MinimumLengthToConsiderStreamInternal != value)
+			{
+				MinimumLengthToConsiderStreamInternal = value;
+				Notify(NotificationStreamTextParametersChanged, this);
+			}
+		}
+	}
+
+	[JsonInclude]
+	public int ShortBreakCutoff
+	{
+		get => ShortBreakCutoffInternal;
+		set
+		{
+			if (ShortBreakCutoffInternal != value)
+			{
+				ShortBreakCutoffInternal = value;
+				Notify(NotificationStreamTextParametersChanged, this);
+			}
+		}
+	}
+
+	[JsonInclude]
+	public char ShortBreakCharacter
+	{
+		get => ShortBreakCharacterInternal;
+		set
+		{
+			if (ShortBreakCharacterInternal != value)
+			{
+				ShortBreakCharacterInternal = value;
+				Notify(NotificationStreamTextParametersChanged, this);
+			}
+		}
+	}
+
+	[JsonInclude]
+	public char LongBreakCharacter
+	{
+		get => LongBreakCharacterInternal;
+		set
+		{
+			if (LongBreakCharacterInternal != value)
+			{
+				LongBreakCharacterInternal = value;
+				Notify(NotificationStreamTextParametersChanged, this);
+			}
+		}
+	}
 
 	private SubdivisionType NoteTypeInternal = DefaultNoteType;
+	private bool ShowBreakLengthsInternal = DefaultShowBreakLengths;
+	private int MinimumLengthToConsiderStreamInternal = DefaultMinimumLengthToConsiderStream;
+	private int ShortBreakCutoffInternal = DefaultShortBreakCutoff;
+	private char ShortBreakCharacterInternal = DefaultShortBreakCharacter;
+	private char LongBreakCharacterInternal = DefaultLongBreakCharacter;
 
 	public bool IsUsingDefaults()
 	{

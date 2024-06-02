@@ -64,6 +64,16 @@ internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<Prefe
 	private IntervalTree<int, Tuple<int, int>> Streams = new();
 
 	/// <summary>
+	/// Cached stream breakdown.
+	/// </summary>
+	private string StreamBreakdown;
+
+	/// <summary>
+	/// Dirty flag for stream breakdown.
+	/// </summary>
+	private bool StreamBreakdownDirty = true;
+
+	/// <summary>
 	/// Constructor
 	/// </summary>
 	/// <param name="editorChart">EditorChart to provide density information of.</param>
@@ -94,6 +104,9 @@ internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<Prefe
 	/// <returns>String representation of the stream breakdown of the EditorChart.</returns>
 	public string GetStreamBreakdown()
 	{
+		if (!StreamBreakdownDirty)
+			return StreamBreakdown;
+
 		var p = Preferences.Instance.PreferencesStream;
 		var sb = new StringBuilder();
 		var first = true;
@@ -130,9 +143,11 @@ internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<Prefe
 		}
 
 		if (!anyStreams)
-			return "No Streams";
-
-		return sb.ToString();
+			StreamBreakdown = "No Streams";
+		else
+			StreamBreakdown = sb.ToString();
+		StreamBreakdownDirty = false;
+		return StreamBreakdown;
 	}
 
 	#region Adding and Deleting Events
@@ -360,7 +375,6 @@ internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<Prefe
 			EditorChart.TryGetTimeFromChartPosition(Measures.GetSize() * RowsPerMeasure, ref t);
 			Measures.Add(new Measure(t, 0));
 		}
-		Measures.SetSizeWithoutUpdatingCapacity(newSize);
 	}
 
 	/// <summary>
@@ -432,6 +446,8 @@ internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<Prefe
 			Streams.Insert(new Tuple<int, int>(lastStreamMeasureStart, lastStreamMeasure), lastStreamMeasureStart,
 				lastStreamMeasure);
 		}
+
+		StreamBreakdownDirty = true;
 	}
 
 	#region Measure Number Determination
@@ -473,6 +489,9 @@ internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<Prefe
 			// When the note type of the stream changes we need to recompute all streams.
 			case PreferencesStream.NotificationNoteTypeChanged:
 				RecomputeStreams(false);
+				break;
+			case PreferencesStream.NotificationStreamTextParametersChanged:
+				StreamBreakdownDirty = true;
 				break;
 		}
 	}
