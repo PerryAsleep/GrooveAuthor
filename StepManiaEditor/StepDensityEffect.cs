@@ -23,6 +23,10 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 	private const int MinNumMeasures = 256;
 	private const int MinNumVertices = 2048;
 	private const int MinNumIndices = 6288;
+	private const float RimW = 1.0f;
+	private static readonly Color RimColor = Color.White;
+	private static readonly Color TimeMarkerColor = Color.White;
+	private static readonly Color TimeRegionColor = new(1.0f, 1.0f, 1.0f, 0.122f);
 
 	/// <summary>
 	/// Orientation of the effect.
@@ -184,6 +188,11 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 	/// </summary>
 	private readonly Task UpdatePrimitivesTask;
 
+	private readonly VertexPositionColor[] ScrollBarVertices = new VertexPositionColor[8];
+	private readonly int[] ScrollBarIndices = new int[12];
+	private bool ScrollBarVisible;
+	private bool ScrollBarInvalidBounds;
+
 	/// <summary>
 	/// Current StepDensity to render.
 	/// </summary>
@@ -211,12 +220,30 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 		// Observe relevant preferences so the effect can be updated accordingly.
 		Preferences.Instance.PreferencesStream.AddObserver(this);
 
+		InitializeScrollBar();
+
 		// Start a long running task to process updates to primitives.
 		UpdatePrimitivesTask = Task.Factory.StartNew(
 			UpdatePrimitives,
 			CancellationToken.None,
 			TaskCreationOptions.LongRunning,
 			TaskScheduler.Default);
+	}
+
+	private void InitializeScrollBar()
+	{
+		ScrollBarIndices[0] = 1;
+		ScrollBarIndices[1] = 0;
+		ScrollBarIndices[2] = 2;
+		ScrollBarIndices[3] = 0;
+		ScrollBarIndices[4] = 3;
+		ScrollBarIndices[5] = 2;
+		ScrollBarIndices[6] = 5;
+		ScrollBarIndices[7] = 4;
+		ScrollBarIndices[8] = 6;
+		ScrollBarIndices[9] = 4;
+		ScrollBarIndices[10] = 7;
+		ScrollBarIndices[11] = 6;
 	}
 
 	#region IDisposable
@@ -292,6 +319,60 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 		RefreshPrimitives();
 	}
 
+	public void Update(double timeRangeStart, double timeRangeEnd, double currentTime)
+	{
+		if (StepDensity == null)
+		{
+			ScrollBarVisible = false;
+			return;
+		}
+
+		ScrollBarVisible = true;
+		UpdateScrollBar(timeRangeStart, timeRangeEnd, currentTime);
+	}
+
+	private void UpdateScrollBar(double startTime, double endTime, double currentTime)
+	{
+		var w = EffectOrientation == Orientation.Vertical ? Bounds.Height : Bounds.Width;
+		var h = EffectOrientation == Orientation.Vertical ? Bounds.Width : Bounds.Height;
+
+		var xRange = w - 2 * RimW;
+		var yRange = h - 2 * RimW;
+		if (xRange <= 0 || yRange <= 0)
+		{
+			ScrollBarInvalidBounds = true;
+			return;
+		}
+
+		ScrollBarInvalidBounds = false;
+
+		var minX = RimW;
+		var maxX = w - RimW;
+
+		var finalTime = StepDensity.GetLastMeasurePlusOneTime();
+		var markerStartX = (float)(RimW + currentTime / finalTime * xRange);
+		var markerEndX = markerStartX + 1;
+		var regionStartX = markerStartX - (int)((currentTime - startTime) / finalTime * xRange);
+		var regionEndX = markerStartX + (int)((endTime - currentTime) / finalTime * xRange);
+
+		markerStartX = Math.Clamp(markerStartX, minX, maxX);
+		markerEndX = Math.Clamp(markerEndX, minX, maxX);
+		regionStartX = Math.Clamp(regionStartX, minX, maxX);
+		regionEndX = Math.Clamp(regionEndX, minX, maxX);
+
+		var topY = h - RimW;
+		var bottomY = RimW;
+
+		ScrollBarVertices[0] = new VertexPositionColor(new Vector3(regionStartX, topY, 0.0f), TimeRegionColor);
+		ScrollBarVertices[1] = new VertexPositionColor(new Vector3(regionStartX, bottomY, 0.0f), TimeRegionColor);
+		ScrollBarVertices[2] = new VertexPositionColor(new Vector3(regionEndX, bottomY, 0.0f), TimeRegionColor);
+		ScrollBarVertices[3] = new VertexPositionColor(new Vector3(regionEndX, topY, 0.0f), TimeRegionColor);
+		ScrollBarVertices[4] = new VertexPositionColor(new Vector3(markerStartX, topY, 0.0f), TimeMarkerColor);
+		ScrollBarVertices[5] = new VertexPositionColor(new Vector3(markerStartX, bottomY, 0.0f), TimeMarkerColor);
+		ScrollBarVertices[6] = new VertexPositionColor(new Vector3(markerEndX, bottomY, 0.0f), TimeMarkerColor);
+		ScrollBarVertices[7] = new VertexPositionColor(new Vector3(markerEndX, topY, 0.0f), TimeMarkerColor);
+	}
+
 	/// <summary>
 	/// Draw the density graph.
 	/// </summary>
@@ -319,14 +400,22 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 
 		lock (PrimitiveLock)
 		{
-			if (NumPrimitives == 0)
-				return;
-
 			foreach (var pass in DensityEffect.CurrentTechnique.Passes)
 			{
 				pass.Apply();
-				GraphicsDevice.DrawUserIndexedPrimitives(PrimitiveType.TriangleList, Vertices.GetArray(), 0, Vertices.GetSize(),
-					Indices.GetArray(), 0, NumPrimitives);
+				if (NumPrimitives > 0)
+				{
+					GraphicsDevice.DrawUserIndexedPrimitives(PrimitiveType.TriangleList, Vertices.GetArray(), 0,
+						Vertices.GetSize(),
+						Indices.GetArray(), 0, NumPrimitives);
+				}
+
+				if (ScrollBarVisible && !ScrollBarInvalidBounds)
+				{
+					GraphicsDevice.DrawUserIndexedPrimitives(PrimitiveType.TriangleList, ScrollBarVertices, 0,
+						ScrollBarVertices.Length,
+						ScrollBarIndices, 0, 4);
+				}
 			}
 		}
 
@@ -351,7 +440,6 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 		var highColor = Color.White;
 		var backgroundColor = Color.Black;
 		var colorMode = DensityGraphColorMode.ColorByDensity;
-		const float rimW = 1.0f;
 
 		// Loop continuously, yielding when there is no work.
 		while (true)
@@ -384,10 +472,10 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 			AddBackground(vertices, indices, ref numPrimitives, width, height, ref backgroundColor);
 
 			// Early out due to no measures or not enough area to render measures
-			if (measures.GetSize() == 0 || height <= rimW * 2 || width <= rimW * 2)
+			if (measures.GetSize() == 0 || height <= RimW * 2 || width <= RimW * 2)
 			{
 				// Add the rim primitives.
-				AddRim(vertices, indices, ref numPrimitives, rimW, width, height);
+				AddRim(vertices, indices, ref numPrimitives, width, height);
 
 				UpdatePrimitives(vertices, indices, numPrimitives);
 				continue;
@@ -410,10 +498,10 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 			var previousMeasureHasVerticesWithNoTriangle = false;
 			var previousMeasureStepsPerSecond = 0.0;
 			var previousPreviousMeasureStepsPerSecond = 0.0;
-			var minX = rimW;
-			var minY = rimW;
-			var stepHeight = height - rimW * 2;
-			var stepWidth = width - rimW * 2;
+			var minX = RimW;
+			var minY = RimW;
+			var stepHeight = height - RimW * 2;
+			var stepWidth = width - RimW * 2;
 			for (var i = 0; i < measures.GetSize(); i++)
 			{
 				double measureTime;
@@ -515,7 +603,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 			}
 
 			// Add the rim primitives.
-			AddRim(vertices, indices, ref numPrimitives, rimW, width, height);
+			AddRim(vertices, indices, ref numPrimitives, width, height);
 
 			// Save results.
 			UpdatePrimitives(vertices, indices, numPrimitives);
@@ -550,26 +638,24 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 		DynamicArray<VertexPositionColor> vertices,
 		DynamicArray<int> indices,
 		ref int numPrimitives,
-		float rimW,
 		float width,
 		float height)
 	{
 		const float rimZ = 2.0f;
-		var rimColor = Color.White;
 
 		var rimIndexStart = vertices.GetSize();
-		vertices.Add(new VertexPositionColor(new Vector3(0.0f, height, rimZ), rimColor));
-		vertices.Add(new VertexPositionColor(new Vector3(0.0f, 0.0f, rimZ), rimColor));
-		vertices.Add(new VertexPositionColor(new Vector3(rimW, 0.0f, rimZ), rimColor));
-		vertices.Add(new VertexPositionColor(new Vector3(rimW, height, rimZ), rimColor));
-		vertices.Add(new VertexPositionColor(new Vector3(rimW, height - rimW, rimZ), rimColor));
-		vertices.Add(new VertexPositionColor(new Vector3(width - rimW, height, rimZ), rimColor));
-		vertices.Add(new VertexPositionColor(new Vector3(width - rimW, height - rimW, rimZ), rimColor));
-		vertices.Add(new VertexPositionColor(new Vector3(rimW, rimW, rimZ), rimColor));
-		vertices.Add(new VertexPositionColor(new Vector3(width - rimW, rimW, rimZ), rimColor));
-		vertices.Add(new VertexPositionColor(new Vector3(width - rimW, 0.0f, rimZ), rimColor));
-		vertices.Add(new VertexPositionColor(new Vector3(width, height, rimZ), rimColor));
-		vertices.Add(new VertexPositionColor(new Vector3(width, 0.0f, rimZ), rimColor));
+		vertices.Add(new VertexPositionColor(new Vector3(0.0f, height, rimZ), RimColor));
+		vertices.Add(new VertexPositionColor(new Vector3(0.0f, 0.0f, rimZ), RimColor));
+		vertices.Add(new VertexPositionColor(new Vector3(RimW, 0.0f, rimZ), RimColor));
+		vertices.Add(new VertexPositionColor(new Vector3(RimW, height, rimZ), RimColor));
+		vertices.Add(new VertexPositionColor(new Vector3(RimW, height - RimW, rimZ), RimColor));
+		vertices.Add(new VertexPositionColor(new Vector3(width - RimW, height, rimZ), RimColor));
+		vertices.Add(new VertexPositionColor(new Vector3(width - RimW, height - RimW, rimZ), RimColor));
+		vertices.Add(new VertexPositionColor(new Vector3(RimW, RimW, rimZ), RimColor));
+		vertices.Add(new VertexPositionColor(new Vector3(width - RimW, RimW, rimZ), RimColor));
+		vertices.Add(new VertexPositionColor(new Vector3(width - RimW, 0.0f, rimZ), RimColor));
+		vertices.Add(new VertexPositionColor(new Vector3(width, height, rimZ), RimColor));
+		vertices.Add(new VertexPositionColor(new Vector3(width, 0.0f, rimZ), RimColor));
 		indices.Add(rimIndexStart + 1);
 		indices.Add(rimIndexStart);
 		indices.Add(rimIndexStart + 2);

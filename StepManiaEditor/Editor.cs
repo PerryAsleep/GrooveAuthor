@@ -1413,7 +1413,7 @@ internal sealed class Editor :
 			PerformanceMonitor.Time(PerformanceTimings.MiniMap, UpdateMiniMap);
 			PerformanceMonitor.Time(PerformanceTimings.Waveform, UpdateWaveFormRenderer);
 
-			UpdateDensityGraphBounds();
+			UpdateDensityGraph();
 
 			UpdateReceptors();
 
@@ -1524,6 +1524,19 @@ internal sealed class Editor :
 				receptor.Update(Playing, Position.ChartPosition);
 			}
 		}
+	}
+
+	private void UpdateDensityGraph()
+	{
+		UpdateDensityGraphBounds();
+
+		var screenHeight = GetViewportHeight();
+		var spacingZoom = ZoomManager.GetSpacingZoom();
+		var chartTime = Position.ChartTime;
+		var pps = Preferences.Instance.PreferencesScroll.TimeBasedPixelsPerSecond * spacingZoom;
+		var timeStart = chartTime - GetFocalPointY() / pps;
+		var timeEnd = timeStart + screenHeight / pps;
+		StepDensityEffect.Update(timeStart, timeEnd, chartTime);
 	}
 
 	private void UpdateDensityGraphBounds()
