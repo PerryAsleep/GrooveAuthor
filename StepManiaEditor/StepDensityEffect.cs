@@ -17,6 +17,8 @@ namespace StepManiaEditor;
 ///  Call UpdateBounds to set the bounds of the effect.
 ///  Call Draw once each frame to render the effect.
 ///  Call ResetBufferCapacities to reset capacities for internal rendering buffers.
+///  For input processing call MouseDown, MouseMove, and MouseUp.
+///  To get the position from the MiniMap call GetTimeFromScrollBar.
 /// </summary>
 internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IObserver<PreferencesStream>, IDisposable
 {
@@ -25,8 +27,10 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 	private const int MinNumIndices = 6288;
 	private const float RimW = 1.0f;
 	private static readonly Color RimColor = Color.White;
-	private static readonly Color TimeMarkerColor = Color.White;
+	private static readonly Color TimeMarkerColor = new(0.8f, 0.8f, 0.8f, 1.0f);
 	private static readonly Color TimeRegionColor = new(1.0f, 1.0f, 1.0f, 0.122f);
+	private static readonly Color TimeRegionHoveredColor = new(1.0f, 1.0f, 1.0f, 0.155f);
+	private static readonly Color TimeRegionSelectedColor = new(1.0f, 1.0f, 1.0f, 0.188f);
 
 	/// <summary>
 	/// Orientation of the effect.
@@ -39,7 +43,9 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 
 	/// <summary>
 	/// Data for communicating state from calls to update the measures to the long-running
-	/// thread which processes measures and turns them into primitives.
+	/// thread which processes measures and turns them into primitives. For abusively long
+	/// content the number of measures can be in the multiple tens of thousands. We do not
+	/// want to loop over that on the main thread every time a change occurs.
 	/// </summary>
 	internal sealed class CreatePrimitivesState
 	{
@@ -157,11 +163,25 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 		}
 	}
 
-	private readonly GraphicsDeviceManager Graphics;
-	private readonly GraphicsDevice GraphicsDevice;
-	private readonly BasicEffect DensityEffect;
-
+	/// <summary>
+	/// State for communicating updates to the primitives thread.
+	/// </summary>
 	private readonly CreatePrimitivesState State = new();
+
+	/// <summary>
+	/// The GraphicsDeviceManager used for rendering the density graph.
+	/// </summary>
+	private readonly GraphicsDeviceManager Graphics;
+
+	/// <summary>
+	/// The GraphicsDevice used for rendering the density graph.
+	/// </summary>
+	private readonly GraphicsDevice GraphicsDevice;
+
+	/// <summary>
+	/// The BasicEffect used for rendering the density graph.
+	/// </summary>
+	private readonly BasicEffect DensityEffect;
 
 	/// <summary>
 	/// Lock for primitive data.
@@ -188,20 +208,84 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 	/// </summary>
 	private readonly Task UpdatePrimitivesTask;
 
+	/// <summary>
+	/// Primitive vertex array for the scroll bar.
+	/// </summary>
 	private readonly VertexPositionColor[] ScrollBarVertices = new VertexPositionColor[8];
+
+	/// <summary>
+	/// Primitive index array for the scroll bar.
+	/// </summary>
 	private readonly int[] ScrollBarIndices = new int[12];
+
+	/// <summary>
+	/// Whether or not the scroll bar is visible.
+	/// </summary>
 	private bool ScrollBarVisible;
+
+	/// <summary>
+	/// Flag for not rendering the scroll bar due to it having invalid bounds even it should be visible.
+	/// </summary>
 	private bool ScrollBarInvalidBounds;
+
+	/// <summary>
+	/// Scroll bar start time.
+	/// </summary>
+	private double ScrollBarStartTime;
+
+	/// <summary>
+	/// Scroll bar end time.
+	/// </summary>
+	private double ScrollBarEndTime;
+
+	/// <summary>
+	/// Scroll bar current time.
+	/// </summary>
+	private double ScrollBarCurrentTime;
 
 	/// <summary>
 	/// Current StepDensity to render.
 	/// </summary>
 	private StepDensity StepDensity;
 
+	/// <summary>
+	/// Screen space bounds of the density graph.
+	/// </summary>
 	private Rectangle Bounds;
+
+	/// <summary>
+	/// Screen space bounds of the scroll bar within the density graph.
+	/// </summary>
+	private Rectangle ScrollBarBounds;
+
+	/// <summary>
+	/// Whether or not the mouse is currently over the scroll bar.
+	/// </summary>
+	private bool MouseOverScrollBar;
+
+	/// <summary>
+	/// Orientation of the density graph.
+	/// </summary>
 	private Orientation EffectOrientation = Orientation.Horizontal;
 
+	/// <summary>
+	/// Whether or not the scroll bar is currently being grabbed for movement.
+	/// </summary>
+	private bool Grabbed;
+
+	/// <summary>
+	/// When grabbing the scroll bar, this stores where within the scroll bar area
+	/// the user clicked so that when they scroll the editor doesn't jump to center
+	/// on the selected area.
+	/// </summary>
+	private double GrabbedPositionAsPercentageOfScrollBar;
+
+	/// <summary>
+	/// Disposed flag for IDisposable interface.
+	/// </summary>
 	private bool Disposed;
+
+	#region Initialization
 
 	/// <summary>
 	/// Constructor.
@@ -245,6 +329,8 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 		ScrollBarIndices[10] = 7;
 		ScrollBarIndices[11] = 6;
 	}
+
+	#endregion Initialization
 
 	#region IDisposable
 
@@ -302,6 +388,135 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 		}
 	}
 
+	#region Mouse Input
+
+	public bool IsInDensityGraphArea(int screenX, int screenY)
+	{
+		return Bounds.Contains(screenX, screenY);
+	}
+
+	private void UpdateTrackingMouseOverScrollBar(int screenX, int screenY)
+	{
+		MouseOverScrollBar = ScrollBarVisible && !ScrollBarInvalidBounds && ScrollBarBounds.Contains(screenX, screenY);
+	}
+
+	private double GetScreenSpacePositionFromTime(double time)
+	{
+		if (StepDensity == null)
+			return 0.0;
+		if (EffectOrientation == Orientation.Horizontal)
+			return Bounds.X + RimW + (Bounds.Width - RimW * 2) * (time / StepDensity.GetLastMeasurePlusOneTime());
+		return Bounds.Y + RimW + (Bounds.Height - RimW * 2) * (time / StepDensity.GetLastMeasurePlusOneTime());
+	}
+
+	/// <summary>
+	/// Called when the mouse button is pressed.
+	/// </summary>
+	/// <param name="screenX">X mouse position in screen space.</param>
+	/// <param name="screenY">Y mouse position in screen space.</param>
+	/// <returns>Whether or not the StepDensityEffect has captured this input.</returns>
+	public bool MouseDown(int screenX, int screenY)
+	{
+		UpdateTrackingMouseOverScrollBar(screenX, screenY);
+
+		if (!Bounds.Contains(screenX, screenY))
+			return false;
+
+		Grabbed = true;
+
+		// Grabbed the scroll bar.
+		if (MouseOverScrollBar)
+		{
+			var screenPos = EffectOrientation == Orientation.Horizontal ? screenX : screenY;
+			var endTimeScreenSpace = GetScreenSpacePositionFromTime(ScrollBarEndTime);
+			var startTimeScreenSpace = GetScreenSpacePositionFromTime(ScrollBarStartTime);
+			GrabbedPositionAsPercentageOfScrollBar =
+				(screenPos - startTimeScreenSpace) / (endTimeScreenSpace - startTimeScreenSpace);
+		}
+		// Grabbed outside of the scroll bar.
+		else
+		{
+			GrabbedPositionAsPercentageOfScrollBar =
+				(ScrollBarCurrentTime - ScrollBarStartTime) / (ScrollBarEndTime - ScrollBarStartTime);
+		}
+
+		MouseMove(screenX, screenY);
+		return true;
+	}
+
+	/// <summary>
+	/// Called when the mouse moves.
+	/// </summary>
+	/// <param name="screenX">Mouse X position in screen space.</param>
+	/// <param name="screenY">Mouse Y position in screen space.</param>
+	public void MouseMove(int screenX, int screenY)
+	{
+		UpdateTrackingMouseOverScrollBar(screenX, screenY);
+		if (!Grabbed)
+			return;
+
+		MoveScrollBar(screenX, screenY);
+	}
+
+	/// <summary>
+	/// Called when the mouse button is released.
+	/// </summary>
+	/// <param name="screenX">Mouse X position in screen space.</param>
+	/// <param name="screenY">Mouse Y position in screen space.</param>
+	public void MouseUp(int screenX, int screenY)
+	{
+		UpdateTrackingMouseOverScrollBar(screenX, screenY);
+		Grabbed = false;
+	}
+
+	/// <summary>
+	/// Returns whether or not the StepDensityEffect wants to be processing mouse input, which is
+	/// equivalent to if the StepDensityEffect's scroll bar region is being grabbed.
+	/// </summary>
+	/// <returns>Whether or not the StepDensityEffect wants to be processing mouse input.</returns>
+	public bool WantsMouse()
+	{
+		return Grabbed;
+	}
+
+	/// <summary>
+	/// Move the scrollbar based on the mouse's screen position.
+	/// </summary>
+	/// <param name="screenX">Mouse X position in screen space.</param>
+	/// <param name="screenY">Mouse Y position in screen space.</param>
+	private void MoveScrollBar(int screenX, int screenY)
+	{
+		if (StepDensity == null)
+			return;
+
+		var finalTime = StepDensity.GetLastMeasurePlusOneTime();
+		var mouseX = EffectOrientation == Orientation.Horizontal ? screenX : screenY;
+		var startX = EffectOrientation == Orientation.Horizontal ? Bounds.X + RimW : Bounds.Y + RimW;
+		var totalW = EffectOrientation == Orientation.Horizontal ? Bounds.Width - RimW * 2 : Bounds.Height - RimW * 2;
+
+		var scrollBarDuration = ScrollBarEndTime - ScrollBarStartTime;
+		var scrollBarDurationToCurrentTime = ScrollBarCurrentTime - ScrollBarStartTime;
+		var newTime = (mouseX - startX) / totalW * finalTime;
+		ScrollBarStartTime = newTime - GrabbedPositionAsPercentageOfScrollBar * scrollBarDuration;
+		ScrollBarEndTime = ScrollBarStartTime + scrollBarDuration;
+		ScrollBarCurrentTime = ScrollBarStartTime + scrollBarDurationToCurrentTime;
+
+		UpdateScrollBarPrimitives();
+	}
+
+	/// <summary>
+	/// Gets the time from the scroll bar.
+	/// </summary>
+	/// <returns>Time from the scroll bar.</returns>
+	public double GetTimeFromScrollBar()
+	{
+		return ScrollBarCurrentTime;
+	}
+
+	#endregion Mouse Input
+
+	#region Update
+
 	/// <summary>
 	/// Update the bounds of the effect.
 	/// </summary>
@@ -319,8 +534,19 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 		RefreshPrimitives();
 	}
 
+	/// <summary>
+	/// Updates the StepDensityEffect.
+	/// </summary>
+	/// <param name="timeRangeStart">Current visible time range start of the chart within the Editor.</param>
+	/// <param name="timeRangeEnd">Current visible time range end of the chart within the Editor.</param>
+	/// <param name="currentTime">Current time of the chart.</param>
 	public void Update(double timeRangeStart, double timeRangeEnd, double currentTime)
 	{
+		ScrollBarStartTime = timeRangeStart;
+		ScrollBarEndTime = timeRangeEnd;
+		ScrollBarCurrentTime = currentTime;
+
+		// Update the scroll bar.
 		if (StepDensity == null)
 		{
 			ScrollBarVisible = false;
@@ -328,49 +554,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 		}
 
 		ScrollBarVisible = true;
-		UpdateScrollBar(timeRangeStart, timeRangeEnd, currentTime);
-	}
-
-	private void UpdateScrollBar(double startTime, double endTime, double currentTime)
-	{
-		var w = EffectOrientation == Orientation.Vertical ? Bounds.Height : Bounds.Width;
-		var h = EffectOrientation == Orientation.Vertical ? Bounds.Width : Bounds.Height;
-
-		var xRange = w - 2 * RimW;
-		var yRange = h - 2 * RimW;
-		if (xRange <= 0 || yRange <= 0)
-		{
-			ScrollBarInvalidBounds = true;
-			return;
-		}
-
-		ScrollBarInvalidBounds = false;
-
-		var minX = RimW;
-		var maxX = w - RimW;
-
-		var finalTime = StepDensity.GetLastMeasurePlusOneTime();
-		var markerStartX = (float)(RimW + currentTime / finalTime * xRange);
-		var markerEndX = markerStartX + 1;
-		var regionStartX = markerStartX - (int)((currentTime - startTime) / finalTime * xRange);
-		var regionEndX = markerStartX + (int)((endTime - currentTime) / finalTime * xRange);
-
-		markerStartX = Math.Clamp(markerStartX, minX, maxX);
-		markerEndX = Math.Clamp(markerEndX, minX, maxX);
-		regionStartX = Math.Clamp(regionStartX, minX, maxX);
-		regionEndX = Math.Clamp(regionEndX, minX, maxX);
-
-		var topY = h - RimW;
-		var bottomY = RimW;
-
-		ScrollBarVertices[0] = new VertexPositionColor(new Vector3(regionStartX, topY, 0.0f), TimeRegionColor);
-		ScrollBarVertices[1] = new VertexPositionColor(new Vector3(regionStartX, bottomY, 0.0f), TimeRegionColor);
-		ScrollBarVertices[2] = new VertexPositionColor(new Vector3(regionEndX, bottomY, 0.0f), TimeRegionColor);
-		ScrollBarVertices[3] = new VertexPositionColor(new Vector3(regionEndX, topY, 0.0f), TimeRegionColor);
-		ScrollBarVertices[4] = new VertexPositionColor(new Vector3(markerStartX, topY, 0.0f), TimeMarkerColor);
-		ScrollBarVertices[5] = new VertexPositionColor(new Vector3(markerStartX, bottomY, 0.0f), TimeMarkerColor);
-		ScrollBarVertices[6] = new VertexPositionColor(new Vector3(markerEndX, bottomY, 0.0f), TimeMarkerColor);
-		ScrollBarVertices[7] = new VertexPositionColor(new Vector3(markerEndX, topY, 0.0f), TimeMarkerColor);
+		UpdateScrollBarPrimitives();
 	}
 
 	/// <summary>
@@ -418,11 +602,67 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 				}
 			}
 		}
-
-		// Draw primitives for current time visible area and current time line.
 	}
 
+	#endregion Update
+
 	#region Primitive Generation
+
+	/// <summary>
+	/// Update the scroll bar primitives.
+	/// The scroll bar can frequently change every frame and we want it to be responsive so
+	/// we update these primitives directly rather than enqueueing actions for them.
+	/// </summary>
+	private void UpdateScrollBarPrimitives()
+	{
+		var w = EffectOrientation == Orientation.Vertical ? Bounds.Height : Bounds.Width;
+		var h = EffectOrientation == Orientation.Vertical ? Bounds.Width : Bounds.Height;
+
+		var xRange = w - 2 * RimW;
+		var yRange = h - 2 * RimW;
+		if (xRange <= 0 || yRange <= 0)
+		{
+			ScrollBarInvalidBounds = true;
+			return;
+		}
+
+		ScrollBarInvalidBounds = false;
+
+		var minX = RimW;
+		var maxX = w - RimW;
+
+		var finalTime = StepDensity.GetLastMeasurePlusOneTime();
+		var markerStartX = (float)(RimW + ScrollBarCurrentTime / finalTime * xRange);
+		var markerEndX = markerStartX + 1;
+		var regionStartX = markerStartX - (int)((ScrollBarCurrentTime - ScrollBarStartTime) / finalTime * xRange);
+		var regionEndX = markerStartX + (int)((ScrollBarEndTime - ScrollBarCurrentTime) / finalTime * xRange);
+
+		markerStartX = Math.Clamp(markerStartX, minX, maxX);
+		markerEndX = Math.Clamp(markerEndX, minX, maxX);
+		regionStartX = Math.Clamp(regionStartX, minX, maxX);
+		regionEndX = Math.Clamp(regionEndX, minX, maxX);
+
+		var topY = h - RimW;
+		var bottomY = RimW;
+
+		if (EffectOrientation == Orientation.Vertical)
+			ScrollBarBounds = new Rectangle(Bounds.X + (int)bottomY, Bounds.Y + (int)regionStartX, (int)(topY - bottomY),
+				(int)(regionEndX - regionStartX));
+		else
+			ScrollBarBounds = new Rectangle(Bounds.X + (int)regionStartX, Bounds.Y + (int)bottomY,
+				(int)(regionEndX - regionStartX), (int)(topY - bottomY));
+
+		var barColor = Grabbed ? TimeRegionSelectedColor : MouseOverScrollBar ? TimeRegionHoveredColor : TimeRegionColor;
+
+		ScrollBarVertices[0] = new VertexPositionColor(new Vector3(regionStartX, topY, 0.0f), barColor);
+		ScrollBarVertices[1] = new VertexPositionColor(new Vector3(regionStartX, bottomY, 0.0f), barColor);
+		ScrollBarVertices[2] = new VertexPositionColor(new Vector3(regionEndX, bottomY, 0.0f), barColor);
+		ScrollBarVertices[3] = new VertexPositionColor(new Vector3(regionEndX, topY, 0.0f), barColor);
+		ScrollBarVertices[4] = new VertexPositionColor(new Vector3(markerStartX, topY, 0.0f), TimeMarkerColor);
+		ScrollBarVertices[5] = new VertexPositionColor(new Vector3(markerStartX, bottomY, 0.0f), TimeMarkerColor);
+		ScrollBarVertices[6] = new VertexPositionColor(new Vector3(markerEndX, bottomY, 0.0f), TimeMarkerColor);
+		ScrollBarVertices[7] = new VertexPositionColor(new Vector3(markerEndX, topY, 0.0f), TimeMarkerColor);
+	}
 
 	/// <summary>
 	/// Long-running task to update the primitives used for rendering.
@@ -490,12 +730,12 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 					measureTime = measures[i + 1].StartTime - measures[i].StartTime;
 				else
 					measureTime = finalTime - measures[i].StartTime;
-				greatestStepsPerSecond = Math.Max(measures[i].Steps / measureTime, greatestStepsPerSecond);
+				if (measureTime > 0.0)
+					greatestStepsPerSecond = Math.Max(measures[i].Steps / measureTime, greatestStepsPerSecond);
 			}
 
 			var previousMeasureHighIndex = 0;
 			var previousMeasureLowIndex = 0;
-			var previousMeasureHasVerticesWithNoTriangle = false;
 			var previousMeasureStepsPerSecond = 0.0;
 			var previousPreviousMeasureStepsPerSecond = 0.0;
 			var minX = RimW;
@@ -521,7 +761,6 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 					// If the previous measure also had no steps there is nothing we need to do. No new triangles are needed.
 					if (i == 0 || (i >= 1 && measures[i - 1].Steps == 0))
 					{
-						previousMeasureHasVerticesWithNoTriangle = false;
 						continue;
 					}
 
@@ -533,7 +772,6 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 					previousMeasureLowIndex = vertices.GetSize() - 1;
 					previousMeasureHighIndex = vertices.GetSize() - 1;
 					numPrimitives++;
-					previousMeasureHasVerticesWithNoTriangle = false;
 					previousPreviousMeasureStepsPerSecond = previousMeasureStepsPerSecond;
 					previousMeasureStepsPerSecond = stepsPerSecond;
 					continue;
@@ -549,7 +787,6 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 					vertices[previousMeasureHighIndex] = new VertexPositionColor(
 						new Vector3(x, vertices[previousMeasureHighIndex].Position.Y, 0.0f),
 						vertices[previousMeasureHighIndex].Color);
-					previousMeasureHasVerticesWithNoTriangle = false;
 					previousPreviousMeasureStepsPerSecond = previousMeasureStepsPerSecond;
 					previousMeasureStepsPerSecond = stepsPerSecond;
 					continue;
@@ -566,7 +803,6 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 					previousMeasureLowIndex = vertices.GetSize() - 1;
 					vertices.Add(new VertexPositionColor(new Vector3(x, y, 0.0f), c));
 					previousMeasureHighIndex = vertices.GetSize() - 1;
-					previousMeasureHasVerticesWithNoTriangle = true;
 					previousPreviousMeasureStepsPerSecond = previousMeasureStepsPerSecond;
 					previousMeasureStepsPerSecond = stepsPerSecond;
 					continue;
@@ -587,13 +823,13 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 				numPrimitives += 2;
 				previousMeasureLowIndex = vertices.GetSize() - 2;
 				previousMeasureHighIndex = vertices.GetSize() - 1;
-				previousMeasureHasVerticesWithNoTriangle = false;
 				previousPreviousMeasureStepsPerSecond = previousMeasureStepsPerSecond;
 				previousMeasureStepsPerSecond = stepsPerSecond;
 			}
 
-			// If we made it to the end and there was a measure with unfinished vertices then add one more triangle.
-			if (previousMeasureHasVerticesWithNoTriangle)
+			// If we made it to the end and there was a measure that ends with height, we need to 
+			// add one more triangle to bring it down to 0.
+			if (measures[measures.GetSize() - 1].Steps > 0)
 			{
 				vertices.Add(new VertexPositionColor(new Vector3(stepWidth, minY, 0.0f), lowColor));
 				indices.Add(previousMeasureLowIndex);

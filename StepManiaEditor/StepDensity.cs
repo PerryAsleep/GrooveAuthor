@@ -360,6 +360,7 @@ internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<Prefe
 			EditorChart.TryGetTimeFromChartPosition(Measures.GetSize() * RowsPerMeasure, ref t);
 			Measures.Add(new Measure(t, 0));
 		}
+		Measures.SetSizeWithoutUpdatingCapacity(newSize);
 	}
 
 	/// <summary>

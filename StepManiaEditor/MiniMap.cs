@@ -146,7 +146,7 @@ internal sealed class MiniMap
 	/// <summary>
 	/// RGBA color of the cursor line.
 	/// </summary>
-	private const uint CursorColor = 0xFF8D8D8D;
+	private const uint CursorColor = 0xFFCCCCCC;
 
 	/// <summary>
 	/// RGBA color of labels.
@@ -311,6 +311,11 @@ internal sealed class MiniMap
 	/// Editor area end y value. Units are in Chart space (e.g. time or position) and not pixel space.
 	/// </summary>
 	private double EditorAreaEnd;
+
+	/// <summary>
+	/// Editor cursor position. Units are in Chart space (e.g. time or position) and not pixel space.
+	/// </summary>
+	private double CursorPosition;
 
 	/// <summary>
 	/// ArrowGraphicManager for getting note colors.
@@ -532,7 +537,7 @@ internal sealed class MiniMap
 		// Grabbed outside of the editor area.
 		else
 		{
-			GrabbedPositionAsPercentageOfEditorArea = 0.5;
+			GrabbedPositionAsPercentageOfEditorArea = (CursorPosition - EditorAreaStart) / (EditorAreaEnd - EditorAreaStart);
 
 			switch (EditorSelectMode)
 			{
@@ -552,9 +557,9 @@ internal sealed class MiniMap
 					{
 						var selectedPosition = GetPositionRelativeToPixel(screenY);
 
-						// Center the editor area over the selected region.
+						// Center the cursor at the selected location.
 						var editorAreaRange = EditorAreaEnd - EditorAreaStart;
-						EditorAreaStart = selectedPosition - editorAreaRange * 0.5;
+						EditorAreaStart = selectedPosition - (CursorPosition - EditorAreaStart);
 						EditorAreaEnd = EditorAreaStart + editorAreaRange;
 
 						// Update the MiniMap area based on the editor area.
@@ -1069,6 +1074,7 @@ internal sealed class MiniMap
 	/// <param name="miniMapAreaRange">MiniMap area range in Chart space.</param>
 	/// <param name="editorAreaStart">Editor area start in Chart space.</param>
 	/// <param name="editorAreaEnd">Editor area end in Chart space.</param>
+	/// <param name="cursorPosition">Position of the cursor in Chart space.</param>
 	/// <param name="arrowGraphicManager">ArrowGraphicManager to use for getting event colors.</param>
 	public void UpdateBegin(
 		double fullAreaStart,
@@ -1078,6 +1084,7 @@ internal sealed class MiniMap
 		double miniMapAreaRange,
 		double editorAreaStart,
 		double editorAreaEnd,
+		double cursorPosition,
 		ArrowGraphicManager arrowGraphicManager)
 	{
 		FullAreaStart = fullAreaStart;
@@ -1085,6 +1092,7 @@ internal sealed class MiniMap
 		EditorAreaStart = editorAreaStart;
 		EditorAreaEnd = editorAreaEnd;
 		MiniMapAreaRange = miniMapAreaRange;
+		CursorPosition = cursorPosition;
 		ArrowGraphicManager = arrowGraphicManager;
 
 		if (Bounds.Height <= 0 || Bounds.Width <= 0)
@@ -1197,6 +1205,8 @@ internal sealed class MiniMap
 		// Draw content area start and end markers.
 		AddHorizontalLine(contentStartYPixel, RimWidth, (uint)(Bounds.Width - (RimWidth << 1)), ContentMarkerColor);
 		AddHorizontalLine(contentEndYPixel, RimWidth, (uint)(Bounds.Width - (RimWidth << 1)), ContentMarkerColor);
+
+		AddCursor(CursorPosition);
 	}
 
 	/// <summary>

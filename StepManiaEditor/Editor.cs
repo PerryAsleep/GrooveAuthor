@@ -210,7 +210,7 @@ internal sealed class Editor :
 	private Effect FxaaEffect;
 	private Effect WaveformColorEffect;
 	private RenderTarget2D[] WaveformRenderTargets;
-	private StepDensityEffect StepDensityEffect;
+	private StepDensityEffect DensityGraph;
 
 	private SongLoadTask SongLoadTask;
 	private FileSystemWatcher SongFileWatcher;
@@ -284,7 +284,8 @@ internal sealed class Editor :
 	private bool Playing;
 	private bool PlayingPreview;
 	private bool MiniMapCapturingMouse;
-	private bool StartPlayingWhenMiniMapDone;
+	private bool DensityGraphCapturingMouse;
+	private bool StartPlayingWhenMouseScrollingDone;
 
 	private uint MaxScreenHeight;
 
@@ -390,7 +391,7 @@ internal sealed class Editor :
 		InitializeGuiDpiScale();
 		InitializeScreenHeight();
 		InitializeWaveFormRenderer();
-		InitializeStepDensityEffect();
+		InitializeDensityGraph();
 		InitializeMiniMap();
 		InitializeUIHelpers();
 		InitializeKeyCommandManager();
@@ -921,9 +922,9 @@ internal sealed class Editor :
 		}
 	}
 
-	private void InitializeStepDensityEffect()
+	private void InitializeDensityGraph()
 	{
-		StepDensityEffect = new StepDensityEffect(Graphics, GraphicsDevice);
+		DensityGraph = new StepDensityEffect(Graphics, GraphicsDevice);
 	}
 
 	private void InitializeMiniMap()
@@ -1526,82 +1527,6 @@ internal sealed class Editor :
 		}
 	}
 
-	private void UpdateDensityGraph()
-	{
-		UpdateDensityGraphBounds();
-
-		var screenHeight = GetViewportHeight();
-		var spacingZoom = ZoomManager.GetSpacingZoom();
-		var chartTime = Position.ChartTime;
-		var pps = Preferences.Instance.PreferencesScroll.TimeBasedPixelsPerSecond * spacingZoom;
-		var timeStart = chartTime - GetFocalPointY() / pps;
-		var timeEnd = timeStart + screenHeight / pps;
-		StepDensityEffect.Update(timeStart, timeEnd, chartTime);
-	}
-
-	private void UpdateDensityGraphBounds()
-	{
-		var p = Preferences.Instance.PreferencesStream;
-		var focalPointX = GetFocalPointX();
-		var sizeZoom = ZoomManager.GetSizeZoom();
-		var screenW = GetBackBufferWidth();
-		var screenH = GetBackBufferHeight();
-		var topPadding = GetMenuBarHeight();
-		var x = 0;
-		var y = 0;
-		var w = 0;
-		var h = 0;
-		var orientation = StepDensityEffect.Orientation.Vertical;
-		switch (p.DensityGraphPositionValue)
-		{
-			case PreferencesStream.DensityGraphPosition.RightSideOfWindow:
-				w = p.DensityGraphHeight;
-				x = screenW - w - p.DensityGraphPositionOffset;
-				h = screenH - topPadding + p.DensityGraphWidthOffset * 2;
-				y = topPadding - p.DensityGraphWidthOffset;
-				break;
-			case PreferencesStream.DensityGraphPosition.RightOfChartArea:
-				w = p.DensityGraphHeight;
-				x = focalPointX + (WaveFormTextureWidth >> 1) + p.DensityGraphPositionOffset;
-				h = screenH - topPadding + p.DensityGraphWidthOffset * 2;
-				y = topPadding - p.DensityGraphWidthOffset;
-				break;
-			case PreferencesStream.DensityGraphPosition.MountedToWaveForm:
-				w = p.DensityGraphHeight;
-				if (Preferences.Instance.PreferencesWaveForm.WaveFormScaleXWhenZooming)
-					x = (int)(focalPointX + (WaveFormTextureWidth >> 1) * sizeZoom + p.DensityGraphPositionOffset);
-				else
-					x = focalPointX + (WaveFormTextureWidth >> 1) + p.DensityGraphPositionOffset;
-				h = screenH - topPadding + p.DensityGraphWidthOffset * 2;
-				y = topPadding - p.DensityGraphWidthOffset;
-				break;
-			case PreferencesStream.DensityGraphPosition.MountedToChart:
-				var receptorBounds =
-					Receptor.GetBounds(GetFocalPoint(), sizeZoom, TextureAtlas, ArrowGraphicManager, ActiveChart);
-				w = p.DensityGraphHeight;
-				x = receptorBounds.Item1 + receptorBounds.Item3 + p.DensityGraphPositionOffset;
-				h = screenH - topPadding + p.DensityGraphWidthOffset * 2;
-				y = topPadding - p.DensityGraphWidthOffset;
-				break;
-			case PreferencesStream.DensityGraphPosition.TopOfWaveForm:
-				x = focalPointX - (WaveFormTextureWidth >> 1) - p.DensityGraphWidthOffset;
-				w = WaveFormTextureWidth + p.DensityGraphWidthOffset * 2;
-				y = topPadding + p.DensityGraphPositionOffset;
-				h = p.DensityGraphHeight;
-				orientation = StepDensityEffect.Orientation.Horizontal;
-				break;
-			case PreferencesStream.DensityGraphPosition.BottomOfWaveForm:
-				x = focalPointX - (WaveFormTextureWidth >> 1) - p.DensityGraphWidthOffset;
-				w = WaveFormTextureWidth + p.DensityGraphWidthOffset * 2;
-				y = screenH - p.DensityGraphHeight - p.DensityGraphPositionOffset;
-				h = p.DensityGraphHeight;
-				orientation = StepDensityEffect.Orientation.Horizontal;
-				break;
-		}
-
-		StepDensityEffect.UpdateBounds(new Rectangle(x, y, w, h), orientation);
-	}
-
 	private void UpdateWaveFormRenderer()
 	{
 		var pWave = Preferences.Instance.PreferencesWaveForm;
@@ -1691,12 +1616,20 @@ internal sealed class Editor :
 				ArrowGraphicManager,
 				ActiveChart);
 
+			var inDensityArea = DensityGraph.IsInDensityGraphArea(mouseX, mouseY);
+			var inMiniMapArea = MiniMap.IsScreenPositionInMiniMapBounds(mouseX, mouseY);
+			var uiInterferingWithRegionClicking = inDensityArea || inMiniMapArea;
+
 			// Process input for the mini map.
-			if (!SelectedRegion.IsActive() && !MovingFocalPoint)
+			if (!SelectedRegion.IsActive() && !MovingFocalPoint && !DensityGraphCapturingMouse)
 				ProcessInputForMiniMap();
 
+			// Process input for the density graph
+			if (!SelectedRegion.IsActive() && !MovingFocalPoint && !MiniMapCapturingMouse)
+				ProcessInputForDensityGraph();
+
 			// Process input for grabbing the receptors and moving the focal point.
-			if (!SelectedRegion.IsActive() && !MiniMapCapturingMouse)
+			if (!SelectedRegion.IsActive() && !MiniMapCapturingMouse && !DensityGraphCapturingMouse)
 			{
 				ProcessInputForMovingFocalPoint(inReceptorArea);
 				// Update cursor based on whether the receptors could be grabbed.
@@ -1705,11 +1638,11 @@ internal sealed class Editor :
 			}
 
 			// Process input for selecting a region.
-			if (!MiniMapCapturingMouse && !MovingFocalPoint)
-				ProcessInputForSelectedRegion(currentTime);
+			if (!MiniMapCapturingMouse && !MovingFocalPoint && !DensityGraphCapturingMouse)
+				ProcessInputForSelectedRegion(currentTime, uiInterferingWithRegionClicking);
 
 			// Process right click popup eligibility.
-			CanShowRightClickPopupThisFrame = !MiniMapCapturingMouse && !MovingFocalPoint;
+			CanShowRightClickPopupThisFrame = !MiniMapCapturingMouse && !MovingFocalPoint && !DensityGraphCapturingMouse;
 		}
 
 		UpdateCursor();
@@ -1786,13 +1719,14 @@ internal sealed class Editor :
 	/// Processes input for selecting regions with the mouse.
 	/// </summary>
 	/// <remarks>Helper for ProcessInput.</remarks>
-	private void ProcessInputForSelectedRegion(double currentTime)
+	private void ProcessInputForSelectedRegion(double currentTime, bool uiInterferingWithRegionClicking)
 	{
 		var sizeZoom = ZoomManager.GetSizeZoom();
 		var button = EditorMouseState.GetButtonState(EditorMouseState.Button.Left);
 
 		// Receptors can interfere with clicking on notes. If there was a click, let the SelectedRegion process it.
-		var forceStartRegionFromClick = button.ClickedThisFrame() && !SelectedRegion.IsActive();
+		var forceStartRegionFromClick =
+			button.ClickedThisFrame() && !SelectedRegion.IsActive() && !uiInterferingWithRegionClicking;
 
 		// Starting a selection.
 		if (button.DownThisFrame() || forceStartRegionFromClick)
@@ -2127,7 +2061,7 @@ internal sealed class Editor :
 
 			SpriteBatch.End();
 
-			DrawDensity();
+			DrawDensityGraph();
 
 			DrawGui();
 
@@ -3373,7 +3307,6 @@ internal sealed class Editor :
 	private void ProcessInputForMiniMap()
 	{
 		var pScroll = Preferences.Instance.PreferencesScroll;
-		var pMiniMap = Preferences.Instance.PreferencesMiniMap;
 		var focalPointY = GetFocalPointY();
 
 		var miniMapCapturingMouseLastFrame = MiniMapCapturingMouse;
@@ -3393,19 +3326,19 @@ internal sealed class Editor :
 
 		MiniMapCapturingMouse = MiniMap.WantsMouse();
 
-		// Set the Song Position based on the MiniMap position
+		// Set the Song Position based on the scroll bar position.
 		MiniMapCapturingMouse |= miniMapNeedsMouseThisFrame;
 		if (MiniMapCapturingMouse)
 		{
-			// When moving the MiniMap, pause or stop playback.
+			// When moving the scroll bar, pause or stop playback.
 			if (EditorMouseState.GetButtonState(EditorMouseState.Button.Left).DownThisFrame() && Playing)
 			{
 				// Set a flag to unpause playback unless the preference is to completely stop when scrolling.
-				StartPlayingWhenMiniMapDone = !pMiniMap.MiniMapStopPlaybackWhenScrolling;
+				StartPlayingWhenMouseScrollingDone = !pScroll.StopPlaybackWhenDraggingScrollBars;
 				StopPlayback();
 			}
 
-			// Set the music position based off of the MiniMap editor area.
+			// Set the music position based off of the scroll bar position.
 			var editorPosition = MiniMap.GetEditorPosition();
 			switch (GetMiniMapSpacingMode())
 			{
@@ -3426,10 +3359,10 @@ internal sealed class Editor :
 			UpdateAutoPlayFromScrolling();
 		}
 
-		// When letting go of the MiniMap, start playing again.
-		if (miniMapCapturingMouseLastFrame && !MiniMapCapturingMouse && StartPlayingWhenMiniMapDone)
+		// When letting go, start playing again.
+		if (miniMapCapturingMouseLastFrame && !MiniMapCapturingMouse && StartPlayingWhenMouseScrollingDone)
 		{
-			StartPlayingWhenMiniMapDone = false;
+			StartPlayingWhenMouseScrollingDone = false;
 			StartPlayback();
 		}
 	}
@@ -3551,6 +3484,7 @@ internal sealed class Editor :
 				contentAreaTimeStart, contentAreaTimeEnd,
 				pMiniMap.MiniMapVisibleTimeRange,
 				editorAreaTimeStart, editorAreaTimeEnd,
+				chartTime,
 				ArrowGraphicManager);
 		}
 		else
@@ -3579,11 +3513,9 @@ internal sealed class Editor :
 				contentAreaTimeStart, contentAreaTimeEnd,
 				pMiniMap.MiniMapVisibleRowRange,
 				editorAreaRowStart, editorAreaRowEnd,
+				chartPosition,
 				ArrowGraphicManager);
 		}
-
-		// Add cursor.
-		MiniMap.AddCursor(spaceByRow ? chartPosition : chartTime);
 
 		// Set the chartPosition to the top of the area so we can use it for scanning down for notes to add.
 		if (spaceByRow)
@@ -3736,6 +3668,139 @@ internal sealed class Editor :
 	}
 
 	#endregion MiniMap
+
+	#region Density Graph
+
+	private void UpdateDensityGraph()
+	{
+		UpdateDensityGraphBounds();
+
+		var screenHeight = GetViewportHeight();
+		var spacingZoom = ZoomManager.GetSpacingZoom();
+		var chartTime = Position.ChartTime;
+		var pps = Preferences.Instance.PreferencesScroll.TimeBasedPixelsPerSecond * spacingZoom;
+		var timeStart = chartTime - GetFocalPointY() / pps;
+		var timeEnd = timeStart + screenHeight / pps;
+		DensityGraph.Update(timeStart, timeEnd, chartTime);
+	}
+
+	private void UpdateDensityGraphBounds()
+	{
+		var p = Preferences.Instance.PreferencesStream;
+		var focalPointX = GetFocalPointX();
+		var sizeZoom = ZoomManager.GetSizeZoom();
+		var screenW = GetBackBufferWidth();
+		var screenH = GetBackBufferHeight();
+		var topPadding = GetMenuBarHeight();
+		var x = 0;
+		var y = 0;
+		var w = 0;
+		var h = 0;
+		var orientation = StepDensityEffect.Orientation.Vertical;
+		switch (p.DensityGraphPositionValue)
+		{
+			case PreferencesStream.DensityGraphPosition.RightSideOfWindow:
+				w = p.DensityGraphHeight;
+				x = screenW - w - p.DensityGraphPositionOffset;
+				h = screenH - topPadding + p.DensityGraphWidthOffset * 2;
+				y = topPadding - p.DensityGraphWidthOffset;
+				break;
+			case PreferencesStream.DensityGraphPosition.RightOfChartArea:
+				w = p.DensityGraphHeight;
+				x = focalPointX + (WaveFormTextureWidth >> 1) + p.DensityGraphPositionOffset;
+				h = screenH - topPadding + p.DensityGraphWidthOffset * 2;
+				y = topPadding - p.DensityGraphWidthOffset;
+				break;
+			case PreferencesStream.DensityGraphPosition.MountedToWaveForm:
+				w = p.DensityGraphHeight;
+				if (Preferences.Instance.PreferencesWaveForm.WaveFormScaleXWhenZooming)
+					x = (int)(focalPointX + (WaveFormTextureWidth >> 1) * sizeZoom + p.DensityGraphPositionOffset);
+				else
+					x = focalPointX + (WaveFormTextureWidth >> 1) + p.DensityGraphPositionOffset;
+				h = screenH - topPadding + p.DensityGraphWidthOffset * 2;
+				y = topPadding - p.DensityGraphWidthOffset;
+				break;
+			case PreferencesStream.DensityGraphPosition.MountedToChart:
+				var receptorBounds =
+					Receptor.GetBounds(GetFocalPoint(), sizeZoom, TextureAtlas, ArrowGraphicManager, ActiveChart);
+				w = p.DensityGraphHeight;
+				x = receptorBounds.Item1 + receptorBounds.Item3 + p.DensityGraphPositionOffset;
+				h = screenH - topPadding + p.DensityGraphWidthOffset * 2;
+				y = topPadding - p.DensityGraphWidthOffset;
+				break;
+			case PreferencesStream.DensityGraphPosition.TopOfWaveForm:
+				x = focalPointX - (WaveFormTextureWidth >> 1) - p.DensityGraphWidthOffset;
+				w = WaveFormTextureWidth + p.DensityGraphWidthOffset * 2;
+				y = topPadding + p.DensityGraphPositionOffset;
+				h = p.DensityGraphHeight;
+				orientation = StepDensityEffect.Orientation.Horizontal;
+				break;
+			case PreferencesStream.DensityGraphPosition.BottomOfWaveForm:
+				x = focalPointX - (WaveFormTextureWidth >> 1) - p.DensityGraphWidthOffset;
+				w = WaveFormTextureWidth + p.DensityGraphWidthOffset * 2;
+				y = screenH - p.DensityGraphHeight - p.DensityGraphPositionOffset;
+				h = p.DensityGraphHeight;
+				orientation = StepDensityEffect.Orientation.Horizontal;
+				break;
+		}
+
+		DensityGraph.UpdateBounds(new Rectangle(x, y, w, h), orientation);
+	}
+
+	private void ProcessInputForDensityGraph()
+	{
+		var pScroll = Preferences.Instance.PreferencesScroll;
+		var focalPointY = GetFocalPointY();
+
+		var densityGraphCapturingMouseLastFrame = DensityGraphCapturingMouse;
+
+		var densityGraphNeedsMouseThisFrame = false;
+		if (EditorMouseState.GetButtonState(EditorMouseState.Button.Left).DownThisFrame())
+		{
+			densityGraphNeedsMouseThisFrame = DensityGraph.MouseDown(EditorMouseState.X(), EditorMouseState.Y());
+		}
+
+		DensityGraph.MouseMove(EditorMouseState.X(), EditorMouseState.Y());
+		if (EditorMouseState.GetButtonState(EditorMouseState.Button.Left).UpThisFrame()
+		    || (DensityGraphCapturingMouse && EditorMouseState.GetButtonState(EditorMouseState.Button.Left).Up()))
+		{
+			DensityGraph.MouseUp(EditorMouseState.X(), EditorMouseState.Y());
+		}
+
+		DensityGraphCapturingMouse = DensityGraph.WantsMouse();
+
+		// Set the Song Position based on the scroll bar position.
+		DensityGraphCapturingMouse |= densityGraphNeedsMouseThisFrame;
+		if (DensityGraphCapturingMouse)
+		{
+			// When moving the scroll bar, pause or stop playback.
+			if (EditorMouseState.GetButtonState(EditorMouseState.Button.Left).DownThisFrame() && Playing)
+			{
+				// Set a flag to unpause playback unless the preference is to completely stop when scrolling.
+				StartPlayingWhenMouseScrollingDone = !pScroll.StopPlaybackWhenDraggingScrollBars;
+				StopPlayback();
+			}
+
+			// Set the music position based off of the scroll bar time.
+			Position.ChartTime = DensityGraph.GetTimeFromScrollBar();
+
+			UpdateAutoPlayFromScrolling();
+		}
+
+		// When letting go, start playing again.
+		if (densityGraphCapturingMouseLastFrame && !DensityGraphCapturingMouse && StartPlayingWhenMouseScrollingDone)
+		{
+			StartPlayingWhenMouseScrollingDone = false;
+			StartPlayback();
+		}
+	}
+
+	private void DrawDensityGraph()
+	{
+		DensityGraph.Draw();
+	}
+
+	#endregion Density Graph
 
 	#region Gui Rendering
 
@@ -5006,11 +5071,6 @@ internal sealed class Editor :
 		SpriteBatch.End();
 	}
 
-	private void DrawDensity()
-	{
-		StepDensityEffect.Draw();
-	}
-
 	#endregion Gui Rendering
 
 	#region StepGraphs
@@ -5810,8 +5870,8 @@ internal sealed class Editor :
 		AutoPlayer = null;
 		MovingNotes.Clear();
 		EditorMouseState.SetActiveChart(null);
-		StepDensityEffect.SetStepDensity(null);
-		StepDensityEffect.ResetBufferCapacities();
+		DensityGraph.SetStepDensity(null);
+		DensityGraph.ResetBufferCapacities();
 		UpdateWindowTitle();
 		ActionQueue.Instance.Clear();
 		StopObservingSongFile();
@@ -7353,7 +7413,7 @@ internal sealed class Editor :
 
 		Selection.ClearSelectedEvents();
 		ActiveChart = chart;
-		StepDensityEffect.SetStepDensity(ActiveChart.GetStepDensity());
+		DensityGraph.SetStepDensity(ActiveChart.GetStepDensity());
 
 		// The Position needs to know about the active chart for doing time and row calculations.
 		Position.ActiveChart = ActiveChart;

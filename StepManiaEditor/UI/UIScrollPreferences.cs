@@ -44,7 +44,9 @@ internal sealed class UIScrollPreferences
 					"The amount of time in seconds to spend animating from one position to another when scrolling with the scroll wheel.",
 					0.0001f, "%.6f", 0.0, 1.0);
 				ImGuiLayoutUtils.DrawRowCheckbox(true, "Stop On Scroll", p, nameof(p.StopPlaybackWhenScrolling), false,
-					"Stop song playback when manually scrolling the chart.");
+					"Stop song playback when scrolling the chart with the mouse wheel.");
+				ImGuiLayoutUtils.DrawRowCheckbox(true, "Stop On Drag", p, nameof(p.StopPlaybackWhenDraggingScrollBars), false,
+					"Stop song playback when scrolling the chart by dragging a scroll bar.");
 				ImGuiLayoutUtils.EndTable();
 			}
 

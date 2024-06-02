@@ -45,8 +45,8 @@ internal sealed class PreferencesStream : Notifier<PreferencesStream>
 
 	public static readonly bool DefaultShowDensityGraph = true;
 	public static readonly Vector4 DefaultDensityGraphBackgroundColor = new(0.118f, 0.118f, 0.118f, 1.0f);
-	public static readonly Vector4 DefaultDensityGraphLowColor = new(0.306f, 0.788f, 0.506f, 1.0f);
-	public static readonly Vector4 DefaultDensityGraphHighColor = new(0.839f, 0.337f, 0.337f, 1.0f);
+	public static readonly Vector4 DefaultDensityGraphLowColor = new(0.251f, 0.647f, 0.419f, 1.0f);
+	public static readonly Vector4 DefaultDensityGraphHighColor = new(0.705f, 0.282f, 0.282f, 1.0f);
 	public static readonly DensityGraphColorMode DefaultDensityGraphColorModeValue = DensityGraphColorMode.ColorByHeight;
 	public static readonly DensityGraphPosition DefaultDensityGraphPositionValue = DensityGraphPosition.RightOfChartArea;
 
