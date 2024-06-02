@@ -245,6 +245,8 @@ internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<Prefe
 				Streams.Insert(new Tuple<int, int>(measureNumber, measureNumber), measureNumber, measureNumber);
 			}
 		}
+
+		StreamBreakdownDirty = true;
 	}
 
 	/// <summary>
@@ -340,6 +342,8 @@ internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<Prefe
 					streamEndMeasureNumber);
 			}
 		}
+
+		StreamBreakdownDirty = true;
 	}
 
 	#endregion Adding and Deleting Events
