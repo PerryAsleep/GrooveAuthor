@@ -4459,6 +4459,8 @@ internal sealed class Editor :
 
 			var isInMiniMapArea = Preferences.Instance.PreferencesMiniMap.ShowMiniMap
 			                      && MiniMap.IsScreenPositionInMiniMapBounds(x, y);
+			var isInDensityGraphArea = Preferences.Instance.PreferencesStream.ShowDensityGraph
+			                           && DensityGraph.IsInDensityGraphArea(x, y);
 			var isInWaveFormArea = Preferences.Instance.PreferencesWaveForm.ShowWaveForm
 			                       && x >= GetFocalPointX() - (WaveFormTextureWidth >> 1)
 			                       && x <= GetFocalPointX() + (WaveFormTextureWidth >> 1);
@@ -4736,6 +4738,16 @@ internal sealed class Editor :
 				if (ImGui.BeginMenu("Mini Map Preferences"))
 				{
 					UIMiniMapPreferences.DrawContents();
+					ImGui.EndMenu();
+				}
+
+				anyObjectHovered = true;
+			}
+			else if (isInDensityGraphArea)
+			{
+				if (ImGui.BeginMenu("Density Graph Preferences"))
+				{
+					UIStreamPreferences.DrawContents();
 					ImGui.EndMenu();
 				}
 
