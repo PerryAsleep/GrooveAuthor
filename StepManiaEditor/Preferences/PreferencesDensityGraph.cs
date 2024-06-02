@@ -148,7 +148,7 @@ internal sealed class PreferencesDensityGraph : Notifier<PreferencesDensityGraph
 	private DensityGraphColorMode DensityGraphColorModeValueInternal = DefaultDensityGraphColorModeValue;
 	private Vector4 DensityGraphLowColorInternal = DefaultDensityGraphLowColor;
 	private Vector4 DensityGraphHighColorInternal = DefaultDensityGraphHighColor;
-	private Vector4 DensityGraphBackgroundColorInternal = DefaultDensityGraphHighColor;
+	private Vector4 DensityGraphBackgroundColorInternal = DefaultDensityGraphBackgroundColor;
 
 	[JsonIgnore]
 	public int DensityGraphPositionOffset
