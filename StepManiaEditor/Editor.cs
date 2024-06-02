@@ -7438,7 +7438,7 @@ internal sealed class Editor :
 
 		Selection.ClearSelectedEvents();
 		ActiveChart = chart;
-		DensityGraph.SetStepDensity(ActiveChart.GetStepDensity());
+		DensityGraph.SetStepDensity(ActiveChart?.GetStepDensity());
 
 		// The Position needs to know about the active chart for doing time and row calculations.
 		Position.ActiveChart = ActiveChart;
