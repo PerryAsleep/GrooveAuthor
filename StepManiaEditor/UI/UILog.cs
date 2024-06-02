@@ -41,7 +41,7 @@ internal class UILog
 	private static readonly int DefaultWidth = UiScaled(561);
 	private static readonly int DefaultHeight = UiScaled(300);
 	private static readonly int DefaultWindowY = UiScaled(21);
-	private static readonly int DefaultWindowX = UiScaled(1768);
+	private static readonly int DefaultWindowX = UiScaled(1870);
 
 	private readonly Editor Editor;
 
