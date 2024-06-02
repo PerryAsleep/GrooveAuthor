@@ -3440,6 +3440,7 @@ internal sealed class Editor :
 
 		if (ActiveChart?.GetEvents() == null || ArrowGraphicManager == null)
 		{
+			UpdateMiniMapBounds();
 			MiniMap.UpdateNoChart();
 			return;
 		}
