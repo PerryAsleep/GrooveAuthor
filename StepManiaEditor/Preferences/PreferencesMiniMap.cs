@@ -13,7 +13,6 @@ internal sealed class PreferencesMiniMap
 	// Default values.
 	public const bool DefaultShowMiniMap = true;
 	public const MiniMap.SelectMode DefaultMiniMapSelectMode = MiniMap.SelectMode.MoveToCursor;
-	public const bool DefaultMiniMapStopPlaybackWhenScrolling = false;
 	public const uint DefaultMiniMapXPadding = 32;
 	public const uint DefaultMiniMapWidth = 90;
 	public const uint DefaultMiniMapNoteWidth = 2;
@@ -33,7 +32,6 @@ internal sealed class PreferencesMiniMap
 	[JsonInclude] public bool ShowMiniMapPreferencesWindow;
 	[JsonInclude] public bool ShowMiniMap = DefaultShowMiniMap;
 	[JsonInclude] public MiniMap.SelectMode MiniMapSelectMode = DefaultMiniMapSelectMode;
-	[JsonInclude] public bool MiniMapStopPlaybackWhenScrolling = DefaultMiniMapStopPlaybackWhenScrolling;
 	[JsonInclude] public uint MiniMapXPadding = DefaultMiniMapXPadding;
 	[JsonInclude] public uint MiniMapWidth = DefaultMiniMapWidth;
 	[JsonInclude] public uint MiniMapNoteWidth = DefaultMiniMapNoteWidth;
@@ -53,7 +51,6 @@ internal sealed class PreferencesMiniMap
 	{
 		return ShowMiniMap == DefaultShowMiniMap
 		       && MiniMapSelectMode == DefaultMiniMapSelectMode
-		       && MiniMapStopPlaybackWhenScrolling == DefaultMiniMapStopPlaybackWhenScrolling
 		       && MiniMapXPadding == DefaultMiniMapXPadding
 		       && MiniMapWidth == DefaultMiniMapWidth
 		       && MiniMapNoteWidth == DefaultMiniMapNoteWidth
@@ -86,7 +83,6 @@ internal sealed class ActionRestoreMiniMapPreferenceDefaults : EditorAction
 {
 	private readonly bool PreviousShowMiniMap;
 	private readonly MiniMap.SelectMode PreviousMiniMapSelectMode;
-	private readonly bool PreviousMiniMapStopPlaybackWhenScrolling;
 	private readonly uint PreviousMiniMapXPadding;
 	private readonly uint PreviousMiniMapWidth;
 	private readonly uint PreviousMiniMapNoteWidth;
@@ -107,7 +103,6 @@ internal sealed class ActionRestoreMiniMapPreferenceDefaults : EditorAction
 		var p = Preferences.Instance.PreferencesMiniMap;
 		PreviousShowMiniMap = p.ShowMiniMap;
 		PreviousMiniMapSelectMode = p.MiniMapSelectMode;
-		PreviousMiniMapStopPlaybackWhenScrolling = p.MiniMapStopPlaybackWhenScrolling;
 		PreviousMiniMapXPadding = p.MiniMapXPadding;
 		PreviousMiniMapWidth = p.MiniMapWidth;
 		PreviousMiniMapNoteWidth = p.MiniMapNoteWidth;
@@ -139,7 +134,6 @@ internal sealed class ActionRestoreMiniMapPreferenceDefaults : EditorAction
 		var p = Preferences.Instance.PreferencesMiniMap;
 		p.ShowMiniMap = PreferencesMiniMap.DefaultShowMiniMap;
 		p.MiniMapSelectMode = PreferencesMiniMap.DefaultMiniMapSelectMode;
-		p.MiniMapStopPlaybackWhenScrolling = PreferencesMiniMap.DefaultMiniMapStopPlaybackWhenScrolling;
 		p.MiniMapXPadding = PreferencesMiniMap.DefaultMiniMapXPadding;
 		p.MiniMapWidth = PreferencesMiniMap.DefaultMiniMapWidth;
 		p.MiniMapNoteWidth = PreferencesMiniMap.DefaultMiniMapNoteWidth;
@@ -161,7 +155,6 @@ internal sealed class ActionRestoreMiniMapPreferenceDefaults : EditorAction
 		var p = Preferences.Instance.PreferencesMiniMap;
 		p.ShowMiniMap = PreviousShowMiniMap;
 		p.MiniMapSelectMode = PreviousMiniMapSelectMode;
-		p.MiniMapStopPlaybackWhenScrolling = PreviousMiniMapStopPlaybackWhenScrolling;
 		p.MiniMapXPadding = PreviousMiniMapXPadding;
 		p.MiniMapWidth = PreviousMiniMapWidth;
 		p.MiniMapNoteWidth = PreviousMiniMapNoteWidth;

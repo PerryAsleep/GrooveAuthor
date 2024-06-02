@@ -1,10 +1,10 @@
 ﻿using System;
 using System.Text;
 using System.Text.Json.Serialization;
-using Fumen.Converters;
 using ImGuiNET;
 using StepManiaLibrary.PerformedChart;
 using static StepManiaEditor.AutogenConfig.EditorPatternConfig;
+using static StepManiaEditor.Utils;
 using static StepManiaLibrary.Constants;
 using Config = StepManiaLibrary.PerformedChart.PatternConfig;
 
@@ -20,30 +20,7 @@ namespace StepManiaEditor.AutogenConfig;
 /// </summary>
 internal sealed class EditorPatternConfig : EditorConfig<Config>, IEquatable<EditorPatternConfig>
 {
-	public enum SubdivisionType
-	{
-		QuarterNotes,
-		EighthNotes,
-		EighthNoteTriplets,
-		SixteenthNotes,
-		SixteenthNoteTriplets,
-		ThirtySecondNotes,
-		ThirtySecondNoteTriplets,
-		SixtyFourthNotes,
-		OneHundredNinetySecondNotes,
-	}
-
 	public const string NotificationPatternTypeChanged = "PatternTypeChanged";
-
-	public static int GetBeatSubdivision(SubdivisionType subdivisionType)
-	{
-		return SMCommon.ValidDenominators[(int)subdivisionType];
-	}
-
-	public static int GetMeasureSubdivision(SubdivisionType subdivisionType)
-	{
-		return GetBeatSubdivision(subdivisionType) * SMCommon.NumBeatsPerMeasure;
-	}
 
 	// Default values.
 	public const SubdivisionType DefaultPatternType = SubdivisionType.SixteenthNotes;

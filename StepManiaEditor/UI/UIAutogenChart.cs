@@ -93,7 +93,7 @@ internal sealed class UIAutogenChart
 				if (SourceChart != null)
 					ImGuiLayoutUtils.DrawExpressedChartConfigCombo(SourceChart, title, help);
 				else
-					ImGuiLayoutUtils.DrawTitleAndText(title, "No available Charts.", help);
+					ImGuiLayoutUtils.DrawRowTitleAndText(title, "No available Charts.", help);
 
 				// Destination ChartType.
 				ImGuiLayoutUtils.DrawRowEnum("New Chart Type", "AutogenChartChartType",

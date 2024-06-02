@@ -116,6 +116,10 @@ internal sealed class Preferences
 	// Performance monitoring preferences
 	[JsonInclude] public PreferencesPerformance PreferencesPerformance = new();
 
+	// Stream breakdown preferences
+	[JsonInclude] public PreferencesStream PreferencesStream = new();
+	[JsonInclude] public PreferencesDensityGraph PreferencesDensityGraph = new();
+
 	// Log preferences
 	[JsonInclude] public bool ShowLogWindow = true;
 	[JsonInclude] public int LogWindowDateDisplay = 1;
@@ -157,6 +161,7 @@ internal sealed class Preferences
 	{
 		PreferencesReceptors.SetEditor(Editor);
 		PreferencesWaveForm.PostLoad();
+		PreferencesDensityGraph.PostLoad();
 	}
 
 	private void PreSave()

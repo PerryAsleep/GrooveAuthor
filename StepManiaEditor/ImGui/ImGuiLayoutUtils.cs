@@ -70,6 +70,8 @@ internal sealed class ImGuiLayoutUtils
 	public static readonly Vector2 ArrowIconSize = new(ArrowIconWidth, ArrowIconHeight);
 	public static readonly float ButtonApplyTimingWidth = UiScaled(80);
 	public static readonly float ButtonApplyTimingAndScrollWidth = UiScaled(138);
+	public static readonly Vector2 ButtonCopySize = new(UiScaled(32), 0);
+	public static readonly Vector2 ButtonSettingsSize = new(UiScaled(56), 0);
 
 	static ImGuiLayoutUtils()
 	{
@@ -167,17 +169,27 @@ internal sealed class ImGuiLayoutUtils
 		ImGui.SetNextItemWidth(DrawHelp(help, ImGui.GetContentRegionAvail().X));
 	}
 
-	public static void DrawTitleAndText(string title, string text, string help = null)
+	public static void DrawRowTitleAndText(string title, string text, string help = null)
 	{
-		ImGui.TableNextRow();
-
-		ImGui.TableSetColumnIndex(0);
-		if (!string.IsNullOrEmpty(title))
-			ImGui.Text(title);
-
-		ImGui.TableSetColumnIndex(1);
+		DrawRowTitleAndAdvanceColumn(title);
 		ImGui.SetNextItemWidth(DrawHelp(help, ImGui.GetContentRegionAvail().X));
 		ImGui.Text(text);
+	}
+
+	public static void DrawRowTitleAndTextWithCopy(string title, string text, string help = null)
+	{
+		DrawRowTitleAndAdvanceColumn(title);
+
+		var remainingWidth = DrawHelp(help, ImGui.GetContentRegionAvail().X);
+		var textWidth = remainingWidth - ButtonCopySize.X;
+		ImGui.SetNextItemWidth(textWidth);
+		Text(text, textWidth);
+
+		ImGui.SameLine();
+		if (ImGui.Button("Copy", ButtonCopySize))
+		{
+			CopyToClipboard(text);
+		}
 	}
 
 	private static string GetDragHelpText(string helpText)
@@ -413,6 +425,21 @@ internal sealed class ImGuiLayoutUtils
 		DrawTextInput(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, affectsFile, validationFunc, help);
 	}
 
+	public static void DrawRowTextInputWithOneButton(bool undoable, string title, object o, string fieldName, bool affectsFile,
+		Action buttonAction, string buttonText, float buttonWidth, string help = null)
+	{
+		DrawRowTitleAndAdvanceColumn(title);
+
+		var textInputWidth = ImGui.GetContentRegionAvail().X - buttonWidth - ImGui.GetStyle().ItemSpacing.X;
+		DrawTextInput(undoable, title, o, fieldName, textInputWidth, affectsFile, null, help);
+
+		ImGui.SameLine();
+		if (ImGui.Button($"{buttonText}{GetElementTitle(title, fieldName)}", new Vector2(buttonWidth, 0.0f)))
+		{
+			buttonAction();
+		}
+	}
+
 	public static void DrawRowTextInputWithTransliteration(bool undoable, string title, object o, string fieldName,
 		string transliterationFieldName, bool affectsFile, string help = null)
 	{
@@ -435,6 +462,30 @@ internal sealed class ImGuiLayoutUtils
 		}
 
 		DrawCachedEditReference(undoable, title, o, fieldName, width, affectsFile, Func, StringCompare, validationFunc, help);
+	}
+
+	public static void DrawRowCharacterInput(bool undoable, string title, object o, string fieldName, bool affectsFile,
+		string help = null)
+	{
+		DrawRowTitleAndAdvanceColumn(title);
+		DrawCharInput(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, affectsFile, null, help);
+	}
+
+	private static void DrawCharInput(bool undoable, string title, object o, string fieldName, float width,
+		bool affectsFile, Func<char, bool> validationFunc = null, string help = null)
+	{
+		(bool, char) Func(char v)
+		{
+			var s = v.ToString();
+			var r = ImGui.InputText(GetElementTitle(title, fieldName), ref s, 1);
+			if (s?.Length > 0)
+				v = s[0];
+			else
+				v = ' ';
+			return (r, v);
+		}
+
+		DrawCachedEditValue(undoable, title, o, fieldName, width, affectsFile, Func, CharCompare, validationFunc, help);
 	}
 
 	#endregion Text Input
@@ -3540,6 +3591,36 @@ internal sealed class ImGuiLayoutUtils
 
 	#endregion Plot
 
+	#region Stream
+
+	public static void DrawRowStream(string title, string stream, string help = null)
+	{
+		DrawRowTitleAndAdvanceColumn(title);
+
+		var remainingWidth = DrawHelp(help, ImGui.GetContentRegionAvail().X);
+		var textWidth = remainingWidth - ButtonSettingsSize.X - ButtonCopySize.X - ImGui.GetStyle().ItemSpacing.X * 2;
+
+		PushDisabled();
+		ImGui.SetNextItemWidth(textWidth);
+		ImGui.InputText(GetElementTitle(title), ref stream, 1024);
+		PopDisabled();
+
+		ImGui.SameLine();
+		if (ImGui.Button("Settings", ButtonSettingsSize))
+		{
+			Preferences.Instance.PreferencesStream.ShowStreamPreferencesWindow = true;
+			ImGui.SetWindowFocus(UIStreamPreferences.WindowTitle);
+		}
+
+		ImGui.SameLine();
+		if (ImGui.Button("Copy", ButtonCopySize))
+		{
+			CopyToClipboard(stream);
+		}
+	}
+
+	#endregion Stream
+
 	#region Compare Functions
 
 	private static bool IntCompare(int a, int b)
@@ -3563,6 +3644,11 @@ internal sealed class ImGuiLayoutUtils
 	}
 
 	private static bool StringCompare(string a, string b)
+	{
+		return a == b;
+	}
+
+	private static bool CharCompare(char a, char b)
 	{
 		return a == b;
 	}

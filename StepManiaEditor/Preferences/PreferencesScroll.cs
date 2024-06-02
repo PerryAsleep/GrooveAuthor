@@ -21,6 +21,7 @@ internal sealed class PreferencesScroll : Notifier<PreferencesScroll>
 	public const double DefaultVariablePixelsPerSecondAtDefaultBPM = 300.0;
 	public const Editor.WaveFormScrollMode DefaultRowBasedWaveFormScrollMode = Editor.WaveFormScrollMode.MostCommonTempo;
 	public const bool DefaultStopPlaybackWhenScrolling = false;
+	public const bool DefaultStopPlaybackWhenDraggingScrollBars = false;
 	public const double DefaultZoomMultiplier = 1.2;
 	public const double DefaultScrollWheelTime = 0.25;
 	public const int DefaultScrollWheelRows = 48;
@@ -110,6 +111,7 @@ internal sealed class PreferencesScroll : Notifier<PreferencesScroll>
 
 	[JsonInclude] public Editor.WaveFormScrollMode RowBasedWaveFormScrollMode = DefaultRowBasedWaveFormScrollMode;
 	[JsonInclude] public bool StopPlaybackWhenScrolling = DefaultStopPlaybackWhenScrolling;
+	[JsonInclude] public bool StopPlaybackWhenDraggingScrollBars = DefaultStopPlaybackWhenDraggingScrollBars;
 	[JsonInclude] public double ZoomMultiplier = DefaultZoomMultiplier;
 	[JsonInclude] public double ScrollWheelTime = DefaultScrollWheelTime;
 	[JsonInclude] public int ScrollWheelRows = DefaultScrollWheelRows;
@@ -123,6 +125,7 @@ internal sealed class PreferencesScroll : Notifier<PreferencesScroll>
 		       && VariablePixelsPerSecondAtDefaultBPM.DoubleEquals(DefaultVariablePixelsPerSecondAtDefaultBPM)
 		       && RowBasedWaveFormScrollMode == DefaultRowBasedWaveFormScrollMode
 		       && StopPlaybackWhenScrolling == DefaultStopPlaybackWhenScrolling
+		       && StopPlaybackWhenDraggingScrollBars == DefaultStopPlaybackWhenDraggingScrollBars
 		       && ZoomMultiplier.DoubleEquals(DefaultZoomMultiplier)
 		       && ScrollWheelTime.DoubleEquals(DefaultScrollWheelTime)
 		       && ScrollWheelRows == DefaultScrollWheelRows
@@ -149,6 +152,7 @@ internal sealed class ActionRestoreScrollPreferenceDefaults : EditorAction
 	private readonly double PreviousVariablePixelsPerSecondAtDefaultBPM;
 	private readonly Editor.WaveFormScrollMode PreviousRowBasedWaveFormScrollMode;
 	private readonly bool PreviousStopPlaybackWhenScrolling;
+	private readonly bool PreviousStopPlaybackWhenDraggingScrollBars;
 	private readonly double PreviousZoomMultiplier;
 	private readonly double PreviousScrollWheelTime;
 	private readonly int PreviousScrollWheelRows;
@@ -163,6 +167,7 @@ internal sealed class ActionRestoreScrollPreferenceDefaults : EditorAction
 		PreviousVariablePixelsPerSecondAtDefaultBPM = p.VariablePixelsPerSecondAtDefaultBPM;
 		PreviousRowBasedWaveFormScrollMode = p.RowBasedWaveFormScrollMode;
 		PreviousStopPlaybackWhenScrolling = p.StopPlaybackWhenScrolling;
+		PreviousStopPlaybackWhenDraggingScrollBars = p.StopPlaybackWhenDraggingScrollBars;
 		PreviousZoomMultiplier = p.ZoomMultiplier;
 		PreviousScrollWheelTime = p.ScrollWheelTime;
 		PreviousScrollWheelRows = p.ScrollWheelRows;
@@ -188,6 +193,7 @@ internal sealed class ActionRestoreScrollPreferenceDefaults : EditorAction
 		p.VariablePixelsPerSecondAtDefaultBPM = PreferencesScroll.DefaultVariablePixelsPerSecondAtDefaultBPM;
 		p.RowBasedWaveFormScrollMode = PreferencesScroll.DefaultRowBasedWaveFormScrollMode;
 		p.StopPlaybackWhenScrolling = PreferencesScroll.DefaultStopPlaybackWhenScrolling;
+		p.StopPlaybackWhenDraggingScrollBars = PreferencesScroll.DefaultStopPlaybackWhenDraggingScrollBars;
 		p.ZoomMultiplier = PreferencesScroll.DefaultZoomMultiplier;
 		p.ScrollWheelTime = PreferencesScroll.DefaultScrollWheelTime;
 		p.ScrollWheelRows = PreferencesScroll.DefaultScrollWheelRows;
@@ -203,6 +209,7 @@ internal sealed class ActionRestoreScrollPreferenceDefaults : EditorAction
 		p.VariablePixelsPerSecondAtDefaultBPM = PreviousVariablePixelsPerSecondAtDefaultBPM;
 		p.RowBasedWaveFormScrollMode = PreviousRowBasedWaveFormScrollMode;
 		p.StopPlaybackWhenScrolling = PreviousStopPlaybackWhenScrolling;
+		p.StopPlaybackWhenDraggingScrollBars = PreviousStopPlaybackWhenDraggingScrollBars;
 		p.ZoomMultiplier = PreviousZoomMultiplier;
 		p.ScrollWheelTime = PreviousScrollWheelTime;
 		p.ScrollWheelRows = PreviousScrollWheelRows;

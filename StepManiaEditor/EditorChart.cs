@@ -53,6 +53,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	public const string NotificationEventsMoveStart = "EventsMoveStart";
 	public const string NotificationEventsMoveEnd = "EventsMoveEnd";
 	public const string NotificationPatternRequestEdit = "PatternRequestEdit";
+	public const string NotificationTimingChanged = "TimingChanged";
 
 	public const double DefaultTempo = 120.0;
 	public static readonly Fraction DefaultTimeSignature = new(4, 4);
@@ -214,6 +215,11 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	/// Total multipliers count for this EditorChart.
 	/// </summary>
 	private int MultipliersCount;
+
+	/// <summary>
+	/// StepDensity fo this EditorChart.
+	/// </summary>
+	private readonly StepDensity StepDensity;
 
 	#region Properties
 
@@ -500,6 +506,9 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		SetUpEditorEvents(chart);
 
 		DeserializeCustomChartData(chart);
+
+		// Construct StepDensity after setting up EditorEvents.
+		StepDensity = new StepDensity(this);
 	}
 
 	/// <summary>
@@ -549,6 +558,9 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 		tempChart.Layers.Add(tempLayer);
 		SetUpEditorEvents(tempChart);
+
+		// Construct StepDensity after setting up EditorEvents.
+		StepDensity = new StepDensity(this);
 	}
 
 	/// <summary>
@@ -582,6 +594,9 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		ClearCachedStepData();
 
 		SetUpEditorEvents(other);
+
+		// Construct StepDensity after setting up EditorEvents.
+		StepDensity = new StepDensity(this);
 	}
 
 	private void ClearCachedStepData()
@@ -956,6 +971,11 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		return Patterns?.GetCount() > 0;
 	}
 
+	public StepDensity GetStepDensity()
+	{
+		return StepDensity;
+	}
+
 	#endregion Accessors
 
 	#region Timing Updates
@@ -1241,6 +1261,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 		EditorEvents.Validate();
 
+		Notify(NotificationTimingChanged, this);
+
 		return deletedEvents;
 	}
 
@@ -1289,7 +1311,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	}
 
 	/// <summary>
-	/// Deletes all EditorLastSecondHintEvent.
+	/// Deletes the EditorLastSecondHintEvent.
 	/// When modifying the last second hint value, the EditorLastSecondHintEvent event sort may change
 	/// relative to other events. We therefore need to delete these events then re-add them.
 	/// This method would ideally be private with EditorChart declaring EditorSong a friend class.
@@ -2028,6 +2050,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			allDeletedEvents.AddRange(UpdateEventTimingData());
 		}
 
+		StepDensity?.DeleteEvents(editorEvents);
+
 		Notify(NotificationEventsDeleted, this, allDeletedEvents);
 
 		return allDeletedEvents;
@@ -2148,6 +2172,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 				UpdateEventTimingData();
 			}
 		}
+
+		StepDensity?.AddEvents(editorEvents);
 
 		Notify(NotificationEventsAdded, this, editorEvents);
 	}
@@ -2458,6 +2484,11 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	public int GetMultipliersCount()
 	{
 		return MultipliersCount;
+	}
+
+	public string GetStreamBreakdown()
+	{
+		return StepDensity.GetStreamBreakdown();
 	}
 
 	#endregion Cached Data

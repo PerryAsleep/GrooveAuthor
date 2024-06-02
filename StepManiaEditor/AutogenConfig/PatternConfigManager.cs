@@ -50,7 +50,7 @@ internal sealed class PatternConfigManager : ConfigManager<EditorPatternConfig, 
 		// Add default 8th note config.
 		DeleteConfig(DefaultPatternConfigEighthsGuid);
 		var eighthsConfig = AddDefaultConfig(DefaultPatternConfigEighthsGuid, DefaultPatternConfigEighthsName);
-		eighthsConfig.PatternType = EditorPatternConfig.SubdivisionType.EighthNotes;
+		eighthsConfig.PatternType = SubdivisionType.EighthNotes;
 	}
 
 	/// <summary>

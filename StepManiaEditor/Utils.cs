@@ -233,6 +233,21 @@ internal sealed class Utils
 		}
 	}
 
+	public static void CopyToClipboard(string text)
+	{
+		Clipboard.SetText(text);
+	}
+
+	public static int GetBeatSubdivision(SubdivisionType subdivisionType)
+	{
+		return SMCommon.ValidDenominators[(int)subdivisionType];
+	}
+
+	public static int GetMeasureSubdivision(SubdivisionType subdivisionType)
+	{
+		return GetBeatSubdivision(subdivisionType) * SMCommon.NumBeatsPerMeasure;
+	}
+
 	#region Color Helpers
 
 	[MethodImpl(MethodImplOptions.AggressiveInlining)]
