@@ -26,6 +26,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 	private const int MinNumVertices = 2048;
 	private const int MinNumIndices = 6288;
 	private const float RimW = 1.0f;
+	private const float TextPadding = 3.0f;
 	private static readonly Color RimColor = Color.White;
 	private static readonly Color TimeMarkerColor = new(0.8f, 0.8f, 0.8f, 1.0f);
 	private static readonly Color TimeRegionColor = new(1.0f, 1.0f, 1.0f, 0.122f);
@@ -184,6 +185,16 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 	private readonly BasicEffect DensityEffect;
 
 	/// <summary>
+	/// SpriteBatch for rendering stream text.
+	/// </summary>
+	private readonly SpriteBatch SpriteBatch;
+
+	/// <summary>
+	/// Font for rendering stream text.
+	/// </summary>
+	private readonly SpriteFont Font;
+
+	/// <summary>
 	/// Lock for primitive data.
 	/// </summary>
 	private readonly object PrimitiveLock = new();
@@ -292,7 +303,8 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 	/// </summary>
 	/// <param name="graphics">GraphicsDeviceManager to use for the effect.</param>
 	/// <param name="graphicsDevice">GraphicsDevice to use for the effect.</param>
-	public StepDensityEffect(GraphicsDeviceManager graphics, GraphicsDevice graphicsDevice)
+	/// <param name="font">Font for rendering stream text.</param>
+	public StepDensityEffect(GraphicsDeviceManager graphics, GraphicsDevice graphicsDevice, SpriteFont font)
 	{
 		// Set up the Effect for rendering.
 		Graphics = graphics;
@@ -300,6 +312,9 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 		DensityEffect = new BasicEffect(GraphicsDevice);
 		DensityEffect.VertexColorEnabled = true;
 		DensityEffect.World = Matrix.Identity;
+
+		SpriteBatch = new SpriteBatch(GraphicsDevice);
+		Font = font;
 
 		// Observe relevant preferences so the effect can be updated accordingly.
 		Preferences.Instance.PreferencesDensityGraph.AddObserver(this);
@@ -582,6 +597,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 			DensityEffect.View = Matrix.CreateLookAt(new Vector3(x, y, 2), new Vector3(x, y, 0), Vector3.Up);
 		}
 
+		// Draw primitives.
 		lock (PrimitiveLock)
 		{
 			foreach (var pass in DensityEffect.CurrentTechnique.Passes)
@@ -600,6 +616,44 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 						ScrollBarVertices.Length,
 						ScrollBarIndices, 0, 4);
 				}
+			}
+		}
+
+		// Draw stream breakdown text.
+		if (StepDensity != null && Font != null && Preferences.Instance.PreferencesDensityGraph.ShowStream)
+		{
+			var stream = StepDensity.GetStreamBreakdown();
+			var textSize = Font.MeasureString(stream);
+
+			var minHeightForText = EffectOrientation == Orientation.Vertical ? Bounds.Width : Bounds.Height;
+			if (textSize.Y + TextPadding * 2 <= minHeightForText)
+			{
+				SpriteBatch.Begin(SpriteSortMode.Deferred, BlendState.NonPremultiplied);
+
+				float rotation;
+				Vector2 position;
+				if (EffectOrientation == Orientation.Vertical)
+				{
+					position = new Vector2(Bounds.X + TextPadding + textSize.Y, Bounds.Y + TextPadding);
+					rotation = (float)(Math.PI * 0.5);
+				}
+				else
+				{
+					position = new Vector2(Bounds.X + TextPadding, Bounds.Y + Bounds.Height - TextPadding - textSize.Y);
+					rotation = 0.0f;
+				}
+
+				SpriteBatch.DrawString(
+					Font,
+					stream,
+					position,
+					Color.White,
+					rotation,
+					Vector2.Zero,
+					1.0f,
+					SpriteEffects.None,
+					1.0f);
+				SpriteBatch.End();
 			}
 		}
 	}

@@ -35,6 +35,10 @@ internal sealed class UIDensityGraphPreferences
 				false,
 				"Whether or not to show the density graph.");
 
+			ImGuiLayoutUtils.DrawRowCheckbox(true, "Show Stream", p, nameof(PreferencesDensityGraph.ShowStream),
+				false,
+				"Whether or not to show the stream breakdown on the density graph.");
+
 			ImGuiLayoutUtils.DrawRowEnum<DensityGraphPosition>(true, "Position", p,
 				nameof(PreferencesDensityGraph.DensityGraphPositionValue), false,
 				"Position of the density graph.");

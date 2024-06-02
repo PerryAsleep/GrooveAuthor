@@ -924,7 +924,7 @@ internal sealed class Editor :
 
 	private void InitializeDensityGraph()
 	{
-		DensityGraph = new StepDensityEffect(Graphics, GraphicsDevice);
+		DensityGraph = new StepDensityEffect(Graphics, GraphicsDevice, Font);
 	}
 
 	private void InitializeMiniMap()
