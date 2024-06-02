@@ -3686,7 +3686,7 @@ internal sealed class Editor :
 
 	private void UpdateDensityGraphBounds()
 	{
-		var p = Preferences.Instance.PreferencesStream;
+		var p = Preferences.Instance.PreferencesDensityGraph;
 		var focalPointX = GetFocalPointX();
 		var sizeZoom = ZoomManager.GetSizeZoom();
 		var screenW = GetBackBufferWidth();
@@ -3699,19 +3699,19 @@ internal sealed class Editor :
 		var orientation = StepDensityEffect.Orientation.Vertical;
 		switch (p.DensityGraphPositionValue)
 		{
-			case PreferencesStream.DensityGraphPosition.RightSideOfWindow:
+			case PreferencesDensityGraph.DensityGraphPosition.RightSideOfWindow:
 				w = p.DensityGraphHeight;
 				x = screenW - w - p.DensityGraphPositionOffset;
 				h = screenH - topPadding + p.DensityGraphWidthOffset * 2;
 				y = topPadding - p.DensityGraphWidthOffset;
 				break;
-			case PreferencesStream.DensityGraphPosition.RightOfChartArea:
+			case PreferencesDensityGraph.DensityGraphPosition.RightOfChartArea:
 				w = p.DensityGraphHeight;
 				x = focalPointX + (WaveFormTextureWidth >> 1) + p.DensityGraphPositionOffset;
 				h = screenH - topPadding + p.DensityGraphWidthOffset * 2;
 				y = topPadding - p.DensityGraphWidthOffset;
 				break;
-			case PreferencesStream.DensityGraphPosition.MountedToWaveForm:
+			case PreferencesDensityGraph.DensityGraphPosition.MountedToWaveForm:
 				w = p.DensityGraphHeight;
 				if (Preferences.Instance.PreferencesWaveForm.WaveFormScaleXWhenZooming)
 					x = (int)(focalPointX + (WaveFormTextureWidth >> 1) * sizeZoom + p.DensityGraphPositionOffset);
@@ -3720,7 +3720,7 @@ internal sealed class Editor :
 				h = screenH - topPadding + p.DensityGraphWidthOffset * 2;
 				y = topPadding - p.DensityGraphWidthOffset;
 				break;
-			case PreferencesStream.DensityGraphPosition.MountedToChart:
+			case PreferencesDensityGraph.DensityGraphPosition.MountedToChart:
 				var receptorBounds =
 					Receptor.GetBounds(GetFocalPoint(), sizeZoom, TextureAtlas, ArrowGraphicManager, ActiveChart);
 				w = p.DensityGraphHeight;
@@ -3728,14 +3728,14 @@ internal sealed class Editor :
 				h = screenH - topPadding + p.DensityGraphWidthOffset * 2;
 				y = topPadding - p.DensityGraphWidthOffset;
 				break;
-			case PreferencesStream.DensityGraphPosition.TopOfWaveForm:
+			case PreferencesDensityGraph.DensityGraphPosition.TopOfWaveForm:
 				x = focalPointX - (WaveFormTextureWidth >> 1) - p.DensityGraphWidthOffset;
 				w = WaveFormTextureWidth + p.DensityGraphWidthOffset * 2;
 				y = topPadding + p.DensityGraphPositionOffset;
 				h = p.DensityGraphHeight;
 				orientation = StepDensityEffect.Orientation.Horizontal;
 				break;
-			case PreferencesStream.DensityGraphPosition.BottomOfWaveForm:
+			case PreferencesDensityGraph.DensityGraphPosition.BottomOfWaveForm:
 				x = focalPointX - (WaveFormTextureWidth >> 1) - p.DensityGraphWidthOffset;
 				w = WaveFormTextureWidth + p.DensityGraphWidthOffset * 2;
 				y = screenH - p.DensityGraphHeight - p.DensityGraphPositionOffset;
@@ -3750,7 +3750,6 @@ internal sealed class Editor :
 	private void ProcessInputForDensityGraph()
 	{
 		var pScroll = Preferences.Instance.PreferencesScroll;
-		var focalPointY = GetFocalPointY();
 
 		var densityGraphCapturingMouseLastFrame = DensityGraphCapturingMouse;
 
@@ -3828,6 +3827,7 @@ internal sealed class Editor :
 		UIOptions.Draw();
 		UIAudioPreferences.Draw();
 		UIStreamPreferences.Draw();
+		UIDensityGraphPreferences.Draw();
 
 		UISongProperties.Draw(ActiveSong);
 		UIChartProperties.Draw(ActiveChart);
@@ -4012,6 +4012,12 @@ internal sealed class Editor :
 				{
 					p.PreferencesStream.ShowStreamPreferencesWindow = true;
 					ImGui.SetWindowFocus(UIStreamPreferences.WindowTitle);
+				}
+
+				if (ImGui.MenuItem("Density Graph Preferences"))
+				{
+					p.PreferencesDensityGraph.ShowDensityGraphPreferencesWindow = true;
+					ImGui.SetWindowFocus(UIDensityGraphPreferences.WindowTitle);
 				}
 
 				ImGui.Separator();
@@ -4459,7 +4465,7 @@ internal sealed class Editor :
 
 			var isInMiniMapArea = Preferences.Instance.PreferencesMiniMap.ShowMiniMap
 			                      && MiniMap.IsScreenPositionInMiniMapBounds(x, y);
-			var isInDensityGraphArea = Preferences.Instance.PreferencesStream.ShowDensityGraph
+			var isInDensityGraphArea = Preferences.Instance.PreferencesDensityGraph.ShowDensityGraph
 			                           && DensityGraph.IsInDensityGraphArea(x, y);
 			var isInWaveFormArea = Preferences.Instance.PreferencesWaveForm.ShowWaveForm
 			                       && x >= GetFocalPointX() - (WaveFormTextureWidth >> 1)
@@ -4747,7 +4753,7 @@ internal sealed class Editor :
 			{
 				if (ImGui.BeginMenu("Density Graph Preferences"))
 				{
-					UIStreamPreferences.DrawContents();
+					UIDensityGraphPreferences.DrawContents();
 					ImGui.EndMenu();
 				}
 

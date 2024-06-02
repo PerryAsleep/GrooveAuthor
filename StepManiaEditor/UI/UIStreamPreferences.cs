@@ -1,6 +1,5 @@
 ﻿using ImGuiNET;
 using static StepManiaEditor.ImGuiUtils;
-using static StepManiaEditor.PreferencesStream;
 
 namespace StepManiaEditor;
 
@@ -53,50 +52,6 @@ internal sealed class UIStreamPreferences
 			ImGuiLayoutUtils.DrawRowCharacterInput(true, "Long Break Mark", p, nameof(PreferencesStream.LongBreakCharacter),
 				false,
 				"Character to use to represent long breaks in stream notation.");
-
-			ImGuiLayoutUtils.EndTable();
-		}
-
-		ImGui.Separator();
-		if (ImGuiLayoutUtils.BeginTable("Density", TitleColumnWidth))
-		{
-			ImGuiLayoutUtils.DrawRowCheckbox(true, "Show Density Graph", p, nameof(PreferencesStream.ShowDensityGraph), false,
-				"Whether or not to show the density graph.");
-
-			ImGuiLayoutUtils.DrawRowEnum<DensityGraphPosition>(true, "Position", p,
-				nameof(PreferencesStream.DensityGraphPositionValue), false,
-				"Position of the density graph.");
-
-			ImGuiLayoutUtils.DrawRowDragInt(true, "Position Offset", p,
-				nameof(PreferencesStream.DensityGraphPositionOffset), false,
-				"Position offset of the density graph.", 1.0f, "%i", -1024, 1024);
-
-			ImGuiLayoutUtils.DrawRowDragInt(true, "Width Offset", p,
-				nameof(PreferencesStream.DensityGraphWidthOffset), false,
-				"Width offset of the density graph.", 1.0f, "%i", -1024, 1024);
-
-			ImGuiLayoutUtils.DrawRowDragInt(true, "Height", p,
-				nameof(PreferencesStream.DensityGraphHeight), false,
-				"Height of the density graph.", 1.0f, "%i", 16, 1024);
-
-			ImGuiLayoutUtils.DrawRowEnum<DensityGraphColorMode>(true, "Color Mode", p,
-				nameof(PreferencesStream.DensityGraphColorModeValue), false,
-				"How to color the density graph.");
-
-			ImGuiLayoutUtils.DrawRowColorEdit4(true, "High Color", p,
-				nameof(PreferencesStream.DensityGraphHighColor),
-				ImGuiColorEditFlags.AlphaPreviewHalf | ImGuiColorEditFlags.AlphaBar, false,
-				"High color for the density graph.");
-
-			ImGuiLayoutUtils.DrawRowColorEdit4(true, "Low Color", p,
-				nameof(PreferencesStream.DensityGraphLowColor),
-				ImGuiColorEditFlags.AlphaPreviewHalf | ImGuiColorEditFlags.AlphaBar, false,
-				"Low color for the density graph.");
-
-			ImGuiLayoutUtils.DrawRowColorEdit4(true, "Background Color", p,
-				nameof(PreferencesStream.DensityGraphBackgroundColor),
-				ImGuiColorEditFlags.AlphaPreviewHalf | ImGuiColorEditFlags.AlphaBar, false,
-				"Background color for the density graph.");
 
 			ImGuiLayoutUtils.EndTable();
 		}

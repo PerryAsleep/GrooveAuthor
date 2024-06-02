@@ -5,7 +5,7 @@ using Fumen;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using static StepManiaEditor.StepDensity;
-using static StepManiaEditor.PreferencesStream;
+using static StepManiaEditor.PreferencesDensityGraph;
 using ColorUtils = MonoGameExtensions.ColorUtils;
 
 namespace StepManiaEditor;
@@ -20,7 +20,7 @@ namespace StepManiaEditor;
 ///  For input processing call MouseDown, MouseMove, and MouseUp.
 ///  To get the position from the MiniMap call GetTimeFromScrollBar.
 /// </summary>
-internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IObserver<PreferencesStream>, IDisposable
+internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IObserver<PreferencesDensityGraph>, IDisposable
 {
 	private const int MinNumMeasures = 256;
 	private const int MinNumVertices = 2048;
@@ -302,7 +302,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 		DensityEffect.World = Matrix.Identity;
 
 		// Observe relevant preferences so the effect can be updated accordingly.
-		Preferences.Instance.PreferencesStream.AddObserver(this);
+		Preferences.Instance.PreferencesDensityGraph.AddObserver(this);
 
 		InitializeScrollBar();
 
@@ -351,7 +351,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 			return;
 		if (disposing)
 		{
-			Preferences.Instance.PreferencesStream.RemoveObserver(this);
+			Preferences.Instance.PreferencesDensityGraph.RemoveObserver(this);
 			StepDensity?.RemoveObserver(this);
 			State.SetShouldShutdown();
 			UpdatePrimitivesTask.Wait();
@@ -562,7 +562,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 	/// </summary>
 	public void Draw()
 	{
-		if (!Preferences.Instance.PreferencesStream.ShowDensityGraph)
+		if (!Preferences.Instance.PreferencesDensityGraph.ShowDensityGraph)
 			return;
 
 		var viewportW = Graphics.PreferredBackBufferWidth;
@@ -945,7 +945,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 	/// </summary>
 	private void RefreshPrimitives()
 	{
-		var p = Preferences.Instance.PreferencesStream;
+		var p = Preferences.Instance.PreferencesDensityGraph;
 
 		// Avoid doing unnecessary computations when we don't show the density graph.
 		if (!p.ShowDensityGraph)
@@ -991,7 +991,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 		}
 	}
 
-	public void OnNotify(string eventId, PreferencesStream notifier, object payload)
+	public void OnNotify(string eventId, PreferencesDensityGraph notifier, object payload)
 	{
 		switch (eventId)
 		{

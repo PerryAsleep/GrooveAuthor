@@ -118,6 +118,7 @@ internal sealed class Preferences
 
 	// Stream breakdown preferences
 	[JsonInclude] public PreferencesStream PreferencesStream = new();
+	[JsonInclude] public PreferencesDensityGraph PreferencesDensityGraph = new();
 
 	// Log preferences
 	[JsonInclude] public bool ShowLogWindow = true;
@@ -160,7 +161,7 @@ internal sealed class Preferences
 	{
 		PreferencesReceptors.SetEditor(Editor);
 		PreferencesWaveForm.PostLoad();
-		PreferencesStream.PostLoad();
+		PreferencesDensityGraph.PostLoad();
 	}
 
 	private void PreSave()
