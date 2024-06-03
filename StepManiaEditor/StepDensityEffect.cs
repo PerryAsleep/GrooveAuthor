@@ -195,6 +195,11 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 	private readonly SpriteFont Font;
 
 	/// <summary>
+	/// RasterizerState for rendering text with a scissor rect.
+	/// </summary>
+	private readonly RasterizerState TextRasterizerState;
+
+	/// <summary>
 	/// Lock for primitive data.
 	/// </summary>
 	private readonly object PrimitiveLock = new();
@@ -312,6 +317,16 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 		DensityEffect = new BasicEffect(GraphicsDevice);
 		DensityEffect.VertexColorEnabled = true;
 		DensityEffect.World = Matrix.Identity;
+
+		TextRasterizerState = new RasterizerState
+		{
+			CullMode = CullMode.None,
+			DepthBias = 0,
+			FillMode = FillMode.Solid,
+			MultiSampleAntiAlias = false,
+			ScissorTestEnable = true,
+			SlopeScaleDepthBias = 0,
+		};
 
 		SpriteBatch = new SpriteBatch(GraphicsDevice);
 		Font = font;
@@ -626,9 +641,12 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 			var textSize = Font.MeasureString(stream);
 
 			var minHeightForText = EffectOrientation == Orientation.Vertical ? Bounds.Width : Bounds.Height;
-			if (textSize.Y + TextPadding * 2 <= minHeightForText)
+			if (textSize.Y + TextPadding * 2 <= minHeightForText && Bounds.Width > 0 && Bounds.Height > 0)
 			{
-				SpriteBatch.Begin(SpriteSortMode.Deferred, BlendState.NonPremultiplied);
+				var previousScissorRect = GraphicsDevice.ScissorRectangle;
+				GraphicsDevice.ScissorRectangle = Bounds;
+
+				SpriteBatch.Begin(SpriteSortMode.Deferred, BlendState.NonPremultiplied, null, null, TextRasterizerState);
 
 				float rotation;
 				Vector2 position;
@@ -653,7 +671,10 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 					1.0f,
 					SpriteEffects.None,
 					1.0f);
+
 				SpriteBatch.End();
+
+				GraphicsDevice.ScissorRectangle = previousScissorRect;
 			}
 		}
 	}
