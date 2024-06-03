@@ -321,7 +321,7 @@ internal sealed class PerformanceMonitor : IEnumerable
 		GetTimingIndex(FrameTimingIdentifier, out var frameTimingIndex);
 		if (!Frames[index].Timings[frameTimingIndex].IsComplete())
 		{
-			if (index == LastValidFrameIndex)
+			if (LastValidFrameIndex < 0 || index == LastValidFrameIndex)
 				return false;
 			DecrementIndex(ref index);
 		}
