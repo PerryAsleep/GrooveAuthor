@@ -824,7 +824,9 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 					measureTime = measures[i + 1].StartTime - measures[i].StartTime;
 				else
 					measureTime = finalTime - measures[i].StartTime;
-				var stepsPerSecond = measures[i].Steps / measureTime;
+				var stepsPerSecond = measures[i].Steps == 0 || measureTime.DoubleEquals(0.0)
+					? 0
+					: measures[i].Steps / measureTime;
 
 				var yPercent = (float)(stepsPerSecond / greatestStepsPerSecond);
 				var y = minY + yPercent * stepHeight;
