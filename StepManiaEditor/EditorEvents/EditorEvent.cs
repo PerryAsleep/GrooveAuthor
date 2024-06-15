@@ -64,6 +64,11 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	/// </summary>
 	protected double ChartPosition;
 
+	/// <summary>
+	/// Debug flag for whether or not the event's time is valid for comparison.
+	/// </summary>
+	protected bool IsChartTimeValid;
+
 	protected static uint ScreenHeight;
 
 	public static void SetScreenHeight(uint screenHeight)
@@ -100,24 +105,24 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 		}
 
 		EditorEvent newEvent = null;
-		if (config.ChartEvents != null && config.ChartEvents.Count > 0)
+		if (config.ChartEvent != null)
 		{
 			// Intentional modification of DestType to preserve StepMania types like mines.
-			foreach (var chartEvent in config.ChartEvents)
-				chartEvent.DestType = chartEvent.SourceType;
+			config.ChartEvent.DestType = config.ChartEvent.SourceType;
+			if (config.AdditionalChartEvent != null)
+				config.AdditionalChartEvent.DestType = config.AdditionalChartEvent.SourceType;
 
-			if (config.ChartEvents.Count == 2)
+			if (config.AdditionalChartEvent != null)
 			{
-				if (config.ChartEvents[0] is LaneHoldStartNote lhsn
-				    && config.ChartEvents[1] is LaneHoldEndNote lhen)
+				if (config.ChartEvent is LaneHoldStartNote lhsn
+				    && config.AdditionalChartEvent is LaneHoldEndNote lhen)
 				{
 					newEvent = new EditorHoldNoteEvent(config, lhsn, lhen);
 				}
 			}
-			else if (config.ChartEvents.Count == 1)
+			else
 			{
-				var chartEvent = config.ChartEvents[0];
-				switch (chartEvent)
+				switch (config.ChartEvent)
 				{
 					case LaneNote ln when ln.SourceType == SMCommon.NoteStrings[(int)SMCommon.NoteType.Mine]:
 						newEvent = new EditorMineNoteEvent(config, ln);
@@ -203,6 +208,8 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 		}
 
 		Assert(newEvent != null);
+		if (config.DetermineChartTimeFromPosition)
+			newEvent.ResetTimeBasedOnRow();
 		return newEvent;
 	}
 
@@ -213,13 +220,15 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	protected EditorEvent(EventConfig config)
 	{
 		EditorChart = config.EditorChart;
-		if (config.ChartEvents?.Count > 0)
-			ChartEvent = config.ChartEvents[0];
+		ChartEvent = config.ChartEvent;
 		BeingEdited = config.IsBeingEdited;
 		if (config.UseDoubleChartPosition)
 			ChartPosition = config.ChartPosition;
 		else if (ChartEvent != null)
 			ChartPosition = ChartEvent.IntegerPosition;
+		// We cannot check DetermineChartTimeFromPosition and call ResetTimeBasedOnRow here
+		// because this is a virtual constructor. We need to do it after construction in CreateEvent.
+		IsChartTimeValid = !config.DetermineChartTimeFromPosition;
 	}
 
 	/// <summary>
@@ -278,24 +287,24 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	}
 
 	/// <summary>
-	/// Gets the first underlying Event for this EditorEvent.
+	/// Gets the underlying Event for this EditorEvent.
 	/// This may be null.
-	/// Some EditorEvents may be composed of multiple underlying Events.
 	/// </summary>
-	/// <returns>The first underlying Event for this EditorEvent.</returns>
-	public Event GetFirstEvent()
+	/// <returns>Underlying Event for this EditorEvent.</returns>
+	public Event GetEvent()
 	{
 		return ChartEvent;
 	}
 
 	/// <summary>
-	/// Gets all underlying Events for this EditorEvent.
-	/// This may be an empty list.
+	/// Gets the underlying optional additional Event for this EditorEvent.
+	/// Most EditorEvents do not have an additional Event.
+	/// Some EditorEvents like holds do have an additional EditorEvent.
 	/// </summary>
-	/// <returns>All underlying Events for this EditorEvent.</returns>
-	public virtual List<Event> GetEvents()
+	/// <returns></returns>
+	public virtual Event GetAdditionalEvent()
 	{
-		return new List<Event>() { ChartEvent };
+		return null;
 	}
 
 	/// <summary>
@@ -344,21 +353,6 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	}
 
 	/// <summary>
-	/// Sets the given Event's row to the given row and updates its time accordingly.
-	/// </summary>
-	/// <param name="chartEvent">
-	/// Event to modify. Take care if this Event is used for sorting. Changing the Event's
-	/// time will affect sorting.
-	/// </param>
-	/// <param name="row">New row to set.</param>
-	protected void SetNewPositionForEvent(Event chartEvent, int row)
-	{
-		if (chartEvent != null)
-			chartEvent.IntegerPosition = row;
-		ResetTimeBasedOnRowForEvent(chartEvent, row);
-	}
-
-	/// <summary>
 	/// Updates the chart time of the event to match its row.
 	/// This also updates the event's time.
 	/// </summary>
@@ -366,27 +360,24 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	/// Call this carefully. This changes how events are sorted.
 	/// This cannot be changed while this event is in a sorted list without resorting.
 	/// </remarks>
-	public virtual void ResetTimeBasedOnRow()
+	public void ResetTimeBasedOnRow()
 	{
-		ResetTimeBasedOnRowForEvent(ChartEvent, GetRow());
+		// If we are updating the time we should assume it is currently incorrect.
+		IsChartTimeValid = false;
+		ResetTimeBasedOnRowImplementation();
+		IsChartTimeValid = true;
 	}
 
 	/// <summary>
-	/// Resets the chart time of the given event to match the given row.
-	/// This also updates the given event's time.
+	/// Virtual implementation for resetting time based on row.
 	/// </summary>
-	/// <param name="chartEvent">
-	/// Event to modify. Take care if this Event is used for sorting. Changing the Event's
-	/// time will affect sorting.
-	/// </param>
-	/// <param name="row">Row to use for setting the time.</param>
-	protected void ResetTimeBasedOnRowForEvent(Event chartEvent, int row)
+	protected virtual void ResetTimeBasedOnRowImplementation()
 	{
-		if (chartEvent == null)
+		if (ChartEvent == null)
 			return;
 		var chartTime = 0.0;
-		EditorChart.TryGetTimeFromChartPosition(row, ref chartTime);
-		chartEvent.TimeSeconds = chartTime;
+		EditorChart.TryGetTimeOfEvent(this, ref chartTime);
+		ChartEvent.TimeSeconds = chartTime;
 	}
 
 	/// <summary>
@@ -605,6 +596,15 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 
 	private const int DefaultCustomEventOrder = 2;
 
+	/// <summary>
+	/// Comparer between this EditorEvent and another EditorEvent.
+	/// </summary>
+	/// <param name="other">EditorEvent to compare to.</param>
+	/// <returns>
+	/// Negative number if this event is less than the given event.
+	/// Zero if this event is equal to the given event.
+	/// Positive number if this event is greater than the given event.
+	/// </returns>
 	public virtual int CompareTo(EditorEvent other)
 	{
 		if (this == other)
@@ -618,9 +618,16 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 		// They are convenient for comparisons, but inappropriate for inserting into data structures
 		// which require predictable sorting.
 		if (IsRowOnlySearchEvent() || other.IsRowOnlySearchEvent())
+		{
 			return GetChartPosition().CompareTo(other.GetChartPosition());
+		}
+
 		if (IsTimeOnlySearchEvent() || other.IsTimeOnlySearchEvent())
+		{
+			// If we are searching with a time-only search event, the other events must have a valid time.
+			Assert(IsChartTimeValid && other.IsChartTimeValid);
 			return GetChartTime().CompareTo(other.GetChartTime());
+		}
 
 		// Sort by position as a double first. We position certain EditorEvents that
 		// don't correspond to a Stepmania event (like the preview) at non-integer
@@ -632,13 +639,16 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 
 		// Compare by times.
 		// EditorEvents with no Event backing them have rows which are inferred from their times.
-		// In some situations (e.g. during a Stop time range), this can cause these event's to have
+		// In some situations (e.g. during a Stop time range), this can cause these events to have
 		// a row which occurs much earlier than other events in the "same" row.
 		// This comparison relies on time values not changing unexpectedly.
 		// See SMCommon.SetEventTimeAndMetricPositionsFromRows and
 		// EditorRateAlteringEvent.GetChartTimeFromPosition for time calculations.
-		if (!GetChartTime().DoubleEquals(other.GetChartTime()))
-			return GetChartTime() - other.GetChartTime() > 0.0 ? 1 : -1;
+		if (IsChartTimeValid && other.IsChartTimeValid)
+		{
+			if (!GetChartTime().DoubleEquals(other.GetChartTime()))
+				return GetChartTime() - other.GetChartTime() > 0.0 ? 1 : -1;
+		}
 
 		// Sort by types which only exist in the editor and aren't represented as Events
 		// in Stepmania, like the preview and the last second hint.
@@ -664,6 +674,47 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 		if (IsBeingEdited() != other.IsBeingEdited())
 			return IsBeingEdited() ? 1 : -1;
 		return 0;
+	}
+
+	/// <summary>
+	/// Comparer method which compares an EditorEvent to a Stepmania Event. This is useful
+	/// when needing to recompute the time of an Event with no EditorEvent (like a hold end).
+	/// In these circumstances we need to search the rate altering event tree to get the active
+	/// rate altering event for the Event, to compute its time.
+	/// </summary>
+	/// <param name="editorEvent">EditorEvent to compare.</param>
+	/// <param name="smEvent">Event to compare.</param>
+	/// <returns>
+	/// Negative number if the EditorEvent is less than the Stepmania Event.
+	/// Zero if EditorEvent is equal to the Stepmania Event.
+	/// Positive number if EditorEvent is greater than the Stepmania Event.
+	/// </returns>
+	public static int CompareEditorEventToSmEvent(EditorEvent editorEvent, Event smEvent)
+	{
+		if (editorEvent.GetEvent() == smEvent)
+			return 0;
+
+		// Stepmania events are sorted by row, lane, and type. We do not need to use time.
+		// Furthermore, using time would be problematic in the primary use case of this
+		// comparison, which is to recompute the time of an Event when the chart changes,
+		// and its current time is stale and potentially incorrect.
+		Assert(!editorEvent.IsTimeOnlySearchEvent());
+
+		// Sort by row.
+		var comparison = editorEvent.GetChartPosition().CompareTo(smEvent.IntegerPosition);
+		if (comparison != 0)
+			return comparison;
+
+		// Sort by types which only exist in the editor and aren't represented as Events
+		// in Stepmania, like the preview and the last second hint.
+		if (!CustomEventOrder.TryGetValue(editorEvent.GetType().Name, out var editorEventOrder))
+			editorEventOrder = DefaultCustomEventOrder;
+		comparison = editorEventOrder.CompareTo(DefaultCustomEventOrder);
+		if (comparison != 0)
+			return comparison;
+
+		// Compare using the common Stepmania logic.
+		return EventComparer.Compare(editorEvent.GetEvent(), smEvent);
 	}
 
 	#endregion IComparable

@@ -195,7 +195,7 @@ internal sealed class EditorMouseState
 		return CurrentMouseState.Position.Y;
 	}
 
-	public EditorPosition GetEditorPosition()
+	public IReadOnlyEditorPosition GetEditorPosition()
 	{
 		return Position;
 	}

@@ -1190,7 +1190,7 @@ internal sealed class Editor :
 		return Position.SongTime;
 	}
 
-	public EditorPosition GetPosition()
+	public IReadOnlyEditorPosition GetPosition()
 	{
 		return Position;
 	}
@@ -1211,6 +1211,25 @@ internal sealed class Editor :
 	}
 
 	#endregion State Accessors
+
+	#region Position Modification
+
+	public void SetSongTime(double songTime)
+	{
+		Position.SongTime = songTime;
+	}
+
+	public void SetChartTime(double chartTime)
+	{
+		Position.ChartTime = chartTime;
+	}
+
+	public void SetChartPosition(double chartPosition)
+	{
+		Position.ChartPosition = chartPosition;
+	}
+
+	#endregion Position Modification
 
 	#region Window Resizing
 
@@ -2770,7 +2789,7 @@ internal sealed class Editor :
 				EventConfig.CreateInterpolatedRateAlteringSearchEvent(ActiveChart, Position.ChartPosition, Position.ChartTime));
 
 			var interpolatedScrollRateEnumerator =
-				ActiveChart.GetInterpolatedScrollRateEvents().FindGreatestPreceding(ratePosEventForChecking);
+				ActiveChart.GetInterpolatedScrollRateEvents().FindGreatestPreceding(ratePosEventForChecking, true);
 			if (interpolatedScrollRateEnumerator != null)
 			{
 				interpolatedScrollRateEnumerator.MoveNext();
@@ -2783,7 +2802,7 @@ internal sealed class Editor :
 			else
 			{
 				interpolatedScrollRateEnumerator =
-					ActiveChart.GetInterpolatedScrollRateEvents().FindLeastFollowing(ratePosEventForChecking, true);
+					ActiveChart.GetInterpolatedScrollRateEvents().FindLeastFollowing(ratePosEventForChecking);
 				if (interpolatedScrollRateEnumerator != null)
 				{
 					interpolatedScrollRateEnumerator.MoveNext();
@@ -2811,7 +2830,7 @@ internal sealed class Editor :
 		double chartPosition)
 	{
 		// Get all the holds overlapping the given position.
-		var holdsPerLane = ActiveChart.GetHoldsOverlapping(chartPosition, enumerator);
+		var holdsPerLane = ActiveChart.GetHoldsOverlappingPosition(chartPosition, enumerator);
 		var holds = new List<EditorHoldNoteEvent>();
 		foreach (var hold in holdsPerLane)
 		{
@@ -3082,9 +3101,10 @@ internal sealed class Editor :
 		double previousRateEventY,
 		EditorRateAlteringEvent nextRateEvent)
 	{
-		var holdEndRow = hold.GetRow() + hold.GetLength();
-		if (nextRateEvent == null || holdEndRow <= nextRateEvent.GetRow())
+		var holdEndEvent = hold.GetAdditionalEvent();
+		if (nextRateEvent == null || EditorEvent.CompareEditorEventToSmEvent(nextRateEvent, holdEndEvent) > 0)
 		{
+			var holdEndRow = hold.GetRow() + hold.GetLength();
 			var holdEndY = SpacingHelper.GetYForRow(holdEndRow, previousRateEventY) + GetHoldCapHeight();
 			hold.H = holdEndY - hold.Y;
 			return true;
@@ -3614,7 +3634,7 @@ internal sealed class Editor :
 		foreach (var hsn in holdStartNotes)
 		{
 			MiniMap.AddHold(
-				(LaneHoldStartNote)hsn.GetFirstEvent(),
+				(LaneHoldStartNote)hsn.GetEvent(),
 				spaceByRow ? hsn.GetChartPosition() : hsn.GetChartTime(),
 				spaceByRow ? hsn.GetEndChartPosition() : hsn.GetEndChartTime(),
 				hsn.IsRoll(),
@@ -3629,7 +3649,7 @@ internal sealed class Editor :
 			if (e is EditorTapNoteEvent or EditorFakeNoteEvent or EditorLiftNoteEvent)
 			{
 				numNotesAdded++;
-				if (MiniMap.AddNote((LaneNote)e.GetFirstEvent(), spaceByRow ? e.GetChartPosition() : e.GetChartTime(),
+				if (MiniMap.AddNote((LaneNote)e.GetEvent(), spaceByRow ? e.GetChartPosition() : e.GetChartTime(),
 					    e.IsSelected()) ==
 				    AddResult.BelowBottom)
 					break;
@@ -3637,7 +3657,7 @@ internal sealed class Editor :
 			else if (e is EditorMineNoteEvent)
 			{
 				numNotesAdded++;
-				if (MiniMap.AddMine((LaneNote)e.GetFirstEvent(), spaceByRow ? e.GetChartPosition() : e.GetChartTime(),
+				if (MiniMap.AddMine((LaneNote)e.GetEvent(), spaceByRow ? e.GetChartPosition() : e.GetChartTime(),
 					    e.IsSelected()) ==
 				    AddResult.BelowBottom)
 					break;
@@ -3646,7 +3666,7 @@ internal sealed class Editor :
 			{
 				numNotesAdded++;
 				if (MiniMap.AddHold(
-					    (LaneHoldStartNote)hold.GetFirstEvent(),
+					    (LaneHoldStartNote)hold.GetEvent(),
 					    spaceByRow ? hold.GetChartPosition() : hold.GetChartTime(),
 					    spaceByRow ? hold.GetEndChartPosition() : hold.GetEndChartTime(),
 					    hold.IsRoll(),
@@ -4546,7 +4566,7 @@ internal sealed class Editor :
 							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
 								(e) => e is EditorTapNoteEvent,
 								(e) => EditorEvent.CreateEvent(
-									EventConfig.CreateMineConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(),
+									EventConfig.CreateMineConfigWithExplicitTime(ActiveChart, e.GetRow(), e.GetChartTime(),
 										e.GetLane()))));
 						}
 
@@ -4555,7 +4575,7 @@ internal sealed class Editor :
 							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
 								(e) => e is EditorTapNoteEvent,
 								(e) => EditorEvent.CreateEvent(
-									EventConfig.CreateFakeNoteConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(),
+									EventConfig.CreateFakeNoteConfigWithExplicitTime(ActiveChart, e.GetRow(), e.GetChartTime(),
 										e.GetLane()))));
 						}
 
@@ -4564,7 +4584,7 @@ internal sealed class Editor :
 							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
 								(e) => e is EditorTapNoteEvent,
 								(e) => EditorEvent.CreateEvent(
-									EventConfig.CreateLiftNoteConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(),
+									EventConfig.CreateLiftNoteConfigWithExplicitTime(ActiveChart, e.GetRow(), e.GetChartTime(),
 										e.GetLane()))));
 						}
 
@@ -4574,7 +4594,7 @@ internal sealed class Editor :
 							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
 								(e) => e is EditorMineNoteEvent,
 								(e) => EditorEvent.CreateEvent(
-									EventConfig.CreateTapConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(),
+									EventConfig.CreateTapConfigWithExplicitTime(ActiveChart, e.GetRow(), e.GetChartTime(),
 										e.GetLane()))));
 						}
 
@@ -4583,7 +4603,7 @@ internal sealed class Editor :
 							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
 								(e) => e is EditorMineNoteEvent,
 								(e) => EditorEvent.CreateEvent(
-									EventConfig.CreateFakeNoteConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(),
+									EventConfig.CreateFakeNoteConfigWithExplicitTime(ActiveChart, e.GetRow(), e.GetChartTime(),
 										e.GetLane()))));
 						}
 
@@ -4592,7 +4612,7 @@ internal sealed class Editor :
 							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
 								(e) => e is EditorMineNoteEvent,
 								(e) => EditorEvent.CreateEvent(
-									EventConfig.CreateLiftNoteConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(),
+									EventConfig.CreateLiftNoteConfigWithExplicitTime(ActiveChart, e.GetRow(), e.GetChartTime(),
 										e.GetLane()))));
 						}
 
@@ -4602,7 +4622,7 @@ internal sealed class Editor :
 							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
 								(e) => e is EditorFakeNoteEvent,
 								(e) => EditorEvent.CreateEvent(
-									EventConfig.CreateTapConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(),
+									EventConfig.CreateTapConfigWithExplicitTime(ActiveChart, e.GetRow(), e.GetChartTime(),
 										e.GetLane()))));
 						}
 
@@ -4611,7 +4631,7 @@ internal sealed class Editor :
 							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
 								(e) => e is EditorLiftNoteEvent,
 								(e) => EditorEvent.CreateEvent(
-									EventConfig.CreateTapConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(),
+									EventConfig.CreateTapConfigWithExplicitTime(ActiveChart, e.GetRow(), e.GetChartTime(),
 										e.GetLane()))));
 						}
 
@@ -4620,8 +4640,9 @@ internal sealed class Editor :
 						{
 							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
 								(e) => e is EditorHoldNoteEvent hn && !hn.IsRoll(),
-								(e) => EditorHoldNoteEvent.CreateHold(ActiveChart, e.GetLane(), e.GetRow(), e.GetLength(),
-									true)));
+								(e) => EditorEvent.CreateEvent(
+									EventConfig.CreateHoldConfig(ActiveChart, e.GetRow(), e.GetLane(), e.GetLength(),
+										true))));
 						}
 
 						if (ImGui.MenuItem("Holds to Taps"))
@@ -4629,7 +4650,7 @@ internal sealed class Editor :
 							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
 								(e) => e is EditorHoldNoteEvent hn && !hn.IsRoll(),
 								(e) => EditorEvent.CreateEvent(
-									EventConfig.CreateTapConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(),
+									EventConfig.CreateTapConfigWithExplicitTime(ActiveChart, e.GetRow(), e.GetChartTime(),
 										e.GetLane()))));
 						}
 
@@ -4638,8 +4659,7 @@ internal sealed class Editor :
 							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
 								(e) => e is EditorHoldNoteEvent hn && !hn.IsRoll(),
 								(e) => EditorEvent.CreateEvent(
-									EventConfig.CreateMineConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(),
-										e.GetLane()))));
+									EventConfig.CreateMineConfig(ActiveChart, e.GetRow(), e.GetLane()))));
 						}
 
 						ImGui.Separator();
@@ -4647,8 +4667,9 @@ internal sealed class Editor :
 						{
 							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
 								(e) => e is EditorHoldNoteEvent hn && hn.IsRoll(),
-								(e) => EditorHoldNoteEvent.CreateHold(ActiveChart, e.GetLane(), e.GetRow(), e.GetLength(),
-									false)));
+								(e) => EditorEvent.CreateEvent(
+									EventConfig.CreateHoldConfig(ActiveChart, e.GetRow(), e.GetLane(), e.GetLength(),
+										false))));
 						}
 
 						if (ImGui.MenuItem("Rolls to Taps"))
@@ -4656,7 +4677,7 @@ internal sealed class Editor :
 							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
 								(e) => e is EditorHoldNoteEvent hn && hn.IsRoll(),
 								(e) => EditorEvent.CreateEvent(
-									EventConfig.CreateTapConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(),
+									EventConfig.CreateTapConfigWithExplicitTime(ActiveChart, e.GetRow(), e.GetChartTime(),
 										e.GetLane()))));
 						}
 
@@ -4665,8 +4686,7 @@ internal sealed class Editor :
 							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
 								(e) => e is EditorHoldNoteEvent hn && hn.IsRoll(),
 								(e) => EditorEvent.CreateEvent(
-									EventConfig.CreateMineConfig(ActiveChart, e.GetChartPosition(), e.GetChartTime(),
-										e.GetLane()))));
+									EventConfig.CreateMineConfig(ActiveChart, e.GetRow(), e.GetLane()))));
 						}
 
 						ImGui.EndMenu();
@@ -4880,66 +4900,61 @@ internal sealed class Editor :
 							hasTimeSignatureEvent = true;
 					}
 
-					var chartTime = 0.0;
-					ActiveChart.TryGetTimeFromChartPosition(row, ref chartTime);
-
-					var nearestMeasureChartTime = 0.0;
-					ActiveChart.TryGetTimeFromChartPosition(nearestMeasureBoundaryRow, ref nearestMeasureChartTime);
-
-					var currentRateAlteringEvent = ActiveChart.FindActiveRateAlteringEventForPosition(row);
+					var currentRateAlteringEvent =
+						ActiveChart.GetRateAlteringEvents().FindActiveRateAlteringEventForPosition(row);
 
 					DrawAddEventMenuItem("Tempo", !hasTempoEvent, UITempoColorRGBA, EditorTempoEvent.EventShortDescription, row,
 						() => EditorEvent.CreateEvent(
-							EventConfig.CreateTempoConfig(ActiveChart, row, chartTime,
+							EventConfig.CreateTempoConfig(ActiveChart, row,
 								currentRateAlteringEvent?.GetTempo() ?? EditorChart.DefaultTempo)));
 
 					ImGui.Separator();
 					DrawAddEventMenuItem("Interpolated Scroll Rate", !hasInterpolatedScrollRateEvent, UISpeedsColorRGBA,
 						EditorInterpolatedRateAlteringEvent.EventShortDescription, row,
 						() => EditorEvent.CreateEvent(
-							EventConfig.CreateScrollRateInterpolationConfig(ActiveChart, row, chartTime)));
+							EventConfig.CreateScrollRateInterpolationConfig(ActiveChart, row)));
 					DrawAddEventMenuItem("Scroll Rate", !hasScrollRateEvent, UIScrollsColorRGBA,
 						EditorScrollRateEvent.EventShortDescription, row,
-						() => EditorEvent.CreateEvent(EventConfig.CreateScrollRateConfig(ActiveChart, row, chartTime)));
+						() => EditorEvent.CreateEvent(EventConfig.CreateScrollRateConfig(ActiveChart, row)));
 
 					ImGui.Separator();
 					DrawAddEventMenuItem("Stop", !hasStopEvent, UIStopColorRGBA, EditorStopEvent.EventShortDescription, row,
 						() =>
 						{
 							var stopTime = currentRateAlteringEvent.GetSecondsPerRow() * MaxValidDenominator;
-							return EditorEvent.CreateEvent(EventConfig.CreateStopConfig(ActiveChart, row, chartTime, stopTime));
+							return EditorEvent.CreateEvent(EventConfig.CreateStopConfig(ActiveChart, row, stopTime));
 						});
 					DrawAddEventMenuItem("Delay", !hasDelayEvent, UIDelayColorRGBA, EditorDelayEvent.EventShortDescription, row,
 						() =>
 						{
 							var stopTime = currentRateAlteringEvent.GetSecondsPerRow() * MaxValidDenominator;
-							return EditorEvent.CreateEvent(EventConfig.CreateDelayConfig(ActiveChart, row, chartTime, stopTime));
+							return EditorEvent.CreateEvent(EventConfig.CreateDelayConfig(ActiveChart, row, stopTime));
 						});
 					DrawAddEventMenuItem("Warp", !hasWarpEvent, UIWarpColorRGBA, EditorWarpEvent.EventShortDescription, row,
-						() => EditorEvent.CreateEvent(EventConfig.CreateWarpConfig(ActiveChart, row, chartTime)));
+						() => EditorEvent.CreateEvent(EventConfig.CreateWarpConfig(ActiveChart, row)));
 
 					ImGui.Separator();
 					DrawAddEventMenuItem("Fake Region", !hasFakeEvent, UIFakesColorRGBA,
 						EditorFakeSegmentEvent.EventShortDescription, row, () =>
 						{
 							var fakeLength = currentRateAlteringEvent.GetSecondsPerRow() * MaxValidDenominator;
-							return EditorEvent.CreateEvent(EventConfig.CreateFakeConfig(ActiveChart, row, chartTime, fakeLength));
+							return EditorEvent.CreateEvent(EventConfig.CreateFakeConfig(ActiveChart, row, fakeLength));
 						});
 					DrawAddEventMenuItem("Ticks", !hasTickCountEvent, UITicksColorRGBA,
 						EditorTickCountEvent.EventShortDescription, row,
-						() => EditorEvent.CreateEvent(EventConfig.CreateTickCountConfig(ActiveChart, row, chartTime)));
+						() => EditorEvent.CreateEvent(EventConfig.CreateTickCountConfig(ActiveChart, row)));
 					DrawAddEventMenuItem("Combo Multipliers", !hasMultipliersEvent, UIMultipliersColorRGBA,
 						EditorMultipliersEvent.EventShortDescription, row,
-						() => EditorEvent.CreateEvent(EventConfig.CreateMultipliersConfig(ActiveChart, row, chartTime)));
+						() => EditorEvent.CreateEvent(EventConfig.CreateMultipliersConfig(ActiveChart, row)));
 					DrawAddEventMenuItem("Time Signature", !hasTimeSignatureEvent, UITimeSignatureColorRGBA,
 						EditorTimeSignatureEvent.EventShortDescription, nearestMeasureBoundaryRow,
 						() => EditorEvent.CreateEvent(EventConfig.CreateTimeSignatureConfig(ActiveChart,
-							nearestMeasureBoundaryRow, nearestMeasureChartTime, EditorChart.DefaultTimeSignature)), true);
+							nearestMeasureBoundaryRow, EditorChart.DefaultTimeSignature)), true);
 					DrawAddEventMenuItem("Label", !hasLabelEvent, UILabelColorRGBA, EditorLabelEvent.EventShortDescription, row,
-						() => EditorEvent.CreateEvent(EventConfig.CreateLabelConfig(ActiveChart, row, chartTime)));
+						() => EditorEvent.CreateEvent(EventConfig.CreateLabelConfig(ActiveChart, row)));
 					DrawAddEventMenuItem("Pattern", !hasPatternEvent, UIPatternColorRGBA,
 						EditorPatternEvent.EventShortDescription, row,
-						() => EditorEvent.CreateEvent(EventConfig.CreatePatternConfig(ActiveChart, row, chartTime)));
+						() => EditorEvent.CreateEvent(EventConfig.CreatePatternConfig(ActiveChart, row)));
 
 					ImGui.Separator();
 					if (MenuItemWithColor("(Move) Music Preview", true, UIPreviewColorRGBA))
@@ -6488,7 +6503,7 @@ internal sealed class Editor :
 	/// </remarks>
 	private double GetTimeRangeOfYPixelDurationAtTime(double time, double duration)
 	{
-		var rae = ActiveChart.FindActiveRateAlteringEventForTime(time);
+		var rae = ActiveChart.GetRateAlteringEvents().FindActiveRateAlteringEventForTime(time);
 		var spacingHelper = EventSpacingHelper.GetSpacingHelper(ActiveChart);
 		spacingHelper.UpdatePpsAndPpr(rae, GetCurrentInterpolatedScrollRate(), ZoomManager.GetSpacingZoom());
 
@@ -6510,7 +6525,7 @@ internal sealed class Editor :
 	/// </remarks>
 	private double GetPositionRangeOfYPixelDurationAtPosition(double position, double duration)
 	{
-		var rae = ActiveChart.FindActiveRateAlteringEventForPosition(position);
+		var rae = ActiveChart.GetRateAlteringEvents().FindActiveRateAlteringEventForPosition(position);
 		var spacingHelper = EventSpacingHelper.GetSpacingHelper(ActiveChart);
 		spacingHelper.UpdatePpsAndPpr(rae, GetCurrentInterpolatedScrollRate(), ZoomManager.GetSpacingZoom());
 
@@ -6743,7 +6758,7 @@ internal sealed class Editor :
 
 	private void OnMoveToPreviousMeasure()
 	{
-		var rate = ActiveChart?.FindActiveRateAlteringEventForPosition(Position.ChartPosition);
+		var rate = ActiveChart?.GetRateAlteringEvents().FindActiveRateAlteringEventForPosition(Position.ChartPosition);
 		if (rate == null)
 			return;
 		var sig = rate.GetTimeSignature().Signature;
@@ -6755,7 +6770,7 @@ internal sealed class Editor :
 
 	private void OnMoveToNextMeasure()
 	{
-		var rate = ActiveChart?.FindActiveRateAlteringEventForPosition(Position.ChartPosition);
+		var rate = ActiveChart?.GetRateAlteringEvents().FindActiveRateAlteringEventForPosition(Position.ChartPosition);
 		if (rate == null)
 			return;
 		var sig = rate.GetTimeSignature().Signature;
@@ -7015,18 +7030,15 @@ internal sealed class Editor :
 		// Otherwise, set the state to be editing a tap or a mine.
 		else
 		{
-			var chartTime = 0.0;
-			ActiveChart.TryGetTimeFromChartPosition(row, ref chartTime);
-
 			if (KeyCommandManager.IsShiftDown())
 			{
-				var config = EventConfig.CreateMineConfig(ActiveChart, row, chartTime, lane);
+				var config = EventConfig.CreateMineConfig(ActiveChart, row, lane);
 				config.IsBeingEdited = true;
 				LaneEditStates[lane].SetEditingTapOrMine(EditorEvent.CreateEvent(config));
 			}
 			else
 			{
-				var config = EventConfig.CreateTapConfig(ActiveChart, row, chartTime, lane);
+				var config = EventConfig.CreateTapConfig(ActiveChart, row, lane);
 				config.IsBeingEdited = true;
 				LaneEditStates[lane].SetEditingTapOrMine(EditorEvent.CreateEvent(config));
 			}
@@ -7112,7 +7124,7 @@ internal sealed class Editor :
 						{
 							var deleteHold = new ActionDeleteEditorEvents(existingEvent);
 
-							var config = EventConfig.CreateTapConfig(ActiveChart, existingEvent.GetRow(),
+							var config = EventConfig.CreateTapConfigWithExplicitTime(ActiveChart, existingEvent.GetRow(),
 								existingEvent.GetChartTime(), lane);
 							var insertNewNoteAtHoldStart = new ActionAddEditorEvent(EditorEvent.CreateEvent(config));
 

@@ -4,13 +4,24 @@ using Fumen;
 namespace StepManiaEditor;
 
 /// <summary>
+/// Readonly interface for an EditorPosition.
+/// </summary>
+internal interface IReadOnlyEditorPosition
+{
+	public double SongTime { get; }
+	public double ChartTime { get; }
+	public double ChartPosition { get; }
+	public EditorChart ActiveChart { get; }
+}
+
+/// <summary>
 /// The user's position in the Chart in the Editor. The position can be represented in multiple ways.
 ///  - SongTime is the time of the music at the current position. This takes into account the music offset.
 ///  - ChartTime is the time of the current position. This does not take into account the music offset.
 ///  - ChartPosition is the integer / row position of the current position.
 /// The position can be updated by updating any of these values and the others will update accordingly.
 /// </summary>
-internal sealed class EditorPosition
+internal sealed class EditorPosition : IReadOnlyEditorPosition
 {
 	private EditorChart ActiveChartInternal;
 

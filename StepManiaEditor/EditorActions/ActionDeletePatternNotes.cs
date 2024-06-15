@@ -129,7 +129,7 @@ internal sealed class ActionDeletePatternNotes : EditorAction
 			var endRow = pattern.GetLastStepRow();
 
 			// Accumulate any holds which overlap the start of the pattern.
-			var overlappingHolds = editorChart.GetHoldsOverlapping(startRow);
+			var overlappingHolds = editorChart.GetHoldsOverlappingPosition(startRow);
 			foreach (var overlappingHold in overlappingHolds)
 			{
 				if (overlappingHold != null)

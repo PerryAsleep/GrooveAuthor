@@ -1,4 +1,5 @@
-﻿using Fumen.ChartDefinition;
+﻿using Fumen;
+using Fumen.ChartDefinition;
 
 namespace StepManiaEditor;
 
@@ -14,14 +15,9 @@ internal sealed class AutoPlayer
 	private sealed class AutoPlayState
 	{
 		/// <summary>
-		/// The next EditorEvent relevant for input. May be null in the case of releasing holds.
+		/// The next Event relevant for input.
 		/// </summary>
-		public EditorEvent NextEvent { get; private set; }
-
-		/// <summary>
-		/// The row of the next input event. If there is no next input it is -1.
-		/// </summary>
-		public int NextEventRow { get; private set; }
+		public Event NextEvent { get; private set; }
 
 		/// <summary>
 		/// The chart time of the next input event. If there is no next input it is 0.0.
@@ -43,29 +39,20 @@ internal sealed class AutoPlayer
 		public void Reset()
 		{
 			IsUnset = true;
-			NextEventRow = -1;
 			NextEventTime = 0.0;
 			NextEvent = null;
 		}
 
-		public void Update(int nextRow, double nextTime, EditorEvent nextEvent)
+		public void Update(double nextTime, Event nextEvent)
 		{
 			IsUnset = false;
 			NextEvent = nextEvent;
-			NextEventRow = nextRow;
 			NextEventTime = nextTime;
 		}
 
 		public bool HasValidNextEvent()
 		{
-			if (IsUnset || (NextEvent == null && NextEventRow < 0))
-				return false;
-			return true;
-		}
-
-		public bool IsNextEventHoldRelease()
-		{
-			return NextEvent == null && NextEventRow > 0;
+			return !IsUnset && NextEvent != null;
 		}
 	}
 
@@ -86,26 +73,23 @@ internal sealed class AutoPlayer
 	/// Update autoplay with the given EditorPosition.
 	/// </summary>
 	/// <param name="position">The current position of the chart.</param>
-	public void Update(EditorPosition position)
+	public void Update(IReadOnlyEditorPosition position)
 	{
 		if (ActiveChart == null || AutoPlayStates == null || Receptors == null)
 			return;
 
 		// Gather all the next input events for the current position.
-		var nextInputs = ActiveChart.GetNextInputs(position.ChartPosition);
+		var nextInputs = GetNextInputs(position);
 
 		// Check each lane.
 		for (var lane = 0; lane < ActiveChart.NumInputs; lane++)
 		{
-			var nextEventRow = nextInputs[lane].Item1;
-			var nextEvent = nextInputs[lane].Item2;
-			var nextEventTime = 0.0;
-			var nextEventIsHoldEnd = nextEvent == null && nextEventRow > 0;
-			ActiveChart.TryGetTimeFromChartPosition(nextEventRow, ref nextEventTime);
+			var nextEvent = nextInputs[lane];
+			var nextEventTime = nextEvent?.TimeSeconds ?? 0.0;
 
 			// If the previous call's next event row doesn't match the current next event row
-			// then something as changed and we should update input.
-			if (AutoPlayStates[lane].NextEventRow != nextEventRow)
+			// then something has changed and we should update input.
+			if (!AutoPlayStates[lane].NextEventTime.DoubleEquals(nextEventTime))
 			{
 				// Since we have already passed a note, we should offset any animations so they begin
 				// as if they started at the precise moment the event passed.
@@ -113,7 +97,7 @@ internal sealed class AutoPlayer
 
 				// The new next event can be null at the end of the chart. We need to release any
 				// held input in this case.
-				if (nextEventRow < 0 && Receptors[lane].IsAutoplayHeld())
+				if (nextEvent == null && Receptors[lane].IsAutoplayHeld())
 				{
 					Receptors[lane].OnAutoplayInputUp(timeDelta);
 				}
@@ -124,17 +108,46 @@ internal sealed class AutoPlayer
 				if (AutoPlayStates[lane].HasValidNextEvent())
 				{
 					// If the event that just passed is a hold end, release input.
-					if (AutoPlayStates[lane].IsNextEventHoldRelease())
+					if (AutoPlayStates[lane].NextEvent is LaneHoldEndNote)
 					{
+						if (!Receptors[lane].IsAutoplayHeld())
+						{
+							Receptors[lane].OnAutoplayInputDown(timeDelta);
+						}
+
 						Receptors[lane].OnAutoplayInputUp(timeDelta);
+
+						// Warp edge case.
+						// If we went from a hold end to another hold end, it means a hold
+						// ended and started at the same time. Add an effect for stepping down
+						// on the new hold.
+						if (nextEvent is LaneHoldEndNote)
+						{
+							Receptors[lane].OnAutoplayInputDown(timeDelta);
+						}
 					}
-					else
+					else if (AutoPlayStates[lane].NextEvent is LaneHoldStartNote)
 					{
-						// For both taps an hold starts, press input.
 						Receptors[lane].OnAutoplayInputDown(timeDelta);
 
-						// For taps, release them immediately.
-						if (AutoPlayStates[lane].NextEvent.GetFirstEvent() is LaneTapNote)
+						// Warp edge case.
+						// If the event following a hold start isn't a hold end it means the
+						// hold ended and a new one started at the same time. Add an effect
+						// for releasing the old hold.
+						if (nextEvent is not LaneHoldEndNote)
+						{
+							Receptors[lane].OnAutoplayInputUp(timeDelta);
+						}
+					}
+					else if (AutoPlayStates[lane].NextEvent is LaneTapNote)
+					{
+						Receptors[lane].OnAutoplayInputDown(timeDelta);
+
+						// Warp edge case.
+						// On taps we normally press and release. But if the next note is a hold
+						// end note it means a hold started at the same time as the tap and we
+						// should stay held down.
+						if (nextEvent is not LaneHoldEndNote)
 						{
 							Receptors[lane].OnAutoplayInputUp(timeDelta);
 						}
@@ -144,14 +157,14 @@ internal sealed class AutoPlayer
 				// If the next event is a hold end (i.e. we are in a hold) and the currently
 				// state is unset (i.e. we just started playback), then start input to
 				// hold the note.
-				else if (AutoPlayStates[lane].IsUnset && nextEventIsHoldEnd)
+				else if (AutoPlayStates[lane].IsUnset && nextEvent is LaneHoldEndNote)
 				{
 					Receptors[lane].OnAutoplayInputDown(timeDelta);
 				}
 			}
 
 			// Update the state for next time.
-			AutoPlayStates[lane].Update(nextEventRow, nextEventTime, nextEvent);
+			AutoPlayStates[lane].Update(nextEventTime, nextEvent);
 		}
 	}
 
@@ -168,5 +181,72 @@ internal sealed class AutoPlayer
 			AutoPlayStates[lane].Reset();
 			Receptors[lane].OnAutoplayInputCancel();
 		}
+	}
+
+	/// <summary>
+	/// Given a chart position, returns the next Stepmania Event per lane that is relevant for
+	/// simulating input. The results are returned as an array where the index is the lane
+	/// and the element at each index is the Event. The events which are relevant for simulating
+	/// input are taps (LaneTapNote), hold downs (LaneHoldStartNote) and hold releases
+	/// (LaneHoldEndNote).
+	/// </summary>
+	/// <param name="position">The current position of the chart.</param>
+	/// <returns>Array of next Events for input per lane.</returns>
+	private Event[] GetNextInputs(IReadOnlyEditorPosition position)
+	{
+		var nextNotes = new Event[ActiveChart.NumInputs];
+		for (var i = 0; i < ActiveChart.NumInputs; i++)
+			nextNotes[i] = null;
+		var numFound = 0;
+
+		// First, scan backwards to find all holds which may be overlapping.
+		// Holds may end after the given chart time which started before it.
+		// We want to use time and not row for this because simulating input only
+		// cares about time.
+		var overlappingHolds = ActiveChart.GetHoldsOverlappingTime(position.ChartTime);
+		for (var i = 0; i < ActiveChart.NumInputs; i++)
+		{
+			var hold = overlappingHolds[i];
+			if (hold == null)
+				continue;
+			if (hold.GetChartTime() > position.ChartTime)
+				nextNotes[i] = overlappingHolds[i].GetEvent();
+			else
+				nextNotes[i] = overlappingHolds[i].GetHoldEndEvent();
+			numFound++;
+		}
+
+		// Scan forward until we have collected a note for every lane.
+		var enumerator = ActiveChart.GetEvents().FindBestByTime(position.ChartTime);
+		if (enumerator == null)
+			return nextNotes;
+		while (enumerator.MoveNext() && numFound < ActiveChart.NumInputs)
+		{
+			var c = enumerator.Current;
+
+			if (c!.GetLane() == StepManiaLibrary.Constants.InvalidArrowIndex || nextNotes[c.GetLane()] != null)
+			{
+				continue;
+			}
+
+			if (c is not (EditorTapNoteEvent or EditorHoldNoteEvent or EditorLiftNoteEvent))
+			{
+				continue;
+			}
+
+			if (c.GetChartTime() < position.ChartTime && c.GetEndChartTime() >= position.ChartTime)
+			{
+				nextNotes[c.GetLane()] = c.GetAdditionalEvent();
+				numFound++;
+			}
+
+			else if (c.GetChartTime() >= position.ChartTime)
+			{
+				nextNotes[c.GetLane()] = c.GetEvent();
+				numFound++;
+			}
+		}
+
+		return nextNotes;
 	}
 }

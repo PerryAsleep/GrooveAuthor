@@ -148,7 +148,7 @@ internal sealed class LaneEditState
 			{
 				if (up)
 				{
-					var config = EventConfig.CreateTapConfig(
+					var config = EventConfig.CreateTapConfigWithExplicitTime(
 						EventBeingEdited.GetEditorChart(),
 						EventBeingEdited.GetRow(),
 						EventBeingEdited.GetChartTime(),
@@ -158,7 +158,7 @@ internal sealed class LaneEditState
 				}
 				else
 				{
-					var config = EventConfig.CreateMineConfig(
+					var config = EventConfig.CreateMineConfigWithExplicitTime(
 						EventBeingEdited.GetEditorChart(),
 						EventBeingEdited.GetRow(),
 						EventBeingEdited.GetChartTime(),

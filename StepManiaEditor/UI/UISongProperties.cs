@@ -471,7 +471,7 @@ internal sealed class UISongProperties
 
 	private void JumpToPreviewStart()
 	{
-		Editor.GetPosition().SongTime = EditorSong.SampleStart;
+		Editor.SetSongTime(EditorSong.SampleStart);
 	}
 
 	private void SetPreviewEndFromCurrentTime()
@@ -485,7 +485,7 @@ internal sealed class UISongProperties
 
 	private void JumpToPreviewEnd()
 	{
-		Editor.GetPosition().SongTime = EditorSong.SampleStart + EditorSong.SampleLength;
+		Editor.SetSongTime(EditorSong.SampleStart + EditorSong.SampleLength);
 	}
 
 	private void SetLastSecondHintFromCurrentTime()
@@ -497,7 +497,7 @@ internal sealed class UISongProperties
 
 	private void JumpToLastSecondHint()
 	{
-		Editor.GetPosition().ChartTime = EditorSong.LastSecondHint;
+		Editor.SetChartTime(EditorSong.LastSecondHint);
 	}
 
 	private void ApplyItgSongOffset()

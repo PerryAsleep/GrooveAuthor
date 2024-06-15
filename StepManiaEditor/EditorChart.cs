@@ -927,7 +927,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 	public double GetStartingTempo()
 	{
-		var rae = FindActiveRateAlteringEventForPosition(0.0);
+		var rae = RateAlteringEvents?.FindActiveRateAlteringEventForPosition(0.0);
 		return rae?.GetTempo() ?? DefaultTempo;
 	}
 
@@ -953,7 +953,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 	public Fraction GetStartingTimeSignature()
 	{
-		var rae = FindActiveRateAlteringEventForPosition(0.0);
+		var rae = RateAlteringEvents?.FindActiveRateAlteringEventForPosition(0.0);
 		return rae?.GetTimeSignature().Signature ?? DefaultTimeSignature;
 	}
 
@@ -1018,13 +1018,11 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 		foreach (var rae in RateAlteringEvents)
 		{
-			// All rate altering events have only one event associated with them
-			Assert(rae.GetEvents().Count == 1);
-			var chartEvent = rae.GetFirstEvent();
+			var chartEvent = rae.GetEvent();
 
 			// Adjust warp rows remaining.
 			// ReSharper disable once PossibleNullReferenceException
-			warpRowsRemaining = Math.Max(0, warpRowsRemaining - (chartEvent.IntegerPosition - previousEvent.GetRow()));
+			warpRowsRemaining = Math.Max(0, warpRowsRemaining - (rae.GetRow() - previousEvent.GetRow()));
 			// Adjust stop timing remaining.
 			if (stopTimeRemaining != 0.0)
 			{
@@ -1229,7 +1227,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		// Now, update all time values for all normal notes that correspond to Stepmania chart
 		// events. Any of these events, even when added or removed, cannot change the relative
 		// order of other such events. As such, we do not need to sort EditorEvents again.
-		SetEventTimeAndMetricPositionsFromRows(EditorEvents.Select(e => e.GetFirstEvent()));
+		SetEventTimeAndMetricPositionsFromRows(EditorEvents.Select(e => e.GetEvent()));
 
 		EditorEvents.Validate();
 
@@ -1345,20 +1343,45 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 		if (EditorSong.LastSecondHint <= 0.0)
 			return;
-		var chartPosition = 0.0;
-		TryGetChartPositionFromTime(EditorSong.LastSecondHint, ref chartPosition);
+		var lastSecondHintChartTime = EditorPosition.GetChartTimeFromSongTime(this, EditorSong.LastSecondHint);
 		LastSecondHintEvent =
-			(EditorLastSecondHintEvent)EditorEvent.CreateEvent(EventConfig.CreateLastSecondHintConfig(this, chartPosition));
+			(EditorLastSecondHintEvent)EditorEvent.CreateEvent(
+				EventConfig.CreateLastSecondHintConfig(this, lastSecondHintChartTime));
 		AddEvent(LastSecondHintEvent);
 	}
 
 	#endregion Time-Based Event Shifting
 
-	#region Position And Time Determination
+	#region Measure Determination
 
+	/// <summary>
+	/// Gets the measure number for an EditorEvent based on the TimeSignature Events in the chart.
+	/// </summary>
+	/// <param name="editorEvent">EditorEvent in question.</param>
+	/// <returns>Measure number.</returns>
+	public double GetMeasureForEvent(EditorEvent editorEvent)
+	{
+		return GetMeasure(RateAlteringEvents?.FindActiveRateAlteringEvent(editorEvent), editorEvent.GetChartPosition());
+	}
+
+	/// <summary>
+	/// Gets the measure number for a chart position based on the TimeSignature Events in the chart.
+	/// </summary>
+	/// <param name="chartPosition">Chart position in question.</param>
+	/// <returns>Measure number.</returns>
 	public double GetMeasureForChartPosition(double chartPosition)
 	{
-		var rateEvent = FindActiveRateAlteringEventForPosition(chartPosition);
+		return GetMeasure(RateAlteringEvents?.FindActiveRateAlteringEventForPosition(chartPosition), chartPosition);
+	}
+
+	/// <summary>
+	/// Gets the measure number for a chart position based on the TimeSignature Events in the chart.
+	/// </summary>
+	/// <param name="rateEvent">The active rate altering event for the given chart position.</param>
+	/// <param name="chartPosition">Chart position in question.</param>
+	/// <returns>Measure number.</returns>
+	private static double GetMeasure(EditorRateAlteringEvent rateEvent, double chartPosition)
+	{
 		if (rateEvent == null)
 			return 0.0;
 		var timeSigEvent = rateEvent.GetTimeSignature();
@@ -1370,13 +1393,18 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		return measures;
 	}
 
+	/// <summary>
+	/// Gets the chart position for the given measure based on the TimeSignature Events in the chart.
+	/// </summary>
+	/// <param name="measure">Measure number in question.</param>
+	/// <returns>Chart position of the measure.</returns>
 	public double GetChartPositionForMeasure(int measure)
 	{
 		// We need to search in order to turn a measure into a row.
 		// Do a linear walk of the rate altering events.
 		// Most charts have very few rate altering events.
 		// Needing to get the position from the measure is a very uncommon use case.
-		var rateEventEnumerator = FindActiveRateAlteringEventEnumeratorForPosition(0.0);
+		var rateEventEnumerator = RateAlteringEvents?.FindActiveRateAlteringEventEnumeratorForPosition(0.0);
 		if (rateEventEnumerator == null)
 			return 0.0;
 
@@ -1416,37 +1444,39 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		return precedingTimeSignature.IntegerPosition + (measure - precedingTimeSignatureEventMeasure) * rowsPerMeasure;
 	}
 
-	public bool TryGetChartPositionFromTime(double chartTime, ref double chartPosition)
-	{
-		var rateEvent = FindActiveRateAlteringEventForTime(chartTime, false);
-		if (rateEvent == null)
-			return false;
-		chartPosition = rateEvent.GetChartPositionFromTime(chartTime);
-		return true;
-	}
-
-	public bool TryGetTimeFromChartPosition(double chartPosition, ref double chartTime)
-	{
-		var rateEvent = FindActiveRateAlteringEventForPosition(chartPosition, false);
-		if (rateEvent == null)
-			return false;
-		chartTime = rateEvent.GetChartTimeFromPosition(chartPosition);
-		return true;
-	}
-
+	/// <summary>
+	/// Returns whether or not the given row is on a measure boundary based on the TimeSignature Events in the chart.
+	/// </summary>
+	/// <param name="row">Row in question.</param>
+	/// <returns>True if the given row is on a measure boundary and false otherwise.</returns>
 	public bool IsRowOnMeasureBoundary(int row)
 	{
 		return row == GetNearestMeasureBoundaryRow(row);
 	}
 
+	/// <summary>
+	/// Returns the row of the nearest measure boundary based on the TimeSignature Events in the chart.
+	/// The nearest measure row may occur before or after the given row.
+	/// </summary>
+	/// <param name="row">Row in question.</param>
+	/// <returns>Nearest measure boundary row.</returns>
 	public int GetNearestMeasureBoundaryRow(int row)
 	{
-		var rae = FindActiveRateAlteringEventForPosition(row);
+		// Time signatures are always the first event per row so looking up by row
+		// instead of by a specific event type is safe.
+		var rae = RateAlteringEvents?.FindActiveRateAlteringEventForPosition(row);
 		if (rae == null)
 			return 0;
 		return GetNearestMeasureBoundaryRow(rae.GetTimeSignature(), row);
 	}
 
+	/// <summary>
+	/// Returns the row of the nearest measure boundary based on the TimeSignature Events in the chart.
+	/// The nearest measure row may occur before or after the given row.
+	/// </summary>
+	/// <param name="lastTimeSignature">The active TimeSignature for the row.</param>
+	/// <param name="row">Row in question.</param>
+	/// <returns>Nearest measure boundary row.</returns>
 	private int GetNearestMeasureBoundaryRow(TimeSignature lastTimeSignature, int row)
 	{
 		var timeSignatureRow = lastTimeSignature.IntegerPosition;
@@ -1461,11 +1491,99 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		return nextMeasureRow;
 	}
 
+	#endregion Measure Determination
+
+	#region Position And Time Determination
+
+	/// <summary>
+	/// Gets the chart position for a chart time.
+	/// If an EditorEvent or Stepmania Event is known, prefer using TryGetTimeOfEvent as those
+	/// methods will take into account relative sort order of simultaneous events.
+	/// This method will assume that the chart time in question precedes any rate altering event
+	/// with equal time.
+	/// </summary>
+	/// <param name="chartTime">Chart time in question.</param>
+	/// <param name="chartPosition">Chart position to set.</param>
+	/// <returns>Whether or not a chart position was determined.</returns>
+	public bool TryGetChartPositionFromTime(double chartTime, ref double chartPosition)
+	{
+		var rateEvent = RateAlteringEvents?.FindActiveRateAlteringEventForTime(chartTime, false);
+		if (rateEvent == null)
+			return false;
+		chartPosition = rateEvent.GetChartPositionFromTime(chartTime);
+		return true;
+	}
+
+	/// <summary>
+	/// Gets the chart time for a chart position.
+	/// If an EditorEvent or Stepmania Event is known, prefer using TryGetTimeOfEvent as those
+	/// methods will take into account relative sort order of simultaneous events.
+	/// This method will assume that the chart position in question precedes any rate altering event
+	/// with equal position.
+	/// </summary>
+	/// <param name="chartPosition">Chart position in question.</param>
+	/// <param name="chartTime">Chart time to set.</param>
+	/// <returns>Whether or not a chart time was determined.</returns>
+	public bool TryGetTimeFromChartPosition(double chartPosition, ref double chartTime)
+	{
+		var rateEvent = RateAlteringEvents?.FindActiveRateAlteringEventForPosition(chartPosition, false);
+		if (rateEvent == null)
+			return false;
+		chartTime = rateEvent.GetChartTimeFromPosition(chartPosition);
+		return true;
+	}
+
+	/// <summary>
+	/// Gets the chart time of an EditorEvent based on its row and event type and when that will
+	/// occur in the chart based on the chart's rate altering events.
+	/// If an EditorEvent is known and time needs to be recomputed this is the best method
+	/// for determining the time, as opposed to TryGetTimeFromChartPosition which doesn't
+	/// take into account the event's type.
+	/// </summary>
+	/// <param name="chartEvent">The EditorEvent to find the time of.</param>
+	/// <param name="chartTime">The time to be set.</param>
+	/// <returns>True if the time could be determine and false otherwise.</returns>
+	public bool TryGetTimeOfEvent(EditorEvent chartEvent, ref double chartTime)
+	{
+		var rateEvent = RateAlteringEvents?.FindActiveRateAlteringEvent(chartEvent);
+		if (rateEvent == null)
+			return false;
+		chartTime = rateEvent.GetChartTimeFromPosition(chartEvent.GetChartPosition());
+		return true;
+	}
+
+	/// <summary>
+	/// Gets the chart time of a Stepmania Event based on its row and event type and when that will
+	/// occur in the chart based on the chart's rate altering events.
+	/// If this Event has an EditorEvent associated with it, prefer using the TryGetTimeOfEvent
+	/// implementation which takes an EditorEvent. Failing that, prefer this method over
+	/// TryGetTimeFromChartPosition which doesn't take into account the event's type.
+	/// </summary>
+	/// <param name="smEvent">The Stepmania Event to find the time of.</param>
+	/// <param name="chartTime">The time to be set.</param>
+	/// <returns>True if the time could be determine and false otherwise.</returns>
+	public bool TryGetTimeOfEvent(Event smEvent, ref double chartTime)
+	{
+		var rateEvent = RateAlteringEvents?.FindActiveRateAlteringEvent(smEvent);
+		if (rateEvent == null)
+			return false;
+		chartTime = rateEvent.GetChartTimeFromPosition(smEvent.IntegerPosition);
+		return true;
+	}
+
+	/// <summary>
+	/// Gets the chart time of the start of the chart.
+	/// </summary>
+	/// <returns>Chart time of the start of the chart.</returns>
 	public double GetStartChartTime()
 	{
 		return 0.0;
 	}
 
+	/// <summary>
+	/// Gets the chart time of the end of the chart.
+	/// </summary>
+	/// <returns>Chart time of the end of the chart.</returns>
 	public double GetEndChartTime()
 	{
 		var lastEvent = EditorEvents.Last();
@@ -1489,6 +1607,10 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		return Math.Max(endTime, EditorSong.LastSecondHint);
 	}
 
+	/// <summary>
+	/// Gets the chart position of the end of the chart.
+	/// </summary>
+	/// <returns>Chart position of the end of the chart.</returns>
 	public double GetEndPosition()
 	{
 		var lastEvent = EditorEvents.Last();
@@ -1510,7 +1632,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 	#endregion Position And Time Determination
 
-	#region Finding EditorEvents
+	#region Finding Overlapping Events
 
 	public List<IChartRegion> GetRegionsOverlapping(double chartPosition, double chartTime)
 	{
@@ -1561,129 +1683,6 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		return Patterns?.FindAllOverlapping(chartPosition);
 	}
 
-	private IReadOnlyRedBlackTree<EditorRateAlteringEvent>.IReadOnlyRedBlackTreeEnumerator
-		FindActiveRateAlteringEventEnumeratorForTime(
-			double chartTime, bool allowEqualTo = true)
-	{
-		if (RateAlteringEvents == null)
-			return null;
-
-		// Given the current song time, get the greatest preceding event which alters the rate of rows to time.
-		var pos = (EditorRateAlteringEvent)EditorEvent.CreateEvent(
-			EventConfig.CreateSearchEventConfigWithOnlyTime(this, chartTime));
-		var enumerator = RateAlteringEvents.FindGreatestPreceding(pos, allowEqualTo);
-		// If there is no preceding event (e.g. SongTime is negative), use the first event.
-		// ReSharper disable once ConvertIfStatementToNullCoalescingExpression
-		if (enumerator == null)
-			enumerator = RateAlteringEvents.First();
-		// If there is still no event then the Chart is misconfigured as it must have at least a Tempo event.
-		if (enumerator == null)
-			return null;
-
-		// Update the ChartPosition based on the cached rate information.
-		enumerator.MoveNext();
-		return enumerator;
-	}
-
-	public EditorRateAlteringEvent FindActiveRateAlteringEventForTime(double chartTime, bool allowEqualTo = true)
-	{
-		var enumerator = FindActiveRateAlteringEventEnumeratorForTime(chartTime, allowEqualTo);
-		return enumerator?.Current;
-	}
-
-	private IReadOnlyRedBlackTree<EditorRateAlteringEvent>.IReadOnlyRedBlackTreeEnumerator
-		FindActiveRateAlteringEventEnumeratorForPosition(
-			double chartPosition, bool allowEqualTo = true)
-	{
-		if (RateAlteringEvents == null)
-			return null;
-
-		// Given the current song time, get the greatest preceding event which alters the rate of rows to time.
-		var pos = (EditorRateAlteringEvent)EditorEvent.CreateEvent(
-			EventConfig.CreateSearchEventConfigWithOnlyRow(this, chartPosition));
-		var enumerator = RateAlteringEvents.FindGreatestPreceding(pos, allowEqualTo);
-		// If there is no preceding event (e.g. ChartPosition is negative), use the first event.
-		// ReSharper disable once ConvertIfStatementToNullCoalescingExpression
-		if (enumerator == null)
-			enumerator = RateAlteringEvents.First();
-		// If there is still no event then the Chart is misconfigured as it must have at least a Tempo event.
-		if (enumerator == null)
-			return null;
-
-		enumerator.MoveNext();
-		return enumerator;
-	}
-
-	public EditorRateAlteringEvent FindActiveRateAlteringEventForPosition(double chartPosition, bool allowEqualTo = true)
-	{
-		var enumerator = FindActiveRateAlteringEventEnumeratorForPosition(chartPosition, allowEqualTo);
-		return enumerator?.Current;
-	}
-
-	/// <summary>
-	/// Given a chart position, returns the next EditorEvent per lane that is relevant for
-	/// simulating input. The results are returned as an array where the index is the lane
-	/// and the element at each index is a tuple where the first item is the row of the event
-	/// and the second item is the event. The events which are relevant for simulating
-	/// input are taps (EditorTapNoteEvent), hold downs (EditorHoldNoteEvent) and hold releases
-	/// (null). No EditorEvent corresponds to a hold release, so null is returned instead.
-	/// </summary>
-	public (int, EditorEvent)[] GetNextInputs(double chartPosition)
-	{
-		var nextNotes = new (int, EditorEvent)[NumInputs];
-		for (var i = 0; i < NumInputs; i++)
-			nextNotes[i] = (-1, null);
-		var numFound = 0;
-
-		// First, scan backwards to find all holds which may be overlapping.
-		// Holds may end after the given chart position which started before it.
-		var overlappingHolds = GetHoldsOverlapping(chartPosition);
-		for (var i = 0; i < NumInputs; i++)
-		{
-			var hold = overlappingHolds[i];
-			if (hold == null)
-				continue;
-			if (hold.GetRow() >= chartPosition)
-				nextNotes[i] = (hold.GetRow(), overlappingHolds[i]);
-			else
-				nextNotes[i] = (hold.GetEndRow(), null);
-			numFound++;
-		}
-
-		// Scan forward until we have collected a note for every lane.
-		var enumerator = EditorEvents.FindBestByPosition(chartPosition);
-		if (enumerator == null)
-			return nextNotes;
-		while (enumerator.MoveNext() && numFound < NumInputs)
-		{
-			var c = enumerator.Current;
-
-			if (c!.GetLane() == InvalidArrowIndex || nextNotes[c.GetLane()].Item1 >= 0)
-			{
-				continue;
-			}
-
-			if (c is not (EditorTapNoteEvent or EditorHoldNoteEvent or EditorLiftNoteEvent))
-			{
-				continue;
-			}
-
-			if (c.GetRow() < chartPosition && c.GetEndRow() >= chartPosition)
-			{
-				nextNotes[c.GetLane()] = (c.GetEndRow(), null);
-				numFound++;
-			}
-
-			else if (c.GetRow() >= chartPosition)
-			{
-				nextNotes[c.GetLane()] = (c.GetRow(), c);
-				numFound++;
-			}
-		}
-
-		return nextNotes;
-	}
-
 	/// <summary>
 	/// Gets all the holds overlapping the given chart position.
 	/// Does not include holds being edited.
@@ -1700,7 +1699,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	/// that entry in the array will be null. Otherwise it will be the EditorHoldNoteEvent
 	/// which overlaps.
 	/// </returns>
-	public EditorHoldNoteEvent[] GetHoldsOverlapping(double chartPosition,
+	public EditorHoldNoteEvent[] GetHoldsOverlappingPosition(double chartPosition,
 		IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator explicitEnumerator = null)
 	{
 		var holds = new EditorHoldNoteEvent[NumInputs];
@@ -1709,7 +1708,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		if (explicitEnumerator != null)
 			enumerator = explicitEnumerator.Clone();
 		else
-			enumerator = EditorEvents.FindBestByPosition(chartPosition);
+			enumerator = EditorEvents.FindFirstAtOrBeforeChartPosition(chartPosition);
 		if (enumerator == null)
 			return holds;
 
@@ -1737,7 +1736,60 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		return holds;
 	}
 
-	#endregion Finding EditorEvents
+	/// <summary>
+	/// Gets all the holds overlapping the given chart time.
+	/// Does not include holds being edited.
+	/// </summary>
+	/// <param name="chartTime">Chart time to find overlapping holds for.</param>
+	/// <param name="explicitEnumerator">
+	/// Optional enumerator to copy for scanning. If not provided one will be created using
+	/// the given chartTime. This parameter is exposed as a performance optimization since
+	/// we often have an enumerator in the correct spot.
+	/// </param>
+	/// <returns>
+	/// All holds overlapping the given time. The length of the array is the Chart's
+	/// NumInputs. If a hold is not overlapping the given time for a given lane then
+	/// that entry in the array will be null. Otherwise it will be the EditorHoldNoteEvent
+	/// which overlaps.
+	/// </returns>
+	public EditorHoldNoteEvent[] GetHoldsOverlappingTime(double chartTime,
+		IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator explicitEnumerator = null)
+	{
+		var holds = new EditorHoldNoteEvent[NumInputs];
+
+		IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator enumerator;
+		if (explicitEnumerator != null)
+			enumerator = explicitEnumerator.Clone();
+		else
+			enumerator = EditorEvents.FindFirstAtOrBeforeChartTime(chartTime);
+		if (enumerator == null)
+			return holds;
+
+		var numLanesChecked = 0;
+		var lanesChecked = new bool[NumInputs];
+		while (enumerator.MovePrev() && numLanesChecked < NumInputs)
+		{
+			var e = enumerator.Current;
+			if (e!.IsBeingEdited())
+				continue;
+			var lane = e.GetLane();
+			if (lane >= 0)
+			{
+				if (!lanesChecked[lane])
+				{
+					lanesChecked[lane] = true;
+					numLanesChecked++;
+
+					if (e.GetChartTime() <= chartTime && e.GetEndChartTime() >= chartTime && e is EditorHoldNoteEvent hn)
+						holds[lane] = hn;
+				}
+			}
+		}
+
+		return holds;
+	}
+
+	#endregion Finding Overlapping Events
 
 	#region EditorEvent Modification Callbacks
 
@@ -2238,7 +2290,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 						// If the reduction in length is below the min length for a hold, replace it with a tap.
 						if (newExistingHoldEndRow <= existingNote.GetRow())
 						{
-							var replacementEvent = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(this,
+							var replacementEvent = EditorEvent.CreateEvent(EventConfig.CreateTapConfigWithExplicitTime(this,
 								existingNote.GetRow(), existingNote.GetChartTime(), lane));
 							AddEvent(replacementEvent);
 							sideEffectAddedEvents.Add(replacementEvent);
@@ -2247,9 +2299,10 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 						// Otherwise, reduce the length by deleting the old hold and adding a new hold.
 						else
 						{
-							var replacementEvent = EditorHoldNoteEvent.CreateHold(
-								this, lane, existingNote.GetRow(), newExistingHoldEndRow - existingNote.GetRow(),
-								existingHold.IsRoll());
+							// We need to recompute the hold end time, so don't provide any explicit times.
+							var replacementEvent = EditorEvent.CreateEvent(EventConfig.CreateHoldConfig(this,
+								existingNote.GetRow(), lane, newExistingHoldEndRow - existingNote.GetRow(),
+								existingHold.IsRoll()));
 							AddEvent(replacementEvent);
 							sideEffectAddedEvents.Add(replacementEvent);
 						}
@@ -2394,7 +2447,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		// If this event is a lane note then it can't overlap a hold.
 		if (editorEvent.IsLaneNote())
 		{
-			var potentiallyOverlappingHolds = GetHoldsOverlapping(row);
+			var potentiallyOverlappingHolds = GetHoldsOverlappingPosition(row);
 			foreach (var hold in potentiallyOverlappingHolds)
 			{
 				if (hold.GetLane() == editorEvent.GetLane())
@@ -2528,12 +2581,9 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		var smTimingEvents = new List<Event>();
 		foreach (var rateAlteringEvent in RateAlteringEvents)
 		{
-			var events = rateAlteringEvent.GetEvents();
-			for (var i = 0; i < events.Count; i++)
-			{
-				if (DoesEventAffectTiming(events[i]))
-					smTimingEvents.Add(events[i]);
-			}
+			var smEvent = rateAlteringEvent.GetEvent();
+			if (DoesEventAffectTiming(smEvent))
+				smTimingEvents.Add(smEvent);
 		}
 
 		smTimingEvents.Sort(new SMEventComparer());
@@ -2558,20 +2608,19 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			return (smEvents, editorEvents);
 
 		// Check for holds which overlap the start of the range.
-		var overlappingHolds = GetHoldsOverlapping(startRowInclusive);
+		var overlappingHolds = GetHoldsOverlappingPosition(startRowInclusive);
 		for (var lane = 0; lane < overlappingHolds.Length; lane++)
 		{
 			var hold = overlappingHolds[lane];
 			if (hold == null)
 				continue;
 			editorEvents.Add(hold);
-			var events = hold.GetEvents();
-			for (var i = 0; i < events.Count; i++)
-			{
-				if (events[i] == null)
-					continue;
-				smEvents.Add(events[i]);
-			}
+			var smEvent = hold.GetEvent();
+			if (smEvent != null)
+				smEvents.Add(smEvent);
+			smEvent = hold.GetAdditionalEvent();
+			if (smEvent != null)
+				smEvents.Add(smEvent);
 		}
 
 		// Check for events within the range.
@@ -2595,13 +2644,18 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 					continue;
 
 				// Check the StepMania events for this EditorEvent.
-				var events = editorEvent.GetEvents();
 				var addedAny = false;
-				for (var i = 0; i < events.Count; i++)
+				var smEvent = editorEvent.GetEvent();
+				if (smEvent != null && !DoesEventAffectTiming(smEvent))
 				{
-					if (events[i] == null || DoesEventAffectTiming(events[i]))
-						continue;
-					smEvents.Add(events[i]);
+					smEvents.Add(smEvent);
+					addedAny = true;
+				}
+
+				smEvent = editorEvent.GetAdditionalEvent();
+				if (smEvent != null && !DoesEventAffectTiming(smEvent))
+				{
+					smEvents.Add(smEvent);
 					addedAny = true;
 				}
 
@@ -2811,16 +2865,13 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		var smEvents = new List<Event>();
 		foreach (var editorEvent in EditorEvents)
 		{
-			var events = editorEvent.GetEvents();
-			for (var i = 0; i < events.Count; i++)
-			{
-				if (events[i] != null
-				    // Do not include events which aren't normal Stepmania events.
-				    && events[i] is not Pattern)
-				{
-					smEvents.Add(events[i]);
-				}
-			}
+			// Do not include events which aren't normal Stepmania events.
+			var smEvent = editorEvent.GetEvent();
+			if (smEvent != null && smEvent is not Pattern)
+				smEvents.Add(smEvent);
+			smEvent = editorEvent.GetAdditionalEvent();
+			if (smEvent != null && smEvent is not Pattern)
+				smEvents.Add(smEvent);
 		}
 
 		smEvents.Sort(new SMEventComparer());
@@ -2988,9 +3039,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 					}
 
 					// Add Pattern event.
-					var chartTime = 0.0;
-					TryGetTimeFromChartPosition(row, ref chartTime);
-					var eventConfig = EventConfig.CreatePatternConfig(this, row, chartTime);
+					var eventConfig = EventConfig.CreatePatternConfig(this, row);
 					var pattern = new EditorPatternEvent(eventConfig, definition);
 					AddEvent(pattern);
 				}

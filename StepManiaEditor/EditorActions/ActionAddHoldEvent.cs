@@ -10,7 +10,7 @@ internal sealed class ActionAddHoldEvent : EditorAction
 	public ActionAddHoldEvent(EditorChart chart, int lane, int row, int length, bool roll, bool isBeingEdited) : base(false,
 		false)
 	{
-		Hold = EditorHoldNoteEvent.CreateHold(chart, lane, row, length, roll);
+		Hold = (EditorHoldNoteEvent)EditorEvent.CreateEvent(EventConfig.CreateHoldConfig(chart, row, lane, length, roll));
 		Hold.SetIsBeingEdited(isBeingEdited);
 	}
 

@@ -204,7 +204,7 @@ internal sealed class UIChartPosition
 		ImGui.Text(text);
 	}
 
-	private static void DrawPositionTableRow(string label, int x, int y, EditorPosition position)
+	private static void DrawPositionTableRow(string label, int x, int y, IReadOnlyEditorPosition position)
 	{
 		ImGui.TableNextRow();
 		var colIndex = 0;
@@ -252,7 +252,7 @@ internal sealed class UIChartPosition
 		}
 	}
 
-	private static double GetMeasure(EditorPosition position)
+	private static double GetMeasure(IReadOnlyEditorPosition position)
 	{
 		return position.ActiveChart?.GetMeasureForChartPosition(position.ChartPosition) ?? 0.0;
 	}

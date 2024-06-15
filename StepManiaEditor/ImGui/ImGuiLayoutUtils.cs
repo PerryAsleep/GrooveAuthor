@@ -3184,7 +3184,7 @@ internal sealed class ImGuiLayoutUtils
 		// DragInt for measure
 		ImGui.SameLine();
 		row = (int)editorEvent.GetChartPosition();
-		value = (int)editorEvent.GetEditorChart().GetMeasureForChartPosition(editorEvent.GetChartPosition());
+		value = (int)editorEvent.GetEditorChart().GetMeasureForEvent(editorEvent);
 		rowToCache = row;
 		ImGui.SetNextItemWidth(dragIntWidth);
 		if (DragInt(ref value, GetElementTitle(title, "DragIntMeasure"), 0.1f, "measure %i", 0))
@@ -3226,7 +3226,7 @@ internal sealed class ImGuiLayoutUtils
 		ImGui.SameLine();
 		if (ImGui.Button($"Go{GetElementTitle(title, "GoButton")}", new Vector2(ButtonGoWidth, 0.0f)))
 		{
-			editor.GetPosition().ChartPosition = row;
+			editor.SetChartPosition(row);
 		}
 	}
 
@@ -3308,7 +3308,7 @@ internal sealed class ImGuiLayoutUtils
 		// DragInt for measure
 		ImGui.SameLine();
 		endRow = startPos + length;
-		var startMeasure = (int)editorEvent.GetEditorChart().GetMeasureForChartPosition(startPos);
+		var startMeasure = (int)editorEvent.GetEditorChart().GetMeasureForEvent(editorEvent);
 		value = (int)editorEvent.GetEditorChart().GetMeasureForChartPosition(endRow);
 		lengthToCache = length;
 		ImGui.SetNextItemWidth(dragIntWidth);
@@ -3353,7 +3353,7 @@ internal sealed class ImGuiLayoutUtils
 		ImGui.SameLine();
 		if (ImGui.Button($"Go{GetElementTitle(title, "GoButton")}", new Vector2(ButtonGoWidth, 0.0f)))
 		{
-			editor.GetPosition().ChartPosition = endRow;
+			editor.SetChartPosition(endRow);
 		}
 	}
 

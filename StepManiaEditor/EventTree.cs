@@ -15,9 +15,12 @@ internal interface IReadOnlyEventTree : IReadOnlyRedBlackTree<EditorEvent>
 {
 	IReadOnlyRedBlackTreeEnumerator FindBestByPosition(double chartPosition);
 	IReadOnlyRedBlackTreeEnumerator FindFirstBeforeChartPosition(double chartPosition);
-	IReadOnlyRedBlackTreeEnumerator FindFirstAfterChartTime(double chartTime);
+	IReadOnlyRedBlackTreeEnumerator FindFirstAtOrBeforeChartPosition(double chartPosition);
 	IReadOnlyRedBlackTreeEnumerator FindFirstAfterChartPosition(double chartPosition);
 	IReadOnlyRedBlackTreeEnumerator FindFirstAtOrAfterChartPosition(double chartPosition);
+	IReadOnlyRedBlackTreeEnumerator FindBestByTime(double chartTime);
+	IReadOnlyRedBlackTreeEnumerator FindFirstAtOrBeforeChartTime(double chartTime);
+	IReadOnlyRedBlackTreeEnumerator FindFirstAfterChartTime(double chartTime);
 	EditorEvent FindPreviousEventWithLooping(double chartPosition);
 	EditorEvent FindNextEventWithLooping(double chartPosition);
 	EditorEvent FindNoteAt(int row, int lane, bool ignoreNotesBeingEdited);
@@ -31,6 +34,9 @@ internal interface IReadOnlyEventTree : IReadOnlyRedBlackTree<EditorEvent>
 /// </summary>
 internal class EventTree : RedBlackTree<EditorEvent>, IReadOnlyEventTree
 {
+	/// <summary>
+	/// Underlying chart which owns this EventTree.
+	/// </summary>
 	private readonly EditorChart Chart;
 
 	/// <summary>
@@ -45,6 +51,10 @@ internal class EventTree : RedBlackTree<EditorEvent>, IReadOnlyEventTree
 	// ReSharper disable once NotAccessedField.Local
 	private List<EditorEvent> PreviousList = new();
 
+	/// <summary>
+	/// Constructor
+	/// </summary>
+	/// <param name="chart">EditorChart which owns this EventTree.</param>
 	public EventTree(EditorChart chart)
 	{
 		Chart = chart;
@@ -59,36 +69,40 @@ internal class EventTree : RedBlackTree<EditorEvent>, IReadOnlyEventTree
 	public IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator FindBestByPosition(double chartPosition)
 	{
 		var pos = EditorEvent.CreateEvent(EventConfig.CreateSearchEventConfig(Chart, chartPosition));
-		var enumerator = FindGreatestPreceding(pos) ?? FindLeastFollowing(pos, true);
+		var enumerator = FindGreatestPreceding(pos);
+		if (enumerator != null)
+		{
+			EnsureGreatestLessThanPosition(enumerator, chartPosition);
+			return enumerator;
+		}
+
+		enumerator = FindLeastFollowing(pos, true);
+		if (enumerator == null)
+			return null;
+		EnsureLeastGreaterThanOrEqualToPosition(enumerator, chartPosition);
 		return enumerator;
 	}
 
-	public IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator FindFirstBeforeChartPosition(double chartPosition)
+	public IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator FindFirstAtOrBeforeChartPosition(
+		double chartPosition)
 	{
 		var pos = EditorEvent.CreateEvent(EventConfig.CreateSearchEventConfig(Chart, chartPosition));
 		var enumerator = FindGreatestPreceding(pos, true);
 		if (enumerator == null)
 			return null;
 
-		EnsureLessThanPosition(enumerator, chartPosition);
+		EnsureGreatestLessThanOrEqualToPosition(enumerator, chartPosition);
 		return enumerator;
 	}
 
-	public IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator FindFirstAfterChartTime(double chartTime)
+	public IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator FindFirstBeforeChartPosition(double chartPosition)
 	{
-		// Events are sorted by row, so we need to convert the time to row to find an event.
-		var chartPosition = 0.0;
-		if (!Chart.TryGetChartPositionFromTime(chartTime, ref chartPosition))
-			return null;
-
-		// Find the greatest preceding or least following event by row.
-		// Many rows may occur at the same time, so no matter how we choose an enumerator by row
-		// we will need to check the time. Leverage the FindBest() logic, then check the time.
-		var enumerator = FindBestByPosition(chartPosition);
+		var pos = EditorEvent.CreateEvent(EventConfig.CreateSearchEventConfig(Chart, chartPosition));
+		var enumerator = FindGreatestPreceding(pos);
 		if (enumerator == null)
 			return null;
 
-		EnsureGreaterThanTime(enumerator, chartTime);
+		EnsureGreatestLessThanPosition(enumerator, chartPosition);
 		return enumerator;
 	}
 
@@ -99,7 +113,7 @@ internal class EventTree : RedBlackTree<EditorEvent>, IReadOnlyEventTree
 		if (enumerator == null)
 			return null;
 
-		EnsureGreaterThanPosition(enumerator, chartPosition);
+		EnsureLeastGreaterThanPosition(enumerator, chartPosition);
 		return enumerator;
 	}
 
@@ -111,7 +125,52 @@ internal class EventTree : RedBlackTree<EditorEvent>, IReadOnlyEventTree
 		if (enumerator == null)
 			return null;
 
-		EnsureGreaterThanOrEqualToPosition(enumerator, chartPosition);
+		EnsureLeastGreaterThanOrEqualToPosition(enumerator, chartPosition);
+		return enumerator;
+	}
+
+	/// <summary>
+	/// Find the EditorEvent that is the greatest event which precedes the given chart time.
+	/// If no EditorEvent precedes the given chart time, instead find the EditorEvent that
+	/// is the least event which follows or is equal to the given chart time.
+	/// </summary>
+	/// <returns>Enumerator to best value or null if a value could not be found.</returns>
+	public IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator FindBestByTime(double chartTime)
+	{
+		var pos = EditorEvent.CreateEvent(EventConfig.CreateSearchEventConfigWithOnlyTime(Chart, chartTime));
+		var enumerator = FindGreatestPreceding(pos);
+		if (enumerator != null)
+		{
+			EnsureLeastGreaterThanTime(enumerator, chartTime);
+			return enumerator;
+		}
+
+		enumerator = FindLeastFollowing(pos, true);
+		if (enumerator == null)
+			return null;
+		EnsureLeastGreaterThanOrEqualToTime(enumerator, chartTime);
+		return enumerator;
+	}
+
+	public IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator FindFirstAtOrBeforeChartTime(double chartTime)
+	{
+		var pos = EditorEvent.CreateEvent(EventConfig.CreateSearchEventConfigWithOnlyTime(Chart, chartTime));
+		var enumerator = FindGreatestPreceding(pos, true);
+		if (enumerator == null)
+			return null;
+
+		EnsureGreatestLessThanOrEqualToTime(enumerator, chartTime);
+		return enumerator;
+	}
+
+	public IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator FindFirstAfterChartTime(double chartTime)
+	{
+		var pos = EditorEvent.CreateEvent(EventConfig.CreateSearchEventConfigWithOnlyTime(Chart, chartTime));
+		var enumerator = FindLeastFollowing(pos);
+		if (enumerator == null)
+			return null;
+
+		EnsureLeastGreaterThanTime(enumerator, chartTime);
 		return enumerator;
 	}
 
@@ -290,8 +349,11 @@ internal class EventTree : RedBlackTree<EditorEvent>, IReadOnlyEventTree
 		PreviousList = list;
 	}
 
+	#region Find Result Adjustment
+
 	// ReSharper disable UnusedMember.Local
-	private static void EnsureLessThanTime(IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator e, double chartTime)
+	private static void EnsureGreatestLessThanTime(IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator e,
+		double chartTime)
 	{
 		while (e.MoveNext() && e.Current!.GetChartTime() < chartTime)
 		{
@@ -304,7 +366,7 @@ internal class EventTree : RedBlackTree<EditorEvent>, IReadOnlyEventTree
 		e.Unset();
 	}
 
-	private static void EnsureLessThanOrEqualToTime(IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator e,
+	private static void EnsureGreatestLessThanOrEqualToTime(IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator e,
 		double chartTime)
 	{
 		while (e.MoveNext() && e.Current!.GetChartTime() <= chartTime)
@@ -318,7 +380,7 @@ internal class EventTree : RedBlackTree<EditorEvent>, IReadOnlyEventTree
 		e.Unset();
 	}
 
-	private static void EnsureGreaterThanTime(IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator e,
+	private static void EnsureLeastGreaterThanTime(IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator e,
 		double chartTime)
 	{
 		while (e.MovePrev() && e.Current!.GetChartTime() > chartTime)
@@ -332,7 +394,7 @@ internal class EventTree : RedBlackTree<EditorEvent>, IReadOnlyEventTree
 		e.Unset();
 	}
 
-	private static void EnsureGreaterThanOrEqualToTime(IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator e,
+	private static void EnsureLeastGreaterThanOrEqualToTime(IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator e,
 		double chartTime)
 	{
 		while (e.MovePrev() && e.Current!.GetChartTime() >= chartTime)
@@ -346,7 +408,7 @@ internal class EventTree : RedBlackTree<EditorEvent>, IReadOnlyEventTree
 		e.Unset();
 	}
 
-	private static void EnsureLessThanPosition(IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator e,
+	private static void EnsureGreatestLessThanPosition(IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator e,
 		double chartPosition)
 	{
 		while (e.MoveNext() && e.Current!.GetChartPosition() < chartPosition)
@@ -360,7 +422,8 @@ internal class EventTree : RedBlackTree<EditorEvent>, IReadOnlyEventTree
 		e.Unset();
 	}
 
-	private static void EnsureLessThanOrEqualToPosition(IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator e,
+	private static void EnsureGreatestLessThanOrEqualToPosition(
+		IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator e,
 		double chartPosition)
 	{
 		while (e.MoveNext() && e.Current!.GetChartPosition() <= chartPosition)
@@ -374,7 +437,7 @@ internal class EventTree : RedBlackTree<EditorEvent>, IReadOnlyEventTree
 		e.Unset();
 	}
 
-	private static void EnsureGreaterThanPosition(IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator e,
+	private static void EnsureLeastGreaterThanPosition(IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator e,
 		double chartPosition)
 	{
 		while (e.MovePrev() && e.Current!.GetChartPosition() > chartPosition)
@@ -388,7 +451,8 @@ internal class EventTree : RedBlackTree<EditorEvent>, IReadOnlyEventTree
 		e.Unset();
 	}
 
-	private static void EnsureGreaterThanOrEqualToPosition(IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator e,
+	private static void EnsureLeastGreaterThanOrEqualToPosition(
+		IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator e,
 		double chartPosition)
 	{
 		while (e.MovePrev() && e.Current!.GetChartPosition() >= chartPosition)
@@ -402,4 +466,6 @@ internal class EventTree : RedBlackTree<EditorEvent>, IReadOnlyEventTree
 		e.Unset();
 	}
 	// ReSharper restore UnusedMember.Local
+
+	#endregion Find Result Adjustment
 }

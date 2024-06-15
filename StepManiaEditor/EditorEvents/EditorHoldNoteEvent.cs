@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using Fumen.ChartDefinition;
 using Fumen.Converters;
 using Microsoft.Xna.Framework;
@@ -45,34 +44,6 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 		Roll = LaneHoldStartNote.SourceType == SMCommon.NoteStrings[(int)SMCommon.NoteType.RollStart];
 	}
 
-	/// <summary>
-	/// Static method to create a hold.
-	/// </summary>
-	public static EditorHoldNoteEvent CreateHold(EditorChart chart, int lane, int row, int length, bool roll)
-	{
-		var holdStartTime = 0.0;
-		chart.TryGetTimeFromChartPosition(row, ref holdStartTime);
-		var holdStartNote = new LaneHoldStartNote()
-		{
-			Lane = lane,
-			IntegerPosition = row,
-			TimeSeconds = holdStartTime,
-		};
-		var holdEndTime = 0.0;
-		chart.TryGetTimeFromChartPosition(row + length, ref holdEndTime);
-		var holdEndNote = new LaneHoldEndNote()
-		{
-			Lane = lane,
-			IntegerPosition = row + length,
-			TimeSeconds = holdEndTime,
-		};
-
-		var config = EventConfig.CreateHoldConfig(chart, holdStartNote, holdEndNote);
-		var hold = new EditorHoldNoteEvent(config, holdStartNote, holdEndNote);
-		hold.SetIsRoll(roll);
-		return hold;
-	}
-
 	public override string GetShortTypeName()
 	{
 		return IsRoll() ? "Roll" : "Hold";
@@ -90,17 +61,30 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 		LaneHoldEndNote.Lane = lane;
 	}
 
+	protected override void ResetTimeBasedOnRowImplementation()
+	{
+		base.ResetTimeBasedOnRowImplementation();
+		RefreshHoldEndTime();
+	}
+
+	private void SetNewHoldEndPosition(int row)
+	{
+		LaneHoldEndNote.IntegerPosition = row;
+		var chartTime = 0.0;
+		EditorChart.TryGetTimeOfEvent(LaneHoldEndNote, ref chartTime);
+		LaneHoldEndNote.TimeSeconds = chartTime;
+	}
+
 	public override void SetNewPosition(int row)
 	{
 		var len = GetLength();
-		ChartPosition = row;
-		SetNewPositionForEvent(LaneHoldStartNote, row);
-		SetNewPositionForEvent(LaneHoldEndNote, row + len);
+		base.SetNewPosition(row);
+		SetNewHoldEndPosition(row + len);
 	}
 
 	public void RefreshHoldEndTime()
 	{
-		SetNewPositionForEvent(LaneHoldEndNote, GetRow() + GetLength());
+		SetNewHoldEndPosition(GetRow() + GetLength());
 	}
 
 	public override int GetLength()
@@ -110,7 +94,7 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 
 	public void SetLength(int length)
 	{
-		SetNewPositionForEvent(LaneHoldEndNote, GetRow() + length);
+		SetNewHoldEndPosition(GetRow() + length);
 	}
 
 	public override double GetEndChartPosition()
@@ -128,9 +112,14 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 		return LaneHoldEndNote.TimeSeconds;
 	}
 
-	public override List<Event> GetEvents()
+	public override Event GetAdditionalEvent()
 	{
-		return new List<Event>() { LaneHoldStartNote, LaneHoldEndNote };
+		return GetHoldEndEvent();
+	}
+
+	public LaneHoldEndNote GetHoldEndEvent()
+	{
+		return LaneHoldEndNote;
 	}
 
 	public bool IsRoll()

@@ -104,7 +104,7 @@ internal sealed class EditorLastSecondHintEvent : EditorEvent
 	/// Overriden as this ChartEvent's time is stored on the song's last second hint value and not
 	/// on an underlying Event.
 	/// </summary>
-	public override void ResetTimeBasedOnRow()
+	protected override void ResetTimeBasedOnRowImplementation()
 	{
 		var chartTime = 0.0;
 		EditorChart.TryGetTimeFromChartPosition(GetChartPosition(), ref chartTime);

@@ -204,8 +204,16 @@ internal class EditorInterpolatedRateAlteringEvent : EditorEvent
 /// </summary>
 internal sealed class EditorSearchInterpolatedRateAlteringEvent : EditorInterpolatedRateAlteringEvent
 {
+	private readonly double ChartTime;
+
 	public EditorSearchInterpolatedRateAlteringEvent(EventConfig config)
 		: base(config, null)
 	{
+		ChartTime = config.ChartTime;
+	}
+
+	public override double GetChartTime()
+	{
+		return ChartTime;
 	}
 }
