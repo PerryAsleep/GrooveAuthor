@@ -693,7 +693,7 @@ internal sealed class MusicManager
 			// To accomplish this, we pass in a 0.0 offset parameter when getting the time.
 			var currentSongTime = GetTimeFromSampleIndex(SampleIndex, 0.0) - precedingTimeCompensation;
 			var currentChartTime = EditorPosition.GetChartTimeFromSongTime(chart, currentSongTime);
-			var enumerator = chartEvents.FindFirstAfterChartTime(currentChartTime);
+			var enumerator = chartEvents.FindLeastAfterChartTime(currentChartTime);
 			if (enumerator != null)
 			{
 				var previousEventRecordedTime = 0.0;

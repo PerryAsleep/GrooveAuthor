@@ -351,7 +351,7 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 			return;
 
 		var editorChart = pattern.GetEditorChart();
-		var editorEventEnum = editorChart.GetEvents().FindFirstAtOrAfterChartPosition(lastRowCapturedForLaneCounts);
+		var editorEventEnum = editorChart.GetEvents().FindLeastAtOrAfterChartPosition(lastRowCapturedForLaneCounts);
 		if (editorEventEnum != null)
 		{
 			while (editorEventEnum.MoveNext())
@@ -904,7 +904,7 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 		var transitionConfig = pattern.GetPerformedChartConfig().Config.Transitions;
 		var transitionExtension = transitionConfig.IsEnabled() ? Math.Max(0, transitionConfig.StepsPerTransitionMin) : 0;
 		var stepsToBackUp = Math.Max(transitionExtension, NumStepsToSearchBeyondPattern);
-		var editorEventEnum = editorChart.GetEvents().FindFirstBeforeChartPosition(patternFirstStepRow);
+		var editorEventEnum = editorChart.GetEvents().FindGreatestBeforeChartPosition(patternFirstStepRow);
 		if (editorEventEnum != null)
 		{
 			var numStepsBeyondPattern = 0;
@@ -927,7 +927,7 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 		// Extend beyond the end of the pattern so we can interpret the following footing.
 		var patternLastStepRow = pattern.GetLastStepRow();
 		var rangeEnd = patternLastStepRow;
-		editorEventEnum = editorChart.GetEvents().FindFirstAtOrAfterChartPosition(patternLastStepRow);
+		editorEventEnum = editorChart.GetEvents().FindLeastAtOrAfterChartPosition(patternLastStepRow);
 		if (editorEventEnum != null)
 		{
 			var numStepsBeyondPattern = 0;

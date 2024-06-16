@@ -1708,7 +1708,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		if (explicitEnumerator != null)
 			enumerator = explicitEnumerator.Clone();
 		else
-			enumerator = EditorEvents.FindFirstAtOrBeforeChartPosition(chartPosition);
+			enumerator = EditorEvents.FindGreatestAtOrBeforeChartPosition(chartPosition);
 		if (enumerator == null)
 			return holds;
 
@@ -1761,7 +1761,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		if (explicitEnumerator != null)
 			enumerator = explicitEnumerator.Clone();
 		else
-			enumerator = EditorEvents.FindFirstAtOrBeforeChartTime(chartTime);
+			enumerator = EditorEvents.FindGreatestAtOrBeforeChartTime(chartTime);
 		if (enumerator == null)
 			return holds;
 
@@ -2624,7 +2624,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		}
 
 		// Check for events within the range.
-		var enumerator = EditorEvents.FindFirstAtOrAfterChartPosition(startRowInclusive);
+		var enumerator = EditorEvents.FindLeastAtOrAfterChartPosition(startRowInclusive);
 		if (enumerator != null)
 		{
 			while (enumerator.MoveNext())

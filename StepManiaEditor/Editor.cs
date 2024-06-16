@@ -5,6 +5,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Media;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -27,6 +28,8 @@ using static StepManiaEditor.MiniMap;
 using static StepManiaEditor.UIControls;
 using Keys = Microsoft.Xna.Framework.Input.Keys;
 using Path = Fumen.Path;
+
+[assembly: InternalsVisibleTo("StepManiaEditorTests")]
 
 namespace StepManiaEditor;
 
@@ -6164,7 +6167,7 @@ internal sealed class Editor :
 					var (adjustedMinTime, adjustedMaxTime) = AdjustSelectionTimeRange(minTime, maxTime, halfArrowH);
 					if (adjustedMinTime < adjustedMaxTime)
 					{
-						var enumerator = ActiveChart.GetEvents().FindFirstAfterChartTime(adjustedMinTime);
+						var enumerator = ActiveChart.GetEvents().FindLeastAfterChartTime(adjustedMinTime);
 						while (enumerator.MoveNext())
 						{
 							if (enumerator.Current!.GetChartTime() > adjustedMaxTime)
@@ -6239,7 +6242,7 @@ internal sealed class Editor :
 						AdjustSelectionPositionRange(minPosition, maxPosition, halfArrowH);
 					if (adjustedMinPosition < adjustedMaxPosition)
 					{
-						var enumerator = ActiveChart.GetEvents().FindFirstAfterChartPosition(adjustedMinPosition);
+						var enumerator = ActiveChart.GetEvents().FindLeastAfterChartPosition(adjustedMinPosition);
 						while (enumerator != null && enumerator.MoveNext())
 						{
 							if (enumerator.Current!.GetRow() > adjustedMaxPosition)
