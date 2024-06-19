@@ -16,6 +16,7 @@ internal interface IReadOnlyRateAlteringEventTree : IReadOnlyRedBlackTree<Editor
 	IReadOnlyRedBlackTreeEnumerator FindBestByPosition(double chartPosition);
 	EditorRateAlteringEvent FindActiveRateAlteringEvent(EditorEvent editorEvent);
 	EditorRateAlteringEvent FindActiveRateAlteringEvent(Event smEvent);
+	IReadOnlyRedBlackTreeEnumerator FindActiveRateAlteringEventEnumeratorForTime(double chartTime, bool allowEqualTo = true);
 	EditorRateAlteringEvent FindActiveRateAlteringEventForTime(double chartTime, bool allowEqualTo = true);
 	IReadOnlyRedBlackTreeEnumerator FindActiveRateAlteringEventEnumeratorForPosition(double chartPosition, bool allowEqualTo = true);
 	EditorRateAlteringEvent FindActiveRateAlteringEventForPosition(double chartPosition, bool allowEqualTo = true);
@@ -108,7 +109,7 @@ internal class RateAlteringEventTree : RedBlackTree<EditorRateAlteringEvent>, IR
 	/// <returns>The active EditorRateAlteringEvent or null if none could be found.</returns>
 	public EditorRateAlteringEvent FindActiveRateAlteringEvent(EditorEvent editorEvent)
 	{
-		if (FindGreatestPrecedingValue(editorEvent, false, out var activeEvent))
+		if (FindGreatestPrecedingValue(editorEvent, true, out var activeEvent))
 			return activeEvent;
 		FirstValue(out activeEvent);
 		return activeEvent;
@@ -124,8 +125,8 @@ internal class RateAlteringEventTree : RedBlackTree<EditorRateAlteringEvent>, IR
 	/// <returns>The active EditorRateAlteringEvent or null if none could be found.</returns>
 	public EditorRateAlteringEvent FindActiveRateAlteringEvent(Event smEvent)
 	{
-		var enumerator = FindGreatestPreceding(smEvent, EditorEvent.CompareEditorEventToSmEvent);
-		if (enumerator != null && EnsureGreatestLessThan(enumerator, smEvent))
+		var enumerator = FindGreatestPreceding(smEvent, EditorEvent.CompareEditorEventToSmEvent, true);
+		if (enumerator != null && EnsureGreatestLessThanOrEqualTo(enumerator, smEvent))
 		{
 			enumerator.MoveNext();
 			return enumerator.Current;
@@ -133,6 +134,35 @@ internal class RateAlteringEventTree : RedBlackTree<EditorRateAlteringEvent>, IR
 
 		FirstValue(out var editorEvent);
 		return editorEvent;
+	}
+
+	/// <summary>
+	/// Finds the active EditorRateAlteringEvent enumerator for the given chart time.
+	/// This method is suitable when a chart time is known and it is not for an EditorEvent or Stepmania Event.
+	/// If an EditorEvent or Stepmania Event is known, prefer FindActiveRateAlteringEvent as event sorting
+	/// may result in certain events falling before or afters at the same row.
+	/// </summary>
+	/// <param name="chartTime">Chart time in question.</param>
+	/// <param name="allowEqualTo">
+	/// If true, also consider an event to be active it occurs at the same time as the given chart time.
+	/// </param>
+	/// <returns>Enumerator to the active EditorRateAlteringEvent or null if none could be found.</returns>
+	public IReadOnlyRedBlackTree<EditorRateAlteringEvent>.IReadOnlyRedBlackTreeEnumerator
+		FindActiveRateAlteringEventEnumeratorForTime(
+			double chartTime, bool allowEqualTo = true)
+	{
+		var pos = (EditorRateAlteringEvent)EditorEvent.CreateEvent(
+			EventConfig.CreateSearchEventConfigWithOnlyTime(Chart, chartTime));
+
+		var enumerator = FindGreatestPreceding(pos, allowEqualTo);
+		if (enumerator != null && (allowEqualTo
+			    ? EnsureGreatestLessThanOrEqualToTime(enumerator, chartTime)
+			    : EnsureGreatestLessThanTime(enumerator, chartTime)))
+		{
+			return enumerator;
+		}
+
+		return First();
 	}
 
 	/// <summary>
@@ -152,7 +182,9 @@ internal class RateAlteringEventTree : RedBlackTree<EditorRateAlteringEvent>, IR
 			EventConfig.CreateSearchEventConfigWithOnlyTime(Chart, chartTime));
 
 		var enumerator = FindGreatestPreceding(pos, allowEqualTo);
-		if (enumerator != null && EnsureGreatestLessThanOrEqualToTime(enumerator, chartTime))
+		if (enumerator != null && (allowEqualTo
+			    ? EnsureGreatestLessThanOrEqualToTime(enumerator, chartTime)
+			    : EnsureGreatestLessThanTime(enumerator, chartTime)))
 		{
 			enumerator.MoveNext();
 			return enumerator.Current;
@@ -180,9 +212,10 @@ internal class RateAlteringEventTree : RedBlackTree<EditorRateAlteringEvent>, IR
 		var pos = (EditorRateAlteringEvent)EditorEvent.CreateEvent(
 			EventConfig.CreateSearchEventConfigWithOnlyRow(Chart, chartPosition));
 		var enumerator = FindGreatestPreceding(pos, allowEqualTo);
-		if (enumerator != null && EnsureGreatestLessThanOrEqualToPosition(enumerator, chartPosition))
+		if (enumerator != null && (allowEqualTo
+			    ? EnsureGreatestLessThanOrEqualToPosition(enumerator, chartPosition)
+			    : EnsureGreatestLessThanPosition(enumerator, chartPosition)))
 		{
-			enumerator.MoveNext();
 			return enumerator;
 		}
 
@@ -205,7 +238,9 @@ internal class RateAlteringEventTree : RedBlackTree<EditorRateAlteringEvent>, IR
 		var pos = (EditorRateAlteringEvent)EditorEvent.CreateEvent(
 			EventConfig.CreateSearchEventConfigWithOnlyRow(Chart, chartPosition));
 		var enumerator = FindGreatestPreceding(pos, allowEqualTo);
-		if (enumerator != null && EnsureGreatestLessThanOrEqualToPosition(enumerator, chartPosition))
+		if (enumerator != null && (allowEqualTo
+			    ? EnsureGreatestLessThanOrEqualToPosition(enumerator, chartPosition)
+			    : EnsureGreatestLessThanPosition(enumerator, chartPosition)))
 		{
 			enumerator.MoveNext();
 			return enumerator!.Current;
@@ -341,6 +376,21 @@ internal class RateAlteringEventTree : RedBlackTree<EditorRateAlteringEvent>, IR
 		}
 
 		while (e.MovePrev() && EditorEvent.CompareEditorEventToSmEvent(e.Current, smEvent) >= 0)
+		{
+		}
+
+		return UnsetAndReturnIfWasValid(e);
+	}
+
+	private static bool EnsureGreatestLessThanOrEqualTo(
+		IReadOnlyRedBlackTree<EditorRateAlteringEvent>.IReadOnlyRedBlackTreeEnumerator e,
+		Event smEvent)
+	{
+		while (e.MoveNext() && EditorEvent.CompareEditorEventToSmEvent(e.Current, smEvent) <= 0)
+		{
+		}
+
+		while (e.MovePrev() && EditorEvent.CompareEditorEventToSmEvent(e.Current, smEvent) > 0)
 		{
 		}
 

@@ -1407,6 +1407,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		var rateEventEnumerator = RateAlteringEvents?.FindActiveRateAlteringEventEnumeratorForPosition(0.0);
 		if (rateEventEnumerator == null)
 			return 0.0;
+		rateEventEnumerator.MoveNext();
 
 		var precedingTimeSignature = rateEventEnumerator.Current!.GetTimeSignature();
 		while (measure > precedingTimeSignature.MetricPosition.Measure)
