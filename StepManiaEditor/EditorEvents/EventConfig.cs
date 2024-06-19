@@ -295,9 +295,9 @@ internal sealed class EventConfig
 		});
 	}
 
-	public static EventConfig CreateFakeConfig(EditorChart chart, int row, double fakeLength)
+	public static EventConfig CreateFakeConfig(EditorChart chart, int row, double fakeTime)
 	{
-		return new EventConfig(chart, new FakeSegment(fakeLength)
+		return new EventConfig(chart, new FakeSegment(fakeTime)
 		{
 			IntegerPosition = row,
 		});
