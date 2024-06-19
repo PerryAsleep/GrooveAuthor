@@ -2729,6 +2729,12 @@ internal sealed class ImGuiLayoutUtils
 
 	public static double GetMiscEditorEventHeight()
 	{
+		unsafe
+		{
+			if (ImGuiFont.NativePtr == null || !ImGuiFont.IsLoaded())
+				return 0.0;
+		}
+
 		ImGui.PushFont(ImGuiFont);
 		var h = ImGui.GetStyle().FramePadding.Y * 2 + ImGui.GetFontSize() + 2;
 		ImGui.PopFont();
@@ -2830,6 +2836,12 @@ internal sealed class ImGuiLayoutUtils
 
 	public static double GetMiscEditorEventStringWidth(string s)
 	{
+		unsafe
+		{
+			if (ImGuiFont.NativePtr == null || !ImGuiFont.IsLoaded())
+				return 0.0;
+		}
+
 		ImGui.PushFont(ImGuiFont);
 		var width = ImGui.CalcTextSize(s).X + GetCloseWidth();
 		ImGui.PopFont();
