@@ -3432,7 +3432,6 @@ internal sealed class Editor :
 
 		if (ActiveChart?.GetEvents() == null || ArrowGraphicManager == null)
 		{
-			UpdateMiniMapBounds();
 			MiniMap.UpdateNoChart();
 			return;
 		}
@@ -3657,6 +3656,8 @@ internal sealed class Editor :
 	{
 		if (!Preferences.Instance.PreferencesMiniMap.ShowMiniMap)
 			return;
+		if (ActiveChart == null)
+			return;
 		MiniMap.Draw(SpriteBatch);
 	}
 
@@ -3789,6 +3790,8 @@ internal sealed class Editor :
 
 	private void DrawDensityGraph()
 	{
+		if (ActiveChart == null)
+			return;
 		DensityGraph.Draw();
 	}
 
