@@ -126,6 +126,7 @@ public class TestRateAlteringEventTree
 
 				// Don't add negative stops. We consider them the same as stops.
 				case SMCommon.NegativeStopString:
+				case SMCommon.NegativeDelayString:
 					continue;
 
 				// In order to cut down on the volume of combination, skip some events which aren't important.

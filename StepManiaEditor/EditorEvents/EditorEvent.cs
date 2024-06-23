@@ -105,6 +105,7 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 		}
 
 		EditorEvent newEvent = null;
+
 		if (config.ChartEvent != null)
 		{
 			// Intentional modification of DestType to preserve StepMania types like mines.
@@ -187,11 +188,6 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 				case EventConfig.SpecialType.RowSearch:
 				{
 					newEvent = new EditorSearchRateAlteringEventWithRow(config);
-					break;
-				}
-				case EventConfig.SpecialType.InterpolatedRateAlteringSearch:
-				{
-					newEvent = new EditorSearchInterpolatedRateAlteringEvent(config);
 					break;
 				}
 				case EventConfig.SpecialType.Preview:
@@ -481,19 +477,6 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	}
 
 	/// <summary>
-	/// Returns whether or not this event is a standard search event.
-	/// Search events are not added to the EditorChart and are just used for performing
-	/// searches in data structures which require comparisons.
-	/// Standard search events have an underlying Event and can be compared normally against
-	/// other EditorEvents.
-	/// </summary>
-	/// <returns>Whether or not this event is a standard search event.</returns>
-	public virtual bool IsStandardSearchEvent()
-	{
-		return false;
-	}
-
-	/// <summary>
 	/// Returns whether or not this event is a search event that can be compared by only ChartTime.
 	/// Search events are not added to the EditorChart and are just used for performing
 	/// searches in data structures which require comparisons.
@@ -637,19 +620,6 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 		if (comparison != 0)
 			return comparison;
 
-		// Compare by times.
-		// EditorEvents with no Event backing them have rows which are inferred from their times.
-		// In some situations (e.g. during a Stop time range), this can cause these events to have
-		// a row which occurs much earlier than other events in the "same" row.
-		// This comparison relies on time values not changing unexpectedly.
-		// See SMCommon.SetEventTimeAndMetricPositionsFromRows and
-		// EditorRateAlteringEvent.GetChartTimeFromPosition for time calculations.
-		if (IsChartTimeValid && other.IsChartTimeValid)
-		{
-			if (!GetChartTime().DoubleEquals(other.GetChartTime()))
-				return GetChartTime() - other.GetChartTime() > 0.0 ? 1 : -1;
-		}
-
 		// Sort by types which only exist in the editor and aren't represented as Events
 		// in Stepmania, like the preview and the last second hint.
 		if (!CustomEventOrder.TryGetValue(GetType().Name, out var thisOrder))
@@ -664,10 +634,6 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 		comparison = EventComparer.Compare(ChartEvent, other.ChartEvent);
 		if (comparison != 0)
 			return comparison;
-
-		// Search events come before other events at the same location.
-		if (IsStandardSearchEvent() != other.IsStandardSearchEvent())
-			return IsStandardSearchEvent() ? -1 : 1;
 
 		// Events being edited come after events not being edited.
 		// This sort order is being relied on in EditorChart.FindNoteAt.

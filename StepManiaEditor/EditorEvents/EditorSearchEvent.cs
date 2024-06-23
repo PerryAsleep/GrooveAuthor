@@ -30,9 +30,4 @@ internal sealed class EditorSearchEvent : EditorEvent
 	{
 		return false;
 	}
-
-	public override bool IsStandardSearchEvent()
-	{
-		return true;
-	}
 }

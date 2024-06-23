@@ -2785,40 +2785,9 @@ internal sealed class Editor :
 	{
 		// Find the interpolated scroll rate to use as a multiplier.
 		// The interpolated scroll rate to use is the value at the current exact time.
-		var interpolatedScrollRate = 1.0;
 		if (Preferences.Instance.PreferencesScroll.SpacingMode == SpacingMode.Variable)
-		{
-			var ratePosEventForChecking = (EditorInterpolatedRateAlteringEvent)EditorEvent.CreateEvent(
-				EventConfig.CreateInterpolatedRateAlteringSearchEvent(ActiveChart, Position.ChartPosition, Position.ChartTime));
-
-			var interpolatedScrollRateEnumerator =
-				ActiveChart.GetInterpolatedScrollRateEvents().FindGreatestPreceding(ratePosEventForChecking, true);
-			if (interpolatedScrollRateEnumerator != null)
-			{
-				interpolatedScrollRateEnumerator.MoveNext();
-				var interpolatedRateEvent = interpolatedScrollRateEnumerator.Current;
-				if (interpolatedRateEvent!.InterpolatesByTime())
-					interpolatedScrollRate = interpolatedRateEvent.GetInterpolatedScrollRateFromTime(Position.ChartTime);
-				else
-					interpolatedScrollRate = interpolatedRateEvent.GetInterpolatedScrollRateFromRow(Position.ChartPosition);
-			}
-			else
-			{
-				interpolatedScrollRateEnumerator =
-					ActiveChart.GetInterpolatedScrollRateEvents().FindLeastFollowing(ratePosEventForChecking);
-				if (interpolatedScrollRateEnumerator != null)
-				{
-					interpolatedScrollRateEnumerator.MoveNext();
-					var interpolatedRateEvent = interpolatedScrollRateEnumerator.Current;
-					if (interpolatedRateEvent!.InterpolatesByTime())
-						interpolatedScrollRate = interpolatedRateEvent.GetInterpolatedScrollRateFromTime(Position.ChartTime);
-					else
-						interpolatedScrollRate = interpolatedRateEvent.GetInterpolatedScrollRateFromRow(Position.ChartPosition);
-				}
-			}
-		}
-
-		return interpolatedScrollRate;
+			return ActiveChart.GetInterpolatedScrollRateEvents().FindScrollRate(Position);
+		return 1.0;
 	}
 
 	/// <summary>
@@ -6053,7 +6022,7 @@ internal sealed class Editor :
 				Selection.DeselectEvent(deletedEvent);
 
 			// If an event was deleted that is in a member variable, remove the reference.
-			if (deletedEvent == LastSelectedPatternEvent)
+			if (ReferenceEquals(deletedEvent, LastSelectedPatternEvent))
 				LastSelectedPatternEvent = null;
 		}
 	}

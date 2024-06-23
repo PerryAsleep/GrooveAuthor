@@ -197,23 +197,3 @@ internal class EditorInterpolatedRateAlteringEvent : EditorEvent
 			WidgetHelp);
 	}
 }
-
-/// <summary>
-/// EditorInterpolatedRateAlteringEvent to use when needing to search for
-/// EditorInterpolatedRateAlteringEvents in data structures which require comparing to other events.
-/// </summary>
-internal sealed class EditorSearchInterpolatedRateAlteringEvent : EditorInterpolatedRateAlteringEvent
-{
-	private readonly double ChartTime;
-
-	public EditorSearchInterpolatedRateAlteringEvent(EventConfig config)
-		: base(config, null)
-	{
-		ChartTime = config.ChartTime;
-	}
-
-	public override double GetChartTime()
-	{
-		return ChartTime;
-	}
-}

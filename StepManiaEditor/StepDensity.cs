@@ -43,6 +43,49 @@ internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<Prefe
 		public readonly byte Steps;
 	}
 
+	private class StreamSegment : IEquatable<StreamSegment>
+	{
+		private readonly int StartMeasure;
+		private readonly int LastMeasure;
+
+		public StreamSegment(int startMeasure, int lastMeasure)
+		{
+			StartMeasure = startMeasure;
+			LastMeasure = lastMeasure;
+		}
+
+		public int GetLength()
+		{
+			return LastMeasure - StartMeasure + 1;
+		}
+
+		public int GetStartMeasure()
+		{
+			return StartMeasure;
+		}
+
+		public int GetLastMeasure()
+		{
+			return LastMeasure;
+		}
+
+		public bool Equals(StreamSegment other)
+		{
+			return ReferenceEquals(this, other);
+		}
+
+		public override bool Equals(object obj)
+		{
+			return ReferenceEquals(this, obj);
+		}
+
+		public override int GetHashCode()
+		{
+			// ReSharper disable once BaseObjectGetHashCodeCallInGetHashCode
+			return base.GetHashCode();
+		}
+	}
+
 	/// <summary>
 	/// EditorChart to provide density information of.
 	/// </summary>
@@ -61,7 +104,7 @@ internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<Prefe
 	/// <summary>
 	/// Stream breakdown represented as an IntervalTree.
 	/// </summary>
-	private IntervalTree<int, Tuple<int, int>> Streams = new();
+	private IntervalTree<int, StreamSegment> Streams = new();
 
 	/// <summary>
 	/// Cached stream breakdown.
@@ -114,13 +157,13 @@ internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<Prefe
 		var anyStreams = false;
 		foreach (var stream in Streams)
 		{
-			var streamLength = stream.Item2 - stream.Item1 + 1;
+			var streamLength = stream.GetLength();
 			if (streamLength < p.MinimumLengthToConsiderStream)
 				continue;
 
 			if (!first)
 			{
-				var breakLength = stream.Item1 - (previousStreamLastMeasure + 1);
+				var breakLength = stream.GetStartMeasure() - (previousStreamLastMeasure + 1);
 				if (breakLength <= p.ShortBreakCutoff)
 				{
 					sb.Append(p.ShortBreakCharacter);
@@ -138,7 +181,7 @@ internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<Prefe
 			anyStreams = true;
 			sb.Append(streamLength);
 
-			previousStreamLastMeasure = stream.Item2;
+			previousStreamLastMeasure = stream.GetLastMeasure();
 			first = false;
 		}
 
@@ -216,33 +259,38 @@ internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<Prefe
 			// This measure joined to two streams.
 			if (precedingStreams.Count > 0 && followingStreams.Count > 0)
 			{
-				var deleted = Streams.Delete(precedingStreams[0].Item1, precedingStreams[0].Item2);
+				var deleted = Streams.Delete(precedingStreams[0], precedingStreams[0].GetStartMeasure(),
+					precedingStreams[0].GetLastMeasure());
 				Debug.Assert(deleted);
-				deleted = Streams.Delete(followingStreams[0].Item1, followingStreams[0].Item2);
+				deleted = Streams.Delete(followingStreams[0], followingStreams[0].GetStartMeasure(),
+					followingStreams[0].GetLastMeasure());
 				Debug.Assert(deleted);
-				Streams.Insert(new Tuple<int, int>(precedingStreams[0].Item1, followingStreams[0].Item2),
-					precedingStreams[0].Item1, followingStreams[0].Item2);
+				Streams.Insert(new StreamSegment(precedingStreams[0].GetStartMeasure(), followingStreams[0].GetLastMeasure()),
+					precedingStreams[0].GetStartMeasure(), followingStreams[0].GetLastMeasure());
 			}
 			// This measure extended a preceding stream.
 			else if (precedingStreams.Count > 0)
 			{
-				var deleted = Streams.Delete(precedingStreams[0].Item1, precedingStreams[0].Item2);
+				var deleted = Streams.Delete(precedingStreams[0], precedingStreams[0].GetStartMeasure(),
+					precedingStreams[0].GetLastMeasure());
 				Debug.Assert(deleted);
-				Streams.Insert(new Tuple<int, int>(precedingStreams[0].Item1, measureNumber), precedingStreams[0].Item1,
+				Streams.Insert(new StreamSegment(precedingStreams[0].GetStartMeasure(), measureNumber),
+					precedingStreams[0].GetStartMeasure(),
 					measureNumber);
 			}
 			// This measure extended a following stream.
 			else if (followingStreams.Count > 0)
 			{
-				var deleted = Streams.Delete(followingStreams[0].Item1, followingStreams[0].Item2);
+				var deleted = Streams.Delete(followingStreams[0], followingStreams[0].GetStartMeasure(),
+					followingStreams[0].GetLastMeasure());
 				Debug.Assert(deleted);
-				Streams.Insert(new Tuple<int, int>(measureNumber, followingStreams[0].Item2), measureNumber,
-					followingStreams[0].Item2);
+				Streams.Insert(new StreamSegment(measureNumber, followingStreams[0].GetLastMeasure()), measureNumber,
+					followingStreams[0].GetLastMeasure());
 			}
 			// This stream does not extend any existing streams.
 			else
 			{
-				Streams.Insert(new Tuple<int, int>(measureNumber, measureNumber), measureNumber, measureNumber);
+				Streams.Insert(new StreamSegment(measureNumber, measureNumber), measureNumber, measureNumber);
 			}
 		}
 
@@ -309,11 +357,11 @@ internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<Prefe
 		{
 			var overlappingStreams = Streams.FindAllOverlapping(measureNumber);
 			Debug.Assert(overlappingStreams.Count == 1);
-			var streamStartMeasureNumber = overlappingStreams[0].Item1;
-			var streamEndMeasureNumber = overlappingStreams[0].Item2;
+			var streamStartMeasureNumber = overlappingStreams[0].GetStartMeasure();
+			var streamEndMeasureNumber = overlappingStreams[0].GetLastMeasure();
 
 			// Delete the stream that was broken. We may replace it with shorter streams below.
-			var deleted = Streams.Delete(streamStartMeasureNumber, streamEndMeasureNumber);
+			var deleted = Streams.Delete(overlappingStreams[0], streamStartMeasureNumber, streamEndMeasureNumber);
 			Debug.Assert(deleted);
 
 			// The stream to break is one measure long so we do not need to add new streams to replace it.
@@ -324,21 +372,21 @@ internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<Prefe
 			// The measure that broke the stream started the stream. Shorten it.
 			else if (measureNumber == streamStartMeasureNumber)
 			{
-				Streams.Insert(new Tuple<int, int>(streamStartMeasureNumber + 1, streamEndMeasureNumber),
+				Streams.Insert(new StreamSegment(streamStartMeasureNumber + 1, streamEndMeasureNumber),
 					streamStartMeasureNumber + 1, streamEndMeasureNumber);
 			}
 			// The measure that broke the stream ended the stream. Shorten it.
 			else if (measureNumber == streamEndMeasureNumber)
 			{
-				Streams.Insert(new Tuple<int, int>(streamStartMeasureNumber, streamEndMeasureNumber - 1),
+				Streams.Insert(new StreamSegment(streamStartMeasureNumber, streamEndMeasureNumber - 1),
 					streamStartMeasureNumber, streamEndMeasureNumber - 1);
 			}
 			// The measure that broke the stream split it into two other streams.
 			else
 			{
-				Streams.Insert(new Tuple<int, int>(streamStartMeasureNumber, measureNumber - 1), streamStartMeasureNumber,
+				Streams.Insert(new StreamSegment(streamStartMeasureNumber, measureNumber - 1), streamStartMeasureNumber,
 					measureNumber - 1);
-				Streams.Insert(new Tuple<int, int>(measureNumber + 1, streamEndMeasureNumber), measureNumber + 1,
+				Streams.Insert(new StreamSegment(measureNumber + 1, streamEndMeasureNumber), measureNumber + 1,
 					streamEndMeasureNumber);
 			}
 		}
@@ -387,7 +435,7 @@ internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<Prefe
 	/// </summary>
 	private void RecomputeStreams(bool initializeMeasureSteps)
 	{
-		Streams = new IntervalTree<int, Tuple<int, int>>();
+		Streams = new IntervalTree<int, StreamSegment>();
 		var minNotesPerMeasureForStream = GetMeasureSubdivision(Preferences.Instance.PreferencesStream.NoteType);
 		var currentMeasure = -1;
 		var currentStepsPerMeasure = 0;
@@ -411,7 +459,7 @@ internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<Prefe
 					// If we were tracking a stream, commit it.
 					if (lastStreamMeasureStart >= 0)
 					{
-						Streams.Insert(new Tuple<int, int>(lastStreamMeasureStart, lastStreamMeasure), lastStreamMeasureStart,
+						Streams.Insert(new StreamSegment(lastStreamMeasureStart, lastStreamMeasure), lastStreamMeasureStart,
 							lastStreamMeasure);
 					}
 
@@ -447,7 +495,7 @@ internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<Prefe
 		// Commit any final stream.
 		if (lastStreamMeasureStart >= 0)
 		{
-			Streams.Insert(new Tuple<int, int>(lastStreamMeasureStart, lastStreamMeasure), lastStreamMeasureStart,
+			Streams.Insert(new StreamSegment(lastStreamMeasureStart, lastStreamMeasure), lastStreamMeasureStart,
 				lastStreamMeasure);
 		}
 

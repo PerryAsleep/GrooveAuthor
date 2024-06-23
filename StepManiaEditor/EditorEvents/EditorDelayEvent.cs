@@ -1,4 +1,5 @@
-﻿using Fumen.ChartDefinition;
+﻿using System;
+using Fumen.ChartDefinition;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGameExtensions;
@@ -9,7 +10,7 @@ using static StepManiaEditor.Utils;
 
 namespace StepManiaEditor;
 
-internal sealed class EditorDelayEvent : EditorRateAlteringEvent, IChartRegion
+internal sealed class EditorDelayEvent : EditorRateAlteringEvent, IEquatable<EditorDelayEvent>, IChartRegion
 {
 	public static readonly string EventShortDescription =
 		"Delays pause the chart playback and occur before notes at the same position.\n" +
@@ -118,10 +119,8 @@ internal sealed class EditorDelayEvent : EditorRateAlteringEvent, IChartRegion
 
 			if (!StopEvent.LengthSeconds.DoubleEquals(value))
 			{
-				var oldEndTime = GetEndChartTime();
-				StopEvent.LengthSeconds = value;
+				EditorChart.UpdateDelayTime(this, value);
 				WidthDirty = true;
-				EditorChart.OnDelayTimeModified(this, oldEndTime, GetEndChartTime());
 			}
 		}
 	}
@@ -198,4 +197,27 @@ internal sealed class EditorDelayEvent : EditorRateAlteringEvent, IChartRegion
 			Alpha,
 			WidgetHelp);
 	}
+
+	#region IEquatable
+
+	public bool Equals(EditorDelayEvent other)
+	{
+		// Only implementing IEquatable for IntervalTree.
+		return ReferenceEquals(this, other);
+	}
+
+	public override bool Equals(object obj)
+	{
+		// Only implementing IEquatable for IntervalTree.
+		return ReferenceEquals(this, obj);
+	}
+
+	public override int GetHashCode()
+	{
+		// Only implementing IEquatable for IntervalTree.
+		// ReSharper disable once BaseObjectGetHashCodeCallInGetHashCode
+		return base.GetHashCode();
+	}
+
+	#endregion IEquatable
 }

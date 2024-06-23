@@ -1,4 +1,5 @@
-﻿using Fumen.ChartDefinition;
+﻿using System;
+using Fumen.ChartDefinition;
 using Fumen.Converters;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -9,7 +10,7 @@ using static StepManiaEditor.Utils;
 
 namespace StepManiaEditor;
 
-internal sealed class EditorWarpEvent : EditorRateAlteringEvent, IChartRegion
+internal sealed class EditorWarpEvent : EditorRateAlteringEvent, IEquatable<EditorWarpEvent>, IChartRegion
 {
 	public static readonly string EventShortDescription =
 		"A warp will instantly advance the chart forward by the specified number of rows.\n" +
@@ -202,4 +203,27 @@ internal sealed class EditorWarpEvent : EditorRateAlteringEvent, IChartRegion
 			WidgetHelp,
 			0);
 	}
+
+	#region IEquatable
+
+	public bool Equals(EditorWarpEvent other)
+	{
+		// Only implementing IEquatable for IntervalTree.
+		return ReferenceEquals(this, other);
+	}
+
+	public override bool Equals(object obj)
+	{
+		// Only implementing IEquatable for IntervalTree.
+		return ReferenceEquals(this, obj);
+	}
+
+	public override int GetHashCode()
+	{
+		// Only implementing IEquatable for IntervalTree.
+		// ReSharper disable once BaseObjectGetHashCodeCallInGetHashCode
+		return base.GetHashCode();
+	}
+
+	#endregion IEquatable
 }

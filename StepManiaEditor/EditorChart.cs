@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using Fumen;
 using Fumen.ChartDefinition;
 using StepManiaEditor.AutogenConfig;
+using StepManiaEditor.EditorEvents.Containers;
 using static StepManiaEditor.Utils;
 using static Fumen.Converters.SMCommon;
 using static System.Diagnostics.Debug;
@@ -123,7 +124,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	/// <summary>
 	/// Tree of all EditorInterpolatedRateAlteringEvents.
 	/// </summary>
-	private RedBlackTree<EditorInterpolatedRateAlteringEvent> InterpolatedScrollRateEvents;
+	private InterpolatedRateAlteringEventTree InterpolatedScrollRateEvents;
 
 	/// <summary>
 	/// IntervalTree of all EditorStopEvents by time. Stop lengths are in time.
@@ -619,7 +620,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		var editorEvents = new EventTree(this);
 		var holds = new EventTree(this);
 		var rateAlteringEvents = new RateAlteringEventTree(this);
-		var interpolatedScrollRateEvents = new RedBlackTree<EditorInterpolatedRateAlteringEvent>();
+		var interpolatedScrollRateEvents = new InterpolatedRateAlteringEventTree(this);
 		var miscEvents = new EventTree(this);
 		var labels = new EventTree(this);
 
@@ -763,7 +764,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		var editorEvents = new EventTree(this);
 		var holds = new EventTree(this);
 		var rateAlteringEvents = new RateAlteringEventTree(this);
-		var interpolatedScrollRateEvents = new RedBlackTree<EditorInterpolatedRateAlteringEvent>();
+		var interpolatedScrollRateEvents = new InterpolatedRateAlteringEventTree(this);
 		var miscEvents = new EventTree(this);
 		var labels = new EventTree(this);
 
@@ -878,7 +879,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		return RateAlteringEvents;
 	}
 
-	public IReadOnlyRedBlackTree<EditorInterpolatedRateAlteringEvent> GetInterpolatedScrollRateEvents()
+	public IReadOnlyInterpolatedRateAlteringEventTree GetInterpolatedScrollRateEvents()
 	{
 		return InterpolatedScrollRateEvents;
 	}
@@ -1181,10 +1182,10 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 					fakes.Insert(fse, fse.GetChartTime(), fse.GetEndChartTime());
 					break;
 				case EditorStopEvent se:
-					stops.Insert(se, se.GetChartTime(), se.GetEndChartTime());
+					stops.Insert(se, se.GetChartTime(), Math.Max(se.GetChartTime(), se.GetEndChartTime()));
 					break;
 				case EditorDelayEvent de:
-					delays.Insert(de, de.GetChartTime(), de.GetEndChartTime());
+					delays.Insert(de, de.GetChartTime(), Math.Max(de.GetChartTime(), de.GetEndChartTime()));
 					break;
 				case EditorWarpEvent we:
 					warps.Insert(we, we.GetChartPosition(), we.GetEndChartPosition());
@@ -1805,11 +1806,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		if (!CanBeEdited())
 			return;
 
-		// Unfortunately, Stepmania treats negative stops as occurring after notes at the same position
-		// and positive notes as occurring before notes at the same position. This means that altering the
-		// sign will alter how notes are sorted, which means we need to remove the stop and re-add it in
-		// order for the EventTree to sort properly.
-		// If the sign doesn't change, we still need to update the IntervalTree holding the Stops.
+		// Negative stops are sorted differently than positive stops.
 		var signChanged = stop.StopEvent.LengthSeconds < 0.0 != newTime < 0;
 		if (signChanged)
 		{
@@ -1817,7 +1814,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		}
 		else
 		{
-			var deleted = Stops.Delete(stop.GetChartTime(), stop.GetEndChartTime());
+			var deleted = Stops.Delete(stop, stop.GetChartTime(), Math.Max(stop.GetChartTime(), stop.GetEndChartTime()));
 			Assert(deleted);
 		}
 
@@ -1829,7 +1826,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		}
 		else
 		{
-			Stops.Insert(stop, stop.GetChartTime(), stop.GetEndChartTime());
+			Stops.Insert(stop, stop.GetChartTime(), Math.Max(stop.GetChartTime(), stop.GetEndChartTime()));
 		}
 
 		// Stops affect timing data.
@@ -1839,16 +1836,34 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	/// <summary>
 	/// Called when an EditorDelayEvent's time is modified.
 	/// </summary>
-	public void OnDelayTimeModified(EditorDelayEvent delay, double oldEndTime, double newEndTime)
+	public void UpdateDelayTime(EditorDelayEvent delay, double newTime)
 	{
 		Assert(CanBeEdited());
 		if (!CanBeEdited())
 			return;
 
-		// Update the IntervalTree holding this Delay.
-		var deleted = Delays.Delete(delay.GetChartTime(), oldEndTime);
-		Assert(deleted);
-		Delays.Insert(delay, delay.GetChartTime(), newEndTime);
+		// Negative delays are sorted differently than positive delays.
+		var signChanged = delay.StopEvent.LengthSeconds < 0.0 != newTime < 0;
+		if (signChanged)
+		{
+			DeleteEvent(delay);
+		}
+		else
+		{
+			var deleted = Delays.Delete(delay, delay.GetChartTime(), Math.Max(delay.GetChartTime(), delay.GetEndChartTime()));
+			Assert(deleted);
+		}
+
+		delay.StopEvent.LengthSeconds = newTime;
+
+		if (signChanged)
+		{
+			AddEvent(delay);
+		}
+		else
+		{
+			Delays.Insert(delay, delay.GetChartTime(), Math.Max(delay.GetChartTime(), delay.GetEndChartTime()));
+		}
 
 		// Delays affect timing data.
 		UpdateEventTimingData();
@@ -1864,7 +1879,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			return;
 
 		// Update the IntervalTree holding this Warp.
-		var deleted = Warps.Delete(warp.GetChartPosition(), oldEndPosition);
+		var deleted = Warps.Delete(warp, warp.GetChartPosition(), oldEndPosition);
 		Assert(deleted);
 		Warps.Insert(warp, warp.GetChartPosition(), newEndPosition);
 
@@ -1882,7 +1897,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			return;
 
 		// Update the IntervalTree holding this Fake.
-		var deleted = Fakes.Delete(fake.GetChartTime(), oldEndTime);
+		var deleted = Fakes.Delete(fake, fake.GetChartTime(), oldEndTime);
 		Assert(deleted);
 		Fakes.Insert(fake, fake.GetChartTime(), newEndTime);
 	}
@@ -1965,7 +1980,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			return;
 
 		// Update the IntervalTree holding the EditorPatternEvents.
-		var deleted = Patterns.Delete(pattern.GetChartPosition(), oldEndPosition);
+		var deleted = Patterns.Delete(pattern, pattern.GetChartPosition(), oldEndPosition);
 		Assert(deleted);
 		Patterns.Insert(pattern, pattern.GetChartPosition(), newEndPosition);
 	}
@@ -2031,7 +2046,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			switch (editorEvent)
 			{
 				case EditorFakeSegmentEvent fse:
-					deleted = Fakes.Delete(fse.GetChartTime(), fse.GetEndChartTime());
+					deleted = Fakes.Delete(fse, fse.GetChartTime(), fse.GetEndChartTime());
 					Assert(deleted);
 					break;
 				case EditorRateAlteringEvent rae:
@@ -2042,15 +2057,15 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 					switch (rae)
 					{
 						case EditorStopEvent se:
-							deleted = Stops.Delete(se.GetChartTime(), se.GetEndChartTime());
+							deleted = Stops.Delete(se, se.GetChartTime(), Math.Max(se.GetChartTime(), se.GetEndChartTime()));
 							Assert(deleted);
 							break;
 						case EditorDelayEvent de:
-							deleted = Delays.Delete(de.GetChartTime(), de.GetEndChartTime());
+							deleted = Delays.Delete(de, de.GetChartTime(), Math.Max(de.GetChartTime(), de.GetEndChartTime()));
 							Assert(deleted);
 							break;
 						case EditorWarpEvent we:
-							deleted = Warps.Delete(we.GetChartPosition(), we.GetEndChartPosition());
+							deleted = Warps.Delete(we, we.GetChartPosition(), we.GetEndChartPosition());
 							Assert(deleted);
 							break;
 					}
@@ -2089,7 +2104,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 				}
 				case EditorPatternEvent pe:
 				{
-					deleted = Patterns.Delete(pe.GetChartPosition(), pe.GetEndChartPosition());
+					deleted = Patterns.Delete(pe, pe.GetChartPosition(), pe.GetEndChartPosition());
 					Assert(deleted);
 					break;
 				}
@@ -2163,10 +2178,10 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 					switch (rae)
 					{
 						case EditorStopEvent se:
-							Stops.Insert(se, se.GetChartTime(), se.GetEndChartTime());
+							Stops.Insert(se, se.GetChartTime(), Math.Max(se.GetChartTime(), se.GetEndChartTime()));
 							break;
 						case EditorDelayEvent de:
-							Delays.Insert(de, de.GetChartTime(), de.GetEndChartTime());
+							Delays.Insert(de, de.GetChartTime(), Math.Max(de.GetChartTime(), de.GetEndChartTime()));
 							break;
 						case EditorWarpEvent we:
 							Warps.Insert(we, we.GetChartPosition(), we.GetEndChartPosition());
@@ -2235,12 +2250,13 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	/// Adds the given events and ensures the chart is in a consistent state afterwards
 	/// by forcibly removing any events which conflict with the events to be added. This
 	/// may result in modifications like shortening holds or converting a hold to a tap
-	/// which require deleting and then adding a modified event or events. Any events
+	/// which requires deleting and then adding a modified event or events. Any events
 	/// which were deleted or added as side effects of adding the given events will be
 	/// returned.
 	/// This method expects that the given events are valid with respect to each other
 	/// (for example, no overlapping taps in the the given events) and are valid at their
 	/// positions (for example, no time signatures at invalid rows).
+	/// This method expects that the given events are sorted.
 	/// </summary>
 	/// <param name="events">Events to add.</param>
 	/// <returns>
@@ -2257,6 +2273,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		if (!CanBeEdited())
 			return (sideEffectAddedEvents, sideEffectDeletedEvents);
 
+		var rateDirty = false;
 		foreach (var editorEvent in events)
 		{
 			var lane = editorEvent.GetLane();
@@ -2337,11 +2354,36 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			else
 			{
 				// If the same kind of event exists at this row, delete it.
-				var enumerator = EditorEvents.Find(editorEvent);
-				if (enumerator != null && enumerator.MoveNext())
+				var eventsAtRow = EditorEvents.FindEventsAtRow(editorEvent.GetRow());
+				foreach (var potentialConflictingEvent in eventsAtRow)
 				{
-					sideEffectDeletedEvents.AddRange(DeleteEvent(enumerator.Current));
+					if (editorEvent.GetType() == potentialConflictingEvent.GetType())
+					{
+						sideEffectDeletedEvents.AddRange(DeleteEvent(potentialConflictingEvent));
+
+						// Determine if the side effect of deleting the conflicting note would
+						// affect the rate.
+						if (!rateDirty)
+						{
+							foreach (var deletedEvent in sideEffectDeletedEvents)
+							{
+								if (deletedEvent is EditorRateAlteringEvent)
+								{
+									rateDirty = true;
+									break;
+								}
+							}
+						}
+					}
 				}
+			}
+
+			// By trying to force add this note, we altered the rate. This can happen for
+			// example when forcing a stop to get added over another stop. This will affect
+			// the time of the events being force added, so we need to recompute their times.
+			if (rateDirty)
+			{
+				editorEvent.ResetTimeBasedOnRow();
 			}
 
 			// Now that all conflicting notes are deleted or adjusted, add this note.

@@ -1,7 +1,8 @@
 ﻿using Fumen;
 using Fumen.ChartDefinition;
+using static StepManiaEditor.EditorEvents.Containers.EventTreeUtils;
 
-namespace StepManiaEditor;
+namespace StepManiaEditor.EditorEvents.Containers;
 
 /// <summary>
 /// Read-only interface for specialization of RedBlackTree on EditorRateAlteringEvents
@@ -10,7 +11,6 @@ namespace StepManiaEditor;
 /// </summary>
 internal interface IReadOnlyRateAlteringEventTree : IReadOnlyRedBlackTree<EditorRateAlteringEvent>
 {
-	// @formatter:off
 	IReadOnlyRedBlackTreeEnumerator FindBest(IReadOnlyEditorPosition p);
 	IReadOnlyRedBlackTreeEnumerator FindBestByTime(double chartTime);
 	IReadOnlyRedBlackTreeEnumerator FindBestByPosition(double chartPosition);
@@ -18,9 +18,11 @@ internal interface IReadOnlyRateAlteringEventTree : IReadOnlyRedBlackTree<Editor
 	EditorRateAlteringEvent FindActiveRateAlteringEvent(Event smEvent);
 	IReadOnlyRedBlackTreeEnumerator FindActiveRateAlteringEventEnumeratorForTime(double chartTime, bool allowEqualTo = true);
 	EditorRateAlteringEvent FindActiveRateAlteringEventForTime(double chartTime, bool allowEqualTo = true);
-	IReadOnlyRedBlackTreeEnumerator FindActiveRateAlteringEventEnumeratorForPosition(double chartPosition, bool allowEqualTo = true);
+
+	IReadOnlyRedBlackTreeEnumerator FindActiveRateAlteringEventEnumeratorForPosition(double chartPosition,
+		bool allowEqualTo = true);
+
 	EditorRateAlteringEvent FindActiveRateAlteringEventForPosition(double chartPosition, bool allowEqualTo = true);
-	// @formatter:on
 }
 
 /// <summary>
@@ -249,162 +251,4 @@ internal class RateAlteringEventTree : RedBlackTree<EditorRateAlteringEvent>, IR
 		FirstValue(out var editorEvent);
 		return editorEvent;
 	}
-
-	#region Find Result Adjustment
-
-	// ReSharper disable UnusedMember.Local
-	private static bool EnsureGreatestLessThanTime(
-		IReadOnlyRedBlackTree<EditorRateAlteringEvent>.IReadOnlyRedBlackTreeEnumerator e,
-		double chartTime)
-	{
-		while (e.MoveNext() && e.Current!.GetChartTime() < chartTime)
-		{
-		}
-
-		while (e.MovePrev() && e.Current!.GetChartTime() >= chartTime)
-		{
-		}
-
-		return UnsetAndReturnIfWasValid(e);
-	}
-
-	private static bool EnsureGreatestLessThanOrEqualToTime(
-		IReadOnlyRedBlackTree<EditorRateAlteringEvent>.IReadOnlyRedBlackTreeEnumerator e, double chartTime)
-	{
-		while (e.MoveNext() && e.Current!.GetChartTime() <= chartTime)
-		{
-		}
-
-		while (e.MovePrev() && e.Current!.GetChartTime() > chartTime)
-		{
-		}
-
-		return UnsetAndReturnIfWasValid(e);
-	}
-
-	private static bool EnsureLeastGreaterThanTime(
-		IReadOnlyRedBlackTree<EditorRateAlteringEvent>.IReadOnlyRedBlackTreeEnumerator e,
-		double chartTime)
-	{
-		while (e.MovePrev() && e.Current!.GetChartTime() > chartTime)
-		{
-		}
-
-		while (e.MoveNext() && e.Current!.GetChartTime() <= chartTime)
-		{
-		}
-
-		return UnsetAndReturnIfWasValid(e);
-	}
-
-	private static bool EnsureLeastGreaterThanOrEqualToTime(
-		IReadOnlyRedBlackTree<EditorRateAlteringEvent>.IReadOnlyRedBlackTreeEnumerator e, double chartTime)
-	{
-		while (e.MovePrev() && e.Current!.GetChartTime() >= chartTime)
-		{
-		}
-
-		while (e.MoveNext() && e.Current!.GetChartTime() < chartTime)
-		{
-		}
-
-		return UnsetAndReturnIfWasValid(e);
-	}
-
-	private static bool EnsureGreatestLessThanPosition(
-		IReadOnlyRedBlackTree<EditorRateAlteringEvent>.IReadOnlyRedBlackTreeEnumerator e,
-		double chartPosition)
-	{
-		while (e.MoveNext() && e.Current!.GetChartPosition() < chartPosition)
-		{
-		}
-
-		while (e.MovePrev() && e.Current!.GetChartPosition() >= chartPosition)
-		{
-		}
-
-		return UnsetAndReturnIfWasValid(e);
-	}
-
-	private static bool EnsureGreatestLessThanOrEqualToPosition(
-		IReadOnlyRedBlackTree<EditorRateAlteringEvent>.IReadOnlyRedBlackTreeEnumerator e, double chartPosition)
-	{
-		while (e.MoveNext() && e.Current!.GetChartPosition() <= chartPosition)
-		{
-		}
-
-		while (e.MovePrev() && e.Current!.GetChartPosition() > chartPosition)
-		{
-		}
-
-		return UnsetAndReturnIfWasValid(e);
-	}
-
-	private static bool EnsureLeastGreaterThanPosition(
-		IReadOnlyRedBlackTree<EditorRateAlteringEvent>.IReadOnlyRedBlackTreeEnumerator e, double chartPosition)
-	{
-		while (e.MovePrev() && e.Current!.GetChartPosition() > chartPosition)
-		{
-		}
-
-		while (e.MoveNext() && e.Current!.GetChartPosition() <= chartPosition)
-		{
-		}
-
-		return UnsetAndReturnIfWasValid(e);
-	}
-
-	private static bool EnsureLeastGreaterThanOrEqualToPosition(
-		IReadOnlyRedBlackTree<EditorRateAlteringEvent>.IReadOnlyRedBlackTreeEnumerator e, double chartPosition)
-	{
-		while (e.MovePrev() && e.Current!.GetChartPosition() >= chartPosition)
-		{
-		}
-
-		while (e.MoveNext() && e.Current!.GetChartPosition() < chartPosition)
-		{
-		}
-
-		return UnsetAndReturnIfWasValid(e);
-	}
-
-	private static bool EnsureGreatestLessThan(IReadOnlyRedBlackTree<EditorRateAlteringEvent>.IReadOnlyRedBlackTreeEnumerator e,
-		Event smEvent)
-	{
-		while (e.MoveNext() && EditorEvent.CompareEditorEventToSmEvent(e.Current, smEvent) < 0)
-		{
-		}
-
-		while (e.MovePrev() && EditorEvent.CompareEditorEventToSmEvent(e.Current, smEvent) >= 0)
-		{
-		}
-
-		return UnsetAndReturnIfWasValid(e);
-	}
-
-	private static bool EnsureGreatestLessThanOrEqualTo(
-		IReadOnlyRedBlackTree<EditorRateAlteringEvent>.IReadOnlyRedBlackTreeEnumerator e,
-		Event smEvent)
-	{
-		while (e.MoveNext() && EditorEvent.CompareEditorEventToSmEvent(e.Current, smEvent) <= 0)
-		{
-		}
-
-		while (e.MovePrev() && EditorEvent.CompareEditorEventToSmEvent(e.Current, smEvent) > 0)
-		{
-		}
-
-		return UnsetAndReturnIfWasValid(e);
-	}
-
-	// ReSharper restore UnusedMember.Local
-
-	private static bool UnsetAndReturnIfWasValid(IReadOnlyRedBlackTree<EditorRateAlteringEvent>.IReadOnlyRedBlackTreeEnumerator e)
-	{
-		var ret = e.IsCurrentValid();
-		e.Unset();
-		return ret;
-	}
-
-	#endregion Find Result Adjustment
 }

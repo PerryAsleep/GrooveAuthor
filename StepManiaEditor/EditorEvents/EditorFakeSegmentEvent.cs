@@ -1,4 +1,5 @@
-﻿using Fumen.ChartDefinition;
+﻿using System;
+using Fumen.ChartDefinition;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGameExtensions;
@@ -9,7 +10,7 @@ using static StepManiaEditor.Utils;
 
 namespace StepManiaEditor;
 
-internal sealed class EditorFakeSegmentEvent : EditorEvent, IChartRegion
+internal sealed class EditorFakeSegmentEvent : EditorEvent, IEquatable<EditorFakeSegmentEvent>, IChartRegion
 {
 	public static readonly string EventShortDescription =
 		"Notes that occur during a fake region are not counted.";
@@ -201,4 +202,27 @@ internal sealed class EditorFakeSegmentEvent : EditorEvent, IChartRegion
 			WidgetHelp,
 			0.0);
 	}
+
+	#region IEquatable
+
+	public bool Equals(EditorFakeSegmentEvent other)
+	{
+		// Only implementing IEquatable for IntervalTree.
+		return ReferenceEquals(this, other);
+	}
+
+	public override bool Equals(object obj)
+	{
+		// Only implementing IEquatable for IntervalTree.
+		return ReferenceEquals(this, obj);
+	}
+
+	public override int GetHashCode()
+	{
+		// Only implementing IEquatable for IntervalTree.
+		// ReSharper disable once BaseObjectGetHashCodeCallInGetHashCode
+		return base.GetHashCode();
+	}
+
+	#endregion IEquatable
 }

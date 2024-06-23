@@ -19,7 +19,6 @@ internal sealed class EventConfig
 		None,
 		TimeOnlySearch,
 		RowSearch,
-		InterpolatedRateAlteringSearch,
 		Preview,
 		LastSecondHint,
 	}
@@ -119,9 +118,6 @@ internal sealed class EventConfig
 			case EditorSearchRateAlteringEventWithRow:
 				specialType = SpecialType.RowSearch;
 				break;
-			case EditorSearchInterpolatedRateAlteringEvent:
-				specialType = SpecialType.InterpolatedRateAlteringSearch;
-				break;
 			case EditorPreviewRegionEvent:
 				specialType = SpecialType.Preview;
 				break;
@@ -145,8 +141,7 @@ internal sealed class EventConfig
 	public bool IsSearchEvent()
 	{
 		if (SpecialEventType == SpecialType.TimeOnlySearch
-		    || SpecialEventType == SpecialType.RowSearch
-		    || SpecialEventType == SpecialType.InterpolatedRateAlteringSearch)
+		    || SpecialEventType == SpecialType.RowSearch)
 			return true;
 
 		if (ChartEvent != null && AdditionalChartEvent == null && ChartEvent is SearchEvent)
@@ -414,10 +409,5 @@ internal sealed class EventConfig
 	public static EventConfig CreateSearchEventConfigWithOnlyRow(EditorChart chart, double row)
 	{
 		return new EventConfig(chart, null, true, row, 0.0, SpecialType.RowSearch, false, false);
-	}
-
-	public static EventConfig CreateInterpolatedRateAlteringSearchEvent(EditorChart chart, double row, double chartTime)
-	{
-		return new EventConfig(chart, null, true, row, chartTime, SpecialType.InterpolatedRateAlteringSearch, false, false);
 	}
 }

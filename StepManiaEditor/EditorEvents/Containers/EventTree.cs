@@ -2,9 +2,10 @@
 using System.Diagnostics;
 using Fumen;
 using static System.Diagnostics.Debug;
+using static StepManiaEditor.EditorEvents.Containers.EventTreeUtils;
 using static StepManiaLibrary.Constants;
 
-namespace StepManiaEditor;
+namespace StepManiaEditor.EditorEvents.Containers;
 
 /// <summary>
 /// Read-only interface for specialization of RedBlackTree on EditorEvents
@@ -349,131 +350,4 @@ internal class EventTree : RedBlackTree<EditorEvent>, IReadOnlyEventTree
 
 		PreviousList = list;
 	}
-
-	#region Find Result Adjustment
-
-	// ReSharper disable UnusedMember.Local
-	private static bool EnsureGreatestLessThanTime(IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator e,
-		double chartTime)
-	{
-		while (e.MoveNext() && e.Current!.GetChartTime() < chartTime)
-		{
-		}
-
-		while (e.MovePrev() && e.Current!.GetChartTime() >= chartTime)
-		{
-		}
-
-		return UnsetAndReturnIfWasValid(e);
-	}
-
-	private static bool EnsureGreatestLessThanOrEqualToTime(IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator e,
-		double chartTime)
-	{
-		while (e.MoveNext() && e.Current!.GetChartTime() <= chartTime)
-		{
-		}
-
-		while (e.MovePrev() && e.Current!.GetChartTime() > chartTime)
-		{
-		}
-
-		return UnsetAndReturnIfWasValid(e);
-	}
-
-	private static bool EnsureLeastGreaterThanTime(IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator e,
-		double chartTime)
-	{
-		while (e.MovePrev() && e.Current!.GetChartTime() > chartTime)
-		{
-		}
-
-		while (e.MoveNext() && e.Current!.GetChartTime() <= chartTime)
-		{
-		}
-
-		return UnsetAndReturnIfWasValid(e);
-	}
-
-	private static bool EnsureLeastGreaterThanOrEqualToTime(IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator e,
-		double chartTime)
-	{
-		while (e.MovePrev() && e.Current!.GetChartTime() >= chartTime)
-		{
-		}
-
-		while (e.MoveNext() && e.Current!.GetChartTime() < chartTime)
-		{
-		}
-
-		return UnsetAndReturnIfWasValid(e);
-	}
-
-	private static bool EnsureGreatestLessThanPosition(IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator e,
-		double chartPosition)
-	{
-		while (e.MoveNext() && e.Current!.GetChartPosition() < chartPosition)
-		{
-		}
-
-		while (e.MovePrev() && e.Current!.GetChartPosition() >= chartPosition)
-		{
-		}
-
-		return UnsetAndReturnIfWasValid(e);
-	}
-
-	private static bool EnsureGreatestLessThanOrEqualToPosition(
-		IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator e,
-		double chartPosition)
-	{
-		while (e.MoveNext() && e.Current!.GetChartPosition() <= chartPosition)
-		{
-		}
-
-		while (e.MovePrev() && e.Current!.GetChartPosition() > chartPosition)
-		{
-		}
-
-		return UnsetAndReturnIfWasValid(e);
-	}
-
-	private static bool EnsureLeastGreaterThanPosition(IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator e,
-		double chartPosition)
-	{
-		while (e.MovePrev() && e.Current!.GetChartPosition() > chartPosition)
-		{
-		}
-
-		while (e.MoveNext() && e.Current!.GetChartPosition() <= chartPosition)
-		{
-		}
-
-		return UnsetAndReturnIfWasValid(e);
-	}
-
-	private static bool EnsureLeastGreaterThanOrEqualToPosition(
-		IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator e,
-		double chartPosition)
-	{
-		while (e.MovePrev() && e.Current!.GetChartPosition() >= chartPosition)
-		{
-		}
-
-		while (e.MoveNext() && e.Current!.GetChartPosition() < chartPosition)
-		{
-		}
-
-		return UnsetAndReturnIfWasValid(e);
-	}
-	// ReSharper restore UnusedMember.Local
-
-	private static bool UnsetAndReturnIfWasValid(IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator e)
-	{
-		var ret = e.IsCurrentValid();
-		e.Unset();
-		return ret;
-	}
-
-	#endregion Find Result Adjustment
 }
