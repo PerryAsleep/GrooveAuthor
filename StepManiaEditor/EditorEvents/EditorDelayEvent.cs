@@ -26,7 +26,7 @@ internal sealed class EditorDelayEvent : EditorRateAlteringEvent, IEquatable<Edi
 	private const string Format = "%.9gs";
 	private const float Speed = 0.01f;
 
-	public Stop StopEvent;
+	private readonly Stop StopEvent;
 	private bool WidthDirty;
 
 	#region IChartRegion Implementation
@@ -119,10 +119,15 @@ internal sealed class EditorDelayEvent : EditorRateAlteringEvent, IEquatable<Edi
 
 			if (!StopEvent.LengthSeconds.DoubleEquals(value))
 			{
-				EditorChart.UpdateDelayTime(this, value);
+				EditorChart.UpdateDelayTime(this, value, ref StopEvent.LengthSeconds);
 				WidthDirty = true;
 			}
 		}
+	}
+
+	public double GetDelayLengthSeconds()
+	{
+		return StopEvent.LengthSeconds;
 	}
 
 	/// <remarks>

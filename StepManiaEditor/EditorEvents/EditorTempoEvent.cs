@@ -18,11 +18,12 @@ internal sealed class EditorTempoEvent : EditorRateAlteringEvent
 		"Expected format: \"<value>bpm\". e.g. \"120.0bpm\".\n" +
 		EventShortDescription;
 
-	// TODO: 0.0 and negative tempo handling
+	public const double MinTempo = 0.000001;
+
 	private const string Format = "%.9gbpm";
 	private const float Speed = 0.25f;
 
-	public Tempo TempoEvent;
+	private readonly Tempo TempoEvent;
 	private bool WidthDirty;
 
 	public double DoubleValue
@@ -34,17 +35,28 @@ internal sealed class EditorTempoEvent : EditorRateAlteringEvent
 			if (!EditorChart.CanBeEdited())
 				return;
 
-			// TODO: 0.0 and negative bpm handling
-			if (!value.DoubleEquals(0.0))
+			if (value >= MinTempo && !TempoEvent.TempoBPM.DoubleEquals(value))
 			{
-				if (!TempoEvent.TempoBPM.DoubleEquals(value))
-				{
-					TempoEvent.TempoBPM = value;
-					WidthDirty = true;
-					EditorChart.OnTempoModified(this);
-				}
+				TempoEvent.TempoBPM = value;
+				WidthDirty = true;
+				EditorChart.OnTempoModified(this);
 			}
 		}
+	}
+
+	public override double GetTempo()
+	{
+		return TempoEvent.TempoBPM;
+	}
+
+	public double GetRowsPerSecond(int rowsPerBeat)
+	{
+		return TempoEvent.GetRowsPerSecond(rowsPerBeat);
+	}
+
+	public double GetSecondsPerRow(int rowsPerBeat)
+	{
+		return TempoEvent.GetSecondsPerRow(rowsPerBeat);
 	}
 
 	public EditorTempoEvent(EventConfig config, Tempo chartEvent) : base(config)
@@ -112,6 +124,7 @@ internal sealed class EditorTempoEvent : EditorRateAlteringEvent
 			Speed,
 			Format,
 			Alpha,
-			WidgetHelp);
+			WidgetHelp,
+			0.0);
 	}
 }

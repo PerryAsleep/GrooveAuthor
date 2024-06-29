@@ -1,6 +1,5 @@
 ﻿using System;
 using Fumen;
-using Fumen.ChartDefinition;
 
 namespace StepManiaEditor;
 
@@ -44,9 +43,9 @@ internal abstract class EditorRateAlteringEvent : EditorEvent, IComparable<Edito
 	private double SecondsPerRow;
 
 	/// <summary>
-	/// The most recent TimeSignature event that precedes this event.
+	/// The most recent EditorTimeSignatureEvent event that precedes this event.
 	/// </summary>
-	private TimeSignature LastTimeSignature;
+	private EditorTimeSignatureEvent LastTimeSignature;
 
 	protected EditorRateAlteringEvent(EventConfig config) : base(config)
 	{
@@ -62,7 +61,7 @@ internal abstract class EditorRateAlteringEvent : EditorEvent, IComparable<Edito
 		double tempo,
 		double rowsPerSecond,
 		double secondsPerRow,
-		TimeSignature lastTimeSignature,
+		EditorTimeSignatureEvent lastTimeSignature,
 		bool isPositionImmutable)
 	{
 		WarpRowsRemaining = warpRowsRemaining;
@@ -102,12 +101,12 @@ internal abstract class EditorRateAlteringEvent : EditorEvent, IComparable<Edito
 		ScrollRate = scrollRate;
 	}
 
-	public double GetScrollRate()
+	public virtual double GetScrollRate()
 	{
 		return ScrollRate;
 	}
 
-	public double GetTempo()
+	public virtual double GetTempo()
 	{
 		return Tempo;
 	}
@@ -122,9 +121,20 @@ internal abstract class EditorRateAlteringEvent : EditorEvent, IComparable<Edito
 		return SecondsPerRow;
 	}
 
-	public TimeSignature GetTimeSignature()
+	public EditorTimeSignatureEvent GetTimeSignature()
 	{
 		return LastTimeSignature;
+	}
+
+	/// <summary>
+	/// Given a row in that occurs during the time signature active for this rate altering event,
+	/// returns the row relative to the start of the measure containing the row.
+	/// </summary>
+	/// <param name="row">Row in question.</param>
+	/// <returns>Row relative to its measure start.</returns>
+	public virtual int GetRowRelativeToMeasureStart(int row)
+	{
+		return LastTimeSignature.GetRowRelativeToMeasureStart(row);
 	}
 
 	/// <summary>
@@ -184,12 +194,16 @@ internal abstract class EditorRateAlteringEvent : EditorEvent, IComparable<Edito
 /// </summary>
 internal sealed class EditorSearchRateAlteringEventWithTime : EditorRateAlteringEvent
 {
-	private readonly double ChartTime;
+	private double ChartTime;
 
 	public EditorSearchRateAlteringEventWithTime(EventConfig config)
 		: base(config)
 	{
-		ChartTime = config.ChartTime;
+	}
+
+	protected override void SetChartTime(double chartTime)
+	{
+		ChartTime = chartTime;
 	}
 
 	public override double GetChartTime()

@@ -15,7 +15,7 @@ internal sealed class EditorLabelEvent : EditorEvent
 		"Label.\n" +
 		EventShortDescription;
 
-	public Label LabelEvent;
+	private readonly Label LabelEvent;
 	private bool WidthDirty;
 
 	public string StringValue

@@ -60,7 +60,7 @@ internal sealed class EditorTapNoteEvent : EditorEvent
 		var alpha = IsBeingEdited() ? ActiveEditEventAlpha : Alpha;
 		if (alpha <= 0.0f)
 			return;
-		var (textureId, rot) = arrowGraphicManager.GetArrowTexture(LaneTapNote.IntegerPosition, LaneTapNote.Lane, IsSelected());
+		var (textureId, rot) = arrowGraphicManager.GetArrowTexture(GetStepColorRow(), LaneTapNote.Lane, IsSelected());
 		textureAtlas.Draw(
 			textureId,
 			spriteBatch,

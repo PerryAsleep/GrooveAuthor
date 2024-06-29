@@ -148,21 +148,25 @@ internal sealed class LaneEditState
 			{
 				if (up)
 				{
-					var config = EventConfig.CreateTapConfigWithExplicitTime(
+					var config = EventConfig.CreateTapConfigWithRowDependencies(
 						EventBeingEdited.GetEditorChart(),
 						EventBeingEdited.GetRow(),
 						EventBeingEdited.GetChartTime(),
-						EventBeingEdited.GetLane());
+						EventBeingEdited.GetLane(),
+						EventBeingEdited.GetRowRelativeToMeasureStart(),
+						EventBeingEdited.GetTimeSignatureDenominator());
 					config.IsBeingEdited = true;
 					EventBeingEdited = EditorEvent.CreateEvent(config);
 				}
 				else
 				{
-					var config = EventConfig.CreateMineConfigWithExplicitTime(
+					var config = EventConfig.CreateMineConfigWithRowDependencies(
 						EventBeingEdited.GetEditorChart(),
 						EventBeingEdited.GetRow(),
 						EventBeingEdited.GetChartTime(),
-						EventBeingEdited.GetLane());
+						EventBeingEdited.GetLane(),
+						EventBeingEdited.GetRowRelativeToMeasureStart(),
+						EventBeingEdited.GetTimeSignatureDenominator());
 					config.IsBeingEdited = true;
 					EventBeingEdited = EditorEvent.CreateEvent(config);
 				}

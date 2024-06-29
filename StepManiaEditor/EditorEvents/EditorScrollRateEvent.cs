@@ -23,7 +23,7 @@ internal sealed class EditorScrollRateEvent : EditorRateAlteringEvent
 	private const string Format = "%.9gx";
 	private const float Speed = 0.01f;
 
-	public ScrollRate ScrollRateEvent;
+	private readonly ScrollRate ScrollRateEvent;
 	private bool WidthDirty;
 
 	public double DoubleValue
@@ -42,6 +42,11 @@ internal sealed class EditorScrollRateEvent : EditorRateAlteringEvent
 				EditorChart.OnScrollRateModified(this);
 			}
 		}
+	}
+
+	public override double GetScrollRate()
+	{
+		return ScrollRateEvent.Rate;
 	}
 
 	/// <remarks>

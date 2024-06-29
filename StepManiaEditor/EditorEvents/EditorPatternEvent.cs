@@ -366,10 +366,12 @@ internal sealed class EditorPatternEvent : EditorEvent, IEquatable<EditorPattern
 	public EditorPatternEvent(EventConfig config, Definition definition) : base(config)
 	{
 		EventDefinition = definition;
-
-		ResetTimeBasedOnRow();
-
 		WidthDirty = true;
+	}
+
+	public void SetDefinition(Definition definition)
+	{
+		EventDefinition = definition;
 	}
 
 	/// <summary>

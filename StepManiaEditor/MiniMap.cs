@@ -1,6 +1,5 @@
 ﻿using System;
 using Fumen;
-using Fumen.ChartDefinition;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
@@ -736,32 +735,32 @@ internal sealed class MiniMap
 	}
 
 	/// <summary>
-	/// Add a note represented by the given LaneNote to the MiniMap.
+	/// Add a tap note represented by the given EditorEvent to the MiniMap.
 	/// </summary>
-	/// <param name="chartEvent">LaneNote to add.</param>
+	/// <param name="chartEvent">EditorEvent to add.</param>
 	/// <param name="position">Position in Chart space. Can be time or row.</param>
 	/// <param name="selected">Whether or not the note is selected.</param>
 	/// <returns>AddResult describing if the note was added.</returns>
-	public AddResult AddNote(LaneNote chartEvent, double position, bool selected)
+	public AddResult AddTapNote(EditorEvent chartEvent, double position, bool selected)
 	{
 		return AddShortNote(
 			GetYPixelRelativeToBounds(position),
-			LaneXPositions[chartEvent.Lane],
-			ArrowGraphicManager.GetArrowColor(chartEvent.IntegerPosition, chartEvent.Lane, selected));
+			LaneXPositions[chartEvent.GetLane()],
+			ArrowGraphicManager.GetArrowColor(chartEvent.GetStepColorRow(), chartEvent.GetLane(), selected));
 	}
 
 	/// <summary>
-	/// Add a mine represented by the given LaneNote to the MiniMap.
+	/// Add a mine represented by the given EditorMineNoteEvent to the MiniMap.
 	/// </summary>
-	/// <param name="chartEvent">LaneNote to add.</param>
+	/// <param name="chartEvent">EditorMineNoteEvent to add.</param>
 	/// <param name="position">Position in Chart space. Can be time or row.</param>
 	/// <param name="selected">Whether or not the mine is selected.</param>
 	/// <returns>AddResult describing if the note was added.</returns>
-	public AddResult AddMine(LaneNote chartEvent, double position, bool selected)
+	public AddResult AddMine(EditorMineNoteEvent chartEvent, double position, bool selected)
 	{
 		return AddShortNote(
 			GetYPixelRelativeToBounds(position),
-			LaneXPositions[chartEvent.Lane],
+			LaneXPositions[chartEvent.GetLane()],
 			ArrowGraphicManager.GetMineColor(selected));
 	}
 
@@ -833,26 +832,27 @@ internal sealed class MiniMap
 	/// <summary>
 	/// Add a hold or roll note to the MiniMap.
 	/// </summary>
-	/// <param name="start">LaneHoldStartNote representing the start of the hold.</param>
+	/// <param name="start">EditorHoldNoteEvent representing the start of the hold.</param>
 	/// <param name="startPosition">Start position of the hold in Chart space. Can be time or row.</param>
 	/// <param name="endPosition">End position of the hold in Chart space. Can be time or row.</param>
 	/// <param name="roll">Whether or not the hold is a roll.</param>
 	/// <param name="selected">Whether or not the hold is selected.</param>
 	/// <returns>AddResult describing if the hold was added.</returns>
-	public AddResult AddHold(LaneHoldStartNote start, double startPosition, double endPosition, bool roll, bool selected)
+	public AddResult AddHold(EditorHoldNoteEvent start, double startPosition, double endPosition, bool roll, bool selected)
 	{
 		var yStart = GetYPixelRelativeToBounds(startPosition);
 		var yEnd = GetYPixelRelativeToBounds(endPosition) + 1.0;
 
-		var x = LaneXPositions[start.Lane];
+		var x = LaneXPositions[start.GetLane()];
 		var bodyColor = roll
-			? ArrowGraphicManager.GetRollColor(start.IntegerPosition, start.Lane, selected)
-			: ArrowGraphicManager.GetHoldColor(start.IntegerPosition, start.Lane, selected);
-		var headColor = ArrowGraphicManager.GetArrowColor(start.IntegerPosition, start.Lane, selected);
+			? ArrowGraphicManager.GetRollColor(start.GetStepColorRow(), start.GetLane(), selected)
+			: ArrowGraphicManager.GetHoldColor(start.GetStepColorRow(), start.GetLane(), selected);
+		var headColor = ArrowGraphicManager.GetArrowColor(start.GetStepColorRow(), start.GetLane(), selected);
 
 		var w = (uint)Math.Min(Bounds.Width - (RimWidth << 1), NoteWidth);
 
-		var y = (int)yStart;
+		var yStartInt = MathUtils.FloorDouble(yStart);
+		var y = yStartInt;
 		if (y >= Bounds.Height - RimWidth)
 			return AddResult.BelowBottom;
 		if (yEnd < RimWidth)
@@ -889,14 +889,14 @@ internal sealed class MiniMap
 					if (yEnd < y + 1.0)
 						spaceToWorkWith = yEnd - y;
 					noteColor = Utils.ColorRGBAInterpolateBGR(bodyColor, headColor,
-						(float)((yStart - (int)yStart) / spaceToWorkWith));
+						(float)((yStart - yStartInt) / spaceToWorkWith));
 				}
 
 				// Blend the note color with the background color.
 				color = noteColor;
 				if (i == 0)
 					color = Utils.ColorRGBAInterpolateBGR(noteColor, ColorData[y * Bounds.Width + x],
-						(float)(yStart - (int)yStart));
+						(float)(yStart - yStartInt));
 				else if (y + 1 >= yEnd)
 					color = Utils.ColorRGBAInterpolateBGR(noteColor, ColorData[y * Bounds.Width + x], (float)(1.0 - (yEnd - y)));
 			}
@@ -937,7 +937,7 @@ internal sealed class MiniMap
 	/// <returns>AddResult describing if the line was added.</returns>
 	private AddResult AddHorizontalLine(double y, uint x, uint w, uint color, bool forceUnquantized = false)
 	{
-		var yInt = (int)y;
+		var yInt = MathUtils.FloorDouble(y);
 
 		if (yInt < RimWidth)
 			return AddResult.AboveTop;
@@ -1004,7 +1004,8 @@ internal sealed class MiniMap
 	/// <returns>AddResult describing if the rectangle was added.</returns>
 	private AddResult AddRect(uint startX, uint endX, double startY, double endY, uint color)
 	{
-		var y = (int)startY;
+		var startYInt = MathUtils.FloorDouble(startY);
+		var y = startYInt;
 		if (y >= Bounds.Height - RimWidth)
 			return AddResult.BelowBottom;
 		if (endY < RimWidth)
@@ -1031,7 +1032,7 @@ internal sealed class MiniMap
 			{
 				if (i == 0)
 					destColor = Utils.ColorRGBAInterpolateBGR(color, ColorData[y * Bounds.Width + startX],
-						(float)(startY - (int)startY));
+						(float)(startY - startYInt));
 				else if (y + 1 >= endY)
 					destColor = Utils.ColorRGBAInterpolateBGR(color, ColorData[y * Bounds.Width + startX],
 						(float)(1.0 - (endY - y)));
@@ -1115,7 +1116,7 @@ internal sealed class MiniMap
 		var contentStartYPixel = GetYPixelRelativeToBounds(contentAreaStart);
 		var yStartInt = RimWidth;
 		var yEnd = Math.Min(Bounds.Height - RimWidth, contentStartYPixel);
-		var yEndInt = (int)yEnd;
+		var yEndInt = MathUtils.FloorDouble(yEnd);
 		if (yStartInt < yEndInt)
 		{
 			// ReSharper disable UselessBinaryOperation
@@ -1137,9 +1138,9 @@ internal sealed class MiniMap
 		// Draw area outside of content region on bottom.
 		var contentEndYPixel = GetYPixelRelativeToBounds(contentAreaEnd);
 		var yStart = Math.Max(RimWidth, contentEndYPixel + 1);
-		yStartInt = (int)yStart;
+		yStartInt = MathUtils.FloorDouble(yStart);
 		yEndInt = Bounds.Height - RimWidth;
-		if (yStartInt < yEndInt)
+		if (yStartInt > RimWidth && yStartInt < yEndInt)
 		{
 			var blendColor =
 				Utils.ColorRGBAInterpolateBGR(OutsideContentRangeColor, BackgroundColor, (float)(yStart - yStartInt));
@@ -1169,8 +1170,8 @@ internal sealed class MiniMap
 		var editorClearData = Grabbed ? ClearDataEditorSelectedArea :
 			MouseOverEditor ? ClearDataEditorMouseOverArea : ClearDataEditorArea;
 		var editorColor = Grabbed ? EditorAreaSelectedColor : MouseOverEditor ? EditorAreaMouseOverColor : EditorAreaColor;
-		yStartInt = (int)editorStartYPixel;
-		yEndInt = (int)editorEndYPixel;
+		yStartInt = MathUtils.FloorDouble(editorStartYPixel);
+		yEndInt = MathUtils.FloorDouble(editorEndYPixel);
 		var yStartForCopyInclusive = yStartInt + 1;
 		var yEndForCopyInclusive = yEndInt;
 		if (yStartForCopyInclusive < Bounds.Height - RimWidth && yEndForCopyInclusive >= RimWidth
@@ -1282,7 +1283,7 @@ internal sealed class MiniMap
 	private double GetYPixelRelativeToBounds(double position, bool forceUnquantized = false)
 	{
 		return QuantizePositions && !forceUnquantized
-			? (int)((position - MiniMapAreaStart) * HeightOverMiniMapAreaRange + 0.5)
+			? (long)((position - MiniMapAreaStart) * HeightOverMiniMapAreaRange + 0.5)
 			: (position - MiniMapAreaStartUnquantized) * HeightOverMiniMapAreaRange;
 	}
 

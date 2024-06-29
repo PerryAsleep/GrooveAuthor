@@ -24,7 +24,7 @@ internal sealed class EditorFakeSegmentEvent : EditorEvent, IEquatable<EditorFak
 	private const string Format = "%.9gs";
 	private const float Speed = 0.01f;
 
-	public FakeSegment FakeSegmentEvent;
+	private readonly FakeSegment FakeSegmentEvent;
 	private bool WidthDirty;
 
 	#region IChartRegion Implementation

@@ -61,9 +61,9 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 		LaneHoldEndNote.Lane = lane;
 	}
 
-	protected override void ResetTimeBasedOnRowImplementation()
+	protected override void RefreshTimeBasedOnRowImplementation(EditorRateAlteringEvent activeRateAlteringEvent)
 	{
-		base.ResetTimeBasedOnRowImplementation();
+		base.RefreshTimeBasedOnRowImplementation(activeRateAlteringEvent);
 		RefreshHoldEndTime();
 	}
 
@@ -75,10 +75,10 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 		LaneHoldEndNote.TimeSeconds = chartTime;
 	}
 
-	public override void SetNewPosition(int row)
+	public override void SetRow(int row)
 	{
 		var len = GetLength();
-		base.SetNewPosition(row);
+		base.SetRow(row);
 		SetNewHoldEndPosition(row + len);
 	}
 
@@ -184,8 +184,10 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 		var activeAndCutoff = NextDrawActive && Preferences.Instance.PreferencesReceptors.AutoPlayHideArrows;
 		var selected = IsSelected();
 
+		var startRowForColoring = GetStepColorRow();
+
 		var (startArrowTexture, holdRot) =
-			arrowGraphicManager.GetArrowTexture(LaneHoldStartNote.IntegerPosition, GetLane(), selected);
+			arrowGraphicManager.GetArrowTexture(startRowForColoring, GetLane(), selected);
 		var (_, startArrowHeight) = textureAtlas.GetDimensions(startArrowTexture);
 		var halfArrowHeight = startArrowHeight * 0.5 * Scale;
 
@@ -202,8 +204,8 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 		// The hold start texture is only used to extend the start of the hold upward into the arrow for certain
 		// arrow graphics which wouldn't otherwise mask the hold start, like solo diagonals.
 		var (holdBodyStartTexture, holdBodyStartMirror) = roll
-			? arrowGraphicManager.GetRollStartTexture(LaneHoldStartNote.IntegerPosition, GetLane(), NextDrawActive, selected)
-			: arrowGraphicManager.GetHoldStartTexture(LaneHoldStartNote.IntegerPosition, GetLane(), NextDrawActive, selected);
+			? arrowGraphicManager.GetRollStartTexture(startRowForColoring, GetLane(), NextDrawActive, selected)
+			: arrowGraphicManager.GetHoldStartTexture(startRowForColoring, GetLane(), NextDrawActive, selected);
 
 		var (_, capH) = textureAtlas.GetDimensions(holdCapTextureId);
 		var (bodyTexW, bodyTexH) = textureAtlas.GetDimensions(holdBodyTextureId);

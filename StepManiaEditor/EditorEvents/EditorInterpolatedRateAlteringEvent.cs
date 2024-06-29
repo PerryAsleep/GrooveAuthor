@@ -27,7 +27,7 @@ internal class EditorInterpolatedRateAlteringEvent : EditorEvent
 	public double PreviousScrollRate = 1.0;
 
 	private bool WidthDirty;
-	public ScrollRateInterpolation ScrollRateInterpolationEvent;
+	private readonly ScrollRateInterpolation ScrollRateInterpolationEvent;
 
 	public string StringValue
 	{

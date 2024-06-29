@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
@@ -673,6 +672,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		}
 
 		// Loop over every Event, creating EditorEvents from them.
+		TimeSignature lastTimeSignature = null;
 		for (var eventIndex = 0; eventIndex < chart.Layers[0].Events.Count; eventIndex++)
 		{
 			var chartEvent = chart.Layers[0].Events[eventIndex];
@@ -683,27 +683,47 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 				case TimeSignature ts:
 					if (!foundFirstTimeSignature && ts.IntegerPosition == 0)
 						foundFirstTimeSignature = true;
-					editorEvent = EditorEvent.CreateEvent(EventConfig.CreateConfig(this, chartEvent));
+					lastTimeSignature = ts;
+					editorEvent = EditorEvent.CreateEvent(EventConfig.CreateConfig(this, chartEvent,
+						(short)GetRowRelativeToMeasureStart(lastTimeSignature, chartEvent.IntegerPosition),
+						(short)lastTimeSignature.Signature.Denominator));
 					break;
 				case Tempo t:
 					if (!foundFirstTempo && t.IntegerPosition == 0)
 						foundFirstTempo = true;
-					editorEvent = EditorEvent.CreateEvent(EventConfig.CreateConfig(this, chartEvent));
+
+					if (t.TempoBPM < MinTempo)
+					{
+						LogWarn(
+							$"Tempo {t.TempoBPM} at row {t.IntegerPosition} is below the minimum tempo of {MinTempo}. Clamping to {MinTempo}.");
+						t.TempoBPM = MinTempo;
+					}
+
+					editorEvent = EditorEvent.CreateEvent(EventConfig.CreateConfig(this, chartEvent,
+						(short)GetRowRelativeToMeasureStart(lastTimeSignature, chartEvent.IntegerPosition),
+						(short)lastTimeSignature!.Signature.Denominator));
 					break;
 				case LaneHoldStartNote hsn:
 					pendingHoldStarts[hsn.Lane] = hsn;
 					continue;
 				case LaneHoldEndNote hen:
-					editorEvent = EditorEvent.CreateEvent(EventConfig.CreateHoldConfig(this, pendingHoldStarts[hen.Lane], hen));
+					editorEvent =
+						EditorEvent.CreateEvent(EventConfig.CreateHoldConfig(this, pendingHoldStarts[hen.Lane], hen,
+							(short)GetRowRelativeToMeasureStart(lastTimeSignature, chartEvent.IntegerPosition),
+							(short)lastTimeSignature!.Signature.Denominator));
 					pendingHoldStarts[hen.Lane] = null;
 					holds.Insert(editorEvent);
 					break;
 				case Label:
-					editorEvent = EditorEvent.CreateEvent(EventConfig.CreateConfig(this, chartEvent));
+					editorEvent = EditorEvent.CreateEvent(EventConfig.CreateConfig(this, chartEvent,
+						(short)GetRowRelativeToMeasureStart(lastTimeSignature, chartEvent.IntegerPosition),
+						(short)lastTimeSignature!.Signature.Denominator));
 					labels.Insert(editorEvent);
 					break;
 				default:
-					editorEvent = EditorEvent.CreateEvent(EventConfig.CreateConfig(this, chartEvent));
+					editorEvent = EditorEvent.CreateEvent(EventConfig.CreateConfig(this, chartEvent,
+						(short)GetRowRelativeToMeasureStart(lastTimeSignature, chartEvent.IntegerPosition),
+						(short)lastTimeSignature!.Signature.Denominator));
 					break;
 			}
 
@@ -723,7 +743,9 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			if (!foundFirstTempo)
 			{
 				var chartEvent = CreateDefaultTempo(EditorSong);
-				var editorEvent = EditorEvent.CreateEvent(EventConfig.CreateConfig(this, chartEvent));
+				var editorEvent = EditorEvent.CreateEvent(EventConfig.CreateConfig(this, chartEvent,
+					(short)GetRowRelativeToMeasureStart(lastTimeSignature, chartEvent.IntegerPosition),
+					(short)lastTimeSignature!.Signature.Denominator));
 				LogWarn($"No Tempo found at row 0. Adding {chartEvent.TempoBPM} BPM Tempo at row 0.");
 				AddLocalEvent(chartEvent, editorEvent);
 				modifiedChart = true;
@@ -738,7 +760,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		Labels = labels;
 
 		RefreshIntervals();
-		CleanRateAlteringEvents();
+		RefreshRateAlteringEvents();
 
 		// Create events that are not derived from the Chart's Events.
 		AddPreviewEvent();
@@ -746,7 +768,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 		if (modifiedChart)
 		{
-			UpdateEventTimingData();
+			RefreshEventTimingData();
 			ActionQueue.Instance.SetHasUnsavedChanges();
 		}
 	}
@@ -793,7 +815,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		Labels = labels;
 
 		RefreshIntervals();
-		CleanRateAlteringEvents();
+		RefreshRateAlteringEvents();
 	}
 
 	private static TimeSignature CreateDefaultTimeSignature(EditorSong editorSong)
@@ -955,7 +977,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	public Fraction GetStartingTimeSignature()
 	{
 		var rae = RateAlteringEvents?.FindActiveRateAlteringEventForPosition(0.0);
-		return rae?.GetTimeSignature().Signature ?? DefaultTimeSignature;
+		return rae?.GetTimeSignature().GetSignature() ?? DefaultTimeSignature;
 	}
 
 	public string GetDescriptiveName()
@@ -983,17 +1005,18 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 	/// <summary>
 	/// Updates all EditorRateAlteringEvents rate tracking values.
+	/// This assumes the EditorRateAlteringEvents have correct row and time values.
 	/// This may result in TimeSignatures being deleted if they no longer fall on measure boundaries.
 	/// </summary>
 	/// <returns>List of all EditorEvents which were deleted as a result.</returns>
-	private List<EditorEvent> CleanRateAlteringEvents()
+	private List<EditorEvent> RefreshRateAlteringEvents()
 	{
 		var lastScrollRate = 1.0;
 		var lastTempo = 1.0;
 		var firstTempo = true;
 		var firstTimeSignature = true;
 		var firstScrollRate = true;
-		TimeSignature lastTimeSignature = null;
+		EditorTimeSignatureEvent lastTimeSignature = null;
 		var timePerTempo = new Dictionary<double, double>();
 		var lastTempoChangeTime = 0.0;
 		var minTempo = double.MaxValue;
@@ -1015,12 +1038,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		var previousEvents = new List<EditorRateAlteringEvent>();
 		var invalidTimeSignatures = new List<EditorEvent>();
 
-		// TODO: Check handling of negative Tempo warps.
-
 		foreach (var rae in RateAlteringEvents)
 		{
-			var chartEvent = rae.GetEvent();
-
 			// Adjust warp rows remaining.
 			// ReSharper disable once PossibleNullReferenceException
 			warpRowsRemaining = Math.Max(0, warpRowsRemaining - (rae.GetRow() - previousEvent.GetRow()));
@@ -1034,17 +1053,18 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 				// hits 0.0. To do this we need to add the time which would have elapsed between the last
 				// event and this event if there were no stop. This is derived from their row difference
 				// and the seconds per row.
-				var rowsSincePrevious = chartEvent.IntegerPosition - previousEvent.GetRow();
+				var rowsSincePrevious = rae.GetRow() - previousEvent.GetRow();
 				var stopTimeSincePrevious = rowsSincePrevious * lastSecondsPerRow;
 				stopTimeRemaining = Math.Min(0.0, stopTimeRemaining + stopTimeSincePrevious);
 			}
 
 			var isPositionImmutable = false;
 
-			switch (chartEvent)
+			switch (rae)
 			{
-				case Tempo tc:
+				case EditorTempoEvent tc:
 				{
+					var bpm = tc.GetTempo();
 					lastSecondsPerRow = tc.GetSecondsPerRow(MaxValidDenominator);
 					lastRowsPerSecond = tc.GetRowsPerSecond(MaxValidDenominator);
 
@@ -1054,42 +1074,49 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 					{
 						foreach (var previousRateAlteringEvent in previousEvents)
 						{
-							previousRateAlteringEvent.UpdateTempo(tc.TempoBPM, lastRowsPerSecond, lastSecondsPerRow);
+							previousRateAlteringEvent.UpdateTempo(bpm, lastRowsPerSecond, lastSecondsPerRow);
 						}
 					}
 
-					minTempo = Math.Min(minTempo, tc.TempoBPM);
-					maxTempo = Math.Max(maxTempo, tc.TempoBPM);
+					minTempo = Math.Min(minTempo, bpm);
+					maxTempo = Math.Max(maxTempo, bpm);
 
 					isPositionImmutable = firstTempo;
 
 					if (!firstTempo)
 					{
 						timePerTempo.TryGetValue(lastTempo, out var currentTempoTime);
-						timePerTempo[lastTempo] = currentTempoTime + tc.TimeSeconds - lastTempoChangeTime;
-						lastTempoChangeTime = tc.TimeSeconds;
+						timePerTempo[lastTempo] = currentTempoTime + tc.GetChartTime() - lastTempoChangeTime;
+						lastTempoChangeTime = tc.GetChartTime();
 					}
 
-					lastTempo = tc.TempoBPM;
+					lastTempo = bpm;
 					firstTempo = false;
 					break;
 				}
-				case Stop stop:
+				case EditorDelayEvent delay:
 				{
 					// Add to the stop time rather than replace it because overlapping
 					// negative stops stack in Stepmania.
-					stopTimeRemaining += stop.LengthSeconds;
+					stopTimeRemaining += delay.GetDelayLengthSeconds();
 					break;
 				}
-				case Warp warp:
+				case EditorStopEvent stop:
+				{
+					// Add to the stop time rather than replace it because overlapping
+					// negative stops stack in Stepmania.
+					stopTimeRemaining += stop.GetStopLengthSeconds();
+					break;
+				}
+				case EditorWarpEvent warp:
 				{
 					// Intentionally do not stack warps to match Stepmania behavior.
-					warpRowsRemaining = Math.Max(warpRowsRemaining, warp.LengthIntegerPosition);
+					warpRowsRemaining = Math.Max(warpRowsRemaining, warp.GetWarpLengthRows());
 					break;
 				}
-				case ScrollRate scrollRate:
+				case EditorScrollRateEvent scrollRate:
 				{
-					lastScrollRate = scrollRate.Rate;
+					lastScrollRate = scrollRate.GetScrollRate();
 
 					// Update any events which precede the first tempo so they can have accurate rates.
 					// This is useful for determining spacing prior to the first event
@@ -1104,14 +1131,14 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 					firstScrollRate = false;
 					break;
 				}
-				case TimeSignature timeSignature:
+				case EditorTimeSignatureEvent timeSignature:
 				{
 					// Ensure that the time signature falls on a measure boundary.
 					// Due to deleting events it may be the case that time signatures are
 					// no longer valid and they need to be removed.
-					if ((firstTimeSignature && chartEvent.IntegerPosition != 0)
-					    || (!firstTimeSignature && chartEvent.IntegerPosition !=
-						    GetNearestMeasureBoundaryRow(lastTimeSignature, chartEvent.IntegerPosition)))
+					if ((firstTimeSignature && timeSignature.GetRow() != 0)
+					    || (!firstTimeSignature && timeSignature.GetRow() !=
+						    GetNearestMeasureBoundaryRow(lastTimeSignature, timeSignature.GetRow())))
 					{
 						invalidTimeSignatures.Add(rae);
 						continue;
@@ -1204,13 +1231,23 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	}
 
 	/// <summary>
-	/// Updates the TimeSeconds and MetricPosition values of all Events in this EditorChart.
+	/// Updates the times and other row dependent data in all EditorEvents in this EditorChart.
 	/// If EditorRateAlteringEvents like stops are modified, they affect the timing of all following events.
-	/// This function will ensure all Events have correct TimeSeconds and MetricPosition values and
+	/// This function will ensure all Events have correct times and other row dependent data and that
 	/// all events are sorted properly when a rate altering event is changed.
 	/// </summary>
-	/// <returns></returns>
-	private List<EditorEvent> UpdateEventTimingData()
+	/// <remarks>
+	/// This method contains logic which duplicates much of the logic in StepManiaLibrary's
+	/// SetEventTimeAndMetricPositionsFromRows method. While isn't ideal to have the complicated logic
+	/// around warp and stop time accrual in multiple places, we need to set some information that
+	/// the library doesn't care about (note coloring data like each step's row relative to its
+	/// starting measure and each step's time signature denominator) and we don't need some of the
+	/// information that the library function spends time updating, like MetricPosition. It's
+	/// better to only do one pass and compute exactly what we need rather than trying leveraging
+	/// the library function and then do a second pass for what we need.
+	/// </remarks>
+	/// <returns>List of all EditorEvents which were deleted as a result.</returns>
+	private List<EditorEvent> RefreshEventTimingData()
 	{
 		// TODO: Remove Validation.
 		EditorEvents.Validate();
@@ -1225,24 +1262,168 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 		EditorEvents.Validate();
 
-		// Now, update all time values for all normal notes that correspond to Stepmania chart
-		// events. Any of these events, even when added or removed, cannot change the relative
-		// order of other such events. As such, we do not need to sort EditorEvents again.
-		SetEventTimeAndMetricPositionsFromRows(EditorEvents.Select(e => e.GetEvent()));
+		var lastTempoChangeRow = 0;
+		var lastTempoChangeTime = 0.0;
+		EditorTempoEvent lastTempo = null;
+		var lastTimeSigChangeRow = 0;
+		var lastTimeSigDenominator = 0;
+		var rowsPerBeat = MaxValidDenominator;
+		var beatsPerMeasure = NumBeatsPerMeasure;
+		var totalStopTimeSeconds = 0.0;
+		var previousEventTimeSeconds = 0.0;
+
+		// Warps are unfortunately complicated.
+		// Overlapping warps do not stack.
+		// Warps are represented as rows / IntegerPosition, unlike Stops which use time.
+		// We need to figure out how much time warps account for to update Event TimeSeconds.
+		// But we cannot just do a pass to compute the time for all Warps and then sum them up
+		// in a second pass since overlapping warps do not stack. We also can't just sum the time
+		// between each event during a warp per loop since that would accrue rounding error.
+		// So we need to use the logic of determining the time that has elapsed since the last
+		// event which has altered the rate of beats that occurred during the warp. This time
+		// is tracked in currentWarpTime below. When the rate changes, we commit currentWarpTime
+		// to totalWarpTime.
+		var warpingEndPosition = -1;
+		var totalWarpTime = 0.0;
+		var lastWarpBeatTimeChangeRow = -1;
+		var lastTimeSigChangeMeasure = 0;
+
+		// Note that overlapping negative Stops DO stack, even though Warps do not.
+		// This means that a Chart with overlapping Warps when saved by StepMania will produce
+		// a ssc and sm file that are not the same. The ssc file will have a shorter skipped range
+		// and the two charts will be out of sync.
+
+		foreach (var editorEvent in EditorEvents)
+		{
+			if (editorEvent == null)
+				continue;
+
+			var row = editorEvent.GetRow();
+			var beatRelativeToLastTimeSigChange = (row - lastTimeSigChangeRow) / rowsPerBeat;
+			var measureRelativeToLastTimeSigChange = beatRelativeToLastTimeSigChange / beatsPerMeasure;
+			var measureStartRowRelativeToTimeSigChange = measureRelativeToLastTimeSigChange * rowsPerBeat * beatsPerMeasure;
+			var absoluteMeasure = lastTimeSigChangeMeasure + measureRelativeToLastTimeSigChange;
+			var timeRelativeToLastTempoChange = lastTempo == null
+				? 0.0
+				: (row - lastTempoChangeRow) * lastTempo.GetSecondsPerRow(MaxValidDenominator);
+			var absoluteTime = lastTempoChangeTime + timeRelativeToLastTempoChange;
+
+			// Handle a currently running warp.
+			var currentWarpTime = 0.0;
+			if (warpingEndPosition != -1)
+			{
+				// Figure out the amount of time elapsed during the current warp since the last event
+				// which altered the rate of time during this warp.
+				var endPosition = Math.Min(row, warpingEndPosition);
+				currentWarpTime = lastTempo == null
+					? 0.0
+					: (endPosition - lastWarpBeatTimeChangeRow) * lastTempo.GetSecondsPerRow(MaxValidDenominator);
+
+				// Warp section is complete.
+				if (row >= warpingEndPosition)
+				{
+					// Clear variables used to track warp time.
+					warpingEndPosition = -1;
+					lastWarpBeatTimeChangeRow = -1;
+
+					// Commit the current running warp time to the total warp time.
+					totalWarpTime += currentWarpTime;
+					currentWarpTime = 0.0;
+				}
+			}
+
+			var eventTime = absoluteTime - currentWarpTime - totalWarpTime + totalStopTimeSeconds;
+
+			// In the case of negative stop warps, we need to clamp the time of an event so it does not precede events which
+			// have lower IntegerPositions
+			if (eventTime < previousEventTimeSeconds)
+				eventTime = previousEventTimeSeconds;
+			editorEvent.SetRowDependencies(eventTime,
+				(short)(row - lastTimeSigChangeRow - measureStartRowRelativeToTimeSigChange), (short)lastTimeSigDenominator);
+			previousEventTimeSeconds = eventTime;
+
+			switch (editorEvent)
+			{
+				// Stop handling. Just accrue more stop time.
+				case EditorStopEvent stop:
+				{
+					// Accrue Stop time whether it is positive or negative.
+					// Do not worry about overlapping negative stops as they stack in StepMania.
+					totalStopTimeSeconds += stop.GetStopLengthSeconds();
+					break;
+				}
+				case EditorDelayEvent delay:
+				{
+					// Accrue Stop time whether it is positive or negative.
+					// Do not worry about overlapping negative stops as they stack in StepMania.
+					totalStopTimeSeconds += delay.GetDelayLengthSeconds();
+					break;
+				}
+				// Warp handling. Update warp start and stop rows so we can compute the warp time.
+				case EditorWarpEvent warp:
+				{
+					// If there is a currently running warp, just extend the Warp.
+					warpingEndPosition = Math.Max(warpingEndPosition, row + warp.GetWarpLengthRows());
+					if (lastWarpBeatTimeChangeRow == -1)
+						lastWarpBeatTimeChangeRow = row;
+					break;
+				}
+				// Time Signature change. Update time signature and beat time tracking.
+				case EditorTimeSignatureEvent ts:
+				{
+					var timeSignature = ts.GetSignature();
+
+					lastTimeSigChangeRow = row;
+					lastTimeSigChangeMeasure = absoluteMeasure;
+					beatsPerMeasure = timeSignature.Numerator;
+					lastTimeSigDenominator = timeSignature.Denominator;
+					rowsPerBeat = MaxValidDenominator * NumBeatsPerMeasure / timeSignature.Denominator;
+
+					// If this alteration in beat time occurs during a warp, update our warp tracking variables.
+					if (warpingEndPosition != -1)
+					{
+						totalWarpTime += currentWarpTime;
+						lastWarpBeatTimeChangeRow = row;
+					}
+
+					// Set the measure on the time signature event.
+					ts.Measure = absoluteMeasure;
+
+					break;
+				}
+				// Tempo change. Update beat time tracking.
+				case EditorTempoEvent tc:
+				{
+					lastTempo = tc;
+					lastTempoChangeRow = row;
+					lastTempoChangeTime = absoluteTime;
+
+					// If this alteration in beat time occurs during a warp, update our warp tracking variables.
+					if (warpingEndPosition != -1)
+					{
+						totalWarpTime += currentWarpTime;
+						lastWarpBeatTimeChangeRow = row;
+					}
+
+					break;
+				}
+			}
+		}
 
 		EditorEvents.Validate();
 
 		// Now, update all the rate altering events using the updated times. It is possible that
 		// this may result in some events being deleted. The only time this can happen is when
 		// deleting a time signature that then invalidates a future time signature. This will
-		// not invalidate note times or positions.
-		var deletedEvents = CleanRateAlteringEvents();
+		// not invalidate note times or positions. It may invalidate the event measure tracking
+		// data which depends on time signature. This will be handled because when the second
+		// time signature is deleted it will refresh all event timing data again.
+		var deletedEvents = RefreshRateAlteringEvents();
 
-		// Since holds are treated as one event in the editor and two events in stepmania, we need
-		// to manually update the times for the hold ends since they were not included in the previous
-		// call to SetEventTimeAndMetricPositionsFromRows to update timing. This needs to be done
-		// after we clean the rate altering events because setting their times rely on values cached
-		// from performing the clean, like SecondsPerRow, RowsPerSecond, etc.
+		EditorEvents.Validate();
+
+		// Holds have an additional event that needs updating now that the rate altering events
+		// are updated.
 		foreach (var hold in Holds)
 			((EditorHoldNoteEvent)hold).RefreshHoldEndTime();
 
@@ -1254,6 +1435,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			AddLastSecondHintEvent();
 		if (deletedPreview)
 			AddPreviewEvent();
+
+		EditorEvents.Validate();
 
 		// Reconstruct Intervals.
 		RefreshIntervals();
@@ -1386,11 +1569,11 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		if (rateEvent == null)
 			return 0.0;
 		var timeSigEvent = rateEvent.GetTimeSignature();
-		var rowDifference = chartPosition - timeSigEvent.IntegerPosition;
-		var rowsPerMeasure = timeSigEvent.Signature.Numerator *
-		                     (MaxValidDenominator * NumBeatsPerMeasure / timeSigEvent.Signature.Denominator);
+		var rowDifference = chartPosition - timeSigEvent.GetRow();
+		var rowsPerMeasure = timeSigEvent.GetNumerator() *
+		                     (MaxValidDenominator * NumBeatsPerMeasure / timeSigEvent.GetDenominator());
 		var measures = rowDifference / rowsPerMeasure;
-		measures += timeSigEvent.MetricPosition.Measure;
+		measures += timeSigEvent.Measure;
 		return measures;
 	}
 
@@ -1411,7 +1594,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		rateEventEnumerator.MoveNext();
 
 		var precedingTimeSignature = rateEventEnumerator.Current!.GetTimeSignature();
-		while (measure > precedingTimeSignature.MetricPosition.Measure)
+		while (measure > precedingTimeSignature.Measure)
 		{
 			if (!rateEventEnumerator.MoveNext())
 			{
@@ -1432,7 +1615,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 				break;
 
 			var nextTimeSignature = rateEventEnumerator.Current.GetTimeSignature();
-			if (measure < nextTimeSignature.MetricPosition.Measure)
+			if (measure < nextTimeSignature.Measure)
 			{
 				break;
 			}
@@ -1440,10 +1623,10 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			precedingTimeSignature = nextTimeSignature;
 		}
 
-		var precedingTimeSignatureEventMeasure = precedingTimeSignature.MetricPosition.Measure;
-		var rowsPerMeasure = precedingTimeSignature.Signature.Numerator *
-		                     (MaxValidDenominator * NumBeatsPerMeasure / precedingTimeSignature.Signature.Denominator);
-		return precedingTimeSignature.IntegerPosition + (measure - precedingTimeSignatureEventMeasure) * rowsPerMeasure;
+		var precedingTimeSignatureEventMeasure = precedingTimeSignature.Measure;
+		var rowsPerMeasure = precedingTimeSignature.GetNumerator() *
+		                     (MaxValidDenominator * NumBeatsPerMeasure / precedingTimeSignature.GetDenominator());
+		return precedingTimeSignature.GetRow() + (measure - precedingTimeSignatureEventMeasure) * rowsPerMeasure;
 	}
 
 	/// <summary>
@@ -1479,12 +1662,12 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	/// <param name="lastTimeSignature">The active TimeSignature for the row.</param>
 	/// <param name="row">Row in question.</param>
 	/// <returns>Nearest measure boundary row.</returns>
-	private int GetNearestMeasureBoundaryRow(TimeSignature lastTimeSignature, int row)
+	private int GetNearestMeasureBoundaryRow(EditorTimeSignatureEvent lastTimeSignature, int row)
 	{
-		var timeSignatureRow = lastTimeSignature.IntegerPosition;
-		var beatsPerMeasure = lastTimeSignature.Signature.Numerator;
+		var timeSignatureRow = lastTimeSignature.GetRow();
+		var beatsPerMeasure = lastTimeSignature.GetNumerator();
 		var rowsPerBeat = MaxValidDenominator * NumBeatsPerMeasure * beatsPerMeasure
-		                  / lastTimeSignature.Signature.Denominator / beatsPerMeasure;
+		                  / lastTimeSignature.GetDenominator() / beatsPerMeasure;
 		var rowsPerMeasure = rowsPerBeat * beatsPerMeasure;
 		var previousMeasureRow = timeSignatureRow + (row - timeSignatureRow) / rowsPerMeasure * rowsPerMeasure;
 		var nextMeasureRow = previousMeasureRow + rowsPerMeasure;
@@ -1606,7 +1789,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			}
 		}
 
-		return Math.Max(endTime, EditorSong.LastSecondHint);
+		return endTime;
 	}
 
 	/// <summary>
@@ -1617,15 +1800,19 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	{
 		var lastEvent = EditorEvents.Last();
 		var endPosition = 0.0;
-		if (lastEvent.MoveNext() && lastEvent.Current != null)
-			endPosition = lastEvent.Current.GetEndRow();
-
-		if (EditorSong.LastSecondHint > 0.0)
+		if (lastEvent.MoveNext())
 		{
-			var lastSecondChartPosition = 0.0;
-			if (TryGetChartPositionFromTime(EditorSong.LastSecondHint, ref lastSecondChartPosition))
+			// Do not include the preview as counting towards the song ending.
+			if (lastEvent.Current is EditorPreviewRegionEvent)
 			{
-				endPosition = Math.Max(lastSecondChartPosition, endPosition);
+				if (lastEvent.MovePrev())
+				{
+					endPosition = lastEvent.Current.GetEndRow();
+				}
+			}
+			else
+			{
+				endPosition = lastEvent.Current!.GetEndRow();
 			}
 		}
 
@@ -1800,14 +1987,14 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	/// The EditorChart needs to be responsible for updating Stop time as it can result in the
 	/// Stop changing its relative position to other notes.
 	/// </summary>
-	public void UpdateStopTime(EditorStopEvent stop, double newTime)
+	public void UpdateStopTime(EditorStopEvent stop, double newTime, ref double stopTime)
 	{
 		Assert(CanBeEdited());
 		if (!CanBeEdited())
 			return;
 
 		// Negative stops are sorted differently than positive stops.
-		var signChanged = stop.StopEvent.LengthSeconds < 0.0 != newTime < 0;
+		var signChanged = stopTime < 0.0 != newTime < 0;
 		if (signChanged)
 		{
 			DeleteEvent(stop);
@@ -1818,7 +2005,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			Assert(deleted);
 		}
 
-		stop.StopEvent.LengthSeconds = newTime;
+		stopTime = newTime;
 
 		if (signChanged)
 		{
@@ -1830,20 +2017,20 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		}
 
 		// Stops affect timing data.
-		UpdateEventTimingData();
+		RefreshEventTimingData();
 	}
 
 	/// <summary>
 	/// Called when an EditorDelayEvent's time is modified.
 	/// </summary>
-	public void UpdateDelayTime(EditorDelayEvent delay, double newTime)
+	public void UpdateDelayTime(EditorDelayEvent delay, double newTime, ref double delayTime)
 	{
 		Assert(CanBeEdited());
 		if (!CanBeEdited())
 			return;
 
 		// Negative delays are sorted differently than positive delays.
-		var signChanged = delay.StopEvent.LengthSeconds < 0.0 != newTime < 0;
+		var signChanged = delayTime < 0.0 != newTime < 0;
 		if (signChanged)
 		{
 			DeleteEvent(delay);
@@ -1854,7 +2041,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			Assert(deleted);
 		}
 
-		delay.StopEvent.LengthSeconds = newTime;
+		delayTime = newTime;
 
 		if (signChanged)
 		{
@@ -1866,7 +2053,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		}
 
 		// Delays affect timing data.
-		UpdateEventTimingData();
+		RefreshEventTimingData();
 	}
 
 	/// <summary>
@@ -1884,7 +2071,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		Warps.Insert(warp, warp.GetChartPosition(), newEndPosition);
 
 		// Warps affect timing data.
-		UpdateEventTimingData();
+		RefreshEventTimingData();
 	}
 
 	/// <summary>
@@ -1911,7 +2098,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		if (!CanBeEdited())
 			return;
 
-		UpdateEventTimingData();
+		RefreshEventTimingData();
 	}
 
 	/// <summary>
@@ -1923,7 +2110,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		if (!CanBeEdited())
 			return;
 
-		UpdateEventTimingData();
+		RefreshEventTimingData();
 	}
 
 	/// <summary>
@@ -1935,7 +2122,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		if (!CanBeEdited())
 			return;
 
-		UpdateEventTimingData();
+		RefreshEventTimingData();
 	}
 
 	/// <summary>
@@ -1959,13 +2146,13 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			e.MoveNext();
 			if (first)
 			{
-				e.Current!.PreviousScrollRate = irae.ScrollRateInterpolationEvent.Rate;
+				e.Current!.PreviousScrollRate = irae.GetRate();
 			}
 
 			if (e.MoveNext())
 			{
 				var next = e.Current;
-				next!.PreviousScrollRate = irae.ScrollRateInterpolationEvent.Rate;
+				next!.PreviousScrollRate = irae.GetRate();
 			}
 		}
 	}
@@ -2087,7 +2274,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 								if (e.MovePrev())
 								{
 									var prev = e.Current;
-									next!.PreviousScrollRate = prev!.ScrollRateInterpolationEvent.Rate;
+									next!.PreviousScrollRate = prev!.GetRate();
 								}
 
 								e.MoveNext();
@@ -2115,7 +2302,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 		if (rateDirty)
 		{
-			allDeletedEvents.AddRange(UpdateEventTimingData());
+			allDeletedEvents.AddRange(RefreshEventTimingData());
 		}
 
 		StepDensity?.DeleteEvents(editorEvents);
@@ -2200,7 +2387,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 						if (e.MoveNext())
 						{
 							var next = e.Current;
-							next!.PreviousScrollRate = irae.ScrollRateInterpolationEvent.Rate;
+							next!.PreviousScrollRate = irae.GetRate();
 						}
 
 						if (e.MovePrev())
@@ -2208,7 +2395,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 							if (e.MovePrev())
 							{
 								var prev = e.Current;
-								irae.PreviousScrollRate = prev!.ScrollRateInterpolationEvent.Rate;
+								irae.PreviousScrollRate = prev!.GetRate();
 							}
 						}
 					}
@@ -2226,7 +2413,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 			// TODO: Optimize.
 			// When deleting a re-adding many rate altering events this causes a hitch.
-			// We can't just call UpdateEventTimingData once at the end of the loop because
+			// We can't just call RefreshEventTimingData once at the end of the loop because
 			// note within the song may have their positions altered relative to individual
 			// rate altering event notes such that calling SetEventTimeAndMetricPositionsFromRows
 			// once at the end re-sorts them based on time differences.
@@ -2237,7 +2424,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 			if (rateDirty)
 			{
-				UpdateEventTimingData();
+				RefreshEventTimingData();
 			}
 		}
 
@@ -2308,8 +2495,9 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 						// If the reduction in length is below the min length for a hold, replace it with a tap.
 						if (newExistingHoldEndRow <= existingNote.GetRow())
 						{
-							var replacementEvent = EditorEvent.CreateEvent(EventConfig.CreateTapConfigWithExplicitTime(this,
-								existingNote.GetRow(), existingNote.GetChartTime(), lane));
+							var replacementEvent = EditorEvent.CreateEvent(EventConfig.CreateTapConfigWithRowDependencies(this,
+								existingNote.GetRow(), existingNote.GetChartTime(), lane,
+								existingNote.GetRowRelativeToMeasureStart(), existingNote.GetTimeSignatureDenominator()));
 							AddEvent(replacementEvent);
 							sideEffectAddedEvents.Add(replacementEvent);
 						}
@@ -2383,7 +2571,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			// the time of the events being force added, so we need to recompute their times.
 			if (rateDirty)
 			{
-				editorEvent.ResetTimeBasedOnRow();
+				editorEvent.RefreshRowDependencies();
 			}
 
 			// Now that all conflicting notes are deleted or adjusted, add this note.
@@ -2414,7 +2602,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 		Notify(NotificationEventsMoveStart, this, editorEvent);
 		var deletedEvents = DeleteEvent(editorEvent);
-		editorEvent.SetNewPosition(newRow);
+		editorEvent.SetRow(newRow);
 		AddEvent(editorEvent);
 		deletedEvents.Remove(editorEvent);
 		Assert(deletedEvents.Count == 0);
@@ -3082,8 +3270,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 					}
 
 					// Add Pattern event.
-					var eventConfig = EventConfig.CreatePatternConfig(this, row);
-					var pattern = new EditorPatternEvent(eventConfig, definition);
+					var pattern = (EditorPatternEvent)EditorEvent.CreateEvent(EventConfig.CreatePatternConfig(this, row));
+					pattern.SetDefinition(definition);
 					AddEvent(pattern);
 				}
 			}

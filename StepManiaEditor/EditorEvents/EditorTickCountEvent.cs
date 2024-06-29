@@ -20,7 +20,7 @@ internal sealed class EditorTickCountEvent : EditorEvent
 	private const string Format = "%iticks";
 	private const float Speed = 0.1f;
 
-	public TickCount TickCountEvent;
+	private readonly TickCount TickCountEvent;
 	private bool WidthDirty;
 
 	public int IntValue

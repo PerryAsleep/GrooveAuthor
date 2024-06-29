@@ -16,7 +16,7 @@ internal sealed class EditorMultipliersEvent : EditorEvent
 		"Multipliers must be non-negative integer values.\n"
 		+ EventShortDescription;
 
-	public Multipliers MultipliersEvent;
+	private readonly Multipliers MultipliersEvent;
 	private bool WidthDirty;
 
 	public string StringValue

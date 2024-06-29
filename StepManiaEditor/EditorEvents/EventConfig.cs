@@ -60,27 +60,39 @@ internal sealed class EventConfig
 	public bool IsBeingEdited;
 
 	/// <summary>
-	/// Whether or not the ChartTime should be automatically computed from the Event's row.
-	/// In most cases this should be true. This is because the time of an event at a given row
-	/// cannot technically be known until after the event type is known. Two events at the same
-	/// row may have different times due to events like delays. Only once we have an EditorEvent
-	/// can we then sort it against other events in the chart to determine the time.
-	/// Note that if DetermineChartTimeFromPosition is true, the time will be computed by doing
-	/// an O(log(N)) search of the rate altering events in the chart.
-	/// In some situations it may be safe to pass in an explicit ChartTime as a performance optimization,
-	/// such as shifting a lane note left or right, or converting steps to mines.
-	/// </summary>
-	public readonly bool DetermineChartTimeFromPosition;
-
-	/// <summary>
 	/// An explicit double ChartPosition to use when UseDoubleChartPosition is true.
 	/// </summary>
 	public readonly double ChartPosition;
 
 	/// <summary>
-	/// An explicit double ChartTime to use when DetermineChartTimeFromPosition is false.
+	/// Whether or not the ChartTime should be automatically computed from the Event's row.
+	/// In most cases this should be true. This is because the time of an event at a given row
+	/// cannot technically be known until after the event type is known. Two events at the same
+	/// row may have different times due to events like delays. Only once we have an EditorEvent
+	/// can we then sort it against other events in the chart to determine the time.
+	/// Note that if DetermineRowBasedDependencies is true, the time will be computed by doing
+	/// an O(log(N)) search of the rate altering events in the chart.
+	/// In some situations it may be safe to pass in an explicit ChartTime as a performance optimization,
+	/// such as shifting a lane note left or right, or converting steps to mines.
+	/// </summary>
+	public readonly bool DetermineRowBasedDependencies;
+
+	/// <summary>
+	/// An explicit double ChartTime to use when DetermineRowBasedDependencies is false.
 	/// </summary>
 	public readonly double ChartTime;
+
+	/// <summary>
+	/// An explicit value for this event's row relative to its measure start to use
+	/// when DetermineRowBasedDependencies is false.
+	/// </summary>
+	public readonly short RowRelativeToMeasureStart;
+
+	/// <summary>
+	/// An explicit value for the denominator of this event's time signature to use
+	/// when DetermineRowBasedDependencies is false.
+	/// </summary>
+	public readonly short TimeSignatureDenominator;
 
 	private EventConfig(
 		EditorChart editorChart,
@@ -90,8 +102,10 @@ internal sealed class EventConfig
 		double chartTime = 0.0,
 		SpecialType specialType = SpecialType.None,
 		bool isBeingEdited = false,
-		bool determineChartTimeFromPosition = true,
-		Event additionalChartEvent = null)
+		bool determineRowBasedDependencies = true,
+		Event additionalChartEvent = null,
+		short rowRelativeToMeasureStart = 0,
+		short timeSignatureDenominator = 0)
 	{
 		EditorChart = editorChart;
 		ChartEvent = chartEvent;
@@ -101,7 +115,9 @@ internal sealed class EventConfig
 		ChartTime = chartTime;
 		SpecialEventType = specialType;
 		IsBeingEdited = isBeingEdited;
-		DetermineChartTimeFromPosition = determineChartTimeFromPosition;
+		DetermineRowBasedDependencies = determineRowBasedDependencies;
+		RowRelativeToMeasureStart = rowRelativeToMeasureStart;
+		TimeSignatureDenominator = timeSignatureDenominator;
 	}
 
 	public static EventConfig CreateCloneEventConfig(EditorEvent editorEvent, EditorChart editorChart)
@@ -135,7 +151,9 @@ internal sealed class EventConfig
 			specialType,
 			editorEvent.IsBeingEdited(),
 			false,
-			clonedAdditionalEvent);
+			clonedAdditionalEvent,
+			editorEvent.GetRowRelativeToMeasureStart(),
+			editorEvent.GetTimeSignatureDenominator());
 	}
 
 	public bool IsSearchEvent()
@@ -150,22 +168,33 @@ internal sealed class EventConfig
 		return false;
 	}
 
-	public static EventConfig CreateConfig(EditorChart chart, Event smEvent)
+	public static EventConfig CreateConfigWithoutRowDependencies(EditorChart chart, Event smEvent)
 	{
-		// When creating an EditorEvent from a Stepmania Event, do not attempt to determine the
-		// chart time automatically. Assume the Stepmania Event is fully configured and includes
-		// a correct time. This avoids the unnecessary time lookup and it useful when loading
-		// charts and we may not have all timing events available to search yet.
-		return new EventConfig(chart, smEvent, false, 0.0, 0.0, SpecialType.None, false, false);
+		return new EventConfig(chart, smEvent);
 	}
 
-	public static EventConfig CreateHoldConfig(EditorChart chart, LaneHoldStartNote start, LaneHoldEndNote end)
+	public static EventConfig CreateConfig(EditorChart chart, Event smEvent, short rowRelativeToMeasureStart,
+		short timeSignatureDenominator)
 	{
-		// When creating an EditorEvent from a Stepmania Event, do not attempt to determine the
-		// chart time automatically. Assume the Stepmania Event is fully configured and includes
-		// a correct time. This avoids the unnecessary time lookup and it useful when loading
-		// charts and we may not have all timing events available to search yet.
-		return new EventConfig(chart, start, false, 0.0, 0.0, SpecialType.None, false, false, end);
+		// When creating an EditorEvent from a Stepmania Event, do not attempt to determine
+		// row-dependencies automatically. Assume the Stepmania Event is fully configured and
+		// includes a correct time. This avoids the unnecessary rate altering event lookup and
+		// it useful when loading charts and we may not have all timing events available to search yet.
+		return new EventConfig(chart, smEvent, false, 0.0, smEvent.TimeSeconds, SpecialType.None, false, false, null,
+			rowRelativeToMeasureStart,
+			timeSignatureDenominator);
+	}
+
+	public static EventConfig CreateHoldConfig(EditorChart chart, LaneHoldStartNote start, LaneHoldEndNote end,
+		short rowRelativeToMeasureStart, short timeSignatureDenominator)
+	{
+		// When creating an EditorEvent from a Stepmania Event, do not attempt to determine
+		// row-dependencies automatically. Assume the Stepmania Event is fully configured and
+		// includes a correct time. This avoids the unnecessary rate altering event lookup and
+		// it useful when loading charts and we may not have all timing events available to search yet.
+		return new EventConfig(chart, start, false, 0.0, start.TimeSeconds, SpecialType.None, false, false, end,
+			rowRelativeToMeasureStart,
+			timeSignatureDenominator);
 	}
 
 	public static EventConfig CreateHoldConfig(EditorChart chart, int row, int lane, int length, bool roll)
@@ -193,14 +222,16 @@ internal sealed class EventConfig
 		});
 	}
 
-	public static EventConfig CreateTapConfigWithExplicitTime(EditorChart chart, int row, double chartTime, int lane)
+	public static EventConfig CreateTapConfigWithRowDependencies(EditorChart chart, int row, double chartTime, int lane,
+		short rowRelativeToMeasureStart,
+		short timeSignatureDenominator)
 	{
 		return new EventConfig(chart, new LaneTapNote
 		{
 			Lane = lane,
 			IntegerPosition = row,
 			TimeSeconds = chartTime,
-		}, false, row, chartTime, SpecialType.None, false, false);
+		}, false, row, chartTime, SpecialType.None, false, false, null, rowRelativeToMeasureStart, timeSignatureDenominator);
 	}
 
 	public static EventConfig CreateMineConfig(EditorChart chart, int row, int lane)
@@ -213,7 +244,9 @@ internal sealed class EventConfig
 		});
 	}
 
-	public static EventConfig CreateMineConfigWithExplicitTime(EditorChart chart, int row, double chartTime, int lane)
+	public static EventConfig CreateMineConfigWithRowDependencies(EditorChart chart, int row, double chartTime, int lane,
+		short rowRelativeToMeasureStart,
+		short timeSignatureDenominator)
 	{
 		return new EventConfig(chart, new LaneNote
 		{
@@ -221,7 +254,7 @@ internal sealed class EventConfig
 			IntegerPosition = row,
 			TimeSeconds = chartTime,
 			SourceType = NoteStrings[(int)NoteType.Mine],
-		}, false, row, chartTime, SpecialType.None, false, false);
+		}, false, row, chartTime, SpecialType.None, false, false, null, rowRelativeToMeasureStart, timeSignatureDenominator);
 	}
 
 	public static EventConfig CreateFakeNoteConfig(EditorChart chart, int row, int lane)
@@ -234,7 +267,9 @@ internal sealed class EventConfig
 		});
 	}
 
-	public static EventConfig CreateFakeNoteConfigWithExplicitTime(EditorChart chart, int row, double chartTime, int lane)
+	public static EventConfig CreateFakeNoteConfigWithRowDependencies(EditorChart chart, int row, double chartTime, int lane,
+		short rowRelativeToMeasureStart,
+		short timeSignatureDenominator)
 	{
 		return new EventConfig(chart, new LaneTapNote
 		{
@@ -242,7 +277,7 @@ internal sealed class EventConfig
 			IntegerPosition = row,
 			TimeSeconds = chartTime,
 			SourceType = NoteStrings[(int)NoteType.Fake],
-		}, false, row, chartTime, SpecialType.None, false, false);
+		}, false, row, chartTime, SpecialType.None, false, false, null, rowRelativeToMeasureStart, timeSignatureDenominator);
 	}
 
 	public static EventConfig CreateLiftNoteConfig(EditorChart chart, int row, int lane)
@@ -255,7 +290,9 @@ internal sealed class EventConfig
 		});
 	}
 
-	public static EventConfig CreateLiftNoteConfigWithExplicitTime(EditorChart chart, int row, double chartTime, int lane)
+	public static EventConfig CreateLiftNoteConfigWithRowDependencies(EditorChart chart, int row, double chartTime, int lane,
+		short rowRelativeToMeasureStart,
+		short timeSignatureDenominator)
 	{
 		return new EventConfig(chart, new LaneTapNote
 		{
@@ -263,7 +300,7 @@ internal sealed class EventConfig
 			IntegerPosition = row,
 			TimeSeconds = chartTime,
 			SourceType = NoteStrings[(int)NoteType.Lift],
-		}, true, row, chartTime, SpecialType.None, false, false);
+		}, true, row, chartTime, SpecialType.None, false, false, null, rowRelativeToMeasureStart, timeSignatureDenominator);
 	}
 
 	public static EventConfig CreateStopConfig(EditorChart chart, int row, double stopTime)

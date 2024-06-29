@@ -2,12 +2,34 @@
 using System.Text.Json.Serialization;
 using Fumen;
 using static Fumen.Converters.SMCommon;
+using static StepManiaEditor.PreferencesOptions;
 
 namespace StepManiaEditor;
 
 internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 {
 	public const string NotificationUndoHistorySizeChanged = "UndoHistorySizeChanged";
+
+	/// <summary>
+	/// How to color steps.
+	/// </summary>
+	public enum StepColorMethod
+	{
+		/// <summary>
+		/// Color the same way Stepmania does, assuming 4/4 and 48 rows per beat.
+		/// </summary>
+		Stepmania,
+
+		/// <summary>
+		/// Color based on note type.
+		/// </summary>
+		Note,
+
+		/// <summary>
+		/// Color based on beat.
+		/// </summary>
+		Beat,
+	}
 
 	// Default values.
 	public const int DefaultRecentFilesHistorySize = 20;
@@ -28,6 +50,7 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 	public const double DefaultDpiScale = 1.0;
 	public const bool DefaultSuppressExternalSongModificationNotification = false;
 	public const bool DefaultHideSongBackground = false;
+	public const StepColorMethod DefaultStepColorMethodValue = StepColorMethod.Stepmania;
 
 	// Preferences.
 	[JsonInclude] public bool ShowOptionsWindow;
@@ -42,6 +65,7 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 	[JsonInclude] public double DpiScale = DefaultDpiScale;
 	[JsonInclude] public bool SuppressExternalSongModificationNotification = DefaultSuppressExternalSongModificationNotification;
 	[JsonInclude] public bool HideSongBackground = DefaultHideSongBackground;
+	[JsonInclude] public StepColorMethod StepColorMethodValue = DefaultStepColorMethodValue;
 
 	[JsonInclude]
 	public int UndoHistorySize
@@ -72,7 +96,8 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 		       && UseCustomDpiScale == DefaultUseCustomDpiScale
 		       && DpiScale.DoubleEquals(DefaultDpiScale)
 		       && SuppressExternalSongModificationNotification == DefaultSuppressExternalSongModificationNotification
-		       && HideSongBackground == DefaultHideSongBackground;
+		       && HideSongBackground == DefaultHideSongBackground
+		       && StepColorMethodValue == DefaultStepColorMethodValue;
 	}
 
 	public void RestoreDefaults()
@@ -101,6 +126,7 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 	private readonly double PreviousDpiScale;
 	private readonly bool PreviousSuppressExternalSongModificationNotification;
 	private readonly bool PreviousHideSongBackground;
+	private readonly StepColorMethod PreviousStepColorMethodValue;
 
 	public ActionRestoreOptionPreferenceDefaults() : base(false, false)
 	{
@@ -118,6 +144,7 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 		PreviousDpiScale = p.DpiScale;
 		PreviousSuppressExternalSongModificationNotification = p.SuppressExternalSongModificationNotification;
 		PreviousHideSongBackground = p.HideSongBackground;
+		PreviousStepColorMethodValue = p.StepColorMethodValue;
 	}
 
 	public override bool AffectsFile()
@@ -133,18 +160,19 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 	protected override void DoImplementation()
 	{
 		var p = Preferences.Instance.PreferencesOptions;
-		p.RecentFilesHistorySize = PreferencesOptions.DefaultRecentFilesHistorySize;
-		p.DefaultStepsType = PreferencesOptions.DefaultDefaultStepsType;
-		p.DefaultDifficultyType = PreferencesOptions.DefaultDefaultDifficultyType;
-		p.StartupStepGraphs = new HashSet<ChartType>(PreferencesOptions.DefaultStartupStepGraphs);
-		p.OpenLastOpenedFileOnLaunch = PreferencesOptions.DefaultOpenLastOpenedFileOnLaunch;
-		p.NewSongSyncOffset = PreferencesOptions.DefaultNewSongSyncOffset;
-		p.OpenSongSyncOffset = PreferencesOptions.DefaultOpenSongSyncOffset;
-		p.UndoHistorySize = PreferencesOptions.DefaultUndoHistorySize;
-		p.UseCustomDpiScale = PreferencesOptions.DefaultUseCustomDpiScale;
-		p.DpiScale = PreferencesOptions.DefaultDpiScale;
-		p.SuppressExternalSongModificationNotification = PreferencesOptions.DefaultSuppressExternalSongModificationNotification;
-		p.HideSongBackground = PreferencesOptions.DefaultHideSongBackground;
+		p.RecentFilesHistorySize = DefaultRecentFilesHistorySize;
+		p.DefaultStepsType = DefaultDefaultStepsType;
+		p.DefaultDifficultyType = DefaultDefaultDifficultyType;
+		p.StartupStepGraphs = new HashSet<ChartType>(DefaultStartupStepGraphs);
+		p.OpenLastOpenedFileOnLaunch = DefaultOpenLastOpenedFileOnLaunch;
+		p.NewSongSyncOffset = DefaultNewSongSyncOffset;
+		p.OpenSongSyncOffset = DefaultOpenSongSyncOffset;
+		p.UndoHistorySize = DefaultUndoHistorySize;
+		p.UseCustomDpiScale = DefaultUseCustomDpiScale;
+		p.DpiScale = DefaultDpiScale;
+		p.SuppressExternalSongModificationNotification = DefaultSuppressExternalSongModificationNotification;
+		p.HideSongBackground = DefaultHideSongBackground;
+		p.StepColorMethodValue = DefaultStepColorMethodValue;
 	}
 
 	protected override void UndoImplementation()
@@ -162,5 +190,6 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 		p.DpiScale = PreviousDpiScale;
 		p.SuppressExternalSongModificationNotification = PreviousSuppressExternalSongModificationNotification;
 		p.HideSongBackground = PreviousHideSongBackground;
+		p.StepColorMethodValue = PreviousStepColorMethodValue;
 	}
 }

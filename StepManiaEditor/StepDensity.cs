@@ -399,17 +399,41 @@ internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<Prefe
 	/// <summary>
 	/// Recomputes the timing for all measures.
 	/// Performs an O(N) scan over all measures.
-	/// Determining timing per measure is an O(log(N)) operation on the number of rate altering events in the chart.
 	/// </summary>
 	private void RecomputeMeasureTiming()
 	{
-		var t = 0.0;
 		var numMeasures = Measures.GetSize();
+		var enumerator = EditorChart.GetRateAlteringEvents().First();
+		enumerator.MoveNext();
+		var currentRae = enumerator.Current!;
+		EditorRateAlteringEvent nextRae = null;
+		var nextRaeRow = 0;
+		if (enumerator.MoveNext())
+		{
+			nextRae = enumerator.Current!;
+			nextRaeRow = nextRae.GetRow();
+		}
+
 		for (var m = 0; m < numMeasures; m++)
 		{
-			EditorChart.TryGetTimeFromChartPosition(m * RowsPerMeasure, ref t);
+			var row = m * RowsPerMeasure;
+			while (nextRae != null && row >= nextRaeRow)
+			{
+				currentRae = nextRae;
+				if (enumerator.MoveNext())
+				{
+					nextRae = enumerator.Current!;
+					nextRaeRow = nextRae.GetRow();
+				}
+				else
+				{
+					nextRae = null;
+					nextRaeRow = 0;
+				}
+			}
+
 			var steps = Measures[m].Steps;
-			Measures[m] = new Measure(t, steps);
+			Measures[m] = new Measure(currentRae.GetChartTimeFromPosition(row), steps);
 		}
 	}
 
@@ -421,11 +445,43 @@ internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<Prefe
 		var newSize = GetLastMeasureNumber() + 1;
 		Measures.UpdateCapacity(Math.Max(MinMeasuresCapacity, newSize));
 
-		var t = 0.0;
+		IReadOnlyRedBlackTree<EditorRateAlteringEvent>.IReadOnlyRedBlackTreeEnumerator enumerator = null;
+		EditorRateAlteringEvent currentRae = null;
+		EditorRateAlteringEvent nextRae = null;
+		var nextRaeRow = 0;
+
 		while (Measures.GetSize() < newSize)
 		{
-			EditorChart.TryGetTimeFromChartPosition(Measures.GetSize() * RowsPerMeasure, ref t);
-			Measures.Add(new Measure(t, 0));
+			var row = Measures.GetSize() * RowsPerMeasure;
+
+			if (enumerator == null)
+			{
+				enumerator = EditorChart.GetRateAlteringEvents().FindActiveRateAlteringEventEnumeratorForPosition(row, false);
+				enumerator.MoveNext();
+				currentRae = enumerator.Current!;
+				if (enumerator.MoveNext())
+				{
+					nextRae = enumerator.Current!;
+					nextRaeRow = nextRae.GetRow();
+				}
+			}
+
+			while (nextRae != null && row >= nextRaeRow)
+			{
+				currentRae = nextRae;
+				if (enumerator.MoveNext())
+				{
+					nextRae = enumerator.Current!;
+					nextRaeRow = nextRae.GetRow();
+				}
+				else
+				{
+					nextRae = null;
+					nextRaeRow = 0;
+				}
+			}
+
+			Measures.Add(new Measure(currentRae.GetChartPositionFromTime(row), 0));
 		}
 	}
 

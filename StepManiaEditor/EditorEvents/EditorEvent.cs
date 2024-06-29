@@ -15,9 +15,12 @@ namespace StepManiaEditor;
 /// <summary>
 /// Representation of an event in a chart for the Editor.
 /// EditorEvents can have their screen-space position set, and render themselves through the Draw() method.
-/// Most, but not all EditorEvents contain one underlying Event from the Stepmania chart.
 /// Each frame the Editor will update positions of EditorEvents that are on screen, and then Draw them.
 /// As such, the positions on an EditorEvent may be stale or unset if it was not on screen recently.
+/// Most, but not all EditorEvents contain one underlying Event from the Stepmania chart.
+/// EditorEvents are mutable, but they are also stored in ordered containers. It is important to be
+/// careful about mutating an EditorEvent in a way which affects sorting while the EditorEvent is
+/// in an ordered container.
 /// </summary>
 internal abstract class EditorEvent : IComparable<EditorEvent>
 {
@@ -65,9 +68,27 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	protected double ChartPosition;
 
 	/// <summary>
+	/// This event's row relative to it's measure start. This is used for time signature based
+	/// note coloring.
+	/// </summary>
+	private short RowRelativeToMeasureStart;
+
+	/// <summary>
+	/// The denominator of the time signature for this event. This is used for time signature
+	/// based note coloring.
+	/// </summary>
+	private short TimeSignatureDenominator;
+
+	/// <summary>
 	/// Debug flag for whether or not the event's time is valid for comparison.
 	/// </summary>
 	protected bool IsChartTimeValid;
+
+	/// <summary>
+	/// Whether or not this event is finished initializing after construction.
+	/// Initialization is complete at the end of CreateEvent.
+	/// </summary>
+	protected bool Initialized;
 
 	protected static uint ScreenHeight;
 
@@ -75,6 +96,8 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	{
 		ScreenHeight = screenHeight;
 	}
+
+	#region Initialization
 
 	/// <summary>
 	/// Static constructor.
@@ -204,8 +227,17 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 		}
 
 		Assert(newEvent != null);
-		if (config.DetermineChartTimeFromPosition)
-			newEvent.ResetTimeBasedOnRow();
+		if (config.DetermineRowBasedDependencies)
+		{
+			newEvent.RefreshRowDependencies();
+		}
+		else
+		{
+			newEvent.SetRowDependencies(config.ChartTime, config.RowRelativeToMeasureStart, config.TimeSignatureDenominator);
+		}
+
+		newEvent.Initialized = true;
+
 		return newEvent;
 	}
 
@@ -222,9 +254,8 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 			ChartPosition = config.ChartPosition;
 		else if (ChartEvent != null)
 			ChartPosition = ChartEvent.IntegerPosition;
-		// We cannot check DetermineChartTimeFromPosition and call ResetTimeBasedOnRow here
-		// because this is a virtual constructor. We need to do it after construction in CreateEvent.
-		IsChartTimeValid = !config.DetermineChartTimeFromPosition;
+		// We cannot refresh row dependencies in the constructor due to virtual methods.
+		IsChartTimeValid = !config.DetermineRowBasedDependencies;
 	}
 
 	/// <summary>
@@ -241,8 +272,12 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 		var newEvent = CreateEvent(EventConfig.CreateCloneEventConfig(this, editorChartForNewEvent));
 		newEvent.IsPositionImmutable = IsPositionImmutable;
 		newEvent.ChartPosition = ChartPosition;
+		newEvent.RowRelativeToMeasureStart = RowRelativeToMeasureStart;
+		newEvent.TimeSignatureDenominator = TimeSignatureDenominator;
 		return newEvent;
 	}
+
+	#endregion Initialization
 
 	/// <summary>
 	/// Whether or not this Event can be deleted. Events with immutable positions cannot be deleted.
@@ -297,7 +332,7 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	/// Most EditorEvents do not have an additional Event.
 	/// Some EditorEvents like holds do have an additional EditorEvent.
 	/// </summary>
-	/// <returns></returns>
+	/// <returns>Underlying optional additional Event for this EditorEvent.</returns>
 	public virtual Event GetAdditionalEvent()
 	{
 		return null;
@@ -332,48 +367,124 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	}
 
 	/// <summary>
-	/// Sets a new row position for this event.
-	/// This also updates the event's time.
+	/// Sets a new row for this event.
+	/// This also updates all row dependencies.
 	/// </summary>
-	/// <param name="row">New row to set.</param>
 	/// <remarks>
 	/// Set this carefully. This changes how events are sorted.
 	/// This cannot be changed while this event is in a sorted list without resorting.
 	/// </remarks>
-	public virtual void SetNewPosition(int row)
+	/// <param name="row">New row to set.</param>
+	public virtual void SetRow(int row)
 	{
 		ChartPosition = row;
 		if (ChartEvent != null)
 			ChartEvent.IntegerPosition = row;
-		ResetTimeBasedOnRow();
+		RefreshRowDependencies();
+	}
+
+	/// <summary>
+	/// Updates all information dependent on the row.
+	/// </summary>
+	/// <remarks>
+	/// Set this carefully. This changes how events are sorted.
+	/// This cannot be changed while this event is in a sorted list without resorting.
+	/// </remarks>
+	/// <param name="activeRateAlteringEvent">
+	/// Optional active rate altering event for this EditorEvent.
+	/// If this is null, then the active rate altering event will be found. Passing in an explicit
+	/// event can be a performance optimization to avoid N*log(N) behavior when updating N events.
+	/// </param>
+	public void RefreshRowDependencies(EditorRateAlteringEvent activeRateAlteringEvent = null)
+	{
+		// Update everything which is derived from position, but requires knowing the active rate altering event.
+		// First look up the rate altering event, then provide it to everything which needs it.
+		activeRateAlteringEvent ??= EditorChart.GetRateAlteringEvents().FindActiveRateAlteringEvent(this);
+		// Time is computed from row using the active rate altering event.
+		RefreshTimeBasedOnRow(activeRateAlteringEvent);
+		// Measure information is computed from row using the active rate altering event.
+		RefreshMeasurePosition(activeRateAlteringEvent.GetTimeSignature());
+	}
+
+	/// <summary>
+	/// Set all information dependent on row. Normally, calling SetRow is sufficient as it will refresh
+	/// all row dependent information. This public method though allows for setting this information
+	/// explicitly when it is known in situations like chart loading.
+	/// </summary>
+	/// <remarks>
+	/// Set this carefully. This changes how events are sorted.
+	/// This cannot be changed while this event is in a sorted list without resorting.
+	/// </remarks>
+	/// <param name="chartTime">The chart time of the event.</param>
+	/// <param name="rowRelativeToMeasureStart">The event's row relative to its measure start.</param>
+	/// <param name="timeSignatureDenominator">The denominator of the time signature which is active for this event.</param>
+	public void SetRowDependencies(double chartTime, short rowRelativeToMeasureStart, short timeSignatureDenominator)
+	{
+		SetChartTime(chartTime);
+		SetMeasurePosition(rowRelativeToMeasureStart, timeSignatureDenominator);
 	}
 
 	/// <summary>
 	/// Updates the chart time of the event to match its row.
-	/// This also updates the event's time.
 	/// </summary>
-	/// <remarks>
-	/// Call this carefully. This changes how events are sorted.
-	/// This cannot be changed while this event is in a sorted list without resorting.
-	/// </remarks>
-	public void ResetTimeBasedOnRow()
+	/// <param name="activeRateAlteringEvent">The active rate altering event for this event.</param>
+	private void RefreshTimeBasedOnRow(EditorRateAlteringEvent activeRateAlteringEvent)
 	{
 		// If we are updating the time we should assume it is currently incorrect.
 		IsChartTimeValid = false;
-		ResetTimeBasedOnRowImplementation();
+		RefreshTimeBasedOnRowImplementation(activeRateAlteringEvent);
 		IsChartTimeValid = true;
 	}
 
 	/// <summary>
 	/// Virtual implementation for resetting time based on row.
 	/// </summary>
-	protected virtual void ResetTimeBasedOnRowImplementation()
+	/// <param name="activeRateAlteringEvent">The active rate altering event for this event.</param>
+	protected virtual void RefreshTimeBasedOnRowImplementation(EditorRateAlteringEvent activeRateAlteringEvent)
+	{
+		SetChartTime(activeRateAlteringEvent.GetChartTimeFromPosition(GetChartPosition()));
+	}
+
+	/// <summary>
+	/// Updates the measure position information of this event.
+	/// This includes the event's row relative to its measure start and the denominator
+	/// of the time signature which is active for this event.
+	/// </summary>
+	/// <param name="ts">The active time signature for this event.</param>
+	private void RefreshMeasurePosition(EditorTimeSignatureEvent ts)
 	{
 		if (ChartEvent == null)
 			return;
-		var chartTime = 0.0;
-		EditorChart.TryGetTimeOfEvent(this, ref chartTime);
-		ChartEvent.TimeSeconds = chartTime;
+		SetMeasurePosition((short)ts.GetRowRelativeToMeasureStart(GetRow()), (short)ts.GetDenominator());
+	}
+
+	/// <summary>
+	/// Updates the measure position information of this event.
+	/// </summary>
+	/// <param name="rowRelativeToMeasureStart">The event's row relative to its measure start.</param>
+	/// <param name="timeSignatureDenominator">The denominator of the time signature which is active for this event.</param>
+	private void SetMeasurePosition(short rowRelativeToMeasureStart, short timeSignatureDenominator)
+	{
+		RowRelativeToMeasureStart = rowRelativeToMeasureStart;
+		TimeSignatureDenominator = timeSignatureDenominator;
+	}
+
+	/// <summary>
+	/// Gets the event's row relative to its measure start.
+	/// </summary>
+	/// <returns>The event's row relative to its measure start.</returns>
+	public short GetRowRelativeToMeasureStart()
+	{
+		return RowRelativeToMeasureStart;
+	}
+
+	/// <summary>
+	/// Gets the denominator of the time signature which is active for this event.
+	/// </summary>
+	/// <returns>The denominator of the time signature which is active for this event.</returns>
+	public short GetTimeSignatureDenominator()
+	{
+		return TimeSignatureDenominator;
 	}
 
 	/// <summary>
@@ -396,6 +507,32 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	}
 
 	/// <summary>
+	/// Gets the row to use for step coloring based on the color preferences.
+	/// The row will be a value between 0 and the Stepmania MaxValidDenominator.
+	/// </summary>
+	/// <returns>Row to use for note coloring.</returns>
+	public int GetStepColorRow()
+	{
+		switch (Preferences.Instance.PreferencesOptions.StepColorMethodValue)
+		{
+			case PreferencesOptions.StepColorMethod.Stepmania:
+			default:
+			{
+				return GetRow() % SMCommon.MaxValidDenominator;
+			}
+			case PreferencesOptions.StepColorMethod.Note:
+			{
+				return RowRelativeToMeasureStart % SMCommon.MaxValidDenominator;
+			}
+			case PreferencesOptions.StepColorMethod.Beat:
+			{
+				return RowRelativeToMeasureStart * TimeSignatureDenominator / SMCommon.NumBeatsPerMeasure %
+				       SMCommon.MaxValidDenominator;
+			}
+		}
+	}
+
+	/// <summary>
 	/// Gets the row/ChartPosition of the event as a double.
 	/// </summary>
 	/// <returns>Double row/ChartPosition of the event.</returns>
@@ -413,6 +550,17 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 		// By default an event has no length and its end chart position is its
 		// start chart position.
 		return GetChartPosition();
+	}
+
+	/// <summary>
+	/// Sets the chart time of this event.
+	/// </summary>
+	/// <param name="chartTime">Chart time of this event.</param>
+	protected virtual void SetChartTime(double chartTime)
+	{
+		if (ChartEvent == null)
+			return;
+		ChartEvent.TimeSeconds = chartTime;
 	}
 
 	/// <summary>

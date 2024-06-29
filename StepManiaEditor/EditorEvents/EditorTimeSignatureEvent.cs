@@ -11,16 +11,16 @@ internal sealed class EditorTimeSignatureEvent : EditorRateAlteringEvent
 {
 	public static readonly string EventShortDescription =
 		"StepMania ignores time signatures during gameplay. They are a convenience for visualizing measures in the editor.\n" +
-		"StepMania does not color notes based on their beat relative to the current time signature. Rather, it colors\n" +
-		"notes based on their absolute row.";
+		$"To change how {Utils.GetAppName()} colors steps based on time signatures, edit the Step Coloring value in the Options.";
 
 	public static readonly string WidgetHelp =
 		"Time Signature.\n" +
 		"Expected format: \"<beat unit>/<number of beats>\". e.g. \"4/4\"\n" +
 		"Both values must be positive.\n" +
+		$"Denominator must be a power of two and no greater than {SMCommon.MaxValidDenominator}.\n" +
 		EventShortDescription;
 
-	public TimeSignature TimeSignatureEvent;
+	private readonly TimeSignature TimeSignatureEvent;
 	private bool WidthDirty;
 
 	public string StringValue
@@ -35,7 +35,10 @@ internal sealed class EditorTimeSignatureEvent : EditorRateAlteringEvent
 				if (!EditorChart.CanBeEdited())
 					return;
 
-				if (!TimeSignatureEvent.Signature.Equals(newSignature))
+				// Compare numerator and denominator explicitly to avoid equality
+				// of fractions like 2/2 and 4/4.
+				if (!(TimeSignatureEvent.Signature.Numerator == newSignature.Numerator &&
+				      TimeSignatureEvent.Signature.Denominator == newSignature.Denominator))
 				{
 					TimeSignatureEvent.Signature = newSignature;
 					WidthDirty = true;
@@ -43,6 +46,28 @@ internal sealed class EditorTimeSignatureEvent : EditorRateAlteringEvent
 				}
 			}
 		}
+	}
+
+	public int Measure { get; set; }
+
+	public Fraction GetSignature()
+	{
+		return TimeSignatureEvent.Signature;
+	}
+
+	public int GetNumerator()
+	{
+		return TimeSignatureEvent.Signature.Numerator;
+	}
+
+	public int GetDenominator()
+	{
+		return TimeSignatureEvent.Signature.Denominator;
+	}
+
+	public override int GetRowRelativeToMeasureStart(int row)
+	{
+		return SMCommon.GetRowRelativeToMeasureStart(TimeSignatureEvent, row);
 	}
 
 	/// <remarks>

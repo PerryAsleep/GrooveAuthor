@@ -325,7 +325,8 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 		// Add EditorEvents for the new StepMania events.
 		var newEvents = new List<EditorEvent>();
 		foreach (var smEvent in newSmEvents)
-			newEvents.Add(EditorEvent.CreateEvent(EventConfig.CreateConfig(EditorChart, smEvent)));
+			newEvents.Add(EditorEvent.CreateEvent(EventConfig.CreateConfigWithoutRowDependencies(EditorChart, smEvent)));
+
 		AddedEvents.AddRange(newEvents);
 
 		return newEvents;

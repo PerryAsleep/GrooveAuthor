@@ -27,7 +27,7 @@ internal sealed class EditorWarpEvent : EditorRateAlteringEvent, IEquatable<Edit
 	private const string Format = "%irows";
 	private const float Speed = 1.0f;
 
-	public Warp WarpEvent;
+	private readonly Warp WarpEvent;
 	private bool WidthDirty;
 
 	#region IChartRegion Implementation
@@ -123,6 +123,11 @@ internal sealed class EditorWarpEvent : EditorRateAlteringEvent, IEquatable<Edit
 				EditorChart.OnWarpLengthModified(this, oldPosition, GetEndChartPosition());
 			}
 		}
+	}
+
+	public int GetWarpLengthRows()
+	{
+		return WarpEvent.LengthIntegerPosition;
 	}
 
 	/// <remarks>

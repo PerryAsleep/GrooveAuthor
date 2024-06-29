@@ -212,7 +212,7 @@ public class TestRateAlteringEventTree
 	{
 		if (e is EditorDelayEvent)
 			return SMCommon.DelayString;
-		if (e is EditorStopEvent s && s.StopEvent.LengthSeconds < 0.0)
+		if (e is EditorStopEvent s && s.GetStopLengthSeconds() < 0.0)
 			return SMCommon.NegativeStopString;
 		return e.GetEvent().GetType().Name;
 	}

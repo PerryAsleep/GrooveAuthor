@@ -176,10 +176,18 @@ internal sealed class EditorPreviewRegionEvent : EditorEvent, IChartRegion, Fume
 	/// Overriden as this ChartEvent's time is stored on the song's sample start value and not
 	/// on an underlying Event.
 	/// </summary>
-	protected override void ResetTimeBasedOnRowImplementation()
+	protected override void RefreshTimeBasedOnRowImplementation(EditorRateAlteringEvent activeRateAlteringEvent)
 	{
-		var chartTime = 0.0;
-		EditorChart.TryGetTimeFromChartPosition(GetChartPosition(), ref chartTime);
+		SetChartTime(activeRateAlteringEvent.GetChartTimeFromPosition(GetChartPosition()));
+	}
+
+	protected override void SetChartTime(double chartTime)
+	{
+		// When initializing do not set the Song's SampleStart time.
+		// That causes the preview to be deleted and re-added so the sort still works.
+		// This would cause an infinite loop.
+		if (!Initialized)
+			return;
 		EditorChart.GetEditorSong().SampleStart = EditorPosition.GetSongTimeFromChartTime(EditorChart, chartTime);
 	}
 

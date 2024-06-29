@@ -828,9 +828,9 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 					? 0
 					: measures[i].Steps / measureTime;
 
-				var yPercent = (float)(stepsPerSecond / greatestStepsPerSecond);
-				var y = minY + yPercent * stepHeight;
-				var x = minX + (float)(measures[i].StartTime / finalTime) * stepWidth;
+				var yPercent = stepsPerSecond / greatestStepsPerSecond;
+				var y = minY + (float)(yPercent * stepHeight);
+				var x = minX + (float)(measures[i].StartTime / finalTime * stepWidth);
 
 				// Special Case: No Steps.
 				if (measures[i].Steps == 0)
@@ -855,7 +855,8 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 				}
 
 				// Special Case: This measure has the same number of steps per second as the previous two measures and should extend the previous quad.
-				if (i >= 2 && stepsPerSecond.DoubleEquals(previousMeasureStepsPerSecond, 0.0001) &&
+				if (i >= 2 && measures[i - 1].Steps != 0 && measures[i - 2].Steps != 0 &&
+				    stepsPerSecond.DoubleEquals(previousMeasureStepsPerSecond, 0.0001) &&
 				    stepsPerSecond.DoubleEquals(previousPreviousMeasureStepsPerSecond, 0.0001))
 				{
 					vertices[previousMeasureLowIndex] = new VertexPositionColor(
@@ -874,7 +875,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 				if (i == 0 || measures[i - 1].Steps == 0)
 				{
 					// We need to record two new vertices for this measure.
-					c = ColorUtils.Interpolate(lowColor, highColor, yPercent);
+					c = ColorUtils.Interpolate(lowColor, highColor, (float)yPercent);
 					vertices.Add(new VertexPositionColor(new Vector3(x, minY, 0.0f),
 						colorMode == DensityGraphColorMode.ColorByDensity ? c : lowColor));
 					previousMeasureLowIndex = vertices.GetSize() - 1;
@@ -887,7 +888,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 
 				// Normal case: The previous measure had steps and this measure has a different number of steps.
 				// Add two vertices and two triangles.
-				c = ColorUtils.Interpolate(lowColor, highColor, yPercent);
+				c = ColorUtils.Interpolate(lowColor, highColor, (float)yPercent);
 				vertices.Add(new VertexPositionColor(new Vector3(x, minY, 0.0f),
 					colorMode == DensityGraphColorMode.ColorByDensity ? c : lowColor));
 				vertices.Add(new VertexPositionColor(new Vector3(x, y, 0.0f), c));

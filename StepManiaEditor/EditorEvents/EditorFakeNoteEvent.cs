@@ -57,7 +57,7 @@ internal sealed class EditorFakeNoteEvent : EditorEvent
 			return;
 
 		// Draw the arrow.
-		var (textureId, rot) = arrowGraphicManager.GetArrowTexture(LaneTapNote.IntegerPosition, LaneTapNote.Lane, IsSelected());
+		var (textureId, rot) = arrowGraphicManager.GetArrowTexture(GetStepColorRow(), LaneTapNote.Lane, IsSelected());
 		textureAtlas.Draw(
 			textureId,
 			spriteBatch,

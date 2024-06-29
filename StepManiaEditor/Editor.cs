@@ -3130,15 +3130,15 @@ internal sealed class Editor :
 		var ts = currentRateEvent.GetTimeSignature();
 
 		// Based on the current rate altering event, determine the beat spacing and snap the current row to a beat.
-		var beatsPerMeasure = ts.Signature.Numerator;
+		var beatsPerMeasure = ts.GetNumerator();
 		var rowsPerBeat = MaxValidDenominator * NumBeatsPerMeasure * beatsPerMeasure
-		                  / ts.Signature.Denominator / beatsPerMeasure;
+		                  / ts.GetDenominator() / beatsPerMeasure;
 
 		// Determine which integer measure and beat we are on. Clamped due to warps.
-		var rowRelativeToTimeSignatureStart = Math.Max(0, currentRow - ts.IntegerPosition);
+		var rowRelativeToTimeSignatureStart = Math.Max(0, currentRow - ts.GetRow());
 		// We need to snap the row forward since we are starting with a row that might not be on a beat boundary.
 		var beatRelativeToTimeSignatureStart = rowRelativeToTimeSignatureStart / rowsPerBeat;
-		currentRow = ts.IntegerPosition + beatRelativeToTimeSignatureStart * rowsPerBeat;
+		currentRow = ts.GetRow() + beatRelativeToTimeSignatureStart * rowsPerBeat;
 
 		var markerWidth = ActiveChart.NumInputs * MarkerTextureWidth * sizeZoom;
 
@@ -3169,10 +3169,10 @@ internal sealed class Editor :
 				return;
 
 			// Determine if this marker is a measure marker instead of a beat marker.
-			rowRelativeToTimeSignatureStart = currentRow - ts.IntegerPosition;
+			rowRelativeToTimeSignatureStart = currentRow - ts.GetRow();
 			beatRelativeToTimeSignatureStart = rowRelativeToTimeSignatureStart / rowsPerBeat;
 			var measureMarker = beatRelativeToTimeSignatureStart % beatsPerMeasure == 0;
-			var measure = ts.MetricPosition.Measure + beatRelativeToTimeSignatureStart / beatsPerMeasure;
+			var measure = ts.Measure + beatRelativeToTimeSignatureStart / beatsPerMeasure;
 
 			// Record the marker.
 			if (measureMarker || sizeZoom > BeatMarkerMinScale)
@@ -3605,7 +3605,7 @@ internal sealed class Editor :
 		foreach (var hsn in holdStartNotes)
 		{
 			MiniMap.AddHold(
-				(LaneHoldStartNote)hsn.GetEvent(),
+				hsn,
 				spaceByRow ? hsn.GetChartPosition() : hsn.GetChartTime(),
 				spaceByRow ? hsn.GetEndChartPosition() : hsn.GetEndChartTime(),
 				hsn.IsRoll(),
@@ -3620,15 +3620,15 @@ internal sealed class Editor :
 			if (e is EditorTapNoteEvent or EditorFakeNoteEvent or EditorLiftNoteEvent)
 			{
 				numNotesAdded++;
-				if (MiniMap.AddNote((LaneNote)e.GetEvent(), spaceByRow ? e.GetChartPosition() : e.GetChartTime(),
+				if (MiniMap.AddTapNote(e, spaceByRow ? e.GetChartPosition() : e.GetChartTime(),
 					    e.IsSelected()) ==
 				    AddResult.BelowBottom)
 					break;
 			}
-			else if (e is EditorMineNoteEvent)
+			else if (e is EditorMineNoteEvent mine)
 			{
 				numNotesAdded++;
-				if (MiniMap.AddMine((LaneNote)e.GetEvent(), spaceByRow ? e.GetChartPosition() : e.GetChartTime(),
+				if (MiniMap.AddMine(mine, spaceByRow ? e.GetChartPosition() : e.GetChartTime(),
 					    e.IsSelected()) ==
 				    AddResult.BelowBottom)
 					break;
@@ -3637,7 +3637,7 @@ internal sealed class Editor :
 			{
 				numNotesAdded++;
 				if (MiniMap.AddHold(
-					    (LaneHoldStartNote)hold.GetEvent(),
+					    hold,
 					    spaceByRow ? hold.GetChartPosition() : hold.GetChartTime(),
 					    spaceByRow ? hold.GetEndChartPosition() : hold.GetEndChartTime(),
 					    hold.IsRoll(),
@@ -4541,8 +4541,8 @@ internal sealed class Editor :
 							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
 								(e) => e is EditorTapNoteEvent,
 								(e) => EditorEvent.CreateEvent(
-									EventConfig.CreateMineConfigWithExplicitTime(ActiveChart, e.GetRow(), e.GetChartTime(),
-										e.GetLane()))));
+									EventConfig.CreateMineConfigWithRowDependencies(ActiveChart, e.GetRow(), e.GetChartTime(),
+										e.GetLane(), e.GetRowRelativeToMeasureStart(), e.GetTimeSignatureDenominator()))));
 						}
 
 						if (ImGui.MenuItem("Taps to Fakes"))
@@ -4550,8 +4550,8 @@ internal sealed class Editor :
 							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
 								(e) => e is EditorTapNoteEvent,
 								(e) => EditorEvent.CreateEvent(
-									EventConfig.CreateFakeNoteConfigWithExplicitTime(ActiveChart, e.GetRow(), e.GetChartTime(),
-										e.GetLane()))));
+									EventConfig.CreateFakeNoteConfigWithRowDependencies(ActiveChart, e.GetRow(), e.GetChartTime(),
+										e.GetLane(), e.GetRowRelativeToMeasureStart(), e.GetTimeSignatureDenominator()))));
 						}
 
 						if (ImGui.MenuItem("Taps to Lifts"))
@@ -4559,8 +4559,8 @@ internal sealed class Editor :
 							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
 								(e) => e is EditorTapNoteEvent,
 								(e) => EditorEvent.CreateEvent(
-									EventConfig.CreateLiftNoteConfigWithExplicitTime(ActiveChart, e.GetRow(), e.GetChartTime(),
-										e.GetLane()))));
+									EventConfig.CreateLiftNoteConfigWithRowDependencies(ActiveChart, e.GetRow(), e.GetChartTime(),
+										e.GetLane(), e.GetRowRelativeToMeasureStart(), e.GetTimeSignatureDenominator()))));
 						}
 
 						ImGui.Separator();
@@ -4569,8 +4569,8 @@ internal sealed class Editor :
 							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
 								(e) => e is EditorMineNoteEvent,
 								(e) => EditorEvent.CreateEvent(
-									EventConfig.CreateTapConfigWithExplicitTime(ActiveChart, e.GetRow(), e.GetChartTime(),
-										e.GetLane()))));
+									EventConfig.CreateTapConfigWithRowDependencies(ActiveChart, e.GetRow(), e.GetChartTime(),
+										e.GetLane(), e.GetRowRelativeToMeasureStart(), e.GetTimeSignatureDenominator()))));
 						}
 
 						if (ImGui.MenuItem("Mines to Fakes"))
@@ -4578,8 +4578,8 @@ internal sealed class Editor :
 							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
 								(e) => e is EditorMineNoteEvent,
 								(e) => EditorEvent.CreateEvent(
-									EventConfig.CreateFakeNoteConfigWithExplicitTime(ActiveChart, e.GetRow(), e.GetChartTime(),
-										e.GetLane()))));
+									EventConfig.CreateFakeNoteConfigWithRowDependencies(ActiveChart, e.GetRow(), e.GetChartTime(),
+										e.GetLane(), e.GetRowRelativeToMeasureStart(), e.GetTimeSignatureDenominator()))));
 						}
 
 						if (ImGui.MenuItem("Mines to Lifts"))
@@ -4587,8 +4587,8 @@ internal sealed class Editor :
 							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
 								(e) => e is EditorMineNoteEvent,
 								(e) => EditorEvent.CreateEvent(
-									EventConfig.CreateLiftNoteConfigWithExplicitTime(ActiveChart, e.GetRow(), e.GetChartTime(),
-										e.GetLane()))));
+									EventConfig.CreateLiftNoteConfigWithRowDependencies(ActiveChart, e.GetRow(), e.GetChartTime(),
+										e.GetLane(), e.GetRowRelativeToMeasureStart(), e.GetTimeSignatureDenominator()))));
 						}
 
 						ImGui.Separator();
@@ -4597,8 +4597,8 @@ internal sealed class Editor :
 							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
 								(e) => e is EditorFakeNoteEvent,
 								(e) => EditorEvent.CreateEvent(
-									EventConfig.CreateTapConfigWithExplicitTime(ActiveChart, e.GetRow(), e.GetChartTime(),
-										e.GetLane()))));
+									EventConfig.CreateTapConfigWithRowDependencies(ActiveChart, e.GetRow(), e.GetChartTime(),
+										e.GetLane(), e.GetRowRelativeToMeasureStart(), e.GetTimeSignatureDenominator()))));
 						}
 
 						if (ImGui.MenuItem("Lifts to Taps"))
@@ -4606,8 +4606,8 @@ internal sealed class Editor :
 							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
 								(e) => e is EditorLiftNoteEvent,
 								(e) => EditorEvent.CreateEvent(
-									EventConfig.CreateTapConfigWithExplicitTime(ActiveChart, e.GetRow(), e.GetChartTime(),
-										e.GetLane()))));
+									EventConfig.CreateTapConfigWithRowDependencies(ActiveChart, e.GetRow(), e.GetChartTime(),
+										e.GetLane(), e.GetRowRelativeToMeasureStart(), e.GetTimeSignatureDenominator()))));
 						}
 
 						ImGui.Separator();
@@ -4625,8 +4625,8 @@ internal sealed class Editor :
 							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
 								(e) => e is EditorHoldNoteEvent hn && !hn.IsRoll(),
 								(e) => EditorEvent.CreateEvent(
-									EventConfig.CreateTapConfigWithExplicitTime(ActiveChart, e.GetRow(), e.GetChartTime(),
-										e.GetLane()))));
+									EventConfig.CreateTapConfigWithRowDependencies(ActiveChart, e.GetRow(), e.GetChartTime(),
+										e.GetLane(), e.GetRowRelativeToMeasureStart(), e.GetTimeSignatureDenominator()))));
 						}
 
 						if (ImGui.MenuItem("Holds to Mines"))
@@ -4652,8 +4652,8 @@ internal sealed class Editor :
 							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
 								(e) => e is EditorHoldNoteEvent hn && hn.IsRoll(),
 								(e) => EditorEvent.CreateEvent(
-									EventConfig.CreateTapConfigWithExplicitTime(ActiveChart, e.GetRow(), e.GetChartTime(),
-										e.GetLane()))));
+									EventConfig.CreateTapConfigWithRowDependencies(ActiveChart, e.GetRow(), e.GetChartTime(),
+										e.GetLane(), e.GetRowRelativeToMeasureStart(), e.GetTimeSignatureDenominator()))));
 						}
 
 						if (ImGui.MenuItem("Rolls to Mines"))
@@ -6736,8 +6736,8 @@ internal sealed class Editor :
 		var rate = ActiveChart?.GetRateAlteringEvents().FindActiveRateAlteringEventForPosition(Position.ChartPosition);
 		if (rate == null)
 			return;
-		var sig = rate.GetTimeSignature().Signature;
-		var rows = sig.Numerator * (MaxValidDenominator * NumBeatsPerMeasure / sig.Denominator);
+		var sig = rate.GetTimeSignature();
+		var rows = sig.GetNumerator() * (MaxValidDenominator * NumBeatsPerMeasure / sig.GetDenominator());
 		Position.ChartPosition -= rows;
 
 		UpdateAutoPlayFromScrolling();
@@ -6748,8 +6748,8 @@ internal sealed class Editor :
 		var rate = ActiveChart?.GetRateAlteringEvents().FindActiveRateAlteringEventForPosition(Position.ChartPosition);
 		if (rate == null)
 			return;
-		var sig = rate.GetTimeSignature().Signature;
-		var rows = sig.Numerator * (MaxValidDenominator * NumBeatsPerMeasure / sig.Denominator);
+		var sig = rate.GetTimeSignature();
+		var rows = sig.GetNumerator() * (MaxValidDenominator * NumBeatsPerMeasure / sig.GetDenominator());
 		Position.ChartPosition += rows;
 
 		UpdateAutoPlayFromScrolling();
@@ -7099,8 +7099,9 @@ internal sealed class Editor :
 						{
 							var deleteHold = new ActionDeleteEditorEvents(existingEvent);
 
-							var config = EventConfig.CreateTapConfigWithExplicitTime(ActiveChart, existingEvent.GetRow(),
-								existingEvent.GetChartTime(), lane);
+							var config = EventConfig.CreateTapConfigWithRowDependencies(ActiveChart, existingEvent.GetRow(),
+								existingEvent.GetChartTime(), lane, existingEvent.GetRowRelativeToMeasureStart(),
+								existingEvent.GetTimeSignatureDenominator());
 							var insertNewNoteAtHoldStart = new ActionAddEditorEvent(EditorEvent.CreateEvent(config));
 
 							LaneEditStates[lane].SetEditingTapOrMine(LaneEditStates[lane].GetEventBeingEdited(),

@@ -129,7 +129,7 @@ internal sealed class ActionShiftSelectionRow : EditorAction
 			}
 
 			// If the event can be moved, update the position.
-			editorEvent.SetNewPosition(newRow);
+			editorEvent.SetRow(newRow);
 
 			// Re-add the event to complete the row transformation.
 			var (addedFromAlteration, deletedFromAlteration) = Chart.ForceAddEvents(new List<EditorEvent> { editorEvent });
@@ -168,7 +168,7 @@ internal sealed class ActionShiftSelectionRow : EditorAction
 			// Undo the transformation.
 			var newRow = transformation.Event.GetRow() - Rows;
 			Assert(newRow >= 0);
-			transformation.Event.SetNewPosition(newRow);
+			transformation.Event.SetRow(newRow);
 
 			// Re-add the transformed event.
 			Chart.AddEvent(transformation.Event);

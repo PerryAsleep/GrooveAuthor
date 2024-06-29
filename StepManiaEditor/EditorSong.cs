@@ -362,6 +362,8 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 			Assert(CanBeEdited());
 			if (!CanBeEdited())
 				return;
+			if (LastSecondHintInternal.DoubleEquals(value))
+				return;
 
 			DeleteLastSecondHintEvents();
 			LastSecondHintInternal = value;
@@ -378,6 +380,8 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 		{
 			Assert(CanBeEdited());
 			if (!CanBeEdited())
+				return;
+			if (SampleStartInternal.DoubleEquals(value))
 				return;
 
 			DeletePreviewEvents();

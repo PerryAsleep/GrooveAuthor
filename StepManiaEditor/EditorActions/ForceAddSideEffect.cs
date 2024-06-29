@@ -42,7 +42,7 @@ internal sealed class ForceAddSideEffect
 			// at this point since it was not in the event tree when we re-added the unmodified event
 			// which changed it's time originally.
 			foreach (var deletedEvent in Deletions)
-				deletedEvent.ResetTimeBasedOnRow();
+				deletedEvent.RefreshRowDependencies();
 			chart.AddEvents(Deletions);
 		}
 	}

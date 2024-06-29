@@ -103,7 +103,7 @@ internal class ActionPasteEvents : EditorAction
 
 			// Clone the event, and set the new position. Cloned events are not selected.
 			var newEvent = editorEvent.Clone();
-			newEvent.SetNewPosition(newRow);
+			newEvent.SetRow(newRow);
 
 			// Add the new event and record the side effects so they can be undone.
 			var (addedFromAlteration, deletedFromAlteration) = Chart.ForceAddEvents(new List<EditorEvent> { newEvent });

@@ -104,10 +104,18 @@ internal sealed class EditorLastSecondHintEvent : EditorEvent
 	/// Overriden as this ChartEvent's time is stored on the song's last second hint value and not
 	/// on an underlying Event.
 	/// </summary>
-	protected override void ResetTimeBasedOnRowImplementation()
+	protected override void RefreshTimeBasedOnRowImplementation(EditorRateAlteringEvent activeRateAlteringEvent)
 	{
-		var chartTime = 0.0;
-		EditorChart.TryGetTimeFromChartPosition(GetChartPosition(), ref chartTime);
+		SetChartTime(activeRateAlteringEvent.GetChartTimeFromPosition(GetChartPosition()));
+	}
+
+	protected override void SetChartTime(double chartTime)
+	{
+		// When initializing do not set the Song's LastSecondHint time.
+		// That causes the last second hint to be deleted and re-added so the sort still works.
+		// This would cause an infinite loop.
+		if (!Initialized)
+			return;
 		EditorChart.GetEditorSong().LastSecondHint = chartTime;
 	}
 
