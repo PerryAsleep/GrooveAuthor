@@ -109,8 +109,7 @@ internal sealed class ActionShiftSelectionRow : EditorAction
 		Editor.OnNoteTransformationBegin();
 
 		// Remove all events to be transformed.
-		var allDeletedEvents = Chart.DeleteEvents(TransformableEvents);
-		Assert(allDeletedEvents.Count == TransformableEvents.Count);
+		Chart.DeleteEvents(TransformableEvents);
 
 		// Set up lists to hold the events in various states to support undo and redo.
 		Transformations = new List<Transformation>();
@@ -156,8 +155,7 @@ internal sealed class ActionShiftSelectionRow : EditorAction
 		Editor.OnNoteTransformationBegin();
 
 		// Remove the events that were successfully moved as part of doing the original action.
-		var allDeletedEvents = Chart.DeleteEvents(RemainingOriginalEventsAfterTransform);
-		Assert(allDeletedEvents.Count == RemainingOriginalEventsAfterTransform.Count);
+		Chart.DeleteEvents(RemainingOriginalEventsAfterTransform);
 
 		// Undo each transformation.
 		foreach (var transformation in Transformations)

@@ -3132,13 +3132,6 @@ internal sealed class ImGuiLayoutUtils
 
 		var width = DrawHelp(help, ImGui.GetContentRegionAvail().X);
 		var dragIntWidth = (width - ButtonGoWidth - ButtonUseCurrentRowWidth - ImGui.GetStyle().ItemSpacing.X * 4.0f) / 3.0f;
-
-		// Disable controls if moving the EditorEvent could potentially result in deleting other events.
-		// This would be difficult to maintain and can only happen in rare occasions (time signatures).
-		var positionCanBeChanged = !EditorChart.CanEventResultInExtraDeletionsWhenMoved(editorEvent);
-		if (!positionCanBeChanged)
-			PushDisabled();
-
 		var dragIntCacheKey = GetCacheKey(title, "ChartPositionDragInt");
 
 		// DragInt for row
@@ -3230,9 +3223,6 @@ internal sealed class ImGuiLayoutUtils
 				ActionQueue.Instance.Do(new ActionMoveEditorEvent(editorEvent, editorRow, row));
 			}
 		}
-
-		if (!positionCanBeChanged)
-			PopDisabled();
 
 		// Go button
 		ImGui.SameLine();

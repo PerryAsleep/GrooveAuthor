@@ -1,7 +1,6 @@
 ﻿using System;
-using StepManiaLibrary;
 using System.Collections.Generic;
-using static System.Diagnostics.Debug;
+using StepManiaLibrary;
 
 namespace StepManiaEditor;
 
@@ -85,8 +84,7 @@ internal abstract class ActionTransformSelectionLanes : EditorAction
 		Editor.OnNoteTransformationBegin();
 
 		// Remove all events to be transformed.
-		var allDeletedEvents = Chart.DeleteEvents(TransformableEvents);
-		Assert(allDeletedEvents.Count == TransformableEvents.Count);
+		Chart.DeleteEvents(TransformableEvents);
 
 		// Transform events.
 		RemainingOriginalEventsAfterTransform = new List<EditorEvent>();
@@ -97,6 +95,7 @@ internal abstract class ActionTransformSelectionLanes : EditorAction
 				RemainingOriginalEventsAfterTransform.Add(editorEvent);
 			}
 		}
+
 		RemainingOriginalEventsAfterTransform.Sort();
 
 		// Add the events back, storing the side effects.
@@ -112,15 +111,13 @@ internal abstract class ActionTransformSelectionLanes : EditorAction
 		Editor.OnNoteTransformationBegin();
 
 		// Remove the transformed events.
-		var allDeletedEvents = Chart.DeleteEvents(RemainingOriginalEventsAfterTransform);
-		Assert(allDeletedEvents.Count == RemainingOriginalEventsAfterTransform.Count);
+		Chart.DeleteEvents(RemainingOriginalEventsAfterTransform);
 
 		// While the transformed events are removed, delete the events which
 		// were added as a side effect.
 		if (AddedFromAlteration.Count > 0)
 		{
-			allDeletedEvents = Chart.DeleteEvents(AddedFromAlteration);
-			Assert(allDeletedEvents.Count == AddedFromAlteration.Count);
+			Chart.DeleteEvents(AddedFromAlteration);
 		}
 
 		// While the transformed events are removed, add the events which

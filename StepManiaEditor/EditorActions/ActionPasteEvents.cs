@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using static System.Diagnostics.Debug;
 
 namespace StepManiaEditor;
 
@@ -143,8 +142,7 @@ internal class ActionPasteEvents : EditorAction
 		Editor.OnNoteTransformationBegin();
 
 		// Remove the events that were successfully pasted as part of doing the original action.
-		var allDeletedEvents = Chart.DeleteEvents(PastedEvents);
-		Assert(allDeletedEvents.Count == PastedEvents.Count);
+		Chart.DeleteEvents(PastedEvents);
 
 		// Undo each of the side effects.
 		foreach (var sideEffect in SideEffects)

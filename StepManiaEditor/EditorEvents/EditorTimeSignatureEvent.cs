@@ -70,6 +70,12 @@ internal sealed class EditorTimeSignatureEvent : EditorRateAlteringEvent
 		return SMCommon.GetRowRelativeToMeasureStart(TimeSignatureEvent, row);
 	}
 
+	public int GetRowsPerMeasure()
+	{
+		var rowsPerWholeNote = SMCommon.NumBeatsPerMeasure * SMCommon.MaxValidDenominator;
+		return rowsPerWholeNote * TimeSignatureEvent.Signature.Numerator / TimeSignatureEvent.Signature.Denominator;
+	}
+
 	/// <remarks>
 	/// This lazily updates the width if it is dirty.
 	/// This is a bit of hack because in order to determine the width we need to call into
@@ -111,6 +117,8 @@ internal sealed class EditorTimeSignatureEvent : EditorRateAlteringEvent
 	public EditorTimeSignatureEvent(EventConfig config, TimeSignature chartEvent) : base(config)
 	{
 		TimeSignatureEvent = chartEvent;
+		// Pull the measure from the MetricPosition.
+		Measure = TimeSignatureEvent.MetricPosition.Measure;
 		WidthDirty = true;
 	}
 

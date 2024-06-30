@@ -180,7 +180,8 @@ internal sealed class ActionCopyEventsBetweenCharts : EditorAction
 			// others have been updated.
 
 			// Delete all events minus the special timing events.
-			chartState.AllDeletedEvents = destChart.DeleteEvents(eventsToDelete);
+			chartState.AllDeletedEvents = eventsToDelete;
+			destChart.DeleteEvents(eventsToDelete);
 
 			// Update the special timing events
 			if (sourceFirstTimeSignature != null && chartState.DestinationFirstTimeSignature != null)

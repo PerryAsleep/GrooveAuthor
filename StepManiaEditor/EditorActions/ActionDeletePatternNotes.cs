@@ -175,7 +175,8 @@ internal sealed class ActionDeletePatternNotes : EditorAction
 			// Delete the events now rather than waiting to accumulate all events.
 			// These prevents accidentally trying to delete the same event more than once
 			// when patterns overlap.
-			deletedEvents.AddRange(editorChart.DeleteEvents(deletedEventsForPattern));
+			deletedEvents.AddRange(deletedEventsForPattern);
+			editorChart.DeleteEvents(deletedEventsForPattern);
 		}
 
 		return new Alterations(deletedEvents, shortenedHolds);

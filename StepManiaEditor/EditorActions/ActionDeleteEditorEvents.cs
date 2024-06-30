@@ -9,13 +9,6 @@ internal sealed class ActionDeleteEditorEvents : EditorAction
 {
 	private readonly List<EditorEvent> EditorEvents = new();
 
-	/// <summary>
-	/// Deleting an event may result in other events also being deleted.
-	/// We store all deleted events as a result of the requested delete so
-	/// that when we redo the action we can restore them all.
-	/// </summary>
-	private List<EditorEvent> AllDeletedEvents = new();
-
 	public ActionDeleteEditorEvents(EditorEvent editorEvent) : base(false, false)
 	{
 		EditorEvents.Add(editorEvent);
@@ -50,11 +43,11 @@ internal sealed class ActionDeleteEditorEvents : EditorAction
 
 	protected override void DoImplementation()
 	{
-		AllDeletedEvents = EditorEvents[0].GetEditorChart().DeleteEvents(EditorEvents);
+		EditorEvents[0].GetEditorChart().DeleteEvents(EditorEvents);
 	}
 
 	protected override void UndoImplementation()
 	{
-		EditorEvents[0].GetEditorChart().AddEvents(AllDeletedEvents);
+		EditorEvents[0].GetEditorChart().AddEvents(EditorEvents);
 	}
 }

@@ -354,9 +354,12 @@ internal sealed class EventConfig
 
 	public static EventConfig CreateTimeSignatureConfig(EditorChart chart, int row, Fraction timeSignature)
 	{
+		var measure = chart.GetMeasureForNewTimeSignatureAtRow(row);
 		return new EventConfig(chart, new TimeSignature(timeSignature)
 		{
 			IntegerPosition = row,
+			// Pass the measure in through the MetricPosition.
+			MetricPosition = new MetricPosition(measure, 0, 0, timeSignature.Denominator),
 		});
 	}
 

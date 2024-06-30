@@ -1006,10 +1006,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	/// <summary>
 	/// Updates all EditorRateAlteringEvents rate tracking values.
 	/// This assumes the EditorRateAlteringEvents have correct row and time values.
-	/// This may result in TimeSignatures being deleted if they no longer fall on measure boundaries.
 	/// </summary>
-	/// <returns>List of all EditorEvents which were deleted as a result.</returns>
-	private List<EditorEvent> RefreshRateAlteringEvents()
+	private void RefreshRateAlteringEvents()
 	{
 		var lastScrollRate = 1.0;
 		var lastTempo = 1.0;
@@ -1036,7 +1034,6 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		}
 
 		var previousEvents = new List<EditorRateAlteringEvent>();
-		var invalidTimeSignatures = new List<EditorEvent>();
 
 		foreach (var rae in RateAlteringEvents)
 		{
@@ -1133,19 +1130,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 				}
 				case EditorTimeSignatureEvent timeSignature:
 				{
-					// Ensure that the time signature falls on a measure boundary.
-					// Due to deleting events it may be the case that time signatures are
-					// no longer valid and they need to be removed.
-					if ((firstTimeSignature && timeSignature.GetRow() != 0)
-					    || (!firstTimeSignature && timeSignature.GetRow() !=
-						    GetNearestMeasureBoundaryRow(lastTimeSignature, timeSignature.GetRow())))
-					{
-						invalidTimeSignatures.Add(rae);
-						continue;
-					}
-
 					isPositionImmutable = firstTimeSignature;
-
 					lastTimeSignature = timeSignature;
 					firstTimeSignature = false;
 					break;
@@ -1184,13 +1169,6 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		MostCommonTempo = mostCommonTempo;
 		MinTempo = minTempo;
 		MaxTempo = maxTempo;
-
-		if (invalidTimeSignatures.Count > 0)
-		{
-			DeleteEvents(invalidTimeSignatures);
-		}
-
-		return invalidTimeSignatures;
 	}
 
 	private void RefreshIntervals()
@@ -1247,7 +1225,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	/// the library function and then do a second pass for what we need.
 	/// </remarks>
 	/// <returns>List of all EditorEvents which were deleted as a result.</returns>
-	private List<EditorEvent> RefreshEventTimingData()
+	private void RefreshEventTimingData()
 	{
 		// TODO: Remove Validation.
 		EditorEvents.Validate();
@@ -1307,6 +1285,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 				? 0.0
 				: (row - lastTempoChangeRow) * lastTempo.GetSecondsPerRow(MaxValidDenominator);
 			var absoluteTime = lastTempoChangeTime + timeRelativeToLastTempoChange;
+			var rowRelativeToMeasureStart = (short)(row - lastTimeSigChangeRow - measureStartRowRelativeToTimeSigChange);
 
 			// Handle a currently running warp.
 			var currentWarpTime = 0.0;
@@ -1338,8 +1317,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			// have lower IntegerPositions
 			if (eventTime < previousEventTimeSeconds)
 				eventTime = previousEventTimeSeconds;
-			editorEvent.SetRowDependencies(eventTime,
-				(short)(row - lastTimeSigChangeRow - measureStartRowRelativeToTimeSigChange), (short)lastTimeSigDenominator);
+			editorEvent.SetRowDependencies(eventTime, rowRelativeToMeasureStart, (short)lastTimeSigDenominator);
 			previousEventTimeSeconds = eventTime;
 
 			switch (editorEvent)
@@ -1372,6 +1350,17 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 				case EditorTimeSignatureEvent ts:
 				{
 					var timeSignature = ts.GetSignature();
+
+					// We allow time signatures to occur on any row, even if that cuts off a previous measure.
+					// Check for this scenario and increment the measure if needed as time signatures should always
+					// start a new measure.
+					if (rowRelativeToMeasureStart != 0)
+					{
+						absoluteMeasure++;
+						rowRelativeToMeasureStart = 0;
+					}
+
+					editorEvent.SetRowDependencies(eventTime, rowRelativeToMeasureStart, (short)timeSignature.Denominator);
 
 					lastTimeSigChangeRow = row;
 					lastTimeSigChangeMeasure = absoluteMeasure;
@@ -1412,13 +1401,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 		EditorEvents.Validate();
 
-		// Now, update all the rate altering events using the updated times. It is possible that
-		// this may result in some events being deleted. The only time this can happen is when
-		// deleting a time signature that then invalidates a future time signature. This will
-		// not invalidate note times or positions. It may invalidate the event measure tracking
-		// data which depends on time signature. This will be handled because when the second
-		// time signature is deleted it will refresh all event timing data again.
-		var deletedEvents = RefreshRateAlteringEvents();
+		// Now, update all the rate altering events using the updated times.
+		RefreshRateAlteringEvents();
 
 		EditorEvents.Validate();
 
@@ -1444,8 +1428,6 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		EditorEvents.Validate();
 
 		Notify(NotificationTimingChanged, this);
-
-		return deletedEvents;
 	}
 
 	#endregion Timing Updates
@@ -1630,50 +1612,24 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	}
 
 	/// <summary>
-	/// Returns whether or not the given row is on a measure boundary based on the TimeSignature Events in the chart.
+	/// Gets the measure number for a new EditorTimeSignatureEvent to be created at the given row.
 	/// </summary>
-	/// <param name="row">Row in question.</param>
-	/// <returns>True if the given row is on a measure boundary and false otherwise.</returns>
-	public bool IsRowOnMeasureBoundary(int row)
+	/// <param name="row">Row to create the new EditorTimeSignatureEvent.</param>
+	/// <returns>Measure number of the new EditorTimeSignatureEvent.</returns>
+	public int GetMeasureForNewTimeSignatureAtRow(int row)
 	{
-		return row == GetNearestMeasureBoundaryRow(row);
-	}
-
-	/// <summary>
-	/// Returns the row of the nearest measure boundary based on the TimeSignature Events in the chart.
-	/// The nearest measure row may occur before or after the given row.
-	/// </summary>
-	/// <param name="row">Row in question.</param>
-	/// <returns>Nearest measure boundary row.</returns>
-	public int GetNearestMeasureBoundaryRow(int row)
-	{
-		// Time signatures are always the first event per row so looking up by row
-		// instead of by a specific event type is safe.
-		var rae = RateAlteringEvents?.FindActiveRateAlteringEventForPosition(row);
-		if (rae == null)
-			return 0;
-		return GetNearestMeasureBoundaryRow(rae.GetTimeSignature(), row);
-	}
-
-	/// <summary>
-	/// Returns the row of the nearest measure boundary based on the TimeSignature Events in the chart.
-	/// The nearest measure row may occur before or after the given row.
-	/// </summary>
-	/// <param name="lastTimeSignature">The active TimeSignature for the row.</param>
-	/// <param name="row">Row in question.</param>
-	/// <returns>Nearest measure boundary row.</returns>
-	private int GetNearestMeasureBoundaryRow(EditorTimeSignatureEvent lastTimeSignature, int row)
-	{
-		var timeSignatureRow = lastTimeSignature.GetRow();
-		var beatsPerMeasure = lastTimeSignature.GetNumerator();
-		var rowsPerBeat = MaxValidDenominator * NumBeatsPerMeasure * beatsPerMeasure
-		                  / lastTimeSignature.GetDenominator() / beatsPerMeasure;
-		var rowsPerMeasure = rowsPerBeat * beatsPerMeasure;
-		var previousMeasureRow = timeSignatureRow + (row - timeSignatureRow) / rowsPerMeasure * rowsPerMeasure;
-		var nextMeasureRow = previousMeasureRow + rowsPerMeasure;
-		if (row - previousMeasureRow < nextMeasureRow - row)
-			return previousMeasureRow;
-		return nextMeasureRow;
+		var enumerator = RateAlteringEvents.FindActiveRateAlteringEventEnumeratorForPosition(row);
+		enumerator.MoveNext();
+		var activeTimeSignature = enumerator.Current!.GetTimeSignature();
+		var rowsPerMeasure = activeTimeSignature.GetRowsPerMeasure();
+		var relativeRows = row - activeTimeSignature.GetRow();
+		var relativeMeasures = relativeRows / rowsPerMeasure;
+		// If the desired row for the new time signature does not fall on a measure boundary then
+		// add one since the division above is only precise for measure boundaries and will be one
+		// under for measures created off boundaries.
+		if (relativeRows % rowsPerMeasure != 0)
+			relativeMeasures++;
+		return activeTimeSignature.Measure + relativeMeasures;
 	}
 
 	#endregion Measure Determination
@@ -2183,33 +2139,26 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 	/// <summary>
 	/// Deletes the given EditorEvent.
-	/// This may result in more events being deleted than the ones provided.
 	/// </summary>
 	/// <param name="editorEvent">EditorEvent to delete.</param>
-	/// <returns>List of all deleted EditorEvents</returns>
-	public List<EditorEvent> DeleteEvent(EditorEvent editorEvent)
+	public void DeleteEvent(EditorEvent editorEvent)
 	{
 		Assert(CanBeEdited());
 		if (!CanBeEdited())
-			return new List<EditorEvent>();
+			return;
 
-		return DeleteEvents(new List<EditorEvent>() { editorEvent });
+		DeleteEvents(new List<EditorEvent> { editorEvent });
 	}
 
 	/// <summary>
 	/// Deletes the given EditorEvents.
-	/// This may result in more events being deleted than the ones provided.
 	/// </summary>
 	/// <param name="editorEvents">List of all EditorEvents to delete.</param>
-	/// <returns>List of all deleted EditorEvents</returns>
-	public List<EditorEvent> DeleteEvents(List<EditorEvent> editorEvents)
+	public void DeleteEvents(List<EditorEvent> editorEvents)
 	{
 		Assert(CanBeEdited());
 		if (!CanBeEdited())
-			return new List<EditorEvent>();
-
-		var allDeletedEvents = new List<EditorEvent>();
-		allDeletedEvents.AddRange(editorEvents);
+			return;
 
 		var rateDirty = false;
 		foreach (var editorEvent in editorEvents)
@@ -2302,14 +2251,12 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 		if (rateDirty)
 		{
-			allDeletedEvents.AddRange(RefreshEventTimingData());
+			RefreshEventTimingData();
 		}
 
 		StepDensity?.DeleteEvents(editorEvents);
 
-		Notify(NotificationEventsDeleted, this, allDeletedEvents);
-
-		return allDeletedEvents;
+		Notify(NotificationEventsDeleted, this, editorEvents);
 	}
 
 	/// <summary>
@@ -2477,7 +2424,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 					// If the existing note is at the same row as the new note, delete it.
 					if (existingNote.GetRow() == row)
 					{
-						sideEffectDeletedEvents.AddRange(DeleteEvent(existingNote));
+						DeleteEvent(existingNote);
+						sideEffectDeletedEvents.Add(existingNote);
 					}
 
 					// The existing note is a hold which extends through the new note.
@@ -2490,7 +2438,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 						// In either case below, delete the existing hold note and replace it with a new hold or a tap.
 						// We could reduce the hold length in place, but then we would need to surface that alteration to the caller
 						// so they can undo it. It's simpler for now to just remove it and add a new one.
-						sideEffectDeletedEvents.AddRange(DeleteEvent(existingNote));
+						DeleteEvent(existingNote);
+						sideEffectDeletedEvents.Add(existingNote);
 
 						// If the reduction in length is below the min length for a hold, replace it with a tap.
 						if (newExistingHoldEndRow <= existingNote.GetRow())
@@ -2534,7 +2483,10 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 					}
 
 					if (overlappedNotes.Count > 0)
-						sideEffectDeletedEvents.AddRange(DeleteEvents(overlappedNotes));
+					{
+						DeleteEvents(overlappedNotes);
+						sideEffectDeletedEvents.AddRange(overlappedNotes);
+					}
 				}
 			}
 
@@ -2547,7 +2499,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 				{
 					if (editorEvent.GetType() == potentialConflictingEvent.GetType())
 					{
-						sideEffectDeletedEvents.AddRange(DeleteEvent(potentialConflictingEvent));
+						DeleteEvent(potentialConflictingEvent);
+						sideEffectDeletedEvents.Add(potentialConflictingEvent);
 
 						// Determine if the side effect of deleting the conflicting note would
 						// affect the rate.
@@ -2601,28 +2554,11 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			return false;
 
 		Notify(NotificationEventsMoveStart, this, editorEvent);
-		var deletedEvents = DeleteEvent(editorEvent);
+		DeleteEvent(editorEvent);
 		editorEvent.SetRow(newRow);
 		AddEvent(editorEvent);
-		deletedEvents.Remove(editorEvent);
-		Assert(deletedEvents.Count == 0);
 		Notify(NotificationEventsMoveEnd, this, editorEvent);
-
 		return true;
-	}
-
-	/// <summary>
-	/// Returns whether the given EditorEvent has the potential to cause extra EditorEvent deletions
-	/// if it were to be moved.
-	/// </summary>
-	/// <param name="editorEvent">EditorEvent in question.</param>
-	/// <returns>
-	/// True of the given EditorEvent has the potential to cause extra EditorEvent deletions if it were
-	/// to be moved and false otherwise.
-	/// </returns>
-	public static bool CanEventResultInExtraDeletionsWhenMoved(EditorEvent editorEvent)
-	{
-		return editorEvent is EditorTimeSignatureEvent;
 	}
 
 	/// <summary>
@@ -2634,14 +2570,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	/// <returns>True if the given EditorEvent can exist at the given row and false otherwise.</returns>
 	public bool CanEventExistAtRow(EditorEvent editorEvent, int row)
 	{
-		if (row < 0)
-			return false;
-
-		// Do not allow time signatures to move to non-measure boundaries.
-		if (editorEvent is EditorTimeSignatureEvent && !IsRowOnMeasureBoundary(row))
-			return false;
-
-		return true;
+		return row >= 0;
 	}
 
 	/// <summary>
@@ -2657,10 +2586,6 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	{
 		// The row must be a valid row for this event to exist at regardless of note conflicts.
 		if (!CanEventExistAtRow(editorEvent, row))
-			return false;
-
-		// Don't allow moving events which have the potential to cause extra deletions.
-		if (CanEventResultInExtraDeletionsWhenMoved(editorEvent))
 			return false;
 
 		// If the move keeps it at the same location, it is allowed.
@@ -2689,13 +2614,6 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		// TODO: Support movement of holds?
 		// If this event is a hold, then the new position can't overlap other notes in the same lane.
 		if (editorEvent is EditorHoldNoteEvent)
-			return false;
-
-		// TODO: Support movement of time signature events?
-		// If this event is a time signature, then the new position must be on a measure boundary
-		// and future events must continue to fall on a time signature boundary.
-		// For now, disallow this kind of movement due to its complexity.
-		if (editorEvent is EditorTimeSignatureEvent)
 			return false;
 
 		return true;

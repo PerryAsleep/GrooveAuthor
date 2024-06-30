@@ -1,6 +1,4 @@
-﻿using static System.Diagnostics.Debug;
-
-namespace StepManiaEditor.EditorActions;
+﻿namespace StepManiaEditor.EditorActions;
 
 /// <summary>
 /// Action to move an EditorEvent to a new position.
@@ -13,7 +11,6 @@ internal sealed class ActionMoveEditorEvent : EditorAction
 
 	public ActionMoveEditorEvent(EditorEvent editorEvent, int row, int previousRow) : base(false, false)
 	{
-		Assert(!EditorChart.CanEventResultInExtraDeletionsWhenMoved(editorEvent));
 		EditorEvent = editorEvent;
 		Row = row;
 		PreviousRow = previousRow;

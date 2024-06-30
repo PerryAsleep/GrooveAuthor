@@ -3174,6 +3174,14 @@ internal sealed class Editor :
 			var measureMarker = beatRelativeToTimeSignatureStart % beatsPerMeasure == 0;
 			var measure = ts.Measure + beatRelativeToTimeSignatureStart / beatsPerMeasure;
 
+			// If this row falls on a measure boundary for a new time signature at an unexpected row, treat it as a measure marker.
+			if (nextRateEvent != null && currentRow == nextRateEvent.GetRow() &&
+			    currentRow == nextRateEvent.GetTimeSignature().GetRow())
+			{
+				measureMarker = true;
+				measure = nextRateEvent.GetTimeSignature().Measure;
+			}
+
 			// Record the marker.
 			if (measureMarker || sizeZoom > BeatMarkerMinScale)
 				VisibleMarkers.Add(new EditorMarkerEvent(x, y, markerWidth, 1, sizeZoom, measureMarker, measure));
@@ -4823,9 +4831,6 @@ internal sealed class Editor :
 
 				if (ImGui.BeginMenu("Add Event"))
 				{
-					var nearestMeasureBoundaryRow = ActiveChart.GetNearestMeasureBoundaryRow(row);
-					var eventsAtNearestMeasureBoundary = ActiveChart.GetEvents().FindEventsAtRow(nearestMeasureBoundaryRow);
-
 					var events = ActiveChart.GetEvents().FindEventsAtRow(row);
 					var hasTempoEvent = false;
 					var hasInterpolatedScrollRateEvent = false;
@@ -4860,19 +4865,12 @@ internal sealed class Editor :
 							hasTickCountEvent = true;
 						else if (currentEvent is EditorMultipliersEvent)
 							hasMultipliersEvent = true;
-						// Skipping time signatures as we only place them on measure boundaries
-						//else if (currentEvent is EditorTimeSignatureEvent)
-						//	hasTimeSignatureEvent = true;
+						else if (currentEvent is EditorTimeSignatureEvent)
+							hasTimeSignatureEvent = true;
 						else if (currentEvent is EditorLabelEvent)
 							hasLabelEvent = true;
 						else if (currentEvent is EditorPatternEvent)
 							hasPatternEvent = true;
-					}
-
-					foreach (var currentEvent in eventsAtNearestMeasureBoundary)
-					{
-						if (currentEvent is EditorTimeSignatureEvent)
-							hasTimeSignatureEvent = true;
 					}
 
 					var currentRateAlteringEvent =
@@ -4922,9 +4920,9 @@ internal sealed class Editor :
 						EditorMultipliersEvent.EventShortDescription, row,
 						() => EditorEvent.CreateEvent(EventConfig.CreateMultipliersConfig(ActiveChart, row)));
 					DrawAddEventMenuItem("Time Signature", !hasTimeSignatureEvent, UITimeSignatureColorRGBA,
-						EditorTimeSignatureEvent.EventShortDescription, nearestMeasureBoundaryRow,
+						EditorTimeSignatureEvent.EventShortDescription, row,
 						() => EditorEvent.CreateEvent(EventConfig.CreateTimeSignatureConfig(ActiveChart,
-							nearestMeasureBoundaryRow, EditorChart.DefaultTimeSignature)), true);
+							row, EditorChart.DefaultTimeSignature)));
 					DrawAddEventMenuItem("Label", !hasLabelEvent, UILabelColorRGBA, EditorLabelEvent.EventShortDescription, row,
 						() => EditorEvent.CreateEvent(EventConfig.CreateLabelConfig(ActiveChart, row)));
 					DrawAddEventMenuItem("Pattern", !hasPatternEvent, UIPatternColorRGBA,
@@ -4976,7 +4974,7 @@ internal sealed class Editor :
 	}
 
 	private void DrawAddEventMenuItem(string name, bool enabled, uint color, string toolTipText, int row,
-		Func<EditorEvent> createEventFunc, bool onlyOnePerMeasure = false)
+		Func<EditorEvent> createEventFunc)
 	{
 		if (MenuItemWithColor(name, enabled, color))
 		{
@@ -4985,12 +4983,8 @@ internal sealed class Editor :
 
 		if (!enabled)
 		{
-			if (onlyOnePerMeasure)
-				toolTipText +=
-					$"\n\nOnly one {name} event can be specified per measure.\nThere is already a {name} specified on the measure at row {row}.";
-			else
-				toolTipText +=
-					$"\n\nOnly one {name} event can be specified per row.\nThere is already a {name} specified on row {row}.";
+			toolTipText +=
+				$"\n\nOnly one {name} event can be specified per row.\nThere is already a {name} specified on row {row}.";
 		}
 
 		ToolTip(toolTipText);

@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using static System.Diagnostics.Debug;
 
 namespace StepManiaEditor;
 
@@ -29,8 +28,7 @@ internal sealed class ForceAddSideEffect
 	{
 		if (Additions.Count > 0)
 		{
-			var deletedEvents = chart.DeleteEvents(Additions);
-			Assert(deletedEvents.Count == Additions.Count);
+			chart.DeleteEvents(Additions);
 		}
 
 		if (Deletions.Count > 0)
