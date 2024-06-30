@@ -709,7 +709,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 				case LaneHoldEndNote hen:
 					editorEvent =
 						EditorEvent.CreateEvent(EventConfig.CreateHoldConfig(this, pendingHoldStarts[hen.Lane], hen,
-							(short)GetRowRelativeToMeasureStart(lastTimeSignature, chartEvent.IntegerPosition),
+							(short)GetRowRelativeToMeasureStart(lastTimeSignature, pendingHoldStarts[hen.Lane].IntegerPosition),
 							(short)lastTimeSignature!.Signature.Denominator));
 					pendingHoldStarts[hen.Lane] = null;
 					holds.Insert(editorEvent);
