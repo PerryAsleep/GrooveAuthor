@@ -4672,6 +4672,17 @@ internal sealed class Editor :
 									EventConfig.CreateMineConfig(ActiveChart, e.GetRow(), e.GetLane()))));
 						}
 
+						ImGui.Separator();
+						if (ImGui.MenuItem("Warps to Negative Stops"))
+						{
+							ActionQueue.Instance.Do(new ActionChangeWarpsToNegativeStops(this, ActiveChart));
+						}
+
+						if (ImGui.MenuItem("Negative Stops to Warps"))
+						{
+							ActionQueue.Instance.Do(new ActionChangeNegativeStopsToWarps(this, ActiveChart));
+						}
+
 						ImGui.EndMenu();
 					}
 

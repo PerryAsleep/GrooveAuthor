@@ -23,6 +23,8 @@ internal interface IReadOnlyRateAlteringEventTree : IReadOnlyRedBlackTree<Editor
 		bool allowEqualTo = true);
 
 	EditorRateAlteringEvent FindActiveRateAlteringEventForPosition(double chartPosition, bool allowEqualTo = true);
+
+	TEvent FindEventAtRow<TEvent>(int row) where TEvent : EditorRateAlteringEvent;
 }
 
 /// <summary>
@@ -250,5 +252,34 @@ internal class RateAlteringEventTree : RedBlackTree<EditorRateAlteringEvent>, IR
 
 		FirstValue(out var editorEvent);
 		return editorEvent;
+	}
+
+	/// <summary>
+	/// Finds an EditorRateAlteringEvent of a given type at a specific row.
+	/// </summary>
+	/// <typeparam name="TEvent">Type of EditorRateAlteringEvent to find.</typeparam>
+	/// <param name="row">Row of EditorRateAlteringEvent to find.</param>
+	/// <returns>The found EditorRateAlteringEvent or null if non exists for given inputs.</returns>
+	public TEvent FindEventAtRow<TEvent>(int row) where TEvent : EditorRateAlteringEvent
+	{
+		var pos = (EditorRateAlteringEvent)EditorEvent.CreateEvent(
+			EventConfig.CreateSearchEventConfigWithOnlyRow(Chart, row));
+		var enumerator = FindGreatestPreceding(pos);
+		if (enumerator == null || !EnsureGreatestLessThanPosition(enumerator, row))
+		{
+			enumerator = First();
+			if (enumerator == null)
+				return null;
+		}
+		while (enumerator.MoveNext() && enumerator.Current!.GetRow() <= row)
+		{
+			if (enumerator.Current.GetRow() > row)
+				break;
+			if (enumerator.Current.GetRow() < row)
+				continue;
+			if (enumerator.Current.GetType() == typeof(TEvent))
+				return (TEvent)enumerator.Current;
+		}
+		return null;
 	}
 }

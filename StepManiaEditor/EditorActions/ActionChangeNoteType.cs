@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using static System.Diagnostics.Debug;
 
 namespace StepManiaEditor;
 
@@ -45,13 +44,8 @@ internal sealed class ActionChangeNoteType : EditorAction
 			{
 				OriginalEvents.Add(editorEvent);
 				var newEvent = converter(editorEvent);
-				NewEvents.Add(newEvent);
-
-				// Converting an event is optimized to assume that the new event will sort to the same position
-				// the original event.
-				Assert(editorEvent.GetLane() != StepManiaLibrary.Constants.InvalidArrowIndex
-				       && editorEvent.GetLane() == newEvent.GetLane()
-				       && editorEvent.GetRow() == newEvent.GetRow());
+				if (newEvent != null)
+					NewEvents.Add(newEvent);
 			}
 		}
 	}
@@ -69,24 +63,16 @@ internal sealed class ActionChangeNoteType : EditorAction
 	protected override void DoImplementation()
 	{
 		Editor.OnNoteTransformationBegin();
-		for (var i = 0; i < NewEvents.Count; i++)
-		{
-			Chart.DeleteEvent(OriginalEvents[i]);
-			Chart.AddEvent(NewEvents[i]);
-		}
-
+		Chart.DeleteEvents(OriginalEvents);
+		Chart.AddEvents(NewEvents);
 		Editor.OnNoteTransformationEnd(NewEvents);
 	}
 
 	protected override void UndoImplementation()
 	{
 		Editor.OnNoteTransformationBegin();
-		for (var i = 0; i < NewEvents.Count; i++)
-		{
-			Chart.DeleteEvent(NewEvents[i]);
-			Chart.AddEvent(OriginalEvents[i]);
-		}
-
+		Chart.DeleteEvents(NewEvents);
+		Chart.AddEvents(OriginalEvents);
 		Editor.OnNoteTransformationEnd(OriginalEvents);
 	}
 }

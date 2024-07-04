@@ -50,6 +50,11 @@ internal sealed class EditorFakeNoteEvent : EditorEvent
 		return false;
 	}
 
+	public override bool IsFake()
+	{
+		return true;
+	}
+
 	public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)
 	{
 		var alpha = IsBeingEdited() ? ActiveEditEventAlpha : Alpha;

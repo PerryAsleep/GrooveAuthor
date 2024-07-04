@@ -85,6 +85,13 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	protected bool IsChartTimeValid;
 
 	/// <summary>
+	/// Whether or not this EditorEvent should be considered a fake.
+	/// Fakes are steps which are skipped either due to being an explicit fake note, or being
+	/// in a fake segment, or being impossible to hit due to being warped over
+	/// </summary>
+	protected bool Fake;
+
+	/// <summary>
 	/// Whether or not this event is finished initializing after construction.
 	/// Initialization is complete at the end of CreateEvent.
 	/// </summary>
@@ -622,6 +629,16 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	public bool IsBeingEdited()
 	{
 		return BeingEdited;
+	}
+
+	public void SetIsFake(bool fake)
+	{
+		Fake = fake;
+	}
+
+	public virtual bool IsFake()
+	{
+		return Fake;
 	}
 
 	/// <summary>

@@ -1348,6 +1348,29 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 	}
 
 	/// <summary>
+	/// Returns whether or not this song is compatible with the ssc format.
+	/// </summary>
+	/// <returns>
+	/// True if the song is compatible with the ssc format and false otherwise.
+	/// </returns>
+	public bool IsCompatibleWithSscFormat()
+	{
+		// Check each chart.
+		var compatible = true;
+		foreach (var kvp in Charts)
+		{
+			var charts = kvp.Value;
+			foreach (var chart in charts)
+			{
+				if (!chart.IsCompatibleWithSscFormat(true))
+					compatible = false;
+			}
+		}
+
+		return compatible;
+	}
+
+	/// <summary>
 	/// Saves this EditorSong to disk.
 	/// Much of the work for saving occurs asynchronously.
 	/// When the saving has completed the given callback will be called.
@@ -1382,7 +1405,8 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 
 					if (!compatible)
 					{
-						Logger.Error("Song is not compatible with sm format. Address incompatibilities or save as an ssc file.");
+						Logger.Error(
+							"Song is not compatible with sm format. Please address incompatibilities or save as an ssc file.");
 						complete = true;
 						return;
 					}
@@ -1391,6 +1415,17 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 					{
 						Logger.Warn(
 							$"The charts in this song have different timing events. sm files do not support this. The saved charts will all use the timing events from {TimingChart.GetDescriptiveName()}.");
+					}
+				}
+
+				if (fileType == FileFormatType.SSC)
+				{
+					var compatible = IsCompatibleWithSscFormat();
+					if (!compatible)
+					{
+						Logger.Error("Song is not compatible with ssc format. Please address incompatibilities and try again.");
+						complete = true;
+						return;
 					}
 				}
 

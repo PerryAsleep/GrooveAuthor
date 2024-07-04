@@ -10,14 +10,6 @@ namespace StepManiaEditorTests;
 [TestClass]
 public class TestEventTree
 {
-	private static EditorChart CreateEmptyTestChart()
-	{
-		var s = new EditorSong(null, null);
-		var c = new EditorChart(s, SMCommon.ChartType.dance_single);
-		AssertEventsAreInOrder(c);
-		return c;
-	}
-
 	private static EditorChart CreateTestChartWithNotesAtRow(int row)
 	{
 		return CreateTestChartWithNotesAtRows(new List<int> { row });

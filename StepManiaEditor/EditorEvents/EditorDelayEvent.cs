@@ -116,7 +116,8 @@ internal sealed class EditorDelayEvent : EditorRateAlteringEvent, IEquatable<Edi
 			Assert(EditorChart.CanBeEdited());
 			if (!EditorChart.CanBeEdited())
 				return;
-
+			if (value < 0.0)
+				return;
 			if (!StopEvent.LengthSeconds.DoubleEquals(value))
 			{
 				EditorChart.UpdateDelayTime(this, value, ref StopEvent.LengthSeconds);
@@ -200,7 +201,8 @@ internal sealed class EditorDelayEvent : EditorRateAlteringEvent, IEquatable<Edi
 			Speed,
 			Format,
 			Alpha,
-			WidgetHelp);
+			WidgetHelp,
+			0.0);
 	}
 
 	#region IEquatable

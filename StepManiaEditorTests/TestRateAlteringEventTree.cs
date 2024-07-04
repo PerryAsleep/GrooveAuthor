@@ -126,7 +126,6 @@ public class TestRateAlteringEventTree
 
 				// Don't add negative stops. We consider them the same as stops.
 				case SMCommon.NegativeStopString:
-				case SMCommon.NegativeDelayString:
 					continue;
 
 				// In order to cut down on the volume of combination, skip some events which aren't important.
@@ -405,6 +404,34 @@ public class TestRateAlteringEventTree
 					Assert.AreEqual(expectedRateAlteringEventTypesAtRow.Count, foundEvents);
 				}
 			}
+
+			// Test FindEventAtRow.
+			Assert.IsNull(c.GetRateAlteringEvents().FindEventAtRow<EditorTimeSignatureEvent>(row - 1));
+			Assert.IsNull(c.GetRateAlteringEvents().FindEventAtRow<EditorTempoEvent>(row - 1));
+			Assert.IsNull(c.GetRateAlteringEvents().FindEventAtRow<EditorDelayEvent>(row - 1));
+			Assert.IsNull(c.GetRateAlteringEvents().FindEventAtRow<EditorScrollRateEvent>(row - 1));
+			Assert.IsNull(c.GetRateAlteringEvents().FindEventAtRow<EditorStopEvent>(row - 1));
+			Assert.IsNull(c.GetRateAlteringEvents().FindEventAtRow<EditorWarpEvent>(row - 1));
+
+			Assert.AreEqual(expectedRateAlteringEventTypesAtRow.Contains(nameof(TimeSignature)),
+				c.GetRateAlteringEvents().FindEventAtRow<EditorTimeSignatureEvent>(row) != null);
+			Assert.AreEqual(expectedRateAlteringEventTypesAtRow.Contains(nameof(Tempo)),
+				c.GetRateAlteringEvents().FindEventAtRow<EditorTempoEvent>(row) != null);
+			Assert.AreEqual(expectedRateAlteringEventTypesAtRow.Contains(SMCommon.DelayString),
+				c.GetRateAlteringEvents().FindEventAtRow<EditorDelayEvent>(row) != null);
+			Assert.AreEqual(expectedRateAlteringEventTypesAtRow.Contains(nameof(ScrollRate)),
+				c.GetRateAlteringEvents().FindEventAtRow<EditorScrollRateEvent>(row) != null);
+			Assert.AreEqual(expectedRateAlteringEventTypesAtRow.Contains(nameof(Stop)),
+				c.GetRateAlteringEvents().FindEventAtRow<EditorStopEvent>(row) != null);
+			Assert.AreEqual(expectedRateAlteringEventTypesAtRow.Contains(nameof(Warp)),
+				c.GetRateAlteringEvents().FindEventAtRow<EditorWarpEvent>(row) != null);
+
+			Assert.IsNull(c.GetRateAlteringEvents().FindEventAtRow<EditorTimeSignatureEvent>(row + 1));
+			Assert.IsNull(c.GetRateAlteringEvents().FindEventAtRow<EditorTempoEvent>(row + 1));
+			Assert.IsNull(c.GetRateAlteringEvents().FindEventAtRow<EditorDelayEvent>(row + 1));
+			Assert.IsNull(c.GetRateAlteringEvents().FindEventAtRow<EditorScrollRateEvent>(row + 1));
+			Assert.IsNull(c.GetRateAlteringEvents().FindEventAtRow<EditorStopEvent>(row + 1));
+			Assert.IsNull(c.GetRateAlteringEvents().FindEventAtRow<EditorWarpEvent>(row + 1));
 
 			// Record the expected rate altering events at this for future comparisons.
 			if (expectedRateAlteringEventTypesAtRow.Count > 0)

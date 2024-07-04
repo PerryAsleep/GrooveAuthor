@@ -1248,7 +1248,11 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		var rowsPerBeat = MaxValidDenominator;
 		var beatsPerMeasure = NumBeatsPerMeasure;
 		var totalStopTimeSeconds = 0.0;
+		var currentFakeTimeSeconds = 0.0;
 		var previousEventTimeSeconds = 0.0;
+
+		var currentRow = -1;
+		var eventsOnSameRow = new List<EditorEvent>();
 
 		// Warps are unfortunately complicated.
 		// Overlapping warps do not stack.
@@ -1277,6 +1281,15 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 				continue;
 
 			var row = editorEvent.GetRow();
+
+			if (row != currentRow)
+			{
+				currentRow = row;
+				eventsOnSameRow.Clear();
+			}
+
+			eventsOnSameRow.Add(editorEvent);
+
 			var beatRelativeToLastTimeSigChange = (row - lastTimeSigChangeRow) / rowsPerBeat;
 			var measureRelativeToLastTimeSigChange = beatRelativeToLastTimeSigChange / beatsPerMeasure;
 			var measureStartRowRelativeToTimeSigChange = measureRelativeToLastTimeSigChange * rowsPerBeat * beatsPerMeasure;
@@ -1335,6 +1348,10 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 					// Accrue Stop time whether it is positive or negative.
 					// Do not worry about overlapping negative stops as they stack in StepMania.
 					totalStopTimeSeconds += delay.GetDelayLengthSeconds();
+					break;
+				}
+				case EditorFakeSegmentEvent fakeSegment:
+				{
 					break;
 				}
 				// Warp handling. Update warp start and stop rows so we can compute the warp time.
@@ -1397,6 +1414,9 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 					break;
 				}
 			}
+
+			var fake = currentWarpTime > 0.0;
+			//editorEvent.SetIsFake();
 		}
 
 		EditorEvents.Validate();
@@ -2854,7 +2874,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		if (Warps.GetCount() > 0)
 		{
 			if (logIncompatibilities)
-				LogError("Chart has Warps. Warps are not compatible with sm files.");
+				LogError("Chart has Warps. Stepmania ignores Warps in sm files. Consider using negative Stops.");
 			compatible = false;
 		}
 
@@ -3002,6 +3022,35 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		}
 
 		return match;
+	}
+
+	/// <summary>
+	/// Returns whether or not this chart is compatible with the ssc format.
+	/// For a chart to be considered incompatible it must contain events which if
+	/// ignored would produce a chart with different note timing.
+	/// </summary>
+	/// <param name="logIncompatibilities">If true, log incompatibilities as errors.</param>
+	/// <returns>True if this chart is compatible with the ssc format and false otherwise.</returns>
+	public bool IsCompatibleWithSscFormat(bool logIncompatibilities)
+	{
+		var compatible = true;
+
+		// Negative stops are ignored in the ssc format.
+		foreach (var stop in Stops)
+		{
+			if (stop.GetStopLengthSeconds() < 0.0f)
+			{
+				if (logIncompatibilities)
+				{
+					LogError("Chart has negative Stops. Stepmania ignores negative Stops in ssc files. Consider using Warps.");
+				}
+
+				compatible = false;
+				break;
+			}
+		}
+
+		return compatible;
 	}
 
 	/// <summary>

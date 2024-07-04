@@ -1,4 +1,5 @@
-﻿using StepManiaEditor;
+﻿using Fumen.Converters;
+using StepManiaEditor;
 using static StepManiaLibrary.Constants;
 
 namespace StepManiaEditorTests;
@@ -15,6 +16,14 @@ internal sealed class Utils
 		typeof(EditorScrollRateEvent),
 		typeof(EditorInterpolatedRateAlteringEvent),
 	};
+
+	internal static EditorChart CreateEmptyTestChart(SMCommon.ChartType chartType = SMCommon.ChartType.dance_single)
+	{
+		var s = new EditorSong(null, null);
+		var c = new EditorChart(s, chartType);
+		AssertEventsAreInOrder(c);
+		return c;
+	}
 
 	internal static void AssertEventsAreInOrder(EditorChart chart)
 	{

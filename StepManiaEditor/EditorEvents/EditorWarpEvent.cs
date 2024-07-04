@@ -190,6 +190,11 @@ internal sealed class EditorWarpEvent : EditorRateAlteringEvent, IEquatable<Edit
 		return GetChartPosition() + WarpEvent.LengthIntegerPosition;
 	}
 
+	public override int GetEndRow()
+	{
+		return GetRow() + WarpEvent.LengthIntegerPosition;
+	}
+
 	public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)
 	{
 		if (Alpha <= 0.0f)
