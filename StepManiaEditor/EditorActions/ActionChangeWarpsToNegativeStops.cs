@@ -17,7 +17,7 @@ internal sealed class ActionChangeWarpsToNegativeStops : EditorAction
 	private readonly EditorChart Chart;
 
 	/// <summary>
-	/// Constructor.
+	/// Constructor for converting all of a chart's warps.
 	/// </summary>
 	/// <param name="editor">Editor instance.</param>
 	/// <param name="chart">EditorChart containing the warps.</param>
@@ -30,6 +30,28 @@ internal sealed class ActionChangeWarpsToNegativeStops : EditorAction
 		OriginalEvents = new List<EditorEvent>();
 		NewEvents = new List<EditorEvent>();
 		OriginalEvents.AddRange(chart.GetWarps());
+	}
+
+	/// <summary>
+	/// Constructor for converting only the warps in the given events.
+	/// </summary>
+	/// <param name="editor">Editor instance.</param>
+	/// <param name="chart">EditorChart containing the warps.</param>
+	/// <param name="events">Events containing warps to convert.</param>
+	public ActionChangeWarpsToNegativeStops(
+		Editor editor,
+		EditorChart chart,
+		IEnumerable<EditorEvent> events) : base(false, false)
+	{
+		Editor = editor;
+		Chart = chart;
+		OriginalEvents = new List<EditorEvent>();
+		NewEvents = new List<EditorEvent>();
+		foreach (var editorEvent in events)
+		{
+			if (editorEvent is EditorWarpEvent warp)
+				OriginalEvents.Add(warp);
+		}
 	}
 
 	public override string ToString()
@@ -64,7 +86,8 @@ internal sealed class ActionChangeWarpsToNegativeStops : EditorAction
 			// a stop on a row with another stop.
 			if (!CanWarpBeChangedToNegativeStop((EditorWarpEvent)warp))
 			{
-				Logger.Warn($"Warp at row {warp.GetRow()} cannot be replaced with a negative stop as there is already a stop present.");
+				Logger.Warn(
+					$"Warp at row {warp.GetRow()} cannot be replaced with a negative stop as there is already a stop present.");
 				continue;
 			}
 

@@ -12,6 +12,7 @@ internal interface IReadOnlyEditorPosition
 	public double ChartTime { get; }
 	public double ChartPosition { get; }
 	public EditorChart ActiveChart { get; }
+	public int GetNearestRow();
 }
 
 /// <summary>

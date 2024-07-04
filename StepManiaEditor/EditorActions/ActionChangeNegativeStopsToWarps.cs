@@ -17,7 +17,7 @@ internal sealed class ActionChangeNegativeStopsToWarps : EditorAction
 	private readonly EditorChart Chart;
 
 	/// <summary>
-	/// Constructor.
+	/// Constructor for converting all of a chart's negative stops.
 	/// </summary>
 	/// <param name="editor">Editor instance.</param>
 	/// <param name="chart">EditorChart containing the negative stops.</param>
@@ -36,6 +36,28 @@ internal sealed class ActionChangeNegativeStopsToWarps : EditorAction
 			{
 				OriginalEvents.Add(stop);
 			}
+		}
+	}
+
+	/// <summary>
+	/// Constructor for converting only the negative stops in the given events.
+	/// </summary>
+	/// <param name="editor">Editor instance.</param>
+	/// <param name="chart">EditorChart containing the negative stops.</param>
+	/// <param name="events">Events containing negative stops to convert.</param>
+	public ActionChangeNegativeStopsToWarps(
+		Editor editor,
+		EditorChart chart,
+		IEnumerable<EditorEvent> events) : base(false, false)
+	{
+		Editor = editor;
+		Chart = chart;
+		OriginalEvents = new List<EditorEvent>();
+		NewEvents = new List<EditorEvent>();
+		foreach (var editorEvent in events)
+		{
+			if (editorEvent is EditorStopEvent stop && stop.GetStopLengthSeconds() < 0.0)
+				OriginalEvents.Add(stop);
 		}
 	}
 
@@ -71,7 +93,8 @@ internal sealed class ActionChangeNegativeStopsToWarps : EditorAction
 			// a warp on a row with another warp.
 			if (!CanNegativeStopBeChangedToWarp(stop))
 			{
-				Logger.Warn($"Negative stop at row {stop.GetRow()} cannot be replaced with a warp as there is already a warp present.");
+				Logger.Warn(
+					$"Negative stop at row {stop.GetRow()} cannot be replaced with a warp as there is already a warp present.");
 				continue;
 			}
 
@@ -84,7 +107,7 @@ internal sealed class ActionChangeNegativeStopsToWarps : EditorAction
 
 			// Convert stop time to warp length in rows.
 			var startTime = stop.GetChartTime();
-			var endTime = startTime + - 1 * stop.GetStopLengthSeconds();
+			var endTime = startTime + -1 * stop.GetStopLengthSeconds();
 			var endChartPosition = 0.0;
 			Chart.TryGetChartPositionFromTime(endTime, ref endChartPosition);
 			var warpEndRow = (int)Math.Round(endChartPosition);

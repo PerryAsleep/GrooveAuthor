@@ -198,6 +198,7 @@ internal sealed class Editor :
 	private UICopyEventsBetweenCharts UICopyEventsBetweenCharts;
 	private UIPatternEvent UIPatternEvent;
 	private UIPerformance UIPerformance;
+	private UIEditEvents UIEditEvents;
 	private UIFTUE UIFTUE;
 #if DEBUG
 	private UIDebug UIDebug;
@@ -964,6 +965,7 @@ internal sealed class Editor :
 		UICopyEventsBetweenCharts = new UICopyEventsBetweenCharts(this);
 		UIPatternEvent = new UIPatternEvent(this);
 		UIPerformance = new UIPerformance(PerformanceMonitor);
+		UIEditEvents = new UIEditEvents(this);
 		UIFTUE = new UIFTUE(this);
 		UIModals.Init(this);
 #if DEBUG
@@ -3947,6 +3949,36 @@ internal sealed class Editor :
 				ImGui.EndMenu();
 			}
 
+			if (ImGui.BeginMenu("Edit"))
+			{
+				var selectedEvents = Selection.GetSelectedEvents();
+				UIEditEvents.DrawAddEventMenu();
+				ImGui.Separator();
+				UIEditEvents.DrawSelectAllMenu();
+				UIEditEvents.DrawConvertSelectedMenu(selectedEvents);
+				UIEditEvents.DrawShiftSelectedMenu(selectedEvents);
+				ImGui.Separator();
+				UIEditEvents.DrawConvertAllMenu();
+				UIEditEvents.DrawShiftAllMenu();
+				ImGui.Separator();
+				if (ImGui.MenuItem("Copy", "Ctrl+C"))
+				{
+					OnCopy();
+				}
+
+				if (ImGui.MenuItem("Paste", "Ctrl+V"))
+				{
+					OnPaste();
+				}
+
+				if (ImGui.MenuItem("Delete", "Del"))
+				{
+					OnDelete();
+				}
+
+				ImGui.EndMenu();
+			}
+
 			if (ImGui.BeginMenu("View"))
 			{
 				if (ImGui.MenuItem("Options"))
@@ -4454,9 +4486,6 @@ internal sealed class Editor :
 
 	private void DrawRightClickMenu(int x, int y)
 	{
-		var canEditChart = ActiveChart?.CanBeEdited() ?? false;
-		var canEditSong = ActiveSong?.CanBeEdited() ?? false;
-
 		if (ImGui.BeginPopup("RightClickPopup"))
 		{
 			if (ActiveSong == null)
@@ -4483,275 +4512,11 @@ internal sealed class Editor :
 
 			var isInReceptorArea = Receptor.IsInReceptorArea(x, y, GetFocalPoint(), ZoomManager.GetSizeZoom(), TextureAtlas,
 				ArrowGraphicManager, ActiveChart);
-			var selectedEvents = Selection.GetSelectedEvents();
 
 			if (Selection.HasSelectedEvents())
-			{
-				if (ImGui.BeginMenu("Selection"))
-				{
-					if (!canEditChart)
-						PushDisabled();
+				UIEditEvents.DrawSelectionMenu();
 
-					if (ImGui.MenuItem("Mirror"))
-					{
-						ActionQueue.Instance.Do(new ActionMirrorSelection(this, ActiveChart, selectedEvents));
-					}
-
-					if (ImGui.MenuItem("Flip"))
-					{
-						ActionQueue.Instance.Do(new ActionFlipSelection(this, ActiveChart, selectedEvents));
-					}
-
-					if (ImGui.MenuItem("Mirror and Flip"))
-					{
-						ActionQueue.Instance.Do(new ActionMirrorAndFlipSelection(this, ActiveChart, selectedEvents));
-					}
-
-					if (ImGui.MenuItem("Shift Right"))
-					{
-						OnShiftSelectedNotesRight();
-					}
-
-					if (ImGui.MenuItem("Shift Right and Wrap", "Ctrl+Shift+Right"))
-					{
-						OnShiftSelectedNotesRightAndWrap();
-					}
-
-					if (ImGui.MenuItem("Shift Left"))
-					{
-						OnShiftSelectedNotesLeft();
-					}
-
-					if (ImGui.MenuItem("Shift Left and Wrap", "Ctrl+Shift+Left"))
-					{
-						OnShiftSelectedNotesLeftAndWrap();
-					}
-
-					var rows = SnapLevels[Preferences.Instance.SnapIndex].Rows;
-					if (rows == 0)
-						rows = MaxValidDenominator;
-					var shiftAmount = $"1/{MaxValidDenominator / rows * NumBeatsPerMeasure}";
-
-					if (ImGui.MenuItem($"Shift Earlier ({shiftAmount})", "Ctrl+Shift+Up"))
-					{
-						OnShiftSelectedNotesEarlier();
-					}
-
-					if (ImGui.MenuItem($"Shift Later ({shiftAmount})", "Ctrl+Shift+Down"))
-					{
-						OnShiftSelectedNotesLater();
-					}
-
-					if (ImGui.BeginMenu("Convert"))
-					{
-						if (ImGui.MenuItem("Taps to Mines"))
-						{
-							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
-								(e) => e is EditorTapNoteEvent,
-								(e) => EditorEvent.CreateEvent(
-									EventConfig.CreateMineConfigWithRowDependencies(ActiveChart, e.GetRow(), e.GetChartTime(),
-										e.GetLane(), e.GetRowRelativeToMeasureStart(), e.GetTimeSignatureDenominator()))));
-						}
-
-						if (ImGui.MenuItem("Taps to Fakes"))
-						{
-							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
-								(e) => e is EditorTapNoteEvent,
-								(e) => EditorEvent.CreateEvent(
-									EventConfig.CreateFakeNoteConfigWithRowDependencies(ActiveChart, e.GetRow(), e.GetChartTime(),
-										e.GetLane(), e.GetRowRelativeToMeasureStart(), e.GetTimeSignatureDenominator()))));
-						}
-
-						if (ImGui.MenuItem("Taps to Lifts"))
-						{
-							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
-								(e) => e is EditorTapNoteEvent,
-								(e) => EditorEvent.CreateEvent(
-									EventConfig.CreateLiftNoteConfigWithRowDependencies(ActiveChart, e.GetRow(), e.GetChartTime(),
-										e.GetLane(), e.GetRowRelativeToMeasureStart(), e.GetTimeSignatureDenominator()))));
-						}
-
-						ImGui.Separator();
-						if (ImGui.MenuItem("Mines to Taps"))
-						{
-							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
-								(e) => e is EditorMineNoteEvent,
-								(e) => EditorEvent.CreateEvent(
-									EventConfig.CreateTapConfigWithRowDependencies(ActiveChart, e.GetRow(), e.GetChartTime(),
-										e.GetLane(), e.GetRowRelativeToMeasureStart(), e.GetTimeSignatureDenominator()))));
-						}
-
-						if (ImGui.MenuItem("Mines to Fakes"))
-						{
-							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
-								(e) => e is EditorMineNoteEvent,
-								(e) => EditorEvent.CreateEvent(
-									EventConfig.CreateFakeNoteConfigWithRowDependencies(ActiveChart, e.GetRow(), e.GetChartTime(),
-										e.GetLane(), e.GetRowRelativeToMeasureStart(), e.GetTimeSignatureDenominator()))));
-						}
-
-						if (ImGui.MenuItem("Mines to Lifts"))
-						{
-							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
-								(e) => e is EditorMineNoteEvent,
-								(e) => EditorEvent.CreateEvent(
-									EventConfig.CreateLiftNoteConfigWithRowDependencies(ActiveChart, e.GetRow(), e.GetChartTime(),
-										e.GetLane(), e.GetRowRelativeToMeasureStart(), e.GetTimeSignatureDenominator()))));
-						}
-
-						ImGui.Separator();
-						if (ImGui.MenuItem("Fakes to Taps"))
-						{
-							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
-								(e) => e is EditorFakeNoteEvent,
-								(e) => EditorEvent.CreateEvent(
-									EventConfig.CreateTapConfigWithRowDependencies(ActiveChart, e.GetRow(), e.GetChartTime(),
-										e.GetLane(), e.GetRowRelativeToMeasureStart(), e.GetTimeSignatureDenominator()))));
-						}
-
-						if (ImGui.MenuItem("Lifts to Taps"))
-						{
-							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
-								(e) => e is EditorLiftNoteEvent,
-								(e) => EditorEvent.CreateEvent(
-									EventConfig.CreateTapConfigWithRowDependencies(ActiveChart, e.GetRow(), e.GetChartTime(),
-										e.GetLane(), e.GetRowRelativeToMeasureStart(), e.GetTimeSignatureDenominator()))));
-						}
-
-						ImGui.Separator();
-						if (ImGui.MenuItem("Holds to Rolls"))
-						{
-							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
-								(e) => e is EditorHoldNoteEvent hn && !hn.IsRoll(),
-								(e) => EditorEvent.CreateEvent(
-									EventConfig.CreateHoldConfig(ActiveChart, e.GetRow(), e.GetLane(), e.GetLength(),
-										true))));
-						}
-
-						if (ImGui.MenuItem("Holds to Taps"))
-						{
-							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
-								(e) => e is EditorHoldNoteEvent hn && !hn.IsRoll(),
-								(e) => EditorEvent.CreateEvent(
-									EventConfig.CreateTapConfigWithRowDependencies(ActiveChart, e.GetRow(), e.GetChartTime(),
-										e.GetLane(), e.GetRowRelativeToMeasureStart(), e.GetTimeSignatureDenominator()))));
-						}
-
-						if (ImGui.MenuItem("Holds to Mines"))
-						{
-							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
-								(e) => e is EditorHoldNoteEvent hn && !hn.IsRoll(),
-								(e) => EditorEvent.CreateEvent(
-									EventConfig.CreateMineConfig(ActiveChart, e.GetRow(), e.GetLane()))));
-						}
-
-						ImGui.Separator();
-						if (ImGui.MenuItem("Rolls to Holds"))
-						{
-							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
-								(e) => e is EditorHoldNoteEvent hn && hn.IsRoll(),
-								(e) => EditorEvent.CreateEvent(
-									EventConfig.CreateHoldConfig(ActiveChart, e.GetRow(), e.GetLane(), e.GetLength(),
-										false))));
-						}
-
-						if (ImGui.MenuItem("Rolls to Taps"))
-						{
-							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
-								(e) => e is EditorHoldNoteEvent hn && hn.IsRoll(),
-								(e) => EditorEvent.CreateEvent(
-									EventConfig.CreateTapConfigWithRowDependencies(ActiveChart, e.GetRow(), e.GetChartTime(),
-										e.GetLane(), e.GetRowRelativeToMeasureStart(), e.GetTimeSignatureDenominator()))));
-						}
-
-						if (ImGui.MenuItem("Rolls to Mines"))
-						{
-							ActionQueue.Instance.Do(new ActionChangeNoteType(this, ActiveChart, selectedEvents,
-								(e) => e is EditorHoldNoteEvent hn && hn.IsRoll(),
-								(e) => EditorEvent.CreateEvent(
-									EventConfig.CreateMineConfig(ActiveChart, e.GetRow(), e.GetLane()))));
-						}
-
-						ImGui.Separator();
-						if (ImGui.MenuItem("Warps to Negative Stops"))
-						{
-							ActionQueue.Instance.Do(new ActionChangeWarpsToNegativeStops(this, ActiveChart));
-						}
-
-						if (ImGui.MenuItem("Negative Stops to Warps"))
-						{
-							ActionQueue.Instance.Do(new ActionChangeNegativeStopsToWarps(this, ActiveChart));
-						}
-
-						ImGui.EndMenu();
-					}
-
-					if (!canEditChart)
-						PopDisabled();
-
-					ImGui.EndMenu();
-				}
-			}
-
-			if (ImGui.BeginMenu("Select All"))
-			{
-				if (ImGui.MenuItem("Notes", "Ctrl+A"))
-				{
-					OnSelectAll();
-				}
-
-				if (ImGui.Selectable("Taps"))
-				{
-					OnSelectAllImpl((e) => e is EditorTapNoteEvent);
-				}
-
-				if (ImGui.Selectable("Mines"))
-				{
-					OnSelectAllImpl((e) => e is EditorMineNoteEvent);
-				}
-
-				if (ImGui.Selectable("Fakes"))
-				{
-					OnSelectAllImpl((e) => e is EditorFakeNoteEvent);
-				}
-
-				if (ImGui.Selectable("Lifts"))
-				{
-					OnSelectAllImpl((e) => e is EditorLiftNoteEvent);
-				}
-
-				if (ImGui.Selectable("Holds"))
-				{
-					OnSelectAllImpl((e) => e is EditorHoldNoteEvent hn && !hn.IsRoll());
-				}
-
-				if (ImGui.Selectable("Rolls"))
-				{
-					OnSelectAllImpl((e) => e is EditorHoldNoteEvent hn && hn.IsRoll());
-				}
-
-				if (ImGui.Selectable("Holds and Rolls"))
-				{
-					OnSelectAllImpl((e) => e is EditorHoldNoteEvent);
-				}
-
-				if (ImGui.MenuItem("Miscellaneous Events", "Ctrl+Alt+A"))
-				{
-					OnSelectAllAlt();
-				}
-
-				if (ImGui.MenuItem("Notes and Miscellaneous Events", "Ctrl+Shift+A"))
-				{
-					OnSelectAllShift();
-				}
-
-				if (ImGui.Selectable("Patterns"))
-				{
-					OnSelectAllImpl((e) => e is EditorPatternEvent);
-				}
-
-				ImGui.EndMenu();
-			}
+			UIEditEvents.DrawSelectAllMenu();
 
 			var anyObjectHovered = false;
 			if (isInMiniMapArea)
@@ -4834,139 +4599,12 @@ internal sealed class Editor :
 				anyObjectHovered = true;
 			}
 
-			var row = Math.Max(0, Position.GetNearestRow());
 			if (ActiveChart != null)
-			{
-				if (!canEditChart)
-					PushDisabled();
-
-				if (ImGui.BeginMenu("Add Event"))
-				{
-					var events = ActiveChart.GetEvents().FindEventsAtRow(row);
-					var hasTempoEvent = false;
-					var hasInterpolatedScrollRateEvent = false;
-					var hasScrollRateEvent = false;
-					var hasStopEvent = false;
-					var hasDelayEvent = false;
-					var hasWarpEvent = false;
-					var hasFakeEvent = false;
-					var hasTickCountEvent = false;
-					var hasMultipliersEvent = false;
-					var hasTimeSignatureEvent = false;
-					var hasLabelEvent = false;
-					var hasPatternEvent = false;
-
-					foreach (var currentEvent in events)
-					{
-						if (currentEvent is EditorTempoEvent)
-							hasTempoEvent = true;
-						else if (currentEvent is EditorInterpolatedRateAlteringEvent)
-							hasInterpolatedScrollRateEvent = true;
-						else if (currentEvent is EditorScrollRateEvent)
-							hasScrollRateEvent = true;
-						else if (currentEvent is EditorStopEvent)
-							hasStopEvent = true;
-						else if (currentEvent is EditorDelayEvent)
-							hasDelayEvent = true;
-						else if (currentEvent is EditorWarpEvent)
-							hasWarpEvent = true;
-						else if (currentEvent is EditorFakeSegmentEvent)
-							hasFakeEvent = true;
-						else if (currentEvent is EditorTickCountEvent)
-							hasTickCountEvent = true;
-						else if (currentEvent is EditorMultipliersEvent)
-							hasMultipliersEvent = true;
-						else if (currentEvent is EditorTimeSignatureEvent)
-							hasTimeSignatureEvent = true;
-						else if (currentEvent is EditorLabelEvent)
-							hasLabelEvent = true;
-						else if (currentEvent is EditorPatternEvent)
-							hasPatternEvent = true;
-					}
-
-					var currentRateAlteringEvent =
-						ActiveChart.GetRateAlteringEvents().FindActiveRateAlteringEventForPosition(row);
-
-					DrawAddEventMenuItem("Tempo", !hasTempoEvent, UITempoColorRGBA, EditorTempoEvent.EventShortDescription, row,
-						() => EditorEvent.CreateEvent(
-							EventConfig.CreateTempoConfig(ActiveChart, row,
-								currentRateAlteringEvent?.GetTempo() ?? EditorChart.DefaultTempo)));
-
-					ImGui.Separator();
-					DrawAddEventMenuItem("Interpolated Scroll Rate", !hasInterpolatedScrollRateEvent, UISpeedsColorRGBA,
-						EditorInterpolatedRateAlteringEvent.EventShortDescription, row,
-						() => EditorEvent.CreateEvent(
-							EventConfig.CreateScrollRateInterpolationConfig(ActiveChart, row)));
-					DrawAddEventMenuItem("Scroll Rate", !hasScrollRateEvent, UIScrollsColorRGBA,
-						EditorScrollRateEvent.EventShortDescription, row,
-						() => EditorEvent.CreateEvent(EventConfig.CreateScrollRateConfig(ActiveChart, row)));
-
-					ImGui.Separator();
-					DrawAddEventMenuItem("Stop", !hasStopEvent, UIStopColorRGBA, EditorStopEvent.EventShortDescription, row,
-						() =>
-						{
-							var stopTime = currentRateAlteringEvent.GetSecondsPerRow() * MaxValidDenominator;
-							return EditorEvent.CreateEvent(EventConfig.CreateStopConfig(ActiveChart, row, stopTime));
-						});
-					DrawAddEventMenuItem("Delay", !hasDelayEvent, UIDelayColorRGBA, EditorDelayEvent.EventShortDescription, row,
-						() =>
-						{
-							var stopTime = currentRateAlteringEvent.GetSecondsPerRow() * MaxValidDenominator;
-							return EditorEvent.CreateEvent(EventConfig.CreateDelayConfig(ActiveChart, row, stopTime));
-						});
-					DrawAddEventMenuItem("Warp", !hasWarpEvent, UIWarpColorRGBA, EditorWarpEvent.EventShortDescription, row,
-						() => EditorEvent.CreateEvent(EventConfig.CreateWarpConfig(ActiveChart, row)));
-
-					ImGui.Separator();
-					DrawAddEventMenuItem("Fake Region", !hasFakeEvent, UIFakesColorRGBA,
-						EditorFakeSegmentEvent.EventShortDescription, row, () =>
-						{
-							var fakeLength = currentRateAlteringEvent.GetSecondsPerRow() * MaxValidDenominator;
-							return EditorEvent.CreateEvent(EventConfig.CreateFakeConfig(ActiveChart, row, fakeLength));
-						});
-					DrawAddEventMenuItem("Ticks", !hasTickCountEvent, UITicksColorRGBA,
-						EditorTickCountEvent.EventShortDescription, row,
-						() => EditorEvent.CreateEvent(EventConfig.CreateTickCountConfig(ActiveChart, row)));
-					DrawAddEventMenuItem("Combo Multipliers", !hasMultipliersEvent, UIMultipliersColorRGBA,
-						EditorMultipliersEvent.EventShortDescription, row,
-						() => EditorEvent.CreateEvent(EventConfig.CreateMultipliersConfig(ActiveChart, row)));
-					DrawAddEventMenuItem("Time Signature", !hasTimeSignatureEvent, UITimeSignatureColorRGBA,
-						EditorTimeSignatureEvent.EventShortDescription, row,
-						() => EditorEvent.CreateEvent(EventConfig.CreateTimeSignatureConfig(ActiveChart,
-							row, EditorChart.DefaultTimeSignature)));
-					DrawAddEventMenuItem("Label", !hasLabelEvent, UILabelColorRGBA, EditorLabelEvent.EventShortDescription, row,
-						() => EditorEvent.CreateEvent(EventConfig.CreateLabelConfig(ActiveChart, row)));
-					DrawAddEventMenuItem("Pattern", !hasPatternEvent, UIPatternColorRGBA,
-						EditorPatternEvent.EventShortDescription, row,
-						() => EditorEvent.CreateEvent(EventConfig.CreatePatternConfig(ActiveChart, row)));
-
-					ImGui.Separator();
-					if (MenuItemWithColor("(Move) Music Preview", true, UIPreviewColorRGBA))
-					{
-						var startTime = Math.Max(0.0, Position.SongTime);
-						ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyValue<double>(ActiveSong,
-							nameof(EditorSong.SampleStart), startTime, true));
-					}
-
-					ToolTip(EditorPreviewRegionEvent.EventShortDescription);
-					if (MenuItemWithColor("(Move) End Hint", true, UILastSecondHintColorRGBA))
-					{
-						var currentTime = Math.Max(0.0, Position.ChartTime);
-						ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyValue<double>(ActiveSong,
-							nameof(EditorSong.LastSecondHint), currentTime, true));
-					}
-
-					ToolTip(EditorLastSecondHintEvent.EventShortDescription);
-
-					ImGui.EndMenu();
-				}
-
-				if (!canEditChart)
-					PopDisabled();
-			}
+				UIEditEvents.DrawAddEventMenu();
 
 			if (ActiveSong != null)
 			{
+				var canEditSong = ActiveSong.CanBeEdited();
 				if (!canEditSong)
 					PushDisabled();
 
@@ -5940,6 +5578,11 @@ internal sealed class Editor :
 
 	#region Selection
 
+	public IReadOnlySelection GetSelection()
+	{
+		return Selection;
+	}
+
 	public void OnNoteTransformationBegin()
 	{
 		TransformingSelectedNotes = true;
@@ -6037,20 +5680,20 @@ internal sealed class Editor :
 
 	public void OnSelectAll()
 	{
-		OnSelectAllImpl((e) => e.IsSelectableWithoutModifiers());
+		OnSelectAll((e) => e.IsSelectableWithoutModifiers());
 	}
 
 	public void OnSelectAllAlt()
 	{
-		OnSelectAllImpl((e) => e.IsSelectableWithModifiers());
+		OnSelectAll((e) => e.IsSelectableWithModifiers());
 	}
 
 	public void OnSelectAllShift()
 	{
-		OnSelectAllImpl((e) => e.IsSelectableWithoutModifiers() || e.IsSelectableWithModifiers());
+		OnSelectAll((e) => e.IsSelectableWithoutModifiers() || e.IsSelectableWithModifiers());
 	}
 
-	private void OnSelectAllImpl(Func<EditorEvent, bool> isSelectable)
+	public void OnSelectAll(Func<EditorEvent, bool> isSelectable)
 	{
 		if (ActiveChart == null)
 			return;
@@ -6512,65 +6155,110 @@ internal sealed class Editor :
 		return duration / spacingHelper.GetPpr();
 	}
 
-	private void OnShiftSelectedNotesLeft()
+	public void OnShiftSelectedNotesLeft()
 	{
 		if (EditEarlyOut())
 			return;
 		if (!Selection.HasSelectedEvents())
 			return;
-		ActionQueue.Instance.Do(new ActionShiftSelectionLane(this, ActiveChart, Selection.GetSelectedEvents(), false, false));
+		OnShiftNotesLeft(Selection.GetSelectedEvents());
 	}
 
-	private void OnShiftSelectedNotesLeftAndWrap()
+	public void OnShiftNotesLeft(IEnumerable<EditorEvent> events)
+	{
+		if (EditEarlyOut())
+			return;
+		ActionQueue.Instance.Do(new ActionShiftSelectionLane(this, ActiveChart, events, false, false));
+	}
+
+	public void OnShiftSelectedNotesLeftAndWrap()
 	{
 		if (EditEarlyOut())
 			return;
 		if (!Selection.HasSelectedEvents())
 			return;
-		ActionQueue.Instance.Do(new ActionShiftSelectionLane(this, ActiveChart, Selection.GetSelectedEvents(), false, true));
+		OnShiftNotesLeftAndWrap(Selection.GetSelectedEvents());
 	}
 
-	private void OnShiftSelectedNotesRight()
+	public void OnShiftNotesLeftAndWrap(IEnumerable<EditorEvent> events)
+	{
+		if (EditEarlyOut())
+			return;
+		ActionQueue.Instance.Do(new ActionShiftSelectionLane(this, ActiveChart, events, false, true));
+	}
+
+	public void OnShiftSelectedNotesRight()
 	{
 		if (EditEarlyOut())
 			return;
 		if (!Selection.HasSelectedEvents())
 			return;
-		ActionQueue.Instance.Do(new ActionShiftSelectionLane(this, ActiveChart, Selection.GetSelectedEvents(), true, false));
+		OnShiftNotesRight(Selection.GetSelectedEvents());
 	}
 
-	private void OnShiftSelectedNotesRightAndWrap()
+	public void OnShiftNotesRight(IEnumerable<EditorEvent> events)
+	{
+		if (EditEarlyOut())
+			return;
+		ActionQueue.Instance.Do(new ActionShiftSelectionLane(this, ActiveChart, events, true, false));
+	}
+
+	public void OnShiftSelectedNotesRightAndWrap()
 	{
 		if (EditEarlyOut())
 			return;
 		if (!Selection.HasSelectedEvents())
 			return;
-		ActionQueue.Instance.Do(new ActionShiftSelectionLane(this, ActiveChart, Selection.GetSelectedEvents(), true, true));
+		OnShiftNotesRightAndWrap(Selection.GetSelectedEvents());
 	}
 
-	private void OnShiftSelectedNotesEarlier()
+	public void OnShiftNotesRightAndWrap(IEnumerable<EditorEvent> events)
 	{
 		if (EditEarlyOut())
 			return;
+		ActionQueue.Instance.Do(new ActionShiftSelectionLane(this, ActiveChart, events, true, true));
+	}
+
+	public int GetShiftNotesRows()
+	{
 		var rows = SnapLevels[Preferences.Instance.SnapIndex].Rows;
 		if (rows == 0)
 			rows = MaxValidDenominator;
-		var events = Selection.GetSelectedEvents();
-		if (!events.Any())
-			return;
-		ActionQueue.Instance.Do(new ActionShiftSelectionRow(this, ActiveChart, Selection.GetSelectedEvents(), -rows));
+		return rows;
 	}
 
-	private void OnShiftSelectedNotesLater()
+	public void OnShiftSelectedNotesEarlier()
 	{
 		if (EditEarlyOut())
 			return;
-		var rows = SnapLevels[Preferences.Instance.SnapIndex].Rows;
-		if (rows == 0)
-			rows = MaxValidDenominator;
 		if (!Selection.HasSelectedEvents())
 			return;
-		ActionQueue.Instance.Do(new ActionShiftSelectionRow(this, ActiveChart, Selection.GetSelectedEvents(), rows));
+		OnShiftNotesEarlier(Selection.GetSelectedEvents());
+	}
+
+	public void OnShiftNotesEarlier(IEnumerable<EditorEvent> events)
+	{
+		if (EditEarlyOut())
+			return;
+		var rows = GetShiftNotesRows();
+		ActionQueue.Instance.Do(new ActionShiftSelectionRow(this, ActiveChart, events, -rows));
+	}
+
+	public void OnShiftSelectedNotesLater()
+	{
+		if (EditEarlyOut())
+			return;
+		if (!Selection.HasSelectedEvents())
+			return;
+		OnShiftNotesLater(Selection.GetSelectedEvents());
+	}
+
+	public void OnShiftNotesLater(IEnumerable<EditorEvent> events)
+	{
+		if (EditEarlyOut())
+			return;
+		var rows = GetShiftNotesRows();
+		ActionQueue.Instance.Do(new ActionShiftSelectionRow(this, ActiveChart, events, rows));
 	}
 
 	#endregion Selection

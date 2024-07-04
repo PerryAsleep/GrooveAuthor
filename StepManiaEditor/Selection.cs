@@ -3,9 +3,22 @@
 namespace StepManiaEditor;
 
 /// <summary>
+/// Readonly interface for Selection.
+/// </summary>
+internal interface IReadOnlySelection
+{
+	public bool HasSelectedEvents();
+	public bool HasSelectedPatterns();
+	public IEnumerable<EditorEvent> GetSelectedEvents();
+
+	public IEnumerable<EditorPatternEvent> GetSelectedPatterns();
+	public EditorEvent GetLastSelectedEvent();
+}
+
+/// <summary>
 /// Class for selection EditorEvents and providing easy access to which EditorEvents are selected.
 /// </summary>
-internal sealed class Selection
+internal sealed class Selection : IReadOnlySelection
 {
 	/// <summary>
 	/// All currently selected EditorEvents.
