@@ -86,30 +86,31 @@ internal sealed class EditorStopEvent : EditorRateAlteringEvent, IEquatable<Edit
 
 	public double GetRegionPosition()
 	{
-		return ChartEvent.TimeSeconds;
+		if (StopEvent.LengthSeconds > 0.0)
+			return GetChartTime();
+		return GetChartPosition();
 	}
 
 	public double GetRegionDuration()
 	{
-		return DoubleValue;
+		if (StopEvent.LengthSeconds > 0.0)
+			return StopEvent.LengthSeconds;
+		return GetEndChartPosition() - GetChartPosition();
 	}
 
 	public bool AreRegionUnitsTime()
 	{
-		return true;
+		return StopEvent.LengthSeconds > 0.0;
 	}
 
 	public bool IsVisible(SpacingMode mode)
 	{
-		// Do not draw negative stop regions. It looks incorrect to have the region begin
-		// before the negative stop starts.
-		return mode == SpacingMode.ConstantTime
-		       && GetRegionDuration() > 0.0;
+		return true;
 	}
 
 	public Color GetRegionColor()
 	{
-		return IRegion.GetColor(StopRegionColor, Alpha);
+		return IRegion.GetColor(StopEvent.LengthSeconds > 0.0 ? StopRegionColor : WarpRegionColor, Alpha);
 	}
 
 	#endregion IChartRegion Implementation
