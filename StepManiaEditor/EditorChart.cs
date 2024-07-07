@@ -672,7 +672,6 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		}
 
 		// Loop over every Event, creating EditorEvents from them.
-		TimeSignature lastTimeSignature = null;
 		for (var eventIndex = 0; eventIndex < chart.Layers[0].Events.Count; eventIndex++)
 		{
 			var chartEvent = chart.Layers[0].Events[eventIndex];
@@ -681,50 +680,62 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			switch (chartEvent)
 			{
 				case TimeSignature ts:
+				{
 					if (!foundFirstTimeSignature && ts.IntegerPosition == 0)
 						foundFirstTimeSignature = true;
-					lastTimeSignature = ts;
-					editorEvent = EditorEvent.CreateEvent(EventConfig.CreateConfig(this, chartEvent,
-						(short)GetRowRelativeToMeasureStart(lastTimeSignature, chartEvent.IntegerPosition),
-						(short)lastTimeSignature.Signature.Denominator));
+					editorEvent = EditorEvent.CreateEvent(EventConfig.CreateConfig(this, chartEvent, false));
 					break;
+				}
 				case Tempo t:
+				{
 					if (!foundFirstTempo && t.IntegerPosition == 0)
 						foundFirstTempo = true;
-
-					if (t.TempoBPM < MinTempo)
+					if (t.TempoBPM < EditorTempoEvent.MinTempo)
 					{
 						LogWarn(
-							$"Tempo {t.TempoBPM} at row {t.IntegerPosition} is below the minimum tempo of {MinTempo}. Clamping to {MinTempo}.");
-						t.TempoBPM = MinTempo;
+							$"Tempo {t.TempoBPM} at row {t.IntegerPosition} is below the minimum tempo of {EditorTempoEvent.MinTempo}. Clamping to {EditorTempoEvent.MinTempo}.");
+						t.TempoBPM = EditorTempoEvent.MinTempo;
 					}
 
-					editorEvent = EditorEvent.CreateEvent(EventConfig.CreateConfig(this, chartEvent,
-						(short)GetRowRelativeToMeasureStart(lastTimeSignature, chartEvent.IntegerPosition),
-						(short)lastTimeSignature!.Signature.Denominator));
+					editorEvent = EditorEvent.CreateEvent(EventConfig.CreateConfig(this, chartEvent, false));
 					break;
+				}
 				case LaneHoldStartNote hsn:
+				{
 					pendingHoldStarts[hsn.Lane] = hsn;
 					continue;
+				}
 				case LaneHoldEndNote hen:
+				{
 					editorEvent =
-						EditorEvent.CreateEvent(EventConfig.CreateHoldConfig(this, pendingHoldStarts[hen.Lane], hen,
-							(short)GetRowRelativeToMeasureStart(lastTimeSignature, pendingHoldStarts[hen.Lane].IntegerPosition),
-							(short)lastTimeSignature!.Signature.Denominator));
+						EditorEvent.CreateEvent(EventConfig.CreateHoldConfig(this, pendingHoldStarts[hen.Lane], hen, false));
 					pendingHoldStarts[hen.Lane] = null;
 					holds.Insert(editorEvent);
 					break;
+				}
 				case Label:
-					editorEvent = EditorEvent.CreateEvent(EventConfig.CreateConfig(this, chartEvent,
-						(short)GetRowRelativeToMeasureStart(lastTimeSignature, chartEvent.IntegerPosition),
-						(short)lastTimeSignature!.Signature.Denominator));
+				{
+					editorEvent = EditorEvent.CreateEvent(EventConfig.CreateConfig(this, chartEvent, false));
 					labels.Insert(editorEvent);
 					break;
-				default:
-					editorEvent = EditorEvent.CreateEvent(EventConfig.CreateConfig(this, chartEvent,
-						(short)GetRowRelativeToMeasureStart(lastTimeSignature, chartEvent.IntegerPosition),
-						(short)lastTimeSignature!.Signature.Denominator));
+				}
+				case FakeSegment f:
+				{
+					if (f.LengthSeconds < EditorFakeSegmentEvent.MinFakeSegmentLength)
+					{
+						LogWarn(
+							$"Fake Segment {f.LengthSeconds} at row {f.IntegerPosition} is below the minimum length of {EditorFakeSegmentEvent.MinFakeSegmentLength} seconds. Clamping to {EditorFakeSegmentEvent.MinFakeSegmentLength}.");
+						f.LengthSeconds = EditorFakeSegmentEvent.MinFakeSegmentLength;
+					}
+
+					editorEvent = EditorEvent.CreateEvent(EventConfig.CreateConfig(this, chartEvent, false));
 					break;
+				}
+				default:
+				{
+					editorEvent = EditorEvent.CreateEvent(EventConfig.CreateConfig(this, chartEvent, false));
+					break;
+				}
 			}
 
 			AddLocalEvent(chartEvent, editorEvent);
@@ -743,9 +754,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			if (!foundFirstTempo)
 			{
 				var chartEvent = CreateDefaultTempo(EditorSong);
-				var editorEvent = EditorEvent.CreateEvent(EventConfig.CreateConfig(this, chartEvent,
-					(short)GetRowRelativeToMeasureStart(lastTimeSignature, chartEvent.IntegerPosition),
-					(short)lastTimeSignature!.Signature.Denominator));
+				var editorEvent = EditorEvent.CreateEvent(EventConfig.CreateConfig(this, chartEvent, false));
 				LogWarn($"No Tempo found at row 0. Adding {chartEvent.TempoBPM} BPM Tempo at row 0.");
 				AddLocalEvent(chartEvent, editorEvent);
 				modifiedChart = true;
@@ -759,8 +768,12 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		MiscEvents = miscEvents;
 		Labels = labels;
 
-		RefreshIntervals();
-		RefreshRateAlteringEvents();
+		// TODO: Optimize.
+		// Ideally we only need to do one loop over all the notes. But that means either duplicating much of
+		// the complicated logic around row-dependent data, or figuring out a way to neatly capture it in one
+		// space without needing a second loop. For now, just refresh all timing data. This ensures that complicated
+		// row dependent data like time signature coloring and fake determination are correct.
+		RefreshEventTimingData();
 
 		// Create events that are not derived from the Chart's Events.
 		AddPreviewEvent();
@@ -768,7 +781,6 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 		if (modifiedChart)
 		{
-			RefreshEventTimingData();
 			ActionQueue.Instance.SetHasUnsavedChanges();
 		}
 	}
@@ -1240,6 +1252,13 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 		EditorEvents.Validate();
 
+		// While we loop over all the events, reconstruct the intervals.
+		var stops = new EventIntervalTree<EditorStopEvent>();
+		var delays = new EventIntervalTree<EditorDelayEvent>();
+		var fakes = new EventIntervalTree<EditorFakeSegmentEvent>();
+		var warps = new EventIntervalTree<EditorWarpEvent>();
+		var patterns = new EventIntervalTree<EditorPatternEvent>();
+
 		var lastTempoChangeRow = 0;
 		var lastTempoChangeTime = 0.0;
 		EditorTempoEvent lastTempo = null;
@@ -1248,7 +1267,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		var rowsPerBeat = MaxValidDenominator;
 		var beatsPerMeasure = NumBeatsPerMeasure;
 		var totalStopTimeSeconds = 0.0;
-		var currentFakeTimeSeconds = 0.0;
+		var currentFakeTimeEndSeconds = 0.0;
 		var previousEventTimeSeconds = 0.0;
 
 		var currentRow = -1;
@@ -1275,6 +1294,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		// a ssc and sm file that are not the same. The ssc file will have a shorter skipped range
 		// and the two charts will be out of sync.
 
+		var lastNegativeStopTime = -1.0;
 		foreach (var editorEvent in EditorEvents)
 		{
 			if (editorEvent == null)
@@ -1325,12 +1345,21 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			}
 
 			var eventTime = absoluteTime - currentWarpTime - totalWarpTime + totalStopTimeSeconds;
+			var warpedOverDueToNegativeStop = false;
 
-			// In the case of negative stop warps, we need to clamp the time of an event so it does not precede events which
-			// have lower IntegerPositions
+			// In the case of negative stop warps, we need to clamp the time of an event so it does not
+			// precede events which have lower rows.
 			if (eventTime < previousEventTimeSeconds)
+			{
 				eventTime = previousEventTimeSeconds;
-			editorEvent.SetRowDependencies(eventTime, rowRelativeToMeasureStart, (short)lastTimeSigDenominator);
+				if (eventTime <= lastNegativeStopTime)
+				{
+					warpedOverDueToNegativeStop = true;
+				}
+			}
+
+			var fakeDueToRow = warpingEndPosition != -1 || warpedOverDueToNegativeStop || currentFakeTimeEndSeconds > eventTime;
+			editorEvent.SetRowDependencies(eventTime, rowRelativeToMeasureStart, (short)lastTimeSigDenominator, fakeDueToRow);
 			previousEventTimeSeconds = eventTime;
 
 			switch (editorEvent)
@@ -1340,7 +1369,36 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 				{
 					// Accrue Stop time whether it is positive or negative.
 					// Do not worry about overlapping negative stops as they stack in StepMania.
-					totalStopTimeSeconds += stop.GetStopLengthSeconds();
+					var stopLengthSeconds = stop.GetStopLengthSeconds();
+					totalStopTimeSeconds += stopLengthSeconds;
+
+					// Handle negative stops.
+					if (stopLengthSeconds < 0.0)
+					{
+						// To preserve Stepmania behavior Stops follow steps, but notes on the same lane as a
+						// negative stop are warped over unless there is a delay present.
+						// When we find a negative stop we need to scan backwards and set the preceding steps
+						// on the same row to be warped over, unless there is a delay present.
+						var coincidentDelay = false;
+						foreach (var coincidentEvent in eventsOnSameRow)
+						{
+							if (coincidentEvent is EditorDelayEvent)
+							{
+								coincidentDelay = true;
+								break;
+							}
+						}
+
+						if (!coincidentDelay)
+						{
+							foreach (var eventOnSameRow in eventsOnSameRow)
+								eventOnSameRow.SetIsFakeDueToRow(true);
+						}
+
+						lastNegativeStopTime = eventTime;
+					}
+
+					stops.Insert(stop, stop.GetChartTime(), Math.Max(stop.GetChartTime(), stop.GetEndChartTime()));
 					break;
 				}
 				case EditorDelayEvent delay:
@@ -1348,10 +1406,14 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 					// Accrue Stop time whether it is positive or negative.
 					// Do not worry about overlapping negative stops as they stack in StepMania.
 					totalStopTimeSeconds += delay.GetDelayLengthSeconds();
+
+					delays.Insert(delay, delay.GetChartTime(), Math.Max(delay.GetChartTime(), delay.GetEndChartTime()));
 					break;
 				}
 				case EditorFakeSegmentEvent fakeSegment:
 				{
+					currentFakeTimeEndSeconds = eventTime + fakeSegment.GetFakeTimeSeconds();
+					fakes.Insert(fakeSegment, fakeSegment.GetChartTime(), fakeSegment.GetEndChartTime());
 					break;
 				}
 				// Warp handling. Update warp start and stop rows so we can compute the warp time.
@@ -1361,6 +1423,30 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 					warpingEndPosition = Math.Max(warpingEndPosition, row + warp.GetWarpLengthRows());
 					if (lastWarpBeatTimeChangeRow == -1)
 						lastWarpBeatTimeChangeRow = row;
+
+					// To preserve Stepmania behavior Stops follow steps and Warps follow Stops.
+					// But notes on the same lane as a Warp are warped over unless a stop or delay is present.
+					// When we find a warp we need to scan backwards and set the preceding steps on the same
+					// row to be warped over, unless a stop or delay is present.
+					var coincidentStop = false;
+					foreach (var coincidentEvent in eventsOnSameRow)
+					{
+						if (coincidentEvent is EditorStopEvent || coincidentEvent is EditorDelayEvent)
+						{
+							coincidentStop = true;
+							break;
+						}
+					}
+
+					if (!coincidentStop)
+					{
+						foreach (var coincidentEvent in eventsOnSameRow)
+						{
+							coincidentEvent.SetIsFakeDueToRow(true);
+						}
+					}
+
+					warps.Insert(warp, warp.GetChartPosition(), warp.GetEndChartPosition());
 					break;
 				}
 				// Time Signature change. Update time signature and beat time tracking.
@@ -1377,7 +1463,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 						rowRelativeToMeasureStart = 0;
 					}
 
-					editorEvent.SetRowDependencies(eventTime, rowRelativeToMeasureStart, (short)timeSignature.Denominator);
+					editorEvent.SetRowDependencies(eventTime, rowRelativeToMeasureStart, (short)timeSignature.Denominator,
+						fakeDueToRow);
 
 					lastTimeSigChangeRow = row;
 					lastTimeSigChangeMeasure = absoluteMeasure;
@@ -1413,10 +1500,12 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 					break;
 				}
+				case EditorPatternEvent pe:
+				{
+					patterns.Insert(pe, pe.GetChartPosition(), pe.GetEndChartPosition());
+					break;
+				}
 			}
-
-			var fake = currentWarpTime > 0.0;
-			//editorEvent.SetIsFake();
 		}
 
 		EditorEvents.Validate();
@@ -1426,10 +1515,16 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 		EditorEvents.Validate();
 
-		// Holds have an additional event that needs updating now that the rate altering events
-		// are updated.
+		// Some events have length to them and their end values depend on rate altering events.
+		// We cannot set them during the loop above because there may be unprocessed rate altering
+		// events between their start and end, and their ends are not distinct events that will
+		// be looped over. Process them here now that all the rate altering events are updated.
 		foreach (var hold in Holds)
 			((EditorHoldNoteEvent)hold).RefreshHoldEndTime();
+		foreach (var stop in stops)
+			stop.RefreshEndChartPosition();
+		foreach (var fakeSegment in fakes)
+			fakeSegment.RefreshEndChartPosition();
 
 		EditorEvents.Validate();
 
@@ -1442,8 +1537,12 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 		EditorEvents.Validate();
 
-		// Reconstruct Intervals.
-		RefreshIntervals();
+		// Update the intervals.
+		Stops = stops;
+		Delays = delays;
+		Fakes = fakes;
+		Warps = warps;
+		Patterns = patterns;
 
 		EditorEvents.Validate();
 
@@ -1491,6 +1590,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			return;
 		var previewChartTime = EditorPosition.GetChartTimeFromSongTime(this, EditorSong.SampleStart);
 		PreviewEvent = (EditorPreviewRegionEvent)EditorEvent.CreateEvent(EventConfig.CreatePreviewConfig(this, previewChartTime));
+		PreviewEvent.RefreshEndChartPosition();
 		AddEvent(PreviewEvent);
 	}
 
@@ -1954,6 +2054,76 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		return holds;
 	}
 
+	/// <summary>
+	/// Determines whether or not the given EditorEvent is positioned such that it should
+	/// be considered fake.
+	/// </summary>
+	/// <param name="editorEvent">EditorEvent in question.</param>
+	/// <returns>
+	/// True if the event should be considered fake due to its position and false otherwise.
+	/// </returns>
+	public bool IsEventInFake(EditorEvent editorEvent)
+	{
+		var row = editorEvent.GetRow();
+		var chartPosition = editorEvent.GetChartPosition();
+		var time = editorEvent.GetChartTime();
+
+		// An event in a fake region is a fake.
+		if (Fakes.FindAllOverlapping(time, true, false).Count > 0)
+			return true;
+
+		// An event in a warp region is a fake.
+		var overlappingWarps = Warps.FindAllOverlapping(editorEvent.GetChartPosition(), true, false);
+		foreach (var warp in overlappingWarps)
+		{
+			// Warps which are coincident with stops or delays do not cause simultaneous notes to be warped over.
+			if (warp.GetRow() == editorEvent.GetRow())
+			{
+				var simultaneousStop = RateAlteringEvents.FindEventAtRow<EditorStopEvent>(row);
+				if (simultaneousStop != null)
+					continue;
+				var simultaneousDelay = RateAlteringEvents.FindEventAtRow<EditorDelayEvent>(row);
+				if (simultaneousDelay != null)
+					continue;
+				return true;
+			}
+
+			return true;
+		}
+
+		// An event in a negative stop region is a fake.
+		var precedingStopEnumerator = Stops.FindGreatestPreceding(time, true);
+		while (precedingStopEnumerator != null && precedingStopEnumerator.MovePrev())
+		{
+			if (time > precedingStopEnumerator.Current!.GetChartTime())
+				return false;
+
+			// This event's time is the same as its preceding stop. This can be due to it occurring at the
+			// same time as a normal stop or due to being warped over due to negative stops. Since stops
+			// stack we cannot tell which scenario we are in without backing up to see if we are at the
+			// same time as a preceding negative stop.
+			if (precedingStopEnumerator.Current.GetStopLengthSeconds() < 0.0)
+			{
+				// If this negative stop is coincident with a delay then it does not cause simultaneous
+				// steps to be warped over.
+				if (precedingStopEnumerator.Current.GetRow() == row)
+				{
+					var coincidentDelay = RateAlteringEvents.FindEventAtRow<EditorDelayEvent>(row);
+					if (coincidentDelay != null)
+						return false;
+				}
+
+				// Negative stop ends are not inclusive. We need to know if the row of the event is
+				// exactly equal to the end of the negative stop.
+				if (chartPosition >= precedingStopEnumerator.Current.GetEndChartPosition())
+					return false;
+				return true;
+			}
+		}
+
+		return false;
+	}
+
 	#endregion Finding Overlapping Events
 
 	#region EditorEvent Modification Callbacks
@@ -2063,6 +2233,9 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		var deleted = Fakes.Delete(fake, fake.GetChartTime(), oldEndTime);
 		Assert(deleted);
 		Fakes.Insert(fake, fake.GetChartTime(), newEndTime);
+
+		// Fake segments affect row-dependent fake data.
+		RefreshEventTimingData();
 	}
 
 	/// <summary>
@@ -2074,6 +2247,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		if (!CanBeEdited())
 			return;
 
+		// Scroll rates affect timing data.
 		RefreshEventTimingData();
 	}
 
@@ -2086,6 +2260,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		if (!CanBeEdited())
 			return;
 
+		// Tempos rates affect timing data.
 		RefreshEventTimingData();
 	}
 
@@ -2098,6 +2273,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		if (!CanBeEdited())
 			return;
 
+		// Time signatures affect row-dependent coloration.
 		RefreshEventTimingData();
 	}
 
@@ -2180,7 +2356,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		if (!CanBeEdited())
 			return;
 
-		var rateDirty = false;
+		var rowDependentDataDirty = false;
 		foreach (var editorEvent in editorEvents)
 		{
 			UpdateCachedDataForDeletedEvent(editorEvent);
@@ -2204,6 +2380,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 				case EditorFakeSegmentEvent fse:
 					deleted = Fakes.Delete(fse, fse.GetChartTime(), fse.GetEndChartTime());
 					Assert(deleted);
+					rowDependentDataDirty = true;
 					break;
 				case EditorRateAlteringEvent rae:
 				{
@@ -2226,7 +2403,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 							break;
 					}
 
-					rateDirty = true;
+					rowDependentDataDirty = true;
 					break;
 				}
 				case EditorInterpolatedRateAlteringEvent irae:
@@ -2269,7 +2446,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			editorEvent.OnRemovedFromChart();
 		}
 
-		if (rateDirty)
+		if (rowDependentDataDirty)
 		{
 			RefreshEventTimingData();
 		}
@@ -2312,7 +2489,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 		foreach (var editorEvent in editorEvents)
 		{
-			var rateDirty = false;
+			var rowDependentDataDirty = false;
+
 			UpdateCachedDataForAddedEvent(editorEvent);
 			EditorEvents.Insert(editorEvent);
 			if (editorEvent.IsMiscEvent())
@@ -2324,6 +2502,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			{
 				case EditorFakeSegmentEvent fse:
 					Fakes.Insert(fse, fse.GetChartTime(), fse.GetEndChartTime());
+					rowDependentDataDirty = true;
 					break;
 				case EditorRateAlteringEvent rae:
 				{
@@ -2342,7 +2521,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 							break;
 					}
 
-					rateDirty = true;
+					rowDependentDataDirty = true;
 					break;
 				}
 				case EditorInterpolatedRateAlteringEvent irae:
@@ -2389,7 +2568,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			// this would be a big perf win.
 			// Moving many rate altering events together is not a frequent operation.
 
-			if (rateDirty)
+			if (rowDependentDataDirty)
 			{
 				RefreshEventTimingData();
 			}
@@ -2464,9 +2643,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 						// If the reduction in length is below the min length for a hold, replace it with a tap.
 						if (newExistingHoldEndRow <= existingNote.GetRow())
 						{
-							var replacementEvent = EditorEvent.CreateEvent(EventConfig.CreateTapConfigWithRowDependencies(this,
-								existingNote.GetRow(), existingNote.GetChartTime(), lane,
-								existingNote.GetRowRelativeToMeasureStart(), existingNote.GetTimeSignatureDenominator()));
+							var replacementEvent = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(existingNote));
 							AddEvent(replacementEvent);
 							sideEffectAddedEvents.Add(replacementEvent);
 						}
@@ -2476,7 +2653,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 						{
 							// We need to recompute the hold end time, so don't provide any explicit times.
 							var replacementEvent = EditorEvent.CreateEvent(EventConfig.CreateHoldConfig(this,
-								existingNote.GetRow(), lane, newExistingHoldEndRow - existingNote.GetRow(),
+								existingNote.GetRow(), existingNote.GetLane(), newExistingHoldEndRow - existingNote.GetRow(),
 								existingHold.IsRoll()));
 							AddEvent(replacementEvent);
 							sideEffectAddedEvents.Add(replacementEvent);
@@ -2648,8 +2825,16 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		switch (editorEvent)
 		{
 			case EditorTapNoteEvent or EditorHoldNoteEvent:
-				StepCount++;
-				StepCountsByLane[editorEvent.GetLane()]++;
+				if (editorEvent.IsFake())
+				{
+					FakeCount++;
+				}
+				else
+				{
+					StepCount++;
+					StepCountsByLane[editorEvent.GetLane()]++;
+				}
+
 				break;
 			case EditorFakeNoteEvent:
 				FakeCount++;
@@ -2668,8 +2853,16 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		switch (editorEvent)
 		{
 			case EditorTapNoteEvent or EditorHoldNoteEvent:
-				StepCount--;
-				StepCountsByLane[editorEvent.GetLane()]--;
+				if (editorEvent.IsFake())
+				{
+					FakeCount--;
+				}
+				else
+				{
+					StepCount--;
+					StepCountsByLane[editorEvent.GetLane()]--;
+				}
+
 				break;
 			case EditorFakeNoteEvent:
 				FakeCount--;

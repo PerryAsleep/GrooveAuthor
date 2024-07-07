@@ -63,6 +63,10 @@ internal sealed class EditorTempoEvent : EditorRateAlteringEvent
 	{
 		TempoEvent = chartEvent;
 		WidthDirty = true;
+
+		Assert(TempoEvent.TempoBPM >= MinTempo);
+		if (TempoEvent.TempoBPM < MinTempo)
+			TempoEvent.TempoBPM = MinTempo;
 	}
 
 	/// <remarks>
@@ -125,6 +129,6 @@ internal sealed class EditorTempoEvent : EditorRateAlteringEvent
 			Format,
 			Alpha,
 			WidgetHelp,
-			0.0);
+			MinTempo);
 	}
 }

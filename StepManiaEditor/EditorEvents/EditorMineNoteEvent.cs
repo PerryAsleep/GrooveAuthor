@@ -2,7 +2,6 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGameExtensions;
-using static StepManiaEditor.Utils;
 
 namespace StepManiaEditor;
 
@@ -47,15 +46,19 @@ internal sealed class EditorMineNoteEvent : EditorEvent
 
 	public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)
 	{
-		var alpha = IsBeingEdited() ? ActiveEditEventAlpha : Alpha;
+		var alpha = GetRenderAlpha();
 		if (alpha <= 0.0f)
 			return;
+		var textureId = ArrowGraphicManager.GetMineTexture(GetRow(), LaneNote.Lane, IsSelected());
 		textureAtlas.Draw(
-			ArrowGraphicManager.GetMineTexture(GetRow(), LaneNote.Lane, IsSelected()),
+			textureId,
 			spriteBatch,
 			new Vector2((float)X, (float)Y),
 			Scale,
 			0.0f,
 			alpha);
+
+		if (IsFake())
+			DrawFakeMarker(textureAtlas, spriteBatch, textureId);
 	}
 }

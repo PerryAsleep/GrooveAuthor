@@ -29,6 +29,7 @@ internal sealed class EditorPreviewRegionEvent : EditorEvent, IChartRegion, Fume
 
 	private const string Format = "%.9gs";
 	private const float Speed = 0.01f;
+	private double EndChartPosition;
 
 	#region IChartRegion Implementation
 
@@ -205,12 +206,20 @@ internal sealed class EditorPreviewRegionEvent : EditorEvent, IChartRegion, Fume
 		return GetChartTime() + EditorChart.GetEditorSong().SampleLength;
 	}
 
+	public void RefreshEndChartPosition()
+	{
+		if (!EditorChart.TryGetChartPositionFromTime(GetEndChartTime(), ref EndChartPosition))
+			EndChartPosition = GetChartPosition();
+	}
+
+	public override int GetEndRow()
+	{
+		return (int)EndChartPosition;
+	}
+
 	public override double GetEndChartPosition()
 	{
-		var chartPosition = 0.0;
-		if (EditorChart.TryGetChartPositionFromTime(GetEndChartTime(), ref chartPosition))
-			return chartPosition;
-		return GetChartPosition();
+		return EndChartPosition;
 	}
 
 	public override string GetShortTypeName()

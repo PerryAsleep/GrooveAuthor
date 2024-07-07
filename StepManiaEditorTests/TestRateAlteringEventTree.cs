@@ -312,7 +312,8 @@ public class TestRateAlteringEventTree
 				}
 			}
 
-			// Test FindActiveRateAlteringEvent(EditorEvent) and FindActiveRateAlteringEvent(Event)
+			// Test FindActiveRateAlteringEventEnumerator, FindActiveRateAlteringEvent(EditorEvent),
+			// and FindActiveRateAlteringEvent(Event)
 			{
 				// FindActiveRateAlteringEvent for taps should return the greatest preceding rate altering event.
 				// Some events occurring on the same row as taps occur after the taps. These events should never
@@ -358,6 +359,13 @@ public class TestRateAlteringEventTree
 						}
 
 						// Assert that the found active rate altering event matches expectations.
+
+						// Check FindActiveRateAlteringEventEnumerator
+						var foundEnumerator = c.GetRateAlteringEvents().FindActiveRateAlteringEventEnumerator(tap);
+						Assert.IsNotNull(foundEnumerator);
+						Assert.IsTrue(foundEnumerator.MoveNext());
+						Assert.AreEqual(expectedRateAlteringEventType, GetEventTypeName(foundEnumerator.Current));
+						Assert.AreEqual(expectedRateAlteringEventRow, foundEnumerator.Current!.GetRow());
 
 						// Check FindActiveRateAlteringEvent(EditorEvent)
 						var foundEvent = c.GetRateAlteringEvents().FindActiveRateAlteringEvent(tap);

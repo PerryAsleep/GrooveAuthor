@@ -24,6 +24,8 @@ internal sealed class EditorWarpEvent : EditorRateAlteringEvent, IEquatable<Edit
 		"Length must be non-negative.\n" +
 		EventShortDescription;
 
+	public const int MinLength = 1;
+
 	private const string Format = "%irows";
 	private const float Speed = 1.0f;
 
@@ -115,7 +117,7 @@ internal sealed class EditorWarpEvent : EditorRateAlteringEvent, IEquatable<Edit
 			if (!EditorChart.CanBeEdited())
 				return;
 
-			if (WarpEvent.LengthIntegerPosition != value && value >= 0)
+			if (WarpEvent.LengthIntegerPosition != value && value >= MinLength)
 			{
 				var oldPosition = GetEndChartPosition();
 				WarpEvent.LengthIntegerPosition = value;
@@ -158,6 +160,10 @@ internal sealed class EditorWarpEvent : EditorRateAlteringEvent, IEquatable<Edit
 	{
 		WarpEvent = chartEvent;
 		WidthDirty = true;
+
+		Assert(WarpEvent.LengthIntegerPosition >= MinLength);
+		if (WarpEvent.LengthIntegerPosition < MinLength)
+			WarpEvent.LengthIntegerPosition = MinLength;
 	}
 
 	public override string GetShortTypeName()
@@ -211,7 +217,7 @@ internal sealed class EditorWarpEvent : EditorRateAlteringEvent, IEquatable<Edit
 			Format,
 			Alpha,
 			WidgetHelp,
-			0);
+			MinLength);
 	}
 
 	#region IEquatable

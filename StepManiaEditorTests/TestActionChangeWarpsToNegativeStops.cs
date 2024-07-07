@@ -34,28 +34,6 @@ public class TestActionChangeWarpsToNegativeStops
 	}
 
 	[TestMethod]
-	public void Test_ZeroLengthWarpsAreConverted()
-	{
-		var c = CreateTestChart();
-		var row = SMCommon.RowsPerMeasure;
-		var warpLength = 0;
-		var warp = (EditorWarpEvent)EditorEvent.CreateEvent(EventConfig.CreateWarpConfig(c, row, warpLength));
-		c.AddEvent(warp);
-		Assert.AreEqual(0, c.GetStops().GetCount());
-		Assert.AreEqual(1, c.GetWarps().GetCount());
-
-		ActionQueue.Instance.Do(new ActionChangeWarpsToNegativeStops(null, c));
-		Assert.AreEqual(1, c.GetStops().GetCount());
-		Assert.AreEqual(0, c.GetWarps().GetCount());
-
-		var stopEnum = c.GetStops().First();
-		stopEnum.MoveNext();
-		var foundStop = stopEnum.Current;
-		Assert.AreEqual(row, foundStop!.GetRow());
-		Assert.IsTrue(foundStop.GetStopLengthSeconds().DoubleEquals(0.0));
-	}
-
-	[TestMethod]
 	public void Test_WarpsWithSimultaneousStopsMaintainOriginalStops()
 	{
 		var c = CreateTestChart();

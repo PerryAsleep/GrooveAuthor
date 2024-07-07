@@ -3,12 +3,14 @@ using System.Collections.Generic;
 using Fumen;
 using Fumen.ChartDefinition;
 using Fumen.Converters;
+using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGameExtensions;
 using StepManiaEditor.EditorEvents;
 using StepManiaLibrary;
 using static StepManiaLibrary.Constants;
 using static System.Diagnostics.Debug;
+using static StepManiaEditor.Utils;
 
 namespace StepManiaEditor;
 
@@ -85,11 +87,11 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	protected bool IsChartTimeValid;
 
 	/// <summary>
-	/// Whether or not this EditorEvent should be considered a fake.
+	/// Whether or not this EditorEvent should be considered a fake due to its row.
 	/// Fakes are steps which are skipped either due to being an explicit fake note, or being
 	/// in a fake segment, or being impossible to hit due to being warped over
 	/// </summary>
-	protected bool Fake;
+	protected bool FakeDueToRow;
 
 	/// <summary>
 	/// Whether or not this event is finished initializing after construction.
@@ -240,7 +242,11 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 		}
 		else
 		{
-			newEvent.SetRowDependencies(config.ChartTime, config.RowRelativeToMeasureStart, config.TimeSignatureDenominator);
+			newEvent.SetRowDependencies(
+				config.ChartTime,
+				config.RowRelativeToMeasureStart,
+				config.TimeSignatureDenominator,
+				config.IsFakeDueToRow);
 		}
 
 		newEvent.Initialized = true;
@@ -281,6 +287,7 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 		newEvent.ChartPosition = ChartPosition;
 		newEvent.RowRelativeToMeasureStart = RowRelativeToMeasureStart;
 		newEvent.TimeSignatureDenominator = TimeSignatureDenominator;
+		newEvent.FakeDueToRow = FakeDueToRow;
 		return newEvent;
 	}
 
@@ -411,6 +418,8 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 		RefreshTimeBasedOnRow(activeRateAlteringEvent);
 		// Measure information is computed from row using the active rate altering event.
 		RefreshMeasurePosition(activeRateAlteringEvent.GetTimeSignature());
+		// Fake status depends on row.
+		RefreshFakeStatus();
 	}
 
 	/// <summary>
@@ -425,10 +434,13 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	/// <param name="chartTime">The chart time of the event.</param>
 	/// <param name="rowRelativeToMeasureStart">The event's row relative to its measure start.</param>
 	/// <param name="timeSignatureDenominator">The denominator of the time signature which is active for this event.</param>
-	public void SetRowDependencies(double chartTime, short rowRelativeToMeasureStart, short timeSignatureDenominator)
+	/// <param name="isFakeDueToRow">Whether or not this event should be considered fake or not.</param>
+	public void SetRowDependencies(double chartTime, short rowRelativeToMeasureStart, short timeSignatureDenominator,
+		bool isFakeDueToRow)
 	{
 		SetChartTime(chartTime);
 		SetMeasurePosition(rowRelativeToMeasureStart, timeSignatureDenominator);
+		SetIsFakeDueToRow(isFakeDueToRow);
 	}
 
 	/// <summary>
@@ -492,6 +504,14 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	public short GetTimeSignatureDenominator()
 	{
 		return TimeSignatureDenominator;
+	}
+
+	/// <summary>
+	/// Refreshes whether or not this event is fake due to its row.
+	/// </summary>
+	public void RefreshFakeStatus()
+	{
+		FakeDueToRow = EditorChart.IsEventInFake(this);
 	}
 
 	/// <summary>
@@ -607,7 +627,7 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	/// <returns>Unique identifier for this event to use for ImGui widgets that draw this event.</returns>
 	protected virtual string GetImGuiId()
 	{
-		return $"{ChartEvent.GetType()}{GetLane()}{ChartEvent.IntegerPosition}";
+		return $"{GetType()}{GetLane()}{GetRow()}";
 	}
 
 	/// <summary>
@@ -631,14 +651,35 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 		return BeingEdited;
 	}
 
-	public void SetIsFake(bool fake)
+	/// <summary>
+	/// Sets whether or not this event should be considered fake due to its row.
+	/// </summary>
+	/// <param name="fake">
+	/// Whether or not this event should be considered fake due to its row.
+	/// </param>
+	public void SetIsFakeDueToRow(bool fake)
 	{
-		Fake = fake;
+		FakeDueToRow = fake;
 	}
 
+	/// <summary>
+	/// Returns whether or not this event should be considered fake due to its row.
+	/// </summary>
+	/// <returns>
+	/// True if this event should be considered fake due to its row and false otherwise.
+	/// </returns>
+	public bool IsFakeDueToRow()
+	{
+		return FakeDueToRow;
+	}
+
+	/// <summary>
+	/// Returns whether or not this event should be considered fake.
+	/// </summary>
+	/// <returns>True if this event should be considered fake and false otherwise.</returns>
 	public virtual bool IsFake()
 	{
-		return Fake;
+		return FakeDueToRow;
 	}
 
 	/// <summary>
@@ -934,6 +975,34 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 
 	public virtual void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)
 	{
+	}
+
+	protected float GetRenderAlpha()
+	{
+		return IsBeingEdited() ? ActiveEditEventAlpha : Alpha;
+	}
+
+	protected void DrawFakeMarker(TextureAtlas textureAtlas, SpriteBatch spriteBatch, string arrowTextureId)
+	{
+		DrawFakeMarker(textureAtlas, spriteBatch, arrowTextureId, X, Y);
+	}
+
+	protected void DrawFakeMarker(TextureAtlas textureAtlas, SpriteBatch spriteBatch, string arrowTextureId, double arrowX,
+		double arrowY)
+	{
+		// Draw the fake marker. Do not draw it with the selection overlay as it looks weird.
+		var fakeTextureId = ArrowGraphicManager.GetFakeMarkerTexture(GetRow(), GetLane(), false);
+		var (arrowW, arrowH) = textureAtlas.GetDimensions(arrowTextureId);
+		var (markerW, markerH) = textureAtlas.GetDimensions(fakeTextureId);
+		var markerX = arrowX + (arrowW - markerW) * 0.5 * Scale;
+		var markerY = arrowY + (arrowH - markerH) * 0.5 * Scale;
+		textureAtlas.Draw(
+			fakeTextureId,
+			spriteBatch,
+			new Vector2((float)markerX, (float)markerY),
+			Scale,
+			0.0f,
+			GetRenderAlpha());
 	}
 
 	#endregion Positioning and Drawing

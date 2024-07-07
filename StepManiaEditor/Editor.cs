@@ -4622,23 +4622,6 @@ internal sealed class Editor :
 		}
 	}
 
-	private void DrawAddEventMenuItem(string name, bool enabled, uint color, string toolTipText, int row,
-		Func<EditorEvent> createEventFunc)
-	{
-		if (MenuItemWithColor(name, enabled, color))
-		{
-			ActionQueue.Instance.Do(new ActionAddEditorEvent(createEventFunc()));
-		}
-
-		if (!enabled)
-		{
-			toolTipText +=
-				$"\n\nOnly one {name} event can be specified per row.\nThere is already a {name} specified on row {row}.";
-		}
-
-		ToolTip(toolTipText);
-	}
-
 	private void ShowUnsavedChangesModal()
 	{
 		var message = string.IsNullOrEmpty(ActiveSong.Title)
@@ -6792,9 +6775,7 @@ internal sealed class Editor :
 						{
 							var deleteHold = new ActionDeleteEditorEvents(existingEvent);
 
-							var config = EventConfig.CreateTapConfigWithRowDependencies(ActiveChart, existingEvent.GetRow(),
-								existingEvent.GetChartTime(), lane, existingEvent.GetRowRelativeToMeasureStart(),
-								existingEvent.GetTimeSignatureDenominator());
+							var config = EventConfig.CreateTapConfig(existingEvent);
 							var insertNewNoteAtHoldStart = new ActionAddEditorEvent(EditorEvent.CreateEvent(config));
 
 							LaneEditStates[lane].SetEditingTapOrMine(LaneEditStates[lane].GetEventBeingEdited(),

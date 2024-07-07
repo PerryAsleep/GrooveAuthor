@@ -705,8 +705,11 @@ internal sealed class MusicManager
 						break;
 
 					// Only tick for taps and holds.
-					if (editorEvent is EditorTapNoteEvent || editorEvent is EditorHoldNoteEvent)
+					if (editorEvent is EditorTapNoteEvent || editorEvent is EditorHoldNoteEvent || editorEvent is EditorLiftNoteEvent)
 					{
+						if (editorEvent.IsFake())
+							continue;
+
 						var songTime = EditorPosition.GetSongTimeFromChartTime(chart, chartTime);
 
 						// It is very common for more than one event to occur at the same time. We only want

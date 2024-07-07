@@ -2,7 +2,6 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGameExtensions;
-using static StepManiaEditor.Utils;
 
 namespace StepManiaEditor;
 
@@ -37,7 +36,7 @@ internal sealed class EditorTapNoteEvent : EditorEvent
 
 	public override bool IsConsumedByReceptors()
 	{
-		return true;
+		return !IsFake();
 	}
 
 	public override bool IsMiscEvent()
@@ -57,7 +56,7 @@ internal sealed class EditorTapNoteEvent : EditorEvent
 
 	public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)
 	{
-		var alpha = IsBeingEdited() ? ActiveEditEventAlpha : Alpha;
+		var alpha = GetRenderAlpha();
 		if (alpha <= 0.0f)
 			return;
 		var (textureId, rot) = arrowGraphicManager.GetArrowTexture(GetStepColorRow(), LaneTapNote.Lane, IsSelected());
@@ -68,5 +67,8 @@ internal sealed class EditorTapNoteEvent : EditorEvent
 			Scale,
 			rot,
 			alpha);
+
+		if (IsFake())
+			DrawFakeMarker(textureAtlas, spriteBatch, textureId);
 	}
 }

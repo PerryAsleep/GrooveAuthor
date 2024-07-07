@@ -159,6 +159,9 @@ internal sealed class EditorDelayEvent : EditorRateAlteringEvent, IEquatable<Edi
 	{
 		StopEvent = chartEvent;
 		WidthDirty = true;
+		Assert(StopEvent.LengthSeconds > 0.0);
+		if (StopEvent.LengthSeconds < 0.0)
+			StopEvent.LengthSeconds = 0.0;
 	}
 
 	public override string GetShortTypeName()

@@ -2,7 +2,6 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGameExtensions;
-using static StepManiaEditor.Utils;
 
 namespace StepManiaEditor;
 
@@ -37,7 +36,7 @@ internal sealed class EditorLiftNoteEvent : EditorEvent
 
 	public override bool IsConsumedByReceptors()
 	{
-		return true;
+		return !IsFake();
 	}
 
 	public override bool IsMiscEvent()
@@ -57,7 +56,7 @@ internal sealed class EditorLiftNoteEvent : EditorEvent
 
 	public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)
 	{
-		var alpha = IsBeingEdited() ? ActiveEditEventAlpha : Alpha;
+		var alpha = GetRenderAlpha();
 		if (alpha <= 0.0f)
 			return;
 
@@ -72,17 +71,26 @@ internal sealed class EditorLiftNoteEvent : EditorEvent
 			alpha);
 
 		// Draw the lift marker. Do not draw it with the selection overlay as it looks weird.
-		var liftTextureId = ArrowGraphicManager.GetLiftMarkerTexture(LaneTapNote.IntegerPosition, LaneTapNote.Lane, false);
-		var (arrowW, arrowH) = textureAtlas.GetDimensions(textureId);
-		var (markerW, markerH) = textureAtlas.GetDimensions(liftTextureId);
-		var markerX = X + (arrowW - markerW) * 0.5 * Scale;
-		var markerY = Y + (arrowH - markerH) * 0.5 * Scale;
-		textureAtlas.Draw(
-			liftTextureId,
-			spriteBatch,
-			new Vector2((float)markerX, (float)markerY),
-			Scale,
-			0.0f,
-			alpha);
+		// Don't draw it if we are going to draw the fake marker as they occupy the same space and
+		// relaying fake information is more important than relaying lift information.
+		if (!IsFake())
+		{
+			var liftTextureId = ArrowGraphicManager.GetLiftMarkerTexture(LaneTapNote.IntegerPosition, LaneTapNote.Lane, false);
+			var (arrowW, arrowH) = textureAtlas.GetDimensions(textureId);
+			var (markerW, markerH) = textureAtlas.GetDimensions(liftTextureId);
+			var markerX = X + (arrowW - markerW) * 0.5 * Scale;
+			var markerY = Y + (arrowH - markerH) * 0.5 * Scale;
+			textureAtlas.Draw(
+				liftTextureId,
+				spriteBatch,
+				new Vector2((float)markerX, (float)markerY),
+				Scale,
+				0.0f,
+				alpha);
+		}
+		else
+		{
+			DrawFakeMarker(textureAtlas, spriteBatch, textureId);
+		}
 	}
 }

@@ -184,27 +184,21 @@ internal sealed class UIEditEvents
 		{
 			ActionQueue.Instance.Do(new ActionChangeNoteType(Editor, chart, events,
 				(e) => e is EditorTapNoteEvent,
-				(e) => EditorEvent.CreateEvent(
-					EventConfig.CreateMineConfigWithRowDependencies(chart, e.GetRow(), e.GetChartTime(),
-						e.GetLane(), e.GetRowRelativeToMeasureStart(), e.GetTimeSignatureDenominator()))));
+				(e) => EditorEvent.CreateEvent(EventConfig.CreateMineConfig(e))));
 		}
 
 		if (ImGui.MenuItem("Taps to Fakes"))
 		{
 			ActionQueue.Instance.Do(new ActionChangeNoteType(Editor, chart, events,
 				(e) => e is EditorTapNoteEvent,
-				(e) => EditorEvent.CreateEvent(
-					EventConfig.CreateFakeNoteConfigWithRowDependencies(chart, e.GetRow(), e.GetChartTime(),
-						e.GetLane(), e.GetRowRelativeToMeasureStart(), e.GetTimeSignatureDenominator()))));
+				(e) => EditorEvent.CreateEvent(EventConfig.CreateFakeNoteConfig(e))));
 		}
 
 		if (ImGui.MenuItem("Taps to Lifts"))
 		{
 			ActionQueue.Instance.Do(new ActionChangeNoteType(Editor, chart, events,
 				(e) => e is EditorTapNoteEvent,
-				(e) => EditorEvent.CreateEvent(
-					EventConfig.CreateLiftNoteConfigWithRowDependencies(chart, e.GetRow(), e.GetChartTime(),
-						e.GetLane(), e.GetRowRelativeToMeasureStart(), e.GetTimeSignatureDenominator()))));
+				(e) => EditorEvent.CreateEvent(EventConfig.CreateLiftNoteConfig(e))));
 		}
 
 		ImGui.Separator();
@@ -212,27 +206,21 @@ internal sealed class UIEditEvents
 		{
 			ActionQueue.Instance.Do(new ActionChangeNoteType(Editor, chart, events,
 				(e) => e is EditorMineNoteEvent,
-				(e) => EditorEvent.CreateEvent(
-					EventConfig.CreateTapConfigWithRowDependencies(chart, e.GetRow(), e.GetChartTime(),
-						e.GetLane(), e.GetRowRelativeToMeasureStart(), e.GetTimeSignatureDenominator()))));
+				(e) => EditorEvent.CreateEvent(EventConfig.CreateTapConfig(e))));
 		}
 
 		if (ImGui.MenuItem("Mines to Fakes"))
 		{
 			ActionQueue.Instance.Do(new ActionChangeNoteType(Editor, chart, events,
 				(e) => e is EditorMineNoteEvent,
-				(e) => EditorEvent.CreateEvent(
-					EventConfig.CreateFakeNoteConfigWithRowDependencies(chart, e.GetRow(), e.GetChartTime(),
-						e.GetLane(), e.GetRowRelativeToMeasureStart(), e.GetTimeSignatureDenominator()))));
+				(e) => EditorEvent.CreateEvent(EventConfig.CreateFakeNoteConfig(e))));
 		}
 
 		if (ImGui.MenuItem("Mines to Lifts"))
 		{
 			ActionQueue.Instance.Do(new ActionChangeNoteType(Editor, chart, events,
 				(e) => e is EditorMineNoteEvent,
-				(e) => EditorEvent.CreateEvent(
-					EventConfig.CreateLiftNoteConfigWithRowDependencies(chart, e.GetRow(), e.GetChartTime(),
-						e.GetLane(), e.GetRowRelativeToMeasureStart(), e.GetTimeSignatureDenominator()))));
+				(e) => EditorEvent.CreateEvent(EventConfig.CreateLiftNoteConfig(e))));
 		}
 
 		ImGui.Separator();
@@ -240,18 +228,14 @@ internal sealed class UIEditEvents
 		{
 			ActionQueue.Instance.Do(new ActionChangeNoteType(Editor, chart, events,
 				(e) => e is EditorFakeNoteEvent,
-				(e) => EditorEvent.CreateEvent(
-					EventConfig.CreateTapConfigWithRowDependencies(chart, e.GetRow(), e.GetChartTime(),
-						e.GetLane(), e.GetRowRelativeToMeasureStart(), e.GetTimeSignatureDenominator()))));
+				(e) => EditorEvent.CreateEvent(EventConfig.CreateTapConfig(e))));
 		}
 
 		if (ImGui.MenuItem("Lifts to Taps"))
 		{
 			ActionQueue.Instance.Do(new ActionChangeNoteType(Editor, chart, events,
 				(e) => e is EditorLiftNoteEvent,
-				(e) => EditorEvent.CreateEvent(
-					EventConfig.CreateTapConfigWithRowDependencies(chart, e.GetRow(), e.GetChartTime(),
-						e.GetLane(), e.GetRowRelativeToMeasureStart(), e.GetTimeSignatureDenominator()))));
+				(e) => EditorEvent.CreateEvent(EventConfig.CreateTapConfig(e))));
 		}
 
 		ImGui.Separator();
@@ -268,9 +252,7 @@ internal sealed class UIEditEvents
 		{
 			ActionQueue.Instance.Do(new ActionChangeNoteType(Editor, chart, events,
 				(e) => e is EditorHoldNoteEvent hn && !hn.IsRoll(),
-				(e) => EditorEvent.CreateEvent(
-					EventConfig.CreateTapConfigWithRowDependencies(chart, e.GetRow(), e.GetChartTime(),
-						e.GetLane(), e.GetRowRelativeToMeasureStart(), e.GetTimeSignatureDenominator()))));
+				(e) => EditorEvent.CreateEvent(EventConfig.CreateTapConfig(e))));
 		}
 
 		if (ImGui.MenuItem("Holds to Mines"))
@@ -295,9 +277,7 @@ internal sealed class UIEditEvents
 		{
 			ActionQueue.Instance.Do(new ActionChangeNoteType(Editor, chart, events,
 				(e) => e is EditorHoldNoteEvent hn && hn.IsRoll(),
-				(e) => EditorEvent.CreateEvent(
-					EventConfig.CreateTapConfigWithRowDependencies(chart, e.GetRow(), e.GetChartTime(),
-						e.GetLane(), e.GetRowRelativeToMeasureStart(), e.GetTimeSignatureDenominator()))));
+				(e) => EditorEvent.CreateEvent(EventConfig.CreateTapConfig(e))));
 		}
 
 		if (ImGui.MenuItem("Rolls to Mines"))
@@ -414,7 +394,7 @@ internal sealed class UIEditEvents
 			if (disabled)
 				PushDisabled();
 
-			var events = chart?.GetEvents().FindEventsAtRow(row) ?? null;
+			var events = chart?.GetEvents().FindEventsAtRow(row);
 			var hasTempoEvent = false;
 			var hasInterpolatedScrollRateEvent = false;
 			var hasScrollRateEvent = false;

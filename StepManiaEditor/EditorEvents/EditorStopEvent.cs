@@ -28,6 +28,12 @@ internal sealed class EditorStopEvent : EditorRateAlteringEvent, IEquatable<Edit
 
 	private readonly Stop StopEvent;
 	private bool WidthDirty;
+	private double EndChartPosition;
+
+	public static bool IsStopLengthValid(double stopLength)
+	{
+		return stopLength != 0.0;
+	}
 
 	#region IChartRegion Implementation
 
@@ -117,7 +123,7 @@ internal sealed class EditorStopEvent : EditorRateAlteringEvent, IEquatable<Edit
 			if (!EditorChart.CanBeEdited())
 				return;
 
-			if (!StopEvent.LengthSeconds.DoubleEquals(value))
+			if (IsStopLengthValid(value) && !StopEvent.LengthSeconds.DoubleEquals(value))
 			{
 				EditorChart.UpdateStopTime(this, value, ref StopEvent.LengthSeconds);
 				WidthDirty = true;
@@ -158,6 +164,7 @@ internal sealed class EditorStopEvent : EditorRateAlteringEvent, IEquatable<Edit
 	{
 		StopEvent = chartEvent;
 		WidthDirty = true;
+		Assert(IsStopLengthValid(StopEvent.LengthSeconds));
 	}
 
 	public override string GetShortTypeName()
@@ -182,7 +189,40 @@ internal sealed class EditorStopEvent : EditorRateAlteringEvent, IEquatable<Edit
 
 	public override double GetEndChartTime()
 	{
-		return GetChartTime() + StopEvent.LengthSeconds;
+		return GetChartTime() + Math.Min(0.0, StopEvent.LengthSeconds);
+	}
+
+	public override int GetEndRow()
+	{
+		if (StopEvent.LengthSeconds > 0)
+			return GetRow();
+		return (int)EndChartPosition;
+	}
+
+	public override double GetEndChartPosition()
+	{
+		return EndChartPosition;
+	}
+
+	public void RefreshEndChartPosition()
+	{
+		// For negative stops we need to determine what row the negative stop ends at.
+		// There may other rate altering events between the negative stop start and end.
+		// We need to find the last rate altering event before the stop end, and use its
+		// rate to determine the end position.
+		if (StopEvent.LengthSeconds < 0.0)
+		{
+			var endTime = GetChartTime();
+			var enumerator = EditorChart.GetRateAlteringEvents().FindActiveRateAlteringEventEnumerator(this);
+			while (enumerator.MoveNext())
+			{
+				EndChartPosition = enumerator.Current!.GetChartPositionFromTime(endTime);
+
+				// This event is beyond the negative stop.
+				if (enumerator.Current!.GetChartTime() > endTime)
+					break;
+			}
+		}
 	}
 
 	public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)

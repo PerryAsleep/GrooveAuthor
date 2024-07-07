@@ -133,6 +133,21 @@ internal sealed class EventTreeUtils
 
 	public static bool EnsureGreatestLessThanOrEqualTo<T>(
 		IReadOnlyRedBlackTree<T>.IReadOnlyRedBlackTreeEnumerator e,
+		EditorEvent editorEvent) where T : EditorEvent
+	{
+		while (e.MoveNext() && e.Current!.CompareTo(editorEvent) <= 0)
+		{
+		}
+
+		while (e.MovePrev() && e.Current!.CompareTo(editorEvent) > 0)
+		{
+		}
+
+		return UnsetAndReturnIfWasValid(e);
+	}
+
+	public static bool EnsureGreatestLessThanOrEqualTo<T>(
+		IReadOnlyRedBlackTree<T>.IReadOnlyRedBlackTreeEnumerator e,
 		Event smEvent) where T : EditorEvent
 	{
 		while (e.MoveNext() && EditorEvent.CompareEditorEventToSmEvent(e.Current, smEvent) <= 0)

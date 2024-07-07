@@ -2,7 +2,6 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGameExtensions;
-using static StepManiaEditor.Utils;
 
 namespace StepManiaEditor;
 
@@ -57,7 +56,7 @@ internal sealed class EditorFakeNoteEvent : EditorEvent
 
 	public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)
 	{
-		var alpha = IsBeingEdited() ? ActiveEditEventAlpha : Alpha;
+		var alpha = GetRenderAlpha();
 		if (alpha <= 0.0f)
 			return;
 
@@ -71,18 +70,6 @@ internal sealed class EditorFakeNoteEvent : EditorEvent
 			rot,
 			alpha);
 
-		// Draw the fake marker. Do not draw it with the selection overlay as it looks weird.
-		var fakeTextureId = ArrowGraphicManager.GetFakeMarkerTexture(LaneTapNote.IntegerPosition, LaneTapNote.Lane, false);
-		var (arrowW, arrowH) = textureAtlas.GetDimensions(textureId);
-		var (markerW, markerH) = textureAtlas.GetDimensions(fakeTextureId);
-		var markerX = X + (arrowW - markerW) * 0.5 * Scale;
-		var markerY = Y + (arrowH - markerH) * 0.5 * Scale;
-		textureAtlas.Draw(
-			fakeTextureId,
-			spriteBatch,
-			new Vector2((float)markerX, (float)markerY),
-			Scale,
-			0.0f,
-			alpha);
+		DrawFakeMarker(textureAtlas, spriteBatch, textureId);
 	}
 }

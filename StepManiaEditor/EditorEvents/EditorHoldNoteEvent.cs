@@ -5,7 +5,6 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGameExtensions;
 using static System.Diagnostics.Debug;
-using static StepManiaEditor.Utils;
 
 namespace StepManiaEditor;
 
@@ -146,7 +145,7 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 
 	public override bool IsConsumedByReceptors()
 	{
-		return true;
+		return !IsFake();
 	}
 
 	public override bool IsMiscEvent()
@@ -172,7 +171,7 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 
 	public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)
 	{
-		var alpha = IsBeingEdited() ? ActiveEditEventAlpha : Alpha;
+		var alpha = GetRenderAlpha();
 		if (alpha <= 0.0f)
 		{
 			NextDrawActive = false;
@@ -288,8 +287,10 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 		// above the start, in which case we do not want to render it.
 		// The cap should be drawn after the body as some caps render on top of the body.
 		if (capY > -capH && capY < ScreenHeight && capY >= minimumCapY)
+		{
 			textureAtlas.Draw(holdCapTextureId, spriteBatch, new Rectangle(x, capY, w, capH), holdCapRotation, alpha,
 				SpriteEffects.None);
+		}
 
 		// Draw the arrow at the start of the hold.
 		var holdStartY = bodyY - halfArrowHeight;
@@ -300,6 +301,9 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 			Scale,
 			holdRot,
 			alpha);
+
+		if (IsFake())
+			DrawFakeMarker(textureAtlas, spriteBatch, startArrowTexture, X, holdStartY);
 
 		// Reset active flags.
 		NextDrawActive = false;

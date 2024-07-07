@@ -14,6 +14,7 @@ internal interface IReadOnlyRateAlteringEventTree : IReadOnlyRedBlackTree<Editor
 	IReadOnlyRedBlackTreeEnumerator FindBest(IReadOnlyEditorPosition p);
 	IReadOnlyRedBlackTreeEnumerator FindBestByTime(double chartTime);
 	IReadOnlyRedBlackTreeEnumerator FindBestByPosition(double chartPosition);
+	IReadOnlyRedBlackTreeEnumerator FindActiveRateAlteringEventEnumerator(EditorEvent editorEvent);
 	EditorRateAlteringEvent FindActiveRateAlteringEvent(EditorEvent editorEvent);
 	EditorRateAlteringEvent FindActiveRateAlteringEvent(Event smEvent);
 	IReadOnlyRedBlackTreeEnumerator FindActiveRateAlteringEventEnumeratorForTime(double chartTime, bool allowEqualTo = true);
@@ -101,6 +102,23 @@ internal class RateAlteringEventTree : RedBlackTree<EditorRateAlteringEvent>, IR
 		if (enumerator != null)
 			EnsureLeastGreaterThanOrEqualToPosition(enumerator, chartPosition);
 		return enumerator;
+	}
+
+	/// <summary>
+	/// Finds the active EditorRateAlteringEvent enumerator for the given EditorEvent.
+	/// Prefer this method over FindActiveRateAlteringEventEnumeratorForTime and FindActiveRateAlteringEventEnumeratorForPosition
+	/// as some rate altering events on the same row as other events occur before those events and others
+	/// occur after.
+	/// </summary>
+	/// <param name="editorEvent">EditorEvent in question.</param>
+	/// <returns>Enumerator to the active EditorRateAlteringEvent or null if none could be found.</returns>
+	public IReadOnlyRedBlackTree<EditorRateAlteringEvent>.IReadOnlyRedBlackTreeEnumerator FindActiveRateAlteringEventEnumerator(
+		EditorEvent editorEvent)
+	{
+		var enumerator = FindGreatestPreceding(editorEvent, true);
+		if (enumerator != null && EnsureGreatestLessThanOrEqualTo(enumerator, editorEvent))
+			return enumerator;
+		return First();
 	}
 
 	/// <summary>
@@ -271,6 +289,7 @@ internal class RateAlteringEventTree : RedBlackTree<EditorRateAlteringEvent>, IR
 			if (enumerator == null)
 				return null;
 		}
+
 		while (enumerator.MoveNext() && enumerator.Current!.GetRow() <= row)
 		{
 			if (enumerator.Current.GetRow() > row)
@@ -280,6 +299,7 @@ internal class RateAlteringEventTree : RedBlackTree<EditorRateAlteringEvent>, IR
 			if (enumerator.Current.GetType() == typeof(TEvent))
 				return (TEvent)enumerator.Current;
 		}
+
 		return null;
 	}
 }

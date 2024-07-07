@@ -21,11 +21,14 @@ internal sealed class EditorFakeSegmentEvent : EditorEvent, IEquatable<EditorFak
 		"Expected format: \"<time>s\". e.g. \"1.0s\"\n" +
 		"Fake region lengths are in seconds and must be non-negative.";
 
+	public const double MinFakeSegmentLength = 0.000001;
+
 	private const string Format = "%.9gs";
 	private const float Speed = 0.01f;
 
 	private readonly FakeSegment FakeSegmentEvent;
 	private bool WidthDirty;
+	private double EndChartPosition;
 
 	#region IChartRegion Implementation
 
@@ -112,7 +115,7 @@ internal sealed class EditorFakeSegmentEvent : EditorEvent, IEquatable<EditorFak
 			if (!EditorChart.CanBeEdited())
 				return;
 
-			if (!FakeSegmentEvent.LengthSeconds.DoubleEquals(value))
+			if (value >= MinFakeSegmentLength && !FakeSegmentEvent.LengthSeconds.DoubleEquals(value))
 			{
 				var oldEndTime = GetEndChartTime();
 				FakeSegmentEvent.LengthSeconds = value;
@@ -120,6 +123,11 @@ internal sealed class EditorFakeSegmentEvent : EditorEvent, IEquatable<EditorFak
 				EditorChart.OnFakeSegmentTimeModified(this, oldEndTime, GetEndChartTime());
 			}
 		}
+	}
+
+	public double GetFakeTimeSeconds()
+	{
+		return FakeSegmentEvent.LengthSeconds;
 	}
 
 	/// <remarks>
@@ -150,6 +158,10 @@ internal sealed class EditorFakeSegmentEvent : EditorEvent, IEquatable<EditorFak
 	{
 		FakeSegmentEvent = chartEvent;
 		WidthDirty = true;
+
+		Assert(FakeSegmentEvent.LengthSeconds >= MinFakeSegmentLength);
+		if (FakeSegmentEvent.LengthSeconds < MinFakeSegmentLength)
+			FakeSegmentEvent.LengthSeconds = MinFakeSegmentLength;
 	}
 
 	public override string GetShortTypeName()
@@ -172,11 +184,19 @@ internal sealed class EditorFakeSegmentEvent : EditorEvent, IEquatable<EditorFak
 		return true;
 	}
 
+	public void RefreshEndChartPosition()
+	{
+		EditorChart.TryGetChartPositionFromTime(GetEndChartTime(), ref EndChartPosition);
+	}
+
+	public override int GetEndRow()
+	{
+		return (int)EndChartPosition;
+	}
+
 	public override double GetEndChartPosition()
 	{
-		var chartPosition = 0.0;
-		EditorChart.TryGetChartPositionFromTime(GetEndChartTime(), ref chartPosition);
-		return chartPosition;
+		return EndChartPosition;
 	}
 
 	public override double GetEndChartTime()
@@ -200,7 +220,7 @@ internal sealed class EditorFakeSegmentEvent : EditorEvent, IEquatable<EditorFak
 			Format,
 			Alpha,
 			WidgetHelp,
-			0.0);
+			MinFakeSegmentLength);
 	}
 
 	#region IEquatable

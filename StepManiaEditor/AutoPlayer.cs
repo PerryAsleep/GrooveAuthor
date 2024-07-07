@@ -225,14 +225,11 @@ internal sealed class AutoPlayer
 			var c = enumerator.Current;
 
 			if (c!.GetLane() == StepManiaLibrary.Constants.InvalidArrowIndex || nextNotes[c.GetLane()] != null)
-			{
 				continue;
-			}
-
 			if (c is not (EditorTapNoteEvent or EditorHoldNoteEvent or EditorLiftNoteEvent))
-			{
 				continue;
-			}
+			if (c.IsFake())
+				continue;
 
 			if (c.GetChartTime() < position.ChartTime && c.GetEndChartTime() >= position.ChartTime)
 			{

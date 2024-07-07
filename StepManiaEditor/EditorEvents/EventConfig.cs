@@ -94,6 +94,14 @@ internal sealed class EventConfig
 	/// </summary>
 	public readonly short TimeSignatureDenominator;
 
+	/// <summary>
+	/// An explicit fake value to use when DetermineRowBasedDependencies is false.
+	/// </summary>
+	public bool IsFakeDueToRow;
+
+	/// <summary>
+	/// Private constructor taking parameters for all configuration values.
+	/// </summary>
 	private EventConfig(
 		EditorChart editorChart,
 		Event chartEvent = null,
@@ -105,7 +113,8 @@ internal sealed class EventConfig
 		bool determineRowBasedDependencies = true,
 		Event additionalChartEvent = null,
 		short rowRelativeToMeasureStart = 0,
-		short timeSignatureDenominator = 0)
+		short timeSignatureDenominator = 0,
+		bool isFakeDueToRow = false)
 	{
 		EditorChart = editorChart;
 		ChartEvent = chartEvent;
@@ -118,8 +127,15 @@ internal sealed class EventConfig
 		DetermineRowBasedDependencies = determineRowBasedDependencies;
 		RowRelativeToMeasureStart = rowRelativeToMeasureStart;
 		TimeSignatureDenominator = timeSignatureDenominator;
+		IsFakeDueToRow = isFakeDueToRow;
 	}
 
+	/// <summary>
+	/// Creates an EventConfig to use for cloning the given EditorEvent to the given EditorChart.
+	/// </summary>
+	/// <param name="editorEvent">EditorEvent to create a clone EventConfig for.</param>
+	/// <param name="editorChart">EditorChart to own the EventConfig and the new EditorEvent.</param>
+	/// <returns>EventConfig for the new EditorEvent.</returns>
 	public static EventConfig CreateCloneEventConfig(EditorEvent editorEvent, EditorChart editorChart)
 	{
 		var clonedEvent = editorEvent.GetEvent()?.Clone();
@@ -153,50 +169,60 @@ internal sealed class EventConfig
 			false,
 			clonedAdditionalEvent,
 			editorEvent.GetRowRelativeToMeasureStart(),
-			editorEvent.GetTimeSignatureDenominator());
+			editorEvent.GetTimeSignatureDenominator(),
+			editorEvent.IsFakeDueToRow());
 	}
 
-	public bool IsSearchEvent()
+	/// <summary>
+	/// Create an EventConfig based off of a Stepmania Event.
+	/// </summary>
+	/// <param name="chart">EditorChart to own the new EditorEvent.</param>
+	/// <param name="smEvent">Stepmania Event.</param>
+	/// <param name="determineRowDependencies">
+	/// Whether or not to automatically determine row-based dependencies. Note that determining row-based
+	/// dependencies is an O(log(N)) operation on the number of rate altering events in the chart.
+	/// If this is false then some row-dependent values will be incorrect. It is assumed the caller will
+	/// be setting the row-based dependencies later.
+	/// </param>
+	/// <returns>EventConfig for the new EditorEvent.</returns>
+	public static EventConfig CreateConfig(EditorChart chart, Event smEvent, bool determineRowDependencies)
 	{
-		if (SpecialEventType == SpecialType.TimeOnlySearch
-		    || SpecialEventType == SpecialType.RowSearch)
-			return true;
-
-		if (ChartEvent != null && AdditionalChartEvent == null && ChartEvent is SearchEvent)
-			return true;
-
-		return false;
+		if (determineRowDependencies)
+			return new EventConfig(chart, smEvent);
+		return new EventConfig(chart, smEvent, false, 0.0, smEvent.TimeSeconds, SpecialType.None, false, false);
 	}
 
-	public static EventConfig CreateConfigWithoutRowDependencies(EditorChart chart, Event smEvent)
-	{
-		return new EventConfig(chart, smEvent);
-	}
-
-	public static EventConfig CreateConfig(EditorChart chart, Event smEvent, short rowRelativeToMeasureStart,
-		short timeSignatureDenominator)
-	{
-		// When creating an EditorEvent from a Stepmania Event, do not attempt to determine
-		// row-dependencies automatically. Assume the Stepmania Event is fully configured and
-		// includes a correct time. This avoids the unnecessary rate altering event lookup and
-		// it useful when loading charts and we may not have all timing events available to search yet.
-		return new EventConfig(chart, smEvent, false, 0.0, smEvent.TimeSeconds, SpecialType.None, false, false, null,
-			rowRelativeToMeasureStart,
-			timeSignatureDenominator);
-	}
-
+	/// <summary>
+	/// Create an EventConfig for a hold note based off of Stepmania Events.
+	/// </summary>
+	/// <param name="chart">EditorChart to own the new EditorEvent.</param>
+	/// <param name="start">LaneHoldStartNote for the hold.</param>
+	/// <param name="end">LaneHoldEndNote for the hold.</param>
+	/// <param name="determineRowDependencies">
+	/// Whether or not to automatically determine row-based dependencies. Note that determining row-based
+	/// dependencies is an O(log(N)) operation on the number of rate altering events in the chart.
+	/// If this is false then some row-dependent values will be incorrect. It is assumed the caller will
+	/// be setting the row-based dependencies later.
+	/// </param>
+	/// <returns>EventConfig for the new EditorHoldNoteEvent.</returns>
 	public static EventConfig CreateHoldConfig(EditorChart chart, LaneHoldStartNote start, LaneHoldEndNote end,
-		short rowRelativeToMeasureStart, short timeSignatureDenominator)
+		bool determineRowDependencies)
 	{
-		// When creating an EditorEvent from a Stepmania Event, do not attempt to determine
-		// row-dependencies automatically. Assume the Stepmania Event is fully configured and
-		// includes a correct time. This avoids the unnecessary rate altering event lookup and
-		// it useful when loading charts and we may not have all timing events available to search yet.
-		return new EventConfig(chart, start, false, 0.0, start.TimeSeconds, SpecialType.None, false, false, end,
-			rowRelativeToMeasureStart,
-			timeSignatureDenominator);
+		return new EventConfig(chart, start, false, 0.0, start.TimeSeconds, SpecialType.None, false, determineRowDependencies,
+			end);
 	}
 
+	/// <summary>
+	/// Create an EventConfig for a hold note based off of the given parameters.
+	/// Will automatically determine row-based dependencies with an O(log(N)) search on the rate
+	/// altering events.
+	/// </summary>
+	/// <param name="chart">EditorChart to own the new hold.</param>
+	/// <param name="row">Hold row.</param>
+	/// <param name="lane">Hold lane.</param>
+	/// <param name="length">Hold length.</param>
+	/// <param name="roll">Whether or not the hold is a roll.</param>
+	/// <returns>EventConfig for the new EditorHoldNoteEvent.</returns>
 	public static EventConfig CreateHoldConfig(EditorChart chart, int row, int lane, int length, bool roll)
 	{
 		var holdStartNote = new LaneHoldStartNote
@@ -213,6 +239,15 @@ internal sealed class EventConfig
 		return new EventConfig(chart, holdStartNote, false, 0.0, 0.0, SpecialType.None, false, true, holdEndNote);
 	}
 
+	/// <summary>
+	/// Create an EventConfig for a tap note based off of the given parameters.
+	/// Will automatically determine row-based dependencies with an O(log(N)) search on the rate
+	/// altering events.
+	/// </summary>
+	/// <param name="chart">EditorChart to own the new hold.</param>
+	/// <param name="row">Tap row.</param>
+	/// <param name="lane">Tap lane.</param>
+	/// <returns>EventConfig for the new EditorTapNoteEvent.</returns>
 	public static EventConfig CreateTapConfig(EditorChart chart, int row, int lane)
 	{
 		return new EventConfig(chart, new LaneTapNote
@@ -222,18 +257,43 @@ internal sealed class EventConfig
 		});
 	}
 
-	public static EventConfig CreateTapConfigWithRowDependencies(EditorChart chart, int row, double chartTime, int lane,
-		short rowRelativeToMeasureStart,
-		short timeSignatureDenominator)
+	/// <summary>
+	/// Create an EventConfig for a tap note based off of another base EditorEvent.
+	/// Will automatically copy row-based dependencies from the given base EditorEvent.
+	/// </summary>
+	/// <param name="baseEvent">EditorEvent to copy needed parameters from.</param>
+	/// <returns>EventConfig for the new EditorTapNoteEvent.</returns>
+	public static EventConfig CreateTapConfig(EditorEvent baseEvent)
 	{
-		return new EventConfig(chart, new LaneTapNote
-		{
-			Lane = lane,
-			IntegerPosition = row,
-			TimeSeconds = chartTime,
-		}, false, row, chartTime, SpecialType.None, false, false, null, rowRelativeToMeasureStart, timeSignatureDenominator);
+		return new EventConfig(
+			baseEvent.GetEditorChart(),
+			new LaneTapNote
+			{
+				Lane = baseEvent.GetLane(),
+				IntegerPosition = baseEvent.GetRow(),
+				TimeSeconds = baseEvent.GetChartTime(),
+			},
+			false,
+			baseEvent.GetRow(),
+			baseEvent.GetChartTime(),
+			SpecialType.None,
+			false,
+			false,
+			null,
+			baseEvent.GetRowRelativeToMeasureStart(),
+			baseEvent.GetTimeSignatureDenominator(),
+			baseEvent.IsFakeDueToRow());
 	}
 
+	/// <summary>
+	/// Create an EventConfig for a mine note based off of the given parameters.
+	/// Will automatically determine row-based dependencies with an O(log(N)) search on the rate
+	/// altering events.
+	/// </summary>
+	/// <param name="chart">EditorChart to own the new hold.</param>
+	/// <param name="row">Mine row.</param>
+	/// <param name="lane">Mine lane.</param>
+	/// <returns>EventConfig for the new EditorMineNoteEvent.</returns>
 	public static EventConfig CreateMineConfig(EditorChart chart, int row, int lane)
 	{
 		return new EventConfig(chart, new LaneNote
@@ -244,65 +304,102 @@ internal sealed class EventConfig
 		});
 	}
 
-	public static EventConfig CreateMineConfigWithRowDependencies(EditorChart chart, int row, double chartTime, int lane,
-		short rowRelativeToMeasureStart,
-		short timeSignatureDenominator)
+	/// <summary>
+	/// Create an EventConfig for a mine note based off of another base EditorEvent.
+	/// Will automatically copy row-based dependencies from the given base EditorEvent.
+	/// </summary>
+	/// <param name="baseEvent">EditorEvent to copy needed parameters from.</param>
+	/// <returns>EventConfig for the new EditorMineNoteEvent.</returns>
+	public static EventConfig CreateMineConfig(EditorEvent baseEvent)
 	{
-		return new EventConfig(chart, new LaneNote
-		{
-			Lane = lane,
-			IntegerPosition = row,
-			TimeSeconds = chartTime,
-			SourceType = NoteStrings[(int)NoteType.Mine],
-		}, false, row, chartTime, SpecialType.None, false, false, null, rowRelativeToMeasureStart, timeSignatureDenominator);
+		return new EventConfig(
+			baseEvent.GetEditorChart(),
+			new LaneNote
+			{
+				Lane = baseEvent.GetLane(),
+				IntegerPosition = baseEvent.GetRow(),
+				TimeSeconds = baseEvent.GetChartTime(),
+				SourceType = NoteStrings[(int)NoteType.Mine],
+			},
+			false,
+			baseEvent.GetRow(),
+			baseEvent.GetChartTime(),
+			SpecialType.None,
+			false,
+			false,
+			null,
+			baseEvent.GetRowRelativeToMeasureStart(),
+			baseEvent.GetTimeSignatureDenominator(),
+			baseEvent.IsFakeDueToRow());
 	}
 
-	public static EventConfig CreateFakeNoteConfig(EditorChart chart, int row, int lane)
+	/// <summary>
+	/// Create an EventConfig for an explicit fake note based off of another base EditorEvent.
+	/// Will automatically copy row-based dependencies from the given base EditorEvent.
+	/// </summary>
+	/// <param name="baseEvent">EditorEvent to copy needed parameters from.</param>
+	/// <returns>EventConfig for the new EditorFakeNoteEvent.</returns>
+	public static EventConfig CreateFakeNoteConfig(EditorEvent baseEvent)
 	{
-		return new EventConfig(chart, new LaneTapNote
-		{
-			Lane = lane,
-			IntegerPosition = row,
-			SourceType = NoteStrings[(int)NoteType.Fake],
-		});
+		return new EventConfig(
+			baseEvent.GetEditorChart(),
+			new LaneTapNote
+			{
+				Lane = baseEvent.GetLane(),
+				IntegerPosition = baseEvent.GetRow(),
+				TimeSeconds = baseEvent.GetChartTime(),
+				SourceType = NoteStrings[(int)NoteType.Fake],
+			},
+			false,
+			baseEvent.GetRow(),
+			baseEvent.GetChartTime(),
+			SpecialType.None,
+			false,
+			false,
+			null,
+			baseEvent.GetRowRelativeToMeasureStart(),
+			baseEvent.GetTimeSignatureDenominator(),
+			baseEvent.IsFakeDueToRow());
 	}
 
-	public static EventConfig CreateFakeNoteConfigWithRowDependencies(EditorChart chart, int row, double chartTime, int lane,
-		short rowRelativeToMeasureStart,
-		short timeSignatureDenominator)
+	/// <summary>
+	/// Create an EventConfig for a lift note based off of another base EditorEvent.
+	/// Will automatically copy row-based dependencies from the given base EditorEvent.
+	/// </summary>
+	/// <param name="baseEvent">EditorEvent to copy needed parameters from.</param>
+	/// <returns>EventConfig for the new EditorLiftNoteEvent.</returns>
+	public static EventConfig CreateLiftNoteConfig(EditorEvent baseEvent)
 	{
-		return new EventConfig(chart, new LaneTapNote
-		{
-			Lane = lane,
-			IntegerPosition = row,
-			TimeSeconds = chartTime,
-			SourceType = NoteStrings[(int)NoteType.Fake],
-		}, false, row, chartTime, SpecialType.None, false, false, null, rowRelativeToMeasureStart, timeSignatureDenominator);
+		return new EventConfig(
+			baseEvent.GetEditorChart(),
+			new LaneTapNote
+			{
+				Lane = baseEvent.GetLane(),
+				IntegerPosition = baseEvent.GetRow(),
+				TimeSeconds = baseEvent.GetChartTime(),
+				SourceType = NoteStrings[(int)NoteType.Lift],
+			},
+			true,
+			baseEvent.GetRow(),
+			baseEvent.GetChartTime(),
+			SpecialType.None,
+			false,
+			false,
+			null,
+			baseEvent.GetRowRelativeToMeasureStart(),
+			baseEvent.GetTimeSignatureDenominator(),
+			baseEvent.IsFakeDueToRow());
 	}
 
-	public static EventConfig CreateLiftNoteConfig(EditorChart chart, int row, int lane)
-	{
-		return new EventConfig(chart, new LaneTapNote
-		{
-			Lane = lane,
-			IntegerPosition = row,
-			SourceType = NoteStrings[(int)NoteType.Lift],
-		});
-	}
-
-	public static EventConfig CreateLiftNoteConfigWithRowDependencies(EditorChart chart, int row, double chartTime, int lane,
-		short rowRelativeToMeasureStart,
-		short timeSignatureDenominator)
-	{
-		return new EventConfig(chart, new LaneTapNote
-		{
-			Lane = lane,
-			IntegerPosition = row,
-			TimeSeconds = chartTime,
-			SourceType = NoteStrings[(int)NoteType.Lift],
-		}, true, row, chartTime, SpecialType.None, false, false, null, rowRelativeToMeasureStart, timeSignatureDenominator);
-	}
-
+	/// <summary>
+	/// Create an EventConfig for a stop based off of the given parameters.
+	/// Will automatically determine row-based dependencies with an O(log(N)) search on the rate
+	/// altering events.
+	/// </summary>
+	/// <param name="chart">EditorChart to own the new stop.</param>
+	/// <param name="row">Stop row.</param>
+	/// <param name="stopTime">Stop length in seconds.</param>
+	/// <returns>EventConfig for the new EditorStopNoteEvent.</returns>
 	public static EventConfig CreateStopConfig(EditorChart chart, int row, double stopTime)
 	{
 		return new EventConfig(chart, new Stop(stopTime)
@@ -311,6 +408,15 @@ internal sealed class EventConfig
 		});
 	}
 
+	/// <summary>
+	/// Create an EventConfig for a delay based off of the given parameters.
+	/// Will automatically determine row-based dependencies with an O(log(N)) search on the rate
+	/// altering events.
+	/// </summary>
+	/// <param name="chart">EditorChart to own the new delay.</param>
+	/// <param name="row">Delay row.</param>
+	/// <param name="stopTime">Delay length in seconds.</param>
+	/// <returns>EventConfig for the new EditorDelayNoteEvent.</returns>
 	public static EventConfig CreateDelayConfig(EditorChart chart, int row, double stopTime)
 	{
 		return new EventConfig(chart, new Stop(stopTime, true)
@@ -319,6 +425,15 @@ internal sealed class EventConfig
 		});
 	}
 
+	/// <summary>
+	/// Create an EventConfig for a warp based off of the given parameters.
+	/// Will automatically determine row-based dependencies with an O(log(N)) search on the rate
+	/// altering events.
+	/// </summary>
+	/// <param name="chart">EditorChart to own the new warp.</param>
+	/// <param name="row">Warp row.</param>
+	/// <param name="warpLength">Warp length in rows.</param>
+	/// <returns>EventConfig for the new EditorWarpNoteEvent.</returns>
 	public static EventConfig CreateWarpConfig(EditorChart chart, int row, int warpLength = MaxValidDenominator)
 	{
 		return new EventConfig(chart, new Warp(warpLength)
@@ -327,6 +442,15 @@ internal sealed class EventConfig
 		});
 	}
 
+	/// <summary>
+	/// Create an EventConfig for a fake segment based off of the given parameters.
+	/// Will automatically determine row-based dependencies with an O(log(N)) search on the rate
+	/// altering events.
+	/// </summary>
+	/// <param name="chart">EditorChart to own the new fake segment.</param>
+	/// <param name="row">Fake segment row.</param>
+	/// <param name="fakeTime">Fake segment length in seconds.</param>
+	/// <returns>EventConfig for the new EditorFakeSegmentEvent.</returns>
 	public static EventConfig CreateFakeConfig(EditorChart chart, int row, double fakeTime)
 	{
 		return new EventConfig(chart, new FakeSegment(fakeTime)
@@ -335,6 +459,15 @@ internal sealed class EventConfig
 		});
 	}
 
+	/// <summary>
+	/// Create an EventConfig for a tick count based off of the given parameters.
+	/// Will automatically determine row-based dependencies with an O(log(N)) search on the rate
+	/// altering events.
+	/// </summary>
+	/// <param name="chart">EditorChart to own the new tick count.</param>
+	/// <param name="row">Tick count row.</param>
+	/// <param name="ticks">Tick count ticks value.</param>
+	/// <returns>EventConfig for the new EditorTickCountSegmentEvent.</returns>
 	public static EventConfig CreateTickCountConfig(EditorChart chart, int row, int ticks = EditorChart.DefaultTickCount)
 	{
 		return new EventConfig(chart, new TickCount(ticks)
@@ -343,6 +476,16 @@ internal sealed class EventConfig
 		});
 	}
 
+	/// <summary>
+	/// Create an EventConfig for a multipliers event based off of the given parameters.
+	/// Will automatically determine row-based dependencies with an O(log(N)) search on the rate
+	/// altering events.
+	/// </summary>
+	/// <param name="chart">EditorChart to own the new multipliers event.</param>
+	/// <param name="row">Multipliers event row.</param>
+	/// <param name="hitMultiplier">Hit multiplier value.</param>
+	/// <param name="missMultiplier">Miss multiplier value.</param>
+	/// <returns>EventConfig for the new EditorMultipliersEvent.</returns>
 	public static EventConfig CreateMultipliersConfig(EditorChart chart, int row,
 		int hitMultiplier = EditorChart.DefaultHitMultiplier, int missMultiplier = EditorChart.DefaultMissMultiplier)
 	{
@@ -352,6 +495,15 @@ internal sealed class EventConfig
 		});
 	}
 
+	/// <summary>
+	/// Create an EventConfig for a time signature based off of the given parameters.
+	/// Will automatically determine row-based dependencies with an O(log(N)) search on the rate
+	/// altering events.
+	/// </summary>
+	/// <param name="chart">EditorChart to own the new time signature.</param>
+	/// <param name="row">Time signature row.</param>
+	/// <param name="timeSignature">Time signature value.</param>
+	/// <returns>EventConfig for the new EditorTimeSignatureEvent.</returns>
 	public static EventConfig CreateTimeSignatureConfig(EditorChart chart, int row, Fraction timeSignature)
 	{
 		var measure = chart.GetMeasureForNewTimeSignatureAtRow(row);
@@ -363,6 +515,15 @@ internal sealed class EventConfig
 		});
 	}
 
+	/// <summary>
+	/// Create an EventConfig for a label based off of the given parameters.
+	/// Will automatically determine row-based dependencies with an O(log(N)) search on the rate
+	/// altering events.
+	/// </summary>
+	/// <param name="chart">EditorChart to own the new label.</param>
+	/// <param name="row">Label row.</param>
+	/// <param name="text">Label text.</param>
+	/// <returns>EventConfig for the new EditorLabelEvent.</returns>
 	public static EventConfig CreateLabelConfig(EditorChart chart, int row, string text = "New Label")
 	{
 		return new EventConfig(chart, new Label(text)
@@ -371,6 +532,15 @@ internal sealed class EventConfig
 		});
 	}
 
+	/// <summary>
+	/// Create an EventConfig for a tempo based off of the given parameters.
+	/// Will automatically determine row-based dependencies with an O(log(N)) search on the rate
+	/// altering events.
+	/// </summary>
+	/// <param name="chart">EditorChart to own the new tempo.</param>
+	/// <param name="row">Tempo row.</param>
+	/// <param name="tempo">Tempo value in beats per minute.</param>
+	/// <returns>EventConfig for the new EditorTempoEvent.</returns>
 	public static EventConfig CreateTempoConfig(EditorChart chart, int row, double tempo = EditorChart.DefaultTempo)
 	{
 		return new EventConfig(chart, new Tempo(tempo)
@@ -379,6 +549,15 @@ internal sealed class EventConfig
 		});
 	}
 
+	/// <summary>
+	/// Create an EventConfig for a scroll rate event based off of the given parameters.
+	/// Will automatically determine row-based dependencies with an O(log(N)) search on the rate
+	/// altering events.
+	/// </summary>
+	/// <param name="chart">EditorChart to own the new scroll rate event.</param>
+	/// <param name="row">Scroll rate event row.</param>
+	/// <param name="scrollRate">Scroll rate event value.</param>
+	/// <returns>EventConfig for the new EditorScrollRateEvent.</returns>
 	public static EventConfig CreateScrollRateConfig(EditorChart chart, int row,
 		double scrollRate = EditorChart.DefaultScrollRate)
 	{
@@ -388,6 +567,18 @@ internal sealed class EventConfig
 		});
 	}
 
+	/// <summary>
+	/// Create an EventConfig for an interpolated scroll rate event based off of the given parameters.
+	/// Will automatically determine row-based dependencies with an O(log(N)) search on the rate
+	/// altering events.
+	/// </summary>
+	/// <param name="chart">EditorChart to own the new interpolated scroll rate event.</param>
+	/// <param name="row">Interpolated scroll rate event row.</param>
+	/// <param name="rate">Scroll rate event value.</param>
+	/// <param name="periodLen">Scroll rate interpolation period in rows.</param>
+	/// <param name="periodTime">Scroll rate interpolation period in seconds.</param>
+	/// <param name="preferPeriodAsTime">Whether to prefer time over rows for scroll rate interpolation period.</param>
+	/// <returns>EventConfig for the new EditorInterpolatedRateAlteringEvent.</returns>
 	public static EventConfig CreateScrollRateInterpolationConfig(
 		EditorChart chart,
 		int row,
@@ -402,6 +593,14 @@ internal sealed class EventConfig
 		});
 	}
 
+	/// <summary>
+	/// Create an EventConfig for a pattern based off of the given parameters.
+	/// Will automatically determine row-based dependencies with an O(log(N)) search on the rate
+	/// altering events.
+	/// </summary>
+	/// <param name="chart">EditorChart to own the new pattern.</param>
+	/// <param name="row">Pattern row.</param>
+	/// <returns>EventConfig for the new EditorPatternEvent.</returns>
 	public static EventConfig CreatePatternConfig(EditorChart chart, int row)
 	{
 		return new EventConfig(chart, new Pattern
@@ -410,6 +609,13 @@ internal sealed class EventConfig
 		});
 	}
 
+	/// <summary>
+	/// Create an EventConfig for the song preview based off of the given parameters.
+	/// Will automatically determine the row with a O(log(N)) search on the rate altering events.
+	/// </summary>
+	/// <param name="chart">EditorChart to own the preview event.</param>
+	/// <param name="chartTime">Chart time of the preview.</param>
+	/// <returns>EventConfig for the new EditorPreviewRegionEvent.</returns>
 	public static EventConfig CreatePreviewConfig(EditorChart chart, double chartTime)
 	{
 		var chartPosition = 0.0;
@@ -417,6 +623,13 @@ internal sealed class EventConfig
 		return new EventConfig(chart, null, true, chartPosition, chartTime, SpecialType.Preview, false, false);
 	}
 
+	/// <summary>
+	/// Create an EventConfig for the last second hint based off of the given parameters.
+	/// Will automatically determine the row with a O(log(N)) search on the rate altering events.
+	/// </summary>
+	/// <param name="chart">EditorChart to own the last second hint event.</param>
+	/// <param name="chartTime">Chart time of the last second hint.</param>
+	/// <returns>EventConfig for the new EditorLastSecondHintEvent.</returns>
 	public static EventConfig CreateLastSecondHintConfig(EditorChart chart, double chartTime)
 	{
 		var chartPosition = 0.0;
@@ -424,6 +637,14 @@ internal sealed class EventConfig
 		return new EventConfig(chart, null, true, chartPosition, chartTime, SpecialType.LastSecondHint, false, false);
 	}
 
+	/// <summary>
+	/// Create an EventConfig for a search event based off of the given parameters.
+	/// Will automatically determine row-based dependencies with an O(log(N)) search on the rate
+	/// altering events.
+	/// </summary>
+	/// <param name="chart">EditorChart to search.</param>
+	/// <param name="chartPosition">Chart position for searching.</param>
+	/// <returns>EventConfig for the new EditorSearchEvent.</returns>
 	public static EventConfig CreateSearchEventConfig(EditorChart chart, double chartPosition)
 	{
 		return new EventConfig(chart, new SearchEvent
@@ -432,22 +653,43 @@ internal sealed class EventConfig
 		}, true, chartPosition);
 	}
 
-	public static EventConfig CreateSearchEventConfig(EditorChart chart, double chartPosition, double chartTime)
-	{
-		return new EventConfig(chart, new SearchEvent
-		{
-			IntegerPosition = (int)chartPosition,
-			TimeSeconds = chartTime,
-		}, true, chartPosition, chartTime, SpecialType.None, false, false);
-	}
-
+	/// <summary>
+	/// Create an EventConfig for a search event based only on time.
+	/// </summary>
+	/// <param name="chart">EditorChart to search.</param>
+	/// <param name="chartTime">Chart time for searching.</param>
+	/// <returns>EventConfig for the new EditorSearchRateAlteringEventWithTime.</returns>
 	public static EventConfig CreateSearchEventConfigWithOnlyTime(EditorChart chart, double chartTime)
 	{
 		return new EventConfig(chart, null, false, 0.0, chartTime, SpecialType.TimeOnlySearch, false, false);
 	}
 
+	/// <summary>
+	/// Create an EventConfig for a search event based only on row.
+	/// </summary>
+	/// <param name="chart">EditorChart to search.</param>
+	/// <param name="row">Row for searching.</param>
+	/// <returns>EventConfig for the new EditorSearchRateAlteringEventWithRow.</returns>
 	public static EventConfig CreateSearchEventConfigWithOnlyRow(EditorChart chart, double row)
 	{
 		return new EventConfig(chart, null, true, row, 0.0, SpecialType.RowSearch, false, false);
+	}
+
+	/// <summary>
+	/// Returns whether or not this EventConfig is for a search event.
+	/// Search events can be created even if the owning EditorChart is being edited while other events
+	/// cannot be created while the owning EditorChart is being edited.
+	/// </summary>
+	/// <returns>True if this EventConfig is for a search event and false otherwise.</returns>
+	public bool IsSearchEvent()
+	{
+		if (SpecialEventType == SpecialType.TimeOnlySearch
+		    || SpecialEventType == SpecialType.RowSearch)
+			return true;
+
+		if (ChartEvent != null && AdditionalChartEvent == null && ChartEvent is SearchEvent)
+			return true;
+
+		return false;
 	}
 }
