@@ -76,22 +76,17 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 
 	public override void SetRow(int row)
 	{
-		var len = GetLength();
+		var len = GetRowDuration();
 		base.SetRow(row);
 		SetNewHoldEndPosition(row + len);
 	}
 
 	public void RefreshHoldEndTime()
 	{
-		SetNewHoldEndPosition(GetRow() + GetLength());
+		SetNewHoldEndPosition(GetRow() + GetRowDuration());
 	}
 
-	public override int GetLength()
-	{
-		return LaneHoldEndNote.IntegerPosition - LaneHoldStartNote.IntegerPosition;
-	}
-
-	public void SetLength(int length)
+	public void SetRowDuration(int length)
 	{
 		SetNewHoldEndPosition(GetRow() + length);
 	}

@@ -2819,7 +2819,7 @@ internal sealed class Editor :
 				continue;
 			if (!(editState.GetEventBeingEdited() is EditorHoldNoteEvent hn))
 				continue;
-			if (hn.GetRow() < chartPosition && hn.GetRow() + hn.GetLength() > chartPosition)
+			if (hn.GetRow() < chartPosition && hn.GetRow() + hn.GetRowDuration() > chartPosition)
 				holds.Add(hn);
 		}
 
@@ -2836,9 +2836,11 @@ internal sealed class Editor :
 		double x,
 		double w)
 	{
-		if (region == null || !region.IsVisible(Preferences.Instance.PreferencesScroll.SpacingMode))
+		if (region == null)
 			return;
 		if (regionsNeedingToBeAdded.Contains(region) || addedRegions.Contains(region))
+			return;
+		if (!SpacingHelper.DoesRegionHavePositiveDuration(region))
 			return;
 		region.SetRegionX(x);
 		region.SetRegionY(SpacingHelper.GetRegionY(region, previousRateEventY));
@@ -2861,10 +2863,7 @@ internal sealed class Editor :
 		var remainingRegionsNeededToBeAdded = new List<IChartRegion>();
 		foreach (var region in regionsNeedingToBeAdded)
 		{
-			var regionEnd = region.GetRegionPosition() + region.GetRegionDuration();
-			if (nextRateEvent == null ||
-			    (region.AreRegionUnitsTime() && nextRateEvent.GetChartTime() > regionEnd)
-			    || (!region.AreRegionUnitsTime() && nextRateEvent.GetRow() > regionEnd))
+			if (nextRateEvent == null || SpacingHelper.DoesRegionEndBeforeEvent(region, nextRateEvent))
 			{
 				var h = SpacingHelper.GetRegionH(region, previousRateEventY);
 
@@ -3078,7 +3077,7 @@ internal sealed class Editor :
 		var holdEndEvent = hold.GetAdditionalEvent();
 		if (nextRateEvent == null || EditorEvent.CompareEditorEventToSmEvent(nextRateEvent, holdEndEvent) > 0)
 		{
-			var holdEndRow = hold.GetRow() + hold.GetLength();
+			var holdEndRow = hold.GetRow() + hold.GetRowDuration();
 			var holdEndY = SpacingHelper.GetYForRow(holdEndRow, previousRateEventY) + GetHoldCapHeight();
 			hold.H = holdEndY - hold.Y;
 			return true;
@@ -6804,14 +6803,14 @@ internal sealed class Editor :
 		// Handle a new hold note overlapping any existing notes
 		else if (LaneEditStates[lane].GetEventBeingEdited() is EditorHoldNoteEvent editHold)
 		{
-			var length = editHold.GetLength();
+			var length = editHold.GetRowDuration();
 			var roll = editHold.IsRoll();
 
 			// If the hold is completely within another hold, do not add or delete notes, but make sure the outer
 			// hold is the same type (hold/roll) as the new type.
 			if (existingEvent is EditorHoldNoteEvent holdFull
 			    && holdFull.GetRow() <= row
-			    && holdFull.GetRow() + holdFull.GetLength() >= row + length)
+			    && holdFull.GetRow() + holdFull.GetRowDuration() >= row + length)
 			{
 				LaneEditStates[lane].Clear(true);
 				if (holdFull.IsRoll() != roll)

@@ -12,7 +12,7 @@ internal sealed class ActionChangeHoldLength : EditorAction
 	public ActionChangeHoldLength(EditorHoldNoteEvent hold, int length) : base(false, false)
 	{
 		Hold = hold;
-		OriginalLength = Hold.GetLength();
+		OriginalLength = Hold.GetRowDuration();
 		NewLength = length;
 	}
 
@@ -28,11 +28,11 @@ internal sealed class ActionChangeHoldLength : EditorAction
 
 	protected override void DoImplementation()
 	{
-		Hold.SetLength(NewLength);
+		Hold.SetRowDuration(NewLength);
 	}
 
 	protected override void UndoImplementation()
 	{
-		Hold.SetLength(OriginalLength);
+		Hold.SetRowDuration(OriginalLength);
 	}
 }

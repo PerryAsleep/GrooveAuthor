@@ -5,7 +5,6 @@ using Microsoft.Xna.Framework.Graphics;
 using MonoGameExtensions;
 using static System.Diagnostics.Debug;
 using static Fumen.FumenExtensions;
-using static StepManiaEditor.Editor;
 using static StepManiaEditor.Utils;
 
 namespace StepManiaEditor;
@@ -82,30 +81,6 @@ internal sealed class EditorStopEvent : EditorRateAlteringEvent, IEquatable<Edit
 	public void SetRegionH(double h)
 	{
 		RegionH = h;
-	}
-
-	public double GetRegionPosition()
-	{
-		if (StopEvent.LengthSeconds > 0.0)
-			return GetChartTime();
-		return GetChartPosition();
-	}
-
-	public double GetRegionDuration()
-	{
-		if (StopEvent.LengthSeconds > 0.0)
-			return StopEvent.LengthSeconds;
-		return GetEndChartPosition() - GetChartPosition();
-	}
-
-	public bool AreRegionUnitsTime()
-	{
-		return StopEvent.LengthSeconds > 0.0;
-	}
-
-	public bool IsVisible(SpacingMode mode)
-	{
-		return true;
 	}
 
 	public Color GetRegionColor()
@@ -190,7 +165,9 @@ internal sealed class EditorStopEvent : EditorRateAlteringEvent, IEquatable<Edit
 
 	public override double GetEndChartTime()
 	{
-		return GetChartTime() + Math.Min(0.0, StopEvent.LengthSeconds);
+		if (StopEvent.LengthSeconds > 0)
+			return GetChartTime() + StopEvent.LengthSeconds;
+		return GetChartTime();
 	}
 
 	public override int GetEndRow()
@@ -202,6 +179,8 @@ internal sealed class EditorStopEvent : EditorRateAlteringEvent, IEquatable<Edit
 
 	public override double GetEndChartPosition()
 	{
+		if (StopEvent.LengthSeconds > 0)
+			return GetChartPosition();
 		return EndChartPosition;
 	}
 

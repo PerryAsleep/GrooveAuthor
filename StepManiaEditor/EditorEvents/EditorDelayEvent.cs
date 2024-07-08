@@ -5,7 +5,6 @@ using Microsoft.Xna.Framework.Graphics;
 using MonoGameExtensions;
 using static System.Diagnostics.Debug;
 using static Fumen.FumenExtensions;
-using static StepManiaEditor.Editor;
 using static StepManiaEditor.Utils;
 
 namespace StepManiaEditor;
@@ -76,29 +75,6 @@ internal sealed class EditorDelayEvent : EditorRateAlteringEvent, IEquatable<Edi
 	public void SetRegionH(double h)
 	{
 		RegionH = h;
-	}
-
-	public double GetRegionPosition()
-	{
-		return ChartEvent.TimeSeconds;
-	}
-
-	public double GetRegionDuration()
-	{
-		return DoubleValue;
-	}
-
-	public bool AreRegionUnitsTime()
-	{
-		return true;
-	}
-
-	public bool IsVisible(SpacingMode mode)
-	{
-		// Do not draw negative stop regions. It looks incorrect to have the region begin
-		// before the negative stop starts.
-		return mode == SpacingMode.ConstantTime
-		       && GetRegionDuration() > 0.0;
 	}
 
 	public Color GetRegionColor()

@@ -6,7 +6,6 @@ using Microsoft.Xna.Framework.Graphics;
 using MonoGameExtensions;
 using StepManiaEditor.AutogenConfig;
 using StepManiaLibrary.PerformedChart;
-using static StepManiaEditor.Editor;
 using static StepManiaEditor.Utils;
 using static System.Diagnostics.Debug;
 
@@ -284,26 +283,6 @@ internal sealed class EditorPatternEvent : EditorEvent, IEquatable<EditorPattern
 		RegionH = h;
 	}
 
-	public double GetRegionPosition()
-	{
-		return GetChartPosition();
-	}
-
-	public double GetRegionDuration()
-	{
-		return Length;
-	}
-
-	public bool AreRegionUnitsTime()
-	{
-		return false;
-	}
-
-	public bool IsVisible(SpacingMode mode)
-	{
-		return true;
-	}
-
 	public Color GetRegionColor()
 	{
 		return IRegion.GetColor(PatternRegionColor, Alpha);
@@ -456,14 +435,9 @@ internal sealed class EditorPatternEvent : EditorEvent, IEquatable<EditorPattern
 		return endChartTime;
 	}
 
-	public override int GetLength()
-	{
-		return Length;
-	}
-
 	public override int GetEndRow()
 	{
-		return GetRow() + GetLength();
+		return GetRow() + Length;
 	}
 
 	/// <summary>
@@ -503,7 +477,7 @@ internal sealed class EditorPatternEvent : EditorEvent, IEquatable<EditorPattern
 	{
 		var spacing = GetStepSpacing();
 		var startRow = GetRow();
-		var len = GetLength();
+		var len = Length;
 		var lastStepRow = startRow + len / spacing * spacing;
 		if (EndPositionInclusive)
 			return lastStepRow;

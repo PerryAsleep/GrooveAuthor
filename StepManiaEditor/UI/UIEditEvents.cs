@@ -244,7 +244,7 @@ internal sealed class UIEditEvents
 			ActionQueue.Instance.Do(new ActionChangeNoteType(Editor, chart, events,
 				(e) => e is EditorHoldNoteEvent hn && !hn.IsRoll(),
 				(e) => EditorEvent.CreateEvent(
-					EventConfig.CreateHoldConfig(chart, e.GetRow(), e.GetLane(), e.GetLength(),
+					EventConfig.CreateHoldConfig(chart, e.GetRow(), e.GetLane(), e.GetRowDuration(),
 						true))));
 		}
 
@@ -269,7 +269,7 @@ internal sealed class UIEditEvents
 			ActionQueue.Instance.Do(new ActionChangeNoteType(Editor, chart, events,
 				(e) => e is EditorHoldNoteEvent hn && hn.IsRoll(),
 				(e) => EditorEvent.CreateEvent(
-					EventConfig.CreateHoldConfig(chart, e.GetRow(), e.GetLane(), e.GetLength(),
+					EventConfig.CreateHoldConfig(chart, e.GetRow(), e.GetLane(), e.GetRowDuration(),
 						false))));
 		}
 

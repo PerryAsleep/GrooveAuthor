@@ -5,7 +5,6 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGameExtensions;
 using static System.Diagnostics.Debug;
-using static StepManiaEditor.Editor;
 using static StepManiaEditor.Utils;
 
 namespace StepManiaEditor;
@@ -79,26 +78,6 @@ internal sealed class EditorWarpEvent : EditorRateAlteringEvent, IEquatable<Edit
 	public void SetRegionH(double h)
 	{
 		RegionH = h;
-	}
-
-	public double GetRegionPosition()
-	{
-		return GetRow();
-	}
-
-	public double GetRegionDuration()
-	{
-		return IntValue;
-	}
-
-	public bool AreRegionUnitsTime()
-	{
-		return false;
-	}
-
-	public bool IsVisible(SpacingMode mode)
-	{
-		return mode != SpacingMode.ConstantTime;
 	}
 
 	public Color GetRegionColor()
@@ -184,11 +163,6 @@ internal sealed class EditorWarpEvent : EditorRateAlteringEvent, IEquatable<Edit
 	public override bool IsSelectableWithModifiers()
 	{
 		return true;
-	}
-
-	public override int GetLength()
-	{
-		return WarpEvent.LengthIntegerPosition;
 	}
 
 	public override double GetEndChartPosition()

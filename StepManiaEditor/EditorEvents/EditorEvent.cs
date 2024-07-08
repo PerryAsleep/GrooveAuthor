@@ -616,9 +616,28 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	/// The length of the event in rows. Most events have no length. Hold notes have length.
 	/// </summary>
 	/// <returns>The length of the event.</returns>
-	public virtual int GetLength()
+	public int GetRowDuration()
 	{
-		return 0;
+		return GetEndRow() - GetRow();
+	}
+
+	/// <summary>
+	/// The length of the event in rows. Most events have no length. Hold notes have length.
+	/// </summary>
+	/// <returns>The length of the event.</returns>
+	public double GetChartPositionDuration()
+	{
+		return GetEndChartPosition() - GetChartPosition();
+	}
+
+	/// <summary>
+	/// The duration of the event in seconds. Most events have no time duration.
+	/// Events like Stops have time durations.
+	/// </summary>
+	/// <returns>The duration of the event in seconds.</returns>
+	public double GetChartTimeDuration()
+	{
+		return GetEndChartTime() - GetChartTime();
 	}
 
 	/// <summary>

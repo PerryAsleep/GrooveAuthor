@@ -1901,25 +1901,28 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 	public List<IChartRegion> GetRegionsOverlapping(double chartPosition, double chartTime)
 	{
-		var regions = new List<IChartRegion>();
+		var regionEvents = new List<EditorEvent>();
 		var stops = GetStopEventsOverlapping(chartTime);
 		if (stops != null)
-			regions.AddRange(stops);
+			regionEvents.AddRange(stops);
 		var delays = GetDelayEventOverlapping(chartTime);
 		if (delays != null)
-			regions.AddRange(delays);
+			regionEvents.AddRange(delays);
 		var fakes = GetFakeSegmentEventOverlapping(chartTime);
 		if (fakes != null)
-			regions.AddRange(fakes);
+			regionEvents.AddRange(fakes);
 		var warps = GetWarpEventOverlapping(chartPosition);
 		if (warps != null)
-			regions.AddRange(warps);
-		if (PreviewEvent.GetChartTime() <= chartTime &&
-		    PreviewEvent.GetChartTime() + PreviewEvent.GetRegionDuration() >= chartTime)
-			regions.Add(PreviewEvent);
+			regionEvents.AddRange(warps);
+		if (PreviewEvent.GetChartTime() <= chartTime && PreviewEvent.GetEndChartTime() >= chartTime)
+			regionEvents.Add(PreviewEvent);
 		var patterns = GetPatternEventsOverlapping(chartPosition);
 		if (patterns?.Count > 0)
-			regions.AddRange(patterns);
+			regionEvents.AddRange(patterns);
+		regionEvents.Sort();
+		var regions = new List<IChartRegion>();
+		foreach (var regionEvent in regionEvents)
+			regions.Add((IChartRegion)regionEvent);
 		return regions;
 	}
 
@@ -1992,7 +1995,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 					lanesChecked[lane] = true;
 					numLanesChecked++;
 
-					if (e.GetRow() <= chartPosition && e.GetRow() + e.GetLength() >= chartPosition && e is EditorHoldNoteEvent hn)
+					if (e.GetRow() <= chartPosition && e.GetRow() + e.GetRowDuration() >= chartPosition &&
+					    e is EditorHoldNoteEvent hn)
 						holds[lane] = hn;
 				}
 			}
@@ -2662,7 +2666,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 				}
 
 				// If this event is a hold note, delete any note which overlaps the hold.
-				var len = editorEvent.GetLength();
+				var len = editorEvent.GetRowDuration();
 				if (len > 0)
 				{
 					var enumerator = EditorEvents.FindBestByPosition(row);

@@ -1,7 +1,6 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGameExtensions;
-using static StepManiaEditor.Editor;
 using static StepManiaEditor.Utils;
 
 namespace StepManiaEditor;
@@ -49,8 +48,8 @@ internal interface IRegion
 			h = screenHeight - y;
 		}
 
-		// TODO: round?
-		textureAtlas.Draw(TextureIdRegionRect, spriteBatch, new Rectangle((int)x, (int)y, (int)w, (int)h), color);
+		textureAtlas.Draw(TextureIdRegionRect, spriteBatch,
+			new Rectangle((int)(x + 0.5), (int)(y + 0.5), (int)(w + 0.5), (int)(h + 0.5)), color);
 	}
 
 	public static Color GetColor(Color color, float alpha)
@@ -73,10 +72,10 @@ internal interface IChartRegion : IRegion
 	public void SetRegionW(double w);
 	public void SetRegionH(double h);
 
-	public double GetRegionPosition();
-	public double GetRegionDuration();
-	public bool AreRegionUnitsTime();
-	public bool IsVisible(SpacingMode mode);
+	public double GetChartPosition();
+	public double GetChartTime();
+	public double GetChartPositionDuration();
+	public double GetChartTimeDuration();
 }
 
 internal static class RegionExtensions

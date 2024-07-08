@@ -31,12 +31,12 @@ internal sealed class ActionDeletePatternNotes : EditorAction
 
 			public void Undo()
 			{
-				Hold.SetLength(OldLength);
+				Hold.SetRowDuration(OldLength);
 			}
 
 			public void Redo()
 			{
-				Hold.SetLength(NewLength);
+				Hold.SetRowDuration(NewLength);
 			}
 		}
 
@@ -143,9 +143,9 @@ internal sealed class ActionDeletePatternNotes : EditorAction
 						var newLength = desiredEnd - holdStart;
 						if (newLength < 1)
 							newLength = startRow - holdStart - 1;
-						shortenedHolds.Add(new Alterations.ShortenedHold(overlappingHold.GetLength(), newLength,
+						shortenedHolds.Add(new Alterations.ShortenedHold(overlappingHold.GetRowDuration(), newLength,
 							overlappingHold));
-						overlappingHold.SetLength(newLength);
+						overlappingHold.SetRowDuration(newLength);
 					}
 
 					// This hold starts within the pattern and needs to be deleted.

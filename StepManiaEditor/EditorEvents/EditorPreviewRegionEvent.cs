@@ -1,7 +1,6 @@
 ﻿using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGameExtensions;
-using static StepManiaEditor.Editor;
 using static StepManiaEditor.Utils;
 using static Fumen.FumenExtensions;
 
@@ -78,26 +77,6 @@ internal sealed class EditorPreviewRegionEvent : EditorEvent, IChartRegion, Fume
 	public void SetRegionH(double h)
 	{
 		RegionH = h;
-	}
-
-	public double GetRegionPosition()
-	{
-		return GetChartTime();
-	}
-
-	public double GetRegionDuration()
-	{
-		return EditorChart.GetEditorSong().SampleLength;
-	}
-
-	public bool AreRegionUnitsTime()
-	{
-		return true;
-	}
-
-	public bool IsVisible(SpacingMode mode)
-	{
-		return true;
 	}
 
 	public Color GetRegionColor()

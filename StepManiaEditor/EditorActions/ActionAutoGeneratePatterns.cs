@@ -1058,7 +1058,7 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 
 		var stepsPerLaneString = stepsPerLaneStringStringBuilder.ToString();
 
-		Logger.Info($"Pattern [{pattern.GetRow()}-{pattern.GetRow() + pattern.GetLength()}] Generation Info:"
+		Logger.Info($"Pattern [{pattern.GetRow()}-{pattern.GetRow() + pattern.GetRowDuration()}] Generation Info:"
 		            + $"\n\tFirst Step Row: {pattern.GetFirstStepRow()}"
 		            + $"\n\tLast Step Row: {pattern.GetLastStepRow()}"
 		            + $"\n\tPreceding Footing: L:{GetLaneString(previousFooting[Constants.L])}, R:{GetLaneString(previousFooting[Constants.R])}"
