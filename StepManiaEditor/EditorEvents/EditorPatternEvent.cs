@@ -283,6 +283,16 @@ internal sealed class EditorPatternEvent : EditorEvent, IEquatable<EditorPattern
 		RegionH = h;
 	}
 
+	public double GetChartPositionDurationForRegion()
+	{
+		return GetChartPositionDuration();
+	}
+
+	public double GetChartTimeDurationForRegion()
+	{
+		return GetChartTimeDuration();
+	}
+
 	public Color GetRegionColor()
 	{
 		return IRegion.GetColor(PatternRegionColor, Alpha);

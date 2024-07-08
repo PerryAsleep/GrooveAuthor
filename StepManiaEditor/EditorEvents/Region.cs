@@ -74,8 +74,8 @@ internal interface IChartRegion : IRegion
 
 	public double GetChartPosition();
 	public double GetChartTime();
-	public double GetChartPositionDuration();
-	public double GetChartTimeDuration();
+	public double GetChartPositionDurationForRegion();
+	public double GetChartTimeDurationForRegion();
 }
 
 internal static class RegionExtensions

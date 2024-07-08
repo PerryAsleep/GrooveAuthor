@@ -79,6 +79,16 @@ internal sealed class EditorPreviewRegionEvent : EditorEvent, IChartRegion, Fume
 		RegionH = h;
 	}
 
+	public double GetChartPositionDurationForRegion()
+	{
+		return GetChartPositionDuration();
+	}
+
+	public double GetChartTimeDurationForRegion()
+	{
+		return GetChartTimeDuration();
+	}
+
 	public Color GetRegionColor()
 	{
 		return IRegion.GetColor(PreviewRegionColor, Alpha);

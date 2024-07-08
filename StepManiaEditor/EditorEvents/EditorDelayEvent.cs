@@ -77,6 +77,21 @@ internal sealed class EditorDelayEvent : EditorRateAlteringEvent, IEquatable<Edi
 		RegionH = h;
 	}
 
+	public double GetChartPositionDurationForRegion()
+	{
+		return GetChartPositionDuration();
+	}
+
+	public double GetChartTimeDurationForRegion()
+	{
+		// When drawing regions do not use the stop's length, but the total stop
+		// time remaining. This allows for earlier negative stops to properly reduce
+		// the length of following stops if they overlap.
+		if (StopEvent.LengthSeconds > 0)
+			return Math.Max(0.0, GetStopTimeRemaining());
+		return 0.0;
+	}
+
 	public Color GetRegionColor()
 	{
 		return IRegion.GetColor(DelayRegionColor, Alpha);

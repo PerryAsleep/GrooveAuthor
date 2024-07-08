@@ -78,6 +78,16 @@ internal sealed class EditorFakeSegmentEvent : EditorEvent, IEquatable<EditorFak
 		RegionH = h;
 	}
 
+	public double GetChartPositionDurationForRegion()
+	{
+		return GetChartPositionDuration();
+	}
+
+	public double GetChartTimeDurationForRegion()
+	{
+		return GetChartTimeDuration();
+	}
+
 	public Color GetRegionColor()
 	{
 		return IRegion.GetColor(FakeRegionColor, Alpha);

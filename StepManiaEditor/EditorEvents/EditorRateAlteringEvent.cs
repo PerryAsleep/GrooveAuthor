@@ -101,6 +101,11 @@ internal abstract class EditorRateAlteringEvent : EditorEvent, IComparable<Edito
 		ScrollRate = scrollRate;
 	}
 
+	public double GetStopTimeRemaining()
+	{
+		return StopTimeRemaining;
+	}
+
 	public virtual double GetScrollRate()
 	{
 		return ScrollRate;

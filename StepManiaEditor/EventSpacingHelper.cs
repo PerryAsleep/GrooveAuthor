@@ -328,12 +328,12 @@ internal sealed class EventSpacingHelperConstantTime : EventSpacingHelper
 
 	public override bool DoesRegionEndBeforeEvent(IChartRegion region, EditorEvent editorEvent)
 	{
-		return editorEvent.GetChartTime() > region.GetChartTime() + region.GetChartTimeDuration();
+		return editorEvent.GetChartTime() > region.GetChartTime() + region.GetChartTimeDurationForRegion();
 	}
 
 	public override bool DoesRegionHavePositiveDuration(IChartRegion region)
 	{
-		return region.GetChartTimeDuration() > 0.0;
+		return region.GetChartTimeDurationForRegion() > 0.0;
 	}
 
 	public override double GetRegionY(IChartRegion region, double previousRateEventY)
@@ -345,7 +345,7 @@ internal sealed class EventSpacingHelperConstantTime : EventSpacingHelper
 
 	public override double GetRegionH(IChartRegion region, double previousRateEventY)
 	{
-		var regionEnd = region.GetChartTime() + region.GetChartTimeDuration();
+		var regionEnd = region.GetChartTime() + region.GetChartTimeDurationForRegion();
 		var delta = regionEnd - RateAlteringEvent.GetChartTime();
 		delta = Math.Max(0.0, delta);
 		return previousRateEventY + delta * Pps - region.GetRegionY();
@@ -413,12 +413,12 @@ internal abstract class EventSpacingHelperRow : EventSpacingHelper
 
 	public override bool DoesRegionEndBeforeEvent(IChartRegion region, EditorEvent editorEvent)
 	{
-		return editorEvent.GetChartPosition() > region.GetChartPosition() + region.GetChartPositionDuration();
+		return editorEvent.GetChartPosition() > region.GetChartPosition() + region.GetChartPositionDurationForRegion();
 	}
 
 	public override bool DoesRegionHavePositiveDuration(IChartRegion region)
 	{
-		return region.GetChartPositionDuration() > 0.0;
+		return region.GetChartPositionDurationForRegion() > 0.0;
 	}
 
 	public override double GetRegionY(IChartRegion region, double previousRateEventY)
@@ -430,7 +430,7 @@ internal abstract class EventSpacingHelperRow : EventSpacingHelper
 
 	public override double GetRegionH(IChartRegion region, double previousRateEventY)
 	{
-		var regionEnd = region.GetChartPosition() + region.GetChartPositionDuration();
+		var regionEnd = region.GetChartPosition() + region.GetChartPositionDurationForRegion();
 		var delta = regionEnd - RateAlteringEvent.GetRow();
 		delta = Math.Max(0.0, delta);
 		return previousRateEventY + delta * Ppr - region.GetRegionY();
