@@ -75,14 +75,14 @@ internal sealed class UISongProperties
 			if (ImGuiLayoutUtils.BeginTable("SongInfoTable", TitleColumnWidth))
 			{
 				ImGuiLayoutUtils.DrawRowTextInputWithTransliteration(true, "Title", EditorSong, nameof(EditorSong.Title),
-					nameof(EditorSong.TitleTransliteration), true,
-					"The title of the song.");
+					nameof(EditorSong.TitleTransliteration), true, string.IsNullOrEmpty(EditorSong?.Title),
+					"The title of the song.\nStepmania requires song titles to be set.");
 				ImGuiLayoutUtils.DrawRowTextInputWithTransliteration(true, "Subtitle", EditorSong, nameof(EditorSong.Subtitle),
-					nameof(EditorSong.SubtitleTransliteration), true,
+					nameof(EditorSong.SubtitleTransliteration), true, false,
 					"The subtitle of the song.");
 				ImGuiLayoutUtils.DrawRowTextInputWithTransliteration(true, "Artist", EditorSong, nameof(EditorSong.Artist),
-					nameof(EditorSong.ArtistTransliteration), true,
-					"The artist who composed the song.");
+					nameof(EditorSong.ArtistTransliteration), true, string.IsNullOrEmpty(EditorSong?.Artist),
+					"The artist who composed the song.\nStepmania requires song artists to be set.");
 				ImGuiLayoutUtils.DrawRowTextInput(true, "Credit", EditorSong, nameof(EditorSong.Credit), true,
 					"Who this file should be credited to.");
 				ImGuiLayoutUtils.EndTable();
@@ -112,10 +112,16 @@ internal sealed class UISongProperties
 			ImGui.Separator();
 			if (ImGuiLayoutUtils.BeginTable("SongMusicTimingTable", TitleColumnWidth))
 			{
+				var musicError = EditorSong?.IsMusicInvalid() ?? true;
+				if (musicError)
+					PushErrorColor();
 				ImGuiLayoutUtils.DrawRowFileBrowse("Music", EditorSong, nameof(EditorSong.MusicPath), BrowseMusicFile,
 					ClearMusicFile, true,
 					"The default audio file to use for all Charts for this Song." +
-					"\nIn most cases all Charts use the same Music and it is defined here at the Song level.");
+					"\nIn most cases all Charts use the same Music and it is defined here at the Song level." +
+					"\nStepmania requires music to be set.");
+				if (musicError)
+					PopErrorColor();
 
 				ImGuiLayoutUtils.DrawRowDragDoubleWithOneButton(true, "Music Offset", EditorSong, nameof(EditorSong.MusicOffset),
 					true,

@@ -10,6 +10,7 @@ using ImGuiNET;
 using Microsoft.Win32;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGameExtensions;
+using static StepManiaEditor.Utils;
 
 namespace StepManiaEditor;
 
@@ -524,6 +525,16 @@ internal sealed class ImGuiUtils
 			ImGui.EndDisabled();
 		if (!isEnabled && wasEnabled)
 			ImGui.BeginDisabled();
+	}
+
+	public static void PushErrorColor()
+	{
+		ImGui.PushStyleColor(ImGuiCol.FrameBg, UIFrameErrorColor);
+	}
+
+	public static void PopErrorColor()
+	{
+		ImGui.PopStyleColor(1);
 	}
 
 	public static void DrawImage(

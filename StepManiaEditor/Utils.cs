@@ -45,6 +45,8 @@ internal sealed class Utils
 	public const uint UIDifficultyChallengeColorRGBA = 0xFF804080;
 	public const uint UIDifficultyEditColorRGBA = 0xFF807D7B;
 
+	public const uint UIFrameErrorColor = 0x8A29297A;
+
 	/// <summary>
 	/// Color for sparse area of waveform. BGR565. Red.
 	/// The waveform-color shader expects this color to perform recoloring.

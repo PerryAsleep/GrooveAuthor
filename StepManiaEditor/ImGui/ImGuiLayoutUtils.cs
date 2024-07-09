@@ -441,10 +441,15 @@ internal sealed class ImGuiLayoutUtils
 	}
 
 	public static void DrawRowTextInputWithTransliteration(bool undoable, string title, object o, string fieldName,
-		string transliterationFieldName, bool affectsFile, string help = null)
+		string transliterationFieldName, bool affectsFile, bool currentValueError, string help = null)
 	{
 		DrawRowTitleAndAdvanceColumn(title);
+
+		if (currentValueError)
+			PushErrorColor();
 		DrawTextInput(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X * 0.5f, affectsFile, null, help);
+		if (currentValueError)
+			PopErrorColor();
 		ImGui.SameLine();
 		DrawTextInput(undoable, "Transliteration", o, transliterationFieldName, ImGui.GetContentRegionAvail().X, affectsFile,
 			null,

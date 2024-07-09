@@ -1062,6 +1062,41 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 		return string.IsNullOrEmpty(MusicPreviewPath);
 	}
 
+	public bool IsMusicInvalid()
+	{
+		// If there is music set for the song, it is not invalid.
+		if (!string.IsNullOrEmpty(MusicPath))
+			return false;
+
+		// There is no music set. This is only okay if there is at least one
+		// chart and all charts have music set.
+		var hasAtLeastOneChart = false;
+		var foundChartWithNoMusic = false;
+		foreach (var kvp in Charts)
+		{
+			foreach (var chart in kvp.Value)
+			{
+				hasAtLeastOneChart = true;
+				if (string.IsNullOrEmpty(chart.MusicPath))
+				{
+					foundChartWithNoMusic = true;
+					break;
+				}
+			}
+
+			if (foundChartWithNoMusic)
+				break;
+		}
+
+		// If there is at least one chart and all charts have music, it is not invalid.
+		if (hasAtLeastOneChart && !foundChartWithNoMusic)
+			return false;
+
+		// There is no song music, and there are either no charts or there are charts
+		// without explicit music set. This is not valid.
+		return true;
+	}
+
 	/// <summary>
 	/// Updates this EditorSong. Expected to be called once per frame.
 	/// </summary>
