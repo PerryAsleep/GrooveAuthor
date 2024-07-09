@@ -209,6 +209,8 @@ internal sealed class AutoPlayer
 			var hold = overlappingHolds[i];
 			if (hold == null)
 				continue;
+			if (hold.IsFake())
+				continue;
 			if (hold.GetChartTime() > position.ChartTime)
 				nextNotes[i] = overlappingHolds[i].GetEvent();
 			else

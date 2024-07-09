@@ -2391,7 +2391,8 @@ internal sealed class Editor :
 				// Cut off hold end notes which intersect the receptors.
 				if (visibleEvent is EditorHoldNoteEvent hold)
 				{
-					if (Playing && hold.GetEndChartTime() > Position.ChartTime
+					if (Playing && hold.IsConsumedByReceptors()
+					            && hold.GetEndChartTime() > Position.ChartTime
 					            && hold.GetChartTime() < Position.ChartTime)
 					{
 						hold.SetNextDrawActive(true, GetFocalPointY());
