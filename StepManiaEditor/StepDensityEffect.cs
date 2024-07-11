@@ -12,6 +12,7 @@ namespace StepManiaEditor;
 
 /// <summary>
 /// StepDensityEffect renders a density graph for an EditorChart's StepDensity.
+/// It also asynchronously computes aggregate data over all StepDensity data like Peak NPS.
 /// Expected Usage:
 ///  Call SetStepDensity to update the StepDensity to render.
 ///  Call UpdateBounds to set the bounds of the effect.
@@ -129,6 +130,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 				WorkingIndices.Clear();
 
 				WorkingMeasures.CopyFrom(EnqueuedMeasures);
+
 				measures = WorkingMeasures;
 				vertices = WorkingVertices;
 				indices = WorkingIndices;
@@ -200,9 +202,9 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 	private readonly RasterizerState TextRasterizerState;
 
 	/// <summary>
-	/// Lock for primitive data.
+	/// Lock for data computed from the StepDensity measure data.
 	/// </summary>
-	private readonly object PrimitiveLock = new();
+	private readonly object DataLock = new();
 
 	/// <summary>
 	/// Primitive vertex array.
@@ -220,9 +222,14 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 	private int NumPrimitives;
 
 	/// <summary>
+	/// Peak notes per second value.
+	/// </summary>
+	private double PeakNps;
+
+	/// <summary>
 	/// Long-running task for updating primitive data.
 	/// </summary>
-	private readonly Task UpdatePrimitivesTask;
+	private readonly Task UpdateDataTask;
 
 	/// <summary>
 	/// Primitive vertex array for the scroll bar.
@@ -336,9 +343,9 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 
 		InitializeScrollBar();
 
-		// Start a long running task to process updates to primitives.
-		UpdatePrimitivesTask = Task.Factory.StartNew(
-			UpdatePrimitives,
+		// Start a long running task to process updates to data derived from the StepDensity.
+		UpdateDataTask = Task.Factory.StartNew(
+			UpdateData,
 			CancellationToken.None,
 			TaskCreationOptions.LongRunning,
 			TaskScheduler.Default);
@@ -384,7 +391,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 			Preferences.Instance.PreferencesDensityGraph.RemoveObserver(this);
 			StepDensity?.RemoveObserver(this);
 			State.SetShouldShutdown();
-			UpdatePrimitivesTask.Wait();
+			UpdateDataTask.Wait();
 		}
 
 		Disposed = true;
@@ -401,7 +408,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 		StepDensity?.RemoveObserver(this);
 		StepDensity = stepDensity;
 		StepDensity?.AddObserver(this);
-		RefreshPrimitives();
+		RefreshData();
 	}
 
 	/// <summary>
@@ -411,12 +418,21 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 	public void ResetBufferCapacities()
 	{
 		State.ResetCapacities();
-		lock (PrimitiveLock)
+		lock (DataLock)
 		{
 			Vertices.UpdateCapacity(MinNumVertices);
 			Indices.UpdateCapacity(MinNumIndices);
 		}
 	}
+
+	#region Accessors
+
+	public double GetPeakNps()
+	{
+		return PeakNps;
+	}
+
+	#endregion Accessors
 
 	#region Mouse Input
 
@@ -561,7 +577,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 		EffectOrientation = orientation;
 		if (!dimensionsDirty)
 			return;
-		RefreshPrimitives();
+		RefreshData();
 	}
 
 	/// <summary>
@@ -586,6 +602,10 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 		ScrollBarVisible = true;
 		UpdateScrollBarPrimitives();
 	}
+
+	#endregion Update
+
+	#region Draw
 
 	/// <summary>
 	/// Draw the density graph.
@@ -613,7 +633,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 		}
 
 		// Draw primitives.
-		lock (PrimitiveLock)
+		lock (DataLock)
 		{
 			foreach (var pass in DensityEffect.CurrentTechnique.Passes)
 			{
@@ -679,7 +699,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 		}
 	}
 
-	#endregion Update
+	#endregion Draw
 
 	#region Primitive Generation
 
@@ -742,7 +762,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 	/// <summary>
 	/// Long-running task to update the primitives used for rendering.
 	/// </summary>
-	private async void UpdatePrimitives()
+	private async void UpdateData()
 	{
 		// Local state.
 		DynamicArray<Measure> measures = null;
@@ -770,16 +790,17 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 				if (State.TryPopEnqueuedData(ref measures, ref vertices, ref indices, ref finalTime, ref width, ref height,
 					    ref lowColor, ref highColor, ref backgroundColor, ref colorMode))
 					break;
-				await Task.Yield();
+				await Task.Delay(1);
 			}
 
 			// Begin processing new data.
 			var numPrimitives = 0;
+			var peakNps = 0.0;
 
 			// Early out on invalid bounds.
 			if (height < 0.0f || width < 0.0f)
 			{
-				UpdatePrimitives(vertices, indices, numPrimitives);
+				UpdateData(vertices, indices, numPrimitives, peakNps);
 				continue;
 			}
 
@@ -792,12 +813,11 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 				// Add the rim primitives.
 				AddRim(vertices, indices, ref numPrimitives, width, height);
 
-				UpdatePrimitives(vertices, indices, numPrimitives);
+				UpdateData(vertices, indices, numPrimitives, peakNps);
 				continue;
 			}
 
 			// Determine the greatest number of steps per measure.
-			var greatestStepsPerSecond = 0.0;
 			for (var i = 0; i < measures.GetSize(); i++)
 			{
 				double measureTime;
@@ -806,7 +826,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 				else
 					measureTime = finalTime - measures[i].StartTime;
 				if (measureTime > 0.0)
-					greatestStepsPerSecond = Math.Max(measures[i].Steps / measureTime, greatestStepsPerSecond);
+					peakNps = Math.Max(measures[i].Steps / measureTime, peakNps);
 			}
 
 			var previousMeasureHighIndex = 0;
@@ -828,7 +848,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 					? 0
 					: measures[i].Steps / measureTime;
 
-				var yPercent = stepsPerSecond / greatestStepsPerSecond;
+				var yPercent = stepsPerSecond / peakNps;
 				var y = minY + (float)(yPercent * stepHeight);
 				var x = minX + (float)(measures[i].StartTime / finalTime * stepWidth);
 
@@ -920,7 +940,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 			AddRim(vertices, indices, ref numPrimitives, width, height);
 
 			// Save results.
-			UpdatePrimitives(vertices, indices, numPrimitives);
+			UpdateData(vertices, indices, numPrimitives, peakNps);
 		}
 	}
 
@@ -998,30 +1018,33 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 	}
 
 	/// <summary>
-	/// Commit changes to primitives used for rendering.
+	/// Commit changes to data used for rendering.
 	/// This will copy the given data.
 	/// </summary>
 	/// <param name="vertices">Vertex array.</param>
 	/// <param name="indices">Index array.</param>
 	/// <param name="numPrimitives">Number of primitives.</param>
-	private void UpdatePrimitives(
+	/// <param name="peakNps">Peak notes per second value.</param>
+	private void UpdateData(
 		IReadOnlyDynamicArray<VertexPositionColor> vertices,
 		IReadOnlyDynamicArray<int> indices,
-		int numPrimitives)
+		int numPrimitives,
+		double peakNps)
 	{
-		lock (PrimitiveLock)
+		lock (DataLock)
 		{
 			Vertices.CopyFrom(vertices);
 			Indices.CopyFrom(indices);
 			NumPrimitives = numPrimitives;
+			PeakNps = peakNps;
 		}
 	}
 
 	/// <summary>
-	/// Begin an update to the primitives.
+	/// Begin an update to the computed data.
 	/// This will enqueue data to be processed on the update thread.
 	/// </summary>
-	private void RefreshPrimitives()
+	private void RefreshData()
 	{
 		var p = Preferences.Instance.PreferencesDensityGraph;
 
@@ -1064,7 +1087,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 		switch (eventId)
 		{
 			case NotificationMeasuresChanged:
-				RefreshPrimitives();
+				RefreshData();
 				break;
 		}
 	}
@@ -1076,7 +1099,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 			case NotificationDensityGraphColorsChanged:
 			case NotificationDensityGraphColorModeChanged:
 			case NotificationShowDensityGraphChanged:
-				RefreshPrimitives();
+				RefreshData();
 				break;
 		}
 	}

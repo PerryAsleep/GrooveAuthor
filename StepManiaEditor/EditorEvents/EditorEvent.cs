@@ -99,6 +99,11 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	/// </summary>
 	protected bool Initialized;
 
+	/// <summary>
+	/// Whether or not this event is added to its EditorChart.
+	/// </summary>
+	private bool AddedToChart;
+
 	protected static uint ScreenHeight;
 
 	public static void SetScreenHeight(uint screenHeight)
@@ -288,6 +293,7 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 		newEvent.RowRelativeToMeasureStart = RowRelativeToMeasureStart;
 		newEvent.TimeSignatureDenominator = TimeSignatureDenominator;
 		newEvent.FakeDueToRow = FakeDueToRow;
+		// Do not set IsAddedToChart. Cloned events may not be in a chart.
 		return newEvent;
 	}
 
@@ -511,7 +517,7 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	/// </summary>
 	public void RefreshFakeStatus()
 	{
-		FakeDueToRow = EditorChart.IsEventInFake(this);
+		SetIsFakeDueToRow(EditorChart.IsEventInFake(this));
 	}
 
 	/// <summary>
@@ -678,7 +684,12 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	/// </param>
 	public void SetIsFakeDueToRow(bool fake)
 	{
+		if (FakeDueToRow == fake)
+			return;
+		var wasFake = IsFake();
 		FakeDueToRow = fake;
+		if (wasFake != IsFake())
+			EditorChart.OnFakeChanged(this);
 	}
 
 	/// <summary>
@@ -769,6 +780,7 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	/// </summary>
 	public virtual void OnAddedToChart()
 	{
+		AddedToChart = true;
 	}
 
 	/// <summary>
@@ -777,6 +789,16 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	/// </summary>
 	public virtual void OnRemovedFromChart()
 	{
+		AddedToChart = false;
+	}
+
+	/// <summary>
+	/// Returns whether or not this EditorEvent is added to its EditorChart.
+	/// </summary>
+	/// <returns>True if this EditorEvent is added to its EditorChart and false otherwise.</returns>
+	public bool IsAddedToChart()
+	{
+		return AddedToChart;
 	}
 
 	public virtual bool Matches(EditorEvent other)

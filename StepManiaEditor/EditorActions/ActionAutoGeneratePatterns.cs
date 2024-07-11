@@ -957,7 +957,7 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 	/// <returns>Notes per second of the chart including the notes from the patterns for this action.</returns>
 	private double GetNps()
 	{
-		var numSteps = EditorChart.GetStepCount() + GetTotalStepsFromAllPatterns();
+		var numSteps = EditorChart.GetStepTotals().GetStepCount() + GetTotalStepsFromAllPatterns();
 		var startTime = EditorChart.GetStartChartTime();
 		var endTime = Math.Max(GetLastPatternStepTime(), EditorChart.GetEndChartTime());
 		var totalTime = endTime - startTime;

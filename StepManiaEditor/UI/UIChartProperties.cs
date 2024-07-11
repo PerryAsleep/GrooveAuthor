@@ -16,6 +16,7 @@ internal sealed class UIChartProperties
 	private static readonly Vector2 DefaultPosition = new(UiScaled(0), UiScaled(631));
 	private static readonly Vector2 DefaultSize = new(UiScaled(622), UiScaled(241));
 	private static readonly int UseStreamButtonWidth = UiScaled(80);
+	private static readonly int StepTotalNameWidth = UiScaled(40);
 
 	private readonly ImGuiArrowWeightsWidget ArrowWeightsWidget;
 	private readonly Editor Editor;
@@ -107,8 +108,11 @@ internal sealed class UIChartProperties
 						+ "\nThis interpretation is used for autogenerating patterns and other Charts.");
 					ImGuiLayoutUtils.EndTable();
 				}
+			}
 
-				ImGui.Separator();
+			ImGui.Separator();
+			if (ImGui.CollapsingHeader("Chart Stats"))
+			{
 				if (ImGuiLayoutUtils.BeginTable("ChartDetailsTable", TitleColumnWidth))
 				{
 					var noteType = GetSubdivisionTypeString(Preferences.Instance.PreferencesStream.NoteType);
@@ -118,10 +122,13 @@ internal sealed class UIChartProperties
 						+ $"\nThis follows ITGmania / Simply Love rules where a measure is {SMCommon.RowsPerMeasure} rows and a measure"
 						+ $"\nwith at least {steps} steps is considered stream regardless of if the individual steps are {noteType} notes.");
 
+					ImGuiLayoutUtils.DrawRowTitleAndText("Peak NPS", $"{Editor.GetActiveChartPeakNPS():F2}n/s",
+						"Peak notes per second. Multiple notes on the same row are considered distinct notes.");
+
 					ImGuiLayoutUtils.DrawTitle("Distribution", "Distribution of steps across lanes.");
+					var width = ImGui.GetContentRegionAvail().X;
 					if (editorChart != null)
 					{
-						var width = ImGui.GetContentRegionAvail().X;
 						if (ImGui.BeginTable("DistributionInnerTable", 1, ImGuiTableFlags.None, new Vector2(width, 0), width))
 						{
 							ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100.0f);
@@ -130,6 +137,72 @@ internal sealed class UIChartProperties
 							ArrowWeightsWidget.DrawChartStepCounts(Editor, editorChart);
 							ImGui.EndTable();
 						}
+					}
+
+					ImGuiLayoutUtils.DrawTitle("Step Counts", "Counts for various step types in the chart.");
+					width = ImGui.GetContentRegionAvail().X;
+					if (ImGui.BeginTable("StepCountsTable", 1, ImGuiTableFlags.None, new Vector2(width, 0), width))
+					{
+						ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100.0f);
+						ImGui.TableNextRow();
+						ImGui.TableSetColumnIndex(0);
+
+						if (ImGui.BeginTable("StepCountsTableInner", 6, ImGuiTableFlags.Borders))
+						{
+							var stepTotals = editorChart?.GetStepTotals();
+
+							ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, StepTotalNameWidth);
+							ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100);
+							ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, StepTotalNameWidth);
+							ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100);
+							ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, StepTotalNameWidth);
+							ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100);
+
+							ImGui.TableNextRow();
+							ImGui.TableNextColumn();
+							ImGui.Text("Notes");
+							ToolTip(
+								"Total note count. Multiple notes on the same row are counted as distinct notes. Fakes are not counted as notes.");
+							ImGui.TableNextColumn();
+							ImGui.Text($"{stepTotals?.GetStepCount() ?? 0:N0}");
+							ImGui.TableNextColumn();
+							ImGui.Text("Holds");
+							ToolTip("Total hold count. Fakes are not counted as holds.");
+							ImGui.TableNextColumn();
+							ImGui.Text($"{stepTotals?.GetHoldCount() ?? 0:N0}");
+							ImGui.TableNextColumn();
+							ImGui.Text("Lifts");
+							ToolTip("Total lift count. Fakes are not counted as lifts.");
+							ImGui.TableNextColumn();
+							ImGui.Text($"{stepTotals?.GetLiftCount() ?? 0:N0}");
+							ImGui.TableNextRow();
+							ImGui.TableNextColumn();
+							ImGui.Text("Steps");
+							ToolTip(
+								"Total step count. Multiple notes on the same row are counted as one step. Fakes are not counted as steps.");
+							ImGui.TableNextColumn();
+							ImGui.Text($"{stepTotals?.GetNumRowsWithSteps() ?? 0:N0}");
+							ImGui.TableNextColumn();
+							ImGui.Text("Rolls");
+							ToolTip("Total roll count. Fakes are not counted as rolls.");
+							ImGui.TableNextColumn();
+							ImGui.Text($"{stepTotals?.GetRollCount() ?? 0:N0}");
+							ImGui.TableNextColumn();
+							ImGui.Text("Fakes");
+							ToolTip("Total fake count.");
+							ImGui.TableNextColumn();
+							ImGui.Text($"{stepTotals?.GetFakeCount() ?? 0:N0}");
+							ImGui.TableNextRow();
+							ImGui.TableNextColumn();
+							ImGui.Text("Mines");
+							ToolTip("Total mine count.");
+							ImGui.TableNextColumn();
+							ImGui.Text($"{stepTotals?.GetMineCount() ?? 0:N0}");
+
+							ImGui.EndTable();
+						}
+
+						ImGui.EndTable();
 					}
 
 					ImGuiLayoutUtils.EndTable();

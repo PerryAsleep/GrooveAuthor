@@ -201,14 +201,16 @@ internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<Prefe
 	/// <param name="editorEvent">EditorEvent added.</param>
 	public void AddEvent(EditorEvent editorEvent)
 	{
-		if (!editorEvent.IsStep() || editorEvent is not EditorLastSecondHintEvent)
+		if (editorEvent is EditorLastSecondHintEvent)
+		{
+			ResizeMeasures();
 			return;
-
-		ResizeMeasures();
+		}
 
 		if (!editorEvent.IsStep())
 			return;
 
+		ResizeMeasures();
 		AddEventInternal(editorEvent);
 		Notify(NotificationMeasuresChanged, this);
 	}
@@ -303,16 +305,17 @@ internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<Prefe
 	/// <param name="editorEvent">EditorEvent deleted.</param>
 	public void DeleteEvent(EditorEvent editorEvent)
 	{
-		if (!editorEvent.IsStep() || editorEvent is not EditorLastSecondHintEvent)
+		if (editorEvent is EditorLastSecondHintEvent)
+		{
+			ResizeMeasures();
 			return;
-
-		ResizeMeasures();
+		}
 
 		if (!editorEvent.IsStep())
 			return;
 
-		ResizeMeasures();
 		DeleteEventInternal(editorEvent);
+		ResizeMeasures();
 		Notify(NotificationMeasuresChanged, this);
 	}
 
@@ -323,9 +326,9 @@ internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<Prefe
 	/// <param name="editorEvents">EditorEvents deleted.</param>
 	public void DeleteEvents(List<EditorEvent> editorEvents)
 	{
-		ResizeMeasures();
 		foreach (var editorEvent in editorEvents)
 			DeleteEventInternal(editorEvent);
+		ResizeMeasures();
 		Notify(NotificationMeasuresChanged, this);
 	}
 
@@ -481,7 +484,7 @@ internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<Prefe
 				}
 			}
 
-			Measures.Add(new Measure(currentRae.GetChartPositionFromTime(row), 0));
+			Measures.Add(new Measure(currentRae.GetChartTimeFromPosition(row), 0));
 		}
 	}
 

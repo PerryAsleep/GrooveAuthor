@@ -3805,6 +3805,11 @@ internal sealed class Editor :
 		DensityGraph.Draw();
 	}
 
+	public double GetActiveChartPeakNPS()
+	{
+		return DensityGraph.GetPeakNps();
+	}
+
 	#endregion Density Graph
 
 	#region Gui Rendering
@@ -5606,6 +5611,18 @@ internal sealed class Editor :
 		ActionQueue.Instance.Do(new ActionDeleteEditorEvents(eventsToDelete, false));
 	}
 
+	private void OnEventAdded(EditorEvent addedEvent)
+	{
+		// When adding notes, reset the AutoPlayer so it picks up the new state.
+		AutoPlayer?.Stop();
+
+		// When adding a pattern, select it.
+		if (addedEvent is EditorPatternEvent pattern)
+		{
+			OnSelectPattern(pattern);
+		}
+	}
+
 	private void OnEventsAdded(IReadOnlyList<EditorEvent> addedEvents)
 	{
 		// When adding notes, reset the AutoPlayer so it picks up the new state.
@@ -5623,6 +5640,27 @@ internal sealed class Editor :
 					break;
 				}
 			}
+		}
+	}
+
+	private void OnEventDeleted(EditorEvent deletedEvent)
+	{
+		// When deleting notes, reset the AutoPlayer so it picks up the new state.
+		AutoPlayer?.Stop();
+
+		// Don't consider events which are deleted as part of a move.
+		if (!MovingNotes.Contains(deletedEvent))
+		{
+			// If a selected note was deleted, deselect it.
+			// When transforming notes we expect selected notes to be moved which requires
+			// deleting them, then modifying them, and then re-adding them. We don't want
+			// to deselect notes when they are moving.
+			if (!TransformingSelectedNotes)
+				Selection.DeselectEvent(deletedEvent);
+
+			// If an event was deleted that is in a member variable, remove the reference.
+			if (ReferenceEquals(deletedEvent, LastSelectedPatternEvent))
+				LastSelectedPatternEvent = null;
 		}
 	}
 
@@ -7415,8 +7453,14 @@ internal sealed class Editor :
 			case EditorChart.NotificationMusicOffsetChanged:
 				OnMusicOffsetChanged();
 				break;
+			case EditorChart.NotificationEventAdded:
+				OnEventAdded((EditorEvent)payload);
+				break;
 			case EditorChart.NotificationEventsAdded:
 				OnEventsAdded((List<EditorEvent>)payload);
+				break;
+			case EditorChart.NotificationEventDeleted:
+				OnEventDeleted((EditorEvent)payload);
 				break;
 			case EditorChart.NotificationEventsDeleted:
 				OnEventsDeleted((List<EditorEvent>)payload);

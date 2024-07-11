@@ -88,10 +88,10 @@ internal sealed class EditorPatternEvent : EditorEvent, IEquatable<EditorPattern
 				// When switching EditorPatternConfigs we need to observe the new one for
 				// changes. We only observe the config if this EditorPatternEvent is added
 				// to the chart.
-				if (AddedToChart)
+				if (IsAddedToChart())
 					GetPatternConfig().RemoveObserver(this);
 				EventDefinition.PatternConfigGuid = value;
-				if (AddedToChart)
+				if (IsAddedToChart())
 					GetPatternConfig().AddObserver(this);
 
 				// The EditorPatternEvent affects the string used in the misc event widget.
@@ -118,10 +118,10 @@ internal sealed class EditorPatternEvent : EditorEvent, IEquatable<EditorPattern
 				// When switching EditorPerformedChartConfigs we need to observe the new one for
 				// changes. We only observe the config if this EditorPatternEvent is added
 				// to the chart.
-				if (AddedToChart)
+				if (IsAddedToChart())
 					GetPerformedChartConfig().RemoveObserver(this);
 				EventDefinition.PerformedChartConfigGuid = value;
-				if (AddedToChart)
+				if (IsAddedToChart())
 					GetPerformedChartConfig().AddObserver(this);
 
 				// The EditorPerformedChartConfig affects the string used in the misc event widget.
@@ -325,8 +325,6 @@ internal sealed class EditorPatternEvent : EditorEvent, IEquatable<EditorPattern
 	}
 
 	private bool WidthDirty;
-
-	private bool AddedToChart;
 
 	/// <summary>
 	/// Constructor taking an EventConfig object.
@@ -542,11 +540,10 @@ internal sealed class EditorPatternEvent : EditorEvent, IEquatable<EditorPattern
 	{
 		// When added to a chart we want to observe the configuration objects which are relevant to
 		// the misc event width.
-		AddedToChart = true;
+		base.OnAddedToChart();
 		GetPerformedChartConfig().AddObserver(this);
 		GetPatternConfig().AddObserver(this);
 		WidthDirty = true;
-		base.OnAddedToChart();
 	}
 
 	/// <summary>
@@ -557,10 +554,9 @@ internal sealed class EditorPatternEvent : EditorEvent, IEquatable<EditorPattern
 	public override void OnRemovedFromChart()
 	{
 		// When removed from a chart we want to stop observing the configuration objects.
-		AddedToChart = false;
+		base.OnRemovedFromChart();
 		GetPerformedChartConfig().RemoveObserver(this);
 		GetPatternConfig().RemoveObserver(this);
-		base.OnRemovedFromChart();
 	}
 
 	/// <summary>

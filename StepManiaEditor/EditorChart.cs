@@ -48,7 +48,9 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	public const string NotificationDescriptionChanged = "DescriptionChanged";
 	public const string NotificationMusicChanged = "MusicChanged";
 	public const string NotificationMusicOffsetChanged = "MusicOffsetChanged";
+	public const string NotificationEventAdded = "EventAdded";
 	public const string NotificationEventsAdded = "EventsAdded";
+	public const string NotificationEventDeleted = "EventDeleted";
 	public const string NotificationEventsDeleted = "EventsDeleted";
 	public const string NotificationEventsMoveStart = "EventsMoveStart";
 	public const string NotificationEventsMoveEnd = "EventsMoveEnd";
@@ -191,30 +193,9 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	public readonly int NumPlayers;
 
 	/// <summary>
-	/// Total step counts by lane for this EditorChart.
+	/// Cached step totals.
 	/// </summary>
-	private int[] StepCountsByLane;
-
-	/// <summary>
-	/// Total step count for this EditorChart.
-	/// This does not include fakes and lifts.
-	/// </summary>
-	private int StepCount;
-
-	/// <summary>
-	/// Total fake note count for this EditorChart.
-	/// </summary>
-	private int FakeCount;
-
-	/// <summary>
-	/// Total lift note count for this EditorChart.
-	/// </summary>
-	private int LiftCount;
-
-	/// <summary>
-	/// Total multipliers count for this EditorChart.
-	/// </summary>
-	private int MultipliersCount;
+	private StepTotals StepTotals;
 
 	/// <summary>
 	/// StepDensity fo this EditorChart.
@@ -460,7 +441,6 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	public EditorChart(EditorSong editorSong, Chart chart)
 	{
 		WorkQueue = new WorkQueue();
-
 		ExpressedChartConfigInternal = ExpressedChartConfigManager.DefaultExpressedChartDynamicConfigGuid;
 
 		OriginalChartExtras = chart.Extras;
@@ -501,7 +481,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		DisplayTempoFromChart = !string.IsNullOrEmpty(chart.Tempo);
 		DisplayTempo.FromString(chart.Tempo);
 
-		ClearCachedStepData();
+		StepTotals = new StepTotals(this);
 
 		SetUpEditorEvents(chart);
 
@@ -540,7 +520,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 		Rating = DefaultRating;
 
-		ClearCachedStepData();
+		StepTotals = new StepTotals(this);
 
 		var tempChart = new Chart();
 		var tempLayer = new Layer();
@@ -591,23 +571,12 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 		Rating = other.Rating;
 
-		ClearCachedStepData();
+		StepTotals = new StepTotals(this);
 
 		SetUpEditorEvents(other);
 
 		// Construct StepDensity after setting up EditorEvents.
 		StepDensity = new StepDensity(this);
-	}
-
-	private void ClearCachedStepData()
-	{
-		StepCount = 0;
-		FakeCount = 0;
-		LiftCount = 0;
-		MultipliersCount = 0;
-		StepCountsByLane = new int[NumInputs];
-		for (var a = 0; a < NumInputs; a++)
-			StepCountsByLane[a] = 0;
 	}
 
 	/// <summary>
@@ -638,7 +607,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			if (editorEvent != null)
 				editorEvents.Insert(editorEvent);
 
-			UpdateCachedDataForAddedEvent(editorEvent);
+			StepTotals.OnEventAdded(editorEvent);
 
 			switch (editorEvent)
 			{
@@ -805,7 +774,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		foreach (var editorEvent in events)
 		{
 			editorEvents.Insert(editorEvent);
-			UpdateCachedDataForAddedEvent(editorEvent);
+			StepTotals.OnEventAdded(editorEvent);
 			if (editorEvent is EditorRateAlteringEvent rae)
 				rateAlteringEvents.Insert(rae);
 			if (editorEvent.IsMiscEvent())
@@ -2333,6 +2302,18 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		Notify(NotificationPatternRequestEdit, this, epa);
 	}
 
+	public void OnHoldTypeChanged(EditorHoldNoteEvent hold)
+	{
+		if (hold.IsAddedToChart())
+			StepTotals.OnHoldTypeChanged(hold);
+	}
+
+	public void OnFakeChanged(EditorEvent editorEvent)
+	{
+		if (editorEvent.IsAddedToChart())
+			StepTotals.OnFakeTypeChanged(editorEvent);
+	}
+
 	#endregion EditorEvent Modification Callbacks
 
 	#region Adding and Deleting EditorEvents
@@ -2347,7 +2328,14 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		if (!CanBeEdited())
 			return;
 
-		DeleteEvents(new List<EditorEvent> { editorEvent });
+		// Delete the event.
+		var rowDependentDataDirty = DeleteEventInternal(editorEvent);
+
+		// Perform post-delete operations.
+		if (rowDependentDataDirty)
+			RefreshEventTimingData();
+		StepDensity?.DeleteEvent(editorEvent);
+		Notify(NotificationEventDeleted, this, editorEvent);
 	}
 
 	/// <summary>
@@ -2360,104 +2348,116 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		if (!CanBeEdited())
 			return;
 
+		// Delete the events.
 		var rowDependentDataDirty = false;
 		foreach (var editorEvent in editorEvents)
 		{
-			UpdateCachedDataForDeletedEvent(editorEvent);
-			var deleted = EditorEvents.Delete(editorEvent);
+			rowDependentDataDirty = DeleteEventInternal(editorEvent) || rowDependentDataDirty;
+		}
+
+		// Perform post-delete operations.
+		if (rowDependentDataDirty)
+			RefreshEventTimingData();
+		StepDensity?.DeleteEvents(editorEvents);
+		Notify(NotificationEventsDeleted, this, editorEvents);
+	}
+
+	/// <summary>
+	/// Internal method for deleting an individual EditorEvent.
+	/// Does not perform operations which can be done in bulk when deleting multiple events like
+	/// refreshing timing data, updating the step density, and notifying listeners of deletions.
+	/// </summary>
+	/// <param name="editorEvent">EditorEvent to delete.</param>
+	/// <returns>True if row-dependent data is dirty and false otherwise.</returns>
+	private bool DeleteEventInternal(EditorEvent editorEvent)
+	{
+		StepTotals.OnEventDeleted(editorEvent);
+		var deleted = EditorEvents.Delete(editorEvent);
+		Assert(deleted);
+
+		if (editorEvent.IsMiscEvent())
+		{
+			deleted = MiscEvents.Delete(editorEvent);
 			Assert(deleted);
+		}
 
-			if (editorEvent.IsMiscEvent())
-			{
-				deleted = MiscEvents.Delete(editorEvent);
+		if (editorEvent is EditorLabelEvent)
+		{
+			deleted = Labels.Delete(editorEvent);
+			Assert(deleted);
+		}
+
+		var rowDependentDataDirty = false;
+		switch (editorEvent)
+		{
+			case EditorFakeSegmentEvent fse:
+				deleted = Fakes.Delete(fse, fse.GetChartTime(), fse.GetEndChartTime());
 				Assert(deleted);
-			}
-
-			if (editorEvent is EditorLabelEvent)
+				rowDependentDataDirty = true;
+				break;
+			case EditorRateAlteringEvent rae:
 			{
-				deleted = Labels.Delete(editorEvent);
+				deleted = RateAlteringEvents.Delete(rae);
 				Assert(deleted);
-			}
 
-			switch (editorEvent)
-			{
-				case EditorFakeSegmentEvent fse:
-					deleted = Fakes.Delete(fse, fse.GetChartTime(), fse.GetEndChartTime());
-					Assert(deleted);
-					rowDependentDataDirty = true;
-					break;
-				case EditorRateAlteringEvent rae:
+				switch (rae)
 				{
-					deleted = RateAlteringEvents.Delete(rae);
-					Assert(deleted);
-
-					switch (rae)
-					{
-						case EditorStopEvent se:
-							deleted = Stops.Delete(se, se.GetChartTime(), Math.Max(se.GetChartTime(), se.GetEndChartTime()));
-							Assert(deleted);
-							break;
-						case EditorDelayEvent de:
-							deleted = Delays.Delete(de, de.GetChartTime(), Math.Max(de.GetChartTime(), de.GetEndChartTime()));
-							Assert(deleted);
-							break;
-						case EditorWarpEvent we:
-							deleted = Warps.Delete(we, we.GetChartPosition(), we.GetEndChartPosition());
-							Assert(deleted);
-							break;
-					}
-
-					rowDependentDataDirty = true;
-					break;
+					case EditorStopEvent se:
+						deleted = Stops.Delete(se, se.GetChartTime(), Math.Max(se.GetChartTime(), se.GetEndChartTime()));
+						Assert(deleted);
+						break;
+					case EditorDelayEvent de:
+						deleted = Delays.Delete(de, de.GetChartTime(), Math.Max(de.GetChartTime(), de.GetEndChartTime()));
+						Assert(deleted);
+						break;
+					case EditorWarpEvent we:
+						deleted = Warps.Delete(we, we.GetChartPosition(), we.GetEndChartPosition());
+						Assert(deleted);
+						break;
 				}
-				case EditorInterpolatedRateAlteringEvent irae:
+
+				rowDependentDataDirty = true;
+				break;
+			}
+			case EditorInterpolatedRateAlteringEvent irae:
+			{
+				var e = InterpolatedScrollRateEvents.FindMutable(irae);
+				if (e != null)
 				{
-					var e = InterpolatedScrollRateEvents.FindMutable(irae);
-					if (e != null)
+					e.MoveNext();
+					if (e.MoveNext())
 					{
-						e.MoveNext();
-						if (e.MoveNext())
+						var next = e.Current;
+						if (e.MovePrev())
 						{
-							var next = e.Current;
 							if (e.MovePrev())
 							{
-								if (e.MovePrev())
-								{
-									var prev = e.Current;
-									next!.PreviousScrollRate = prev!.GetRate();
-								}
-
-								e.MoveNext();
+								var prev = e.Current;
+								next!.PreviousScrollRate = prev!.GetRate();
 							}
 
 							e.MoveNext();
 						}
 
-						e.MovePrev();
-						e.Delete();
+						e.MoveNext();
 					}
 
-					break;
+					e.MovePrev();
+					e.Delete();
 				}
-				case EditorPatternEvent pe:
-				{
-					deleted = Patterns.Delete(pe, pe.GetChartPosition(), pe.GetEndChartPosition());
-					Assert(deleted);
-					break;
-				}
+
+				break;
 			}
-
-			editorEvent.OnRemovedFromChart();
+			case EditorPatternEvent pe:
+			{
+				deleted = Patterns.Delete(pe, pe.GetChartPosition(), pe.GetEndChartPosition());
+				Assert(deleted);
+				break;
+			}
 		}
 
-		if (rowDependentDataDirty)
-		{
-			RefreshEventTimingData();
-		}
-
-		StepDensity?.DeleteEvents(editorEvents);
-
-		Notify(NotificationEventsDeleted, this, editorEvents);
+		editorEvent.OnRemovedFromChart();
+		return rowDependentDataDirty;
 	}
 
 	/// <summary>
@@ -2474,7 +2474,12 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		if (!CanBeEdited())
 			return;
 
-		AddEvents(new List<EditorEvent> { editorEvent });
+		// Add the event.
+		AddEventInternal(editorEvent);
+
+		// Perform post-add operations.
+		StepDensity?.AddEvent(editorEvent);
+		Notify(NotificationEventAdded, this, editorEvent);
 	}
 
 	/// <summary>
@@ -2491,96 +2496,106 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		if (!CanBeEdited())
 			return;
 
+		// Add the events.
 		foreach (var editorEvent in editorEvents)
+			AddEventInternal(editorEvent);
+
+		// Perform post-add operations.
+		StepDensity?.AddEvents(editorEvents);
+		Notify(NotificationEventsAdded, this, editorEvents);
+	}
+
+	/// <summary>
+	/// Internal method for adding an individual EditorEvent.
+	/// Does not perform operations which can be done in bulk when adding multiple events like
+	/// updating the step density and notifying listeners of additions.
+	/// </summary>
+	/// <param name="editorEvent">EditorEvent to add.</param>
+	private void AddEventInternal(EditorEvent editorEvent)
+	{
+		var rowDependentDataDirty = false;
+
+		StepTotals.OnEventAdded(editorEvent);
+		EditorEvents.Insert(editorEvent);
+		if (editorEvent.IsMiscEvent())
+			MiscEvents.Insert(editorEvent);
+		if (editorEvent is EditorLabelEvent)
+			Labels.Insert(editorEvent);
+
+		switch (editorEvent)
 		{
-			var rowDependentDataDirty = false;
-
-			UpdateCachedDataForAddedEvent(editorEvent);
-			EditorEvents.Insert(editorEvent);
-			if (editorEvent.IsMiscEvent())
-				MiscEvents.Insert(editorEvent);
-			if (editorEvent is EditorLabelEvent)
-				Labels.Insert(editorEvent);
-
-			switch (editorEvent)
+			case EditorFakeSegmentEvent fse:
+				Fakes.Insert(fse, fse.GetChartTime(), fse.GetEndChartTime());
+				rowDependentDataDirty = true;
+				break;
+			case EditorRateAlteringEvent rae:
 			{
-				case EditorFakeSegmentEvent fse:
-					Fakes.Insert(fse, fse.GetChartTime(), fse.GetEndChartTime());
-					rowDependentDataDirty = true;
-					break;
-				case EditorRateAlteringEvent rae:
-				{
-					RateAlteringEvents.Insert(rae);
+				RateAlteringEvents.Insert(rae);
 
-					switch (rae)
+				switch (rae)
+				{
+					case EditorStopEvent se:
+						Stops.Insert(se, se.GetChartTime(), Math.Max(se.GetChartTime(), se.GetEndChartTime()));
+						break;
+					case EditorDelayEvent de:
+						Delays.Insert(de, de.GetChartTime(), Math.Max(de.GetChartTime(), de.GetEndChartTime()));
+						break;
+					case EditorWarpEvent we:
+						Warps.Insert(we, we.GetChartPosition(), we.GetEndChartPosition());
+						break;
+				}
+
+				rowDependentDataDirty = true;
+				break;
+			}
+			case EditorInterpolatedRateAlteringEvent irae:
+			{
+				var e = InterpolatedScrollRateEvents.Insert(irae);
+				if (e != null)
+				{
+					e.MoveNext();
+					if (e.MoveNext())
 					{
-						case EditorStopEvent se:
-							Stops.Insert(se, se.GetChartTime(), Math.Max(se.GetChartTime(), se.GetEndChartTime()));
-							break;
-						case EditorDelayEvent de:
-							Delays.Insert(de, de.GetChartTime(), Math.Max(de.GetChartTime(), de.GetEndChartTime()));
-							break;
-						case EditorWarpEvent we:
-							Warps.Insert(we, we.GetChartPosition(), we.GetEndChartPosition());
-							break;
+						var next = e.Current;
+						next!.PreviousScrollRate = irae.GetRate();
 					}
 
-					rowDependentDataDirty = true;
-					break;
-				}
-				case EditorInterpolatedRateAlteringEvent irae:
-				{
-					var e = InterpolatedScrollRateEvents.Insert(irae);
-					if (e != null)
+					if (e.MovePrev())
 					{
-						e.MoveNext();
-						if (e.MoveNext())
-						{
-							var next = e.Current;
-							next!.PreviousScrollRate = irae.GetRate();
-						}
-
 						if (e.MovePrev())
 						{
-							if (e.MovePrev())
-							{
-								var prev = e.Current;
-								irae.PreviousScrollRate = prev!.GetRate();
-							}
+							var prev = e.Current;
+							irae.PreviousScrollRate = prev!.GetRate();
 						}
 					}
+				}
 
-					break;
-				}
-				case EditorPatternEvent pe:
-				{
-					Patterns.Insert(pe, pe.GetChartPosition(), pe.GetEndChartPosition());
-					break;
-				}
+				break;
 			}
-
-			editorEvent.OnAddedToChart();
-
-			// TODO: Optimize.
-			// When deleting a re-adding many rate altering events this causes a hitch.
-			// We can't just call RefreshEventTimingData once at the end of the loop because
-			// note within the song may have their positions altered relative to individual
-			// rate altering event notes such that calling SetEventTimeAndMetricPositionsFromRows
-			// once at the end re-sorts them based on time differences.
-			// To optimize this we could update events only up until the next rate altering event
-			// rather than going to the end of the chart each time. For a old style gimmick chart
-			// this would be a big perf win.
-			// Moving many rate altering events together is not a frequent operation.
-
-			if (rowDependentDataDirty)
+			case EditorPatternEvent pe:
 			{
-				RefreshEventTimingData();
+				Patterns.Insert(pe, pe.GetChartPosition(), pe.GetEndChartPosition());
+				break;
 			}
 		}
 
-		StepDensity?.AddEvents(editorEvents);
+		editorEvent.OnAddedToChart();
 
-		Notify(NotificationEventsAdded, this, editorEvents);
+		// TODO: Optimize.
+		// When deleting a re-adding many rate altering events this causes a hitch.
+		// We can't just call RefreshEventTimingData once at the end of the loop because
+		// note within the song may have their positions altered relative to individual
+		// rate altering event notes such that calling SetEventTimeAndMetricPositionsFromRows
+		// once at the end re-sorts them based on time differences.
+		// To optimize this we could update events only up until the next rate altering event
+		// rather than going to the end of the chart each time. For a old style gimmick chart
+		// this would be a big perf win.
+		// Moving many rate altering events together is not a frequent operation.
+
+		if (rowDependentDataDirty)
+		{
+			RefreshEventTimingData();
+		}
 	}
 
 	/// <summary>
@@ -2729,8 +2744,11 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			}
 
 			// Now that all conflicting notes are deleted or adjusted, add this note.
-			AddEvent(editorEvent);
+			AddEventInternal(editorEvent);
 		}
+
+		StepDensity?.AddEvents(events);
+		Notify(NotificationEventsAdded, this, events);
 
 		return (sideEffectAddedEvents, sideEffectDeletedEvents);
 	}
@@ -2824,85 +2842,9 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 	#region Cached Data
 
-	private void UpdateCachedDataForAddedEvent(EditorEvent editorEvent)
+	public IReadOnlyStepTotals GetStepTotals()
 	{
-		switch (editorEvent)
-		{
-			case EditorTapNoteEvent or EditorHoldNoteEvent:
-				if (editorEvent.IsFake())
-				{
-					FakeCount++;
-				}
-				else
-				{
-					StepCount++;
-					StepCountsByLane[editorEvent.GetLane()]++;
-				}
-
-				break;
-			case EditorFakeNoteEvent:
-				FakeCount++;
-				break;
-			case EditorLiftNoteEvent:
-				LiftCount++;
-				break;
-			case EditorMultipliersEvent:
-				MultipliersCount++;
-				break;
-		}
-	}
-
-	private void UpdateCachedDataForDeletedEvent(EditorEvent editorEvent)
-	{
-		switch (editorEvent)
-		{
-			case EditorTapNoteEvent or EditorHoldNoteEvent:
-				if (editorEvent.IsFake())
-				{
-					FakeCount--;
-				}
-				else
-				{
-					StepCount--;
-					StepCountsByLane[editorEvent.GetLane()]--;
-				}
-
-				break;
-			case EditorFakeNoteEvent:
-				FakeCount--;
-				break;
-			case EditorLiftNoteEvent:
-				LiftCount--;
-				break;
-			case EditorMultipliersEvent:
-				MultipliersCount--;
-				break;
-		}
-	}
-
-	public int GetStepCount()
-	{
-		return StepCount;
-	}
-
-	public int[] GetStepCountByLane()
-	{
-		return StepCountsByLane;
-	}
-
-	public int GetFakeCount()
-	{
-		return FakeCount;
-	}
-
-	public int GetLiftCount()
-	{
-		return LiftCount;
-	}
-
-	public int GetMultipliersCount()
-	{
-		return MultipliersCount;
+		return StepTotals;
 	}
 
 	public string GetStreamBreakdown()
@@ -3085,10 +3027,10 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			}
 
 			// Multipliers.
-			if (GetMultipliersCount() > 0)
+			if (StepTotals.GetMultipliersCount() > 0)
 			{
 				var hasIncompatibleMultipliers = true;
-				if (GetMultipliersCount() == 1)
+				if (StepTotals.GetMultipliersCount() == 1)
 				{
 					foreach (var editorEvent in EditorEvents)
 					{

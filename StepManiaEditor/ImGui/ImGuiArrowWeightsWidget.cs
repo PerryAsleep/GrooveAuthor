@@ -174,8 +174,8 @@ internal sealed class ImGuiArrowWeightsWidget
 	/// <param name="editorChart">EditorChart to use for drawing.</param>
 	public void DrawChartStepCounts(Editor editor, EditorChart editorChart)
 	{
-		var stepCountsByLane = editorChart.GetStepCountByLane();
-		var totalStepCount = editorChart.GetStepCount();
+		var stepCountsByLane = editorChart.GetStepTotals().GetStepCountByLane();
+		var totalStepCount = editorChart.GetStepTotals().GetStepCount();
 		var maxStepCountByLane = 0;
 		for (var a = 0; a < stepCountsByLane.Length; a++)
 		{
