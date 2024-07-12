@@ -15,8 +15,8 @@ internal sealed class UIChartList
 	private static readonly int RatingWidth = UiScaled(16);
 	private static readonly int AddChartWidth = UiScaled(86);
 	private static readonly float DefaultPositionX = UiScaled(0);
-	private static readonly float DefaultPositionY = UiScaled(872);
-	private static readonly Vector2 DefaultSize = new(UiScaled(622), UiScaled(208));
+	private static readonly float DefaultPositionY = UiScaled(901);
+	private static readonly Vector2 DefaultSize = new(UiScaled(622), UiScaled(179));
 
 	private EditorChart ChartPendingDelete;
 	private EditorChart ChartPendingClone;

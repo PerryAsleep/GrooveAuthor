@@ -14,7 +14,7 @@ internal sealed class UIChartProperties
 
 	private static readonly int TitleColumnWidth = UiScaled(100);
 	private static readonly Vector2 DefaultPosition = new(UiScaled(0), UiScaled(631));
-	private static readonly Vector2 DefaultSize = new(UiScaled(622), UiScaled(241));
+	private static readonly Vector2 DefaultSize = new(UiScaled(622), UiScaled(270));
 	private static readonly int UseStreamButtonWidth = UiScaled(80);
 	private static readonly int NpsNameWidth = UiScaled(60);
 	private static readonly int StepTotalNameWidth = UiScaled(40);
