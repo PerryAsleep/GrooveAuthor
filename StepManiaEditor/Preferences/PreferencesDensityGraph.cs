@@ -14,6 +14,7 @@ namespace StepManiaEditor;
 internal sealed class PreferencesDensityGraph : Notifier<PreferencesDensityGraph>
 {
 	public const string NotificationShowDensityGraphChanged = "ShowDensityGraphChanged";
+	public const string NotificationAccumulationTypeChanged = "AccumulationTypeChanged";
 	public const string NotificationDensityGraphColorModeChanged = "DensityGraphColorModeChanged";
 	public const string NotificationDensityGraphColorsChanged = "DensityGraphColorsChanged";
 
@@ -34,15 +35,16 @@ internal sealed class PreferencesDensityGraph : Notifier<PreferencesDensityGraph
 		BottomOfWaveForm,
 	}
 
-	public static readonly bool DefaultShowDensityGraph = true;
-	public static readonly bool DefaultShowStream = true;
+	public const bool DefaultShowDensityGraph = true;
+	public const bool DefaultShowStream = true;
+	public const StepAccumulationType DefaultAccumulationType = StepAccumulationType.Step;
 	public static readonly Vector4 DefaultDensityGraphBackgroundColor = new(0.118f, 0.118f, 0.118f, 1.0f);
 	public static readonly Vector4 DefaultDensityGraphLowColor = new(0.251f, 0.647f, 0.419f, 1.0f);
 	public static readonly Vector4 DefaultDensityGraphHighColor = new(0.705f, 0.282f, 0.282f, 1.0f);
-	public static readonly DensityGraphColorMode DefaultDensityGraphColorModeValue = DensityGraphColorMode.ColorByHeight;
-	public static readonly DensityGraphPosition DefaultDensityGraphPositionValue = DensityGraphPosition.RightOfChartArea;
+	public const DensityGraphColorMode DefaultDensityGraphColorModeValue = DensityGraphColorMode.ColorByHeight;
+	public const DensityGraphPosition DefaultDensityGraphPositionValue = DensityGraphPosition.RightOfChartArea;
 
-	public static readonly int DefaultDensityGraphHeight = 90;
+	public const int DefaultDensityGraphHeight = 90;
 
 	public static Dictionary<DensityGraphPosition, int> DefaultDensityGraphPositionOffsets = new()
 	{
@@ -82,6 +84,21 @@ internal sealed class PreferencesDensityGraph : Notifier<PreferencesDensityGraph
 	}
 
 	[JsonInclude] public bool ShowStream = DefaultShowStream;
+
+	[JsonInclude]
+	public StepAccumulationType AccumulationType
+	{
+		get => AccumulationTypeInternal;
+		set
+		{
+			if (AccumulationTypeInternal != value)
+			{
+				AccumulationTypeInternal = value;
+				Notify(NotificationAccumulationTypeChanged, this);
+			}
+		}
+	}
+
 	[JsonInclude] public DensityGraphPosition DensityGraphPositionValue = DefaultDensityGraphPositionValue;
 	[JsonInclude] public int DensityGraphHeight = DefaultDensityGraphHeight;
 
@@ -145,6 +162,7 @@ internal sealed class PreferencesDensityGraph : Notifier<PreferencesDensityGraph
 	[JsonInclude] public Dictionary<DensityGraphPosition, int> DensityGraphWidthOffsets = new();
 
 	private bool ShowDensityGraphInternal = DefaultShowDensityGraph;
+	private StepAccumulationType AccumulationTypeInternal = DefaultAccumulationType;
 	private DensityGraphColorMode DensityGraphColorModeValueInternal = DefaultDensityGraphColorModeValue;
 	private Vector4 DensityGraphLowColorInternal = DefaultDensityGraphLowColor;
 	private Vector4 DensityGraphHighColorInternal = DefaultDensityGraphHighColor;
@@ -177,6 +195,7 @@ internal sealed class PreferencesDensityGraph : Notifier<PreferencesDensityGraph
 	{
 		if (!(ShowDensityGraph == DefaultShowDensityGraph
 		      && ShowStream == DefaultShowStream
+		      && AccumulationType == DefaultAccumulationType
 		      && DensityGraphPositionValue == DefaultDensityGraphPositionValue
 		      && DensityGraphHeight == DefaultDensityGraphHeight
 		      && DensityGraphColorModeValue == DefaultDensityGraphColorModeValue
@@ -212,6 +231,7 @@ internal sealed class ActionRestoreDensityGraphPreferenceDefaults : EditorAction
 {
 	private readonly bool PreviousShowDensityGraph;
 	private readonly bool PreviousShowStream;
+	private readonly StepAccumulationType PreviousAccumulationType;
 	private readonly DensityGraphPosition PreviousDensityGraphPositionValue;
 	private readonly int PreviousDensityGraphHeight;
 	private readonly DensityGraphColorMode PreviousDensityGraphColorModeValue;
@@ -226,6 +246,7 @@ internal sealed class ActionRestoreDensityGraphPreferenceDefaults : EditorAction
 		var p = Preferences.Instance.PreferencesDensityGraph;
 		PreviousShowDensityGraph = p.ShowDensityGraph;
 		PreviousShowStream = p.ShowStream;
+		PreviousAccumulationType = p.AccumulationType;
 		PreviousDensityGraphPositionValue = p.DensityGraphPositionValue;
 		PreviousDensityGraphHeight = p.DensityGraphHeight;
 		PreviousDensityGraphColorModeValue = p.DensityGraphColorModeValue;
@@ -257,6 +278,7 @@ internal sealed class ActionRestoreDensityGraphPreferenceDefaults : EditorAction
 		var p = Preferences.Instance.PreferencesDensityGraph;
 		p.ShowDensityGraph = DefaultShowDensityGraph;
 		p.ShowStream = DefaultShowStream;
+		p.AccumulationType = DefaultAccumulationType;
 		p.DensityGraphPositionValue = DefaultDensityGraphPositionValue;
 		p.DensityGraphHeight = DefaultDensityGraphHeight;
 		p.DensityGraphColorModeValue = DefaultDensityGraphColorModeValue;
@@ -276,6 +298,7 @@ internal sealed class ActionRestoreDensityGraphPreferenceDefaults : EditorAction
 		var p = Preferences.Instance.PreferencesDensityGraph;
 		p.ShowDensityGraph = PreviousShowDensityGraph;
 		p.ShowStream = PreviousShowStream;
+		p.AccumulationType = PreviousAccumulationType;
 		p.DensityGraphPositionValue = PreviousDensityGraphPositionValue;
 		p.DensityGraphHeight = PreviousDensityGraphHeight;
 		p.DensityGraphColorModeValue = PreviousDensityGraphColorModeValue;

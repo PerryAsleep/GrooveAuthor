@@ -16,6 +16,7 @@ internal sealed class UIChartProperties
 	private static readonly Vector2 DefaultPosition = new(UiScaled(0), UiScaled(631));
 	private static readonly Vector2 DefaultSize = new(UiScaled(622), UiScaled(241));
 	private static readonly int UseStreamButtonWidth = UiScaled(80);
+	private static readonly int NpsNameWidth = UiScaled(60);
 	private static readonly int StepTotalNameWidth = UiScaled(40);
 
 	private readonly ImGuiArrowWeightsWidget ArrowWeightsWidget;
@@ -122,21 +123,37 @@ internal sealed class UIChartProperties
 						+ $"\nThis follows ITGmania / Simply Love rules where a measure is {SMCommon.RowsPerMeasure} rows and a measure"
 						+ $"\nwith at least {steps} steps is considered stream regardless of if the individual steps are {noteType} notes.");
 
-					ImGuiLayoutUtils.DrawRowTitleAndText("Peak NPS", $"{Editor.GetActiveChartPeakNPS():F2}n/s",
-						"Peak notes per second. Multiple notes on the same row are considered distinct notes.");
-
-					ImGuiLayoutUtils.DrawTitle("Distribution", "Distribution of steps across lanes.");
+					ImGuiLayoutUtils.DrawTitle("Peak NPS", "Peak notes per second.");
 					var width = ImGui.GetContentRegionAvail().X;
-					if (editorChart != null)
+					if (ImGui.BeginTable("NpsTable", 1, ImGuiTableFlags.None, new Vector2(width, 0), width))
 					{
-						if (ImGui.BeginTable("DistributionInnerTable", 1, ImGuiTableFlags.None, new Vector2(width, 0), width))
+						ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100.0f);
+						ImGui.TableNextRow();
+						ImGui.TableSetColumnIndex(0);
+
+						if (ImGui.BeginTable("NpsTableInner", 4, ImGuiTableFlags.Borders))
 						{
-							ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100.0f);
+							ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, NpsNameWidth);
+							ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100);
+							ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, NpsNameWidth);
+							ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100);
+
 							ImGui.TableNextRow();
-							ImGui.TableSetColumnIndex(0);
-							ArrowWeightsWidget.DrawChartStepCounts(Editor, editorChart);
+							ImGui.TableNextColumn();
+							ImGui.Text("Step NPS");
+							ToolTip("Multiple notes on the same row are considered distinct notes.");
+							ImGui.TableNextColumn();
+							ImGui.Text($"{Editor.GetActiveChartPeakNPS():F2}n/s");
+							ImGui.TableNextColumn();
+							ImGui.Text("Row NPS");
+							ToolTip("Multiple notes on the same row are considered one note.");
+							ImGui.TableNextColumn();
+							ImGui.Text($"{Editor.GetActiveChartPeakRPS():F2}n/s");
+
 							ImGui.EndTable();
 						}
+
+						ImGuiLayoutUtils.EndTable();
 					}
 
 					ImGuiLayoutUtils.DrawTitle("Step Counts", "Counts for various step types in the chart.");
@@ -203,6 +220,20 @@ internal sealed class UIChartProperties
 						}
 
 						ImGui.EndTable();
+					}
+
+					ImGuiLayoutUtils.DrawTitle("Distribution", "Distribution of steps across lanes.");
+					width = ImGui.GetContentRegionAvail().X;
+					if (editorChart != null)
+					{
+						if (ImGui.BeginTable("DistributionInnerTable", 1, ImGuiTableFlags.None, new Vector2(width, 0), width))
+						{
+							ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100.0f);
+							ImGui.TableNextRow();
+							ImGui.TableSetColumnIndex(0);
+							ArrowWeightsWidget.DrawChartStepCounts(Editor, editorChart);
+							ImGui.EndTable();
+						}
 					}
 
 					ImGuiLayoutUtils.EndTable();

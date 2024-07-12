@@ -33,6 +33,12 @@ internal sealed class UIStreamPreferences
 			ImGuiLayoutUtils.DrawRowSubdivisions(true, "Note Type", p, nameof(PreferencesStream.NoteType), false,
 				"The note type to use when considering whether a measure is part of a stream.");
 
+			ImGuiLayoutUtils.DrawRowEnum<StepAccumulationType>(true, "Accumulation Type", p,
+				nameof(PreferencesStream.AccumulationType), false,
+				"How to count steps for stream determination." +
+				"\nStep: Each individual note is counted once. Two notes on the same row count as two events." +
+				"\nRow:  Multiple notes on the same row are counted as one. Two notes on the same row count as one event.");
+
 			ImGuiLayoutUtils.DrawRowCheckbox(true, "Show Break Lengths", p, nameof(PreferencesStream.ShowBreakLengths), false,
 				"If true then breaks will show with full lengths. If false then breaks will show with abbreviated notation.");
 

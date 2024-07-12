@@ -9,6 +9,7 @@ internal interface IReadOnlyStepTotals
 {
 	public int GetStepCount();
 	public int GetNumRowsWithSteps();
+	public int GetNumStepsAtRow(int row);
 	public int[] GetStepCountByLane();
 	public int GetHoldCount();
 
@@ -270,6 +271,13 @@ internal sealed class StepTotals : IReadOnlyStepTotals
 	public int GetNumRowsWithSteps()
 	{
 		return StepCountPerRow.Keys.Count;
+	}
+
+	public int GetNumStepsAtRow(int row)
+	{
+		if (StepCountPerRow.TryGetValue(row, out var steps))
+			return steps;
+		return 0;
 	}
 
 	public int[] GetStepCountByLane()

@@ -3810,6 +3810,11 @@ internal sealed class Editor :
 		return DensityGraph.GetPeakNps();
 	}
 
+	public double GetActiveChartPeakRPS()
+	{
+		return DensityGraph.GetPeakRps();
+	}
+
 	#endregion Density Graph
 
 	#region Gui Rendering

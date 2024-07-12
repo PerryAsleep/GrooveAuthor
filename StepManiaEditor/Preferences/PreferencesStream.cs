@@ -5,15 +5,33 @@ using static StepManiaEditor.PreferencesStream;
 namespace StepManiaEditor;
 
 /// <summary>
+/// How to count steps.
+/// </summary>
+public enum StepAccumulationType
+{
+	/// <summary>
+	/// Each individual step is counted once.
+	/// </summary>
+	Step,
+
+	/// <summary>
+	/// Multiple steps on the same row are only counted as one step.
+	/// </summary>
+	Row,
+}
+
+/// <summary>
 /// Preferences for stream breakdowns.
 /// </summary>
 internal sealed class PreferencesStream : Notifier<PreferencesStream>
 {
 	public const string NotificationNoteTypeChanged = "NoteTypeChanged";
+	public const string NotificationAccumulationTypeChanged = "AccumulationTypeChanged";
 	public const string NotificationStreamTextParametersChanged = "StreamTextParametersChanged";
 
 	// Default values.
 	public const SubdivisionType DefaultNoteType = SubdivisionType.SixteenthNotes;
+	public const StepAccumulationType DefaultAccumulationType = StepAccumulationType.Step;
 	public const bool DefaultShowBreakLengths = false;
 	public const int DefaultMinimumLengthToConsiderStream = 1;
 	public const int DefaultShortBreakCutoff = 4;
@@ -33,6 +51,20 @@ internal sealed class PreferencesStream : Notifier<PreferencesStream>
 			{
 				NoteTypeInternal = value;
 				Notify(NotificationNoteTypeChanged, this);
+			}
+		}
+	}
+
+	[JsonInclude]
+	public StepAccumulationType AccumulationType
+	{
+		get => AccumulationTypeInternal;
+		set
+		{
+			if (AccumulationTypeInternal != value)
+			{
+				AccumulationTypeInternal = value;
+				Notify(NotificationAccumulationTypeChanged, this);
 			}
 		}
 	}
@@ -108,6 +140,7 @@ internal sealed class PreferencesStream : Notifier<PreferencesStream>
 	}
 
 	private SubdivisionType NoteTypeInternal = DefaultNoteType;
+	private StepAccumulationType AccumulationTypeInternal = DefaultAccumulationType;
 	private bool ShowBreakLengthsInternal = DefaultShowBreakLengths;
 	private int MinimumLengthToConsiderStreamInternal = DefaultMinimumLengthToConsiderStream;
 	private int ShortBreakCutoffInternal = DefaultShortBreakCutoff;
@@ -117,6 +150,7 @@ internal sealed class PreferencesStream : Notifier<PreferencesStream>
 	public bool IsUsingDefaults()
 	{
 		return NoteType == DefaultNoteType
+		       && AccumulationType == DefaultAccumulationType
 		       && ShowBreakLengths == DefaultShowBreakLengths
 		       && MinimumLengthToConsiderStream == DefaultMinimumLengthToConsiderStream
 		       && ShortBreakCutoff == DefaultShortBreakCutoff
@@ -139,6 +173,7 @@ internal sealed class PreferencesStream : Notifier<PreferencesStream>
 internal sealed class ActionRestoreStreamPreferenceDefaults : EditorAction
 {
 	private readonly SubdivisionType PreviousNoteType;
+	private readonly StepAccumulationType PreviousAccumulationType;
 	private readonly bool PreviousShowBreakLengths;
 	private readonly int PreviousMinimumLengthToConsiderStream;
 	private readonly int PreviousShortBreakCutoff;
@@ -149,6 +184,7 @@ internal sealed class ActionRestoreStreamPreferenceDefaults : EditorAction
 	{
 		var p = Preferences.Instance.PreferencesStream;
 		PreviousNoteType = p.NoteType;
+		PreviousAccumulationType = p.AccumulationType;
 		PreviousShowBreakLengths = p.ShowBreakLengths;
 		PreviousMinimumLengthToConsiderStream = p.MinimumLengthToConsiderStream;
 		PreviousShortBreakCutoff = p.ShortBreakCutoff;
@@ -170,6 +206,7 @@ internal sealed class ActionRestoreStreamPreferenceDefaults : EditorAction
 	{
 		var p = Preferences.Instance.PreferencesStream;
 		p.NoteType = DefaultNoteType;
+		p.AccumulationType = DefaultAccumulationType;
 		p.ShowBreakLengths = DefaultShowBreakLengths;
 		p.MinimumLengthToConsiderStream = DefaultMinimumLengthToConsiderStream;
 		p.ShortBreakCutoff = DefaultShortBreakCutoff;
@@ -181,6 +218,7 @@ internal sealed class ActionRestoreStreamPreferenceDefaults : EditorAction
 	{
 		var p = Preferences.Instance.PreferencesStream;
 		p.NoteType = PreviousNoteType;
+		p.AccumulationType = PreviousAccumulationType;
 		p.ShowBreakLengths = PreviousShowBreakLengths;
 		p.MinimumLengthToConsiderStream = PreviousMinimumLengthToConsiderStream;
 		p.ShortBreakCutoff = PreviousShortBreakCutoff;

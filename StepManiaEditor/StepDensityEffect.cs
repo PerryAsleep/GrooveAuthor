@@ -61,6 +61,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 		private Color HighColor;
 		private Color BackgroundColor;
 		private DensityGraphColorMode ColorMode;
+		private StepAccumulationType AccumulationMode;
 
 		private bool HasNewEnqueuedData;
 		private bool ShouldResetCapacities;
@@ -78,7 +79,8 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 			Color lowColor,
 			Color highColor,
 			Color backgroundColor,
-			DensityGraphColorMode colorMode)
+			DensityGraphColorMode colorMode,
+			StepAccumulationType accumulationMode)
 		{
 			lock (Lock)
 			{
@@ -97,6 +99,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 				HighColor = highColor;
 				BackgroundColor = backgroundColor;
 				ColorMode = colorMode;
+				AccumulationMode = accumulationMode;
 			}
 		}
 
@@ -110,7 +113,8 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 			ref Color lowColor,
 			ref Color highColor,
 			ref Color backgroundColor,
-			ref DensityGraphColorMode colorMode)
+			ref DensityGraphColorMode colorMode,
+			ref StepAccumulationType accumulationMode)
 		{
 			lock (Lock)
 			{
@@ -141,6 +145,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 				highColor = HighColor;
 				backgroundColor = BackgroundColor;
 				colorMode = ColorMode;
+				accumulationMode = AccumulationMode;
 
 				HasNewEnqueuedData = false;
 				return true;
@@ -225,6 +230,11 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 	/// Peak notes per second value.
 	/// </summary>
 	private double PeakNps;
+
+	/// <summary>
+	/// Peak rows per second value.
+	/// </summary>
+	private double PeakRps;
 
 	/// <summary>
 	/// Long-running task for updating primitive data.
@@ -430,6 +440,11 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 	public double GetPeakNps()
 	{
 		return PeakNps;
+	}
+
+	public double GetPeakRps()
+	{
+		return PeakRps;
 	}
 
 	#endregion Accessors
@@ -775,6 +790,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 		var highColor = Color.White;
 		var backgroundColor = Color.Black;
 		var colorMode = DensityGraphColorMode.ColorByDensity;
+		var accumulationMode = StepAccumulationType.Step;
 
 		// Loop continuously, yielding when there is no work.
 		while (true)
@@ -788,7 +804,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 
 				// Try to pop any enqueued data. If there is data to process then break out and process it below.
 				if (State.TryPopEnqueuedData(ref measures, ref vertices, ref indices, ref finalTime, ref width, ref height,
-					    ref lowColor, ref highColor, ref backgroundColor, ref colorMode))
+					    ref lowColor, ref highColor, ref backgroundColor, ref colorMode, ref accumulationMode))
 					break;
 				await Task.Delay(1);
 			}
@@ -796,11 +812,12 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 			// Begin processing new data.
 			var numPrimitives = 0;
 			var peakNps = 0.0;
+			var peakRps = 0.0;
 
 			// Early out on invalid bounds.
 			if (height < 0.0f || width < 0.0f)
 			{
-				UpdateData(vertices, indices, numPrimitives, peakNps);
+				UpdateData(vertices, indices, numPrimitives, peakNps, peakRps);
 				continue;
 			}
 
@@ -813,7 +830,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 				// Add the rim primitives.
 				AddRim(vertices, indices, ref numPrimitives, width, height);
 
-				UpdateData(vertices, indices, numPrimitives, peakNps);
+				UpdateData(vertices, indices, numPrimitives, peakNps, peakRps);
 				continue;
 			}
 
@@ -826,8 +843,13 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 				else
 					measureTime = finalTime - measures[i].StartTime;
 				if (measureTime > 0.0)
+				{
 					peakNps = Math.Max(measures[i].Steps / measureTime, peakNps);
+					peakRps = Math.Max(measures[i].RowsWithSteps / measureTime, peakRps);
+				}
 			}
+
+			var peakSteps = accumulationMode == StepAccumulationType.Step ? peakNps : peakRps;
 
 			var previousMeasureHighIndex = 0;
 			var previousMeasureLowIndex = 0;
@@ -844,11 +866,15 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 					measureTime = measures[i + 1].StartTime - measures[i].StartTime;
 				else
 					measureTime = finalTime - measures[i].StartTime;
-				var stepsPerSecond = measures[i].Steps == 0 || measureTime.DoubleEquals(0.0)
-					? 0
-					: measures[i].Steps / measureTime;
+				var stepsPerSecond = 0.0;
+				if (measures[i].Steps > 0 && !measureTime.DoubleEquals(0.0))
+				{
+					stepsPerSecond = accumulationMode == StepAccumulationType.Step
+						? measures[i].Steps / measureTime
+						: measures[i].RowsWithSteps / measureTime;
+				}
 
-				var yPercent = stepsPerSecond / peakNps;
+				var yPercent = stepsPerSecond / peakSteps;
 				var y = minY + (float)(yPercent * stepHeight);
 				var x = minX + (float)(measures[i].StartTime / finalTime * stepWidth);
 
@@ -940,7 +966,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 			AddRim(vertices, indices, ref numPrimitives, width, height);
 
 			// Save results.
-			UpdateData(vertices, indices, numPrimitives, peakNps);
+			UpdateData(vertices, indices, numPrimitives, peakNps, peakRps);
 		}
 	}
 
@@ -1025,11 +1051,13 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 	/// <param name="indices">Index array.</param>
 	/// <param name="numPrimitives">Number of primitives.</param>
 	/// <param name="peakNps">Peak notes per second value.</param>
+	/// <param name="peakRps">Peak rows per second value.</param>
 	private void UpdateData(
 		IReadOnlyDynamicArray<VertexPositionColor> vertices,
 		IReadOnlyDynamicArray<int> indices,
 		int numPrimitives,
-		double peakNps)
+		double peakNps,
+		double peakRps)
 	{
 		lock (DataLock)
 		{
@@ -1037,6 +1065,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 			Indices.CopyFrom(indices);
 			NumPrimitives = numPrimitives;
 			PeakNps = peakNps;
+			PeakRps = peakRps;
 		}
 	}
 
@@ -1069,12 +1098,13 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 
 		if (StepDensity == null)
 		{
-			State.EnqueueData(null, 0.0, w, h, lowColor, highColor, backgroundColor, p.DensityGraphColorModeValue);
+			State.EnqueueData(null, 0.0, w, h, lowColor, highColor, backgroundColor, p.DensityGraphColorModeValue,
+				p.AccumulationType);
 		}
 		else
 		{
 			State.EnqueueData(StepDensity.GetMeasures(), StepDensity.GetLastMeasurePlusOneTime(), w, h, lowColor,
-				highColor, backgroundColor, p.DensityGraphColorModeValue);
+				highColor, backgroundColor, p.DensityGraphColorModeValue, p.AccumulationType);
 		}
 	}
 
@@ -1099,6 +1129,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 			case NotificationDensityGraphColorsChanged:
 			case NotificationDensityGraphColorModeChanged:
 			case NotificationShowDensityGraphChanged:
+			case NotificationAccumulationTypeChanged:
 				RefreshData();
 				break;
 		}

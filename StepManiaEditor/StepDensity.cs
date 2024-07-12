@@ -33,14 +33,16 @@ internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<Prefe
 	/// </summary>
 	public readonly struct Measure
 	{
-		public Measure(double startTime, byte steps)
+		public Measure(double startTime, byte steps, byte rowsWithSteps)
 		{
 			StartTime = startTime;
 			Steps = steps;
+			RowsWithSteps = rowsWithSteps;
 		}
 
 		public readonly double StartTime;
 		public readonly byte Steps;
+		public readonly byte RowsWithSteps;
 	}
 
 	private class StreamSegment : IEquatable<StreamSegment>
@@ -242,7 +244,11 @@ internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<Prefe
 		var measureNumber = GetMeasureNumber(editorEvent);
 		var previousSteps = Measures[measureNumber].Steps;
 		var newSteps = previousSteps + 1;
-		Measures[measureNumber] = new Measure(Measures[measureNumber].StartTime, (byte)newSteps);
+		var previousRowsWithSteps = Measures[measureNumber].RowsWithSteps;
+		var newRowsWithSteps = previousRowsWithSteps;
+		if (EditorChart.GetStepTotals().GetNumStepsAtRow(editorEvent.GetRow()) == 1)
+			newRowsWithSteps++;
+		Measures[measureNumber] = new Measure(Measures[measureNumber].StartTime, (byte)newSteps, newRowsWithSteps);
 
 		// Update the measure count by step number so we can update the greatest step count per measure.
 		var newStepCountForMeasure = Measures[measureNumber].Steps;
@@ -251,7 +257,12 @@ internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<Prefe
 
 		// Update stream.
 		var minNotesPerMeasureForStream = GetMeasureSubdivision(Preferences.Instance.PreferencesStream.NoteType);
-		if (previousSteps < minNotesPerMeasureForStream && newSteps >= minNotesPerMeasureForStream)
+		var addedStream = false;
+		if (Preferences.Instance.PreferencesStream.AccumulationType == StepAccumulationType.Step)
+			addedStream = previousSteps < minNotesPerMeasureForStream && newSteps >= minNotesPerMeasureForStream;
+		else if (Preferences.Instance.PreferencesStream.AccumulationType == StepAccumulationType.Row)
+			addedStream = previousRowsWithSteps < minNotesPerMeasureForStream && newRowsWithSteps >= minNotesPerMeasureForStream;
+		if (addedStream)
 		{
 			var precedingStreams = Streams.FindAllOverlapping(measureNumber - 1);
 			Debug.Assert(precedingStreams.Count <= 1);
@@ -346,8 +357,12 @@ internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<Prefe
 		var measureNumber = GetMeasureNumber(editorEvent);
 		var previousSteps = measureNumber < Measures.GetSize() ? Measures[measureNumber].Steps : 1;
 		var newSteps = previousSteps - 1;
+		var previousRowsWithSteps = Measures[measureNumber].RowsWithSteps;
+		var newRowsWithSteps = previousRowsWithSteps;
+		if (EditorChart.GetStepTotals().GetNumStepsAtRow(editorEvent.GetRow()) == 0)
+			newRowsWithSteps--;
 		if (measureNumber < Measures.GetSize())
-			Measures[measureNumber] = new Measure(Measures[measureNumber].StartTime, (byte)newSteps);
+			Measures[measureNumber] = new Measure(Measures[measureNumber].StartTime, (byte)newSteps, newRowsWithSteps);
 
 		// Update the measure count by step number so we can update the greatest step count per measure.
 		var newStepCountForMeasure = measureNumber < Measures.GetSize() ? Measures[measureNumber].Steps : 0;
@@ -356,7 +371,13 @@ internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<Prefe
 
 		// Update stream.
 		var minNotesPerMeasureForStream = GetMeasureSubdivision(Preferences.Instance.PreferencesStream.NoteType);
-		if (previousSteps >= minNotesPerMeasureForStream && newSteps < minNotesPerMeasureForStream)
+		var deletedStream = false;
+		if (Preferences.Instance.PreferencesStream.AccumulationType == StepAccumulationType.Step)
+			deletedStream = previousSteps >= minNotesPerMeasureForStream && newSteps < minNotesPerMeasureForStream;
+		else if (Preferences.Instance.PreferencesStream.AccumulationType == StepAccumulationType.Row)
+			deletedStream = previousRowsWithSteps >= minNotesPerMeasureForStream &&
+			                newRowsWithSteps < minNotesPerMeasureForStream;
+		if (deletedStream)
 		{
 			var overlappingStreams = Streams.FindAllOverlapping(measureNumber);
 			Debug.Assert(overlappingStreams.Count == 1);
@@ -436,7 +457,8 @@ internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<Prefe
 			}
 
 			var steps = Measures[m].Steps;
-			Measures[m] = new Measure(currentRae.GetChartTimeFromPosition(row), steps);
+			var rowsWithSteps = Measures[m].RowsWithSteps;
+			Measures[m] = new Measure(currentRae.GetChartTimeFromPosition(row), steps, rowsWithSteps);
 		}
 	}
 
@@ -484,7 +506,7 @@ internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<Prefe
 				}
 			}
 
-			Measures.Add(new Measure(currentRae.GetChartTimeFromPosition(row), 0));
+			Measures.Add(new Measure(currentRae.GetChartTimeFromPosition(row), 0, 0));
 		}
 	}
 
@@ -496,11 +518,14 @@ internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<Prefe
 	{
 		Streams = new IntervalTree<int, StreamSegment>();
 		var minNotesPerMeasureForStream = GetMeasureSubdivision(Preferences.Instance.PreferencesStream.NoteType);
+		var countStepsForStream = Preferences.Instance.PreferencesStream.AccumulationType == StepAccumulationType.Step;
 		var currentMeasure = -1;
 		var currentStepsPerMeasure = 0;
+		var currentRowsWithStepsPerMeasure = 0;
 		var lastStreamMeasureStart = -1;
 		var lastStreamMeasure = -1;
 
+		var lastRowWithStep = -1;
 		foreach (var editorEvent in EditorChart.GetEvents())
 		{
 			var measureNumber = GetMeasureNumber(editorEvent);
@@ -509,11 +534,13 @@ internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<Prefe
 			{
 				if (initializeMeasureSteps && currentMeasure >= 0 && currentStepsPerMeasure > 0)
 				{
-					Measures[currentMeasure] = new Measure(Measures[currentMeasure].StartTime, (byte)currentStepsPerMeasure);
+					Measures[currentMeasure] = new Measure(Measures[currentMeasure].StartTime, (byte)currentStepsPerMeasure,
+						(byte)currentRowsWithStepsPerMeasure);
 				}
 
 				// This measure did not stream
-				if (currentStepsPerMeasure < minNotesPerMeasureForStream)
+				if ((countStepsForStream && currentStepsPerMeasure < minNotesPerMeasureForStream)
+				    || (!countStepsForStream && currentRowsWithStepsPerMeasure < minNotesPerMeasureForStream))
 				{
 					// If we were tracking a stream, commit it.
 					if (lastStreamMeasureStart >= 0)
@@ -530,25 +557,36 @@ internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<Prefe
 				// Reset step tracking for the measure.
 				currentMeasure = measureNumber;
 				currentStepsPerMeasure = 0;
+				currentRowsWithStepsPerMeasure = 0;
 			}
 
 			// Track step towards stream.
 			if (editorEvent.IsStep())
 			{
+				var row = editorEvent.GetRow();
 				currentStepsPerMeasure++;
-				if (currentStepsPerMeasure >= minNotesPerMeasureForStream)
+				if (lastRowWithStep != row)
+				{
+					currentRowsWithStepsPerMeasure++;
+				}
+
+				if ((countStepsForStream && currentStepsPerMeasure >= minNotesPerMeasureForStream)
+				    || (!countStepsForStream && currentRowsWithStepsPerMeasure >= minNotesPerMeasureForStream))
 				{
 					if (lastStreamMeasureStart < 0)
 						lastStreamMeasureStart = measureNumber;
 					lastStreamMeasure = measureNumber;
 				}
+
+				lastRowWithStep = row;
 			}
 		}
 
 		// Commit any final step count per measure.
 		if (initializeMeasureSteps && currentMeasure >= 0 && currentStepsPerMeasure > 0)
 		{
-			Measures[currentMeasure] = new Measure(Measures[currentMeasure].StartTime, (byte)currentStepsPerMeasure);
+			Measures[currentMeasure] = new Measure(Measures[currentMeasure].StartTime, (byte)currentStepsPerMeasure,
+				(byte)currentRowsWithStepsPerMeasure);
 		}
 
 		// Commit any final stream.
@@ -603,6 +641,9 @@ internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<Prefe
 				break;
 			case PreferencesStream.NotificationStreamTextParametersChanged:
 				StreamBreakdownDirty = true;
+				break;
+			case PreferencesStream.NotificationAccumulationTypeChanged:
+				RecomputeStreams(false);
 				break;
 		}
 	}

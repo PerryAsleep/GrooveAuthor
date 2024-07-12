@@ -39,6 +39,12 @@ internal sealed class UIDensityGraphPreferences
 				false,
 				"Whether or not to show the stream breakdown on the density graph.");
 
+			ImGuiLayoutUtils.DrawRowEnum<StepAccumulationType>(true, "Accumulation Type", p,
+				nameof(PreferencesDensityGraph.AccumulationType), false,
+				"How to count steps for the density graph." +
+				"\nStep: Each individual note is counted once. Two notes on the same row count as two events." +
+				"\nRow:  Multiple notes on the same row are counted as one. Two notes on the same row count as one event.");
+
 			ImGuiLayoutUtils.DrawRowEnum<DensityGraphPosition>(true, "Position", p,
 				nameof(PreferencesDensityGraph.DensityGraphPositionValue), false,
 				"Position of the density graph.");

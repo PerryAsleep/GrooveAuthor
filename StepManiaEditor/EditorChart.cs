@@ -195,7 +195,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	/// <summary>
 	/// Cached step totals.
 	/// </summary>
-	private StepTotals StepTotals;
+	private readonly StepTotals StepTotals;
 
 	/// <summary>
 	/// StepDensity fo this EditorChart.
