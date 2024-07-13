@@ -8,7 +8,7 @@ In StepMania 5 the `ssc` format was introduced which addresses this problem and 
 
 ## GrooveAuthor Uses Chart Timing
 
-`GrooveAuthor` always uses chart timing and never uses song timing. All events, including timing events, are per-chart. To be explicit, these events are always only the chart and never on the song:
+`GrooveAuthor` always uses chart timing and never uses song timing. All events, including timing events, are per-chart. To be explicit, these events are always only on the chart and never on the song:
 - Time Signature (`#TIMESIGNATURES`)
 - Tempo (`#BPMS`)
 - Stop (`#STOPS`)
@@ -73,6 +73,8 @@ When saving to the legacy `sm` format which requires only one set of timing even
 If any chart contains events which aren't compatible with the `sm` format, *and those events would produce a chart where note timing would be affected by their absence*, then an error is displayed and the song will not be saved unless those events are removed. `GrooveAuthor` treats the following events as incompatible and will log errors when they are present:
 - Warps (`#WARPS`)
 
+Warps can be converted to negative stops for compatibility with the `sm` format by selecting `Edit` > `Convert All` > `Warps to Negative Stops`.
+
 ### `sm` Save Warnings
 
 If any chart has any timing data which differs from the `Timing Chart` but those differences would *not* affect actual note timing then warnings will be logged and the song will still be saved using the `Timing Chart`'s data.
@@ -87,3 +89,7 @@ An exception is made for events which `GrooveAuthor` adds to new songs by defaul
 - 1x Scroll Rate at row 0.
 - 1x/1x Combo Multipliers at row 0.
 - 1x/0rows Interpolated Scroll Rate at row 0.
+
+## Saving `ssc` Files
+
+Stepmania will ignore negative stops when they are present in `ssc` files. `GrooveAuthor` treats the presence of negative stops in `ssc` files as an error when saving. Negative stops can be converted to warps for compatibility with the `ssc` format by selecting `Edit` > `Convert All` > `Negative Stops to Warps`.
