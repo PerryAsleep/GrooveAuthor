@@ -1880,6 +1880,9 @@ internal sealed class Editor :
 		MusicManager.StartPlayback(Position.SongTime);
 
 		Playing = true;
+
+		// Start updating the AutoPlayer immediately.
+		UpdateAutoPlay();
 	}
 
 	private void StopPlayback()
