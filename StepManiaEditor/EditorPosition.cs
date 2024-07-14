@@ -32,9 +32,9 @@ internal sealed class EditorPosition : IReadOnlyEditorPosition
 		set
 		{
 			ActiveChartInternal = value;
-			// Different charts may have different timing events.
+			// Different charts may have different timing events and time offsets.
 			// When changing charts, reset the Song time to ensure other values are correct.
-			SongTime = SongTimeInternal;
+			ChartTime = ChartTimeInternal;
 		}
 	}
 
@@ -90,7 +90,8 @@ internal sealed class EditorPosition : IReadOnlyEditorPosition
 			}
 
 			var newChartPosition = ChartPositionInternal;
-			ActiveChart?.TryGetChartPositionFromTime(ChartTimeInternal, ref newChartPosition);
+			if (ActiveChart == null || !ActiveChart.TryGetChartPositionFromTime(ChartTimeInternal, ref newChartPosition))
+				newChartPosition = 0.0;
 			if (!ChartPositionInternal.DoubleEquals(newChartPosition))
 			{
 				changed = true;
@@ -125,7 +126,8 @@ internal sealed class EditorPosition : IReadOnlyEditorPosition
 			}
 
 			var newChartTime = ChartTimeInternal;
-			ActiveChart?.TryGetTimeFromChartPosition(ChartPositionInternal, ref newChartTime);
+			if (ActiveChart == null || !ActiveChart.TryGetTimeFromChartPosition(ChartPositionInternal, ref newChartTime))
+				newChartTime = 0.0;
 			if (!ChartTimeInternal.DoubleEquals(newChartTime))
 			{
 				changed = true;
