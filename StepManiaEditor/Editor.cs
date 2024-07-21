@@ -6361,6 +6361,10 @@ internal sealed class Editor :
 
 	private void OnPaste()
 	{
+		if (EditEarlyOut())
+			return;
+		if (ActiveChart == null)
+			return;
 		if (CopiedEvents.Count == 0)
 			return;
 		var earliestRow = CopiedEvents[0].GetRow();
