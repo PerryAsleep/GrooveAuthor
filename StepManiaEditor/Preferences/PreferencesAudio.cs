@@ -5,6 +5,7 @@ namespace StepManiaEditor;
 
 internal sealed class PreferencesAudio : Notifier<PreferencesAudio>
 {
+	public const string NotificationMusicRateChanged = "MusicRateChanged";
 	public const string NotificationAudioOffsetChanged = "AudioOffsetChanged";
 	public const string NotificationMainVolumeChanged = "MainVolumeChanged";
 	public const string NotificationMusicVolumeChanged = "MusicVolumeChanged";
@@ -19,6 +20,7 @@ internal sealed class PreferencesAudio : Notifier<PreferencesAudio>
 
 	// Default values.
 	public const double DefaultAudioOffset = 0.0;
+	public const double DefaultMusicRate = 1.0;
 	public const float DefaultMainVolume = 1.0f;
 	public const float DefaultMusicVolume = 0.5f;
 	public const float DefaultAssistTickVolume = 0.7f;
@@ -35,6 +37,19 @@ internal sealed class PreferencesAudio : Notifier<PreferencesAudio>
 	public const double DefaultPreviewFadeOutTime = 1.5;
 
 	// Preferences.
+	[JsonInclude]
+	public double MusicRate
+	{
+		get => MusicRateInternal;
+		set
+		{
+			if (!MusicRateInternal.DoubleEquals(value))
+			{
+				MusicRateInternal = value;
+				Notify(NotificationMusicRateChanged, this);
+			}
+		}
+	}
 
 	[JsonInclude]
 	public double AudioOffset
@@ -196,6 +211,7 @@ internal sealed class PreferencesAudio : Notifier<PreferencesAudio>
 	[JsonInclude] public double PreviewFadeInTime = DefaultPreviewFadeInTime;
 	[JsonInclude] public double PreviewFadeOutTime = DefaultPreviewFadeOutTime;
 
+	private double MusicRateInternal = DefaultMusicRate;
 	private float MainVolumeInternal = DefaultMainVolume;
 	private float MusicVolumeInternal = DefaultMusicVolume;
 	private double AudioOffsetInternal = DefaultAudioOffset;
@@ -212,6 +228,7 @@ internal sealed class PreferencesAudio : Notifier<PreferencesAudio>
 	{
 		return
 			AudioOffset.DoubleEquals(DefaultAudioOffset)
+			&& MusicRate.DoubleEquals(DefaultMusicRate)
 			&& MainVolume.FloatEquals(DefaultMainVolume)
 			&& MusicVolume.FloatEquals(DefaultMusicVolume)
 			&& AssistTickVolume.FloatEquals(DefaultAssistTickVolume)
@@ -243,6 +260,7 @@ internal sealed class PreferencesAudio : Notifier<PreferencesAudio>
 internal sealed class ActionRestoreAudioPreferenceDefaults : EditorAction
 {
 	private readonly double PreviousAudioOffset;
+	private readonly double PreviousMusicRate;
 	private readonly float PreviousMainVolume;
 	private readonly float PreviousMusicVolume;
 	private readonly float PreviousAssistTickVolume;
@@ -262,6 +280,7 @@ internal sealed class ActionRestoreAudioPreferenceDefaults : EditorAction
 	{
 		var p = Preferences.Instance.PreferencesAudio;
 		PreviousAudioOffset = p.AudioOffset;
+		PreviousMusicRate = p.MusicRate;
 		PreviousMainVolume = p.MainVolume;
 		PreviousMusicVolume = p.MusicVolume;
 		PreviousAssistTickVolume = p.AssistTickVolume;
@@ -292,6 +311,7 @@ internal sealed class ActionRestoreAudioPreferenceDefaults : EditorAction
 	{
 		var p = Preferences.Instance.PreferencesAudio;
 		p.AudioOffset = PreferencesAudio.DefaultAudioOffset;
+		p.MusicRate = PreferencesAudio.DefaultMusicRate;
 		p.MainVolume = PreferencesAudio.DefaultMainVolume;
 		p.MusicVolume = PreferencesAudio.DefaultMusicVolume;
 		p.AssistTickVolume = PreferencesAudio.DefaultAssistTickVolume;
@@ -312,6 +332,7 @@ internal sealed class ActionRestoreAudioPreferenceDefaults : EditorAction
 	{
 		var p = Preferences.Instance.PreferencesAudio;
 		p.AudioOffset = PreviousAudioOffset;
+		p.MusicRate = PreviousMusicRate;
 		p.MainVolume = PreviousMainVolume;
 		p.MusicVolume = PreviousMusicVolume;
 		p.AssistTickVolume = PreviousAssistTickVolume;

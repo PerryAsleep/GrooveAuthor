@@ -30,6 +30,11 @@ internal sealed class UIAudioPreferences
 		{
 			if (ImGuiLayoutUtils.BeginTable("Audio", TitleColumnWidth))
 			{
+				ImGuiLayoutUtils.DrawRowDragDouble(true, "Music Rate", p, nameof(PreferencesAudio.MusicRate), false,
+					"Music Rate."
+					+ "\nThe music rate can also be adjusted with Shift+Left and Shift+Right",
+					0.001f, "%.3fx", MusicManager.MinMusicRate, MusicManager.MaxMusicRate);
+
 				ImGuiLayoutUtils.DrawRowSliderFloat(true, "Main Volume", p, nameof(PreferencesAudio.MainVolume),
 					0.0f, 1.0f,
 					false,

@@ -563,6 +563,7 @@ internal sealed class Editor :
 	{
 		var p = Preferences.Instance.PreferencesAudio;
 		MusicManager = new MusicManager(SoundManager, p.AudioOffset);
+		MusicManager.SetMusicRate(p.MusicRate);
 		MusicManager.SetMainVolume(p.MainVolume);
 		MusicManager.SetMusicVolume(p.MusicVolume);
 		MusicManager.SetAssistTickVolume(p.AssistTickVolume);
@@ -619,6 +620,8 @@ internal sealed class Editor :
 		AddKeyCommand(sound, "Toggle Preview", new[] { Keys.P }, OnTogglePlayPreview);
 		AddKeyCommand(sound, "Toggle Assist Tick", new[] { Keys.A }, OnToggleAssistTick);
 		AddKeyCommand(sound, "Toggle Beat Tick", new[] { Keys.B }, OnToggleBeatTick);
+		AddKeyCommand(sound, "Decrease Music Rate", new[] { Keys.LeftShift, Keys.Left }, OnDecreaseMusicRate, true);
+		AddKeyCommand(sound, "Increase Music Rate", new[] { Keys.LeftShift, Keys.Right }, OnIncreaseMusicRate, true);
 
 		const string general = "General";
 		AddKeyCommand(general, "Play / Pause", new[] { Keys.Space }, OnTogglePlayback);
@@ -1505,7 +1508,8 @@ internal sealed class Editor :
 		{
 			UpdatingSongTimeDirectly = true;
 
-			Position.SongTime = PlaybackStartTime + PlaybackStopwatch.Elapsed.TotalSeconds;
+			Position.SongTime = PlaybackStartTime +
+			                    PlaybackStopwatch.Elapsed.TotalSeconds * Preferences.Instance.PreferencesAudio.MusicRate;
 
 			MusicManager.Update(ActiveChart);
 
@@ -1809,7 +1813,8 @@ internal sealed class Editor :
 		if (Playing)
 		{
 			PlaybackStartTime += timeDelta;
-			Position.SongTime = PlaybackStartTime + PlaybackStopwatch.Elapsed.TotalSeconds;
+			Position.SongTime = PlaybackStartTime +
+			                    PlaybackStopwatch.Elapsed.TotalSeconds * Preferences.Instance.PreferencesAudio.MusicRate;
 
 			if (pScroll.StopPlaybackWhenScrolling)
 			{
@@ -1874,15 +1879,20 @@ internal sealed class Editor :
 
 		StopPreview();
 
-		PlaybackStopwatch = new Stopwatch();
-		PlaybackStopwatch.Start();
-		PlaybackStartTime = Position.SongTime;
+		BeginPlaybackStopwatch(Position.SongTime);
 		MusicManager.StartPlayback(Position.SongTime);
 
 		Playing = true;
 
 		// Start updating the AutoPlayer immediately.
 		UpdateAutoPlay();
+	}
+
+	private void BeginPlaybackStopwatch(double songTime)
+	{
+		PlaybackStartTime = songTime;
+		PlaybackStopwatch = new Stopwatch();
+		PlaybackStopwatch.Start();
 	}
 
 	private void StopPlayback()
@@ -1970,6 +1980,43 @@ internal sealed class Editor :
 		MusicManager.SetMusicTimeInSeconds(Position.SongTime);
 		if (playing)
 			StartPlayback();
+	}
+
+	private void OnMusicRateChanged()
+	{
+		MusicManager.SetMusicRate(Preferences.Instance.PreferencesAudio.MusicRate);
+		if (Playing)
+		{
+			// When adjusting the rate while playing restart our timer and base it on the current music time.
+			var musicSongTime = MusicManager.GetMusicSongTime();
+			Position.SongTime = musicSongTime;
+			BeginPlaybackStopwatch(Position.SongTime);
+		}
+	}
+
+	private void OnDecreaseMusicRate()
+	{
+		var musicRate = Preferences.Instance.PreferencesAudio.MusicRate;
+		var musicRateByTens = (int)(musicRate * 10.0);
+		if (((double)musicRateByTens).DoubleEquals(musicRate * 10.0))
+			musicRateByTens--;
+		var newMusicRate = Math.Clamp(musicRateByTens / 10.0, MusicManager.MinMusicRate, MusicManager.MaxMusicRate);
+		if (newMusicRate.DoubleEquals(musicRate))
+			return;
+		ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyValue<double>(Preferences.Instance.PreferencesAudio,
+			nameof(PreferencesAudio.MusicRate), newMusicRate, false));
+	}
+
+	private void OnIncreaseMusicRate()
+	{
+		var musicRate = Preferences.Instance.PreferencesAudio.MusicRate;
+		var musicRateByTens = (int)(musicRate * 10.0);
+		musicRateByTens++;
+		var newMusicRate = Math.Clamp(musicRateByTens / 10.0, MusicManager.MinMusicRate, MusicManager.MaxMusicRate);
+		if (newMusicRate.DoubleEquals(musicRate))
+			return;
+		ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyValue<double>(Preferences.Instance.PreferencesAudio,
+			nameof(PreferencesAudio.MusicRate), newMusicRate, false));
 	}
 
 	private void OnMainVolumeChanged()
@@ -6392,9 +6439,7 @@ internal sealed class Editor :
 
 			if (Playing)
 			{
-				PlaybackStartTime = songTime;
-				PlaybackStopwatch = new Stopwatch();
-				PlaybackStopwatch.Start();
+				BeginPlaybackStopwatch(songTime);
 			}
 		}
 	}
@@ -7501,6 +7546,9 @@ internal sealed class Editor :
 		{
 			case PreferencesAudio.NotificationAudioOffsetChanged:
 				OnAudioOffsetChanged();
+				break;
+			case PreferencesAudio.NotificationMusicRateChanged:
+				OnMusicRateChanged();
 				break;
 			case PreferencesAudio.NotificationMainVolumeChanged:
 				OnMainVolumeChanged();

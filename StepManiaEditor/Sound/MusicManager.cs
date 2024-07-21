@@ -64,6 +64,16 @@ internal sealed class MusicManager
 	}
 
 	/// <summary>
+	/// Minimum music rate.
+	/// </summary>
+	public const double MinMusicRate = 0.25;
+
+	/// <summary>
+	/// Maximum music rate.
+	/// </summary>
+	public const double MaxMusicRate = 4.0;
+
+	/// <summary>
 	/// Name of the DSP this class manages.
 	/// </summary>
 	private const string DspName = "MusicDsp";
@@ -114,6 +124,11 @@ internal sealed class MusicManager
 	private long SampleIndex;
 
 	/// <summary>
+	/// Buffer for holding time stretched output.
+	/// </summary>
+	private float[] TimeStretchBuffer;
+
+	/// <summary>
 	/// List of sample indexes of upcoming assist ticks to play.
 	/// </summary>
 	private List<long> NextAssistTickStartMusicSamples;
@@ -158,6 +173,11 @@ internal sealed class MusicManager
 	/// When using the music sound for the preview, the length in samples of the period over which to fade out.
 	/// </summary>
 	private long PreviewFadeOutTimeSamples;
+
+	/// <summary>
+	/// The music rate.
+	/// </summary>
+	private double MusicRate = 1.0;
 
 	/// <summary>
 	/// The main volume.
@@ -423,6 +443,15 @@ internal sealed class MusicManager
 	public void SetMusicOffset(double offset)
 	{
 		MusicOffset = offset;
+	}
+
+	/// <summary>
+	/// Sets the music rate.
+	/// </summary>
+	/// <param name="rate">New music rate. Will be clamped to be between MinMusicRate and MaxMusicRate</param>
+	public void SetMusicRate(double rate)
+	{
+		MusicRate = Math.Clamp(rate, MinMusicRate, MaxMusicRate);
 	}
 
 	/// <summary>
@@ -705,7 +734,8 @@ internal sealed class MusicManager
 						break;
 
 					// Only tick for taps and holds.
-					if (editorEvent is EditorTapNoteEvent || editorEvent is EditorHoldNoteEvent || editorEvent is EditorLiftNoteEvent)
+					if (editorEvent is EditorTapNoteEvent || editorEvent is EditorHoldNoteEvent ||
+					    editorEvent is EditorLiftNoteEvent)
 					{
 						if (editorEvent.IsFake())
 							continue;
@@ -989,7 +1019,7 @@ internal sealed class MusicManager
 		// Get the music data.
 		float[] musicData;
 		int musicNumChannels;
-		var musicSampleIndex = 0L;
+		var musicStartSampleIndex = 0L;
 		var lastMusicSampleToUseExclusive = 0L;
 		bool musicPlaying;
 		var sampleIndexStartInclusive = 0L;
@@ -1007,12 +1037,13 @@ internal sealed class MusicManager
 				if (musicPlaying)
 				{
 					// Update the sample index used for tracking the position of all sounds.
-					musicSampleIndex = SampleIndex;
+					musicStartSampleIndex = SampleIndex;
 					sampleIndexStartInclusive = SampleIndex;
-					sampleIndexEndExclusive = sampleIndexStartInclusive + length;
+					var numMusicSamples = (int)(length * MusicRate);
+					sampleIndexEndExclusive = sampleIndexStartInclusive + numMusicSamples;
 					if (musicData != null)
 						lastMusicSampleToUseExclusive = musicData.Length / musicNumChannels;
-					SampleIndex += length;
+					SampleIndex += numMusicSamples;
 					MusicData.SetSampleIndex(SampleIndex);
 				}
 			}
@@ -1035,9 +1066,26 @@ internal sealed class MusicManager
 			return false;
 		}
 
+		// Stretch the music based on the rate as needed.
+		var musicMixSampleIndex = musicStartSampleIndex;
+		if (!MusicRate.DoubleEquals(1.0) && musicData != null)
+		{
+			if (TimeStretchBuffer == null || TimeStretchBuffer.Length != length * outChannels)
+				TimeStretchBuffer = new float[length * outChannels];
+			TimeStretcher.ProcessSound(
+				musicStartSampleIndex,
+				musicData,
+				SampleRate,
+				musicNumChannels,
+				TimeStretchBuffer,
+				MusicRate);
+			musicMixSampleIndex = 0;
+			musicData = TimeStretchBuffer;
+		}
+
 		// Advance the next tick times such that the next ones don't precede the sample range.
-		var nextAssistTickIndex = GetFirstTickInRange(nextAssistTickTimes, musicSampleIndex);
-		var nextBeatTickIndex = GetFirstTickInRange(nextBeatTickTimes, musicSampleIndex);
+		var nextAssistTickIndex = GetFirstTickInRange(nextAssistTickTimes, musicStartSampleIndex);
+		var nextBeatTickIndex = GetFirstTickInRange(nextBeatTickTimes, musicStartSampleIndex);
 
 		// Render the music and the assist ticks together.
 		var musicValuesForSample = new float[outChannels];
@@ -1045,16 +1093,20 @@ internal sealed class MusicManager
 		var beatTickValuesForSample = new float[outChannels];
 		for (var relativeSampleIndex = 0; relativeSampleIndex < length; relativeSampleIndex++)
 		{
+			// This loop loops over output samples which don't respect music rate scaling. When
+			// determining when to play ticks we need to use music's sample index which is scaled.
+			var musicScaledSampleIndex = musicStartSampleIndex + (long)(relativeSampleIndex * MusicRate);
+
 			// Check for starting new ticks.
-			CheckForStartingTick(nextAssistTickTimes, musicSampleIndex, ref nextAssistTickIndex, ref assistTickSampleIndex,
+			CheckForStartingTick(nextAssistTickTimes, musicScaledSampleIndex, ref nextAssistTickIndex, ref assistTickSampleIndex,
 				ref assistTickPlaying);
-			CheckForStartingTick(nextBeatTickTimes, musicSampleIndex, ref nextBeatTickIndex, ref beatTickSampleIndex,
+			CheckForStartingTick(nextBeatTickTimes, musicScaledSampleIndex, ref nextBeatTickIndex, ref beatTickSampleIndex,
 				ref beatTickPlaying);
 
 			// Get the values for the music for this sample.
-			if (musicSampleIndex >= 0L && musicSampleIndex < lastMusicSampleToUseExclusive)
+			if (musicMixSampleIndex >= 0L && musicMixSampleIndex < lastMusicSampleToUseExclusive)
 			{
-				Mix(musicValuesForSample, musicNumChannels, musicData, musicNumChannels, musicSampleIndex, MusicVolume);
+				Mix(musicValuesForSample, musicNumChannels, musicData, musicNumChannels, musicMixSampleIndex, MusicVolume);
 			}
 			else
 			{
@@ -1081,7 +1133,7 @@ internal sealed class MusicManager
 					 beatTickValuesForSample[channelIndex]) * MainVolume;
 			}
 
-			musicSampleIndex++;
+			musicMixSampleIndex++;
 		}
 
 		return true;
@@ -1115,9 +1167,9 @@ internal sealed class MusicManager
 	///  3: Number of samples in the SoundPlaybackState's sound.
 	///  4: The index relative to the SoundPlaybackState's sound's sample data that should be used
 	///     at the start of the DSP callback range for rendering.
-	///  5: Whether or not this sound should be playing at teh start of the DSP callback range for rendering.
+	///  5: Whether or not this sound should be playing at the start of the DSP callback range for rendering.
 	/// </returns>
-	private static (float[], int, long, long, bool) UpdateTicks(
+	private (float[], int, long, long, bool) UpdateTicks(
 		SoundPlaybackState playbackData,
 		bool musicPlaying,
 		List<long> nextTickTimes,
@@ -1145,6 +1197,7 @@ internal sealed class MusicManager
 				if (!musicPlaying)
 				{
 					playbackData.StopPlaying();
+					sampleIndex = 0L;
 					playing = false;
 				}
 
@@ -1168,10 +1221,11 @@ internal sealed class MusicManager
 							// If the assist tick overlaps the start sample of this callback, it represents a tick
 							// which should have started in the past that we need to partially render.
 							if (potentialTickStartSample < sampleIndexStartInclusive
-							    && potentialTickStartSample + numSamples > sampleIndexStartInclusive)
+							    && potentialTickStartSample + numSamples * MusicRate > sampleIndexStartInclusive)
 							{
 								playing = true;
-								sampleIndex = sampleIndexStartInclusive - potentialTickStartSample;
+								// Scale the start time by the music rate so that ticks play at an unaffected speed.
+								sampleIndex = (long)((sampleIndexStartInclusive - potentialTickStartSample) / MusicRate);
 							}
 						}
 
@@ -1203,20 +1257,26 @@ internal sealed class MusicManager
 
 					if (lastNextTickStartInRange >= 0L)
 					{
-						playbackData.StartPlaying(sampleIndexEndExclusive - lastNextTickStartInRange);
+						// Scale the start time by the music rate so that ticks play at an unaffected speed.
+						sampleIndex = (long)((sampleIndexEndExclusive - lastNextTickStartInRange) / MusicRate);
+						playbackData.StartPlaying(sampleIndex);
 					}
 					else
 					{
 						if (playbackData.IsPlaying())
 						{
-							playbackData.SetSampleIndex(playbackData.GetSampleIndex() +
-							                            (sampleIndexEndExclusive - sampleIndexStartInclusive));
+							// Scale the time by the music rate so that ticks play at an unaffected speed.
+							sampleIndex = playbackData.GetSampleIndex() +
+							              (long)((sampleIndexEndExclusive - sampleIndexStartInclusive) / MusicRate);
+							playbackData.SetSampleIndex(sampleIndex);
 						}
 					}
 
 					if (playbackData.GetSampleIndex() >= numSamples)
 					{
 						playbackData.StopPlaying();
+						sampleIndex = 0L;
+						playing = false;
 					}
 				}
 			}
@@ -1290,7 +1350,7 @@ internal sealed class MusicManager
 	{
 		if (nextTickTimes != null && nextTickIndex < nextTickTimes.Count)
 		{
-			if (musicSampleIndex == nextTickTimes[nextTickIndex])
+			if (musicSampleIndex >= nextTickTimes[nextTickIndex])
 			{
 				tickSampleIndex = 0L;
 				tickPlaying = true;

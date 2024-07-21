@@ -332,60 +332,70 @@ public class SoundManager
 			return false;
 		}
 
-		// To resample we perform four point hermite spline interpolation.
-		// Set up data for storing the source points for resampling.
-		const int numHermitePoints = 4;
-		var hermiteTimeRange = 1.0f / inputSampleRate;
-		var hermitePoints = new float[numHermitePoints];
-		var maxInputSampleIndex = len1 - bytesPerSample;
-
 		// Get a function for parsing samples.
 		var parseSample = GetParseSampleFunc(format, ptr);
 
 		try
 		{
-			var sampleIndex = 0;
-			while (sampleIndex < totalNumOutputSamples)
+			// If the same rates match, just parse each sample with no interpolation.
+			if (sampleRate == inputSampleRate)
 			{
-				// Determine the time of the desired sample.
-				var t = (double)sampleIndex / sampleRate;
-				// Find the start of the four points in the original data corresponding to this time
-				// so we can use them for hermite spline interpolation. Note the minus 1 here is to
-				// account for four samples. The floor and the minus one result in getting the sample
-				// two indexes preceding the desired time.
-				var startInputSampleIndex = (int)(t * inputSampleRate) - 1;
-				// Determine the time of the x1 sample in order to find the normalized time.
-				var x1Time = (double)(startInputSampleIndex + 1) / inputSampleRate;
-				// Determine the normalized time for the interpolation.
-				var normalizedTime = (float)((t - x1Time) / hermiteTimeRange);
+				for (var i = 0; i < outputLength; i++)
+					samples[i] = parseSample(i * bytesPerChannelPerSample);
+			}
+			else
+			{
+				// To resample we perform four point hermite spline interpolation.
+				// Set up data for storing the source points for resampling.
+				const int numHermitePoints = 4;
+				var hermiteTimeRange = 1.0f / inputSampleRate;
+				var hermitePoints = new float[numHermitePoints];
+				var maxInputSampleIndex = len1 - bytesPerSample;
 
-				for (var channel = 0; channel < numChannels; channel++)
+				var sampleIndex = 0;
+				while (sampleIndex < totalNumOutputSamples)
 				{
-					var inputChannelOffset = channel * bytesPerChannelPerSample;
+					// Determine the time of the desired sample.
+					var t = (double)sampleIndex / sampleRate;
+					// Find the start of the four points in the original data corresponding to this time
+					// so we can use them for hermite spline interpolation. Note the minus 1 here is to
+					// account for four samples. The floor and the minus one result in getting the sample
+					// two indexes preceding the desired time.
+					var startInputSampleIndex = (int)(t * inputSampleRate) - 1;
+					// Determine the time of the x1 sample in order to find the normalized time.
+					var x1Time = (double)(startInputSampleIndex + 1) / inputSampleRate;
+					// Determine the normalized time for the interpolation.
+					var normalizedTime = (float)((t - x1Time) / hermiteTimeRange);
 
-					// Get all four input points for the interpolation.
-					for (var hermiteIndex = 0; hermiteIndex < numHermitePoints; hermiteIndex++)
+					for (var channel = 0; channel < numChannels; channel++)
 					{
-						// Get the input index. We need to clamp as it is expected at the ends for the range to exceed the
-						// range of the input data.
-						var inputIndex = Math.Clamp((startInputSampleIndex + hermiteIndex) * bytesPerSample + inputChannelOffset,
-							0, maxInputSampleIndex);
-						// Parse the sample at this index.
-						// This often results in redundant parses, but in practice optimizing them out isn't a big gain
-						// and it adds a lot of complexity. The main perf hit is InterpolateHermite.
-						hermitePoints[hermiteIndex] = parseSample(inputIndex);
+						var inputChannelOffset = channel * bytesPerChannelPerSample;
+
+						// Get all four input points for the interpolation.
+						for (var hermiteIndex = 0; hermiteIndex < numHermitePoints; hermiteIndex++)
+						{
+							// Get the input index. We need to clamp as it is expected at the ends for the range to exceed the
+							// range of the input data.
+							var inputIndex = Math.Clamp(
+								(startInputSampleIndex + hermiteIndex) * bytesPerSample + inputChannelOffset,
+								0, maxInputSampleIndex);
+							// Parse the sample at this index.
+							// This often results in redundant parses, but in practice optimizing them out isn't a big gain
+							// and it adds a lot of complexity. The main perf hit is InterpolateHermite.
+							hermitePoints[hermiteIndex] = parseSample(inputIndex);
+						}
+
+						// Now that all four samples are known, interpolate them and store the result.
+						samples[sampleIndex * numChannels + channel] = Interpolation.HermiteInterpolate(hermitePoints[0],
+							hermitePoints[1], hermitePoints[2], hermitePoints[3], normalizedTime);
 					}
 
-					// Now that all four samples are known, interpolate them and store the result.
-					samples[sampleIndex * numChannels + channel] = Interpolation.HermiteInterpolate(hermitePoints[0],
-						hermitePoints[1], hermitePoints[2], hermitePoints[3], normalizedTime);
+					sampleIndex++;
+
+					// Periodically check for cancellation.
+					if (sampleIndex % 524288 == 0)
+						token.ThrowIfCancellationRequested();
 				}
-
-				sampleIndex++;
-
-				// Periodically check for cancellation.
-				if (sampleIndex % 524288 == 0)
-					token.ThrowIfCancellationRequested();
 			}
 		}
 		finally
