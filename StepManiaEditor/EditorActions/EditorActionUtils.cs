@@ -22,8 +22,8 @@ internal sealed class EditorActionUtils
 		return GetSetFieldOrPropertyString(
 			GetPrettyLogStringForObject(o),
 			GetFieldOrPropertyString(fieldOrPropertyName),
-			GetPrettyLogStringForClassValue(previousValue),
-			GetPrettyLogStringForClassValue(currentValue));
+			GetPrettyLogString(previousValue),
+			GetPrettyLogString(currentValue));
 	}
 
 	/// <summary>
@@ -37,8 +37,8 @@ internal sealed class EditorActionUtils
 		return GetSetFieldOrPropertyString(
 			GetPrettyLogStringForObject(o),
 			GetFieldOrPropertyString(fieldOrPropertyName),
-			GetPrettyLogStringForStructValue(previousValue),
-			GetPrettyLogStringForStructValue(currentValue));
+			GetPrettyLogString(previousValue),
+			GetPrettyLogString(currentValue));
 	}
 
 	private static string GetSetFieldOrPropertyString(string objectString, string propertyString, string previousString,
@@ -56,7 +56,7 @@ internal sealed class EditorActionUtils
 		return $"Update {objectString}";
 	}
 
-	private static string GetFieldOrPropertyString(string fieldOrPropertyName)
+	public static string GetFieldOrPropertyString(string fieldOrPropertyName)
 	{
 		// Omit the field or property name entirely if it just a simple type holder.
 		if (!string.IsNullOrEmpty(fieldOrPropertyName) && (
@@ -69,7 +69,7 @@ internal sealed class EditorActionUtils
 		return fieldOrPropertyName;
 	}
 
-	private static string GetPrettyLogStringForObject(object o)
+	public static string GetPrettyLogStringForObject(object o)
 	{
 		// For EditorEvents prefer their short type name representation.
 		if (o is EditorEvent e)
@@ -102,7 +102,7 @@ internal sealed class EditorActionUtils
 		return name;
 	}
 
-	private static string GetPrettyLogStringForClassValue<T>(T value) where T : class
+	public static string GetPrettyLogString<T>(T value)
 	{
 		if (value == null)
 			return Empty;
@@ -111,25 +111,12 @@ internal sealed class EditorActionUtils
 		if (value.GetType().IsGenericType && value.GetType().GetGenericTypeDefinition() == typeof(HashSet<>))
 			return null;
 
-		// If the value is a Guid try getting a nice name from the corresponding ConfigManager.
 		if (value is Guid guid)
 			return GetPrettyLogStringForGuid(guid);
 
 		// If the value is a chart get the chart's name.
 		if (value is EditorChart chart)
 			return chart.GetDescriptiveName();
-
-		var result = value.ToString();
-		if (string.IsNullOrEmpty(result))
-			result = Empty;
-		return result;
-	}
-
-	private static string GetPrettyLogStringForStructValue<T>(T value) where T : struct
-	{
-		// If the value is a Guid try getting a nice name from the corresponding ConfigManager.
-		if (value is Guid guid)
-			return GetPrettyLogStringForGuid(guid);
 
 		// Some enums look bad. Get the nice string representation.
 		if (value is Enum)

@@ -808,9 +808,9 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		};
 	}
 
-	private static Tempo CreateDefaultTempo(EditorSong editorSong)
+	private Tempo CreateDefaultTempo(EditorSong editorSong)
 	{
-		return new Tempo(editorSong.GetBestChartStartingTempo())
+		return new Tempo(editorSong.GetBestChartStartingTempo(this))
 		{
 			IntegerPosition = 0,
 			MetricPosition = new MetricPosition(0, 0),
@@ -978,6 +978,14 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	public StepDensity GetStepDensity()
 	{
 		return StepDensity;
+	}
+
+	public string GetMusicPathForPlayback()
+	{
+		var musicPath = MusicPath;
+		if (string.IsNullOrEmpty(musicPath))
+			musicPath = EditorSong.MusicPath;
+		return musicPath;
 	}
 
 	#endregion Accessors
@@ -2855,6 +2863,21 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	#endregion Cached Data
 
 	#region Misc
+
+	public void SetStartingTempo(double tempo)
+	{
+		Assert(CanBeEdited());
+		if (!CanBeEdited())
+			return;
+		foreach (var rae in RateAlteringEvents)
+		{
+			if (rae is EditorTempoEvent tempoEvent)
+			{
+				tempoEvent.DoubleValue = tempo;
+				return;
+			}
+		}
+	}
 
 	public void CopyDisplayTempo(DisplayTempo displayTempo)
 	{

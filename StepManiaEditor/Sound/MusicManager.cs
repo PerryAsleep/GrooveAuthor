@@ -1,9 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using System.Threading;
+using System.Threading.Tasks;
 using FMOD;
 using Fumen;
 using Fumen.Converters;
+using StepManiaLibrary;
 
 namespace StepManiaEditor;
 
@@ -259,8 +262,10 @@ internal sealed class MusicManager
 		SetPreviewParameters(0.0, 0.0, 0.0, 1.5);
 
 		// Load the tick sounds.
-		AssistTickData.GetSound().LoadAsync(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "assist-tick.wav"), false);
-		BeatTickData.GetSound().LoadAsync(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "beat-tick.wav"), false);
+		AssistTickData.GetSound()
+			.LoadAsync(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "assist-tick.wav"), false, false, null);
+		BeatTickData.GetSound()
+			.LoadAsync(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "beat-tick.wav"), false, false, null);
 
 		// Create the DSP.
 		SoundManager.CreateDsp(DspName, dspChannelGroup, DspRead, this);
@@ -304,6 +309,16 @@ internal sealed class MusicManager
 		return GetTimeFromSampleIndex(SampleIndex, MusicOffset);
 	}
 
+	public string GetMusicFileName()
+	{
+		return MusicData.GetSound().GetFile();
+	}
+
+	public double GetMusicLength()
+	{
+		return MusicData.GetSound().GetLengthInSeconds();
+	}
+
 	#endregion Accessors
 
 	#region Loading
@@ -313,8 +328,8 @@ internal sealed class MusicManager
 	/// </summary>
 	public void UnloadAsync()
 	{
-		LoadSoundAsync(PreviewData, null);
-		LoadSoundAsync(MusicData, null);
+		LoadSoundAsync(PreviewData, null, false, false);
+		LoadSoundAsync(MusicData, null, false, false);
 	}
 
 	/// <summary>
@@ -337,12 +352,17 @@ internal sealed class MusicManager
 	/// <param name="generateMipMap">
 	/// If true then generate a SoundMipMap for the music.
 	/// </param>
+	/// <param name="detectTempo">
+	/// If true then automatically detect the music tempo.
+	/// </param>
 	public void LoadMusicAsync(
 		string fullPathToMusicFile,
 		bool force = false,
-		bool generateMipMap = true)
+		bool generateMipMap = true,
+		bool detectTempo = false,
+		Action callbackAction = null)
 	{
-		LoadSoundAsync(MusicData, fullPathToMusicFile, force, generateMipMap);
+		LoadSoundAsync(MusicData, fullPathToMusicFile, force, generateMipMap, detectTempo, callbackAction);
 	}
 
 	/// <summary>
@@ -366,7 +386,7 @@ internal sealed class MusicManager
 		// Record that we should be using a unique preview file instead of
 		// the music file if we were given a non-empty string.
 		ShouldBeUsingPreviewFile = !string.IsNullOrEmpty(fullPathToMusicFile);
-		LoadSoundAsync(PreviewData, fullPathToMusicFile, force);
+		LoadSoundAsync(PreviewData, fullPathToMusicFile, force, false, false);
 	}
 
 	/// <summary>
@@ -379,14 +399,19 @@ internal sealed class MusicManager
 		SoundPlaybackState soundData,
 		string fullPathToSoundFile,
 		bool force = false,
-		bool generateMipMap = true)
+		bool generateMipMap = true,
+		bool detectTempo = false,
+		Action callbackAction = null)
 	{
 		// It is common for Charts to re-use the same sound files.
 		// Do not reload the sound file if we were already using it.
 		if (!force && Path.ArePathsEqual(fullPathToSoundFile, soundData.GetSound().GetFile()))
+		{
+			callbackAction?.Invoke();
 			return;
+		}
 
-		soundData.GetSound().LoadAsync(fullPathToSoundFile, generateMipMap);
+		soundData.GetSound().LoadAsync(fullPathToSoundFile, generateMipMap, detectTempo, callbackAction);
 	}
 
 	#endregion Loading
@@ -605,7 +630,7 @@ internal sealed class MusicManager
 		var neededSoundData = ShouldBeUsingPreviewFile ? PreviewData : MusicData;
 
 		// If the sound file is not loaded yet, just ignore the request.
-		if (!neededSoundData.GetSound().IsLoaded())
+		if (!neededSoundData.GetSound().IsLoaded(false))
 			return false;
 
 		// Don't play anything if the range is not valid.
@@ -856,6 +881,40 @@ internal sealed class MusicManager
 	}
 
 	#endregion Update
+
+	#region Tempo
+
+	public bool CanDetectMusicTempo()
+	{
+		return MusicData?.GetSound()?.IsLoaded(true) ?? false;
+	}
+
+	public TempoDetector.IResults GetMusicTempo()
+	{
+		return MusicData?.GetSound()?.GetTempoDetectionResults();
+	}
+
+	public bool IsDetectingMusicTempo()
+	{
+		return MusicData?.GetSound()?.IsDetectingTempo() ?? false;
+	}
+
+	public async Task<TempoDetector.IResults> DetectMusicTempo(CancellationToken token)
+	{
+		return await DetectSoundTempo(MusicData, token);
+	}
+
+	private async Task<TempoDetector.IResults> DetectSoundTempo(SoundPlaybackState soundPlaybackState, CancellationToken token)
+	{
+		if (soundPlaybackState?.GetSound() != null)
+		{
+			await soundPlaybackState.GetSound().DetectTempo(token);
+		}
+
+		return soundPlaybackState?.GetSound().GetTempoDetectionResults();
+	}
+
+	#endregion Tempo
 
 	#region DSP
 

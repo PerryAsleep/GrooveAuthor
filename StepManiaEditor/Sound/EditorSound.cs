@@ -1,8 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
+using FMOD;
 using Fumen;
+using StepManiaLibrary;
 
 namespace StepManiaEditor;
 
@@ -30,14 +33,28 @@ internal sealed class EditorSound : Notifier<EditorSound>
 		private readonly bool GenerateMipMap;
 
 		/// <summary>
+		/// Whether or not to automatically detect the tempo when the sound is loaded.
+		/// </summary>
+		private readonly bool DetectTempo;
+
+		/// <summary>
+		/// Action to invoke upon load completion.
+		/// </summary>
+		private readonly Action CompletionAction;
+
+		/// <summary>
 		/// Constructor.
 		/// </summary>
 		/// <param name="file">Name of the file to load.</param>
 		/// <param name="generateMipMap">Whether or not the EditorSound's SoundMipMap should be generated when loading.</param>
-		public SoundLoadState(string file, bool generateMipMap)
+		/// <param name="detectTempo">Whether or not to automatically detect the tempo when the sound is loaded.</param>
+		/// <param name="completionAction">Action to invoke upon load completion.</param>
+		public SoundLoadState(string file, bool generateMipMap, bool detectTempo, Action completionAction)
 		{
 			File = file;
 			GenerateMipMap = generateMipMap;
+			DetectTempo = detectTempo;
+			CompletionAction = completionAction;
 		}
 
 		public string GetFile()
@@ -48,6 +65,16 @@ internal sealed class EditorSound : Notifier<EditorSound>
 		public bool ShouldGenerateMipMap()
 		{
 			return GenerateMipMap;
+		}
+
+		public bool ShouldDetectTempo()
+		{
+			return DetectTempo;
+		}
+
+		public void InvokeCompletionAction()
+		{
+			CompletionAction?.Invoke();
 		}
 	}
 
@@ -126,11 +153,11 @@ internal sealed class EditorSound : Notifier<EditorSound>
 					// Add a task for parsing the samples into the buffer.
 					var parsingTasks = new List<Task>
 					{
-						SoundManager.FillSamplesAsync(fmodSound, Sound.SampleRate, samples, numChannels,
-							CancellationTokenSource.Token),
+						ParseSamples(fmodSound, samples, numChannels, state),
 					};
 
 					// Add a task for setting up the new sound mip map.
+					// This operates on the FMOD sound and can run in parallel.
 					if (state.ShouldGenerateMipMap() && Sound.MipMap != null)
 					{
 						parsingTasks.Add(Sound.MipMap.CreateMipMapAsync(fmodSound,
@@ -146,6 +173,32 @@ internal sealed class EditorSound : Notifier<EditorSound>
 				finally
 				{
 					SoundManager.ErrCheck(fmodSound.release());
+				}
+			}
+
+			state.InvokeCompletionAction();
+		}
+
+		private async Task ParseSamples(Sound fmodSound, float[] samples, int numChannels, SoundLoadState state)
+		{
+			// Fill the sample buffer.
+			await SoundManager.FillSamplesAsync(fmodSound, Sound.SampleRate, samples, numChannels,
+				CancellationTokenSource.Token);
+			Sound.SetSampleDataFullyLoaded();
+			CancellationTokenSource.Token.ThrowIfCancellationRequested();
+
+			// When detecting tempo it has to occur after all samples have been filled so we can read them.
+			if (state.ShouldDetectTempo())
+			{
+				Logger.Info("Analyzing tempo...");
+				await Sound.DetectTempo(CancellationTokenSource.Token);
+				if (Sound.TempoResults != null)
+				{
+					Logger.Info($"Analyzed tempo. Best result: {Sound.TempoResults.GetBestTempo():N2} bpm.");
+				}
+				else
+				{
+					Logger.Info("Analyzed tempo.");
 				}
 			}
 		}
@@ -187,6 +240,11 @@ internal sealed class EditorSound : Notifier<EditorSound>
 	private float[] SampleData;
 
 	/// <summary>
+	/// Whether or not the sample data has been fully loaded.
+	/// </summary>
+	private bool SampleDataLoaded;
+
+	/// <summary>
 	/// SoundLoadState for the most recent load.
 	/// </summary>
 	private SoundLoadState LoadState;
@@ -205,6 +263,13 @@ internal sealed class EditorSound : Notifier<EditorSound>
 	/// Optional SoundMipMap.
 	/// </summary>
 	private readonly SoundMipMap MipMap;
+
+	/// <summary>
+	/// Automatic tempo detection results.
+	/// </summary>
+	private TempoDetector.IResults TempoResults;
+
+	private bool DetectingTempo;
 
 	/// <summary>
 	/// Constructor.
@@ -237,6 +302,8 @@ internal sealed class EditorSound : Notifier<EditorSound>
 	{
 		SetSampleData(0, null);
 		MipMap?.Reset();
+		TempoResults = null;
+		DetectingTempo = false;
 	}
 
 	/// <summary>
@@ -251,9 +318,19 @@ internal sealed class EditorSound : Notifier<EditorSound>
 		{
 			NumChannels = numChannels;
 			SampleData = sampleData;
+			SampleDataLoaded = false;
 		}
 
 		Notify(NotificationSampleDataChanged, this);
+	}
+
+	/// <summary>
+	/// Sets the sample data to be fully loaded and parsed into our SampleData array.
+	/// </summary>
+	private void SetSampleDataFullyLoaded()
+	{
+		if (SampleData != null)
+			SampleDataLoaded = true;
 	}
 
 	/// <summary>
@@ -280,10 +357,11 @@ internal sealed class EditorSound : Notifier<EditorSound>
 	/// </summary>
 	/// <param name="file">Sound file to load.</param>
 	/// <param name="generateMipMap">Whether a SoundMipMap should be generated for this sound.</param>
-	public void LoadAsync(string file, bool generateMipMap)
+	/// <param name="detectTempo">Whether or not to automatically detect the tempo when the sound is loaded.</param>
+	public void LoadAsync(string file, bool generateMipMap, bool detectTempo, Action completionAction)
 	{
 		StopObservingFile();
-		LoadState = new SoundLoadState(file, generateMipMap);
+		LoadState = new SoundLoadState(file, generateMipMap, detectTempo, completionAction);
 		StartObservingFile();
 		LoadAsyncFromLoadState();
 	}
@@ -316,9 +394,13 @@ internal sealed class EditorSound : Notifier<EditorSound>
 	/// Returns whether or not the sound data is loaded from disk.
 	/// </summary>
 	/// <returns>True if the data is loaded and false otherwise.</returns>
-	public bool IsLoaded()
+	public bool IsLoaded(bool completelyLoaded)
 	{
-		return SampleData != null;
+		if (SampleData == null)
+			return false;
+		if (completelyLoaded)
+			return SampleDataLoaded;
+		return true;
 	}
 
 	/// <summary>
@@ -337,6 +419,60 @@ internal sealed class EditorSound : Notifier<EditorSound>
 	public SoundMipMap GetSoundMipMap()
 	{
 		return MipMap;
+	}
+
+	/// <summary>
+	/// Asynchronously detect this sound's tempo.
+	/// Results will be returned, and stored internally for later access via GetTempoDetectionResults.
+	/// </summary>
+	/// <param name="token">CancellationToken.</param>
+	/// <returns>Tempo detection results.</returns>
+	public async Task<TempoDetector.IResults> DetectTempo(CancellationToken token)
+	{
+		if (DetectingTempo)
+		{
+			throw new InvalidOperationException("Cannot detect tempo while already detecting tempo.");
+		}
+
+		DetectingTempo = true;
+		TempoResults = null;
+		if (!IsLoaded(true))
+		{
+			DetectingTempo = false;
+			return TempoResults;
+		}
+
+		var (numChannels, data) = GetSampleData();
+		if (data == null)
+		{
+			DetectingTempo = false;
+			return TempoResults;
+		}
+
+		var settings = Preferences.Instance.PreferencesTempoDetection.CreateSettings(numChannels, (int)SampleRate);
+		var results = await TempoDetector.DetectTempo(data, settings, token);
+		token.ThrowIfCancellationRequested();
+		TempoResults = results;
+		DetectingTempo = false;
+		return TempoResults;
+	}
+
+	/// <summary>
+	/// Returns whether or not the tempo is currently being detected.
+	/// </summary>
+	/// <returns>True if the tempo is currently being detected and false otherwise.</returns>
+	public bool IsDetectingTempo()
+	{
+		return DetectingTempo;
+	}
+
+	/// <summary>
+	/// Gets previously cached tempo detection results.
+	/// </summary>
+	/// <returns>Cached tempo detection results.</returns>
+	public TempoDetector.IResults GetTempoDetectionResults()
+	{
+		return TempoResults;
 	}
 
 	#region File Observation

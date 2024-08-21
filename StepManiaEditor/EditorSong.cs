@@ -88,6 +88,8 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 	/// </summary>
 	private readonly Dictionary<ChartType, List<EditorChart>> Charts = new();
 
+	private readonly Dictionary<string, double> TemposForMusicFiles = new();
+
 	/// <summary>
 	/// The EditorChart to use for song timing data.
 	/// StepMania requires some timing data to be persisted at the Song level.
@@ -1003,33 +1005,6 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 		return true;
 	}
 
-	public double GetBestChartStartingTempo()
-	{
-		var histogram = new Dictionary<double, int>();
-		foreach (var kvp in Charts)
-		{
-			foreach (var chart in kvp.Value)
-			{
-				var tempo = chart.GetStartingTempo();
-				if (histogram.TryGetValue(tempo, out var count))
-				{
-					histogram[tempo] = count + 1;
-				}
-				else
-				{
-					histogram.Add(tempo, 1);
-				}
-			}
-		}
-
-		if (histogram.Count > 0)
-		{
-			return histogram.Aggregate((x, y) => x.Value > y.Value ? x : y).Key;
-		}
-
-		return EditorChart.DefaultTempo;
-	}
-
 	public Fraction GetBestChartStartingTimeSignature()
 	{
 		var histogram = new Dictionary<Fraction, int>();
@@ -1115,7 +1090,80 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 		}
 	}
 
+	public string GetFullPathToSongResource(string relativeFile)
+	{
+		// Most Charts in StepMania use relative paths for their music files.
+		// Determine the absolute path.
+		string fullPath = null;
+		if (!string.IsNullOrEmpty(relativeFile))
+		{
+			if (System.IO.Path.IsPathRooted(relativeFile))
+				fullPath = relativeFile;
+			else
+				fullPath = Path.Combine(GetFileDirectory(), relativeFile);
+		}
+
+		return fullPath;
+	}
+
 	#endregion Misc
+
+	#region Tempo
+
+	public void SetTempoForMusicFile(double tempo, string musicFile)
+	{
+		musicFile = GetFullPathToSongResource(musicFile);
+		TemposForMusicFiles[musicFile] = tempo;
+	}
+
+	public bool TryGetTempoForMusicFile(string musicFile, out double tempo)
+	{
+		musicFile = GetFullPathToSongResource(musicFile);
+		return TemposForMusicFiles.TryGetValue(musicFile, out tempo);
+	}
+
+	public bool RemoveTempoForMusicFile(string musicFile)
+	{
+		musicFile = GetFullPathToSongResource(musicFile);
+		return TemposForMusicFiles.Remove(musicFile);
+	}
+
+	public double GetBestChartStartingTempo(EditorChart chart)
+	{
+		// Use the most common tempo from other charts.
+		var histogram = new Dictionary<double, int>();
+		foreach (var kvp in Charts)
+		{
+			foreach (var existingChart in kvp.Value)
+			{
+				var tempo = existingChart.GetStartingTempo();
+				if (histogram.TryGetValue(tempo, out var count))
+				{
+					histogram[tempo] = count + 1;
+				}
+				else
+				{
+					histogram.Add(tempo, 1);
+				}
+			}
+		}
+
+		if (histogram.Count > 0)
+		{
+			return histogram.Aggregate((x, y) => x.Value > y.Value ? x : y).Key;
+		}
+
+		// If no other chart exists, try to use the tempo for the chart's music, if we have one.
+		var musicFile = GetFullPathToSongResource(chart.GetMusicPathForPlayback());
+		if (TemposForMusicFiles.TryGetValue(musicFile, out var tempoForMusic))
+		{
+			return tempoForMusic;
+		}
+
+		return EditorChart.DefaultTempo;
+	}
+
+	#endregion Tempo
 
 	#region Time-Based Event Shifting
 

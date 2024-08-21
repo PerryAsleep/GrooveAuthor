@@ -188,6 +188,7 @@ internal sealed class Editor :
 	private UIReceptorPreferences UIReceptorPreferences;
 	private UIOptions UIOptions;
 	private UIAudioPreferences UIAudioPreferences;
+	private UIDetectTempo UIDetectTempo;
 	private UIChartPosition UIChartPosition;
 	private UIExpressedChartConfig UIExpressedChartConfig;
 	private UIPerformedChartConfig UIPerformedChartConfig;
@@ -219,6 +220,8 @@ internal sealed class Editor :
 	private SongLoadTask SongLoadTask;
 	private FileSystemWatcher SongFileWatcher;
 	private bool ShouldCheckForShowingSongFileChangedNotification;
+	private bool ShouldApplyDetectedTempo;
+	private EditorSong DetectedTempoSong;
 	private int GarbageCollectFrame;
 
 	private readonly Dictionary<ChartType, PadData> PadDataByChartType = new();
@@ -646,10 +649,12 @@ internal sealed class Editor :
 		UIControls.AddCommand(navigation, "Move Up", "Scroll Up");
 		AddKeyCommand(navigation, "Move Down", new[] { Keys.Down }, OnMoveDown, true);
 		UIControls.AddCommand(navigation, "Move Down", "Scroll Down");
-		AddKeyCommand(navigation, "Move To Previous Measure", new[] { Keys.PageUp }, OnMoveToPreviousMeasure, true, null, true);
-		AddKeyCommand(navigation, "Move To Next Measure", new[] { Keys.PageDown }, OnMoveToNextMeasure, true, null, true);
-		AddKeyCommand(navigation, "Move To Chart Start", new[] { Keys.Home }, OnMoveToChartStart, false, null, true);
-		AddKeyCommand(navigation, "Move To Chart End", new[] { Keys.End }, OnMoveToChartEnd, false, null, true);
+		AddKeyCommand(navigation, "Move To Previous Measure", new[] { Keys.PageUp }, OnMoveToPreviousMeasure);
+		AddKeyCommand(navigation, "Move To Next Measure", new[] { Keys.PageDown }, OnMoveToNextMeasure);
+		AddKeyCommand(navigation, "Move To Chart Start", new[] { Keys.Home }, OnMoveToChartStart);
+		AddKeyCommand(navigation, "Move To Chart End", new[] { Keys.End }, OnMoveToChartEnd);
+		AddKeyCommand(navigation, "Move To Music Start", new[] { Keys.LeftControl, Keys.Home }, OnMoveToMusicStart);
+		AddKeyCommand(navigation, "Move To Music End", new[] { Keys.LeftControl, Keys.End }, OnMoveToMusicEnd);
 		AddKeyCommand(navigation, "Move To Next Label", new[] { Keys.LeftControl, Keys.L }, OnMoveToNextLabel, true);
 		AddKeyCommand(navigation, "Move To Previous Label", new[] { Keys.LeftControl, Keys.LeftShift, Keys.L }, OnMoveToPreviousLabel, true);
 
@@ -958,6 +963,7 @@ internal sealed class Editor :
 		UIReceptorPreferences = new UIReceptorPreferences(this);
 		UIOptions = new UIOptions();
 		UIAudioPreferences = new UIAudioPreferences(SoundManager);
+		UIDetectTempo = new UIDetectTempo(this, MusicManager);
 		UIChartPosition = new UIChartPosition(this);
 		UIExpressedChartConfig = new UIExpressedChartConfig(this);
 		UIPerformedChartConfig = new UIPerformedChartConfig(this);
@@ -1426,6 +1432,8 @@ internal sealed class Editor :
 
 			ActiveSong?.Update();
 			SoundManager.Update();
+
+			CheckForApplyingDetectedTempo();
 
 			ProcessInput(gameTime, currentTime);
 
@@ -1950,7 +1958,13 @@ internal sealed class Editor :
 	private void OnMusicChanged()
 	{
 		StopPreview();
-		MusicManager.LoadMusicAsync(GetFullPathToMusicFile(), false, Preferences.Instance.PreferencesWaveForm.EnableWaveForm);
+		var activeSong = ActiveSong;
+		MusicManager.LoadMusicAsync(
+			GetFullPathToMusicFile(),
+			false,
+			Preferences.Instance.PreferencesWaveForm.EnableWaveForm,
+			true,
+			() => { OnMusicLoadComplete(activeSong); });
 	}
 
 	private void OnMusicPreviewChanged()
@@ -1966,6 +1980,12 @@ internal sealed class Editor :
 	}
 
 	private void OnSyncOffsetChanged()
+	{
+		// Re-set the position to recompute the chart and song times.
+		Position.ChartPosition = Position.ChartPosition;
+	}
+
+	private void OnTimingChanged()
 	{
 		// Re-set the position to recompute the chart and song times.
 		Position.ChartPosition = Position.ChartPosition;
@@ -2077,6 +2097,40 @@ internal sealed class Editor :
 	private void OnSkipBeatTickOnAssistTickChanged()
 	{
 		MusicManager.SetSkipBeatTicksOnAssistTicks(Preferences.Instance.PreferencesAudio.SkipBeatTickOnAssistTick);
+	}
+
+	private void OnMusicLoadComplete(EditorSong song)
+	{
+		DetectedTempoSong = song;
+		ShouldApplyDetectedTempo = true;
+	}
+
+	private void CheckForApplyingDetectedTempo()
+	{
+		if (!ShouldApplyDetectedTempo)
+			return;
+
+		ShouldApplyDetectedTempo = false;
+		var detectedSong = DetectedTempoSong;
+		DetectedTempoSong = null;
+
+		if (ActiveSong == null || ActiveSong != detectedSong)
+			return;
+
+		var tempoResults = MusicManager.GetMusicTempo();
+		if (tempoResults == null)
+			return;
+
+		var musicFile = MusicManager.GetMusicFileName();
+		var bestTempo = tempoResults.GetBestTempo();
+
+		// TODO: If this was the result of dragging in a new song file then we should also
+		// prompt for updating the tempos of the charts.
+
+		if (!ActiveSong.TryGetTempoForMusicFile(musicFile, out _))
+		{
+			ActiveSong.SetTempoForMusicFile(bestTempo, musicFile);
+		}
 	}
 
 	#endregion Playing Music
@@ -3892,6 +3946,7 @@ internal sealed class Editor :
 		UIReceptorPreferences.Draw();
 		UIOptions.Draw();
 		UIAudioPreferences.Draw();
+		UIDetectTempo.Draw();
 		UIStreamPreferences.Draw();
 		UIDensityGraphPreferences.Draw();
 
@@ -4289,6 +4344,11 @@ internal sealed class Editor :
 				{
 					p.PreferencesAudio.ShowAudioPreferencesWindow = true;
 					ImGui.SetWindowFocus(UIAudioPreferences.WindowTitle);
+				}
+
+				if (ImGui.MenuItem("Detect Tempo"))
+				{
+					UIDetectTempo.Show();
 				}
 
 				ImGui.EndMenu();
@@ -5280,38 +5340,16 @@ internal sealed class Editor :
 
 	private string GetFullPathToMusicFile()
 	{
-		string musicFile = null;
-
-		// If the active chart has a music file defined, use that.
+		if (ActiveSong == null)
+			return null;
 		if (ActiveChart != null)
-			musicFile = ActiveChart.MusicPath;
-
-		// If the active chart does not have a music file defined, fall back to use the song's music file.
-		if (string.IsNullOrEmpty(musicFile))
-			musicFile = ActiveSong?.MusicPath;
-
-		return GetFullPathToSongResource(musicFile);
+			return ActiveSong.GetFullPathToSongResource(ActiveChart.GetMusicPathForPlayback());
+		return ActiveSong.GetFullPathToSongResource(ActiveSong.MusicPath);
 	}
 
 	private string GetFullPathToMusicPreviewFile()
 	{
-		return GetFullPathToSongResource(ActiveSong?.MusicPreviewPath);
-	}
-
-	private string GetFullPathToSongResource(string relativeFile)
-	{
-		// Most Charts in StepMania use relative paths for their music files.
-		// Determine the absolute path.
-		string fullPath = null;
-		if (!string.IsNullOrEmpty(relativeFile))
-		{
-			if (System.IO.Path.IsPathRooted(relativeFile))
-				fullPath = relativeFile;
-			else
-				fullPath = Path.Combine(ActiveSong.GetFileDirectory(), relativeFile);
-		}
-
-		return fullPath;
+		return ActiveSong?.GetFullPathToSongResource(ActiveSong?.MusicPreviewPath);
 	}
 
 	private void OnOpenContainingFolder()
@@ -6668,6 +6706,26 @@ internal sealed class Editor :
 		UpdateAutoPlayFromScrolling();
 	}
 
+	private void OnMoveToMusicStart()
+	{
+		if (Preferences.Instance.PreferencesScroll.StopPlaybackWhenScrolling)
+			StopPlayback();
+
+		Position.SongTime = 0.0;
+
+		UpdateAutoPlayFromScrolling();
+	}
+
+	private void OnMoveToMusicEnd()
+	{
+		if (Preferences.Instance.PreferencesScroll.StopPlaybackWhenScrolling)
+			StopPlayback();
+
+		Position.SongTime = MusicManager.GetMusicLength();
+
+		UpdateAutoPlayFromScrolling();
+	}
+
 	#endregion Chart Navigation
 
 	#region Lane Input
@@ -7530,6 +7588,9 @@ internal sealed class Editor :
 				break;
 			case EditorChart.NotificationPatternRequestEdit:
 				OnSelectPattern((EditorPatternEvent)payload);
+				break;
+			case EditorChart.NotificationTimingChanged:
+				OnTimingChanged();
 				break;
 		}
 	}

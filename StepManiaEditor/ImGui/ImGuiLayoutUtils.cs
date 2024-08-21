@@ -456,7 +456,7 @@ internal sealed class ImGuiLayoutUtils
 			"Optional text to use when sorting by this value.\nStepMania sorts values lexicographically, preferring transliterations.");
 	}
 
-	private static void DrawTextInput(bool undoable, string title, object o, string fieldName, float width,
+	public static void DrawTextInput(bool undoable, string title, object o, string fieldName, float width,
 		bool affectsFile, Func<string, bool> validationFunc = null, string help = null)
 	{
 		(bool, string) Func(string v)
@@ -1097,7 +1097,7 @@ internal sealed class ImGuiLayoutUtils
 			max);
 	}
 
-	private static bool DrawDragInt(
+	public static bool DrawDragInt(
 		bool undoable,
 		string title,
 		object o,
@@ -1536,7 +1536,7 @@ internal sealed class ImGuiLayoutUtils
 			PopDisabled();
 	}
 
-	private static bool DrawDragFloat(
+	public static bool DrawDragFloat(
 		bool undoable,
 		string title,
 		object o,
@@ -1767,7 +1767,7 @@ internal sealed class ImGuiLayoutUtils
 		}
 	}
 
-	private static bool DrawDragDouble(
+	public static bool DrawDragDouble(
 		bool undoable,
 		string title,
 		object o,

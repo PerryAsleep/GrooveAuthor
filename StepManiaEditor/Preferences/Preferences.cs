@@ -96,6 +96,7 @@ internal sealed class Preferences
 
 	// Audio preferences
 	[JsonInclude] public PreferencesAudio PreferencesAudio = new();
+	[JsonInclude] public PreferencesTempoDetection PreferencesTempoDetection = new();
 
 	// Animations preferences
 	[JsonInclude] public PreferencesReceptors PreferencesReceptors = new();
@@ -162,6 +163,7 @@ internal sealed class Preferences
 		PreferencesReceptors.SetEditor(Editor);
 		PreferencesWaveForm.PostLoad();
 		PreferencesDensityGraph.PostLoad();
+		PreferencesTempoDetection.PostLoad();
 	}
 
 	private void PreSave()
