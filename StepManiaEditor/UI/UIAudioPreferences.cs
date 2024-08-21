@@ -1,4 +1,5 @@
-﻿using ImGuiNET;
+﻿using Fumen;
+using ImGuiNET;
 using static StepManiaEditor.ImGuiUtils;
 
 namespace StepManiaEditor;
