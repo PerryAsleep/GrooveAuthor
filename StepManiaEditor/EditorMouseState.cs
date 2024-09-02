@@ -5,6 +5,104 @@ using Microsoft.Xna.Framework.Input;
 
 namespace StepManiaEditor;
 
+internal interface IReadOnlyEditorMouseState
+{
+	public EditorButtonState GetButtonState(EditorMouseState.Button button);
+
+	public int X();
+
+	public int Y();
+
+	public IReadOnlyEditorPosition GetEditorPosition();
+
+	public int ScrollDeltaSinceLastFrame();
+}
+
+/// <summary>
+/// State for one mouse button.
+/// </summary>
+internal sealed class EditorButtonState
+{
+	private bool IsDown;
+	private bool PreviousDown;
+	private bool InFocus;
+	private Vector2 LastClickDownPosition;
+	private Vector2 LastClickUpPosition;
+	private readonly int ImGuiMouseButtonIndex;
+
+	public EditorButtonState(int imGuiMouseButtonIndex)
+	{
+		ImGuiMouseButtonIndex = imGuiMouseButtonIndex;
+	}
+
+	public void Update(bool down, bool inFocus, int x, int y)
+	{
+		var lostFocusWhileDown = InFocus && !inFocus && IsDown;
+
+		PreviousDown = IsDown;
+		IsDown = down;
+		InFocus = inFocus;
+		if (DownThisFrame())
+		{
+			LastClickDownPosition = new Vector2(x, y);
+			ImGui.GetIO().AddMouseButtonEvent(ImGuiMouseButtonIndex, true);
+		}
+
+		if (UpThisFrame())
+		{
+			LastClickUpPosition = new Vector2(x, y);
+			ImGui.GetIO().AddMouseButtonEvent(ImGuiMouseButtonIndex, false);
+		}
+
+		// Internally Dear ImGui has handling for cancelling input when the application
+		// loses focus, but in practice even when calling ClearInputKeys directly ImGui
+		// still retains some data as if it thinks a button is down. For example, if the
+		// user is holding left the left mouse button to move a Window, then uses alt+tab
+		// to background the application, then releases the left mouse button, then
+		// alt+tabs back, the Window will continue to move with the mouse. In order to
+		// prevent this behavior, tell ImGui to release a button if we lose focus.
+		if (lostFocusWhileDown)
+		{
+			ImGui.GetIO().AddMouseButtonEvent(ImGuiMouseButtonIndex, false);
+		}
+	}
+
+	public bool DownThisFrame()
+	{
+		return InFocus && IsDown && !PreviousDown;
+	}
+
+	public bool UpThisFrame()
+	{
+		return InFocus && !IsDown && PreviousDown;
+	}
+
+	public bool Down()
+	{
+		return InFocus && IsDown;
+	}
+
+	public bool Up()
+	{
+		return InFocus && !IsDown;
+	}
+
+	public Vector2 GetLastClickDownPosition()
+	{
+		return LastClickDownPosition;
+	}
+
+	public Vector2 GetLastClickUpPosition()
+	{
+		return LastClickUpPosition;
+	}
+
+	public bool ClickedThisFrame()
+	{
+		return UpThisFrame() && LastClickUpPosition == LastClickDownPosition;
+	}
+}
+
 /// <summary>
 /// Class to hold mouse state for the Editor.
 /// Tracks the EditorPosition for the mouse.
@@ -13,7 +111,7 @@ namespace StepManiaEditor;
 ///  Call SetActiveChart() when the active chart changes.
 ///  Call Update() once per frame with the current mouse state.
 /// </summary>
-internal sealed class EditorMouseState
+internal sealed class EditorMouseState : IReadOnlyEditorMouseState
 {
 	/// <summary>
 	/// Mouse Buttons.
@@ -28,106 +126,21 @@ internal sealed class EditorMouseState
 	}
 
 	/// <summary>
-	/// State for one mouse button.
-	/// </summary>
-	internal sealed class ButtonState
-	{
-		private bool IsDown;
-		private bool PreviousDown;
-		private bool InFocus;
-		private Vector2 LastClickDownPosition;
-		private Vector2 LastClickUpPosition;
-		private readonly int ImGuiMouseButtonIndex;
-
-		public ButtonState(int imGuiMouseButtonIndex)
-		{
-			ImGuiMouseButtonIndex = imGuiMouseButtonIndex;
-		}
-
-		public void Update(bool down, bool inFocus, int x, int y)
-		{
-			var lostFocusWhileDown = InFocus && !inFocus && IsDown;
-
-			PreviousDown = IsDown;
-			IsDown = down;
-			InFocus = inFocus;
-			if (DownThisFrame())
-			{
-				LastClickDownPosition = new Vector2(x, y);
-				ImGui.GetIO().AddMouseButtonEvent(ImGuiMouseButtonIndex, true);
-			}
-
-			if (UpThisFrame())
-			{
-				LastClickUpPosition = new Vector2(x, y);
-				ImGui.GetIO().AddMouseButtonEvent(ImGuiMouseButtonIndex, false);
-			}
-
-			// Internally Dear ImGui has handling for cancelling input when the application
-			// loses focus, but in practice even when calling ClearInputKeys directly ImGui
-			// still retains some data as if it thinks a button is down. For example, if the
-			// user is holding left the left mouse button to move a Window, then uses alt+tab
-			// to background the application, then releases the left mouse button, then
-			// alt+tabs back, the Window will continue to move with the mouse. In order to
-			// prevent this behavior, tell ImGui to release a button if we lose focus.
-			if (lostFocusWhileDown)
-			{
-				ImGui.GetIO().AddMouseButtonEvent(ImGuiMouseButtonIndex, false);
-			}
-		}
-
-		public bool DownThisFrame()
-		{
-			return InFocus && IsDown && !PreviousDown;
-		}
-
-		public bool UpThisFrame()
-		{
-			return InFocus && !IsDown && PreviousDown;
-		}
-
-		public bool Down()
-		{
-			return InFocus && IsDown;
-		}
-
-		public bool Up()
-		{
-			return InFocus && !IsDown;
-		}
-
-		public Vector2 GetLastClickDownPosition()
-		{
-			return LastClickDownPosition;
-		}
-
-		public Vector2 GetLastClickUpPosition()
-		{
-			return LastClickUpPosition;
-		}
-
-		public bool ClickedThisFrame()
-		{
-			return UpThisFrame() && LastClickUpPosition == LastClickDownPosition;
-		}
-	}
-
-	/// <summary>
 	/// The EditorPosition for the mouse based on the current position and the active chart.
 	/// </summary>
-	private readonly EditorPosition Position = new(null);
+	private readonly EditorPosition Position = new(null, null);
 
 	// Mouse state.
 	private MouseState CurrentMouseState;
 	private MouseState PreviousMouseState;
 
-	private readonly Dictionary<Button, ButtonState> States = new()
+	private readonly Dictionary<Button, EditorButtonState> States = new()
 	{
-		[Button.Left] = new ButtonState(0),
-		[Button.Right] = new ButtonState(1),
-		[Button.Middle] = new ButtonState(2),
-		[Button.X1] = new ButtonState(3),
-		[Button.X2] = new ButtonState(4),
+		[Button.Left] = new EditorButtonState(0),
+		[Button.Right] = new EditorButtonState(1),
+		[Button.Middle] = new EditorButtonState(2),
+		[Button.X1] = new EditorButtonState(3),
+		[Button.X2] = new EditorButtonState(4),
 	};
 
 	public void SetActiveChart(EditorChart activeChart)
@@ -155,14 +168,14 @@ internal sealed class EditorMouseState
 		}
 
 		// Update each button.
-		States[Button.Left].Update(CurrentMouseState.LeftButton == Microsoft.Xna.Framework.Input.ButtonState.Pressed, inFocus, x,
+		States[Button.Left].Update(CurrentMouseState.LeftButton == ButtonState.Pressed, inFocus, x,
 			y);
-		States[Button.Right].Update(CurrentMouseState.RightButton == Microsoft.Xna.Framework.Input.ButtonState.Pressed, inFocus,
+		States[Button.Right].Update(CurrentMouseState.RightButton == ButtonState.Pressed, inFocus,
 			x, y);
-		States[Button.Middle].Update(CurrentMouseState.MiddleButton == Microsoft.Xna.Framework.Input.ButtonState.Pressed, inFocus,
+		States[Button.Middle].Update(CurrentMouseState.MiddleButton == ButtonState.Pressed, inFocus,
 			x, y);
-		States[Button.X1].Update(CurrentMouseState.XButton1 == Microsoft.Xna.Framework.Input.ButtonState.Pressed, inFocus, x, y);
-		States[Button.X2].Update(CurrentMouseState.XButton2 == Microsoft.Xna.Framework.Input.ButtonState.Pressed, inFocus, x, y);
+		States[Button.X1].Update(CurrentMouseState.XButton1 == ButtonState.Pressed, inFocus, x, y);
+		States[Button.X2].Update(CurrentMouseState.XButton2 == ButtonState.Pressed, inFocus, x, y);
 
 		// Update the Position.
 		if (Position.ActiveChart == null)
@@ -180,7 +193,7 @@ internal sealed class EditorMouseState
 		}
 	}
 
-	public ButtonState GetButtonState(Button button)
+	public EditorButtonState GetButtonState(Button button)
 	{
 		return States[button];
 	}

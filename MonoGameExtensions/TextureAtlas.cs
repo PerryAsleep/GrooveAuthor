@@ -4,12 +4,19 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace MonoGameExtensions;
 
+public interface IReadOnlyTextureAtlas
+{
+	public (int, int) GetDimensions(string subTextureId);
+	public (int, int) GetDimensions();
+	public (int, int, int, int) GetSubTextureBounds(string subTextureId);
+}
+
 /// <summary>
 /// TextureAtlas wraps a texture containing sub-textures in order to reduce draw calls.
 /// Sub-textures have unique string identifiers.
 /// Sub-textures may have mip levels.
 /// </summary>
-public abstract class TextureAtlas
+public abstract class TextureAtlas : IReadOnlyTextureAtlas
 {
 	/// <summary>
 	/// A node in the TextureAtlas containing the location of the sub-texture and

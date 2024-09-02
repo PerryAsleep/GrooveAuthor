@@ -29,11 +29,11 @@ internal sealed class ActionSelectChart : EditorAction
 
 	protected override void DoImplementation()
 	{
-		Editor.OnChartSelected(Chart, false);
+		Editor.SetChartFocused(Chart);
 	}
 
 	protected override void UndoImplementation()
 	{
-		Editor.OnChartSelected(PreviousChart, false);
+		Editor.SetChartFocused(PreviousChart);
 	}
 }

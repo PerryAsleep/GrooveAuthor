@@ -5,6 +5,16 @@ using Microsoft.Xna.Framework.Input;
 
 namespace StepManiaEditor;
 
+public interface IReadOnlyKeyCommandManager
+{
+	public bool IsKeyDownThisFrame(Keys key);
+	public bool IsControlDown();
+	public bool IsShiftDown();
+	public bool IsAltDown();
+	public bool IsWinDown();
+	public bool IsKeyDown(Keys key);
+}
+
 /// <summary>
 /// Handles registering and invoking Actions in response to configurable key presses.
 ///
@@ -12,7 +22,7 @@ namespace StepManiaEditor;
 ///  Register Commands with Register.
 ///  Call Update once each frame.
 /// </summary>
-public class KeyCommandManager
+internal sealed class KeyCommandManager : IReadOnlyKeyCommandManager
 {
 	/// <summary>
 	/// For repeatable Commands, number of seconds the keys need to be held for before the first repeat occurs.

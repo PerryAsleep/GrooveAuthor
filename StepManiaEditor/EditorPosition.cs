@@ -24,6 +24,8 @@ internal interface IReadOnlyEditorPosition
 /// </summary>
 internal sealed class EditorPosition : IReadOnlyEditorPosition
 {
+	public static readonly EditorPosition Zero = new(null, null);
+
 	private EditorChart ActiveChartInternal;
 
 	public EditorChart ActiveChart
@@ -154,9 +156,10 @@ internal sealed class EditorPosition : IReadOnlyEditorPosition
 	private double ChartPositionAtStartOfInterpolation;
 	private double DesiredChartPosition;
 
-	public EditorPosition(Action onPositionChanged)
+	public EditorPosition(Action onPositionChanged, EditorChart activeChart)
 	{
 		Reset();
+		ActiveChart = activeChart;
 		OnPositionChanged = onPositionChanged;
 	}
 

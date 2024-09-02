@@ -13,6 +13,7 @@ internal sealed class UIChartList
 
 	private static readonly int TypeWidth = UiScaled(60);
 	private static readonly int RatingWidth = UiScaled(16);
+	private static readonly int CheckboxWidth = UiScaled(16);
 	private static readonly int AddChartWidth = UiScaled(86);
 	private static readonly float DefaultPositionX = UiScaled(0);
 	private static readonly float DefaultPositionY = UiScaled(901);
@@ -56,11 +57,13 @@ internal sealed class UIChartList
 			ChartPendingClone = null;
 
 			var numCharts = DrawChartList(
+				Editor,
 				editorSong,
 				editorChart,
 				ChartRightClickMenu,
-				selectedChart => { Editor.OnChartSelected(selectedChart); },
+				selectedChart => { Editor.SetChartFocused(selectedChart); },
 				false,
+				true,
 				null);
 
 			if (ChartPendingDelete != null)
@@ -127,6 +130,7 @@ internal sealed class UIChartList
 	/// The charts are grouped and sorted and formatted nicely.
 	/// The list can be drawn as Selectable items or as BeginMenu items.
 	/// </summary>
+	/// <param name="editor">Editor Instance, needed for selection checkboxes.</param>
 	/// <param name="activeSong">The active Song to derive the Chart list from.</param>
 	/// <param name="activeChart">The currently active Chart.</param>
 	/// <param name="onRightClick">(Selectable only) Action to invoke when right-clicked.</param>
@@ -135,14 +139,17 @@ internal sealed class UIChartList
 	/// If true then draw rows as BeginMenu items.
 	/// If false then draw rows as Selectable items.
 	/// </param>
+	/// <param name="withSelectionCheckBoxes">If true then draw rows with selection checkboxes.</param>
 	/// <param name="onMenu">(BeginMenu only) Action to invoke when selected in menu.</param>
 	/// <returns>Number of charts drawn.</returns>
 	public static int DrawChartList(
+		Editor editor,
 		EditorSong activeSong,
 		EditorChart activeChart,
 		Action<EditorChart> onRightClick,
 		Action<EditorChart> onSelected,
 		bool asBeginMenuItems,
+		bool withSelectionCheckBoxes,
 		Action<EditorChart> onMenu)
 	{
 		var numCharts = 0;
@@ -156,14 +163,19 @@ internal sealed class UIChartList
 				{
 					if (numCharts > 0)
 					{
-						ImGui.EndTable();
 						ImGui.Separator();
 					}
 
 					ImGui.Text(GetPrettyEnumString(chartType));
 
-					var ret = ImGui.BeginTable($"{chartType}Charts", 3,
-						ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders);
+					var width = ImGui.GetContentRegionAvail().X;
+					if (withSelectionCheckBoxes)
+					{
+						width -= CheckboxWidth + ImGui.GetStyle().CellPadding.X * 2;
+					}
+
+					var ret = ImGui.BeginTable($"{chartType}Charts", 3, ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders,
+						new Vector2(width, 0));
 					if (ret)
 					{
 						ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, TypeWidth);
@@ -184,13 +196,48 @@ internal sealed class UIChartList
 							onMenu);
 					}
 
+					ImGui.EndTable();
+
+					if (withSelectionCheckBoxes)
+					{
+						var originalItemSpacingX = ImGui.GetStyle().ItemSpacing.X;
+						var originalItemSpacingY = ImGui.GetStyle().ItemSpacing.Y;
+						var originalFramePaddingX = ImGui.GetStyle().FramePadding.X;
+						var originalFramePaddingY = ImGui.GetStyle().FramePadding.Y;
+
+						// Set the padding and spacing so we can draw dummy boxes to offset the image.
+						ImGui.GetStyle().ItemSpacing.X = 0;
+						ImGui.GetStyle().ItemSpacing.Y = 0;
+						ImGui.GetStyle().FramePadding.X = 0;
+						ImGui.GetStyle().FramePadding.Y = 0;
+
+						ImGui.SameLine();
+
+						width = CheckboxWidth + ImGui.GetStyle().CellPadding.X * 2;
+						ret = ImGui.BeginTable($"{chartType}Charts Checkboxes", 1,
+							ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders, new Vector2(width, 0));
+						if (ret)
+						{
+							ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100);
+						}
+
+						index = 0;
+						foreach (var chart in charts)
+						{
+							DrawChartRowSelectionCheckBox(editor, index++, chart);
+						}
+
+						ImGui.EndTable();
+
+						// Restore the padding and spacing values.
+						ImGui.GetStyle().FramePadding.X = originalFramePaddingX;
+						ImGui.GetStyle().FramePadding.Y = originalFramePaddingY;
+						ImGui.GetStyle().ItemSpacing.X = originalItemSpacingX;
+						ImGui.GetStyle().ItemSpacing.Y = originalItemSpacingY;
+					}
+
 					numCharts++;
 				}
-			}
-
-			if (numCharts > 0)
-			{
-				ImGui.EndTable();
 			}
 		}
 
@@ -241,7 +288,7 @@ internal sealed class UIChartList
 			}
 		}
 
-		// Rating
+		// Rating.
 		ImGui.TableSetColumnIndex(1);
 		ImGui.TableSetBgColor(ImGuiTableBgTarget.CellBg, color);
 		if (asBeginMenuItems)
@@ -257,7 +304,7 @@ internal sealed class UIChartList
 			ImGui.Text(chart.Rating.ToString());
 		}
 
-		// Description
+		// Description.
 		ImGui.TableSetColumnIndex(2);
 		if (asBeginMenuItems)
 		{
@@ -277,6 +324,20 @@ internal sealed class UIChartList
 		{
 			onRightClick(chart);
 			ImGui.EndPopup();
+		}
+	}
+
+	private static void DrawChartRowSelectionCheckBox(
+		Editor editor,
+		int index,
+		EditorChart chart)
+	{
+		ImGui.TableNextRow();
+		ImGui.TableSetColumnIndex(0);
+		var chartIsActive = editor.IsChartActive(chart);
+		if (ImGui.Checkbox($"##{index}", ref chartIsActive))
+		{
+			editor.SetChartActive(chart, chartIsActive);
 		}
 	}
 

@@ -1,10 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
 using Fumen;
-using Microsoft.Xna.Framework.Input;
 using static StepManiaEditor.Editor;
 
 namespace StepManiaEditor;
+
+internal interface IReadOnlyZoomManager
+{
+	public double GetSizeZoom();
+	public double GetSpacingZoom();
+}
 
 /// <summary>
 /// Class for managing zoom values controlled by the mouse scroll wheel.
@@ -12,7 +17,7 @@ namespace StepManiaEditor;
 ///  Call ProcessInput once per frame.
 ///  Call Update once per frame after ProcessInput.
 /// </summary>
-internal class ZoomManager : Fumen.IObserver<PreferencesScroll>
+internal class ZoomManager : Fumen.IObserver<PreferencesScroll>, IReadOnlyZoomManager
 {
 	/// <summary>
 	/// Data for a zoom value that can be changed directly or interpolated to a new value.
@@ -152,17 +157,6 @@ internal class ZoomManager : Fumen.IObserver<PreferencesScroll>
 		var pScroll = Preferences.Instance.PreferencesScroll;
 		var scrollShouldZoom = keyCommandManager.IsControlDown();
 		var scrollShouldScaleDefaultSpacing = !scrollShouldZoom && keyCommandManager.IsShiftDown();
-
-		// Hack.
-		if (keyCommandManager.IsKeyDown(Keys.OemPlus))
-		{
-			ZoomData.SetValue(ZoomData.GetValue() * 1.0001f, true);
-		}
-
-		if (keyCommandManager.IsKeyDown(Keys.OemMinus))
-		{
-			ZoomData.SetValue(ZoomData.GetValue() / 1.0001f, true);
-		}
 
 		// If the scroll wheel hasn't moved we don't need the input.
 		if (scrollDelta.FloatEquals(0.0f))

@@ -71,10 +71,12 @@ internal sealed class UIAutogenChart
 					if (ImGui.BeginCombo("Autogen Source Chart", selectedName))
 					{
 						UIChartList.DrawChartList(
+							Editor,
 							Editor.GetActiveSong(),
 							SourceChart,
 							null,
 							selectedChart => SourceChart = selectedChart,
+							false,
 							false,
 							null);
 						ImGui.EndCombo();

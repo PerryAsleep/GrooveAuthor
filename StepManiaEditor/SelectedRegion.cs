@@ -4,6 +4,24 @@ using static System.Math;
 
 namespace StepManiaEditor;
 
+internal interface IReadOnlySelectedRegion : IRegion
+{
+	public double GetStartChartTime();
+	public double GetCurrentChartTime();
+	public double GetStartChartPosition();
+	public double GetCurrentChartPosition();
+	public double GetStartXInChartSpace();
+	public double GetCurrentXInChartSpace();
+	public double GetCurrentY();
+	public (double, double) GetSelectedXChartSpaceRange();
+	public (double, double) GetSelectedXRange();
+	public (double, double) GetSelectedChartTimeRange();
+	public (double, double) GetSelectedChartPositionRange();
+	public (double, double) GetCurrentPosition();
+	public bool IsClick();
+	public bool IsActive();
+}
+
 /// <summary>
 /// A region of the chart selected with the cursor.
 /// Internally the x position of the selected region points is relative to the focal
@@ -26,7 +44,7 @@ namespace StepManiaEditor;
 ///   GetStartChartTime()/GetCurrentChartTime()
 ///   GetStartChartPosition()/GetCurrentChartPosition()
 /// </summary>
-internal sealed class SelectedRegion : IRegion
+internal sealed class SelectedRegion : IReadOnlySelectedRegion
 {
 	#region IRegion Implementation
 

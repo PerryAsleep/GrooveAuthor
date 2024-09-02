@@ -3475,6 +3475,7 @@ internal sealed class ImGuiLayoutUtils
 	public static void DrawRowTimingChart(
 		bool undoable,
 		string title,
+		Editor editor,
 		EditorSong song,
 		string help = null)
 	{
@@ -3494,6 +3495,7 @@ internal sealed class ImGuiLayoutUtils
 			if (ImGui.BeginCombo("", selectedName))
 			{
 				UIChartList.DrawChartList(
+					editor,
 					song,
 					chart,
 					null,
@@ -3512,6 +3514,7 @@ internal sealed class ImGuiLayoutUtils
 							}
 						}
 					},
+					false,
 					false,
 					null);
 				ImGui.EndCombo();
