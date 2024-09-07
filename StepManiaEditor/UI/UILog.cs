@@ -162,7 +162,7 @@ internal class UILog
 				var flags = Preferences.Instance.LogWindowLineWrap ? ImGuiWindowFlags.None : ImGuiWindowFlags.HorizontalScrollbar;
 				var first = true;
 				var logDate = Preferences.Instance.LogWindowDateDisplay != 0;
-				ImGui.BeginChild("LogMessages", Vector2.Zero, false, flags);
+				ImGui.BeginChild("LogMessages", Vector2.Zero, ImGuiChildFlags.None, flags);
 				{
 					var node = logBuffer.First;
 					while (node != null)

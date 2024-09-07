@@ -63,7 +63,7 @@ internal sealed class UIExpressedChartConfigTable
 				if (config.ShouldUseColorForString())
 					ImGui.PushStyleColor(ImGuiCol.Text, config.GetStringColor());
 				if (ImGui.Selectable(config.ToString(), false,
-					    ImGuiSelectableFlags.SpanAllColumns | ImGuiSelectableFlags.AllowItemOverlap))
+					    ImGuiSelectableFlags.SpanAllColumns | ImGuiSelectableFlags.AllowOverlap))
 				{
 					Preferences.Instance.ActiveExpressedChartConfigForWindow = configGuid;
 					Preferences.Instance.ShowExpressedChartListWindow = true;

@@ -2585,9 +2585,7 @@ internal sealed class ImGuiLayoutUtils
 		{
 			// Determine the width of the buttons and update the drag int width.
 			var numLanes = GetChartProperties(chartType.Value).GetNumInputs();
-			var buttonHeight = ImGui.GetFontSize() + ImGui.GetStyle().FramePadding.Y * 2;
-			var padding = (int)((buttonHeight - ArrowIconHeight) * 0.5f);
-			var buttonsWidth = numLanes * (ArrowIconWidth + padding * 2);
+			var buttonsWidth = numLanes * (ArrowIconWidth + ImGui.GetStyle().FramePadding.X * 2);
 			dragIntWidth -= buttonsWidth + defaultXSpacing;
 
 			// Set tighter spacing.
@@ -2612,18 +2610,14 @@ internal sealed class ImGuiLayoutUtils
 
 				var (x, y, w, h) = textureAtlas.GetSubTextureBounds(selectedLane == lane ? icons[lane] : dimIcons[lane]);
 
-				ImGui.PushID($"##{id}SingleLaneChoice{lane}");
-				if (ImGui.ImageButton(
+				if (ImGui.ImageButton($"##{id}SingleLaneChoice{lane}",
 					    imGuiTextureAtlasTexture,
 					    ArrowIconSize,
 					    new Vector2(x / (float)atlasW, y / (float)atlasH),
-					    new Vector2((x + w) / (float)atlasW, (y + h) / (float)atlasH),
-					    padding))
+					    new Vector2((x + w) / (float)atlasW, (y + h) / (float)atlasH)))
 				{
 					selectedLane = lane;
 				}
-
-				ImGui.PopID();
 
 				// We need to set the spacing before calling SameLine.
 				if (lane == 0)

@@ -608,7 +608,7 @@ internal sealed class ImGuiUtils
 
 			// Draw the image.
 			if (button)
-				result = ImGui.ImageButton(textureImGui, size, uv0, uv1);
+				result = ImGui.ImageButton($"##{id}Image", textureImGui, size, uv0, uv1);
 			else
 				ImGui.Image(textureImGui, size, uv0, uv1);
 		}
