@@ -189,7 +189,7 @@ internal sealed class UISongProperties
 					"\n\nAdditionally, when saving an sm file which does not support chart-level timing, this field" +
 					"\nis used to determine which chart to use for the song timing data." +
 					"\n\nApply Timing: Will apply the timing events from this chart to all other charts." +
-					"\nApply Timing + Scroll: Will apply the timing and scroll events from this chart to all other charts.");
+					"\nApply:         Will apply the timing and scroll events from this chart to all other charts.");
 
 				ImGuiLayoutUtils.EndTable();
 			}

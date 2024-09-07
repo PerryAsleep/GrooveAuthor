@@ -92,10 +92,10 @@ internal sealed class UIChartList
 					"New Chart...",
 					() => { ImGui.OpenPopup("AddChartPopup"); },
 					true,
-					"Clone Current Chart",
+					"Clone Current",
 					() => { ActionQueue.Instance.Do(new ActionCloneChart(Editor, editorChart)); },
 					cloneEnabled,
-					"Autogen New Chart...",
+					"Autogen...",
 					() => { Editor.ShowAutogenChartUI(editorChart); },
 					cloneEnabled,
 					"Add a new blank chart or create a new chart using an existing chart as a starting point.");

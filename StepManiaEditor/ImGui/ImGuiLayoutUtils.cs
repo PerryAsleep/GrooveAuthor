@@ -69,7 +69,7 @@ internal sealed class ImGuiLayoutUtils
 	public static readonly float ArrowIconHeight = UiScaled(16);
 	public static readonly Vector2 ArrowIconSize = new(ArrowIconWidth, ArrowIconHeight);
 	public static readonly float ButtonApplyTimingWidth = UiScaled(80);
-	public static readonly float ButtonApplyTimingAndScrollWidth = UiScaled(138);
+	public static readonly float ButtonApplyTimingAndScrollWidth = UiScaled(40);
 	public static readonly Vector2 ButtonCopySize = new(UiScaled(32), 0);
 	public static readonly Vector2 ButtonSettingsSize = new(UiScaled(56), 0);
 
@@ -3545,7 +3545,7 @@ internal sealed class ImGuiLayoutUtils
 			}
 
 			ImGui.SameLine();
-			if (ImGui.Button($"Apply Timing + Scroll{GetElementTitle(title, "ApplyTimingAndScrollButton")}",
+			if (ImGui.Button($"Apply{GetElementTitle(title, "ApplyTimingAndScrollButton")}",
 				    new Vector2(ButtonApplyTimingAndScrollWidth, 0.0f)))
 			{
 				var allOtherCharts = new List<EditorChart>();

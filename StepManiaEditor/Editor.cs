@@ -374,6 +374,7 @@ internal sealed class Editor :
 	{
 		InitializeWindowSize();
 		InitializeFormCallbacks();
+		InitializeImGui();
 		InitializeFonts();
 		InitializeGuiDpiScale();
 		InitializeScreenHeight();
@@ -824,6 +825,11 @@ internal sealed class Editor :
 		Graphics.ApplyChanges();
 	}
 
+	private void InitializeImGui()
+	{
+		ImGuiRenderer = new ImGuiRenderer(this, ImGuiConfigFlags.DockingEnable);
+	}
+
 	private void InitializeFormCallbacks()
 	{
 		var p = Preferences.Instance;
@@ -845,7 +851,6 @@ internal sealed class Editor :
 	private void InitializeFonts()
 	{
 		var guiScale = GetDpiScale();
-		ImGuiRenderer = new ImGuiRenderer(this);
 		var assembly = System.Reflection.Assembly.GetEntryAssembly();
 		if (assembly != null)
 		{
@@ -1624,7 +1629,7 @@ internal sealed class Editor :
 		// This application also relies on the new frame being begun in input processing
 		// as some inputs need to check bounds with ImGui elements that require pushing
 		// font state.
-		ImGuiRenderer.BeforeLayout();
+		BeginImGuiFrame();
 
 		// Process Mouse Input.
 		var state = Mouse.GetState();
@@ -1712,6 +1717,11 @@ internal sealed class Editor :
 
 		// Process input for scrolling and zooming.
 		ProcessInputForScrollingAndZooming(currentTime, gameTime.ElapsedGameTime.TotalSeconds);
+	}
+
+	private void BeginImGuiFrame()
+	{
+		ImGuiRenderer.BeforeLayout();
 	}
 
 	private void UpdateCursor()

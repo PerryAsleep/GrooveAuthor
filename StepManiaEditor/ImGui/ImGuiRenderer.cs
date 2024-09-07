@@ -22,13 +22,13 @@
 //OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //SOFTWARE.
 
-using Microsoft.Xna.Framework;
-using Microsoft.Xna.Framework.Graphics;
-using Microsoft.Xna.Framework.Input;
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using ImGuiNET;
+using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Input;
 
 namespace StepManiaEditor;
 
@@ -62,10 +62,11 @@ public class ImGuiRenderer
 	// Input
 	private Keys[] _allKeys = Enum.GetValues<Keys>();
 
-	public ImGuiRenderer(Game game)
+	public ImGuiRenderer(Game game, ImGuiConfigFlags flags)
 	{
 		var context = ImGui.CreateContext();
 		ImGui.SetCurrentContext(context);
+		ImGui.GetIO().ConfigFlags = flags;
 
 		_game = game ?? throw new ArgumentNullException(nameof(game));
 		_graphicsDevice = game.GraphicsDevice;
@@ -144,6 +145,13 @@ public class ImGuiRenderer
 	public virtual void BeforeLayout()
 	{
 		ImGui.NewFrame();
+		if ((ImGui.GetIO().ConfigFlags & ImGuiConfigFlags.DockingEnable) != 0)
+		{
+			unsafe
+			{
+				ImGui.DockSpaceOverViewport((ImGuiViewport*)null, ImGuiDockNodeFlags.PassthruCentralNode);
+			}
+		}
 	}
 
 	/// <summary>
