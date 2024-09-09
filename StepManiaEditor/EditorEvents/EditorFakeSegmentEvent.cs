@@ -4,7 +4,6 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGameExtensions;
 using static System.Diagnostics.Debug;
-using static Fumen.FumenExtensions;
 using static StepManiaEditor.Utils;
 
 namespace StepManiaEditor;
@@ -17,17 +16,16 @@ internal sealed class EditorFakeSegmentEvent : EditorEvent, IEquatable<EditorFak
 	public static readonly string WidgetHelp =
 		"Fake Region.\n" +
 		EventShortDescription + "\n" +
-		"Expected format: \"<time>s\". e.g. \"1.0s\"\n" +
-		"Fake region lengths are in seconds and must be non-negative.";
+		"Expected format: \"<length>rows\". e.g. \"48rows\"\n" +
+		"Length must be non-negative.";
 
-	public const double MinFakeSegmentLength = 0.000001;
+	public const int MinFakeSegmentLength = 1;
 
-	private const string Format = "%.9gs";
-	private const float Speed = 0.01f;
+	private const string Format = "%irows";
+	private const float Speed = 1.0f;
 
 	private readonly FakeSegment FakeSegmentEvent;
 	private bool WidthDirty;
-	private double EndChartPosition;
 
 	#region IChartRegion Implementation
 
@@ -95,28 +93,28 @@ internal sealed class EditorFakeSegmentEvent : EditorEvent, IEquatable<EditorFak
 
 	#endregion IChartRegion Implementation
 
-	public double DoubleValue
+	public int IntValue
 	{
-		get => FakeSegmentEvent.LengthSeconds;
+		get => FakeSegmentEvent.LengthIntegerPosition;
 		set
 		{
 			Assert(EditorChart.CanBeEdited());
 			if (!EditorChart.CanBeEdited())
 				return;
 
-			if (value >= MinFakeSegmentLength && !FakeSegmentEvent.LengthSeconds.DoubleEquals(value))
+			if (FakeSegmentEvent.LengthIntegerPosition != value && value >= MinFakeSegmentLength)
 			{
-				var oldEndTime = GetEndChartTime();
-				FakeSegmentEvent.LengthSeconds = value;
+				var oldPosition = GetEndChartPosition();
+				FakeSegmentEvent.LengthIntegerPosition = value;
 				WidthDirty = true;
-				EditorChart.OnFakeSegmentTimeModified(this, oldEndTime, GetEndChartTime());
+				EditorChart.OnFakeSegmentLengthModified(this, oldPosition, GetEndChartPosition());
 			}
 		}
 	}
 
-	public double GetFakeTimeSeconds()
+	public int GetFakeLengthRows()
 	{
-		return FakeSegmentEvent.LengthSeconds;
+		return FakeSegmentEvent.LengthIntegerPosition;
 	}
 
 	/// <remarks>
@@ -134,7 +132,7 @@ internal sealed class EditorFakeSegmentEvent : EditorEvent, IEquatable<EditorFak
 		{
 			if (WidthDirty)
 			{
-				WidthInternal = ImGuiLayoutUtils.GetMiscEditorEventDragDoubleWidgetWidth(DoubleValue, Format);
+				WidthInternal = ImGuiLayoutUtils.GetMiscEditorEventDragIntWidgetWidth(IntValue, Format);
 				WidthDirty = false;
 			}
 
@@ -148,9 +146,9 @@ internal sealed class EditorFakeSegmentEvent : EditorEvent, IEquatable<EditorFak
 		FakeSegmentEvent = chartEvent;
 		WidthDirty = true;
 
-		Assert(FakeSegmentEvent.LengthSeconds >= MinFakeSegmentLength);
-		if (FakeSegmentEvent.LengthSeconds < MinFakeSegmentLength)
-			FakeSegmentEvent.LengthSeconds = MinFakeSegmentLength;
+		Assert(FakeSegmentEvent.LengthIntegerPosition >= MinFakeSegmentLength);
+		if (FakeSegmentEvent.LengthIntegerPosition < MinFakeSegmentLength)
+			FakeSegmentEvent.LengthIntegerPosition = MinFakeSegmentLength;
 	}
 
 	public override string GetShortTypeName()
@@ -173,34 +171,24 @@ internal sealed class EditorFakeSegmentEvent : EditorEvent, IEquatable<EditorFak
 		return true;
 	}
 
-	public void RefreshEndChartPosition()
+	public override double GetEndChartPosition()
 	{
-		EditorChart.TryGetChartPositionFromTime(GetEndChartTime(), ref EndChartPosition);
+		return GetChartPosition() + FakeSegmentEvent.LengthIntegerPosition;
 	}
 
 	public override int GetEndRow()
 	{
-		return (int)EndChartPosition;
-	}
-
-	public override double GetEndChartPosition()
-	{
-		return EndChartPosition;
-	}
-
-	public override double GetEndChartTime()
-	{
-		return GetChartTime() + FakeSegmentEvent.LengthSeconds;
+		return GetRow() + FakeSegmentEvent.LengthIntegerPosition;
 	}
 
 	public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)
 	{
 		if (Alpha <= 0.0f)
 			return;
-		ImGuiLayoutUtils.MiscEditorEventDragDoubleWidget(
+		ImGuiLayoutUtils.MiscEditorEventDragIntWidget(
 			GetImGuiId(),
 			this,
-			nameof(DoubleValue),
+			nameof(IntValue),
 			(int)X, (int)Y, (int)W,
 			UIFakesColorRGBA,
 			IsSelected(),

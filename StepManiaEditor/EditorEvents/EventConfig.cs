@@ -449,11 +449,11 @@ internal sealed class EventConfig
 	/// </summary>
 	/// <param name="chart">EditorChart to own the new fake segment.</param>
 	/// <param name="row">Fake segment row.</param>
-	/// <param name="fakeTime">Fake segment length in seconds.</param>
+	/// <param name="fakeLength">Fake segment length in rows.</param>
 	/// <returns>EventConfig for the new EditorFakeSegmentEvent.</returns>
-	public static EventConfig CreateFakeConfig(EditorChart chart, int row, double fakeTime)
+	public static EventConfig CreateFakeConfig(EditorChart chart, int row, int fakeLength = MaxValidDenominator)
 	{
-		return new EventConfig(chart, new FakeSegment(fakeTime)
+		return new EventConfig(chart, new FakeSegment(fakeLength)
 		{
 			IntegerPosition = row,
 		});

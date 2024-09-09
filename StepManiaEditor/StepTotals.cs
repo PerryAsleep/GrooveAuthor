@@ -106,17 +106,27 @@ internal sealed class StepTotals : IReadOnlyStepTotals
 
 	public void OnEventAdded(EditorEvent editorEvent)
 	{
+		OnEventAdded(editorEvent, editorEvent.IsFake());
+	}
+
+	private static bool CanEventBeConsideredFake(EditorEvent editorEvent)
+	{
+		return editorEvent.IsLaneNote();
+	}
+
+	private void OnEventAdded(EditorEvent editorEvent, bool isFake)
+	{
 		var isStep = false;
 		switch (editorEvent)
 		{
 			case EditorTapNoteEvent:
-				if (editorEvent.IsFake())
+				if (isFake)
 					FakeCount++;
 				else
 					isStep = true;
 				break;
 			case EditorHoldNoteEvent hold:
-				if (editorEvent.IsFake())
+				if (isFake)
 				{
 					FakeCount++;
 				}
@@ -137,7 +147,7 @@ internal sealed class StepTotals : IReadOnlyStepTotals
 				FakeCount++;
 				break;
 			case EditorLiftNoteEvent:
-				if (editorEvent.IsFake())
+				if (isFake)
 				{
 					FakeCount++;
 				}
@@ -171,17 +181,22 @@ internal sealed class StepTotals : IReadOnlyStepTotals
 
 	public void OnEventDeleted(EditorEvent editorEvent)
 	{
+		OnEventDeleted(editorEvent, editorEvent.IsFake());
+	}
+
+	private void OnEventDeleted(EditorEvent editorEvent, bool isFake)
+	{
 		var isStep = false;
 		switch (editorEvent)
 		{
 			case EditorTapNoteEvent:
-				if (editorEvent.IsFake())
+				if (isFake)
 					FakeCount--;
 				else
 					isStep = true;
 				break;
 			case EditorHoldNoteEvent hold:
-				if (editorEvent.IsFake())
+				if (isFake)
 				{
 					FakeCount--;
 				}
@@ -202,7 +217,7 @@ internal sealed class StepTotals : IReadOnlyStepTotals
 				FakeCount--;
 				break;
 			case EditorLiftNoteEvent:
-				if (editorEvent.IsFake())
+				if (isFake)
 				{
 					FakeCount--;
 				}
@@ -251,15 +266,17 @@ internal sealed class StepTotals : IReadOnlyStepTotals
 
 	public void OnFakeTypeChanged(EditorEvent editorEvent)
 	{
+		if (!CanEventBeConsideredFake(editorEvent))
+			return;
 		if (!editorEvent.IsFake())
 		{
 			FakeCount--;
-			OnEventAdded(editorEvent);
+			OnEventAdded(editorEvent, false);
 		}
 		else
 		{
 			FakeCount++;
-			OnEventDeleted(editorEvent);
+			OnEventDeleted(editorEvent, false);
 		}
 	}
 
