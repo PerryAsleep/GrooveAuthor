@@ -61,7 +61,7 @@ public class TestRateAlteringEventTree
 							config = EventConfig.CreateTickCountConfig(c, row);
 							break;
 						case nameof(FakeSegment):
-							config = EventConfig.CreateFakeConfig(c, row, 1.0);
+							config = EventConfig.CreateFakeConfig(c, row);
 							break;
 						case nameof(Multipliers):
 							config = EventConfig.CreateMultipliersConfig(c, row);

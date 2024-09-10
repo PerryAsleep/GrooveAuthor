@@ -474,11 +474,8 @@ internal sealed class UIEditEvents
 
 			ImGui.Separator();
 			DrawAddEventMenuItem("Fake Region", !hasFakeEvent, UIFakesColorRGBA,
-				EditorFakeSegmentEvent.EventShortDescription, row, () =>
-				{
-					var fakeLength = currentRateAlteringEvent!.GetSecondsPerRow() * SMCommon.MaxValidDenominator;
-					return EditorEvent.CreateEvent(EventConfig.CreateFakeConfig(chart, row, fakeLength));
-				});
+				EditorFakeSegmentEvent.EventShortDescription, row,
+				() => EditorEvent.CreateEvent(EventConfig.CreateFakeConfig(chart, row)));
 			DrawAddEventMenuItem("Ticks", !hasTickCountEvent, UITicksColorRGBA,
 				EditorTickCountEvent.EventShortDescription, row,
 				() => EditorEvent.CreateEvent(EventConfig.CreateTickCountConfig(chart, row)));

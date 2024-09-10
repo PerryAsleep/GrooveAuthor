@@ -690,11 +690,11 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 				}
 				case FakeSegment f:
 				{
-					if (f.LengthSeconds < EditorFakeSegmentEvent.MinFakeSegmentLength)
+					if (f.LengthIntegerPosition < EditorFakeSegmentEvent.MinFakeSegmentLength)
 					{
 						LogWarn(
-							$"Fake Segment {f.LengthSeconds} at row {f.IntegerPosition} is below the minimum length of {EditorFakeSegmentEvent.MinFakeSegmentLength} seconds. Clamping to {EditorFakeSegmentEvent.MinFakeSegmentLength}.");
-						f.LengthSeconds = EditorFakeSegmentEvent.MinFakeSegmentLength;
+							$"Fake Segment {f.LengthIntegerPosition} at row {f.IntegerPosition} is below the minimum length of {EditorFakeSegmentEvent.MinFakeSegmentLength} rows. Clamping to {EditorFakeSegmentEvent.MinFakeSegmentLength}.");
+						f.LengthIntegerPosition = EditorFakeSegmentEvent.MinFakeSegmentLength;
 					}
 
 					editorEvent = EditorEvent.CreateEvent(EventConfig.CreateConfig(this, chartEvent, false));
@@ -1165,7 +1165,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			switch (editorEvent)
 			{
 				case EditorFakeSegmentEvent fse:
-					fakes.Insert(fse, fse.GetChartTime(), fse.GetEndChartTime());
+					fakes.Insert(fse, fse.GetChartPosition(), fse.GetEndChartPosition());
 					break;
 				case EditorStopEvent se:
 					stops.Insert(se, se.GetChartTime(), Math.Max(se.GetChartTime(), se.GetEndChartTime()));
@@ -1236,7 +1236,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		var rowsPerBeat = MaxValidDenominator;
 		var beatsPerMeasure = NumBeatsPerMeasure;
 		var totalStopTimeSeconds = 0.0;
-		var currentFakeTimeEndSeconds = 0.0;
+		var currentFakeEndRow = -1;
 		var previousEventTimeSeconds = 0.0;
 
 		var currentRow = -1;
@@ -1327,7 +1327,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 				}
 			}
 
-			var fakeDueToRow = warpingEndPosition != -1 || warpedOverDueToNegativeStop || currentFakeTimeEndSeconds > eventTime;
+			var fakeDueToRow = warpingEndPosition != -1 || warpedOverDueToNegativeStop || currentFakeEndRow > row;
 			editorEvent.SetRowDependencies(eventTime, rowRelativeToMeasureStart, (short)lastTimeSigDenominator, fakeDueToRow);
 			previousEventTimeSeconds = eventTime;
 
@@ -1381,8 +1381,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 				}
 				case EditorFakeSegmentEvent fakeSegment:
 				{
-					currentFakeTimeEndSeconds = eventTime + fakeSegment.GetFakeTimeSeconds();
-					fakes.Insert(fakeSegment, fakeSegment.GetChartTime(), fakeSegment.GetEndChartTime());
+					currentFakeEndRow = row + fakeSegment.GetFakeLengthRows();
+					fakes.Insert(fakeSegment, fakeSegment.GetChartPosition(), fakeSegment.GetEndChartPosition());
 					break;
 				}
 				// Warp handling. Update warp start and stop rows so we can compute the warp time.
@@ -1492,8 +1492,6 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			((EditorHoldNoteEvent)hold).RefreshHoldEndTime();
 		foreach (var stop in stops)
 			stop.RefreshEndChartPosition();
-		foreach (var fakeSegment in fakes)
-			fakeSegment.RefreshEndChartPosition();
 
 		EditorEvents.Validate();
 
@@ -1877,7 +1875,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		var delays = GetDelayEventOverlapping(chartTime);
 		if (delays != null)
 			regionEvents.AddRange(delays);
-		var fakes = GetFakeSegmentEventOverlapping(chartTime);
+		var fakes = GetFakeSegmentEventOverlapping(chartPosition);
 		if (fakes != null)
 			regionEvents.AddRange(fakes);
 		var warps = GetWarpEventOverlapping(chartPosition);
@@ -1905,9 +1903,9 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		return Delays?.FindAllOverlapping(chartTime);
 	}
 
-	private List<EditorFakeSegmentEvent> GetFakeSegmentEventOverlapping(double chartTime)
+	private List<EditorFakeSegmentEvent> GetFakeSegmentEventOverlapping(double chartPosition)
 	{
-		return Fakes?.FindAllOverlapping(chartTime);
+		return Fakes?.FindAllOverlapping(chartPosition);
 	}
 
 	private List<EditorWarpEvent> GetWarpEventOverlapping(double chartPosition)
@@ -2042,15 +2040,15 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		var time = editorEvent.GetChartTime();
 
 		// An event in a fake region is a fake.
-		if (Fakes.FindAllOverlapping(time, true, false).Count > 0)
+		if (Fakes.FindAllOverlapping(chartPosition, true, false).Count > 0)
 			return true;
 
 		// An event in a warp region is a fake.
-		var overlappingWarps = Warps.FindAllOverlapping(editorEvent.GetChartPosition(), true, false);
+		var overlappingWarps = Warps.FindAllOverlapping(chartPosition, true, false);
 		foreach (var warp in overlappingWarps)
 		{
 			// Warps which are coincident with stops or delays do not cause simultaneous notes to be warped over.
-			if (warp.GetRow() == editorEvent.GetRow())
+			if (warp.GetRow() == row)
 			{
 				var simultaneousStop = RateAlteringEvents.FindEventAtRow<EditorStopEvent>(row);
 				if (simultaneousStop != null)
@@ -2194,18 +2192,18 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	}
 
 	/// <summary>
-	/// Called when an EditorFakeSegmentEvent's time is modified.
+	/// Called when an EditorFakeSegmentEvent's length is modified.
 	/// </summary>
-	public void OnFakeSegmentTimeModified(EditorFakeSegmentEvent fake, double oldEndTime, double newEndTime)
+	public void OnFakeSegmentLengthModified(EditorFakeSegmentEvent fake, double oldEndPosition, double newEndPosition)
 	{
 		Assert(CanBeEdited());
 		if (!CanBeEdited())
 			return;
 
 		// Update the IntervalTree holding this Fake.
-		var deleted = Fakes.Delete(fake, fake.GetChartTime(), oldEndTime);
+		var deleted = Fakes.Delete(fake, fake.GetChartPosition(), oldEndPosition);
 		Assert(deleted);
-		Fakes.Insert(fake, fake.GetChartTime(), newEndTime);
+		Fakes.Insert(fake, fake.GetChartPosition(), newEndPosition);
 
 		// Fake segments affect row-dependent fake data.
 		RefreshEventTimingData();
@@ -2391,7 +2389,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		switch (editorEvent)
 		{
 			case EditorFakeSegmentEvent fse:
-				deleted = Fakes.Delete(fse, fse.GetChartTime(), fse.GetEndChartTime());
+				deleted = Fakes.Delete(fse, fse.GetChartPosition(), fse.GetEndChartPosition());
 				Assert(deleted);
 				rowDependentDataDirty = true;
 				break;
@@ -2525,7 +2523,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		switch (editorEvent)
 		{
 			case EditorFakeSegmentEvent fse:
-				Fakes.Insert(fse, fse.GetChartTime(), fse.GetEndChartTime());
+				Fakes.Insert(fse, fse.GetChartPosition(), fse.GetEndChartPosition());
 				rowDependentDataDirty = true;
 				break;
 			case EditorRateAlteringEvent rae:

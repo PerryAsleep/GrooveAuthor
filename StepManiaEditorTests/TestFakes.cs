@@ -39,9 +39,8 @@ public class TestFakes
 	{
 		var c = CreateTestChart();
 		const int row = SMCommon.RowsPerMeasure;
-		const double time = 1.0;
 		const int len = SMCommon.MaxValidDenominator;
-		c.AddEvent(EditorEvent.CreateEvent(EventConfig.CreateFakeConfig(c, row, time)));
+		c.AddEvent(EditorEvent.CreateEvent(EventConfig.CreateFakeConfig(c, row, len)));
 		Assert.AreEqual(1, c.GetFakes().GetCount());
 
 		var eventBeforeFake = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row - 1, 0));
