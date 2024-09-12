@@ -6,7 +6,7 @@ namespace StepManiaEditor;
 /// <summary>
 /// Class for drawing About text.
 /// </summary>
-internal sealed class UIAbout
+internal sealed class UIAbout : UIWindow
 {
 	private const string LicenseStepManiaEditor =
 		@"MIT License
@@ -118,9 +118,25 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 THE SOFTWARE.";
 
-	public const string WindowTitle = "About";
-
 	private static readonly float DefaultWidth = UiScaled(513);
+
+	public static UIAbout Instance { get; } = new();
+
+	private UIAbout() : base("About")
+	{
+	}
+
+	public override void Open(bool focus)
+	{
+		Preferences.Instance.ShowAboutWindow = true;
+		if (focus)
+			Focus();
+	}
+
+	public override void Close()
+	{
+		Preferences.Instance.ShowAboutWindow = false;
+	}
 
 	public void Draw()
 	{

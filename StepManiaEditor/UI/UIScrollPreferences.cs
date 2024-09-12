@@ -7,12 +7,28 @@ namespace StepManiaEditor;
 /// <summary>
 /// Class for drawing scroll preferences UI.
 /// </summary>
-internal sealed class UIScrollPreferences
+internal sealed class UIScrollPreferences : UIWindow
 {
-	public const string WindowTitle = "Scroll Preferences";
-
 	private static readonly int TitleColumnWidth = UiScaled(120);
 	private static readonly int DefaultWidth = UiScaled(460);
+
+	public static UIScrollPreferences Instance { get; } = new();
+
+	private UIScrollPreferences() : base("Scroll Preferences")
+	{
+	}
+
+	public override void Open(bool focus)
+	{
+		Preferences.Instance.PreferencesScroll.ShowScrollControlPreferencesWindow = true;
+		if (focus)
+			Focus();
+	}
+
+	public override void Close()
+	{
+		Preferences.Instance.PreferencesScroll.ShowScrollControlPreferencesWindow = false;
+	}
 
 	public void Draw()
 	{

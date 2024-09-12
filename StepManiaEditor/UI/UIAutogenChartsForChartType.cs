@@ -9,14 +9,12 @@ namespace StepManiaEditor;
 /// <summary>
 /// Class for drawing options for autogenerating a set of Charts for a ChartType.
 /// </summary>
-internal sealed class UIAutogenChartsForChartType
+internal sealed class UIAutogenChartsForChartType : UIWindow
 {
-	public const string WindowTitle = "Autogen Charts";
-
 	private static readonly int TitleWidth = UiScaled(100);
 	private static readonly int DefaultWidth = UiScaled(560);
 
-	private readonly Editor Editor;
+	private Editor Editor;
 
 	/// <summary>
 	/// Whether or not this window is showing.
@@ -29,24 +27,29 @@ internal sealed class UIAutogenChartsForChartType
 	/// </summary>
 	private ChartType? SourceChartType;
 
-	public UIAutogenChartsForChartType(Editor editor)
+	public static UIAutogenChartsForChartType Instance { get; } = new();
+
+	private UIAutogenChartsForChartType() : base("Autogen Charts")
+	{
+	}
+
+	public void Init(Editor editor)
 	{
 		Editor = editor;
 	}
 
-	/// <summary>
-	/// Show this UI with the given EditorChart as the source EditorChart for autogeneration.
-	/// </summary>
-	public void Show()
+	public override void Open(bool focus)
 	{
 		SourceChartType = null;
 		Showing = true;
+		if (focus)
+			Focus();
 	}
 
 	/// <summary>
 	/// Close this UI if it is showing.
 	/// </summary>
-	public void Close()
+	public override void Close()
 	{
 		Showing = false;
 		SourceChartType = null;
@@ -135,8 +138,7 @@ internal sealed class UIAutogenChartsForChartType
 						.LastSelectedAutogenPerformedChartConfig),
 					() =>
 					{
-						Preferences.Instance.ShowAutogenConfigsWindow = true;
-						ImGui.SetWindowFocus(UIAutogenConfigs.WindowTitle);
+						UIAutogenConfigs.Instance.Open(true);
 					},
 					EditorPerformedChartConfig.CreateNewConfigAndShowEditUI,
 					"Performed Chart Config.");

@@ -6,12 +6,28 @@ namespace StepManiaEditor;
 /// <summary>
 /// Class for drawing Dark background preferences UI.
 /// </summary>
-internal sealed class UIDarkPreferences
+internal sealed class UIDarkPreferences : UIWindow
 {
-	public const string WindowTitle = "Dark Preferences";
-
 	private static readonly int TitleColumnWidth = UiScaled(120);
 	private static readonly int DefaultWidth = UiScaled(460);
+
+	public static UIDarkPreferences Instance { get; } = new();
+
+	private UIDarkPreferences() : base("Dark Preferences")
+	{
+	}
+
+	public override void Close()
+	{
+		Preferences.Instance.PreferencesDark.ShowDarkPreferencesWindow = false;
+	}
+
+	public override void Open(bool focus)
+	{
+		Preferences.Instance.PreferencesDark.ShowDarkPreferencesWindow = true;
+		if (focus)
+			Focus();
+	}
 
 	public void Draw()
 	{

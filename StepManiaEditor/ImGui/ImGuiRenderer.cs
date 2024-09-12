@@ -145,13 +145,6 @@ public class ImGuiRenderer
 	public virtual void BeforeLayout()
 	{
 		ImGui.NewFrame();
-		if ((ImGui.GetIO().ConfigFlags & ImGuiConfigFlags.DockingEnable) != 0)
-		{
-			unsafe
-			{
-				ImGui.DockSpaceOverViewport(0, (ImGuiViewport*)null, ImGuiDockNodeFlags.PassthruCentralNode);
-			}
-		}
 	}
 
 	/// <summary>

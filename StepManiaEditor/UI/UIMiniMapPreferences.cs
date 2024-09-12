@@ -6,12 +6,28 @@ namespace StepManiaEditor;
 /// <summary>
 /// Class for drawing MiniMap preferences UI.
 /// </summary>
-internal sealed class UIMiniMapPreferences
+internal sealed class UIMiniMapPreferences : UIWindow
 {
-	public const string WindowTitle = "MiniMap Preferences";
-
 	private static readonly int TitleColumnWidth = UiScaled(120);
 	private static readonly int DefaultWidth = UiScaled(460);
+
+	public static UIMiniMapPreferences Instance { get; } = new();
+
+	private UIMiniMapPreferences() : base("MiniMap Preferences")
+	{
+	}
+
+	public override void Open(bool focus)
+	{
+		Preferences.Instance.PreferencesMiniMap.ShowMiniMapPreferencesWindow = true;
+		if (focus)
+			Focus();
+	}
+
+	public override void Close()
+	{
+		Preferences.Instance.PreferencesMiniMap.ShowMiniMapPreferencesWindow = false;
+	}
 
 	public void Draw()
 	{

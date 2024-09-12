@@ -748,8 +748,7 @@ internal sealed class ImGuiLayoutUtils
 		ImGui.SameLine();
 		if (ImGui.Button($"View All{elementTitle}", new Vector2(ConfigFromListViewAllWidth, 0.0f)))
 		{
-			Preferences.Instance.ShowAutogenConfigsWindow = true;
-			ImGui.SetWindowFocus(UIAutogenConfigs.WindowTitle);
+			UIAutogenConfigs.Instance.Open(true);
 		}
 
 		ImGui.SameLine();
@@ -837,8 +836,7 @@ internal sealed class ImGuiLayoutUtils
 		ImGui.SameLine();
 		if (ImGui.Button($"View All{elementTitle}", new Vector2(ConfigFromListViewAllWidth, 0.0f)))
 		{
-			Preferences.Instance.ShowAutogenConfigsWindow = true;
-			ImGui.SetWindowFocus(UIAutogenConfigs.WindowTitle);
+			UIAutogenConfigs.Instance.Open(true);
 		}
 
 		ImGui.SameLine();
@@ -912,8 +910,7 @@ internal sealed class ImGuiLayoutUtils
 		ImGui.SameLine();
 		if (ImGui.Button($"View All{elementTitle}", new Vector2(ConfigFromListViewAllWidth, 0.0f)))
 		{
-			Preferences.Instance.ShowAutogenConfigsWindow = true;
-			ImGui.SetWindowFocus(UIAutogenConfigs.WindowTitle);
+			UIAutogenConfigs.Instance.Open(true);
 		}
 
 		ImGui.SameLine();
@@ -3612,8 +3609,7 @@ internal sealed class ImGuiLayoutUtils
 		ImGui.SameLine();
 		if (ImGui.Button("Settings", ButtonSettingsSize))
 		{
-			Preferences.Instance.PreferencesStream.ShowStreamPreferencesWindow = true;
-			ImGui.SetWindowFocus(UIStreamPreferences.WindowTitle);
+			UIStreamPreferences.Instance.Open(true);
 		}
 
 		ImGui.SameLine();

@@ -6,21 +6,37 @@ namespace StepManiaEditor;
 /// <summary>
 /// Class for drawing lists of EditorConfigs.
 /// </summary>
-internal sealed class UIAutogenConfigs
+internal sealed class UIAutogenConfigs : UIWindow
 {
-	public const string WindowTitle = "Autogen Configs";
-
 	private static readonly int DefaultWidth = UiScaled(780);
 
-	private readonly UIExpressedChartConfigTable ExpressedChartConfigTable;
-	private readonly UIPerformedChartConfigTable PerformedChartConfigTable;
-	private readonly UIPatternConfigTable PatternConfigTable;
+	private UIExpressedChartConfigTable ExpressedChartConfigTable;
+	private UIPerformedChartConfigTable PerformedChartConfigTable;
+	private UIPatternConfigTable PatternConfigTable;
 
-	public UIAutogenConfigs(Editor editor)
+	public static UIAutogenConfigs Instance { get; } = new();
+
+	private UIAutogenConfigs() : base("Autogen Configs")
+	{
+	}
+
+	public void Init(Editor editor)
 	{
 		ExpressedChartConfigTable = new UIExpressedChartConfigTable(editor);
 		PerformedChartConfigTable = new UIPerformedChartConfigTable(editor);
 		PatternConfigTable = new UIPatternConfigTable(editor);
+	}
+
+	public override void Open(bool focus)
+	{
+		Preferences.Instance.ShowAutogenConfigsWindow = true;
+		if (focus)
+			Focus();
+	}
+
+	public override void Close()
+	{
+		Preferences.Instance.ShowAutogenConfigsWindow = false;
 	}
 
 	public void Draw()

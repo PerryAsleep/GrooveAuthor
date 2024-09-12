@@ -25,7 +25,6 @@ using static StepManiaEditor.ImGuiUtils;
 using static Fumen.Converters.SMCommon;
 using static StepManiaEditor.EditorSongImageUtils;
 using static StepManiaEditor.MiniMap;
-using static StepManiaEditor.UIControls;
 using Keys = Microsoft.Xna.Framework.Input.Keys;
 using Path = Fumen.Path;
 
@@ -173,35 +172,9 @@ internal sealed class Editor :
 	private MiniMap MiniMap;
 
 	// UI
-	private UILog UILog;
-	private UIAbout UIAbout;
-	private UIControls UIControls;
-	private UISongProperties UISongProperties;
-	private UIChartProperties UIChartProperties;
-	private UIChartList UIChartList;
-	private UIWaveFormPreferences UIWaveFormPreferences;
-	private UIDarkPreferences UIDarkPreferences;
-	private UIScrollPreferences UIScrollPreferences;
-	private UISelectionPreferences UISelectionPreferences;
-	private UIMiniMapPreferences UIMiniMapPreferences;
-	private UIReceptorPreferences UIReceptorPreferences;
-	private UIOptions UIOptions;
-	private UIAudioPreferences UIAudioPreferences;
-	private UIChartPosition UIChartPosition;
-	private UIExpressedChartConfig UIExpressedChartConfig;
-	private UIPerformedChartConfig UIPerformedChartConfig;
-	private UIPatternConfig UIPatternConfig;
-	private UIAutogenConfigs UIAutogenConfigs;
-	private UIAutogenChart UIAutogenChart;
-	private UIAutogenChartsForChartType UIAutogenChartsForChartType;
-	private UICopyEventsBetweenCharts UICopyEventsBetweenCharts;
-	private UIPatternEvent UIPatternEvent;
-	private UIPerformance UIPerformance;
 	private UIEditEvents UIEditEvents;
+	private UIChartPosition UIChartPosition;
 	private UIFTUE UIFTUE;
-#if DEBUG
-	private UIDebug UIDebug;
-#endif
 
 	private readonly UIPatternComparer PatternComparer = new();
 	private readonly UIPerformedChartComparer PerformedChartComparer = new();
@@ -581,11 +554,11 @@ internal sealed class Editor :
 		AddKeyCommand(undo, "Redo", new[] { Keys.LeftControl, Keys.Y }, OnRedo, true);
 
 		const string selection = "Selection";
-		UIControls.AddCommand(selection, "Select Note", "Left Mouse Button");
-		UIControls.AddCommand(selection, "Select In Region", "Drag Left Mouse Button");
-		UIControls.AddCommand(selection, "Select Misc. Events In Region", "Alt+Drag Left Mouse Button");
-		UIControls.AddCommand(selection, "Add to Selection", "Ctrl+Left Mouse Button");
-		UIControls.AddCommand(selection, "Extend Selection", "Shift+Left Mouse Button");
+		UIControls.Instance.AddCommand(selection, "Select Note", "Left Mouse Button");
+		UIControls.Instance.AddCommand(selection, "Select In Region", "Drag Left Mouse Button");
+		UIControls.Instance.AddCommand(selection, "Select Misc. Events In Region", "Alt+Drag Left Mouse Button");
+		UIControls.Instance.AddCommand(selection, "Add to Selection", "Ctrl+Left Mouse Button");
+		UIControls.Instance.AddCommand(selection, "Extend Selection", "Shift+Left Mouse Button");
 		AddKeyCommand(selection, "Select All Notes", new[] { Keys.LeftControl, Keys.A }, OnSelectAll);
 		AddKeyCommand(selection, "Select All Misc. Events", new[] { Keys.LeftControl, Keys.LeftAlt, Keys.A }, OnSelectAllAlt);
 		AddKeyCommand(selection, "Select All", new[] { Keys.LeftControl, Keys.LeftShift, Keys.A }, OnSelectAllShift);
@@ -609,22 +582,22 @@ internal sealed class Editor :
 		AddKeyCommand(general, "Toggle Spacing Mode", new[] { Keys.S }, OnToggleSpacingMode);
 		AddKeyCommand(general, "Move To Previous Chart", new[] { Keys.LeftControl, Keys.LeftAlt, Keys.Left }, OnMoveToPreviousChart);
 		AddKeyCommand(general, "Move To Next Chart", new[] { Keys.LeftControl, Keys.LeftAlt, Keys.Right }, OnMoveToNextChart);
-		UIControls.AddCommand(general, "Context Menu", "Right Mouse Button");
-		UIControls.AddCommand(general, "Exit", "Alt+F4");
+		UIControls.Instance.AddCommand(general, "Context Menu", "Right Mouse Button");
+		UIControls.Instance.AddCommand(general, "Exit", "Alt+F4");
 
 		const string zoom = "Zoom";
-		UIControls.AddCommand(zoom, "Zoom In", "Ctrl+Scroll Up");
-		UIControls.AddCommand(zoom, "Zoom Out", "Ctrl+Scroll Down");
-		UIControls.AddCommand(zoom, "Increasing Spacing For Current Mode", "Shift+Scroll Up");
-		UIControls.AddCommand(zoom, "Decrease Spacing For Current Mode", "Shift+Scroll Down");
+		UIControls.Instance.AddCommand(zoom, "Zoom In", "Ctrl+Scroll Up");
+		UIControls.Instance.AddCommand(zoom, "Zoom Out", "Ctrl+Scroll Down");
+		UIControls.Instance.AddCommand(zoom, "Increasing Spacing For Current Mode", "Shift+Scroll Up");
+		UIControls.Instance.AddCommand(zoom, "Decrease Spacing For Current Mode", "Shift+Scroll Down");
 
 		const string navigation = "Navigation";
 		AddKeyCommand(navigation, "Decrease Snap", new[] { Keys.Left }, OnDecreaseSnap, true);
 		AddKeyCommand(navigation, "Increase Snap", new[] { Keys.Right }, OnIncreaseSnap, true);
 		AddKeyCommand(navigation, "Move Up", new[] { Keys.Up }, OnMoveUp, true);
-		UIControls.AddCommand(navigation, "Move Up", "Scroll Up");
+		UIControls.Instance.AddCommand(navigation, "Move Up", "Scroll Up");
 		AddKeyCommand(navigation, "Move Down", new[] { Keys.Down }, OnMoveDown, true);
-		UIControls.AddCommand(navigation, "Move Down", "Scroll Down");
+		UIControls.Instance.AddCommand(navigation, "Move Down", "Scroll Down");
 		AddKeyCommand(navigation, "Move To Previous Measure", new[] { Keys.PageUp }, OnMoveToPreviousMeasure, true, null, true);
 		AddKeyCommand(navigation, "Move To Next Measure", new[] { Keys.PageDown }, OnMoveToNextMeasure, true, null, true);
 		AddKeyCommand(navigation, "Move To Chart Start", new[] { Keys.Home }, OnMoveToChartStart, false, null, true);
@@ -651,10 +624,10 @@ internal sealed class Editor :
 		// @formatter:on
 
 		const string noteEntry = "Note Entry";
-		UIControls.AddCommand(noteEntry, "Tap", "0-9");
-		UIControls.AddCommand(noteEntry, "Hold", "0-9+Up/Down");
-		UIControls.AddCommand(noteEntry, "Mine", "0-9+Shift");
-		UIControls.AddCommand(noteEntry, "Roll", "0-9+Shift+Up/Down");
+		UIControls.Instance.AddCommand(noteEntry, "Tap", "0-9");
+		UIControls.Instance.AddCommand(noteEntry, "Hold", "0-9+Up/Down");
+		UIControls.Instance.AddCommand(noteEntry, "Mine", "0-9+Shift");
+		UIControls.Instance.AddCommand(noteEntry, "Roll", "0-9+Shift+Up/Down");
 
 		var arrowInputKeys = new[]
 			{ Keys.D1, Keys.D2, Keys.D3, Keys.D4, Keys.D5, Keys.D6, Keys.D7, Keys.D8, Keys.D9, Keys.D0 };
@@ -697,7 +670,7 @@ internal sealed class Editor :
 		var adjustedInput = new Keys[input.Length];
 		RegisterKeyCommand(input, adjustedInput, 0, callback, repeat, releaseCallback, independent);
 		// Add the command to the UI.
-		UIControls.AddCommand(category, name, input);
+		UIControls.Instance.AddCommand(category, name, input);
 	}
 
 	/// <summary>
@@ -927,35 +900,30 @@ internal sealed class Editor :
 
 	private void InitializeUIHelpers()
 	{
-		UILog = new UILog(this);
-		UIAbout = new UIAbout();
-		UIControls = new UIControls();
-		UISongProperties = new UISongProperties(this, GraphicsDevice, ImGuiRenderer);
-		UIChartProperties = new UIChartProperties(this);
-		UIChartList = new UIChartList(this);
-		UIWaveFormPreferences = new UIWaveFormPreferences(MusicManager);
-		UIDarkPreferences = new UIDarkPreferences();
-		UIScrollPreferences = new UIScrollPreferences();
-		UISelectionPreferences = new UISelectionPreferences();
-		UIMiniMapPreferences = new UIMiniMapPreferences();
-		UIReceptorPreferences = new UIReceptorPreferences(this);
-		UIOptions = new UIOptions();
-		UIAudioPreferences = new UIAudioPreferences(SoundManager);
 		UIChartPosition = new UIChartPosition(this);
-		UIExpressedChartConfig = new UIExpressedChartConfig(this);
-		UIPerformedChartConfig = new UIPerformedChartConfig(this);
-		UIPatternConfig = new UIPatternConfig(this);
-		UIAutogenConfigs = new UIAutogenConfigs(this);
-		UIAutogenChart = new UIAutogenChart(this);
-		UIAutogenChartsForChartType = new UIAutogenChartsForChartType(this);
-		UICopyEventsBetweenCharts = new UICopyEventsBetweenCharts(this);
-		UIPatternEvent = new UIPatternEvent(this);
-		UIPerformance = new UIPerformance(PerformanceMonitor);
 		UIEditEvents = new UIEditEvents(this);
 		UIFTUE = new UIFTUE(this);
+
 		UIModals.Init(this);
+
+		UILog.Instance.Init(this);
+		UISongProperties.Instance.Init(this, GraphicsDevice, ImGuiRenderer);
+		UIChartProperties.Instance.Init(this);
+		UIChartList.Instance.Init(this);
+		UIWaveFormPreferences.Instance.Init(MusicManager);
+		UIReceptorPreferences.Instance.Init(this);
+		UIAudioPreferences.Instance.Init(SoundManager);
+		UIExpressedChartConfig.Instance.Init(this);
+		UIPerformedChartConfig.Instance.Init(this);
+		UIPatternConfig.Instance.Init(this);
+		UIAutogenConfigs.Instance.Init(this);
+		UIAutogenChart.Instance.Init(this);
+		UIAutogenChartsForChartType.Instance.Init(this);
+		UICopyEventsBetweenCharts.Instance.Init(this);
+		UIPatternEvent.Instance.Init(this);
+		UIPerformance.Instance.Init(PerformanceMonitor);
 #if DEBUG
-		UIDebug = new UIDebug(this);
+		UIDebug.Instance.Init(this);
 #endif
 	}
 
@@ -1722,6 +1690,10 @@ internal sealed class Editor :
 	private void BeginImGuiFrame()
 	{
 		ImGuiRenderer.BeforeLayout();
+		if ((ImGui.GetIO().ConfigFlags & ImGuiConfigFlags.DockingEnable) != 0)
+		{
+			UIDockSpace.PrepareDockSpace();
+		}
 	}
 
 	private void UpdateCursor()
@@ -2153,6 +2125,9 @@ internal sealed class Editor :
 			DrawGui();
 
 			ImGui.PopFont();
+
+
+			//var area = UIDockSpace.GetCentralNodeArea();
 
 			ImGuiRenderer.AfterLayout();
 
@@ -3064,36 +3039,36 @@ internal sealed class Editor :
 		UIFTUE.Draw();
 
 #if DEBUG
-		UIDebug.Draw();
+		UIDebug.Instance.Draw();
 #endif
-		UIPerformance.Draw();
+		UIPerformance.Instance.Draw();
 		DrawImGuiTestWindow();
 
-		UIAbout.Draw();
-		UIControls.Draw();
-		UILog.Draw(LogBuffer, LogBufferLock, LogFilePath);
-		UIScrollPreferences.Draw();
-		UISelectionPreferences.Draw();
-		UIWaveFormPreferences.Draw();
-		UIDarkPreferences.Draw();
-		UIMiniMapPreferences.Draw();
-		UIReceptorPreferences.Draw();
-		UIOptions.Draw();
-		UIAudioPreferences.Draw();
-		UIStreamPreferences.Draw();
-		UIDensityGraphPreferences.Draw();
+		UIAbout.Instance.Draw();
+		UIControls.Instance.Draw();
+		UILog.Instance.Draw(LogBuffer, LogBufferLock, LogFilePath);
+		UIScrollPreferences.Instance.Draw();
+		UISelectionPreferences.Instance.Draw();
+		UIWaveFormPreferences.Instance.Draw();
+		UIDarkPreferences.Instance.Draw();
+		UIMiniMapPreferences.Instance.Draw();
+		UIReceptorPreferences.Instance.Draw();
+		UIOptions.Instance.Draw();
+		UIAudioPreferences.Instance.Draw();
+		UIStreamPreferences.Instance.Draw();
+		UIDensityGraphPreferences.Instance.Draw();
 
-		UISongProperties.Draw(ActiveSong);
-		UIChartProperties.Draw(FocusedChart);
-		UIChartList.Draw(ActiveSong, FocusedChart);
-		UIExpressedChartConfig.Draw();
-		UIPerformedChartConfig.Draw();
-		UIPatternConfig.Draw();
-		UIAutogenConfigs.Draw();
-		UIAutogenChart.Draw();
-		UIAutogenChartsForChartType.Draw();
-		UICopyEventsBetweenCharts.Draw();
-		UIPatternEvent.Draw(GetFocusedChartData()?.GetLastSelectedPatternEvent());
+		UISongProperties.Instance.Draw(ActiveSong);
+		UIChartProperties.Instance.Draw(FocusedChart);
+		UIChartList.Instance.Draw(ActiveSong, FocusedChart);
+		UIExpressedChartConfig.Instance.Draw();
+		UIPerformedChartConfig.Instance.Draw();
+		UIPatternConfig.Instance.Draw();
+		UIAutogenConfigs.Instance.Draw();
+		UIAutogenChart.Instance.Draw();
+		UIAutogenChartsForChartType.Instance.Draw();
+		UICopyEventsBetweenCharts.Instance.Draw();
+		UIPatternEvent.Instance.Draw(GetFocusedChartData()?.GetLastSelectedPatternEvent());
 
 		UIChartPosition.Draw(
 			GetFocalPointX(),
@@ -3152,47 +3127,31 @@ internal sealed class Editor :
 				}
 
 				if (ImGui.MenuItem("Open Containing Folder", "Ctrl+Shift+O", false, hasSong))
-				{
 					OnOpenContainingFolder();
-				}
-
 				if (ImGui.MenuItem("Reload", "Ctrl+R", false, canOpen && canEditSong && p.RecentFiles.Count > 0))
-				{
 					OnReload();
-				}
-
 				if (ImGui.MenuItem("Close", "", false, canEditSong))
-				{
 					OnClose();
-				}
 
 				ImGui.Separator();
 				var editorFileName = ActiveSong?.GetFileName();
 				if (!string.IsNullOrEmpty(editorFileName))
 				{
 					if (ImGui.MenuItem($"Save {editorFileName}", "Ctrl+S", false, canEditSong))
-					{
 						OnSave();
-					}
 				}
 				else
 				{
 					if (ImGui.MenuItem("Save", "Ctrl+S", false, canEditSong))
-					{
 						OnSave();
-					}
 				}
 
 				if (ImGui.MenuItem("Save As...", "Ctrl+Shift+S", false, canEditSong))
-				{
 					OnSaveAs();
-				}
 
 				ImGui.Separator();
 				if (ImGui.MenuItem("Exit", "Alt+F4"))
-				{
 					OnExit();
-				}
 
 				ImGui.EndMenu();
 			}
@@ -3210,121 +3169,59 @@ internal sealed class Editor :
 				UIEditEvents.DrawShiftAllMenu();
 				ImGui.Separator();
 				if (ImGui.MenuItem("Copy", "Ctrl+C"))
-				{
 					OnCopy();
-				}
-
 				if (ImGui.MenuItem("Paste", "Ctrl+V"))
-				{
 					OnPaste();
-				}
-
 				if (ImGui.MenuItem("Delete", "Del"))
-				{
 					OnDelete();
-				}
-
 				ImGui.EndMenu();
 			}
 
 			if (ImGui.BeginMenu("View"))
 			{
 				if (ImGui.MenuItem("Options"))
-				{
-					p.PreferencesOptions.ShowOptionsWindow = true;
-					ImGui.SetWindowFocus(UIOptions.WindowTitle);
-				}
+					UIOptions.Instance.Open(true);
 
 				ImGui.Separator();
 				if (ImGui.MenuItem("Song Properties"))
-				{
-					p.ShowSongPropertiesWindow = true;
-					ImGui.SetWindowFocus(UISongProperties.WindowTitle);
-				}
-
+					UISongProperties.Instance.Open(true);
 				if (ImGui.MenuItem("Chart Properties"))
-				{
-					p.ShowChartPropertiesWindow = true;
-					ImGui.SetWindowFocus(UIChartProperties.WindowTitle);
-				}
-
+					UIChartProperties.Instance.Open(true);
 				if (ImGui.MenuItem("Chart List"))
-				{
-					p.ShowChartListWindow = true;
-					ImGui.SetWindowFocus(UIChartList.WindowTitle);
-				}
+					UIChartList.Instance.Open(true);
 
 				ImGui.Separator();
 				if (ImGui.MenuItem("Scroll Preferences"))
-				{
-					p.PreferencesScroll.ShowScrollControlPreferencesWindow = true;
-					ImGui.SetWindowFocus(UIScrollPreferences.WindowTitle);
-				}
-
+					UIScrollPreferences.Instance.Open(true);
 				if (ImGui.MenuItem("Selection Preferences"))
-				{
-					p.PreferencesSelection.ShowSelectionControlPreferencesWindow = true;
-					ImGui.SetWindowFocus(UISelectionPreferences.WindowTitle);
-				}
+					UISelectionPreferences.Instance.Open(true);
 
 				ImGui.Separator();
 				if (ImGui.MenuItem("Waveform Preferences"))
-				{
-					p.PreferencesWaveForm.ShowWaveFormPreferencesWindow = true;
-					ImGui.SetWindowFocus(UIWaveFormPreferences.WindowTitle);
-				}
-
+					UIWaveFormPreferences.Instance.Open(true);
 				if (ImGui.MenuItem("Dark Preferences"))
-				{
-					p.PreferencesDark.ShowDarkPreferencesWindow = true;
-					ImGui.SetWindowFocus(UIDarkPreferences.WindowTitle);
-				}
-
+					UIDarkPreferences.Instance.Open(true);
 				if (ImGui.MenuItem("Mini Map Preferences"))
-				{
-					p.PreferencesMiniMap.ShowMiniMapPreferencesWindow = true;
-					ImGui.SetWindowFocus(UIMiniMapPreferences.WindowTitle);
-				}
-
+					UIMiniMapPreferences.Instance.Open(true);
 				if (ImGui.MenuItem("Receptor Preferences"))
-				{
-					p.PreferencesReceptors.ShowReceptorPreferencesWindow = true;
-					ImGui.SetWindowFocus(UIReceptorPreferences.WindowTitle);
-				}
-
+					UIReceptorPreferences.Instance.Open(true);
 				if (ImGui.MenuItem("Stream Preferences"))
-				{
-					p.PreferencesStream.ShowStreamPreferencesWindow = true;
-					ImGui.SetWindowFocus(UIStreamPreferences.WindowTitle);
-				}
-
+					UIStreamPreferences.Instance.Open(true);
 				if (ImGui.MenuItem("Density Graph Preferences"))
-				{
-					p.PreferencesDensityGraph.ShowDensityGraphPreferencesWindow = true;
-					ImGui.SetWindowFocus(UIDensityGraphPreferences.WindowTitle);
-				}
+					UIDensityGraphPreferences.Instance.Open(true);
 
 				ImGui.Separator();
 				if (ImGui.MenuItem("Log"))
-				{
-					p.ShowLogWindow = true;
-					ImGui.SetWindowFocus(UILog.WindowTitle);
-				}
+					UILog.Instance.Open(true);
 
 				ImGui.Separator();
 				if (ImGui.MenuItem("Performance Metrics"))
-				{
-					p.PreferencesPerformance.ShowPerformanceWindow = true;
-					ImGui.SetWindowFocus("Performance");
-				}
+					UIPerformance.Instance.Open(true);
 #if DEBUG
 				if (ImGui.MenuItem("ImGui Demo Window"))
 					ShowImGuiTestWindow = true;
 				if (ImGui.MenuItem("Debug Window"))
-				{
-					Preferences.Instance.ShowDebugWindow = true;
-					ImGui.SetWindowFocus(UIDebug.WindowTitle);
-				}
+					UIDebug.Instance.Open(true);
 #endif
 				ImGui.EndMenu();
 			}
@@ -3338,40 +3235,22 @@ internal sealed class Editor :
 				}
 
 				if (ImGui.MenuItem("Clone Current Chart", canEditSong && hasChart))
-				{
 					ActionQueue.Instance.Do(new ActionCloneChart(this, FocusedChart));
-				}
-
 				if (ImGui.MenuItem("Autogen New Chart...", canEditSong && hasChart))
-				{
 					ShowAutogenChartUI(FocusedChart);
-				}
 
 				ImGui.Separator();
-
 				if (ImGui.MenuItem("View Chart Properties"))
-				{
-					p.ShowChartPropertiesWindow = true;
-					ImGui.SetWindowFocus(UIChartProperties.WindowTitle);
-				}
-
+					UIChartProperties.Instance.Open(true);
 				if (ImGui.MenuItem("View Chart List"))
-				{
-					p.ShowChartListWindow = true;
-					ImGui.SetWindowFocus(UIChartList.WindowTitle);
-				}
+					UIChartList.Instance.Open(true);
 
 				ImGui.Separator();
-
 				DrawCopyChartEventsMenuItems(FocusedChart);
 
 				ImGui.Separator();
-
 				if (ImGui.MenuItem("Advanced Event Copy..."))
-				{
-					UICopyEventsBetweenCharts.Show();
-					ImGui.SetWindowFocus(UICopyEventsBetweenCharts.WindowTitle);
-				}
+					UICopyEventsBetweenCharts.Instance.Open(true);
 
 				ImGui.EndMenu();
 			}
@@ -3383,15 +3262,9 @@ internal sealed class Editor :
 					PushDisabled();
 
 				if (ImGui.MenuItem("Autogen New Chart...", hasChart))
-				{
 					ShowAutogenChartUI(FocusedChart);
-				}
-
 				if (ImGui.MenuItem("Autogen New Set of Charts...", hasChart))
-				{
-					UIAutogenChartsForChartType.Show();
-					ImGui.SetWindowFocus(UIAutogenChartsForChartType.WindowTitle);
-				}
+					UIAutogenChartsForChartType.Instance.Open(true);
 
 				ImGui.Separator();
 
@@ -3400,21 +3273,13 @@ internal sealed class Editor :
 					PushDisabled();
 
 				if (ImGui.MenuItem("Regenerate All Patterns (Fixed Seeds)", "Alt+P"))
-				{
 					OnRegenerateAllPatterns();
-				}
-
 				if (ImGui.MenuItem("Regenerate All Patterns (New Seeds)", "Alt+Shift+P"))
-				{
 					OnRegenerateAllPatternsWithNewSeeds();
-				}
-
 				if (ImGui.Selectable("Clear All Patterns"))
-				{
 					ActionQueue.Instance.Do(new ActionDeletePatternNotes(
 						FocusedChart,
 						FocusedChart!.GetPatterns()));
-				}
 
 				ImGui.Separator();
 
@@ -3423,47 +3288,29 @@ internal sealed class Editor :
 					PushDisabled();
 
 				if (ImGui.MenuItem("Regenerate Selected Patterns (Fixed Seeds)", "Ctrl+Alt+P"))
-				{
 					OnRegenerateSelectedPatterns();
-				}
-
 				if (ImGui.MenuItem("Regenerate Selected Patterns (New Seeds)", "Ctrl+Alt+Shift+P"))
-				{
 					OnRegenerateSelectedPatternsWithNewSeeds();
-				}
-
 				if (ImGui.Selectable("Clear Selected Patterns"))
-				{
 					ActionQueue.Instance.Do(new ActionDeletePatternNotes(
 						FocusedChart,
 						GetFocusedChartData()?.GetSelection()?.GetSelectedPatterns()));
-				}
 
 				if (!hasSelectedPatterns)
 					PopDisabled();
 
 				ImGui.Separator();
-
 				if (ImGui.MenuItem("Next Pattern", "Ctrl+P"))
-				{
 					OnMoveToNextPattern();
-				}
-
 				if (ImGui.MenuItem("Previous Pattern", "Ctrl+Shift+P"))
-				{
 					OnMoveToPreviousPattern();
-				}
 
 				if (!hasPatterns)
 					PopDisabled();
 
 				ImGui.Separator();
-
 				if (ImGui.MenuItem("Configuration..."))
-				{
-					p.ShowAutogenConfigsWindow = true;
-					ImGui.SetWindowFocus(UIAutogenConfigs.WindowTitle);
-				}
+					UIAutogenConfigs.Instance.Open(true);
 
 				if (disabled)
 					PopDisabled();
@@ -3474,38 +3321,20 @@ internal sealed class Editor :
 			if (ImGui.BeginMenu("Audio"))
 			{
 				if (ImGui.MenuItem("Audio Preferences"))
-				{
-					p.PreferencesAudio.ShowAudioPreferencesWindow = true;
-					ImGui.SetWindowFocus(UIAudioPreferences.WindowTitle);
-				}
-
+					UIAudioPreferences.Instance.Open(true);
 				ImGui.EndMenu();
 			}
 
 			if (ImGui.BeginMenu("Help"))
 			{
 				if (ImGui.Selectable($"About {GetAppName()}"))
-				{
-					p.ShowAboutWindow = true;
-					ImGui.SetWindowFocus(UIAbout.WindowTitle);
-				}
-
+					UIAbout.Instance.Open(true);
 				if (ImGui.Selectable("Controls"))
-				{
-					p.ShowControlsWindow = true;
-					ImGui.SetWindowFocus(WindowTitle);
-				}
-
+					UIControls.Instance.Open(true);
 				if (ImGui.Selectable("Documentation"))
-				{
 					Documentation.OpenDocumentation();
-				}
-
 				if (ImGui.Selectable($"Open {GetAppName()} on GitHub"))
-				{
 					Documentation.OpenGitHub();
-				}
-
 				if (ImGui.Selectable("Show Intro Dialogs"))
 				{
 					Preferences.Instance.LastCompletedFtueVersion = null;
@@ -3740,8 +3569,8 @@ internal sealed class Editor :
 
 	public void ShowAutogenChartUI(EditorChart sourceChart = null)
 	{
-		UIAutogenChart.Show(sourceChart);
-		ImGui.SetWindowFocus(UIAutogenChart.WindowTitle);
+		UIAutogenChart.Instance.SetChart(sourceChart);
+		UIAutogenChart.Instance.Open(true);
 	}
 
 	private void DrawRightClickMenu(int x, int y)
@@ -3785,7 +3614,7 @@ internal sealed class Editor :
 			{
 				if (ImGui.BeginMenu("Mini Map Preferences"))
 				{
-					UIMiniMapPreferences.DrawContents();
+					UIMiniMapPreferences.Instance.DrawContents();
 					ImGui.EndMenu();
 				}
 
@@ -3811,7 +3640,7 @@ internal sealed class Editor :
 			{
 				if (ImGui.BeginMenu("Receptor Preferences"))
 				{
-					UIReceptorPreferences.DrawContents();
+					UIReceptorPreferences.Instance.DrawContents();
 					ImGui.EndMenu();
 				}
 
@@ -3823,7 +3652,7 @@ internal sealed class Editor :
 				{
 					if (ImGui.BeginMenu("Waveform Preferences"))
 					{
-						UIWaveFormPreferences.DrawContents();
+						UIWaveFormPreferences.Instance.DrawContents();
 						ImGui.EndMenu();
 					}
 
@@ -3834,7 +3663,7 @@ internal sealed class Editor :
 				{
 					if (ImGui.BeginMenu("Dark Preferences"))
 					{
-						UIDarkPreferences.DrawContents();
+						UIDarkPreferences.Instance.DrawContents();
 						ImGui.EndMenu();
 					}
 
@@ -4755,9 +4584,9 @@ internal sealed class Editor :
 		ActiveSong?.RemoveObservers(this, this);
 
 		// Close any UI which holds on to Song/Chart state.
-		UIAutogenChart.Close();
-		UIAutogenChartsForChartType.Close();
-		UICopyEventsBetweenCharts.Close();
+		UIAutogenChart.Instance.Close();
+		UIAutogenChartsForChartType.Instance.Close();
+		UICopyEventsBetweenCharts.Instance.Close();
 
 		StopPlayback();
 		MusicManager.UnloadAsync();
@@ -5350,8 +5179,7 @@ internal sealed class Editor :
 	private void OnSelectPattern(EditorPatternEvent pattern)
 	{
 		GetActiveChartData(pattern.GetEditorChart())?.SelectPattern(pattern);
-		Preferences.Instance.ShowPatternEventWindow = true;
-		ImGui.SetWindowFocus(UIPatternEvent.WindowTitle);
+		UIPatternEvent.Instance.Open(true);
 	}
 
 	private void OnMoveToChartStart()

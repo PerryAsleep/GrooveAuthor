@@ -127,8 +127,7 @@ internal sealed class UIPatternConfigTable
 					    ImGuiSelectableFlags.SpanAllColumns | ImGuiSelectableFlags.AllowOverlap))
 				{
 					Preferences.Instance.ActivePatternConfigForWindow = configGuid;
-					Preferences.Instance.ShowPatternListWindow = true;
-					ImGui.SetWindowFocus(UIPatternConfig.WindowTitle);
+					UIPatternConfig.Instance.Open(true);
 				}
 
 				ImGui.PopStyleColor();

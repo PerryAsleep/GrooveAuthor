@@ -5,16 +5,14 @@ using static StepManiaEditor.ImGuiUtils;
 
 namespace StepManiaEditor;
 
-internal sealed class UIChartList
+internal sealed class UIChartList : UIWindow
 {
-	public const string WindowTitle = "Chart List";
-
-	private readonly Editor Editor;
+	private Editor Editor;
 
 	private static readonly int TypeWidth = UiScaled(60);
 	private static readonly int RatingWidth = UiScaled(16);
 	private static readonly int CheckboxWidth = UiScaled(16);
-	private static readonly int AddChartWidth = UiScaled(86);
+	private static readonly int AddChartWidth = UiScaled(90);
 	private static readonly float DefaultPositionX = UiScaled(0);
 	private static readonly float DefaultPositionY = UiScaled(901);
 	private static readonly Vector2 DefaultSize = new(UiScaled(622), UiScaled(179));
@@ -22,9 +20,27 @@ internal sealed class UIChartList
 	private EditorChart ChartPendingDelete;
 	private EditorChart ChartPendingClone;
 
-	public UIChartList(Editor editor)
+	public static UIChartList Instance { get; } = new();
+
+	private UIChartList() : base("Chart List")
+	{
+	}
+
+	public void Init(Editor editor)
 	{
 		Editor = editor;
+	}
+
+	public override void Open(bool focus)
+	{
+		Preferences.Instance.ShowChartListWindow = true;
+		if (focus)
+			Focus();
+	}
+
+	public override void Close()
+	{
+		Preferences.Instance.ShowChartListWindow = false;
 	}
 
 	public void Draw(EditorSong editorSong, EditorChart editorChart)
@@ -47,7 +63,7 @@ internal sealed class UIChartList
 			Math.Max(0, Math.Min(UiScaled(Editor.GetViewportHeight()) - DefaultSize.Y, DefaultPositionY)));
 		ImGui.SetNextWindowPos(defaultPosition, ImGuiCond.FirstUseEver);
 		ImGui.SetNextWindowSize(DefaultSize, ImGuiCond.FirstUseEver);
-		if (ImGui.Begin(WindowTitle, ref Preferences.Instance.ShowChartListWindow, ImGuiWindowFlags.NoScrollbar))
+		if (ImGui.Begin(WindowTitle, ref Preferences.Instance.ShowChartListWindow))
 		{
 			var disabled = !Editor.CanSongBeEdited(editorSong);
 			if (disabled)

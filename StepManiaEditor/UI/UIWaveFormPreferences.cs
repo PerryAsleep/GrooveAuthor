@@ -7,10 +7,8 @@ namespace StepManiaEditor;
 /// <summary>
 /// Class for drawing WaveForm preferences UI.
 /// </summary>
-internal sealed class UIWaveFormPreferences
+internal sealed class UIWaveFormPreferences : UIWindow
 {
-	public const string WindowTitle = "Waveform Preferences";
-
 	public enum SparseColorOption
 	{
 		DarkerDenseColor,
@@ -21,11 +19,29 @@ internal sealed class UIWaveFormPreferences
 	private static readonly int TitleColumnWidth = UiScaled(120);
 	private static readonly int DefaultWidth = UiScaled(460);
 
-	private readonly MusicManager MusicManager;
+	private MusicManager MusicManager;
 
-	public UIWaveFormPreferences(MusicManager musicManager)
+	public static UIWaveFormPreferences Instance { get; } = new();
+
+	private UIWaveFormPreferences() : base("Waveform Preferences")
+	{
+	}
+
+	public void Init(MusicManager musicManager)
 	{
 		MusicManager = musicManager;
+	}
+
+	public override void Open(bool focus)
+	{
+		Preferences.Instance.PreferencesWaveForm.ShowWaveFormPreferencesWindow = true;
+		if (focus)
+			Focus();
+	}
+
+	public override void Close()
+	{
+		Preferences.Instance.PreferencesWaveForm.ShowWaveFormPreferencesWindow = false;
 	}
 
 	public void Draw()

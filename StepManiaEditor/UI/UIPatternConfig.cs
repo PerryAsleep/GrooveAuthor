@@ -9,13 +9,11 @@ namespace StepManiaEditor;
 /// <summary>
 /// Class for drawing UI to edit an EditorPatternConfig.
 /// </summary>
-internal sealed class UIPatternConfig
+internal sealed class UIPatternConfig : UIWindow
 {
 	private static readonly int TitleColumnWidth = UiScaled(140);
 	private static readonly int StepTypeWeightWidth = UiScaled(26);
 	private static readonly int DefaultWidth = UiScaled(460);
-
-	public const string WindowTitle = "Pattern Config";
 
 	public static readonly string HelpText =
 		$"Pattern Configs are settings used by {Utils.GetAppName()} to generate new step patterns."
@@ -50,11 +48,29 @@ internal sealed class UIPatternConfig
 	private static readonly string StartChoiceHelpTextLeft = string.Format(StartChoiceHelpText, "left");
 	private static readonly string StartChoiceHelpTextRight = string.Format(StartChoiceHelpText, "right");
 
-	private readonly Editor Editor;
+	private Editor Editor;
 
-	public UIPatternConfig(Editor editor)
+	public static UIPatternConfig Instance { get; } = new();
+
+	private UIPatternConfig() : base("Pattern Config")
+	{
+	}
+
+	public void Init(Editor editor)
 	{
 		Editor = editor;
+	}
+
+	public override void Open(bool focus)
+	{
+		Preferences.Instance.ShowPatternListWindow = true;
+		if (focus)
+			Focus();
+	}
+
+	public override void Close()
+	{
+		Preferences.Instance.ShowPatternListWindow = false;
 	}
 
 	public void Draw()

@@ -6,18 +6,34 @@ namespace StepManiaEditor;
 /// <summary>
 /// Class for drawing receptor preferences UI.
 /// </summary>
-internal sealed class UIReceptorPreferences
+internal sealed class UIReceptorPreferences : UIWindow
 {
-	public const string WindowTitle = "Receptor Preferences";
-
-	private readonly Editor Editor;
+	private Editor Editor;
 
 	private static readonly int TitleColumnWidth = UiScaled(120);
 	private static readonly int DefaultWidth = UiScaled(460);
 
-	public UIReceptorPreferences(Editor editor)
+	public static UIReceptorPreferences Instance { get; } = new();
+
+	private UIReceptorPreferences() : base("Receptor Preferences")
+	{
+	}
+
+	public void Init(Editor editor)
 	{
 		Editor = editor;
+	}
+
+	public override void Open(bool focus)
+	{
+		Preferences.Instance.PreferencesReceptors.ShowReceptorPreferencesWindow = true;
+		if (focus)
+			Focus();
+	}
+
+	public override void Close()
+	{
+		Preferences.Instance.PreferencesReceptors.ShowReceptorPreferencesWindow = false;
 	}
 
 	public void Draw()

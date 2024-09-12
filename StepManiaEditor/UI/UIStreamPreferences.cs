@@ -6,14 +6,30 @@ namespace StepManiaEditor;
 /// <summary>
 /// Class for drawing stream preferences UI.
 /// </summary>
-internal sealed class UIStreamPreferences
+internal sealed class UIStreamPreferences : UIWindow
 {
-	public const string WindowTitle = "Stream Preferences";
-
 	private static readonly int TitleColumnWidth = UiScaled(120);
 	private static readonly int DefaultWidth = UiScaled(460);
 
-	public static void Draw()
+	public static UIStreamPreferences Instance { get; } = new();
+
+	private UIStreamPreferences() : base("Stream Preferences")
+	{
+	}
+
+	public override void Open(bool focus)
+	{
+		Preferences.Instance.PreferencesStream.ShowStreamPreferencesWindow = true;
+		if (focus)
+			Focus();
+	}
+
+	public override void Close()
+	{
+		Preferences.Instance.PreferencesStream.ShowStreamPreferencesWindow = false;
+	}
+
+	public void Draw()
 	{
 		var p = Preferences.Instance.PreferencesStream;
 		if (!p.ShowStreamPreferencesWindow)

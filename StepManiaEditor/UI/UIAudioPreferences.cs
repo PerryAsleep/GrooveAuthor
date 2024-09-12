@@ -7,18 +7,34 @@ namespace StepManiaEditor;
 /// <summary>
 /// Class for drawing audio control UI.
 /// </summary>
-internal sealed class UIAudioPreferences
+internal sealed class UIAudioPreferences : UIWindow
 {
-	public const string WindowTitle = "Audio Preferences";
-
 	private static readonly int TitleColumnWidth = UiScaled(160);
 	private static readonly int DefaultWidth = UiScaled(460);
 
-	private readonly SoundManager SoundManager;
+	private SoundManager SoundManager;
 
-	public UIAudioPreferences(SoundManager soundManager)
+	public static UIAudioPreferences Instance { get; } = new();
+
+	private UIAudioPreferences() : base("Audio Preferences")
+	{
+	}
+
+	public void Init(SoundManager soundManager)
 	{
 		SoundManager = soundManager;
+	}
+
+	public override void Open(bool focus)
+	{
+		Preferences.Instance.PreferencesAudio.ShowAudioPreferencesWindow = true;
+		if (focus)
+			Focus();
+	}
+
+	public override void Close()
+	{
+		Preferences.Instance.PreferencesAudio.ShowAudioPreferencesWindow = false;
 	}
 
 	public void Draw()

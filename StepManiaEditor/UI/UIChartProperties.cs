@@ -8,24 +8,40 @@ namespace StepManiaEditor;
 /// <summary>
 /// Class for drawing Chart properties UI.
 /// </summary>
-internal sealed class UIChartProperties
+internal sealed class UIChartProperties : UIWindow
 {
-	public const string WindowTitle = "Chart Properties";
-
-	private static readonly int TitleColumnWidth = UiScaled(100);
+	private static readonly int TitleColumnWidth = UiScaled(90);
 	private static readonly Vector2 DefaultPosition = new(UiScaled(0), UiScaled(631));
-	private static readonly Vector2 DefaultSize = new(UiScaled(622), UiScaled(270));
+	public static readonly Vector2 DefaultSize = new(UiScaled(622), UiScaled(535));
 	private static readonly int UseStreamButtonWidth = UiScaled(80);
 	private static readonly int NpsNameWidth = UiScaled(60);
 	private static readonly int StepTotalNameWidth = UiScaled(40);
 
-	private readonly ImGuiArrowWeightsWidget ArrowWeightsWidget;
-	private readonly Editor Editor;
+	private ImGuiArrowWeightsWidget ArrowWeightsWidget;
+	private Editor Editor;
 
-	public UIChartProperties(Editor editor)
+	public static UIChartProperties Instance { get; } = new();
+
+	private UIChartProperties() : base("Chart Properties")
+	{
+	}
+
+	public void Init(Editor editor)
 	{
 		Editor = editor;
 		ArrowWeightsWidget = new ImGuiArrowWeightsWidget();
+	}
+
+	public override void Open(bool focus)
+	{
+		Preferences.Instance.ShowChartPropertiesWindow = true;
+		if (focus)
+			Focus();
+	}
+
+	public override void Close()
+	{
+		Preferences.Instance.ShowChartPropertiesWindow = false;
 	}
 
 	public void Draw(EditorChart editorChart)
@@ -35,7 +51,8 @@ internal sealed class UIChartProperties
 
 		ImGui.SetNextWindowPos(DefaultPosition, ImGuiCond.FirstUseEver);
 		ImGui.SetNextWindowSize(DefaultSize, ImGuiCond.FirstUseEver);
-		if (ImGui.Begin(WindowTitle, ref Preferences.Instance.ShowChartPropertiesWindow, ImGuiWindowFlags.NoScrollbar))
+		if (ImGui.Begin(WindowTitle, ref Preferences.Instance.ShowChartPropertiesWindow,
+			    ImGuiWindowFlags.AlwaysVerticalScrollbar))
 		{
 			var disabled = !Editor.CanChartBeEdited(editorChart);
 			if (disabled)
@@ -72,172 +89,156 @@ internal sealed class UIChartProperties
 			}
 
 			ImGui.Separator();
-			if (ImGui.CollapsingHeader("Uncommon Properties"))
+			if (ImGuiLayoutUtils.BeginTable("UncommonChartProperties", TitleColumnWidth))
 			{
-				if (ImGuiLayoutUtils.BeginTable("UncommonChartProperties", TitleColumnWidth))
-				{
-					ImGuiLayoutUtils.DrawRowTextInput(true, "Style", editorChart, nameof(EditorChart.Style), true,
-						"Originally meant to denote \"Pad\" versus \"Keyboard\" charts.");
-					ImGuiLayoutUtils.EndTable();
-				}
+				ImGuiLayoutUtils.DrawRowTextInput(true, "Style", editorChart, nameof(EditorChart.Style), true,
+					"Originally meant to denote \"Pad\" versus \"Keyboard\" charts.");
 
-				ImGui.Separator();
-				if (ImGuiLayoutUtils.BeginTable("MusicProperties", TitleColumnWidth))
-				{
-					ImGuiLayoutUtils.DrawRowFileBrowse("Music", editorChart, nameof(EditorChart.MusicPath),
-						() => BrowseMusicFile(editorChart),
-						() => ClearMusicFile(editorChart),
-						true,
-						"The audio file to use for this chart, overriding the song music." +
-						"\nIn most cases all charts use the same music and it is defined at the song level.");
+				ImGuiLayoutUtils.DrawRowFileBrowse("Music", editorChart, nameof(EditorChart.MusicPath),
+					() => BrowseMusicFile(editorChart),
+					() => ClearMusicFile(editorChart),
+					true,
+					"The audio file to use for this chart, overriding the song music." +
+					"\nIn most cases all charts use the same music and it is defined at the song level.");
 
-					ImGuiLayoutUtils.DrawRowDragDoubleWithEnabledCheckbox(true, "Music Offset", editorChart,
-						nameof(EditorChart.MusicOffset), nameof(EditorChart.UsesChartMusicOffset), true,
-						"The music offset from the start of the chart." +
-						"\nIn most cases all charts use the same music offset and it is defined at the song level.",
-						0.0001f, "%.6f seconds");
+				ImGuiLayoutUtils.DrawRowDragDoubleWithEnabledCheckbox(true, "Music Offset", editorChart,
+					nameof(EditorChart.MusicOffset), nameof(EditorChart.UsesChartMusicOffset), true,
+					"The music offset from the start of the chart." +
+					"\nIn most cases all charts use the same music offset and it is defined at the song level.",
+					0.0001f, "%.6f seconds");
 
-					ImGuiLayoutUtils.EndTable();
-				}
+				ImGuiLayoutUtils.DrawExpressedChartConfigCombo(editorChart, "Expression",
+					"(Editor Only) Expressed Chart Configuration."
+					+ $"\nThis configuration is used by {Utils.GetAppName()} to parse the Chart and interpret its steps."
+					+ "\nThis interpretation is used for autogenerating patterns and other Charts.");
 
-				ImGui.Separator();
-				if (ImGuiLayoutUtils.BeginTable("ChartExpressionTable", TitleColumnWidth))
-				{
-					ImGuiLayoutUtils.DrawExpressedChartConfigCombo(editorChart, "Expression",
-						"(Editor Only) Expressed Chart Configuration."
-						+ $"\nThis configuration is used by {Utils.GetAppName()} to parse the Chart and interpret its steps."
-						+ "\nThis interpretation is used for autogenerating patterns and other Charts.");
-					ImGuiLayoutUtils.EndTable();
-				}
+				ImGuiLayoutUtils.EndTable();
 			}
 
 			ImGui.Separator();
-			if (ImGui.CollapsingHeader("Chart Stats"))
+			if (ImGuiLayoutUtils.BeginTable("ChartDetailsTable", TitleColumnWidth))
 			{
-				if (ImGuiLayoutUtils.BeginTable("ChartDetailsTable", TitleColumnWidth))
+				var noteType = GetSubdivisionTypeString(Preferences.Instance.PreferencesStream.NoteType);
+				var steps = Utils.GetMeasureSubdivision(Preferences.Instance.PreferencesStream.NoteType);
+				ImGuiLayoutUtils.DrawRowStream("Stream", editorChart?.GetStreamBreakdown() ?? "",
+					$"Breakdown of {noteType} note stream."
+					+ $"\nThis follows ITGmania / Simply Love rules where a measure is {SMCommon.RowsPerMeasure} rows and a measure"
+					+ $"\nwith at least {steps} steps is considered stream regardless of if the individual steps are {noteType} notes.");
+
+				ImGuiLayoutUtils.DrawTitle("Peak NPS", "Peak notes per second.");
+				var width = ImGui.GetContentRegionAvail().X;
+				if (ImGui.BeginTable("NpsTable", 1, ImGuiTableFlags.None, new Vector2(width, 0), width))
 				{
-					var noteType = GetSubdivisionTypeString(Preferences.Instance.PreferencesStream.NoteType);
-					var steps = Utils.GetMeasureSubdivision(Preferences.Instance.PreferencesStream.NoteType);
-					ImGuiLayoutUtils.DrawRowStream("Stream", editorChart?.GetStreamBreakdown() ?? "",
-						$"Breakdown of {noteType} note stream."
-						+ $"\nThis follows ITGmania / Simply Love rules where a measure is {SMCommon.RowsPerMeasure} rows and a measure"
-						+ $"\nwith at least {steps} steps is considered stream regardless of if the individual steps are {noteType} notes.");
+					ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100.0f);
+					ImGui.TableNextRow();
+					ImGui.TableSetColumnIndex(0);
 
-					ImGuiLayoutUtils.DrawTitle("Peak NPS", "Peak notes per second.");
-					var width = ImGui.GetContentRegionAvail().X;
-					if (ImGui.BeginTable("NpsTable", 1, ImGuiTableFlags.None, new Vector2(width, 0), width))
+					if (ImGui.BeginTable("NpsTableInner", 4, ImGuiTableFlags.Borders))
 					{
-						ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100.0f);
+						ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, NpsNameWidth);
+						ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100);
+						ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, NpsNameWidth);
+						ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100);
+
 						ImGui.TableNextRow();
-						ImGui.TableSetColumnIndex(0);
-
-						if (ImGui.BeginTable("NpsTableInner", 4, ImGuiTableFlags.Borders))
-						{
-							ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, NpsNameWidth);
-							ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100);
-							ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, NpsNameWidth);
-							ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100);
-
-							ImGui.TableNextRow();
-							ImGui.TableNextColumn();
-							ImGui.Text("Step NPS");
-							ToolTip("Multiple notes on the same row are considered distinct notes.");
-							ImGui.TableNextColumn();
-							ImGui.Text($"{Editor.GetActiveChartPeakNPS():F2}n/s");
-							ImGui.TableNextColumn();
-							ImGui.Text("Row NPS");
-							ToolTip("Multiple notes on the same row are considered one note.");
-							ImGui.TableNextColumn();
-							ImGui.Text($"{Editor.GetActiveChartPeakRPS():F2}n/s");
-
-							ImGui.EndTable();
-						}
-
-						ImGuiLayoutUtils.EndTable();
-					}
-
-					ImGuiLayoutUtils.DrawTitle("Step Counts", "Counts for various step types in the chart.");
-					width = ImGui.GetContentRegionAvail().X;
-					if (ImGui.BeginTable("StepCountsTable", 1, ImGuiTableFlags.None, new Vector2(width, 0), width))
-					{
-						ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100.0f);
-						ImGui.TableNextRow();
-						ImGui.TableSetColumnIndex(0);
-
-						if (ImGui.BeginTable("StepCountsTableInner", 6, ImGuiTableFlags.Borders))
-						{
-							var stepTotals = editorChart?.GetStepTotals();
-
-							ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, StepTotalNameWidth);
-							ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100);
-							ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, StepTotalNameWidth);
-							ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100);
-							ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, StepTotalNameWidth);
-							ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100);
-
-							ImGui.TableNextRow();
-							ImGui.TableNextColumn();
-							ImGui.Text("Notes");
-							ToolTip(
-								"Total note count. Multiple notes on the same row are counted as distinct notes. Fakes are not counted as notes.");
-							ImGui.TableNextColumn();
-							ImGui.Text($"{stepTotals?.GetStepCount() ?? 0:N0}");
-							ImGui.TableNextColumn();
-							ImGui.Text("Holds");
-							ToolTip("Total hold count. Fakes are not counted as holds.");
-							ImGui.TableNextColumn();
-							ImGui.Text($"{stepTotals?.GetHoldCount() ?? 0:N0}");
-							ImGui.TableNextColumn();
-							ImGui.Text("Lifts");
-							ToolTip("Total lift count. Fakes are not counted as lifts.");
-							ImGui.TableNextColumn();
-							ImGui.Text($"{stepTotals?.GetLiftCount() ?? 0:N0}");
-							ImGui.TableNextRow();
-							ImGui.TableNextColumn();
-							ImGui.Text("Steps");
-							ToolTip(
-								"Total step count. Multiple notes on the same row are counted as one step. Fakes are not counted as steps.");
-							ImGui.TableNextColumn();
-							ImGui.Text($"{stepTotals?.GetNumRowsWithSteps() ?? 0:N0}");
-							ImGui.TableNextColumn();
-							ImGui.Text("Rolls");
-							ToolTip("Total roll count. Fakes are not counted as rolls.");
-							ImGui.TableNextColumn();
-							ImGui.Text($"{stepTotals?.GetRollCount() ?? 0:N0}");
-							ImGui.TableNextColumn();
-							ImGui.Text("Fakes");
-							ToolTip("Total fake count.");
-							ImGui.TableNextColumn();
-							ImGui.Text($"{stepTotals?.GetFakeCount() ?? 0:N0}");
-							ImGui.TableNextRow();
-							ImGui.TableNextColumn();
-							ImGui.Text("Mines");
-							ToolTip("Total mine count.");
-							ImGui.TableNextColumn();
-							ImGui.Text($"{stepTotals?.GetMineCount() ?? 0:N0}");
-
-							ImGui.EndTable();
-						}
+						ImGui.TableNextColumn();
+						ImGui.Text("Step NPS");
+						ToolTip("Multiple notes on the same row are considered distinct notes.");
+						ImGui.TableNextColumn();
+						ImGui.Text($"{Editor.GetActiveChartPeakNPS():F2}n/s");
+						ImGui.TableNextColumn();
+						ImGui.Text("Row NPS");
+						ToolTip("Multiple notes on the same row are considered one note.");
+						ImGui.TableNextColumn();
+						ImGui.Text($"{Editor.GetActiveChartPeakRPS():F2}n/s");
 
 						ImGui.EndTable();
 					}
 
-					ImGuiLayoutUtils.DrawTitle("Distribution", "Distribution of steps across lanes.");
-					width = ImGui.GetContentRegionAvail().X;
-					if (editorChart != null)
-					{
-						if (ImGui.BeginTable("DistributionInnerTable", 1, ImGuiTableFlags.None, new Vector2(width, 0), width))
-						{
-							ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100.0f);
-							ImGui.TableNextRow();
-							ImGui.TableSetColumnIndex(0);
-							ArrowWeightsWidget.DrawChartStepCounts(Editor, editorChart);
-							ImGui.EndTable();
-						}
-					}
-
 					ImGuiLayoutUtils.EndTable();
 				}
+
+				ImGuiLayoutUtils.DrawTitle("Step Counts", "Counts for various step types in the chart.");
+				width = ImGui.GetContentRegionAvail().X;
+				if (ImGui.BeginTable("StepCountsTable", 1, ImGuiTableFlags.None, new Vector2(width, 0), width))
+				{
+					ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100.0f);
+					ImGui.TableNextRow();
+					ImGui.TableSetColumnIndex(0);
+
+					if (ImGui.BeginTable("StepCountsTableInner", 6, ImGuiTableFlags.Borders))
+					{
+						var stepTotals = editorChart?.GetStepTotals();
+
+						ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, StepTotalNameWidth);
+						ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100);
+						ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, StepTotalNameWidth);
+						ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100);
+						ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, StepTotalNameWidth);
+						ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100);
+
+						ImGui.TableNextRow();
+						ImGui.TableNextColumn();
+						ImGui.Text("Notes");
+						ToolTip(
+							"Total note count. Multiple notes on the same row are counted as distinct notes. Fakes are not counted as notes.");
+						ImGui.TableNextColumn();
+						ImGui.Text($"{stepTotals?.GetStepCount() ?? 0:N0}");
+						ImGui.TableNextColumn();
+						ImGui.Text("Holds");
+						ToolTip("Total hold count. Fakes are not counted as holds.");
+						ImGui.TableNextColumn();
+						ImGui.Text($"{stepTotals?.GetHoldCount() ?? 0:N0}");
+						ImGui.TableNextColumn();
+						ImGui.Text("Lifts");
+						ToolTip("Total lift count. Fakes are not counted as lifts.");
+						ImGui.TableNextColumn();
+						ImGui.Text($"{stepTotals?.GetLiftCount() ?? 0:N0}");
+						ImGui.TableNextRow();
+						ImGui.TableNextColumn();
+						ImGui.Text("Steps");
+						ToolTip(
+							"Total step count. Multiple notes on the same row are counted as one step. Fakes are not counted as steps.");
+						ImGui.TableNextColumn();
+						ImGui.Text($"{stepTotals?.GetNumRowsWithSteps() ?? 0:N0}");
+						ImGui.TableNextColumn();
+						ImGui.Text("Rolls");
+						ToolTip("Total roll count. Fakes are not counted as rolls.");
+						ImGui.TableNextColumn();
+						ImGui.Text($"{stepTotals?.GetRollCount() ?? 0:N0}");
+						ImGui.TableNextColumn();
+						ImGui.Text("Fakes");
+						ToolTip("Total fake count.");
+						ImGui.TableNextColumn();
+						ImGui.Text($"{stepTotals?.GetFakeCount() ?? 0:N0}");
+						ImGui.TableNextRow();
+						ImGui.TableNextColumn();
+						ImGui.Text("Mines");
+						ToolTip("Total mine count.");
+						ImGui.TableNextColumn();
+						ImGui.Text($"{stepTotals?.GetMineCount() ?? 0:N0}");
+
+						ImGui.EndTable();
+					}
+
+					ImGui.EndTable();
+				}
+
+				ImGuiLayoutUtils.DrawTitle("Distribution", "Distribution of steps across lanes.");
+				width = ImGui.GetContentRegionAvail().X;
+				if (editorChart != null)
+				{
+					if (ImGui.BeginTable("DistributionInnerTable", 1, ImGuiTableFlags.None, new Vector2(width, 0), width))
+					{
+						ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100.0f);
+						ImGui.TableNextRow();
+						ImGui.TableSetColumnIndex(0);
+						ArrowWeightsWidget.DrawChartStepCounts(Editor, editorChart);
+						ImGui.EndTable();
+					}
+				}
+
+				ImGuiLayoutUtils.EndTable();
 			}
 
 			if (disabled)

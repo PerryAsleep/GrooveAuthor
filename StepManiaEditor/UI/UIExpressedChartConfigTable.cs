@@ -66,8 +66,7 @@ internal sealed class UIExpressedChartConfigTable
 					    ImGuiSelectableFlags.SpanAllColumns | ImGuiSelectableFlags.AllowOverlap))
 				{
 					Preferences.Instance.ActiveExpressedChartConfigForWindow = configGuid;
-					Preferences.Instance.ShowExpressedChartListWindow = true;
-					ImGui.SetWindowFocus(UIExpressedChartConfig.WindowTitle);
+					UIExpressedChartConfig.Instance.Open(true);
 				}
 
 				if (config.ShouldUseColorForString())

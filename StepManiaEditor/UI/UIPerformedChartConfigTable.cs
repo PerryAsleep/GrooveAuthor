@@ -139,8 +139,7 @@ internal sealed class UIPerformedChartConfigTable
 					    ImGuiSelectableFlags.SpanAllColumns | ImGuiSelectableFlags.AllowOverlap))
 				{
 					Preferences.Instance.ActivePerformedChartConfigForWindow = configGuid;
-					Preferences.Instance.ShowPerformedChartListWindow = true;
-					ImGui.SetWindowFocus(UIPerformedChartConfig.WindowTitle);
+					UIPerformedChartConfig.Instance.Open(true);
 				}
 
 				ImGui.PopStyleColor();

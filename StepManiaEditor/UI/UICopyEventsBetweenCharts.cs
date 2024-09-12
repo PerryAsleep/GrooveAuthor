@@ -8,10 +8,8 @@ namespace StepManiaEditor;
 /// <summary>
 /// Class for drawing UI to copy types of EditorEvents from one EditorChart to one or more other EditorCharts.
 /// </summary>
-internal class UICopyEventsBetweenCharts
+internal class UICopyEventsBetweenCharts : UIWindow
 {
-	public const string WindowTitle = "Copy Events";
-
 	private static readonly int TitleColumnWidth = UiScaled(100);
 	private static readonly int DefaultWidth = UiScaled(460);
 
@@ -86,9 +84,15 @@ internal class UICopyEventsBetweenCharts
 	/// <summary>
 	/// Editor.
 	/// </summary>
-	private readonly Editor Editor;
+	private Editor Editor;
 
-	public UICopyEventsBetweenCharts(Editor editor)
+	public static UICopyEventsBetweenCharts Instance { get; } = new();
+
+	private UICopyEventsBetweenCharts() : base("Copy Events")
+	{
+	}
+
+	public void Init(Editor editor)
 	{
 		Editor = editor;
 	}
@@ -123,7 +127,7 @@ internal class UICopyEventsBetweenCharts
 	/// <summary>
 	/// Show this UI.
 	/// </summary>
-	public void Show()
+	public override void Open(bool focus)
 	{
 		SourceChart = null;
 		DestinationChart = null;
@@ -133,12 +137,14 @@ internal class UICopyEventsBetweenCharts
 			state.Selected = state.IsStepmaniaEvent;
 
 		Showing = true;
+		if (focus)
+			Focus();
 	}
 
 	/// <summary>
 	/// Close this UI if it is showing.
 	/// </summary>
-	public void Close()
+	public override void Close()
 	{
 		Showing = false;
 		SourceChart = null;

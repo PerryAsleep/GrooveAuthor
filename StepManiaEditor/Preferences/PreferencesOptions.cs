@@ -51,6 +51,7 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 	public const bool DefaultSuppressExternalSongModificationNotification = false;
 	public const bool DefaultHideSongBackground = false;
 	public const StepColorMethod DefaultStepColorMethodValue = StepColorMethod.Stepmania;
+	public const bool DefaultResetWindows = true;
 
 	// Preferences.
 	[JsonInclude] public bool ShowOptionsWindow;
@@ -66,6 +67,7 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 	[JsonInclude] public bool SuppressExternalSongModificationNotification = DefaultSuppressExternalSongModificationNotification;
 	[JsonInclude] public bool HideSongBackground = DefaultHideSongBackground;
 	[JsonInclude] public StepColorMethod StepColorMethodValue = DefaultStepColorMethodValue;
+	[JsonInclude] public bool ResetWindows = DefaultResetWindows;
 
 	[JsonInclude]
 	public int UndoHistorySize
@@ -97,7 +99,8 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 		       && DpiScale.DoubleEquals(DefaultDpiScale)
 		       && SuppressExternalSongModificationNotification == DefaultSuppressExternalSongModificationNotification
 		       && HideSongBackground == DefaultHideSongBackground
-		       && StepColorMethodValue == DefaultStepColorMethodValue;
+		       && StepColorMethodValue == DefaultStepColorMethodValue
+		       && ResetWindows == DefaultResetWindows;
 	}
 
 	public void RestoreDefaults()
@@ -127,6 +130,7 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 	private readonly bool PreviousSuppressExternalSongModificationNotification;
 	private readonly bool PreviousHideSongBackground;
 	private readonly StepColorMethod PreviousStepColorMethodValue;
+	//private readonly bool PreviousResetWindows;
 
 	public ActionRestoreOptionPreferenceDefaults() : base(false, false)
 	{
@@ -145,6 +149,7 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 		PreviousSuppressExternalSongModificationNotification = p.SuppressExternalSongModificationNotification;
 		PreviousHideSongBackground = p.HideSongBackground;
 		PreviousStepColorMethodValue = p.StepColorMethodValue;
+		//PreviousResetWindows = p.ResetWindows;
 	}
 
 	public override bool AffectsFile()
@@ -173,6 +178,7 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 		p.SuppressExternalSongModificationNotification = DefaultSuppressExternalSongModificationNotification;
 		p.HideSongBackground = DefaultHideSongBackground;
 		p.StepColorMethodValue = DefaultStepColorMethodValue;
+		//p.ResetWindows = DefaultResetWindows;
 	}
 
 	protected override void UndoImplementation()
@@ -191,5 +197,6 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 		p.SuppressExternalSongModificationNotification = PreviousSuppressExternalSongModificationNotification;
 		p.HideSongBackground = PreviousHideSongBackground;
 		p.StepColorMethodValue = PreviousStepColorMethodValue;
+		//p.ResetWindows = PreviousResetWindows;
 	}
 }

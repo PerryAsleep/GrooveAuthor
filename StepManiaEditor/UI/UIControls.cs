@@ -13,10 +13,8 @@ namespace StepManiaEditor;
 ///  Call Draw to draw.
 ///  Categories and commands will be drawn in the order they were added.
 /// </summary>
-internal sealed class UIControls
+internal sealed class UIControls : UIWindow
 {
-	public const string WindowTitle = "Controls";
-
 	private static readonly int TitleColumnWidth = UiScaled(260);
 	private static readonly Vector2 DefaultSize = new(UiScaled(538), UiScaled(800));
 
@@ -111,6 +109,24 @@ internal sealed class UIControls
 	/// All Categories.
 	/// </summary>
 	private readonly List<Category> Categories = new();
+
+	public static UIControls Instance { get; } = new();
+
+	private UIControls() : base("Controls")
+	{
+	}
+
+	public override void Open(bool focus)
+	{
+		Preferences.Instance.ShowControlsWindow = true;
+		if (focus)
+			Focus();
+	}
+
+	public override void Close()
+	{
+		Preferences.Instance.ShowControlsWindow = false;
+	}
 
 	public void AddCommand(string categoryName, string commandName, Keys[] input)
 	{

@@ -7,14 +7,30 @@ namespace StepManiaEditor;
 /// <summary>
 /// Class for drawing options UI.
 /// </summary>
-public class UIOptions
+internal class UIOptions : UIWindow
 {
-	public const string WindowTitle = "Options";
-
 	private static readonly int TitleColumnWidth = UiScaled(160);
 	private static readonly float ButtonSyncWidth = UiScaled(60);
 	private static readonly float ButtonHelpWidth = UiScaled(32);
 	private static readonly int DefaultWidth = UiScaled(606);
+
+	public static UIOptions Instance { get; } = new();
+
+	private UIOptions() : base("Options")
+	{
+	}
+
+	public override void Open(bool focus)
+	{
+		Preferences.Instance.PreferencesOptions.ShowOptionsWindow = true;
+		if (focus)
+			Focus();
+	}
+
+	public override void Close()
+	{
+		Preferences.Instance.PreferencesOptions.ShowOptionsWindow = false;
+	}
 
 	public void Draw()
 	{
@@ -113,6 +129,12 @@ public class UIOptions
 					//+ $"\nIf not specified, the default value for this computer ({defaultDpiScale}) will be used."
 					+ "\nChanges to this value take effect on an application restart.",
 					0.01f, "%.2f", 0.25, 8.0);
+
+				if (ImGuiLayoutUtils.DrawRowButton("Reset Windows", "Reset Windows",
+					    "Reset all window positions to their default values. This cannot be undone."))
+				{
+					p.ResetWindows = true;
+				}
 
 				ImGuiLayoutUtils.EndTable();
 			}
