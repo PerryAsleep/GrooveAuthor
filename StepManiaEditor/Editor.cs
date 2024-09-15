@@ -794,7 +794,7 @@ internal sealed class Editor :
 		var p = Preferences.Instance;
 		Graphics.PreferredBackBufferHeight = p.WindowHeight;
 		Graphics.PreferredBackBufferWidth = p.WindowWidth;
-		Graphics.IsFullScreen = p.WindowFullScreen;
+		Graphics.IsFullScreen = false;
 		Graphics.ApplyChanges();
 	}
 
@@ -1209,6 +1209,15 @@ internal sealed class Editor :
 
 	#region Window Resizing
 
+	private void SetResolution(int x, int y)
+	{
+		var form = (Form)Control.FromHandle(Window.Handle);
+		if (form == null)
+			return;
+		form.WindowState = FormWindowState.Normal;
+		form.Size = new System.Drawing.Size(x, y);
+	}
+
 	public void OnResize(object sender, EventArgs e)
 	{
 		var form = (Form)Control.FromHandle(Window.Handle);
@@ -1225,15 +1234,17 @@ internal sealed class Editor :
 			Preferences.Instance.WindowHeight = h;
 		}
 
-		Preferences.Instance.WindowFullScreen = Graphics.IsFullScreen;
 		Preferences.Instance.WindowMaximized = maximized;
 
 		// Update focal point.
 		Preferences.Instance.PreferencesReceptors.ClampViewportPositions();
 
 		// Resize the Waveform.
-		WaveFormRenderer.Resize(GraphicsDevice, WaveFormTextureWidth, (uint)Math.Max(1, GetViewportHeight()));
-		RecreateWaveformRenderTargets();
+		if (WaveFormRenderer != null)
+		{
+			WaveFormRenderer.Resize(GraphicsDevice, WaveFormTextureWidth, (uint)Math.Max(1, GetViewportHeight()));
+			RecreateWaveformRenderTargets();
+		}
 	}
 
 	/// <summary>
@@ -3322,6 +3333,28 @@ internal sealed class Editor :
 			{
 				if (ImGui.MenuItem("Audio Preferences"))
 					UIAudioPreferences.Instance.Open(true);
+				ImGui.EndMenu();
+			}
+
+			if (ImGui.BeginMenu("Layout"))
+			{
+				if (ImGui.MenuItem("Default Layout"))
+					p.PreferencesOptions.ResetWindows = true;
+				ImGui.Separator();
+				if (ImGui.BeginMenu("Resolution"))
+				{
+					var sortedModes = new List<DisplayMode>(GraphicsAdapter.DefaultAdapter.SupportedDisplayModes);
+					for (var i = sortedModes.Count - 1; i >= 0; i--)
+					{
+						if (ImGui.MenuItem($"{sortedModes[i].Width,5} x{sortedModes[i].Height,5}"))
+						{
+							SetResolution(sortedModes[i].Width, sortedModes[i].Height);
+						}
+					}
+
+					ImGui.EndMenu();
+				}
+
 				ImGui.EndMenu();
 			}
 

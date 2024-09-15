@@ -36,8 +36,8 @@ internal class UILog : UIWindow
 	private static readonly int WrapCheckBoxWidth = UiScaled(20);
 	private static readonly int WrapTextWidth = UiScaled(24);
 	private static readonly Vector2 ButtonSize = new(UiScaled(50), 0.0f);
-	private static readonly int DefaultWidth = UiScaled(561);
-	private static readonly int DefaultHeight = UiScaled(300);
+	public static readonly int DefaultWidth = UiScaled(561);
+	public static readonly int DefaultHeight = UiScaled(300);
 	private static readonly int DefaultWindowY = UiScaled(21);
 	private static readonly int DefaultWindowX = UiScaled(1870);
 

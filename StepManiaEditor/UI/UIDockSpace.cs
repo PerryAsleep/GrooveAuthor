@@ -74,19 +74,26 @@ internal sealed class UIDockSpace
 			var dockSpaceIdLeftPanel = ImGui.DockBuilderSplitNode(dockSpaceRootId, ImGuiDir.Left, leftPanelWidthAsPercentage,
 				out var _, out var rootRemainderDockSpaceId);
 
-			// Split the left panel.
+			// Split the left panel into song properties, chart list, and chart properties.
 			var songPropertiesHeightAsPercentage = Math.Min(UISongProperties.DefaultSizeSmall.Y / rootWindowSize.Y, 0.9f);
 			var dockSpaceIdSongProperties = ImGui.DockBuilderSplitNode(dockSpaceIdLeftPanel, ImGuiDir.Up,
 				songPropertiesHeightAsPercentage, out var _, out var leftPanelRemainderDockSpaceId);
 			var chartPropertiesHeightAsPercentage =
-				Math.Min(UIChartProperties.DefaultSize.Y / (rootWindowSize.Y - UISongProperties.DefaultSizeSmall.Y), 0.9f);
+				Math.Clamp(UIChartProperties.DefaultSize.Y / (rootWindowSize.Y - UISongProperties.DefaultSizeSmall.Y), 0.25f,
+					0.9f);
 			var dockSpaceIdChartProperties = ImGui.DockBuilderSplitNode(leftPanelRemainderDockSpaceId, ImGuiDir.Down,
 				chartPropertiesHeightAsPercentage, out var _, out var dockSpaceIdChartList);
+
+			// Split the root panel vertically to add the log on the bottom.
+			var bottomWindowHeightAsPercentage = Math.Min(UILog.DefaultHeight / rootWindowSize.Y, 0.5f);
+			var dockSpaceIdBottomPanel = ImGui.DockBuilderSplitNode(rootRemainderDockSpaceId, ImGuiDir.Down,
+				bottomWindowHeightAsPercentage, out var _, out rootRemainderDockSpaceId);
 
 			// Dock windows into nodes.
 			UISongProperties.Instance.DockIntoNode(dockSpaceIdSongProperties);
 			UIChartProperties.Instance.DockIntoNode(dockSpaceIdChartProperties);
 			UIChartList.Instance.DockIntoNode(dockSpaceIdChartList);
+			UILog.Instance.DockIntoNode(dockSpaceIdBottomPanel);
 			ImGui.DockBuilderFinish(dockSpaceRootId);
 
 			// Open the windows that have been docked.
@@ -94,6 +101,7 @@ internal sealed class UIDockSpace
 			UISongProperties.Instance.Open(true);
 			UIChartProperties.Instance.Open(false);
 			UIChartList.Instance.Open(false);
+			UILog.Instance.Open(false);
 		}
 
 		SetCentralNodeArea();

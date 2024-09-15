@@ -69,7 +69,6 @@ internal sealed class Preferences
 	// Window preferences
 	[JsonInclude] public int WindowWidth = 1920;
 	[JsonInclude] public int WindowHeight = 1080;
-	[JsonInclude] public bool WindowFullScreen;
 	[JsonInclude] public bool WindowMaximized = true;
 
 	// FTUE state
