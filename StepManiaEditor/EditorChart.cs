@@ -1381,6 +1381,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 				}
 				case EditorFakeSegmentEvent fakeSegment:
 				{
+					// If a fake overlaps a previous fake but ends before that previous fake ends, it
+					// results in the previous fake terminating early. This matches Stepmania behavior.
 					currentFakeEndRow = row + fakeSegment.GetFakeLengthRows();
 					fakes.Insert(fakeSegment, fakeSegment.GetChartPosition(), fakeSegment.GetEndChartPosition());
 					break;
@@ -2040,8 +2042,33 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		var time = editorEvent.GetChartTime();
 
 		// An event in a fake region is a fake.
-		if (Fakes.FindAllOverlapping(chartPosition, true, false).Count > 0)
-			return true;
+		var overlappingFakes = Fakes.FindAllOverlapping(chartPosition, true, false);
+		if (overlappingFakes.Count > 0)
+		{
+			var inFakeRegion = true;
+
+			// If a fake overlaps a previous fake but ends before that previous fake ends, it
+			// results in the previous fake terminating early. This matches Stepmania behavior.
+			// This means that even if a fake region overlaps a step, that step may not be a fake.
+			// We need to scan forward to see if any other fakes start after the first overlapping
+			// fake and terminate it early.
+			var earliestOverlappingFake = overlappingFakes[0];
+			var fakeEnumerator = Fakes.Find(earliestOverlappingFake, earliestOverlappingFake.GetChartPosition(),
+				earliestOverlappingFake.GetEndChartPosition());
+			fakeEnumerator.MoveNext();
+			while (fakeEnumerator.IsCurrentValid())
+			{
+				var currentFake = fakeEnumerator.Current!;
+				if (currentFake.GetChartPosition() > chartPosition)
+					break;
+				inFakeRegion = currentFake.GetChartPosition() <= chartPosition &&
+				               currentFake.GetEndChartPosition() > chartPosition;
+				fakeEnumerator.MoveNext();
+			}
+
+			if (inFakeRegion)
+				return true;
+		}
 
 		// An event in a warp region is a fake.
 		var overlappingWarps = Warps.FindAllOverlapping(chartPosition, true, false);
