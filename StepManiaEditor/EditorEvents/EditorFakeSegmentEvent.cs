@@ -181,6 +181,13 @@ internal sealed class EditorFakeSegmentEvent : EditorEvent, IEquatable<EditorFak
 		return GetRow() + FakeSegmentEvent.LengthIntegerPosition;
 	}
 
+	public override double GetEndChartTime()
+	{
+		var endChartTime = 0.0;
+		EditorChart.TryGetTimeFromChartPosition(GetEndChartPosition(), ref endChartTime);
+		return endChartTime;
+	}
+
 	public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)
 	{
 		if (Alpha <= 0.0f)
