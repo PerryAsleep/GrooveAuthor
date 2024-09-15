@@ -11,7 +11,7 @@ namespace StepManiaEditor;
 /// <summary>
 /// Class for drawing information about the current Position within the current Chart.
 /// </summary>
-internal sealed class UIChartPosition
+internal sealed class UIChartPosition : UIWindow
 {
 	private const uint ColorTextWhite = 0xFFFFFFFF;
 	private const uint ColorTextGrey = 0xFF777777;
@@ -21,7 +21,7 @@ internal sealed class UIChartPosition
 	public static readonly int Height = UiScaled(63);
 	public static readonly int HalfWidth = Width / 2;
 	public static readonly int HalfHeight = Height / 2;
-	private static readonly int MiscTableTitleColumnWidth = UiScaled(40);
+	private static readonly int MiscTableTitleColumnWidth = UiScaled(80);
 	private static readonly int MiscTableSnapWidth = UiScaled(32);
 	private static readonly int TableNameColWidth = UiScaled(37);
 	private static readonly int TablePositionColWidth = UiScaled(73);
@@ -33,37 +33,42 @@ internal sealed class UIChartPosition
 	private static readonly int TableWidth = UiScaled(588);
 	private static readonly int TableHeight = UiScaled(46);
 
-	private readonly Editor Editor;
+	private Editor Editor;
 
-	public UIChartPosition(Editor editor)
+	public static UIChartPosition Instance { get; } = new();
+
+	private UIChartPosition() : base("Hotbar")
+	{
+	}
+
+	public void Init(Editor editor)
 	{
 		Editor = editor;
+	}
+
+	public override void Open(bool focus)
+	{
+		Preferences.Instance.ShowHotbar = true;
+		if (focus)
+			Focus();
+	}
+
+	public override void Close()
+	{
+		Preferences.Instance.ShowHotbar = false;
 	}
 
 	/// <summary>
 	/// Draws the chart position information.
 	/// </summary>
-	/// <param name="x">Desired X position of the center of the window.</param>
-	/// <param name="y">Desired Y position of the center of the window.</param>
 	/// <param name="snapData">SnapData.</param>
-	public void Draw(int x, int y, SnapData snapData)
+	public void Draw(SnapData snapData)
 	{
-		ImGui.SetNextWindowPos(new Vector2(x - HalfWidth, y - HalfHeight));
+		if (!Preferences.Instance.ShowHotbar)
+			return;
+
 		ImGui.SetNextWindowSize(new Vector2(Width, Height));
-
-		// Remove the cell and frame padding.
-		var originalCellPaddingY = ImGui.GetStyle().CellPadding.Y;
-		var originalFramePaddingY = ImGui.GetStyle().FramePadding.Y;
-		ImGui.GetStyle().CellPadding.Y = 0;
-		ImGui.GetStyle().FramePadding.Y = 0;
-
-		if (ImGui.Begin("UIChartPosition",
-			    ImGuiWindowFlags.NoMove
-			    | ImGuiWindowFlags.NoDecoration
-			    | ImGuiWindowFlags.NoSavedSettings
-			    | ImGuiWindowFlags.NoDocking
-			    | ImGuiWindowFlags.NoBringToFrontOnFocus
-			    | ImGuiWindowFlags.NoFocusOnAppearing))
+		if (ImGui.Begin(WindowTitle, ref Preferences.Instance.ShowHotbar))
 		{
 			// Draw the left table with the spacing, zoom, and snap display.
 			var preTableWidth = Width - TableWidth - ImGui.GetStyle().WindowPadding.X * 2 - ImGui.GetStyle().ItemSpacing.X;
@@ -71,7 +76,7 @@ internal sealed class UIChartPosition
 				    preTableWidth - MiscTableTitleColumnWidth))
 			{
 				// Spacing mode.
-				UIScrollPreferences.DrawSpacingModeRow("Spacing");
+				UIScrollPreferences.DrawSpacingModeRow("Spacing Mode");
 
 				// Zoom level.
 				// TODO: Use a double for this control.
@@ -127,24 +132,22 @@ internal sealed class UIChartPosition
 				ImGuiLayoutUtils.EndTable();
 			}
 
-			// Draw the right table with position information.
-			ImGui.SameLine();
+			// Draw the table with position information.
 			DrawPositionTable();
 		}
-
 		ImGui.End();
-
-		// Restore the cell and frame padding.
-		ImGui.GetStyle().FramePadding.Y = originalFramePaddingY;
-		ImGui.GetStyle().CellPadding.Y = originalCellPaddingY;
 	}
 
 	private void DrawPositionTable()
 	{
+		var originalCellPaddingY = ImGui.GetStyle().CellPadding.Y;
+		var originalFramePaddingY = ImGui.GetStyle().FramePadding.Y;
 		var originalInnerItemSpacingX = ImGui.GetStyle().ItemInnerSpacing.X;
 		var originalItemSpacingX = ImGui.GetStyle().ItemSpacing.X;
 		ImGui.GetStyle().ItemInnerSpacing.X = 0;
 		ImGui.GetStyle().ItemSpacing.X = 0;
+		ImGui.GetStyle().CellPadding.Y = 0;
+		ImGui.GetStyle().FramePadding.Y = 0;
 
 		if (ImGui.BeginTable("UIChartPositionTable", 7,
 			    ImGuiTableFlags.Borders, new Vector2(TableWidth, TableHeight)))
@@ -172,6 +175,8 @@ internal sealed class UIChartPosition
 
 		ImGui.GetStyle().ItemInnerSpacing.X = originalInnerItemSpacingX;
 		ImGui.GetStyle().ItemSpacing.X = originalItemSpacingX;
+		ImGui.GetStyle().FramePadding.Y = originalFramePaddingY;
+		ImGui.GetStyle().CellPadding.Y = originalCellPaddingY;
 	}
 
 	private static void DrawPositionTableHeader()
