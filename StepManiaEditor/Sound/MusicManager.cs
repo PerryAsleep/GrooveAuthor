@@ -984,7 +984,7 @@ internal sealed class MusicManager
 			// Write to the output buffer.
 			for (var channelIndex = 0; channelIndex < outChannels; channelIndex++)
 			{
-				if (channelIndex < previewNumChannels)
+				if (channelIndex < previewNumChannels && previewSampleIndex > 0)
 				{
 					buffer[relativeSampleIndex * outChannels + channelIndex] =
 						previewData![previewSampleIndex * previewNumChannels + channelIndex] * volume;
