@@ -86,23 +86,7 @@ internal class UIOptions : UIWindow
 			ImGui.Separator();
 			if (ImGuiLayoutUtils.BeginTable("Options Time Signature", TitleColumnWidth))
 			{
-				ImGuiLayoutUtils.DrawRowEnum<PreferencesOptions.StepColorMethod>(true, "Step Coloring", p,
-					nameof(PreferencesOptions.StepColorMethodValue), false,
-					"How to color steps for chart types which color steps based on rhythm." +
-					"\nStepmania: Use the same logic for coloring notes as Stepmania." +
-					$"\n           Stepmania always effectively uses a {SMCommon.NumBeatsPerMeasure}/{SMCommon.NumBeatsPerMeasure} time signature." +
-					"\n           Steps are colored by their note type." +
-					$"\n           Quarter notes will occur every {SMCommon.MaxValidDenominator} rows." +
-					"\nNote:      Use the time signature to color steps." +
-					$"\n           Quarter notes will occur every {SMCommon.MaxValidDenominator} rows within a measure regardless of" +
-					"\n           the time signature denominator." +
-					"\n           Steps are colored by their note type." +
-					"\n           For example a 7/8 measure of eighth notes will be red blue red blue red blue red." +
-					"\n           WARNING: Step coloring will not match Stepmania for odd time signatures." +
-					"\nBeat:      Use the time signature to color steps." +
-					"\n           Steps are colored based on the time signature denominator." +
-					"\n           For example a 7/8 measure of eighth notes will be all red." +
-					"\n           WARNING: Step coloring will not match Stepmania for odd time signatures.");
+				DrawStepColoring();
 				ImGuiLayoutUtils.EndTable();
 			}
 
@@ -211,6 +195,27 @@ internal class UIOptions : UIWindow
 			+ "\nThe song sync value is configurable per song. This value is only used for setting the"
 			+ "\nsong sync value when opening songs that don't have a specified song sync offset.",
 			0.0001f, "%.6f seconds", 0.0);
+	}
+
+	public static void DrawStepColoring()
+	{
+		ImGuiLayoutUtils.DrawRowEnum<PreferencesOptions.StepColorMethod>(true, "Step Coloring", Preferences.Instance.PreferencesOptions,
+			nameof(PreferencesOptions.StepColorMethodValue), false,
+			"How to color steps for chart types which color steps based on rhythm." +
+			"\nStepmania: Use the same logic for coloring notes as Stepmania." +
+			$"\n           Stepmania always effectively uses a {SMCommon.NumBeatsPerMeasure}/{SMCommon.NumBeatsPerMeasure} time signature." +
+			"\n           Steps are colored by their note type." +
+			$"\n           Quarter notes will occur every {SMCommon.MaxValidDenominator} rows." +
+			"\nNote:      Use the time signature to color steps." +
+			$"\n           Quarter notes will occur every {SMCommon.MaxValidDenominator} rows within a measure regardless of" +
+			"\n           the time signature denominator." +
+			"\n           Steps are colored by their note type." +
+			"\n           For example a 7/8 measure of eighth notes will be red blue red blue red blue red." +
+			"\n           WARNING: Step coloring will not match Stepmania for odd time signatures." +
+			"\nBeat:      Use the time signature to color steps." +
+			"\n           Steps are colored based on the time signature denominator." +
+			"\n           For example a 7/8 measure of eighth notes will be all red." +
+			"\n           WARNING: Step coloring will not match Stepmania for odd time signatures.");
 	}
 
 	private static void SetNewSongSyncItg()

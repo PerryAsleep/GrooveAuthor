@@ -45,6 +45,7 @@ internal sealed class ImGuiUtils
 	}
 
 	public static readonly string[] ValidNoteTypeStrings;
+	public static readonly string[] ValidSnapLevelStrings;
 
 	private static readonly Dictionary<string, EnumByAllowedValueCacheData> EnumDataCacheByCustomKey = new();
 	private static readonly List<bool> EnabledStack = new();
@@ -53,9 +54,12 @@ internal sealed class ImGuiUtils
 	{
 		var numStrings = SMCommon.ValidDenominators.Length;
 		ValidNoteTypeStrings = new string[numStrings];
+		ValidSnapLevelStrings = new string[numStrings + 1];
+		ValidSnapLevelStrings[0] = "None";
 		for (var i = 0; i < numStrings; i++)
 		{
 			ValidNoteTypeStrings[i] = $"1/{SMCommon.ValidDenominators[i] * SMCommon.NumBeatsPerMeasure}";
+			ValidSnapLevelStrings[i + 1] = ValidNoteTypeStrings[i];
 		}
 	}
 

@@ -131,7 +131,7 @@ internal sealed class ImGuiLayoutUtils
 	{
 		CacheKeyPrefix = title ?? "";
 		var ret = ImGui.BeginTable(title, 2, ImGuiTableFlags.None,
-			new Vector2(titleColumnWidth + contentColumnWidth, -1.0f));
+			new Vector2(titleColumnWidth + contentColumnWidth + ImGui.GetStyle().ItemSpacing.X, 0.0f));
 		if (ret)
 		{
 			ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, titleColumnWidth);
@@ -2659,6 +2659,67 @@ internal sealed class ImGuiLayoutUtils
 
 	public static void DrawRowSubdivisions(
 		bool undoable,
+		string title,
+		object o,
+		string fieldName,
+		bool affectsFile,
+		string help = null)
+	{
+		DrawRowTitleAndAdvanceColumn(title);
+
+		var itemWidth = DrawHelp(help, ImGui.GetContentRegionAvail().X);
+		ImGui.SetNextItemWidth(itemWidth);
+
+		var elementTitle = GetElementTitle(title, fieldName);
+		var currentValue = GetValueFromFieldOrProperty<SubdivisionType>(o, fieldName);
+		var originalValue = currentValue;
+		var currentBeatSubdivision = GetBeatSubdivision(currentValue);
+		var currentMeasureSubdivision = GetMeasureSubdivision(currentValue);
+
+		ImGui.PushStyleColor(ImGuiCol.Text, ArrowGraphicManager.GetArrowColorForSubdivision(currentBeatSubdivision));
+
+		if (ImGui.BeginCombo($"{elementTitle}Combo", GetPrettySubdivisionString(currentValue)))
+		{
+			ImGui.PopStyleColor();
+
+			foreach (var subdivisionType in Enum.GetValues(typeof(SubdivisionType)))
+			{
+				var beatSubdivision = GetBeatSubdivision((SubdivisionType)subdivisionType);
+				var measureSubdivision = GetMeasureSubdivision((SubdivisionType)subdivisionType);
+				ImGui.PushStyleColor(ImGuiCol.Text, ArrowGraphicManager.GetArrowColorForSubdivision(beatSubdivision));
+
+				var isSelected = currentMeasureSubdivision == measureSubdivision;
+				if (ImGui.Selectable(GetPrettySubdivisionString((SubdivisionType)subdivisionType), isSelected))
+				{
+					currentValue = (SubdivisionType)subdivisionType;
+				}
+
+				if (isSelected)
+				{
+					ImGui.SetItemDefaultFocus();
+				}
+
+				ImGui.PopStyleColor();
+			}
+
+			ImGui.EndCombo();
+		}
+		else
+		{
+			ImGui.PopStyleColor();
+		}
+
+		if (currentValue != originalValue)
+		{
+			if (undoable)
+				ActionQueue.Instance.Do(
+					new ActionSetObjectFieldOrPropertyValue<SubdivisionType>(o, fieldName, currentValue, affectsFile));
+			else
+				SetFieldOrPropertyToValue(o, fieldName, currentValue);
+		}
+	}
+
+	public static int DrawSnapLevels(
 		string title,
 		object o,
 		string fieldName,

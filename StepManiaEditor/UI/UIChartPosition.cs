@@ -67,16 +67,69 @@ internal sealed class UIChartPosition : UIWindow
 		if (!Preferences.Instance.ShowHotbar)
 			return;
 
-		ImGui.SetNextWindowSize(new Vector2(Width, Height));
+		//ImGui.SetNextWindowSize(new Vector2(Width, Height), ImGuiCond.FirstUseEver);
 		if (ImGui.Begin(WindowTitle, ref Preferences.Instance.ShowHotbar))
 		{
-			// Draw the left table with the spacing, zoom, and snap display.
-			var preTableWidth = Width - TableWidth - ImGui.GetStyle().WindowPadding.X * 2 - ImGui.GetStyle().ItemSpacing.X;
-			if (ImGuiLayoutUtils.BeginTable("UIChartMiscTable", MiscTableTitleColumnWidth,
-				    preTableWidth - MiscTableTitleColumnWidth))
+			var pScroll = Preferences.Instance.PreferencesScroll;
+			var tableWidth = (ImGui.GetContentRegionAvail().X - ImGui.GetStyle().ItemSpacing.X * 2) / 3;
+			var tableContentWidth = tableWidth - MiscTableTitleColumnWidth - ImGui.GetStyle().ItemSpacing.X;
+			if (ImGuiLayoutUtils.BeginTable("Spacing", MiscTableTitleColumnWidth, tableContentWidth))
 			{
 				// Spacing mode.
 				UIScrollPreferences.DrawSpacingModeRow("Spacing Mode");
+
+				// Spacing.
+				switch (pScroll.SpacingMode)
+				{
+					case SpacingMode.ConstantRow:
+					{
+						ImGuiLayoutUtils.DrawRowSliderFloatWithReset(
+							false,
+							"Note Spacing (Constant Row)",
+							pScroll,
+							nameof(PreferencesScroll.RowBasedPixelsPerRowFloat),
+							(float)ZoomManager.MinConstantRowSpacing,
+							(float)ZoomManager.MaxConstantRowSpacing,
+							(float)PreferencesScroll.DefaultRowBasedPixelsPerRow,
+							false,
+							"Spacing in pixels per row at default zoom level.",
+							"%.3f",
+							ImGuiSliderFlags.Logarithmic);
+						break;
+					}
+					case SpacingMode.ConstantTime:
+					{
+						ImGuiLayoutUtils.DrawRowSliderFloatWithReset(
+							false,
+							"Note Spacing (Constant Time)",
+							pScroll,
+							nameof(PreferencesScroll.TimeBasedPixelsPerSecondFloat),
+							(float)ZoomManager.MinConstantTimeSpeed,
+							(float)ZoomManager.MaxConstantTimeSpeed,
+							(float)PreferencesScroll.DefaultTimeBasedPixelsPerSecond,
+							false,
+							"Speed in pixels per second at default zoom level.",
+							"%.3f",
+							ImGuiSliderFlags.Logarithmic);
+						break;
+					}
+					case SpacingMode.Variable:
+					{
+						ImGuiLayoutUtils.DrawRowSliderFloatWithReset(
+							false,
+							"Note Spacing (Variable)",
+							pScroll,
+							nameof(PreferencesScroll.VariablePixelsPerSecondAtDefaultBPMFloat),
+							(float)ZoomManager.MinVariableSpeed,
+							(float)ZoomManager.MaxVariableSpeed,
+							(float)PreferencesScroll.DefaultVariablePixelsPerSecondAtDefaultBPM,
+							false,
+							$"Speed in pixels per second at default zoom level at {PreferencesScroll.DefaultVariableSpeedBPM} BPM.",
+							"%.3f",
+							ImGuiSliderFlags.Logarithmic);
+						break;
+					}
+				}
 
 				// Zoom level.
 				// TODO: Use a double for this control.
@@ -95,6 +148,23 @@ internal sealed class UIChartPosition : UIWindow
 					Editor.SetSpacingZoom(zoom);
 				}
 
+				// Size cap.
+				var sizeCap = (float)Editor.GetSizeCap();
+				var originalSizeCap= sizeCap;
+				ImGuiLayoutUtils.DrawRowDragFloat("Size Cap", ref sizeCap,
+					"Maximum allowed size of the notes.",
+					0.01f, "%.6f", (float)ZoomManager.MinSizeCap, (float)ZoomManager.MaxSizeCap);
+				if (!sizeCap.FloatEquals(originalSizeCap))
+				{
+					Editor.SetSizeCap(sizeCap);
+				}
+
+				ImGuiLayoutUtils.EndTable();
+			}
+
+			ImGui.SameLine();
+			if (ImGuiLayoutUtils.BeginTable("Quick Controls", MiscTableTitleColumnWidth, tableContentWidth))
+			{
 				// Snap level.
 				ImGuiLayoutUtils.DrawRowTitleAndAdvanceColumn("Snap");
 				ImGuiLayoutUtils.DrawHelp(
@@ -115,23 +185,30 @@ internal sealed class UIChartPosition : UIWindow
 						ArrowGraphicManager.GetArrowColorForSubdivision(SMCommon.MaxValidDenominator / snapData.Rows));
 					Text($"1/{SMCommon.MaxValidDenominator / snapData.Rows * SMCommon.NumBeatsPerMeasure}", MiscTableSnapWidth);
 				}
-
 				ImGui.PopStyleColor();
 
-				// Checkbox for NoteEntryMode.
-				ImGui.SetNextItemWidth(ImGuiLayoutUtils.CheckBoxWidth);
-				ImGui.SameLine();
+				// Automove.
 				var autoAdvance = Preferences.Instance.NoteEntryMode == NoteEntryMode.AdvanceBySnap;
-				ImGui.Checkbox("", ref autoAdvance);
-				Preferences.Instance.NoteEntryMode = autoAdvance ? NoteEntryMode.AdvanceBySnap : NoteEntryMode.Normal;
+				if (ImGuiLayoutUtils.DrawRowCheckbox("Automove", ref autoAdvance,
+					    "Automove will automatically advance the cursor position when adding a new note."))
+					Preferences.Instance.NoteEntryMode = autoAdvance ? NoteEntryMode.AdvanceBySnap : NoteEntryMode.Normal;
 
-				// Text for NoteEntryMode.
-				ImGui.SameLine();
-				ImGui.Text("Automove");
+				// Step Coloring.
+				UIOptions.DrawStepColoring();
+
+				// Waveform Scroll Mode.
+				UIScrollPreferences.DrawWaveFormScrollMode();
 
 				ImGuiLayoutUtils.EndTable();
 			}
 
+			ImGui.SameLine();
+			if (ImGuiLayoutUtils.BeginTable("Steps", MiscTableTitleColumnWidth, tableContentWidth))
+			{
+				ImGuiLayoutUtils.EndTable();
+			}
+
+			
 			// Draw the table with position information.
 			DrawPositionTable();
 		}
@@ -140,18 +217,18 @@ internal sealed class UIChartPosition : UIWindow
 
 	private void DrawPositionTable()
 	{
-		var originalCellPaddingY = ImGui.GetStyle().CellPadding.Y;
-		var originalFramePaddingY = ImGui.GetStyle().FramePadding.Y;
-		var originalInnerItemSpacingX = ImGui.GetStyle().ItemInnerSpacing.X;
-		var originalItemSpacingX = ImGui.GetStyle().ItemSpacing.X;
-		ImGui.GetStyle().ItemInnerSpacing.X = 0;
-		ImGui.GetStyle().ItemSpacing.X = 0;
-		ImGui.GetStyle().CellPadding.Y = 0;
-		ImGui.GetStyle().FramePadding.Y = 0;
-
 		if (ImGui.BeginTable("UIChartPositionTable", 7,
 			    ImGuiTableFlags.Borders, new Vector2(TableWidth, TableHeight)))
 		{
+			var originalCellPaddingY = ImGui.GetStyle().CellPadding.Y;
+			var originalFramePaddingY = ImGui.GetStyle().FramePadding.Y;
+			var originalInnerItemSpacingX = ImGui.GetStyle().ItemInnerSpacing.X;
+			var originalItemSpacingX = ImGui.GetStyle().ItemSpacing.X;
+			ImGui.GetStyle().ItemInnerSpacing.X = 0;
+			ImGui.GetStyle().ItemSpacing.X = 0;
+			ImGui.GetStyle().CellPadding.Y = 0;
+			ImGui.GetStyle().FramePadding.Y = 0;
+
 			ImGui.TableSetupColumn("UIChartPositionTableC1", ImGuiTableColumnFlags.WidthFixed, TableNameColWidth);
 			ImGui.TableSetupColumn("UIChartPositionTableC2", ImGuiTableColumnFlags.WidthFixed, TablePositionColWidth);
 			ImGui.TableSetupColumn("UIChartPositionTableC3", ImGuiTableColumnFlags.WidthFixed, TableSongTimeColWidth);
@@ -171,12 +248,12 @@ internal sealed class UIChartPosition : UIWindow
 			DrawPositionTableRow("Cursor", mouseState.X(), mouseState.Y(), mouseState.GetEditorPosition());
 
 			ImGui.EndTable();
-		}
 
-		ImGui.GetStyle().ItemInnerSpacing.X = originalInnerItemSpacingX;
-		ImGui.GetStyle().ItemSpacing.X = originalItemSpacingX;
-		ImGui.GetStyle().FramePadding.Y = originalFramePaddingY;
-		ImGui.GetStyle().CellPadding.Y = originalCellPaddingY;
+			ImGui.GetStyle().ItemInnerSpacing.X = originalInnerItemSpacingX;
+			ImGui.GetStyle().ItemSpacing.X = originalItemSpacingX;
+			ImGui.GetStyle().FramePadding.Y = originalFramePaddingY;
+			ImGui.GetStyle().CellPadding.Y = originalCellPaddingY;
+		}
 	}
 
 	private static void DrawPositionTableHeader()

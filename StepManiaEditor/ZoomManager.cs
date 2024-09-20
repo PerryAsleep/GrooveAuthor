@@ -103,6 +103,8 @@ internal class ZoomManager : Fumen.IObserver<PreferencesScroll>, IReadOnlyZoomMa
 	public const double SpacingDataScrollFactor = 1.2;
 	public const double MinZoom = 0.000001;
 	public const double MaxZoom = 1000000.0;
+	public const double MinSizeCap = 0.0;
+	public const double MaxSizeCap = 1.0;
 	public const double MinConstantTimeSpeed = 10.0;
 	public const double MaxConstantTimeSpeed = 100000.0;
 	public const double MinConstantRowSpacing = 0.1;
@@ -115,6 +117,7 @@ internal class ZoomManager : Fumen.IObserver<PreferencesScroll>, IReadOnlyZoomMa
 	private readonly InterpolatedValueData ConstantRowSpacingData;
 	private readonly InterpolatedValueData VariableSpacingData;
 	private readonly List<InterpolatedValueData> AllValues;
+	private double SizeCap = MaxSizeCap;
 
 	/// <summary>
 	/// Constructor.
@@ -215,13 +218,22 @@ internal class ZoomManager : Fumen.IObserver<PreferencesScroll>, IReadOnlyZoomMa
 	}
 
 	/// <summary>
+	/// Sets the size cap. Will be clamped.
+	/// </summary>
+	/// <param name="sizeCap">New size cap value.</param>
+	public void SetSizeCap(double sizeCap)
+	{
+		SizeCap = Math.Clamp(sizeCap, MinSizeCap, MaxSizeCap);
+	}
+
+	/// <summary>
 	/// Gets the zoom to use for sizing objects.
 	/// When zooming in we only zoom the spacing, not the scale of objects.
 	/// </summary>
 	/// <returns>Zoom level to be used as a multiplier.</returns>
 	public double GetSizeZoom()
 	{
-		return ZoomData.GetValue() > 1.0 ? 1.0 : ZoomData.GetValue();
+		return Math.Min(SizeCap, ZoomData.GetValue() > MaxSizeCap ? MaxSizeCap : ZoomData.GetValue());
 	}
 
 	/// <summary>
@@ -232,6 +244,15 @@ internal class ZoomManager : Fumen.IObserver<PreferencesScroll>, IReadOnlyZoomMa
 	public double GetSpacingZoom()
 	{
 		return ZoomData.GetValue();
+	}
+
+	/// <summary>
+	/// Gets the size cap value.
+	/// </summary>
+	/// <returns>Size cap value.</returns>
+	public double GetSizeCap()
+	{
+		return SizeCap;
 	}
 
 	/// <summary>

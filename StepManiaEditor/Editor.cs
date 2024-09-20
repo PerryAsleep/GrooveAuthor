@@ -173,7 +173,6 @@ internal sealed class Editor :
 
 	// UI
 	private UIEditEvents UIEditEvents;
-	private UIChartPosition UIChartPosition;
 	private UIFTUE UIFTUE;
 
 	private readonly UIPatternComparer PatternComparer = new();
@@ -900,7 +899,6 @@ internal sealed class Editor :
 
 	private void InitializeUIHelpers()
 	{
-		UIChartPosition = new UIChartPosition(this);
 		UIEditEvents = new UIEditEvents(this);
 		UIFTUE = new UIFTUE(this);
 
@@ -922,6 +920,7 @@ internal sealed class Editor :
 		UICopyEventsBetweenCharts.Instance.Init(this);
 		UIPatternEvent.Instance.Init(this);
 		UIPerformance.Instance.Init(PerformanceMonitor);
+		UIChartPosition.Instance.Init(this);
 #if DEBUG
 		UIDebug.Instance.Init(this);
 #endif
@@ -2089,6 +2088,16 @@ internal sealed class Editor :
 		return ZoomManager.GetSpacingZoom();
 	}
 
+	public void SetSizeCap(double sizeCap)
+	{
+		ZoomManager.SetSizeCap(sizeCap);
+	}
+
+	public double GetSizeCap()
+	{
+		return ZoomManager.GetSizeCap();
+	}
+
 	#endregion Zoom
 
 	#region Drawing
@@ -3080,11 +3089,7 @@ internal sealed class Editor :
 		UIAutogenChartsForChartType.Instance.Draw();
 		UICopyEventsBetweenCharts.Instance.Draw();
 		UIPatternEvent.Instance.Draw(GetFocusedChartData()?.GetLastSelectedPatternEvent());
-
-		UIChartPosition.Draw(
-			GetFocalPointX(),
-			Graphics.PreferredBackBufferHeight - GetChartPositionUIYPaddingFromBottom() - (int)(UIChartPosition.Height * 0.5),
-			SnapLevels[Preferences.Instance.SnapIndex]);
+		UIChartPosition.Instance.Draw(SnapLevels[Preferences.Instance.SnapIndex]);
 
 		if (CanShowRightClickPopupThisFrame && EditorMouseState.GetButtonState(EditorMouseState.Button.Right).UpThisFrame())
 		{
@@ -3200,6 +3205,8 @@ internal sealed class Editor :
 					UIChartProperties.Instance.Open(true);
 				if (ImGui.MenuItem("Chart List"))
 					UIChartList.Instance.Open(true);
+				if (ImGui.MenuItem("Hotbar"))
+					UIChartPosition.Instance.Open(true);
 
 				ImGui.Separator();
 				if (ImGui.MenuItem("Scroll Preferences"))
