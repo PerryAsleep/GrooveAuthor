@@ -125,6 +125,11 @@ internal sealed class Preferences
 	[JsonInclude] public LogLevel LogWindowLevel = LogLevel.Info;
 	[JsonInclude] public bool LogWindowLineWrap = true;
 
+	// Save Options
+	[JsonInclude] public bool OmitChartTimingData;
+	[JsonInclude] public bool OmitCustomSaveData;
+	[JsonInclude] public bool AnonymizeSaveData;
+
 	// Misc
 	[JsonInclude] public bool ShowSongPropertiesWindow = true;
 	[JsonInclude] public bool ShowChartPropertiesWindow = true;
