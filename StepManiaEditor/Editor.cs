@@ -4025,6 +4025,29 @@ internal sealed class Editor :
 							" If you are working under restrictions to file format beyond normal Stepmania requirements" +
 							" this option may be useful.");
 
+						// ReSharper disable StringLiteralTypo
+						ImGuiLayoutUtils.DrawRowCheckbox(true, "Anonymize Save Data", Preferences.Instance,
+							nameof(Preferences.AnonymizeSaveData), false,
+							"If checked then when saving, the following data will be omitted:" +
+							"\nSong Credit        (#CREDIT)" +
+							"\nSong Genre         (#GENRE)" +
+							"\nSong Origin        (#ORIGIN)" +
+							"\nSong Banner        (#BANNER)" +
+							"\nSong Background    (#BACKGROUND)" +
+							"\nSong CD Title      (#CDTITLE)" +
+							"\nSong Jacket        (#JACKET)" +
+							"\nSong CD Image      (#CDIMAGE)" +
+							"\nSong Disc Image    (#DISCIMAGE)" +
+							"\nSong Preview Video (#PREVIEWVID)" +
+							"\nSong Lyrics        (#LYRICSPATH)" +
+							"\nChart Name         (#CHARTNAME)" +
+							"\nChart Description  (#DESCRIPTION)" +
+							"\nChart Credit       (#CREDIT)" +
+							"\nChart Style        (#CHARTSTYLE)" +
+							"\n\nThis is intended for contest submissions which require anonymized files and expect" +
+							" these fields to be blank.");
+						// ReSharper restore StringLiteralTypo
+
 						ImGuiLayoutUtils.EndTable();
 					}
 
@@ -5120,6 +5143,7 @@ internal sealed class Editor :
 		{
 			OmitChartTimingData = Preferences.Instance.OmitChartTimingData,
 			OmitCustomSaveData = Preferences.Instance.OmitCustomSaveData,
+			AnonymizeSaveData = Preferences.Instance.AnonymizeSaveData,
 		};
 		editorSong?.Save(saveParameters);
 	}

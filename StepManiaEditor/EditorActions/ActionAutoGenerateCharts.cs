@@ -197,7 +197,8 @@ internal sealed class ActionAutoGenerateCharts : EditorAction
 		}
 
 		// Create a Chart from the EditorChart.
-		sourceChart.SaveToChart(false, (chart, _) => OnChartSaved(chart));
+		sourceChart.SaveToChart(new EditorSong.SaveParameters(FileFormatType.SSC, null),
+			(chart, _) => OnChartSaved(chart));
 	}
 
 	protected override void DoImplementation()

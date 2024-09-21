@@ -93,6 +93,11 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 		/// Whether or not to omit custom save data.
 		/// </summary>
 		public bool OmitCustomSaveData;
+
+		/// <summary>
+		/// Whether or not to anonymize save data.
+		/// </summary>
+		public bool AnonymizeSaveData;
 	}
 
 	/// <summary>
@@ -1577,17 +1582,6 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 						song.SubTitleTransliteration = SubtitleTransliteration;
 						song.Artist = Artist;
 						song.ArtistTransliteration = ArtistTransliteration;
-						song.Genre = Genre;
-						song.Extras.AddDestExtra(TagOrigin, Origin, true);
-						song.Extras.AddDestExtra(TagCredit, Credit, true);
-						song.SongSelectImage = Banner.Path;
-						song.Extras.AddDestExtra(TagBackground, Background.Path, true);
-						song.Extras.AddDestExtra(TagJacket, Jacket.Path, true);
-						song.Extras.AddDestExtra(TagCDImage, CDImage.Path, true);
-						song.Extras.AddDestExtra(TagDiscImage, DiscImage.Path, true);
-						song.Extras.AddDestExtra(TagCDTitle, CDTitle.Path, true);
-						song.Extras.AddDestExtra(TagLyricsPath, LyricsPath, true);
-						song.Extras.AddDestExtra(TagPreviewVid, PreviewVideoPath, true);
 
 						song.Extras.AddDestExtra(TagMusic, MusicPath, true);
 						song.PreviewMusicFile = MusicPreviewPath;
@@ -1595,6 +1589,35 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 						song.Extras.AddDestExtra(TagLastSecondHint, LastSecondHint, true);
 						song.PreviewSampleStart = SampleStart;
 						song.PreviewSampleLength = SampleLength;
+
+						if (saveParameters.AnonymizeSaveData)
+						{
+							song.Genre = null;
+							song.Extras.RemoveSourceExtra(TagCredit);
+							song.Extras.RemoveSourceExtra(TagOrigin);
+							song.SongSelectImage = null;
+							song.Extras.RemoveSourceExtra(TagBackground);
+							song.Extras.RemoveSourceExtra(TagJacket);
+							song.Extras.RemoveSourceExtra(TagCDImage);
+							song.Extras.RemoveSourceExtra(TagDiscImage);
+							song.Extras.RemoveSourceExtra(TagCDTitle);
+							song.Extras.RemoveSourceExtra(TagLyricsPath);
+							song.Extras.RemoveSourceExtra(TagPreviewVid);
+						}
+						else
+						{
+							song.Genre = Genre;
+							song.Extras.AddDestExtra(TagCredit, Credit, true);
+							song.Extras.AddDestExtra(TagOrigin, Origin, true);
+							song.SongSelectImage = Banner.Path;
+							song.Extras.AddDestExtra(TagBackground, Background.Path, true);
+							song.Extras.AddDestExtra(TagJacket, Jacket.Path, true);
+							song.Extras.AddDestExtra(TagCDImage, CDImage.Path, true);
+							song.Extras.AddDestExtra(TagDiscImage, DiscImage.Path, true);
+							song.Extras.AddDestExtra(TagCDTitle, CDTitle.Path, true);
+							song.Extras.AddDestExtra(TagLyricsPath, LyricsPath, true);
+							song.Extras.AddDestExtra(TagPreviewVid, PreviewVideoPath, true);
+						}
 
 						// For sm files the display BPM must be specified on the song instead of the charts.
 						// Copy one of the charts' values.
@@ -1686,10 +1709,11 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 					}
 
 					// Save the first chart, and set up an Action to save the next when it is done.
-					editorCharts[0].SaveToChart(saveParameters.OmitCustomSaveData,
+					editorCharts[0].SaveToChart(saveParameters,
 						(savedChart, savedChartProperties) =>
 						{
-							OnChartSaved(song, customProperties, editorCharts, savedChart, savedChartProperties, 0, numCharts,
+							OnChartSaved(song, saveParameters, customProperties, editorCharts, savedChart, savedChartProperties,
+								0, numCharts,
 								OnAllChartsComplete);
 						});
 				}
@@ -1716,6 +1740,7 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 	/// </summary>
 	private void OnChartSaved(
 		Song song,
+		SaveParameters saveParameters,
 		SMWriterCustomProperties customProperties,
 		EditorChart[] editorCharts,
 		Chart chart,
@@ -1733,12 +1758,12 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 		var nextChartIndex = chartIndex + 1;
 		if (nextChartIndex < numCharts)
 		{
-			var omitCustomSaveData = customProperties == null;
-			editorCharts[nextChartIndex].SaveToChart(omitCustomSaveData,
+			editorCharts[nextChartIndex].SaveToChart(saveParameters,
 				(savedChart, savedChartProperties) =>
 				{
 					OnChartSaved(
 						song,
+						saveParameters,
 						customProperties,
 						editorCharts,
 						savedChart,
