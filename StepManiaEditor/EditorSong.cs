@@ -51,6 +51,46 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 	}
 
 	/// <summary>
+	/// Parameters to use when saving a song.
+	/// </summary>
+	internal class SaveParameters
+	{
+		public SaveParameters(FileFormatType fileType, string fullPath)
+		{
+			FileType = fileType;
+			FullPath = fullPath;
+		}
+
+		public SaveParameters(FileFormatType fileType, string fullPath, Action<bool> callback)
+		{
+			FileType = fileType;
+			FullPath = fullPath;
+			Callback = callback;
+		}
+
+		/// <summary>
+		/// FileFormatType to save as.
+		/// </summary>
+		public readonly FileFormatType FileType;
+
+		/// <summary>
+		/// Full path to the file to save to.
+		/// </summary>
+		public readonly string FullPath;
+
+		/// <summary>
+		/// Action to call when saving is complete.
+		/// The parameter represents whether saving succeeded.
+		/// </summary>
+		public readonly Action<bool> Callback;
+
+		/// <summary>
+		/// Whether or not to omit chart timing data and force song timing data.
+		/// </summary>
+		public bool OmitChartTimingData;
+	}
+
+	/// <summary>
 	/// Version of custom data saved to the Song.
 	/// </summary>
 	private const int CustomSaveDataVersion = 1;
@@ -1344,7 +1384,7 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 	///  compatible: Whether or not the song is compatible with the sm format.
 	///  timingMatches: Whether the timing of all the charts matches.
 	/// </returns>
-	public (bool compatible, bool timingMatches) IsCompatibleWithSmFormat()
+	private (bool compatible, bool timingMatches) IsCompatibleWithSmFormat()
 	{
 		// LastSecondHint values aren't compatible with the sm format but can be safely ignored.
 		if (LastSecondHint > 0.0)
@@ -1355,8 +1395,6 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 
 		// Check each chart.
 		var compatible = true;
-		var timingMatches = true;
-		EditorChart firstChart = null;
 		foreach (var kvp in Charts)
 		{
 			var charts = kvp.Value;
@@ -1364,22 +1402,41 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 			{
 				if (!chart.IsCompatibleWithSmFormat(true))
 					compatible = false;
+			}
+		}
 
-				if (firstChart == null)
+		return (compatible, DoChartTimingEventsMatch());
+	}
+
+	/// <summary>
+	/// Returns whether or not the timing events matching between all charts in the song.
+	/// Logs warnings on inconsistencies.
+	/// </summary>
+	/// <returns>True if all timing events match and false otherwise.</returns>
+	private bool DoChartTimingEventsMatch()
+	{
+		var timingMatches = true;
+		var chartToCompareAgainst = TimingChart;
+		foreach (var kvp in Charts)
+		{
+			var charts = kvp.Value;
+			foreach (var chart in charts)
+			{
+				if (chartToCompareAgainst == null)
 				{
-					firstChart = chart;
+					chartToCompareAgainst = chart;
 				}
-				else
+				else if (chartToCompareAgainst != chart)
 				{
 					// Check for a log incompatible timing events, but allow the chart to be saved since we will use the
 					// TimingChart for the timing data.
-					if (!chart.DoSmTimingEventsMatch(firstChart, true))
+					if (!chart.DoSmTimingEventsMatch(chartToCompareAgainst, true))
 						timingMatches = false;
 				}
 			}
 		}
 
-		return (compatible, timingMatches);
+		return timingMatches;
 	}
 
 	/// <summary>
@@ -1388,7 +1445,7 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 	/// <returns>
 	/// True if the song is compatible with the ssc format and false otherwise.
 	/// </returns>
-	public bool IsCompatibleWithSscFormat()
+	private bool IsCompatibleWithSscFormat()
 	{
 		// Check each chart.
 		var compatible = true;
@@ -1408,15 +1465,9 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 	/// <summary>
 	/// Saves this EditorSong to disk.
 	/// Much of the work for saving occurs asynchronously.
-	/// When the saving has completed the given callback will be called.
 	/// </summary>
-	/// <param name="fileType">FileFormatType to save as.</param>
-	/// <param name="fullPath">Full path to the file to save to.</param>
-	/// <param name="callback">
-	/// Action to call when saving is complete.
-	/// The parameter represents whether saving succeeded.
-	/// </param>
-	public void Save(FileFormatType fileType, string fullPath, Action<bool> callback)
+	/// <param name="saveParameters">Parameters to save with.</param>
+	public void Save(SaveParameters saveParameters)
 	{
 		// Variable to track completion when all asynchronous operations have finished.
 		var complete = false;
@@ -1426,15 +1477,15 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 		WorkQueue.Enqueue(() => { Saving = true; });
 
 		// First, update the path.
-		WorkQueue.Enqueue(() => { SetFullFilePath(fullPath); });
+		WorkQueue.Enqueue(() => { SetFullFilePath(saveParameters.FullPath); });
 
 		// Next, enqueue a task to save this EditorSong to disk.
 		WorkQueue.Enqueue(new Task(() =>
 			{
-				Logger.Info($"Saving {fullPath}...");
+				Logger.Info($"Saving {saveParameters.FullPath}...");
 
 				// If saving as an sm file check for incompatibilities and early out.
-				if (fileType == FileFormatType.SM)
+				if (saveParameters.FileType == FileFormatType.SM)
 				{
 					var (compatible, timingMatches) = IsCompatibleWithSmFormat();
 
@@ -1453,8 +1504,23 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 					}
 				}
 
-				if (fileType == FileFormatType.SSC)
+				if (saveParameters.FileType == FileFormatType.SSC)
 				{
+					// When forcing song timing log errors on inconsistencies.
+					// We could warn and continue but it is better to avoid saving lossy data to disk.
+					if (saveParameters.OmitChartTimingData)
+					{
+						if (!DoChartTimingEventsMatch())
+						{
+							Logger.Error(
+								"\"Remove Chart Timing\" was specified but the charts in this song have different timing events." +
+								" Please address incompatibilities and try again." +
+								$" Consider applying the timing and scroll events from {TimingChart.GetDescriptiveName()} to all charts using the button in the Song Properties window.");
+							complete = true;
+							return;
+						}
+					}
+
 					var compatible = IsCompatibleWithSscFormat();
 					if (!compatible)
 					{
@@ -1508,7 +1574,7 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 
 						// For sm files the display BPM must be specified on the song instead of the charts.
 						// Copy one of the charts' values.
-						if (fileType == FileFormatType.SM && fallbackChart != null)
+						if (saveParameters.FileType == FileFormatType.SM && fallbackChart != null)
 						{
 							song.Extras.AddDestExtra(TagDisplayBPM, fallbackChart.Tempo);
 						}
@@ -1531,14 +1597,15 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 						// This is done synchronously as this calling code is asynchronous.
 						var config = new SMWriterBaseConfig
 						{
-							FilePath = fullPath,
+							FilePath = saveParameters.FullPath,
 							Song = song,
 							MeasureSpacingBehavior = MeasureSpacingBehavior.UseLeastCommonMultiple,
 							PropertyEmissionBehavior = PropertyEmissionBehavior.Stepmania,
 							CustomProperties = customProperties,
 							FallbackChart = fallbackChart,
+							ForceOnlySongLevelTiming = saveParameters.OmitChartTimingData,
 						};
-						switch (fileType)
+						switch (saveParameters.FileType)
 						{
 							case FileFormatType.SM:
 								success = new SMWriter(config).Save();
@@ -1551,7 +1618,7 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 								break;
 						}
 
-						Logger.Info($"Saved {fullPath}.");
+						Logger.Info($"Saved {saveParameters.FullPath}.");
 
 						// Mark the entire save as completed now so the WorkQueue can continue.
 						complete = true;
@@ -1605,7 +1672,7 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 				}
 			}),
 			// Callback to caller when saving is complete.
-			() => callback(success),
+			() => saveParameters.Callback?.Invoke(success),
 			// Custom completion check.
 			() => complete);
 
