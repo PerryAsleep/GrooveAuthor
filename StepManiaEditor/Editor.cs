@@ -4000,6 +4000,26 @@ internal sealed class Editor :
 					OnSaveAs();
 				}
 
+				if (ImGui.BeginMenu("Advanced Save Options"))
+				{
+					var titleColumnWidth = UiScaled(120);
+					if (ImGuiLayoutUtils.BeginTable("AdvancedSaveOptionsTable", titleColumnWidth))
+					{
+						ImGuiLayoutUtils.DrawRowCheckbox(true, "Remove Chart Timing", Preferences.Instance,
+							nameof(Preferences.OmitChartTimingData), false,
+							"If checked then individual charts will have their timing data omitted from their files." +
+							" The timing data from the song's Timing Chart will be used and saved at the song level." +
+							" This has no effect on sm files which are already limited to only using timing data specified" +
+							" at the song level. Under normal circumstances this option is not recommended but if you" +
+							" use Stepmania files for other applications which struggle with chart timing data or you" +
+							" are working under additional restrictions to file format this option may be useful.");
+
+						ImGuiLayoutUtils.EndTable();
+					}
+
+					ImGui.EndMenu();
+				}
+
 				ImGui.Separator();
 				if (ImGui.MenuItem("Exit", "Alt+F4"))
 				{
@@ -5065,7 +5085,7 @@ internal sealed class Editor :
 		if (EditEarlyOut())
 			return;
 
-		editorSong?.Save(fileType, fullPath, (success) =>
+		var saveParameters = new EditorSong.SaveParameters(fileType, fullPath, (success) =>
 		{
 			UpdateWindowTitle();
 			UpdateRecentFilesForActiveSong(Position.ChartPosition, ZoomManager.GetSpacingZoom());
@@ -5085,7 +5105,11 @@ internal sealed class Editor :
 			}
 
 			TryInvokePostSaveFunction();
-		});
+		})
+		{
+			OmitChartTimingData = Preferences.Instance.OmitChartTimingData,
+		};
+		editorSong?.Save(saveParameters);
 	}
 
 	/// <summary>
