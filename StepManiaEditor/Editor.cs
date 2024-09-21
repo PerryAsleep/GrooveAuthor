@@ -4002,7 +4002,7 @@ internal sealed class Editor :
 
 				if (ImGui.BeginMenu("Advanced Save Options"))
 				{
-					var titleColumnWidth = UiScaled(120);
+					var titleColumnWidth = UiScaled(150);
 					if (ImGuiLayoutUtils.BeginTable("AdvancedSaveOptionsTable", titleColumnWidth))
 					{
 						ImGuiLayoutUtils.DrawRowCheckbox(true, "Remove Chart Timing", Preferences.Instance,
@@ -4013,6 +4013,17 @@ internal sealed class Editor :
 							" at the song level. Under normal circumstances this option is not recommended but if you" +
 							" use Stepmania files for other applications which struggle with chart timing data or you" +
 							" are working under additional restrictions to file format this option may be useful.");
+
+						ImGuiLayoutUtils.DrawRowCheckbox(true, "Remove Custom Save Data", Preferences.Instance,
+							nameof(Preferences.OmitCustomSaveData), false,
+							$"{GetAppName()} saves custom data into sm/ssc files that Stepmania safely ignores." +
+							$" This data is required for some {GetAppName()} functionality like Patterns, sync compensation" +
+							" for assist tick and waveform visuals, and automatic chart generation." +
+							" It is not recommended to remove this data as it can result in your files losing functionality" +
+							$" and appearing out of sync in {GetAppName()}." +
+							" However, checking this option will remove this data when saving." +
+							" If you are working under restrictions to file format beyond normal Stepmania requirements" +
+							" this option may be useful.");
 
 						ImGuiLayoutUtils.EndTable();
 					}
@@ -5108,6 +5119,7 @@ internal sealed class Editor :
 		})
 		{
 			OmitChartTimingData = Preferences.Instance.OmitChartTimingData,
+			OmitCustomSaveData = Preferences.Instance.OmitCustomSaveData,
 		};
 		editorSong?.Save(saveParameters);
 	}

@@ -3218,6 +3218,17 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	}
 
 	/// <summary>
+	/// Logs warnings from saving this chart with omission of custom save data.
+	/// </summary>
+	public void LogWarningsForOmittingCustomSaveData()
+	{
+		if (Patterns.GetCount() > 0)
+		{
+			LogWarn("Chart has Patterns. These will be deleted when saving because \"Remove Custom Save Data\" is selected.");
+		}
+	}
+
+	/// <summary>
 	/// Generates a list of Events from this EditorChart's EditorEvents.
 	/// The list will be sorted appropriately for Stepmania.
 	/// </summary>
@@ -3240,10 +3251,10 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		return smEvents;
 	}
 
-	public void SaveToChart(Action<Chart, Dictionary<string, string>> callback)
+	public void SaveToChart(bool omitCustomSaveData, Action<Chart, Dictionary<string, string>> callback)
 	{
 		var chart = new Chart();
-		var customProperties = new Dictionary<string, string>();
+		var customProperties = omitCustomSaveData ? null : new Dictionary<string, string>();
 
 		// Enqueue a task to save this EditorChart to a Chart.
 		WorkQueue.Enqueue(new Task(() =>
@@ -3265,7 +3276,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 				chart.ChartOffsetFromMusic = GetMusicOffset();
 				chart.Extras.RemoveSourceExtra(TagOffset);
 
-				SerializeCustomChartData(customProperties);
+				if (!omitCustomSaveData)
+					SerializeCustomChartData(customProperties);
 
 				var layer = new Layer
 				{

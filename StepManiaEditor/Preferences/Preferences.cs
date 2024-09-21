@@ -128,6 +128,7 @@ internal sealed class Preferences
 
 	// Save Options
 	[JsonInclude] public bool OmitChartTimingData;
+	[JsonInclude] public bool OmitCustomSaveData;
 
 	// Misc
 	[JsonInclude] public bool ShowSongPropertiesWindow = true;

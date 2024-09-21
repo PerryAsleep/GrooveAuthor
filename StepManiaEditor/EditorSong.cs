@@ -88,6 +88,11 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 		/// Whether or not to omit chart timing data and force song timing data.
 		/// </summary>
 		public bool OmitChartTimingData;
+
+		/// <summary>
+		/// Whether or not to omit custom save data.
+		/// </summary>
+		public bool OmitCustomSaveData;
 	}
 
 	/// <summary>
@@ -1463,6 +1468,21 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 	}
 
 	/// <summary>
+	/// Logs warnings from saving this song with omission of custom save data.
+	/// </summary>
+	private void LogWarningsForOmittingCustomSaveData()
+	{
+		foreach (var kvp in Charts)
+		{
+			var charts = kvp.Value;
+			foreach (var chart in charts)
+			{
+				chart.LogWarningsForOmittingCustomSaveData();
+			}
+		}
+	}
+
+	/// <summary>
 	/// Saves this EditorSong to disk.
 	/// Much of the work for saving occurs asynchronously.
 	/// </summary>
@@ -1483,6 +1503,9 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 		WorkQueue.Enqueue(new Task(() =>
 			{
 				Logger.Info($"Saving {saveParameters.FullPath}...");
+
+				if (saveParameters.OmitCustomSaveData)
+					LogWarningsForOmittingCustomSaveData();
 
 				// If saving as an sm file check for incompatibilities and early out.
 				if (saveParameters.FileType == FileFormatType.SM)
@@ -1530,7 +1553,8 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 					}
 				}
 
-				var customProperties = new SMWriterCustomProperties();
+				var customProperties =
+					saveParameters.OmitCustomSaveData ? null : new SMWriterCustomProperties();
 				var song = new Song();
 				var fallbackChartIndex = -1;
 
@@ -1586,7 +1610,8 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 
 						song.Extras.AddDestExtra(TagSelectable, Selectable.ToString(), true);
 
-						SerializeCustomSongData(customProperties.CustomSongProperties);
+						if (!saveParameters.OmitCustomSaveData)
+							SerializeCustomSongData(customProperties.CustomSongProperties);
 
 						foreach (var unsupportedChart in UnsupportedCharts)
 						{
@@ -1628,11 +1653,12 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 				// Create Lists to hold the Charts and CustomChartProperties for the EditorCharts.
 				var numCharts = GetNumCharts();
 				song.Charts = new List<Chart>(numCharts);
-				customProperties.CustomChartProperties = new List<Dictionary<string, string>>(numCharts);
+				if (customProperties != null)
+					customProperties.CustomChartProperties = new List<Dictionary<string, string>>(numCharts);
 				for (var i = 0; i < numCharts; i++)
 				{
 					song.Charts.Add(null);
-					customProperties.CustomChartProperties.Add(null);
+					customProperties?.CustomChartProperties.Add(null);
 				}
 
 				// Save all EditorCharts to Charts and call OnAllChartsComplete when done.
@@ -1660,11 +1686,12 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 					}
 
 					// Save the first chart, and set up an Action to save the next when it is done.
-					editorCharts[0].SaveToChart((savedChart, savedChartProperties) =>
-					{
-						OnChartSaved(song, customProperties, editorCharts, savedChart, savedChartProperties, 0, numCharts,
-							OnAllChartsComplete);
-					});
+					editorCharts[0].SaveToChart(saveParameters.OmitCustomSaveData,
+						(savedChart, savedChartProperties) =>
+						{
+							OnChartSaved(song, customProperties, editorCharts, savedChart, savedChartProperties, 0, numCharts,
+								OnAllChartsComplete);
+						});
 				}
 				else
 				{
@@ -1699,24 +1726,27 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 	{
 		// Record the newly created Chart and its properties.
 		song.Charts[chartIndex] = chart;
-		customProperties.CustomChartProperties[chartIndex] = chartProperties;
+		if (customProperties != null)
+			customProperties.CustomChartProperties[chartIndex] = chartProperties;
 
 		// If there are more Charts to save then save the next Chart.
 		var nextChartIndex = chartIndex + 1;
 		if (nextChartIndex < numCharts)
 		{
-			editorCharts[nextChartIndex].SaveToChart((savedChart, savedChartProperties) =>
-			{
-				OnChartSaved(
-					song,
-					customProperties,
-					editorCharts,
-					savedChart,
-					savedChartProperties,
-					nextChartIndex,
-					numCharts,
-					onAllChartsComplete);
-			});
+			var omitCustomSaveData = customProperties == null;
+			editorCharts[nextChartIndex].SaveToChart(omitCustomSaveData,
+				(savedChart, savedChartProperties) =>
+				{
+					OnChartSaved(
+						song,
+						customProperties,
+						editorCharts,
+						savedChart,
+						savedChartProperties,
+						nextChartIndex,
+						numCharts,
+						onAllChartsComplete);
+				});
 		}
 		// If all Charts are complete, invoke the Action to finish saving the Song.
 		else
