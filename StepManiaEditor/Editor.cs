@@ -183,6 +183,7 @@ internal sealed class Editor :
 	private SongLoadTask SongLoadTask;
 	private FileSystemWatcher SongFileWatcher;
 	private bool ShouldCheckForShowingSongFileChangedNotification;
+	private bool ShowingSongFileChangedNotification;
 	private int GarbageCollectFrame;
 
 	private readonly Dictionary<ChartType, PadData> PadDataByChartType = new();
@@ -3811,13 +3812,21 @@ internal sealed class Editor :
 
 	private void ShowFileChangedModal()
 	{
+		// Do not show the notification if one is already showing.
+		if (ShowingSongFileChangedNotification)
+			return;
+
 		var fileName = ActiveSong?.GetFileName() ?? "The current song";
 
 		UIModals.OpenModalTwoButtons(
 			"External Modification",
 			$"{fileName} was modified externally.",
-			"Ignore", () => { },
-			"Reload", () => { OnReload(true); },
+			"Ignore", () => { ShowingSongFileChangedNotification = false; },
+			"Reload", () =>
+			{
+				ShowingSongFileChangedNotification = false;
+				OnReload(true);
+			},
 			() =>
 			{
 				if (ActionQueue.Instance.HasUnsavedChanges())
@@ -3830,6 +3839,7 @@ internal sealed class Editor :
 				ImGui.Checkbox("Don't notify on external song file changes.",
 					ref Preferences.Instance.PreferencesOptions.SuppressExternalSongModificationNotification);
 			});
+		ShowingSongFileChangedNotification = true;
 	}
 
 	[Conditional("DEBUG")]
