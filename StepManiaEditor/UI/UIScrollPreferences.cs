@@ -11,6 +11,7 @@ internal sealed class UIScrollPreferences : UIWindow
 {
 	private static readonly int TitleColumnWidth = UiScaled(120);
 	private static readonly int DefaultWidth = UiScaled(460);
+	private static readonly int OptionsButtonWidth = UiScaled(50);
 
 	public static UIScrollPreferences Instance { get; } = new();
 
@@ -40,7 +41,7 @@ internal sealed class UIScrollPreferences : UIWindow
 		{
 			if (ImGuiLayoutUtils.BeginTable("Scroll", TitleColumnWidth))
 			{
-				DrawSpacingModeRow("Spacing Mode");
+				DrawSpacingModeRow("Spacing Mode", false);
 				DrawWaveFormScrollMode();
 				ImGuiLayoutUtils.EndTable();
 			}
@@ -172,19 +173,30 @@ internal sealed class UIScrollPreferences : UIWindow
 			+ "\n                        effectively one tempo but has brief scroll rate gimmicks.");
 	}
 
-	public static void DrawSpacingModeRow(string title)
+	public static void DrawSpacingModeRow(string title, bool withOpenPreferencesButton)
 	{
-		ImGuiLayoutUtils.DrawRowEnum<Editor.SpacingMode>(true, title, Preferences.Instance.PreferencesScroll,
-			nameof(PreferencesScroll.SpacingMode), false,
-			"How events in the Chart should be spaced when rendering."
-			+ "\nConstant Time: Events are spaced by their time."
-			+ "\n               Equivalent to a CMOD when playing."
-			+ "\nConstant Row:  Spacing is based on row and rows are treated as always the same distance apart."
-			+ "\n               Scroll rate modifiers are ignored."
-			+ "\n               Other rate altering events like stops and tempo changes affect the scroll rate."
-			+ "\nVariable:      Spacing is based on tempo and is affected by all rate altering events."
-			+ "\n               Equivalent to a XMOD when playing."
-			+ "\n"
-			+ "\nThe Spacing Mode can be toggled with the S key.");
+		var help = "How events in the Chart should be spaced when rendering."
+		                 + "\nConstant Time: Events are spaced by their time."
+		                 + "\n               Equivalent to a CMOD when playing."
+		                 + "\nConstant Row:  Spacing is based on row and rows are treated as always the same distance apart."
+		                 + "\n               Scroll rate modifiers are ignored."
+		                 + "\n               Other rate altering events like stops and tempo changes affect the scroll rate."
+		                 + "\nVariable:      Spacing is based on tempo and is affected by all rate altering events."
+		                 + "\n               Equivalent to a XMOD when playing."
+		                 + "\n"
+		                 + "\nThe Spacing Mode can be changed with the S key.";
+		
+		if (withOpenPreferencesButton)
+		{
+			ImGuiLayoutUtils.DrawRowEnumWithButton<Editor.SpacingMode>(true, title, Preferences.Instance.PreferencesScroll,
+				nameof(PreferencesScroll.SpacingMode), false,
+				"Options", () => { Instance.Open(true); }, OptionsButtonWidth,
+				help);
+		}
+		else
+		{
+			ImGuiLayoutUtils.DrawRowEnum<Editor.SpacingMode>(true, title, Preferences.Instance.PreferencesScroll,
+				nameof(PreferencesScroll.SpacingMode), false, help);
+		}
 	}
 }

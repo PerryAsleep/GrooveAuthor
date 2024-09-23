@@ -36,7 +36,7 @@ internal sealed class ImGuiLayoutUtils
 	private static readonly Dictionary<string, object> Cache = new();
 
 	private static string CacheKeyPrefix = "";
-	private const string DragHelpText = "\nShift+drag for large adjustments.\nAlt+drag for small adjustments.";
+	private const string DragHelpText = "\n\nShift+drag for large adjustments.\nAlt+drag for small adjustments.";
 
 	private static ImFontPtr ImGuiFont;
 
@@ -72,6 +72,7 @@ internal sealed class ImGuiLayoutUtils
 	public static readonly float ButtonApplyTimingAndScrollWidth = UiScaled(40);
 	public static readonly Vector2 ButtonCopySize = new(UiScaled(32), 0);
 	public static readonly Vector2 ButtonSettingsSize = new(UiScaled(56), 0);
+	public static readonly float SnapLimitTextWidth = UiScaled(30);
 
 	static ImGuiLayoutUtils()
 	{
@@ -203,6 +204,21 @@ internal sealed class ImGuiLayoutUtils
 	{
 		DrawRowTitleAndAdvanceColumn(title);
 		return DrawCheckbox(title, ref value, ImGui.GetContentRegionAvail().X, help);
+	}
+
+	public static bool DrawRowCheckboxWithButton(string title, ref bool value,
+		string buttonText, Action buttonAction, string help = null)
+	{
+		DrawRowTitleAndAdvanceColumn(title);
+		var buttonWidth = DrawHelp(help, ImGui.GetContentRegionAvail().X) - CheckBoxWidth - ImGui.GetStyle().ItemSpacing.X;
+		ImGui.SetNextItemWidth(CheckBoxWidth);
+		var ret = ImGui.Checkbox(GetElementTitle(title), ref value);
+		ImGui.SameLine();
+		if (ImGui.Button($"{buttonText}{GetElementTitle(title, "Button")}", new Vector2(buttonWidth, 0.0f)))
+		{
+			buttonAction();
+		}
+		return ret;
 	}
 
 	public static bool DrawRowCheckbox(bool undoable, string title, object o, string fieldName, bool affectsFile,
@@ -1764,6 +1780,50 @@ internal sealed class ImGuiLayoutUtils
 		}
 	}
 
+	public static bool DrawRowDragDoubleWithThreeButtons(
+		string title,
+		ref double value,
+		Action action1,
+		string text1,
+		float width1,
+		Action action2,
+		string text2,
+		float width2,
+		Action action3,
+		string text3,
+		float width3,
+		string help = null,
+		float speed = 0.0001f,
+		string format = "%.6f",
+		double min = double.MinValue,
+		double max = double.MaxValue)
+	{
+		DrawRowTitleAndAdvanceColumn(title);
+
+		var dragDoubleWidth = ImGui.GetContentRegionAvail().X - width1 - width2 - width3 - ImGui.GetStyle().ItemSpacing.X * 3;
+		var ret = DrawDragDouble(title, ref value, dragDoubleWidth, help, speed, format, min, max);
+
+		ImGui.SameLine();
+		if (ImGui.Button($"{text1}{GetElementTitle(title)}", new Vector2(width1, 0.0f)))
+		{
+			action1();
+		}
+
+		ImGui.SameLine();
+		if (ImGui.Button($"{text2}{GetElementTitle(title)}", new Vector2(width2, 0.0f)))
+		{
+			action2();
+		}
+
+		ImGui.SameLine();
+		if (ImGui.Button($"{text3}{GetElementTitle(title)}", new Vector2(width3, 0.0f)))
+		{
+			action3();
+		}
+
+		return ret;
+	}
+
 	private static bool DrawDragDouble(
 		bool undoable,
 		string title,
@@ -1969,6 +2029,25 @@ internal sealed class ImGuiLayoutUtils
 	{
 		DrawRowTitleAndAdvanceColumn(title);
 		return DrawEnum(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, null, affectsFile, help, defaultValue);
+	}
+
+	public static bool DrawRowEnumWithButton<T>(bool undoable, string title, object o, string fieldName, bool affectsFile,
+		string buttonText, Action buttonAction, float buttonWidth,
+		string help = null, T defaultValue = default)
+		where T : struct, Enum
+	{
+		DrawRowTitleAndAdvanceColumn(title);
+		var enumWidth = ImGui.GetContentRegionAvail().X - ImGui.GetStyle().ItemSpacing.X - buttonWidth;
+
+		var returnValue = DrawEnum(undoable, title, o, fieldName, enumWidth, null, affectsFile, help, defaultValue);
+
+		ImGui.SameLine();
+		if (ImGui.Button($"{buttonText}{GetElementTitle(title, "Button")}", new Vector2(buttonWidth, 0.0f)))
+		{
+			buttonAction();
+		}
+
+		return returnValue;
 	}
 
 	public static bool DrawRowEnum<T>(bool undoable, string title, object o, string fieldName, T[] allowedValues,
@@ -2719,40 +2798,41 @@ internal sealed class ImGuiLayoutUtils
 		}
 	}
 
-	public static int DrawSnapLevels(
+	public static void DrawRowSnapLevels(
 		string title,
-		object o,
-		string fieldName,
-		bool affectsFile,
+		SnapManager snapManager,
 		string help = null)
 	{
 		DrawRowTitleAndAdvanceColumn(title);
 
-		var itemWidth = DrawHelp(help, ImGui.GetContentRegionAvail().X);
-		ImGui.SetNextItemWidth(itemWidth);
+		var p = Preferences.Instance;
+		var snapLevels = snapManager.GetSnapLevels();
+		var snapLevelIndex = p.SnapIndex;
+		var snapLockIndex = p.SnapLockIndex;
 
-		var elementTitle = GetElementTitle(title, fieldName);
-		var currentValue = GetValueFromFieldOrProperty<SubdivisionType>(o, fieldName);
-		var originalValue = currentValue;
-		var currentBeatSubdivision = GetBeatSubdivision(currentValue);
-		var currentMeasureSubdivision = GetMeasureSubdivision(currentValue);
+		var remainingWidth = DrawHelp(help, ImGui.GetContentRegionAvail().X);
+		var comboWidth = (int)((remainingWidth - SnapLimitTextWidth - ImGui.GetStyle().ItemSpacing.X * 2) * 0.5);
+		var elementTitle = GetElementTitle(title);
 
-		ImGui.PushStyleColor(ImGuiCol.Text, ArrowGraphicManager.GetArrowColorForSubdivision(currentBeatSubdivision));
-
-		if (ImGui.BeginCombo($"{elementTitle}Combo", GetPrettySubdivisionString(currentValue)))
+		// Snap level.
+		ImGui.SetNextItemWidth(comboWidth);
+		ImGui.PushStyleColor(ImGuiCol.Text, snapLevels[snapLevelIndex].GetColor());
+		if (ImGui.BeginCombo($"{elementTitle}SnapLevels", snapLevels[snapLevelIndex].GetText()))
 		{
+			var newIndex = snapLevelIndex;
 			ImGui.PopStyleColor();
 
-			foreach (var subdivisionType in Enum.GetValues(typeof(SubdivisionType)))
+			for (var snapIndex = 0; snapIndex < snapLevels.Count; snapIndex++)
 			{
-				var beatSubdivision = GetBeatSubdivision((SubdivisionType)subdivisionType);
-				var measureSubdivision = GetMeasureSubdivision((SubdivisionType)subdivisionType);
-				ImGui.PushStyleColor(ImGuiCol.Text, ArrowGraphicManager.GetArrowColorForSubdivision(beatSubdivision));
+				if (!SnapManager.IsSnapIndexValidForSnapLock(snapIndex))
+					continue;
 
-				var isSelected = currentMeasureSubdivision == measureSubdivision;
-				if (ImGui.Selectable(GetPrettySubdivisionString((SubdivisionType)subdivisionType), isSelected))
+				var snapLevel = snapLevels[snapIndex];
+				ImGui.PushStyleColor(ImGuiCol.Text, snapLevel.GetColor());
+				var isSelected = snapIndex == snapLevelIndex;
+				if (ImGui.Selectable(snapLevel.GetText(), isSelected))
 				{
-					currentValue = (SubdivisionType)subdivisionType;
+					newIndex = snapIndex;
 				}
 
 				if (isSelected)
@@ -2763,6 +2843,9 @@ internal sealed class ImGuiLayoutUtils
 				ImGui.PopStyleColor();
 			}
 
+			// Update the snap level.
+			p.SnapIndex = newIndex;
+
 			ImGui.EndCombo();
 		}
 		else
@@ -2770,13 +2853,60 @@ internal sealed class ImGuiLayoutUtils
 			ImGui.PopStyleColor();
 		}
 
-		if (currentValue != originalValue)
+		// Limit text.
+		ImGui.SameLine();
+		Text("Limit", SnapLimitTextWidth);
+
+		// Snap lock level.
+		ImGui.SameLine();
+		ImGui.SetNextItemWidth(comboWidth);
+		ImGui.PushStyleColor(ImGuiCol.Text, snapLevels[snapLockIndex].GetColor());
+		if (ImGui.BeginCombo($"{elementTitle}SnapLockLevels", snapLevels[snapLockIndex].GetText()))
 		{
-			if (undoable)
-				ActionQueue.Instance.Do(
-					new ActionSetObjectFieldOrPropertyValue<SubdivisionType>(o, fieldName, currentValue, affectsFile));
-			else
-				SetFieldOrPropertyToValue(o, fieldName, currentValue);
+			var newIndex = snapLockIndex;
+			ImGui.PopStyleColor();
+
+			for (var snapIndex = 0; snapIndex < snapLevels.Count; snapIndex++)
+			{
+				var snapLevel = snapLevels[snapIndex];
+				ImGui.PushStyleColor(ImGuiCol.Text, snapLevel.GetColor());
+				var isSelected = snapIndex == snapLockIndex;
+				if (ImGui.Selectable(snapLevel.GetText(), isSelected))
+				{
+					newIndex = snapIndex;
+				}
+
+				if (isSelected)
+				{
+					ImGui.SetItemDefaultFocus();
+				}
+
+				ImGui.PopStyleColor();
+			}
+
+			// Update the lock level and ensure the snap index is valid for it.
+			if (newIndex != snapLockIndex)
+			{
+				p.SnapLockIndex = newIndex;
+				var shouldAdjustSnapIndex = false;
+				while (!SnapManager.IsSnapIndexValidForSnapLock(p.SnapIndex))
+				{
+					shouldAdjustSnapIndex = true;
+					p.SnapIndex++;
+					if (p.SnapIndex >= snapLevels.Count)
+						p.SnapIndex = 0;
+				}
+
+				// When changing the snap lock and the snap index was set to specific note type
+				// we should avoid setting it to None. It is better to set it to the new lock level.
+				if (shouldAdjustSnapIndex && p.SnapLockIndex != 0 && p.SnapIndex == 0)
+					p.SnapIndex = p.SnapLockIndex;
+			}
+			ImGui.EndCombo();
+		}
+		else
+		{
+			ImGui.PopStyleColor();
 		}
 	}
 
@@ -3681,6 +3811,12 @@ internal sealed class ImGuiLayoutUtils
 	}
 
 	#endregion Stream
+
+	#region Note Size
+
+
+
+	#endregion
 
 	#region Compare Functions
 

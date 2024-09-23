@@ -114,14 +114,6 @@ internal sealed class Editor :
 		Right,
 	}
 
-	public class SnapData
-	{
-		public int Rows;
-		public string Texture;
-	}
-
-	private SnapData[] SnapLevels;
-
 	private readonly EditorMouseState EditorMouseState = new();
 	private bool CanShowRightClickPopupThisFrame;
 
@@ -170,6 +162,7 @@ internal sealed class Editor :
 	private SoundManager SoundManager;
 	private MusicManager MusicManager;
 	private MiniMap MiniMap;
+	private SnapManager SnapManager;
 
 	// UI
 	private UIEditEvents UIEditEvents;
@@ -321,7 +314,7 @@ internal sealed class Editor :
 		InitializeMouseVisibility();
 		InitializeWindowResizing();
 		InitializeVSync();
-		InitializeSnapLevels();
+		InitializeSnapManager();
 		InitializeObservers();
 		InitializePerformanceMonitor();
 
@@ -755,26 +748,6 @@ internal sealed class Editor :
 		Graphics.SynchronizeWithVerticalRetrace = true;
 	}
 
-	private void InitializeSnapLevels()
-	{
-		// Set up snap levels for all valid denominators.
-		SnapLevels = new SnapData[ValidDenominators.Length + 1];
-		SnapLevels[0] = new SnapData { Rows = 0 };
-		for (var denominatorIndex = 0; denominatorIndex < ValidDenominators.Length; denominatorIndex++)
-		{
-			SnapLevels[denominatorIndex + 1] = new SnapData
-			{
-				Rows = MaxValidDenominator / ValidDenominators[denominatorIndex],
-				Texture = ArrowGraphicManager.GetSnapIndicatorTexture(ValidDenominators[denominatorIndex]),
-			};
-		}
-
-		if (Preferences.Instance.SnapIndex < 0 || Preferences.Instance.SnapIndex >= SnapLevels.Length)
-		{
-			Preferences.Instance.SnapIndex = 0;
-		}
-	}
-
 	private void InitializeObservers()
 	{
 		Preferences.Instance.PreferencesOptions.AddObserver(this);
@@ -786,6 +759,11 @@ internal sealed class Editor :
 	{
 		PerformanceMonitor = new PerformanceMonitor(1024, PerformanceTimings.PerfTimings);
 		PerformanceMonitor.SetEnabled(!Preferences.Instance.PreferencesPerformance.PerformanceMonitorPaused);
+	}
+
+	private void InitializeSnapManager()
+	{
+		SnapManager = new SnapManager();
 	}
 
 	private void InitializeWindowSize()
@@ -1814,7 +1792,7 @@ internal sealed class Editor :
 		}
 		else
 		{
-			if (SnapLevels[Preferences.Instance.SnapIndex].Rows == 0)
+			if (SnapManager.GetCurrentRows() == 0)
 			{
 				if (focusedChartData != null)
 				{
@@ -2333,7 +2311,7 @@ internal sealed class Editor :
 		var arrowGraphicManager = focusedChartData.GetArrowGraphicManager();
 		if (arrowGraphicManager == null)
 			return;
-		var snapTextureId = SnapLevels[Preferences.Instance.SnapIndex].Texture;
+		var snapTextureId = SnapManager.GetCurrentTexture();
 		if (string.IsNullOrEmpty(snapTextureId))
 			return;
 		var (receptorTextureId, _) = arrowGraphicManager.GetReceptorTexture(0);
@@ -3089,7 +3067,7 @@ internal sealed class Editor :
 		UIAutogenChartsForChartType.Instance.Draw();
 		UICopyEventsBetweenCharts.Instance.Draw();
 		UIPatternEvent.Instance.Draw(GetFocusedChartData()?.GetLastSelectedPatternEvent());
-		UIChartPosition.Instance.Draw(SnapLevels[Preferences.Instance.SnapIndex]);
+		UIChartPosition.Instance.Draw();
 
 		if (CanShowRightClickPopupThisFrame && EditorMouseState.GetButtonState(EditorMouseState.Button.Right).UpThisFrame())
 		{
@@ -4933,7 +4911,7 @@ internal sealed class Editor :
 
 	public int GetShiftNotesRows()
 	{
-		var rows = SnapLevels[Preferences.Instance.SnapIndex].Rows;
+		var rows = SnapManager.GetCurrentRows();
 		if (rows == 0)
 			rows = MaxValidDenominator;
 		return rows;
@@ -5083,20 +5061,19 @@ internal sealed class Editor :
 		}
 	}
 
+	public SnapManager GetSnapManager()
+	{
+		return SnapManager;
+	}
+
 	private void OnDecreaseSnap()
 	{
-		var p = Preferences.Instance;
-		p.SnapIndex--;
-		if (p.SnapIndex < 0)
-			p.SnapIndex = SnapLevels.Length - 1;
+		SnapManager.DecreaseSnap();
 	}
 
 	private void OnIncreaseSnap()
 	{
-		var p = Preferences.Instance;
-		p.SnapIndex++;
-		if (p.SnapIndex >= SnapLevels.Length)
-			p.SnapIndex = 0;
+		SnapManager.IncreaseSnap();
 	}
 
 	public void OnMoveUp()
@@ -5104,7 +5081,7 @@ internal sealed class Editor :
 		if (Preferences.Instance.PreferencesScroll.StopPlaybackWhenScrolling)
 			StopPlayback();
 
-		var rows = SnapLevels[Preferences.Instance.SnapIndex].Rows;
+		var rows = SnapManager.GetCurrentRows();
 		if (rows == 0)
 		{
 			OnMoveToPreviousMeasure();
@@ -5125,7 +5102,7 @@ internal sealed class Editor :
 		if (Preferences.Instance.PreferencesScroll.StopPlaybackWhenScrolling)
 			StopPlayback();
 
-		var rows = SnapLevels[Preferences.Instance.SnapIndex].Rows;
+		var rows = SnapManager.GetCurrentRows();
 		if (rows == 0)
 		{
 			OnMoveToNextMeasure();
@@ -5339,7 +5316,7 @@ internal sealed class Editor :
 		if (EditEarlyOut())
 			return;
 		var focusedChartData = GetFocusedChartData();
-		focusedChartData?.OnLaneInputDown(lane, Playing, SnapLevels[Preferences.Instance.SnapIndex].Rows);
+		focusedChartData?.OnLaneInputDown(lane, Playing, SnapManager.GetCurrentRows());
 	}
 
 	private void OnLaneInputUp(int lane)

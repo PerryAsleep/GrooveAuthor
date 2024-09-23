@@ -21,8 +21,14 @@ internal sealed class UIChartPosition : UIWindow
 	public static readonly int Height = UiScaled(63);
 	public static readonly int HalfWidth = Width / 2;
 	public static readonly int HalfHeight = Height / 2;
-	private static readonly int MiscTableTitleColumnWidth = UiScaled(80);
-	private static readonly int MiscTableSnapWidth = UiScaled(32);
+
+	private static readonly int ColumnWidthTitleSpacing = UiScaled(71);
+	private static readonly int ColumnWidthTitleSnap = UiScaled(58);
+	private static readonly int ColumnWidthTitleUI = UiScaled(77);
+	private static readonly int ColumnWidthValueUI = UiScaled(108);
+	private static readonly int ColumnWidthTitleSteps = UiScaled(40);
+	private static readonly int ColumnWidthValueSteps = UiScaled(47);
+
 	private static readonly int TableNameColWidth = UiScaled(37);
 	private static readonly int TablePositionColWidth = UiScaled(73);
 	private static readonly int TableSongTimeColWidth = UiScaled(104);
@@ -31,7 +37,8 @@ internal sealed class UIChartPosition : UIWindow
 	private static readonly int TableBeatColWidth = UiScaled(67);
 	private static readonly int TableRowColWidth = UiScaled(78);
 	private static readonly int TableWidth = UiScaled(588);
-	private static readonly int TableHeight = UiScaled(46);
+	private static readonly int TableHeight = UiScaled(48);
+	private static readonly float ButtonSizeCapWidth = UiScaled(24);
 
 	private Editor Editor;
 
@@ -61,8 +68,7 @@ internal sealed class UIChartPosition : UIWindow
 	/// <summary>
 	/// Draws the chart position information.
 	/// </summary>
-	/// <param name="snapData">SnapData.</param>
-	public void Draw(SnapData snapData)
+	public void Draw()
 	{
 		if (!Preferences.Instance.ShowHotbar)
 			return;
@@ -71,12 +77,18 @@ internal sealed class UIChartPosition : UIWindow
 		if (ImGui.Begin(WindowTitle, ref Preferences.Instance.ShowHotbar))
 		{
 			var pScroll = Preferences.Instance.PreferencesScroll;
-			var tableWidth = (ImGui.GetContentRegionAvail().X - ImGui.GetStyle().ItemSpacing.X * 2) / 3;
-			var tableContentWidth = tableWidth - MiscTableTitleColumnWidth - ImGui.GetStyle().ItemSpacing.X;
-			if (ImGuiLayoutUtils.BeginTable("Spacing", MiscTableTitleColumnWidth, tableContentWidth))
+			var spacing = ImGui.GetStyle().ItemSpacing.X;
+			var totalWidth = ImGui.GetContentRegionAvail().X;
+			var tableUIWidth = ColumnWidthTitleUI + ColumnWidthValueUI + spacing;
+			var tableStepsWidth = ColumnWidthTitleSteps + ColumnWidthValueSteps + spacing;
+			var variableWidthTableWidth = (int)((totalWidth - tableUIWidth - tableStepsWidth - spacing * 3) * 0.5);
+			var columnWidthValueSpacing = variableWidthTableWidth - spacing - ColumnWidthTitleSpacing;
+			var columnWidthValueSnap = variableWidthTableWidth - spacing - ColumnWidthTitleSnap;
+
+			if (ImGuiLayoutUtils.BeginTable("Spacing", ColumnWidthTitleSpacing, columnWidthValueSpacing))
 			{
 				// Spacing mode.
-				UIScrollPreferences.DrawSpacingModeRow("Spacing Mode");
+				UIScrollPreferences.DrawSpacingModeRow("Spacing Mode", true);
 
 				// Spacing.
 				switch (pScroll.SpacingMode)
@@ -85,14 +97,15 @@ internal sealed class UIChartPosition : UIWindow
 					{
 						ImGuiLayoutUtils.DrawRowSliderFloatWithReset(
 							false,
-							"Note Spacing (Constant Row)",
+							"Spacing",
 							pScroll,
 							nameof(PreferencesScroll.RowBasedPixelsPerRowFloat),
 							(float)ZoomManager.MinConstantRowSpacing,
 							(float)ZoomManager.MaxConstantRowSpacing,
 							(float)PreferencesScroll.DefaultRowBasedPixelsPerRow,
 							false,
-							"Spacing in pixels per row at default zoom level.",
+							"Spacing in pixels per row at default zoom level." +
+							"\n\nSpacing can be adjusted with Shift+Scroll.",
 							"%.3f",
 							ImGuiSliderFlags.Logarithmic);
 						break;
@@ -101,14 +114,15 @@ internal sealed class UIChartPosition : UIWindow
 					{
 						ImGuiLayoutUtils.DrawRowSliderFloatWithReset(
 							false,
-							"Note Spacing (Constant Time)",
+							"Spacing",
 							pScroll,
 							nameof(PreferencesScroll.TimeBasedPixelsPerSecondFloat),
 							(float)ZoomManager.MinConstantTimeSpeed,
 							(float)ZoomManager.MaxConstantTimeSpeed,
 							(float)PreferencesScroll.DefaultTimeBasedPixelsPerSecond,
 							false,
-							"Speed in pixels per second at default zoom level.",
+							"Speed in pixels per second at default zoom level." +
+							"\n\nSpacing can be adjusted with Shift+Scroll.",
 							"%.3f",
 							ImGuiSliderFlags.Logarithmic);
 						break;
@@ -117,14 +131,15 @@ internal sealed class UIChartPosition : UIWindow
 					{
 						ImGuiLayoutUtils.DrawRowSliderFloatWithReset(
 							false,
-							"Note Spacing (Variable)",
+							"Spacing",
 							pScroll,
 							nameof(PreferencesScroll.VariablePixelsPerSecondAtDefaultBPMFloat),
 							(float)ZoomManager.MinVariableSpeed,
 							(float)ZoomManager.MaxVariableSpeed,
 							(float)PreferencesScroll.DefaultVariablePixelsPerSecondAtDefaultBPM,
 							false,
-							$"Speed in pixels per second at default zoom level at {PreferencesScroll.DefaultVariableSpeedBPM} BPM.",
+							$"Speed in pixels per second at default zoom level at {PreferencesScroll.DefaultVariableSpeedBPM} BPM." +
+							"\n\nSpacing can be adjusted with Shift+Scroll.",
 							"%.3f",
 							ImGuiSliderFlags.Logarithmic);
 						break;
@@ -132,15 +147,13 @@ internal sealed class UIChartPosition : UIWindow
 				}
 
 				// Zoom level.
-				// TODO: Use a double for this control.
 				// ImGUI.NET does not currently support passing ImGuiSliderFlags to double controls.
 				// Casting to a float to allow use of ImGuiSliderFlags.Logarithmic.
 				var zoom = (float)Editor.GetSpacingZoom();
 				var originalZoom = zoom;
 				ImGuiLayoutUtils.DrawRowDragFloat("Zoom", ref zoom,
 					"Chart zoom level." +
-					"\nCtrl+Scroll while over the chart changes the zoom level." +
-					"\nShift+Scroll while over the chart changes how the notes are spaced for the current Spacing mode.",
+					"\n\nZoom level can be adjusted with Ctrl+Scroll.",
 					100.0f, "%.6f", (float)ZoomManager.MinZoom,
 					(float)ZoomManager.MaxZoom, ImGuiSliderFlags.Logarithmic);
 				if (!zoom.FloatEquals(originalZoom))
@@ -149,12 +162,14 @@ internal sealed class UIChartPosition : UIWindow
 				}
 
 				// Size cap.
-				var sizeCap = (float)Editor.GetSizeCap();
+				var sizeCap = Editor.GetSizeCap();
 				var originalSizeCap= sizeCap;
-				ImGuiLayoutUtils.DrawRowDragFloat("Size Cap", ref sizeCap,
+				if (ImGuiLayoutUtils.DrawRowDragDoubleWithThreeButtons("Size Cap", ref sizeCap,
+					() => Editor.SetSizeCap(1.0), "1", ButtonSizeCapWidth,
+					() => Editor.SetSizeCap(0.5), "1/2", ButtonSizeCapWidth,
+					() => Editor.SetSizeCap(0.25), "1/4", ButtonSizeCapWidth,
 					"Maximum allowed size of the notes.",
-					0.01f, "%.6f", (float)ZoomManager.MinSizeCap, (float)ZoomManager.MaxSizeCap);
-				if (!sizeCap.FloatEquals(originalSizeCap))
+					0.001f, "%.6f", ZoomManager.MinSizeCap, ZoomManager.MaxSizeCap) && !sizeCap.DoubleEquals(originalSizeCap))
 				{
 					Editor.SetSizeCap(sizeCap);
 				}
@@ -163,52 +178,67 @@ internal sealed class UIChartPosition : UIWindow
 			}
 
 			ImGui.SameLine();
-			if (ImGuiLayoutUtils.BeginTable("Quick Controls", MiscTableTitleColumnWidth, tableContentWidth))
+			if (ImGuiLayoutUtils.BeginTable("Snap", ColumnWidthTitleSnap, columnWidthValueSnap))
 			{
 				// Snap level.
-				ImGuiLayoutUtils.DrawRowTitleAndAdvanceColumn("Snap");
-				ImGuiLayoutUtils.DrawHelp(
-					"Snap:     Current note type being snapped to." +
-					"\n          Use the left and right arrow keys to change the snap." +
-					"\nAutomove: If checked, when entering a new note the editor position will automatically" +
-					"\n          advance by the current Snap level." +
-					"\n          Automove can also be toggled with the M key.",
-					ImGui.GetContentRegionAvail().X);
-				if (snapData.Rows == 0)
-				{
-					ImGui.PushStyleColor(ImGuiCol.Text, ColorTextWhite);
-					Text("None", MiscTableSnapWidth);
-				}
-				else
-				{
-					ImGui.PushStyleColor(ImGuiCol.Text,
-						ArrowGraphicManager.GetArrowColorForSubdivision(SMCommon.MaxValidDenominator / snapData.Rows));
-					Text($"1/{SMCommon.MaxValidDenominator / snapData.Rows * SMCommon.NumBeatsPerMeasure}", MiscTableSnapWidth);
-				}
-				ImGui.PopStyleColor();
+				ImGuiLayoutUtils.DrawRowSnapLevels("Snap", Editor.GetSnapManager(),
+					"Current note type being snapped to." +
+					"\nThe limit will restrict the snap note types to note types which evenly divide it." +
+					"\n\nSnap can be changed with the left and right arrow keys.");
 
 				// Automove.
 				var autoAdvance = Preferences.Instance.NoteEntryMode == NoteEntryMode.AdvanceBySnap;
 				if (ImGuiLayoutUtils.DrawRowCheckbox("Automove", ref autoAdvance,
-					    "Automove will automatically advance the cursor position when adding a new note."))
+					    "Automove will automatically advance the cursor position when adding a new note." +
+					    "\n\nAutomove can be toggled with the M key."))
 					Preferences.Instance.NoteEntryMode = autoAdvance ? NoteEntryMode.AdvanceBySnap : NoteEntryMode.Normal;
 
 				// Step Coloring.
-				UIOptions.DrawStepColoring();
-
-				// Waveform Scroll Mode.
-				UIScrollPreferences.DrawWaveFormScrollMode();
+				UIOptions.DrawStepColoring("Step Color");
 
 				ImGuiLayoutUtils.EndTable();
 			}
 
 			ImGui.SameLine();
-			if (ImGuiLayoutUtils.BeginTable("Steps", MiscTableTitleColumnWidth, tableContentWidth))
+			if (ImGuiLayoutUtils.BeginTable("UI Visibility", ColumnWidthTitleUI, ColumnWidthValueUI))
 			{
+				ImGuiLayoutUtils.DrawRowCheckboxWithButton("Mini Map", ref Preferences.Instance.PreferencesMiniMap.ShowMiniMap,
+					"Options", () => { UIMiniMapPreferences.Instance.Open(true); },
+					"Whether or not to show the Mini Map.");
+
+				var b = Preferences.Instance.PreferencesDensityGraph.ShowDensityGraph;
+				if (ImGuiLayoutUtils.DrawRowCheckboxWithButton("Density Graph", ref b,
+					    "Options", () => { UIDensityGraphPreferences.Instance.Open(true); },
+					    "Whether or not to show the Density Graph."))
+				{
+					Preferences.Instance.PreferencesDensityGraph.ShowDensityGraph = b;
+				}
+
+				ImGuiLayoutUtils.DrawRowCheckboxWithButton("Waveform", ref Preferences.Instance.PreferencesWaveForm.ShowWaveForm,
+					"Options", () => { UIWaveFormPreferences.Instance.Open(true); },
+					"Whether or not to show the Waveform.");
+
+				ImGuiLayoutUtils.DrawRowCheckboxWithButton("Dark", ref Preferences.Instance.PreferencesDark.ShowDarkBg,
+					"Options", () => { UIDarkPreferences.Instance.Open(true); },
+					"Whether or not to show the dark background.");
+
 				ImGuiLayoutUtils.EndTable();
 			}
 
-			
+			ImGui.SameLine();
+			if (ImGuiLayoutUtils.BeginTable("Step Visibility", ColumnWidthTitleSteps, ColumnWidthValueSteps))
+			{
+				ImGuiLayoutUtils.DrawRowCheckbox("Notes", ref Preferences.Instance.RenderNotes,
+					"Whether or not to render notes.");
+				ImGuiLayoutUtils.DrawRowCheckbox("Markers", ref Preferences.Instance.RenderMarkers,
+					"Whether or not to render beat and measure markers.");
+				ImGuiLayoutUtils.DrawRowCheckbox("Regions", ref Preferences.Instance.RenderRegions,
+					"Whether or not to render regions behind the chart for events like stops, the preview, etc.");
+				ImGuiLayoutUtils.DrawRowCheckbox("Misc", ref Preferences.Instance.RenderMiscEvents,
+					"Whether or not to render miscellaneous events like timing events, labels, etc.");
+				ImGuiLayoutUtils.EndTable();
+			}
+
 			// Draw the table with position information.
 			DrawPositionTable();
 		}

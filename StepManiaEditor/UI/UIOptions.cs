@@ -197,9 +197,9 @@ internal class UIOptions : UIWindow
 			0.0001f, "%.6f seconds", 0.0);
 	}
 
-	public static void DrawStepColoring()
+	public static void DrawStepColoring(string title = "Step Coloring")
 	{
-		ImGuiLayoutUtils.DrawRowEnum<PreferencesOptions.StepColorMethod>(true, "Step Coloring", Preferences.Instance.PreferencesOptions,
+		ImGuiLayoutUtils.DrawRowEnum<PreferencesOptions.StepColorMethod>(true, title, Preferences.Instance.PreferencesOptions,
 			nameof(PreferencesOptions.StepColorMethodValue), false,
 			"How to color steps for chart types which color steps based on rhythm." +
 			"\nStepmania: Use the same logic for coloring notes as Stepmania." +
