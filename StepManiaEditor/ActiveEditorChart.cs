@@ -1165,6 +1165,8 @@ internal sealed class ActiveEditorChart
 		if (Selection == null || !SelectedRegion.IsActive())
 			return;
 
+		var canSelectNotes = Preferences.Instance.RenderNotes;
+		var canSelectMiscEvents = Preferences.Instance.RenderMiscEvents;
 		var lastSelectedEvent = Selection.GetLastSelectedEvent();
 
 		// Collect the newly selected notes.
@@ -1199,6 +1201,10 @@ internal sealed class ActiveEditorChart
 				// early out prematurely.
 				if (visibleEvent.Y > y + halfArrowH)
 					break;
+				if (!canSelectNotes && !visibleEvent.IsMiscEvent())
+					continue;
+				if (!canSelectMiscEvents && visibleEvent.IsMiscEvent())
+					continue;
 				if (visibleEvent.DoesPointIntersect(x, y))
 					best = visibleEvent;
 			}
@@ -1224,22 +1230,25 @@ internal sealed class ActiveEditorChart
 				// Select notes.
 				if (!selectMiscEvents)
 				{
-					// Adjust the time to account for the selection preference for how much of an event should be
-					// within the selected region.
-					var (adjustedMinTime, adjustedMaxTime) = AdjustSelectionTimeRange(minTime, maxTime, halfArrowH);
-					if (adjustedMinTime < adjustedMaxTime)
+					if (canSelectNotes)
 					{
-						var enumerator = Chart.GetEvents().FindLeastAfterChartTime(adjustedMinTime);
-						while (enumerator.MoveNext())
+						// Adjust the time to account for the selection preference for how much of an event should be
+						// within the selected region.
+						var (adjustedMinTime, adjustedMaxTime) = AdjustSelectionTimeRange(minTime, maxTime, halfArrowH);
+						if (adjustedMinTime < adjustedMaxTime)
 						{
-							if (enumerator.Current!.GetChartTime() > adjustedMaxTime)
-								break;
-							if (!isSelectable(enumerator.Current))
-								continue;
-							var lane = enumerator.Current.GetLane();
-							if (lane < minLane || lane > maxLane)
-								continue;
-							newlySelectedEvents.Add(enumerator.Current);
+							var enumerator = Chart.GetEvents().FindLeastAfterChartTime(adjustedMinTime);
+							while (enumerator.MoveNext())
+							{
+								if (enumerator.Current!.GetChartTime() > adjustedMaxTime)
+									break;
+								if (!isSelectable(enumerator.Current))
+									continue;
+								var lane = enumerator.Current.GetLane();
+								if (lane < minLane || lane > maxLane)
+									continue;
+								newlySelectedEvents.Add(enumerator.Current);
+							}
 						}
 					}
 
@@ -1250,7 +1259,7 @@ internal sealed class ActiveEditorChart
 				}
 
 				// Select misc. events.
-				if (selectMiscEvents)
+				if (selectMiscEvents && canSelectMiscEvents)
 				{
 					// Adjust the time to account for the selection preference for how much of an event should be
 					// within the selected region.
@@ -1298,23 +1307,26 @@ internal sealed class ActiveEditorChart
 				// Select notes.
 				if (!selectMiscEvents)
 				{
-					// Adjust the position to account for the selection preference for how much of an event should be
-					// within the selected region.
-					var (adjustedMinPosition, adjustedMaxPosition) =
-						AdjustSelectionPositionRange(minPosition, maxPosition, halfArrowH);
-					if (adjustedMinPosition < adjustedMaxPosition)
+					if (canSelectNotes)
 					{
-						var enumerator = Chart.GetEvents().FindLeastAfterChartPosition(adjustedMinPosition);
-						while (enumerator != null && enumerator.MoveNext())
+						// Adjust the position to account for the selection preference for how much of an event should be
+						// within the selected region.
+						var (adjustedMinPosition, adjustedMaxPosition) =
+							AdjustSelectionPositionRange(minPosition, maxPosition, halfArrowH);
+						if (adjustedMinPosition < adjustedMaxPosition)
 						{
-							if (enumerator.Current!.GetRow() > adjustedMaxPosition)
-								break;
-							if (!isSelectable(enumerator.Current))
-								continue;
-							var lane = enumerator.Current.GetLane();
-							if (lane < minLane || lane > maxLane)
-								continue;
-							newlySelectedEvents.Add(enumerator.Current);
+							var enumerator = Chart.GetEvents().FindLeastAfterChartPosition(adjustedMinPosition);
+							while (enumerator != null && enumerator.MoveNext())
+							{
+								if (enumerator.Current!.GetRow() > adjustedMaxPosition)
+									break;
+								if (!isSelectable(enumerator.Current))
+									continue;
+								var lane = enumerator.Current.GetLane();
+								if (lane < minLane || lane > maxLane)
+									continue;
+								newlySelectedEvents.Add(enumerator.Current);
+							}
 						}
 					}
 
@@ -1325,7 +1337,7 @@ internal sealed class ActiveEditorChart
 				}
 
 				// Select misc. events.
-				if (selectMiscEvents)
+				if (selectMiscEvents && canSelectMiscEvents)
 				{
 					// Adjust the position to account for the selection preference for how much of an event should be
 					// within the selected region.

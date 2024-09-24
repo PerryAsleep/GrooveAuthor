@@ -3,6 +3,10 @@ using ImGuiNET;
 
 namespace StepManiaEditor;
 
+/// <summary>
+/// Data related to one snap level.
+/// A snap level locks cursor movement to a specific number of rows based on a note type.
+/// </summary>
 internal sealed class SnapData
 {
 	public readonly int Rows;
@@ -49,4 +53,3 @@ internal sealed class SnapData
 		return Text;
 	}
 }
-

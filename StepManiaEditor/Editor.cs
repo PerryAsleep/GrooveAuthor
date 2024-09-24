@@ -2383,6 +2383,9 @@ internal sealed class Editor :
 
 	private void DrawMeasureMarkers()
 	{
+		if (!Preferences.Instance.RenderMarkers)
+			return;
+
 		foreach (var activeChartData in ActiveChartData)
 		{
 			foreach (var visibleMarker in activeChartData.GetVisibleMarkers())
@@ -2394,6 +2397,9 @@ internal sealed class Editor :
 
 	private void DrawRegions()
 	{
+		if (!Preferences.Instance.RenderRegions)
+			return;
+
 		foreach (var activeChartData in ActiveChartData)
 		{
 			foreach (var visibleRegion in activeChartData.GetVisibleRegions())
@@ -2414,12 +2420,22 @@ internal sealed class Editor :
 
 	private void DrawChartEvents()
 	{
+		var renderMiscEvents = Preferences.Instance.RenderMiscEvents;
+		var renderNotes = Preferences.Instance.RenderNotes;
+		if (!renderMiscEvents && !renderNotes)
+			return;
+
 		foreach (var activeChartData in ActiveChartData)
 		{
 			var eventsBeingEdited = new List<EditorEvent>();
 
 			foreach (var visibleEvent in activeChartData.GetVisibleEvents())
 			{
+				if (!renderMiscEvents && visibleEvent.IsMiscEvent())
+					continue;
+				if (!renderNotes && !visibleEvent.IsMiscEvent())
+					continue;
+
 				// Capture events being edited to draw after all events not being edited.
 				if (visibleEvent.IsBeingEdited())
 				{

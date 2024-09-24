@@ -163,13 +163,13 @@ internal sealed class UIChartPosition : UIWindow
 
 				// Size cap.
 				var sizeCap = Editor.GetSizeCap();
-				var originalSizeCap= sizeCap;
+				var originalSizeCap = sizeCap;
 				if (ImGuiLayoutUtils.DrawRowDragDoubleWithThreeButtons("Size Cap", ref sizeCap,
-					() => Editor.SetSizeCap(1.0), "1", ButtonSizeCapWidth,
-					() => Editor.SetSizeCap(0.5), "1/2", ButtonSizeCapWidth,
-					() => Editor.SetSizeCap(0.25), "1/4", ButtonSizeCapWidth,
-					"Maximum allowed size of the notes.",
-					0.001f, "%.6f", ZoomManager.MinSizeCap, ZoomManager.MaxSizeCap) && !sizeCap.DoubleEquals(originalSizeCap))
+					    () => Editor.SetSizeCap(1.0), "1", ButtonSizeCapWidth,
+					    () => Editor.SetSizeCap(0.5), "1/2", ButtonSizeCapWidth,
+					    () => Editor.SetSizeCap(0.25), "1/4", ButtonSizeCapWidth,
+					    "Maximum allowed size of the notes.",
+					    0.001f, "%.6f", ZoomManager.MinSizeCap, ZoomManager.MaxSizeCap) && !sizeCap.DoubleEquals(originalSizeCap))
 				{
 					Editor.SetSizeCap(sizeCap);
 				}
@@ -242,6 +242,7 @@ internal sealed class UIChartPosition : UIWindow
 			// Draw the table with position information.
 			DrawPositionTable();
 		}
+
 		ImGui.End();
 	}
 

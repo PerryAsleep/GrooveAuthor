@@ -176,16 +176,16 @@ internal sealed class UIScrollPreferences : UIWindow
 	public static void DrawSpacingModeRow(string title, bool withOpenPreferencesButton)
 	{
 		var help = "How events in the Chart should be spaced when rendering."
-		                 + "\nConstant Time: Events are spaced by their time."
-		                 + "\n               Equivalent to a CMOD when playing."
-		                 + "\nConstant Row:  Spacing is based on row and rows are treated as always the same distance apart."
-		                 + "\n               Scroll rate modifiers are ignored."
-		                 + "\n               Other rate altering events like stops and tempo changes affect the scroll rate."
-		                 + "\nVariable:      Spacing is based on tempo and is affected by all rate altering events."
-		                 + "\n               Equivalent to a XMOD when playing."
-		                 + "\n"
-		                 + "\nThe Spacing Mode can be changed with the S key.";
-		
+		           + "\nConstant Time: Events are spaced by their time."
+		           + "\n               Equivalent to a CMOD when playing."
+		           + "\nConstant Row:  Spacing is based on row and rows are treated as always the same distance apart."
+		           + "\n               Scroll rate modifiers are ignored."
+		           + "\n               Other rate altering events like stops and tempo changes affect the scroll rate."
+		           + "\nVariable:      Spacing is based on tempo and is affected by all rate altering events."
+		           + "\n               Equivalent to a XMOD when playing."
+		           + "\n"
+		           + "\nThe Spacing Mode can be changed with the S key.";
+
 		if (withOpenPreferencesButton)
 		{
 			ImGuiLayoutUtils.DrawRowEnumWithButton<Editor.SpacingMode>(true, title, Preferences.Instance.PreferencesScroll,

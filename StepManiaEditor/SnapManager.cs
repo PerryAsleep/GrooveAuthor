@@ -3,6 +3,9 @@ using static Fumen.Converters.SMCommon;
 
 namespace StepManiaEditor;
 
+/// <summary>
+/// Class for managing levels of SnapData.
+/// </summary>
 internal sealed class SnapManager
 {
 	private readonly SnapData[] SnapLevels;

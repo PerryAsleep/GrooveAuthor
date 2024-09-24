@@ -218,6 +218,7 @@ internal sealed class ImGuiLayoutUtils
 		{
 			buttonAction();
 		}
+
 		return ret;
 	}
 
@@ -2902,6 +2903,7 @@ internal sealed class ImGuiLayoutUtils
 				if (shouldAdjustSnapIndex && p.SnapLockIndex != 0 && p.SnapIndex == 0)
 					p.SnapIndex = p.SnapLockIndex;
 			}
+
 			ImGui.EndCombo();
 		}
 		else
@@ -3813,8 +3815,6 @@ internal sealed class ImGuiLayoutUtils
 	#endregion Stream
 
 	#region Note Size
-
-
 
 	#endregion
 
