@@ -9,9 +9,9 @@ using static StepManiaEditor.Editor;
 namespace StepManiaEditor;
 
 /// <summary>
-/// Class for drawing information about the current Position within the current Chart.
+/// Class for drawing quick hotbar-style controls and information about the current Position within the focused Chart.
 /// </summary>
-internal sealed class UIChartPosition : UIWindow
+internal sealed class UIHotbar : UIWindow
 {
 	private const uint ColorTextGrey = 0xFF777777;
 	private const uint ColorBgDarkGrey = 0xF0222222;
@@ -40,9 +40,9 @@ internal sealed class UIChartPosition : UIWindow
 
 	private Editor Editor;
 
-	public static UIChartPosition Instance { get; } = new();
+	public static UIHotbar Instance { get; } = new();
 
-	private UIChartPosition() : base("Hotbar")
+	private UIHotbar() : base("Hotbar")
 	{
 	}
 

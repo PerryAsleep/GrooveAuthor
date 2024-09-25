@@ -899,7 +899,7 @@ internal sealed class Editor :
 		UICopyEventsBetweenCharts.Instance.Init(this);
 		UIPatternEvent.Instance.Init(this);
 		UIPerformance.Instance.Init(PerformanceMonitor);
-		UIChartPosition.Instance.Init(this);
+		UIHotbar.Instance.Init(this);
 #if DEBUG
 		UIDebug.Instance.Init(this);
 #endif
@@ -3084,7 +3084,7 @@ internal sealed class Editor :
 		UIAutogenChartsForChartType.Instance.Draw();
 		UICopyEventsBetweenCharts.Instance.Draw();
 		UIPatternEvent.Instance.Draw(GetFocusedChartData()?.GetLastSelectedPatternEvent());
-		UIChartPosition.Instance.Draw();
+		UIHotbar.Instance.Draw();
 
 		if (CanShowRightClickPopupThisFrame && EditorMouseState.GetButtonState(EditorMouseState.Button.Right).UpThisFrame())
 		{
@@ -3255,7 +3255,7 @@ internal sealed class Editor :
 				if (ImGui.MenuItem("Chart List"))
 					UIChartList.Instance.Open(true);
 				if (ImGui.MenuItem("Hotbar"))
-					UIChartPosition.Instance.Open(true);
+					UIHotbar.Instance.Open(true);
 
 				ImGui.Separator();
 				if (ImGui.MenuItem("Scroll Preferences"))

@@ -86,13 +86,13 @@ internal sealed class UIDockSpace
 				chartPropertiesHeightAsPercentage, out var _, out var dockSpaceIdChartList);
 
 			// Split the root panel vertically to add the log and hotbar on the bottom.
-			var bottomWindowHeightAsPercentage = Math.Min(UIChartPosition.DefaultHeight / rootWindowSize.Y, 0.5f);
+			var bottomWindowHeightAsPercentage = Math.Min(UIHotbar.DefaultHeight / rootWindowSize.Y, 0.5f);
 			var dockSpaceIdBottomPanel = ImGui.DockBuilderSplitNode(rootRemainderDockSpaceId, ImGuiDir.Down,
 				bottomWindowHeightAsPercentage, out var _, out rootRemainderDockSpaceId);
 
 			// Split the bottom panel into the hotbar and the log.
 			var hotbarWidthAsPercentage = Math.Min(0.9f,
-				UIChartPosition.DefaultWidth / (rootWindowSize.X * (1 - leftPanelWidthAsPercentage)));
+				UIHotbar.DefaultWidth / (rootWindowSize.X * (1 - leftPanelWidthAsPercentage)));
 			var dockSpaceIdHotbar = ImGui.DockBuilderSplitNode(dockSpaceIdBottomPanel, ImGuiDir.Left,
 				hotbarWidthAsPercentage, out var _, out var dockSpaceIdLog);
 
@@ -100,7 +100,7 @@ internal sealed class UIDockSpace
 			UISongProperties.Instance.DockIntoNode(dockSpaceIdSongProperties);
 			UIChartProperties.Instance.DockIntoNode(dockSpaceIdChartProperties);
 			UIChartList.Instance.DockIntoNode(dockSpaceIdChartList);
-			UIChartPosition.Instance.DockIntoNode(dockSpaceIdHotbar);
+			UIHotbar.Instance.DockIntoNode(dockSpaceIdHotbar);
 			UILog.Instance.DockIntoNode(dockSpaceIdLog);
 			ImGui.DockBuilderFinish(dockSpaceRootId);
 
@@ -108,7 +108,7 @@ internal sealed class UIDockSpace
 			UIWindow.CloseAllWindows();
 			UISongProperties.Instance.Open(true);
 			UIChartProperties.Instance.Open(false);
-			UIChartPosition.Instance.Open(false);
+			UIHotbar.Instance.Open(false);
 			UIChartList.Instance.Open(false);
 			UILog.Instance.Open(false);
 		}
