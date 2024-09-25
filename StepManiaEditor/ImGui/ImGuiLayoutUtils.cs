@@ -2809,10 +2809,8 @@ internal sealed class ImGuiLayoutUtils
 		var p = Preferences.Instance;
 		var snapLevels = snapManager.GetSnapLevels();
 		var snapLevelIndex = p.SnapIndex;
-		var snapLockIndex = p.SnapLockIndex;
 
-		var remainingWidth = DrawHelp(help, ImGui.GetContentRegionAvail().X);
-		var comboWidth = (int)((remainingWidth - SnapLimitTextWidth - ImGui.GetStyle().ItemSpacing.X * 2) * 0.5);
+		var comboWidth = DrawHelp(help, ImGui.GetContentRegionAvail().X);
 		var elementTitle = GetElementTitle(title);
 
 		// Snap level.
@@ -2853,10 +2851,21 @@ internal sealed class ImGuiLayoutUtils
 		{
 			ImGui.PopStyleColor();
 		}
+	}
 
-		// Limit text.
-		ImGui.SameLine();
-		Text("Limit", SnapLimitTextWidth);
+	public static void DrawRowSnapLockLevels(
+		string title,
+		SnapManager snapManager,
+		string help = null)
+	{
+		DrawRowTitleAndAdvanceColumn(title);
+
+		var p = Preferences.Instance;
+		var snapLevels = snapManager.GetSnapLevels();
+		var snapLockIndex = p.SnapLockIndex;
+
+		var comboWidth = DrawHelp(help, ImGui.GetContentRegionAvail().X);
+		var elementTitle = GetElementTitle(title);
 
 		// Snap lock level.
 		ImGui.SameLine();

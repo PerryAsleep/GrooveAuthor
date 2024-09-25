@@ -13,31 +13,29 @@ namespace StepManiaEditor;
 /// </summary>
 internal sealed class UIChartPosition : UIWindow
 {
-	private const uint ColorTextWhite = 0xFFFFFFFF;
 	private const uint ColorTextGrey = 0xFF777777;
 	private const uint ColorBgDarkGrey = 0xF0222222;
 
-	public static readonly int Width = UiScaled(800);
-	public static readonly int Height = UiScaled(63);
-	public static readonly int HalfWidth = Width / 2;
-	public static readonly int HalfHeight = Height / 2;
+	public static readonly int DefaultWidth = UiScaled(768);
+	public static readonly int DefaultHeight = UiScaled(200);
 
 	private static readonly int ColumnWidthTitleSpacing = UiScaled(71);
 	private static readonly int ColumnWidthTitleSnap = UiScaled(58);
+	private static readonly int ColumnWidthValueSnap = UiScaled(110);
 	private static readonly int ColumnWidthTitleUI = UiScaled(77);
 	private static readonly int ColumnWidthValueUI = UiScaled(108);
 	private static readonly int ColumnWidthTitleSteps = UiScaled(40);
 	private static readonly int ColumnWidthValueSteps = UiScaled(47);
 
-	private static readonly int TableNameColWidth = UiScaled(37);
-	private static readonly int TablePositionColWidth = UiScaled(73);
-	private static readonly int TableSongTimeColWidth = UiScaled(104);
-	private static readonly int TableChartTimeColWidth = UiScaled(104);
-	private static readonly int TableMeasureColWidth = UiScaled(61);
-	private static readonly int TableBeatColWidth = UiScaled(67);
-	private static readonly int TableRowColWidth = UiScaled(78);
-	private static readonly int TableWidth = UiScaled(588);
-	private static readonly int TableHeight = UiScaled(48);
+	private static readonly int TotalColumnWidth = UiScaled(524);
+	private static readonly double TableNameColWidthPct = 37.0 / TotalColumnWidth;
+	private static readonly double TablePositionColWidthPct = 73.0 / TotalColumnWidth;
+	private static readonly double TableSongTimeColWidthPct = 104.0 / TotalColumnWidth;
+	private static readonly double TableChartTimeColWidthPct = 104.0 / TotalColumnWidth;
+	private static readonly double TableMeasureColWidthPct = 61.0 / TotalColumnWidth;
+	private static readonly double TableBeatColWidthPct = 67.0 / TotalColumnWidth;
+	private static readonly double TableRowColWidthPct = 78.0 / TotalColumnWidth;
+
 	private static readonly float ButtonSizeCapWidth = UiScaled(24);
 
 	private Editor Editor;
@@ -81,9 +79,9 @@ internal sealed class UIChartPosition : UIWindow
 			var totalWidth = ImGui.GetContentRegionAvail().X;
 			var tableUIWidth = ColumnWidthTitleUI + ColumnWidthValueUI + spacing;
 			var tableStepsWidth = ColumnWidthTitleSteps + ColumnWidthValueSteps + spacing;
-			var variableWidthTableWidth = (int)((totalWidth - tableUIWidth - tableStepsWidth - spacing * 3) * 0.5);
-			var columnWidthValueSpacing = variableWidthTableWidth - spacing - ColumnWidthTitleSpacing;
-			var columnWidthValueSnap = variableWidthTableWidth - spacing - ColumnWidthTitleSnap;
+			var tableSnapWidth = ColumnWidthTitleSnap + ColumnWidthValueSnap + spacing;
+			var variableWidthTableWidth = (int)(totalWidth - tableUIWidth - tableStepsWidth - tableSnapWidth - spacing * 3);
+			var columnWidthValueSpacing = Math.Max(1, variableWidthTableWidth - spacing - ColumnWidthTitleSpacing);
 
 			if (ImGuiLayoutUtils.BeginTable("Spacing", ColumnWidthTitleSpacing, columnWidthValueSpacing))
 			{
@@ -178,13 +176,17 @@ internal sealed class UIChartPosition : UIWindow
 			}
 
 			ImGui.SameLine();
-			if (ImGuiLayoutUtils.BeginTable("Snap", ColumnWidthTitleSnap, columnWidthValueSnap))
+			if (ImGuiLayoutUtils.BeginTable("Snap", ColumnWidthTitleSnap, ColumnWidthValueSnap))
 			{
 				// Snap level.
 				ImGuiLayoutUtils.DrawRowSnapLevels("Snap", Editor.GetSnapManager(),
 					"Current note type being snapped to." +
-					"\nThe limit will restrict the snap note types to note types which evenly divide it." +
 					"\n\nSnap can be changed with the left and right arrow keys.");
+
+				// Snap lock level.
+				ImGuiLayoutUtils.DrawRowSnapLockLevels("Snap Limit", Editor.GetSnapManager(),
+					"Current limit on note types which can be snapped to." +
+					"\nThe limit will restrict the snap note types to note types which evenly divide it.");
 
 				// Automove.
 				var autoAdvance = Preferences.Instance.NoteEntryMode == NoteEntryMode.AdvanceBySnap;
@@ -248,42 +250,40 @@ internal sealed class UIChartPosition : UIWindow
 
 	private void DrawPositionTable()
 	{
-		if (ImGui.BeginTable("UIChartPositionTable", 7,
-			    ImGuiTableFlags.Borders, new Vector2(TableWidth, TableHeight)))
+		var tableWidth = ImGui.GetContentRegionAvail().X;
+		if (ImGui.BeginTable("UIChartPositionTable", 7, ImGuiTableFlags.Borders | ImGuiTableFlags.SizingStretchProp))
 		{
-			var originalCellPaddingY = ImGui.GetStyle().CellPadding.Y;
-			var originalFramePaddingY = ImGui.GetStyle().FramePadding.Y;
-			var originalInnerItemSpacingX = ImGui.GetStyle().ItemInnerSpacing.X;
 			var originalItemSpacingX = ImGui.GetStyle().ItemSpacing.X;
-			ImGui.GetStyle().ItemInnerSpacing.X = 0;
 			ImGui.GetStyle().ItemSpacing.X = 0;
-			ImGui.GetStyle().CellPadding.Y = 0;
-			ImGui.GetStyle().FramePadding.Y = 0;
 
-			ImGui.TableSetupColumn("UIChartPositionTableC1", ImGuiTableColumnFlags.WidthFixed, TableNameColWidth);
-			ImGui.TableSetupColumn("UIChartPositionTableC2", ImGuiTableColumnFlags.WidthFixed, TablePositionColWidth);
-			ImGui.TableSetupColumn("UIChartPositionTableC3", ImGuiTableColumnFlags.WidthFixed, TableSongTimeColWidth);
-			ImGui.TableSetupColumn("UIChartPositionTableC4", ImGuiTableColumnFlags.WidthFixed, TableChartTimeColWidth);
-			ImGui.TableSetupColumn("UIChartPositionTableC5", ImGuiTableColumnFlags.WidthFixed, TableMeasureColWidth);
-			ImGui.TableSetupColumn("UIChartPositionTableC6", ImGuiTableColumnFlags.WidthFixed, TableBeatColWidth);
-			ImGui.TableSetupColumn("UIChartPositionTableC7", ImGuiTableColumnFlags.WidthFixed, TableRowColWidth);
+			ImGui.TableSetupColumn("UIChartPositionTableC1", ImGuiTableColumnFlags.WidthStretch,
+				(float)(TableNameColWidthPct * tableWidth));
+			ImGui.TableSetupColumn("UIChartPositionTableC2", ImGuiTableColumnFlags.WidthStretch,
+				(float)(TablePositionColWidthPct * tableWidth));
+			ImGui.TableSetupColumn("UIChartPositionTableC3", ImGuiTableColumnFlags.WidthStretch,
+				(float)(TableSongTimeColWidthPct * tableWidth));
+			ImGui.TableSetupColumn("UIChartPositionTableC4", ImGuiTableColumnFlags.WidthStretch,
+				(float)(TableChartTimeColWidthPct * tableWidth));
+			ImGui.TableSetupColumn("UIChartPositionTableC5", ImGuiTableColumnFlags.WidthStretch,
+				(float)(TableMeasureColWidthPct * tableWidth));
+			ImGui.TableSetupColumn("UIChartPositionTableC6", ImGuiTableColumnFlags.WidthStretch,
+				(float)(TableBeatColWidthPct * tableWidth));
+			ImGui.TableSetupColumn("UIChartPositionTableC7", ImGuiTableColumnFlags.WidthStretch,
+				(float)(TableRowColWidthPct * tableWidth));
 
 			// Header
 			DrawPositionTableHeader();
 
 			// Chart Position
-			DrawPositionTableRow("Chart", Editor.GetFocalPointX(), Editor.GetFocalPointY(), Editor.GetPosition());
+			DrawPositionTableRow("Chart", Editor.GetFocalPointX(), Editor.GetFocalPointY(), Editor.GetPosition(), tableWidth);
 
 			// Cursor Position
 			var mouseState = Editor.GetMouseState();
-			DrawPositionTableRow("Cursor", mouseState.X(), mouseState.Y(), mouseState.GetEditorPosition());
+			DrawPositionTableRow("Cursor", mouseState.X(), mouseState.Y(), mouseState.GetEditorPosition(), tableWidth);
 
 			ImGui.EndTable();
 
-			ImGui.GetStyle().ItemInnerSpacing.X = originalInnerItemSpacingX;
 			ImGui.GetStyle().ItemSpacing.X = originalItemSpacingX;
-			ImGui.GetStyle().FramePadding.Y = originalFramePaddingY;
-			ImGui.GetStyle().CellPadding.Y = originalCellPaddingY;
 		}
 	}
 
@@ -292,32 +292,33 @@ internal sealed class UIChartPosition : UIWindow
 		ImGui.TableNextRow();
 
 		var colIndex = 0;
-		DrawPositionTableHeaderCell(TableNameColWidth, "", ref colIndex);
-		DrawPositionTableHeaderCell(TablePositionColWidth, "Position", ref colIndex);
-		DrawPositionTableHeaderCell(TableSongTimeColWidth, "Song Time", ref colIndex);
-		DrawPositionTableHeaderCell(TableChartTimeColWidth, "Chart Time", ref colIndex);
-		DrawPositionTableHeaderCell(TableMeasureColWidth, "Measure", ref colIndex);
-		DrawPositionTableHeaderCell(TableBeatColWidth, "Beat", ref colIndex);
-		DrawPositionTableHeaderCell(TableRowColWidth, "Row", ref colIndex);
+		DrawPositionTableHeaderCell("", ref colIndex);
+		DrawPositionTableHeaderCell("Position", ref colIndex);
+		DrawPositionTableHeaderCell("Song Time", ref colIndex);
+		DrawPositionTableHeaderCell("Chart Time", ref colIndex);
+		DrawPositionTableHeaderCell("Measure", ref colIndex);
+		DrawPositionTableHeaderCell("Beat", ref colIndex);
+		DrawPositionTableHeaderCell("Row", ref colIndex);
 	}
 
-	private static void DrawPositionTableHeaderCell(int width, string text, ref int index)
+	private static void DrawPositionTableHeaderCell(string text, ref int index)
 	{
 		ImGui.TableSetColumnIndex(index++);
 		if (index > 1)
 			ImGui.TableSetBgColor(ImGuiTableBgTarget.CellBg, ColorBgDarkGrey);
 
 		var textWidth = ImGui.CalcTextSize(text).X;
-		if (width - textWidth > 0)
+		var availableWidth = ImGui.GetContentRegionAvail().X;
+		if (availableWidth - textWidth > 0)
 		{
-			ImGui.Dummy(new Vector2(width - textWidth, 1));
+			ImGui.Dummy(new Vector2(availableWidth - textWidth, 1));
 			ImGui.SameLine();
 		}
 
 		ImGui.Text(text);
 	}
 
-	private static void DrawPositionTableRow(string label, int x, int y, IReadOnlyEditorPosition position)
+	private static void DrawPositionTableRow(string label, int x, int y, IReadOnlyEditorPosition position, float tableWidth)
 	{
 		ImGui.TableNextRow();
 		var colIndex = 0;
@@ -325,23 +326,23 @@ internal sealed class UIChartPosition : UIWindow
 		ImGui.TableSetColumnIndex(colIndex++);
 		ImGui.Text(label);
 
-		DrawPositionTableCell(TablePositionColWidth, $"({x}, {y})", ref colIndex);
-		DrawPositionTableCell(TableSongTimeColWidth, FormatTime(position.SongTime), ref colIndex);
-		DrawPositionTableCell(TableChartTimeColWidth, FormatTime(position.ChartTime), ref colIndex);
-		DrawPositionTableCell(TableMeasureColWidth, FormatDouble(GetMeasure(position)), ref colIndex);
-		DrawPositionTableCell(TableBeatColWidth, FormatDouble(position.ChartPosition / SMCommon.MaxValidDenominator),
-			ref colIndex);
-		DrawPositionTableCell(TableRowColWidth, FormatDouble(position.ChartPosition), ref colIndex);
+		DrawPositionTableCell($"({x}, {y})", ref colIndex);
+		DrawPositionTableCell(FormatTime(position.SongTime), ref colIndex);
+		DrawPositionTableCell(FormatTime(position.ChartTime), ref colIndex);
+		DrawPositionTableCell(FormatDouble(GetMeasure(position)), ref colIndex);
+		DrawPositionTableCell(FormatDouble(position.ChartPosition / SMCommon.MaxValidDenominator), ref colIndex);
+		DrawPositionTableCell(FormatDouble(position.ChartPosition), ref colIndex);
 	}
 
-	private static void DrawPositionTableCell(int width, string text, ref int index)
+	private static void DrawPositionTableCell(string text, ref int index)
 	{
 		ImGui.TableSetColumnIndex(index++);
 
 		var textWidth = ImGui.CalcTextSize(text).X;
-		if (width - textWidth > 0)
+		var availableWidth = ImGui.GetContentRegionAvail().X;
+		if (availableWidth - textWidth > 0)
 		{
-			ImGui.Dummy(new Vector2(width - textWidth, 1));
+			ImGui.Dummy(new Vector2(availableWidth - textWidth, 1));
 			ImGui.SameLine();
 		}
 

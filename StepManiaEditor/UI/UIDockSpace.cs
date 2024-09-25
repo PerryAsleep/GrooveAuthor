@@ -78,28 +78,37 @@ internal sealed class UIDockSpace
 			var songPropertiesHeightAsPercentage = Math.Min(UISongProperties.DefaultSizeSmall.Y / rootWindowSize.Y, 0.9f);
 			var dockSpaceIdSongProperties = ImGui.DockBuilderSplitNode(dockSpaceIdLeftPanel, ImGuiDir.Up,
 				songPropertiesHeightAsPercentage, out var _, out var leftPanelRemainderDockSpaceId);
+			// The max value for the clamp here is so the chart properties window cuts off at a nice point for 1080.
 			var chartPropertiesHeightAsPercentage =
 				Math.Clamp(UIChartProperties.DefaultSize.Y / (rootWindowSize.Y - UISongProperties.DefaultSizeSmall.Y), 0.25f,
-					0.9f);
+					0.716854f);
 			var dockSpaceIdChartProperties = ImGui.DockBuilderSplitNode(leftPanelRemainderDockSpaceId, ImGuiDir.Down,
 				chartPropertiesHeightAsPercentage, out var _, out var dockSpaceIdChartList);
 
-			// Split the root panel vertically to add the log on the bottom.
-			var bottomWindowHeightAsPercentage = Math.Min(UILog.DefaultHeight / rootWindowSize.Y, 0.5f);
+			// Split the root panel vertically to add the log and hotbar on the bottom.
+			var bottomWindowHeightAsPercentage = Math.Min(UIChartPosition.DefaultHeight / rootWindowSize.Y, 0.5f);
 			var dockSpaceIdBottomPanel = ImGui.DockBuilderSplitNode(rootRemainderDockSpaceId, ImGuiDir.Down,
 				bottomWindowHeightAsPercentage, out var _, out rootRemainderDockSpaceId);
+
+			// Split the bottom panel into the hotbar and the log.
+			var hotbarWidthAsPercentage = Math.Min(0.9f,
+				UIChartPosition.DefaultWidth / (rootWindowSize.X * (1 - leftPanelWidthAsPercentage)));
+			var dockSpaceIdHotbar = ImGui.DockBuilderSplitNode(dockSpaceIdBottomPanel, ImGuiDir.Left,
+				hotbarWidthAsPercentage, out var _, out var dockSpaceIdLog);
 
 			// Dock windows into nodes.
 			UISongProperties.Instance.DockIntoNode(dockSpaceIdSongProperties);
 			UIChartProperties.Instance.DockIntoNode(dockSpaceIdChartProperties);
 			UIChartList.Instance.DockIntoNode(dockSpaceIdChartList);
-			UILog.Instance.DockIntoNode(dockSpaceIdBottomPanel);
+			UIChartPosition.Instance.DockIntoNode(dockSpaceIdHotbar);
+			UILog.Instance.DockIntoNode(dockSpaceIdLog);
 			ImGui.DockBuilderFinish(dockSpaceRootId);
 
 			// Open the windows that have been docked.
 			UIWindow.CloseAllWindows();
 			UISongProperties.Instance.Open(true);
 			UIChartProperties.Instance.Open(false);
+			UIChartPosition.Instance.Open(false);
 			UIChartList.Instance.Open(false);
 			UILog.Instance.Open(false);
 		}
