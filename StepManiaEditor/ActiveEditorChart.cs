@@ -434,15 +434,15 @@ internal sealed class ActiveEditorChart
 		return holdCapHeight;
 	}
 
-	private void BeginMiscEventWidgetLayoutManagerFrame(int focalPointX)
+	private void BeginMiscEventWidgetLayoutManagerFrame(int focalPointScreenSpaceX)
 	{
 		const int widgetStartPadding = 10;
 		const int widgetMeasureNumberFudge = 10;
 
 		var (arrowW, _) = GetArrowDimensions();
 
-		var startPosX = focalPointX - Chart.NumInputs * arrowW * 0.5;
-		var endXPos = focalPointX + Chart.NumInputs * arrowW * 0.5;
+		var startPosX = focalPointScreenSpaceX - Chart.NumInputs * arrowW * 0.5;
+		var endXPos = focalPointScreenSpaceX + Chart.NumInputs * arrowW * 0.5;
 
 		var lMiscWidgetPos = startPosX
 		                     - widgetStartPadding
@@ -626,12 +626,12 @@ internal sealed class ActiveEditorChart
 		if (!selectedRegion.IsActive() || selectedRegion.HaveCurrentValuesBeenUpdatedThisFrame())
 			return;
 
-		if (selectedRegion.GetCurrentY() < previousRateEventY
+		if (selectedRegion.GetCurrentYInScreenSpace() < previousRateEventY
 		    || nextRateEvent == null
-		    || selectedRegion.GetCurrentY() < SpacingHelper.GetY(nextRateEvent, previousRateEventY))
+		    || selectedRegion.GetCurrentYInScreenSpace() < SpacingHelper.GetY(nextRateEvent, previousRateEventY))
 		{
 			var (chartTime, chartPosition) = SpacingHelper.GetChartTimeAndRow(
-				selectedRegion.GetCurrentY(), previousRateEventY, rateEvent.GetChartTime(), rateEvent.GetRow());
+				selectedRegion.GetCurrentYInScreenSpace(), previousRateEventY, rateEvent.GetChartTime(), rateEvent.GetRow());
 			selectedRegion.UpdatePerFrameDerivedChartTimeAndPosition(chartTime, chartPosition);
 		}
 	}
@@ -920,15 +920,15 @@ internal sealed class ActiveEditorChart
 	/// plus an additional linear scan of rate altering events between the focal point and
 	/// the given y position.
 	/// </summary>
-	/// <param name="desiredScreenY">Y position in screen space.</param>
-	/// <param name="focalPointY">Focal point Y position in screen space.</param>
+	/// <param name="desiredScreenSpaceY">Y position in screen space.</param>
+	/// <param name="focalPointScreenSpaceY">Focal point Y position in screen space.</param>
 	/// <returns>Tuple where the first value is the chart time and the second is the row.</returns>
-	public (double, double) FindChartTimeAndRowForScreenY(int desiredScreenY, int focalPointY)
+	public (double, double) FindChartTimeAndRowForScreenSpaceY(int desiredScreenSpaceY, int focalPointScreenSpaceY)
 	{
 		// Set up a spacing helper with isolated state for searching for the time and row.
 		var spacingHelper = EventSpacingHelper.GetSpacingHelper(Chart);
 
-		double desiredY = desiredScreenY;
+		double desiredY = desiredScreenSpaceY;
 
 		// The only point where we know the screen space y position as well as the chart time and chart position
 		// is at the focal point. We will use this as an anchor for scanning for the rate event to use for the
@@ -938,7 +938,7 @@ internal sealed class ActiveEditorChart
 		// information.
 		var focalPointChartTime = Position.ChartTime;
 		var focalPointChartPosition = Position.ChartPosition;
-		var focalPointYDouble = (double)focalPointY;
+		var focalPointYDouble = (double)focalPointScreenSpaceY;
 		var rateEnumerator = Chart.GetRateAlteringEvents().FindBest(Position);
 		if (rateEnumerator == null)
 			return (0.0, 0.0);
@@ -1160,7 +1160,7 @@ internal sealed class ActiveEditorChart
 	/// <summary>
 	/// Finishes selecting a region with the mouse.
 	/// </summary>
-	public void FinishSelectedRegion(int focalPointX)
+	public void FinishSelectedRegion(int focalPointScreenSpaceX)
 	{
 		if (Selection == null || !SelectedRegion.IsActive())
 			return;
@@ -1192,7 +1192,7 @@ internal sealed class ActiveEditorChart
 		var isClick = SelectedRegion.IsClick();
 		if (isClick)
 		{
-			var (x, y) = SelectedRegion.GetCurrentPosition();
+			var (x, y) = SelectedRegion.GetCurrentScreenSpacePosition();
 			EditorEvent best = null;
 			foreach (var visibleEvent in VisibleEvents)
 			{
@@ -1269,7 +1269,7 @@ internal sealed class ActiveEditorChart
 					var potentialEvents = new List<EditorEvent>();
 
 					// Loop over the misc events in the selected time range and determine their positions.
-					BeginMiscEventWidgetLayoutManagerFrame(focalPointX);
+					BeginMiscEventWidgetLayoutManagerFrame(focalPointScreenSpaceX);
 					var minPosition = 0.0;
 					Chart.TryGetChartPositionFromTime(adjustedMinTime, ref minPosition);
 					var enumerator = Chart.GetMiscEvents().FindBestByPosition(minPosition);
@@ -1286,7 +1286,7 @@ internal sealed class ActiveEditorChart
 
 					// Now that we know the x positions of the potential misc events, check each
 					// event to see if it overlaps the selected region and add it to newlySelectedEvents.
-					var (xStart, xEnd) = SelectedRegion.GetSelectedXRange();
+					var (xStart, xEnd) = SelectedRegion.GetSelectedXScreenSpaceRange();
 					foreach (var potentialEvent in potentialEvents)
 					{
 						if (!(potentialEvent.GetChartTime() >= adjustedMinTime &&
@@ -1348,7 +1348,7 @@ internal sealed class ActiveEditorChart
 					var potentialEvents = new List<EditorEvent>();
 
 					// Loop over the misc events in the selected time range and determine their positions.
-					BeginMiscEventWidgetLayoutManagerFrame(focalPointX);
+					BeginMiscEventWidgetLayoutManagerFrame(focalPointScreenSpaceX);
 					var enumerator = Chart.GetMiscEvents().FindBestByPosition(adjustedMinPosition);
 					while (enumerator != null && enumerator.MoveNext())
 					{
@@ -1363,7 +1363,7 @@ internal sealed class ActiveEditorChart
 
 					// Now that we know the x positions of the potential misc events, check each
 					// event to see if it overlaps the selected region and add it to newlySelectedEvents.
-					var (xStart, xEnd) = SelectedRegion.GetSelectedXRange();
+					var (xStart, xEnd) = SelectedRegion.GetSelectedXScreenSpaceRange();
 					foreach (var potentialEvent in potentialEvents)
 					{
 						if (!(potentialEvent.GetRow() >= adjustedMinPosition && potentialEvent.GetRow() <= adjustedMaxPosition))
@@ -1705,8 +1705,8 @@ internal sealed class ActiveEditorChart
 	public void ProcessInputForSelectedRegion(
 		double currentTime,
 		bool uiInterferingWithRegionClicking,
-		int focalPointX,
-		int focalPointY,
+		int focalPointScreenSpaceX,
+		int focalPointScreenSpaceY,
 		IReadOnlyEditorMouseState mouseState,
 		EditorButtonState buttonState)
 	{
@@ -1719,30 +1719,30 @@ internal sealed class ActiveEditorChart
 		// Starting a selection.
 		if (buttonState.DownThisFrame() || forceStartRegionFromClick)
 		{
-			var y = mouseState.Y();
-			var (chartTime, chartPosition) = FindChartTimeAndRowForScreenY(y, focalPointY);
-			var xInChartSpace = (mouseState.X() - focalPointX) / sizeZoom;
+			var screenSpaceY = mouseState.Y();
+			var (chartTime, chartPosition) = FindChartTimeAndRowForScreenSpaceY(screenSpaceY, focalPointScreenSpaceY);
+			var xInChartSpace = (mouseState.X() - focalPointScreenSpaceX) / sizeZoom;
 			SelectedRegion.Start(
 				xInChartSpace,
-				y,
+				focalPointScreenSpaceY,
 				chartTime,
 				chartPosition,
 				sizeZoom,
-				focalPointX,
+				focalPointScreenSpaceX,
 				currentTime);
 		}
 
 		// Dragging a selection.
 		if ((buttonState.Down() && SelectedRegion.IsActive()) || forceStartRegionFromClick)
 		{
-			var xInChartSpace = (mouseState.X() - focalPointX) / sizeZoom;
-			SelectedRegion.UpdatePerFrameValues(xInChartSpace, mouseState.Y(), sizeZoom, focalPointX);
+			var xInChartSpace = (mouseState.X() - focalPointScreenSpaceX) / sizeZoom;
+			SelectedRegion.UpdatePerFrameValues(xInChartSpace, mouseState.Y(), sizeZoom, focalPointScreenSpaceX);
 		}
 
 		// Releasing a selection.
 		if ((buttonState.Up() && SelectedRegion.IsActive()) || forceStartRegionFromClick)
 		{
-			FinishSelectedRegion(focalPointX);
+			FinishSelectedRegion(focalPointScreenSpaceX);
 		}
 	}
 

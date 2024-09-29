@@ -3823,10 +3823,6 @@ internal sealed class ImGuiLayoutUtils
 
 	#endregion Stream
 
-	#region Note Size
-
-	#endregion
-
 	#region Compare Functions
 
 	private static bool IntCompare(int a, int b)

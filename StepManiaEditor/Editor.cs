@@ -159,6 +159,7 @@ internal sealed class Editor :
 	private SpriteBatch SpriteBatch;
 	private ImGuiRenderer ImGuiRenderer;
 	private WaveFormRenderer WaveFormRenderer;
+	private uint WaveFormTextureHeight;
 	private SoundManager SoundManager;
 	private MusicManager MusicManager;
 	private MiniMap MiniMap;
@@ -193,6 +194,9 @@ internal sealed class Editor :
 
 	private double PlaybackStartTime;
 	private Stopwatch PlaybackStopwatch;
+
+	private bool IsChartAreaSet;
+	private Rectangle ChartArea;
 
 	private EditorSong ActiveSong
 	{
@@ -830,33 +834,46 @@ internal sealed class Editor :
 
 	private void InitializeScreenHeight()
 	{
-		var p = Preferences.Instance;
 		foreach (var adapter in GraphicsAdapter.Adapters)
 			MaxScreenHeight = Math.Max(MaxScreenHeight, (uint)adapter.CurrentDisplayMode.Height);
-		p.PreferencesReceptors.ClampViewportPositions();
 		EditorEvent.SetScreenHeight(MaxScreenHeight);
 	}
 
 	private void InitializeWaveFormRenderer()
 	{
 		var p = Preferences.Instance;
-		WaveFormRenderer = new WaveFormRenderer(GraphicsDevice, WaveFormTextureWidth, (uint)Math.Max(1, GetViewportHeight()));
+		WaveFormTextureHeight = GetDesiredWaveFormTextureHeight();
+		WaveFormRenderer = new WaveFormRenderer(GraphicsDevice, WaveFormTextureWidth, WaveFormTextureHeight);
 		WaveFormRenderer.SetColors(WaveFormColorDense, WaveFormColorSparse);
 		WaveFormRenderer.SetXPerChannelScale(p.PreferencesWaveForm.WaveFormMaxXPercentagePerChannel);
 		WaveFormRenderer.SetSoundMipMap(MusicManager.GetMusicMipMap());
-		WaveFormRenderer.SetFocalPointY(GetFocalPointY());
-		RecreateWaveformRenderTargets();
+		WaveFormRenderer.SetFocalPointLocalY(GetFocalPointChartSpaceY());
+		RecreateWaveformRenderTargets(true);
 	}
 
-	private void RecreateWaveformRenderTargets()
+	private uint GetDesiredWaveFormTextureHeight()
 	{
+		return (uint)Math.Max(1, GetViewportHeight());
+	}
+
+	private void RecreateWaveformRenderTargets(bool force)
+	{
+		var desiredHeight = GetDesiredWaveFormTextureHeight();
+		if (!force)
+		{
+			if (WaveFormTextureHeight == desiredHeight)
+				return;
+		}
+
+		WaveFormTextureHeight = desiredHeight;
+
 		WaveformRenderTargets = new RenderTarget2D[2];
 		for (var i = 0; i < 2; i++)
 		{
 			WaveformRenderTargets[i] = new RenderTarget2D(
 				GraphicsDevice,
 				WaveFormTextureWidth,
-				Math.Max(1, GetViewportHeight()),
+				(int)WaveFormTextureHeight,
 				false,
 				GraphicsDevice.PresentationParameters.BackBufferFormat,
 				DepthFormat.Depth24);
@@ -1214,14 +1231,29 @@ internal sealed class Editor :
 
 		Preferences.Instance.WindowMaximized = maximized;
 
+		OnChartAreaChanged();
+	}
+
+	public bool GetChartArea(out Rectangle chartArea)
+	{
+		chartArea = ChartArea;
+		return IsChartAreaSet;
+	}
+
+	private void OnChartAreaChanged()
+	{
 		// Update focal point.
-		Preferences.Instance.PreferencesReceptors.ClampViewportPositions();
+		Preferences.Instance.PreferencesReceptors.ClampPositions();
 
 		// Resize the Waveform.
 		if (WaveFormRenderer != null)
 		{
-			WaveFormRenderer.Resize(GraphicsDevice, WaveFormTextureWidth, (uint)Math.Max(1, GetViewportHeight()));
-			RecreateWaveformRenderTargets();
+			WaveFormRenderer.Resize(
+				GraphicsDevice,
+				WaveFormTextureWidth,
+				(uint)Math.Max(1, GetViewportHeight()),
+				(uint)Math.Max(1, ChartArea.Height));
+			RecreateWaveformRenderTargets(false);
 		}
 	}
 
@@ -1271,28 +1303,65 @@ internal sealed class Editor :
 
 	#region Focal Point
 
-	public int GetFocalPointX()
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	private int TransformChartSpaceXToScreenSpaceX(int chartSpaceX)
+	{
+		return ChartArea.X + chartSpaceX;
+	}
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	private int TransformChartSpaceYToScreenSpaceY(int chartSpaceY)
+	{
+		return ChartArea.Y + chartSpaceY;
+	}
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	private int TransformScreenSpaceXToChartSpaceX(int screenSpaceX)
+	{
+		return screenSpaceX - ChartArea.X;
+	}
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	private int TransformScreenSpaceYToChartSpaceY(int screenSpaceY)
+	{
+		return screenSpaceY - ChartArea.Y;
+	}
+
+	public int GetFocalPointChartSpaceX()
 	{
 		if (Preferences.Instance.PreferencesReceptors.CenterHorizontally)
-			return GetViewportWidth() >> 1;
-		return Preferences.Instance.PreferencesReceptors.PositionX;
+			return ChartArea.Width >> 1;
+		return Preferences.Instance.PreferencesReceptors.ChartSpacePositionX;
 	}
 
-	public int GetFocalPointY()
+	public int GetFocalPointScreenSpaceX()
 	{
-		return Preferences.Instance.PreferencesReceptors.PositionY;
+		return TransformChartSpaceXToScreenSpaceX(GetFocalPointChartSpaceX());
 	}
 
-	public Vector2 GetFocalPoint()
+	public int GetFocalPointChartSpaceY()
 	{
-		return new Vector2(GetFocalPointX(), GetFocalPointY());
+		return Preferences.Instance.PreferencesReceptors.ChartSpacePositionY;
 	}
 
-	public int GetFocalPointXForChart(EditorChart chart)
+	public int GetFocalPointScreenSpaceY()
 	{
-		var defaultPos = Preferences.Instance.PreferencesReceptors.CenterHorizontally
-			? GetViewportWidth() * 0.5
-			: Preferences.Instance.PreferencesReceptors.PositionX;
+		return TransformChartSpaceYToScreenSpaceY(GetFocalPointChartSpaceY());
+	}
+
+	public Vector2 GetFocalPointChartSpace()
+	{
+		return new Vector2(GetFocalPointChartSpaceX(), GetFocalPointChartSpaceY());
+	}
+
+	public Vector2 GetFocalPointScreenSpace()
+	{
+		return new Vector2(GetFocalPointScreenSpaceX(), GetFocalPointScreenSpaceY());
+	}
+
+	public int GetFocalPointChartSpaceXForChart(EditorChart chart)
+	{
+		var defaultPos = (double)GetFocalPointChartSpaceX();
 		var pos = defaultPos;
 
 		var first = true;
@@ -1313,9 +1382,19 @@ internal sealed class Editor :
 		return (int)defaultPos;
 	}
 
-	public Vector2 GetFocalPointForChart(EditorChart chart)
+	public int GetFocalPointScreenSpaceXForChart(EditorChart chart)
 	{
-		return new Vector2(GetFocalPointXForChart(chart), GetFocalPointY());
+		return TransformChartSpaceXToScreenSpaceX(GetFocalPointChartSpaceXForChart(chart));
+	}
+
+	public Vector2 GetFocalPointChartSpaceForChart(EditorChart chart)
+	{
+		return new Vector2(GetFocalPointChartSpaceXForChart(chart), GetFocalPointChartSpaceY());
+	}
+
+	public Vector2 GetFocalPointScreenSpaceForChart(EditorChart chart)
+	{
+		return new Vector2(GetFocalPointScreenSpaceXForChart(chart), GetFocalPointScreenSpaceY());
 	}
 
 	#endregion Focal Point
@@ -1407,6 +1486,14 @@ internal sealed class Editor :
 				GarbageCollectFrame--;
 				if (GarbageCollectFrame == 0)
 					GC.Collect();
+			}
+
+			var newChartArea = UIDockSpace.GetCentralNodeArea();
+			if (newChartArea != ChartArea)
+			{
+				ChartArea = newChartArea;
+				IsChartAreaSet = true;
+				OnChartAreaChanged();
 			}
 
 			CheckForAutoLoadingLastSong();
@@ -1553,7 +1640,7 @@ internal sealed class Editor :
 		var waveFormPPS = GetFocusedChartData()?.GetWaveFormPPS() ?? 1.0;
 
 		// Update the WaveFormRenderer.
-		WaveFormRenderer.SetFocalPointY(GetFocalPointY());
+		WaveFormRenderer.SetFocalPointLocalY(GetFocalPointChartSpaceY());
 		WaveFormRenderer.SetXPerChannelScale(pWave.WaveFormMaxXPercentagePerChannel);
 		WaveFormRenderer.SetDenseScale(pWave.DenseScale);
 		WaveFormRenderer.SetScaleXWhenZooming(pWave.WaveFormScaleXWhenZooming);
@@ -1610,7 +1697,7 @@ internal sealed class Editor :
 		if (imGuiWantMouse)
 		{
 			// ImGui may want the mouse on a release when we are selecting. Stop selecting in that case.
-			focusedChartData?.FinishSelectedRegion(GetFocalPointX());
+			focusedChartData?.FinishSelectedRegion(GetFocalPointScreenSpaceX());
 			UpdateCursor();
 			return;
 		}
@@ -1627,7 +1714,7 @@ internal sealed class Editor :
 			var inReceptorArea = Receptor.IsInReceptorArea(
 				mouseX,
 				mouseY,
-				GetFocalPoint(),
+				GetFocalPointScreenSpace(),
 				ZoomManager.GetSizeZoom(),
 				TextureAtlas,
 				GetFocusedChartData()?.GetArrowGraphicManager(),
@@ -1660,8 +1747,8 @@ internal sealed class Editor :
 				GetFocusedChartData()?.ProcessInputForSelectedRegion(
 					currentTime,
 					uiInterferingWithRegionClicking,
-					GetFocalPointX(),
-					GetFocalPointY(),
+					GetFocalPointScreenSpaceX(),
+					GetFocalPointScreenSpaceY(),
 					EditorMouseState,
 					EditorMouseState.GetButtonState(EditorMouseState.Button.Left));
 			}
@@ -1711,33 +1798,34 @@ internal sealed class Editor :
 		    && !Preferences.Instance.PreferencesReceptors.LockPosition)
 		{
 			MovingFocalPoint = true;
-			FocalPointAtMoveStart = new Vector2(GetFocalPointX(), GetFocalPointY());
-			FocalPointMoveOffset = new Vector2(EditorMouseState.X() - GetFocalPointX(), EditorMouseState.Y() - GetFocalPointY());
+			FocalPointAtMoveStart = GetFocalPointChartSpace();
+			FocalPointMoveOffset = new Vector2(EditorMouseState.X() - GetFocalPointScreenSpaceX(),
+				EditorMouseState.Y() - GetFocalPointScreenSpaceY());
 		}
 
 		// Move focal point.
 		if (MovingFocalPoint)
 		{
-			var newX = EditorMouseState.X() - (int)FocalPointMoveOffset.X;
-			var newY = EditorMouseState.Y() - (int)FocalPointMoveOffset.Y;
+			var newX = TransformScreenSpaceXToChartSpaceX(EditorMouseState.X()) - (int)FocalPointMoveOffset.X;
+			var newY = TransformScreenSpaceYToChartSpaceY(EditorMouseState.Y()) - (int)FocalPointMoveOffset.Y;
 
 			if (KeyCommandManager.IsShiftDown())
 			{
 				if (Math.Abs(newX - FocalPointAtMoveStart.X) > Math.Abs(newY - FocalPointAtMoveStart.Y))
 				{
-					Preferences.Instance.PreferencesReceptors.PositionX = newX;
-					Preferences.Instance.PreferencesReceptors.PositionY = (int)FocalPointAtMoveStart.Y;
+					Preferences.Instance.PreferencesReceptors.ChartSpacePositionX = newX;
+					Preferences.Instance.PreferencesReceptors.ChartSpacePositionY = (int)FocalPointAtMoveStart.Y;
 				}
 				else
 				{
-					Preferences.Instance.PreferencesReceptors.PositionX = (int)FocalPointAtMoveStart.X;
-					Preferences.Instance.PreferencesReceptors.PositionY = newY;
+					Preferences.Instance.PreferencesReceptors.ChartSpacePositionX = (int)FocalPointAtMoveStart.X;
+					Preferences.Instance.PreferencesReceptors.ChartSpacePositionY = newY;
 				}
 			}
 			else
 			{
-				Preferences.Instance.PreferencesReceptors.PositionX = newX;
-				Preferences.Instance.PreferencesReceptors.PositionY = newY;
+				Preferences.Instance.PreferencesReceptors.ChartSpacePositionX = newX;
+				Preferences.Instance.PreferencesReceptors.ChartSpacePositionY = newY;
 			}
 		}
 
@@ -1822,8 +1910,8 @@ internal sealed class Editor :
 		if (MovingFocalPoint)
 		{
 			MovingFocalPoint = false;
-			Preferences.Instance.PreferencesReceptors.PositionX = (int)FocalPointAtMoveStart.X;
-			Preferences.Instance.PreferencesReceptors.PositionY = (int)FocalPointAtMoveStart.Y;
+			Preferences.Instance.PreferencesReceptors.ChartSpacePositionX = (int)FocalPointAtMoveStart.X;
+			Preferences.Instance.PreferencesReceptors.ChartSpacePositionY = (int)FocalPointAtMoveStart.Y;
 			return;
 		}
 
@@ -2218,6 +2306,7 @@ internal sealed class Editor :
 		GraphicsDevice.Clear(new Color(r, g, b, a));
 
 		// Draw the background texture.
+		// TODO: Should bg draw over viewport or chart region?
 		SpriteBatch.Begin();
 		ActiveSong.GetBackground().GetTexture()
 			.DrawTexture(SpriteBatch, 0, 0, (uint)GetViewportWidth(), (uint)GetViewportHeight());
@@ -2253,12 +2342,12 @@ internal sealed class Editor :
 		var (receptorTextureWidth, _) = TextureAtlas.GetDimensions(receptorTextureId);
 		var zoom = ZoomManager.GetSizeZoom();
 
-		var chartXCurrent = (int)(GetFocalPointX() - FocusedChart.NumInputs * 0.5 * receptorTextureWidth * zoom);
-		var chartXMax = (int)(GetFocalPointX() - FocusedChart.NumInputs * 0.5 * receptorTextureWidth);
+		var chartXCurrent = (int)(GetFocalPointScreenSpaceX() - FocusedChart.NumInputs * 0.5 * receptorTextureWidth * zoom);
+		var chartXMax = (int)(GetFocalPointScreenSpaceX() - FocusedChart.NumInputs * 0.5 * receptorTextureWidth);
 		var chartWMax = FocusedChart.NumInputs * receptorTextureWidth;
 		var chartWCurrent = (int)(FocusedChart.NumInputs * receptorTextureWidth * zoom);
 
-		var waveformXMax = (int)(GetFocalPointX() - WaveFormTextureWidth * 0.5f);
+		var waveformXMax = (int)(GetFocalPointScreenSpaceX() - WaveFormTextureWidth * 0.5f);
 		var waveformWMax = WaveFormTextureWidth;
 
 		var waveformWCurrent = WaveFormRenderer.GetScaledWaveFormWidth(ZoomManager.GetSpacingZoom());
@@ -2301,7 +2390,8 @@ internal sealed class Editor :
 	{
 		var sizeZoom = ZoomManager.GetSizeZoom();
 		for (var i = 0; i < ActiveCharts.Count; i++)
-			ActiveChartData[i].DrawReceptors(GetFocalPointForChart(ActiveCharts[i]), sizeZoom, TextureAtlas, SpriteBatch);
+			ActiveChartData[i].DrawReceptors(GetFocalPointScreenSpaceForChart(ActiveCharts[i]), sizeZoom, TextureAtlas,
+				SpriteBatch);
 	}
 
 	private void DrawSnapIndicators()
@@ -2318,11 +2408,11 @@ internal sealed class Editor :
 		var (receptorTextureId, _) = arrowGraphicManager.GetReceptorTexture(0);
 		var (receptorTextureWidth, _) = TextureAtlas.GetDimensions(receptorTextureId);
 		var zoom = ZoomManager.GetSizeZoom();
-		var receptorLeftEdge = GetFocalPointX() - FocusedChart.NumInputs * 0.5 * receptorTextureWidth * zoom;
+		var receptorLeftEdge = GetFocalPointScreenSpaceX() - FocusedChart.NumInputs * 0.5 * receptorTextureWidth * zoom;
 
 		var (snapTextureWidth, snapTextureHeight) = TextureAtlas.GetDimensions(snapTextureId);
 		var leftX = receptorLeftEdge - snapTextureWidth * 0.5 * zoom;
-		var y = GetFocalPointY();
+		var y = GetFocalPointScreenSpaceY();
 
 		TextureAtlas.Draw(
 			snapTextureId,
@@ -2340,7 +2430,8 @@ internal sealed class Editor :
 		var sizeZoom = ZoomManager.GetSizeZoom();
 		for (var i = 0; i < ActiveCharts.Count; i++)
 			ActiveChartData[i]
-				.DrawReceptorForegroundEffects(GetFocalPointForChart(ActiveCharts[i]), sizeZoom, TextureAtlas, SpriteBatch);
+				.DrawReceptorForegroundEffects(GetFocalPointScreenSpaceForChart(ActiveCharts[i]), sizeZoom, TextureAtlas,
+					SpriteBatch);
 	}
 
 	private void DrawWaveForm()
@@ -2349,7 +2440,7 @@ internal sealed class Editor :
 		if (!p.ShowWaveForm)
 			return;
 
-		var x = GetFocalPointX() - (WaveFormTextureWidth >> 1);
+		var x = GetFocalPointScreenSpaceX() - (WaveFormTextureWidth >> 1);
 
 		// At this point WaveformRenderTargets[1] contains the recolored waveform.
 		// We now draw that to the backbuffer with an optional antialiasing pass.
@@ -2368,7 +2459,8 @@ internal sealed class Editor :
 			// Draw the recolored waveform with antialiasing to the back buffer.
 			SpriteBatch.Begin(SpriteSortMode.Deferred, null, null, null, null, FxaaEffect);
 			SpriteBatch.Draw(WaveformRenderTargets[1],
-				new Rectangle(x, 0, WaveformRenderTargets[1].Width, WaveformRenderTargets[1].Height), Color.White);
+				new Rectangle(x, TransformChartSpaceYToScreenSpaceY(0), WaveformRenderTargets[1].Width,
+					WaveformRenderTargets[1].Height), Color.White);
 			SpriteBatch.End();
 		}
 		else
@@ -2458,7 +2550,7 @@ internal sealed class Editor :
 						            && hold.GetEndChartTime() > activeChartData.Position.ChartTime
 						            && hold.GetChartTime() < activeChartData.Position.ChartTime)
 						{
-							hold.SetNextDrawActive(true, GetFocalPointY());
+							hold.SetNextDrawActive(true, GetFocalPointScreenSpaceY());
 						}
 					}
 				}
@@ -2482,11 +2574,11 @@ internal sealed class Editor :
 	private void UpdateChartEvents()
 	{
 		var screenHeight = GetViewportHeight();
-		var focalPointY = GetFocalPointY();
+		var focalPointY = GetFocalPointScreenSpaceY();
 
 		for (var i = 0; i < ActiveCharts.Count; i++)
 		{
-			var focalPointX = GetFocalPointXForChart(ActiveCharts[i]);
+			var focalPointX = GetFocalPointScreenSpaceXForChart(ActiveCharts[i]);
 			ActiveChartData[i].UpdateChartEvents(screenHeight, focalPointX, focalPointY);
 		}
 	}
@@ -2504,7 +2596,7 @@ internal sealed class Editor :
 		var focusedChartData = GetFocusedChartData();
 		if (focusedChartData == null)
 			return (0.0, 0.0);
-		return focusedChartData.FindChartTimeAndRowForScreenY(desiredScreenY, GetFocalPointY());
+		return focusedChartData.FindChartTimeAndRowForScreenSpaceY(desiredScreenY, GetFocalPointScreenSpaceY());
 	}
 
 	#endregion Chart Update
@@ -2532,7 +2624,7 @@ internal sealed class Editor :
 	private void ProcessInputForMiniMap()
 	{
 		var pScroll = Preferences.Instance.PreferencesScroll;
-		var focalPointY = GetFocalPointY();
+		var focalPointY = GetFocalPointScreenSpaceY();
 
 		var miniMapCapturingMouseLastFrame = MiniMapCapturingMouse;
 
@@ -2596,7 +2688,7 @@ internal sealed class Editor :
 	{
 		var p = Preferences.Instance;
 		var arrowGraphicManager = GetFocusedChartData()?.GetArrowGraphicManager();
-		var focalPointX = GetFocalPointX();
+		var focalPointX = GetFocalPointScreenSpaceX();
 		var x = 0;
 		var sizeZoom = ZoomManager.GetSizeZoom();
 		switch (p.PreferencesMiniMap.MiniMapPosition)
@@ -2628,7 +2720,7 @@ internal sealed class Editor :
 			case Position.MountedToChart:
 			{
 				var receptorBounds =
-					Receptor.GetBounds(GetFocalPoint(), sizeZoom, TextureAtlas, arrowGraphicManager, FocusedChart);
+					Receptor.GetBounds(GetFocalPointScreenSpace(), sizeZoom, TextureAtlas, arrowGraphicManager, FocusedChart);
 				x = receptorBounds.Item1 + receptorBounds.Item3 + (int)p.PreferencesMiniMap.MiniMapXPadding;
 				break;
 			}
@@ -2692,7 +2784,7 @@ internal sealed class Editor :
 		{
 			// Editor Area. The visible time range.
 			var pps = pScroll.TimeBasedPixelsPerSecond * spacingZoom;
-			var editorAreaTimeStart = chartTime - GetFocalPointY() / pps;
+			var editorAreaTimeStart = chartTime - GetFocalPointScreenSpaceY() / pps;
 			var editorAreaTimeEnd = editorAreaTimeStart + screenHeight / pps;
 			var editorAreaTimeRange = editorAreaTimeEnd - editorAreaTimeStart;
 
@@ -2720,7 +2812,7 @@ internal sealed class Editor :
 		{
 			// Editor Area. The visible row range.
 			var ppr = pScroll.RowBasedPixelsPerRow * spacingZoom;
-			var editorAreaRowStart = chartPosition - GetFocalPointY() / ppr;
+			var editorAreaRowStart = chartPosition - GetFocalPointScreenSpaceY() / ppr;
 			var editorAreaRowEnd = editorAreaRowStart + screenHeight / ppr;
 			var editorAreaRowRange = editorAreaRowEnd - editorAreaRowStart;
 
@@ -2910,7 +3002,7 @@ internal sealed class Editor :
 		var spacingZoom = ZoomManager.GetSpacingZoom();
 		var chartTime = GetPosition().ChartTime;
 		var pps = Preferences.Instance.PreferencesScroll.TimeBasedPixelsPerSecond * spacingZoom;
-		var timeStart = chartTime - GetFocalPointY() / pps;
+		var timeStart = chartTime - GetFocalPointScreenSpaceY() / pps;
 		var timeEnd = timeStart + screenHeight / pps;
 		DensityGraph.Update(timeStart, timeEnd, chartTime);
 	}
@@ -2919,7 +3011,7 @@ internal sealed class Editor :
 	{
 		var p = Preferences.Instance.PreferencesDensityGraph;
 		var arrowGraphicManager = GetFocusedChartData()?.GetArrowGraphicManager();
-		var focalPointX = GetFocalPointX();
+		var focalPointX = GetFocalPointScreenSpaceX();
 		var sizeZoom = ZoomManager.GetSizeZoom();
 		var screenW = GetBackBufferWidth();
 		var screenH = GetBackBufferHeight();
@@ -2954,7 +3046,7 @@ internal sealed class Editor :
 				break;
 			case PreferencesDensityGraph.DensityGraphPosition.MountedToChart:
 				var receptorBounds =
-					Receptor.GetBounds(GetFocalPoint(), sizeZoom, TextureAtlas, arrowGraphicManager, FocusedChart);
+					Receptor.GetBounds(GetFocalPointScreenSpace(), sizeZoom, TextureAtlas, arrowGraphicManager, FocusedChart);
 				w = p.DensityGraphHeight;
 				x = receptorBounds.Item1 + receptorBounds.Item3 + p.DensityGraphPositionOffset;
 				h = screenH - topPadding + p.DensityGraphWidthOffset * 2;
@@ -3681,8 +3773,8 @@ internal sealed class Editor :
 			var isInDensityGraphArea = Preferences.Instance.PreferencesDensityGraph.ShowDensityGraph
 			                           && DensityGraph.IsInDensityGraphArea(x, y);
 			var isInWaveFormArea = Preferences.Instance.PreferencesWaveForm.ShowWaveForm
-			                       && x >= GetFocalPointX() - (WaveFormTextureWidth >> 1)
-			                       && x <= GetFocalPointX() + (WaveFormTextureWidth >> 1);
+			                       && x >= GetFocalPointScreenSpaceX() - (WaveFormTextureWidth >> 1)
+			                       && x <= GetFocalPointScreenSpaceX() + (WaveFormTextureWidth >> 1);
 			var isInDarkArea = false;
 			if (Preferences.Instance.PreferencesDark.ShowDarkBg)
 			{
@@ -3690,7 +3782,8 @@ internal sealed class Editor :
 				isInDarkArea = x >= darkX && x <= darkX + darkW;
 			}
 
-			var isInReceptorArea = Receptor.IsInReceptorArea(x, y, GetFocalPoint(), ZoomManager.GetSizeZoom(), TextureAtlas,
+			var isInReceptorArea = Receptor.IsInReceptorArea(x, y, GetFocalPointScreenSpace(), ZoomManager.GetSizeZoom(),
+				TextureAtlas,
 				focusedChartData?.GetArrowGraphicManager(), FocusedChart);
 
 			if (focusedChartData?.GetSelection().HasSelectedEvents() ?? false)

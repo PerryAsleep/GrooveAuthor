@@ -275,11 +275,12 @@ internal sealed class UIHotbar : UIWindow
 			DrawPositionTableHeader();
 
 			// Chart Position
-			DrawPositionTableRow("Chart", Editor.GetFocalPointX(), Editor.GetFocalPointY(), Editor.GetPosition(), tableWidth);
+			DrawPositionTableRow("Chart", Editor.GetFocalPointScreenSpaceX(), Editor.GetFocalPointScreenSpaceY(),
+				Editor.GetPosition());
 
 			// Cursor Position
 			var mouseState = Editor.GetMouseState();
-			DrawPositionTableRow("Cursor", mouseState.X(), mouseState.Y(), mouseState.GetEditorPosition(), tableWidth);
+			DrawPositionTableRow("Cursor", mouseState.X(), mouseState.Y(), mouseState.GetEditorPosition());
 
 			ImGui.EndTable();
 
@@ -318,7 +319,7 @@ internal sealed class UIHotbar : UIWindow
 		ImGui.Text(text);
 	}
 
-	private static void DrawPositionTableRow(string label, int x, int y, IReadOnlyEditorPosition position, float tableWidth)
+	private static void DrawPositionTableRow(string label, int x, int y, IReadOnlyEditorPosition position)
 	{
 		ImGui.TableNextRow();
 		var colIndex = 0;

@@ -45,19 +45,27 @@ public class WaveFormRenderer
 	/// <summary>
 	/// Width of texture in pixels.
 	/// </summary>
-	private uint Width;
+	private uint TextureWidth;
 
 	/// <summary>
 	/// Height of texture in pixels.
 	/// </summary>
-	private uint Height;
+	private uint TextureHeight;
+
+	/// <summary>
+	/// Height of the visible area of the waveform in pixels.
+	/// Less than or equal to TextureHeight.
+	/// This is tracked separately as UI resizing can cause the visible area to change
+	/// often but we do not want to perform expensive texture resizes that often.
+	/// </summary>
+	private uint VisibleHeight;
 
 	/// <summary>
 	/// The y focal point for orienting the waveform and controlling zooming.
-	/// Units are in pixels and are in screen space.
+	/// Units are in pixels and are in local screen space. This represents an offset from the top of the Waveform.
 	/// The sound time provided in UpdateTexture is the time at this focal point position.
 	/// </summary>
-	private int FocalPointY;
+	private int FocalPointLocalY;
 
 	/// <summary>
 	/// Scale in X to apply to each channel.
@@ -143,38 +151,56 @@ public class WaveFormRenderer
 	/// <param name="height">Texture height in pixels.</param>
 	public WaveFormRenderer(GraphicsDevice graphicsDevice, uint width, uint height)
 	{
-		Resize(graphicsDevice, width, height);
+		Resize(graphicsDevice, width, height, height);
 	}
 
 	/// <summary>
 	/// Resize the WaveForm.
 	/// </summary>
 	/// <param name="graphicsDevice">GraphicsDevice to use for creating textures.</param>
-	/// <param name="width">Texture width in pixels.</param>
-	/// <param name="height">Texture height in pixels.</param>
-	public void Resize(GraphicsDevice graphicsDevice, uint width, uint height)
+	/// <param name="textureWidth">Texture width in pixels.</param>
+	/// <param name="textureHeight">Texture height in pixels.</param>
+	/// <param name="visibleHeight">Visible height in pixels of the waveform.</param>
+	public void Resize(GraphicsDevice graphicsDevice, uint textureWidth, uint textureHeight, uint visibleHeight)
 	{
-		Width = width;
-		Height = height;
+		textureWidth = Math.Max(1, textureWidth);
+		textureHeight = Math.Max(1, textureHeight);
+		visibleHeight = Math.Clamp(visibleHeight, 1, textureHeight);
 
-		// Set up the textures.
-		Textures = new Texture2D[NumTextures];
-		for (var i = 0; i < NumTextures; i++)
+		var shouldInvalidateData = false;
+		if (TextureWidth != textureWidth || TextureHeight != textureHeight)
 		{
-			Textures[i] = new Texture2D(graphicsDevice, (int)Width, (int)Height, false, SurfaceFormat.Bgr565);
+			shouldInvalidateData = true;
+
+			TextureWidth = textureWidth;
+			TextureHeight = textureHeight;
+
+			// Set up the textures.
+			Textures = new Texture2D[NumTextures];
+			for (var i = 0; i < NumTextures; i++)
+			{
+				Textures[i] = new Texture2D(graphicsDevice, (int)TextureWidth, (int)TextureHeight, false, SurfaceFormat.Bgr565);
+			}
+
+			// Set up the pixel data.
+			BGR565Data = new ushort[TextureWidth * TextureHeight];
+			DenseLine = new ushort[TextureWidth];
+			SparseLine = new ushort[TextureWidth];
+			for (var i = 0; i < TextureWidth; i++)
+			{
+				DenseLine[i] = ColorDense;
+				SparseLine[i] = ColorSparse;
+			}
 		}
 
-		// Set up the pixel data.
-		BGR565Data = new ushort[Width * Height];
-		DenseLine = new ushort[Width];
-		SparseLine = new ushort[Width];
-		for (var i = 0; i < Width; i++)
+		if (VisibleHeight != visibleHeight)
 		{
-			DenseLine[i] = ColorDense;
-			SparseLine[i] = ColorSparse;
+			VisibleHeight = visibleHeight;
+			shouldInvalidateData = true;
 		}
 
-		InvalidateLastFrameData();
+		if (shouldInvalidateData)
+			InvalidateLastFrameData();
 	}
 
 	/// <summary>
@@ -217,7 +243,7 @@ public class WaveFormRenderer
 		if (colorDense != ColorDense)
 		{
 			ColorDense = colorDense;
-			for (var i = 0; i < Width; i++)
+			for (var i = 0; i < TextureWidth; i++)
 			{
 				DenseLine[i] = ColorDense;
 			}
@@ -228,7 +254,7 @@ public class WaveFormRenderer
 		if (colorSparse != ColorSparse)
 		{
 			ColorSparse = colorSparse;
-			for (var i = 0; i < Width; i++)
+			for (var i = 0; i < TextureWidth; i++)
 			{
 				SparseLine[i] = ColorSparse;
 			}
@@ -262,15 +288,15 @@ public class WaveFormRenderer
 	}
 
 	/// <summary>
-	/// Sets the FocalPoint Y value to the given value.
-	/// Values are expected to be pixels in screen space.
+	/// Sets the local focal point Y value to the given value.
+	/// Values are expected to be pixels in screen space relative to the top of the Waveform texture.
 	/// </summary>
-	/// <param name="focalPointY">Focal point y value.</param>
-	public void SetFocalPointY(int focalPointY)
+	/// <param name="focalPointLocalY">Focal point y value.</param>
+	public void SetFocalPointLocalY(int focalPointLocalY)
 	{
-		if (FocalPointY == focalPointY)
+		if (FocalPointLocalY == focalPointLocalY)
 			return;
-		FocalPointY = focalPointY;
+		FocalPointLocalY = focalPointLocalY;
 		InvalidateLastFrameData();
 	}
 
@@ -296,11 +322,11 @@ public class WaveFormRenderer
 	/// Gets the width of the WaveForm after scaling.
 	/// </summary>
 	/// <param name="zoom">Zoom level.</param>
-	/// <returns>Width of the WaveForm.</returns>
+	/// <returns>TextureWidth of the WaveForm.</returns>
 	public int GetScaledWaveFormWidth(double zoom)
 	{
 		var xZoom = ScaleXWhenZooming ? Math.Min(1.0, zoom) : 1.0;
-		var renderWidth = Width * xZoom;
+		var renderWidth = TextureWidth * xZoom;
 		return (int)renderWidth;
 	}
 
@@ -349,7 +375,7 @@ public class WaveFormRenderer
 			MipMap.TryLockMipLevels(ref lockTaken);
 			if (!lockTaken)
 			{
-				Array.Clear(BGR565Data, 0, (int)(Width * Height));
+				Array.Clear(BGR565Data, 0, (int)(TextureWidth * VisibleHeight));
 			}
 			else
 			{
@@ -358,7 +384,7 @@ public class WaveFormRenderer
 				// still be partially renderer.
 				if (MipMap == null || !MipMap.IsMipMapDataAllocated())
 				{
-					Array.Clear(BGR565Data, 0, (int)(Width * Height));
+					Array.Clear(BGR565Data, 0, (int)(TextureWidth * VisibleHeight));
 					texture.SetData(BGR565Data);
 					return;
 				}
@@ -379,9 +405,9 @@ public class WaveFormRenderer
 
 				// Determine the zoom to use in x. Zoom in x is separate from zoom in y.
 				var xZoom = ScaleXWhenZooming ? Math.Min(1.0, zoom) : 1.0;
-				var renderWidth = Width * xZoom;
+				var renderWidth = TextureWidth * xZoom;
 				var numChannels = MipMap.GetNumChannels();
-				var widthPerChannel = Width / numChannels;
+				var widthPerChannel = TextureWidth / numChannels;
 				var totalWidthPerChannel = (uint)(renderWidth / numChannels);
 
 				var sampleRate = MipMap.GetSampleRate();
@@ -391,14 +417,14 @@ public class WaveFormRenderer
 				// together when rendering to prevent jittering artifacts and to allow reusing portions of the
 				// previous frame's buffer. To accomplish this we need to quantize the sample indices we use per
 				// pixel to samples which fall on consistent integer boundaries that match the samples per pixel.
-				var startSampleOffset = FocalPointY * samplesPerPixel * -1;
+				var startSampleOffset = FocalPointLocalY * samplesPerPixel * -1;
 				var startSampleDouble = soundTimeSeconds * sampleRate + startSampleOffset;
 				var quantizedStartSampleIndex = (long)(startSampleDouble / samplesPerPixel);
-				var quantizedEndSampleIndex = quantizedStartSampleIndex + Height;
+				var quantizedEndSampleIndex = quantizedStartSampleIndex + VisibleHeight;
 
 				// Try to reuse the buffer state from the last frame if it overlaps the area covered this frame.
 				uint yStart = 0;
-				var yEnd = Height;
+				var yEnd = VisibleHeight;
 				if (IsLastFrameDataValid())
 				{
 					// The previous range is identical to this range.
@@ -417,9 +443,9 @@ public class WaveFormRenderer
 						// This frame, compute from pixel 0 to the the start of last frame's data.
 						yEnd = (uint)diff;
 						// Copy the start of last frame's buffer to where it falls within this frame's range.
-						Array.Copy(BGR565Data, 0, BGR565Data, (int)(Width * diff), (Height - diff) * Width);
+						Array.Copy(BGR565Data, 0, BGR565Data, (int)(TextureWidth * diff), (VisibleHeight - diff) * TextureWidth);
 						// Clear the top of the buffer so we can write to it.
-						Array.Clear(BGR565Data, 0, (int)(Width * diff));
+						Array.Clear(BGR565Data, 0, (int)(TextureWidth * diff));
 					}
 
 					// The previous range overlaps the start of this frame's range.
@@ -429,24 +455,24 @@ public class WaveFormRenderer
 						var diff = quantizedEndSampleIndex - LastQuantizedIndexEnd;
 
 						// This frame, compute from the end of last frame's data to the end of the texture.
-						yStart = (uint)(Height - diff);
+						yStart = (uint)(VisibleHeight - diff);
 						// Copy the end of last frame's buffer to where it falls within this frame's range.
-						Array.Copy(BGR565Data, diff * Width, BGR565Data, 0, (Height - diff) * Width);
+						Array.Copy(BGR565Data, diff * TextureWidth, BGR565Data, 0, (VisibleHeight - diff) * TextureWidth);
 						// Clear the bottom of the buffer so we can write to it.
-						Array.Clear(BGR565Data, (int)(yStart * Width), (int)(diff * Width));
+						Array.Clear(BGR565Data, (int)(yStart * TextureWidth), (int)(diff * TextureWidth));
 					}
 
 					// The previous range does not overlap the new range at all.
 					// Clear the entire buffer.
 					else
 					{
-						Array.Clear(BGR565Data, 0, (int)(Width * Height));
+						Array.Clear(BGR565Data, 0, (int)(TextureWidth * VisibleHeight));
 					}
 				}
 				// No valid last frame data to leverage, clear the buffer and fill it entirely.
 				else
 				{
-					Array.Clear(BGR565Data, 0, (int)(Width * Height));
+					Array.Clear(BGR565Data, 0, (int)(TextureWidth * VisibleHeight));
 				}
 
 				// Update the last frame tracking variables for the next frame.
@@ -456,7 +482,7 @@ public class WaveFormRenderer
 				LastQuantizedIndexEnd = quantizedEndSampleIndex;
 
 				var totalNumSamples = MipMap.GetMipLevel0NumSamples();
-				var channelMidX = (ushort)(((Width / numChannels) >> 1) - 1);
+				var channelMidX = (ushort)(((TextureWidth / numChannels) >> 1) - 1);
 
 				// Set up structures for determining the values to use for each row of pixels.
 				var minXPerChannel = new ushort[numChannels];
@@ -680,9 +706,9 @@ public class WaveFormRenderer
 						// Determine the start index in the overall texture data for this channel.
 						var startIndexForRowAndChannel = (int)
 							// Start pixel for this row.
-							(Width * y
+							(TextureWidth * y
 							 // Account for the space to the left of the start due to being zoomed in.
-							 + (Width - renderWidth) * 0.5f
+							 + (TextureWidth - renderWidth) * 0.5f
 							 // Account for the offset due to x scaling.
 							 + (totalWidthPerChannel - totalWidthPerChannel * XPerChannelScale) * 0.5f
 							 // Account for the channel offset.

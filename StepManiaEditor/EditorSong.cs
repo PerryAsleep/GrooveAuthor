@@ -1634,7 +1634,7 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 						song.Extras.AddDestExtra(TagSelectable, Selectable.ToString(), true);
 
 						if (!saveParameters.OmitCustomSaveData)
-							SerializeCustomSongData(customProperties.CustomSongProperties);
+							SerializeCustomSongData(customProperties!.CustomSongProperties);
 
 						foreach (var unsupportedChart in UnsupportedCharts)
 						{

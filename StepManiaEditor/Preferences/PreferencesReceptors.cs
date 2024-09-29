@@ -20,8 +20,8 @@ internal sealed class PreferencesReceptors
 	public const bool DefaultPulseReceptorsWithTempo = true;
 	public const bool DefaultCenterHorizontally = false;
 	public const bool DefaultLockPosition = false;
-	public const int DefaultPositionX = 1134;
-	public const int DefaultPositionY = 110;
+	public const int DefaultChartSpacePositionX = 1134;
+	public const int DefaultChartSpacePositionY = 110;
 
 	// Preferences.
 	[JsonInclude] public bool ShowReceptorPreferencesWindow;
@@ -37,52 +37,54 @@ internal sealed class PreferencesReceptors
 	[JsonInclude] public bool LockPosition = DefaultLockPosition;
 
 	[JsonInclude]
-	public int PositionX
+	[JsonPropertyName("PositionX")]
+	public int ChartSpacePositionX
 	{
-		get => PositionXInternal;
+		get => ChartSpacePositionXInternal;
 		set
 		{
-			PositionXInternal = value;
-			if (PositionXInternal < 0)
-				PositionXInternal = 0;
-			if (Editor != null)
+			ChartSpacePositionXInternal = value;
+			if (ChartSpacePositionXInternal < 0)
+				ChartSpacePositionXInternal = 0;
+			if (Editor != null && Editor.GetChartArea(out var chartArea))
 			{
-				if (PositionXInternal >= Editor.GetViewportWidth())
-					PositionXInternal = Editor.GetViewportWidth() - 1;
+				if (ChartSpacePositionXInternal >= chartArea.Width)
+					ChartSpacePositionXInternal = chartArea.Width - 1;
 			}
 		}
 	}
 
 	[JsonInclude]
-	public int PositionY
+	[JsonPropertyName("PositionY")]
+	public int ChartSpacePositionY
 	{
-		get => PositionYInternal;
+		get => ChartSpacePositionYInternal;
 		set
 		{
-			PositionYInternal = value;
-			if (PositionYInternal < 0)
-				PositionYInternal = 0;
-			if (Editor != null)
+			ChartSpacePositionYInternal = value;
+			if (ChartSpacePositionYInternal < 0)
+				ChartSpacePositionYInternal = 0;
+			if (Editor != null && Editor.GetChartArea(out var chartArea))
 			{
-				if (PositionYInternal >= Editor.GetViewportHeight())
-					PositionYInternal = Editor.GetViewportHeight() - 1;
+				if (ChartSpacePositionYInternal >= chartArea.Height)
+					ChartSpacePositionYInternal = chartArea.Height - 1;
 			}
 		}
 	}
 
-	private int PositionXInternal = DefaultPositionX;
-	private int PositionYInternal = DefaultPositionY;
+	private int ChartSpacePositionXInternal = DefaultChartSpacePositionX;
+	private int ChartSpacePositionYInternal = DefaultChartSpacePositionY;
 
 	public void SetEditor(Editor editor)
 	{
 		Editor = editor;
 	}
 
-	public void ClampViewportPositions()
+	public void ClampPositions()
 	{
 #pragma warning disable CA2245
-		PositionX = PositionX;
-		PositionY = PositionY;
+		ChartSpacePositionX = ChartSpacePositionX;
+		ChartSpacePositionY = ChartSpacePositionY;
 #pragma warning restore CA2245
 	}
 
@@ -97,8 +99,8 @@ internal sealed class PreferencesReceptors
 		       && TapShrinkEffect == DefaultTapShrinkEffect
 		       && PulseReceptorsWithTempo == DefaultPulseReceptorsWithTempo
 		       && CenterHorizontally == DefaultCenterHorizontally
-		       && PositionX == DefaultPositionX
-		       && PositionY == DefaultPositionY
+		       && ChartSpacePositionX == DefaultChartSpacePositionX
+		       && ChartSpacePositionY == DefaultChartSpacePositionY
 		       && LockPosition == DefaultLockPosition;
 	}
 
@@ -126,8 +128,8 @@ internal sealed class ActionRestoreAnimationsPreferenceDefaults : EditorAction
 	private readonly bool PreviousPulseReceptorsWithTempo;
 	private readonly bool PreviousCenterHorizontally;
 	private readonly bool PreviousLockPosition;
-	private readonly int PreviousPositionX;
-	private readonly int PreviousPositionY;
+	private readonly int PreviousChartSpacePositionX;
+	private readonly int PreviousChartSpacePositionY;
 
 	public ActionRestoreAnimationsPreferenceDefaults() : base(false, false)
 	{
@@ -142,8 +144,8 @@ internal sealed class ActionRestoreAnimationsPreferenceDefaults : EditorAction
 		PreviousPulseReceptorsWithTempo = p.PulseReceptorsWithTempo;
 		PreviousCenterHorizontally = p.CenterHorizontally;
 		PreviousLockPosition = p.LockPosition;
-		PreviousPositionX = p.PositionX;
-		PreviousPositionY = p.PositionY;
+		PreviousChartSpacePositionX = p.ChartSpacePositionX;
+		PreviousChartSpacePositionY = p.ChartSpacePositionY;
 	}
 
 	public override bool AffectsFile()
@@ -170,8 +172,8 @@ internal sealed class ActionRestoreAnimationsPreferenceDefaults : EditorAction
 		p.PulseReceptorsWithTempo = PreferencesReceptors.DefaultPulseReceptorsWithTempo;
 		p.CenterHorizontally = PreferencesReceptors.DefaultCenterHorizontally;
 		p.LockPosition = PreferencesReceptors.DefaultLockPosition;
-		p.PositionX = PreferencesReceptors.DefaultPositionX;
-		p.PositionY = PreferencesReceptors.DefaultPositionY;
+		p.ChartSpacePositionX = PreferencesReceptors.DefaultChartSpacePositionX;
+		p.ChartSpacePositionY = PreferencesReceptors.DefaultChartSpacePositionY;
 	}
 
 	protected override void UndoImplementation()
@@ -187,7 +189,7 @@ internal sealed class ActionRestoreAnimationsPreferenceDefaults : EditorAction
 		p.PulseReceptorsWithTempo = PreviousPulseReceptorsWithTempo;
 		p.CenterHorizontally = PreviousCenterHorizontally;
 		p.LockPosition = PreviousLockPosition;
-		p.PositionX = PreviousPositionX;
-		p.PositionY = PreviousPositionY;
+		p.ChartSpacePositionX = PreviousChartSpacePositionX;
+		p.ChartSpacePositionY = PreviousChartSpacePositionY;
 	}
 }
