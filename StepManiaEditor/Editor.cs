@@ -2726,13 +2726,15 @@ internal sealed class Editor :
 			}
 		}
 
-		var textureHeight = Math.Max(0, GetBackBufferHeight() - GetMiniMapYPaddingFromTopInScreenSpace() - GetMiniMapYPaddingFromBottom());
+		var y = TransformChartSpaceYToScreenSpaceY(GetMiniMapYPaddingFromTopInChartSpace());
+		var textureHeight = Math.Max(0,
+			GetBackBufferHeight() - GetMiniMapYPaddingFromTopInScreenSpace() - GetMiniMapYPaddingFromBottom());
 		var visibleHeight = (uint)Math.Min(textureHeight,
 			Math.Max(0, ChartArea.Height - GetMiniMapYPaddingFromTopInChartSpace() - GetMiniMapYPaddingFromBottom()));
 
 		MiniMap.UpdateBounds(
 			GraphicsDevice,
-			new Rectangle(x, GetMiniMapYPaddingFromTopInScreenSpace(), (int)p.PreferencesMiniMap.MiniMapWidth, textureHeight),
+			new Rectangle(x, y, (int)p.PreferencesMiniMap.MiniMapWidth, textureHeight),
 			visibleHeight);
 	}
 

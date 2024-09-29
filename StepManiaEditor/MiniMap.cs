@@ -218,7 +218,7 @@ internal sealed class MiniMap
 	/// This is tracked separately as UI resizing can cause the visible area to change
 	/// often but we do not want to perform expensive texture resizes that often.
 	/// </summary>
-	private uint VisibleHeight;
+	private int VisibleHeight;
 
 	/// <summary>
 	/// Number of lanes of the underlying Chart.
@@ -464,7 +464,7 @@ internal sealed class MiniMap
 
 		Bounds = bounds;
 		var oldVisibleHeight = VisibleHeight;
-		VisibleHeight = visibleHeight;
+		VisibleHeight = (int)visibleHeight;
 
 		if (Bounds.Height <= 0 || Bounds.Width <= 0)
 			return;
@@ -496,8 +496,8 @@ internal sealed class MiniMap
 		var endY = Bounds.Height;
 		if (!textureDimensionsDirty)
 		{
-			startY = Math.Max(0, (int)Math.Min(oldVisibleHeight, VisibleHeight) - 1);
-			endY = Math.Min(endY, (int)Math.Max(oldVisibleHeight, VisibleHeight));
+			startY = Math.Max(0, Math.Min(oldVisibleHeight, VisibleHeight) - 1);
+			endY = Math.Min(endY, Math.Max(oldVisibleHeight, VisibleHeight));
 		}
 
 		for (var x = 0; x < Bounds.Width; x++)
