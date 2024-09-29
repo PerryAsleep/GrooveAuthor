@@ -796,9 +796,14 @@ internal sealed class ImGuiUtils
 		return UiScaled(MenuBarHeight);
 	}
 
-	public static int GetMiniMapYPaddingFromTop()
+	public static int GetMiniMapYPaddingFromTopInScreenSpace()
 	{
 		return UiScaled(MenuBarHeight + MiniMapYPadding);
+	}
+
+	public static int GetMiniMapYPaddingFromTopInChartSpace()
+	{
+		return UiScaled(MiniMapYPadding);
 	}
 
 	public static int GetMiniMapYPaddingFromBottom()

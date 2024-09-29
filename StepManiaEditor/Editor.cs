@@ -888,7 +888,7 @@ internal sealed class Editor :
 	private void InitializeMiniMap()
 	{
 		var p = Preferences.Instance;
-		MiniMap = new MiniMap(GraphicsDevice, new Rectangle(0, 0, 0, 0));
+		MiniMap = new MiniMap(GraphicsDevice, new Rectangle(0, 0, 0, 0), 0);
 		MiniMap.SetFadeOutPercentage(0.9);
 		MiniMap.SetSelectMode(p.PreferencesMiniMap.MiniMapSelectMode);
 	}
@@ -2726,11 +2726,14 @@ internal sealed class Editor :
 			}
 		}
 
-		var h = Math.Max(0, GetBackBufferHeight() - GetMiniMapYPaddingFromTop() - GetMiniMapYPaddingFromBottom());
+		var textureHeight = Math.Max(0, GetBackBufferHeight() - GetMiniMapYPaddingFromTopInScreenSpace() - GetMiniMapYPaddingFromBottom());
+		var visibleHeight = (uint)Math.Min(textureHeight,
+			Math.Max(0, ChartArea.Height - GetMiniMapYPaddingFromTopInChartSpace() - GetMiniMapYPaddingFromBottom()));
 
 		MiniMap.UpdateBounds(
 			GraphicsDevice,
-			new Rectangle(x, GetMiniMapYPaddingFromTop(), (int)p.PreferencesMiniMap.MiniMapWidth, h));
+			new Rectangle(x, GetMiniMapYPaddingFromTopInScreenSpace(), (int)p.PreferencesMiniMap.MiniMapWidth, textureHeight),
+			visibleHeight);
 	}
 
 	private void UpdateMiniMapSpacing()
