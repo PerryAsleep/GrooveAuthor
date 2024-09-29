@@ -53,7 +53,7 @@ internal sealed class PreferencesDensityGraph : Notifier<PreferencesDensityGraph
 		{ DensityGraphPosition.MountedToWaveForm, 134 },
 		{ DensityGraphPosition.MountedToChart, 134 },
 		{ DensityGraphPosition.TopOfWaveForm, 10 },
-		{ DensityGraphPosition.BottomOfWaveForm, 81 },
+		{ DensityGraphPosition.BottomOfWaveForm, 10 },
 	};
 
 	public static Dictionary<DensityGraphPosition, int> DefaultDensityGraphWidthOffsets = new()
@@ -63,7 +63,7 @@ internal sealed class PreferencesDensityGraph : Notifier<PreferencesDensityGraph
 		{ DensityGraphPosition.MountedToWaveForm, -10 },
 		{ DensityGraphPosition.MountedToChart, -10 },
 		{ DensityGraphPosition.TopOfWaveForm, 0 },
-		{ DensityGraphPosition.BottomOfWaveForm, -112 },
+		{ DensityGraphPosition.BottomOfWaveForm, 0 },
 	};
 
 	// Preferences.

@@ -3018,9 +3018,6 @@ internal sealed class Editor :
 		var arrowGraphicManager = GetFocusedChartData()?.GetArrowGraphicManager();
 		var focalPointX = GetFocalPointScreenSpaceX();
 		var sizeZoom = ZoomManager.GetSizeZoom();
-		var screenW = GetBackBufferWidth();
-		var screenH = GetBackBufferHeight();
-		var topPadding = GetMenuBarHeight();
 		var x = 0;
 		var y = 0;
 		var w = 0;
@@ -3030,15 +3027,15 @@ internal sealed class Editor :
 		{
 			case PreferencesDensityGraph.DensityGraphPosition.RightSideOfWindow:
 				w = p.DensityGraphHeight;
-				x = screenW - w - p.DensityGraphPositionOffset;
-				h = screenH - topPadding + p.DensityGraphWidthOffset * 2;
-				y = topPadding - p.DensityGraphWidthOffset;
+				x = ChartArea.X + ChartArea.Width - w - p.DensityGraphPositionOffset;
+				h = ChartArea.Height + p.DensityGraphWidthOffset * 2;
+				y = ChartArea.Y - p.DensityGraphWidthOffset;
 				break;
 			case PreferencesDensityGraph.DensityGraphPosition.RightOfChartArea:
 				w = p.DensityGraphHeight;
 				x = focalPointX + (WaveFormTextureWidth >> 1) + p.DensityGraphPositionOffset;
-				h = screenH - topPadding + p.DensityGraphWidthOffset * 2;
-				y = topPadding - p.DensityGraphWidthOffset;
+				h = ChartArea.Height + p.DensityGraphWidthOffset * 2;
+				y = ChartArea.Y - p.DensityGraphWidthOffset;
 				break;
 			case PreferencesDensityGraph.DensityGraphPosition.MountedToWaveForm:
 				w = p.DensityGraphHeight;
@@ -3046,28 +3043,28 @@ internal sealed class Editor :
 					x = (int)(focalPointX + (WaveFormTextureWidth >> 1) * sizeZoom + p.DensityGraphPositionOffset);
 				else
 					x = focalPointX + (WaveFormTextureWidth >> 1) + p.DensityGraphPositionOffset;
-				h = screenH - topPadding + p.DensityGraphWidthOffset * 2;
-				y = topPadding - p.DensityGraphWidthOffset;
+				h = ChartArea.Height + p.DensityGraphWidthOffset * 2;
+				y = ChartArea.Y - p.DensityGraphWidthOffset;
 				break;
 			case PreferencesDensityGraph.DensityGraphPosition.MountedToChart:
 				var receptorBounds =
 					Receptor.GetBounds(GetFocalPointScreenSpace(), sizeZoom, TextureAtlas, arrowGraphicManager, FocusedChart);
 				w = p.DensityGraphHeight;
 				x = receptorBounds.Item1 + receptorBounds.Item3 + p.DensityGraphPositionOffset;
-				h = screenH - topPadding + p.DensityGraphWidthOffset * 2;
-				y = topPadding - p.DensityGraphWidthOffset;
+				h = ChartArea.Height + p.DensityGraphWidthOffset * 2;
+				y = ChartArea.Y - p.DensityGraphWidthOffset;
 				break;
 			case PreferencesDensityGraph.DensityGraphPosition.TopOfWaveForm:
 				x = focalPointX - (WaveFormTextureWidth >> 1) - p.DensityGraphWidthOffset;
 				w = WaveFormTextureWidth + p.DensityGraphWidthOffset * 2;
-				y = topPadding + p.DensityGraphPositionOffset;
+				y = ChartArea.Y + p.DensityGraphPositionOffset;
 				h = p.DensityGraphHeight;
 				orientation = StepDensityEffect.Orientation.Horizontal;
 				break;
 			case PreferencesDensityGraph.DensityGraphPosition.BottomOfWaveForm:
 				x = focalPointX - (WaveFormTextureWidth >> 1) - p.DensityGraphWidthOffset;
 				w = WaveFormTextureWidth + p.DensityGraphWidthOffset * 2;
-				y = screenH - p.DensityGraphHeight - p.DensityGraphPositionOffset;
+				y = ChartArea.Y + ChartArea.Height - p.DensityGraphHeight - p.DensityGraphPositionOffset;
 				h = p.DensityGraphHeight;
 				orientation = StepDensityEffect.Orientation.Horizontal;
 				break;
