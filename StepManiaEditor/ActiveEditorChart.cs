@@ -1724,7 +1724,7 @@ internal sealed class ActiveEditorChart
 			var xInChartSpace = (mouseState.X() - focalPointScreenSpaceX) / sizeZoom;
 			SelectedRegion.Start(
 				xInChartSpace,
-				focalPointScreenSpaceY,
+				screenSpaceY,
 				chartTime,
 				chartPosition,
 				sizeZoom,
