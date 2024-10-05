@@ -65,11 +65,11 @@ internal sealed class UIAutogenChartsForChartType : UIWindow
 		// If the SourceChartType is not set, try to set it.
 		if (SourceChartType == null)
 		{
-			// Use the active Chart, if one exists.
-			var activeChart = Editor.GetActiveChart();
-			if (activeChart != null)
+			// Use the focused Chart, if one exists.
+			var focusedChart = Editor.GetFocusedChart();
+			if (focusedChart != null)
 			{
-				SourceChartType = activeChart.ChartType;
+				SourceChartType = focusedChart.ChartType;
 				return;
 			}
 
@@ -136,10 +136,7 @@ internal sealed class UIAutogenChartsForChartType : UIWindow
 					ref selectedIndex, configNames,
 					() => EditorPerformedChartConfig.ShowEditUI(Preferences.Instance
 						.LastSelectedAutogenPerformedChartConfig),
-					() =>
-					{
-						UIAutogenConfigs.Instance.Open(true);
-					},
+					() => { UIAutogenConfigs.Instance.Open(true); },
 					EditorPerformedChartConfig.CreateNewConfigAndShowEditUI,
 					"Performed Chart Config.");
 				Preferences.Instance.LastSelectedAutogenPerformedChartConfig = configGuids[selectedIndex];

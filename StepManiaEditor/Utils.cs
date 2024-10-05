@@ -218,8 +218,8 @@ internal sealed class Utils
 		// If the chart is not set, try to set it.
 		if (chart == null)
 		{
-			// Use the active Chart, if one exists.
-			chart = editor.GetActiveChart();
+			// Use the focused Chart, if one exists.
+			chart = editor.GetFocusedChart();
 			if (chart != null)
 				return;
 

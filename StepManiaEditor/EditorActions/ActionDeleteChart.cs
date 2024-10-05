@@ -7,7 +7,7 @@ internal sealed class ActionDeleteChart : EditorAction
 {
 	private readonly Editor Editor;
 	private readonly EditorChart Chart;
-	private bool DeletedActiveChart;
+	private bool DeletedFocusedChart;
 	private bool DeletedTimingChart;
 
 	public ActionDeleteChart(Editor editor, EditorChart chart) : base(false, false)
@@ -28,14 +28,14 @@ internal sealed class ActionDeleteChart : EditorAction
 
 	protected override void DoImplementation()
 	{
-		DeletedActiveChart = Editor.GetActiveChart() == Chart;
+		DeletedFocusedChart = Editor.GetFocusedChart() == Chart;
 		DeletedTimingChart = Editor.GetActiveSong().TimingChart == Chart;
 		Editor.DeleteChart(Chart, null);
 	}
 
 	protected override void UndoImplementation()
 	{
-		Editor.AddChart(Chart, DeletedActiveChart);
+		Editor.AddChart(Chart, DeletedFocusedChart);
 		if (DeletedTimingChart)
 			Editor.GetActiveSong().TimingChart = Chart;
 	}

@@ -350,10 +350,10 @@ internal sealed class UIChartList : UIWindow
 	{
 		ImGui.TableNextRow();
 		ImGui.TableSetColumnIndex(0);
-		var chartIsActive = editor.IsChartActive(chart);
-		if (ImGui.Checkbox($"##{index}", ref chartIsActive))
+		var hasDedicatedTab = editor.DoesChartHaveDedicatedTab(chart);
+		if (ImGui.Checkbox($"##{index}", ref hasDedicatedTab))
 		{
-			editor.SetChartActive(chart, chartIsActive);
+			editor.SetChartHasDedicatedTab(chart, hasDedicatedTab);
 		}
 	}
 

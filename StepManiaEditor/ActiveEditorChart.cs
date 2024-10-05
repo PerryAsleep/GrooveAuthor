@@ -36,6 +36,8 @@ internal sealed class ActiveEditorChart
 	private readonly AutoPlayer AutoPlayer;
 	private readonly ArrowGraphicManager ArrowGraphicManager;
 	private double WaveFormPPS = 1.0;
+	private bool ChartHasDedicatedTab;
+	private bool ChartIsFocused;
 
 	/// <summary>
 	/// Position. Ideally this would be private but position is tied heavily to systems managed by the Editor including
@@ -74,11 +76,8 @@ internal sealed class ActiveEditorChart
 
 	public void Clear()
 	{
-		Selection.ClearSelectedEvents();
-		foreach (var laneEditState in LaneEditStates)
-		{
-			laneEditState.Clear(true);
-		}
+		SetFocused(false);
+		ChartHasDedicatedTab = false;
 	}
 
 	#region Misc
@@ -92,6 +91,39 @@ internal sealed class ActiveEditorChart
 	{
 		UpdateLaneEditStatesFromPosition();
 		Editor.OnActiveChartPositionChanged(this);
+	}
+
+	public bool HasDedicatedTab()
+	{
+		return ChartHasDedicatedTab;
+	}
+
+	public void SetDedicatedTab(bool hasDedicatedTab)
+	{
+		ChartHasDedicatedTab = hasDedicatedTab;
+	}
+
+	public bool IsFocused()
+	{
+		return ChartIsFocused;
+	}
+
+	public void SetFocused(bool focused)
+	{
+		ChartIsFocused = focused;
+		if (!ChartIsFocused)
+		{
+			Selection.ClearSelectedEvents();
+			foreach (var laneEditState in LaneEditStates)
+			{
+				laneEditState.Clear(true);
+			}
+		}
+	}
+
+	public EditorChart GetChart()
+	{
+		return Chart;
 	}
 
 	#endregion Misc

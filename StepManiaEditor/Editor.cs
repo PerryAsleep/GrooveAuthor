@@ -1159,7 +1159,7 @@ internal sealed class Editor :
 		return ActiveSong;
 	}
 
-	public EditorChart GetActiveChart()
+	public EditorChart GetFocusedChart()
 	{
 		return FocusedChart;
 	}
@@ -1395,6 +1395,12 @@ internal sealed class Editor :
 	public Vector2 GetFocalPointScreenSpaceForChart(EditorChart chart)
 	{
 		return new Vector2(GetFocalPointScreenSpaceXForChart(chart), GetFocalPointScreenSpaceY());
+	}
+
+	public Rectangle GetScreenSpaceAreaForChart(EditorChart chart)
+	{
+		// TODO
+		return Rectangle.Empty;
 	}
 
 	#endregion Focal Point
@@ -2438,6 +2444,9 @@ internal sealed class Editor :
 	{
 		var p = Preferences.Instance.PreferencesWaveForm;
 		if (!p.ShowWaveForm)
+			return;
+
+		if (FocusedChart == null)
 			return;
 
 		var x = GetFocalPointScreenSpaceX() - (WaveFormTextureWidth >> 1);
@@ -5617,17 +5626,6 @@ internal sealed class Editor :
 		return null;
 	}
 
-	public bool IsChartActive(EditorChart chart)
-	{
-		for (var i = 0; i < ActiveCharts.Count; i++)
-		{
-			if (ActiveCharts[i] == chart)
-				return true;
-		}
-
-		return false;
-	}
-
 	private ActiveEditorChart GetActiveChartData(EditorChart chart)
 	{
 		for (var i = 0; i < ActiveCharts.Count; i++)
@@ -5637,6 +5635,16 @@ internal sealed class Editor :
 		}
 
 		return null;
+	}
+
+	public bool IsChartActive(EditorChart chart)
+	{
+		return GetActiveChartData(chart) != null;
+	}
+
+	public bool DoesChartHaveDedicatedTab(EditorChart chart)
+	{
+		return GetActiveChartData(chart)?.HasDedicatedTab() ?? false;
 	}
 
 	private void RemoveActiveChart(EditorChart chart)
@@ -5652,38 +5660,105 @@ internal sealed class Editor :
 		}
 	}
 
-	public void SetChartActive(EditorChart chart, bool active)
+	public void SetChartHasDedicatedTab(EditorChart chart, bool hasDedicatedTab)
 	{
-		if (!active)
+		if (hasDedicatedTab)
 		{
-			// Deactivate the chart.
-			RemoveActiveChart(chart);
-
-			// Update focus if necessary.
-			if (ActiveCharts.Count > 0)
-				SetChartFocused(ActiveCharts[0]);
-			else
-				SetChartFocused(null);
+			ShowChart(chart, true);
+			GetActiveChartData(chart)?.SetDedicatedTab(true);
 		}
 		else
 		{
-			// Activate the chart.
-			if (!IsChartActive(chart))
+			// When setting a chart inactive, it is the only active chart, then do not close it.
+			if (chart == FocusedChart && ActiveCharts.Count == 1)
 			{
-				ActiveCharts.Add(chart);
-				var activeChartData = new ActiveEditorChart(
-					this,
-					chart,
-					ZoomManager,
-					TextureAtlas,
-					KeyCommandManager);
-				ActiveChartData.Add(activeChartData);
-				activeChartData.Position.ChartTime = GetPosition().ChartTime;
+				GetActiveChartData(chart)?.SetDedicatedTab(false);
+			}
+			else
+			{
+				CloseChart(chart);
+			}
+		}
+	}
+
+	public void CloseChart(EditorChart chart)
+	{
+		RemoveActiveChart(chart);
+
+		// Ensure this chart is no longer focused.
+		if (FocusedChart == chart)
+		{
+			// Focus on another chart if other charts are active.
+			if (ActiveCharts.Count > 0)
+			{
+				SetChartFocused(ActiveCharts[0]);
+			}
+			else
+			{
+				FocusedChart = null;
+			}
+		}
+	}
+
+	public void ShowChart(EditorChart chart, bool withDedicatedTab)
+	{
+		if (chart == null)
+			return;
+
+		// If this chart is already active then return. It is already being shown.
+		if (IsChartActive(chart))
+			return;
+
+		// Add an ActiveEditorChart for this chart, making it active and visible.
+		ActiveCharts.Add(chart);
+		var activeChartData = new ActiveEditorChart(
+			this,
+			chart,
+			ZoomManager,
+			TextureAtlas,
+			KeyCommandManager);
+		ActiveChartData.Add(activeChartData);
+		activeChartData.Position.ChartTime = GetPosition().ChartTime;
+
+		// If this is the only shown chart, set it focused.
+		if (ActiveCharts.Count == 1)
+			SetChartFocused(chart);
+
+		if (withDedicatedTab)
+			activeChartData.SetDedicatedTab(true);
+
+		// If there are now multiple charts shown without dedicated tabs, close the other charts.
+		CleanUpActiveChartsWithoutDedicatedTabs(activeChartData);
+	}
+
+	private void CleanUpActiveChartsWithoutDedicatedTabs(ActiveEditorChart chartWithoutDedicatedTabToKeep)
+	{
+		var numChartsWithoutDedicatedTabs = 0;
+		for (var i = 0; i < ActiveChartData.Count; i++)
+		{
+			if (!ActiveChartData[i].HasDedicatedTab())
+			{
+				numChartsWithoutDedicatedTabs++;
+				if (numChartsWithoutDedicatedTabs > 1)
+					break;
+			}
+		}
+
+		if (numChartsWithoutDedicatedTabs <= 1)
+			return;
+
+		for (var i = ActiveChartData.Count - 1; i >= 0; i--)
+		{
+			if (ActiveChartData[i] == chartWithoutDedicatedTabToKeep)
+				continue;
+			if (!ActiveChartData[i].HasDedicatedTab())
+			{
+				CloseChart(ActiveCharts[i]);
+				numChartsWithoutDedicatedTabs--;
 			}
 
-			// Update focus if necessary.
-			if (ActiveCharts.Count == 1)
-				SetChartFocused(ActiveCharts[0]);
+			if (numChartsWithoutDedicatedTabs <= 1)
+				break;
 		}
 	}
 
@@ -5693,7 +5768,6 @@ internal sealed class Editor :
 
 		var oldChartTime = GetPosition().ChartTime;
 		var oldFocusedChartData = GetFocusedChartData();
-		var oldFocusedChart = FocusedChart;
 		if (ActiveSong == null || FocusedChart == chart)
 			return;
 
@@ -5705,16 +5779,10 @@ internal sealed class Editor :
 			return;
 		}
 
-		oldFocusedChartData?.Clear();
+		oldFocusedChartData?.SetFocused(false);
 
 		// Set the focused chart.
 		FocusedChart = chart;
-
-		// If we are unfocusing the focused chart, assume it is because we want to fully deactivate it.
-		if (FocusedChart == null && oldFocusedChart != null)
-		{
-			RemoveActiveChart(oldFocusedChart);
-		}
 
 		// Ensure that if we are focusing on a chart, it is active.
 		if (FocusedChart != null)
@@ -5753,6 +5821,8 @@ internal sealed class Editor :
 				activeChartData.Position.ChartTime = oldChartTime;
 			}
 		}
+
+		CleanUpActiveChartsWithoutDedicatedTabs(GetFocusedChartData());
 
 		DensityGraph.SetStepDensity(FocusedChart?.GetStepDensity());
 		EditorMouseState.SetActiveChart(FocusedChart);
@@ -5807,6 +5877,8 @@ internal sealed class Editor :
 
 		if (ActiveSong == null)
 			return;
+
+		CloseChart(chart);
 		chart.RemoveObserver(this);
 		ActiveSong.DeleteChart(chart);
 

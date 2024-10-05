@@ -22,7 +22,7 @@ internal sealed class ActionAutoGenerateCharts : EditorAction
 	private readonly ChartType ChartType;
 	private readonly Config PerformedChartConfig;
 	private readonly int RandomSeed;
-	private readonly EditorChart PreviouslyActiveChart;
+	private readonly EditorChart PreviouslyFocusedChart;
 	private readonly List<EditorChart> NewEditorCharts;
 	private int NumComplete;
 
@@ -37,7 +37,7 @@ internal sealed class ActionAutoGenerateCharts : EditorAction
 		NewEditorCharts = new List<EditorChart>(1) { null };
 		PerformedChartConfig = performedChartConfig;
 		EditorSong = sourceChart.GetEditorSong();
-		PreviouslyActiveChart = Editor.GetActiveChart();
+		PreviouslyFocusedChart = Editor.GetFocusedChart();
 		ChartType = chartType;
 		RandomSeed = new Random().Next();
 	}
@@ -56,7 +56,7 @@ internal sealed class ActionAutoGenerateCharts : EditorAction
 			NewEditorCharts.Add(null);
 		PerformedChartConfig = performedChartConfig;
 		EditorSong = SourceCharts[0].GetEditorSong();
-		PreviouslyActiveChart = Editor.GetActiveChart();
+		PreviouslyFocusedChart = Editor.GetFocusedChart();
 		ChartType = chartType;
 		RandomSeed = new Random().Next();
 	}
@@ -239,7 +239,7 @@ internal sealed class ActionAutoGenerateCharts : EditorAction
 		{
 			if (NewEditorCharts[i] == null)
 				continue;
-			Editor.DeleteChart(NewEditorCharts[i], PreviouslyActiveChart);
+			Editor.DeleteChart(NewEditorCharts[i], PreviouslyFocusedChart);
 			NewEditorCharts[i] = null;
 		}
 

@@ -83,7 +83,7 @@ internal sealed class UIPatternConfig : UIWindow
 		if (editorConfig == null)
 			return;
 
-		var currentChartType = Editor.GetActiveChart()?.ChartType;
+		var currentChartType = Editor.GetFocusedChart()?.ChartType;
 
 		if (BeginWindow(WindowTitle, ref p.ShowPatternListWindow, DefaultWidth))
 		{

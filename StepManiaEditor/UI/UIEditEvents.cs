@@ -32,7 +32,7 @@ internal sealed class UIEditEvents
 
 	private void DrawShiftEventsMenuItems(IEnumerable<EditorEvent> events = null)
 	{
-		var chart = Editor.GetActiveChart();
+		var chart = Editor.GetFocusedChart();
 		var allEvents = false;
 		if (events == null)
 		{
@@ -153,7 +153,7 @@ internal sealed class UIEditEvents
 	{
 		if (ImGui.BeginMenu("Convert Selected"))
 		{
-			DrawConvertMenuItems(Editor.GetActiveChart(), events);
+			DrawConvertMenuItems(Editor.GetFocusedChart(), events);
 			ImGui.EndMenu();
 		}
 	}
@@ -162,7 +162,7 @@ internal sealed class UIEditEvents
 	{
 		if (ImGui.BeginMenu("Convert All"))
 		{
-			DrawConvertMenuItems(Editor.GetActiveChart());
+			DrawConvertMenuItems(Editor.GetFocusedChart());
 			ImGui.EndMenu();
 		}
 	}
@@ -313,7 +313,7 @@ internal sealed class UIEditEvents
 	{
 		if (ImGui.BeginMenu("Select All"))
 		{
-			var disabled = !(Editor.GetActiveChart()?.CanBeEdited() ?? false);
+			var disabled = !(Editor.GetFocusedChart()?.CanBeEdited() ?? false);
 			if (disabled)
 				PushDisabled();
 
@@ -381,7 +381,7 @@ internal sealed class UIEditEvents
 
 	public void DrawAddEventMenu()
 	{
-		var chart = Editor.GetActiveChart();
+		var chart = Editor.GetFocusedChart();
 		var canEditChart = chart?.CanBeEdited() ?? false;
 		var song = Editor.GetActiveSong();
 		var canEditSong = song?.CanBeEdited() ?? false;
