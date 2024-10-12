@@ -31,6 +31,20 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 		Beat,
 	}
 
+	/// <summary>
+	/// How to size the song background image.
+	/// </summary>
+	public enum BackgroundImageSizeMode
+	{
+		/// <summary>
+		/// Fill the chart area.
+		/// </summary>
+		ChartArea,
+
+		// Fill the window.
+		Window,
+	};
+
 	// Default values.
 	public const int DefaultRecentFilesHistorySize = 20;
 	public const ChartType DefaultDefaultStepsType = ChartType.dance_single;
@@ -52,6 +66,7 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 	public const bool DefaultHideSongBackground = false;
 	public const StepColorMethod DefaultStepColorMethodValue = StepColorMethod.Stepmania;
 	public const bool DefaultResetWindows = true;
+	public const BackgroundImageSizeMode DefaultBackgroundImageSize = BackgroundImageSizeMode.ChartArea;
 
 	// Preferences.
 	[JsonInclude] public bool ShowOptionsWindow;
@@ -68,6 +83,7 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 	[JsonInclude] public bool HideSongBackground = DefaultHideSongBackground;
 	[JsonInclude] public StepColorMethod StepColorMethodValue = DefaultStepColorMethodValue;
 	[JsonInclude] public bool ResetWindows = DefaultResetWindows;
+	[JsonInclude] public BackgroundImageSizeMode BackgroundImageSize = DefaultBackgroundImageSize;
 
 	[JsonInclude]
 	public int UndoHistorySize
@@ -88,6 +104,7 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 	public static void RegisterDefaultsForInvalidEnumValues(PermissiveEnumJsonConverterFactory factory)
 	{
 		factory.RegisterDefault(DefaultStepColorMethodValue);
+		factory.RegisterDefault(DefaultBackgroundImageSize);
 	}
 
 	public bool IsUsingDefaults()
@@ -105,7 +122,8 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 		       && SuppressExternalSongModificationNotification == DefaultSuppressExternalSongModificationNotification
 		       && HideSongBackground == DefaultHideSongBackground
 		       && StepColorMethodValue == DefaultStepColorMethodValue
-		       && ResetWindows == DefaultResetWindows;
+		       && ResetWindows == DefaultResetWindows
+		       && BackgroundImageSize == DefaultBackgroundImageSize;
 	}
 
 	public void RestoreDefaults()
@@ -135,7 +153,9 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 	private readonly bool PreviousSuppressExternalSongModificationNotification;
 	private readonly bool PreviousHideSongBackground;
 	private readonly StepColorMethod PreviousStepColorMethodValue;
+
 	//private readonly bool PreviousResetWindows;
+	private readonly BackgroundImageSizeMode PreviousBackgroundImageSize;
 
 	public ActionRestoreOptionPreferenceDefaults() : base(false, false)
 	{
@@ -155,6 +175,7 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 		PreviousHideSongBackground = p.HideSongBackground;
 		PreviousStepColorMethodValue = p.StepColorMethodValue;
 		//PreviousResetWindows = p.ResetWindows;
+		PreviousBackgroundImageSize = p.BackgroundImageSize;
 	}
 
 	public override bool AffectsFile()
@@ -184,6 +205,7 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 		p.HideSongBackground = DefaultHideSongBackground;
 		p.StepColorMethodValue = DefaultStepColorMethodValue;
 		//p.ResetWindows = DefaultResetWindows;
+		p.BackgroundImageSize = DefaultBackgroundImageSize;
 	}
 
 	protected override void UndoImplementation()
@@ -203,5 +225,6 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 		p.HideSongBackground = PreviousHideSongBackground;
 		p.StepColorMethodValue = PreviousStepColorMethodValue;
 		//p.ResetWindows = PreviousResetWindows;
+		p.BackgroundImageSize = PreviousBackgroundImageSize;
 	}
 }

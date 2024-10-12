@@ -1,6 +1,7 @@
 ﻿using Fumen.Converters;
 using ImGuiNET;
 using static StepManiaEditor.ImGuiUtils;
+using static StepManiaEditor.PreferencesOptions;
 
 namespace StepManiaEditor;
 
@@ -96,6 +97,12 @@ internal class UIOptions : UIWindow
 				ImGuiLayoutUtils.DrawRowCheckbox(true, "Hide Song Background", p,
 					nameof(PreferencesOptions.HideSongBackground), false,
 					"Whether or not to hide the song's Background image in the editor.");
+
+				ImGuiLayoutUtils.DrawRowEnum<BackgroundImageSizeMode>(true, "Song Background Size", p,
+					nameof(PreferencesOptions.BackgroundImageSize), false,
+					"How to scale the song background image in the editor." +
+					"\nChartArea: Fill the area reserved for displaying the charts when using docked UI." +
+					"\nWindow:    Fill the entire window.");
 
 				ImGuiLayoutUtils.EndTable();
 			}
@@ -199,7 +206,7 @@ internal class UIOptions : UIWindow
 
 	public static void DrawStepColoring(string title = "Step Coloring")
 	{
-		ImGuiLayoutUtils.DrawRowEnum<PreferencesOptions.StepColorMethod>(true, title, Preferences.Instance.PreferencesOptions,
+		ImGuiLayoutUtils.DrawRowEnum<StepColorMethod>(true, title, Preferences.Instance.PreferencesOptions,
 			nameof(PreferencesOptions.StepColorMethodValue), false,
 			"How to color steps for chart types which color steps based on rhythm." +
 			"\nStepmania: Use the same logic for coloring notes as Stepmania." +

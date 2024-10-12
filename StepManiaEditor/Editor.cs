@@ -2313,10 +2313,19 @@ internal sealed class Editor :
 		GraphicsDevice.Clear(new Color(r, g, b, a));
 
 		// Draw the background texture.
-		// TODO: Should bg draw over viewport or chart region?
 		SpriteBatch.Begin();
-		ActiveSong.GetBackground().GetTexture()
-			.DrawTexture(SpriteBatch, 0, 0, (uint)GetViewportWidth(), (uint)GetViewportHeight());
+		switch (Preferences.Instance.PreferencesOptions.BackgroundImageSize)
+		{
+			case PreferencesOptions.BackgroundImageSizeMode.ChartArea:
+				ActiveSong.GetBackground().GetTexture()
+					.DrawTexture(SpriteBatch, ChartArea.X, ChartArea.Y, (uint)ChartArea.Width, (uint)ChartArea.Height);
+				break;
+			case PreferencesOptions.BackgroundImageSizeMode.Window:
+				ActiveSong.GetBackground().GetTexture()
+					.DrawTexture(SpriteBatch, 0, 0, (uint)GetViewportWidth(), (uint)GetViewportHeight());
+				break;
+		}
+
 		SpriteBatch.End();
 	}
 
@@ -2339,58 +2348,22 @@ internal sealed class Editor :
 
 	private (int, int) GetDarkBgXAndW()
 	{
-		var x = 0;
-		var w = 0;
-		var arrowGraphicManager = GetFocusedChartData()?.GetArrowGraphicManager();
-		if (arrowGraphicManager == null)
-			return (x, w);
-
-		var (receptorTextureId, _) = arrowGraphicManager.GetReceptorTexture(0);
-		var (receptorTextureWidth, _) = TextureAtlas.GetDimensions(receptorTextureId);
-		var zoom = ZoomManager.GetSizeZoom();
-
-		var chartXCurrent = (int)(GetFocalPointScreenSpaceX() - FocusedChart.NumInputs * 0.5 * receptorTextureWidth * zoom);
-		var chartXMax = (int)(GetFocalPointScreenSpaceX() - FocusedChart.NumInputs * 0.5 * receptorTextureWidth);
-		var chartWMax = FocusedChart.NumInputs * receptorTextureWidth;
-		var chartWCurrent = (int)(FocusedChart.NumInputs * receptorTextureWidth * zoom);
-
-		var waveformXMax = (int)(GetFocalPointScreenSpaceX() - WaveFormTextureWidth * 0.5f);
-		var waveformWMax = WaveFormTextureWidth;
-
-		var waveformWCurrent = WaveFormRenderer.GetScaledWaveFormWidth(ZoomManager.GetSpacingZoom());
-		var waveformXCurrent = (int)(waveformXMax + waveformWMax * 0.5f - waveformWCurrent * 0.5f);
-
-		// TODO: Multiple Charts: Dark BG
-		var p = Preferences.Instance.PreferencesDark;
-		switch (p.Size)
+		switch (Preferences.Instance.PreferencesDark.Size)
 		{
-			case PreferencesDark.SizeMode.WaveFormWidthMax:
-				x = waveformXMax;
-				w = waveformWMax;
+			case PreferencesDark.SizeMode.FocusedChart:
+				var focusedChartData = GetFocusedChartData();
+				if (focusedChartData != null)
+				{
+					var width = focusedChartData.GetChartScreenSpaceWidth();
+					return (GetFocalPointScreenSpaceX() - (width >> 1), width);
+				}
+
 				break;
-			case PreferencesDark.SizeMode.WaveFormWidthCurrent:
-				x = waveformXCurrent;
-				w = waveformWCurrent;
-				break;
-			case PreferencesDark.SizeMode.ChartWidthMax:
-				x = chartXMax;
-				w = chartWMax;
-				break;
-			case PreferencesDark.SizeMode.ChartCurrentWidth:
-				x = chartXCurrent;
-				w = chartWCurrent;
-				break;
-			case PreferencesDark.SizeMode.MaxOfWaveFormOrChartCurrentWidth:
-				x = Math.Min(chartXCurrent, waveformXCurrent);
-				w = Math.Max(chartWCurrent, waveformWCurrent);
-				break;
-			case PreferencesDark.SizeMode.MaxOfWaveFormOrChartMaxWidth:
-				x = Math.Min(chartXMax, waveformXMax);
-				w = Math.Max(chartWMax, waveformWMax);
-				break;
+			case PreferencesDark.SizeMode.Window:
+				return (0, GetViewportWidth());
 		}
 
-		return (x, w);
+		return (0, 0);
 	}
 
 	private void DrawReceptors()

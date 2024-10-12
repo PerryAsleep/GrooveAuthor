@@ -12,12 +12,8 @@ internal sealed class PreferencesDark
 {
 	public enum SizeMode
 	{
-		WaveFormWidthMax,
-		WaveFormWidthCurrent,
-		ChartWidthMax,
-		ChartCurrentWidth,
-		MaxOfWaveFormOrChartCurrentWidth,
-		MaxOfWaveFormOrChartMaxWidth,
+		FocusedChart,
+		Window,
 	}
 
 	public enum DrawOrder
@@ -28,7 +24,7 @@ internal sealed class PreferencesDark
 
 	// Default values.
 	public const bool DefaultShowDarkBg = true;
-	public const SizeMode DefaultSize = SizeMode.MaxOfWaveFormOrChartMaxWidth;
+	public const SizeMode DefaultSize = SizeMode.Window;
 	public const DrawOrder DefaultDrawOrder = DrawOrder.AfterBackground;
 	public static readonly Vector4 DefaultColor = new(0.0f, 0.0f, 0.0f, 0.8f);
 
