@@ -84,7 +84,50 @@ internal sealed class ActiveEditorChart
 
 	public int GetChartScreenSpaceWidth()
 	{
-		return Receptor.GetReceptorAreaWidth(ZoomManager.GetSizeZoom(), TextureAtlas, ArrowGraphicManager, Chart);
+		// Start with the receptor width.
+		// Do not treat being zoomed out as affecting the area the chart should cover, but do take into
+		// account size cap.
+		var width = Receptor.GetReceptorAreaWidth(ZoomManager.GetSizeCap(), TextureAtlas, ArrowGraphicManager, Chart);
+
+		// Add width for elements which are only enabled for the focused chart.
+		if (IsFocused())
+		{
+			// Add width for the measure markers
+			//width += ;
+
+			// Add width for the MiniMap if it is mounted to the focused chart.
+			var scrollBarWidth = 0;
+			var mm = Preferences.Instance.PreferencesMiniMap;
+			if (mm.ShowMiniMap)
+			{
+				switch (mm.MiniMapPosition)
+				{
+					// Regardless of scaling, add width for the MiniMap if it is mounted to the focused chart.
+					case MiniMap.Position.FocusedChartWithScaling:
+					case MiniMap.Position.FocusedChartWithoutScaling:
+						scrollBarWidth = Math.Max(scrollBarWidth, (int)(mm.PositionOffset + mm.MiniMapWidth));
+						break;
+				}
+			}
+
+			// Add width for the Density Graph if it is mounted to the focused chart.
+			var dg = Preferences.Instance.PreferencesDensityGraph;
+			if (dg.ShowDensityGraph)
+			{
+				switch (dg.DensityGraphPositionValue)
+				{
+					// Regardless of scaling, add width for the Density Graph if it is mounted to the focused chart.
+					case PreferencesDensityGraph.DensityGraphPosition.FocusedChartWithScaling:
+					case PreferencesDensityGraph.DensityGraphPosition.FocusedChartWithoutScaling:
+						scrollBarWidth = Math.Max(scrollBarWidth, dg.DensityGraphPositionOffset + dg.DensityGraphHeight);
+						break;
+				}
+			}
+
+			width += scrollBarWidth;
+		}
+
+		return width;
 	}
 
 	private void OnPositionChanged()

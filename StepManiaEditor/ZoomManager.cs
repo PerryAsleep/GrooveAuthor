@@ -9,6 +9,7 @@ internal interface IReadOnlyZoomManager
 {
 	public double GetSizeZoom();
 	public double GetSpacingZoom();
+	public double GetSizeCap();
 }
 
 /// <summary>

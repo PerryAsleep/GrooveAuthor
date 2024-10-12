@@ -26,17 +26,31 @@ internal sealed class Preferences
 	/// <summary>
 	/// Serialization options.
 	/// </summary>
-	private static JsonSerializerOptions SerializationOptions = new()
+	private static JsonSerializerOptions SerializationOptions;
+
+	static Preferences()
 	{
-		Converters =
+		// Collect default values from Enums which may have changed between versions.
+		// We want to allow deserialization of now invalid values and fallback to good defaults.
+		var factory = new PermissiveEnumJsonConverterFactory();
+		PreferencesDark.RegisterDefaultsForInvalidEnumValues(factory);
+		PreferencesDensityGraph.RegisterDefaultsForInvalidEnumValues(factory);
+		PreferencesMiniMap.RegisterDefaultsForInvalidEnumValues(factory);
+		PreferencesOptions.RegisterDefaultsForInvalidEnumValues(factory);
+		PreferencesPerformance.RegisterDefaultsForInvalidEnumValues(factory);
+		PreferencesSelection.RegisterDefaultsForInvalidEnumValues(factory);
+		PreferencesStream.RegisterDefaultsForInvalidEnumValues(factory);
+		PreferencesWaveForm.RegisterDefaultsForInvalidEnumValues(factory);
+
+		SerializationOptions = new JsonSerializerOptions
 		{
-			new JsonStringEnumConverter(JsonNamingPolicy.CamelCase),
-		},
-		ReadCommentHandling = JsonCommentHandling.Skip,
-		AllowTrailingCommas = true,
-		IncludeFields = true,
-		WriteIndented = true,
-	};
+			Converters = { factory },
+			ReadCommentHandling = JsonCommentHandling.Skip,
+			AllowTrailingCommas = true,
+			IncludeFields = true,
+			WriteIndented = true,
+		};
+	}
 
 	public class SavedSongInformation
 	{
@@ -171,6 +185,7 @@ internal sealed class Preferences
 	{
 		PreferencesReceptors.SetEditor(Editor);
 		PreferencesWaveForm.PostLoad();
+		PreferencesMiniMap.PostLoad();
 		PreferencesDensityGraph.PostLoad();
 	}
 

@@ -1,4 +1,5 @@
 ﻿using System.Text.Json.Serialization;
+using Fumen;
 using static StepManiaEditor.PreferencesSelection;
 
 namespace StepManiaEditor;
@@ -29,6 +30,12 @@ internal sealed class PreferencesSelection
 	[JsonInclude] public bool ShowSelectionControlPreferencesWindow;
 	[JsonInclude] public SelectionMode Mode = DefaultSelectionMode;
 	[JsonInclude] public SelectionRegionMode RegionMode = DefaultSelectionRegionMode;
+
+	public static void RegisterDefaultsForInvalidEnumValues(PermissiveEnumJsonConverterFactory factory)
+	{
+		factory.RegisterDefault(DefaultSelectionMode);
+		factory.RegisterDefault(DefaultSelectionRegionMode);
+	}
 
 	public bool IsUsingDefaults()
 	{

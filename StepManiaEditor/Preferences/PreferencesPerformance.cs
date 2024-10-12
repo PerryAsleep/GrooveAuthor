@@ -43,6 +43,11 @@ internal sealed class PreferencesPerformance
 	[JsonInclude] public double ExplicitFrameMaxTime = DefaultExplicitFrameMaxTime;
 	[JsonInclude] public bool PerformanceMonitorPaused = DefaultPerformanceMonitorPaused;
 
+	public static void RegisterDefaultsForInvalidEnumValues(PermissiveEnumJsonConverterFactory factory)
+	{
+		factory.RegisterDefault(DefaultFrameMaxTimeMode);
+	}
+
 	public bool IsUsingDefaults()
 	{
 		return MaxFramesToDraw == DefaultMaxFramesToDraw

@@ -9,13 +9,6 @@ namespace StepManiaEditor;
 /// </summary>
 internal sealed class UIWaveFormPreferences : UIWindow
 {
-	public enum SparseColorOption
-	{
-		DarkerDenseColor,
-		SameAsDenseColor,
-		UniqueColor,
-	}
-
 	private static readonly int TitleColumnWidth = UiScaled(120);
 	private static readonly int DefaultWidth = UiScaled(460);
 
@@ -103,7 +96,7 @@ internal sealed class UIWaveFormPreferences : UIWindow
 				nameof(PreferencesWaveForm.DenseScale),
 				0.0f, 10.0f, false, "Scale of the dense region of the waveform.");
 
-			ImGuiLayoutUtils.DrawRowEnum<SparseColorOption>(true, "Sparse Color", p,
+			ImGuiLayoutUtils.DrawRowEnum<PreferencesWaveForm.SparseColorOption>(true, "Sparse Color", p,
 				nameof(PreferencesWaveForm.WaveFormSparseColorOption), false,
 				"How to color the sparse area of the waveform." +
 				"\nFor each y pixel in the waveform, the sparse area is the range of all" +
@@ -111,7 +104,7 @@ internal sealed class UIWaveFormPreferences : UIWindow
 
 			switch (p.WaveFormSparseColorOption)
 			{
-				case SparseColorOption.DarkerDenseColor:
+				case PreferencesWaveForm.SparseColorOption.DarkerDenseColor:
 				{
 					ImGuiLayoutUtils.DrawRowSliderFloat(true, "Sparse Color Scale", p,
 						nameof(PreferencesWaveForm.WaveFormSparseColorScale),
@@ -119,11 +112,11 @@ internal sealed class UIWaveFormPreferences : UIWindow
 						"Treat the sparse color as the dense color darkened by this percentage.");
 					break;
 				}
-				case SparseColorOption.SameAsDenseColor:
+				case PreferencesWaveForm.SparseColorOption.SameAsDenseColor:
 				{
 					break;
 				}
-				case SparseColorOption.UniqueColor:
+				case PreferencesWaveForm.SparseColorOption.UniqueColor:
 				{
 					ImGuiLayoutUtils.DrawRowColorEdit4(true, "Sparse Color", p,
 						nameof(PreferencesWaveForm.WaveFormSparseColor),

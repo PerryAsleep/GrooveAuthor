@@ -59,19 +59,19 @@ internal sealed class MiniMap
 		RightSideOfWindow,
 
 		/// <summary>
-		/// To the right of the Chart area. Will not move with scaling.
+		/// Mounted to the left side of the window.
 		/// </summary>
-		RightOfChartArea,
+		LeftSideOfWindow,
 
 		/// <summary>
-		/// Mounted to the right of the WaveForm. Will move with scaling.
+		/// Mounted to the right of the focused chart. Will not moving with scaling.
 		/// </summary>
-		MountedToWaveForm,
+		FocusedChartWithoutScaling,
 
 		/// <summary>
-		/// Mounted to the right of the Chart. Will move with scaling.
+		/// Mounted to the right of the focused chart. Will moving with scaling.
 		/// </summary>
-		MountedToChart,
+		FocusedChartWithScaling,
 	}
 
 	/// <summary>

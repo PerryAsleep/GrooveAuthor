@@ -2198,7 +2198,6 @@ internal sealed class Editor :
 
 			SpriteBatch.Begin(SpriteSortMode.Deferred, BlendState.NonPremultiplied);
 
-			DrawMiniMap();
 			if (RenderChart)
 			{
 				if (RenderMarkers)
@@ -2210,6 +2209,8 @@ internal sealed class Editor :
 				DrawReceptorForegroundEffects();
 				DrawSelectedRegion();
 			}
+
+			DrawMiniMap();
 
 			SpriteBatch.End();
 
@@ -2263,13 +2264,13 @@ internal sealed class Editor :
 		var sparseColor = p.WaveFormSparseColor;
 		switch (p.WaveFormSparseColorOption)
 		{
-			case UIWaveFormPreferences.SparseColorOption.DarkerDenseColor:
+			case PreferencesWaveForm.SparseColorOption.DarkerDenseColor:
 				sparseColor.X = p.WaveFormDenseColor.X * p.WaveFormSparseColorScale;
 				sparseColor.Y = p.WaveFormDenseColor.Y * p.WaveFormSparseColorScale;
 				sparseColor.Z = p.WaveFormDenseColor.Z * p.WaveFormSparseColorScale;
 				sparseColor.W = p.WaveFormDenseColor.W;
 				break;
-			case UIWaveFormPreferences.SparseColorOption.SameAsDenseColor:
+			case PreferencesWaveForm.SparseColorOption.SameAsDenseColor:
 				sparseColor = p.WaveFormDenseColor;
 				break;
 		}
@@ -2697,40 +2698,34 @@ internal sealed class Editor :
 	{
 		var p = Preferences.Instance;
 		var arrowGraphicManager = GetFocusedChartData()?.GetArrowGraphicManager();
-		var focalPointX = GetFocalPointScreenSpaceX();
 		var x = 0;
-		var sizeZoom = ZoomManager.GetSizeZoom();
 		switch (p.PreferencesMiniMap.MiniMapPosition)
 		{
 			case Position.RightSideOfWindow:
 			{
-				x = GetBackBufferWidth() - (int)p.PreferencesMiniMap.MiniMapXPadding -
+				x = ChartArea.X + ChartArea.Width - p.PreferencesMiniMap.PositionOffset -
 				    (int)p.PreferencesMiniMap.MiniMapWidth;
 				break;
 			}
-			case Position.RightOfChartArea:
+			case Position.LeftSideOfWindow:
 			{
-				x = focalPointX + (WaveFormTextureWidth >> 1) + (int)p.PreferencesMiniMap.MiniMapXPadding;
+				x = ChartArea.X + p.PreferencesMiniMap.PositionOffset;
 				break;
 			}
-			case Position.MountedToWaveForm:
-			{
-				if (p.PreferencesWaveForm.WaveFormScaleXWhenZooming)
-				{
-					x = (int)(focalPointX + (WaveFormTextureWidth >> 1) * sizeZoom + (int)p.PreferencesMiniMap.MiniMapXPadding);
-				}
-				else
-				{
-					x = focalPointX + (WaveFormTextureWidth >> 1) + (int)p.PreferencesMiniMap.MiniMapXPadding;
-				}
-
-				break;
-			}
-			case Position.MountedToChart:
+			case Position.FocusedChartWithoutScaling:
 			{
 				var receptorBounds =
-					Receptor.GetBounds(GetFocalPointScreenSpace(), sizeZoom, TextureAtlas, arrowGraphicManager, FocusedChart);
-				x = receptorBounds.Item1 + receptorBounds.Item3 + (int)p.PreferencesMiniMap.MiniMapXPadding;
+					Receptor.GetBounds(GetFocalPointScreenSpace(), ZoomManager.GetSizeCap(), TextureAtlas, arrowGraphicManager,
+						FocusedChart);
+				x = receptorBounds.Item1 + receptorBounds.Item3 + p.PreferencesMiniMap.PositionOffset;
+				break;
+			}
+			case Position.FocusedChartWithScaling:
+			{
+				var receptorBounds =
+					Receptor.GetBounds(GetFocalPointScreenSpace(), ZoomManager.GetSizeZoom(), TextureAtlas, arrowGraphicManager,
+						FocusedChart);
+				x = receptorBounds.Item1 + receptorBounds.Item3 + p.PreferencesMiniMap.PositionOffset;
 				break;
 			}
 		}
@@ -3025,8 +3020,6 @@ internal sealed class Editor :
 	{
 		var p = Preferences.Instance.PreferencesDensityGraph;
 		var arrowGraphicManager = GetFocusedChartData()?.GetArrowGraphicManager();
-		var focalPointX = GetFocalPointScreenSpaceX();
-		var sizeZoom = ZoomManager.GetSizeZoom();
 		var x = 0;
 		var y = 0;
 		var w = 0;
@@ -3035,48 +3028,67 @@ internal sealed class Editor :
 		switch (p.DensityGraphPositionValue)
 		{
 			case PreferencesDensityGraph.DensityGraphPosition.RightSideOfWindow:
+			{
 				w = p.DensityGraphHeight;
 				x = ChartArea.X + ChartArea.Width - w - p.DensityGraphPositionOffset;
 				h = ChartArea.Height + p.DensityGraphWidthOffset * 2;
 				y = ChartArea.Y - p.DensityGraphWidthOffset;
 				break;
-			case PreferencesDensityGraph.DensityGraphPosition.RightOfChartArea:
+			}
+			case PreferencesDensityGraph.DensityGraphPosition.LeftSideOfWindow:
+			{
 				w = p.DensityGraphHeight;
-				x = focalPointX + (WaveFormTextureWidth >> 1) + p.DensityGraphPositionOffset;
+				x = ChartArea.X + p.DensityGraphPositionOffset;
 				h = ChartArea.Height + p.DensityGraphWidthOffset * 2;
 				y = ChartArea.Y - p.DensityGraphWidthOffset;
 				break;
-			case PreferencesDensityGraph.DensityGraphPosition.MountedToWaveForm:
-				w = p.DensityGraphHeight;
-				if (Preferences.Instance.PreferencesWaveForm.WaveFormScaleXWhenZooming)
-					x = (int)(focalPointX + (WaveFormTextureWidth >> 1) * sizeZoom + p.DensityGraphPositionOffset);
-				else
-					x = focalPointX + (WaveFormTextureWidth >> 1) + p.DensityGraphPositionOffset;
-				h = ChartArea.Height + p.DensityGraphWidthOffset * 2;
-				y = ChartArea.Y - p.DensityGraphWidthOffset;
-				break;
-			case PreferencesDensityGraph.DensityGraphPosition.MountedToChart:
+			}
+			case PreferencesDensityGraph.DensityGraphPosition.FocusedChartWithoutScaling:
+			{
 				var receptorBounds =
-					Receptor.GetBounds(GetFocalPointScreenSpace(), sizeZoom, TextureAtlas, arrowGraphicManager, FocusedChart);
-				w = p.DensityGraphHeight;
+					Receptor.GetBounds(GetFocalPointScreenSpace(), ZoomManager.GetSizeCap(), TextureAtlas, arrowGraphicManager,
+						FocusedChart);
 				x = receptorBounds.Item1 + receptorBounds.Item3 + p.DensityGraphPositionOffset;
+				w = p.DensityGraphHeight;
 				h = ChartArea.Height + p.DensityGraphWidthOffset * 2;
 				y = ChartArea.Y - p.DensityGraphWidthOffset;
 				break;
-			case PreferencesDensityGraph.DensityGraphPosition.TopOfWaveForm:
-				x = focalPointX - (WaveFormTextureWidth >> 1) - p.DensityGraphWidthOffset;
-				w = WaveFormTextureWidth + p.DensityGraphWidthOffset * 2;
+			}
+			case PreferencesDensityGraph.DensityGraphPosition.FocusedChartWithScaling:
+			{
+				var receptorBounds =
+					Receptor.GetBounds(GetFocalPointScreenSpace(), ZoomManager.GetSizeZoom(), TextureAtlas, arrowGraphicManager,
+						FocusedChart);
+				x = receptorBounds.Item1 + receptorBounds.Item3 + p.DensityGraphPositionOffset;
+				w = p.DensityGraphHeight;
+				h = ChartArea.Height + p.DensityGraphWidthOffset * 2;
+				y = ChartArea.Y - p.DensityGraphWidthOffset;
+				break;
+			}
+			case PreferencesDensityGraph.DensityGraphPosition.TopOfFocusedChart:
+			{
+				var receptorBounds =
+					Receptor.GetBounds(GetFocalPointScreenSpace(), ZoomManager.GetSizeCap(), TextureAtlas, arrowGraphicManager,
+						FocusedChart);
+				x = receptorBounds.Item1 - p.DensityGraphWidthOffset;
+				w = receptorBounds.Item3 + p.DensityGraphWidthOffset * 2;
 				y = ChartArea.Y + p.DensityGraphPositionOffset;
 				h = p.DensityGraphHeight;
 				orientation = StepDensityEffect.Orientation.Horizontal;
 				break;
-			case PreferencesDensityGraph.DensityGraphPosition.BottomOfWaveForm:
-				x = focalPointX - (WaveFormTextureWidth >> 1) - p.DensityGraphWidthOffset;
-				w = WaveFormTextureWidth + p.DensityGraphWidthOffset * 2;
+			}
+			case PreferencesDensityGraph.DensityGraphPosition.BottomOfFocusedChart:
+			{
+				var receptorBounds =
+					Receptor.GetBounds(GetFocalPointScreenSpace(), ZoomManager.GetSizeCap(), TextureAtlas, arrowGraphicManager,
+						FocusedChart);
+				x = receptorBounds.Item1 - p.DensityGraphWidthOffset;
+				w = receptorBounds.Item3 + p.DensityGraphWidthOffset * 2;
 				y = ChartArea.Y + ChartArea.Height - p.DensityGraphHeight - p.DensityGraphPositionOffset;
 				h = p.DensityGraphHeight;
 				orientation = StepDensityEffect.Orientation.Horizontal;
 				break;
+			}
 		}
 
 		DensityGraph.UpdateBounds(new Rectangle(x, y, w, h), orientation);

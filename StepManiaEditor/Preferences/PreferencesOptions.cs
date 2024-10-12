@@ -85,6 +85,11 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 
 	private int UndoHistorySizeInternal = DefaultUndoHistorySize;
 
+	public static void RegisterDefaultsForInvalidEnumValues(PermissiveEnumJsonConverterFactory factory)
+	{
+		factory.RegisterDefault(DefaultStepColorMethodValue);
+	}
+
 	public bool IsUsingDefaults()
 	{
 		return RecentFilesHistorySize == DefaultRecentFilesHistorySize

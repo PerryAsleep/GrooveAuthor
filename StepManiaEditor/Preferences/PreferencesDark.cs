@@ -1,5 +1,6 @@
 ﻿using System.Numerics;
 using System.Text.Json.Serialization;
+using Fumen;
 using static StepManiaEditor.PreferencesDark;
 
 namespace StepManiaEditor;
@@ -37,6 +38,12 @@ internal sealed class PreferencesDark
 	[JsonInclude] public SizeMode Size = DefaultSize;
 	[JsonInclude] public DrawOrder DarkBgDrawOrder = DefaultDrawOrder;
 	[JsonInclude] public Vector4 Color = DefaultColor;
+
+	public static void RegisterDefaultsForInvalidEnumValues(PermissiveEnumJsonConverterFactory factory)
+	{
+		factory.RegisterDefault(DefaultSize);
+		factory.RegisterDefault(DefaultDrawOrder);
+	}
 
 	public bool IsUsingDefaults()
 	{

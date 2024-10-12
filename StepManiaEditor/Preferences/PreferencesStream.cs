@@ -147,6 +147,11 @@ internal sealed class PreferencesStream : Notifier<PreferencesStream>
 	private char ShortBreakCharacterInternal = DefaultShortBreakCharacter;
 	private char LongBreakCharacterInternal = DefaultLongBreakCharacter;
 
+	public static void RegisterDefaultsForInvalidEnumValues(PermissiveEnumJsonConverterFactory factory)
+	{
+		factory.RegisterDefault(DefaultAccumulationType);
+	}
+
 	public bool IsUsingDefaults()
 	{
 		return NoteType == DefaultNoteType

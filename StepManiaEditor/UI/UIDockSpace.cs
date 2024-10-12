@@ -111,6 +111,16 @@ internal sealed class UIDockSpace
 			UIHotbar.Instance.Open(false);
 			UIChartList.Instance.Open(false);
 			UILog.Instance.Open(false);
+
+			// TODO: Reset other UI?
+			//Preferences.Instance.PreferencesDensityGraph.ShowDensityGraph = true;
+			//Preferences.Instance.PreferencesDensityGraph.DensityGraphPositionValue =
+			//	PreferencesDensityGraph.DensityGraphPosition.LeftSideOfWindow;
+			//Preferences.Instance.PreferencesDensityGraph.DensityGraphPositionOffset = 10;
+			//Preferences.Instance.PreferencesMiniMap.ShowMiniMap = true;
+			//Preferences.Instance.PreferencesMiniMap.MiniMapPosition = MiniMap.Position.LeftSideOfWindow;
+			//Preferences.Instance.PreferencesMiniMap.PositionOffset =
+			//	20 + Preferences.Instance.PreferencesDensityGraph.DensityGraphHeight;
 		}
 
 		SetCentralNodeArea();
