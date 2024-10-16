@@ -1183,7 +1183,7 @@ internal sealed class MiniMap
 		var contentEndYPixel = GetYPixelRelativeToBounds(contentAreaEnd);
 		var yStart = Math.Max(RimWidth, contentEndYPixel + 1);
 		yStartInt = MathUtils.FloorDouble(yStart);
-		yEndInt = (int)VisibleHeight - RimWidth;
+		yEndInt = VisibleHeight - RimWidth;
 		if (yStartInt > RimWidth && yStartInt < yEndInt)
 		{
 			var blendColor =
