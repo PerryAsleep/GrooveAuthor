@@ -1609,16 +1609,21 @@ internal sealed class Editor :
 		WaveFormRenderer.SetDenseScale(pWave.DenseScale);
 		WaveFormRenderer.SetScaleXWhenZooming(pWave.WaveFormScaleXWhenZooming);
 		WaveFormRenderer.SetDesiredWaveFormWidth(GetWaveFormWidth());
-		WaveFormRenderer.Update(GetPosition().SongTime, ZoomManager.GetSpacingZoom(), ZoomManager.GetSizeCap(), waveFormPPS);
+		WaveFormRenderer.Update(GetPosition().SongTime, waveFormPPS * ZoomManager.GetSpacingZoom());
 	}
 
-	private uint GetWaveFormWidth()
+	public uint GetWaveFormWidth()
 	{
-		if (Preferences.Instance.PreferencesWaveForm.WaveFormScaleWidthToChart && FocusedChart != null)
+		var p = Preferences.Instance.PreferencesWaveForm;
+		if (p.WaveFormScaleWidthToChart && FocusedChart != null)
 		{
+			if (p.WaveFormScaleXWhenZooming)
+				return (uint)Math.Max(0, GetFocusedChartData().GetLaneAreaWidthWithCurrentScale());
 			return (uint)Math.Max(0, GetFocusedChartData().GetLaneAreaWidth());
 		}
 
+		if (p.WaveFormScaleXWhenZooming)
+			return (uint)(WaveFormTextureWidth * ZoomManager.GetSpacingZoom());
 		return WaveFormTextureWidth;
 	}
 
@@ -3790,10 +3795,12 @@ internal sealed class Editor :
 			var isInDensityGraphArea = Preferences.Instance.PreferencesDensityGraph.ShowDensityGraph
 			                           && DensityGraph.IsInDensityGraphArea(x, y);
 
-			// TODO: This is wrong
+			var waveformWidth = GetWaveFormWidth();
+			var focalPointX = GetFocalPointScreenSpaceX();
 			var isInWaveFormArea = Preferences.Instance.PreferencesWaveForm.ShowWaveForm
-			                       && x >= GetFocalPointScreenSpaceX() - (WaveFormTextureWidth >> 1)
-			                       && x <= GetFocalPointScreenSpaceX() + (WaveFormTextureWidth >> 1);
+			                       && Preferences.Instance.PreferencesWaveForm.EnableWaveForm
+			                       && x >= focalPointX - (waveformWidth >> 1)
+			                       && x <= focalPointX + (waveformWidth >> 1);
 			var isInDarkArea = false;
 			if (Preferences.Instance.PreferencesDark.ShowDarkBg)
 			{

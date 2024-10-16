@@ -204,23 +204,7 @@ internal sealed class ActiveEditorChart
 			var p = Preferences.Instance.PreferencesWaveForm;
 			if (p.ShowWaveForm && p.EnableWaveForm)
 			{
-				var zoom = ZoomManager.GetSizeZoom();
-				var sizeCap = ZoomManager.GetSizeCap();
-				var waveFormWidth = (double)WaveFormTextureWidth;
-				if (p.WaveFormScaleWidthToChart)
-				{
-					if (p.WaveFormScaleXWhenZooming)
-						waveFormWidth = width;
-					else
-						waveFormWidth = GetLaneAreaWidth();
-				}
-
-				if (p.WaveFormScaleXWhenZooming && zoom < sizeCap)
-				{
-					waveFormWidth *= zoom / sizeCap;
-				}
-
-				width = Math.Max(width, (int)waveFormWidth);
+				width = Math.Max(width, (int)Editor.GetWaveFormWidth());
 			}
 		}
 

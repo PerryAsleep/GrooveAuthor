@@ -131,16 +131,6 @@ public class WaveFormRenderer
 	};
 
 	/// <summary>
-	/// Zoom level last frame. Used to determine if we can re-use any of the last frame's data.
-	/// </summary>
-	private double LastZoom;
-
-	/// <summary>
-	/// X Zoom level last frame. Used to determine if we can re-use any of the last frame's data.
-	/// </summary>
-	private double LastXZoom;
-
-	/// <summary>
 	/// Pixels per second last frame. Used to determine if we can re-use any of the last frame's data.
 	/// </summary>
 	private double LastPixelsPerSecond = 1.0;
@@ -383,10 +373,8 @@ public class WaveFormRenderer
 	/// Updates the underlying texture to represent the waveform at the given time and zoom level.
 	/// </summary>
 	/// <param name="soundTimeSeconds">Time of the underlying sound in seconds.</param>
-	/// <param name="zoom">Zoom level.</param>
-	/// <param name="sizeCap">Maximum allowed zoom level.</param>
 	/// <param name="pixelsPerSecond">The number of y pixels which cover 1 second of time in the sound.</param>
-	public void Update(double soundTimeSeconds, double zoom, double sizeCap, double pixelsPerSecond)
+	public void Update(double soundTimeSeconds, double pixelsPerSecond)
 	{
 		// Get the correct texture to update.
 		var texture = Textures[TextureIndex];
@@ -413,31 +401,11 @@ public class WaveFormRenderer
 					return;
 				}
 
-				// Determine the zoom to use in x. Zoom in x is separate from zoom in y.
-				// sizeCap represents the maximum allowed zoom level. If it is 0.5 and the zoom is 0.6, the
-				// actual size (width) should be 0.5 and not 0.6.
-				// We expect external callers to also use this cap to scale the waveform. So if it is 0.5
-				// we should also expect that DesiredWaveFormWidth will be halved. Note that DesiredWaveFormWidth
-				// may also be decreased due to charts which are narrow. If the waveform's natural width is
-				// 1024 but a chart is only 512 and sizeCap is 0.5 then DesiredWaveFormWidth will be 256.
-				// On top of this is the actual zoom. If this zoom goes below the cap we need to start scaling down.
-				// But we are starting from the zoom level of DesiredWaveFormWidth / TextureWidth.
-				// As we go lower and further away from zoom cap our width should scale lower. This is
-				// achieved by treating the zoom as zoom / sizeCap when it is under sizeCap. We then
-				// do the DesiredWaveFormWidth / TextureWidth scaling afterwards for simplicity.
-				var xZoom = 1.0;
-				if (ScaleXWhenZooming && zoom < sizeCap)
-					xZoom = zoom / sizeCap;
-				xZoom *= (double)DesiredWaveFormWidth / TextureWidth;
-				xZoom = Math.Clamp(xZoom, 0.0, 1.0);
-
 				// If the parameters have changed since last time, invalidate the last frame data so we do not use it.
 				// Also invalidate the last frame data if the SoundMipMap is still loading since the underlying data will
 				// be changing each frame.
 				var isMipMapDataLoaded = MipMap.IsMipMapDataLoaded();
-				if (!zoom.DoubleEquals(LastZoom)
-				    || !xZoom.DoubleEquals(LastXZoom)
-				    || !pixelsPerSecond.DoubleEquals(LastPixelsPerSecond)
+				if (!pixelsPerSecond.DoubleEquals(LastPixelsPerSecond)
 				    || !isMipMapDataLoaded
 				    || WasMipMapDataLoadingLastFrame)
 				{
@@ -446,13 +414,14 @@ public class WaveFormRenderer
 
 				WasMipMapDataLoadingLastFrame = !isMipMapDataLoaded;
 
+				// Determine the zoom to use in x. Zoom in x is separate from zoom in y.
+				var xZoom = Math.Clamp((double)DesiredWaveFormWidth / TextureWidth, 0.0, 1.0);
 				var renderWidth = TextureWidth * xZoom;
 				var numChannels = MipMap.GetNumChannels();
 				var widthPerChannel = TextureWidth / numChannels;
 				var totalWidthPerChannel = (uint)(renderWidth / numChannels);
-
 				var sampleRate = MipMap.GetSampleRate();
-				var samplesPerPixel = sampleRate / pixelsPerSecond / zoom;
+				var samplesPerPixel = sampleRate / pixelsPerSecond;
 
 				// For a given pixel per second rate, we must ensure that the same samples are always grouped
 				// together when rendering to prevent jittering artifacts and to allow reusing portions of the
@@ -517,8 +486,6 @@ public class WaveFormRenderer
 				}
 
 				// Update the last frame tracking variables for the next frame.
-				LastZoom = zoom;
-				LastXZoom = xZoom;
 				LastPixelsPerSecond = pixelsPerSecond;
 				LastQuantizedIndexStart = quantizedStartSampleIndex;
 				LastQuantizedIndexEnd = quantizedEndSampleIndex;
