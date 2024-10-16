@@ -71,10 +71,14 @@ internal sealed class UIWaveFormPreferences : UIWindow
 		{
 			UIScrollPreferences.DrawWaveFormScrollMode();
 
-			ImGuiLayoutUtils.DrawRowCheckbox(true, "Scale Width", p,
+			ImGuiLayoutUtils.DrawRowCheckbox(true, "Scale With Zoom", p,
 				nameof(PreferencesWaveForm.WaveFormScaleXWhenZooming), false,
-				"When zooming, whether the waveform should scale its width to match" +
-				"\nthe chart instead of staying a constant width.");
+				"If enabled the waveform will scale its width to match the zoom level.");
+
+			ImGuiLayoutUtils.DrawRowCheckbox(true, "Size To Chart", p,
+				nameof(PreferencesWaveForm.WaveFormScaleWidthToChart), false,
+				"If enabled the waveform will scale its width to the chart." +
+				" If disabled the waveform will use a default width that may be wider or narrower than the current chart.");
 
 			ImGuiLayoutUtils.DrawRowSliderFloat(true, "Channel Width", p,
 				nameof(PreferencesWaveForm.WaveFormMaxXPercentagePerChannel),

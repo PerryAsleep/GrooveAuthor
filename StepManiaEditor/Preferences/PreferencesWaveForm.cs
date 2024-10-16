@@ -21,6 +21,7 @@ internal sealed class PreferencesWaveForm
 	public const bool DefaultShowWaveForm = true;
 	public const bool DefaultEnableWaveForm = true;
 	public const bool DefaultWaveFormScaleXWhenZooming = false;
+	public const bool DefaultWaveFormScaleWidthToChart = true;
 
 	public const SparseColorOption DefaultWaveFormSparseColorOption = SparseColorOption.DarkerDenseColor;
 
@@ -53,6 +54,7 @@ internal sealed class PreferencesWaveForm
 	[JsonInclude] public float AntiAliasSubpix = DefaultAntiAliasSubpix;
 	[JsonInclude] public float AntiAliasEdgeThreshold = DefaultAntiAliasEdgeThreshold;
 	[JsonInclude] public float AntiAliasEdgeThresholdMin = DefaultAntiAliasEdgeThresholdMin;
+	[JsonInclude] public bool WaveFormScaleWidthToChart = DefaultWaveFormScaleWidthToChart;
 
 	public static void InitializeRuntimeDefaults(int defaultWaveformLoadParallelism)
 	{
@@ -88,7 +90,8 @@ internal sealed class PreferencesWaveForm
 		       && AntiAlias == DefaultAntiAlias
 		       && AntiAliasSubpix.FloatEquals(DefaultAntiAliasSubpix)
 		       && AntiAliasEdgeThreshold.FloatEquals(DefaultAntiAliasEdgeThreshold)
-		       && AntiAliasEdgeThresholdMin.FloatEquals(DefaultAntiAliasEdgeThresholdMin);
+		       && AntiAliasEdgeThresholdMin.FloatEquals(DefaultAntiAliasEdgeThresholdMin)
+		       && WaveFormScaleWidthToChart == DefaultWaveFormScaleWidthToChart;
 	}
 
 	public void RestoreDefaults()
@@ -120,6 +123,7 @@ internal sealed class ActionRestoreWaveFormPreferenceDefaults : EditorAction
 	private readonly float PreviousAntiAliasSubpix;
 	private readonly float PreviousAntiAliasEdgeThreshold;
 	private readonly float PreviousAntiAliasEdgeThresholdMin;
+	private readonly bool PreviousWaveFormScaleWidthToChart;
 
 	public ActionRestoreWaveFormPreferenceDefaults() : base(false, false)
 	{
@@ -139,6 +143,7 @@ internal sealed class ActionRestoreWaveFormPreferenceDefaults : EditorAction
 		PreviousAntiAliasSubpix = p.AntiAliasSubpix;
 		PreviousAntiAliasEdgeThreshold = p.AntiAliasEdgeThreshold;
 		PreviousAntiAliasEdgeThresholdMin = p.AntiAliasEdgeThresholdMin;
+		PreviousWaveFormScaleWidthToChart = p.WaveFormScaleWidthToChart;
 	}
 
 	public override bool AffectsFile()
@@ -169,6 +174,7 @@ internal sealed class ActionRestoreWaveFormPreferenceDefaults : EditorAction
 		p.AntiAliasSubpix = DefaultAntiAliasSubpix;
 		p.AntiAliasEdgeThreshold = DefaultAntiAliasEdgeThreshold;
 		p.AntiAliasEdgeThresholdMin = DefaultAntiAliasEdgeThresholdMin;
+		p.WaveFormScaleWidthToChart = DefaultWaveFormScaleWidthToChart;
 	}
 
 	protected override void UndoImplementation()
@@ -189,5 +195,6 @@ internal sealed class ActionRestoreWaveFormPreferenceDefaults : EditorAction
 		p.AntiAliasSubpix = PreviousAntiAliasSubpix;
 		p.AntiAliasEdgeThreshold = PreviousAntiAliasEdgeThreshold;
 		p.AntiAliasEdgeThresholdMin = PreviousAntiAliasEdgeThresholdMin;
+		p.WaveFormScaleWidthToChart = PreviousWaveFormScaleWidthToChart;
 	}
 }

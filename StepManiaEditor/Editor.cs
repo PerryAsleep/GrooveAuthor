@@ -1252,6 +1252,7 @@ internal sealed class Editor :
 				GraphicsDevice,
 				WaveFormTextureWidth,
 				(uint)Math.Max(1, GetViewportHeight()),
+				GetWaveFormWidth(),
 				(uint)Math.Max(1, ChartArea.Height));
 			RecreateWaveformRenderTargets(false);
 		}
@@ -1357,50 +1358,6 @@ internal sealed class Editor :
 	public Vector2 GetFocalPointScreenSpace()
 	{
 		return new Vector2(GetFocalPointScreenSpaceX(), GetFocalPointScreenSpaceY());
-	}
-
-	public int GetFocalPointChartSpaceXForChart(EditorChart chart)
-	{
-		var defaultPos = (double)GetFocalPointChartSpaceX();
-		var pos = defaultPos;
-
-		var first = true;
-		foreach (var activeChart in ActiveCharts)
-		{
-			var halfWidth = 0.0;
-			var chartData = GetActiveChartData(activeChart);
-			if (chartData != null)
-				halfWidth = chartData.GetChartScreenSpaceWidth() * 0.5;
-			if (!first)
-				pos += halfWidth;
-			if (activeChart == chart)
-				return (int)pos;
-			pos += halfWidth;
-			first = false;
-		}
-
-		return (int)defaultPos;
-	}
-
-	public int GetFocalPointScreenSpaceXForChart(EditorChart chart)
-	{
-		return TransformChartSpaceXToScreenSpaceX(GetFocalPointChartSpaceXForChart(chart));
-	}
-
-	public Vector2 GetFocalPointChartSpaceForChart(EditorChart chart)
-	{
-		return new Vector2(GetFocalPointChartSpaceXForChart(chart), GetFocalPointChartSpaceY());
-	}
-
-	public Vector2 GetFocalPointScreenSpaceForChart(EditorChart chart)
-	{
-		return new Vector2(GetFocalPointScreenSpaceXForChart(chart), GetFocalPointScreenSpaceY());
-	}
-
-	public Rectangle GetScreenSpaceAreaForChart(EditorChart chart)
-	{
-		// TODO
-		return Rectangle.Empty;
 	}
 
 	#endregion Focal Point
@@ -1514,6 +1471,7 @@ internal sealed class Editor :
 
 			PerformanceMonitor.Time(PerformanceTimings.ChartEvents, () =>
 			{
+				UpdateChartPositions();
 				UpdateChartEvents();
 				UpdateAutoPlay();
 			});
@@ -1650,7 +1608,18 @@ internal sealed class Editor :
 		WaveFormRenderer.SetXPerChannelScale(pWave.WaveFormMaxXPercentagePerChannel);
 		WaveFormRenderer.SetDenseScale(pWave.DenseScale);
 		WaveFormRenderer.SetScaleXWhenZooming(pWave.WaveFormScaleXWhenZooming);
-		WaveFormRenderer.Update(GetPosition().SongTime, ZoomManager.GetSpacingZoom(), waveFormPPS);
+		WaveFormRenderer.SetDesiredWaveFormWidth(GetWaveFormWidth());
+		WaveFormRenderer.Update(GetPosition().SongTime, ZoomManager.GetSpacingZoom(), ZoomManager.GetSizeCap(), waveFormPPS);
+	}
+
+	private uint GetWaveFormWidth()
+	{
+		if (Preferences.Instance.PreferencesWaveForm.WaveFormScaleWidthToChart && FocusedChart != null)
+		{
+			return (uint)Math.Max(0, GetFocusedChartData().GetLaneAreaWidth());
+		}
+
+		return WaveFormTextureWidth;
 	}
 
 	#endregion Update
@@ -1703,7 +1672,7 @@ internal sealed class Editor :
 		if (imGuiWantMouse)
 		{
 			// ImGui may want the mouse on a release when we are selecting. Stop selecting in that case.
-			focusedChartData?.FinishSelectedRegion(GetFocalPointScreenSpaceX());
+			focusedChartData?.FinishSelectedRegion();
 			UpdateCursor();
 			return;
 		}
@@ -1753,8 +1722,6 @@ internal sealed class Editor :
 				GetFocusedChartData()?.ProcessInputForSelectedRegion(
 					currentTime,
 					uiInterferingWithRegionClicking,
-					GetFocalPointScreenSpaceX(),
-					GetFocalPointScreenSpaceY(),
 					EditorMouseState,
 					EditorMouseState.GetButtonState(EditorMouseState.Button.Left));
 			}
@@ -2354,8 +2321,8 @@ internal sealed class Editor :
 				var focusedChartData = GetFocusedChartData();
 				if (focusedChartData != null)
 				{
-					var width = focusedChartData.GetChartScreenSpaceWidth();
-					return (GetFocalPointScreenSpaceX() - (width >> 1), width);
+					var focusedChartWidth = focusedChartData.GetChartScreenSpaceWidth();
+					return (focusedChartData.GetScreenSpaceXOfFullChartAreaStart(), focusedChartWidth);
 				}
 
 				break;
@@ -2370,8 +2337,7 @@ internal sealed class Editor :
 	{
 		var sizeZoom = ZoomManager.GetSizeZoom();
 		for (var i = 0; i < ActiveCharts.Count; i++)
-			ActiveChartData[i].DrawReceptors(GetFocalPointScreenSpaceForChart(ActiveCharts[i]), sizeZoom, TextureAtlas,
-				SpriteBatch);
+			ActiveChartData[i].DrawReceptors(sizeZoom, TextureAtlas, SpriteBatch);
 	}
 
 	private void DrawSnapIndicators()
@@ -2409,24 +2375,32 @@ internal sealed class Editor :
 	{
 		var sizeZoom = ZoomManager.GetSizeZoom();
 		for (var i = 0; i < ActiveCharts.Count; i++)
-			ActiveChartData[i]
-				.DrawReceptorForegroundEffects(GetFocalPointScreenSpaceForChart(ActiveCharts[i]), sizeZoom, TextureAtlas,
-					SpriteBatch);
+			ActiveChartData[i].DrawReceptorForegroundEffects(sizeZoom, TextureAtlas, SpriteBatch);
 	}
 
 	private void DrawWaveForm()
 	{
 		var p = Preferences.Instance.PreferencesWaveForm;
-		if (!p.ShowWaveForm)
+		if (!p.ShowWaveForm || !p.EnableWaveForm)
 			return;
 
 		if (FocusedChart == null)
 			return;
 
-		var x = GetFocalPointScreenSpaceX() - (WaveFormTextureWidth >> 1);
-
 		// At this point WaveformRenderTargets[1] contains the recolored waveform.
 		// We now draw that to the backbuffer with an optional antialiasing pass.
+
+		// If the desired waveform width is greater than the texture width we may need
+		// to scale it up by stretching the texture.
+		var width = WaveformRenderTargets[1].Width;
+		if (p.WaveFormScaleWidthToChart)
+		{
+			var focusedChartData = GetFocusedChartData();
+			if (focusedChartData != null)
+				width = Math.Max(width, focusedChartData.GetLaneAndWaveFormAreaWidthWithCurrentScale());
+		}
+
+		var x = GetFocalPointScreenSpaceX() - (width >> 1);
 
 		if (p.AntiAlias)
 		{
@@ -2442,8 +2416,7 @@ internal sealed class Editor :
 			// Draw the recolored waveform with antialiasing to the back buffer.
 			SpriteBatch.Begin(SpriteSortMode.Deferred, null, null, null, null, FxaaEffect);
 			SpriteBatch.Draw(WaveformRenderTargets[1],
-				new Rectangle(x, TransformChartSpaceYToScreenSpaceY(0), WaveformRenderTargets[1].Width,
-					WaveformRenderTargets[1].Height), Color.White);
+				new Rectangle(x, TransformChartSpaceYToScreenSpaceY(0), width, WaveformRenderTargets[1].Height), Color.White);
 			SpriteBatch.End();
 		}
 		else
@@ -2451,7 +2424,7 @@ internal sealed class Editor :
 			// Draw the recolored waveform to the back buffer.
 			SpriteBatch.Begin();
 			SpriteBatch.Draw(WaveformRenderTargets[1],
-				new Rectangle(x, 0, WaveformRenderTargets[1].Width, WaveformRenderTargets[1].Height), Color.White);
+				new Rectangle(x, TransformChartSpaceYToScreenSpaceY(0), width, WaveformRenderTargets[1].Height), Color.White);
 			SpriteBatch.End();
 		}
 	}
@@ -2554,16 +2527,61 @@ internal sealed class Editor :
 
 	#region Chart Update
 
+	private void UpdateChartPositions()
+	{
+		var focalPointX = GetFocalPointScreenSpaceX();
+		var focalPointY = GetFocalPointScreenSpaceY();
+
+		var focusedChartIndex = 0;
+		ActiveEditorChart focusedChartData = null;
+		for (var i = 0; i < ActiveCharts.Count; i++)
+		{
+			if (ActiveCharts[i] == FocusedChart)
+			{
+				focusedChartData = ActiveChartData[i];
+				focusedChartIndex = i;
+				break;
+			}
+		}
+
+		// Focused Chart.
+		var xLeftOfFocusedChart = 0;
+		var xRightOfFocusedChart = 0;
+		if (focusedChartData != null)
+		{
+			focusedChartData.SetFocalPoint(focalPointX, focalPointY);
+			xLeftOfFocusedChart = focusedChartData.GetScreenSpaceXOfFullChartAreaStart();
+			xRightOfFocusedChart = focusedChartData.GetScreenSpaceXOfFullChartAreaEnd();
+		}
+
+		// Charts to the left of the focused chart.
+		var x = xLeftOfFocusedChart;
+		for (var i = focusedChartIndex - 1; i >= 0; i--)
+		{
+			var fullWidth = ActiveChartData[i].GetChartScreenSpaceWidth();
+			var width = ActiveChartData[i].GetLaneAndWaveFormAreaWidth();
+			var xOffset = ActiveChartData[i].GetRelativeXPositionOfLanesAndWaveFormFromChartArea();
+			ActiveChartData[i].SetFocalPoint(x - fullWidth + xOffset + (width >> 1), focalPointY);
+			x -= fullWidth;
+		}
+
+		// Charts to the right of the focused chart.
+		x = xRightOfFocusedChart;
+		for (var i = focusedChartIndex + 1; i < ActiveCharts.Count; i++)
+		{
+			var fullWidth = ActiveChartData[i].GetChartScreenSpaceWidth();
+			var width = ActiveChartData[i].GetLaneAndWaveFormAreaWidth();
+			var xOffset = ActiveChartData[i].GetRelativeXPositionOfLanesAndWaveFormFromChartArea();
+			ActiveChartData[i].SetFocalPoint(x + xOffset + (width >> 1), focalPointY);
+			x += fullWidth;
+		}
+	}
+
 	private void UpdateChartEvents()
 	{
 		var screenHeight = GetViewportHeight();
-		var focalPointY = GetFocalPointScreenSpaceY();
-
 		for (var i = 0; i < ActiveCharts.Count; i++)
-		{
-			var focalPointX = GetFocalPointScreenSpaceXForChart(ActiveCharts[i]);
-			ActiveChartData[i].UpdateChartEvents(screenHeight, focalPointX, focalPointY);
-		}
+			ActiveChartData[i].UpdateChartEvents(screenHeight);
 	}
 
 	/// <summary>
@@ -2579,7 +2597,7 @@ internal sealed class Editor :
 		var focusedChartData = GetFocusedChartData();
 		if (focusedChartData == null)
 			return (0.0, 0.0);
-		return focusedChartData.FindChartTimeAndRowForScreenSpaceY(desiredScreenY, GetFocalPointScreenSpaceY());
+		return focusedChartData.FindChartTimeAndRowForScreenSpaceY(desiredScreenY);
 	}
 
 	#endregion Chart Update
@@ -2670,7 +2688,6 @@ internal sealed class Editor :
 	private void UpdateMiniMapBounds()
 	{
 		var p = Preferences.Instance;
-		var arrowGraphicManager = GetFocusedChartData()?.GetArrowGraphicManager();
 		var x = 0;
 		switch (p.PreferencesMiniMap.MiniMapPosition)
 		{
@@ -2687,18 +2704,17 @@ internal sealed class Editor :
 			}
 			case Position.FocusedChartWithoutScaling:
 			{
-				var receptorBounds =
-					Receptor.GetBounds(GetFocalPointScreenSpace(), ZoomManager.GetSizeCap(), TextureAtlas, arrowGraphicManager,
-						FocusedChart);
-				x = receptorBounds.Item1 + receptorBounds.Item3 + p.PreferencesMiniMap.PositionOffset;
+				var focusedChartData = GetFocusedChartData();
+				if (focusedChartData != null)
+					x = focusedChartData.GetScreenSpaceXOfLanesAndWaveFormEnd() + p.PreferencesMiniMap.PositionOffset;
 				break;
 			}
 			case Position.FocusedChartWithScaling:
 			{
-				var receptorBounds =
-					Receptor.GetBounds(GetFocalPointScreenSpace(), ZoomManager.GetSizeZoom(), TextureAtlas, arrowGraphicManager,
-						FocusedChart);
-				x = receptorBounds.Item1 + receptorBounds.Item3 + p.PreferencesMiniMap.PositionOffset;
+				var focusedChartData = GetFocusedChartData();
+				if (focusedChartData != null)
+					x = focusedChartData.GetScreenSpaceXOfLanesAndWaveFormEndWithCurrentScale() +
+					    p.PreferencesMiniMap.PositionOffset;
 				break;
 			}
 		}
@@ -2992,7 +3008,6 @@ internal sealed class Editor :
 	private void UpdateDensityGraphBounds()
 	{
 		var p = Preferences.Instance.PreferencesDensityGraph;
-		var arrowGraphicManager = GetFocusedChartData()?.GetArrowGraphicManager();
 		var x = 0;
 		var y = 0;
 		var w = 0;
@@ -3018,10 +3033,9 @@ internal sealed class Editor :
 			}
 			case PreferencesDensityGraph.DensityGraphPosition.FocusedChartWithoutScaling:
 			{
-				var receptorBounds =
-					Receptor.GetBounds(GetFocalPointScreenSpace(), ZoomManager.GetSizeCap(), TextureAtlas, arrowGraphicManager,
-						FocusedChart);
-				x = receptorBounds.Item1 + receptorBounds.Item3 + p.DensityGraphPositionOffset;
+				var focusedChartData = GetFocusedChartData();
+				if (focusedChartData != null)
+					x = focusedChartData.GetScreenSpaceXOfLanesAndWaveFormEnd() + p.DensityGraphPositionOffset;
 				w = p.DensityGraphHeight;
 				h = ChartArea.Height + p.DensityGraphWidthOffset * 2;
 				y = ChartArea.Y - p.DensityGraphWidthOffset;
@@ -3029,10 +3043,9 @@ internal sealed class Editor :
 			}
 			case PreferencesDensityGraph.DensityGraphPosition.FocusedChartWithScaling:
 			{
-				var receptorBounds =
-					Receptor.GetBounds(GetFocalPointScreenSpace(), ZoomManager.GetSizeZoom(), TextureAtlas, arrowGraphicManager,
-						FocusedChart);
-				x = receptorBounds.Item1 + receptorBounds.Item3 + p.DensityGraphPositionOffset;
+				var focusedChartData = GetFocusedChartData();
+				if (focusedChartData != null)
+					x = focusedChartData.GetScreenSpaceXOfLanesAndWaveFormEndWithCurrentScale() + p.DensityGraphPositionOffset;
 				w = p.DensityGraphHeight;
 				h = ChartArea.Height + p.DensityGraphWidthOffset * 2;
 				y = ChartArea.Y - p.DensityGraphWidthOffset;
@@ -3040,11 +3053,15 @@ internal sealed class Editor :
 			}
 			case PreferencesDensityGraph.DensityGraphPosition.TopOfFocusedChart:
 			{
-				var receptorBounds =
-					Receptor.GetBounds(GetFocalPointScreenSpace(), ZoomManager.GetSizeCap(), TextureAtlas, arrowGraphicManager,
-						FocusedChart);
-				x = receptorBounds.Item1 - p.DensityGraphWidthOffset;
-				w = receptorBounds.Item3 + p.DensityGraphWidthOffset * 2;
+				var focusedChartData = GetFocusedChartData();
+				if (focusedChartData != null)
+				{
+					var x1 = focusedChartData.GetScreenSpaceXOfLanesStart();
+					var x2 = focusedChartData.GetScreenSpaceXOfLanesEnd();
+					x = x1 - p.DensityGraphWidthOffset;
+					w = x2 - x1 + p.DensityGraphWidthOffset * 2;
+				}
+
 				y = ChartArea.Y + p.DensityGraphPositionOffset;
 				h = p.DensityGraphHeight;
 				orientation = StepDensityEffect.Orientation.Horizontal;
@@ -3052,11 +3069,15 @@ internal sealed class Editor :
 			}
 			case PreferencesDensityGraph.DensityGraphPosition.BottomOfFocusedChart:
 			{
-				var receptorBounds =
-					Receptor.GetBounds(GetFocalPointScreenSpace(), ZoomManager.GetSizeCap(), TextureAtlas, arrowGraphicManager,
-						FocusedChart);
-				x = receptorBounds.Item1 - p.DensityGraphWidthOffset;
-				w = receptorBounds.Item3 + p.DensityGraphWidthOffset * 2;
+				var focusedChartData = GetFocusedChartData();
+				if (focusedChartData != null)
+				{
+					var x1 = focusedChartData.GetScreenSpaceXOfLanesStart();
+					var x2 = focusedChartData.GetScreenSpaceXOfLanesEnd();
+					x = x1 - p.DensityGraphWidthOffset;
+					w = x2 - x1 + p.DensityGraphWidthOffset * 2;
+				}
+
 				y = ChartArea.Y + ChartArea.Height - p.DensityGraphHeight - p.DensityGraphPositionOffset;
 				h = p.DensityGraphHeight;
 				orientation = StepDensityEffect.Orientation.Horizontal;
@@ -3768,6 +3789,8 @@ internal sealed class Editor :
 			                      && MiniMap.IsScreenPositionInMiniMapBounds(x, y);
 			var isInDensityGraphArea = Preferences.Instance.PreferencesDensityGraph.ShowDensityGraph
 			                           && DensityGraph.IsInDensityGraphArea(x, y);
+
+			// TODO: This is wrong
 			var isInWaveFormArea = Preferences.Instance.PreferencesWaveForm.ShowWaveForm
 			                       && x >= GetFocalPointScreenSpaceX() - (WaveFormTextureWidth >> 1)
 			                       && x <= GetFocalPointScreenSpaceX() + (WaveFormTextureWidth >> 1);
@@ -5683,6 +5706,8 @@ internal sealed class Editor :
 				FocusedChart = null;
 			}
 		}
+
+		UpdateChartPositions();
 	}
 
 	public void ShowChart(EditorChart chart, bool withDedicatedTab)
@@ -5714,6 +5739,8 @@ internal sealed class Editor :
 
 		// If there are now multiple charts shown without dedicated tabs, close the other charts.
 		CleanUpActiveChartsWithoutDedicatedTabs(activeChartData);
+
+		UpdateChartPositions();
 	}
 
 	private void CleanUpActiveChartsWithoutDedicatedTabs(ActiveEditorChart chartWithoutDedicatedTabToKeep)
@@ -5768,6 +5795,7 @@ internal sealed class Editor :
 
 		// Set the focused chart.
 		FocusedChart = chart;
+		ActiveEditorChart focusedChartData = null;
 
 		// Ensure that if we are focusing on a chart, it is active.
 		if (FocusedChart != null)
@@ -5787,9 +5815,11 @@ internal sealed class Editor :
 			{
 				ActiveCharts.RemoveAt(focusedChartIndex);
 				ActiveCharts.Insert(0, FocusedChart);
-				var focusedChartData = ActiveChartData[focusedChartIndex];
+				focusedChartData = ActiveChartData[focusedChartIndex];
 				ActiveChartData.RemoveAt(focusedChartIndex);
 				ActiveChartData.Insert(0, focusedChartData);
+				focusedChartData.Position.ChartTime = oldChartTime;
+				focusedChartData.Position.SetDesiredPositionToCurrent();
 			}
 
 			// If the focused chart is not yet active, add new data for it
@@ -5804,10 +5834,14 @@ internal sealed class Editor :
 					KeyCommandManager);
 				ActiveChartData.Insert(0, activeChartData);
 				activeChartData.Position.ChartTime = oldChartTime;
+				activeChartData.Position.SetDesiredPositionToCurrent();
 			}
 		}
 
-		CleanUpActiveChartsWithoutDedicatedTabs(GetFocusedChartData());
+		focusedChartData ??= GetFocusedChartData();
+		focusedChartData?.SetFocused(true);
+		CleanUpActiveChartsWithoutDedicatedTabs(focusedChartData);
+		UpdateChartPositions();
 
 		DensityGraph.SetStepDensity(FocusedChart?.GetStepDensity());
 		EditorMouseState.SetActiveChart(FocusedChart);

@@ -10,10 +10,22 @@ namespace StepManiaEditor;
 /// Used for performant real-time rendering of animating audio data.
 /// Call Update() to update the underlying Textures.
 /// Call Draw() to render the generated Textures to the given SpriteBatch.
+///
+/// Positioning:
 /// When drawing, the X value from the set FocalPoint will be used to center the Texture in X.
 /// The Y value of the FocalPoint is not used for drawing the Texture, but is used for
 /// controlling at what y pixel value the provided sound time from Update() should be rendered
 /// at. An optional x and y value can be provided to Draw() to reposition the Texture as needed.
+///
+/// Sizing:
+/// The WaveFormRenderer uses a texture with a width specified in the constructor or in Resize().
+/// However it is common to zoom and in out, and optionally scale the width. The desired width
+/// due to scaling should be set in Resize() or SetDesiredWaveFormWidth(). The desired width may
+/// be greater than or less than the specified texture width. If the desired width is less than
+/// the specified texture width the waveform will be rendered scaled down within the texture. If
+/// the desired width is larger than the texture width then the width will be capped at the texture
+/// width and it is the responsibility of the caller to render the texture stretched accordingly
+/// to achieve the desired final width.
 /// </summary>
 public class WaveFormRenderer
 {
@@ -51,6 +63,11 @@ public class WaveFormRenderer
 	/// Height of texture in pixels.
 	/// </summary>
 	private uint TextureHeight;
+
+	/// <summary>
+	/// Desired width in pixels of the WaveForm.
+	/// </summary>
+	private uint DesiredWaveFormWidth;
 
 	/// <summary>
 	/// Height of the visible area of the waveform in pixels.
@@ -119,6 +136,11 @@ public class WaveFormRenderer
 	private double LastZoom;
 
 	/// <summary>
+	/// X Zoom level last frame. Used to determine if we can re-use any of the last frame's data.
+	/// </summary>
+	private double LastXZoom;
+
+	/// <summary>
 	/// Pixels per second last frame. Used to determine if we can re-use any of the last frame's data.
 	/// </summary>
 	private double LastPixelsPerSecond = 1.0;
@@ -147,11 +169,11 @@ public class WaveFormRenderer
 	/// Constructor.
 	/// </summary>
 	/// <param name="graphicsDevice">GraphicsDevice to use for creating textures.</param>
-	/// <param name="width">Texture width in pixels.</param>
-	/// <param name="height">Texture height in pixels.</param>
-	public WaveFormRenderer(GraphicsDevice graphicsDevice, uint width, uint height)
+	/// <param name="textureWidth">Texture width in pixels.</param>
+	/// <param name="textureHeight">Texture height in pixels.</param>
+	public WaveFormRenderer(GraphicsDevice graphicsDevice, uint textureWidth, uint textureHeight)
 	{
-		Resize(graphicsDevice, width, height, height);
+		Resize(graphicsDevice, textureWidth, textureHeight, textureWidth, textureHeight);
 	}
 
 	/// <summary>
@@ -160,11 +182,14 @@ public class WaveFormRenderer
 	/// <param name="graphicsDevice">GraphicsDevice to use for creating textures.</param>
 	/// <param name="textureWidth">Texture width in pixels.</param>
 	/// <param name="textureHeight">Texture height in pixels.</param>
+	/// <param name="desiredWaveFormWidth">Desired width in pixels of the waveform.</param>
 	/// <param name="visibleHeight">Visible height in pixels of the waveform.</param>
-	public void Resize(GraphicsDevice graphicsDevice, uint textureWidth, uint textureHeight, uint visibleHeight)
+	public void Resize(GraphicsDevice graphicsDevice, uint textureWidth, uint textureHeight, uint desiredWaveFormWidth,
+		uint visibleHeight)
 	{
 		textureWidth = Math.Max(1, textureWidth);
 		textureHeight = Math.Max(1, textureHeight);
+		desiredWaveFormWidth = Math.Max(1, desiredWaveFormWidth);
 		visibleHeight = Math.Clamp(visibleHeight, 1, textureHeight);
 
 		var shouldInvalidateData = false;
@@ -199,6 +224,12 @@ public class WaveFormRenderer
 			shouldInvalidateData = true;
 		}
 
+		if (DesiredWaveFormWidth != desiredWaveFormWidth)
+		{
+			DesiredWaveFormWidth = desiredWaveFormWidth;
+			shouldInvalidateData = true;
+		}
+
 		if (shouldInvalidateData)
 			InvalidateLastFrameData();
 	}
@@ -229,6 +260,21 @@ public class WaveFormRenderer
 		if (ScaleXWhenZooming == scaleXWhenZooming)
 			return;
 		ScaleXWhenZooming = scaleXWhenZooming;
+		InvalidateLastFrameData();
+	}
+
+	/// <summary>
+	/// Sets the desired width in pixels of the waveform. May be greater than or less than the
+	/// texture width. If it is greater than the texture width it is the responsibility of the
+	/// caller to scale the texture accordingly to achieve the desired size.
+	/// </summary>
+	/// <param name="desiredWaveFormWidth">Desired waveform width in pixels.</param>
+	public void SetDesiredWaveFormWidth(uint desiredWaveFormWidth)
+	{
+		desiredWaveFormWidth = Math.Max(1, desiredWaveFormWidth);
+		if (DesiredWaveFormWidth == desiredWaveFormWidth)
+			return;
+		DesiredWaveFormWidth = desiredWaveFormWidth;
 		InvalidateLastFrameData();
 	}
 
@@ -319,18 +365,6 @@ public class WaveFormRenderer
 	}
 
 	/// <summary>
-	/// Gets the width of the WaveForm after scaling.
-	/// </summary>
-	/// <param name="zoom">Zoom level.</param>
-	/// <returns>TextureWidth of the WaveForm.</returns>
-	public int GetScaledWaveFormWidth(double zoom)
-	{
-		var xZoom = ScaleXWhenZooming ? Math.Min(1.0, zoom) : 1.0;
-		var renderWidth = TextureWidth * xZoom;
-		return (int)renderWidth;
-	}
-
-	/// <summary>
 	/// Renders the waveform.
 	/// </summary>
 	/// <param name="spriteBatch">SpriteBatch to use for rendering the texture.</param>
@@ -350,19 +384,9 @@ public class WaveFormRenderer
 	/// </summary>
 	/// <param name="soundTimeSeconds">Time of the underlying sound in seconds.</param>
 	/// <param name="zoom">Zoom level.</param>
+	/// <param name="sizeCap">Maximum allowed zoom level.</param>
 	/// <param name="pixelsPerSecond">The number of y pixels which cover 1 second of time in the sound.</param>
-	public void Update(double soundTimeSeconds, double zoom, double pixelsPerSecond)
-	{
-		UpdateTexture(soundTimeSeconds, zoom, pixelsPerSecond);
-	}
-
-	/// <summary>
-	/// Updates the underlying texture to represent the waveform at the given time and zoom level.
-	/// </summary>
-	/// <param name="soundTimeSeconds">Time of the underlying sound in seconds.</param>
-	/// <param name="zoom">Zoom level.</param>
-	/// <param name="pixelsPerSecond">The number of y pixels which cover 1 second of time in the sound.</param>
-	private void UpdateTexture(double soundTimeSeconds, double zoom, double pixelsPerSecond)
+	public void Update(double soundTimeSeconds, double zoom, double sizeCap, double pixelsPerSecond)
 	{
 		// Get the correct texture to update.
 		var texture = Textures[TextureIndex];
@@ -389,11 +413,30 @@ public class WaveFormRenderer
 					return;
 				}
 
+				// Determine the zoom to use in x. Zoom in x is separate from zoom in y.
+				// sizeCap represents the maximum allowed zoom level. If it is 0.5 and the zoom is 0.6, the
+				// actual size (width) should be 0.5 and not 0.6.
+				// We expect external callers to also use this cap to scale the waveform. So if it is 0.5
+				// we should also expect that DesiredWaveFormWidth will be halved. Note that DesiredWaveFormWidth
+				// may also be decreased due to charts which are narrow. If the waveform's natural width is
+				// 1024 but a chart is only 512 and sizeCap is 0.5 then DesiredWaveFormWidth will be 256.
+				// On top of this is the actual zoom. If this zoom goes below the cap we need to start scaling down.
+				// But we are starting from the zoom level of DesiredWaveFormWidth / TextureWidth.
+				// As we go lower and further away from zoom cap our width should scale lower. This is
+				// achieved by treating the zoom as zoom / sizeCap when it is under sizeCap. We then
+				// do the DesiredWaveFormWidth / TextureWidth scaling afterwards for simplicity.
+				var xZoom = 1.0;
+				if (ScaleXWhenZooming && zoom < sizeCap)
+					xZoom = zoom / sizeCap;
+				xZoom *= (double)DesiredWaveFormWidth / TextureWidth;
+				xZoom = Math.Clamp(xZoom, 0.0, 1.0);
+
 				// If the parameters have changed since last time, invalidate the last frame data so we do not use it.
 				// Also invalidate the last frame data if the SoundMipMap is still loading since the underlying data will
 				// be changing each frame.
 				var isMipMapDataLoaded = MipMap.IsMipMapDataLoaded();
 				if (!zoom.DoubleEquals(LastZoom)
+				    || !xZoom.DoubleEquals(LastXZoom)
 				    || !pixelsPerSecond.DoubleEquals(LastPixelsPerSecond)
 				    || !isMipMapDataLoaded
 				    || WasMipMapDataLoadingLastFrame)
@@ -403,8 +446,6 @@ public class WaveFormRenderer
 
 				WasMipMapDataLoadingLastFrame = !isMipMapDataLoaded;
 
-				// Determine the zoom to use in x. Zoom in x is separate from zoom in y.
-				var xZoom = ScaleXWhenZooming ? Math.Min(1.0, zoom) : 1.0;
 				var renderWidth = TextureWidth * xZoom;
 				var numChannels = MipMap.GetNumChannels();
 				var widthPerChannel = TextureWidth / numChannels;
@@ -477,6 +518,7 @@ public class WaveFormRenderer
 
 				// Update the last frame tracking variables for the next frame.
 				LastZoom = zoom;
+				LastXZoom = xZoom;
 				LastPixelsPerSecond = pixelsPerSecond;
 				LastQuantizedIndexStart = quantizedStartSampleIndex;
 				LastQuantizedIndexEnd = quantizedEndSampleIndex;

@@ -38,6 +38,8 @@ internal sealed class ActiveEditorChart
 	private double WaveFormPPS = 1.0;
 	private bool ChartHasDedicatedTab;
 	private bool ChartIsFocused;
+	private int FocalPointScreenSpaceX;
+	private int FocalPointScreenSpaceY;
 
 	/// <summary>
 	/// Position. Ideally this would be private but position is tied heavily to systems managed by the Editor including
@@ -80,20 +82,162 @@ internal sealed class ActiveEditorChart
 		ChartHasDedicatedTab = false;
 	}
 
-	#region Misc
+	#region Focal Point
+
+	public void SetFocalPoint(int screenSpaceX, int screenSpaceY)
+	{
+		FocalPointScreenSpaceX = screenSpaceX;
+		FocalPointScreenSpaceY = screenSpaceY;
+	}
+
+	public Vector2 GetFocalPoint()
+	{
+		return new Vector2(FocalPointScreenSpaceX, FocalPointScreenSpaceY);
+	}
+
+	public int GetScreenSpaceXOfFullChartAreaStart()
+	{
+		return FocalPointScreenSpaceX - (GetLaneAndWaveFormAreaWidth() >> 1) -
+		       GetRelativeXPositionOfLanesAndWaveFormFromChartArea();
+	}
+
+	public int GetScreenSpaceXOfFullChartAreaEnd()
+	{
+		return GetScreenSpaceXOfFullChartAreaStart() + GetChartScreenSpaceWidth();
+	}
+
+	public int GetScreenSpaceXOfLanesStart()
+	{
+		return FocalPointScreenSpaceX - (GetLaneAreaWidth() >> 1) - GetRelativeXPositionOfLanesAndWaveFormFromChartArea();
+	}
+
+	public int GetScreenSpaceXOfLanesStartWithCurrentScale()
+	{
+		return FocalPointScreenSpaceX - (GetLaneAreaWidthWithCurrentScale() >> 1) -
+		       GetRelativeXPositionOfLanesAndWaveFormFromChartArea();
+	}
+
+	public int GetScreenSpaceXOfLaneAndWaveFormStart()
+	{
+		return FocalPointScreenSpaceX - (GetLaneAndWaveFormAreaWidth() >> 1) -
+		       GetRelativeXPositionOfLanesAndWaveFormFromChartArea();
+	}
+
+	public int GetScreenSpaceXOfLaneAndWaveFormStartWithCurrentScale()
+	{
+		return FocalPointScreenSpaceX - (GetLaneAndWaveFormAreaWidthWithCurrentScale() >> 1) -
+		       GetRelativeXPositionOfLanesAndWaveFormFromChartArea();
+	}
+
+	public int GetScreenSpaceXOfLanesEnd()
+	{
+		return FocalPointScreenSpaceX + (GetLaneAreaWidth() >> 1);
+	}
+
+	public int GetScreenSpaceXOfLanesEndWithCurrentScale()
+	{
+		return FocalPointScreenSpaceX + (GetLaneAreaWidthWithCurrentScale() >> 1);
+	}
+
+	public int GetScreenSpaceXOfLanesAndWaveFormEnd()
+	{
+		return FocalPointScreenSpaceX + (GetLaneAndWaveFormAreaWidth() >> 1);
+	}
+
+	public int GetScreenSpaceXOfLanesAndWaveFormEndWithCurrentScale()
+	{
+		return FocalPointScreenSpaceX + (GetLaneAndWaveFormAreaWidthWithCurrentScale() >> 1);
+	}
+
+	public int GetChartScreenSpaceFocalPointX()
+	{
+		return FocalPointScreenSpaceX;
+	}
+
+	public int GetRelativeXPositionOfLanesAndWaveFormFromChartArea()
+	{
+		if (IsFocused())
+		{
+			// Add width for the measure markers
+			//width += ;
+		}
+
+		return 0;
+	}
+
+	public int GetLaneAreaWidth()
+	{
+		return Receptor.GetReceptorAreaWidth(ZoomManager.GetSizeCap(), TextureAtlas, ArrowGraphicManager, Chart);
+	}
+
+	public int GetLaneAreaWidthWithCurrentScale()
+	{
+		return Receptor.GetReceptorAreaWidth(ZoomManager.GetSizeZoom(), TextureAtlas, ArrowGraphicManager, Chart);
+	}
+
+	public int GetLaneAndWaveFormAreaWidth()
+	{
+		var width = GetLaneAreaWidth();
+
+		// Some chart types are narrower than the waveform.
+		// If we are rendering the waveform behind this chart, ensure we reserve enough space for it.
+		if (IsFocused())
+		{
+			var p = Preferences.Instance.PreferencesWaveForm;
+			if (p.ShowWaveForm && p.EnableWaveForm && !p.WaveFormScaleWidthToChart)
+			{
+				width = Math.Max(width, WaveFormTextureWidth);
+			}
+		}
+
+		return width;
+	}
+
+	public int GetLaneAndWaveFormAreaWidthWithCurrentScale()
+	{
+		var width = GetLaneAreaWidthWithCurrentScale();
+
+		// Some chart types are narrower than the waveform.
+		// If we are rendering the waveform behind this chart, ensure we reserve enough space for it.
+		if (IsFocused())
+		{
+			var p = Preferences.Instance.PreferencesWaveForm;
+			if (p.ShowWaveForm && p.EnableWaveForm)
+			{
+				var zoom = ZoomManager.GetSizeZoom();
+				var sizeCap = ZoomManager.GetSizeCap();
+				var waveFormWidth = (double)WaveFormTextureWidth;
+				if (p.WaveFormScaleWidthToChart)
+				{
+					if (p.WaveFormScaleXWhenZooming)
+						waveFormWidth = width;
+					else
+						waveFormWidth = GetLaneAreaWidth();
+				}
+
+				if (p.WaveFormScaleXWhenZooming && zoom < sizeCap)
+				{
+					waveFormWidth *= zoom / sizeCap;
+				}
+
+				width = Math.Max(width, (int)waveFormWidth);
+			}
+		}
+
+		return width;
+	}
 
 	public int GetChartScreenSpaceWidth()
 	{
 		// Start with the receptor width.
 		// Do not treat being zoomed out as affecting the area the chart should cover, but do take into
 		// account size cap.
-		var width = Receptor.GetReceptorAreaWidth(ZoomManager.GetSizeCap(), TextureAtlas, ArrowGraphicManager, Chart);
+		var width = GetLaneAndWaveFormAreaWidth();
 
 		// Add width for elements which are only enabled for the focused chart.
 		if (IsFocused())
 		{
-			// Add width for the measure markers
-			//width += ;
+			width += GetRelativeXPositionOfLanesAndWaveFormFromChartArea();
 
 			// Add width for the MiniMap if it is mounted to the focused chart.
 			var scrollBarWidth = 0;
@@ -129,6 +273,10 @@ internal sealed class ActiveEditorChart
 
 		return width;
 	}
+
+	#endregion Focal Point
+
+	#region Misc
 
 	private void OnPositionChanged()
 	{
@@ -215,7 +363,7 @@ internal sealed class ActiveEditorChart
 	/// <remarks>
 	/// Sets the WaveFormPPS.
 	/// </remarks>
-	public void UpdateChartEvents(int screenHeight, int focalPointX, int focalPointY)
+	public void UpdateChartEvents(int screenHeight)
 	{
 		if (Chart.GetEvents() == null)
 			return;
@@ -247,14 +395,14 @@ internal sealed class ActiveEditorChart
 		// Determine the starting x and y position in screen space.
 		// Y extended slightly above the top of the screen so that we start drawing arrows
 		// before their midpoints.
-		var startPosX = focalPointX - numArrows * arrowW * 0.5;
+		var startPosX = FocalPointScreenSpaceX - numArrows * arrowW * 0.5;
 		var startPosY = 0.0 - Math.Max(holdCapHeight, arrowH * 0.5);
 
 		var noteAlpha = (float)Interpolation.Lerp(1.0, 0.0, NoteScaleToStartFading, NoteMinScale, sizeZoom);
 
 		// Set up the MiscEventWidgetLayoutManager.
 		var miscEventAlpha = (float)Interpolation.Lerp(1.0, 0.0, MiscEventScaleToStartFading, MiscEventMinScale, sizeZoom);
-		BeginMiscEventWidgetLayoutManagerFrame(focalPointX);
+		BeginMiscEventWidgetLayoutManagerFrame();
 
 		// TODO: Fix Negative Scrolls resulting in cutting off notes prematurely.
 		// If a chart has negative scrolls then we technically need to render notes which come before
@@ -283,7 +431,7 @@ internal sealed class ActiveEditorChart
 			return;
 
 		// Scan upwards to find the earliest rate altering event that should be used to start rendering.
-		var previousRateEventY = (double)focalPointY;
+		var previousRateEventY = (double)FocalPointScreenSpaceY;
 		var previousRateEventRow = chartPosition;
 		var previousRateEventTime = time;
 		EditorRateAlteringEvent rateEvent = null;
@@ -509,15 +657,15 @@ internal sealed class ActiveEditorChart
 		return holdCapHeight;
 	}
 
-	private void BeginMiscEventWidgetLayoutManagerFrame(int focalPointScreenSpaceX)
+	private void BeginMiscEventWidgetLayoutManagerFrame()
 	{
 		const int widgetStartPadding = 10;
 		const int widgetMeasureNumberFudge = 10;
 
 		var (arrowW, _) = GetArrowDimensions();
 
-		var startPosX = focalPointScreenSpaceX - Chart.NumInputs * arrowW * 0.5;
-		var endXPos = focalPointScreenSpaceX + Chart.NumInputs * arrowW * 0.5;
+		var startPosX = FocalPointScreenSpaceX - Chart.NumInputs * arrowW * 0.5;
+		var endXPos = FocalPointScreenSpaceX + Chart.NumInputs * arrowW * 0.5;
 
 		var lMiscWidgetPos = startPosX
 		                     - widgetStartPadding
@@ -996,9 +1144,8 @@ internal sealed class ActiveEditorChart
 	/// the given y position.
 	/// </summary>
 	/// <param name="desiredScreenSpaceY">Y position in screen space.</param>
-	/// <param name="focalPointScreenSpaceY">Focal point Y position in screen space.</param>
 	/// <returns>Tuple where the first value is the chart time and the second is the row.</returns>
-	public (double, double) FindChartTimeAndRowForScreenSpaceY(int desiredScreenSpaceY, int focalPointScreenSpaceY)
+	public (double, double) FindChartTimeAndRowForScreenSpaceY(int desiredScreenSpaceY)
 	{
 		// Set up a spacing helper with isolated state for searching for the time and row.
 		var spacingHelper = EventSpacingHelper.GetSpacingHelper(Chart);
@@ -1013,7 +1160,7 @@ internal sealed class ActiveEditorChart
 		// information.
 		var focalPointChartTime = Position.ChartTime;
 		var focalPointChartPosition = Position.ChartPosition;
-		var focalPointYDouble = (double)focalPointScreenSpaceY;
+		var focalPointYDouble = (double)FocalPointScreenSpaceY;
 		var rateEnumerator = Chart.GetRateAlteringEvents().FindBest(Position);
 		if (rateEnumerator == null)
 			return (0.0, 0.0);
@@ -1235,7 +1382,7 @@ internal sealed class ActiveEditorChart
 	/// <summary>
 	/// Finishes selecting a region with the mouse.
 	/// </summary>
-	public void FinishSelectedRegion(int focalPointScreenSpaceX)
+	public void FinishSelectedRegion()
 	{
 		if (Selection == null || !SelectedRegion.IsActive())
 			return;
@@ -1344,7 +1491,7 @@ internal sealed class ActiveEditorChart
 					var potentialEvents = new List<EditorEvent>();
 
 					// Loop over the misc events in the selected time range and determine their positions.
-					BeginMiscEventWidgetLayoutManagerFrame(focalPointScreenSpaceX);
+					BeginMiscEventWidgetLayoutManagerFrame();
 					var minPosition = 0.0;
 					Chart.TryGetChartPositionFromTime(adjustedMinTime, ref minPosition);
 					var enumerator = Chart.GetMiscEvents().FindBestByPosition(minPosition);
@@ -1423,7 +1570,7 @@ internal sealed class ActiveEditorChart
 					var potentialEvents = new List<EditorEvent>();
 
 					// Loop over the misc events in the selected time range and determine their positions.
-					BeginMiscEventWidgetLayoutManagerFrame(focalPointScreenSpaceX);
+					BeginMiscEventWidgetLayoutManagerFrame();
 					var enumerator = Chart.GetMiscEvents().FindBestByPosition(adjustedMinPosition);
 					while (enumerator != null && enumerator.MoveNext())
 					{
@@ -1780,8 +1927,6 @@ internal sealed class ActiveEditorChart
 	public void ProcessInputForSelectedRegion(
 		double currentTime,
 		bool uiInterferingWithRegionClicking,
-		int focalPointScreenSpaceX,
-		int focalPointScreenSpaceY,
 		IReadOnlyEditorMouseState mouseState,
 		EditorButtonState buttonState)
 	{
@@ -1795,29 +1940,29 @@ internal sealed class ActiveEditorChart
 		if (buttonState.DownThisFrame() || forceStartRegionFromClick)
 		{
 			var screenSpaceY = mouseState.Y();
-			var (chartTime, chartPosition) = FindChartTimeAndRowForScreenSpaceY(screenSpaceY, focalPointScreenSpaceY);
-			var xInChartSpace = (mouseState.X() - focalPointScreenSpaceX) / sizeZoom;
+			var (chartTime, chartPosition) = FindChartTimeAndRowForScreenSpaceY(screenSpaceY);
+			var xInChartSpace = (mouseState.X() - FocalPointScreenSpaceX) / sizeZoom;
 			SelectedRegion.Start(
 				xInChartSpace,
 				screenSpaceY,
 				chartTime,
 				chartPosition,
 				sizeZoom,
-				focalPointScreenSpaceX,
+				FocalPointScreenSpaceX,
 				currentTime);
 		}
 
 		// Dragging a selection.
 		if ((buttonState.Down() && SelectedRegion.IsActive()) || forceStartRegionFromClick)
 		{
-			var xInChartSpace = (mouseState.X() - focalPointScreenSpaceX) / sizeZoom;
-			SelectedRegion.UpdatePerFrameValues(xInChartSpace, mouseState.Y(), sizeZoom, focalPointScreenSpaceX);
+			var xInChartSpace = (mouseState.X() - FocalPointScreenSpaceX) / sizeZoom;
+			SelectedRegion.UpdatePerFrameValues(xInChartSpace, mouseState.Y(), sizeZoom, FocalPointScreenSpaceX);
 		}
 
 		// Releasing a selection.
 		if ((buttonState.Up() && SelectedRegion.IsActive()) || forceStartRegionFromClick)
 		{
-			FinishSelectedRegion(focalPointScreenSpaceX);
+			FinishSelectedRegion();
 		}
 	}
 
@@ -2177,17 +2322,17 @@ internal sealed class ActiveEditorChart
 		}
 	}
 
-	public void DrawReceptorForegroundEffects(Vector2 focalPoint, double sizeZoom, TextureAtlas textureAtlas,
+	public void DrawReceptorForegroundEffects(double sizeZoom, TextureAtlas textureAtlas,
 		SpriteBatch spriteBatch)
 	{
 		foreach (var receptor in Receptors)
-			receptor.DrawForegroundEffects(focalPoint, sizeZoom, textureAtlas, spriteBatch);
+			receptor.DrawForegroundEffects(GetFocalPoint(), sizeZoom, textureAtlas, spriteBatch);
 	}
 
-	public void DrawReceptors(Vector2 focalPoint, double sizeZoom, TextureAtlas textureAtlas, SpriteBatch spriteBatch)
+	public void DrawReceptors(double sizeZoom, TextureAtlas textureAtlas, SpriteBatch spriteBatch)
 	{
 		foreach (var receptor in Receptors)
-			receptor.Draw(focalPoint, sizeZoom, textureAtlas, spriteBatch);
+			receptor.Draw(GetFocalPoint(), sizeZoom, textureAtlas, spriteBatch);
 	}
 
 	#endregion Receptors
