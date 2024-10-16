@@ -12,7 +12,7 @@ internal sealed class PreferencesDark
 {
 	public enum SizeMode
 	{
-		FocusedChart,
+		Charts,
 		Window,
 	}
 
@@ -23,7 +23,7 @@ internal sealed class PreferencesDark
 	}
 
 	// Default values.
-	public const bool DefaultShowDarkBg = true;
+	public const bool DefaultShowDarkBg = false;
 	public const SizeMode DefaultSize = SizeMode.Window;
 	public const DrawOrder DefaultDrawOrder = DrawOrder.AfterBackground;
 	public static readonly Vector4 DefaultColor = new(0.0f, 0.0f, 0.0f, 0.8f);

@@ -2322,15 +2322,8 @@ internal sealed class Editor :
 	{
 		switch (Preferences.Instance.PreferencesDark.Size)
 		{
-			case PreferencesDark.SizeMode.FocusedChart:
-				var focusedChartData = GetFocusedChartData();
-				if (focusedChartData != null)
-				{
-					var focusedChartWidth = focusedChartData.GetChartScreenSpaceWidth();
-					return (focusedChartData.GetScreenSpaceXOfFullChartAreaStart(), focusedChartWidth);
-				}
-
-				break;
+			case PreferencesDark.SizeMode.Charts:
+				return GetActiveChartsXAndWidth();
 			case PreferencesDark.SizeMode.Window:
 				return (0, GetViewportWidth());
 		}
@@ -2580,6 +2573,15 @@ internal sealed class Editor :
 			ActiveChartData[i].SetFocalPoint(x + xOffset + (width >> 1), focalPointY);
 			x += fullWidth;
 		}
+	}
+
+	private (int, int) GetActiveChartsXAndWidth()
+	{
+		if (ActiveChartData.Count == 0)
+			return (0, 0);
+		var x = ActiveChartData[0].GetScreenSpaceXOfFullChartAreaStart();
+		var finalX = ActiveChartData[^1].GetScreenSpaceXOfFullChartAreaEnd();
+		return (x, finalX - x);
 	}
 
 	private void UpdateChartEvents()
