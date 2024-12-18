@@ -66,6 +66,12 @@ internal sealed class EditorTickCountEvent : EditorEvent
 		set => WidthInternal = value;
 	}
 
+	public override double H
+	{
+		get => ImGuiLayoutUtils.GetMiscEditorEventHeight();
+		set { }
+	}
+
 	public override string GetShortTypeName()
 	{
 		return "Ticks";

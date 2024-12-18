@@ -148,7 +148,6 @@ internal abstract class EventSpacingHelper
 
 	/// <summary>
 	/// Gets the Y position in screen space of a given event.
-	/// Assumes the event follows the given anchor event.
 	/// </summary>
 	/// <param name="e">Event to get the position of.</param>
 	/// <param name="previousRateEventY">Position in screen space of the previous rate altering event.</param>
@@ -157,7 +156,6 @@ internal abstract class EventSpacingHelper
 
 	/// <summary>
 	/// Gets the Y position in screen space of a given event.
-	/// Assumes the event follows the given anchor event.
 	/// </summary>
 	/// <param name="e">Event to get the position of.</param>
 	/// <param name="anchorY">
@@ -171,7 +169,6 @@ internal abstract class EventSpacingHelper
 
 	/// <summary>
 	/// Gets the Y position in screen space of an event at the given chart time and row values.
-	/// Assumes the event follows the given anchor event.
 	/// </summary>
 	/// <param name="chartTime">Chart time of the event to get the position of.</param>
 	/// <param name="chartRow">Row of the event to get the position of.</param>
@@ -185,25 +182,8 @@ internal abstract class EventSpacingHelper
 	public abstract double GetY(double chartTime, double chartRow, double anchorY, double anchorChartTime, double anchorRow);
 
 	/// <summary>
-	/// Gets the Y position in screen space of an event at the given chart time and row values.
-	/// Assumes the event precedes the given anchor event.
-	/// </summary>
-	/// <param name="chartTime">Chart time of the event to get the position of.</param>
-	/// <param name="chartRow">Row of the event to get the position of.</param>
-	/// <param name="anchorY">
-	/// Position in screen space of another event to use for relative positioning.
-	/// In most cases this is the previous rate altering event.
-	/// </param>
-	/// <param name="anchorChartTime">The chart time of the anchor event.</param>
-	/// <param name="anchorRow">The row of the anchor event.</param>
-	/// <returns>Y position in screen space of the given event.</returns>
-	public abstract double GetYPreceding(double chartTime, double chartRow, double anchorY, double anchorChartTime,
-		double anchorRow);
-
-	/// <summary>
 	/// Gets the Y position in screen space of an event at the given chart time and row values
 	/// relative to the given anchor event.
-	/// Assumes the event follows the given anchor event.
 	/// </summary>
 	/// <param name="relativeTime">Chart time of the event relative to the anchor.</param>
 	/// <param name="relativeRow">Row of the event relative to the anchor.</param>
@@ -314,12 +294,6 @@ internal sealed class EventSpacingHelperConstantTime : EventSpacingHelper
 		return anchorY + (chartTime - anchorChartTime) * Pps;
 	}
 
-	public override double GetYPreceding(double chartTime, double chartRow, double anchorY, double anchorChartTime,
-		double anchorRow)
-	{
-		return anchorY - (chartTime - anchorChartTime) * Pps;
-	}
-
 	public override double GetYForRow(double row, double previousRateEventY)
 	{
 		var time = RateAlteringEvent.GetChartTimeFromPosition(row);
@@ -398,12 +372,6 @@ internal abstract class EventSpacingHelperRow : EventSpacingHelper
 	public override double GetY(double chartTime, double chartRow, double anchorY, double anchorChartTime, double anchorRow)
 	{
 		return anchorY + (chartRow - anchorRow) * Ppr;
-	}
-
-	public override double GetYPreceding(double chartTime, double chartRow, double anchorY, double anchorChartTime,
-		double anchorRow)
-	{
-		return anchorY - (chartRow - anchorRow) * Ppr;
 	}
 
 	public override double GetYForRow(double row, double previousRateEventY)

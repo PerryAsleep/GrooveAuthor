@@ -324,6 +324,12 @@ internal sealed class EditorPatternEvent : EditorEvent, IEquatable<EditorPattern
 		set => WidthInternal = value;
 	}
 
+	public override double H
+	{
+		get => ImGuiLayoutUtils.GetMiscEditorEventHeight();
+		set { }
+	}
+
 	private bool WidthDirty;
 
 	/// <summary>

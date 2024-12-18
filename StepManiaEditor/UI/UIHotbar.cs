@@ -230,13 +230,13 @@ internal sealed class UIHotbar : UIWindow
 			ImGui.SameLine();
 			if (ImGuiLayoutUtils.BeginTable("Step Visibility", ColumnWidthTitleSteps, ColumnWidthValueSteps))
 			{
-				ImGuiLayoutUtils.DrawRowCheckbox("Notes", ref Preferences.Instance.RenderNotes,
+				ImGuiLayoutUtils.DrawRowCheckbox("Notes", ref Preferences.Instance.PreferencesOptions.RenderNotes,
 					"Whether or not to render notes.");
-				ImGuiLayoutUtils.DrawRowCheckbox("Markers", ref Preferences.Instance.RenderMarkers,
+				ImGuiLayoutUtils.DrawRowCheckbox("Markers", ref Preferences.Instance.PreferencesOptions.RenderMarkers,
 					"Whether or not to render beat and measure markers.");
-				ImGuiLayoutUtils.DrawRowCheckbox("Regions", ref Preferences.Instance.RenderRegions,
+				ImGuiLayoutUtils.DrawRowCheckbox("Regions", ref Preferences.Instance.PreferencesOptions.RenderRegions,
 					"Whether or not to render regions behind the chart for events like stops, the preview, etc.");
-				ImGuiLayoutUtils.DrawRowCheckbox("Misc", ref Preferences.Instance.RenderMiscEvents,
+				ImGuiLayoutUtils.DrawRowCheckbox("Misc", ref Preferences.Instance.PreferencesOptions.RenderMiscEvents,
 					"Whether or not to render miscellaneous events like timing events, labels, etc.");
 				ImGuiLayoutUtils.EndTable();
 			}

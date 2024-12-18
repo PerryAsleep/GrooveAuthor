@@ -67,6 +67,11 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 	public const StepColorMethod DefaultStepColorMethodValue = StepColorMethod.Stepmania;
 	public const bool DefaultResetWindows = true;
 	public const BackgroundImageSizeMode DefaultBackgroundImageSize = BackgroundImageSizeMode.ChartArea;
+	public const bool DefaultRenderNotes = true;
+	public const bool DefaultRenderMarkers = true;
+	public const bool DefaultRenderRegions = true;
+	public const bool DefaultRenderMiscEvents = true;
+	public const int DefaultMiscEventAreaWidth = 100;
 
 	// Preferences.
 	[JsonInclude] public bool ShowOptionsWindow;
@@ -84,6 +89,11 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 	[JsonInclude] public StepColorMethod StepColorMethodValue = DefaultStepColorMethodValue;
 	[JsonInclude] public bool ResetWindows = DefaultResetWindows;
 	[JsonInclude] public BackgroundImageSizeMode BackgroundImageSize = DefaultBackgroundImageSize;
+	[JsonInclude] public bool RenderNotes = DefaultRenderNotes;
+	[JsonInclude] public bool RenderMarkers = DefaultRenderMarkers;
+	[JsonInclude] public bool RenderRegions = DefaultRenderRegions;
+	[JsonInclude] public bool RenderMiscEvents = DefaultRenderMiscEvents;
+	[JsonInclude] public int MiscEventAreaWidth = DefaultMiscEventAreaWidth;
 
 	[JsonInclude]
 	public int UndoHistorySize
@@ -123,7 +133,12 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 		       && HideSongBackground == DefaultHideSongBackground
 		       && StepColorMethodValue == DefaultStepColorMethodValue
 		       && ResetWindows == DefaultResetWindows
-		       && BackgroundImageSize == DefaultBackgroundImageSize;
+		       && BackgroundImageSize == DefaultBackgroundImageSize
+		       && RenderNotes == DefaultRenderNotes
+		       && RenderMarkers == DefaultRenderMarkers
+		       && RenderRegions == DefaultRenderRegions
+		       && RenderMiscEvents == DefaultRenderMiscEvents
+		       && MiscEventAreaWidth == DefaultMiscEventAreaWidth;
 	}
 
 	public void RestoreDefaults()
@@ -153,6 +168,11 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 	private readonly bool PreviousSuppressExternalSongModificationNotification;
 	private readonly bool PreviousHideSongBackground;
 	private readonly StepColorMethod PreviousStepColorMethodValue;
+	private readonly bool PreviousRenderNotes;
+	private readonly bool PreviousRenderMarkers;
+	private readonly bool PreviousRenderRegions;
+	private readonly bool PreviousRenderMiscEvents;
+	private readonly int PreviousMiscEventAreaWidth;
 
 	//private readonly bool PreviousResetWindows;
 	private readonly BackgroundImageSizeMode PreviousBackgroundImageSize;
@@ -176,6 +196,11 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 		PreviousStepColorMethodValue = p.StepColorMethodValue;
 		//PreviousResetWindows = p.ResetWindows;
 		PreviousBackgroundImageSize = p.BackgroundImageSize;
+		PreviousRenderNotes = p.RenderNotes;
+		PreviousRenderMarkers = p.RenderMarkers;
+		PreviousRenderRegions = p.RenderRegions;
+		PreviousRenderMiscEvents = p.RenderMiscEvents;
+		PreviousMiscEventAreaWidth = p.MiscEventAreaWidth;
 	}
 
 	public override bool AffectsFile()
@@ -206,6 +231,11 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 		p.StepColorMethodValue = DefaultStepColorMethodValue;
 		//p.ResetWindows = DefaultResetWindows;
 		p.BackgroundImageSize = DefaultBackgroundImageSize;
+		p.RenderNotes = DefaultRenderNotes;
+		p.RenderMarkers = DefaultRenderMarkers;
+		p.RenderRegions = DefaultRenderRegions;
+		p.RenderMiscEvents = DefaultRenderMiscEvents;
+		p.MiscEventAreaWidth = DefaultMiscEventAreaWidth;
 	}
 
 	protected override void UndoImplementation()
@@ -226,5 +256,10 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 		p.StepColorMethodValue = PreviousStepColorMethodValue;
 		//p.ResetWindows = PreviousResetWindows;
 		p.BackgroundImageSize = PreviousBackgroundImageSize;
+		p.RenderNotes = PreviousRenderNotes;
+		p.RenderMarkers = PreviousRenderMarkers;
+		p.RenderRegions = PreviousRenderRegions;
+		p.RenderMiscEvents = PreviousRenderMiscEvents;
+		p.MiscEventAreaWidth = PreviousMiscEventAreaWidth;
 	}
 }

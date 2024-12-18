@@ -1523,6 +1523,12 @@ internal sealed class Editor :
 			{
 				UpdatingSongTimeDirectly = true;
 				focusedChartData.Position.UpdateChartPositionInterpolation(currentTime);
+				foreach (var activeChartData in ActiveChartData)
+				{
+					if (activeChartData != focusedChartData)
+						activeChartData.Position.ChartPosition = focusedChartData.Position.ChartPosition;
+				}
+
 				MusicManager.SetMusicTimeInSeconds(focusedChartData.Position.SongTime);
 				UpdatingSongTimeDirectly = false;
 			}
@@ -1531,6 +1537,12 @@ internal sealed class Editor :
 			{
 				UpdatingSongTimeDirectly = true;
 				focusedChartData.Position.UpdateSongTimeInterpolation(currentTime);
+				foreach (var activeChartData in ActiveChartData)
+				{
+					if (activeChartData != focusedChartData)
+						activeChartData.Position.ChartPosition = focusedChartData.Position.ChartPosition;
+				}
+
 				MusicManager.SetMusicTimeInSeconds(focusedChartData.Position.SongTime);
 				UpdatingSongTimeDirectly = false;
 			}
@@ -2429,7 +2441,7 @@ internal sealed class Editor :
 
 	private void DrawMeasureMarkers()
 	{
-		if (!Preferences.Instance.RenderMarkers)
+		if (!Preferences.Instance.PreferencesOptions.RenderMarkers)
 			return;
 
 		foreach (var activeChartData in ActiveChartData)
@@ -2443,7 +2455,7 @@ internal sealed class Editor :
 
 	private void DrawRegions()
 	{
-		if (!Preferences.Instance.RenderRegions)
+		if (!Preferences.Instance.PreferencesOptions.RenderRegions)
 			return;
 
 		foreach (var activeChartData in ActiveChartData)
@@ -2466,8 +2478,8 @@ internal sealed class Editor :
 
 	private void DrawChartEvents()
 	{
-		var renderMiscEvents = Preferences.Instance.RenderMiscEvents;
-		var renderNotes = Preferences.Instance.RenderNotes;
+		var renderMiscEvents = Preferences.Instance.PreferencesOptions.RenderMiscEvents;
+		var renderNotes = Preferences.Instance.PreferencesOptions.RenderNotes;
 		if (!renderMiscEvents && !renderNotes)
 			return;
 
@@ -2713,14 +2725,14 @@ internal sealed class Editor :
 			{
 				var focusedChartData = GetFocusedChartData();
 				if (focusedChartData != null)
-					x = focusedChartData.GetScreenSpaceXOfLanesAndWaveFormEnd() + p.PreferencesMiniMap.PositionOffset;
+					x = focusedChartData.GetScreenSpaceXOfMiscEventsEnd() + p.PreferencesMiniMap.PositionOffset;
 				break;
 			}
 			case Position.FocusedChartWithScaling:
 			{
 				var focusedChartData = GetFocusedChartData();
 				if (focusedChartData != null)
-					x = focusedChartData.GetScreenSpaceXOfLanesAndWaveFormEndWithCurrentScale() +
+					x = focusedChartData.GetScreenSpaceXOfMiscEventsEndWithCurrentScale() +
 					    p.PreferencesMiniMap.PositionOffset;
 				break;
 			}
@@ -3042,7 +3054,7 @@ internal sealed class Editor :
 			{
 				var focusedChartData = GetFocusedChartData();
 				if (focusedChartData != null)
-					x = focusedChartData.GetScreenSpaceXOfLanesAndWaveFormEnd() + p.DensityGraphPositionOffset;
+					x = focusedChartData.GetScreenSpaceXOfMiscEventsEnd() + p.DensityGraphPositionOffset;
 				w = p.DensityGraphHeight;
 				h = ChartArea.Height + p.DensityGraphWidthOffset * 2;
 				y = ChartArea.Y - p.DensityGraphWidthOffset;
@@ -3052,7 +3064,7 @@ internal sealed class Editor :
 			{
 				var focusedChartData = GetFocusedChartData();
 				if (focusedChartData != null)
-					x = focusedChartData.GetScreenSpaceXOfLanesAndWaveFormEndWithCurrentScale() + p.DensityGraphPositionOffset;
+					x = focusedChartData.GetScreenSpaceXOfMiscEventsEndWithCurrentScale() + p.DensityGraphPositionOffset;
 				w = p.DensityGraphHeight;
 				h = ChartArea.Height + p.DensityGraphWidthOffset * 2;
 				y = ChartArea.Y - p.DensityGraphWidthOffset;

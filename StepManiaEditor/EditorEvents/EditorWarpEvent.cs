@@ -145,6 +145,12 @@ internal sealed class EditorWarpEvent : EditorRateAlteringEvent, IEquatable<Edit
 		set => WidthInternal = value;
 	}
 
+	public override double H
+	{
+		get => ImGuiLayoutUtils.GetMiscEditorEventHeight();
+		set { }
+	}
+
 	public EditorWarpEvent(EventConfig config, Warp chartEvent) : base(config)
 	{
 		WarpEvent = chartEvent;

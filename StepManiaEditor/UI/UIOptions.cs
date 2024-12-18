@@ -121,6 +121,11 @@ internal class UIOptions : UIWindow
 					+ "\nChanges to this value take effect on an application restart.",
 					0.01f, "%.2f", 0.25, 8.0);
 
+				ImGuiLayoutUtils.DrawRowDragInt(true, "Misc. Event Area Width", p, nameof(PreferencesOptions.MiscEventAreaWidth),
+					false,
+					"Width of the area on the sides of the focused chart for drawing miscellaneous events.", 0.1f, "%i pixels", 0,
+					200);
+
 				if (ImGuiLayoutUtils.DrawRowButton("Reset Windows", "Reset Windows",
 					    "Reset all window positions to their default values. This cannot be undone."))
 				{

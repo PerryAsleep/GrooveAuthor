@@ -61,6 +61,12 @@ internal sealed class EditorMultipliersEvent : EditorEvent
 		set => WidthInternal = value;
 	}
 
+	public override double H
+	{
+		get => ImGuiLayoutUtils.GetMiscEditorEventHeight();
+		set { }
+	}
+
 	public static (bool, int, int) IsValidMultipliersString(string v)
 	{
 		var hitMultiplier = 1;

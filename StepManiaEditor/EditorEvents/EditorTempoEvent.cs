@@ -93,6 +93,12 @@ internal sealed class EditorTempoEvent : EditorRateAlteringEvent
 		set => WidthInternal = value;
 	}
 
+	public override double H
+	{
+		get => ImGuiLayoutUtils.GetMiscEditorEventHeight();
+		set { }
+	}
+
 	public override string GetShortTypeName()
 	{
 		return "Tempo";

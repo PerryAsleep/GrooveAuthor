@@ -100,6 +100,12 @@ internal sealed class EditorTimeSignatureEvent : EditorRateAlteringEvent
 		set => WidthInternal = value;
 	}
 
+	public override double H
+	{
+		get => ImGuiLayoutUtils.GetMiscEditorEventHeight();
+		set { }
+	}
+
 	public static (bool, Fraction) IsValidTimeSignatureString(string v)
 	{
 		var f = Fraction.FromString(v);

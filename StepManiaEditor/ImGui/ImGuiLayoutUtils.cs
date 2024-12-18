@@ -2925,8 +2925,13 @@ internal sealed class ImGuiLayoutUtils
 
 	#region Misc Editor Events
 
+	private static double? MiscEditorEventHeight;
+
 	public static double GetMiscEditorEventHeight()
 	{
+		if (MiscEditorEventHeight != null)
+			return (double)MiscEditorEventHeight;
+
 		unsafe
 		{
 			if (ImGuiFont.NativePtr == null || !ImGuiFont.IsLoaded())
@@ -2934,9 +2939,9 @@ internal sealed class ImGuiLayoutUtils
 		}
 
 		ImGui.PushFont(ImGuiFont);
-		var h = ImGui.GetStyle().FramePadding.Y * 2 + ImGui.GetFontSize() + 2;
+		MiscEditorEventHeight = ImGui.GetStyle().FramePadding.Y * 2 + ImGui.GetFontSize() + 2;
 		ImGui.PopFont();
-		return h;
+		return (double)MiscEditorEventHeight;
 	}
 
 	public static double GetMiscEditorEventDragIntWidgetWidth(int i, string format)
@@ -3245,7 +3250,7 @@ internal sealed class ImGuiLayoutUtils
 			colorPushCount += 5;
 		}
 
-		var height = (int)GetMiscEditorEventHeight();
+		var height = (int)e.H;
 
 		// Record window size and padding values so we can edit and restore them.
 		var originalWindowPaddingX = ImGui.GetStyle().WindowPadding.X;
@@ -3272,7 +3277,8 @@ internal sealed class ImGuiLayoutUtils
 			    | ImGuiWindowFlags.NoSavedSettings
 			    | ImGuiWindowFlags.NoDocking
 			    | ImGuiWindowFlags.NoBringToFrontOnFocus
-			    | ImGuiWindowFlags.NoFocusOnAppearing))
+			    | ImGuiWindowFlags.NoFocusOnAppearing
+			    | ImGuiWindowFlags.NoScrollWithMouse))
 		{
 			var elementWidth = width - GetCloseWidth();
 

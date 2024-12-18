@@ -151,6 +151,12 @@ internal sealed class EditorStopEvent : EditorRateAlteringEvent, IEquatable<Edit
 		set => WidthInternal = value;
 	}
 
+	public override double H
+	{
+		get => ImGuiLayoutUtils.GetMiscEditorEventHeight();
+		set { }
+	}
+
 	public EditorStopEvent(EventConfig config, Stop chartEvent) : base(config)
 	{
 		StopEvent = chartEvent;

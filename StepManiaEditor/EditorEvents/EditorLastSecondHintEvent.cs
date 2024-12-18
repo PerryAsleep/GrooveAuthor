@@ -51,6 +51,12 @@ internal sealed class EditorLastSecondHintEvent : EditorEvent
 		set => WidthInternal = value;
 	}
 
+	public override double H
+	{
+		get => ImGuiLayoutUtils.GetMiscEditorEventHeight();
+		set { }
+	}
+
 	private bool WidthDirty;
 
 	public double DoubleValue

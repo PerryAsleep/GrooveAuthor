@@ -117,6 +117,12 @@ internal class EditorInterpolatedRateAlteringEvent : EditorEvent
 		set => WidthInternal = value;
 	}
 
+	public override double H
+	{
+		get => ImGuiLayoutUtils.GetMiscEditorEventHeight();
+		set { }
+	}
+
 	public EditorInterpolatedRateAlteringEvent(EventConfig config, ScrollRateInterpolation chartEvent) : base(config)
 	{
 		ScrollRateInterpolationEvent = chartEvent;

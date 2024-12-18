@@ -35,6 +35,7 @@ internal sealed class ActiveEditorChart
 	private readonly LaneEditState[] LaneEditStates;
 	private readonly AutoPlayer AutoPlayer;
 	private readonly ArrowGraphicManager ArrowGraphicManager;
+	private readonly MiscEventWidgetLayoutManager MiscEventWidgetLayoutManager = new();
 	private double WaveFormPPS = 1.0;
 	private bool ChartHasDedicatedTab;
 	private bool ChartIsFocused;
@@ -111,6 +112,22 @@ internal sealed class ActiveEditorChart
 		return FocalPointScreenSpaceX - (GetLaneAreaWidth() >> 1) - GetRelativeXPositionOfLanesAndWaveFormFromChartArea();
 	}
 
+	public int GetScreenSpaceXOfMiscEventsStart()
+	{
+		var x = GetScreenSpaceXOfLanesStart();
+		if (IsFocused())
+			x -= Preferences.Instance.PreferencesOptions.MiscEventAreaWidth;
+		return x;
+	}
+
+	public int GetScreenSpaceXOfMiscEventsStartWithCurrentScale()
+	{
+		var x = GetScreenSpaceXOfLanesStartWithCurrentScale();
+		if (IsFocused())
+			x -= Preferences.Instance.PreferencesOptions.MiscEventAreaWidth;
+		return x;
+	}
+
 	public int GetScreenSpaceXOfLanesStartWithCurrentScale()
 	{
 		return FocalPointScreenSpaceX - (GetLaneAreaWidthWithCurrentScale() >> 1) -
@@ -144,9 +161,25 @@ internal sealed class ActiveEditorChart
 		return FocalPointScreenSpaceX + (GetLaneAndWaveFormAreaWidth() >> 1);
 	}
 
+	public int GetScreenSpaceXOfMiscEventsEnd()
+	{
+		var x = GetScreenSpaceXOfLanesAndWaveFormEnd();
+		if (IsFocused())
+			x += Preferences.Instance.PreferencesOptions.MiscEventAreaWidth;
+		return x;
+	}
+
 	public int GetScreenSpaceXOfLanesAndWaveFormEndWithCurrentScale()
 	{
 		return FocalPointScreenSpaceX + (GetLaneAndWaveFormAreaWidthWithCurrentScale() >> 1);
+	}
+
+	public int GetScreenSpaceXOfMiscEventsEndWithCurrentScale()
+	{
+		var x = GetScreenSpaceXOfLanesAndWaveFormEndWithCurrentScale();
+		if (IsFocused())
+			x += Preferences.Instance.PreferencesOptions.MiscEventAreaWidth;
+		return x;
 	}
 
 	public int GetChartScreenSpaceFocalPointX()
@@ -156,13 +189,17 @@ internal sealed class ActiveEditorChart
 
 	public int GetRelativeXPositionOfLanesAndWaveFormFromChartArea()
 	{
+		var width = 0;
 		if (IsFocused())
 		{
-			// Add width for the measure markers
+			// Add width for the misc events on the left.
+			width += Preferences.Instance.PreferencesOptions.MiscEventAreaWidth;
+
+			// Add width for the measure markers?
 			//width += ;
 		}
 
-		return 0;
+		return width;
 	}
 
 	public int GetLaneAreaWidth()
@@ -221,7 +258,11 @@ internal sealed class ActiveEditorChart
 		// Add width for elements which are only enabled for the focused chart.
 		if (IsFocused())
 		{
+			// Add the area on the left for misc event and measure markers.
 			width += GetRelativeXPositionOfLanesAndWaveFormFromChartArea();
+
+			// Add the area on the right for misc events.
+			width += Preferences.Instance.PreferencesOptions.MiscEventAreaWidth;
 
 			// Add width for the MiniMap if it is mounted to the focused chart.
 			var scrollBarWidth = 0;
@@ -428,8 +469,8 @@ internal sealed class ActiveEditorChart
 
 			rateEvent = rateEnumerator.Current;
 			SpacingHelper.UpdatePpsAndPpr(rateEvent, interpolatedScrollRate, spacingZoom);
-			previousRateEventY = SpacingHelper.GetYPreceding(previousRateEventTime, previousRateEventRow, previousRateEventY,
-				rateEvent!.GetChartTime(), rateEvent.GetRow());
+			previousRateEventY = SpacingHelper.GetY(rateEvent!.GetChartTime(), rateEvent.GetRow(), previousRateEventY,
+				previousRateEventTime, previousRateEventRow);
 			previousRateEventRow = rateEvent.GetRow();
 			previousRateEventTime = rateEvent.GetChartTime();
 		}
@@ -656,7 +697,8 @@ internal sealed class ActiveEditorChart
 		                     + EditorMarkerEvent.GetNumberRelativeAnchorPos(ZoomManager.GetSizeZoom())
 		                     - EditorMarkerEvent.GetNumberAlpha(ZoomManager.GetSizeZoom()) * widgetMeasureNumberFudge;
 		var rMiscWidgetPos = endXPos + widgetStartPadding;
-		MiscEventWidgetLayoutManager.BeginFrame(lMiscWidgetPos, rMiscWidgetPos);
+		MiscEventWidgetLayoutManager.BeginFrame(lMiscWidgetPos, rMiscWidgetPos,
+			Preferences.Instance.PreferencesOptions.MiscEventAreaWidth);
 	}
 
 	/// <summary>
@@ -1371,8 +1413,8 @@ internal sealed class ActiveEditorChart
 		if (Selection == null || !SelectedRegion.IsActive())
 			return;
 
-		var canSelectNotes = Preferences.Instance.RenderNotes;
-		var canSelectMiscEvents = Preferences.Instance.RenderMiscEvents;
+		var canSelectNotes = Preferences.Instance.PreferencesOptions.RenderNotes;
+		var canSelectMiscEvents = Preferences.Instance.PreferencesOptions.RenderMiscEvents;
 		var lastSelectedEvent = Selection.GetLastSelectedEvent();
 
 		// Collect the newly selected notes.
@@ -1385,7 +1427,6 @@ internal sealed class ActiveEditorChart
 
 		var (_, arrowHeightUnscaled) = GetArrowDimensions(false);
 		var halfArrowH = arrowHeightUnscaled * ZoomManager.GetSizeZoom() * 0.5;
-		var halfMiscEventH = ImGuiLayoutUtils.GetMiscEditorEventHeight() * 0.5;
 
 		// For clicking, we want to select only one note. The latest note whose bounding rect
 		// overlaps with the point that was clicked. The events are sorted but we cannot binary
@@ -1422,7 +1463,7 @@ internal sealed class ActiveEditorChart
 		// A region was selected, collect all notes in the selected region.
 		else
 		{
-			var (minLane, maxLane) = GetSelectedLanes(SelectedRegion);
+			var (minLane, maxLane) = GetSelectedLanes();
 
 			var fullyOutsideLanes = maxLane < 0 || minLane >= Chart.NumInputs;
 			var partiallyOutsideLanes = !fullyOutsideLanes && (minLane < 0 || maxLane >= Chart.NumInputs);
@@ -1464,44 +1505,10 @@ internal sealed class ActiveEditorChart
 						selectMiscEvents = true;
 				}
 
-				// Select misc. events.
+				// Select misc events.
 				if (selectMiscEvents && canSelectMiscEvents)
 				{
-					// Adjust the time to account for the selection preference for how much of an event should be
-					// within the selected region.
-					var (adjustedMinTime, adjustedMaxTime) = AdjustSelectionTimeRange(minTime, maxTime, halfMiscEventH);
-
-					// Collect potential misc events.
-					var potentialEvents = new List<EditorEvent>();
-
-					// Loop over the misc events in the selected time range and determine their positions.
-					BeginMiscEventWidgetLayoutManagerFrame();
-					var minPosition = 0.0;
-					Chart.TryGetChartPositionFromTime(adjustedMinTime, ref minPosition);
-					var enumerator = Chart.GetMiscEvents().FindBestByPosition(minPosition);
-					while (enumerator != null && enumerator.MoveNext())
-					{
-						var miscEvent = enumerator.Current;
-						if (miscEvent!.GetChartTime() > adjustedMaxTime)
-							break;
-						MiscEventWidgetLayoutManager.PositionEvent(miscEvent);
-						if (!miscEvent.IsSelectableWithModifiers())
-							continue;
-						potentialEvents.Add(miscEvent);
-					}
-
-					// Now that we know the x positions of the potential misc events, check each
-					// event to see if it overlaps the selected region and add it to newlySelectedEvents.
-					var (xStart, xEnd) = SelectedRegion.GetSelectedXScreenSpaceRange();
-					foreach (var potentialEvent in potentialEvents)
-					{
-						if (!(potentialEvent.GetChartTime() >= adjustedMinTime &&
-						      potentialEvent.GetChartTime() <= adjustedMaxTime))
-							continue;
-						if (!DoesMiscEventFallWithinRange(potentialEvent, xStart, xEnd))
-							continue;
-						newlySelectedEvents.Add(potentialEvent);
-					}
+					newlySelectedEvents.AddRange(SelectMiscEvents());
 				}
 			}
 
@@ -1542,42 +1549,10 @@ internal sealed class ActiveEditorChart
 						selectMiscEvents = true;
 				}
 
-				// Select misc. events.
+				// Select misc events.
 				if (selectMiscEvents && canSelectMiscEvents)
 				{
-					// Adjust the position to account for the selection preference for how much of an event should be
-					// within the selected region.
-					var (adjustedMinPosition, adjustedMaxPosition) =
-						AdjustSelectionPositionRange(minPosition, maxPosition, halfMiscEventH);
-
-					// Collect potential misc events.
-					var potentialEvents = new List<EditorEvent>();
-
-					// Loop over the misc events in the selected time range and determine their positions.
-					BeginMiscEventWidgetLayoutManagerFrame();
-					var enumerator = Chart.GetMiscEvents().FindBestByPosition(adjustedMinPosition);
-					while (enumerator != null && enumerator.MoveNext())
-					{
-						var miscEvent = enumerator.Current;
-						if (miscEvent!.GetRow() > adjustedMaxPosition)
-							break;
-						MiscEventWidgetLayoutManager.PositionEvent(miscEvent);
-						if (!miscEvent.IsSelectableWithModifiers())
-							continue;
-						potentialEvents.Add(miscEvent);
-					}
-
-					// Now that we know the x positions of the potential misc events, check each
-					// event to see if it overlaps the selected region and add it to newlySelectedEvents.
-					var (xStart, xEnd) = SelectedRegion.GetSelectedXScreenSpaceRange();
-					foreach (var potentialEvent in potentialEvents)
-					{
-						if (!(potentialEvent.GetRow() >= adjustedMinPosition && potentialEvent.GetRow() <= adjustedMaxPosition))
-							continue;
-						if (!DoesMiscEventFallWithinRange(potentialEvent, xStart, xEnd))
-							continue;
-						newlySelectedEvents.Add(potentialEvent);
-					}
+					newlySelectedEvents.AddRange(SelectMiscEvents());
 				}
 			}
 		}
@@ -1666,15 +1641,439 @@ internal sealed class ActiveEditorChart
 	}
 
 	/// <summary>
+	/// Returns all the miscellaneous EditorEvents which fall within the SelectedRegion.
+	/// Helper for FinishSelectedRegion.
+	/// </summary>
+	/// <returns>List of all miscellaneous EditorEvents which fall within the SelectedRegion.</returns>
+	private List<EditorEvent> SelectMiscEvents()
+	{
+		// Misc events may be offset from their row / time by screen space y values.
+		// As a result, searching for events that fall within the selection's time or row range is insufficient.
+		// We need to extend the search such that misc events which occur earlier or later but would render
+		// within the selection are captured. This requires searching because they are offset by screen space
+		// values and we do not know the screen space position of off screen events without scanning up or down from
+		// the focal point using rate altering events. The function performs two scans starting at the focal point,
+		// one up and one down.
+
+		var newlySelectedEvents = new List<EditorEvent>();
+		var miscEventsToConsider = new HashSet<EditorEvent>();
+
+		// Initialize a frame for the MiscEventWidgetLayoutManager. We will use it to position misc events
+		// so we can compare their bounds to the selected region's bounds.
+		BeginMiscEventWidgetLayoutManagerFrame();
+
+		// Set up a spacing helper with isolated state for searching for the time and row.
+		var spacingHelper = EventSpacingHelper.GetSpacingHelper(Chart);
+
+		// The only point where we know the screen space y position as well as the chart time and chart position
+		// is at the focal point. We will use this as an anchor. We can find the rate altering event which is active
+		// at the focal point, and then perform two scans with it, one up and one down, to find all the misc events
+		// which are potentially in bounds for the selected region.
+		var activeRateEnumerator = Chart.GetRateAlteringEvents().FindBest(Position);
+		if (activeRateEnumerator == null)
+			return newlySelectedEvents;
+		activeRateEnumerator.MoveNext();
+
+		// Get the selected region time and row bounds.
+		var regionStartTime = SelectedRegion.GetStartChartTime();
+		var regionEndTime = SelectedRegion.GetCurrentChartTime();
+		if (regionStartTime > regionEndTime)
+			(regionStartTime, regionEndTime) = (regionEndTime, regionStartTime);
+		var regionStartRow = SelectedRegion.GetStartChartPosition();
+		var regionEndRow = SelectedRegion.GetCurrentChartPosition();
+		if (regionStartRow > regionEndRow)
+			(regionStartRow, regionEndRow) = (regionEndRow, regionStartRow);
+
+		// Region y pixel values of the region to determine.
+		double? selectedRegionStartYScreenSpacePos = null;
+		double? selectedRegionEndYScreenSpacePos = null;
+
+		// Scan.
+		ScanUpForSelectedMiscEvents(spacingHelper, activeRateEnumerator, miscEventsToConsider,
+			regionStartTime, regionEndTime, regionStartRow, regionEndRow, ref selectedRegionStartYScreenSpacePos,
+			ref selectedRegionEndYScreenSpacePos);
+		ScanDownForSelectedMiscEvents(spacingHelper, activeRateEnumerator, miscEventsToConsider,
+			regionStartTime, regionEndTime, regionStartRow, regionEndRow, ref selectedRegionStartYScreenSpacePos,
+			ref selectedRegionEndYScreenSpacePos);
+
+		// Check which potential misc events fall within the selected pixel range.
+		if (selectedRegionStartYScreenSpacePos == null || selectedRegionEndYScreenSpacePos == null)
+			return newlySelectedEvents;
+		var (selectedRegionStartX, selectedRegionEndX) = SelectedRegion.GetSelectedXScreenSpaceRange();
+		foreach (var miscEvent in miscEventsToConsider)
+		{
+			if (DoesMiscEventFallWithinRange(miscEvent, selectedRegionStartX, (double)selectedRegionStartYScreenSpacePos,
+				    selectedRegionEndX, (double)selectedRegionEndYScreenSpacePos))
+			{
+				newlySelectedEvents.Add(miscEvent);
+			}
+		}
+
+		return newlySelectedEvents;
+	}
+
+	/// <summary>
+	/// Helper for SelectMiscEvents.
+	/// </summary>
+	private void ScanUpForSelectedMiscEvents(
+		EventSpacingHelper spacingHelper,
+		IReadOnlyRedBlackTree<EditorRateAlteringEvent>.IReadOnlyRedBlackTreeEnumerator activeRateEnumerator,
+		HashSet<EditorEvent> miscEventsToConsider,
+		double regionStartTime,
+		double regionEndTime,
+		double regionStartRow,
+		double regionEndRow,
+		ref double? selectedRegionStartYScreenSpacePos,
+		ref double? selectedRegionEndYScreenSpacePos)
+	{
+		var interpolatedScrollRate = GetCurrentInterpolatedScrollRate();
+		var spacingZoom = ZoomManager.GetSpacingZoom();
+		var miscEvents = Chart.GetMiscEvents();
+		var checkRegionByTime = Preferences.Instance.PreferencesScroll.SpacingMode == SpacingMode.ConstantTime;
+		var focalPointChartTime = Position.ChartTime;
+		var focalPointChartPosition = Position.ChartPosition;
+		var focalPointYDouble = (double)FocalPointScreenSpaceY;
+
+		// Scan up.
+		var rateEnumerator = activeRateEnumerator.Clone();
+		spacingHelper.UpdatePpsAndPpr(rateEnumerator.Current, interpolatedScrollRate, spacingZoom);
+		var rateEventY = spacingHelper.GetY(rateEnumerator.Current, focalPointYDouble, focalPointChartTime,
+			focalPointChartPosition);
+		var rateChartTime = rateEnumerator.Current!.GetChartTime();
+		var rateRow = rateEnumerator.Current.GetRow();
+		IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator miscEventEnumerator;
+		if (rateEnumerator.Current.IsMiscEvent())
+			miscEventEnumerator = miscEvents.Find(rateEnumerator.Current);
+		else
+			miscEventEnumerator = miscEvents.FindGreatestPreceding(rateEnumerator.Current);
+		miscEventEnumerator.MoveNext();
+		var scannedBeyondRegionBoundaryEnoughToCaptureMiscEvents = false;
+		var regionStartIsInScanRange = checkRegionByTime ? regionStartTime <= rateChartTime : regionStartRow <= rateRow;
+		var firstRateEventY = rateEventY;
+		while (true)
+		{
+			// Early out.
+			if (scannedBeyondRegionBoundaryEnoughToCaptureMiscEvents)
+				break;
+
+			// Check the chunk from the previous rate event.
+			if (rateEnumerator.MovePrev())
+			{
+				spacingHelper.UpdatePpsAndPpr(rateEnumerator.Current, interpolatedScrollRate, spacingZoom);
+				var prevRateChartTime = rateEnumerator.Current!.GetChartTime();
+				var prevRateRow = rateEnumerator.Current.GetRow();
+				var previousRateEventY = spacingHelper.GetY(prevRateChartTime, prevRateRow, rateEventY, rateChartTime, rateRow);
+
+				// Check region start.
+				if (selectedRegionStartYScreenSpacePos == null
+				    && ((checkRegionByTime && regionStartTime >= prevRateChartTime && regionStartTime <= rateChartTime)
+				        || (!checkRegionByTime && regionStartRow >= prevRateRow && regionStartRow <= rateRow)))
+				{
+					selectedRegionStartYScreenSpacePos = spacingHelper.GetY(regionStartTime, regionStartRow, previousRateEventY,
+						prevRateChartTime, prevRateRow);
+				}
+
+				// Check region end.
+				if (selectedRegionEndYScreenSpacePos == null
+				    && regionEndTime >= prevRateChartTime
+				    && regionEndTime <= rateChartTime)
+				{
+					selectedRegionEndYScreenSpacePos = spacingHelper.GetY(regionEndTime, regionEndRow, previousRateEventY,
+						prevRateChartTime, prevRateRow);
+				}
+
+				// Check misc events.
+				while (!scannedBeyondRegionBoundaryEnoughToCaptureMiscEvents && miscEventEnumerator.IsCurrentValid())
+				{
+					var chartTime = miscEventEnumerator.Current!.GetChartTime();
+					var row = miscEventEnumerator.Current.GetChartPosition();
+
+					if ((checkRegionByTime && chartTime >= prevRateChartTime && chartTime <= rateChartTime)
+					    || (!checkRegionByTime && row >= prevRateRow && row <= rateRow))
+					{
+						// Compute the Y of the misc event and add it to our set of misc events to consider.
+						var miscEventRowY =
+							spacingHelper.GetY(chartTime, row, previousRateEventY, prevRateChartTime, prevRateRow);
+						MiscEventWidgetLayoutManager.PositionEvent(miscEventEnumerator.Current, miscEventRowY);
+						miscEventsToConsider.Add(miscEventEnumerator.Current);
+						miscEventEnumerator.MovePrev();
+
+						CheckForSettingScanBeyondBoundaryFlagForScanningUp(selectedRegionStartYScreenSpacePos,
+							ref scannedBeyondRegionBoundaryEnoughToCaptureMiscEvents, miscEventRowY, regionStartIsInScanRange,
+							firstRateEventY);
+					}
+					else
+					{
+						break;
+					}
+				}
+
+				rateChartTime = prevRateChartTime;
+				rateRow = prevRateRow;
+				rateEventY = previousRateEventY;
+			}
+
+			// No previous rate event, scan up indefinitely.
+			else
+			{
+				// Check region start.
+				if (selectedRegionStartYScreenSpacePos == null && (
+					    (checkRegionByTime && regionStartTime <= rateChartTime)
+					    || (!checkRegionByTime && regionStartRow <= rateRow)))
+				{
+					selectedRegionStartYScreenSpacePos =
+						spacingHelper.GetY(regionStartTime, regionStartRow, rateEventY, rateChartTime, rateRow);
+				}
+
+				// Check region end.
+				if (selectedRegionEndYScreenSpacePos == null && (
+					    (checkRegionByTime && regionEndTime <= rateChartTime)
+					    || (!checkRegionByTime && regionEndRow <= rateRow)))
+				{
+					selectedRegionEndYScreenSpacePos =
+						spacingHelper.GetY(regionEndTime, regionEndRow, rateEventY, rateChartTime, rateRow);
+				}
+
+				// Check misc events.
+				while (!scannedBeyondRegionBoundaryEnoughToCaptureMiscEvents && miscEventEnumerator.IsCurrentValid())
+				{
+					var chartTime = miscEventEnumerator.Current!.GetChartTime();
+					var row = miscEventEnumerator.Current.GetChartPosition();
+					if ((checkRegionByTime && chartTime <= rateChartTime) || (!checkRegionByTime && row <= rateRow))
+					{
+						var miscEventRowY = spacingHelper.GetY(chartTime, row, rateEventY, rateChartTime, rateRow);
+						MiscEventWidgetLayoutManager.PositionEvent(miscEventEnumerator.Current, miscEventRowY);
+						miscEventsToConsider.Add(miscEventEnumerator.Current);
+
+						CheckForSettingScanBeyondBoundaryFlagForScanningUp(selectedRegionStartYScreenSpacePos,
+							ref scannedBeyondRegionBoundaryEnoughToCaptureMiscEvents, miscEventRowY, regionStartIsInScanRange,
+							firstRateEventY);
+					}
+
+					miscEventEnumerator.MovePrev();
+				}
+
+				// Stop looping.
+				break;
+			}
+		}
+	}
+
+	/// <summary>
+	/// Helper for SelectMiscEvents.
+	/// </summary>
+	private void CheckForSettingScanBeyondBoundaryFlagForScanningUp(
+		double? selectedRegionStartYScreenSpacePos,
+		ref bool scannedBeyondRegionBoundaryEnoughToCaptureMiscEvents,
+		double miscEventRowY,
+		bool regionStartIsInScanRange,
+		double firstRateEventY)
+	{
+		// Check for scanning so far beyond the region boundary that we can safely stop.
+		// If we know the y pos of the region start, check if we are far enough beyond it.
+		if (selectedRegionStartYScreenSpacePos != null)
+		{
+			if (miscEventRowY < selectedRegionStartYScreenSpacePos -
+			    MiscEventWidgetLayoutManager.GetMaxYForSingleRow())
+			{
+				scannedBeyondRegionBoundaryEnoughToCaptureMiscEvents = true;
+			}
+		}
+		// If the region start is not within the scan range then we are already beyond it.
+		// Check if we are far enough beyond the first rate event.
+		else if (!regionStartIsInScanRange)
+		{
+			if (miscEventRowY < firstRateEventY - MiscEventWidgetLayoutManager.GetMaxYForSingleRow())
+			{
+				scannedBeyondRegionBoundaryEnoughToCaptureMiscEvents = true;
+			}
+		}
+	}
+
+	/// <summary>
+	/// Helper for SelectMiscEvents.
+	/// </summary>
+	private void ScanDownForSelectedMiscEvents(
+		EventSpacingHelper spacingHelper,
+		IReadOnlyRedBlackTree<EditorRateAlteringEvent>.IReadOnlyRedBlackTreeEnumerator activeRateEnumerator,
+		HashSet<EditorEvent> miscEventsToConsider,
+		double regionStartTime,
+		double regionEndTime,
+		double regionStartRow,
+		double regionEndRow,
+		ref double? selectedRegionStartYScreenSpacePos,
+		ref double? selectedRegionEndYScreenSpacePos)
+	{
+		var interpolatedScrollRate = GetCurrentInterpolatedScrollRate();
+		var spacingZoom = ZoomManager.GetSpacingZoom();
+		var miscEvents = Chart.GetMiscEvents();
+		var checkRegionByTime = Preferences.Instance.PreferencesScroll.SpacingMode == SpacingMode.ConstantTime;
+		var focalPointChartTime = Position.ChartTime;
+		var focalPointChartPosition = Position.ChartPosition;
+		var focalPointYDouble = (double)FocalPointScreenSpaceY;
+
+		var rateEnumerator = activeRateEnumerator.Clone();
+		spacingHelper.UpdatePpsAndPpr(rateEnumerator.Current, interpolatedScrollRate, spacingZoom);
+		var rateEventY = spacingHelper.GetY(rateEnumerator.Current, focalPointYDouble, focalPointChartTime,
+			focalPointChartPosition);
+		var rateChartTime = rateEnumerator.Current!.GetChartTime();
+		var rateRow = rateEnumerator.Current.GetRow();
+		IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator miscEventEnumerator;
+		if (rateEnumerator.Current.IsMiscEvent())
+			miscEventEnumerator = miscEvents.Find(rateEnumerator.Current);
+		else
+			miscEventEnumerator = miscEvents.FindLeastFollowing(rateEnumerator.Current);
+		miscEventEnumerator.MoveNext();
+		var scannedBeyondRegionBoundaryEnoughToCaptureMiscEvents = false;
+		var regionEndIsInScanRange = checkRegionByTime ? regionEndTime >= rateChartTime : regionEndRow >= rateRow;
+		var firstRateEventY = rateEventY;
+		while (true)
+		{
+			// Early out.
+			if (scannedBeyondRegionBoundaryEnoughToCaptureMiscEvents)
+				break;
+
+			// Check the chunk from the current rate event to the next.
+			if (rateEnumerator.MoveNext())
+			{
+				var nextRateEventY = spacingHelper.GetY(rateEnumerator.Current, rateEventY);
+				var nextRateChartTime = rateEnumerator.Current.GetChartTime();
+				var nextRateRow = rateEnumerator.Current.GetRow();
+
+				// Check region start.
+				if (selectedRegionStartYScreenSpacePos == null
+				    && ((checkRegionByTime && regionStartTime >= rateChartTime && regionStartTime <= nextRateChartTime)
+				        || (!checkRegionByTime && regionStartRow >= rateRow && regionStartRow <= nextRateRow)))
+				{
+					selectedRegionStartYScreenSpacePos = spacingHelper.GetY(regionStartTime, regionStartRow, rateEventY,
+						rateChartTime, rateRow);
+				}
+
+				// Check region end.
+				if (selectedRegionEndYScreenSpacePos == null
+				    && regionEndTime >= rateChartTime
+				    && regionEndTime <= nextRateChartTime)
+				{
+					selectedRegionEndYScreenSpacePos = spacingHelper.GetY(regionEndTime, regionEndRow, rateEventY,
+						rateChartTime, rateRow);
+				}
+
+				// Check misc events.
+				while (!scannedBeyondRegionBoundaryEnoughToCaptureMiscEvents && miscEventEnumerator.IsCurrentValid())
+				{
+					var chartTime = miscEventEnumerator.Current!.GetChartTime();
+					var row = miscEventEnumerator.Current.GetChartPosition();
+
+					if ((checkRegionByTime && chartTime >= rateChartTime && chartTime <= nextRateChartTime)
+					    || (!checkRegionByTime && row >= rateRow && row <= nextRateRow))
+					{
+						var miscEventRowY = spacingHelper.GetY(chartTime, row, rateEventY, rateChartTime, rateRow);
+						MiscEventWidgetLayoutManager.PositionEvent(miscEventEnumerator.Current, miscEventRowY);
+						miscEventsToConsider.Add(miscEventEnumerator.Current);
+						miscEventEnumerator.MoveNext();
+
+						CheckForSettingScanBeyondBoundaryFlagForScanningDown(selectedRegionEndYScreenSpacePos,
+							ref scannedBeyondRegionBoundaryEnoughToCaptureMiscEvents, miscEventRowY, regionEndIsInScanRange,
+							firstRateEventY);
+					}
+					else
+					{
+						break;
+					}
+				}
+
+				spacingHelper.UpdatePpsAndPpr(rateEnumerator.Current, interpolatedScrollRate, spacingZoom);
+				rateChartTime = nextRateChartTime;
+				rateRow = nextRateRow;
+				rateEventY = nextRateEventY;
+			}
+
+			// No next rate event, scan down indefinitely.
+			else
+			{
+				// Check region start.
+				if (selectedRegionStartYScreenSpacePos == null && (
+					    (checkRegionByTime && regionStartTime >= rateChartTime)
+					    || (!checkRegionByTime && regionStartRow >= rateRow)))
+				{
+					selectedRegionStartYScreenSpacePos =
+						spacingHelper.GetY(regionStartTime, regionStartRow, rateEventY, rateChartTime, rateRow);
+				}
+
+				// Check region end.
+				if (selectedRegionEndYScreenSpacePos == null && (
+					    (checkRegionByTime && regionEndTime >= rateChartTime)
+					    || (!checkRegionByTime && regionEndRow >= rateRow)))
+				{
+					selectedRegionEndYScreenSpacePos =
+						spacingHelper.GetY(regionEndTime, regionEndRow, rateEventY, rateChartTime, rateRow);
+				}
+
+				// Check misc events.
+				while (!scannedBeyondRegionBoundaryEnoughToCaptureMiscEvents && miscEventEnumerator.IsCurrentValid())
+				{
+					var chartTime = miscEventEnumerator.Current!.GetChartTime();
+					var row = miscEventEnumerator.Current.GetChartPosition();
+					if ((checkRegionByTime && chartTime >= rateChartTime) || (!checkRegionByTime && row >= rateRow))
+					{
+						var miscEventRowY = spacingHelper.GetY(chartTime, row, rateEventY, rateChartTime, rateRow);
+						MiscEventWidgetLayoutManager.PositionEvent(miscEventEnumerator.Current, miscEventRowY);
+						miscEventsToConsider.Add(miscEventEnumerator.Current);
+
+						CheckForSettingScanBeyondBoundaryFlagForScanningDown(selectedRegionEndYScreenSpacePos,
+							ref scannedBeyondRegionBoundaryEnoughToCaptureMiscEvents, miscEventRowY, regionEndIsInScanRange,
+							firstRateEventY);
+					}
+
+					miscEventEnumerator.MoveNext();
+				}
+
+				// Stop looping.
+				break;
+			}
+		}
+	}
+
+	/// <summary>
+	/// Helper for SelectMiscEvents.
+	/// </summary>
+	private void CheckForSettingScanBeyondBoundaryFlagForScanningDown(
+		double? selectedRegionEndYScreenSpacePos,
+		ref bool scannedBeyondRegionBoundaryEnoughToCaptureMiscEvents,
+		double miscEventRowY,
+		bool regionEndIsInScanRange,
+		double firstRateEventY)
+	{
+		// Check for scanning so far beyond the region boundary that we can safely stop.
+		// If we know the y pos of the region end, check if we are far enough beyond it.
+		if (selectedRegionEndYScreenSpacePos != null)
+		{
+			if (miscEventRowY > selectedRegionEndYScreenSpacePos + MiscEventWidgetLayoutManager.GetMaxYForSingleRow())
+			{
+				scannedBeyondRegionBoundaryEnoughToCaptureMiscEvents = true;
+			}
+		}
+		// If the region end is not within the scan range then we are already beyond it.
+		// Check if we are far enough beyond the first rate event.
+		else if (!regionEndIsInScanRange)
+		{
+			if (miscEventRowY > firstRateEventY + MiscEventWidgetLayoutManager.GetMaxYForSingleRow())
+			{
+				scannedBeyondRegionBoundaryEnoughToCaptureMiscEvents = true;
+			}
+		}
+	}
+
+	/// <summary>
 	/// Gets the min and max lanes encompassed by the SelectedRegion based on the current selection preferences.
 	/// </summary>
 	/// <returns>Min and max lanes from the SelectedRegion.</returns>
 	/// <remarks>Helper for FinishSelectedRegion.</remarks>
-	private (int, int) GetSelectedLanes(SelectedRegion selectedRegion)
+	private (int, int) GetSelectedLanes()
 	{
 		var (arrowWidthUnscaled, _) = GetArrowDimensions(false);
 		var lanesWidth = Chart.NumInputs * arrowWidthUnscaled;
-		var (minChartX, maxChartX) = selectedRegion.GetSelectedXChartSpaceRange();
+		var (minChartX, maxChartX) = SelectedRegion.GetSelectedXChartSpaceRange();
 
 		// Determine the min and max lanes to consider for selection based on the preference for how notes should be considered.
 		int minLane, maxLane;
@@ -1757,17 +2156,21 @@ internal sealed class ActiveEditorChart
 	/// </summary>
 	/// <returns>Whether the given EditorEvent falls within the given range.</returns>
 	/// <remarks>Helper for FinishSelectedRegion.</remarks>
-	private bool DoesMiscEventFallWithinRange(EditorEvent editorEvent, double xStart, double xEnd)
+	private bool DoesMiscEventFallWithinRange(EditorEvent editorEvent, double xStart, double yStart, double xEnd, double yEnd)
 	{
 		switch (Preferences.Instance.PreferencesSelection.Mode)
 		{
 			case PreferencesSelection.SelectionMode.OverlapAny:
-				return editorEvent.X <= xEnd && editorEvent.X + editorEvent.W >= xStart;
+				return editorEvent.X <= xEnd && editorEvent.X + editorEvent.W >= xStart && editorEvent.Y <= yEnd &&
+				       editorEvent.Y + editorEvent.H >= yStart;
 			case PreferencesSelection.SelectionMode.OverlapAll:
-				return editorEvent.X >= xStart && editorEvent.X + editorEvent.W <= xEnd;
+				return editorEvent.X >= xStart && editorEvent.X + editorEvent.W <= xEnd && editorEvent.Y >= yStart &&
+				       editorEvent.Y + editorEvent.H <= yEnd;
 			case PreferencesSelection.SelectionMode.OverlapCenter:
 			default:
-				return editorEvent.X + editorEvent.W * 0.5 >= xStart && editorEvent.X + editorEvent.W * 0.5 <= xEnd;
+				return editorEvent.X + editorEvent.W * 0.5 >= xStart && editorEvent.X + editorEvent.W * 0.5 <= xEnd
+				                                                     && editorEvent.Y + editorEvent.H * 0.5 >= yStart &&
+				                                                     editorEvent.Y + editorEvent.H * 0.5 <= yEnd;
 		}
 	}
 

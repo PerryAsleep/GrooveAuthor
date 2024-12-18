@@ -120,6 +120,12 @@ internal sealed class EditorPreviewRegionEvent : EditorEvent, IChartRegion, Fume
 		set => WidthInternal = value;
 	}
 
+	public override double H
+	{
+		get => ImGuiLayoutUtils.GetMiscEditorEventHeight();
+		set { }
+	}
+
 	private bool WidthDirty;
 
 	public double DoubleValue
