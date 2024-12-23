@@ -259,7 +259,7 @@ internal sealed class MiscEventWidgetLayoutManager
 				var top = rowY - (yMax - yMin) * 0.5;
 				foreach (var leftEvent in leftEvents)
 				{
-					leftEvent.Value.Y = (leftEvent.Value.Y - yMin) + top;
+					leftEvent.Value.Y = leftEvent.Value.Y - yMin + top;
 				}
 			}
 
@@ -333,7 +333,7 @@ internal sealed class MiscEventWidgetLayoutManager
 				var top = rowY - (yMax - yMin) * 0.5;
 				foreach (var rightEvent in rightEvents)
 				{
-					rightEvent.Value.Y = (rightEvent.Value.Y - yMin) + top;
+					rightEvent.Value.Y = rightEvent.Value.Y - yMin + top;
 				}
 			}
 		}
