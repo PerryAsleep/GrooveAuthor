@@ -196,6 +196,8 @@ internal sealed class MiscEventWidgetLayoutManager
 				var y = rowY;
 				EditorEvent lastEvent = null;
 
+				var yMin = y;
+				var yMax = y;
 				for (var i = 0; i < LeftTypes.Count; i++)
 				{
 					if (!leftEvents.ContainsKey(LeftTypes[i]))
@@ -208,6 +210,9 @@ internal sealed class MiscEventWidgetLayoutManager
 					{
 						lastEvent = currentEvent;
 						(x, y) = AdvanceLeft(e, lastEvent);
+
+						yMin = Math.Min(lastEvent.Y, yMin);
+						yMax = Math.Max(lastEvent.Y + lastEvent.H, yMax);
 					}
 
 					// Shift widgets after this widget further to the left.
@@ -222,6 +227,9 @@ internal sealed class MiscEventWidgetLayoutManager
 							leftEvents[t] = e;
 							added = true;
 							lastEvent = e;
+
+							yMin = Math.Min(e.Y, yMin);
+							yMax = Math.Max(e.Y + e.H, yMax);
 						}
 
 						// Shift existing widget further left.
@@ -229,6 +237,9 @@ internal sealed class MiscEventWidgetLayoutManager
 						currentEvent.X = x;
 						currentEvent.Y = y;
 						lastEvent = currentEvent;
+
+						yMin = Math.Min(lastEvent.Y, yMin);
+						yMax = Math.Max(lastEvent.Y + lastEvent.H, yMax);
 					}
 				}
 
@@ -239,6 +250,16 @@ internal sealed class MiscEventWidgetLayoutManager
 					e.Y = y;
 					leftEvents[t] = e;
 					added = true;
+
+					yMin = Math.Min(e.Y, yMin);
+					yMax = Math.Max(e.Y + e.H, yMax);
+				}
+
+				// Update the Y positions of all events on this row to center them.
+				var top = rowY - (yMax - yMin) * 0.5;
+				foreach (var leftEvent in leftEvents)
+				{
+					leftEvent.Value.Y = (leftEvent.Value.Y - yMin) + top;
 				}
 			}
 
@@ -250,6 +271,8 @@ internal sealed class MiscEventWidgetLayoutManager
 				var y = rowY;
 				EditorEvent lastEvent = null;
 
+				var yMin = y;
+				var yMax = y;
 				for (var i = 0; i < RightTypes.Count; i++)
 				{
 					if (!rightEvents.ContainsKey(RightTypes[i]))
@@ -262,6 +285,9 @@ internal sealed class MiscEventWidgetLayoutManager
 					{
 						lastEvent = currentEvent;
 						(x, y) = AdvanceRight(e, lastEvent);
+
+						yMin = Math.Min(lastEvent.Y, yMin);
+						yMax = Math.Max(lastEvent.Y + lastEvent.H, yMax);
 					}
 
 					// Shift widgets after this widget further to the right.
@@ -276,6 +302,9 @@ internal sealed class MiscEventWidgetLayoutManager
 							rightEvents[t] = e;
 							added = true;
 							lastEvent = e;
+
+							yMin = Math.Min(e.Y, yMin);
+							yMax = Math.Max(e.Y + e.H, yMax);
 						}
 
 						// Shift existing widget further right.
@@ -283,6 +312,9 @@ internal sealed class MiscEventWidgetLayoutManager
 						currentEvent.X = x;
 						currentEvent.Y = y;
 						lastEvent = currentEvent;
+
+						yMin = Math.Min(lastEvent.Y, yMin);
+						yMax = Math.Max(lastEvent.Y + lastEvent.H, yMax);
 					}
 				}
 
@@ -292,6 +324,16 @@ internal sealed class MiscEventWidgetLayoutManager
 					e.X = x;
 					e.Y = y;
 					rightEvents[t] = e;
+
+					yMin = Math.Min(e.Y, yMin);
+					yMax = Math.Max(e.Y + e.H, yMax);
+				}
+
+				// Update the Y positions of all events on this row to center them.
+				var top = rowY - (yMax - yMin) * 0.5;
+				foreach (var rightEvent in rightEvents)
+				{
+					rightEvent.Value.Y = (rightEvent.Value.Y - yMin) + top;
 				}
 			}
 		}
