@@ -17,6 +17,9 @@ namespace StepManiaEditor;
 /// </summary>
 internal sealed class ActiveEditorChart
 {
+	private const int MiscEventPadding = 10;
+	private const int MiscEventLeftSideMarkerNumberAllowance = 10;
+
 	private readonly Editor Editor;
 	private readonly EditorChart Chart;
 	private readonly IReadOnlyZoomManager ZoomManager;
@@ -41,6 +44,7 @@ internal sealed class ActiveEditorChart
 	private bool ChartIsFocused;
 	private int FocalPointScreenSpaceX;
 	private int FocalPointScreenSpaceY;
+	private readonly UIChartHeader Header;
 
 	/// <summary>
 	/// Position. Ideally this would be private but position is tied heavily to systems managed by the Editor including
@@ -75,6 +79,8 @@ internal sealed class ActiveEditorChart
 		LaneEditStates = laneEditStates;
 
 		Position = new EditorPosition(OnPositionChanged, Chart);
+
+		Header = new UIChartHeader(Editor, this);
 	}
 
 	public void Clear()
@@ -193,6 +199,7 @@ internal sealed class ActiveEditorChart
 		if (IsFocused())
 		{
 			// Add width for the misc events on the left.
+			width += GetLeftMiscEventPadding();
 			width += Preferences.Instance.PreferencesOptions.MiscEventAreaWidth;
 
 			// Add width for the measure markers?
@@ -200,6 +207,17 @@ internal sealed class ActiveEditorChart
 		}
 
 		return width;
+	}
+
+	public int GetLeftMiscEventPadding()
+	{
+		return (int)(MiscEventPadding - EditorMarkerEvent.GetNumberRelativeAnchorPos(ZoomManager.GetSizeZoom()) +
+		             MiscEventLeftSideMarkerNumberAllowance * EditorMarkerEvent.GetNumberAlpha(ZoomManager.GetSizeZoom()));
+	}
+
+	public int GetRightMiscEventPadding()
+	{
+		return MiscEventPadding;
 	}
 
 	public int GetLaneAreaWidth()
@@ -345,6 +363,11 @@ internal sealed class ActiveEditorChart
 	#endregion Misc
 
 	#region Accessors
+
+	public Editor GetEditor()
+	{
+		return Editor;
+	}
 
 	public IReadOnlyList<EditorEvent> GetVisibleEvents()
 	{
@@ -684,19 +707,10 @@ internal sealed class ActiveEditorChart
 
 	private void BeginMiscEventWidgetLayoutManagerFrame()
 	{
-		const int widgetStartPadding = 10;
-		const int widgetMeasureNumberFudge = 10;
-
-		var (arrowW, _) = GetArrowDimensions();
-
-		var startPosX = FocalPointScreenSpaceX - Chart.NumInputs * arrowW * 0.5;
-		var endXPos = FocalPointScreenSpaceX + Chart.NumInputs * arrowW * 0.5;
-
-		var lMiscWidgetPos = startPosX
-		                     - widgetStartPadding
-		                     + EditorMarkerEvent.GetNumberRelativeAnchorPos(ZoomManager.GetSizeZoom())
-		                     - EditorMarkerEvent.GetNumberAlpha(ZoomManager.GetSizeZoom()) * widgetMeasureNumberFudge;
-		var rMiscWidgetPos = endXPos + widgetStartPadding;
+		var startPosX = FocalPointScreenSpaceX - (GetLaneAreaWidthWithCurrentScale() >> 1);
+		var endXPos = FocalPointScreenSpaceX + (GetLaneAreaWidthWithCurrentScale() >> 1);
+		var lMiscWidgetPos = startPosX - GetLeftMiscEventPadding();
+		var rMiscWidgetPos = endXPos + GetRightMiscEventPadding();
 		MiscEventWidgetLayoutManager.BeginFrame(lMiscWidgetPos, rMiscWidgetPos,
 			Preferences.Instance.PreferencesOptions.MiscEventAreaWidth);
 	}
@@ -2737,4 +2751,13 @@ internal sealed class ActiveEditorChart
 	}
 
 	#endregion AutoPlayer
+
+	#region UI
+
+	public void DrawHeader()
+	{
+		Header.Draw();
+	}
+
+	#endregion UI
 }

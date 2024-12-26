@@ -25,6 +25,7 @@ internal sealed class ImGuiUtils
 	private const int HelpWidth = 18;
 	private const int CloseWidth = 18;
 	private const int MenuBarHeight = 20;
+	private const int ChartHeaderHeight = 21;
 	private const int MiniMapYPadding = 10;
 	private const int ChartPositionUIYPaddingFromBottom = 10;
 	private const int CDTitleWidth = 164;
@@ -638,6 +639,16 @@ internal sealed class ImGuiUtils
 		ImGui.PushStyleColor(col, newColor);
 	}
 
+	public static void PopAlpha()
+	{
+		ImGui.PopStyleColor();
+	}
+
+	public static void PopAlpha(int count)
+	{
+		ImGui.PopStyleColor(count);
+	}
+
 	#region Window Placement
 
 	public static bool BeginWindow(string title, ref bool showWindow, float width, ImGuiWindowFlags flags = ImGuiWindowFlags.None)
@@ -796,14 +807,19 @@ internal sealed class ImGuiUtils
 		return UiScaled(MenuBarHeight);
 	}
 
+	public static int GetChartHeaderHeight()
+	{
+		return UiScaled(ChartHeaderHeight);
+	}
+
 	public static int GetMiniMapYPaddingFromTopInScreenSpace()
 	{
-		return UiScaled(MenuBarHeight + MiniMapYPadding);
+		return UiScaled(MenuBarHeight + ChartHeaderHeight + MiniMapYPadding);
 	}
 
 	public static int GetMiniMapYPaddingFromTopInChartSpace()
 	{
-		return UiScaled(MiniMapYPadding);
+		return UiScaled(ChartHeaderHeight + MiniMapYPadding);
 	}
 
 	public static int GetMiniMapYPaddingFromBottom()

@@ -1,5 +1,4 @@
-﻿using Fumen;
-using Fumen.Converters;
+﻿using Fumen.Converters;
 using ImGuiNET;
 using static StepManiaEditor.ImGuiUtils;
 

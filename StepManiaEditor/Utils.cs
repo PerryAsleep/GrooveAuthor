@@ -8,6 +8,7 @@ using System.Text;
 using System.Windows.Forms;
 using Fumen;
 using Fumen.Converters;
+using ImGuiNET;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
@@ -19,6 +20,16 @@ internal sealed class Utils
 
 	public const int MaxLogFiles = 10;
 	public const string CustomSavePropertyPrefix = "GA";
+
+	public const ImGuiWindowFlags ChartAreaChildWindowFlags = ImGuiWindowFlags.NoMove
+	                                                          | ImGuiWindowFlags.NoDecoration
+	                                                          | ImGuiWindowFlags.NoSavedSettings
+	                                                          | ImGuiWindowFlags.NoDocking
+	                                                          | ImGuiWindowFlags.NoBringToFrontOnFocus
+	                                                          | ImGuiWindowFlags.NoFocusOnAppearing
+	                                                          | ImGuiWindowFlags.NoScrollWithMouse;
+
+	public const uint UIWindowColor = 0xFF0A0A0A;
 
 	public const uint UITempoColorRGBA = 0x8A297A79; // yellow
 	public const uint UITimeSignatureColorRGBA = 0x8A297A29; // green

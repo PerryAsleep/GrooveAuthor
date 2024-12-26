@@ -2145,11 +2145,6 @@ internal sealed class Editor :
 		return ZoomManager.GetSpacingZoom();
 	}
 
-	public void SetSizeCap(double sizeCap)
-	{
-		ZoomManager.SetSizeCap(sizeCap);
-	}
-
 	public double GetSizeCap()
 	{
 		return ZoomManager.GetSizeCap();
@@ -2189,9 +2184,28 @@ internal sealed class Editor :
 				DrawRegions();
 				DrawReceptors();
 				DrawSnapIndicators();
-				DrawChartEvents();
+
+				// Start a window within the central node so we can clip
+				if (UIDockSpace.BeginCentralNodeAreaWindow())
+				{
+					// Draw the chart events, which include misc event widgets needing to be clipped.
+					DrawChartEvents();
+
+					// Draw the chart headers which also need to be clipped.
+					DrawChartHeaders();
+				}
+
+				UIDockSpace.EndCentralNodeAreaWindow();
+
 				DrawReceptorForegroundEffects();
 				DrawSelectedRegion();
+			}
+			else
+			{
+				// Draw the chart header area even if we aren't rendering the charts.
+				if (UIDockSpace.BeginCentralNodeAreaWindow())
+					DrawChartHeaders();
+				UIDockSpace.EndCentralNodeAreaWindow();
 			}
 
 			DrawMiniMap();
@@ -2203,9 +2217,6 @@ internal sealed class Editor :
 			DrawGui();
 
 			ImGui.PopFont();
-
-
-			//var area = UIDockSpace.GetCentralNodeArea();
 
 			ImGuiRenderer.AfterLayout();
 
@@ -2275,6 +2286,19 @@ internal sealed class Editor :
 		SpriteBatch.End();
 	}
 
+	private void DrawChartHeaders()
+	{
+		UIChartHeader.DrawBackground(ChartArea);
+		for (var i = 0; i < ActiveChartData.Count;)
+		{
+			// The header has a close button which can delete the chart.
+			var chart = ActiveChartData[i];
+			chart.DrawHeader();
+			if (i < ActiveChartData.Count && chart == ActiveChartData[i])
+				i++;
+		}
+	}
+
 	private void DrawBackground()
 	{
 		// If the background should be hidden, just clear with black and return.
@@ -2313,15 +2337,22 @@ internal sealed class Editor :
 		SpriteBatch.End();
 	}
 
+	private bool IsDarkBackgroundVisible()
+	{
+		var p = Preferences.Instance.PreferencesDark;
+		if (!p.ShowDarkBg)
+			return false;
+		if (p.Size == PreferencesDark.SizeMode.Charts && GetFocusedChartData() == null)
+			return false;
+		return true;
+	}
+
 	private void DrawDarkBackground()
 	{
-		if (GetFocusedChartData() == null)
+		if (!IsDarkBackgroundVisible())
 			return;
 
 		var p = Preferences.Instance.PreferencesDark;
-		if (!p.ShowDarkBg)
-			return;
-
 		var (x, w) = GetDarkBgXAndW();
 
 		SpriteBatch.Begin();
@@ -2483,14 +2514,18 @@ internal sealed class Editor :
 		if (!renderMiscEvents && !renderNotes)
 			return;
 
+		var focalPointScreenSpaceY = GetFocalPointScreenSpaceY();
+
 		foreach (var activeChartData in ActiveChartData)
 		{
 			var eventsBeingEdited = new List<EditorEvent>();
+			var arrowGraphicManager = activeChartData.GetArrowGraphicManager();
 
 			foreach (var visibleEvent in activeChartData.GetVisibleEvents())
 			{
 				if (!renderMiscEvents && visibleEvent.IsMiscEvent())
 					continue;
+
 				if (!renderNotes && !visibleEvent.IsMiscEvent())
 					continue;
 
@@ -2516,19 +2551,19 @@ internal sealed class Editor :
 						            && hold.GetEndChartTime() > activeChartData.Position.ChartTime
 						            && hold.GetChartTime() < activeChartData.Position.ChartTime)
 						{
-							hold.SetNextDrawActive(true, GetFocalPointScreenSpaceY());
+							hold.SetNextDrawActive(true, focalPointScreenSpaceY);
 						}
 					}
 				}
 
 				// Draw the event.
-				visibleEvent.Draw(TextureAtlas, SpriteBatch, activeChartData.GetArrowGraphicManager());
+				visibleEvent.Draw(TextureAtlas, SpriteBatch, arrowGraphicManager);
 			}
 
 			// Draw events being edited.
 			foreach (var visibleEvent in eventsBeingEdited)
 			{
-				visibleEvent.Draw(TextureAtlas, SpriteBatch, activeChartData.GetArrowGraphicManager());
+				visibleEvent.Draw(TextureAtlas, SpriteBatch, arrowGraphicManager);
 			}
 		}
 	}
@@ -3038,16 +3073,16 @@ internal sealed class Editor :
 			{
 				w = p.DensityGraphHeight;
 				x = ChartArea.X + ChartArea.Width - w - p.DensityGraphPositionOffset;
-				h = ChartArea.Height + p.DensityGraphWidthOffset * 2;
-				y = ChartArea.Y - p.DensityGraphWidthOffset;
+				h = ChartArea.Height - GetChartHeaderHeight() + p.DensityGraphWidthOffset * 2;
+				y = ChartArea.Y + GetChartHeaderHeight() - p.DensityGraphWidthOffset;
 				break;
 			}
 			case PreferencesDensityGraph.DensityGraphPosition.LeftSideOfWindow:
 			{
 				w = p.DensityGraphHeight;
 				x = ChartArea.X + p.DensityGraphPositionOffset;
-				h = ChartArea.Height + p.DensityGraphWidthOffset * 2;
-				y = ChartArea.Y - p.DensityGraphWidthOffset;
+				h = ChartArea.Height - GetChartHeaderHeight() + p.DensityGraphWidthOffset * 2;
+				y = ChartArea.Y + GetChartHeaderHeight() - p.DensityGraphWidthOffset;
 				break;
 			}
 			case PreferencesDensityGraph.DensityGraphPosition.FocusedChartWithoutScaling:
@@ -3056,8 +3091,8 @@ internal sealed class Editor :
 				if (focusedChartData != null)
 					x = focusedChartData.GetScreenSpaceXOfMiscEventsEnd() + p.DensityGraphPositionOffset;
 				w = p.DensityGraphHeight;
-				h = ChartArea.Height + p.DensityGraphWidthOffset * 2;
-				y = ChartArea.Y - p.DensityGraphWidthOffset;
+				h = ChartArea.Height - GetChartHeaderHeight() + p.DensityGraphWidthOffset * 2;
+				y = ChartArea.Y + GetChartHeaderHeight() - p.DensityGraphWidthOffset;
 				break;
 			}
 			case PreferencesDensityGraph.DensityGraphPosition.FocusedChartWithScaling:
@@ -3066,8 +3101,8 @@ internal sealed class Editor :
 				if (focusedChartData != null)
 					x = focusedChartData.GetScreenSpaceXOfMiscEventsEndWithCurrentScale() + p.DensityGraphPositionOffset;
 				w = p.DensityGraphHeight;
-				h = ChartArea.Height + p.DensityGraphWidthOffset * 2;
-				y = ChartArea.Y - p.DensityGraphWidthOffset;
+				h = ChartArea.Height - GetChartHeaderHeight() + p.DensityGraphWidthOffset * 2;
+				y = ChartArea.Y + GetChartHeaderHeight() - p.DensityGraphWidthOffset;
 				break;
 			}
 			case PreferencesDensityGraph.DensityGraphPosition.TopOfFocusedChart:
@@ -5685,6 +5720,7 @@ internal sealed class Editor :
 				ActiveChartData[i].Clear();
 				ActiveChartData.RemoveAt(i);
 				ActiveCharts.RemoveAt(i);
+				break;
 			}
 		}
 	}

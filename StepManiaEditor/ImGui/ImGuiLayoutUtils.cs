@@ -3230,9 +3230,14 @@ internal sealed class ImGuiLayoutUtils
 		// Selected coloring.
 		if (selected)
 		{
-			ImGui.PushStyleColor(ImGuiCol.WindowBg, 0x484848FF);
+			ImGui.PushStyleColor(ImGuiCol.ChildBg, 0xFF484848);
 			ImGui.PushStyleColor(ImGuiCol.Border, 0xFFFFFFFF);
 			colorPushCount += 2;
+		}
+		else
+		{
+			ImGui.PushStyleColor(ImGuiCol.ChildBg, UIWindowColor);
+			colorPushCount += 1;
 		}
 
 		// Color the frame background to help differentiate controls.
@@ -3242,7 +3247,7 @@ internal sealed class ImGuiLayoutUtils
 		// If fading out, multiply key window elements by the alpha value.
 		if (alpha < 1.0f)
 		{
-			PushAlpha(ImGuiCol.WindowBg, alpha);
+			PushAlpha(ImGuiCol.ChildBg, alpha);
 			PushAlpha(ImGuiCol.Button, alpha);
 			PushAlpha(ImGuiCol.FrameBg, alpha);
 			PushAlpha(ImGuiCol.Text, alpha);
@@ -3271,14 +3276,7 @@ internal sealed class ImGuiLayoutUtils
 		// Start the window.
 		ImGui.SetNextWindowPos(new Vector2(x, y));
 		ImGui.SetNextWindowSize(new Vector2(width, height));
-		if (ImGui.Begin($"##Widget{id}",
-			    ImGuiWindowFlags.NoMove
-			    | ImGuiWindowFlags.NoDecoration
-			    | ImGuiWindowFlags.NoSavedSettings
-			    | ImGuiWindowFlags.NoDocking
-			    | ImGuiWindowFlags.NoBringToFrontOnFocus
-			    | ImGuiWindowFlags.NoFocusOnAppearing
-			    | ImGuiWindowFlags.NoScrollWithMouse))
+		if (ImGui.BeginChild($"##Widget{id}", new Vector2(width, height), ImGuiChildFlags.Border, ChartAreaChildWindowFlags))
 		{
 			var elementWidth = width - GetCloseWidth();
 
@@ -3299,7 +3297,7 @@ internal sealed class ImGuiLayoutUtils
 				PopDisabled();
 		}
 
-		ImGui.End();
+		ImGui.EndChild();
 
 		// Restore window size and padding values.
 		ImGui.GetStyle().FramePadding.X = originalFramePaddingX;

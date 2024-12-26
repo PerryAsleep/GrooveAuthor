@@ -13,6 +13,8 @@ internal sealed class UIDockSpace
 	private const string RootDockSpaceId = "DockSpace";
 	private static Rectangle CentralNodeArea;
 
+	private static float WindowBorderSize = 0.0f;
+
 	/// <summary>
 	/// </summary>
 	/// <remarks>
@@ -146,5 +148,49 @@ internal sealed class UIDockSpace
 	public static Rectangle GetCentralNodeArea()
 	{
 		return CentralNodeArea;
+	}
+
+	/// <summary>
+	/// Begin a window over the Central Node.
+	/// </summary>
+	/// <remarks>
+	/// The only way in ImGui to use clip rects is to do so in the context of a Window.
+	/// You cannot just push an arbitrary clip rect outside of a Window. Because of this
+	/// in order to clip Windows to the Central Node area, we need to use an invisible
+	/// Window that doesn't capture inputs over the Central Node, and then put child
+	/// Windows within that.
+	/// </remarks>
+	/// <returns>True if the Window began and false otherwise.</returns>
+	public static bool BeginCentralNodeAreaWindow()
+	{
+		ImGui.SetNextWindowPos(new Vector2(CentralNodeArea.X, CentralNodeArea.Y));
+		ImGui.SetNextWindowSize(new Vector2(CentralNodeArea.Width, CentralNodeArea.Height));
+
+		WindowBorderSize = ImGui.GetStyle().WindowBorderSize;
+		ImGui.GetStyle().WindowBorderSize = 0;
+		return ImGui.Begin("##ChartAreaWindow"
+			, ImGuiWindowFlags.NoTitleBar
+			  | ImGuiWindowFlags.NoBackground
+			  | ImGuiWindowFlags.NoResize
+			  | ImGuiWindowFlags.NoMove
+			  | ImGuiWindowFlags.NoDecoration
+			  | ImGuiWindowFlags.NoFocusOnAppearing
+			  | ImGuiWindowFlags.NoBringToFrontOnFocus
+			  | ImGuiWindowFlags.NoNavInputs
+			  | ImGuiWindowFlags.NoNavFocus
+			  | ImGuiWindowFlags.NoInputs
+			  | ImGuiWindowFlags.NoDocking
+			  | ImGuiWindowFlags.NoSavedSettings
+			  | ImGuiWindowFlags.NoScrollWithMouse
+		);
+	}
+
+	/// <summary>
+	/// Ends the Window from the previous call to BeginCentralNodeAreaWindow.
+	/// </summary>
+	public static void EndCentralNodeAreaWindow()
+	{
+		ImGui.GetStyle().WindowBorderSize = WindowBorderSize;
+		ImGui.End();
 	}
 }
