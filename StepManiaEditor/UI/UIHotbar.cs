@@ -36,8 +36,6 @@ internal sealed class UIHotbar : UIWindow
 	private static readonly double TableBeatColWidthPct = 67.0 / TotalColumnWidth;
 	private static readonly double TableRowColWidthPct = 78.0 / TotalColumnWidth;
 
-	private static readonly float ButtonSizeCapWidth = UiScaled(24);
-
 	private Editor Editor;
 
 	public static UIHotbar Instance { get; } = new();
@@ -160,17 +158,7 @@ internal sealed class UIHotbar : UIWindow
 				}
 
 				// Size cap.
-				var sizeCap = Editor.GetSizeCap();
-				var originalSizeCap = sizeCap;
-				if (ImGuiLayoutUtils.DrawRowDragDoubleWithThreeButtons("Size Cap", ref sizeCap,
-					    () => Editor.SetSizeCap(1.0), "1", ButtonSizeCapWidth,
-					    () => Editor.SetSizeCap(0.5), "1/2", ButtonSizeCapWidth,
-					    () => Editor.SetSizeCap(0.25), "1/4", ButtonSizeCapWidth,
-					    "Maximum allowed size of the notes.",
-					    0.001f, "%.6f", ZoomManager.MinSizeCap, ZoomManager.MaxSizeCap) && !sizeCap.DoubleEquals(originalSizeCap))
-				{
-					Editor.SetSizeCap(sizeCap);
-				}
+				UIScrollPreferences.DrawSizeCapRow();
 
 				ImGuiLayoutUtils.EndTable();
 			}

@@ -137,6 +137,7 @@ internal class ZoomManager : Fumen.IObserver<PreferencesScroll>, IReadOnlyZoomMa
 		VariableSpacingData = new InterpolatedValueData(MinVariableSpeed, MaxVariableSpeed,
 			pScroll.VariablePixelsPerSecondAtDefaultBPM,
 			newValue => { pScroll.VariablePixelsPerSecondAtDefaultBPM = newValue; });
+		SizeCap = pScroll.SizeCap;
 
 		AllValues = new List<InterpolatedValueData>
 		{
@@ -271,6 +272,9 @@ internal class ZoomManager : Fumen.IObserver<PreferencesScroll>, IReadOnlyZoomMa
 				break;
 			case PreferencesScroll.NotificationVariablePpsChanged:
 				VariableSpacingData.OnValueChanged(notifier.VariablePixelsPerSecondAtDefaultBPM);
+				break;
+			case PreferencesScroll.NotificationSizeCapChanged:
+				SetSizeCap(Preferences.Instance.PreferencesScroll.SizeCap);
 				break;
 		}
 	}

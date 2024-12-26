@@ -1,4 +1,5 @@
-﻿using Fumen.Converters;
+﻿using Fumen;
+using Fumen.Converters;
 using ImGuiNET;
 using static StepManiaEditor.ImGuiUtils;
 
@@ -12,6 +13,7 @@ internal sealed class UIScrollPreferences : UIWindow
 	private static readonly int TitleColumnWidth = UiScaled(120);
 	private static readonly int DefaultWidth = UiScaled(460);
 	private static readonly int OptionsButtonWidth = UiScaled(50);
+	private static readonly float ButtonSizeCapWidth = UiScaled(24);
 
 	public static UIScrollPreferences Instance { get; } = new();
 
@@ -140,6 +142,13 @@ internal sealed class UIScrollPreferences : UIWindow
 			}
 
 			ImGui.Separator();
+			if (ImGuiLayoutUtils.BeginTable("Size Cap", TitleColumnWidth))
+			{
+				DrawSizeCapRow();
+				ImGuiLayoutUtils.EndTable();
+			}
+
+			ImGui.Separator();
 			if (ImGuiLayoutUtils.BeginTable("Scroll Restore", TitleColumnWidth))
 			{
 				if (ImGuiLayoutUtils.DrawRowButton("Restore Defaults", "Restore Defaults",
@@ -198,5 +207,17 @@ internal sealed class UIScrollPreferences : UIWindow
 			ImGuiLayoutUtils.DrawRowEnum<Editor.SpacingMode>(true, title, Preferences.Instance.PreferencesScroll,
 				nameof(PreferencesScroll.SpacingMode), false, help);
 		}
+	}
+
+	public static void DrawSizeCapRow()
+	{
+		var p = Preferences.Instance.PreferencesScroll;
+		ImGuiLayoutUtils.DrawRowDragDoubleWithThreeButtons(false, "Size Cap",
+			p, nameof(PreferencesScroll.SizeCap), false,
+			() => { p.SizeCap = 1.0; }, "1", ButtonSizeCapWidth,
+			() => { p.SizeCap = 0.5; }, "1/2", ButtonSizeCapWidth,
+			() => { p.SizeCap = 0.25; }, "1/4", ButtonSizeCapWidth,
+			"Maximum allowed size of the notes.",
+			0.001f, "%.6f", ZoomManager.MinSizeCap, ZoomManager.MaxSizeCap);
 	}
 }
