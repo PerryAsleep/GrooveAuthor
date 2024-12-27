@@ -121,7 +121,7 @@ internal sealed class ActiveEditorChart
 	public int GetScreenSpaceXOfMiscEventsStart()
 	{
 		var x = GetScreenSpaceXOfLanesStart();
-		if (IsFocused())
+		if (ShouldDrawMiscEvents())
 			x -= Preferences.Instance.PreferencesOptions.MiscEventAreaWidth;
 		return x;
 	}
@@ -129,7 +129,7 @@ internal sealed class ActiveEditorChart
 	public int GetScreenSpaceXOfMiscEventsStartWithCurrentScale()
 	{
 		var x = GetScreenSpaceXOfLanesStartWithCurrentScale();
-		if (IsFocused())
+		if (ShouldDrawMiscEvents())
 			x -= Preferences.Instance.PreferencesOptions.MiscEventAreaWidth;
 		return x;
 	}
@@ -170,7 +170,7 @@ internal sealed class ActiveEditorChart
 	public int GetScreenSpaceXOfMiscEventsEnd()
 	{
 		var x = GetScreenSpaceXOfLanesAndWaveFormEnd();
-		if (IsFocused())
+		if (ShouldDrawMiscEvents())
 			x += Preferences.Instance.PreferencesOptions.MiscEventAreaWidth;
 		return x;
 	}
@@ -183,7 +183,7 @@ internal sealed class ActiveEditorChart
 	public int GetScreenSpaceXOfMiscEventsEndWithCurrentScale()
 	{
 		var x = GetScreenSpaceXOfLanesAndWaveFormEndWithCurrentScale();
-		if (IsFocused())
+		if (ShouldDrawMiscEvents())
 			x += Preferences.Instance.PreferencesOptions.MiscEventAreaWidth;
 		return x;
 	}
@@ -196,15 +196,15 @@ internal sealed class ActiveEditorChart
 	public int GetRelativeXPositionOfLanesAndWaveFormFromChartArea()
 	{
 		var width = 0;
-		if (IsFocused())
+		if (ShouldDrawMiscEvents())
 		{
 			// Add width for the misc events on the left.
 			width += GetLeftMiscEventPadding();
 			width += Preferences.Instance.PreferencesOptions.MiscEventAreaWidth;
-
-			// Add width for the measure markers?
-			//width += ;
 		}
+
+		// Add width for the measure markers?
+		//width += ;
 
 		return width;
 	}
@@ -273,14 +273,17 @@ internal sealed class ActiveEditorChart
 		// account size cap.
 		var width = GetLaneAndWaveFormAreaWidth();
 
+		if (ShouldDrawMiscEvents())
+		{
+			// Add the area on the right for misc events.
+			width += Preferences.Instance.PreferencesOptions.MiscEventAreaWidth;
+		}
+
 		// Add width for elements which are only enabled for the focused chart.
 		if (IsFocused())
 		{
 			// Add the area on the left for misc event and measure markers.
 			width += GetRelativeXPositionOfLanesAndWaveFormFromChartArea();
-
-			// Add the area on the right for misc events.
-			width += Preferences.Instance.PreferencesOptions.MiscEventAreaWidth;
 
 			// Add width for the MiniMap if it is mounted to the focused chart.
 			var scrollBarWidth = 0;
@@ -358,6 +361,11 @@ internal sealed class ActiveEditorChart
 	public EditorChart GetChart()
 	{
 		return Chart;
+	}
+
+	public bool ShouldDrawMiscEvents()
+	{
+		return IsFocused();
 	}
 
 	#endregion Misc
@@ -555,11 +563,15 @@ internal sealed class ActiveEditorChart
 			// Check to see if we have crossed into a new rate altering event section
 			if (nextRateEvent != null && e == nextRateEvent)
 			{
-				// Add a misc widget for this rate event.
 				var rateEventY = SpacingHelper.GetY(e, previousRateEventY);
-				nextRateEvent.Alpha = miscEventAlpha;
-				MiscEventWidgetLayoutManager.PositionEvent(nextRateEvent, rateEventY);
-				noteEvents.Add(nextRateEvent);
+
+				// Add a misc widget for this rate event.
+				if (ShouldDrawMiscEvents())
+				{
+					nextRateEvent.Alpha = miscEventAlpha;
+					MiscEventWidgetLayoutManager.PositionEvent(nextRateEvent, rateEventY);
+					noteEvents.Add(nextRateEvent);
+				}
 
 				// Add a region for this event if appropriate.
 				if (nextRateEvent is IChartRegion region)
@@ -619,13 +631,16 @@ internal sealed class ActiveEditorChart
 			}
 			else
 			{
-				if (e!.IsMiscEvent())
+				if (e!.IsMiscEvent() && ShouldDrawMiscEvents())
 				{
 					e.Alpha = miscEventAlpha;
 					MiscEventWidgetLayoutManager.PositionEvent(e, y);
+					noteEvents.Add(e);
 				}
-
-				noteEvents.Add(e);
+				else
+				{
+					noteEvents.Add(e);
+				}
 
 				// Add a region for this event if appropriate.
 				if (e is IChartRegion region)

@@ -34,7 +34,7 @@ internal sealed class UIChartHeader
 		ImGui.GetStyle().WindowBorderSize = 0;
 
 		ImGui.PushStyleColor(ImGuiCol.ChildBg, Utils.UIWindowColor);
-		
+
 		var size = new Vector2(chartArea.Width, h);
 		ImGui.GetStyle().WindowMinSize = size;
 		ImGui.SetNextWindowPos(new Vector2(chartArea.X, chartArea.Y));
@@ -114,13 +114,14 @@ internal sealed class UIChartHeader
 			ImGui.SetNextItemWidth(buttonWidth);
 			if (ImGui.Button($"<##ChartHeader{index}", new Vector2(buttonWidth, h)))
 			{
-				// TODO: Left/Right chart nav.
+				Editor.MoveActiveChartLeft(editorChart);
 			}
+
 			ImGui.SameLine();
 			ImGui.SetNextItemWidth(buttonWidth);
 			if (ImGui.Button($">##ChartHeader{index}", new Vector2(buttonWidth, 0.0f)))
 			{
-				// TODO: Left/Right chart nav.
+				Editor.MoveActiveChartRight(editorChart);
 			}
 
 			// Close button.

@@ -652,7 +652,7 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	/// <returns>Unique identifier for this event to use for ImGui widgets that draw this event.</returns>
 	protected virtual string GetImGuiId()
 	{
-		return $"{GetType()}{GetLane()}{GetRow()}";
+		return $"{EditorChart.GetId()}{GetType()}{GetLane()}{GetRow()}";
 	}
 
 	/// <summary>

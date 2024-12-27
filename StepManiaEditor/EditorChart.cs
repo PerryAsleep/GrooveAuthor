@@ -82,6 +82,11 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	};
 
 	/// <summary>
+	/// Guid to uniquely identify this Chart;
+	/// </summary>
+	private readonly Guid Id;
+
+	/// <summary>
 	/// WorkQueue for long running tasks like saving.
 	/// </summary>
 	private readonly WorkQueue WorkQueue;
@@ -440,6 +445,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	/// <param name="chart">Chart to use.</param>
 	public EditorChart(EditorSong editorSong, Chart chart)
 	{
+		Id = Guid.NewGuid();
 		WorkQueue = new WorkQueue();
 		ExpressedChartConfigInternal = ExpressedChartConfigManager.DefaultExpressedChartDynamicConfigGuid;
 
@@ -499,6 +505,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	/// <param name="chartType">ChartType to create.</param>
 	public EditorChart(EditorSong editorSong, ChartType chartType)
 	{
+		Id = Guid.NewGuid();
 		WorkQueue = new WorkQueue();
 
 		ExpressedChartConfigInternal = ExpressedChartConfigManager.DefaultExpressedChartDynamicConfigGuid;
@@ -550,6 +557,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	/// <param name="other">Other EditorChart to clone.</param>
 	public EditorChart(EditorChart other)
 	{
+		Id = Guid.NewGuid();
 		WorkQueue = new WorkQueue();
 
 		ExpressedChartConfigInternal = other.ExpressedChartConfigInternal;
@@ -856,6 +864,11 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	#endregion Constructors
 
 	#region Accessors
+
+	public Guid GetId()
+	{
+		return Id;
+	}
 
 	public IReadOnlyEventTree GetEvents()
 	{
@@ -3526,26 +3539,22 @@ internal sealed class ChartComparer : IComparer<EditorChart>
 				return comparison;
 		}
 
-		// Compare by DifficultyType
 		comparison = c1.ChartDifficultyType - c2.ChartDifficultyType;
 		if (comparison != 0)
 			return comparison;
-
-		// Compare by Rating
 		comparison = c1.Rating - c2.Rating;
 		if (comparison != 0)
 			return comparison;
-
 		comparison = StringCompare(c1.Name, c2.Name);
 		if (comparison != 0)
 			return comparison;
-
 		comparison = StringCompare(c1.Description, c2.Description);
 		if (comparison != 0)
 			return comparison;
-
-		// TODO: This should use note count not event count.
-		return c1.GetEvents().GetCount() - c2.GetEvents().GetCount();
+		comparison = c1.GetStepTotals().GetStepCount() - c2.GetStepTotals().GetStepCount();
+		if (comparison != 0)
+			return comparison;
+		return c1.GetId().CompareTo(c2.GetId());
 	}
 
 	int IComparer<EditorChart>.Compare(EditorChart c1, EditorChart c2)

@@ -5767,6 +5767,44 @@ internal sealed class Editor :
 		UpdateChartPositions();
 	}
 
+	public void MoveActiveChartLeft(EditorChart chart)
+	{
+		var index = int.MaxValue;
+		for (var i = 0; i < ActiveCharts.Count; i++)
+		{
+			if (chart == ActiveCharts[i])
+			{
+				index = i;
+				break;
+			}
+		}
+
+		if (index == int.MaxValue || index == 0)
+			return;
+
+		(ActiveCharts[index - 1], ActiveCharts[index]) = (ActiveCharts[index], ActiveCharts[index - 1]);
+		(ActiveChartData[index - 1], ActiveChartData[index]) = (ActiveChartData[index], ActiveChartData[index - 1]);
+	}
+
+	public void MoveActiveChartRight(EditorChart chart)
+	{
+		var index = int.MaxValue;
+		for (var i = 0; i < ActiveCharts.Count; i++)
+		{
+			if (chart == ActiveCharts[i])
+			{
+				index = i;
+				break;
+			}
+		}
+
+		if (index == int.MaxValue || index == ActiveCharts.Count - 1)
+			return;
+
+		(ActiveCharts[index + 1], ActiveCharts[index]) = (ActiveCharts[index], ActiveCharts[index + 1]);
+		(ActiveChartData[index + 1], ActiveChartData[index]) = (ActiveChartData[index], ActiveChartData[index + 1]);
+	}
+
 	public void ShowChart(EditorChart chart, bool withDedicatedTab)
 	{
 		if (chart == null)
