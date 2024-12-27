@@ -7,12 +7,7 @@ namespace StepManiaEditor;
 
 public interface IReadOnlyKeyCommandManager
 {
-	public bool IsKeyDownThisFrame(Keys key);
-	public bool IsControlDown();
-	public bool IsShiftDown();
-	public bool IsAltDown();
-	public bool IsWinDown();
-	public bool IsKeyDown(Keys key);
+	public bool IsAnyInputDown(List<Keys[]> inputs);
 }
 
 /// <summary>
@@ -331,33 +326,50 @@ internal sealed class KeyCommandManager : IReadOnlyKeyCommandManager
 		CommandsDirty = true;
 	}
 
-	public bool IsKeyDownThisFrame(Keys key)
+	private bool IsKeyDownThisFrame(Keys key)
 	{
 		return IsKeyDown(key) && !PreviousState.IsKeyDown(key);
 	}
 
-	public bool IsControlDown()
+	private bool IsKeyDown(Keys key)
 	{
-		return IsKeyDown(Keys.LeftControl) || IsKeyDown(Keys.RightControl);
+		switch (key)
+		{
+			case Keys.LeftControl:
+			case Keys.RightControl:
+				return Keyboard.GetState().IsKeyDown(Keys.LeftControl) || Keyboard.GetState().IsKeyDown(Keys.RightControl);
+			case Keys.LeftShift:
+			case Keys.RightShift:
+				return Keyboard.GetState().IsKeyDown(Keys.LeftShift) || Keyboard.GetState().IsKeyDown(Keys.RightShift);
+			case Keys.LeftAlt:
+			case Keys.RightAlt:
+				return Keyboard.GetState().IsKeyDown(Keys.LeftAlt) || Keyboard.GetState().IsKeyDown(Keys.RightAlt);
+			case Keys.LeftWindows:
+			case Keys.RightWindows:
+				return Keyboard.GetState().IsKeyDown(Keys.LeftWindows) || Keyboard.GetState().IsKeyDown(Keys.RightWindows);
+			default:
+				return Keyboard.GetState().IsKeyDown(key);
+		}
 	}
 
-	public bool IsShiftDown()
+	public bool IsAnyInputDown(List<Keys[]> inputs)
 	{
-		return IsKeyDown(Keys.LeftShift) || IsKeyDown(Keys.RightShift);
-	}
+		foreach (var input in inputs)
+		{
+			var inputDown = true;
+			foreach (var key in input)
+			{
+				if (!IsKeyDown(key))
+				{
+					inputDown = false;
+					break;
+				}
+			}
 
-	public bool IsAltDown()
-	{
-		return IsKeyDown(Keys.LeftAlt) || IsKeyDown(Keys.RightAlt);
-	}
+			if (inputDown)
+				return true;
+		}
 
-	public bool IsWinDown()
-	{
-		return IsKeyDown(Keys.LeftWindows) || IsKeyDown(Keys.RightWindows);
-	}
-
-	public bool IsKeyDown(Keys key)
-	{
-		return Keyboard.GetState().IsKeyDown(key);
+		return false;
 	}
 }

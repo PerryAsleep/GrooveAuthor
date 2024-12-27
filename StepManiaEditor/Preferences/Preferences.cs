@@ -133,6 +133,9 @@ internal sealed class Preferences
 	[JsonInclude] public PreferencesStream PreferencesStream = new();
 	[JsonInclude] public PreferencesDensityGraph PreferencesDensityGraph = new();
 
+	// Key Binds
+	[JsonInclude] public PreferencesKeyBinds PreferencesKeyBinds = new();
+
 	// Log preferences
 	[JsonInclude] public bool ShowLogWindow = true;
 	[JsonInclude] public int LogWindowDateDisplay = 1;

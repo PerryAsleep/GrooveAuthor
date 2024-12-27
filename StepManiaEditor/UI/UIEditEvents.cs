@@ -32,6 +32,7 @@ internal sealed class UIEditEvents
 
 	private void DrawShiftEventsMenuItems(IEnumerable<EditorEvent> events = null)
 	{
+		var p = Preferences.Instance.PreferencesKeyBinds;
 		var chart = Editor.GetFocusedChart();
 		var allEvents = false;
 		if (events == null)
@@ -73,7 +74,7 @@ internal sealed class UIEditEvents
 		}
 		else
 		{
-			if (ImGui.MenuItem("Shift Right and Wrap", "Ctrl+Shift+Right"))
+			if (ImGui.MenuItem("Shift Right and Wrap", UIControls.GetCommandString(p.ShiftRightAndWrap)))
 			{
 				Editor.OnShiftNotesRightAndWrap(events);
 			}
@@ -93,7 +94,7 @@ internal sealed class UIEditEvents
 		}
 		else
 		{
-			if (ImGui.MenuItem("Shift Left and Wrap", "Ctrl+Shift+Left"))
+			if (ImGui.MenuItem("Shift Left and Wrap", UIControls.GetCommandString(p.ShiftLeftAndWrap)))
 			{
 				Editor.OnShiftNotesLeftAndWrap(events);
 			}
@@ -116,12 +117,12 @@ internal sealed class UIEditEvents
 		}
 		else
 		{
-			if (ImGui.MenuItem($"Shift Earlier ({shiftAmount})", "Ctrl+Shift+Up"))
+			if (ImGui.MenuItem($"Shift Earlier ({shiftAmount})", UIControls.GetCommandString(p.ShiftEarlier)))
 			{
 				Editor.OnShiftNotesEarlier(events);
 			}
 
-			if (ImGui.MenuItem($"Shift Later ({shiftAmount})", "Ctrl+Shift+Down"))
+			if (ImGui.MenuItem($"Shift Later ({shiftAmount})", UIControls.GetCommandString(p.ShiftLater)))
 			{
 				Editor.OnShiftNotesLater(events);
 			}
@@ -311,13 +312,15 @@ internal sealed class UIEditEvents
 
 	public void DrawSelectAllMenu()
 	{
+		var p = Preferences.Instance.PreferencesKeyBinds;
+
 		if (ImGui.BeginMenu("Select All"))
 		{
 			var disabled = !(Editor.GetFocusedChart()?.CanBeEdited() ?? false);
 			if (disabled)
 				PushDisabled();
 
-			if (ImGui.MenuItem("Notes", "Ctrl+A"))
+			if (ImGui.MenuItem("Notes", UIControls.GetCommandString(p.SelectAll)))
 			{
 				Editor.OnSelectAll();
 			}
@@ -357,12 +360,12 @@ internal sealed class UIEditEvents
 				Editor.OnSelectAll((e) => e is EditorHoldNoteEvent);
 			}
 
-			if (ImGui.MenuItem("Miscellaneous Events", "Ctrl+Alt+A"))
+			if (ImGui.MenuItem("Miscellaneous Events", UIControls.GetCommandString(p.SelectAllMiscEvents)))
 			{
 				Editor.OnSelectAllAlt();
 			}
 
-			if (ImGui.MenuItem("Notes and Miscellaneous Events", "Ctrl+Shift+A"))
+			if (ImGui.MenuItem("Notes and Miscellaneous Events", UIControls.GetCommandString(p.SelectAllNotes)))
 			{
 				Editor.OnSelectAllShift();
 			}
@@ -500,7 +503,7 @@ internal sealed class UIEditEvents
 					nameof(EditorSong.SampleStart), startTime, true));
 			}
 
-			ToolTip(EditorPreviewRegionEvent.EventShortDescription);
+			ToolTip(EditorPreviewRegionEvent.GetEventShortDescription());
 			if (MenuItemWithColor("(Move) End Hint", true, UILastSecondHintColorRGBA))
 			{
 				var currentTime = Math.Max(0.0, position.ChartTime);

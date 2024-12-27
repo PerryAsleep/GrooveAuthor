@@ -73,6 +73,7 @@ internal sealed class UIHotbar : UIWindow
 		if (ImGui.Begin(WindowTitle, ref Preferences.Instance.ShowHotbar))
 		{
 			var pScroll = Preferences.Instance.PreferencesScroll;
+			var pKeyBinds = Preferences.Instance.PreferencesKeyBinds;
 			var spacing = ImGui.GetStyle().ItemSpacing.X;
 			var totalWidth = ImGui.GetContentRegionAvail().X;
 			var tableUIWidth = ColumnWidthTitleUI + ColumnWidthValueUI + spacing;
@@ -87,6 +88,7 @@ internal sealed class UIHotbar : UIWindow
 				UIScrollPreferences.DrawSpacingModeRow("Spacing Mode", true);
 
 				// Spacing.
+				var keyBind = UIControls.GetCommandString(pKeyBinds.ScrollSpacing) + UIControls.MultipleKeysJoinString + "Scroll";
 				switch (pScroll.SpacingMode)
 				{
 					case SpacingMode.ConstantRow:
@@ -101,7 +103,7 @@ internal sealed class UIHotbar : UIWindow
 							(float)PreferencesScroll.DefaultRowBasedPixelsPerRow,
 							false,
 							"Spacing in pixels per row at default zoom level." +
-							"\n\nSpacing can be adjusted with Shift+Scroll.",
+							$"\n\nSpacing can be adjusted with {keyBind}.",
 							"%.3f",
 							ImGuiSliderFlags.Logarithmic);
 						break;
@@ -118,7 +120,7 @@ internal sealed class UIHotbar : UIWindow
 							(float)PreferencesScroll.DefaultTimeBasedPixelsPerSecond,
 							false,
 							"Speed in pixels per second at default zoom level." +
-							"\n\nSpacing can be adjusted with Shift+Scroll.",
+							$"\n\nSpacing can be adjusted with {keyBind}.",
 							"%.3f",
 							ImGuiSliderFlags.Logarithmic);
 						break;
@@ -135,7 +137,7 @@ internal sealed class UIHotbar : UIWindow
 							(float)PreferencesScroll.DefaultVariablePixelsPerSecondAtDefaultBPM,
 							false,
 							$"Speed in pixels per second at default zoom level at {PreferencesScroll.DefaultVariableSpeedBPM} BPM." +
-							"\n\nSpacing can be adjusted with Shift+Scroll.",
+							$"\n\nSpacing can be adjusted with {keyBind}.",
 							"%.3f",
 							ImGuiSliderFlags.Logarithmic);
 						break;
@@ -147,9 +149,10 @@ internal sealed class UIHotbar : UIWindow
 				// Casting to a float to allow use of ImGuiSliderFlags.Logarithmic.
 				var zoom = (float)Editor.GetSpacingZoom();
 				var originalZoom = zoom;
+				keyBind = UIControls.GetCommandString(pKeyBinds.ScrollZoom) + UIControls.MultipleKeysJoinString + "Scroll";
 				ImGuiLayoutUtils.DrawRowDragFloat("Zoom", ref zoom,
 					"Chart zoom level." +
-					"\n\nZoom level can be adjusted with Ctrl+Scroll.",
+					$"\n\nZoom level can be adjusted with {keyBind}.",
 					100.0f, "%.6f", (float)ZoomManager.MinZoom,
 					(float)ZoomManager.MaxZoom, ImGuiSliderFlags.Logarithmic);
 				if (!zoom.FloatEquals(originalZoom))
@@ -178,9 +181,10 @@ internal sealed class UIHotbar : UIWindow
 
 				// Automove.
 				var autoAdvance = Preferences.Instance.NoteEntryMode == NoteEntryMode.AdvanceBySnap;
+				var keyBind = UIControls.GetCommandString(pKeyBinds.ToggleNoteEntryMode);
 				if (ImGuiLayoutUtils.DrawRowCheckbox("Automove", ref autoAdvance,
 					    "Automove will automatically advance the cursor position when adding a new note." +
-					    "\n\nAutomove can be toggled with the M key."))
+					    $"\n\nAutomove can be toggled with {keyBind}."))
 					Preferences.Instance.NoteEntryMode = autoAdvance ? NoteEntryMode.AdvanceBySnap : NoteEntryMode.Normal;
 
 				// Step Coloring.

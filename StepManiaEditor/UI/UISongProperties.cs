@@ -156,14 +156,14 @@ internal sealed class UISongProperties : UIWindow
 					SetPreviewStartFromCurrentTime, "Use Current Time", ButtonSetWidth,
 					JumpToPreviewStart, "Go", ButtonGoWidth,
 					"Music preview start time.\n" +
-					EditorPreviewRegionEvent.PreviewDescription,
+					EditorPreviewRegionEvent.GetPreviewDescription(),
 					0.0001f, "%.6f seconds");
 				ImGuiLayoutUtils.DrawRowDragDoubleWithTwoButtons(true, "Preview Length", EditorSong,
 					nameof(EditorSong.SampleLength), true,
 					SetPreviewEndFromCurrentTime, "Use Current Time", ButtonSetWidth,
 					JumpToPreviewEnd, "Go", ButtonGoWidth,
 					"Music preview length.\n" +
-					EditorPreviewRegionEvent.PreviewDescription,
+					EditorPreviewRegionEvent.GetPreviewDescription(),
 					0.0001f, "%.6f seconds", 0.0);
 
 				ImGuiLayoutUtils.DrawRowDragDoubleWithTwoButtons(true, "End Hint", EditorSong, nameof(EditorSong.LastSecondHint),

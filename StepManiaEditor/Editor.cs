@@ -533,22 +533,21 @@ internal sealed class Editor :
 
 	private void InitializeKeyCommandManager()
 	{
+		var p = Preferences.Instance.PreferencesKeyBinds;
 		// @formatter:off
 		KeyCommandManager = new KeyCommandManager();
 
 		const string fileIo = "File I/O";
-		AddKeyCommand(fileIo, "Open", new[] { Keys.LeftControl, Keys.O }, OnOpen);
-		AddKeyCommand(fileIo, "Open Containing Folder", new[] { Keys.LeftControl, Keys.LeftShift, Keys.O }, OnOpenContainingFolder);
-		AddKeyCommand(fileIo, "Save As", new[] { Keys.LeftControl, Keys.LeftShift, Keys.S }, OnSaveAs);
-		AddKeyCommand(fileIo, "Save", new[] { Keys.LeftControl, Keys.S }, OnSave);
-
-		AddKeyCommand(fileIo, "New", new[] { Keys.LeftControl, Keys.N }, OnNew);
-		AddKeyCommand(fileIo, "Reload", new[] { Keys.LeftControl, Keys.R }, OnReload);
+		AddKeyCommand(fileIo, "Open", p.Open, OnOpen);
+		AddKeyCommand(fileIo, "Open Containing Folder", p.OpenContainingFolder, OnOpenContainingFolder);
+		AddKeyCommand(fileIo, "Save As", p.SaveAs, OnSaveAs);
+		AddKeyCommand(fileIo, "Save", p.Save, OnSave);
+		AddKeyCommand(fileIo, "New", p.New, OnNew);
+		AddKeyCommand(fileIo, "Reload", p.Reload, OnReload);
 
 		const string undo = "Undo";
-		AddKeyCommand(undo, "Undo", new[] { Keys.LeftControl, Keys.Z }, OnUndo, true);
-		AddKeyCommand(undo, "Redo", new[] { Keys.LeftControl, Keys.LeftShift, Keys.Z }, OnRedo, true);
-		AddKeyCommand(undo, "Redo", new[] { Keys.LeftControl, Keys.Y }, OnRedo, true);
+		AddKeyCommand(undo, "Undo", p.Undo, OnUndo, true);
+		AddKeyCommand(undo, "Redo", p.Redo, OnRedo, true);
 
 		const string selection = "Selection";
 		UIControls.Instance.AddCommand(selection, "Select Note", "Left Mouse Button");
@@ -556,39 +555,39 @@ internal sealed class Editor :
 		UIControls.Instance.AddCommand(selection, "Select Misc. Events In Region", "Alt+Drag Left Mouse Button");
 		UIControls.Instance.AddCommand(selection, "Add to Selection", "Ctrl+Left Mouse Button");
 		UIControls.Instance.AddCommand(selection, "Extend Selection", "Shift+Left Mouse Button");
-		AddKeyCommand(selection, "Select All Notes", new[] { Keys.LeftControl, Keys.A }, OnSelectAll);
-		AddKeyCommand(selection, "Select All Misc. Events", new[] { Keys.LeftControl, Keys.LeftAlt, Keys.A }, OnSelectAllAlt);
-		AddKeyCommand(selection, "Select All", new[] { Keys.LeftControl, Keys.LeftShift, Keys.A }, OnSelectAllShift);
+		AddKeyCommand(selection, "Select All Notes", p.SelectAllNotes, OnSelectAll);
+		AddKeyCommand(selection, "Select All Misc. Events", p.SelectAllMiscEvents, OnSelectAllAlt);
+		AddKeyCommand(selection, "Select All", p.SelectAll, OnSelectAllShift);
 
 		const string copyPaste = "Copy / Paste";
-		AddKeyCommand(copyPaste, "Copy", new[] { Keys.LeftControl, Keys.C }, OnCopy, true);
-		AddKeyCommand(copyPaste, "Cut", new[] { Keys.LeftControl, Keys.X }, OnCut, true);
-		AddKeyCommand(copyPaste, "Paste", new[] { Keys.LeftControl, Keys.V }, OnPaste, true);
+		AddKeyCommand(copyPaste, "Copy", p.Copy, OnCopy, true);
+		AddKeyCommand(copyPaste, "Cut", p.Cut, OnCut, true);
+		AddKeyCommand(copyPaste, "Paste", p.Paste, OnPaste, true);
 
 		const string sound = "Sound";
-		AddKeyCommand(sound, "Toggle Preview", new[] { Keys.P }, OnTogglePlayPreview);
-		AddKeyCommand(sound, "Toggle Assist Tick", new[] { Keys.A }, OnToggleAssistTick);
-		AddKeyCommand(sound, "Toggle Beat Tick", new[] { Keys.B }, OnToggleBeatTick);
-		AddKeyCommand(sound, "Decrease Music Rate", new[] { Keys.LeftShift, Keys.Left }, OnDecreaseMusicRate, true);
-		AddKeyCommand(sound, "Increase Music Rate", new[] { Keys.LeftShift, Keys.Right }, OnIncreaseMusicRate, true);
+		AddKeyCommand(sound, "Toggle Preview", p.TogglePreview, OnTogglePlayPreview);
+		AddKeyCommand(sound, "Toggle Assist Tick", p.ToggleAssistTick, OnToggleAssistTick);
+		AddKeyCommand(sound, "Toggle Beat Tick", p.ToggleBeatTick, OnToggleBeatTick);
+		AddKeyCommand(sound, "Decrease Music Rate", p.DecreaseMusicRate, OnDecreaseMusicRate, true);
+		AddKeyCommand(sound, "Increase Music Rate", p.IncreaseMusicRate, OnIncreaseMusicRate, true);
 
 		const string general = "General";
-		AddKeyCommand(general, "Play / Pause", new[] { Keys.Space }, OnTogglePlayback);
-		AddKeyCommand(general, "Cancel / Go Back", new[] { Keys.Escape }, OnEscape);
-		AddKeyCommand(general, "Toggle Note Entry Mode", new[] { Keys.M }, OnToggleNoteEntryMode);
-		AddKeyCommand(general, "Toggle Spacing Mode", new[] { Keys.S }, OnToggleSpacingMode);
+		AddKeyCommand(general, "Play / Pause", p.PlayPause, OnTogglePlayback);
+		AddKeyCommand(general, "Cancel / Go Back", p.CancelGoBack, OnEscape);
+		AddKeyCommand(general, "Toggle Note Entry Mode", p.ToggleNoteEntryMode, OnToggleNoteEntryMode);
+		AddKeyCommand(general, "Toggle Spacing Mode", p.ToggleSpacingMode, OnToggleSpacingMode);
 		UIControls.Instance.AddCommand(general, "Context Menu", "Right Mouse Button");
 		UIControls.Instance.AddCommand(general, "Exit", "Alt+F4");
 
 		const string chartSelection ="Chart Selection";
-		AddKeyCommand(chartSelection, "Open Previous Chart", new[] { Keys.LeftControl, Keys.LeftAlt, Keys.Left }, OpenPreviousChart);
-		AddKeyCommand(chartSelection, "Open Next Chart", new[] { Keys.LeftControl, Keys.LeftAlt, Keys.Right }, OpenNextChart);
-		AddKeyCommand(chartSelection, "Close Focused Chart", new[] { Keys.LeftControl, Keys.F4 }, CloseFocusedChart);
-		AddKeyCommand(chartSelection, "Keep Chart Open", new[] { Keys.LeftControl, Keys.LeftAlt, Keys.Home }, SetFocusedChartHasDedicatedTab);
-		AddKeyCommand(chartSelection, "Move Focused Chart Left", new[] { Keys.LeftControl, Keys.LeftAlt, Keys.PageUp }, MoveFocusedChartLeft);
-		AddKeyCommand(chartSelection, "Move Focused Chart Right", new[] { Keys.LeftControl, Keys.LeftAlt, Keys.PageDown }, MoveFocusedChartRight);
-		AddKeyCommand(chartSelection, "Focus Previous Chart", new[] { Keys.LeftControl, Keys.PageUp }, FocusPreviousChart);
-		AddKeyCommand(chartSelection, "Focus Next Chart", new[] { Keys.LeftControl, Keys.PageDown }, FocusNextChart);
+		AddKeyCommand(chartSelection, "Open Previous Chart", p.OpenPreviousChart, OpenPreviousChart);
+		AddKeyCommand(chartSelection, "Open Next Chart", p.OpenNextChart, OpenNextChart);
+		AddKeyCommand(chartSelection, "Close Focused Chart", p.CloseFocusedChart, CloseFocusedChart);
+		AddKeyCommand(chartSelection, "Keep Chart Open", p.KeepChartOpen, SetFocusedChartHasDedicatedTab);
+		AddKeyCommand(chartSelection, "Move Focused Chart Left", p.MoveFocusedChartLeft, MoveFocusedChartLeft);
+		AddKeyCommand(chartSelection, "Move Focused Chart Right", p.MoveFocusedChartRight, MoveFocusedChartRight);
+		AddKeyCommand(chartSelection, "Focus Previous Chart", p.FocusPreviousChart, FocusPreviousChart);
+		AddKeyCommand(chartSelection, "Focus Next Chart", p.FocusNextChart, FocusNextChart);
 
 		const string zoom = "Zoom";
 		UIControls.Instance.AddCommand(zoom, "Zoom In", "Ctrl+Scroll Up");
@@ -597,65 +596,84 @@ internal sealed class Editor :
 		UIControls.Instance.AddCommand(zoom, "Decrease Spacing For Current Mode", "Shift+Scroll Down");
 
 		const string navigation = "Navigation";
-		AddKeyCommand(navigation, "Decrease Snap", new[] { Keys.Left }, OnDecreaseSnap, true);
-		AddKeyCommand(navigation, "Increase Snap", new[] { Keys.Right }, OnIncreaseSnap, true);
-		AddKeyCommand(navigation, "Move Up", new[] { Keys.Up }, OnMoveUp, true);
+		AddKeyCommand(navigation, "Decrease Snap", p.DecreaseSnap, OnDecreaseSnap, true);
+		AddKeyCommand(navigation, "Increase Snap", p.IncreaseSnap, OnIncreaseSnap, true);
+		AddKeyCommand(navigation, "Move Up", p.MoveUp, OnMoveUp, true);
 		UIControls.Instance.AddCommand(navigation, "Move Up", "Scroll Up");
-		AddKeyCommand(navigation, "Move Down", new[] { Keys.Down }, OnMoveDown, true);
+		AddKeyCommand(navigation, "Move Down", p.MoveDown, OnMoveDown, true);
 		UIControls.Instance.AddCommand(navigation, "Move Down", "Scroll Down");
-		AddKeyCommand(navigation, "Move To Previous Measure", new[] { Keys.PageUp }, OnMoveToPreviousMeasure, true);
-		AddKeyCommand(navigation, "Move To Next Measure", new[] { Keys.PageDown }, OnMoveToNextMeasure, true);
-		AddKeyCommand(navigation, "Move To Chart Start", new[] { Keys.Home }, OnMoveToChartStart);
-		AddKeyCommand(navigation, "Move To Chart End", new[] { Keys.End }, OnMoveToChartEnd);
-		AddKeyCommand(navigation, "Move To Next Label", new[] { Keys.LeftControl, Keys.L }, OnMoveToNextLabel, true);
-		AddKeyCommand(navigation, "Move To Previous Label", new[] { Keys.LeftControl, Keys.LeftShift, Keys.L }, OnMoveToPreviousLabel, true);
+		AddKeyCommand(navigation, "Move To Previous Measure", p.MoveToPreviousMeasure, OnMoveToPreviousMeasure, true);
+		AddKeyCommand(navigation, "Move To Next Measure", p.MoveToNextMeasure, OnMoveToNextMeasure, true);
+		AddKeyCommand(navigation, "Move To Chart Start", p.MoveToChartStart, OnMoveToChartStart);
+		AddKeyCommand(navigation, "Move To Chart End", p.MoveToChartEnd, OnMoveToChartEnd);
+		AddKeyCommand(navigation, "Move To Next Label", p.MoveToNextLabel, OnMoveToNextLabel, true);
+		AddKeyCommand(navigation, "Move To Previous Label", p.MoveToPreviousLabel, OnMoveToPreviousLabel, true);
 
 		const string patterns = "Patterns";
-		AddKeyCommand(patterns, "Move To Next Pattern", new[] { Keys.LeftControl, Keys.P }, OnMoveToNextPattern, true);
-		AddKeyCommand(patterns, "Move To Previous Pattern", new[] { Keys.LeftControl, Keys.LeftShift, Keys.P }, OnMoveToPreviousPattern, true);
-		AddKeyCommand(patterns, "Regenerate All Patterns (Fixed Seeds)", new[] { Keys.LeftAlt, Keys.P }, OnRegenerateAllPatterns);
-		AddKeyCommand(patterns, "Regenerate All Patterns (New Seeds)", new[] { Keys.LeftAlt, Keys.LeftShift, Keys.P }, OnRegenerateAllPatternsWithNewSeeds);
-		AddKeyCommand(patterns, "Regenerate Selected Patterns (Fixed Seeds)", new[] { Keys.LeftControl, Keys.LeftAlt, Keys.P }, OnRegenerateSelectedPatterns);
-		AddKeyCommand(patterns, "Regenerate Selected Patterns (New Seeds)", new[] { Keys.LeftControl, Keys.LeftAlt, Keys.LeftShift, Keys.P }, OnRegenerateSelectedPatternsWithNewSeeds);
+		AddKeyCommand(patterns, "Move To Next Pattern", p.MoveToNextPattern, OnMoveToNextPattern, true);
+		AddKeyCommand(patterns, "Move To Previous Pattern", p.MoveToPreviousPattern, OnMoveToPreviousPattern, true);
+		AddKeyCommand(patterns, "Regenerate All Patterns (Fixed Seeds)", p.RegenerateAllPatternsFixedSeeds, OnRegenerateAllPatterns);
+		AddKeyCommand(patterns, "Regenerate All Patterns (New Seeds)", p.RegenerateAllPatternsNewSeeds, OnRegenerateAllPatternsWithNewSeeds);
+		AddKeyCommand(patterns, "Regenerate Selected Patterns (Fixed Seeds)", p.RegenerateSelectedPatternsFixedSeeds, OnRegenerateSelectedPatterns);
+		AddKeyCommand(patterns, "Regenerate Selected Patterns (New Seeds)", p.RegenerateSelectedPatternsNewSeeds, OnRegenerateSelectedPatternsWithNewSeeds);
 
 		const string editSelection = "Edit Selection";
-		AddKeyCommand(editSelection, "Delete", new[] { Keys.Delete }, OnDelete);
-		AddKeyCommand(editSelection, "Shift Left", new[] { Keys.LeftControl, Keys.LeftShift, Keys.LeftAlt, Keys.Left }, OnShiftSelectedNotesLeft, true);
-		AddKeyCommand(editSelection, "Shift Left And Wrap", new[] { Keys.LeftControl, Keys.LeftShift, Keys.Left }, OnShiftSelectedNotesLeftAndWrap, true);
-		AddKeyCommand(editSelection, "Shift Right", new[] { Keys.LeftControl, Keys.LeftShift, Keys.LeftAlt, Keys.Right }, OnShiftSelectedNotesRight, true);
-		AddKeyCommand(editSelection, "Shift Right And Wrap", new[] { Keys.LeftControl, Keys.LeftShift, Keys.Right }, OnShiftSelectedNotesRightAndWrap, true);
-		AddKeyCommand(editSelection, "Shift Earlier", new[] { Keys.LeftControl, Keys.LeftShift, Keys.Up }, OnShiftSelectedNotesEarlier, true);
-		AddKeyCommand(editSelection, "Shift Later", new[] { Keys.LeftControl, Keys.LeftShift, Keys.Down }, OnShiftSelectedNotesLater, true);
+		AddKeyCommand(editSelection, "Delete", p.Delete, OnDelete);
+		AddKeyCommand(editSelection, "Shift Left", p.ShiftLeft, OnShiftSelectedNotesLeft, true);
+		AddKeyCommand(editSelection, "Shift Left And Wrap", p.ShiftLeftAndWrap, OnShiftSelectedNotesLeftAndWrap, true);
+		AddKeyCommand(editSelection, "Shift Right", p.ShiftRight, OnShiftSelectedNotesRight, true);
+		AddKeyCommand(editSelection, "Shift Right And Wrap", p.ShiftRightAndWrap, OnShiftSelectedNotesRightAndWrap, true);
+		AddKeyCommand(editSelection, "Shift Earlier", p.ShiftEarlier, OnShiftSelectedNotesEarlier, true);
+		AddKeyCommand(editSelection, "Shift Later", p.ShiftLater, OnShiftSelectedNotesLater, true);
 		// @formatter:on
 
 		const string noteEntry = "Note Entry";
-		UIControls.Instance.AddCommand(noteEntry, "Tap", "0-9");
-		UIControls.Instance.AddCommand(noteEntry, "Hold", "0-9+Up/Down");
-		UIControls.Instance.AddCommand(noteEntry, "Mine", "0-9+Shift");
-		UIControls.Instance.AddCommand(noteEntry, "Roll", "0-9+Shift+Up/Down");
-
-		var arrowInputKeys = new[]
-			{ Keys.D1, Keys.D2, Keys.D3, Keys.D4, Keys.D5, Keys.D6, Keys.D7, Keys.D8, Keys.D9, Keys.D0 };
-		var index = 0;
-		foreach (var key in arrowInputKeys)
+		for (var l = 0; l < PreferencesKeyBinds.NumLaneInputs; l++)
 		{
-			var capturedIndex = index;
-
-			void Down()
-			{
-				OnLaneInputDown(capturedIndex);
-			}
-
-			void Up()
-			{
-				OnLaneInputUp(capturedIndex);
-			}
-
-			index++;
-			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { key }, Down, false, Up));
+			var capturedLane = l;
+			AddKeyCommand(noteEntry, $"Lane {capturedLane + 1:D2} Tap",
+				p.GetArrowInputs(capturedLane),
+				() => OnLaneInputDown(capturedLane),
+				false,
+				() => OnLaneInputUp(capturedLane));
 		}
 
-		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftShift }, OnShiftDown, false, OnShiftUp));
+		for (var l = 0; l < PreferencesKeyBinds.NumLaneInputs; l++)
+		{
+			var holdCommandString =
+				UIControls.GetCommandString(p.GetArrowInputs(l))
+				+ UIControls.MultipleKeysJoinString
+				+ UIControls.GetCommandString(p.MoveUp)
+				+ UIControls.OrString
+				+ UIControls.GetCommandString(p.MoveDown);
+			UIControls.Instance.AddCommand(noteEntry, $"Lane {l + 1:D2} Hold", holdCommandString);
+		}
+
+		for (var l = 0; l < PreferencesKeyBinds.NumLaneInputs; l++)
+		{
+			var mineCommandString =
+				UIControls.GetCommandString(p.GetArrowInputs(l))
+				+ UIControls.MultipleKeysJoinString
+				+ UIControls.GetCommandString(p.ArrowModification);
+			UIControls.Instance.AddCommand(noteEntry, $"Lane {l + 1:D2} Mine", mineCommandString);
+		}
+
+		for (var l = 0; l < PreferencesKeyBinds.NumLaneInputs; l++)
+		{
+			var rollCommandString =
+				UIControls.GetCommandString(p.GetArrowInputs(l))
+				+ UIControls.MultipleKeysJoinString
+				+ UIControls.GetCommandString(p.ArrowModification)
+				+ UIControls.MultipleKeysJoinString
+				+ UIControls.GetCommandString(p.MoveUp)
+				+ UIControls.OrString
+				+ UIControls.GetCommandString(p.MoveDown);
+			UIControls.Instance.AddCommand(noteEntry, $"Lane {l + 1:D2} Roll", rollCommandString);
+		}
+
+		foreach (var input in p.ArrowModification)
+			KeyCommandManager.Register(new KeyCommandManager.Command(input, OnArrowModificationKeyDown, false,
+				OnArrowModificationKeyUp));
 	}
 
 	/// <summary>
@@ -664,16 +682,19 @@ internal sealed class Editor :
 	private void AddKeyCommand(
 		string category,
 		string name,
-		Keys[] input,
+		List<Keys[]> inputs,
 		Action callback,
 		bool repeat = false,
 		Action releaseCallback = null)
 	{
-		// Register the command, potentially multiple times due to left and right modifier keys.
-		var adjustedInput = new Keys[input.Length];
-		RegisterKeyCommand(input, adjustedInput, 0, callback, repeat, releaseCallback);
-		// Add the command to the UI.
-		UIControls.Instance.AddCommand(category, name, input);
+		foreach (var input in inputs)
+		{
+			// Register the command, potentially multiple times due to left and right modifier keys.
+			var adjustedInput = new Keys[input.Length];
+			RegisterKeyCommand(input, adjustedInput, 0, callback, repeat, releaseCallback);
+			// Add the command to the UI.
+			UIControls.Instance.AddCommand(category, name, input);
+		}
 	}
 
 	/// <summary>
@@ -1803,7 +1824,7 @@ internal sealed class Editor :
 			var newX = TransformScreenSpaceXToChartSpaceX(EditorMouseState.X()) - (int)FocalPointMoveOffset.X;
 			var newY = TransformScreenSpaceYToChartSpaceY(EditorMouseState.Y()) - (int)FocalPointMoveOffset.Y;
 
-			if (KeyCommandManager.IsShiftDown())
+			if (KeyCommandManager.IsAnyInputDown(Preferences.Instance.PreferencesKeyBinds.LockReceptorMoveAxis))
 			{
 				if (Math.Abs(newX - FocalPointAtMoveStart.X) > Math.Abs(newY - FocalPointAtMoveStart.Y))
 				{
@@ -3267,6 +3288,7 @@ internal sealed class Editor :
 	private void DrawMainMenuUI()
 	{
 		var p = Preferences.Instance;
+		var keyBinds = p.PreferencesKeyBinds;
 		var canEdit = CanEdit();
 		var hasSong = ActiveSong != null;
 		var hasChart = FocusedChart != null;
@@ -3276,13 +3298,13 @@ internal sealed class Editor :
 		{
 			if (ImGui.BeginMenu("File"))
 			{
-				if (ImGui.MenuItem("New Song", "Ctrl+N", false, canOpen))
+				if (ImGui.MenuItem("New Song", UIControls.GetCommandString(keyBinds.New), false, canOpen))
 				{
 					OnNew();
 				}
 
 				ImGui.Separator();
-				if (ImGui.MenuItem("Open", "Ctrl+O", false, canOpen))
+				if (ImGui.MenuItem("Open", UIControls.GetCommandString(keyBinds.Open), false, canOpen))
 				{
 					OnOpen();
 				}
@@ -3304,9 +3326,11 @@ internal sealed class Editor :
 					ImGui.EndMenu();
 				}
 
-				if (ImGui.MenuItem("Open Containing Folder", "Ctrl+Shift+O", false, hasSong))
+				if (ImGui.MenuItem("Open Containing Folder", UIControls.GetCommandString(keyBinds.OpenContainingFolder), false,
+					    hasSong))
 					OnOpenContainingFolder();
-				if (ImGui.MenuItem("Reload", "Ctrl+R", false, canOpen && canEditSong && p.RecentFiles.Count > 0))
+				if (ImGui.MenuItem("Reload", UIControls.GetCommandString(keyBinds.Reload), false,
+					    canOpen && canEditSong && p.RecentFiles.Count > 0))
 					OnReload();
 				if (ImGui.MenuItem("Close", "", false, canEditSong))
 					OnClose();
@@ -3315,16 +3339,16 @@ internal sealed class Editor :
 				var editorFileName = ActiveSong?.GetFileName();
 				if (!string.IsNullOrEmpty(editorFileName))
 				{
-					if (ImGui.MenuItem($"Save {editorFileName}", "Ctrl+S", false, canEditSong))
+					if (ImGui.MenuItem($"Save {editorFileName}", UIControls.GetCommandString(keyBinds.Save), false, canEditSong))
 						OnSave();
 				}
 				else
 				{
-					if (ImGui.MenuItem("Save", "Ctrl+S", false, canEditSong))
+					if (ImGui.MenuItem("Save", UIControls.GetCommandString(keyBinds.Save), false, canEditSong))
 						OnSave();
 				}
 
-				if (ImGui.MenuItem("Save As...", "Ctrl+Shift+S", false, canEditSong))
+				if (ImGui.MenuItem("Save As...", UIControls.GetCommandString(keyBinds.SaveAs), false, canEditSong))
 					OnSaveAs();
 
 				if (ImGui.BeginMenu("Advanced Save Options"))
@@ -3400,11 +3424,11 @@ internal sealed class Editor :
 				UIEditEvents.DrawConvertAllMenu();
 				UIEditEvents.DrawShiftAllMenu();
 				ImGui.Separator();
-				if (ImGui.MenuItem("Copy", "Ctrl+C"))
+				if (ImGui.MenuItem("Copy", UIControls.GetCommandString(keyBinds.Copy)))
 					OnCopy();
-				if (ImGui.MenuItem("Paste", "Ctrl+V"))
+				if (ImGui.MenuItem("Paste", UIControls.GetCommandString(keyBinds.Paste)))
 					OnPaste();
-				if (ImGui.MenuItem("Delete", "Del"))
+				if (ImGui.MenuItem("Delete", UIControls.GetCommandString(keyBinds.Delete)))
 					OnDelete();
 				ImGui.EndMenu();
 			}
@@ -3506,9 +3530,11 @@ internal sealed class Editor :
 				if (!hasPatterns)
 					PushDisabled();
 
-				if (ImGui.MenuItem("Regenerate All Patterns (Fixed Seeds)", "Alt+P"))
+				if (ImGui.MenuItem("Regenerate All Patterns (Fixed Seeds)",
+					    UIControls.GetCommandString(keyBinds.RegenerateAllPatternsFixedSeeds)))
 					OnRegenerateAllPatterns();
-				if (ImGui.MenuItem("Regenerate All Patterns (New Seeds)", "Alt+Shift+P"))
+				if (ImGui.MenuItem("Regenerate All Patterns (New Seeds)",
+					    UIControls.GetCommandString(keyBinds.RegenerateAllPatternsNewSeeds)))
 					OnRegenerateAllPatternsWithNewSeeds();
 				if (ImGui.Selectable("Clear All Patterns"))
 					ActionQueue.Instance.Do(new ActionDeletePatternNotes(
@@ -3521,9 +3547,11 @@ internal sealed class Editor :
 				if (!hasSelectedPatterns)
 					PushDisabled();
 
-				if (ImGui.MenuItem("Regenerate Selected Patterns (Fixed Seeds)", "Ctrl+Alt+P"))
+				if (ImGui.MenuItem("Regenerate Selected Patterns (Fixed Seeds)",
+					    UIControls.GetCommandString(keyBinds.RegenerateSelectedPatternsFixedSeeds)))
 					OnRegenerateSelectedPatterns();
-				if (ImGui.MenuItem("Regenerate Selected Patterns (New Seeds)", "Ctrl+Alt+Shift+P"))
+				if (ImGui.MenuItem("Regenerate Selected Patterns (New Seeds)",
+					    UIControls.GetCommandString(keyBinds.RegenerateSelectedPatternsNewSeeds)))
 					OnRegenerateSelectedPatternsWithNewSeeds();
 				if (ImGui.Selectable("Clear Selected Patterns"))
 					ActionQueue.Instance.Do(new ActionDeletePatternNotes(
@@ -3534,9 +3562,9 @@ internal sealed class Editor :
 					PopDisabled();
 
 				ImGui.Separator();
-				if (ImGui.MenuItem("Next Pattern", "Ctrl+P"))
+				if (ImGui.MenuItem("Next Pattern", UIControls.GetCommandString(keyBinds.MoveToNextPattern)))
 					OnMoveToNextPattern();
-				if (ImGui.MenuItem("Previous Pattern", "Ctrl+Shift+P"))
+				if (ImGui.MenuItem("Previous Pattern", UIControls.GetCommandString(keyBinds.MoveToPreviousPattern)))
 					OnMoveToPreviousPattern();
 
 				if (!hasPatterns)
@@ -3835,7 +3863,7 @@ internal sealed class Editor :
 		{
 			if (ActiveSong == null)
 			{
-				if (ImGui.MenuItem("New Song", "Ctrl+N"))
+				if (ImGui.MenuItem("New Song", UIControls.GetCommandString(Preferences.Instance.PreferencesKeyBinds.New)))
 				{
 					OnNew();
 				}
@@ -5548,20 +5576,20 @@ internal sealed class Editor :
 		Logger.Info($"Set Note Entry Mode to {Preferences.Instance.NoteEntryMode}");
 	}
 
-	private void OnShiftDown()
+	private void OnArrowModificationKeyDown()
 	{
 		if (EditEarlyOut())
 			return;
 		var focusedChartData = GetFocusedChartData();
-		focusedChartData?.OnShiftDown();
+		focusedChartData?.OnArrowModificationKeyDown();
 	}
 
-	private void OnShiftUp()
+	private void OnArrowModificationKeyUp()
 	{
 		if (EditEarlyOut())
 			return;
 		var focusedChartData = GetFocusedChartData();
-		focusedChartData?.OnShiftUp();
+		focusedChartData?.OnArrowModificationKeyUp();
 	}
 
 	private void OnLaneInputDown(int lane)

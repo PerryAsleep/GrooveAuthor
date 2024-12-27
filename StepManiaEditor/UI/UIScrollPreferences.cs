@@ -183,6 +183,7 @@ internal sealed class UIScrollPreferences : UIWindow
 
 	public static void DrawSpacingModeRow(string title, bool withOpenPreferencesButton)
 	{
+		var keybind = UIControls.GetCommandString(Preferences.Instance.PreferencesKeyBinds.ToggleSpacingMode);
 		var help = "How events in the Chart should be spaced when rendering."
 		           + "\nConstant Time: Events are spaced by their time."
 		           + "\n               Equivalent to a CMOD when playing."
@@ -192,7 +193,7 @@ internal sealed class UIScrollPreferences : UIWindow
 		           + "\nVariable:      Spacing is based on tempo and is affected by all rate altering events."
 		           + "\n               Equivalent to a XMOD when playing."
 		           + "\n"
-		           + "\nThe Spacing Mode can be changed with the S key.";
+		           + $"\nThe Spacing Mode can be changed with {keybind}.";
 
 		if (withOpenPreferencesButton)
 		{

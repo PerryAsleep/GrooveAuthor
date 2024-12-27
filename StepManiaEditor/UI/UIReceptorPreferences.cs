@@ -62,11 +62,13 @@ internal sealed class UIReceptorPreferences : UIWindow
 				false,
 				"Whether to keep the receptors centered horizontally in the window.");
 
+			var keybind = UIControls.GetCommandString(Preferences.Instance.PreferencesKeyBinds.LockReceptorMoveAxis);
 			ImGuiLayoutUtils.DrawRowDragInt2(true, "Position", p, nameof(PreferencesReceptors.ChartSpacePositionX),
 				nameof(PreferencesReceptors.ChartSpacePositionY), false, !p.CenterHorizontally, true,
 				"Position of the receptors."
 				+ "\nThe receptors can also be moved by dragging them with the left mouse button."
-				+ "\nHold shift while dragging to limit movement to one dimension.", 1.0f, "%i", 0, Editor.GetViewportWidth() - 1,
+				+ $"\nHold {keybind} while dragging to limit movement to one dimension.", 1.0f, "%i", 0,
+				Editor.GetViewportWidth() - 1,
 				0, Editor.GetViewportHeight() - 1);
 
 			if (pushDisabled)

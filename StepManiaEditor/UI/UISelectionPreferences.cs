@@ -46,9 +46,10 @@ internal sealed class UISelectionPreferences : UIWindow
 					+ "\nOverlap Center: If the region overlaps the center of a note, it will be selected."
 					+ "\nOverlap All:    If the region overlaps the entire note, it will be selected.");
 
+				var keybind = UIControls.GetCommandString(Preferences.Instance.PreferencesKeyBinds.MouseSelectionShiftBehavior);
 				ImGuiLayoutUtils.DrawRowEnum<PreferencesSelection.SelectionRegionMode>(true, "Click Mode", p,
 					nameof(PreferencesSelection.RegionMode), false,
-					"How notes should be selected when clicking a subsequent note while holding shift."
+					$"How notes should be selected when clicking a subsequent note while holding {keybind}."
 					+ "\nFor all options notes are selected by time when the Spacing Mode is Constant Time and Row is used when"
 					+ "\nthe Spacing Mode is Constant Row or Variable."
 					+ "\nTime Or Position:          Select all notes in between the previously selected note and the newly"

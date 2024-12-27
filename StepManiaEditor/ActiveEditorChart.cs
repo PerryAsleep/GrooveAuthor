@@ -1452,7 +1452,7 @@ internal sealed class ActiveEditorChart
 		// Collect the newly selected notes.
 		var newlySelectedEvents = new List<EditorEvent>();
 
-		var alt = KeyCommandManager.IsAltDown();
+		var alt = KeyCommandManager.IsAnyInputDown(Preferences.Instance.PreferencesKeyBinds.MouseSelectionAltBehavior);
 		Func<EditorEvent, bool> isSelectable = alt
 			? (e) => e.IsSelectableWithModifiers()
 			: (e) => e.IsSelectableWithoutModifiers();
@@ -1589,8 +1589,8 @@ internal sealed class ActiveEditorChart
 			}
 		}
 
-		var ctrl = KeyCommandManager.IsControlDown();
-		var shift = KeyCommandManager.IsShiftDown();
+		var ctrl = KeyCommandManager.IsAnyInputDown(Preferences.Instance.PreferencesKeyBinds.MouseSelectionControlBehavior);
+		var shift = KeyCommandManager.IsAnyInputDown(Preferences.Instance.PreferencesKeyBinds.MouseSelectionShiftBehavior);
 
 		// If holding shift, select everything from the previously selected note
 		// to the newly selected notes, in addition to the newly selected notes.
@@ -2389,7 +2389,7 @@ internal sealed class ActiveEditorChart
 
 	#region Lane Input
 
-	public void OnShiftDown()
+	public void OnArrowModificationKeyDown()
 	{
 		if (LaneEditStates == null)
 			return;
@@ -2398,12 +2398,12 @@ internal sealed class ActiveEditorChart
 		{
 			if (laneEditState.IsActive() && laneEditState.GetEventBeingEdited() != null)
 			{
-				laneEditState.Shift(false);
+				laneEditState.ArrowModificationKeyPressed(false);
 			}
 		}
 	}
 
-	public void OnShiftUp()
+	public void OnArrowModificationKeyUp()
 	{
 		if (LaneEditStates == null)
 			return;
@@ -2412,7 +2412,7 @@ internal sealed class ActiveEditorChart
 		{
 			if (laneEditState.IsActive() && laneEditState.GetEventBeingEdited() != null)
 			{
-				laneEditState.Shift(true);
+				laneEditState.ArrowModificationKeyPressed(true);
 			}
 		}
 	}
@@ -2479,7 +2479,7 @@ internal sealed class ActiveEditorChart
 		// Otherwise, set the state to be editing a tap or a mine.
 		else
 		{
-			if (KeyCommandManager.IsShiftDown())
+			if (KeyCommandManager.IsAnyInputDown(Preferences.Instance.PreferencesKeyBinds.ArrowModification))
 			{
 				var config = EventConfig.CreateMineConfig(Chart, row, lane);
 				config.IsBeingEdited = true;
@@ -2706,7 +2706,7 @@ internal sealed class ActiveEditorChart
 				    || (laneEditState.GetEventBeingEdited() is EditorHoldNoteEvent h
 				        && (holdStartRow != h.GetRow() || holdEndRow != h.GetEndRow())))
 				{
-					var roll = KeyCommandManager.IsShiftDown();
+					var roll = KeyCommandManager.IsAnyInputDown(Preferences.Instance.PreferencesKeyBinds.ArrowModification);
 					LaneEditStates[lane].SetEditingHold(Chart, lane, holdStartRow, laneEditState.GetStartingRow(),
 						holdEndRow - holdStartRow, roll);
 				}

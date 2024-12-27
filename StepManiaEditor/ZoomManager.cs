@@ -160,8 +160,10 @@ internal class ZoomManager : Fumen.IObserver<PreferencesScroll>, IReadOnlyZoomMa
 	public bool ProcessInput(double currentTime, KeyCommandManager keyCommandManager, float scrollDelta)
 	{
 		var pScroll = Preferences.Instance.PreferencesScroll;
-		var scrollShouldZoom = keyCommandManager.IsControlDown();
-		var scrollShouldScaleDefaultSpacing = !scrollShouldZoom && keyCommandManager.IsShiftDown();
+		var pKeyBinds = Preferences.Instance.PreferencesKeyBinds;
+
+		var scrollShouldZoom = keyCommandManager.IsAnyInputDown(pKeyBinds.ScrollZoom);
+		var scrollShouldScaleDefaultSpacing = !scrollShouldZoom && keyCommandManager.IsAnyInputDown(pKeyBinds.ScrollSpacing);
 
 		// If the scroll wheel hasn't moved we don't need the input.
 		if (scrollDelta.FloatEquals(0.0f))
