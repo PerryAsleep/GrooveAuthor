@@ -30,6 +30,7 @@ internal sealed class Utils
 	                                                          | ImGuiWindowFlags.NoScrollWithMouse;
 
 	public const uint UIWindowColor = 0xFF0A0A0A;
+	public const uint UINonDedicatedTabTextColor = 0xFFC0C0C0;
 
 	public const uint UITempoColorRGBA = 0x8A297A79; // yellow
 	public const uint UITimeSignatureColorRGBA = 0x8A297A29; // green

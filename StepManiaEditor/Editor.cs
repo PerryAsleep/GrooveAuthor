@@ -539,7 +539,7 @@ internal sealed class Editor :
 		const string fileIo = "File I/O";
 		AddKeyCommand(fileIo, "Open", new[] { Keys.LeftControl, Keys.O }, OnOpen);
 		AddKeyCommand(fileIo, "Open Containing Folder", new[] { Keys.LeftControl, Keys.LeftShift, Keys.O }, OnOpenContainingFolder);
-		AddKeyCommand(fileIo, "Save As", new[] { Keys.LeftControl, Keys.LeftShift, Keys.S }, OnSaveAs, false, null, true);
+		AddKeyCommand(fileIo, "Save As", new[] { Keys.LeftControl, Keys.LeftShift, Keys.S }, OnSaveAs);
 		AddKeyCommand(fileIo, "Save", new[] { Keys.LeftControl, Keys.S }, OnSave);
 
 		AddKeyCommand(fileIo, "New", new[] { Keys.LeftControl, Keys.N }, OnNew);
@@ -577,10 +577,18 @@ internal sealed class Editor :
 		AddKeyCommand(general, "Cancel / Go Back", new[] { Keys.Escape }, OnEscape);
 		AddKeyCommand(general, "Toggle Note Entry Mode", new[] { Keys.M }, OnToggleNoteEntryMode);
 		AddKeyCommand(general, "Toggle Spacing Mode", new[] { Keys.S }, OnToggleSpacingMode);
-		AddKeyCommand(general, "Move To Previous Chart", new[] { Keys.LeftControl, Keys.LeftAlt, Keys.Left }, OnMoveToPreviousChart);
-		AddKeyCommand(general, "Move To Next Chart", new[] { Keys.LeftControl, Keys.LeftAlt, Keys.Right }, OnMoveToNextChart);
 		UIControls.Instance.AddCommand(general, "Context Menu", "Right Mouse Button");
 		UIControls.Instance.AddCommand(general, "Exit", "Alt+F4");
+
+		const string chartSelection ="Chart Selection";
+		AddKeyCommand(chartSelection, "Open Previous Chart", new[] { Keys.LeftControl, Keys.LeftAlt, Keys.Left }, OpenPreviousChart);
+		AddKeyCommand(chartSelection, "Open Next Chart", new[] { Keys.LeftControl, Keys.LeftAlt, Keys.Right }, OpenNextChart);
+		AddKeyCommand(chartSelection, "Close Focused Chart", new[] { Keys.LeftControl, Keys.F4 }, CloseFocusedChart);
+		AddKeyCommand(chartSelection, "Keep Chart Open", new[] { Keys.LeftControl, Keys.LeftAlt, Keys.Home }, SetFocusedChartHasDedicatedTab);
+		AddKeyCommand(chartSelection, "Move Focused Chart Left", new[] { Keys.LeftControl, Keys.LeftAlt, Keys.PageUp }, MoveFocusedChartLeft);
+		AddKeyCommand(chartSelection, "Move Focused Chart Right", new[] { Keys.LeftControl, Keys.LeftAlt, Keys.PageDown }, MoveFocusedChartRight);
+		AddKeyCommand(chartSelection, "Focus Previous Chart", new[] { Keys.LeftControl, Keys.PageUp }, FocusPreviousChart);
+		AddKeyCommand(chartSelection, "Focus Next Chart", new[] { Keys.LeftControl, Keys.PageDown }, FocusNextChart);
 
 		const string zoom = "Zoom";
 		UIControls.Instance.AddCommand(zoom, "Zoom In", "Ctrl+Scroll Up");
@@ -595,10 +603,10 @@ internal sealed class Editor :
 		UIControls.Instance.AddCommand(navigation, "Move Up", "Scroll Up");
 		AddKeyCommand(navigation, "Move Down", new[] { Keys.Down }, OnMoveDown, true);
 		UIControls.Instance.AddCommand(navigation, "Move Down", "Scroll Down");
-		AddKeyCommand(navigation, "Move To Previous Measure", new[] { Keys.PageUp }, OnMoveToPreviousMeasure, true, null, true);
-		AddKeyCommand(navigation, "Move To Next Measure", new[] { Keys.PageDown }, OnMoveToNextMeasure, true, null, true);
-		AddKeyCommand(navigation, "Move To Chart Start", new[] { Keys.Home }, OnMoveToChartStart, false, null, true);
-		AddKeyCommand(navigation, "Move To Chart End", new[] { Keys.End }, OnMoveToChartEnd, false, null, true);
+		AddKeyCommand(navigation, "Move To Previous Measure", new[] { Keys.PageUp }, OnMoveToPreviousMeasure, true);
+		AddKeyCommand(navigation, "Move To Next Measure", new[] { Keys.PageDown }, OnMoveToNextMeasure, true);
+		AddKeyCommand(navigation, "Move To Chart Start", new[] { Keys.Home }, OnMoveToChartStart);
+		AddKeyCommand(navigation, "Move To Chart End", new[] { Keys.End }, OnMoveToChartEnd);
 		AddKeyCommand(navigation, "Move To Next Label", new[] { Keys.LeftControl, Keys.L }, OnMoveToNextLabel, true);
 		AddKeyCommand(navigation, "Move To Previous Label", new[] { Keys.LeftControl, Keys.LeftShift, Keys.L }, OnMoveToPreviousLabel, true);
 
@@ -611,7 +619,7 @@ internal sealed class Editor :
 		AddKeyCommand(patterns, "Regenerate Selected Patterns (New Seeds)", new[] { Keys.LeftControl, Keys.LeftAlt, Keys.LeftShift, Keys.P }, OnRegenerateSelectedPatternsWithNewSeeds);
 
 		const string editSelection = "Edit Selection";
-		AddKeyCommand(editSelection, "Delete", new[] { Keys.Delete }, OnDelete, false, null, true);
+		AddKeyCommand(editSelection, "Delete", new[] { Keys.Delete }, OnDelete);
 		AddKeyCommand(editSelection, "Shift Left", new[] { Keys.LeftControl, Keys.LeftShift, Keys.LeftAlt, Keys.Left }, OnShiftSelectedNotesLeft, true);
 		AddKeyCommand(editSelection, "Shift Left And Wrap", new[] { Keys.LeftControl, Keys.LeftShift, Keys.Left }, OnShiftSelectedNotesLeftAndWrap, true);
 		AddKeyCommand(editSelection, "Shift Right", new[] { Keys.LeftControl, Keys.LeftShift, Keys.LeftAlt, Keys.Right }, OnShiftSelectedNotesRight, true);
@@ -644,11 +652,10 @@ internal sealed class Editor :
 			}
 
 			index++;
-			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { key }, Down, false, Up, true));
+			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { key }, Down, false, Up));
 		}
 
-		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftShift }, OnShiftDown, false, OnShiftUp,
-			true));
+		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftShift }, OnShiftDown, false, OnShiftUp));
 	}
 
 	/// <summary>
@@ -660,12 +667,11 @@ internal sealed class Editor :
 		Keys[] input,
 		Action callback,
 		bool repeat = false,
-		Action releaseCallback = null,
-		bool independent = false)
+		Action releaseCallback = null)
 	{
 		// Register the command, potentially multiple times due to left and right modifier keys.
 		var adjustedInput = new Keys[input.Length];
-		RegisterKeyCommand(input, adjustedInput, 0, callback, repeat, releaseCallback, independent);
+		RegisterKeyCommand(input, adjustedInput, 0, callback, repeat, releaseCallback);
 		// Add the command to the UI.
 		UIControls.Instance.AddCommand(category, name, input);
 	}
@@ -680,13 +686,11 @@ internal sealed class Editor :
 		int inputIndex,
 		Action callback,
 		bool repeat = false,
-		Action releaseCallback = null,
-		bool independent = false)
+		Action releaseCallback = null)
 	{
 		if (inputIndex == adjustedInput.Length)
 		{
-			KeyCommandManager.Register(new KeyCommandManager.Command(adjustedInput, callback, repeat, releaseCallback,
-				independent));
+			KeyCommandManager.Register(new KeyCommandManager.Command(adjustedInput, callback, repeat, releaseCallback));
 			return;
 		}
 
@@ -695,38 +699,38 @@ internal sealed class Editor :
 			case Keys.LeftControl:
 			{
 				adjustedInput[inputIndex] = Keys.LeftControl;
-				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback, independent);
+				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback);
 				adjustedInput[inputIndex] = Keys.RightControl;
-				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback, independent);
+				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback);
 				break;
 			}
 			case Keys.LeftShift:
 			{
 				adjustedInput[inputIndex] = Keys.LeftShift;
-				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback, independent);
+				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback);
 				adjustedInput[inputIndex] = Keys.RightShift;
-				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback, independent);
+				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback);
 				break;
 			}
 			case Keys.LeftAlt:
 			{
 				adjustedInput[inputIndex] = Keys.LeftAlt;
-				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback, independent);
+				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback);
 				adjustedInput[inputIndex] = Keys.RightAlt;
-				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback, independent);
+				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback);
 				break;
 			}
 			case Keys.LeftWindows:
 			{
 				adjustedInput[inputIndex] = Keys.LeftWindows;
-				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback, independent);
+				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback);
 				adjustedInput[inputIndex] = Keys.RightWindows;
-				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback, independent);
+				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback);
 				break;
 			}
 			default:
 				adjustedInput[inputIndex] = input[inputIndex];
-				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback, independent);
+				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback);
 				break;
 		}
 	}
@@ -5181,9 +5185,8 @@ internal sealed class Editor :
 
 	#region Chart Navigation
 
-	private void OnMoveToPreviousChart()
+	private void OpenPreviousChart()
 	{
-		// TODO: Multiple Charts: Move to Previous Chart
 		if (ActiveSong == null || FocusedChart == null)
 			return;
 
@@ -5205,9 +5208,8 @@ internal sealed class Editor :
 		}
 	}
 
-	private void OnMoveToNextChart()
+	private void OpenNextChart()
 	{
-		// TODO: Multiple Charts: Move to Next Chart
 		if (ActiveSong == null || FocusedChart == null)
 			return;
 
@@ -5225,6 +5227,63 @@ internal sealed class Editor :
 
 			index++;
 		}
+	}
+
+	private void FocusPreviousChart()
+	{
+		if (ActiveSong == null || FocusedChart == null || ActiveCharts.Count < 1)
+			return;
+		var index = 0;
+		foreach (var activeChart in ActiveCharts)
+		{
+			if (activeChart == FocusedChart)
+			{
+				var newFocusedChartIndex = index - 1;
+				if (newFocusedChartIndex < 0)
+					newFocusedChartIndex = ActiveCharts.Count - 1;
+				SetChartFocused(ActiveCharts[newFocusedChartIndex]);
+				return;
+			}
+
+			index++;
+		}
+	}
+
+	private void FocusNextChart()
+	{
+		if (ActiveSong == null || FocusedChart == null || ActiveCharts.Count < 1)
+			return;
+		var index = 0;
+		foreach (var activeChart in ActiveCharts)
+		{
+			if (activeChart == FocusedChart)
+			{
+				SetChartFocused(ActiveCharts[index + 1 % ActiveCharts.Count]);
+				return;
+			}
+
+			index++;
+		}
+	}
+
+	private void MoveFocusedChartLeft()
+	{
+		MoveActiveChartLeft(GetFocusedChart());
+	}
+
+	private void MoveFocusedChartRight()
+	{
+		MoveActiveChartRight(GetFocusedChart());
+	}
+
+	private void CloseFocusedChart()
+	{
+		CloseChart(GetFocusedChart());
+	}
+
+	private void SetFocusedChartHasDedicatedTab()
+	{
+		SetChartHasDedicatedTab(GetFocusedChart(), true);
 	}
 
 	private void OnToggleSpacingMode()
@@ -5727,6 +5786,9 @@ internal sealed class Editor :
 
 	public void SetChartHasDedicatedTab(EditorChart chart, bool hasDedicatedTab)
 	{
+		if (chart == null)
+			return;
+
 		if (hasDedicatedTab)
 		{
 			ShowChart(chart, true);
@@ -5748,6 +5810,8 @@ internal sealed class Editor :
 
 	public void CloseChart(EditorChart chart)
 	{
+		if (chart == null)
+			return;
 		RemoveActiveChart(chart);
 
 		// Ensure this chart is no longer focused.
@@ -5769,6 +5833,9 @@ internal sealed class Editor :
 
 	public void MoveActiveChartLeft(EditorChart chart)
 	{
+		if (chart == null)
+			return;
+
 		var index = int.MaxValue;
 		for (var i = 0; i < ActiveCharts.Count; i++)
 		{
@@ -5788,6 +5855,9 @@ internal sealed class Editor :
 
 	public void MoveActiveChartRight(EditorChart chart)
 	{
+		if (chart == null)
+			return;
+
 		var index = int.MaxValue;
 		for (var i = 0; i < ActiveCharts.Count; i++)
 		{

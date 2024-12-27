@@ -55,21 +55,11 @@ internal sealed class UIChartHeader
 	public void Draw()
 	{
 		var editorChart = Chart.GetChart();
+		var chartId = editorChart.GetId();
 		Chart.GetEditor().GetChartArea(out var chartArea);
 		var x = Chart.GetScreenSpaceXOfFullChartAreaStart();
 		var w = Chart.GetScreenSpaceXOfFullChartAreaEnd() - x;
 		var h = GetChartHeaderHeight();
-
-		var allCharts = editorChart.GetEditorSong().GetSortedCharts();
-		var index = 0;
-		for (var i = 0; i < allCharts.Count; i++)
-		{
-			if (allCharts[i] == editorChart)
-			{
-				index = i;
-				break;
-			}
-		}
 
 		// Record window size and padding values so we can edit and restore them.
 		var originalWindowPaddingY = ImGui.GetStyle().WindowPadding.Y;
@@ -77,6 +67,7 @@ internal sealed class UIChartHeader
 		var originalItemSpacingX = ImGui.GetStyle().ItemSpacing.X;
 		var originalInnerItemSpacingX = ImGui.GetStyle().ItemInnerSpacing.X;
 		var originalFramePaddingX = ImGui.GetStyle().FramePadding.X;
+		var originalSelectableTextAlignY = ImGui.GetStyle().SelectableTextAlign.Y;
 
 		// Set the padding and spacing so we can draw a table with precise dimensions.
 		ImGui.GetStyle().WindowPadding.Y = 1;
@@ -84,6 +75,7 @@ internal sealed class UIChartHeader
 		ImGui.GetStyle().ItemSpacing.X = 0;
 		ImGui.GetStyle().ItemInnerSpacing.X = 0;
 		ImGui.GetStyle().FramePadding.X = 0;
+		ImGui.GetStyle().SelectableTextAlign.Y = 0.25f;
 
 		var color = Utils.GetColorForDifficultyType(editorChart.ChartDifficultyType);
 
@@ -98,28 +90,57 @@ internal sealed class UIChartHeader
 
 		ImGui.SetNextWindowPos(new Vector2(x, chartArea.Y));
 		ImGui.SetNextWindowSize(new Vector2(w, h));
-		if (ImGui.BeginChild($"##ChartHeader{index}", new Vector2(w, h), ImGuiChildFlags.Border, Utils.ChartAreaChildWindowFlags))
+		if (ImGui.BeginChild($"##ChartHeader{chartId}", new Vector2(w, h), ImGuiChildFlags.Border,
+			    Utils.ChartAreaChildWindowFlags))
 		{
 			var buttonWidth = GetCloseWidth();
 			var spacing = ImGui.GetStyle().ItemSpacing.X;
 			var available = ImGui.GetContentRegionAvail().X + ImGui.GetStyle().WindowPadding.X;
 			var textWidth = available - (buttonWidth * 3 + spacing * 2);
 
-			// Title
-			ImGui.SetNextItemWidth(textWidth);
-			Text(editorChart.GetDescriptiveName(), textWidth);
+			var useNonDedicatedTabColor = !Chart.HasDedicatedTab();
 
-			// Left / Right buttons
+			// Title. Use a transparent Selectable to support single and double clicking.
+			ImGui.SetNextItemWidth(textWidth);
+			ImGui.PushStyleColor(ImGuiCol.HeaderHovered, 0x00000000);
+			ImGui.PushStyleColor(ImGuiCol.HeaderActive, 0x00000000);
+			colorPushCount += 2;
+			if (useNonDedicatedTabColor)
+				ImGui.PushStyleColor(ImGuiCol.Text, Utils.UINonDedicatedTabTextColor);
+			if (ImGui.Selectable(editorChart.GetDescriptiveName(), false, ImGuiSelectableFlags.AllowDoubleClick,
+				    new Vector2(textWidth, h)))
+			{
+				if (ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left))
+				{
+					Editor.SetChartHasDedicatedTab(editorChart, true);
+				}
+				else
+				{
+					Editor.SetChartFocused(editorChart);
+				}
+			}
+
+			if (useNonDedicatedTabColor)
+				ImGui.PopStyleColor();
+
+			// Fudge layout numbers for the buttons to get their text to look centered in Y.
+			var originalFramePaddingY = ImGui.GetStyle().FramePadding.Y;
+			var buttonHeight = h + originalFramePaddingY * 2;
+			ImGui.GetStyle().FramePadding.Y = 0;
+			var originalButtonTextAlign = ImGui.GetStyle().ButtonTextAlign.Y;
+			ImGui.GetStyle().ButtonTextAlign.Y = 0.1f;
+
+			// Left / Right buttons.
 			ImGui.SameLine();
 			ImGui.SetNextItemWidth(buttonWidth);
-			if (ImGui.Button($"<##ChartHeader{index}", new Vector2(buttonWidth, h)))
+			if (ImGui.Button($"<##ChartHeader{chartId}", new Vector2(buttonWidth, buttonHeight)))
 			{
 				Editor.MoveActiveChartLeft(editorChart);
 			}
 
 			ImGui.SameLine();
 			ImGui.SetNextItemWidth(buttonWidth);
-			if (ImGui.Button($">##ChartHeader{index}", new Vector2(buttonWidth, 0.0f)))
+			if (ImGui.Button($">##ChartHeader{chartId}", new Vector2(buttonWidth, buttonHeight)))
 			{
 				Editor.MoveActiveChartRight(editorChart);
 			}
@@ -127,8 +148,11 @@ internal sealed class UIChartHeader
 			// Close button.
 			ImGui.SameLine();
 			ImGui.SetNextItemWidth(buttonWidth);
-			if (ImGui.Button($"X##ChartHeader{index}", new Vector2(buttonWidth, 0.0f)))
+			if (ImGui.Button($"X##ChartHeader{chartId}", new Vector2(buttonWidth, buttonHeight)))
 				Editor.CloseChart(editorChart);
+
+			ImGui.GetStyle().ButtonTextAlign.Y = originalButtonTextAlign;
+			ImGui.GetStyle().FramePadding.Y = originalFramePaddingY;
 		}
 
 		ImGui.EndChild();
@@ -139,6 +163,7 @@ internal sealed class UIChartHeader
 		ImGui.GetStyle().ItemSpacing.X = originalItemSpacingX;
 		ImGui.GetStyle().WindowPadding.Y = originalWindowPaddingY;
 		ImGui.GetStyle().WindowMinSize = originalMinWindowSize;
+		ImGui.GetStyle().SelectableTextAlign.Y = originalSelectableTextAlignY;
 
 		ImGui.PopStyleColor(colorPushCount);
 	}
