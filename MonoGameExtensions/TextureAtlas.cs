@@ -95,7 +95,7 @@ public abstract class TextureAtlas : IReadOnlyTextureAtlas
 			if (MipLevels == null)
 				return this;
 
-			while (scale < 0.5 && mipLevel < MipLevels.Length - 1)
+			while (scale <= 0.5 && mipLevel < MipLevels.Length - 1)
 			{
 				scale *= 2.0;
 				mipLevel++;
@@ -339,6 +339,7 @@ public abstract class TextureAtlas : IReadOnlyTextureAtlas
 			Logger.Warn($"Failed to get texture identified by \"{subTextureId}\". No texture with that id found.");
 			return (0, 0, 0, 0);
 		}
+
 		return (node.TextureRect.X, node.TextureRect.Y, node.TextureRect.Width, node.TextureRect.Height);
 	}
 
