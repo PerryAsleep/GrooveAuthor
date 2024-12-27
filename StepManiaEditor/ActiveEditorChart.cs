@@ -631,11 +631,14 @@ internal sealed class ActiveEditorChart
 			}
 			else
 			{
-				if (e!.IsMiscEvent() && ShouldDrawMiscEvents())
+				if (e!.IsMiscEvent())
 				{
-					e.Alpha = miscEventAlpha;
-					MiscEventWidgetLayoutManager.PositionEvent(e, y);
-					noteEvents.Add(e);
+					if (ShouldDrawMiscEvents())
+					{
+						e.Alpha = miscEventAlpha;
+						MiscEventWidgetLayoutManager.PositionEvent(e, y);
+						noteEvents.Add(e);
+					}
 				}
 				else
 				{
