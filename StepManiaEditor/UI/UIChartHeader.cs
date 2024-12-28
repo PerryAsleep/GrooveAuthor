@@ -12,6 +12,9 @@ internal sealed class UIChartHeader
 	private readonly ActiveEditorChart Chart;
 	private readonly Editor Editor;
 
+	private const int NumButtons = 3;
+	private static readonly int ItemSpacing = UiScaled(0);
+
 	public UIChartHeader(Editor editor, ActiveEditorChart chart)
 	{
 		Editor = editor;
@@ -72,7 +75,7 @@ internal sealed class UIChartHeader
 		// Set the padding and spacing so we can draw a table with precise dimensions.
 		ImGui.GetStyle().WindowPadding.Y = 1;
 		ImGui.GetStyle().WindowMinSize = new Vector2(w, h);
-		ImGui.GetStyle().ItemSpacing.X = 0;
+		ImGui.GetStyle().ItemSpacing.X = ItemSpacing;
 		ImGui.GetStyle().ItemInnerSpacing.X = 0;
 		ImGui.GetStyle().FramePadding.X = 0;
 		ImGui.GetStyle().SelectableTextAlign.Y = 0.25f;
@@ -94,9 +97,8 @@ internal sealed class UIChartHeader
 			    Utils.ChartAreaChildWindowFlags))
 		{
 			var buttonWidth = GetCloseWidth();
-			var spacing = ImGui.GetStyle().ItemSpacing.X;
 			var available = ImGui.GetContentRegionAvail().X + ImGui.GetStyle().WindowPadding.X;
-			var textWidth = available - (buttonWidth * 3 + spacing * 2);
+			var textWidth = available - GetButtonAreaWidth();
 
 			var useNonDedicatedTabColor = !Chart.HasDedicatedTab();
 
@@ -110,13 +112,16 @@ internal sealed class UIChartHeader
 			if (ImGui.Selectable(editorChart.GetDescriptiveName(), false, ImGuiSelectableFlags.AllowDoubleClick,
 				    new Vector2(textWidth, h)))
 			{
-				if (ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left))
+				if (!Editor.WasLastMouseUpUsedForMovingFocalPoint())
 				{
-					Editor.SetChartHasDedicatedTab(editorChart, true);
-				}
-				else
-				{
-					Editor.SetChartFocused(editorChart);
+					if (ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left))
+					{
+						Editor.SetChartHasDedicatedTab(editorChart, true);
+					}
+					else
+					{
+						Editor.SetChartFocused(editorChart);
+					}
 				}
 			}
 
@@ -166,5 +171,21 @@ internal sealed class UIChartHeader
 		ImGui.GetStyle().SelectableTextAlign.Y = originalSelectableTextAlignY;
 
 		ImGui.PopStyleColor(colorPushCount);
+	}
+
+	private int GetButtonAreaWidth()
+	{
+		var buttonWidth = GetCloseWidth();
+		return buttonWidth * NumButtons + ItemSpacing * (NumButtons - 1);
+	}
+
+	public bool IsOverDraggableArea(int screenSpaceX, int screenSpaceY)
+	{
+		if (!Chart.GetEditor().GetChartAreaInScreenSpace(out var draggableArea))
+			return false;
+		draggableArea.X = Chart.GetScreenSpaceXOfFullChartAreaStart();
+		draggableArea.Width = Chart.GetScreenSpaceXOfFullChartAreaEnd() - draggableArea.X - GetButtonAreaWidth();
+		draggableArea.Height = GetChartHeaderHeight();
+		return draggableArea.Contains(screenSpaceX, screenSpaceY);
 	}
 }

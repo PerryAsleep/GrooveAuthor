@@ -118,6 +118,9 @@ internal sealed class Editor :
 	private bool CanShowRightClickPopupThisFrame;
 
 	private bool MovingFocalPoint;
+	private bool FocalPointMoved;
+	private bool LastMouseUpEventWasUsedForMovingFocalPoint;
+	private bool ForceOnlyHorizontalFocalPointMove;
 	private Vector2 FocalPointAtMoveStart;
 	private Vector2 FocalPointMoveOffset;
 
@@ -1718,6 +1721,8 @@ internal sealed class Editor :
 		var state = Mouse.GetState();
 		var (mouseChartTime, mouseChartPosition) = FindChartTimeAndRowForScreenY(state.Y);
 		EditorMouseState.Update(state, mouseChartTime, mouseChartPosition, inFocus);
+		if (EditorMouseState.GetButtonState(EditorMouseState.Button.Left).UpThisFrame())
+			LastMouseUpEventWasUsedForMovingFocalPoint = false;
 
 		// Do not do any further input processing if the application does not have focus.
 		if (!inFocus)
@@ -1732,17 +1737,21 @@ internal sealed class Editor :
 		else
 			KeyCommandManager.Update(currentTime);
 
+		var mouseX = EditorMouseState.X();
+		var mouseY = EditorMouseState.Y();
+
 		// Early out if ImGui is using the mouse.
 		if (imGuiWantMouse)
 		{
+			// The only case where we still want to process mouse input is dragging the chart headers.
+			ProcessInputForDraggingHeader(mouseX, mouseY);
+
 			// ImGui may want the mouse on a release when we are selecting. Stop selecting in that case.
 			focusedChartData?.FinishSelectedRegion();
 			UpdateCursor();
 			return;
 		}
 
-		var mouseX = EditorMouseState.X();
-		var mouseY = EditorMouseState.Y();
 		var atEdgeOfScreen = mouseX <= 0 || mouseX >= GetViewportWidth() - 1 || mouseY <= 0 || mouseY >= GetViewportHeight() - 1;
 		var downThisFrame = EditorMouseState.GetButtonState(EditorMouseState.Button.Left).DownThisFrame();
 		var clickingToDragWindowEdge = atEdgeOfScreen && downThisFrame;
@@ -1824,10 +1833,29 @@ internal sealed class Editor :
 	}
 
 	/// <summary>
+	/// Processes input for moving the focal point with the mouse by dragging a header.
+	/// </summary>
+	/// <remarks>Helper for ProcessInput.</remarks>
+	private void ProcessInputForDraggingHeader(int mouseX, int mouseY)
+	{
+		var overDraggableArea = false;
+		foreach (var chart in ActiveChartData)
+		{
+			if (chart.IsOverHeaderDraggableArea(mouseX, mouseY))
+			{
+				overDraggableArea = true;
+				break;
+			}
+		}
+
+		ProcessInputForMovingFocalPoint(overDraggableArea, true);
+	}
+
+	/// <summary>
 	/// Processes input for moving the focal point with the mouse.
 	/// </summary>
 	/// <remarks>Helper for ProcessInput.</remarks>
-	private void ProcessInputForMovingFocalPoint(bool inReceptorArea)
+	private void ProcessInputForMovingFocalPoint(bool inReceptorArea, bool forceOnlyHorizontalMove = false)
 	{
 		// Begin moving focal point.
 		if (EditorMouseState.GetButtonState(EditorMouseState.Button.Left).DownThisFrame()
@@ -1835,6 +1863,7 @@ internal sealed class Editor :
 		    && !Preferences.Instance.PreferencesReceptors.LockPosition)
 		{
 			MovingFocalPoint = true;
+			ForceOnlyHorizontalFocalPointMove = forceOnlyHorizontalMove;
 			FocalPointAtMoveStart = GetFocalPointChartSpace();
 			FocalPointMoveOffset = new Vector2(EditorMouseState.X() - GetFocalPointScreenSpaceX(),
 				EditorMouseState.Y() - GetFocalPointScreenSpaceY());
@@ -1843,35 +1872,48 @@ internal sealed class Editor :
 		// Move focal point.
 		if (MovingFocalPoint)
 		{
+			void SetReceptorPosition(int x, int y)
+			{
+				var p = Preferences.Instance.PreferencesReceptors;
+				if (p.ChartSpacePositionX != x || p.ChartSpacePositionY != y)
+					FocalPointMoved = true;
+				p.ChartSpacePositionX = x;
+				p.ChartSpacePositionY = y;
+			}
+
 			var newX = TransformScreenSpaceXToChartSpaceX(EditorMouseState.X()) - (int)FocalPointMoveOffset.X;
 			var newY = TransformScreenSpaceYToChartSpaceY(EditorMouseState.Y()) - (int)FocalPointMoveOffset.Y;
 
 			if (KeyCommandManager.IsAnyInputDown(Preferences.Instance.PreferencesKeyBinds.LockReceptorMoveAxis))
 			{
 				if (Math.Abs(newX - FocalPointAtMoveStart.X) > Math.Abs(newY - FocalPointAtMoveStart.Y))
-				{
-					Preferences.Instance.PreferencesReceptors.ChartSpacePositionX = newX;
-					Preferences.Instance.PreferencesReceptors.ChartSpacePositionY = (int)FocalPointAtMoveStart.Y;
-				}
+					SetReceptorPosition(newX, (int)FocalPointAtMoveStart.Y);
 				else
-				{
-					Preferences.Instance.PreferencesReceptors.ChartSpacePositionX = (int)FocalPointAtMoveStart.X;
-					Preferences.Instance.PreferencesReceptors.ChartSpacePositionY = newY;
-				}
+					SetReceptorPosition((int)FocalPointAtMoveStart.X, newY);
+			}
+			else if (ForceOnlyHorizontalFocalPointMove)
+			{
+				SetReceptorPosition(newX, (int)FocalPointAtMoveStart.Y);
 			}
 			else
 			{
-				Preferences.Instance.PreferencesReceptors.ChartSpacePositionX = newX;
-				Preferences.Instance.PreferencesReceptors.ChartSpacePositionY = newY;
+				SetReceptorPosition(newX, newY);
 			}
 		}
 
 		// Stop moving focal point.
 		if (EditorMouseState.GetButtonState(EditorMouseState.Button.Left).Up() && MovingFocalPoint)
 		{
+			LastMouseUpEventWasUsedForMovingFocalPoint = FocalPointMoved;
 			MovingFocalPoint = false;
+			FocalPointMoved = false;
 			FocalPointMoveOffset = new Vector2();
 		}
+	}
+
+	public bool WasLastMouseUpUsedForMovingFocalPoint()
+	{
+		return LastMouseUpEventWasUsedForMovingFocalPoint;
 	}
 
 	/// <summary>
