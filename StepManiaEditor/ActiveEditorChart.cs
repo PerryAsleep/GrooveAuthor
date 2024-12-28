@@ -383,7 +383,13 @@ internal sealed class ActiveEditorChart
 
 	public bool ShouldDrawMiscEvents()
 	{
-		return IsFocused();
+		// Originally this was limited to only the focused chart.
+		// Showing the misc events for all charts is better because it gives more information
+		// and it makes the width of individual active charts less variable which makes switching
+		// the focused chart less jarring.
+		// The only negative to drawing the misc events for all charts is the additional width but
+		// this seems like a fair price to pay.
+		return true;
 	}
 
 	#endregion Misc
