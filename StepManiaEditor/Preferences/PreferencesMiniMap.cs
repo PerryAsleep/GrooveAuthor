@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text.Json.Serialization;
 using Fumen;
 using static StepManiaEditor.PreferencesMiniMap;
+using static StepManiaEditor.ImGuiUtils;
 
 namespace StepManiaEditor;
 
@@ -36,12 +37,17 @@ internal sealed class PreferencesMiniMap
 	{
 		// When mounted to the window the density graph should be on the outside and the mini map should be on the inside.
 		// These value takes into account the default position for the density graph.
-		{ MiniMap.Position.RightSideOfWindow, 110 },
-		{ MiniMap.Position.LeftSideOfWindow, 110 },
+		{
+			MiniMap.Position.RightSideOfWindow,
+			PreferencesDensityGraph.DefaultDensityGraphHeight + SceneWidgetPaddingDefaultDPI * 2
+		},
+		{
+			MiniMap.Position.LeftSideOfWindow,
+			PreferencesDensityGraph.DefaultDensityGraphHeight + SceneWidgetPaddingDefaultDPI * 2
+		},
 		// When mounted to the chart the mini map should be on the inside and the density graph should be on the outside.
-		// A little more of a margin is applied when mounting to the chart.
-		{ MiniMap.Position.FocusedChartWithoutScaling, 32 },
-		{ MiniMap.Position.FocusedChartWithScaling, 32 },
+		{ MiniMap.Position.FocusedChartWithoutScaling, SceneWidgetPaddingDefaultDPI },
+		{ MiniMap.Position.FocusedChartWithScaling, SceneWidgetPaddingDefaultDPI },
 	};
 
 	// Preferences.
@@ -68,6 +74,16 @@ internal sealed class PreferencesMiniMap
 	{
 		get => PositionOffsets[MiniMapPosition];
 		set => PositionOffsets[MiniMapPosition] = value;
+	}
+
+	public int GetPositionOffsetUiScaled()
+	{
+		return UiScaled(PositionOffset);
+	}
+
+	public int GetMiniMapWidthScaled()
+	{
+		return UiScaled((int)MiniMapWidth);
 	}
 
 	public static void RegisterDefaultsForInvalidEnumValues(PermissiveEnumJsonConverterFactory factory)

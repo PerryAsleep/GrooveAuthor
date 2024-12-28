@@ -1259,9 +1259,18 @@ internal sealed class Editor :
 		OnChartAreaChanged();
 	}
 
-	public bool GetChartArea(out Rectangle chartArea)
+	public bool GetChartAreaInScreenSpace(out Rectangle chartArea)
 	{
 		chartArea = ChartArea;
+		return IsChartAreaSet;
+	}
+
+	public bool GetChartAreaInChartSpaceWithoutHeader(out Rectangle chartArea)
+	{
+		chartArea = new Rectangle(0, 0, ChartArea.Width, ChartArea.Height);
+		var headerHeight = Math.Min(GetChartHeaderHeight(), chartArea.Height);
+		chartArea.Y += headerHeight;
+		chartArea.Height -= headerHeight;
 		return IsChartAreaSet;
 	}
 
@@ -1383,6 +1392,13 @@ internal sealed class Editor :
 	public Vector2 GetFocalPointScreenSpace()
 	{
 		return new Vector2(GetFocalPointScreenSpaceX(), GetFocalPointScreenSpaceY());
+	}
+
+	private void SetFocalPointScreenSpace(int screenSpaceX, int screenSpaceY)
+	{
+		var p = Preferences.Instance.PreferencesReceptors;
+		p.ChartSpacePositionX = TransformScreenSpaceXToChartSpaceX(screenSpaceX);
+		p.ChartSpacePositionY = TransformScreenSpaceYToChartSpaceY(screenSpaceY);
 	}
 
 	#endregion Focal Point
@@ -1551,7 +1567,10 @@ internal sealed class Editor :
 				foreach (var activeChartData in ActiveChartData)
 				{
 					if (activeChartData != focusedChartData)
+					{
 						activeChartData.Position.ChartPosition = focusedChartData.Position.ChartPosition;
+						activeChartData.Position.SetDesiredPositionToCurrent();
+					}
 				}
 
 				MusicManager.SetMusicTimeInSeconds(focusedChartData.Position.SongTime);
@@ -1565,7 +1584,10 @@ internal sealed class Editor :
 				foreach (var activeChartData in ActiveChartData)
 				{
 					if (activeChartData != focusedChartData)
+					{
 						activeChartData.Position.ChartPosition = focusedChartData.Position.ChartPosition;
+						activeChartData.Position.SetDesiredPositionToCurrent();
+					}
 				}
 
 				MusicManager.SetMusicTimeInSeconds(focusedChartData.Position.SongTime);
@@ -2772,20 +2794,20 @@ internal sealed class Editor :
 		{
 			case Position.RightSideOfWindow:
 			{
-				x = ChartArea.X + ChartArea.Width - p.PreferencesMiniMap.PositionOffset -
-				    (int)p.PreferencesMiniMap.MiniMapWidth;
+				x = ChartArea.X + ChartArea.Width - p.PreferencesMiniMap.GetPositionOffsetUiScaled() -
+				    p.PreferencesMiniMap.GetMiniMapWidthScaled();
 				break;
 			}
 			case Position.LeftSideOfWindow:
 			{
-				x = ChartArea.X + p.PreferencesMiniMap.PositionOffset;
+				x = ChartArea.X + p.PreferencesMiniMap.GetPositionOffsetUiScaled();
 				break;
 			}
 			case Position.FocusedChartWithoutScaling:
 			{
 				var focusedChartData = GetFocusedChartData();
 				if (focusedChartData != null)
-					x = focusedChartData.GetScreenSpaceXOfMiscEventsEnd() + p.PreferencesMiniMap.PositionOffset;
+					x = focusedChartData.GetScreenSpaceXOfMiscEventsEnd() + p.PreferencesMiniMap.GetPositionOffsetUiScaled();
 				break;
 			}
 			case Position.FocusedChartWithScaling:
@@ -2793,7 +2815,7 @@ internal sealed class Editor :
 				var focusedChartData = GetFocusedChartData();
 				if (focusedChartData != null)
 					x = focusedChartData.GetScreenSpaceXOfMiscEventsEndWithCurrentScale() +
-					    p.PreferencesMiniMap.PositionOffset;
+					    p.PreferencesMiniMap.GetPositionOffsetUiScaled();
 				break;
 			}
 		}
@@ -2806,7 +2828,7 @@ internal sealed class Editor :
 
 		MiniMap.UpdateBounds(
 			GraphicsDevice,
-			new Rectangle(x, y, (int)p.PreferencesMiniMap.MiniMapWidth, textureHeight),
+			new Rectangle(x, y, p.PreferencesMiniMap.GetMiniMapWidthScaled(), textureHeight),
 			visibleHeight);
 	}
 
@@ -3096,38 +3118,39 @@ internal sealed class Editor :
 		{
 			case PreferencesDensityGraph.DensityGraphPosition.RightSideOfWindow:
 			{
-				w = p.DensityGraphHeight;
-				x = ChartArea.X + ChartArea.Width - w - p.DensityGraphPositionOffset;
-				h = ChartArea.Height - GetChartHeaderHeight() + p.DensityGraphWidthOffset * 2;
-				y = ChartArea.Y + GetChartHeaderHeight() - p.DensityGraphWidthOffset;
+				w = p.GetDensityGraphHeightUiScaled();
+				x = ChartArea.X + ChartArea.Width - w - p.GetDensityGraphPositionOffsetUiScaled();
+				h = ChartArea.Height - GetChartHeaderHeight() + p.GetDensityGraphWidthOffsetUiScaled() * 2;
+				y = ChartArea.Y + GetChartHeaderHeight() - p.GetDensityGraphWidthOffsetUiScaled();
 				break;
 			}
 			case PreferencesDensityGraph.DensityGraphPosition.LeftSideOfWindow:
 			{
-				w = p.DensityGraphHeight;
-				x = ChartArea.X + p.DensityGraphPositionOffset;
-				h = ChartArea.Height - GetChartHeaderHeight() + p.DensityGraphWidthOffset * 2;
-				y = ChartArea.Y + GetChartHeaderHeight() - p.DensityGraphWidthOffset;
+				w = p.GetDensityGraphHeightUiScaled();
+				x = ChartArea.X + p.GetDensityGraphPositionOffsetUiScaled();
+				h = ChartArea.Height - GetChartHeaderHeight() + p.GetDensityGraphWidthOffsetUiScaled() * 2;
+				y = ChartArea.Y + GetChartHeaderHeight() - p.GetDensityGraphWidthOffsetUiScaled();
 				break;
 			}
 			case PreferencesDensityGraph.DensityGraphPosition.FocusedChartWithoutScaling:
 			{
 				var focusedChartData = GetFocusedChartData();
 				if (focusedChartData != null)
-					x = focusedChartData.GetScreenSpaceXOfMiscEventsEnd() + p.DensityGraphPositionOffset;
-				w = p.DensityGraphHeight;
-				h = ChartArea.Height - GetChartHeaderHeight() + p.DensityGraphWidthOffset * 2;
-				y = ChartArea.Y + GetChartHeaderHeight() - p.DensityGraphWidthOffset;
+					x = focusedChartData.GetScreenSpaceXOfMiscEventsEnd() + p.GetDensityGraphPositionOffsetUiScaled();
+				w = p.GetDensityGraphHeightUiScaled();
+				h = ChartArea.Height - GetChartHeaderHeight() + p.GetDensityGraphWidthOffsetUiScaled() * 2;
+				y = ChartArea.Y + GetChartHeaderHeight() - p.GetDensityGraphWidthOffsetUiScaled();
 				break;
 			}
 			case PreferencesDensityGraph.DensityGraphPosition.FocusedChartWithScaling:
 			{
 				var focusedChartData = GetFocusedChartData();
 				if (focusedChartData != null)
-					x = focusedChartData.GetScreenSpaceXOfMiscEventsEndWithCurrentScale() + p.DensityGraphPositionOffset;
-				w = p.DensityGraphHeight;
-				h = ChartArea.Height - GetChartHeaderHeight() + p.DensityGraphWidthOffset * 2;
-				y = ChartArea.Y + GetChartHeaderHeight() - p.DensityGraphWidthOffset;
+					x = focusedChartData.GetScreenSpaceXOfMiscEventsEndWithCurrentScale() +
+					    p.GetDensityGraphPositionOffsetUiScaled();
+				w = p.GetDensityGraphHeightUiScaled();
+				h = ChartArea.Height - GetChartHeaderHeight() + p.GetDensityGraphWidthOffsetUiScaled() * 2;
+				y = ChartArea.Y + GetChartHeaderHeight() - p.GetDensityGraphWidthOffsetUiScaled();
 				break;
 			}
 			case PreferencesDensityGraph.DensityGraphPosition.TopOfFocusedChart:
@@ -3137,12 +3160,12 @@ internal sealed class Editor :
 				{
 					var x1 = focusedChartData.GetScreenSpaceXOfLanesStart();
 					var x2 = focusedChartData.GetScreenSpaceXOfLanesEnd();
-					x = x1 - p.DensityGraphWidthOffset;
-					w = x2 - x1 + p.DensityGraphWidthOffset * 2;
+					x = x1 - p.GetDensityGraphWidthOffsetUiScaled();
+					w = x2 - x1 + p.GetDensityGraphWidthOffsetUiScaled() * 2;
 				}
 
-				y = ChartArea.Y + p.DensityGraphPositionOffset;
-				h = p.DensityGraphHeight;
+				y = ChartArea.Y + p.GetDensityGraphPositionOffsetUiScaled();
+				h = p.GetDensityGraphHeightUiScaled();
 				orientation = StepDensityEffect.Orientation.Horizontal;
 				break;
 			}
@@ -3153,12 +3176,13 @@ internal sealed class Editor :
 				{
 					var x1 = focusedChartData.GetScreenSpaceXOfLanesStart();
 					var x2 = focusedChartData.GetScreenSpaceXOfLanesEnd();
-					x = x1 - p.DensityGraphWidthOffset;
-					w = x2 - x1 + p.DensityGraphWidthOffset * 2;
+					x = x1 - p.GetDensityGraphWidthOffsetUiScaled();
+					w = x2 - x1 + p.GetDensityGraphWidthOffsetUiScaled() * 2;
 				}
 
-				y = ChartArea.Y + ChartArea.Height - p.DensityGraphHeight - p.DensityGraphPositionOffset;
-				h = p.DensityGraphHeight;
+				y = ChartArea.Y + ChartArea.Height - p.GetDensityGraphHeightUiScaled() -
+				    p.GetDensityGraphPositionOffsetUiScaled();
+				h = p.GetDensityGraphHeightUiScaled();
 				orientation = StepDensityEffect.Orientation.Horizontal;
 				break;
 			}
@@ -5922,6 +5946,7 @@ internal sealed class Editor :
 			KeyCommandManager);
 		ActiveChartData.Add(activeChartData);
 		activeChartData.Position.ChartTime = GetPosition().ChartTime;
+		activeChartData.Position.SetDesiredPositionToCurrent();
 
 		// If this is the only shown chart, set it focused.
 		if (ActiveCharts.Count == 1)
@@ -5984,57 +6009,46 @@ internal sealed class Editor :
 			return;
 		}
 
-		oldFocusedChartData?.SetFocused(false);
+		int? leftPosOfAllCharts = null;
+		if (ActiveChartData.Count > 0)
+			leftPosOfAllCharts = ActiveChartData[0].GetScreenSpaceXOfFullChartAreaStart();
+
+		var currentActiveChart = GetActiveChartData(chart);
 
 		// Set the focused chart.
+		oldFocusedChartData?.SetFocused(false);
 		FocusedChart = chart;
-		ActiveEditorChart focusedChartData = null;
 
 		// Ensure that if we are focusing on a chart, it is active.
-		if (FocusedChart != null)
+		if (FocusedChart != null && currentActiveChart == null)
 		{
-			// If the focused chart is already active, move it to front of the active chart list.
-			var focusedChartIndex = -1;
-			for (var i = 0; i < ActiveCharts.Count; i++)
-			{
-				if (ActiveCharts[i] == FocusedChart)
-				{
-					focusedChartIndex = i;
-					break;
-				}
-			}
-
-			if (focusedChartIndex != -1)
-			{
-				ActiveCharts.RemoveAt(focusedChartIndex);
-				ActiveCharts.Insert(0, FocusedChart);
-				focusedChartData = ActiveChartData[focusedChartIndex];
-				ActiveChartData.RemoveAt(focusedChartIndex);
-				ActiveChartData.Insert(0, focusedChartData);
-				focusedChartData.Position.ChartTime = oldChartTime;
-				focusedChartData.Position.SetDesiredPositionToCurrent();
-			}
-
-			// If the focused chart is not yet active, add new data for it
-			else
-			{
-				ActiveCharts.Insert(0, FocusedChart);
-				var activeChartData = new ActiveEditorChart(
-					this,
-					chart,
-					ZoomManager,
-					TextureAtlas,
-					KeyCommandManager);
-				ActiveChartData.Insert(0, activeChartData);
-				activeChartData.Position.ChartTime = oldChartTime;
-				activeChartData.Position.SetDesiredPositionToCurrent();
-			}
+			ActiveCharts.Insert(0, FocusedChart);
+			var activeChartData = new ActiveEditorChart(
+				this,
+				chart,
+				ZoomManager,
+				TextureAtlas,
+				KeyCommandManager);
+			ActiveChartData.Insert(0, activeChartData);
 		}
 
-		focusedChartData ??= GetFocusedChartData();
-		focusedChartData?.SetFocused(true);
+		var focusedChartData = GetFocusedChartData();
+		focusedChartData.Position.ChartTime = oldChartTime;
+		focusedChartData.Position.SetDesiredPositionToCurrent();
+		focusedChartData.SetFocused(true);
 		CleanUpActiveChartsWithoutDedicatedTabs(focusedChartData);
+
+		// Adjust the focal point to keep the charts in the same spot.
 		UpdateChartPositions();
+		if (leftPosOfAllCharts != null)
+		{
+			var delta = ActiveChartData[0].GetScreenSpaceXOfFullChartAreaStart() - (int)leftPosOfAllCharts;
+			if (delta != 0)
+			{
+				SetFocalPointScreenSpace(GetFocalPointScreenSpaceX() - delta, GetFocalPointScreenSpaceY());
+				UpdateChartPositions();
+			}
+		}
 
 		DensityGraph.SetStepDensity(FocusedChart?.GetStepDensity());
 		EditorMouseState.SetActiveChart(FocusedChart);

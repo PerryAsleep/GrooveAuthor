@@ -44,12 +44,17 @@ internal sealed class PreferencesReceptors
 		set
 		{
 			ChartSpacePositionXInternal = value;
-			if (ChartSpacePositionXInternal < 0)
-				ChartSpacePositionXInternal = 0;
-			if (Editor != null && Editor.GetChartArea(out var chartArea))
+			if (Editor != null && Editor.GetChartAreaInChartSpaceWithoutHeader(out var chartArea))
 			{
+				if (ChartSpacePositionXInternal < chartArea.X)
+					ChartSpacePositionXInternal = chartArea.X;
 				if (ChartSpacePositionXInternal >= chartArea.Width)
 					ChartSpacePositionXInternal = chartArea.Width - 1;
+			}
+			else
+			{
+				if (ChartSpacePositionXInternal < 0)
+					ChartSpacePositionXInternal = 0;
 			}
 		}
 	}
@@ -64,10 +69,17 @@ internal sealed class PreferencesReceptors
 			ChartSpacePositionYInternal = value;
 			if (ChartSpacePositionYInternal < 0)
 				ChartSpacePositionYInternal = 0;
-			if (Editor != null && Editor.GetChartArea(out var chartArea))
+			if (Editor != null && Editor.GetChartAreaInChartSpaceWithoutHeader(out var chartArea))
 			{
+				if (ChartSpacePositionYInternal < chartArea.Y)
+					ChartSpacePositionYInternal = chartArea.Y;
 				if (ChartSpacePositionYInternal >= chartArea.Height)
 					ChartSpacePositionYInternal = chartArea.Height - 1;
+			}
+			else
+			{
+				if (ChartSpacePositionYInternal < 0)
+					ChartSpacePositionYInternal = 0;
 			}
 		}
 	}

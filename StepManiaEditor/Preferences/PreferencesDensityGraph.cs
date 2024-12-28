@@ -5,6 +5,7 @@ using System.Numerics;
 using System.Text.Json.Serialization;
 using Fumen;
 using static StepManiaEditor.PreferencesDensityGraph;
+using static StepManiaEditor.ImGuiUtils;
 
 namespace StepManiaEditor;
 
@@ -47,22 +48,28 @@ internal sealed class PreferencesDensityGraph : Notifier<PreferencesDensityGraph
 
 	public static Dictionary<DensityGraphPosition, int> DefaultDensityGraphPositionOffsets = new()
 	{
-		{ DensityGraphPosition.RightSideOfWindow, 10 },
-		{ DensityGraphPosition.LeftSideOfWindow, 10 },
+		{ DensityGraphPosition.RightSideOfWindow, SceneWidgetPaddingDefaultDPI },
+		{ DensityGraphPosition.LeftSideOfWindow, SceneWidgetPaddingDefaultDPI },
 		// When mounting to the chart the mini map is closer.
 		// These values takes into account the default position of the mini map.
-		{ DensityGraphPosition.FocusedChartWithoutScaling, 134 },
-		{ DensityGraphPosition.FocusedChartWithScaling, 134 },
-		{ DensityGraphPosition.TopOfFocusedChart, 10 },
-		{ DensityGraphPosition.BottomOfFocusedChart, 10 },
+		{
+			DensityGraphPosition.FocusedChartWithoutScaling,
+			(int)PreferencesMiniMap.DefaultMiniMapWidth + SceneWidgetPaddingDefaultDPI * 2
+		},
+		{
+			DensityGraphPosition.FocusedChartWithScaling,
+			(int)PreferencesMiniMap.DefaultMiniMapWidth + SceneWidgetPaddingDefaultDPI * 2
+		},
+		{ DensityGraphPosition.TopOfFocusedChart, SceneWidgetPaddingDefaultDPI },
+		{ DensityGraphPosition.BottomOfFocusedChart, SceneWidgetPaddingDefaultDPI },
 	};
 
 	public static Dictionary<DensityGraphPosition, int> DefaultDensityGraphWidthOffsets = new()
 	{
-		{ DensityGraphPosition.RightSideOfWindow, -10 },
-		{ DensityGraphPosition.LeftSideOfWindow, -10 },
-		{ DensityGraphPosition.FocusedChartWithoutScaling, -10 },
-		{ DensityGraphPosition.FocusedChartWithScaling, -10 },
+		{ DensityGraphPosition.RightSideOfWindow, -SceneWidgetPaddingDefaultDPI },
+		{ DensityGraphPosition.LeftSideOfWindow, -SceneWidgetPaddingDefaultDPI },
+		{ DensityGraphPosition.FocusedChartWithoutScaling, -SceneWidgetPaddingDefaultDPI },
+		{ DensityGraphPosition.FocusedChartWithScaling, -SceneWidgetPaddingDefaultDPI },
 		{ DensityGraphPosition.TopOfFocusedChart, 0 },
 		{ DensityGraphPosition.BottomOfFocusedChart, 0 },
 	};
@@ -181,6 +188,21 @@ internal sealed class PreferencesDensityGraph : Notifier<PreferencesDensityGraph
 	{
 		get => DensityGraphWidthOffsets[DensityGraphPositionValue];
 		set => DensityGraphWidthOffsets[DensityGraphPositionValue] = value;
+	}
+
+	public int GetDensityGraphPositionOffsetUiScaled()
+	{
+		return UiScaled(DensityGraphPositionOffset);
+	}
+
+	public int GetDensityGraphWidthOffsetUiScaled()
+	{
+		return UiScaled(DensityGraphWidthOffset);
+	}
+
+	public int GetDensityGraphHeightUiScaled()
+	{
+		return UiScaled(DensityGraphHeight);
 	}
 
 	public static void RegisterDefaultsForInvalidEnumValues(PermissiveEnumJsonConverterFactory factory)

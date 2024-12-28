@@ -56,7 +56,7 @@ internal sealed class UIChartHeader
 	{
 		var editorChart = Chart.GetChart();
 		var chartId = editorChart.GetId();
-		Chart.GetEditor().GetChartArea(out var chartArea);
+		Chart.GetEditor().GetChartAreaInScreenSpace(out var chartArea);
 		var x = Chart.GetScreenSpaceXOfFullChartAreaStart();
 		var w = Chart.GetScreenSpaceXOfFullChartAreaEnd() - x;
 		var h = GetChartHeaderHeight();

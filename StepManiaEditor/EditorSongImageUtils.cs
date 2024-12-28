@@ -37,8 +37,8 @@ internal sealed class EditorSongImageUtils
 	{
 		return TryFindBestAsset(
 			directory,
-			GetUnscaledBannerWidth(),
-			GetUnscaledBannerHeight(),
+			BannerWidthDefaultDPI,
+			BannerHeightDefaultDPI,
 			BannerPostfix,
 			BannerContains,
 			false,
@@ -55,8 +55,8 @@ internal sealed class EditorSongImageUtils
 	{
 		return TryFindBestAsset(
 			directory,
-			GetUnscaledBackgroundWidth(),
-			GetUnscaledBackgroundHeight(),
+			BackgroundWidthDefaultDPI,
+			BackgroundHeightDefaultDPI,
 			BackgroundPostfix,
 			BackgroundContains,
 			true,
@@ -209,7 +209,7 @@ internal sealed class EditorSongImageUtils
 			if (fileNameNoExtension.EndsWith(BannerPostfix) || fileNameNoExtension.Contains(BannerContains))
 				return SongImageType.Banner;
 			var (sourceWidth, sourceHeight) = GetImageDimensions(imagePath);
-			if (DoesAspectRatioMatch(sourceWidth, sourceHeight, GetUnscaledBannerWidth(), GetUnscaledBannerHeight()))
+			if (DoesAspectRatioMatch(sourceWidth, sourceHeight, BannerWidthDefaultDPI, BannerHeightDefaultDPI))
 				return SongImageType.Banner;
 
 			// The other image types are all square and not common.

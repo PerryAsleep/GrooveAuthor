@@ -7,6 +7,7 @@ using MonoGameExtensions;
 using static StepManiaEditor.Editor;
 using static StepManiaEditor.Utils;
 using static Fumen.Converters.SMCommon;
+using static StepManiaEditor.ImGuiUtils;
 
 namespace StepManiaEditor;
 
@@ -17,9 +18,6 @@ namespace StepManiaEditor;
 /// </summary>
 internal sealed class ActiveEditorChart
 {
-	private const int MiscEventPadding = 10;
-	private const int MiscEventLeftSideMarkerNumberAllowance = 10;
-
 	private readonly Editor Editor;
 	private readonly EditorChart Chart;
 	private readonly IReadOnlyZoomManager ZoomManager;
@@ -102,6 +100,16 @@ internal sealed class ActiveEditorChart
 		return new Vector2(FocalPointScreenSpaceX, FocalPointScreenSpaceY);
 	}
 
+	public int GetFocalPointX()
+	{
+		return FocalPointScreenSpaceX;
+	}
+
+	public int GetFocalPointY()
+	{
+		return FocalPointScreenSpaceY;
+	}
+
 	public int GetScreenSpaceXOfFullChartAreaStart()
 	{
 		return FocalPointScreenSpaceX - (GetLaneAndWaveFormAreaWidth() >> 1) -
@@ -171,7 +179,11 @@ internal sealed class ActiveEditorChart
 	{
 		var x = GetScreenSpaceXOfLanesAndWaveFormEnd();
 		if (ShouldDrawMiscEvents())
+		{
+			x += GetRightMiscEventPadding();
 			x += Preferences.Instance.PreferencesOptions.MiscEventAreaWidth;
+		}
+
 		return x;
 	}
 
@@ -184,7 +196,11 @@ internal sealed class ActiveEditorChart
 	{
 		var x = GetScreenSpaceXOfLanesAndWaveFormEndWithCurrentScale();
 		if (ShouldDrawMiscEvents())
+		{
+			x += GetRightMiscEventPadding();
 			x += Preferences.Instance.PreferencesOptions.MiscEventAreaWidth;
+		}
+
 		return x;
 	}
 
@@ -195,29 +211,30 @@ internal sealed class ActiveEditorChart
 
 	public int GetRelativeXPositionOfLanesAndWaveFormFromChartArea()
 	{
-		var width = 0;
+		var miscEventPadding = 0;
 		if (ShouldDrawMiscEvents())
 		{
 			// Add width for the misc events on the left.
-			width += GetLeftMiscEventPadding();
-			width += Preferences.Instance.PreferencesOptions.MiscEventAreaWidth;
+			miscEventPadding += GetLeftMiscEventPadding();
+			miscEventPadding += Preferences.Instance.PreferencesOptions.MiscEventAreaWidth;
 		}
 
-		// Add width for the measure markers?
-		//width += ;
+		var measureMarkerPadding = (int)(MeasureMarkerPaddingDefaultDPI -
+		                                 EditorMarkerEvent.GetNumberRelativeAnchorPos(ZoomManager.GetSizeZoom()));
 
-		return width;
+		return Math.Max(miscEventPadding, measureMarkerPadding);
 	}
 
 	public int GetLeftMiscEventPadding()
 	{
-		return (int)(MiscEventPadding - EditorMarkerEvent.GetNumberRelativeAnchorPos(ZoomManager.GetSizeZoom()) +
-		             MiscEventLeftSideMarkerNumberAllowance * EditorMarkerEvent.GetNumberAlpha(ZoomManager.GetSizeZoom()));
+		return (int)(SceneWidgetPaddingDefaultDPI - EditorMarkerEvent.GetNumberRelativeAnchorPos(ZoomManager.GetSizeZoom()) +
+		             MiscEventLeftSideMarkerNumberAllowanceDefaultDPI *
+		             EditorMarkerEvent.GetNumberAlpha(ZoomManager.GetSizeZoom()));
 	}
 
 	public int GetRightMiscEventPadding()
 	{
-		return MiscEventPadding;
+		return SceneWidgetPaddingDefaultDPI;
 	}
 
 	public int GetLaneAreaWidth()
@@ -273,20 +290,19 @@ internal sealed class ActiveEditorChart
 		// account size cap.
 		var width = GetLaneAndWaveFormAreaWidth();
 
+		// Add the area on the left for misc event and measure markers.
+		width += GetRelativeXPositionOfLanesAndWaveFormFromChartArea();
+
+		// Add the area on the right for misc events.
+		var rightMiscEventAreaWidth = 0;
 		if (ShouldDrawMiscEvents())
-		{
-			// Add the area on the right for misc events.
-			width += Preferences.Instance.PreferencesOptions.MiscEventAreaWidth;
-		}
+			rightMiscEventAreaWidth = GetRightMiscEventPadding() + Preferences.Instance.PreferencesOptions.MiscEventAreaWidth;
 
 		// Add width for elements which are only enabled for the focused chart.
+		var scrollBarAreaWidth = 0;
 		if (IsFocused())
 		{
-			// Add the area on the left for misc event and measure markers.
-			width += GetRelativeXPositionOfLanesAndWaveFormFromChartArea();
-
 			// Add width for the MiniMap if it is mounted to the focused chart.
-			var scrollBarWidth = 0;
 			var mm = Preferences.Instance.PreferencesMiniMap;
 			if (mm.ShowMiniMap)
 			{
@@ -295,7 +311,8 @@ internal sealed class ActiveEditorChart
 					// Regardless of scaling, add width for the MiniMap if it is mounted to the focused chart.
 					case MiniMap.Position.FocusedChartWithScaling:
 					case MiniMap.Position.FocusedChartWithoutScaling:
-						scrollBarWidth = Math.Max(scrollBarWidth, (int)(mm.PositionOffset + mm.MiniMapWidth));
+						scrollBarAreaWidth = Math.Max(scrollBarAreaWidth,
+							mm.GetPositionOffsetUiScaled() + mm.GetMiniMapWidthScaled());
 						break;
 				}
 			}
@@ -309,13 +326,14 @@ internal sealed class ActiveEditorChart
 					// Regardless of scaling, add width for the Density Graph if it is mounted to the focused chart.
 					case PreferencesDensityGraph.DensityGraphPosition.FocusedChartWithScaling:
 					case PreferencesDensityGraph.DensityGraphPosition.FocusedChartWithoutScaling:
-						scrollBarWidth = Math.Max(scrollBarWidth, dg.DensityGraphPositionOffset + dg.DensityGraphHeight);
+						scrollBarAreaWidth = Math.Max(scrollBarAreaWidth,
+							dg.GetDensityGraphPositionOffsetUiScaled() + dg.GetDensityGraphHeightUiScaled());
 						break;
 				}
 			}
-
-			width += scrollBarWidth;
 		}
+
+		width += rightMiscEventAreaWidth + scrollBarAreaWidth;
 
 		return width;
 	}

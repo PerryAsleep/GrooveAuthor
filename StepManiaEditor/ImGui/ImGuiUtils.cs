@@ -19,21 +19,23 @@ namespace StepManiaEditor;
 /// </summary>
 internal sealed class ImGuiUtils
 {
-	// UI positioning values affected by DPI scaling.
 	private static double DpiScale;
 	private static double DpiScaleSystemDefault;
-	private const int HelpWidth = 18;
-	private const int CloseWidth = 18;
-	private const int MenuBarHeight = 20;
-	private const int ChartHeaderHeight = 21;
-	private const int MiniMapYPadding = 10;
-	private const int ChartPositionUIYPaddingFromBottom = 10;
-	private const int CDTitleWidth = 164;
-	private const int CDTitleHeight = 164;
-	private const int BackgroundWidth = 640;
-	private const int BackgroundHeight = 480;
-	private const int BannerWidth = 418;
-	private const int BannerHeight = 164;
+
+	// UI positioning values affected by DPI scaling.
+	public const int HelpWidthDefaultDPI = 18;
+	public const int CloseWidthDefaultDPI = 18;
+	public const int MenuBarHeightDefaultDPI = 20;
+	public const int ChartHeaderHeightDefaultDPI = 21;
+	public const int CDTitleWidthDefaultDPI = 164;
+	public const int CDTitleHeightDefaultDPI = 164;
+	public const int BackgroundWidthDefaultDPI = 640;
+	public const int BackgroundHeightDefaultDPI = 480;
+	public const int BannerWidthDefaultDPI = 418;
+	public const int BannerHeightDefaultDPI = 164;
+	public const int SceneWidgetPaddingDefaultDPI = 10;
+	public const int MiscEventLeftSideMarkerNumberAllowanceDefaultDPI = 10;
+	public const int MeasureMarkerPaddingDefaultDPI = 40;
 
 	private static Editor Editor;
 	private static readonly Dictionary<Type, string[]> EnumStringsCacheByType = new();
@@ -794,92 +796,67 @@ internal sealed class ImGuiUtils
 
 	public static int GetHelpWidth()
 	{
-		return UiScaled(HelpWidth);
+		return UiScaled(HelpWidthDefaultDPI);
 	}
 
 	public static int GetCloseWidth()
 	{
-		return UiScaled(CloseWidth);
+		return UiScaled(CloseWidthDefaultDPI);
 	}
 
 	public static int GetMenuBarHeight()
 	{
-		return UiScaled(MenuBarHeight);
+		return UiScaled(MenuBarHeightDefaultDPI);
 	}
 
 	public static int GetChartHeaderHeight()
 	{
-		return UiScaled(ChartHeaderHeight);
+		return UiScaled(ChartHeaderHeightDefaultDPI);
 	}
 
 	public static int GetMiniMapYPaddingFromTopInScreenSpace()
 	{
-		return UiScaled(MenuBarHeight + ChartHeaderHeight + MiniMapYPadding);
+		return UiScaled(MenuBarHeightDefaultDPI + ChartHeaderHeightDefaultDPI + SceneWidgetPaddingDefaultDPI);
 	}
 
 	public static int GetMiniMapYPaddingFromTopInChartSpace()
 	{
-		return UiScaled(ChartHeaderHeight + MiniMapYPadding);
+		return UiScaled(ChartHeaderHeightDefaultDPI + SceneWidgetPaddingDefaultDPI);
 	}
 
 	public static int GetMiniMapYPaddingFromBottom()
 	{
-		return UiScaled(MiniMapYPadding);
-	}
-
-	public static int GetChartPositionUIYPaddingFromBottom()
-	{
-		return UiScaled(ChartPositionUIYPaddingFromBottom);
+		return UiScaled(SceneWidgetPaddingDefaultDPI);
 	}
 
 	public static int GetBackgroundWidth()
 	{
-		return UiScaled(BackgroundWidth);
+		return UiScaled(BackgroundWidthDefaultDPI);
 	}
 
 	public static int GetBackgroundHeight()
 	{
-		return UiScaled(BackgroundHeight);
+		return UiScaled(BackgroundHeightDefaultDPI);
 	}
 
 	public static int GetBannerWidth()
 	{
-		return UiScaled(BannerWidth);
+		return UiScaled(BannerWidthDefaultDPI);
 	}
 
 	public static int GetBannerHeight()
 	{
-		return UiScaled(BannerHeight);
+		return UiScaled(BannerHeightDefaultDPI);
 	}
 
 	public static int GetCDTitleWidth()
 	{
-		return UiScaled(CDTitleWidth);
+		return UiScaled(CDTitleWidthDefaultDPI);
 	}
 
 	public static int GetCDTitleHeight()
 	{
-		return UiScaled(CDTitleHeight);
-	}
-
-	public static int GetUnscaledBackgroundWidth()
-	{
-		return BackgroundWidth;
-	}
-
-	public static int GetUnscaledBackgroundHeight()
-	{
-		return BackgroundHeight;
-	}
-
-	public static int GetUnscaledBannerWidth()
-	{
-		return BannerWidth;
-	}
-
-	public static int GetUnscaledBannerHeight()
-	{
-		return BannerHeight;
+		return UiScaled(CDTitleHeightDefaultDPI);
 	}
 
 	#endregion UI Position and DPI Scaling
