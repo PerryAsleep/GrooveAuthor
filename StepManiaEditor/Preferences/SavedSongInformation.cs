@@ -26,6 +26,12 @@ internal sealed class SavedSongInformation : IActiveChartListProvider
 	/// </summary>
 	public class SavedChartInformation
 	{
+		[JsonInclude] public ChartType ChartType;
+		[JsonInclude] public ChartDifficultyType ChartDifficultyType;
+		[JsonInclude] public int Rating;
+		[JsonInclude] public string Name;
+		[JsonInclude] public string Description;
+
 		/// <summary>
 		/// Default constructor. Implemented only to support json deserialization.
 		/// </summary>
@@ -44,6 +50,15 @@ internal sealed class SavedSongInformation : IActiveChartListProvider
 			Rating = chart.Rating;
 			Name = chart.Name;
 			Description = chart.Description;
+		}
+
+		/// <summary>
+		/// Constructor for deprecated flow where only the ChartType and ChartDifficultyType are known.
+		/// </summary>
+		public SavedChartInformation(ChartType chartType, ChartDifficultyType chartDifficultyType)
+		{
+			ChartType = chartType;
+			ChartDifficultyType = chartDifficultyType;
 		}
 
 		public EditorChart GetExactMatchingChart(EditorSong song)
@@ -69,13 +84,23 @@ internal sealed class SavedSongInformation : IActiveChartListProvider
 		{
 			return song.SelectBestChart(ChartType, ChartDifficultyType);
 		}
-
-		[JsonInclude] public ChartType ChartType;
-		[JsonInclude] public ChartDifficultyType ChartDifficultyType;
-		[JsonInclude] public int Rating;
-		[JsonInclude] public string Name;
-		[JsonInclude] public string Description;
 	}
+
+	[JsonInclude] public string FileName;
+	[JsonInclude] public double SpacingZoom = 1.0;
+	[JsonInclude] public double ChartPosition;
+	[JsonInclude] public List<SavedChartInformation> ActiveCharts = new();
+	[JsonInclude] public int FocusedChartIndex = UnsetChartIndex;
+
+	[JsonInclude]
+	[JsonPropertyName("LastChartType")]
+	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+	public ChartType LastChartTypeDeprecated { private get; set; }
+
+	[JsonInclude]
+	[JsonPropertyName("LastChartDifficultyType")]
+	[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+	public ChartDifficultyType LastChartDifficultyTypeDeprecated { private get; set; }
 
 	/// <summary>
 	/// Default constructor. Implemented only to support json deserialization.
@@ -94,7 +119,27 @@ internal sealed class SavedSongInformation : IActiveChartListProvider
 		Update(activeCharts, focusedChart, spacingZoom, chartPosition);
 	}
 
-	public void Update(IReadOnlyList<ActiveEditorChart> activeCharts, ActiveEditorChart focusedChart, double spacingZoom, double chartPosition)
+	public void PostLoad()
+	{
+		// Migrate from deprecated data.
+		if (ActiveCharts == null || ActiveCharts.Count == 0)
+		{
+			ActiveCharts = new List<SavedChartInformation>
+			{
+				new(LastChartTypeDeprecated, LastChartDifficultyTypeDeprecated),
+			};
+			FocusedChartIndex = 0;
+		}
+
+		// We want to not serialize these but System.Text.Json does not have a clean way
+		// of preventing only serialization without also preventing deserialization. So
+		// set them to their default values and decorate them with JsonIgnoreCondition.WhenWritingDefault.
+		LastChartTypeDeprecated = default;
+		LastChartDifficultyTypeDeprecated = default;
+	}
+
+	public void Update(IReadOnlyList<ActiveEditorChart> activeCharts, ActiveEditorChart focusedChart, double spacingZoom,
+		double chartPosition)
 	{
 		ActiveCharts.Clear();
 		FocusedChartIndex = UnsetChartIndex;
@@ -104,40 +149,16 @@ internal sealed class SavedSongInformation : IActiveChartListProvider
 				FocusedChartIndex = i;
 			ActiveCharts.Add(new SavedChartInformation(activeCharts[i]));
 		}
+
 		SpacingZoom = spacingZoom;
 		ChartPosition = chartPosition;
 	}
-
-	[JsonInclude] public string FileName;
-	[JsonInclude] public double SpacingZoom = 1.0;
-	[JsonInclude] public double ChartPosition;
-	[JsonInclude] public List<SavedChartInformation> ActiveCharts = new();
-	[JsonInclude] public int FocusedChartIndex = UnsetChartIndex;
-
-	[JsonInclude]
-	[JsonPropertyName("LastChartType")]
-	public ChartType LastChartTypeDeprecated { internal get; set; }
-
-	[JsonInclude]
-	[JsonPropertyName("LastChartDifficultyType")]
-	public ChartDifficultyType LastChartDifficultyTypeDeprecated { internal get; set; }
 
 	#region IActiveChartListProvider
 
 	public List<EditorChart> GetChartsToUseForActiveCharts(EditorSong song)
 	{
 		var charts = new List<EditorChart>();
-
-		// Deprecated flow.
-		if (ActiveCharts == null || ActiveCharts.Count == 0 || FocusedChartIndex < 0 || FocusedChartIndex >= ActiveCharts.Count)
-		{
-			var bestChart = GetChartToUseForFocusedChart(song);
-			if (bestChart != null)
-				charts.Add(bestChart);
-			return charts;
-		}
-
-		// New flow.
 		for (var i = 0; i < ActiveCharts.Count; i++)
 		{
 			if (i == FocusedChartIndex)
@@ -165,13 +186,7 @@ internal sealed class SavedSongInformation : IActiveChartListProvider
 
 	public EditorChart GetChartToUseForFocusedChart(EditorSong song)
 	{
-		// Deprecated flow.
-		if (ActiveCharts == null || ActiveCharts.Count == 0 || FocusedChartIndex < 0 || FocusedChartIndex >= ActiveCharts.Count)
-		{
-			return song.SelectBestChart(LastChartTypeDeprecated, LastChartDifficultyTypeDeprecated);
-		}
-
-		// New flow. Allow fallback to charts even if they don't perfectly match.
+		// Allow fallback to charts even if they don't perfectly match.
 		var focusedChartData = ActiveCharts[FocusedChartIndex];
 		var match = focusedChartData.GetExactMatchingChart(song);
 		if (match != null)

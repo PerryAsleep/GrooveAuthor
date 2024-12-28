@@ -161,6 +161,8 @@ internal sealed class Preferences
 
 	private void PostLoad()
 	{
+		foreach (var savedSongData in RecentFiles)
+			savedSongData.PostLoad();
 		PreferencesReceptors.SetEditor(Editor);
 		PreferencesWaveForm.PostLoad();
 		PreferencesMiniMap.PostLoad();
