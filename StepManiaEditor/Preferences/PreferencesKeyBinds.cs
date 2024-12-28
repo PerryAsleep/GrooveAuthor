@@ -14,7 +14,7 @@ internal sealed class PreferencesKeyBinds
 	private static readonly List<Keys[]> DefaultNew                                  = new() { new[] { Keys.LeftControl, Keys.N } };
 	private static readonly List<Keys[]> DefaultReload                               = new() { new[] { Keys.LeftControl, Keys.R } };
 	private static readonly List<Keys[]> DefaultUndo                                 = new() { new[] { Keys.LeftControl, Keys.Z } };
-	private static readonly List<Keys[]> DefaultRedo                                 = new() { new[] { Keys.LeftControl, Keys.LeftShift, Keys.Z }, new []{ Keys.LeftControl, Keys.Y } };
+	private static readonly List<Keys[]> DefaultRedo                                 = new() { new[] { Keys.LeftControl, Keys.LeftShift, Keys.Z }, new[] { Keys.LeftControl, Keys.Y } };
 	private static readonly List<Keys[]> DefaultSelectAllNotes                       = new() { new[] { Keys.LeftControl, Keys.A } };
 	private static readonly List<Keys[]> DefaultSelectAllMiscEvents                  = new() { new[] { Keys.LeftControl, Keys.LeftAlt, Keys.A } };
 	private static readonly List<Keys[]> DefaultSelectAll                            = new() { new[] { Keys.LeftControl, Keys.LeftShift, Keys.A } };
@@ -32,7 +32,7 @@ internal sealed class PreferencesKeyBinds
 	private static readonly List<Keys[]> DefaultToggleSpacingMode                    = new() { new[] { Keys.S } };
 	private static readonly List<Keys[]> DefaultOpenPreviousChart                    = new() { new[] { Keys.LeftControl, Keys.LeftAlt, Keys.Left } };
 	private static readonly List<Keys[]> DefaultOpenNextChart                        = new() { new[] { Keys.LeftControl, Keys.LeftAlt, Keys.Right } };
-	private static readonly List<Keys[]> DefaultCloseFocusedChart                    = new() { new[] { Keys.LeftControl, Keys.F4 } };
+	private static readonly List<Keys[]> DefaultCloseFocusedChart                    = new() { new[] { Keys.LeftControl, Keys.F4 }, new[] { Keys.LeftControl, Keys.W } };
 	private static readonly List<Keys[]> DefaultKeepChartOpen                        = new() { new[] { Keys.LeftControl, Keys.LeftAlt, Keys.Home } };
 	private static readonly List<Keys[]> DefaultMoveFocusedChartLeft                 = new() { new[] { Keys.LeftControl, Keys.LeftAlt, Keys.PageUp } };
 	private static readonly List<Keys[]> DefaultMoveFocusedChartRight                = new() { new[] { Keys.LeftControl, Keys.LeftAlt, Keys.PageDown } };
