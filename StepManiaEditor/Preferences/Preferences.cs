@@ -52,27 +52,6 @@ internal sealed class Preferences
 		};
 	}
 
-	public class SavedSongInformation
-	{
-		public void UpdateChart(ChartType chartType, ChartDifficultyType difficultyType)
-		{
-			LastChartType = chartType;
-			LastChartDifficultyType = difficultyType;
-		}
-
-		public void UpdatePosition(double spacingZoom, double chartPosition)
-		{
-			SpacingZoom = spacingZoom;
-			ChartPosition = chartPosition;
-		}
-
-		[JsonInclude] public string FileName;
-		[JsonInclude] public ChartType LastChartType;
-		[JsonInclude] public ChartDifficultyType LastChartDifficultyType;
-		[JsonInclude] public double SpacingZoom = 1.0;
-		[JsonInclude] public double ChartPosition;
-	}
-
 	/// <summary>
 	/// Static Config instance.
 	/// </summary>

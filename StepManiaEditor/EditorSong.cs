@@ -877,7 +877,7 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 		}
 	}
 
-	public List<EditorChart> GetSortedCharts()
+	public IReadOnlyList<EditorChart> GetSortedCharts()
 	{
 		var sortedCharts = new List<EditorChart>();
 		foreach (var chartType in Editor.SupportedChartTypes)

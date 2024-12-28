@@ -4463,7 +4463,7 @@ internal sealed class Editor :
 		var saveParameters = new EditorSong.SaveParameters(fileType, fullPath, (success) =>
 		{
 			UpdateWindowTitle();
-			UpdateRecentFilesForActiveSong(GetPosition().ChartPosition, ZoomManager.GetSpacingZoom());
+			UpdateRecentFilesForActiveSong();
 			if (success)
 			{
 				ActionQueue.Instance.OnSaved();
@@ -4508,8 +4508,7 @@ internal sealed class Editor :
 			var fileName = openFileDialog.FileName;
 			Preferences.Instance.OpenFileDialogInitialDirectory = System.IO.Path.GetDirectoryName(fileName);
 			OpenSongFileAsync(openFileDialog.FileName,
-				pOptions.DefaultStepsType,
-				pOptions.DefaultDifficultyType);
+				new DefaultChartListProvider(pOptions.DefaultStepsType, pOptions.DefaultDifficultyType));
 		}
 	}
 
@@ -4518,12 +4517,10 @@ internal sealed class Editor :
 	/// Will cancel previous OpenSongFileAsync requests if called while already loading.
 	/// </summary>
 	/// <param name="fileName">File name of the Song file to open.</param>
-	/// <param name="chartType">Desired ChartType (StepMania StepsType) to default to once open.</param>
-	/// <param name="chartDifficultyType">Desired DifficultyType to default to once open.</param>
+	/// <param name="chartListProvider">IActiveChartListProvider for determining which active charts to use.</param>
 	private async void OpenSongFileAsync(
 		string fileName,
-		ChartType chartType,
-		ChartDifficultyType chartDifficultyType)
+		IActiveChartListProvider chartListProvider)
 	{
 		if (!CanLoadSongs())
 			return;
@@ -4532,10 +4529,10 @@ internal sealed class Editor :
 
 		// Start the load. If we are already loading, return.
 		// The previous call will use the newly provided file state.
-		var taskComplete = await SongLoadTask.Start(new SongLoadState(fileName, chartType, chartDifficultyType));
+		var taskComplete = await SongLoadTask.Start(new SongLoadState(fileName, chartListProvider));
 		if (!taskComplete)
 			return;
-		var (newActiveSong, newActiveChart, newFileName) = SongLoadTask.GetResults();
+		var (newActiveSong, newFocusedChart, newActiveCharts, newFileName) = SongLoadTask.GetResults();
 
 		Debug.Assert(IsOnMainThread());
 
@@ -4564,15 +4561,24 @@ internal sealed class Editor :
 			desiredZoom = savedInfo.SpacingZoom;
 		}
 
-		// Insert a new entry at the top of the saved recent files.
-		UpdateRecentFilesForActiveSong(desiredChartPosition, desiredZoom);
-
-		SetChartFocused(newActiveChart);
+		// Set the active and focused charts. Ensure the focal point doesn't move.
+		// Set every chart to have a dedicated tab.
+		var focalPointX = GetFocalPointScreenSpaceX();
+		var focalPointY = GetFocalPointScreenSpaceY();
+		ActiveCharts.Clear();
+		ActiveChartData.Clear();
+		foreach (var activeChart in newActiveCharts)
+			SetChartHasDedicatedTab(activeChart, true);
+		SetChartFocused(newFocusedChart);
+		SetFocalPointScreenSpace(focalPointX, focalPointY);
 
 		// Set position and zoom.
 		ResetPosition();
 		SetChartPosition(desiredChartPosition);
 		ZoomManager.SetZoom(desiredZoom);
+
+		// Insert a new entry at the top of the saved recent files.
+		UpdateRecentFilesForActiveSong();
 	}
 
 	private void StartObservingSongFile(string fileName)
@@ -4639,7 +4645,7 @@ internal sealed class Editor :
 		SongFileWatcher = null;
 	}
 
-	private Preferences.SavedSongInformation GetMostRecentSavedSongInfoForActiveSong()
+	private SavedSongInformation GetMostRecentSavedSongInfoForActiveSong()
 	{
 		if (ActiveSong == null || string.IsNullOrEmpty(ActiveSong.GetFileFullPath()))
 			return null;
@@ -4654,21 +4660,22 @@ internal sealed class Editor :
 		return null;
 	}
 
-	private void UpdateRecentFilesForActiveSong(double chartPosition, double spacingZoom)
+	private void UpdateRecentFilesForActiveSong()
 	{
 		if (ActiveSong == null || string.IsNullOrEmpty(ActiveSong.GetFileFullPath()))
 			return;
 
+		var chartPosition = GetPosition().ChartPosition;
+		var spacingZoom = ZoomManager.GetSpacingZoom();
+
 		var p = Preferences.Instance;
 		var pOptions = p.PreferencesOptions;
-		var savedSongInfo = new Preferences.SavedSongInformation
-		{
-			FileName = ActiveSong.GetFileFullPath(),
-			LastChartType = FocusedChart?.ChartType ?? pOptions.DefaultStepsType,
-			LastChartDifficultyType = FocusedChart?.ChartDifficultyType ?? pOptions.DefaultDifficultyType,
-			SpacingZoom = spacingZoom,
-			ChartPosition = chartPosition,
-		};
+		var savedSongInfo = new SavedSongInformation(
+			ActiveSong.GetFileFullPath(),
+			spacingZoom,
+			chartPosition,
+			ActiveChartData,
+			GetFocusedChartData());
 		p.RecentFiles.RemoveAll(info => info.FileName == ActiveSong.GetFileFullPath());
 		p.RecentFiles.Insert(0, savedSongInfo);
 		if (p.RecentFiles.Count > pOptions.RecentFilesHistorySize)
@@ -4777,8 +4784,7 @@ internal sealed class Editor :
 			return;
 		var pOptions = Preferences.Instance.PreferencesOptions;
 		OpenSongFileAsync(PendingOpenSongFileName,
-			pOptions.DefaultStepsType,
-			pOptions.DefaultDifficultyType);
+			new DefaultChartListProvider(pOptions.DefaultStepsType, pOptions.DefaultDifficultyType));
 	}
 
 	private void OnReload()
@@ -4823,9 +4829,7 @@ internal sealed class Editor :
 		if (OpenRecentIndex >= p.RecentFiles.Count)
 			return;
 
-		OpenSongFileAsync(p.RecentFiles[OpenRecentIndex].FileName,
-			p.RecentFiles[OpenRecentIndex].LastChartType,
-			p.RecentFiles[OpenRecentIndex].LastChartDifficultyType);
+		OpenSongFileAsync(p.RecentFiles[OpenRecentIndex].FileName, p.RecentFiles[OpenRecentIndex]);
 	}
 
 	private void OnNew()
@@ -4930,7 +4934,7 @@ internal sealed class Editor :
 		// First, save the current zoom and position to the song history so we can restore them when
 		// opening this song again later.
 		var savedSongInfo = GetMostRecentSavedSongInfoForActiveSong();
-		savedSongInfo?.UpdatePosition(ZoomManager.GetSpacingZoom(), GetPosition().ChartPosition);
+		savedSongInfo?.Update(ActiveChartData, GetFocusedChartData(), ZoomManager.GetSpacingZoom(), GetPosition().ChartPosition);
 		UnloadSongResources();
 	}
 
@@ -6038,6 +6042,9 @@ internal sealed class Editor :
 	{
 		Debug.Assert(IsOnMainThread());
 
+		if (chart == null)
+			return;
+
 		var oldChartTime = GetPosition().ChartTime;
 		var oldFocusedChartData = GetFocusedChartData();
 		if (ActiveSong == null || FocusedChart == chart)
@@ -6094,16 +6101,6 @@ internal sealed class Editor :
 
 		DensityGraph.SetStepDensity(FocusedChart?.GetStepDensity());
 		EditorMouseState.SetActiveChart(FocusedChart);
-
-		if (FocusedChart != null)
-		{
-			// Update the recent file entry for the current song so that tracks the selected chart
-			var p = Preferences.Instance;
-			if (p.RecentFiles.Count > 0 && p.RecentFiles[0].FileName == ActiveSong.GetFileFullPath())
-			{
-				p.RecentFiles[0].UpdateChart(FocusedChart.ChartType, FocusedChart.ChartDifficultyType);
-			}
-		}
 
 		// Window title depends on the active chart.
 		UpdateWindowTitle();

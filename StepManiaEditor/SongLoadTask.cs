@@ -1,8 +1,8 @@
-﻿using System.Threading.Tasks;
+﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 using Fumen;
 using Fumen.Converters;
 using Microsoft.Xna.Framework.Graphics;
-using static Fumen.Converters.SMCommon;
 
 namespace StepManiaEditor;
 
@@ -12,14 +12,12 @@ namespace StepManiaEditor;
 internal sealed class SongLoadState
 {
 	private readonly string FileName;
-	private readonly ChartType ChartType;
-	private readonly ChartDifficultyType ChartDifficultyType;
+	private readonly IActiveChartListProvider ChartListProvider;
 
-	public SongLoadState(string fileName, ChartType chartType, ChartDifficultyType chartDifficultyType)
+	public SongLoadState(string fileName, IActiveChartListProvider chartListProvider)
 	{
 		FileName = fileName;
-		ChartType = chartType;
-		ChartDifficultyType = chartDifficultyType;
+		ChartListProvider = chartListProvider;
 	}
 
 	public string GetFileName()
@@ -27,14 +25,9 @@ internal sealed class SongLoadState
 		return FileName;
 	}
 
-	public ChartType GetChartType()
+	public IActiveChartListProvider GetChartListProvider()
 	{
-		return ChartType;
-	}
-
-	public ChartDifficultyType GetChartDifficultyType()
-	{
-		return ChartDifficultyType;
+		return ChartListProvider;
 	}
 }
 
@@ -49,7 +42,8 @@ internal sealed class SongLoadTask : CancellableTask<SongLoadState>
 	private readonly object Lock = new();
 
 	private EditorSong ActiveSong;
-	private EditorChart ActiveChart;
+	private List<EditorChart> ActiveCharts;
+	private EditorChart FocusedChart;
 	private string ActiveFileName;
 
 	public SongLoadTask(GraphicsDevice graphicsDevice, ImGuiRenderer imGuiRenderer)
@@ -92,15 +86,17 @@ internal sealed class SongLoadTask : CancellableTask<SongLoadState>
 				Editor.IsChartSupported);
 		});
 
-		// Select the best Chart to make active.
-		var newActiveChart = newActiveSong.SelectBestChart(state.GetChartType(), state.GetChartDifficultyType());
+		// Select the best Charts to make active.
+		var focusedChart = state.GetChartListProvider().GetChartToUseForFocusedChart(newActiveSong);
+		var activeCharts = state.GetChartListProvider().GetChartsToUseForActiveCharts(newActiveSong);
 		CancellationTokenSource.Token.ThrowIfCancellationRequested();
 
 		// Save results
 		lock (Lock)
 		{
 			ActiveSong = newActiveSong;
-			ActiveChart = newActiveChart;
+			FocusedChart = focusedChart;
+			ActiveCharts = activeCharts;
 			ActiveFileName = fileName;
 		}
 	}
@@ -113,11 +109,11 @@ internal sealed class SongLoadTask : CancellableTask<SongLoadState>
 		ClearResults();
 	}
 
-	public (EditorSong, EditorChart, string) GetResults()
+	public (EditorSong, EditorChart, List<EditorChart>, string) GetResults()
 	{
 		lock (Lock)
 		{
-			return (ActiveSong, ActiveChart, ActiveFileName);
+			return (ActiveSong, FocusedChart, ActiveCharts, ActiveFileName);
 		}
 	}
 
@@ -127,7 +123,8 @@ internal sealed class SongLoadTask : CancellableTask<SongLoadState>
 		{
 			ActiveFileName = null;
 			ActiveSong = null;
-			ActiveChart = null;
+			FocusedChart = null;
+			ActiveCharts = null;
 		}
 	}
 }
