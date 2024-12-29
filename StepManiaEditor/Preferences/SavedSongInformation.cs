@@ -61,7 +61,7 @@ internal sealed class SavedSongInformation : IActiveChartListProvider
 			ChartDifficultyType = chartDifficultyType;
 		}
 
-		public EditorChart GetExactMatchingChart(EditorSong song)
+		public EditorChart GetChartMatchingExactly(EditorSong song)
 		{
 			var chartsMatchingType = song.GetCharts(ChartType);
 			if (chartsMatchingType == null)
@@ -80,9 +80,20 @@ internal sealed class SavedSongInformation : IActiveChartListProvider
 			return null;
 		}
 
-		public EditorChart GetBestMatchingChart(EditorSong song)
+		public EditorChart GetChartMatchingTypeAndDifficultyType(EditorSong song)
 		{
-			return song.SelectBestChart(ChartType, ChartDifficultyType);
+			var chartsMatchingType = song.GetCharts(ChartType);
+			if (chartsMatchingType == null)
+				return null;
+			foreach (var chart in chartsMatchingType)
+			{
+				if (chart.ChartDifficultyType == ChartDifficultyType)
+				{
+					return chart;
+				}
+			}
+
+			return null;
 		}
 	}
 
@@ -161,23 +172,34 @@ internal sealed class SavedSongInformation : IActiveChartListProvider
 		var charts = new List<EditorChart>();
 		for (var i = 0; i < ActiveCharts.Count; i++)
 		{
+			// If this is the focused chart, use the more permissive focused chart logic.
 			if (i == FocusedChartIndex)
 			{
-				var chart = GetChartToUseForFocusedChart(song);
-				if (chart != null)
+				var focusedChart = GetChartToUseForFocusedChart(song);
+				if (focusedChart != null)
 				{
-					if (!charts.Contains(chart))
-						charts.Add(chart);
+					if (!charts.Contains(focusedChart))
+						charts.Add(focusedChart);
 				}
+
+				continue;
 			}
-			else
+
+			// Normal logic. Try to use exact matches, then charts which only match the
+			// ChartType and ChartDifficultyType.
+			var chart = ActiveCharts[i].GetChartMatchingExactly(song);
+			if (chart != null)
 			{
-				var chart = ActiveCharts[i].GetExactMatchingChart(song);
-				if (chart != null)
-				{
-					if (!charts.Contains(chart))
-						charts.Add(chart);
-				}
+				if (!charts.Contains(chart))
+					charts.Add(chart);
+				continue;
+			}
+
+			chart = ActiveCharts[i].GetChartMatchingTypeAndDifficultyType(song);
+			if (chart != null)
+			{
+				if (!charts.Contains(chart))
+					charts.Add(chart);
 			}
 		}
 
@@ -186,12 +208,43 @@ internal sealed class SavedSongInformation : IActiveChartListProvider
 
 	public EditorChart GetChartToUseForFocusedChart(EditorSong song)
 	{
-		// Allow fallback to charts even if they don't perfectly match.
+		// Try to use the exact match.
 		var focusedChartData = ActiveCharts[FocusedChartIndex];
-		var match = focusedChartData.GetExactMatchingChart(song);
+		var match = focusedChartData.GetChartMatchingExactly(song);
 		if (match != null)
 			return match;
-		return focusedChartData.GetBestMatchingChart(song);
+
+		// Failing that, try to use any chart which matches the ChartType and ChartDifficultyType.
+		match = focusedChartData.GetChartMatchingTypeAndDifficultyType(song);
+		if (match != null)
+			return match;
+
+		// Failing that try to use one of the other active charts if they have exact matches.
+		for (var i = 0; i < ActiveCharts.Count; i++)
+		{
+			if (i == FocusedChartIndex)
+				continue;
+			match = ActiveCharts[i].GetChartMatchingExactly(song);
+			if (match != null)
+				return match;
+		}
+
+		// Failing that try to use one of the other active charts if they match the
+		// ChartType and ChartDifficultyType.
+		for (var i = 0; i < ActiveCharts.Count; i++)
+		{
+			if (i == FocusedChartIndex)
+				continue;
+			match = ActiveCharts[i].GetChartMatchingTypeAndDifficultyType(song);
+			if (match != null)
+				return match;
+		}
+
+		// At this point there are no charts in the loaded song that match any of the
+		// saved off active charts. Fallback to the Song's SelectBestChart method using
+		// the Preferences for default ChartType and ChartDifficultyType.
+		var p = Preferences.Instance.PreferencesOptions;
+		return song.SelectBestChart(p.DefaultStepsType, p.DefaultDifficultyType);
 	}
 
 	#endregion IActiveChartListProvider
