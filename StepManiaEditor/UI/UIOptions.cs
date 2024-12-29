@@ -126,12 +126,6 @@ internal class UIOptions : UIWindow
 					"Width of the area on the sides of the focused chart for drawing miscellaneous events.", 0.1f, "%i pixels", 0,
 					200);
 
-				if (ImGuiLayoutUtils.DrawRowButton("Reset Windows", "Reset Windows",
-					    "Reset all window positions to their default values. This cannot be undone."))
-				{
-					p.ResetWindows = true;
-				}
-
 				ImGuiLayoutUtils.EndTable();
 			}
 
