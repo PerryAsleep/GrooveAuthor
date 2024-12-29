@@ -2,6 +2,7 @@
 using Microsoft.Xna.Framework;
 using StepManiaEditor;
 using static StepManiaEditor.ImGuiUtils;
+using static StepManiaEditor.Utils;
 using Vector2 = System.Numerics.Vector2;
 
 /// <summary>
@@ -36,13 +37,13 @@ internal sealed class UIChartHeader
 		var originalMinWindowSize = ImGui.GetStyle().WindowMinSize;
 		ImGui.GetStyle().WindowBorderSize = 0;
 
-		ImGui.PushStyleColor(ImGuiCol.ChildBg, Utils.UIWindowColor);
+		ImGui.PushStyleColor(ImGuiCol.ChildBg, UIWindowColor);
 
 		var size = new Vector2(chartArea.Width, h);
 		ImGui.GetStyle().WindowMinSize = size;
 		ImGui.SetNextWindowPos(new Vector2(chartArea.X, chartArea.Y));
 		ImGui.SetNextWindowSize(size);
-		ImGui.BeginChild("##ChartHeaderBG", size, ImGuiChildFlags.None, Utils.ChartAreaChildWindowFlags);
+		ImGui.BeginChild("##ChartHeaderBG", size, ImGuiChildFlags.None, ChartAreaChildWindowFlags);
 		ImGui.EndChild();
 
 		ImGui.PopStyleColor(1);
@@ -80,21 +81,25 @@ internal sealed class UIChartHeader
 		ImGui.GetStyle().FramePadding.X = 0;
 		ImGui.GetStyle().SelectableTextAlign.Y = 0.25f;
 
-		var color = Utils.GetColorForDifficultyType(editorChart.ChartDifficultyType);
-
-		var colorPushCount = 0;
-		var focused = Chart.IsFocused();
-		if (focused)
+		if (Chart.IsFocused())
 		{
-			ImGui.PushStyleColor(ImGuiCol.ChildBg, color);
-			ImGui.PushStyleColor(ImGuiCol.Border, 0xFFFFFFFF);
-			colorPushCount += 2;
+			ImGui.PushStyleColor(ImGuiCol.ChildBg,
+				ColorRGBAMultiply(GetColorForDifficultyType(editorChart.ChartDifficultyType), UIFocusedChartColorMultiplier));
+			ImGui.PushStyleColor(ImGuiCol.Border, UIFocusedTabBorderColor);
 		}
+		else
+		{
+			ImGui.PushStyleColor(ImGuiCol.ChildBg,
+				ColorRGBAMultiply(GetColorForDifficultyType(editorChart.ChartDifficultyType), UIUnfocusedChartColorMultiplier));
+			ImGui.PushStyleColor(ImGuiCol.Border, UIUnfocusedTabBorderColor);
+		}
+
+		var colorPushCount = 2;
 
 		ImGui.SetNextWindowPos(new Vector2(x, chartArea.Y));
 		ImGui.SetNextWindowSize(new Vector2(w, h));
 		if (ImGui.BeginChild($"##ChartHeader{chartId}", new Vector2(w, h), ImGuiChildFlags.Border,
-			    Utils.ChartAreaChildWindowFlags))
+			    ChartAreaChildWindowFlags))
 		{
 			var buttonWidth = GetCloseWidth();
 			var available = ImGui.GetContentRegionAvail().X + ImGui.GetStyle().WindowPadding.X;
@@ -108,7 +113,7 @@ internal sealed class UIChartHeader
 			ImGui.PushStyleColor(ImGuiCol.HeaderActive, 0x00000000);
 			colorPushCount += 2;
 			if (useNonDedicatedTabColor)
-				ImGui.PushStyleColor(ImGuiCol.Text, Utils.UINonDedicatedTabTextColor);
+				ImGui.PushStyleColor(ImGuiCol.Text, UINonDedicatedTabTextColor);
 			if (ImGui.Selectable(editorChart.GetDescriptiveName(), false, ImGuiSelectableFlags.AllowDoubleClick,
 				    new Vector2(textWidth, h)))
 			{
