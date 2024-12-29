@@ -1719,7 +1719,8 @@ internal sealed class Editor :
 		var state = Mouse.GetState();
 		var (mouseChartTime, mouseChartPosition) = FindChartTimeAndRowForScreenY(state.Y);
 		EditorMouseState.Update(state, mouseChartTime, mouseChartPosition, inFocus);
-		if (EditorMouseState.GetButtonState(EditorMouseState.Button.Left).UpThisFrame())
+		var lmbState = EditorMouseState.GetButtonState(EditorMouseState.Button.Left);
+		if (lmbState.UpThisFrame())
 			LastMouseUpEventWasUsedForMovingFocalPoint = false;
 
 		// Do not do any further input processing if the application does not have focus.
@@ -1751,7 +1752,7 @@ internal sealed class Editor :
 		}
 
 		var atEdgeOfScreen = mouseX <= 0 || mouseX >= GetViewportWidth() - 1 || mouseY <= 0 || mouseY >= GetViewportHeight() - 1;
-		var downThisFrame = EditorMouseState.GetButtonState(EditorMouseState.Button.Left).DownThisFrame();
+		var downThisFrame = lmbState.DownThisFrame();
 		var clickingToDragWindowEdge = atEdgeOfScreen && downThisFrame;
 
 		// If the user has clicked this frame and they are at the edge of screen treat that as an intent to resize the window.
@@ -1794,7 +1795,28 @@ internal sealed class Editor :
 					currentTime,
 					uiInterferingWithRegionClicking,
 					EditorMouseState,
-					EditorMouseState.GetButtonState(EditorMouseState.Button.Left));
+					lmbState);
+			}
+
+			// Process input for clicking an unfocused chart to focus it.
+			if (lmbState.UpThisFrame())
+			{
+				var clickDownPos = lmbState.GetLastClickDownPosition();
+				var clickUpPos = lmbState.GetLastClickUpPosition();
+
+				foreach (var activeChart in ActiveChartData)
+				{
+					var area = activeChart.GetFullChartScreenSpaceArea();
+					if (area.Contains(clickDownPos) && area.Contains(clickUpPos))
+					{
+						if (activeChart != focusedChartData)
+						{
+							SetChartFocused(activeChart.GetChart(), false);
+						}
+
+						break;
+					}
+				}
 			}
 
 			// Process right click popup eligibility.

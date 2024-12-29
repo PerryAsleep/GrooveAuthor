@@ -100,6 +100,14 @@ internal sealed class ActiveEditorChart
 		return new Vector2(FocalPointScreenSpaceX, FocalPointScreenSpaceY);
 	}
 
+	public Rectangle GetFullChartScreenSpaceArea()
+	{
+		Editor.GetChartAreaInScreenSpace(out var chartArea);
+		chartArea.X = GetScreenSpaceXOfFullChartAreaStart();
+		chartArea.Width = GetChartScreenSpaceWidth();
+		return chartArea;
+	}
+
 	public int GetFocalPointX()
 	{
 		return FocalPointScreenSpaceX;
