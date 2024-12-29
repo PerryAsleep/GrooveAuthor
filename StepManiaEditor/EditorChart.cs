@@ -87,6 +87,11 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	private readonly Guid Id;
 
 	/// <summary>
+	/// Index of this Chart within it's song.
+	/// </summary>
+	private int IndexInSong;
+
+	/// <summary>
 	/// WorkQueue for long running tasks like saving.
 	/// </summary>
 	private readonly WorkQueue WorkQueue;
@@ -863,12 +868,26 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 	#endregion Constructors
 
-	#region Accessors
+	#region Idenfitication
 
-	public Guid GetId()
+	public Guid GetGuid()
 	{
 		return Id;
 	}
+
+	public int GetIndexInSong()
+	{
+		return IndexInSong;
+	}
+
+	public void SetIndexInSong(int indexInSong)
+	{
+		IndexInSong = indexInSong;
+	}
+
+	#endregion Identification
+
+	#region Accessors
 
 	public IReadOnlyEventTree GetEvents()
 	{
@@ -3554,7 +3573,7 @@ internal sealed class ChartComparer : IComparer<EditorChart>
 		comparison = c1.GetStepTotals().GetStepCount() - c2.GetStepTotals().GetStepCount();
 		if (comparison != 0)
 			return comparison;
-		return c1.GetId().CompareTo(c2.GetId());
+		return c1.GetGuid().CompareTo(c2.GetGuid());
 	}
 
 	int IComparer<EditorChart>.Compare(EditorChart c1, EditorChart c2)

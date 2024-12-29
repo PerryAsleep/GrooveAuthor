@@ -394,6 +394,18 @@ internal sealed class ActiveEditorChart
 		return true;
 	}
 
+	public bool IsVisible()
+	{
+		if (!Editor.GetChartAreaInScreenSpace(out var chartArea))
+			return false;
+		var start = GetScreenSpaceXOfFullChartAreaStart();
+		if (start > chartArea.X + chartArea.Width)
+			return false;
+		if (start + GetChartScreenSpaceWidth() - 1 < chartArea.X)
+			return false;
+		return true;
+	}
+
 	#endregion Misc
 
 	#region Accessors
@@ -437,6 +449,30 @@ internal sealed class ActiveEditorChart
 
 	#region Chart Event Updates
 
+	private int GetMaxMarkersToDrawPerFrame()
+	{
+		var numVisible = Math.Max(1, Editor.GetNumVisibleActiveCharts());
+		return Preferences.Instance.PreferencesOptions.MaxMarkersToDraw / numVisible;
+	}
+
+	private int GetMaxEventsToDrawPerFrame()
+	{
+		var percentage = Chart.GetEvents().GetCount() / (double)Editor.GetNumEventsForAllVisibleActiveCharts();
+		percentage = Math.Clamp(percentage, 0.0, 1.0);
+		return (int)(Preferences.Instance.PreferencesOptions.MaxEventsToDraw * percentage);
+	}
+
+	private int GetMaxRateAlteringEventsToProcessPerFrame()
+	{
+		var percentage = Chart.GetRateAlteringEvents().GetCount() /
+		                 (double)Editor.GetNumRateAlteringEventsForAllVisibleActiveCharts();
+		percentage = Math.Clamp(percentage, 0.0, 1.0);
+		var numEvents = (int)(Preferences.Instance.PreferencesOptions.MaxRateAlteringEventsToProcessPerFrame * percentage);
+		// Always return at least a small number of events to correctly process the common
+		// events at the start of a chart.
+		return Math.Max(numEvents, 7);
+	}
+
 	/// <summary>
 	/// Sets VisibleEvents, VisibleMarkers, and VisibleRegions to store the currently visible
 	/// objects based on the current EditorPosition and the SpacingMode.
@@ -459,6 +495,10 @@ internal sealed class ActiveEditorChart
 
 		// Get an EventSpacingHelper to perform y calculations.
 		SpacingHelper = EventSpacingHelper.GetSpacingHelper(Chart);
+
+		var maxEventsToDraw = GetMaxEventsToDrawPerFrame();
+		var maxRateAlteringEventsToProcess = GetMaxRateAlteringEventsToProcessPerFrame();
+		var maxMarkersToDraw = GetMaxMarkersToDrawPerFrame();
 
 		var noteEvents = new List<EditorEvent>();
 		var numArrows = Chart.NumInputs;
@@ -607,7 +647,7 @@ internal sealed class ActiveEditorChart
 
 				// Update beat markers for the section for the previous rate event.
 				UpdateBeatMarkers(rateEvent, ref beatMarkerRow, ref beatMarkerLastRecordedRow, nextRateEvent, startPosX, sizeZoom,
-					previousRateEventY, screenHeight);
+					previousRateEventY, screenHeight, maxMarkersToDraw);
 
 				// Update rate parameters.
 				rateEvent = nextRateEvent;
@@ -679,7 +719,7 @@ internal sealed class ActiveEditorChart
 			}
 
 			// If we have collected the maximum number of events per frame, stop processing.
-			if (noteEvents.Count > MaxEventsToDraw)
+			if (noteEvents.Count > maxEventsToDraw)
 				break;
 		}
 
@@ -689,7 +729,7 @@ internal sealed class ActiveEditorChart
 
 		// We also need to update beat markers beyond the final note.
 		UpdateBeatMarkers(rateEvent, ref beatMarkerRow, ref beatMarkerLastRecordedRow, nextRateEvent, startPosX, sizeZoom,
-			previousRateEventY, screenHeight);
+			previousRateEventY, screenHeight, maxMarkersToDraw);
 
 		// If the user is selecting a region and is zoomed out so far that we processed the maximum number of notes
 		// per frame without finding both ends of the selected region, then keep iterating through rate altering events
@@ -698,7 +738,7 @@ internal sealed class ActiveEditorChart
 		{
 			while (nextRateEvent != null
 			       && (!SelectedRegion.HasStartYBeenUpdatedThisFrame() || !SelectedRegion.HaveCurrentValuesBeenUpdatedThisFrame())
-			       && numRateAlteringEventsProcessed < MaxRateAlteringEventsToProcessPerFrame)
+			       && numRateAlteringEventsProcessed < maxRateAlteringEventsToProcess)
 			{
 				var rateEventY = SpacingHelper.GetY(nextRateEvent, previousRateEventY);
 				rateEvent = nextRateEvent;
@@ -1111,11 +1151,12 @@ internal sealed class ActiveEditorChart
 		double x,
 		double sizeZoom,
 		double previousRateEventY,
-		int screenHeight)
+		int screenHeight,
+		int maxMarkersToDraw)
 	{
 		if (sizeZoom < MeasureMarkerMinScale)
 			return;
-		if (VisibleMarkers.Count >= MaxMarkersToDraw)
+		if (VisibleMarkers.Count >= maxMarkersToDraw)
 			return;
 
 		var ts = currentRateEvent.GetTimeSignature();
@@ -1179,7 +1220,7 @@ internal sealed class ActiveEditorChart
 
 			lastRecordedRow = currentRow;
 
-			if (VisibleMarkers.Count >= MaxMarkersToDraw)
+			if (VisibleMarkers.Count >= maxMarkersToDraw)
 				return;
 
 			// Advance one beat.

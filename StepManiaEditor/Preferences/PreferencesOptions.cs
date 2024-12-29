@@ -72,6 +72,10 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 	public const bool DefaultRenderRegions = true;
 	public const bool DefaultRenderMiscEvents = true;
 	public const int DefaultMiscEventAreaWidth = 100;
+	public const int DefaultMaxMarkersToDraw = 256;
+	public const int DefaultMaxEventsToDraw = 2048;
+	public const int DefaultMaxRateAlteringEventsToProcessPerFrame = 256;
+	public const int DefaultMiniMapMaxNotesToDraw = 6144;
 
 	// Preferences.
 	[JsonInclude] public bool ShowOptionsWindow;
@@ -94,6 +98,10 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 	[JsonInclude] public bool RenderRegions = DefaultRenderRegions;
 	[JsonInclude] public bool RenderMiscEvents = DefaultRenderMiscEvents;
 	[JsonInclude] public int MiscEventAreaWidth = DefaultMiscEventAreaWidth;
+	[JsonInclude] public int MaxMarkersToDraw = DefaultMaxMarkersToDraw;
+	[JsonInclude] public int MaxEventsToDraw = DefaultMaxEventsToDraw;
+	[JsonInclude] public int MaxRateAlteringEventsToProcessPerFrame = DefaultMaxRateAlteringEventsToProcessPerFrame;
+	[JsonInclude] public int MiniMapMaxNotesToDraw = DefaultMiniMapMaxNotesToDraw;
 
 	[JsonInclude]
 	public int UndoHistorySize
@@ -138,7 +146,11 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 		       && RenderMarkers == DefaultRenderMarkers
 		       && RenderRegions == DefaultRenderRegions
 		       && RenderMiscEvents == DefaultRenderMiscEvents
-		       && MiscEventAreaWidth == DefaultMiscEventAreaWidth;
+		       && MiscEventAreaWidth == DefaultMiscEventAreaWidth
+		       && MaxMarkersToDraw == DefaultMaxMarkersToDraw
+		       && MaxEventsToDraw == DefaultMaxEventsToDraw
+		       && MaxRateAlteringEventsToProcessPerFrame == DefaultMaxRateAlteringEventsToProcessPerFrame
+		       && MiniMapMaxNotesToDraw == DefaultMiniMapMaxNotesToDraw;
 	}
 
 	public void RestoreDefaults()
@@ -173,6 +185,10 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 	private readonly bool PreviousRenderRegions;
 	private readonly bool PreviousRenderMiscEvents;
 	private readonly int PreviousMiscEventAreaWidth;
+	private readonly int PreviousMaxMarkersToDraw;
+	private readonly int PreviousMaxEventsToDraw;
+	private readonly int PreviousMaxRateAlteringEventsToProcessPerFrame;
+	private readonly int PreviousMiniMapMaxNotesToDraw;
 
 	//private readonly bool PreviousResetWindows;
 	private readonly BackgroundImageSizeMode PreviousBackgroundImageSize;
@@ -201,6 +217,10 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 		PreviousRenderRegions = p.RenderRegions;
 		PreviousRenderMiscEvents = p.RenderMiscEvents;
 		PreviousMiscEventAreaWidth = p.MiscEventAreaWidth;
+		PreviousMaxMarkersToDraw = p.MaxMarkersToDraw;
+		PreviousMaxEventsToDraw = p.MaxEventsToDraw;
+		PreviousMaxRateAlteringEventsToProcessPerFrame = p.MaxRateAlteringEventsToProcessPerFrame;
+		PreviousMiniMapMaxNotesToDraw = p.MiniMapMaxNotesToDraw;
 	}
 
 	public override bool AffectsFile()
@@ -236,6 +256,10 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 		p.RenderRegions = DefaultRenderRegions;
 		p.RenderMiscEvents = DefaultRenderMiscEvents;
 		p.MiscEventAreaWidth = DefaultMiscEventAreaWidth;
+		p.MaxMarkersToDraw = DefaultMaxMarkersToDraw;
+		p.MaxEventsToDraw = DefaultMaxEventsToDraw;
+		p.MaxRateAlteringEventsToProcessPerFrame = DefaultMaxRateAlteringEventsToProcessPerFrame;
+		p.MiniMapMaxNotesToDraw = DefaultMiniMapMaxNotesToDraw;
 	}
 
 	protected override void UndoImplementation()
@@ -261,5 +285,9 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 		p.RenderRegions = PreviousRenderRegions;
 		p.RenderMiscEvents = PreviousRenderMiscEvents;
 		p.MiscEventAreaWidth = PreviousMiscEventAreaWidth;
+		p.MaxMarkersToDraw = PreviousMaxMarkersToDraw;
+		p.MaxEventsToDraw = PreviousMaxEventsToDraw;
+		p.MaxRateAlteringEventsToProcessPerFrame = PreviousMaxRateAlteringEventsToProcessPerFrame;
+		p.MiniMapMaxNotesToDraw = PreviousMiniMapMaxNotesToDraw;
 	}
 }

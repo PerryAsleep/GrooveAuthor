@@ -2610,6 +2610,9 @@ internal sealed class Editor :
 
 		foreach (var activeChartData in ActiveChartData)
 		{
+			if (!activeChartData.IsVisible())
+				continue;
+
 			var eventsBeingEdited = new List<EditorEvent>();
 			var arrowGraphicManager = activeChartData.GetArrowGraphicManager();
 
@@ -2727,7 +2730,8 @@ internal sealed class Editor :
 	{
 		var screenHeight = GetViewportHeight();
 		for (var i = 0; i < ActiveCharts.Count; i++)
-			ActiveChartData[i].UpdateChartEvents(screenHeight);
+			if (ActiveChartData[i].IsVisible())
+				ActiveChartData[i].UpdateChartEvents(screenHeight);
 	}
 
 	/// <summary>
@@ -3071,6 +3075,7 @@ internal sealed class Editor :
 		}
 
 		var numNotesAdded = 0;
+		var maxNotesToAdd = Preferences.Instance.PreferencesOptions.MiniMapMaxNotesToDraw;
 
 		// Scan backwards until we have checked every lane for a long note which may
 		// be extending through the given start row.
@@ -3118,7 +3123,7 @@ internal sealed class Editor :
 					break;
 			}
 
-			if (numNotesAdded > MiniMapMaxNotesToDraw)
+			if (numNotesAdded > maxNotesToAdd)
 				break;
 		}
 
@@ -5806,6 +5811,33 @@ internal sealed class Editor :
 	#endregion Song Media Files
 
 	#region Chart Selection
+
+	public int GetNumVisibleActiveCharts()
+	{
+		var numVisible = 0;
+		foreach (var activeChart in ActiveChartData)
+			if (activeChart.IsVisible())
+				numVisible++;
+		return numVisible;
+	}
+
+	public int GetNumEventsForAllVisibleActiveCharts()
+	{
+		var numEvents = 0;
+		foreach (var activeChart in ActiveChartData)
+			if (activeChart.IsVisible())
+				numEvents += activeChart.GetChart().GetEvents().GetCount();
+		return numEvents;
+	}
+
+	public int GetNumRateAlteringEventsForAllVisibleActiveCharts()
+	{
+		var numEvents = 0;
+		foreach (var activeChart in ActiveChartData)
+			if (activeChart.IsVisible())
+				numEvents += activeChart.GetChart().GetRateAlteringEvents().GetCount();
+		return numEvents;
+	}
 
 	public ActiveEditorChart GetFocusedChartData()
 	{

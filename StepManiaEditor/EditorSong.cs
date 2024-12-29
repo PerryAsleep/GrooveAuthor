@@ -875,6 +875,13 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 		{
 			kvp.Value.Sort(new ChartComparer());
 		}
+
+		var index = 0;
+		foreach (var chart in GetSortedCharts())
+		{
+			chart.SetIndexInSong(index);
+			index++;
+		}
 	}
 
 	public IReadOnlyList<EditorChart> GetSortedCharts()

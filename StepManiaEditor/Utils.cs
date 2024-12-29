@@ -93,12 +93,6 @@ internal sealed class Utils
 
 	public const float ActiveEditEventAlpha = 0.8f;
 
-	public const int MaxMarkersToDraw = 256;
-	public const int MaxEventsToDraw = 2048;
-	public const int MaxRateAlteringEventsToProcessPerFrame = 256;
-
-	public const int MiniMapMaxNotesToDraw = 6144;
-
 	public const string TextureIdMeasureMarker = "measure-marker";
 	public const string TextureIdBeatMarker = "beat-marker";
 	public const string TextureIdFocusedChartBoundary = "focused-chart-boundary";
