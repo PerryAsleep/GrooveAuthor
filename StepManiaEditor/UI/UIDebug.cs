@@ -38,14 +38,6 @@ internal sealed class UIDebug : UIWindow
 
 		if (ImGui.Begin(WindowTitle, ref p.ShowDebugWindow))
 		{
-			var renderChart = Editor.DebugGetShouldRenderChart();
-			ImGui.Checkbox("Render Chart", ref renderChart);
-			Editor.DebugSetShouldRenderChart(renderChart);
-
-			var renderMarkers = Editor.DebugGetShouldRenderMarkers();
-			ImGui.Checkbox("Render Markers", ref renderMarkers);
-			Editor.DebugSetShouldRenderMarkers(renderMarkers);
-
 			if (ImGui.Button("Splash"))
 			{
 				Editor.DebugShowSplashSequence();

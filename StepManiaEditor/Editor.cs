@@ -264,8 +264,6 @@ internal sealed class Editor :
 	private PerformanceMonitor PerformanceMonitor;
 
 	// Debug
-	private bool RenderChart = true;
-	private bool RenderMarkers = true;
 	private bool ShowImGuiTestWindow;
 	private readonly int MainThreadId;
 
@@ -2266,36 +2264,25 @@ internal sealed class Editor :
 
 			SpriteBatch.Begin(SpriteSortMode.Deferred, BlendState.NonPremultiplied);
 
-			if (RenderChart)
+			DrawMeasureMarkers();
+			DrawRegions();
+			DrawReceptors();
+			DrawSnapIndicators();
+
+			// Start a window within the central node so we can clip
+			if (UIDockSpace.BeginCentralNodeAreaWindow())
 			{
-				if (RenderMarkers)
-					DrawMeasureMarkers();
-				DrawRegions();
-				DrawReceptors();
-				DrawSnapIndicators();
+				// Draw the chart events, which include misc event widgets needing to be clipped.
+				DrawChartEvents();
 
-				// Start a window within the central node so we can clip
-				if (UIDockSpace.BeginCentralNodeAreaWindow())
-				{
-					// Draw the chart events, which include misc event widgets needing to be clipped.
-					DrawChartEvents();
-
-					// Draw the chart headers which also need to be clipped.
-					DrawChartHeaders();
-				}
-
-				UIDockSpace.EndCentralNodeAreaWindow();
-
-				DrawReceptorForegroundEffects();
-				DrawSelectedRegion();
+				// Draw the chart headers which also need to be clipped.
+				DrawChartHeaders();
 			}
-			else
-			{
-				// Draw the chart header area even if we aren't rendering the charts.
-				if (UIDockSpace.BeginCentralNodeAreaWindow())
-					DrawChartHeaders();
-				UIDockSpace.EndCentralNodeAreaWindow();
-			}
+
+			UIDockSpace.EndCentralNodeAreaWindow();
+
+			DrawReceptorForegroundEffects();
+			DrawSelectedRegion();
 
 			DrawMiniMap();
 
@@ -6497,28 +6484,6 @@ internal sealed class Editor :
 	{
 		SetSongTime(Preferences.Instance.DebugSongTime);
 		ZoomManager.SetZoom(Preferences.Instance.DebugZoom);
-	}
-
-	[Conditional("DEBUG")]
-	public void DebugSetShouldRenderChart(bool renderChart)
-	{
-		RenderChart = renderChart;
-	}
-
-	public bool DebugGetShouldRenderChart()
-	{
-		return RenderChart;
-	}
-
-	[Conditional("DEBUG")]
-	public void DebugSetShouldRenderMarkers(bool renderMarkers)
-	{
-		RenderMarkers = renderMarkers;
-	}
-
-	public bool DebugGetShouldRenderMarkers()
-	{
-		return RenderMarkers;
 	}
 
 #endif
