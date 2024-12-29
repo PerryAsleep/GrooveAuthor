@@ -195,7 +195,7 @@ internal sealed class UISongProperties : UIWindow
 					"\nThe default song sync value can be set in the Options menu.",
 					0.0001f, "%.6f seconds", 0.0);
 
-				ImGuiLayoutUtils.DrawRowTimingChart(true, "Timing Chart", Editor, EditorSong,
+				ImGuiLayoutUtils.DrawRowTimingChart(true, "Timing Chart", EditorSong,
 					"(Editor Only) The chart which should be used for song timing data." +
 					"\nThere is a bug in Stepmania where even if all charts specify valid timing data, Stepmania" +
 					"\nwill still use timing data defined on the song instead of the selected chart for beat-driven" +

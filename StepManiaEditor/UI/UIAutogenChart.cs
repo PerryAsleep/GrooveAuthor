@@ -82,14 +82,9 @@ internal sealed class UIAutogenChart : UIWindow
 					if (ImGui.BeginCombo("Autogen Source Chart", selectedName))
 					{
 						UIChartList.DrawChartList(
-							Editor,
 							Editor.GetActiveSong(),
 							SourceChart,
-							null,
-							selectedChart => SourceChart = selectedChart,
-							false,
-							false,
-							null);
+							selectedChart => SourceChart = selectedChart);
 						ImGui.EndCombo();
 					}
 				}
@@ -131,10 +126,7 @@ internal sealed class UIAutogenChart : UIWindow
 					ref selectedIndex, configNames,
 					() => EditorPerformedChartConfig.ShowEditUI(Preferences.Instance
 						.LastSelectedAutogenPerformedChartConfig),
-					() =>
-					{
-						UIAutogenConfigs.Instance.Open(true);
-					},
+					() => { UIAutogenConfigs.Instance.Open(true); },
 					EditorPerformedChartConfig.CreateNewConfigAndShowEditUI,
 					"Performed Chart Config.");
 				Preferences.Instance.LastSelectedAutogenPerformedChartConfig = configGuids[selectedIndex];

@@ -2,6 +2,7 @@
 using System.Numerics;
 using ImGuiNET;
 using static StepManiaEditor.ImGuiUtils;
+using static StepManiaEditor.Utils;
 
 namespace StepManiaEditor;
 
@@ -11,8 +12,8 @@ internal sealed class UIChartList : UIWindow
 
 	private static readonly int TypeWidth = UiScaled(60);
 	private static readonly int RatingWidth = UiScaled(16);
-	private static readonly int CheckboxWidth = UiScaled(16);
 	private static readonly int AddChartWidth = UiScaled(90);
+	private static readonly int RowHeight = UiScaled(19);
 	private static readonly float DefaultPositionX = UiScaled(0);
 	private static readonly float DefaultPositionY = UiScaled(901);
 	private static readonly Vector2 DefaultSize = new(UiScaled(622), UiScaled(179));
@@ -78,9 +79,12 @@ internal sealed class UIChartList : UIWindow
 				editorChart,
 				ChartRightClickMenu,
 				selectedChart => { Editor.SetChartFocused(selectedChart); },
-				false,
-				true,
-				null);
+				selectedChart =>
+				{
+					Editor.SetChartFocused(selectedChart);
+					Editor.SetChartHasDedicatedTab(selectedChart, true);
+				},
+				true);
 
 			if (ChartPendingDelete != null)
 			{
@@ -141,32 +145,45 @@ internal sealed class UIChartList : UIWindow
 		ImGui.End();
 	}
 
+
+	/// <summary>
+	/// Public static method for drawing a simple chart list.
+	/// </summary>
+	/// <param name="activeSong">The active Song to derive the Chart list from.</param>
+	/// <param name="selectedChart">The currently selected Chart.</param>
+	/// <param name="onSelected">Action to invoke when selected.</param>
+	/// <returns>Number of charts drawn.</returns>
+	public static int DrawChartList(
+		EditorSong activeSong,
+		EditorChart selectedChart,
+		Action<EditorChart> onSelected)
+	{
+		return DrawChartList(null, activeSong, selectedChart, null, onSelected, null, false);
+	}
+
 	/// <summary>
 	/// Draws all charts for the Song associated with the given Chart as a list.
 	/// The charts are grouped and sorted and formatted nicely.
-	/// The list can be drawn as Selectable items or as BeginMenu items.
 	/// </summary>
 	/// <param name="editor">Editor Instance, needed for selection checkboxes.</param>
 	/// <param name="activeSong">The active Song to derive the Chart list from.</param>
-	/// <param name="activeChart">The currently active Chart.</param>
-	/// <param name="onRightClick">(Selectable only) Action to invoke when right-clicked.</param>
-	/// <param name="onSelected">(Selectable only) Action to invoke when selected.</param>
-	/// <param name="asBeginMenuItems">
-	/// If true then draw rows as BeginMenu items.
-	/// If false then draw rows as Selectable items.
+	/// <param name="selectedChart">The currently selected Chart.</param>
+	/// <param name="onRightClick">Action to invoke when right-clicked.</param>
+	/// <param name="onSelected">Action to invoke when selected.</param>
+	/// <param name="onDoubleClick">Action to invoke when double-clicked.</param>
+	/// <param name="primaryChartList">
+	/// If true, this is the primary chart list which uses different coloration and has
+	/// a close button.
 	/// </param>
-	/// <param name="withSelectionCheckBoxes">If true then draw rows with selection checkboxes.</param>
-	/// <param name="onMenu">(BeginMenu only) Action to invoke when selected in menu.</param>
 	/// <returns>Number of charts drawn.</returns>
-	public static int DrawChartList(
+	private static int DrawChartList(
 		Editor editor,
 		EditorSong activeSong,
-		EditorChart activeChart,
+		EditorChart selectedChart,
 		Action<EditorChart> onRightClick,
 		Action<EditorChart> onSelected,
-		bool asBeginMenuItems,
-		bool withSelectionCheckBoxes,
-		Action<EditorChart> onMenu)
+		Action<EditorChart> onDoubleClick,
+		bool primaryChartList)
 	{
 		var numCharts = 0;
 
@@ -185,14 +202,12 @@ internal sealed class UIChartList : UIWindow
 					ImGui.Text(GetPrettyEnumString(chartType));
 
 					var width = ImGui.GetContentRegionAvail().X;
-					if (withSelectionCheckBoxes)
+					if (primaryChartList)
 					{
-						width -= CheckboxWidth + ImGui.GetStyle().CellPadding.X * 2;
+						width -= GetCloseWidth(); // + ImGui.GetStyle().CellPadding.X * 2;
 					}
 
-					var ret = ImGui.BeginTable($"{chartType}Charts", 3, ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders,
-						new Vector2(width, 0));
-					if (ret)
+					if (ImGui.BeginTable($"{chartType}Charts", 3, ImGuiTableFlags.Borders, new Vector2(width, 0)))
 					{
 						ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, TypeWidth);
 						ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, RatingWidth);
@@ -203,36 +218,39 @@ internal sealed class UIChartList : UIWindow
 					foreach (var chart in charts)
 					{
 						DrawChartRow(
+							editor,
 							chart,
 							index++,
-							chart == activeChart,
+							chart == selectedChart,
 							onRightClick,
 							onSelected,
-							asBeginMenuItems,
-							onMenu);
+							onDoubleClick,
+							primaryChartList);
 					}
 
 					ImGui.EndTable();
 
-					if (withSelectionCheckBoxes)
+					if (primaryChartList)
 					{
 						var originalItemSpacingX = ImGui.GetStyle().ItemSpacing.X;
 						var originalItemSpacingY = ImGui.GetStyle().ItemSpacing.Y;
 						var originalFramePaddingX = ImGui.GetStyle().FramePadding.X;
 						var originalFramePaddingY = ImGui.GetStyle().FramePadding.Y;
+						var originalCellPaddingX = ImGui.GetStyle().CellPadding.X;
+						var originalCellPaddingY = ImGui.GetStyle().CellPadding.Y;
 
-						// Set the padding and spacing so we can draw dummy boxes to offset the image.
 						ImGui.GetStyle().ItemSpacing.X = 0;
 						ImGui.GetStyle().ItemSpacing.Y = 0;
 						ImGui.GetStyle().FramePadding.X = 0;
 						ImGui.GetStyle().FramePadding.Y = 0;
+						ImGui.GetStyle().CellPadding.X = 0;
+						ImGui.GetStyle().CellPadding.Y = 0;
 
 						ImGui.SameLine();
 
-						width = CheckboxWidth + ImGui.GetStyle().CellPadding.X * 2;
-						ret = ImGui.BeginTable($"{chartType}Charts Checkboxes", 1,
-							ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders, new Vector2(width, 0));
-						if (ret)
+						width = GetCloseWidth() + ImGui.GetStyle().CellPadding.X * 2;
+						if (ImGui.BeginTable($"{chartType}Charts Close Buttons", 1,
+							    ImGuiTableFlags.Borders, new Vector2(width, 0)))
 						{
 							ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100);
 						}
@@ -240,16 +258,18 @@ internal sealed class UIChartList : UIWindow
 						index = 0;
 						foreach (var chart in charts)
 						{
-							DrawChartRowSelectionCheckBox(editor, index++, chart);
+							DrawChartRowCloseButton(editor, index++, chart);
 						}
 
-						ImGui.EndTable();
-
 						// Restore the padding and spacing values.
+						ImGui.GetStyle().CellPadding.X = originalCellPaddingX;
+						ImGui.GetStyle().CellPadding.Y = originalCellPaddingY;
 						ImGui.GetStyle().FramePadding.X = originalFramePaddingX;
 						ImGui.GetStyle().FramePadding.Y = originalFramePaddingY;
 						ImGui.GetStyle().ItemSpacing.X = originalItemSpacingX;
 						ImGui.GetStyle().ItemSpacing.Y = originalItemSpacingY;
+
+						ImGui.EndTable();
 					}
 
 					numCharts++;
@@ -261,74 +281,69 @@ internal sealed class UIChartList : UIWindow
 	}
 
 	private static void DrawChartRow(
+		Editor editor,
 		EditorChart chart,
 		int index,
-		bool active,
+		bool selected,
 		Action<EditorChart> onRightClick,
 		Action<EditorChart> onSelected,
-		bool asBeginMenuItems,
-		Action<EditorChart> onMenu)
+		Action<EditorChart> onDoubleClick,
+		bool primaryChartList)
 	{
 		ImGui.TableNextRow();
 
-		var color = Utils.GetColorForDifficultyType(chart.ChartDifficultyType);
+		var color = GetColorForDifficultyType(chart.ChartDifficultyType);
+		var activeChartData = editor?.GetActiveChartData(chart);
+		if (primaryChartList)
+		{
+			if (activeChartData != null)
+				color = ColorRGBAMultiply(color, UIFocusedChartColorMultiplier);
+			else
+				color = ColorRGBAMultiply(color, UIUnfocusedChartColorMultiplier);
+		}
 
 		ImGui.TableSetColumnIndex(0);
 		ImGui.TableSetBgColor(ImGuiTableBgTarget.CellBg, color);
 
-		// When drawing the row as a BeginMenu item, we can't put the three separate table columns
-		// into one MenuItem control. As a workaround, treat every column as a MenuItem. This has
-		// some undesirable effects:
-		// 1) Only one column is highlighted at a time as opposed to the entire row.
-		// 2) As the mouse slides between columns, the submenu flickers.
-
 		// Difficulty type.
-		if (asBeginMenuItems)
+		var flags = ImGuiSelectableFlags.SpanAllColumns;
+		if (onDoubleClick != null)
+			flags |= ImGuiSelectableFlags.AllowDoubleClick;
+		if (ImGui.Selectable($"{chart.ChartDifficultyType}##{index}", selected, flags))
 		{
-			if (ImGui.BeginMenu($"{chart.ChartDifficultyType}##{index}", true))
-			{
-				onMenu(chart);
-				ImGui.EndMenu();
-			}
-		}
-		else
-		{
-			if (ImGui.Selectable($"{chart.ChartDifficultyType}##{index}", active, ImGuiSelectableFlags.SpanAllColumns))
-			{
+			if (ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left) && onDoubleClick != null)
+				onDoubleClick(chart);
+			else
 				onSelected(chart);
-			}
+		}
 
-			if (onRightClick != null && ImGui.IsItemClicked(ImGuiMouseButton.Right))
-			{
-				ImGui.OpenPopup($"ChartRightClickPopup##{index}");
-			}
+		if (onRightClick != null && ImGui.IsItemClicked(ImGuiMouseButton.Right))
+		{
+			ImGui.OpenPopup($"ChartRightClickPopup##{index}");
 		}
 
 		// Rating.
 		ImGui.TableSetColumnIndex(1);
 		ImGui.TableSetBgColor(ImGuiTableBgTarget.CellBg, color);
-		if (asBeginMenuItems)
-		{
-			if (ImGui.BeginMenu($"{chart.Rating}##{index}", true))
-			{
-				onMenu(chart);
-				ImGui.EndMenu();
-			}
-		}
-		else
-		{
-			ImGui.Text(chart.Rating.ToString());
-		}
+		ImGui.Text(chart.Rating.ToString());
 
 		// Description.
 		ImGui.TableSetColumnIndex(2);
-		if (asBeginMenuItems)
+		if (primaryChartList)
 		{
-			if (ImGui.BeginMenu($"{chart.Description}##{index}", true))
+			var colorPushCount = 0;
+			if (activeChartData != null)
 			{
-				onMenu(chart);
-				ImGui.EndMenu();
+				ImGui.TableSetBgColor(ImGuiTableBgTarget.CellBg, UITableRowBgActiveChartColor);
+				if (!activeChartData.HasDedicatedTab())
+				{
+					ImGui.PushStyleColor(ImGuiCol.Text, UINonDedicatedTabTextColor);
+					colorPushCount++;
+				}
 			}
+
+			ImGui.Text(chart.Description);
+			ImGui.PopStyleColor(colorPushCount);
 		}
 		else
 		{
@@ -343,18 +358,14 @@ internal sealed class UIChartList : UIWindow
 		}
 	}
 
-	private static void DrawChartRowSelectionCheckBox(
-		Editor editor,
-		int index,
-		EditorChart chart)
+	private static void DrawChartRowCloseButton(Editor editor, int index, EditorChart chart)
 	{
-		ImGui.TableNextRow();
+		ImGui.TableNextRow(ImGuiTableRowFlags.None, RowHeight);
 		ImGui.TableSetColumnIndex(0);
-		var hasDedicatedTab = editor.DoesChartHaveDedicatedTab(chart);
-		if (ImGui.Checkbox($"##{index}", ref hasDedicatedTab))
-		{
-			editor.SetChartHasDedicatedTab(chart, hasDedicatedTab);
-		}
+		if (editor?.GetActiveChartData(chart) == null)
+			return;
+		if (ImGui.Button($"X##Close{index}", new Vector2(GetCloseWidth(), RowHeight)))
+			editor.CloseChart(chart);
 	}
 
 	private void ChartRightClickMenu(EditorChart chart)

@@ -3707,10 +3707,8 @@ internal sealed class Editor :
 		if (ImGui.BeginMenu("Replace this Chart's Non-Step Events From", canEditSong && canEditChart))
 		{
 			UIChartList.DrawChartList(
-				this,
 				song,
 				chart,
-				null,
 				selectedChart =>
 				{
 					if (chart != selectedChart)
@@ -3720,10 +3718,7 @@ internal sealed class Editor :
 							UICopyEventsBetweenCharts.GetStepmaniaTypes(),
 							new List<EditorChart> { chart }));
 					}
-				},
-				false,
-				false,
-				null);
+				});
 
 			ImGui.EndMenu();
 		}
@@ -3731,10 +3726,8 @@ internal sealed class Editor :
 		if (ImGui.BeginMenu("Replace this Chart's Timing and Scroll Events From", canEditSong && canEditChart))
 		{
 			UIChartList.DrawChartList(
-				this,
 				song,
 				chart,
-				null,
 				selectedChart =>
 				{
 					if (chart != selectedChart)
@@ -3744,10 +3737,7 @@ internal sealed class Editor :
 							UICopyEventsBetweenCharts.GetTimingAndScrollTypes(),
 							new List<EditorChart> { chart }));
 					}
-				},
-				false,
-				false,
-				null);
+				});
 
 			ImGui.EndMenu();
 		}
@@ -3755,10 +3745,8 @@ internal sealed class Editor :
 		if (ImGui.BeginMenu("Replace this Chart's Timing Events From", canEditSong && canEditChart))
 		{
 			UIChartList.DrawChartList(
-				this,
 				song,
 				chart,
-				null,
 				selectedChart =>
 				{
 					if (chart != selectedChart)
@@ -3768,10 +3756,7 @@ internal sealed class Editor :
 							UICopyEventsBetweenCharts.GetTimingTypes(),
 							new List<EditorChart> { chart }));
 					}
-				},
-				false,
-				false,
-				null);
+				});
 
 			ImGui.EndMenu();
 		}
@@ -3798,10 +3783,8 @@ internal sealed class Editor :
 			}
 
 			UIChartList.DrawChartList(
-				this,
 				song,
 				chart,
-				null,
 				selectedChart =>
 				{
 					if (chart != selectedChart)
@@ -3811,10 +3794,7 @@ internal sealed class Editor :
 							UICopyEventsBetweenCharts.GetStepmaniaTypes(),
 							new List<EditorChart> { selectedChart }));
 					}
-				},
-				false,
-				false,
-				null);
+				});
 
 			ImGui.EndMenu();
 		}
@@ -3841,10 +3821,8 @@ internal sealed class Editor :
 			}
 
 			UIChartList.DrawChartList(
-				this,
 				song,
 				chart,
-				null,
 				selectedChart =>
 				{
 					if (chart != selectedChart)
@@ -3854,10 +3832,7 @@ internal sealed class Editor :
 							UICopyEventsBetweenCharts.GetTimingAndScrollTypes(),
 							new List<EditorChart> { selectedChart }));
 					}
-				},
-				false,
-				false,
-				null);
+				});
 
 			ImGui.EndMenu();
 		}
@@ -3884,10 +3859,8 @@ internal sealed class Editor :
 			}
 
 			UIChartList.DrawChartList(
-				this,
 				song,
 				chart,
-				null,
 				selectedChart =>
 				{
 					if (chart != selectedChart)
@@ -3897,10 +3870,7 @@ internal sealed class Editor :
 							UICopyEventsBetweenCharts.GetTimingTypes(),
 							new List<EditorChart> { selectedChart }));
 					}
-				},
-				false,
-				false,
-				null);
+				});
 
 			ImGui.EndMenu();
 		}
@@ -5834,7 +5804,7 @@ internal sealed class Editor :
 
 	#region Chart Selection
 
-	private ActiveEditorChart GetFocusedChartData()
+	public ActiveEditorChart GetFocusedChartData()
 	{
 		if (FocusedChart == null)
 			return null;
@@ -5847,7 +5817,7 @@ internal sealed class Editor :
 		return null;
 	}
 
-	private ActiveEditorChart GetActiveChartData(EditorChart chart)
+	public ActiveEditorChart GetActiveChartData(EditorChart chart)
 	{
 		for (var i = 0; i < ActiveCharts.Count; i++)
 		{

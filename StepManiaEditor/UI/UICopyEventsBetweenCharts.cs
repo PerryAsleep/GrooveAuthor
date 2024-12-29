@@ -177,14 +177,9 @@ internal class UICopyEventsBetweenCharts : UIWindow
 					if (ImGui.BeginCombo("Copy From", selectedName))
 					{
 						UIChartList.DrawChartList(
-							Editor,
 							Editor.GetActiveSong(),
 							SourceChart,
-							null,
-							selectedChart => SourceChart = selectedChart,
-							false,
-							false,
-							null);
+							selectedChart => SourceChart = selectedChart);
 						ImGui.EndCombo();
 					}
 				}
@@ -286,14 +281,9 @@ internal class UICopyEventsBetweenCharts : UIWindow
 						if (ImGui.BeginCombo("Copy To", selectedName))
 						{
 							UIChartList.DrawChartList(
-								Editor,
 								Editor.GetActiveSong(),
 								DestinationChart,
-								null,
-								selectedChart => DestinationChart = selectedChart,
-								false,
-								false,
-								null);
+								selectedChart => DestinationChart = selectedChart);
 							ImGui.EndCombo();
 						}
 					}

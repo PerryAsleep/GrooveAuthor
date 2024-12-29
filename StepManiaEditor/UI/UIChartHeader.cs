@@ -121,6 +121,7 @@ internal sealed class UIChartHeader
 				{
 					if (ImGui.IsMouseDoubleClicked(ImGuiMouseButton.Left))
 					{
+						Editor.SetChartFocused(editorChart);
 						Editor.SetChartHasDedicatedTab(editorChart, true);
 					}
 					else

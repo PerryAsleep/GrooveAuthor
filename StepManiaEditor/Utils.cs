@@ -30,6 +30,7 @@ internal sealed class Utils
 	                                                          | ImGuiWindowFlags.NoScrollWithMouse;
 
 	public const uint UIWindowColor = 0xFF0A0A0A;
+	public const uint UITableRowBgActiveChartColor = 0x20FFFFFF;
 	public const uint UINonDedicatedTabTextColor = 0xFFC0C0C0;
 	public const uint UIFocusedTabBorderColor = 0xFFFFFFFF;
 	public const uint UIUnfocusedTabBorderColor = 0xFF808080;
