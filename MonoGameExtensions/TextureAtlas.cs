@@ -343,6 +343,17 @@ public abstract class TextureAtlas : IReadOnlyTextureAtlas
 		return (node.TextureRect.X, node.TextureRect.Y, node.TextureRect.Width, node.TextureRect.Height);
 	}
 
+	public void Draw(string subTextureId, SpriteBatch spriteBatch, Rectangle destinationRectangle)
+	{
+		if (!GetNode(subTextureId, destinationRectangle, out var node, out _))
+		{
+			Logger.Warn($"Failed to draw packed texture identified by \"{subTextureId}\". No texture with that id found.");
+			return;
+		}
+
+		spriteBatch.Draw(Texture, destinationRectangle, node.TextureRect, Color.White);
+	}
+
 	public void Draw(string subTextureId, SpriteBatch spriteBatch, Rectangle destinationRectangle, float alpha)
 	{
 		if (!GetNode(subTextureId, destinationRectangle, out var node, out _))

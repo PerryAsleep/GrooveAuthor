@@ -2264,6 +2264,7 @@ internal sealed class Editor :
 
 			SpriteBatch.Begin(SpriteSortMode.Deferred, BlendState.NonPremultiplied);
 
+			DrawActiveChartBoundaries();
 			DrawMeasureMarkers();
 			DrawRegions();
 			DrawReceptors();
@@ -2543,6 +2544,21 @@ internal sealed class Editor :
 			SpriteBatch.Draw(WaveformRenderTargets[1],
 				new Rectangle(x, TransformChartSpaceYToScreenSpaceY(0), width, WaveformRenderTargets[1].Height), Color.White);
 			SpriteBatch.End();
+		}
+	}
+
+	private void DrawActiveChartBoundaries()
+	{
+		var y = ChartArea.Y;
+		var w = GetActiveChartBoundaryWidth();
+		var h = ChartArea.Height;
+		foreach (var activeChartData in ActiveChartData)
+		{
+			var textureId = activeChartData.IsFocused() ? TextureIdFocusedChartBoundary : TextureIdUnfocusedChartBoundary;
+			var rect = new Rectangle(activeChartData.GetScreenSpaceXOfFullChartAreaStart(), y, w, h);
+			TextureAtlas.Draw(textureId, SpriteBatch, rect);
+			rect = new Rectangle(activeChartData.GetScreenSpaceXOfFullChartAreaEnd() - w, y, w, h);
+			TextureAtlas.Draw(textureId, SpriteBatch, rect);
 		}
 	}
 

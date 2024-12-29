@@ -62,7 +62,7 @@ internal sealed class UIChartHeader
 		var chartId = editorChart.GetId();
 		Chart.GetEditor().GetChartAreaInScreenSpace(out var chartArea);
 		var x = Chart.GetScreenSpaceXOfFullChartAreaStart();
-		var w = Chart.GetScreenSpaceXOfFullChartAreaEnd() - x;
+		var w = Chart.GetChartScreenSpaceWidth();
 		var h = GetChartHeaderHeight();
 
 		// Record window size and padding values so we can edit and restore them.
@@ -190,7 +190,7 @@ internal sealed class UIChartHeader
 		if (!Chart.GetEditor().GetChartAreaInScreenSpace(out var draggableArea))
 			return false;
 		draggableArea.X = Chart.GetScreenSpaceXOfFullChartAreaStart();
-		draggableArea.Width = Chart.GetScreenSpaceXOfFullChartAreaEnd() - draggableArea.X - GetButtonAreaWidth();
+		draggableArea.Width = Chart.GetChartScreenSpaceWidth() - GetButtonAreaWidth();
 		draggableArea.Height = GetChartHeaderHeight();
 		return draggableArea.Contains(screenSpaceX, screenSpaceY);
 	}

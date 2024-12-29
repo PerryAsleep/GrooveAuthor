@@ -219,22 +219,22 @@ internal sealed class ActiveEditorChart
 			miscEventPadding += Preferences.Instance.PreferencesOptions.MiscEventAreaWidth;
 		}
 
-		var measureMarkerPadding = (int)(MeasureMarkerPaddingDefaultDPI -
+		var measureMarkerPadding = (int)(GetMeasureMarkerPadding() -
 		                                 EditorMarkerEvent.GetNumberRelativeAnchorPos(ZoomManager.GetSizeZoom()));
 
-		return Math.Max(miscEventPadding, measureMarkerPadding);
+		return GetActiveChartBoundaryWidth() + Math.Max(miscEventPadding, measureMarkerPadding);
 	}
 
 	public int GetLeftMiscEventPadding()
 	{
-		return (int)(SceneWidgetPaddingDefaultDPI - EditorMarkerEvent.GetNumberRelativeAnchorPos(ZoomManager.GetSizeZoom()) +
-		             MiscEventLeftSideMarkerNumberAllowanceDefaultDPI *
+		return (int)(GetSceneWidgetPadding() - EditorMarkerEvent.GetNumberRelativeAnchorPos(ZoomManager.GetSizeZoom()) +
+		             GetMiscEventLeftSideMarkerNumberAllowance() *
 		             EditorMarkerEvent.GetNumberAlpha(ZoomManager.GetSizeZoom()));
 	}
 
 	public int GetRightMiscEventPadding()
 	{
-		return SceneWidgetPaddingDefaultDPI;
+		return GetSceneWidgetPadding();
 	}
 
 	public int GetLaneAreaWidth()
@@ -334,6 +334,8 @@ internal sealed class ActiveEditorChart
 		}
 
 		width += rightMiscEventAreaWidth + scrollBarAreaWidth;
+
+		width += GetActiveChartBoundaryWidth();
 
 		return width;
 	}

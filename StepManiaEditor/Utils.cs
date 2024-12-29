@@ -101,6 +101,8 @@ internal sealed class Utils
 
 	public const string TextureIdMeasureMarker = "measure-marker";
 	public const string TextureIdBeatMarker = "beat-marker";
+	public const string TextureIdFocusedChartBoundary = "focused-chart-boundary";
+	public const string TextureIdUnfocusedChartBoundary = "unfocused-chart-boundary";
 	public const string TextureIdRegionRect = "region-rect";
 	public const string TextureIdLogoAttribution = "logo-attribution";
 

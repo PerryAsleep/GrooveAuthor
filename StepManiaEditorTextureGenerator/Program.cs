@@ -460,6 +460,20 @@ internal class TextureGeneratorGame : Game
 		beatMarkerTexture.SetData(textureData);
 		Atlas.AddSubTexture("beat-marker", beatMarkerTexture, true);
 
+		// Add focused chart boundary.
+		var focusedChartBoundaryTexture = new Texture2D(GraphicsDevice, 1, 1);
+		textureData = new uint[1];
+		textureData[0] = 0xFFFFFFFF;
+		focusedChartBoundaryTexture.SetData(textureData);
+		Atlas.AddSubTexture("focused-chart-boundary", focusedChartBoundaryTexture, true);
+
+		// Add unfocused chart boundary.
+		var unfocusedChartBoundaryTexture = new Texture2D(GraphicsDevice, 1, 1);
+		textureData = new uint[1];
+		textureData[0] = 0xFF7F7F7F;
+		unfocusedChartBoundaryTexture.SetData(textureData);
+		Atlas.AddSubTexture("unfocused-chart-boundary", unfocusedChartBoundaryTexture, true);
+
 		// Generate and add generic region rect texture.
 		var regionRectTexture = new Texture2D(GraphicsDevice, 1, 1);
 		textureData = new uint[1];

@@ -36,6 +36,7 @@ internal sealed class ImGuiUtils
 	public const int SceneWidgetPaddingDefaultDPI = 10;
 	public const int MiscEventLeftSideMarkerNumberAllowanceDefaultDPI = 10;
 	public const int MeasureMarkerPaddingDefaultDPI = 40;
+	public const int ActiveChartBoundaryWidthDefaultDPI = 1;
 
 	private static Editor Editor;
 	private static readonly Dictionary<Type, string[]> EnumStringsCacheByType = new();
@@ -827,6 +828,26 @@ internal sealed class ImGuiUtils
 	public static int GetMiniMapYPaddingFromBottom()
 	{
 		return UiScaled(SceneWidgetPaddingDefaultDPI);
+	}
+
+	public static int GetSceneWidgetPadding()
+	{
+		return UiScaled(SceneWidgetPaddingDefaultDPI);
+	}
+
+	public static int GetMiscEventLeftSideMarkerNumberAllowance()
+	{
+		return UiScaled(MiscEventLeftSideMarkerNumberAllowanceDefaultDPI);
+	}
+
+	public static int GetMeasureMarkerPadding()
+	{
+		return MeasureMarkerPaddingDefaultDPI;
+	}
+
+	public static int GetActiveChartBoundaryWidth()
+	{
+		return ActiveChartBoundaryWidthDefaultDPI;
 	}
 
 	public static int GetBackgroundWidth()
