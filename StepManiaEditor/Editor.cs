@@ -5880,21 +5880,49 @@ internal sealed class Editor :
 	{
 		if (chart == null)
 			return;
+
+		var removingFocusedChart = FocusedChart == chart;
+
+		// Get the original index so we can focus an adjacent chart.
+		var originalActiveIndex = 0;
+		var focalPointX = GetFocalPointScreenSpaceX();
+		var focalPointY = GetFocalPointScreenSpaceY();
+		if (removingFocusedChart)
+		{
+			for (var i = 0; i < ActiveCharts.Count; i++)
+			{
+				if (ActiveCharts[i] == chart)
+				{
+					originalActiveIndex = i;
+					break;
+				}
+			}
+		}
+
+		// Close the chart.
 		RemoveActiveChart(chart);
 
 		// Ensure this chart is no longer focused.
-		if (FocusedChart == chart)
+		if (removingFocusedChart)
 		{
 			// Focus on another chart if other charts are active.
 			if (ActiveCharts.Count > 0)
 			{
-				SetChartFocused(ActiveCharts[0]);
+				if (originalActiveIndex < ActiveCharts.Count)
+					SetChartFocused(ActiveCharts[originalActiveIndex]);
+				else if (originalActiveIndex - 1 >= 0 && originalActiveIndex - 1 < ActiveCharts.Count)
+					SetChartFocused(ActiveCharts[originalActiveIndex - 1]);
+				else
+					SetChartFocused(ActiveCharts[0]);
 			}
 			else
 			{
 				FocusedChart = null;
 			}
 		}
+
+		// Prevent the focal point from moving.
+		SetFocalPointScreenSpace(focalPointX, focalPointY);
 
 		UpdateChartPositions();
 	}
