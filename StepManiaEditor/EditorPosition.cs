@@ -24,8 +24,6 @@ internal interface IReadOnlyEditorPosition
 /// </summary>
 internal sealed class EditorPosition : IReadOnlyEditorPosition
 {
-	public static readonly EditorPosition Zero = new(null, null);
-
 	private EditorChart ActiveChartInternal;
 
 	public EditorChart ActiveChart
@@ -156,11 +154,38 @@ internal sealed class EditorPosition : IReadOnlyEditorPosition
 	private double ChartPositionAtStartOfInterpolation;
 	private double DesiredChartPosition;
 
+	/// <summary>
+	/// Constructor creating an EditorPosition from an EditorChart.
+	/// </summary>
 	public EditorPosition(Action onPositionChanged, EditorChart activeChart)
 	{
 		Reset();
 		ActiveChart = activeChart;
 		OnPositionChanged = onPositionChanged;
+	}
+
+	/// <summary>
+	/// Constructor creating an EditorPosition with a 0.0 ChartTime and ChartPosition.
+	/// SongTime will be derived from the NewSongSyncOffset.
+	/// Intended to get a zero position for when there is no EditorSong or EditorChart.
+	/// </summary>
+	public EditorPosition()
+	{
+		ChartPositionInternal = 0.0;
+		ChartTimeInternal = 0.0;
+		SongTimeInternal = Preferences.Instance.PreferencesOptions.NewSongSyncOffset;
+	}
+
+	/// <summary>
+	/// Constructor creating an EditorPosition with a 0.0 ChartTime and ChartPosition.
+	/// SongTime will be derived from the given EditorSong's SyncOffset.
+	/// Intended to get a zero position for an EditorSong when there is no EditorChart.
+	/// </summary>
+	public EditorPosition(EditorSong activeSong)
+	{
+		ChartPositionInternal = 0.0;
+		ChartTimeInternal = 0.0;
+		SongTimeInternal = activeSong.SyncOffset;
 	}
 
 	public static double GetSongTimeFromChartTime(EditorChart chart, double chartTime)

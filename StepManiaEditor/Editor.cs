@@ -1188,7 +1188,12 @@ internal sealed class Editor :
 
 	public IReadOnlyEditorPosition GetPosition()
 	{
-		return GetFocusedChartData()?.Position ?? EditorPosition.Zero;
+		var focusedChartData = GetFocusedChartData();
+		if (focusedChartData != null)
+			return focusedChartData.Position;
+		if (ActiveSong != null)
+			return new EditorPosition(ActiveSong);
+		return new EditorPosition();
 	}
 
 	public EditorMouseState GetMouseState()
