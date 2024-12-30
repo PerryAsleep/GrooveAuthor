@@ -2477,7 +2477,11 @@ internal sealed class Editor :
 	{
 		var sizeZoom = ZoomManager.GetSizeZoom();
 		for (var i = 0; i < ActiveCharts.Count; i++)
+		{
+			if (!ActiveChartData[i].IsVisible())
+				continue;
 			ActiveChartData[i].DrawReceptors(sizeZoom, TextureAtlas, SpriteBatch);
+		}
 	}
 
 	private void DrawSnapIndicators()
@@ -2576,6 +2580,8 @@ internal sealed class Editor :
 		var h = ChartArea.Height;
 		foreach (var activeChartData in ActiveChartData)
 		{
+			if (!activeChartData.IsVisible())
+				continue;
 			var textureId = activeChartData.IsFocused() ? TextureIdFocusedChartBoundary : TextureIdUnfocusedChartBoundary;
 			var rect = new Rectangle(activeChartData.GetScreenSpaceXOfFullChartAreaStart(), y, w, h);
 			TextureAtlas.Draw(textureId, SpriteBatch, rect);
@@ -2591,6 +2597,8 @@ internal sealed class Editor :
 
 		foreach (var activeChartData in ActiveChartData)
 		{
+			if (!activeChartData.IsVisible())
+				continue;
 			foreach (var visibleMarker in activeChartData.GetVisibleMarkers())
 			{
 				visibleMarker.Draw(TextureAtlas, SpriteBatch, Font);
@@ -2605,6 +2613,8 @@ internal sealed class Editor :
 
 		foreach (var activeChartData in ActiveChartData)
 		{
+			if (!activeChartData.IsVisible())
+				continue;
 			foreach (var visibleRegion in activeChartData.GetVisibleRegions())
 			{
 				visibleRegion.DrawRegion(TextureAtlas, SpriteBatch, GetViewportHeight());
