@@ -5955,42 +5955,41 @@ internal sealed class Editor :
 
 		var removingFocusedChart = FocusedChart == chart;
 
-		// Get the original index so we can focus an adjacent chart.
-		var originalActiveIndex = 0;
+		// Get the original focal point so we can ensure it doesn't move.
 		var focalPointX = GetFocalPointScreenSpaceX();
 		var focalPointY = GetFocalPointScreenSpaceY();
+
+		// Focus on an adjacent chart if we are removing the focused chart and an adjacent chart
+		// exists. Do this first before removing the active chart because otherwise we'd temporarily
+		// not be able to retrieve the old focused chart data while updating the focus.
 		if (removingFocusedChart)
 		{
+			var focusedChartIndex = 0;
 			for (var i = 0; i < ActiveCharts.Count; i++)
 			{
 				if (ActiveCharts[i] == chart)
 				{
-					originalActiveIndex = i;
+					focusedChartIndex = i;
 					break;
 				}
+			}
+
+			if (ActiveCharts.Count > 1)
+			{
+				if (focusedChartIndex + 1 < ActiveCharts.Count)
+					SetChartFocused(ActiveCharts[focusedChartIndex + 1]);
+				else if (focusedChartIndex - 1 >= 0 && focusedChartIndex - 1 < ActiveCharts.Count)
+					SetChartFocused(ActiveCharts[focusedChartIndex - 1]);
 			}
 		}
 
 		// Close the chart.
 		RemoveActiveChart(chart);
 
-		// Ensure this chart is no longer focused.
-		if (removingFocusedChart)
+		// If there are no more charts, clear the FocusedChart member.
+		if (removingFocusedChart && ActiveCharts.Count == 0)
 		{
-			// Focus on another chart if other charts are active.
-			if (ActiveCharts.Count > 0)
-			{
-				if (originalActiveIndex < ActiveCharts.Count)
-					SetChartFocused(ActiveCharts[originalActiveIndex]);
-				else if (originalActiveIndex - 1 >= 0 && originalActiveIndex - 1 < ActiveCharts.Count)
-					SetChartFocused(ActiveCharts[originalActiveIndex - 1]);
-				else
-					SetChartFocused(ActiveCharts[0]);
-			}
-			else
-			{
-				FocusedChart = null;
-			}
+			FocusedChart = null;
 		}
 
 		// Prevent the focal point from moving.
