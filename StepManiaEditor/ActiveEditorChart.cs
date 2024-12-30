@@ -227,17 +227,14 @@ internal sealed class ActiveEditorChart
 			miscEventPadding += Preferences.Instance.PreferencesOptions.MiscEventAreaWidth;
 		}
 
-		var measureMarkerPadding = (int)(GetMeasureMarkerPadding() -
-		                                 EditorMarkerEvent.GetNumberRelativeAnchorPos(ZoomManager.GetSizeZoom()));
+		var measureMarkerPadding = GetMeasureMarkerPadding() + GetMeasureMarkerNumberPadding();
 
 		return GetActiveChartBoundaryWidth() + Math.Max(miscEventPadding, measureMarkerPadding);
 	}
 
 	public int GetLeftMiscEventPadding()
 	{
-		return (int)(GetSceneWidgetPadding() - EditorMarkerEvent.GetNumberRelativeAnchorPos(ZoomManager.GetSizeZoom()) +
-		             GetMiscEventLeftSideMarkerNumberAllowance() *
-		             EditorMarkerEvent.GetNumberAlpha(ZoomManager.GetSizeZoom()));
+		return GetSceneWidgetPadding() + GetMiscEventLeftSideMarkerNumberAllowance() + GetMeasureMarkerNumberPadding();
 	}
 
 	public int GetRightMiscEventPadding()

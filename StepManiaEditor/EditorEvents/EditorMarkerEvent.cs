@@ -3,6 +3,7 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGameExtensions;
 using static StepManiaEditor.Utils;
+using static StepManiaEditor.ImGuiUtils;
 
 namespace StepManiaEditor;
 
@@ -27,14 +28,9 @@ internal sealed class EditorMarkerEvent
 		Measure = measure;
 	}
 
-	public static double GetNumberAlpha(double scale)
+	private static double GetNumberAlpha(double scale)
 	{
 		return Interpolation.Lerp(1.0f, 0.0f, MeasureNumberScaleToStartFading, MeasureNumberMinScale, scale);
-	}
-
-	public static double GetNumberRelativeAnchorPos(double scale)
-	{
-		return -20 * scale;
 	}
 
 	public void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, SpriteFont font)
@@ -57,7 +53,7 @@ internal sealed class EditorMarkerEvent
 
 			alpha = GetNumberAlpha(Scale);
 			var measureString = Measure.ToString();
-			var anchorPos = new Vector2((float)(X + GetNumberRelativeAnchorPos(Scale)), (float)Y);
+			var anchorPos = new Vector2((float)(X - GetMeasureMarkerNumberPadding()), (float)Y);
 			var drawPos = GetDrawPos(font, measureString, anchorPos, 1.0f, HorizontalAlignment.Right,
 				VerticalAlignment.Center);
 			spriteBatch.DrawString(font, measureString, drawPos, new Color(1.0f, 1.0f, 1.0f, (float)alpha), 0.0f, Vector2.Zero,

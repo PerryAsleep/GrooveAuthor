@@ -37,6 +37,7 @@ internal sealed class ImGuiUtils
 	public const int MiscEventLeftSideMarkerNumberAllowanceDefaultDPI = 10;
 	public const int MeasureMarkerPaddingDefaultDPI = 40;
 	public const int ActiveChartBoundaryWidthDefaultDPI = 1;
+	public const int MeasureMarkerNumberPaddingDefaultDPI = 10;
 
 	private static Editor Editor;
 	private static readonly Dictionary<Type, string[]> EnumStringsCacheByType = new();
@@ -842,12 +843,17 @@ internal sealed class ImGuiUtils
 
 	public static int GetMeasureMarkerPadding()
 	{
-		return MeasureMarkerPaddingDefaultDPI;
+		return UiScaled(MeasureMarkerPaddingDefaultDPI);
 	}
 
 	public static int GetActiveChartBoundaryWidth()
 	{
-		return ActiveChartBoundaryWidthDefaultDPI;
+		return UiScaled(ActiveChartBoundaryWidthDefaultDPI);
+	}
+
+	public static int GetMeasureMarkerNumberPadding()
+	{
+		return UiScaled(MeasureMarkerNumberPaddingDefaultDPI);
 	}
 
 	public static int GetBackgroundWidth()
