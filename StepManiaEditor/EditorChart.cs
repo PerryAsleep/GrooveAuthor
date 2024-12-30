@@ -993,6 +993,11 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		return rae?.GetTimeSignature().GetSignature() ?? DefaultTimeSignature;
 	}
 
+	public string GetShortName()
+	{
+		return $"{ImGuiUtils.GetPrettyEnumString(ChartType)} {ImGuiUtils.GetPrettyEnumString(ChartDifficultyType)}";
+	}
+
 	public string GetDescriptiveName()
 	{
 		if (string.IsNullOrEmpty(Description))

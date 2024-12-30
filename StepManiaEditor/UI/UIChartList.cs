@@ -374,21 +374,22 @@ internal sealed class UIChartList : UIWindow
 		if (disabled)
 			PushDisabled();
 
-		if (ImGui.MenuItem($"Delete {chart.ChartDifficultyType} Chart"))
+		if (ImGui.MenuItem($"Delete {chart.GetShortName()} Chart"))
 		{
 			ChartPendingDelete = chart;
 		}
 
-		if (ImGui.MenuItem($"Clone {chart.ChartDifficultyType} Chart"))
+		if (ImGui.MenuItem($"Clone {chart.GetShortName()} Chart"))
 		{
 			ChartPendingClone = chart;
 		}
 
-		if (ImGui.MenuItem($"Autogen New Chart From {chart.ChartDifficultyType} Chart..."))
+		if (ImGui.MenuItem($"Autogen New Chart From {chart.GetShortName()} Chart..."))
 		{
 			Editor.ShowAutogenChartUI(chart);
 		}
 
+		ImGui.Separator();
 		Editor.DrawCopyChartEventsMenuItems(chart);
 
 		if (disabled)

@@ -2028,9 +2028,16 @@ internal sealed class Editor :
 		}
 
 		if (IsPlayingPreview())
+		{
 			StopPreview();
-		else if (Playing)
+			return;
+		}
+
+		if (Playing)
+		{
 			StopPlayback();
+			return;
+		}
 
 		GetFocusedChartData()?.ClearSelection();
 	}
@@ -3613,7 +3620,8 @@ internal sealed class Editor :
 					ImGui.EndMenu();
 				}
 
-				if (ImGui.MenuItem("Clone Current Chart", canEditSong && hasChart))
+				var chartName = FocusedChart == null ? "Current" : FocusedChart.GetShortName();
+				if (ImGui.MenuItem($"Clone {chartName} Chart", canEditSong && hasChart))
 					ActionQueue.Instance.Do(new ActionCloneChart(this, FocusedChart));
 				if (ImGui.MenuItem("Autogen New Chart...", canEditSong && hasChart))
 					ShowAutogenChartUI(FocusedChart);
@@ -3755,11 +3763,13 @@ internal sealed class Editor :
 
 	public void DrawCopyChartEventsMenuItems(EditorChart chart)
 	{
-		var song = chart?.GetEditorSong();
+		if (chart == null)
+			return;
+		var song = chart.GetEditorSong();
 		var canEditSong = CanEdit() && song != null;
-		var canEditChart = CanEdit() && chart != null;
+		var canEditChart = CanEdit();
 
-		if (ImGui.BeginMenu("Replace this Chart's Non-Step Events From", canEditSong && canEditChart))
+		if (ImGui.BeginMenu($"Replace {chart.GetShortName()} Chart's Non-Step Events From", canEditSong && canEditChart))
 		{
 			UIChartList.DrawChartList(
 				song,
@@ -3778,7 +3788,7 @@ internal sealed class Editor :
 			ImGui.EndMenu();
 		}
 
-		if (ImGui.BeginMenu("Replace this Chart's Timing and Scroll Events From", canEditSong && canEditChart))
+		if (ImGui.BeginMenu($"Replace {chart.GetShortName()} Chart's Timing and Scroll Events From", canEditSong && canEditChart))
 		{
 			UIChartList.DrawChartList(
 				song,
@@ -3797,7 +3807,7 @@ internal sealed class Editor :
 			ImGui.EndMenu();
 		}
 
-		if (ImGui.BeginMenu("Replace this Chart's Timing Events From", canEditSong && canEditChart))
+		if (ImGui.BeginMenu($"Replace {chart.GetShortName()} Chart's Timing Events From", canEditSong && canEditChart))
 		{
 			UIChartList.DrawChartList(
 				song,
@@ -3816,7 +3826,7 @@ internal sealed class Editor :
 			ImGui.EndMenu();
 		}
 
-		if (ImGui.BeginMenu("Copy this Chart's Non-Step Events To", canEditSong && canEditChart))
+		if (ImGui.BeginMenu($"Copy {chart.GetShortName()} Chart's Non-Step Events To", canEditSong && canEditChart))
 		{
 			if (ImGui.MenuItem("All Charts", canEditSong && canEditChart))
 			{
@@ -3854,7 +3864,7 @@ internal sealed class Editor :
 			ImGui.EndMenu();
 		}
 
-		if (ImGui.BeginMenu("Copy this Chart's Timing and Scroll Events To", canEditSong && canEditChart))
+		if (ImGui.BeginMenu($"Copy {chart.GetShortName()} Chart's Timing and Scroll Events To", canEditSong && canEditChart))
 		{
 			if (ImGui.MenuItem("All Charts", canEditSong && canEditChart))
 			{
@@ -3892,7 +3902,7 @@ internal sealed class Editor :
 			ImGui.EndMenu();
 		}
 
-		if (ImGui.BeginMenu("Copy this Chart's Timing Events To", canEditSong && canEditChart))
+		if (ImGui.BeginMenu($"Copy {chart.GetShortName()} Chart's Timing Events To", canEditSong && canEditChart))
 		{
 			if (ImGui.MenuItem("All Charts", canEditSong && canEditChart))
 			{
@@ -3952,8 +3962,11 @@ internal sealed class Editor :
 	{
 		if (ImGui.BeginPopup("RightClickPopup"))
 		{
+			var anyItemsDrawn = false;
+
 			if (ActiveSong == null)
 			{
+				anyItemsDrawn = true;
 				if (ImGui.MenuItem("New Song", UIControls.GetCommandString(Preferences.Instance.PreferencesKeyBinds.New)))
 				{
 					OnNew();
@@ -3961,18 +3974,24 @@ internal sealed class Editor :
 			}
 
 			var focusedChartData = GetFocusedChartData();
+			var activeChartUnderCursor = GetChartForRightClickMenu(x, y);
 
+			// Check what items are under the cursor.
 			var isInMiniMapArea = Preferences.Instance.PreferencesMiniMap.ShowMiniMap
 			                      && MiniMap.IsScreenPositionInMiniMapBounds(x, y);
 			var isInDensityGraphArea = Preferences.Instance.PreferencesDensityGraph.ShowDensityGraph
 			                           && DensityGraph.IsInDensityGraphArea(x, y);
+			var isInWaveFormArea = false;
+			if (activeChartUnderCursor != null)
+			{
+				var waveformWidth = GetWaveFormWidth(activeChartUnderCursor);
+				var focalPointX = activeChartUnderCursor.GetFocalPointX();
+				isInWaveFormArea = Preferences.Instance.PreferencesWaveForm.ShowWaveForm
+				                   && Preferences.Instance.PreferencesWaveForm.EnableWaveForm
+				                   && x >= focalPointX - (waveformWidth >> 1)
+				                   && x <= focalPointX + (waveformWidth >> 1);
+			}
 
-			var waveformWidth = GetWaveFormWidth(focusedChartData);
-			var focalPointX = GetFocalPointScreenSpaceX();
-			var isInWaveFormArea = Preferences.Instance.PreferencesWaveForm.ShowWaveForm
-			                       && Preferences.Instance.PreferencesWaveForm.EnableWaveForm
-			                       && x >= focalPointX - (waveformWidth >> 1)
-			                       && x <= focalPointX + (waveformWidth >> 1);
 			var isInDarkArea = false;
 			if (Preferences.Instance.PreferencesDark.ShowDarkBg)
 			{
@@ -3984,14 +4003,45 @@ internal sealed class Editor :
 				TextureAtlas,
 				focusedChartData?.GetArrowGraphicManager(), FocusedChart);
 
+			// Selection Items.
+			// Only show items if it is obvious what chart they are for.
 			if (focusedChartData?.GetSelection().HasSelectedEvents() ?? false)
+			{
+				anyItemsDrawn = true;
 				UIEditEvents.DrawSelectionMenu();
+			}
 
-			UIEditEvents.DrawSelectAllMenu();
+			if (focusedChartData == activeChartUnderCursor && activeChartUnderCursor != null)
+			{
+				anyItemsDrawn = true;
+				UIEditEvents.DrawSelectAllMenu();
+				UIEditEvents.DrawAddEventMenu();
+			}
 
+			// Chart Delete / Clone / Autogen.
+			if (activeChartUnderCursor != null)
+			{
+				var chart = activeChartUnderCursor.GetChart();
+				if (anyItemsDrawn)
+					ImGui.Separator();
+				if (ImGui.MenuItem($"Delete {chart.GetShortName()} Chart"))
+					ActionQueue.Instance.Do(new ActionDeleteChart(this, chart));
+				if (ImGui.MenuItem($"Clone {chart.GetShortName()} Chart"))
+					ActionQueue.Instance.Do(new ActionCloneChart(this, chart));
+				if (ImGui.MenuItem($"Autogen New Chart From {chart.GetShortName()} Chart..."))
+					ShowAutogenChartUI(chart);
+
+				ImGui.Separator();
+				DrawCopyChartEventsMenuItems(chart);
+				anyItemsDrawn = true;
+			}
+
+			// Preferences based on what is under the cursor.
 			var anyObjectHovered = false;
 			if (isInMiniMapArea)
 			{
+				if (anyItemsDrawn)
+					ImGui.Separator();
 				if (ImGui.BeginMenu("Mini Map Preferences"))
 				{
 					UIMiniMapPreferences.Instance.DrawContents();
@@ -3999,9 +4049,12 @@ internal sealed class Editor :
 				}
 
 				anyObjectHovered = true;
+				anyItemsDrawn = true;
 			}
 			else if (isInDensityGraphArea)
 			{
+				if (anyItemsDrawn)
+					ImGui.Separator();
 				if (ImGui.BeginMenu("Density Graph Preferences"))
 				{
 					UIDensityGraphPreferences.DrawContents();
@@ -4015,9 +4068,12 @@ internal sealed class Editor :
 				}
 
 				anyObjectHovered = true;
+				anyItemsDrawn = true;
 			}
 			else if (isInReceptorArea)
 			{
+				if (anyItemsDrawn)
+					ImGui.Separator();
 				if (ImGui.BeginMenu("Receptor Preferences"))
 				{
 					UIReceptorPreferences.Instance.DrawContents();
@@ -4025,11 +4081,14 @@ internal sealed class Editor :
 				}
 
 				anyObjectHovered = true;
+				anyItemsDrawn = true;
 			}
 			else
 			{
 				if (isInWaveFormArea)
 				{
+					if (anyItemsDrawn)
+						ImGui.Separator();
 					if (ImGui.BeginMenu("Waveform Preferences"))
 					{
 						UIWaveFormPreferences.Instance.DrawContents();
@@ -4037,10 +4096,14 @@ internal sealed class Editor :
 					}
 
 					anyObjectHovered = true;
+					anyItemsDrawn = true;
 				}
 
 				if (isInDarkArea)
 				{
+					if (!anyObjectHovered && anyItemsDrawn)
+						ImGui.Separator();
+
 					if (ImGui.BeginMenu("Dark Preferences"))
 					{
 						UIDarkPreferences.Instance.DrawContents();
@@ -4048,11 +4111,15 @@ internal sealed class Editor :
 					}
 
 					anyObjectHovered = true;
+					anyItemsDrawn = true;
 				}
 			}
 
-			if (!anyObjectHovered)
+			if (!anyObjectHovered && ActiveSong?.GetBackground() != null)
 			{
+				if (anyItemsDrawn)
+					ImGui.Separator();
+
 				var o = Preferences.Instance.PreferencesOptions;
 				var hideBg = o.HideSongBackground;
 				if (ImGui.Checkbox("Hide Background", ref hideBg))
@@ -4068,13 +4135,15 @@ internal sealed class Editor :
 
 				// ReSharper disable once RedundantAssignment
 				anyObjectHovered = true;
+				anyItemsDrawn = true;
 			}
 
-			if (FocusedChart != null)
-				UIEditEvents.DrawAddEventMenu();
-
+			// New Chart.
 			if (ActiveSong != null)
 			{
+				if (anyItemsDrawn)
+					ImGui.Separator();
+
 				var canEditSong = ActiveSong.CanBeEdited();
 				if (!canEditSong)
 					PushDisabled();
@@ -4091,6 +4160,16 @@ internal sealed class Editor :
 
 			ImGui.EndPopup();
 		}
+	}
+
+	private ActiveEditorChart GetChartForRightClickMenu(int x, int y)
+	{
+		if (ActiveCharts.Count == 1)
+			return FocusedChartData;
+		foreach (var activeChart in ActiveChartData)
+			if (activeChart.GetFullChartScreenSpaceArea().Contains(x, y))
+				return activeChart;
+		return null;
 	}
 
 	private void ShowUnsavedChangesModal()
@@ -5063,10 +5142,33 @@ internal sealed class Editor :
 		// events. However, this logic also guarantees that after a transform,
 		// including transforms initiated from undo and redo, the selection contains
 		// the modified notes.
+		ActiveEditorChart activeChartDataForSelection = null;
 		if (transformedEvents != null && transformedEvents.Count > 0)
 		{
-			var activeChartData = GetActiveChartData(transformedEvents[0].GetEditorChart());
-			activeChartData?.SetSelectedEvents(transformedEvents);
+			activeChartDataForSelection = GetActiveChartData(transformedEvents[0].GetEditorChart());
+			if (activeChartDataForSelection != null)
+			{
+				// Do not set the selection if it isn't the focused chart. We only ever want the
+				// focused chart to have selected notes.
+				if (activeChartDataForSelection == FocusedChartData)
+					activeChartDataForSelection.SetSelectedEvents(transformedEvents);
+				else
+					activeChartDataForSelection.ClearSelection();
+			}
+		}
+
+		// Clear the selection for every other active chart.
+		// This is a stopgap measure to ensure that active charts do not hold on to deleted
+		// events in their selections. Technically the TransformingSelectedNotes flag has
+		// some issues. If we paste notes from chart A to B, B has focus. Then we undo. This
+		// causes the notes in B to become deleted but chart B ignores that for deleting them
+		// from its selection due to the transform flag. B then holds on to deleted notes in
+		// its selection.
+		foreach (var otherActiveChartData in ActiveChartData)
+		{
+			if (otherActiveChartData == activeChartDataForSelection)
+				continue;
+			otherActiveChartData.ClearSelection();
 		}
 	}
 
