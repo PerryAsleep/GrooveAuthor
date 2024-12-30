@@ -12,20 +12,8 @@ namespace StepManiaEditor;
 /// Call Draw() to render the generated Textures to the given SpriteBatch.
 ///
 /// Positioning:
-/// When drawing, the X value from the set FocalPoint will be used to center the Texture in X.
-/// The Y value of the FocalPoint is not used for drawing the Texture, but is used for
-/// controlling at what y pixel value the provided sound time from Update() should be rendered
-/// at. An optional x and y value can be provided to Draw() to reposition the Texture as needed.
-///
-/// Sizing:
-/// The WaveFormRenderer uses a texture with a width specified in the constructor or in Resize().
-/// However it is common to zoom and in out, and optionally scale the width. The desired width
-/// due to scaling should be set in Resize() or SetDesiredWaveFormWidth(). The desired width may
-/// be greater than or less than the specified texture width. If the desired width is less than
-/// the specified texture width the waveform will be rendered scaled down within the texture. If
-/// the desired width is larger than the texture width then the width will be capped at the texture
-/// width and it is the responsibility of the caller to render the texture stretched accordingly
-/// to achieve the desired final width.
+/// The Y value of the FocalPoint is used for controlling at what y pixel value the provided
+/// sound time from Update() should be rendered at.
 /// </summary>
 public class WaveFormRenderer
 {
@@ -50,11 +38,6 @@ public class WaveFormRenderer
 	private ushort ColorDense;
 
 	/// <summary>
-	/// Flag for controlling whether or not to scale in x when zooming.
-	/// </summary>
-	private bool ScaleXWhenZooming = true;
-
-	/// <summary>
 	/// Width of texture in pixels.
 	/// </summary>
 	private uint TextureWidth;
@@ -63,11 +46,6 @@ public class WaveFormRenderer
 	/// Height of texture in pixels.
 	/// </summary>
 	private uint TextureHeight;
-
-	/// <summary>
-	/// Desired width in pixels of the WaveForm.
-	/// </summary>
-	private uint DesiredWaveFormWidth;
 
 	/// <summary>
 	/// Height of the visible area of the waveform in pixels.
@@ -163,7 +141,7 @@ public class WaveFormRenderer
 	/// <param name="textureHeight">Texture height in pixels.</param>
 	public WaveFormRenderer(GraphicsDevice graphicsDevice, uint textureWidth, uint textureHeight)
 	{
-		Resize(graphicsDevice, textureWidth, textureHeight, textureWidth, textureHeight);
+		Resize(graphicsDevice, textureWidth, textureHeight, textureHeight);
 	}
 
 	/// <summary>
@@ -172,14 +150,11 @@ public class WaveFormRenderer
 	/// <param name="graphicsDevice">GraphicsDevice to use for creating textures.</param>
 	/// <param name="textureWidth">Texture width in pixels.</param>
 	/// <param name="textureHeight">Texture height in pixels.</param>
-	/// <param name="desiredWaveFormWidth">Desired width in pixels of the waveform.</param>
 	/// <param name="visibleHeight">Visible height in pixels of the waveform.</param>
-	public void Resize(GraphicsDevice graphicsDevice, uint textureWidth, uint textureHeight, uint desiredWaveFormWidth,
-		uint visibleHeight)
+	public void Resize(GraphicsDevice graphicsDevice, uint textureWidth, uint textureHeight, uint visibleHeight)
 	{
 		textureWidth = Math.Max(1, textureWidth);
 		textureHeight = Math.Max(1, textureHeight);
-		desiredWaveFormWidth = Math.Max(1, desiredWaveFormWidth);
 		visibleHeight = Math.Clamp(visibleHeight, 1, textureHeight);
 
 		var shouldInvalidateData = false;
@@ -214,12 +189,6 @@ public class WaveFormRenderer
 			shouldInvalidateData = true;
 		}
 
-		if (DesiredWaveFormWidth != desiredWaveFormWidth)
-		{
-			DesiredWaveFormWidth = desiredWaveFormWidth;
-			shouldInvalidateData = true;
-		}
-
 		if (shouldInvalidateData)
 			InvalidateLastFrameData();
 	}
@@ -236,35 +205,6 @@ public class WaveFormRenderer
 			return;
 
 		XPerChannelScale = xPerChannelScale;
-		InvalidateLastFrameData();
-	}
-
-	/// <summary>
-	/// Sets whether or not zoom values should scale in x.
-	/// Even when scaling due to zoom in x, there will be a max x scale as defined by SetXPerChannelScale.
-	/// Zoom values will always scale in y.
-	/// </summary>
-	/// <param name="scaleXWhenZooming">Whether or not to scale in x when zooming.</param>
-	public void SetScaleXWhenZooming(bool scaleXWhenZooming)
-	{
-		if (ScaleXWhenZooming == scaleXWhenZooming)
-			return;
-		ScaleXWhenZooming = scaleXWhenZooming;
-		InvalidateLastFrameData();
-	}
-
-	/// <summary>
-	/// Sets the desired width in pixels of the waveform. May be greater than or less than the
-	/// texture width. If it is greater than the texture width it is the responsibility of the
-	/// caller to scale the texture accordingly to achieve the desired size.
-	/// </summary>
-	/// <param name="desiredWaveFormWidth">Desired waveform width in pixels.</param>
-	public void SetDesiredWaveFormWidth(uint desiredWaveFormWidth)
-	{
-		desiredWaveFormWidth = Math.Max(1, desiredWaveFormWidth);
-		if (DesiredWaveFormWidth == desiredWaveFormWidth)
-			return;
-		DesiredWaveFormWidth = desiredWaveFormWidth;
 		InvalidateLastFrameData();
 	}
 
@@ -358,12 +298,10 @@ public class WaveFormRenderer
 	/// Renders the waveform.
 	/// </summary>
 	/// <param name="spriteBatch">SpriteBatch to use for rendering the texture.</param>
-	/// <param name="x">X position to draw at.</param>
-	/// <param name="y">Y position to draw at.</param>
-	public void Draw(SpriteBatch spriteBatch, int x = 0, int y = 0)
+	public void Draw(SpriteBatch spriteBatch)
 	{
 		// Draw the current texture.
-		spriteBatch.Draw(Textures[TextureIndex], new Vector2(x, y), null, Color.White);
+		spriteBatch.Draw(Textures[TextureIndex], Vector2.Zero, null, Color.White);
 		// Advance to the next texture index for the next frame.
 		TextureIndex = (TextureIndex + 1) % NumTextures;
 	}
@@ -415,11 +353,10 @@ public class WaveFormRenderer
 				WasMipMapDataLoadingLastFrame = !isMipMapDataLoaded;
 
 				// Determine the zoom to use in x. Zoom in x is separate from zoom in y.
-				var xZoom = Math.Clamp((double)DesiredWaveFormWidth / TextureWidth, 0.0, 1.0);
-				var renderWidth = TextureWidth * xZoom;
+				var renderWidth = TextureWidth;
 				var numChannels = MipMap.GetNumChannels();
 				var widthPerChannel = TextureWidth / numChannels;
-				var totalWidthPerChannel = (uint)(renderWidth / numChannels);
+				var totalWidthPerChannel = renderWidth / numChannels;
 				var sampleRate = MipMap.GetSampleRate();
 				var samplesPerPixel = sampleRate / pixelsPerSecond;
 
@@ -692,8 +629,8 @@ public class WaveFormRenderer
 						previousXMax[channel] = maxXPerChannel[channel];
 
 						// Scale in the min and max x values based on the zoom and the channel scaling.
-						minX = (ushort)(minX * xZoom * XPerChannelScale);
-						maxX = (ushort)(maxX * xZoom * XPerChannelScale);
+						minX = (ushort)(minX * XPerChannelScale);
+						maxX = (ushort)(maxX * XPerChannelScale);
 						var range = maxX - minX;
 
 						// Determine the min and max x values for the dense range.

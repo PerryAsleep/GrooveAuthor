@@ -261,7 +261,7 @@ internal sealed class ActiveEditorChart
 
 		// Some chart types are narrower than the waveform.
 		// If we are rendering the waveform behind this chart, ensure we reserve enough space for it.
-		if (IsFocused())
+		if (ShouldDrawWaveForm())
 		{
 			var p = Preferences.Instance.PreferencesWaveForm;
 			if (p.ShowWaveForm && p.EnableWaveForm && !p.WaveFormScaleWidthToChart)
@@ -279,12 +279,12 @@ internal sealed class ActiveEditorChart
 
 		// Some chart types are narrower than the waveform.
 		// If we are rendering the waveform behind this chart, ensure we reserve enough space for it.
-		if (IsFocused())
+		if (ShouldDrawWaveForm())
 		{
 			var p = Preferences.Instance.PreferencesWaveForm;
 			if (p.ShowWaveForm && p.EnableWaveForm)
 			{
-				width = Math.Max(width, (int)Editor.GetWaveFormWidth());
+				width = Math.Max(width, (int)Editor.GetWaveFormWidth(this));
 			}
 		}
 
@@ -400,6 +400,19 @@ internal sealed class ActiveEditorChart
 		// The only negative to drawing the misc events for all charts is the additional width but
 		// this seems like a fair price to pay.
 		return true;
+	}
+
+	public bool ShouldDrawWaveForm()
+	{
+		switch (Preferences.Instance.PreferencesWaveForm.WaveFormDrawLocation)
+		{
+			case PreferencesWaveForm.DrawLocation.FocusedChart:
+				return IsFocused();
+			case PreferencesWaveForm.DrawLocation.AllCharts:
+				return true;
+		}
+
+		return false;
 	}
 
 	public bool IsVisible()

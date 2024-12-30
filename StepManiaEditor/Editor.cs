@@ -1287,7 +1287,6 @@ internal sealed class Editor :
 				GraphicsDevice,
 				WaveFormTextureWidth,
 				(uint)Math.Max(1, GetViewportHeight()),
-				GetWaveFormWidth(),
 				(uint)Math.Max(1, ChartArea.Height));
 			RecreateWaveformRenderTargets(false);
 		}
@@ -1667,23 +1666,21 @@ internal sealed class Editor :
 		WaveFormRenderer.SetFocalPointLocalY(GetFocalPointChartSpaceY());
 		WaveFormRenderer.SetXPerChannelScale(pWave.WaveFormMaxXPercentagePerChannel);
 		WaveFormRenderer.SetDenseScale(pWave.DenseScale);
-		WaveFormRenderer.SetScaleXWhenZooming(pWave.WaveFormScaleXWhenZooming);
-		WaveFormRenderer.SetDesiredWaveFormWidth(GetWaveFormWidth());
 		WaveFormRenderer.Update(GetPosition().SongTime, waveFormPPS * ZoomManager.GetSpacingZoom());
 	}
 
-	public uint GetWaveFormWidth()
+	public uint GetWaveFormWidth(ActiveEditorChart activeChart)
 	{
 		var p = Preferences.Instance.PreferencesWaveForm;
-		if (p.WaveFormScaleWidthToChart && FocusedChart != null)
+		if (p.WaveFormScaleWidthToChart && activeChart != null)
 		{
 			if (p.WaveFormScaleXWhenZooming)
-				return (uint)Math.Max(0, GetFocusedChartData().GetLaneAreaWidthWithCurrentScale());
-			return (uint)Math.Max(0, GetFocusedChartData().GetLaneAreaWidth());
+				return (uint)Math.Max(0, activeChart.GetLaneAreaWidthWithCurrentScale());
+			return (uint)Math.Max(0, activeChart.GetLaneAreaWidth());
 		}
 
 		if (p.WaveFormScaleXWhenZooming)
-			return (uint)(WaveFormTextureWidth * ZoomManager.GetSpacingZoom());
+			return (uint)(WaveFormTextureWidth * ZoomManager.GetSizeZoom());
 		return WaveFormTextureWidth;
 	}
 
@@ -2528,23 +2525,8 @@ internal sealed class Editor :
 		if (!p.ShowWaveForm || !p.EnableWaveForm)
 			return;
 
-		if (FocusedChart == null)
+		if (ActiveCharts.Count == 0)
 			return;
-
-		// At this point WaveformRenderTargets[1] contains the recolored waveform.
-		// We now draw that to the backbuffer with an optional antialiasing pass.
-
-		// If the desired waveform width is greater than the texture width we may need
-		// to scale it up by stretching the texture.
-		var width = WaveformRenderTargets[1].Width;
-		if (p.WaveFormScaleWidthToChart)
-		{
-			var focusedChartData = GetFocusedChartData();
-			if (focusedChartData != null)
-				width = Math.Max(width, focusedChartData.GetLaneAndWaveFormAreaWidthWithCurrentScale());
-		}
-
-		var x = GetFocalPointScreenSpaceX() - (width >> 1);
 
 		if (p.AntiAlias)
 		{
@@ -2559,18 +2541,41 @@ internal sealed class Editor :
 
 			// Draw the recolored waveform with antialiasing to the back buffer.
 			SpriteBatch.Begin(SpriteSortMode.Deferred, null, null, null, null, FxaaEffect);
-			SpriteBatch.Draw(WaveformRenderTargets[1],
-				new Rectangle(x, TransformChartSpaceYToScreenSpaceY(0), width, WaveformRenderTargets[1].Height), Color.White);
+			DrawWaveFormRenderTargetToSpriteBatch();
 			SpriteBatch.End();
 		}
 		else
 		{
 			// Draw the recolored waveform to the back buffer.
 			SpriteBatch.Begin();
-			SpriteBatch.Draw(WaveformRenderTargets[1],
-				new Rectangle(x, TransformChartSpaceYToScreenSpaceY(0), width, WaveformRenderTargets[1].Height), Color.White);
+			DrawWaveFormRenderTargetToSpriteBatch();
 			SpriteBatch.End();
 		}
+	}
+
+	private void DrawWaveFormRenderTargetToSpriteBatch()
+	{
+		switch (Preferences.Instance.PreferencesWaveForm.WaveFormDrawLocation)
+		{
+			case PreferencesWaveForm.DrawLocation.FocusedChart:
+				DrawWaveFormRenderTargetToSpriteBatch(GetFocusedChartData());
+				break;
+			case PreferencesWaveForm.DrawLocation.AllCharts:
+				foreach (var activeChart in ActiveChartData)
+					DrawWaveFormRenderTargetToSpriteBatch(activeChart);
+				break;
+		}
+	}
+
+	private void DrawWaveFormRenderTargetToSpriteBatch(ActiveEditorChart activeChart)
+	{
+		if (!activeChart.IsVisible())
+			return;
+		var width = (int)GetWaveFormWidth(activeChart);
+		var x = activeChart.GetFocalPointX() - (width >> 1);
+		// At this point WaveformRenderTargets[1] contains the recolored waveform.
+		SpriteBatch.Draw(WaveformRenderTargets[1],
+			new Rectangle(x, TransformChartSpaceYToScreenSpaceY(0), width, WaveformRenderTargets[1].Height), Color.White);
 	}
 
 	private void DrawActiveChartBoundaries()
@@ -3952,7 +3957,7 @@ internal sealed class Editor :
 			var isInDensityGraphArea = Preferences.Instance.PreferencesDensityGraph.ShowDensityGraph
 			                           && DensityGraph.IsInDensityGraphArea(x, y);
 
-			var waveformWidth = GetWaveFormWidth();
+			var waveformWidth = GetWaveFormWidth(focusedChartData);
 			var focalPointX = GetFocalPointScreenSpaceX();
 			var isInWaveFormArea = Preferences.Instance.PreferencesWaveForm.ShowWaveForm
 			                       && Preferences.Instance.PreferencesWaveForm.EnableWaveForm
