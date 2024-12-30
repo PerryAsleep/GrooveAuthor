@@ -137,7 +137,7 @@ internal sealed class EditorLastSecondHintEvent : EditorEvent
 	public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)
 	{
 		ImGuiLayoutUtils.MiscEditorEventLastSecondHintWidget(
-			"LastSecondHintWidget",
+			GetImGuiId(),
 			this,
 			nameof(DoubleValue),
 			(int)X, (int)Y, (int)W,

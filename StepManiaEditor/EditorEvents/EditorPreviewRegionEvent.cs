@@ -248,7 +248,7 @@ internal sealed class EditorPreviewRegionEvent : EditorEvent, IChartRegion, Fume
 	public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)
 	{
 		ImGuiLayoutUtils.MiscEditorEventPreviewDragDoubleWidget(
-			"PreviewWidget",
+			GetImGuiId(),
 			this,
 			nameof(DoubleValue),
 			(int)X, (int)Y, (int)W,
@@ -264,6 +264,9 @@ internal sealed class EditorPreviewRegionEvent : EditorEvent, IChartRegion, Fume
 	public void OnNotify(string eventId, EditorSong song, object payload)
 	{
 		if (eventId == EditorSong.NotificationSampleLengthChanged)
+		{
 			WidthDirty = true;
+			RefreshEndChartPosition();
+		}
 	}
 }
