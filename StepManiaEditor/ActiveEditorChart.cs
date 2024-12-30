@@ -2852,9 +2852,9 @@ internal sealed class ActiveEditorChart
 		Header.Draw();
 	}
 
-	public bool IsOverHeaderDraggableArea(int screenSpaceX, int screenSpaceY)
+	public bool IsDraggableAreaHovered()
 	{
-		return Header.IsOverDraggableArea(screenSpaceX, screenSpaceY);
+		return Header.IsDraggableAreaHovered();
 	}
 
 	#endregion UI

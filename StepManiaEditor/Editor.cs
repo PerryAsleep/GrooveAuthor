@@ -1743,7 +1743,7 @@ internal sealed class Editor :
 		if (imGuiWantMouse)
 		{
 			// The only case where we still want to process mouse input is dragging the chart headers.
-			ProcessInputForDraggingHeader(mouseX, mouseY);
+			ProcessInputForDraggingHeader();
 
 			// ImGui may want the mouse on a release when we are selecting. Stop selecting in that case.
 			focusedChartData?.FinishSelectedRegion();
@@ -1856,12 +1856,12 @@ internal sealed class Editor :
 	/// Processes input for moving the focal point with the mouse by dragging a header.
 	/// </summary>
 	/// <remarks>Helper for ProcessInput.</remarks>
-	private void ProcessInputForDraggingHeader(int mouseX, int mouseY)
+	private void ProcessInputForDraggingHeader()
 	{
 		var overDraggableArea = false;
 		foreach (var chart in ActiveChartData)
 		{
-			if (chart.IsOverHeaderDraggableArea(mouseX, mouseY))
+			if (chart.IsDraggableAreaHovered())
 			{
 				overDraggableArea = true;
 				break;
@@ -5356,7 +5356,7 @@ internal sealed class Editor :
 		{
 			if (activeChart == FocusedChart)
 			{
-				SetChartFocused(ActiveCharts[index + 1 % ActiveCharts.Count]);
+				SetChartFocused(ActiveCharts[(index + 1) % ActiveCharts.Count]);
 				return;
 			}
 

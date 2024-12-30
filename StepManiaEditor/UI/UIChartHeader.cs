@@ -16,6 +16,8 @@ internal sealed class UIChartHeader
 	private const int NumButtons = 3;
 	private static readonly int ItemSpacing = UiScaled(0);
 
+	private bool DraggableAreaHovered;
+
 	public UIChartHeader(Editor editor, ActiveEditorChart chart)
 	{
 		Editor = editor;
@@ -131,6 +133,8 @@ internal sealed class UIChartHeader
 				}
 			}
 
+			DraggableAreaHovered = ImGui.IsItemHovered(ImGuiHoveredFlags.None);
+
 			if (useNonDedicatedTabColor)
 				ImGui.PopStyleColor();
 
@@ -185,13 +189,8 @@ internal sealed class UIChartHeader
 		return buttonWidth * NumButtons + ItemSpacing * (NumButtons - 1);
 	}
 
-	public bool IsOverDraggableArea(int screenSpaceX, int screenSpaceY)
+	public bool IsDraggableAreaHovered()
 	{
-		if (!Chart.GetEditor().GetChartAreaInScreenSpace(out var draggableArea))
-			return false;
-		draggableArea.X = Chart.GetScreenSpaceXOfFullChartAreaStart();
-		draggableArea.Width = Chart.GetChartScreenSpaceWidth() - GetButtonAreaWidth();
-		draggableArea.Height = GetChartHeaderHeight();
-		return draggableArea.Contains(screenSpaceX, screenSpaceY);
+		return DraggableAreaHovered;
 	}
 }
