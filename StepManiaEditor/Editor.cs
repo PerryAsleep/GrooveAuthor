@@ -233,6 +233,22 @@ internal sealed class Editor :
 
 	private EditorChart FocusedChartInternal;
 
+	private ActiveEditorChart FocusedChartData
+	{
+		set
+		{
+			Debug.Assert(IsOnMainThread());
+			FocusedChartDataInternal = value;
+		}
+		get
+		{
+			Debug.Assert(IsOnMainThread());
+			return FocusedChartDataInternal;
+		}
+	}
+
+	private ActiveEditorChart FocusedChartDataInternal;
+
 	private readonly List<EditorChart> ActiveCharts = new();
 	private readonly List<ActiveEditorChart> ActiveChartData = new();
 	private readonly List<EditorEvent> CopiedEvents = new();
@@ -1196,26 +1212,42 @@ internal sealed class Editor :
 
 	public void SetSongTime(double songTime)
 	{
-		foreach (var activeChartData in ActiveChartData)
-		{
-			activeChartData.Position.SongTime = songTime;
-		}
+		if (FocusedChartData == null)
+			return;
+		FocusedChartData.Position.SongTime = songTime;
+		SynchronizeActiveChartTimes();
 	}
 
 	public void SetChartTime(double chartTime)
 	{
-		foreach (var activeChartData in ActiveChartData)
-		{
-			activeChartData.Position.ChartTime = chartTime;
-		}
+		if (FocusedChartData == null)
+			return;
+		FocusedChartData.Position.ChartTime = chartTime;
+		SynchronizeActiveChartTimes();
 	}
 
 	public void SetChartPosition(double chartPosition)
 	{
+		if (FocusedChartData == null)
+			return;
+		FocusedChartData.Position.ChartPosition = chartPosition;
+		SynchronizeActiveChartTimes();
+	}
+
+	private void SynchronizeActiveChartTimes()
+	{
 		foreach (var activeChartData in ActiveChartData)
-		{
-			activeChartData.Position.ChartPosition = chartPosition;
-		}
+			if (activeChartData != FocusedChartData)
+				SynchronizeActiveChartTime(activeChartData);
+	}
+
+	private void SynchronizeActiveChartTime(ActiveEditorChart activeChart)
+	{
+		// Always synchronize by song time.
+		// This ensures that charts will never jump to different positions when switching
+		// focus in songs where charts have different timing events.
+		activeChart.Position.SongTime = GetPosition().SongTime;
+		activeChart.Position.SetDesiredPositionToCurrent();
 	}
 
 	private void ResetPosition()
@@ -1564,15 +1596,7 @@ internal sealed class Editor :
 			{
 				UpdatingSongTimeDirectly = true;
 				focusedChartData.Position.UpdateChartPositionInterpolation(currentTime);
-				foreach (var activeChartData in ActiveChartData)
-				{
-					if (activeChartData != focusedChartData)
-					{
-						activeChartData.Position.ChartPosition = focusedChartData.Position.ChartPosition;
-						activeChartData.Position.SetDesiredPositionToCurrent();
-					}
-				}
-
+				SynchronizeActiveChartTimes();
 				MusicManager.SetMusicTimeInSeconds(focusedChartData.Position.SongTime);
 				UpdatingSongTimeDirectly = false;
 			}
@@ -1581,15 +1605,7 @@ internal sealed class Editor :
 			{
 				UpdatingSongTimeDirectly = true;
 				focusedChartData.Position.UpdateSongTimeInterpolation(currentTime);
-				foreach (var activeChartData in ActiveChartData)
-				{
-					if (activeChartData != focusedChartData)
-					{
-						activeChartData.Position.ChartPosition = focusedChartData.Position.ChartPosition;
-						activeChartData.Position.SetDesiredPositionToCurrent();
-					}
-				}
-
+				SynchronizeActiveChartTimes();
 				MusicManager.SetMusicTimeInSeconds(focusedChartData.Position.SongTime);
 				UpdatingSongTimeDirectly = false;
 			}
@@ -4966,6 +4982,7 @@ internal sealed class Editor :
 		SongLoadTask.ClearResults();
 		ActiveSong = null;
 		FocusedChart = null;
+		FocusedChartData = null;
 		foreach (var activeChartDat in ActiveChartData)
 		{
 			activeChartDat.Clear();
@@ -5862,15 +5879,7 @@ internal sealed class Editor :
 
 	public ActiveEditorChart GetFocusedChartData()
 	{
-		if (FocusedChart == null)
-			return null;
-		for (var i = 0; i < ActiveCharts.Count; i++)
-		{
-			if (ActiveCharts[i] == FocusedChart)
-				return ActiveChartData[i];
-		}
-
-		return null;
+		return FocusedChartData;
 	}
 
 	public ActiveEditorChart GetActiveChartData(EditorChart chart)
@@ -5974,6 +5983,7 @@ internal sealed class Editor :
 		if (removingFocusedChart && ActiveCharts.Count == 0)
 		{
 			FocusedChart = null;
+			FocusedChartData = null;
 		}
 
 		// Prevent the focal point from moving.
@@ -6044,8 +6054,7 @@ internal sealed class Editor :
 			TextureAtlas,
 			KeyCommandManager);
 		ActiveChartData.Add(activeChartData);
-		activeChartData.Position.ChartTime = GetPosition().ChartTime;
-		activeChartData.Position.SetDesiredPositionToCurrent();
+		SynchronizeActiveChartTime(activeChartData);
 
 		// If this is the only shown chart, set it focused.
 		if (ActiveCharts.Count == 1)
@@ -6098,7 +6107,7 @@ internal sealed class Editor :
 		if (chart == null)
 			return;
 
-		var oldChartTime = GetPosition().ChartTime;
+		var oldSongTime = GetPosition().SongTime;
 		var oldFocusedChartData = GetFocusedChartData();
 		if (ActiveSong == null || FocusedChart == chart)
 			return;
@@ -6134,11 +6143,16 @@ internal sealed class Editor :
 			ActiveChartData.Insert(0, activeChartData);
 		}
 
-		var focusedChartData = GetFocusedChartData();
-		focusedChartData.Position.ChartTime = oldChartTime;
-		focusedChartData.Position.SetDesiredPositionToCurrent();
-		focusedChartData.SetFocused(true);
-		CleanUpActiveChartsWithoutDedicatedTabs(focusedChartData);
+		for (var i = 0; i < ActiveCharts.Count; i++)
+		{
+			if (ActiveCharts[i] == FocusedChart)
+				FocusedChartData = ActiveChartData[i];
+		}
+
+		FocusedChartData.Position.SongTime = oldSongTime;
+		FocusedChartData.Position.SetDesiredPositionToCurrent();
+		FocusedChartData.SetFocused(true);
+		CleanUpActiveChartsWithoutDedicatedTabs(FocusedChartData);
 
 		// Adjust the focal point to keep the charts in the same spot.
 		UpdateChartPositions();
