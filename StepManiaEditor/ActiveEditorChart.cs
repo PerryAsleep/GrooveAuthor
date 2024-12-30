@@ -407,9 +407,23 @@ internal sealed class ActiveEditorChart
 		switch (Preferences.Instance.PreferencesWaveForm.WaveFormDrawLocation)
 		{
 			case PreferencesWaveForm.DrawLocation.FocusedChart:
+			{
 				return IsFocused();
+			}
 			case PreferencesWaveForm.DrawLocation.AllCharts:
+			{
 				return true;
+			}
+			case PreferencesWaveForm.DrawLocation.AllChartsWithSameMusic:
+			{
+				if (IsFocused())
+					return true;
+				var focusedChart = Editor.GetFocusedChart();
+				if (focusedChart == null)
+					return false;
+				return Chart.GetMusicFileToUseForChart() == focusedChart.GetMusicFileToUseForChart()
+				       && Chart.GetMusicOffset().DoubleEquals(focusedChart.GetMusicOffset());
+			}
 		}
 
 		return false;

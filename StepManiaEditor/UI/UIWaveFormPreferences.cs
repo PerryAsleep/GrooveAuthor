@@ -66,8 +66,10 @@ internal sealed class UIWaveFormPreferences : UIWindow
 			ImGuiLayoutUtils.DrawRowEnum<PreferencesWaveForm.DrawLocation>(true, "Location", p,
 				nameof(PreferencesWaveForm.WaveFormDrawLocation), false,
 				"Where to draw the waveform." +
-				"\nFocused Chart: Draw behind the focused chart." +
-				"\nAll Charts:    Draw behind all active charts.");
+				"\nFocused Chart:              Draw behind the focused chart." +
+				"\nAll Charts:                 Draw behind all active charts." +
+				"\nAll Charts With Same Music: Draw behind all active charts which have the same music" +
+				"\n                            and music offset as the focused chart.");
 			ImGuiLayoutUtils.EndTable();
 		}
 

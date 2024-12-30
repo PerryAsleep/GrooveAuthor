@@ -21,6 +21,7 @@ internal sealed class PreferencesWaveForm
 	{
 		FocusedChart,
 		AllCharts,
+		AllChartsWithSameMusic,
 	}
 
 	// Default values.
@@ -40,7 +41,7 @@ internal sealed class PreferencesWaveForm
 	public const float DefaultAntiAliasSubpix = 0.2f;
 	public const float DefaultAntiAliasEdgeThreshold = 0.166f;
 	public const float DefaultAntiAliasEdgeThresholdMin = 0.0833f;
-	public const DrawLocation DefaultWaveFormDrawLocation = DrawLocation.AllCharts;
+	public const DrawLocation DefaultWaveFormDrawLocation = DrawLocation.AllChartsWithSameMusic;
 
 	// Preferences.
 	[JsonInclude] public bool ShowWaveFormPreferencesWindow;

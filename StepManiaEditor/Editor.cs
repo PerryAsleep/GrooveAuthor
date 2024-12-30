@@ -2104,7 +2104,8 @@ internal sealed class Editor :
 	private void OnMusicChanged()
 	{
 		StopPreview();
-		MusicManager.LoadMusicAsync(GetFullPathToMusicFile(), false, Preferences.Instance.PreferencesWaveForm.EnableWaveForm);
+		MusicManager.LoadMusicAsync(GetFullPathToFocusedChartMusicFile(), false,
+			Preferences.Instance.PreferencesWaveForm.EnableWaveForm);
 	}
 
 	private void OnMusicPreviewChanged()
@@ -2555,16 +2556,9 @@ internal sealed class Editor :
 
 	private void DrawWaveFormRenderTargetToSpriteBatch()
 	{
-		switch (Preferences.Instance.PreferencesWaveForm.WaveFormDrawLocation)
-		{
-			case PreferencesWaveForm.DrawLocation.FocusedChart:
-				DrawWaveFormRenderTargetToSpriteBatch(GetFocusedChartData());
-				break;
-			case PreferencesWaveForm.DrawLocation.AllCharts:
-				foreach (var activeChart in ActiveChartData)
-					DrawWaveFormRenderTargetToSpriteBatch(activeChart);
-				break;
-		}
+		foreach (var activeChart in ActiveChartData)
+			if (activeChart.ShouldDrawWaveForm())
+				DrawWaveFormRenderTargetToSpriteBatch(activeChart);
 	}
 
 	private void DrawWaveFormRenderTargetToSpriteBatch(ActiveEditorChart activeChart)
@@ -4701,19 +4695,9 @@ internal sealed class Editor :
 		}
 	}
 
-	private string GetFullPathToMusicFile()
+	private string GetFullPathToFocusedChartMusicFile()
 	{
-		string musicFile = null;
-
-		// If the active chart has a music file defined, use that.
-		if (FocusedChart != null)
-			musicFile = FocusedChart.MusicPath;
-
-		// If the active chart does not have a music file defined, fall back to use the song's music file.
-		if (string.IsNullOrEmpty(musicFile))
-			musicFile = ActiveSong?.MusicPath;
-
-		return GetFullPathToSongResource(musicFile);
+		return GetFullPathToSongResource(FocusedChart?.GetMusicFileToUseForChart());
 	}
 
 	private string GetFullPathToMusicPreviewFile()

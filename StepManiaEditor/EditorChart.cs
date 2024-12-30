@@ -2913,6 +2913,19 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 	#region Misc
 
+	/// <summary>
+	/// Gets the music file which should be used for this Chart.
+	/// This may be defined on the Song.
+	/// </summary>
+	/// <returns>The music file which should be used for this Chart</returns>
+	public string GetMusicFileToUseForChart()
+	{
+		var musicFile = MusicPath;
+		if (string.IsNullOrEmpty(musicFile))
+			musicFile = EditorSong?.MusicPath;
+		return musicFile;
+	}
+
 	public void CopyDisplayTempo(DisplayTempo displayTempo)
 	{
 		DisplayTempo = new DisplayTempo(displayTempo);
