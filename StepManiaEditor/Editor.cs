@@ -4117,7 +4117,7 @@ internal sealed class Editor :
 				}
 			}
 
-			if (!anyObjectHovered && ActiveSong?.GetBackground() != null)
+			if (!anyObjectHovered && (ActiveSong?.GetBackground()?.GetTexture()?.IsBound() ?? false))
 			{
 				if (anyItemsDrawn)
 					ImGui.Separator();
