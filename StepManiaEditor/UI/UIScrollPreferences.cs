@@ -152,7 +152,7 @@ internal sealed class UIScrollPreferences : UIWindow
 					+ "option if you prefer zooming to be unbounded."
 					+ "\n\nIf checked, zooming in will be bounded by the note size cap, meaning once notes reach their "
 					+ "maximum size zooming in further will have no effect. Use this option if you prefer zooming to only "
-					+ "affect note size and not affect note spacing of notes relative to their size.");
+					+ "affect note size and not affect spacing of notes relative to their size.");
 
 				ImGuiLayoutUtils.EndTable();
 			}
