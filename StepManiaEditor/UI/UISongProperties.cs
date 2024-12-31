@@ -27,7 +27,7 @@ internal sealed class UISongProperties : UIWindow
 	private static readonly float ButtonHelpWidth = UiScaled(32);
 	private static readonly float ButtonApplyItgOffsetWidth = UiScaled(110);
 	private static readonly Vector2 DefaultPosition = new(UiScaled(0), UiScaled(21));
-	public static readonly Vector2 DefaultSize = new(UiScaled(622), UiScaled(610));
+	public static readonly Vector2 DefaultSize = new(UiScaled(637), UiScaled(610));
 	public static readonly Vector2 DefaultSizeSmall = new(UiScaled(457), UiScaled(577));
 
 	public static UISongProperties Instance { get; } = new();

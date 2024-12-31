@@ -58,9 +58,11 @@ internal sealed class UIDockSpace
 		rootWindowSize.Y -= ImGui.GetFrameHeight();
 
 		// Reset the windows.
-		if (Preferences.Instance.PreferencesOptions.ResetWindows)
+		if (Preferences.Instance.PreferencesOptions.ResetLayout != PreferencesOptions.Layout.None)
 		{
-			Preferences.Instance.PreferencesOptions.ResetWindows = false;
+			var leftPanelWidth = UISongProperties.DefaultSizeSmall.X;
+			if (Preferences.Instance.PreferencesOptions.ResetLayout == PreferencesOptions.Layout.Expanded)
+				leftPanelWidth = UISongProperties.DefaultSize.X;
 
 			// Clear previous layout.
 			ImGui.DockBuilderRemoveNode(dockSpaceRootId);
@@ -72,7 +74,7 @@ internal sealed class UIDockSpace
 			ImGui.DockBuilderSetNodeSize(dockSpaceRootId, rootWindowSize);
 
 			// Split into the left panel with song information, and the remainder.
-			var leftPanelWidthAsPercentage = Math.Min(UISongProperties.DefaultSizeSmall.X / rootWindowSize.X, 0.5f);
+			var leftPanelWidthAsPercentage = Math.Min(leftPanelWidth / rootWindowSize.X, 0.5f);
 			var dockSpaceIdLeftPanel = ImGui.DockBuilderSplitNode(dockSpaceRootId, ImGuiDir.Left, leftPanelWidthAsPercentage,
 				out var _, out var rootRemainderDockSpaceId);
 
@@ -114,15 +116,7 @@ internal sealed class UIDockSpace
 			UIChartList.Instance.Open(false);
 			UILog.Instance.Open(false);
 
-			// TODO: Reset other UI?
-			//Preferences.Instance.PreferencesDensityGraph.ShowDensityGraph = true;
-			//Preferences.Instance.PreferencesDensityGraph.DensityGraphPositionValue =
-			//	PreferencesDensityGraph.DensityGraphPosition.LeftSideOfWindow;
-			//Preferences.Instance.PreferencesDensityGraph.DensityGraphPositionOffset = 10;
-			//Preferences.Instance.PreferencesMiniMap.ShowMiniMap = true;
-			//Preferences.Instance.PreferencesMiniMap.MiniMapPosition = MiniMap.Position.LeftSideOfWindow;
-			//Preferences.Instance.PreferencesMiniMap.PositionOffset =
-			//	20 + Preferences.Instance.PreferencesDensityGraph.DensityGraphHeight;
+			Preferences.Instance.PreferencesOptions.ResetLayout = PreferencesOptions.Layout.None;
 		}
 
 		SetCentralNodeArea();

@@ -3723,8 +3723,15 @@ internal sealed class Editor :
 
 			if (ImGui.BeginMenu("Layout"))
 			{
-				if (ImGui.MenuItem("Default Layout"))
-					p.PreferencesOptions.ResetWindows = true;
+				if (ImGui.BeginMenu("Reset Layout"))
+				{
+					if (ImGui.MenuItem("Default Layout"))
+						p.PreferencesOptions.ResetLayout = PreferencesOptions.Layout.Default;
+					if (ImGui.MenuItem("Expanded Layout"))
+						p.PreferencesOptions.ResetLayout = PreferencesOptions.Layout.Expanded;
+					ImGui.EndMenu();
+				}
+
 				ImGui.Separator();
 				if (ImGui.BeginMenu("Resolution"))
 				{

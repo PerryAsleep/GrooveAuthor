@@ -41,9 +41,32 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 		/// </summary>
 		ChartArea,
 
-		// Fill the window.
+		/// <summary>
+		/// Fill the window.
+		/// </summary>
 		Window,
-	};
+	}
+
+	/// <summary>
+	/// Layouts that can be reset to.
+	/// </summary>
+	public enum Layout
+	{
+		/// <summary>
+		/// Reset to the default layout.
+		/// </summary>
+		Default,
+
+		/// <summary>
+		/// Reset to the expanded layout.
+		/// </summary>
+		Expanded,
+
+		/// <summary>
+		/// Do not reset the layout.
+		/// </summary>
+		None,
+	}
 
 	// Default values.
 	public const int DefaultRecentFilesHistorySize = 20;
@@ -59,13 +82,12 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 	public const bool DefaultOpenLastOpenedFileOnLaunch = true;
 	public const double DefaultNewSongSyncOffset = 0.009;
 	public const double DefaultOpenSongSyncOffset = 0.009;
-	public const int DefaultUndoHistorySize = 1024;
 	public const bool DefaultUseCustomDpiScale = false;
 	public const double DefaultDpiScale = 1.0;
 	public const bool DefaultSuppressExternalSongModificationNotification = false;
 	public const bool DefaultHideSongBackground = false;
 	public const StepColorMethod DefaultStepColorMethodValue = StepColorMethod.Stepmania;
-	public const bool DefaultResetWindows = true;
+	public const Layout DefaultResetLayout = Layout.Default;
 	public const BackgroundImageSizeMode DefaultBackgroundImageSize = BackgroundImageSizeMode.ChartArea;
 	public const bool DefaultRenderNotes = true;
 	public const bool DefaultRenderMarkers = true;
@@ -76,6 +98,7 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 	public const int DefaultMaxEventsToDraw = 2048;
 	public const int DefaultMaxRateAlteringEventsToProcessPerFrame = 256;
 	public const int DefaultMiniMapMaxNotesToDraw = 6144;
+	public const int DefaultUndoHistorySize = 1024;
 
 	// Preferences.
 	[JsonInclude] public bool ShowOptionsWindow;
@@ -91,7 +114,7 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 	[JsonInclude] public bool SuppressExternalSongModificationNotification = DefaultSuppressExternalSongModificationNotification;
 	[JsonInclude] public bool HideSongBackground = DefaultHideSongBackground;
 	[JsonInclude] public StepColorMethod StepColorMethodValue = DefaultStepColorMethodValue;
-	[JsonInclude] public bool ResetWindows = DefaultResetWindows;
+	[JsonInclude] public Layout ResetLayout = DefaultResetLayout;
 	[JsonInclude] public BackgroundImageSizeMode BackgroundImageSize = DefaultBackgroundImageSize;
 	[JsonInclude] public bool RenderNotes = DefaultRenderNotes;
 	[JsonInclude] public bool RenderMarkers = DefaultRenderMarkers;
@@ -127,6 +150,7 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 
 	public bool IsUsingDefaults()
 	{
+		// Commented out lines are options which aren't resettable in UI.
 		return RecentFilesHistorySize == DefaultRecentFilesHistorySize
 		       && DefaultStepsType == DefaultDefaultStepsType
 		       && DefaultDifficultyType == DefaultDefaultDifficultyType
@@ -134,23 +158,23 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 		       && OpenLastOpenedFileOnLaunch == DefaultOpenLastOpenedFileOnLaunch
 		       && NewSongSyncOffset.DoubleEquals(DefaultNewSongSyncOffset)
 		       && OpenSongSyncOffset.DoubleEquals(DefaultOpenSongSyncOffset)
-		       && UndoHistorySize == DefaultUndoHistorySize
 		       && UseCustomDpiScale == DefaultUseCustomDpiScale
 		       && DpiScale.DoubleEquals(DefaultDpiScale)
 		       && SuppressExternalSongModificationNotification == DefaultSuppressExternalSongModificationNotification
 		       && HideSongBackground == DefaultHideSongBackground
 		       && StepColorMethodValue == DefaultStepColorMethodValue
-		       && ResetWindows == DefaultResetWindows
+		       // && ResetLayout == DefaultResetLayout
 		       && BackgroundImageSize == DefaultBackgroundImageSize
 		       && RenderNotes == DefaultRenderNotes
 		       && RenderMarkers == DefaultRenderMarkers
 		       && RenderRegions == DefaultRenderRegions
 		       && RenderMiscEvents == DefaultRenderMiscEvents
 		       && MiscEventAreaWidth == DefaultMiscEventAreaWidth
-		       && MaxMarkersToDraw == DefaultMaxMarkersToDraw
-		       && MaxEventsToDraw == DefaultMaxEventsToDraw
-		       && MaxRateAlteringEventsToProcessPerFrame == DefaultMaxRateAlteringEventsToProcessPerFrame
-		       && MiniMapMaxNotesToDraw == DefaultMiniMapMaxNotesToDraw;
+		       // && MaxMarkersToDraw == DefaultMaxMarkersToDraw
+		       // && MaxEventsToDraw == DefaultMaxEventsToDraw
+		       // && MaxRateAlteringEventsToProcessPerFrame == DefaultMaxRateAlteringEventsToProcessPerFrame
+		       // && MiniMapMaxNotesToDraw == DefaultMiniMapMaxNotesToDraw
+		       && UndoHistorySize == DefaultUndoHistorySize;
 	}
 
 	public void RestoreDefaults()
@@ -174,24 +198,27 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 	private readonly bool PreviousOpenLastOpenedFileOnLaunch;
 	private readonly double PreviousNewSongSyncOffset;
 	private readonly double PreviousOpenSongSyncOffset;
-	private readonly int PreviousUndoHistorySize;
 	private readonly bool PreviousUseCustomDpiScale;
 	private readonly double PreviousDpiScale;
 	private readonly bool PreviousSuppressExternalSongModificationNotification;
 	private readonly bool PreviousHideSongBackground;
+
 	private readonly StepColorMethod PreviousStepColorMethodValue;
+
+	// private readonly Layout PreviousResetLayout;
+	private readonly BackgroundImageSizeMode PreviousBackgroundImageSize;
 	private readonly bool PreviousRenderNotes;
 	private readonly bool PreviousRenderMarkers;
 	private readonly bool PreviousRenderRegions;
 	private readonly bool PreviousRenderMiscEvents;
-	private readonly int PreviousMiscEventAreaWidth;
-	private readonly int PreviousMaxMarkersToDraw;
-	private readonly int PreviousMaxEventsToDraw;
-	private readonly int PreviousMaxRateAlteringEventsToProcessPerFrame;
-	private readonly int PreviousMiniMapMaxNotesToDraw;
 
-	//private readonly bool PreviousResetWindows;
-	private readonly BackgroundImageSizeMode PreviousBackgroundImageSize;
+	private readonly int PreviousMiscEventAreaWidth;
+
+	// private readonly int PreviousMaxMarkersToDraw;
+	// private readonly int PreviousMaxEventsToDraw;
+	// private readonly int PreviousMaxRateAlteringEventsToProcessPerFrame;
+	// private readonly int PreviousMiniMapMaxNotesToDraw;
+	private readonly int PreviousUndoHistorySize;
 
 	public ActionRestoreOptionPreferenceDefaults() : base(false, false)
 	{
@@ -204,23 +231,23 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 		PreviousOpenLastOpenedFileOnLaunch = p.OpenLastOpenedFileOnLaunch;
 		PreviousNewSongSyncOffset = p.NewSongSyncOffset;
 		PreviousOpenSongSyncOffset = p.OpenSongSyncOffset;
-		PreviousUndoHistorySize = p.UndoHistorySize;
 		PreviousUseCustomDpiScale = p.UseCustomDpiScale;
 		PreviousDpiScale = p.DpiScale;
 		PreviousSuppressExternalSongModificationNotification = p.SuppressExternalSongModificationNotification;
 		PreviousHideSongBackground = p.HideSongBackground;
 		PreviousStepColorMethodValue = p.StepColorMethodValue;
-		//PreviousResetWindows = p.ResetWindows;
+		// PreviousResetLayout = p.ResetLayout;
 		PreviousBackgroundImageSize = p.BackgroundImageSize;
 		PreviousRenderNotes = p.RenderNotes;
 		PreviousRenderMarkers = p.RenderMarkers;
 		PreviousRenderRegions = p.RenderRegions;
 		PreviousRenderMiscEvents = p.RenderMiscEvents;
 		PreviousMiscEventAreaWidth = p.MiscEventAreaWidth;
-		PreviousMaxMarkersToDraw = p.MaxMarkersToDraw;
-		PreviousMaxEventsToDraw = p.MaxEventsToDraw;
-		PreviousMaxRateAlteringEventsToProcessPerFrame = p.MaxRateAlteringEventsToProcessPerFrame;
-		PreviousMiniMapMaxNotesToDraw = p.MiniMapMaxNotesToDraw;
+		// PreviousMaxMarkersToDraw = p.MaxMarkersToDraw;
+		// PreviousMaxEventsToDraw = p.MaxEventsToDraw;
+		// PreviousMaxRateAlteringEventsToProcessPerFrame = p.MaxRateAlteringEventsToProcessPerFrame;
+		// PreviousMiniMapMaxNotesToDraw = p.MiniMapMaxNotesToDraw;
+		PreviousUndoHistorySize = p.UndoHistorySize;
 	}
 
 	public override bool AffectsFile()
@@ -243,23 +270,23 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 		p.OpenLastOpenedFileOnLaunch = DefaultOpenLastOpenedFileOnLaunch;
 		p.NewSongSyncOffset = DefaultNewSongSyncOffset;
 		p.OpenSongSyncOffset = DefaultOpenSongSyncOffset;
-		p.UndoHistorySize = DefaultUndoHistorySize;
 		p.UseCustomDpiScale = DefaultUseCustomDpiScale;
 		p.DpiScale = DefaultDpiScale;
 		p.SuppressExternalSongModificationNotification = DefaultSuppressExternalSongModificationNotification;
 		p.HideSongBackground = DefaultHideSongBackground;
 		p.StepColorMethodValue = DefaultStepColorMethodValue;
-		//p.ResetWindows = DefaultResetWindows;
+		// p.ResetLayout = DefaultResetLayout;
 		p.BackgroundImageSize = DefaultBackgroundImageSize;
 		p.RenderNotes = DefaultRenderNotes;
 		p.RenderMarkers = DefaultRenderMarkers;
 		p.RenderRegions = DefaultRenderRegions;
 		p.RenderMiscEvents = DefaultRenderMiscEvents;
 		p.MiscEventAreaWidth = DefaultMiscEventAreaWidth;
-		p.MaxMarkersToDraw = DefaultMaxMarkersToDraw;
-		p.MaxEventsToDraw = DefaultMaxEventsToDraw;
-		p.MaxRateAlteringEventsToProcessPerFrame = DefaultMaxRateAlteringEventsToProcessPerFrame;
-		p.MiniMapMaxNotesToDraw = DefaultMiniMapMaxNotesToDraw;
+		// p.MaxMarkersToDraw = DefaultMaxMarkersToDraw;
+		// p.MaxEventsToDraw = DefaultMaxEventsToDraw;
+		// p.MaxRateAlteringEventsToProcessPerFrame = DefaultMaxRateAlteringEventsToProcessPerFrame;
+		// p.MiniMapMaxNotesToDraw = DefaultMiniMapMaxNotesToDraw;
+		p.UndoHistorySize = DefaultUndoHistorySize;
 	}
 
 	protected override void UndoImplementation()
@@ -272,22 +299,22 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 		p.OpenLastOpenedFileOnLaunch = PreviousOpenLastOpenedFileOnLaunch;
 		p.NewSongSyncOffset = PreviousNewSongSyncOffset;
 		p.OpenSongSyncOffset = PreviousOpenSongSyncOffset;
-		p.UndoHistorySize = PreviousUndoHistorySize;
 		p.UseCustomDpiScale = PreviousUseCustomDpiScale;
 		p.DpiScale = PreviousDpiScale;
 		p.SuppressExternalSongModificationNotification = PreviousSuppressExternalSongModificationNotification;
 		p.HideSongBackground = PreviousHideSongBackground;
 		p.StepColorMethodValue = PreviousStepColorMethodValue;
-		//p.ResetWindows = PreviousResetWindows;
+		// p.ResetLayout = PreviousResetLayout;
 		p.BackgroundImageSize = PreviousBackgroundImageSize;
 		p.RenderNotes = PreviousRenderNotes;
 		p.RenderMarkers = PreviousRenderMarkers;
 		p.RenderRegions = PreviousRenderRegions;
 		p.RenderMiscEvents = PreviousRenderMiscEvents;
 		p.MiscEventAreaWidth = PreviousMiscEventAreaWidth;
-		p.MaxMarkersToDraw = PreviousMaxMarkersToDraw;
-		p.MaxEventsToDraw = PreviousMaxEventsToDraw;
-		p.MaxRateAlteringEventsToProcessPerFrame = PreviousMaxRateAlteringEventsToProcessPerFrame;
-		p.MiniMapMaxNotesToDraw = PreviousMiniMapMaxNotesToDraw;
+		// p.MaxMarkersToDraw = PreviousMaxMarkersToDraw;
+		// p.MaxEventsToDraw = PreviousMaxEventsToDraw;
+		// p.MaxRateAlteringEventsToProcessPerFrame = PreviousMaxRateAlteringEventsToProcessPerFrame;
+		// p.MiniMapMaxNotesToDraw = PreviousMiniMapMaxNotesToDraw;
+		p.UndoHistorySize = PreviousUndoHistorySize;
 	}
 }
