@@ -126,7 +126,7 @@ internal sealed class UIChartProperties : UIWindow
 					+ $"\nwith at least {steps} steps is considered stream regardless of if the individual steps are {noteType} notes.");
 
 				ImGuiLayoutUtils.DrawTitle("Peak NPS", "Peak notes per second.");
-				var width = ImGui.GetContentRegionAvail().X;
+				var width = ImGuiLayoutUtils.GetTableWidth();
 				if (ImGui.BeginTable("NpsTable", 1, ImGuiTableFlags.None, new Vector2(width, 0), width))
 				{
 					ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100.0f);
@@ -159,7 +159,7 @@ internal sealed class UIChartProperties : UIWindow
 				}
 
 				ImGuiLayoutUtils.DrawTitle("Step Counts", "Counts for various step types in the chart.");
-				width = ImGui.GetContentRegionAvail().X;
+				width = ImGuiLayoutUtils.GetTableWidth();
 				if (ImGui.BeginTable("StepCountsTable", 1, ImGuiTableFlags.None, new Vector2(width, 0), width))
 				{
 					ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100.0f);
@@ -225,7 +225,7 @@ internal sealed class UIChartProperties : UIWindow
 				}
 
 				ImGuiLayoutUtils.DrawTitle("Distribution", "Distribution of steps across lanes.");
-				width = ImGui.GetContentRegionAvail().X;
+				width = ImGuiLayoutUtils.GetTableWidth();
 				if (editorChart != null)
 				{
 					if (ImGui.BeginTable("DistributionInnerTable", 1, ImGuiTableFlags.None, new Vector2(width, 0), width))

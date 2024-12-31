@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Numerics;
 using ImGuiNET;
 using StepManiaEditor.AutogenConfig;
 using StepManiaLibrary.PerformedChart;
@@ -267,7 +268,9 @@ internal sealed class UIPerformedChartConfig : UIWindow
 				ImGuiLayoutUtils.DrawTitle("Arrow Weights",
 					"Desired distribution of arrows per Chart type.");
 
-				if (ImGui.BeginTable("Arrow Weights Table", 2, ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders))
+				var width = ImGuiLayoutUtils.GetTableWidth();
+				if (ImGui.BeginTable("Arrow Weights Table", 2, ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders,
+					    new Vector2(width, 0), width))
 				{
 					ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100);
 					ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed,

@@ -73,6 +73,7 @@ internal sealed class ImGuiLayoutUtils
 	public static readonly Vector2 ButtonCopySize = new(UiScaled(32), 0);
 	public static readonly Vector2 ButtonSettingsSize = new(UiScaled(56), 0);
 	public static readonly float SnapLimitTextWidth = UiScaled(30);
+	public static readonly float TableRowRightPadding = UiScaled(1);
 
 	static ImGuiLayoutUtils()
 	{
@@ -196,6 +197,13 @@ internal sealed class ImGuiLayoutUtils
 	private static string GetDragHelpText(string helpText)
 	{
 		return string.IsNullOrEmpty(helpText) ? null : helpText + DragHelpText;
+	}
+
+	public static float GetTableWidth()
+	{
+		// When drawing tables as the widget for a row they are cut off on the right by one pixel
+		// and I am not sure why. This is a hack to compensate for it.
+		return ImGui.GetContentRegionAvail().X - TableRowRightPadding;
 	}
 
 	#region Checkbox
