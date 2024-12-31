@@ -49,17 +49,6 @@ internal sealed class UIChartList : UIWindow
 		if (!Preferences.Instance.ShowChartListWindow)
 			return;
 
-		// We always try to show UIChartList on first launch. If showing it would put it off the screen, then don't show it.
-		if (Preferences.Instance.FirstTimeTryingToShowChartListWindow)
-		{
-			Preferences.Instance.FirstTimeTryingToShowChartListWindow = false;
-			if (DefaultPositionY > UiScaled(Editor.GetViewportHeight()))
-			{
-				Preferences.Instance.ShowChartListWindow = false;
-				return;
-			}
-		}
-
 		var defaultPosition = new Vector2(DefaultPositionX,
 			Math.Max(0, Math.Min(UiScaled(Editor.GetViewportHeight()) - DefaultSize.Y, DefaultPositionY)));
 		ImGui.SetNextWindowPos(defaultPosition, ImGuiCond.FirstUseEver);
