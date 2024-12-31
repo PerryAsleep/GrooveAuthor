@@ -141,6 +141,12 @@ internal sealed class EditorFakeSegmentEvent : EditorEvent, IEquatable<EditorFak
 		set => WidthInternal = value;
 	}
 
+	public override double H
+	{
+		get => ImGuiLayoutUtils.GetMiscEditorEventHeight();
+		set { }
+	}
+
 	public EditorFakeSegmentEvent(EventConfig config, FakeSegment chartEvent) : base(config)
 	{
 		FakeSegmentEvent = chartEvent;

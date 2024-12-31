@@ -3,15 +3,31 @@ using ImGuiNET;
 
 namespace StepManiaEditor;
 
-internal sealed class UIDebug
+internal sealed class UIDebug : UIWindow
 {
-	public const string WindowTitle = "Debug";
+	private Editor Editor;
 
-	private readonly Editor Editor;
+	public static UIDebug Instance { get; } = new();
 
-	public UIDebug(Editor editor)
+	private UIDebug() : base("Debug")
+	{
+	}
+
+	public void Init(Editor editor)
 	{
 		Editor = editor;
+	}
+
+	public override void Open(bool focus)
+	{
+		Preferences.Instance.ShowDebugWindow = true;
+		if (focus)
+			Focus();
+	}
+
+	public override void Close()
+	{
+		Preferences.Instance.ShowDebugWindow = false;
 	}
 
 	public void Draw()
@@ -22,14 +38,6 @@ internal sealed class UIDebug
 
 		if (ImGui.Begin(WindowTitle, ref p.ShowDebugWindow))
 		{
-			var renderChart = Editor.DebugGetShouldRenderChart();
-			ImGui.Checkbox("Render Chart", ref renderChart);
-			Editor.DebugSetShouldRenderChart(renderChart);
-
-			var renderMarkers = Editor.DebugGetShouldRenderMarkers();
-			ImGui.Checkbox("Render Markers", ref renderMarkers);
-			Editor.DebugSetShouldRenderMarkers(renderMarkers);
-
 			if (ImGui.Button("Splash"))
 			{
 				Editor.DebugShowSplashSequence();

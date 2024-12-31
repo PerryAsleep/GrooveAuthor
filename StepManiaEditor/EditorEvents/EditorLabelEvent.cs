@@ -59,6 +59,12 @@ internal sealed class EditorLabelEvent : EditorEvent
 		set => WidthInternal = value;
 	}
 
+	public override double H
+	{
+		get => ImGuiLayoutUtils.GetMiscEditorEventHeight();
+		set { }
+	}
+
 	public static (bool, string) IsValidLabelString(string v)
 	{
 		// Accept all input but sanitize the text to change characters which would interfere with MSD file parsing.

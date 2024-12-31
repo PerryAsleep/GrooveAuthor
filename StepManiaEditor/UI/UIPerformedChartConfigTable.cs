@@ -136,11 +136,10 @@ internal sealed class UIPerformedChartConfigTable
 				ImGui.PushStyleColor(ImGuiCol.Text, config.GetSpeedStringColor());
 				ImGui.TableNextColumn();
 				if (ImGui.Selectable($"{config.GetStepSpeedMinString()}##{index}", false,
-					    ImGuiSelectableFlags.SpanAllColumns | ImGuiSelectableFlags.AllowItemOverlap))
+					    ImGuiSelectableFlags.SpanAllColumns | ImGuiSelectableFlags.AllowOverlap))
 				{
 					Preferences.Instance.ActivePerformedChartConfigForWindow = configGuid;
-					Preferences.Instance.ShowPerformedChartListWindow = true;
-					ImGui.SetWindowFocus(UIPerformedChartConfig.WindowTitle);
+					UIPerformedChartConfig.Instance.Open(true);
 				}
 
 				ImGui.PopStyleColor();

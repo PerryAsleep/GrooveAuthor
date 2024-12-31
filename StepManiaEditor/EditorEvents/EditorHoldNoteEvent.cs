@@ -225,12 +225,14 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 		var w = (int)(W + 0.5);
 
 		// Record the cap position for drawing later.
+		// Round down on the minimumCapY to avoid rounding errors for 0 length
+		// holds, which are more common than negative holds.
 		var capY = y;
-		var minimumCapY = (int)(bodyY + 0.5);
+		var minimumCapY = (int)bodyY;
 		if (arrowGraphicManager.AreHoldCapsCentered())
 		{
 			y += (int)(capH * 0.5f);
-			minimumCapY = (int)(Y + 0.5);
+			minimumCapY = (int)Y;
 		}
 
 		// Adjust the starting y value so we don't needlessly loop when zoomed in and a large

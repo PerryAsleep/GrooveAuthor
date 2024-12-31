@@ -7,14 +7,12 @@ namespace StepManiaEditor;
 /// <summary>
 /// Class for drawing options for autogenerating a single Chart.
 /// </summary>
-internal sealed class UIAutogenChart
+internal sealed class UIAutogenChart : UIWindow
 {
-	public const string WindowTitle = "Autogen Chart";
-
 	private static readonly int TitleWidth = UiScaled(100);
 	private static readonly int DefaultWidth = UiScaled(560);
 
-	private readonly Editor Editor;
+	private Editor Editor;
 
 	/// <summary>
 	/// Whether or not this window is showing.
@@ -27,28 +25,41 @@ internal sealed class UIAutogenChart
 	/// </summary>
 	private EditorChart SourceChart;
 
-	public UIAutogenChart(Editor editor)
+	public static UIAutogenChart Instance { get; } = new();
+
+	private UIAutogenChart() : base("Autogen Chart")
+	{
+	}
+
+	public void Init(Editor editor)
 	{
 		Editor = editor;
 	}
 
-	/// <summary>
-	/// Show this UI with the given EditorChart as the source EditorChart for autogeneration.
-	/// </summary>
-	/// <param name="sourceChart">The source EditorChart to use for autogeneration. May be null.</param>
-	public void Show(EditorChart sourceChart)
+
+	public override void Open(bool focus)
 	{
-		SourceChart = sourceChart;
 		Showing = true;
+		if (focus)
+			Focus();
 	}
 
 	/// <summary>
 	/// Close this UI if it is showing.
 	/// </summary>
-	public void Close()
+	public override void Close()
 	{
 		Showing = false;
 		SourceChart = null;
+	}
+
+	/// <summary>
+	/// Sets the EditorChart to use as the source EditorChart for autogeneration.
+	/// </summary>
+	/// <param name="sourceChart">The source EditorChart to use for autogeneration. May be null.</param>
+	public void SetChart(EditorChart sourceChart)
+	{
+		SourceChart = sourceChart;
 	}
 
 	public void Draw()
@@ -73,10 +84,7 @@ internal sealed class UIAutogenChart
 						UIChartList.DrawChartList(
 							Editor.GetActiveSong(),
 							SourceChart,
-							null,
-							selectedChart => SourceChart = selectedChart,
-							false,
-							null);
+							selectedChart => SourceChart = selectedChart);
 						ImGui.EndCombo();
 					}
 				}
@@ -118,11 +126,7 @@ internal sealed class UIAutogenChart
 					ref selectedIndex, configNames,
 					() => EditorPerformedChartConfig.ShowEditUI(Preferences.Instance
 						.LastSelectedAutogenPerformedChartConfig),
-					() =>
-					{
-						Preferences.Instance.ShowAutogenConfigsWindow = true;
-						ImGui.SetWindowFocus(UIAutogenConfigs.WindowTitle);
-					},
+					() => { UIAutogenConfigs.Instance.Open(true); },
 					EditorPerformedChartConfig.CreateNewConfigAndShowEditUI,
 					"Performed Chart Config.");
 				Preferences.Instance.LastSelectedAutogenPerformedChartConfig = configGuids[selectedIndex];

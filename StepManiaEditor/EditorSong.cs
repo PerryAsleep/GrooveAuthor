@@ -875,9 +875,16 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 		{
 			kvp.Value.Sort(new ChartComparer());
 		}
+
+		var index = 0;
+		foreach (var chart in GetSortedCharts())
+		{
+			chart.SetIndexInSong(index);
+			index++;
+		}
 	}
 
-	public List<EditorChart> GetSortedCharts()
+	public IReadOnlyList<EditorChart> GetSortedCharts()
 	{
 		var sortedCharts = new List<EditorChart>();
 		foreach (var chartType in Editor.SupportedChartTypes)
@@ -1634,7 +1641,7 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 						song.Extras.AddDestExtra(TagSelectable, Selectable.ToString(), true);
 
 						if (!saveParameters.OmitCustomSaveData)
-							SerializeCustomSongData(customProperties.CustomSongProperties);
+							SerializeCustomSongData(customProperties!.CustomSongProperties);
 
 						foreach (var unsupportedChart in UnsupportedCharts)
 						{

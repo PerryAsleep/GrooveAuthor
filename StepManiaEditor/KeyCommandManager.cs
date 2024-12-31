@@ -5,6 +5,11 @@ using Microsoft.Xna.Framework.Input;
 
 namespace StepManiaEditor;
 
+public interface IReadOnlyKeyCommandManager
+{
+	public bool IsAnyInputDown(List<Keys[]> inputs);
+}
+
 /// <summary>
 /// Handles registering and invoking Actions in response to configurable key presses.
 ///
@@ -12,7 +17,7 @@ namespace StepManiaEditor;
 ///  Register Commands with Register.
 ///  Call Update once each frame.
 /// </summary>
-public class KeyCommandManager
+internal sealed class KeyCommandManager : IReadOnlyKeyCommandManager
 {
 	/// <summary>
 	/// For repeatable Commands, number of seconds the keys need to be held for before the first repeat occurs.
@@ -53,17 +58,47 @@ public class KeyCommandManager
 		/// </summary>
 		public readonly bool Repeat;
 
-		public readonly bool Independent;
+		/// <summary>
+		/// Whether or not this command blocks input to other commands when it is active.
+		/// </summary>
+		public readonly bool BlocksInput;
 
-		public Command(Keys[] input, Action callback, bool repeat = false, Action releaseCallback = null,
-			bool independent = false)
+		public Command(Keys[] input, Action callback, bool repeat = false, Action releaseCallback = null, bool blocksInput = true)
 		{
 			Input = new Keys[input.Length];
 			Array.Copy(input, Input, input.Length);
 			Callback = callback;
 			ReleaseCallback = releaseCallback;
 			Repeat = repeat;
-			Independent = independent;
+			BlocksInput = blocksInput;
+		}
+
+		/// <summary>
+		/// Returns whether this Command's Inputs are a subset of the given other Command's Inputs.
+		/// </summary>
+		/// <param name="other">Other Command to check.</param>
+		/// <returns>True if this Command's Inputs are a subset of the other's and false otherwise.</returns>
+		public bool IsInputSubsetOfOther(Command other)
+		{
+			if (Input.Length >= other.Input.Length)
+				return false;
+			for (var i = 0; i < Input.Length; i++)
+			{
+				var keyInOther = false;
+				for (var j = 0; j < other.Input.Length; j++)
+				{
+					if (Input[i] == other.Input[j])
+					{
+						keyInOther = true;
+						break;
+					}
+				}
+
+				if (!keyInOther)
+					return false;
+			}
+
+			return true;
 		}
 	}
 
@@ -91,9 +126,9 @@ public class KeyCommandManager
 		/// Returns whether or not this Command is active.
 		/// </summary>
 		/// <returns>True if this Command is active and false otherwise.</returns>
-		public bool IsActiveAndShouldBlockOtherCommands()
+		public bool IsActive()
 		{
-			return Active && !Command.Independent;
+			return Active;
 		}
 
 		/// <summary>
@@ -101,13 +136,24 @@ public class KeyCommandManager
 		/// Will check input, update internal state, and trigger the Command's callback if appropriate.
 		/// </summary>
 		/// <param name="timeInSeconds">Current time in seconds.</param>
-		/// <param name="anyOthersBlocking">Whether or not any other Commands are active and blocking.</param>
+		/// <param name="activeCommands">All currently active Commands.</param>
 		/// <param name="keyCommandManager">Parent KeyCommandManager to use for checking input against previous state.</param>
 		/// <param name="state">KeyboardState for checking input keys.</param>
-		public void Update(double timeInSeconds, bool anyOthersBlocking, KeyCommandManager keyCommandManager,
+		public void Update(double timeInSeconds, HashSet<CommandState> activeCommands, KeyCommandManager keyCommandManager,
 			ref KeyboardState state)
 		{
-			var canActivate = !anyOthersBlocking || Command.Independent;
+			var canActivate = true;
+			foreach (var activeCommand in activeCommands)
+			{
+				if (activeCommand == this || !activeCommand.Command.BlocksInput)
+					continue;
+				if (Command.IsInputSubsetOfOther(activeCommand.Command)
+				    || activeCommand.Command.IsInputSubsetOfOther(Command))
+				{
+					canActivate = false;
+					break;
+				}
+			}
 
 			// Loop over every key in the inputs and record the current state.
 			var allDown = true;
@@ -251,12 +297,12 @@ public class KeyCommandManager
 
 		// Check if any Command is active.
 		// Active Commands prevent other Commands from activating.
-		var anyActive = false;
+		var activeCommands = new HashSet<CommandState>();
 		foreach (var command in Commands)
 		{
-			if (command.IsActiveAndShouldBlockOtherCommands())
+			if (command.IsActive())
 			{
-				anyActive = true;
+				activeCommands.Add(command);
 				break;
 			}
 		}
@@ -264,8 +310,11 @@ public class KeyCommandManager
 		// Handle each Command.
 		foreach (var command in Commands)
 		{
-			command.Update(timeInSeconds, anyActive, this, ref state);
-			anyActive |= command.IsActiveAndShouldBlockOtherCommands();
+			command.Update(timeInSeconds, activeCommands, this, ref state);
+			if (command.IsActive())
+			{
+				activeCommands.Add(command);
+			}
 		}
 
 		PreviousState = state;
@@ -283,33 +332,50 @@ public class KeyCommandManager
 		CommandsDirty = true;
 	}
 
-	public bool IsKeyDownThisFrame(Keys key)
+	private bool IsKeyDownThisFrame(Keys key)
 	{
 		return IsKeyDown(key) && !PreviousState.IsKeyDown(key);
 	}
 
-	public bool IsControlDown()
+	private bool IsKeyDown(Keys key)
 	{
-		return IsKeyDown(Keys.LeftControl) || IsKeyDown(Keys.RightControl);
+		switch (key)
+		{
+			case Keys.LeftControl:
+			case Keys.RightControl:
+				return Keyboard.GetState().IsKeyDown(Keys.LeftControl) || Keyboard.GetState().IsKeyDown(Keys.RightControl);
+			case Keys.LeftShift:
+			case Keys.RightShift:
+				return Keyboard.GetState().IsKeyDown(Keys.LeftShift) || Keyboard.GetState().IsKeyDown(Keys.RightShift);
+			case Keys.LeftAlt:
+			case Keys.RightAlt:
+				return Keyboard.GetState().IsKeyDown(Keys.LeftAlt) || Keyboard.GetState().IsKeyDown(Keys.RightAlt);
+			case Keys.LeftWindows:
+			case Keys.RightWindows:
+				return Keyboard.GetState().IsKeyDown(Keys.LeftWindows) || Keyboard.GetState().IsKeyDown(Keys.RightWindows);
+			default:
+				return Keyboard.GetState().IsKeyDown(key);
+		}
 	}
 
-	public bool IsShiftDown()
+	public bool IsAnyInputDown(List<Keys[]> inputs)
 	{
-		return IsKeyDown(Keys.LeftShift) || IsKeyDown(Keys.RightShift);
-	}
+		foreach (var input in inputs)
+		{
+			var inputDown = true;
+			foreach (var key in input)
+			{
+				if (!IsKeyDown(key))
+				{
+					inputDown = false;
+					break;
+				}
+			}
 
-	public bool IsAltDown()
-	{
-		return IsKeyDown(Keys.LeftAlt) || IsKeyDown(Keys.RightAlt);
-	}
+			if (inputDown)
+				return true;
+		}
 
-	public bool IsWinDown()
-	{
-		return IsKeyDown(Keys.LeftWindows) || IsKeyDown(Keys.RightWindows);
-	}
-
-	public bool IsKeyDown(Keys key)
-	{
-		return Keyboard.GetState().IsKeyDown(key);
+		return false;
 	}
 }

@@ -19,20 +19,25 @@ namespace StepManiaEditor;
 /// </summary>
 internal sealed class ImGuiUtils
 {
-	// UI positioning values affected by DPI scaling.
 	private static double DpiScale;
 	private static double DpiScaleSystemDefault;
-	private const int HelpWidth = 18;
-	private const int CloseWidth = 18;
-	private const int MenuBarHeight = 20;
-	private const int MiniMapYPadding = 10;
-	private const int ChartPositionUIYPaddingFromBottom = 10;
-	private const int CDTitleWidth = 164;
-	private const int CDTitleHeight = 164;
-	private const int BackgroundWidth = 640;
-	private const int BackgroundHeight = 480;
-	private const int BannerWidth = 418;
-	private const int BannerHeight = 164;
+
+	// UI positioning values affected by DPI scaling.
+	public const int HelpWidthDefaultDPI = 18;
+	public const int CloseWidthDefaultDPI = 18;
+	public const int MenuBarHeightDefaultDPI = 20;
+	public const int ChartHeaderHeightDefaultDPI = 21;
+	public const int CDTitleWidthDefaultDPI = 164;
+	public const int CDTitleHeightDefaultDPI = 164;
+	public const int BackgroundWidthDefaultDPI = 640;
+	public const int BackgroundHeightDefaultDPI = 480;
+	public const int BannerWidthDefaultDPI = 418;
+	public const int BannerHeightDefaultDPI = 164;
+	public const int SceneWidgetPaddingDefaultDPI = 10;
+	public const int MiscEventLeftSideMarkerNumberAllowanceDefaultDPI = 10;
+	public const int MeasureMarkerPaddingDefaultDPI = 40;
+	public const int ActiveChartBoundaryWidthDefaultDPI = 1;
+	public const int MeasureMarkerNumberPaddingDefaultDPI = 10;
 
 	private static Editor Editor;
 	private static readonly Dictionary<Type, string[]> EnumStringsCacheByType = new();
@@ -45,6 +50,7 @@ internal sealed class ImGuiUtils
 	}
 
 	public static readonly string[] ValidNoteTypeStrings;
+	public static readonly string[] ValidSnapLevelStrings;
 
 	private static readonly Dictionary<string, EnumByAllowedValueCacheData> EnumDataCacheByCustomKey = new();
 	private static readonly List<bool> EnabledStack = new();
@@ -53,9 +59,12 @@ internal sealed class ImGuiUtils
 	{
 		var numStrings = SMCommon.ValidDenominators.Length;
 		ValidNoteTypeStrings = new string[numStrings];
+		ValidSnapLevelStrings = new string[numStrings + 1];
+		ValidSnapLevelStrings[0] = "None";
 		for (var i = 0; i < numStrings; i++)
 		{
 			ValidNoteTypeStrings[i] = $"1/{SMCommon.ValidDenominators[i] * SMCommon.NumBeatsPerMeasure}";
+			ValidSnapLevelStrings[i + 1] = ValidNoteTypeStrings[i];
 		}
 	}
 
@@ -608,7 +617,7 @@ internal sealed class ImGuiUtils
 
 			// Draw the image.
 			if (button)
-				result = ImGui.ImageButton(textureImGui, size, uv0, uv1);
+				result = ImGui.ImageButton($"##{id}Image", textureImGui, size, uv0, uv1);
 			else
 				ImGui.Image(textureImGui, size, uv0, uv1);
 		}
@@ -632,6 +641,16 @@ internal sealed class ImGuiUtils
 		               | ((uint)(byte)(color->Y * byte.MaxValue) << 8)
 		               | (byte)(color->X * byte.MaxValue);
 		ImGui.PushStyleColor(col, newColor);
+	}
+
+	public static void PopAlpha()
+	{
+		ImGui.PopStyleColor();
+	}
+
+	public static void PopAlpha(int count)
+	{
+		ImGui.PopStyleColor(count);
 	}
 
 	#region Window Placement
@@ -779,82 +798,92 @@ internal sealed class ImGuiUtils
 
 	public static int GetHelpWidth()
 	{
-		return UiScaled(HelpWidth);
+		return UiScaled(HelpWidthDefaultDPI);
 	}
 
 	public static int GetCloseWidth()
 	{
-		return UiScaled(CloseWidth);
+		return UiScaled(CloseWidthDefaultDPI);
 	}
 
 	public static int GetMenuBarHeight()
 	{
-		return UiScaled(MenuBarHeight);
+		return UiScaled(MenuBarHeightDefaultDPI);
 	}
 
-	public static int GetMiniMapYPaddingFromTop()
+	public static int GetChartHeaderHeight()
 	{
-		return UiScaled(MenuBarHeight + MiniMapYPadding);
+		return UiScaled(ChartHeaderHeightDefaultDPI);
+	}
+
+	public static int GetMiniMapYPaddingFromTopInScreenSpace()
+	{
+		return UiScaled(MenuBarHeightDefaultDPI + ChartHeaderHeightDefaultDPI + SceneWidgetPaddingDefaultDPI);
+	}
+
+	public static int GetMiniMapYPaddingFromTopInChartSpace()
+	{
+		return UiScaled(ChartHeaderHeightDefaultDPI + SceneWidgetPaddingDefaultDPI);
 	}
 
 	public static int GetMiniMapYPaddingFromBottom()
 	{
-		return UiScaled(MiniMapYPadding);
+		return UiScaled(SceneWidgetPaddingDefaultDPI);
 	}
 
-	public static int GetChartPositionUIYPaddingFromBottom()
+	public static int GetSceneWidgetPadding()
 	{
-		return UiScaled(ChartPositionUIYPaddingFromBottom);
+		return UiScaled(SceneWidgetPaddingDefaultDPI);
+	}
+
+	public static int GetMiscEventLeftSideMarkerNumberAllowance()
+	{
+		return UiScaled(MiscEventLeftSideMarkerNumberAllowanceDefaultDPI);
+	}
+
+	public static int GetMeasureMarkerPadding()
+	{
+		return UiScaled(MeasureMarkerPaddingDefaultDPI);
+	}
+
+	public static int GetActiveChartBoundaryWidth()
+	{
+		return UiScaled(ActiveChartBoundaryWidthDefaultDPI);
+	}
+
+	public static int GetMeasureMarkerNumberPadding()
+	{
+		return UiScaled(MeasureMarkerNumberPaddingDefaultDPI);
 	}
 
 	public static int GetBackgroundWidth()
 	{
-		return UiScaled(BackgroundWidth);
+		return UiScaled(BackgroundWidthDefaultDPI);
 	}
 
 	public static int GetBackgroundHeight()
 	{
-		return UiScaled(BackgroundHeight);
+		return UiScaled(BackgroundHeightDefaultDPI);
 	}
 
 	public static int GetBannerWidth()
 	{
-		return UiScaled(BannerWidth);
+		return UiScaled(BannerWidthDefaultDPI);
 	}
 
 	public static int GetBannerHeight()
 	{
-		return UiScaled(BannerHeight);
+		return UiScaled(BannerHeightDefaultDPI);
 	}
 
 	public static int GetCDTitleWidth()
 	{
-		return UiScaled(CDTitleWidth);
+		return UiScaled(CDTitleWidthDefaultDPI);
 	}
 
 	public static int GetCDTitleHeight()
 	{
-		return UiScaled(CDTitleHeight);
-	}
-
-	public static int GetUnscaledBackgroundWidth()
-	{
-		return BackgroundWidth;
-	}
-
-	public static int GetUnscaledBackgroundHeight()
-	{
-		return BackgroundHeight;
-	}
-
-	public static int GetUnscaledBannerWidth()
-	{
-		return BannerWidth;
-	}
-
-	public static int GetUnscaledBannerHeight()
-	{
-		return BannerHeight;
+		return UiScaled(CDTitleHeightDefaultDPI);
 	}
 
 	#endregion UI Position and DPI Scaling

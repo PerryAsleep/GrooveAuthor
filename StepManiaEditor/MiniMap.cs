@@ -59,19 +59,19 @@ internal sealed class MiniMap
 		RightSideOfWindow,
 
 		/// <summary>
-		/// To the right of the Chart area. Will not move with scaling.
+		/// Mounted to the left side of the window.
 		/// </summary>
-		RightOfChartArea,
+		LeftSideOfWindow,
 
 		/// <summary>
-		/// Mounted to the right of the WaveForm. Will move with scaling.
+		/// Mounted to the right of the focused chart. Will not moving with scaling.
 		/// </summary>
-		MountedToWaveForm,
+		FocusedChartWithoutScaling,
 
 		/// <summary>
-		/// Mounted to the right of the Chart. Will move with scaling.
+		/// Mounted to the right of the focused chart. Will moving with scaling.
 		/// </summary>
-		MountedToChart,
+		FocusedChartWithScaling,
 	}
 
 	/// <summary>
@@ -115,6 +115,11 @@ internal sealed class MiniMap
 	/// RGBA color of the rim border.
 	/// </summary>
 	private const uint RimColor = 0xFFFFFFFF;
+
+	/// <summary>
+	/// RGBA transparent color.
+	/// </summary>
+	private const uint TransparentColor = 0x00000000;
 
 	/// <summary>
 	/// RGBA color of the line separating the areas outside of the Chart content from
@@ -208,6 +213,14 @@ internal sealed class MiniMap
 	private Rectangle Bounds;
 
 	/// <summary>
+	/// Height of the visible area of the MiniMap in pixels.
+	/// Less than or equal to the Bounds height.
+	/// This is tracked separately as UI resizing can cause the visible area to change
+	/// often but we do not want to perform expensive texture resizes that often.
+	/// </summary>
+	private int VisibleHeight;
+
+	/// <summary>
 	/// Number of lanes of the underlying Chart.
 	/// </summary>
 	private uint NumLanes;
@@ -297,7 +310,7 @@ internal sealed class MiniMap
 	private double MiniMapAreaRange;
 
 	/// <summary>
-	/// Cached value of Bounds.Height / MiniMapAreaRange.
+	/// Cached value of VisibleHeight / MiniMapAreaRange.
 	/// </summary>
 	private double HeightOverMiniMapAreaRange;
 
@@ -337,9 +350,10 @@ internal sealed class MiniMap
 	/// </summary>
 	/// <param name="graphicsDevice">GraphicsDevice for rendering.</param>
 	/// <param name="bounds">Bounds of the MiniMap in screen space.</param>
-	public MiniMap(GraphicsDevice graphicsDevice, Rectangle bounds)
+	/// <param name="visibleHeight">Visible height of the MiniMap in screen space.</param>
+	public MiniMap(GraphicsDevice graphicsDevice, Rectangle bounds, uint visibleHeight)
 	{
-		UpdateBounds(graphicsDevice, bounds);
+		UpdateBounds(graphicsDevice, bounds, visibleHeight);
 	}
 
 	/// <summary>
@@ -442,35 +456,65 @@ internal sealed class MiniMap
 	/// </summary>
 	/// <param name="graphicsDevice">Graphics device for recreating textures.</param>
 	/// <param name="bounds">New bounds in screen space.</param>
-	public void UpdateBounds(GraphicsDevice graphicsDevice, Rectangle bounds)
+	/// <param name="visibleHeight"></param>
+	public void UpdateBounds(GraphicsDevice graphicsDevice, Rectangle bounds, uint visibleHeight)
 	{
-		var dimensionsDirty = bounds.Width != Bounds.Width || bounds.Height != Bounds.Height;
+		var textureDimensionsDirty = bounds.Width != Bounds.Width || bounds.Height != Bounds.Height;
+		var visibleHeightDirty = visibleHeight != VisibleHeight;
 
 		Bounds = bounds;
+		var oldVisibleHeight = VisibleHeight;
+		VisibleHeight = (int)visibleHeight;
 
-		if (!dimensionsDirty || Bounds.Height <= 0 || Bounds.Width <= 0)
+		if (Bounds.Height <= 0 || Bounds.Width <= 0)
+			return;
+		if (!textureDimensionsDirty && !visibleHeightDirty)
 			return;
 
 		// Set up the textures.
-		Textures = new Texture2D[NumTextures];
-		for (var i = 0; i < NumTextures; i++)
+		if (textureDimensionsDirty)
 		{
-			Textures[i] = new Texture2D(graphicsDevice, bounds.Width, bounds.Height, false, SurfaceFormat.Color);
+			Textures = new Texture2D[NumTextures];
+			for (var i = 0; i < NumTextures; i++)
+			{
+				Textures[i] = new Texture2D(graphicsDevice, bounds.Width, bounds.Height, false, SurfaceFormat.Color);
+			}
 		}
 
 		// Set up the pixel data.
-		ColorData = new uint[bounds.Width * bounds.Height];
-		ClearData = new uint[bounds.Width * bounds.Height];
-		ClearDataEditorArea = new uint[bounds.Width * bounds.Height];
-		ClearDataEditorMouseOverArea = new uint[bounds.Width * bounds.Height];
-		ClearDataEditorSelectedArea = new uint[bounds.Width * bounds.Height];
-		ClearDataOutsideContentArea = new uint[bounds.Width * bounds.Height];
+		if (textureDimensionsDirty)
+		{
+			ColorData = new uint[bounds.Width * bounds.Height];
+			ClearData = new uint[bounds.Width * bounds.Height];
+			ClearDataEditorArea = new uint[bounds.Width * bounds.Height];
+			ClearDataEditorMouseOverArea = new uint[bounds.Width * bounds.Height];
+			ClearDataEditorSelectedArea = new uint[bounds.Width * bounds.Height];
+			ClearDataOutsideContentArea = new uint[bounds.Width * bounds.Height];
+		}
+
+		var startY = 0;
+		var endY = Bounds.Height;
+		if (!textureDimensionsDirty)
+		{
+			startY = Math.Max(0, Math.Min(oldVisibleHeight, VisibleHeight) - 1);
+			endY = Math.Min(endY, Math.Max(oldVisibleHeight, VisibleHeight));
+		}
+
 		for (var x = 0; x < Bounds.Width; x++)
 		{
-			for (var y = 0; y < Bounds.Height; y++)
+			for (var y = startY; y < endY; y++)
 			{
 				var i = Bounds.Width * y + x;
-				if (y < RimWidth || y >= Bounds.Height - RimWidth || x < RimWidth || x >= Bounds.Width - RimWidth)
+
+				if (y >= VisibleHeight)
+				{
+					ClearData[i] = TransparentColor;
+					ClearDataEditorArea[i] = TransparentColor;
+					ClearDataEditorMouseOverArea[i] = TransparentColor;
+					ClearDataEditorSelectedArea[i] = TransparentColor;
+					ClearDataOutsideContentArea[i] = TransparentColor;
+				}
+				else if (y < RimWidth || y >= VisibleHeight - RimWidth || x < RimWidth || x >= Bounds.Width - RimWidth)
 				{
 					ClearData[i] = RimColor;
 					ClearDataEditorArea[i] = RimColor;
@@ -646,7 +690,7 @@ internal sealed class MiniMap
 		var editorAreaPixelRange =
 			GetYPixelRelativeToBounds(EditorAreaEnd, true) - GetYPixelRelativeToBounds(EditorAreaStart, true);
 		var editorStartYPixel = selectedPixel - editorAreaPixelRange * GrabbedPositionAsPercentageOfEditorArea;
-		var editorStartPositionRange = Bounds.Height - editorAreaPixelRange;
+		var editorStartPositionRange = VisibleHeight - editorAreaPixelRange;
 		var percentage = editorStartYPixel / editorStartPositionRange;
 
 		// Put the MiniMap at the appropriate range based on that percentage.
@@ -698,7 +742,7 @@ internal sealed class MiniMap
 		MiniMapAreaStart = MiniMapAreaStartUnquantized;
 		if (QuantizePositions)
 		{
-			var chartSpacePerPixel = MiniMapAreaRange / Bounds.Height;
+			var chartSpacePerPixel = MiniMapAreaRange / VisibleHeight;
 			var numPixels = (int)(MiniMapAreaStart / chartSpacePerPixel);
 			var remainder = MiniMapAreaStart / (numPixels * chartSpacePerPixel);
 			if (remainder >= 0.5)
@@ -853,7 +897,7 @@ internal sealed class MiniMap
 
 		var yStartInt = MathUtils.FloorDouble(yStart);
 		var y = yStartInt;
-		if (y >= Bounds.Height - RimWidth)
+		if (y >= VisibleHeight - RimWidth)
 			return AddResult.BelowBottom;
 		if (yEnd < RimWidth)
 			return AddResult.AboveTop;
@@ -869,7 +913,7 @@ internal sealed class MiniMap
 
 		while (y < yEnd)
 		{
-			if (y >= Bounds.Height - RimWidth)
+			if (y >= VisibleHeight - RimWidth)
 			{
 				break;
 			}
@@ -941,7 +985,7 @@ internal sealed class MiniMap
 
 		if (yInt < RimWidth)
 			return AddResult.AboveTop;
-		if (yInt >= Bounds.Height - RimWidth)
+		if (yInt >= VisibleHeight - RimWidth)
 			return AddResult.BelowBottom;
 		if (w == 0)
 			return AddResult.InRange;
@@ -971,7 +1015,7 @@ internal sealed class MiniMap
 		}
 
 		yInt++;
-		if (yInt >= Bounds.Height - RimWidth)
+		if (yInt >= VisibleHeight - RimWidth)
 			return AddResult.InRange;
 
 		percent = 1.0f - percent;
@@ -1006,7 +1050,7 @@ internal sealed class MiniMap
 	{
 		var startYInt = MathUtils.FloorDouble(startY);
 		var y = startYInt;
-		if (y >= Bounds.Height - RimWidth)
+		if (y >= VisibleHeight - RimWidth)
 			return AddResult.BelowBottom;
 		if (endY < RimWidth)
 			return AddResult.AboveTop;
@@ -1022,7 +1066,7 @@ internal sealed class MiniMap
 
 		while (y < endY)
 		{
-			if (y >= Bounds.Height - RimWidth)
+			if (y >= VisibleHeight - RimWidth)
 			{
 				break;
 			}
@@ -1054,7 +1098,7 @@ internal sealed class MiniMap
 	/// </summary>
 	public void UpdateNoChart()
 	{
-		if (Bounds.Height <= 0 || Bounds.Width <= 0)
+		if (Bounds.Height <= 0 || Bounds.Width <= 0 || VisibleHeight <= 0)
 			return;
 		Array.Copy(ClearData, ColorData, Bounds.Width * Bounds.Height);
 		Textures[TextureIndex].SetData(ColorData);
@@ -1096,10 +1140,10 @@ internal sealed class MiniMap
 		CursorPosition = cursorPosition;
 		ArrowGraphicManager = arrowGraphicManager;
 
-		if (Bounds.Height <= 0 || Bounds.Width <= 0)
+		if (Bounds.Height <= 0 || Bounds.Width <= 0 || VisibleHeight <= 0)
 			return;
 
-		HeightOverMiniMapAreaRange = Bounds.Height / MiniMapAreaRange;
+		HeightOverMiniMapAreaRange = VisibleHeight / MiniMapAreaRange;
 
 		SetMiniMapAreaFromEditorArea();
 
@@ -1115,7 +1159,7 @@ internal sealed class MiniMap
 		// Draw area outside of content region on top.
 		var contentStartYPixel = GetYPixelRelativeToBounds(contentAreaStart);
 		var yStartInt = RimWidth;
-		var yEnd = Math.Min(Bounds.Height - RimWidth, contentStartYPixel);
+		var yEnd = Math.Min(VisibleHeight - RimWidth, contentStartYPixel);
 		var yEndInt = MathUtils.FloorDouble(yEnd);
 		if (yStartInt < yEndInt)
 		{
@@ -1125,7 +1169,7 @@ internal sealed class MiniMap
 			// ReSharper restore UselessBinaryOperation
 		}
 
-		if (yEndInt >= RimWidth && yEndInt < Bounds.Height - RimWidth)
+		if (yEndInt >= RimWidth && yEndInt < VisibleHeight - RimWidth)
 		{
 			var blendColor =
 				Utils.ColorRGBAInterpolateBGR(OutsideContentRangeColor, BackgroundColor, (float)(1.0 - (yEnd - yEndInt)));
@@ -1139,7 +1183,7 @@ internal sealed class MiniMap
 		var contentEndYPixel = GetYPixelRelativeToBounds(contentAreaEnd);
 		var yStart = Math.Max(RimWidth, contentEndYPixel + 1);
 		yStartInt = MathUtils.FloorDouble(yStart);
-		yEndInt = Bounds.Height - RimWidth;
+		yEndInt = VisibleHeight - RimWidth;
 		if (yStartInt > RimWidth && yStartInt < yEndInt)
 		{
 			var blendColor =
@@ -1174,16 +1218,16 @@ internal sealed class MiniMap
 		yEndInt = MathUtils.FloorDouble(editorEndYPixel);
 		var yStartForCopyInclusive = yStartInt + 1;
 		var yEndForCopyInclusive = yEndInt;
-		if (yStartForCopyInclusive < Bounds.Height - RimWidth && yEndForCopyInclusive >= RimWidth
+		if (yStartForCopyInclusive < VisibleHeight - RimWidth && yEndForCopyInclusive >= RimWidth
 		                                                      && yEndForCopyInclusive >= yStartForCopyInclusive)
 		{
 			var yStartForCopy = Math.Max(RimWidth, yStartForCopyInclusive);
-			var yEndForCopy = Math.Min(yEndForCopyInclusive, Bounds.Height - RimWidth);
+			var yEndForCopy = Math.Min(yEndForCopyInclusive, VisibleHeight - RimWidth);
 			Array.Copy(editorClearData, yStartForCopy * Bounds.Width,
 				ColorData, yStartForCopy * Bounds.Width, (yEndForCopy - yStartForCopy) * Bounds.Width);
 		}
 
-		if (yStartInt >= RimWidth && yStartInt < Bounds.Height - RimWidth)
+		if (yStartInt >= RimWidth && yStartInt < VisibleHeight - RimWidth)
 		{
 			var blendColor = Utils.ColorRGBAInterpolateBGR(editorColor, ColorData[yStartInt * Bounds.Width + RimWidth],
 				(float)(editorStartYPixel - yStartInt));
@@ -1193,7 +1237,7 @@ internal sealed class MiniMap
 			}
 		}
 
-		if (yEndInt >= RimWidth && yEndInt < Bounds.Height - RimWidth)
+		if (yEndInt >= RimWidth && yEndInt < VisibleHeight - RimWidth)
 		{
 			var blendColor = Utils.ColorRGBAInterpolateBGR(editorColor, ColorData[yEndInt * Bounds.Width + RimWidth],
 				(float)(1.0 - (editorEndYPixel - yEndInt)));
@@ -1216,7 +1260,7 @@ internal sealed class MiniMap
 	/// </summary>
 	public void UpdateEnd()
 	{
-		if (Bounds.Height <= 0 || Bounds.Width <= 0)
+		if (Bounds.Height <= 0 || Bounds.Width <= 0 || VisibleHeight <= 0)
 			return;
 
 		// If we are zoomed out so far that the MiniMap Area can't fit the Editor Areas or scroll
@@ -1257,7 +1301,7 @@ internal sealed class MiniMap
 	/// <param name="spriteBatch">SpriteBatch to use for rendering the texture.</param>
 	public void Draw(SpriteBatch spriteBatch)
 	{
-		if (Bounds.Height <= 0 || Bounds.Width <= 0)
+		if (Bounds.Height <= 0 || Bounds.Width <= 0 || VisibleHeight <= 0)
 			return;
 
 		// If we are zoomed out so far that the MiniMap Area can't fit the Editor Areas or scroll
@@ -1307,7 +1351,7 @@ internal sealed class MiniMap
 	/// <returns>Y position in Chart space.</returns>
 	private double GetPositionRelativeToPixel(double screenY)
 	{
-		return MiniMapAreaStart + (screenY - Bounds.Y) / Bounds.Height * MiniMapAreaRange;
+		return MiniMapAreaStart + (screenY - Bounds.Y) / VisibleHeight * MiniMapAreaRange;
 	}
 
 	/// <summary>
@@ -1320,7 +1364,7 @@ internal sealed class MiniMap
 	public bool IsScreenPositionInMiniMapBounds(int screenX, int screenY)
 	{
 		return screenX >= Bounds.X && screenX <= Bounds.X + Bounds.Width && screenY >= Bounds.Y &&
-		       screenY <= Bounds.Y + Bounds.Height;
+		       screenY <= Bounds.Y + VisibleHeight;
 	}
 
 	/// <summary>

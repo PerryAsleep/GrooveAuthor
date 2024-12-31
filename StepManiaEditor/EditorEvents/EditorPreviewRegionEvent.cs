@@ -13,19 +13,6 @@ namespace StepManiaEditor;
 /// </summary>
 internal sealed class EditorPreviewRegionEvent : EditorEvent, IChartRegion, Fumen.IObserver<EditorSong>
 {
-	public static readonly string PreviewDescription =
-		"The music Preview plays when a player scrolls to this song in StepMania.\nThe Preview can be played with the P key.";
-
-	public static readonly string EventShortDescription =
-		PreviewDescription +
-		"\nThe Preview time and length can also be set in the Song Properties window.";
-
-	public static readonly string WidgetHelp =
-		"Music Preview.\n" +
-		EventShortDescription +
-		"Expected format: \"<length>s\". e.g. \"1.0s\"\n" +
-		"Time must be non-negative.";
-
 	private const string Format = "%.9gs";
 	private const float Speed = 0.01f;
 	private double EndChartPosition;
@@ -120,6 +107,12 @@ internal sealed class EditorPreviewRegionEvent : EditorEvent, IChartRegion, Fume
 		set => WidthInternal = value;
 	}
 
+	public override double H
+	{
+		get => ImGuiLayoutUtils.GetMiscEditorEventHeight();
+		set { }
+	}
+
 	private bool WidthDirty;
 
 	public double DoubleValue
@@ -147,6 +140,27 @@ internal sealed class EditorPreviewRegionEvent : EditorEvent, IChartRegion, Fume
 		// with other rate altering events. When this happens, the event tree can end up in an invalid
 		// state due to the deletion behavior described above.
 		IsPositionImmutable = true;
+	}
+
+	public static string GetPreviewDescription()
+	{
+		var keybind = UIControls.GetCommandString(Preferences.Instance.PreferencesKeyBinds.TogglePreview);
+		return
+			$"The music Preview plays when a player scrolls to this song in StepMania.\nThe Preview can be played with {keybind}.";
+	}
+
+	public static string GetEventShortDescription()
+	{
+		return GetPreviewDescription() +
+		       "\nThe Preview time and length can also be set in the Song Properties window.";
+	}
+
+	public static string GetWidgetHelp()
+	{
+		return "Music Preview.\n" +
+		       GetEventShortDescription() +
+		       "Expected format: \"<length>s\". e.g. \"1.0s\"\n" +
+		       "Time must be non-negative.";
 	}
 
 	public override void OnAddedToChart()
@@ -234,7 +248,7 @@ internal sealed class EditorPreviewRegionEvent : EditorEvent, IChartRegion, Fume
 	public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)
 	{
 		ImGuiLayoutUtils.MiscEditorEventPreviewDragDoubleWidget(
-			"PreviewWidget",
+			GetImGuiId(),
 			this,
 			nameof(DoubleValue),
 			(int)X, (int)Y, (int)W,
@@ -243,13 +257,16 @@ internal sealed class EditorPreviewRegionEvent : EditorEvent, IChartRegion, Fume
 			Speed,
 			Format,
 			Alpha,
-			WidgetHelp,
+			GetWidgetHelp(),
 			0.0);
 	}
 
 	public void OnNotify(string eventId, EditorSong song, object payload)
 	{
 		if (eventId == EditorSong.NotificationSampleLengthChanged)
+		{
 			WidthDirty = true;
+			RefreshEndChartPosition();
+		}
 	}
 }

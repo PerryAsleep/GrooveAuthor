@@ -4,12 +4,19 @@ using Microsoft.Xna.Framework.Graphics;
 
 namespace MonoGameExtensions;
 
+public interface IReadOnlyTextureAtlas
+{
+	public (int, int) GetDimensions(string subTextureId);
+	public (int, int) GetDimensions();
+	public (int, int, int, int) GetSubTextureBounds(string subTextureId);
+}
+
 /// <summary>
 /// TextureAtlas wraps a texture containing sub-textures in order to reduce draw calls.
 /// Sub-textures have unique string identifiers.
 /// Sub-textures may have mip levels.
 /// </summary>
-public abstract class TextureAtlas
+public abstract class TextureAtlas : IReadOnlyTextureAtlas
 {
 	/// <summary>
 	/// A node in the TextureAtlas containing the location of the sub-texture and
@@ -88,7 +95,7 @@ public abstract class TextureAtlas
 			if (MipLevels == null)
 				return this;
 
-			while (scale < 0.5 && mipLevel < MipLevels.Length - 1)
+			while (scale <= 0.5 && mipLevel < MipLevels.Length - 1)
 			{
 				scale *= 2.0;
 				mipLevel++;
@@ -332,7 +339,19 @@ public abstract class TextureAtlas
 			Logger.Warn($"Failed to get texture identified by \"{subTextureId}\". No texture with that id found.");
 			return (0, 0, 0, 0);
 		}
+
 		return (node.TextureRect.X, node.TextureRect.Y, node.TextureRect.Width, node.TextureRect.Height);
+	}
+
+	public void Draw(string subTextureId, SpriteBatch spriteBatch, Rectangle destinationRectangle)
+	{
+		if (!GetNode(subTextureId, destinationRectangle, out var node, out _))
+		{
+			Logger.Warn($"Failed to draw packed texture identified by \"{subTextureId}\". No texture with that id found.");
+			return;
+		}
+
+		spriteBatch.Draw(Texture, destinationRectangle, node.TextureRect, Color.White);
 	}
 
 	public void Draw(string subTextureId, SpriteBatch spriteBatch, Rectangle destinationRectangle, float alpha)

@@ -6,12 +6,28 @@ namespace StepManiaEditor;
 /// <summary>
 /// Class for drawing MiniMap preferences UI.
 /// </summary>
-internal sealed class UIMiniMapPreferences
+internal sealed class UIMiniMapPreferences : UIWindow
 {
-	public const string WindowTitle = "MiniMap Preferences";
-
 	private static readonly int TitleColumnWidth = UiScaled(120);
 	private static readonly int DefaultWidth = UiScaled(460);
+
+	public static UIMiniMapPreferences Instance { get; } = new();
+
+	private UIMiniMapPreferences() : base("MiniMap Preferences")
+	{
+	}
+
+	public override void Open(bool focus)
+	{
+		Preferences.Instance.PreferencesMiniMap.ShowMiniMapPreferencesWindow = true;
+		if (focus)
+			Focus();
+	}
+
+	public override void Close()
+	{
+		Preferences.Instance.PreferencesMiniMap.ShowMiniMapPreferencesWindow = false;
+	}
 
 	public void Draw()
 	{
@@ -42,10 +58,9 @@ internal sealed class UIMiniMapPreferences
 			ImGuiLayoutUtils.DrawRowEnum<MiniMap.Position>(true, "Position", p, nameof(PreferencesMiniMap.MiniMapPosition), false,
 				"Where the mini map should be located.");
 
-			ImGuiLayoutUtils.DrawRowSliderUInt(true, "X Offset", p, nameof(PreferencesMiniMap.MiniMapXPadding), 0, 1024, false,
-				"%i pixels",
-				ImGuiSliderFlags.None,
-				"The x position offset in pixels of the mini map with respect to the selected location.");
+			ImGuiLayoutUtils.DrawRowDragInt(true, "Position Offset", p,
+				nameof(PreferencesMiniMap.PositionOffset), false,
+				"Position offset of the mini map.", 1.0f, "%i", -1024, 1024);
 
 			ImGuiLayoutUtils.DrawRowSliderUInt(true, "Width", p, nameof(PreferencesMiniMap.MiniMapWidth), 2, 128, false,
 				"%i pixels",

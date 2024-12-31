@@ -13,10 +13,8 @@ namespace StepManiaEditor;
 ///  Call Draw to draw.
 ///  Categories and commands will be drawn in the order they were added.
 /// </summary>
-internal sealed class UIControls
+internal sealed class UIControls : UIWindow
 {
-	public const string WindowTitle = "Controls";
-
 	private static readonly int TitleColumnWidth = UiScaled(260);
 	private static readonly Vector2 DefaultSize = new(UiScaled(538), UiScaled(800));
 
@@ -62,40 +60,7 @@ internal sealed class UIControls
 
 		public void AddInput(Keys[] input)
 		{
-			var inputString = "";
-			var firstInput = true;
-			foreach (var key in input)
-			{
-				if (!firstInput)
-					inputString += "+";
-
-				switch (key)
-				{
-					case Keys.LeftControl:
-					case Keys.RightControl:
-						inputString += "Ctrl";
-						break;
-					case Keys.LeftShift:
-					case Keys.RightShift:
-						inputString += "Shift";
-						break;
-					case Keys.LeftAlt:
-					case Keys.RightAlt:
-						inputString += "Alt";
-						break;
-					case Keys.LeftWindows:
-					case Keys.RightWindows:
-						inputString += "Win";
-						break;
-					default:
-						inputString += key;
-						break;
-				}
-
-				firstInput = false;
-			}
-
-			AddInput(inputString);
+			AddInput(GetCommandString(input));
 		}
 
 		public void AddInput(string input)
@@ -103,7 +68,7 @@ internal sealed class UIControls
 			if (string.IsNullOrEmpty(Input))
 				Input = input;
 			else
-				Input += $" / {input}";
+				Input += MultipleInputsJoinString + input;
 		}
 	}
 
@@ -111,6 +76,109 @@ internal sealed class UIControls
 	/// All Categories.
 	/// </summary>
 	private readonly List<Category> Categories = new();
+
+	public static UIControls Instance { get; } = new();
+
+	public const string MultipleInputsJoinString = " / ";
+	public const string MultipleKeysJoinString = "+";
+	public const string OrString = "/";
+	public const string Unbound = "<UNBOUND>";
+
+	private UIControls() : base("Controls")
+	{
+	}
+
+	public static string GetCommandString(List<Keys[]> inputs)
+	{
+		if (inputs == null || inputs.Count == 0)
+			return Unbound;
+
+		var combinedInputString = "";
+		var first = true;
+		foreach (var input in inputs)
+		{
+			var inputString = GetCommandString(input);
+			if (inputString != Unbound)
+			{
+				if (!first)
+					combinedInputString += MultipleInputsJoinString;
+				combinedInputString += GetCommandString(input);
+				first = false;
+			}
+		}
+
+		if (string.IsNullOrEmpty(combinedInputString))
+			return Unbound;
+		return combinedInputString;
+	}
+
+	public static string GetCommandString(Keys[] input)
+	{
+		if (input == null || input.Length == 0)
+			return Unbound;
+
+		var inputString = "";
+		var firstInput = true;
+		foreach (var key in input)
+		{
+			if (!firstInput)
+				inputString += MultipleKeysJoinString;
+
+			switch (key)
+			{
+				case Keys.LeftControl:
+				case Keys.RightControl:
+					inputString += "Ctrl";
+					break;
+				case Keys.LeftShift:
+				case Keys.RightShift:
+					inputString += "Shift";
+					break;
+				case Keys.LeftAlt:
+				case Keys.RightAlt:
+					inputString += "Alt";
+					break;
+				case Keys.LeftWindows:
+				case Keys.RightWindows:
+					inputString += "Win";
+					break;
+				case Keys.D0:
+				case Keys.D1:
+				case Keys.D2:
+				case Keys.D3:
+				case Keys.D4:
+				case Keys.D5:
+				case Keys.D6:
+				case Keys.D7:
+				case Keys.D8:
+				case Keys.D9:
+					inputString += key.ToString()[1..];
+					break;
+				default:
+					inputString += key;
+					break;
+			}
+
+			firstInput = false;
+		}
+
+		if (string.IsNullOrEmpty(inputString))
+			return Unbound;
+
+		return inputString;
+	}
+
+	public override void Open(bool focus)
+	{
+		Preferences.Instance.ShowControlsWindow = true;
+		if (focus)
+			Focus();
+	}
+
+	public override void Close()
+	{
+		Preferences.Instance.ShowControlsWindow = false;
+	}
 
 	public void AddCommand(string categoryName, string commandName, Keys[] input)
 	{

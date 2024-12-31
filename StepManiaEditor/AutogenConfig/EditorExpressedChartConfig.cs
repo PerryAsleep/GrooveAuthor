@@ -1,6 +1,5 @@
 ﻿using System;
 using Fumen;
-using ImGuiNET;
 using StepManiaLibrary.ExpressedChart;
 
 namespace StepManiaEditor.AutogenConfig;
@@ -110,8 +109,7 @@ internal sealed class EditorExpressedChartConfig : EditorConfig<Config>, IEquata
 	public static void ShowEditUI(Guid configGuid)
 	{
 		Preferences.Instance.ActiveExpressedChartConfigForWindow = configGuid;
-		Preferences.Instance.ShowExpressedChartListWindow = true;
-		ImGui.SetWindowFocus(UIExpressedChartConfig.WindowTitle);
+		UIExpressedChartConfig.Instance.Open(true);
 	}
 
 	#region IEquatable

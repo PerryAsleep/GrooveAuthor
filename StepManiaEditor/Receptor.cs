@@ -393,7 +393,7 @@ internal sealed class Receptor
 		return AutoplayHeld;
 	}
 
-	public static bool IsInReceptorArea(int x, int y, Vector2 focalPoint, double sizeZoom, TextureAtlas textureAtlas,
+	public static bool IsInReceptorArea(int x, int y, Vector2 focalPoint, double sizeZoom, IReadOnlyTextureAtlas textureAtlas,
 		ArrowGraphicManager arrowGraphicManager, EditorChart activeChart)
 	{
 		if (arrowGraphicManager == null || activeChart == null)
@@ -402,7 +402,7 @@ internal sealed class Receptor
 		return x >= bounds.Item1 && x <= bounds.Item1 + bounds.Item3 && y >= bounds.Item2 && y <= bounds.Item2 + bounds.Item4;
 	}
 
-	public static (int, int, int, int) GetBounds(Vector2 focalPoint, double sizeZoom, TextureAtlas textureAtlas,
+	public static (int, int, int, int) GetBounds(Vector2 focalPoint, double sizeZoom, IReadOnlyTextureAtlas textureAtlas,
 		ArrowGraphicManager arrowGraphicManager, EditorChart activeChart)
 	{
 		if (arrowGraphicManager == null || activeChart == null)
@@ -418,5 +418,19 @@ internal sealed class Receptor
 			(int)(focalPoint.Y - arrowHeight * 0.5f),
 			(int)(arrowWidth * numArrows),
 			(int)arrowHeight);
+	}
+
+	public static int GetReceptorAreaWidth(double sizeZoom, IReadOnlyTextureAtlas textureAtlas,
+		ArrowGraphicManager arrowGraphicManager,
+		EditorChart activeChart)
+	{
+		if (arrowGraphicManager == null || activeChart == null)
+			return 0;
+
+		var (textureId, _) = arrowGraphicManager.GetReceptorTexture(0);
+		var (textureWidth, _) = textureAtlas.GetDimensions(textureId);
+		var arrowWidth = textureWidth * sizeZoom;
+
+		return (int)(activeChart.NumInputs * arrowWidth);
 	}
 }

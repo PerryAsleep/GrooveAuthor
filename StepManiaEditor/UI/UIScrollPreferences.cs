@@ -7,12 +7,30 @@ namespace StepManiaEditor;
 /// <summary>
 /// Class for drawing scroll preferences UI.
 /// </summary>
-internal sealed class UIScrollPreferences
+internal sealed class UIScrollPreferences : UIWindow
 {
-	public const string WindowTitle = "Scroll Preferences";
-
 	private static readonly int TitleColumnWidth = UiScaled(120);
 	private static readonly int DefaultWidth = UiScaled(460);
+	private static readonly int OptionsButtonWidth = UiScaled(50);
+	private static readonly float ButtonSizeCapWidth = UiScaled(24);
+
+	public static UIScrollPreferences Instance { get; } = new();
+
+	private UIScrollPreferences() : base("Scroll Preferences")
+	{
+	}
+
+	public override void Open(bool focus)
+	{
+		Preferences.Instance.PreferencesScroll.ShowScrollControlPreferencesWindow = true;
+		if (focus)
+			Focus();
+	}
+
+	public override void Close()
+	{
+		Preferences.Instance.PreferencesScroll.ShowScrollControlPreferencesWindow = false;
+	}
 
 	public void Draw()
 	{
@@ -24,7 +42,7 @@ internal sealed class UIScrollPreferences
 		{
 			if (ImGuiLayoutUtils.BeginTable("Scroll", TitleColumnWidth))
 			{
-				DrawSpacingModeRow("Spacing Mode");
+				DrawSpacingModeRow("Spacing Mode", false);
 				DrawWaveFormScrollMode();
 				ImGuiLayoutUtils.EndTable();
 			}
@@ -53,8 +71,7 @@ internal sealed class UIScrollPreferences
 			ImGui.Separator();
 			if (ImGuiLayoutUtils.BeginTable("Spacing Options", TitleColumnWidth))
 			{
-				ImGuiLayoutUtils.DrawTitle("Spacing Options",
-					"Shift+Scroll while over the chart changes how the notes are spaced for the current Spacing mode.");
+				ImGuiLayoutUtils.DrawTitle("Spacing Options", GetSpacingHelpText());
 
 				if (p.SpacingMode != Editor.SpacingMode.ConstantTime)
 					PushDisabled();
@@ -123,6 +140,24 @@ internal sealed class UIScrollPreferences
 			}
 
 			ImGui.Separator();
+			if (ImGuiLayoutUtils.BeginTable("Size Cap", TitleColumnWidth))
+			{
+				DrawSizeCapRow();
+
+				ImGuiLayoutUtils.DrawRowCheckbox(true, "Limit Zoom to Size", p, nameof(PreferencesScroll.LimitZoomToSize),
+					false,
+					"Whether or not to limit zoom to the size cap." +
+					"\n\nIf unchecked, zooming in and out will be effectively unbounded in both directions. When zooming "
+					+ "in and notes reach their size cap, zooming will continue without affecting the note size. Use this "
+					+ "option if you prefer zooming to be unbounded."
+					+ "\n\nIf checked, zooming in will be bounded by the note size cap, meaning once notes reach their "
+					+ "maximum size zooming in further will have no effect. Use this option if you prefer zooming to only "
+					+ "affect note size and not affect spacing of notes relative to their size.");
+
+				ImGuiLayoutUtils.EndTable();
+			}
+
+			ImGui.Separator();
 			if (ImGuiLayoutUtils.BeginTable("Scroll Restore", TitleColumnWidth))
 			{
 				if (ImGuiLayoutUtils.DrawRowButton("Restore Defaults", "Restore Defaults",
@@ -136,6 +171,15 @@ internal sealed class UIScrollPreferences
 		}
 
 		ImGui.End();
+	}
+
+	public static string GetSpacingHelpText()
+	{
+		var pKeyBinds = Preferences.Instance.PreferencesKeyBinds;
+		var keyBind = UIControls.GetCommandString(pKeyBinds.ScrollSpacing) + UIControls.MultipleKeysJoinString + "Scroll";
+		var spacingHelperText = "Spacing affects note speed and has a similar effect to StepMania speed mods."
+		                        + $"\n\nSpacing can be adjusted with {keyBind}.";
+		return spacingHelperText;
 	}
 
 	public static void DrawWaveFormScrollMode()
@@ -156,19 +200,43 @@ internal sealed class UIScrollPreferences
 			+ "\n                        effectively one tempo but has brief scroll rate gimmicks.");
 	}
 
-	public static void DrawSpacingModeRow(string title)
+	public static void DrawSpacingModeRow(string title, bool withOpenPreferencesButton)
 	{
-		ImGuiLayoutUtils.DrawRowEnum<Editor.SpacingMode>(true, title, Preferences.Instance.PreferencesScroll,
-			nameof(PreferencesScroll.SpacingMode), false,
-			"How events in the Chart should be spaced when rendering."
-			+ "\nConstant Time: Events are spaced by their time."
-			+ "\n               Equivalent to a CMOD when playing."
-			+ "\nConstant Row:  Spacing is based on row and rows are treated as always the same distance apart."
-			+ "\n               Scroll rate modifiers are ignored."
-			+ "\n               Other rate altering events like stops and tempo changes affect the scroll rate."
-			+ "\nVariable:      Spacing is based on tempo and is affected by all rate altering events."
-			+ "\n               Equivalent to a XMOD when playing."
-			+ "\n"
-			+ "\nThe Spacing Mode can be toggled with the S key.");
+		var keybind = UIControls.GetCommandString(Preferences.Instance.PreferencesKeyBinds.ToggleSpacingMode);
+		var help = "How events in the Chart should be spaced when rendering."
+		           + "\nConstant Time: Events are spaced by their time."
+		           + "\n               Equivalent to a CMOD when playing."
+		           + "\nConstant Row:  Spacing is based on row and rows are treated as always the same distance apart."
+		           + "\n               Scroll rate modifiers are ignored."
+		           + "\n               Other rate altering events like stops and tempo changes affect the scroll rate."
+		           + "\nVariable:      Spacing is based on tempo and is affected by all rate altering events."
+		           + "\n               Equivalent to a XMOD when playing."
+		           + "\n"
+		           + $"\nThe Spacing Mode can be changed with {keybind}.";
+
+		if (withOpenPreferencesButton)
+		{
+			ImGuiLayoutUtils.DrawRowEnumWithButton<Editor.SpacingMode>(true, title, Preferences.Instance.PreferencesScroll,
+				nameof(PreferencesScroll.SpacingMode), false,
+				"Options", () => { Instance.Open(true); }, OptionsButtonWidth,
+				help);
+		}
+		else
+		{
+			ImGuiLayoutUtils.DrawRowEnum<Editor.SpacingMode>(true, title, Preferences.Instance.PreferencesScroll,
+				nameof(PreferencesScroll.SpacingMode), false, help);
+		}
+	}
+
+	public static void DrawSizeCapRow()
+	{
+		var p = Preferences.Instance.PreferencesScroll;
+		ImGuiLayoutUtils.DrawRowDragDoubleWithThreeButtons(false, "Size Cap",
+			p, nameof(PreferencesScroll.SizeCap), false,
+			() => { p.SizeCap = 1.0; }, "1", ButtonSizeCapWidth,
+			() => { p.SizeCap = 0.5; }, "1/2", ButtonSizeCapWidth,
+			() => { p.SizeCap = 0.25; }, "1/4", ButtonSizeCapWidth,
+			"Maximum allowed size of the notes. Lowering this value can achieve an effect similar to \"mini\" in StepMania.",
+			0.001f, "%.6f", ZoomManager.MinSizeCap, ZoomManager.MaxSizeCap);
 	}
 }

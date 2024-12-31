@@ -124,11 +124,10 @@ internal sealed class UIPatternConfigTable
 				ImGui.TableNextColumn();
 				ImGui.PushStyleColor(ImGuiCol.Text, config.GetStringColor());
 				if (ImGui.Selectable($"{config.GetNoteTypeString()}##{index}", false,
-					    ImGuiSelectableFlags.SpanAllColumns | ImGuiSelectableFlags.AllowItemOverlap))
+					    ImGuiSelectableFlags.SpanAllColumns | ImGuiSelectableFlags.AllowOverlap))
 				{
 					Preferences.Instance.ActivePatternConfigForWindow = configGuid;
-					Preferences.Instance.ShowPatternListWindow = true;
-					ImGui.SetWindowFocus(UIPatternConfig.WindowTitle);
+					UIPatternConfig.Instance.Open(true);
 				}
 
 				ImGui.PopStyleColor();

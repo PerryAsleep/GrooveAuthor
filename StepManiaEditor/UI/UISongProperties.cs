@@ -12,30 +12,47 @@ namespace StepManiaEditor;
 /// <summary>
 /// Class for drawing Song properties UI.
 /// </summary>
-internal sealed class UISongProperties
+internal sealed class UISongProperties : UIWindow
 {
-	public const string WindowTitle = "Song Properties";
-
-	private readonly Editor Editor;
+	private Editor Editor;
 	private EditorSong EditorSong;
 
-	private static EmptyTexture EmptyTextureBanner;
-	private static EmptyTexture EmptyTextureCDTitle;
+	private EmptyTexture EmptyTextureBanner;
+	private EmptyTexture EmptyTextureCDTitle;
 
-	private static readonly int TitleColumnWidth = UiScaled(100);
+	private static readonly int TitleColumnWidth = UiScaled(90);
 	private static readonly float ButtonSetWidth = UiScaled(108);
 	private static readonly float ButtonGoWidth = UiScaled(20);
 	private static readonly float ButtonSyncWidth = UiScaled(60);
 	private static readonly float ButtonHelpWidth = UiScaled(32);
 	private static readonly float ButtonApplyItgOffsetWidth = UiScaled(110);
 	private static readonly Vector2 DefaultPosition = new(UiScaled(0), UiScaled(21));
-	private static readonly Vector2 DefaultSize = new(UiScaled(622), UiScaled(610));
+	public static readonly Vector2 DefaultSize = new(UiScaled(637), UiScaled(610));
+	public static readonly Vector2 DefaultSizeSmall = new(UiScaled(457), UiScaled(577));
 
-	public UISongProperties(Editor editor, GraphicsDevice graphicsDevice, ImGuiRenderer imGuiRenderer)
+	public static UISongProperties Instance { get; } = new();
+
+	private UISongProperties() : base("Song Properties")
+	{
+	}
+
+	public void Init(Editor editor, GraphicsDevice graphicsDevice, ImGuiRenderer imGuiRenderer)
 	{
 		EmptyTextureBanner = new EmptyTexture(graphicsDevice, imGuiRenderer, (uint)GetBannerWidth(), (uint)GetBannerHeight());
 		EmptyTextureCDTitle = new EmptyTexture(graphicsDevice, imGuiRenderer, (uint)GetCDTitleWidth(), (uint)GetCDTitleHeight());
 		Editor = editor;
+	}
+
+	public override void Open(bool focus)
+	{
+		Preferences.Instance.ShowSongPropertiesWindow = true;
+		if (focus)
+			Focus();
+	}
+
+	public override void Close()
+	{
+		Preferences.Instance.ShowSongPropertiesWindow = false;
 	}
 
 	public void Draw(EditorSong editorSong)
@@ -47,7 +64,7 @@ internal sealed class UISongProperties
 
 		ImGui.SetNextWindowPos(DefaultPosition, ImGuiCond.FirstUseEver);
 		ImGui.SetNextWindowSize(DefaultSize, ImGuiCond.FirstUseEver);
-		if (ImGui.Begin(WindowTitle, ref Preferences.Instance.ShowSongPropertiesWindow, ImGuiWindowFlags.NoScrollbar))
+		if (ImGui.Begin(WindowTitle, ref Preferences.Instance.ShowSongPropertiesWindow, ImGuiWindowFlags.AlwaysVerticalScrollbar))
 		{
 			var disabled = !Editor.CanSongBeEdited(EditorSong);
 			if (disabled)
@@ -139,14 +156,14 @@ internal sealed class UISongProperties
 					SetPreviewStartFromCurrentTime, "Use Current Time", ButtonSetWidth,
 					JumpToPreviewStart, "Go", ButtonGoWidth,
 					"Music preview start time.\n" +
-					EditorPreviewRegionEvent.PreviewDescription,
+					EditorPreviewRegionEvent.GetPreviewDescription(),
 					0.0001f, "%.6f seconds");
 				ImGuiLayoutUtils.DrawRowDragDoubleWithTwoButtons(true, "Preview Length", EditorSong,
 					nameof(EditorSong.SampleLength), true,
 					SetPreviewEndFromCurrentTime, "Use Current Time", ButtonSetWidth,
 					JumpToPreviewEnd, "Go", ButtonGoWidth,
 					"Music preview length.\n" +
-					EditorPreviewRegionEvent.PreviewDescription,
+					EditorPreviewRegionEvent.GetPreviewDescription(),
 					0.0001f, "%.6f seconds", 0.0);
 
 				ImGuiLayoutUtils.DrawRowDragDoubleWithTwoButtons(true, "End Hint", EditorSong, nameof(EditorSong.LastSecondHint),
@@ -189,78 +206,75 @@ internal sealed class UISongProperties
 					"\n\nAdditionally, when saving an sm file which does not support chart-level timing, this field" +
 					"\nis used to determine which chart to use for the song timing data." +
 					"\n\nApply Timing: Will apply the timing events from this chart to all other charts." +
-					"\nApply Timing + Scroll: Will apply the timing and scroll events from this chart to all other charts.");
+					"\nApply:         Will apply the timing and scroll events from this chart to all other charts.");
 
 				ImGuiLayoutUtils.EndTable();
 			}
 
 			ImGui.Separator();
-			if (ImGui.CollapsingHeader("Uncommon Properties"))
+			if (ImGuiLayoutUtils.BeginTable("UncommonProperties", TitleColumnWidth))
 			{
-				if (ImGuiLayoutUtils.BeginTable("UncommonProperties", TitleColumnWidth))
-				{
-					ImGuiLayoutUtils.DrawRowTextInput(true, "Genre", EditorSong, nameof(EditorSong.Genre), true,
-						"The genre of the song.");
+				ImGuiLayoutUtils.DrawRowTextInput(true, "Genre", EditorSong, nameof(EditorSong.Genre), true,
+					"The genre of the song.");
 
-					ImGuiLayoutUtils.DrawRowTextInput(true, "Origin", EditorSong, nameof(EditorSong.Origin), true,
-						"What game this song originated from.");
+				ImGuiLayoutUtils.DrawRowTextInput(true, "Origin", EditorSong, nameof(EditorSong.Origin), true,
+					"What game this song originated from.");
 
-					ImGuiLayoutUtils.EndTable();
-				}
+				ImGuiLayoutUtils.EndTable();
+			}
 
-				ImGui.Separator();
-				if (ImGuiLayoutUtils.BeginTable("UncommonPreview", TitleColumnWidth))
-				{
-					ImGuiLayoutUtils.DrawRowFileBrowse("Preview File", EditorSong, nameof(EditorSong.MusicPreviewPath),
-						BrowseMusicPreviewFile, ClearMusicPreviewFile, true,
-						"An audio file to use for a preview instead of playing a range from the music file.");
+			ImGui.Separator();
+			if (ImGuiLayoutUtils.BeginTable("UncommonPreview", TitleColumnWidth))
+			{
+				ImGuiLayoutUtils.DrawRowFileBrowse("Preview File", EditorSong, nameof(EditorSong.MusicPreviewPath),
+					BrowseMusicPreviewFile, ClearMusicPreviewFile, true,
+					"An audio file to use for a preview instead of playing a range from the music file.");
 
-					ImGuiLayoutUtils.EndTable();
-				}
+				ImGuiLayoutUtils.EndTable();
+			}
 
-				ImGui.Separator();
-				if (ImGuiLayoutUtils.BeginTable("UncommonAssets", TitleColumnWidth))
-				{
-					ImGuiLayoutUtils.DrawRowFileBrowse("Jacket", EditorSong, nameof(EditorSong.CDTitlePath), BrowseJacket,
-						ClearJacket, true,
-						"Jacket graphic."
-						+ "\nMeant for themes which display songs with jacket assets in the song wheel like DDR X2."
-						+ "\nTypically square, but dimensions are arbitrary.");
+			ImGui.Separator();
+			if (ImGuiLayoutUtils.BeginTable("UncommonAssets", TitleColumnWidth))
+			{
+				ImGuiLayoutUtils.DrawRowFileBrowse("Jacket", EditorSong, nameof(EditorSong.CDTitlePath), BrowseJacket,
+					ClearJacket, true,
+					"Jacket graphic."
+					+ "\nMeant for themes which display songs with jacket assets in the song wheel like DDR X2."
+					+ "\nTypically square, but dimensions are arbitrary.");
 
-					ImGuiLayoutUtils.DrawRowFileBrowse("CD Image", EditorSong, nameof(EditorSong.CDTitlePath), BrowseCDImage,
-						ClearCDImage, true,
-						"CD image graphic."
-						+ "\nOriginally meant to capture song select graphics which looked like CDs from the original DDR."
-						+ "\nTypically square, but dimensions are arbitrary.");
+				ImGuiLayoutUtils.DrawRowFileBrowse("CD Image", EditorSong, nameof(EditorSong.CDTitlePath), BrowseCDImage,
+					ClearCDImage, true,
+					"CD image graphic."
+					+ "\nOriginally meant to capture song select graphics which looked like CDs from the original DDR."
+					+ "\nTypically square, but dimensions are arbitrary.");
 
-					ImGuiLayoutUtils.DrawRowFileBrowse("Disc Image", EditorSong, nameof(EditorSong.CDTitlePath), BrowseDiscImage,
-						ClearDiscImage, true,
-						"Disc Image graphic."
-						+ "\nOriginally meant to capture PIU song select graphics, which were discs in very old versions."
-						+ "\nMore modern PIU uses rectangular banners, but dimensions are arbitrary.");
+				ImGuiLayoutUtils.DrawRowFileBrowse("Disc Image", EditorSong, nameof(EditorSong.CDTitlePath), BrowseDiscImage,
+					ClearDiscImage, true,
+					"Disc Image graphic."
+					+ "\nOriginally meant to capture PIU song select graphics, which were discs in very old versions."
+					+ "\nMore modern PIU uses rectangular banners, but dimensions are arbitrary.");
 
-					ImGuiLayoutUtils.DrawRowFileBrowse("Preview Video", EditorSong, nameof(EditorSong.PreviewVideoPath),
-						BrowsePreviewVideoFile, ClearPreviewVideoFile, true,
-						"The preview video file." +
-						"\nMeant for themes based on PIU where videos play on the song select screen.");
+				ImGuiLayoutUtils.DrawRowFileBrowse("Preview Video", EditorSong, nameof(EditorSong.PreviewVideoPath),
+					BrowsePreviewVideoFile, ClearPreviewVideoFile, true,
+					"The preview video file." +
+					"\nMeant for themes based on PIU where videos play on the song select screen.");
 
-					ImGuiLayoutUtils.EndTable();
-				}
+				ImGuiLayoutUtils.EndTable();
+			}
 
-				ImGui.Separator();
-				if (ImGuiLayoutUtils.BeginTable("UncommonMisc", TitleColumnWidth))
-				{
-					ImGuiLayoutUtils.DrawRowEnum<Selectable>(true, "Selectable", EditorSong, nameof(EditorSong.Selectable), true,
-						"Under what conditions this song should be selectable." +
-						"\nMeant to capture stage requirements from DDR like extra stage and one more extra stage." +
-						"\nLeave as YES if you are unsure what to use.");
+			ImGui.Separator();
+			if (ImGuiLayoutUtils.BeginTable("UncommonMisc", TitleColumnWidth))
+			{
+				ImGuiLayoutUtils.DrawRowEnum<Selectable>(true, "Selectable", EditorSong, nameof(EditorSong.Selectable), true,
+					"Under what conditions this song should be selectable." +
+					"\nMeant to capture stage requirements from DDR like extra stage and one more extra stage." +
+					"\nLeave as YES if you are unsure what to use.");
 
-					ImGuiLayoutUtils.DrawRowFileBrowse("Lyrics", EditorSong, nameof(EditorSong.LyricsPath), BrowseLyricsFile,
-						ClearLyricsFile, true,
-						"Lyrics file for displaying lyrics while the song plays.");
+				ImGuiLayoutUtils.DrawRowFileBrowse("Lyrics", EditorSong, nameof(EditorSong.LyricsPath), BrowseLyricsFile,
+					ClearLyricsFile, true,
+					"Lyrics file for displaying lyrics while the song plays.");
 
-					ImGuiLayoutUtils.EndTable();
-				}
+				ImGuiLayoutUtils.EndTable();
 			}
 
 			if (disabled)

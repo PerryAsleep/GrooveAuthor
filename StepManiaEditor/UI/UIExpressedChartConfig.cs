@@ -8,12 +8,10 @@ namespace StepManiaEditor;
 /// <summary>
 /// Class for drawing UI to edit an EditorExpressedChartConfig.
 /// </summary>
-internal sealed class UIExpressedChartConfig
+internal sealed class UIExpressedChartConfig : UIWindow
 {
 	private static readonly int TitleColumnWidth = UiScaled(240);
 	private static readonly int DefaultWidth = UiScaled(460);
-
-	public const string WindowTitle = "Expressed Chart Config";
 
 	public static readonly string HelpText =
 		$"Expressed Chart Configs are settings used by {Utils.GetAppName()} to interpret Charts."
@@ -22,11 +20,29 @@ internal sealed class UIExpressedChartConfig
 		+ " An Expressed Chart Config can be assigned to a Chart in the Chart Properties window."
 		+ " Full details can be found in the documentation.";
 
-	private readonly Editor Editor;
+	private Editor Editor;
 
-	public UIExpressedChartConfig(Editor editor)
+	public static UIExpressedChartConfig Instance { get; } = new();
+
+	private UIExpressedChartConfig() : base("Expressed Chart Config")
+	{
+	}
+
+	public void Init(Editor editor)
 	{
 		Editor = editor;
+	}
+
+	public override void Open(bool focus)
+	{
+		Preferences.Instance.ShowExpressedChartListWindow = true;
+		if (focus)
+			Focus();
+	}
+
+	public override void Close()
+	{
+		Preferences.Instance.ShowExpressedChartListWindow = false;
 	}
 
 	public void Draw()

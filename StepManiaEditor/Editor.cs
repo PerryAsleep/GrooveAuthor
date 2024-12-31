@@ -25,7 +25,6 @@ using static StepManiaEditor.ImGuiUtils;
 using static Fumen.Converters.SMCommon;
 using static StepManiaEditor.EditorSongImageUtils;
 using static StepManiaEditor.MiniMap;
-using static StepManiaEditor.UIControls;
 using Keys = Microsoft.Xna.Framework.Input.Keys;
 using Path = Fumen.Path;
 
@@ -115,18 +114,13 @@ internal sealed class Editor :
 		Right,
 	}
 
-	public class SnapData
-	{
-		public int Rows;
-		public string Texture;
-	}
-
-	private SnapData[] SnapLevels;
-
 	private readonly EditorMouseState EditorMouseState = new();
 	private bool CanShowRightClickPopupThisFrame;
 
 	private bool MovingFocalPoint;
+	private bool FocalPointMoved;
+	private bool LastMouseUpEventWasUsedForMovingFocalPoint;
+	private bool ForceOnlyHorizontalFocalPointMove;
 	private Vector2 FocalPointAtMoveStart;
 	private Vector2 FocalPointMoveOffset;
 
@@ -168,41 +162,15 @@ internal sealed class Editor :
 	private SpriteBatch SpriteBatch;
 	private ImGuiRenderer ImGuiRenderer;
 	private WaveFormRenderer WaveFormRenderer;
+	private uint WaveFormTextureHeight;
 	private SoundManager SoundManager;
 	private MusicManager MusicManager;
 	private MiniMap MiniMap;
-	private ArrowGraphicManager ArrowGraphicManager;
+	private SnapManager SnapManager;
 
 	// UI
-	private UILog UILog;
-	private UIAbout UIAbout;
-	private UIControls UIControls;
-	private UISongProperties UISongProperties;
-	private UIChartProperties UIChartProperties;
-	private UIChartList UIChartList;
-	private UIWaveFormPreferences UIWaveFormPreferences;
-	private UIDarkPreferences UIDarkPreferences;
-	private UIScrollPreferences UIScrollPreferences;
-	private UISelectionPreferences UISelectionPreferences;
-	private UIMiniMapPreferences UIMiniMapPreferences;
-	private UIReceptorPreferences UIReceptorPreferences;
-	private UIOptions UIOptions;
-	private UIAudioPreferences UIAudioPreferences;
-	private UIChartPosition UIChartPosition;
-	private UIExpressedChartConfig UIExpressedChartConfig;
-	private UIPerformedChartConfig UIPerformedChartConfig;
-	private UIPatternConfig UIPatternConfig;
-	private UIAutogenConfigs UIAutogenConfigs;
-	private UIAutogenChart UIAutogenChart;
-	private UIAutogenChartsForChartType UIAutogenChartsForChartType;
-	private UICopyEventsBetweenCharts UICopyEventsBetweenCharts;
-	private UIPatternEvent UIPatternEvent;
-	private UIPerformance UIPerformance;
 	private UIEditEvents UIEditEvents;
 	private UIFTUE UIFTUE;
-#if DEBUG
-	private UIDebug UIDebug;
-#endif
 
 	private readonly UIPatternComparer PatternComparer = new();
 	private readonly UIPerformedChartComparer PerformedChartComparer = new();
@@ -221,6 +189,7 @@ internal sealed class Editor :
 	private bool ShouldCheckForShowingSongFileChangedNotification;
 	private bool ShowingSongFileChangedNotification;
 	private int GarbageCollectFrame;
+	private long FrameCount;
 
 	private readonly Dictionary<ChartType, PadData> PadDataByChartType = new();
 	private readonly Dictionary<ChartType, StepGraph> StepGraphByChartType = new();
@@ -229,6 +198,9 @@ internal sealed class Editor :
 
 	private double PlaybackStartTime;
 	private Stopwatch PlaybackStopwatch;
+
+	private bool IsChartAreaSet;
+	private Rectangle ChartArea;
 
 	private EditorSong ActiveSong
 	{
@@ -246,44 +218,44 @@ internal sealed class Editor :
 
 	private EditorSong ActiveSongInternal;
 
-	private EditorChart ActiveChart
+	private EditorChart FocusedChart
 	{
 		set
 		{
 			Debug.Assert(IsOnMainThread());
-			ActiveChartInternal = value;
+			FocusedChartInternal = value;
 		}
 		get
 		{
 			Debug.Assert(IsOnMainThread());
-			return ActiveChartInternal;
+			return FocusedChartInternal;
 		}
 	}
 
-	private EditorChart ActiveChartInternal;
+	private EditorChart FocusedChartInternal;
 
-	private readonly List<EditorEvent> VisibleEvents = new();
-	private readonly List<EditorMarkerEvent> VisibleMarkers = new();
-	private readonly List<IChartRegion> VisibleRegions = new();
-	private readonly HashSet<IChartRegion> RegionsOverlappingStart = new();
-	private readonly SelectedRegion SelectedRegion = new();
+	private ActiveEditorChart FocusedChartData
+	{
+		set
+		{
+			Debug.Assert(IsOnMainThread());
+			FocusedChartDataInternal = value;
+		}
+		get
+		{
+			Debug.Assert(IsOnMainThread());
+			return FocusedChartDataInternal;
+		}
+	}
+
+	private ActiveEditorChart FocusedChartDataInternal;
+
+	private readonly List<EditorChart> ActiveCharts = new();
+	private readonly List<ActiveEditorChart> ActiveChartData = new();
 	private readonly List<EditorEvent> CopiedEvents = new();
-	private readonly Selection Selection = new();
-	private EditorPatternEvent LastSelectedPatternEvent;
-	private bool TransformingSelectedNotes;
-	private readonly List<EditorEvent> MovingNotes = new();
-	private Receptor[] Receptors;
-	private EventSpacingHelper SpacingHelper;
-	private AutoPlayer AutoPlayer;
-
-	private double WaveFormPPS = 1.0;
 
 	// Movement controls.
-	private EditorPosition Position;
 	private bool UpdatingSongTimeDirectly;
-
-	// Note controls
-	private LaneEditState[] LaneEditStates;
 
 	private KeyCommandManager KeyCommandManager;
 	private bool Playing;
@@ -291,6 +263,7 @@ internal sealed class Editor :
 	private bool MiniMapCapturingMouse;
 	private bool DensityGraphCapturingMouse;
 	private bool StartPlayingWhenMouseScrollingDone;
+	private bool TransformingSelectedNotes;
 
 	private uint MaxScreenHeight;
 
@@ -308,8 +281,6 @@ internal sealed class Editor :
 	private PerformanceMonitor PerformanceMonitor;
 
 	// Debug
-	private bool RenderChart = true;
-	private bool RenderMarkers = true;
 	private bool ShowImGuiTestWindow;
 	private readonly int MainThreadId;
 
@@ -359,7 +330,6 @@ internal sealed class Editor :
 		InitializeImGuiUtils();
 		InitializeAutogenConfigsAsync();
 		InitializeZoomManager();
-		InitializeEditorPosition();
 		InitializeSoundManager();
 		InitializeMusicManager();
 		InitializeGraphics();
@@ -367,7 +337,7 @@ internal sealed class Editor :
 		InitializeMouseVisibility();
 		InitializeWindowResizing();
 		InitializeVSync();
-		InitializeSnapLevels();
+		InitializeSnapManager();
 		InitializeObservers();
 		InitializePerformanceMonitor();
 
@@ -392,6 +362,7 @@ internal sealed class Editor :
 	{
 		InitializeWindowSize();
 		InitializeFormCallbacks();
+		InitializeImGui();
 		InitializeFonts();
 		InitializeGuiDpiScale();
 		InitializeScreenHeight();
@@ -549,11 +520,6 @@ internal sealed class Editor :
 		ZoomManager = new ZoomManager();
 	}
 
-	private void InitializeEditorPosition()
-	{
-		Position = new EditorPosition(OnPositionChanged);
-	}
-
 	private void InitializeSoundManager()
 	{
 		var p = Preferences.Instance.PreferencesAudio;
@@ -585,122 +551,160 @@ internal sealed class Editor :
 
 	private void InitializeKeyCommandManager()
 	{
+		var p = Preferences.Instance.PreferencesKeyBinds;
 		// @formatter:off
 		KeyCommandManager = new KeyCommandManager();
 
 		const string fileIo = "File I/O";
-		AddKeyCommand(fileIo, "Open", new[] { Keys.LeftControl, Keys.O }, OnOpen);
-		AddKeyCommand(fileIo, "Open Containing Folder", new[] { Keys.LeftControl, Keys.LeftShift, Keys.O }, OnOpenContainingFolder);
-		AddKeyCommand(fileIo, "Save As", new[] { Keys.LeftControl, Keys.LeftShift, Keys.S }, OnSaveAs, false, null, true);
-		AddKeyCommand(fileIo, "Save", new[] { Keys.LeftControl, Keys.S }, OnSave);
-
-		AddKeyCommand(fileIo, "New", new[] { Keys.LeftControl, Keys.N }, OnNew);
-		AddKeyCommand(fileIo, "Reload", new[] { Keys.LeftControl, Keys.R }, OnReload);
+		AddKeyCommand(fileIo, "Open", p.Open, OnOpen);
+		AddKeyCommand(fileIo, "Open Containing Folder", p.OpenContainingFolder, OnOpenContainingFolder);
+		AddKeyCommand(fileIo, "Save As", p.SaveAs, OnSaveAs);
+		AddKeyCommand(fileIo, "Save", p.Save, OnSave);
+		AddKeyCommand(fileIo, "New", p.New, OnNew);
+		AddKeyCommand(fileIo, "Reload", p.Reload, OnReload);
 
 		const string undo = "Undo";
-		AddKeyCommand(undo, "Undo", new[] { Keys.LeftControl, Keys.Z }, OnUndo, true);
-		AddKeyCommand(undo, "Redo", new[] { Keys.LeftControl, Keys.LeftShift, Keys.Z }, OnRedo, true);
-		AddKeyCommand(undo, "Redo", new[] { Keys.LeftControl, Keys.Y }, OnRedo, true);
+		AddKeyCommand(undo, "Undo", p.Undo, OnUndo, true);
+		AddKeyCommand(undo, "Redo", p.Redo, OnRedo, true);
 
 		const string selection = "Selection";
-		UIControls.AddCommand(selection, "Select Note", "Left Mouse Button");
-		UIControls.AddCommand(selection, "Select In Region", "Drag Left Mouse Button");
-		UIControls.AddCommand(selection, "Select Misc. Events In Region", "Alt+Drag Left Mouse Button");
-		UIControls.AddCommand(selection, "Add to Selection", "Ctrl+Left Mouse Button");
-		UIControls.AddCommand(selection, "Extend Selection", "Shift+Left Mouse Button");
-		AddKeyCommand(selection, "Select All Notes", new[] { Keys.LeftControl, Keys.A }, OnSelectAll);
-		AddKeyCommand(selection, "Select All Misc. Events", new[] { Keys.LeftControl, Keys.LeftAlt, Keys.A }, OnSelectAllAlt);
-		AddKeyCommand(selection, "Select All", new[] { Keys.LeftControl, Keys.LeftShift, Keys.A }, OnSelectAllShift);
+		UIControls.Instance.AddCommand(selection, "Select Note", "Left Mouse Button");
+		UIControls.Instance.AddCommand(selection, "Select In Region", "Drag Left Mouse Button");
+
+		UIControls.Instance.AddCommand(selection, "Select Misc. Events In Region",
+			UIControls.GetCommandString(p.MouseSelectionAltBehavior) + UIControls.MultipleKeysJoinString + "Drag Left Mouse Button");
+		UIControls.Instance.AddCommand(selection, "Add to Selection", 
+			UIControls.GetCommandString(p.MouseSelectionControlBehavior) + UIControls.MultipleKeysJoinString + "Left Mouse Button");
+		UIControls.Instance.AddCommand(selection, "Extend Selection",
+			UIControls.GetCommandString(p.MouseSelectionShiftBehavior) + UIControls.MultipleKeysJoinString + "Left Mouse Button");
+		AddKeyCommand(selection, "Select All Notes", p.SelectAllNotes, OnSelectAll);
+		AddKeyCommand(selection, "Select All Misc. Events", p.SelectAllMiscEvents, OnSelectAllAlt);
+		AddKeyCommand(selection, "Select All", p.SelectAll, OnSelectAllShift);
 
 		const string copyPaste = "Copy / Paste";
-		AddKeyCommand(copyPaste, "Copy", new[] { Keys.LeftControl, Keys.C }, OnCopy, true);
-		AddKeyCommand(copyPaste, "Cut", new[] { Keys.LeftControl, Keys.X }, OnCut, true);
-		AddKeyCommand(copyPaste, "Paste", new[] { Keys.LeftControl, Keys.V }, OnPaste, true);
+		AddKeyCommand(copyPaste, "Copy", p.Copy, OnCopy, true);
+		AddKeyCommand(copyPaste, "Cut", p.Cut, OnCut, true);
+		AddKeyCommand(copyPaste, "Paste", p.Paste, OnPaste, true);
 
 		const string sound = "Sound";
-		AddKeyCommand(sound, "Toggle Preview", new[] { Keys.P }, OnTogglePlayPreview);
-		AddKeyCommand(sound, "Toggle Assist Tick", new[] { Keys.A }, OnToggleAssistTick);
-		AddKeyCommand(sound, "Toggle Beat Tick", new[] { Keys.B }, OnToggleBeatTick);
-		AddKeyCommand(sound, "Decrease Music Rate", new[] { Keys.LeftShift, Keys.Left }, OnDecreaseMusicRate, true);
-		AddKeyCommand(sound, "Increase Music Rate", new[] { Keys.LeftShift, Keys.Right }, OnIncreaseMusicRate, true);
+		AddKeyCommand(sound, "Toggle Preview", p.TogglePreview, OnTogglePlayPreview);
+		AddKeyCommand(sound, "Toggle Assist Tick", p.ToggleAssistTick, OnToggleAssistTick);
+		AddKeyCommand(sound, "Toggle Beat Tick", p.ToggleBeatTick, OnToggleBeatTick);
+		AddKeyCommand(sound, "Decrease Music Rate", p.DecreaseMusicRate, OnDecreaseMusicRate, true);
+		AddKeyCommand(sound, "Increase Music Rate", p.IncreaseMusicRate, OnIncreaseMusicRate, true);
 
 		const string general = "General";
-		AddKeyCommand(general, "Play / Pause", new[] { Keys.Space }, OnTogglePlayback);
-		AddKeyCommand(general, "Cancel / Go Back", new[] { Keys.Escape }, OnEscape);
-		AddKeyCommand(general, "Toggle Note Entry Mode", new[] { Keys.M }, OnToggleNoteEntryMode);
-		AddKeyCommand(general, "Toggle Spacing Mode", new[] { Keys.S }, OnToggleSpacingMode);
-		AddKeyCommand(general, "Move To Previous Chart", new[] { Keys.LeftControl, Keys.LeftAlt, Keys.Left }, OnMoveToPreviousChart);
-		AddKeyCommand(general, "Move To Next Chart", new[] { Keys.LeftControl, Keys.LeftAlt, Keys.Right }, OnMoveToNextChart);
-		UIControls.AddCommand(general, "Context Menu", "Right Mouse Button");
-		UIControls.AddCommand(general, "Exit", "Alt+F4");
+		AddKeyCommand(general, "Play / Pause", p.PlayPause, OnTogglePlayback);
+		AddKeyCommand(general, "Cancel / Go Back", p.CancelGoBack, OnEscape);
+		AddKeyCommand(general, "Toggle Note Entry Mode", p.ToggleNoteEntryMode, OnToggleNoteEntryMode);
+		AddKeyCommand(general, "Toggle Spacing Mode", p.ToggleSpacingMode, OnToggleSpacingMode);
+		UIControls.Instance.AddCommand(general, "Context Menu", "Right Mouse Button");
+		UIControls.Instance.AddCommand(general, "Exit", "Alt+F4");
+
+		const string chartSelection ="Chart Selection";
+		AddKeyCommand(chartSelection, "Open Previous Chart", p.OpenPreviousChart, OpenPreviousChart);
+		AddKeyCommand(chartSelection, "Open Next Chart", p.OpenNextChart, OpenNextChart);
+		AddKeyCommand(chartSelection, "Close Focused Chart", p.CloseFocusedChart, CloseFocusedChart);
+		AddKeyCommand(chartSelection, "Keep Chart Open", p.KeepChartOpen, SetFocusedChartHasDedicatedTab);
+		AddKeyCommand(chartSelection, "Move Focused Chart Left", p.MoveFocusedChartLeft, MoveFocusedChartLeft);
+		AddKeyCommand(chartSelection, "Move Focused Chart Right", p.MoveFocusedChartRight, MoveFocusedChartRight);
+		AddKeyCommand(chartSelection, "Focus Previous Chart", p.FocusPreviousChart, FocusPreviousChart);
+		AddKeyCommand(chartSelection, "Focus Next Chart", p.FocusNextChart, FocusNextChart);
 
 		const string zoom = "Zoom";
-		UIControls.AddCommand(zoom, "Zoom In", "Ctrl+Scroll Up");
-		UIControls.AddCommand(zoom, "Zoom Out", "Ctrl+Scroll Down");
-		UIControls.AddCommand(zoom, "Increasing Spacing For Current Mode", "Shift+Scroll Up");
-		UIControls.AddCommand(zoom, "Decrease Spacing For Current Mode", "Shift+Scroll Down");
+		UIControls.Instance.AddCommand(zoom, "Zoom In",
+			UIControls.GetCommandString(p.ScrollZoom) + UIControls.MultipleKeysJoinString + "Scroll Up");
+		UIControls.Instance.AddCommand(zoom, "Zoom Out",
+			UIControls.GetCommandString(p.ScrollZoom) + UIControls.MultipleKeysJoinString + "Scroll Down");
+		UIControls.Instance.AddCommand(zoom, "Increasing Spacing For Current Mode",
+			UIControls.GetCommandString(p.ScrollSpacing) + UIControls.MultipleKeysJoinString + "Scroll Up");
+		UIControls.Instance.AddCommand(zoom, "Decrease Spacing For Current Mode",
+			UIControls.GetCommandString(p.ScrollSpacing) + UIControls.MultipleKeysJoinString + "Scroll Down");
 
 		const string navigation = "Navigation";
-		AddKeyCommand(navigation, "Decrease Snap", new[] { Keys.Left }, OnDecreaseSnap, true);
-		AddKeyCommand(navigation, "Increase Snap", new[] { Keys.Right }, OnIncreaseSnap, true);
-		AddKeyCommand(navigation, "Move Up", new[] { Keys.Up }, OnMoveUp, true);
-		UIControls.AddCommand(navigation, "Move Up", "Scroll Up");
-		AddKeyCommand(navigation, "Move Down", new[] { Keys.Down }, OnMoveDown, true);
-		UIControls.AddCommand(navigation, "Move Down", "Scroll Down");
-		AddKeyCommand(navigation, "Move To Previous Measure", new[] { Keys.PageUp }, OnMoveToPreviousMeasure, true, null, true);
-		AddKeyCommand(navigation, "Move To Next Measure", new[] { Keys.PageDown }, OnMoveToNextMeasure, true, null, true);
-		AddKeyCommand(navigation, "Move To Chart Start", new[] { Keys.Home }, OnMoveToChartStart, false, null, true);
-		AddKeyCommand(navigation, "Move To Chart End", new[] { Keys.End }, OnMoveToChartEnd, false, null, true);
-		AddKeyCommand(navigation, "Move To Next Label", new[] { Keys.LeftControl, Keys.L }, OnMoveToNextLabel, true);
-		AddKeyCommand(navigation, "Move To Previous Label", new[] { Keys.LeftControl, Keys.LeftShift, Keys.L }, OnMoveToPreviousLabel, true);
+		AddKeyCommand(navigation, "Decrease Snap", p.DecreaseSnap, OnDecreaseSnap, true);
+		AddKeyCommand(navigation, "Increase Snap", p.IncreaseSnap, OnIncreaseSnap, true);
+		AddKeyCommand(navigation, "Move Up", p.MoveUp, OnMoveUp, true);
+		UIControls.Instance.AddCommand(navigation, "Move Up", "Scroll Up");
+		AddKeyCommand(navigation, "Move Down", p.MoveDown, OnMoveDown, true);
+		UIControls.Instance.AddCommand(navigation, "Move Down", "Scroll Down");
+		AddKeyCommand(navigation, "Move To Previous Measure", p.MoveToPreviousMeasure, OnMoveToPreviousMeasure, true);
+		AddKeyCommand(navigation, "Move To Next Measure", p.MoveToNextMeasure, OnMoveToNextMeasure, true);
+		AddKeyCommand(navigation, "Move To Chart Start", p.MoveToChartStart, OnMoveToChartStart);
+		AddKeyCommand(navigation, "Move To Chart End", p.MoveToChartEnd, OnMoveToChartEnd);
+		AddKeyCommand(navigation, "Move To Next Label", p.MoveToNextLabel, OnMoveToNextLabel, true);
+		AddKeyCommand(navigation, "Move To Previous Label", p.MoveToPreviousLabel, OnMoveToPreviousLabel, true);
 
 		const string patterns = "Patterns";
-		AddKeyCommand(patterns, "Move To Next Pattern", new[] { Keys.LeftControl, Keys.P }, OnMoveToNextPattern, true);
-		AddKeyCommand(patterns, "Move To Previous Pattern", new[] { Keys.LeftControl, Keys.LeftShift, Keys.P }, OnMoveToPreviousPattern, true);
-		AddKeyCommand(patterns, "Regenerate All Patterns (Fixed Seeds)", new[] { Keys.LeftAlt, Keys.P }, OnRegenerateAllPatterns);
-		AddKeyCommand(patterns, "Regenerate All Patterns (New Seeds)", new[] { Keys.LeftAlt, Keys.LeftShift, Keys.P }, OnRegenerateAllPatternsWithNewSeeds);
-		AddKeyCommand(patterns, "Regenerate Selected Patterns (Fixed Seeds)", new[] { Keys.LeftControl, Keys.LeftAlt, Keys.P }, OnRegenerateSelectedPatterns);
-		AddKeyCommand(patterns, "Regenerate Selected Patterns (New Seeds)", new[] { Keys.LeftControl, Keys.LeftAlt, Keys.LeftShift, Keys.P }, OnRegenerateSelectedPatternsWithNewSeeds);
+		AddKeyCommand(patterns, "Move To Next Pattern", p.MoveToNextPattern, OnMoveToNextPattern, true);
+		AddKeyCommand(patterns, "Move To Previous Pattern", p.MoveToPreviousPattern, OnMoveToPreviousPattern, true);
+		AddKeyCommand(patterns, "Regenerate All Patterns (Fixed Seeds)", p.RegenerateAllPatternsFixedSeeds, OnRegenerateAllPatterns);
+		AddKeyCommand(patterns, "Regenerate All Patterns (New Seeds)", p.RegenerateAllPatternsNewSeeds, OnRegenerateAllPatternsWithNewSeeds);
+		AddKeyCommand(patterns, "Regenerate Selected Patterns (Fixed Seeds)", p.RegenerateSelectedPatternsFixedSeeds, OnRegenerateSelectedPatterns);
+		AddKeyCommand(patterns, "Regenerate Selected Patterns (New Seeds)", p.RegenerateSelectedPatternsNewSeeds, OnRegenerateSelectedPatternsWithNewSeeds);
 
 		const string editSelection = "Edit Selection";
-		AddKeyCommand(editSelection, "Delete", new[] { Keys.Delete }, OnDelete, false, null, true);
-		AddKeyCommand(editSelection, "Shift Left", new[] { Keys.LeftControl, Keys.LeftShift, Keys.LeftAlt, Keys.Left }, OnShiftSelectedNotesLeft, true);
-		AddKeyCommand(editSelection, "Shift Left And Wrap", new[] { Keys.LeftControl, Keys.LeftShift, Keys.Left }, OnShiftSelectedNotesLeftAndWrap, true);
-		AddKeyCommand(editSelection, "Shift Right", new[] { Keys.LeftControl, Keys.LeftShift, Keys.LeftAlt, Keys.Right }, OnShiftSelectedNotesRight, true);
-		AddKeyCommand(editSelection, "Shift Right And Wrap", new[] { Keys.LeftControl, Keys.LeftShift, Keys.Right }, OnShiftSelectedNotesRightAndWrap, true);
-		AddKeyCommand(editSelection, "Shift Earlier", new[] { Keys.LeftControl, Keys.LeftShift, Keys.Up }, OnShiftSelectedNotesEarlier, true);
-		AddKeyCommand(editSelection, "Shift Later", new[] { Keys.LeftControl, Keys.LeftShift, Keys.Down }, OnShiftSelectedNotesLater, true);
+		AddKeyCommand(editSelection, "Delete", p.Delete, OnDelete);
+		AddKeyCommand(editSelection, "Shift Left", p.ShiftLeft, OnShiftSelectedNotesLeft, true);
+		AddKeyCommand(editSelection, "Shift Left And Wrap", p.ShiftLeftAndWrap, OnShiftSelectedNotesLeftAndWrap, true);
+		AddKeyCommand(editSelection, "Shift Right", p.ShiftRight, OnShiftSelectedNotesRight, true);
+		AddKeyCommand(editSelection, "Shift Right And Wrap", p.ShiftRightAndWrap, OnShiftSelectedNotesRightAndWrap, true);
+		AddKeyCommand(editSelection, "Shift Earlier", p.ShiftEarlier, OnShiftSelectedNotesEarlier, true);
+		AddKeyCommand(editSelection, "Shift Later", p.ShiftLater, OnShiftSelectedNotesLater, true);
 		// @formatter:on
 
 		const string noteEntry = "Note Entry";
-		UIControls.AddCommand(noteEntry, "Tap", "0-9");
-		UIControls.AddCommand(noteEntry, "Hold", "0-9+Up/Down");
-		UIControls.AddCommand(noteEntry, "Mine", "0-9+Shift");
-		UIControls.AddCommand(noteEntry, "Roll", "0-9+Shift+Up/Down");
-
-		var arrowInputKeys = new[]
-			{ Keys.D1, Keys.D2, Keys.D3, Keys.D4, Keys.D5, Keys.D6, Keys.D7, Keys.D8, Keys.D9, Keys.D0 };
-		var index = 0;
-		foreach (var key in arrowInputKeys)
+		for (var l = 0; l < PreferencesKeyBinds.NumLaneInputs; l++)
 		{
-			var capturedIndex = index;
-
-			void Down()
-			{
-				OnLaneInputDown(capturedIndex);
-			}
-
-			void Up()
-			{
-				OnLaneInputUp(capturedIndex);
-			}
-
-			index++;
-			KeyCommandManager.Register(new KeyCommandManager.Command(new[] { key }, Down, false, Up, true));
+			var capturedLane = l;
+			AddKeyCommand(noteEntry, $"Lane {capturedLane + 1:D2} Tap",
+				p.GetArrowInputs(capturedLane),
+				() => OnLaneInputDown(capturedLane),
+				false,
+				() => OnLaneInputUp(capturedLane));
 		}
 
-		KeyCommandManager.Register(new KeyCommandManager.Command(new[] { Keys.LeftShift }, OnShiftDown, false, OnShiftUp,
-			true));
+		for (var l = 0; l < PreferencesKeyBinds.NumLaneInputs; l++)
+		{
+			var holdCommandString =
+				UIControls.GetCommandString(p.GetArrowInputs(l))
+				+ UIControls.MultipleKeysJoinString
+				+ UIControls.GetCommandString(p.MoveUp)
+				+ UIControls.OrString
+				+ UIControls.GetCommandString(p.MoveDown);
+			UIControls.Instance.AddCommand(noteEntry, $"Lane {l + 1:D2} Hold", holdCommandString);
+		}
+
+		for (var l = 0; l < PreferencesKeyBinds.NumLaneInputs; l++)
+		{
+			var mineCommandString =
+				UIControls.GetCommandString(p.GetArrowInputs(l))
+				+ UIControls.MultipleKeysJoinString
+				+ UIControls.GetCommandString(p.ArrowModification);
+			UIControls.Instance.AddCommand(noteEntry, $"Lane {l + 1:D2} Mine", mineCommandString);
+		}
+
+		for (var l = 0; l < PreferencesKeyBinds.NumLaneInputs; l++)
+		{
+			var rollCommandString =
+				UIControls.GetCommandString(p.GetArrowInputs(l))
+				+ UIControls.MultipleKeysJoinString
+				+ UIControls.GetCommandString(p.ArrowModification)
+				+ UIControls.MultipleKeysJoinString
+				+ UIControls.GetCommandString(p.MoveUp)
+				+ UIControls.OrString
+				+ UIControls.GetCommandString(p.MoveDown);
+			UIControls.Instance.AddCommand(noteEntry, $"Lane {l + 1:D2} Roll", rollCommandString);
+		}
+
+		foreach (var input in p.ArrowModification)
+		{
+			// Don't let this block input. It is the only keybind that we register with the KeyCommandManager
+			// where really we just want to check is a key down or not without blocking input. Other inputs like
+			// this (e.g. holding alt while selecting) are registered.
+			KeyCommandManager.Register(new KeyCommandManager.Command(input, OnArrowModificationKeyDown, false,
+				OnArrowModificationKeyUp, false));
+		}
 	}
 
 	/// <summary>
@@ -709,17 +713,19 @@ internal sealed class Editor :
 	private void AddKeyCommand(
 		string category,
 		string name,
-		Keys[] input,
+		List<Keys[]> inputs,
 		Action callback,
 		bool repeat = false,
-		Action releaseCallback = null,
-		bool independent = false)
+		Action releaseCallback = null)
 	{
-		// Register the command, potentially multiple times due to left and right modifier keys.
-		var adjustedInput = new Keys[input.Length];
-		RegisterKeyCommand(input, adjustedInput, 0, callback, repeat, releaseCallback, independent);
-		// Add the command to the UI.
-		UIControls.AddCommand(category, name, input);
+		foreach (var input in inputs)
+		{
+			// Register the command, potentially multiple times due to left and right modifier keys.
+			var adjustedInput = new Keys[input.Length];
+			RegisterKeyCommand(input, adjustedInput, 0, callback, repeat, releaseCallback);
+			// Add the command to the UI.
+			UIControls.Instance.AddCommand(category, name, input);
+		}
 	}
 
 	/// <summary>
@@ -732,13 +738,11 @@ internal sealed class Editor :
 		int inputIndex,
 		Action callback,
 		bool repeat = false,
-		Action releaseCallback = null,
-		bool independent = false)
+		Action releaseCallback = null)
 	{
 		if (inputIndex == adjustedInput.Length)
 		{
-			KeyCommandManager.Register(new KeyCommandManager.Command(adjustedInput, callback, repeat, releaseCallback,
-				independent));
+			KeyCommandManager.Register(new KeyCommandManager.Command(adjustedInput, callback, repeat, releaseCallback));
 			return;
 		}
 
@@ -747,38 +751,38 @@ internal sealed class Editor :
 			case Keys.LeftControl:
 			{
 				adjustedInput[inputIndex] = Keys.LeftControl;
-				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback, independent);
+				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback);
 				adjustedInput[inputIndex] = Keys.RightControl;
-				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback, independent);
+				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback);
 				break;
 			}
 			case Keys.LeftShift:
 			{
 				adjustedInput[inputIndex] = Keys.LeftShift;
-				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback, independent);
+				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback);
 				adjustedInput[inputIndex] = Keys.RightShift;
-				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback, independent);
+				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback);
 				break;
 			}
 			case Keys.LeftAlt:
 			{
 				adjustedInput[inputIndex] = Keys.LeftAlt;
-				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback, independent);
+				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback);
 				adjustedInput[inputIndex] = Keys.RightAlt;
-				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback, independent);
+				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback);
 				break;
 			}
 			case Keys.LeftWindows:
 			{
 				adjustedInput[inputIndex] = Keys.LeftWindows;
-				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback, independent);
+				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback);
 				adjustedInput[inputIndex] = Keys.RightWindows;
-				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback, independent);
+				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback);
 				break;
 			}
 			default:
 				adjustedInput[inputIndex] = input[inputIndex];
-				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback, independent);
+				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback);
 				break;
 		}
 	}
@@ -805,26 +809,6 @@ internal sealed class Editor :
 		Graphics.SynchronizeWithVerticalRetrace = true;
 	}
 
-	private void InitializeSnapLevels()
-	{
-		// Set up snap levels for all valid denominators.
-		SnapLevels = new SnapData[ValidDenominators.Length + 1];
-		SnapLevels[0] = new SnapData { Rows = 0 };
-		for (var denominatorIndex = 0; denominatorIndex < ValidDenominators.Length; denominatorIndex++)
-		{
-			SnapLevels[denominatorIndex + 1] = new SnapData
-			{
-				Rows = MaxValidDenominator / ValidDenominators[denominatorIndex],
-				Texture = ArrowGraphicManager.GetSnapIndicatorTexture(ValidDenominators[denominatorIndex]),
-			};
-		}
-
-		if (Preferences.Instance.SnapIndex < 0 || Preferences.Instance.SnapIndex >= SnapLevels.Length)
-		{
-			Preferences.Instance.SnapIndex = 0;
-		}
-	}
-
 	private void InitializeObservers()
 	{
 		Preferences.Instance.PreferencesOptions.AddObserver(this);
@@ -838,13 +822,23 @@ internal sealed class Editor :
 		PerformanceMonitor.SetEnabled(!Preferences.Instance.PreferencesPerformance.PerformanceMonitorPaused);
 	}
 
+	private void InitializeSnapManager()
+	{
+		SnapManager = new SnapManager();
+	}
+
 	private void InitializeWindowSize()
 	{
 		var p = Preferences.Instance;
-		Graphics.PreferredBackBufferHeight = p.WindowHeight;
-		Graphics.PreferredBackBufferWidth = p.WindowWidth;
-		Graphics.IsFullScreen = p.WindowFullScreen;
+		Graphics.PreferredBackBufferWidth = p.ViewportWidth;
+		Graphics.PreferredBackBufferHeight = p.ViewportHeight;
+		Graphics.IsFullScreen = false;
 		Graphics.ApplyChanges();
+	}
+
+	private void InitializeImGui()
+	{
+		ImGuiRenderer = new ImGuiRenderer(this, ImGuiConfigFlags.DockingEnable);
 	}
 
 	private void InitializeFormCallbacks()
@@ -855,9 +849,7 @@ internal sealed class Editor :
 			return;
 
 		if (p.WindowMaximized)
-		{
 			form.WindowState = FormWindowState.Maximized;
-		}
 
 		form.FormClosing += ClosingForm;
 		form.AllowDrop = true;
@@ -868,7 +860,6 @@ internal sealed class Editor :
 	private void InitializeFonts()
 	{
 		var guiScale = GetDpiScale();
-		ImGuiRenderer = new ImGuiRenderer(this);
 		var assembly = System.Reflection.Assembly.GetEntryAssembly();
 		if (assembly != null)
 		{
@@ -897,33 +888,46 @@ internal sealed class Editor :
 
 	private void InitializeScreenHeight()
 	{
-		var p = Preferences.Instance;
 		foreach (var adapter in GraphicsAdapter.Adapters)
 			MaxScreenHeight = Math.Max(MaxScreenHeight, (uint)adapter.CurrentDisplayMode.Height);
-		p.PreferencesReceptors.ClampViewportPositions();
 		EditorEvent.SetScreenHeight(MaxScreenHeight);
 	}
 
 	private void InitializeWaveFormRenderer()
 	{
 		var p = Preferences.Instance;
-		WaveFormRenderer = new WaveFormRenderer(GraphicsDevice, WaveFormTextureWidth, (uint)Math.Max(1, GetViewportHeight()));
+		WaveFormTextureHeight = GetDesiredWaveFormTextureHeight();
+		WaveFormRenderer = new WaveFormRenderer(GraphicsDevice, WaveFormTextureWidth, WaveFormTextureHeight);
 		WaveFormRenderer.SetColors(WaveFormColorDense, WaveFormColorSparse);
 		WaveFormRenderer.SetXPerChannelScale(p.PreferencesWaveForm.WaveFormMaxXPercentagePerChannel);
 		WaveFormRenderer.SetSoundMipMap(MusicManager.GetMusicMipMap());
-		WaveFormRenderer.SetFocalPointY(GetFocalPointY());
-		RecreateWaveformRenderTargets();
+		WaveFormRenderer.SetFocalPointLocalY(GetFocalPointChartSpaceY());
+		RecreateWaveformRenderTargets(true);
 	}
 
-	private void RecreateWaveformRenderTargets()
+	private uint GetDesiredWaveFormTextureHeight()
 	{
+		return (uint)Math.Max(1, GetViewportHeight());
+	}
+
+	private void RecreateWaveformRenderTargets(bool force)
+	{
+		var desiredHeight = GetDesiredWaveFormTextureHeight();
+		if (!force)
+		{
+			if (WaveFormTextureHeight == desiredHeight)
+				return;
+		}
+
+		WaveFormTextureHeight = desiredHeight;
+
 		WaveformRenderTargets = new RenderTarget2D[2];
 		for (var i = 0; i < 2; i++)
 		{
 			WaveformRenderTargets[i] = new RenderTarget2D(
 				GraphicsDevice,
 				WaveFormTextureWidth,
-				Math.Max(1, GetViewportHeight()),
+				(int)WaveFormTextureHeight,
 				false,
 				GraphicsDevice.PresentationParameters.BackBufferFormat,
 				DepthFormat.Depth24);
@@ -938,42 +942,37 @@ internal sealed class Editor :
 	private void InitializeMiniMap()
 	{
 		var p = Preferences.Instance;
-		MiniMap = new MiniMap(GraphicsDevice, new Rectangle(0, 0, 0, 0));
+		MiniMap = new MiniMap(GraphicsDevice, new Rectangle(0, 0, 0, 0), 0);
 		MiniMap.SetFadeOutPercentage(0.9);
 		MiniMap.SetSelectMode(p.PreferencesMiniMap.MiniMapSelectMode);
 	}
 
 	private void InitializeUIHelpers()
 	{
-		UILog = new UILog(this);
-		UIAbout = new UIAbout();
-		UIControls = new UIControls();
-		UISongProperties = new UISongProperties(this, GraphicsDevice, ImGuiRenderer);
-		UIChartProperties = new UIChartProperties(this);
-		UIChartList = new UIChartList(this);
-		UIWaveFormPreferences = new UIWaveFormPreferences(MusicManager);
-		UIDarkPreferences = new UIDarkPreferences();
-		UIScrollPreferences = new UIScrollPreferences();
-		UISelectionPreferences = new UISelectionPreferences();
-		UIMiniMapPreferences = new UIMiniMapPreferences();
-		UIReceptorPreferences = new UIReceptorPreferences(this);
-		UIOptions = new UIOptions();
-		UIAudioPreferences = new UIAudioPreferences(SoundManager);
-		UIChartPosition = new UIChartPosition(this);
-		UIExpressedChartConfig = new UIExpressedChartConfig(this);
-		UIPerformedChartConfig = new UIPerformedChartConfig(this);
-		UIPatternConfig = new UIPatternConfig(this);
-		UIAutogenConfigs = new UIAutogenConfigs(this);
-		UIAutogenChart = new UIAutogenChart(this);
-		UIAutogenChartsForChartType = new UIAutogenChartsForChartType(this);
-		UICopyEventsBetweenCharts = new UICopyEventsBetweenCharts(this);
-		UIPatternEvent = new UIPatternEvent(this);
-		UIPerformance = new UIPerformance(PerformanceMonitor);
 		UIEditEvents = new UIEditEvents(this);
 		UIFTUE = new UIFTUE(this);
+
 		UIModals.Init(this);
+
+		UILog.Instance.Init(this);
+		UISongProperties.Instance.Init(this, GraphicsDevice, ImGuiRenderer);
+		UIChartProperties.Instance.Init(this);
+		UIChartList.Instance.Init(this);
+		UIWaveFormPreferences.Instance.Init(MusicManager);
+		UIReceptorPreferences.Instance.Init(this);
+		UIAudioPreferences.Instance.Init(SoundManager);
+		UIExpressedChartConfig.Instance.Init(this);
+		UIPerformedChartConfig.Instance.Init(this);
+		UIPatternConfig.Instance.Init(this);
+		UIAutogenConfigs.Instance.Init(this);
+		UIAutogenChart.Instance.Init(this);
+		UIAutogenChartsForChartType.Instance.Init(this);
+		UICopyEventsBetweenCharts.Instance.Init(this);
+		UIPatternEvent.Instance.Init(this);
+		UIPerformance.Instance.Init(PerformanceMonitor);
+		UIHotbar.Instance.Init(this);
 #if DEBUG
-		UIDebug = new UIDebug(this);
+		UIDebug.Instance.Init(this);
 #endif
 	}
 
@@ -1196,12 +1195,17 @@ internal sealed class Editor :
 
 	public double GetSongTime()
 	{
-		return Position.SongTime;
+		return GetFocusedChartData()?.Position.SongTime ?? 0.0;
 	}
 
 	public IReadOnlyEditorPosition GetPosition()
 	{
-		return Position;
+		var focusedChartData = GetFocusedChartData();
+		if (focusedChartData != null)
+			return focusedChartData.Position;
+		if (ActiveSong != null)
+			return new EditorPosition(ActiveSong);
+		return new EditorPosition();
 	}
 
 	public EditorMouseState GetMouseState()
@@ -1214,9 +1218,9 @@ internal sealed class Editor :
 		return ActiveSong;
 	}
 
-	public EditorChart GetActiveChart()
+	public EditorChart GetFocusedChart()
 	{
-		return ActiveChart;
+		return FocusedChart;
 	}
 
 	#endregion State Accessors
@@ -1225,22 +1229,64 @@ internal sealed class Editor :
 
 	public void SetSongTime(double songTime)
 	{
-		Position.SongTime = songTime;
+		if (FocusedChartData == null)
+			return;
+		FocusedChartData.Position.SongTime = songTime;
+		SynchronizeActiveChartTimes();
 	}
 
 	public void SetChartTime(double chartTime)
 	{
-		Position.ChartTime = chartTime;
+		if (FocusedChartData == null)
+			return;
+		FocusedChartData.Position.ChartTime = chartTime;
+		SynchronizeActiveChartTimes();
 	}
 
 	public void SetChartPosition(double chartPosition)
 	{
-		Position.ChartPosition = chartPosition;
+		if (FocusedChartData == null)
+			return;
+		FocusedChartData.Position.ChartPosition = chartPosition;
+		SynchronizeActiveChartTimes();
+	}
+
+	private void SynchronizeActiveChartTimes()
+	{
+		foreach (var activeChartData in ActiveChartData)
+			if (activeChartData != FocusedChartData)
+				SynchronizeActiveChartTime(activeChartData);
+	}
+
+	private void SynchronizeActiveChartTime(ActiveEditorChart activeChart)
+	{
+		// Always synchronize by song time.
+		// This ensures that charts will never jump to different positions when switching
+		// focus in songs where charts have different timing events.
+		activeChart.Position.SongTime = GetPosition().SongTime;
+		activeChart.Position.SetDesiredPositionToCurrent();
+	}
+
+	private void ResetPosition()
+	{
+		foreach (var activeChartData in ActiveChartData)
+		{
+			activeChartData.Position.Reset();
+		}
 	}
 
 	#endregion Position Modification
 
 	#region Window Resizing
+
+	private void SetResolution(int x, int y)
+	{
+		var form = (Form)Control.FromHandle(Window.Handle);
+		if (form == null)
+			return;
+		form.WindowState = FormWindowState.Normal;
+		form.ClientSize = new System.Drawing.Size(x, y);
+	}
 
 	public void OnResize(object sender, EventArgs e)
 	{
@@ -1248,30 +1294,54 @@ internal sealed class Editor :
 		if (form == null)
 			return;
 		var maximized = form.WindowState == FormWindowState.Maximized;
-		var w = GetViewportWidth();
-		var h = GetViewportHeight();
 
 		// Update window preferences.
 		if (!maximized)
 		{
-			Preferences.Instance.WindowWidth = w;
-			Preferences.Instance.WindowHeight = h;
+			Preferences.Instance.ViewportWidth = GetViewportWidth();
+			Preferences.Instance.ViewportHeight = GetViewportHeight();
 		}
 
-		Preferences.Instance.WindowFullScreen = Graphics.IsFullScreen;
 		Preferences.Instance.WindowMaximized = maximized;
 
+		OnChartAreaChanged();
+	}
+
+	public bool GetChartAreaInScreenSpace(out Rectangle chartArea)
+	{
+		chartArea = ChartArea;
+		return IsChartAreaSet;
+	}
+
+	public bool GetChartAreaInChartSpaceWithoutHeader(out Rectangle chartArea)
+	{
+		chartArea = new Rectangle(0, 0, ChartArea.Width, ChartArea.Height);
+		var headerHeight = Math.Min(GetChartHeaderHeight(), chartArea.Height);
+		chartArea.Y += headerHeight;
+		chartArea.Height -= headerHeight;
+		return IsChartAreaSet;
+	}
+
+	private void OnChartAreaChanged()
+	{
 		// Update focal point.
-		Preferences.Instance.PreferencesReceptors.ClampViewportPositions();
+		Preferences.Instance.PreferencesReceptors.ClampPositions();
 
 		// Resize the Waveform.
-		WaveFormRenderer.Resize(GraphicsDevice, WaveFormTextureWidth, (uint)Math.Max(1, GetViewportHeight()));
-		RecreateWaveformRenderTargets();
+		if (WaveFormRenderer != null)
+		{
+			WaveFormRenderer.Resize(
+				GraphicsDevice,
+				WaveFormTextureWidth,
+				(uint)Math.Max(1, GetViewportHeight()),
+				(uint)Math.Max(1, ChartArea.Height));
+			RecreateWaveformRenderTargets(false);
+		}
 	}
 
 	/// <summary>
 	/// Gets the viewport width.
-	/// These dimensions include window dressing like the the title bar.
+	/// These dimensions include ImGui window dressing but do not include OS level window dressing.
 	/// </summary>
 	/// <returns>Viewport width in pixels.</returns>
 	public int GetViewportWidth()
@@ -1280,56 +1350,93 @@ internal sealed class Editor :
 	}
 
 	/// <summary>
-	/// Gets the viewport width.
-	/// These dimensions include window dressing like the the title bar.
+	/// Gets the viewport height.
+	/// These dimensions include ImGui window dressing but do not include OS level window dressing.
 	/// </summary>
-	/// <returns>Viewport width in pixels.</returns>
+	/// <returns>Viewport height in pixels.</returns>
 	public int GetViewportHeight()
 	{
 		return Graphics.GraphicsDevice.Viewport.Height;
 	}
 
-	/// <summary>
-	/// Gets the back buffer width.
-	/// These dimensions only include the application's rendered area and do not
-	/// include window dressing like the the title bar.
-	/// </summary>
-	/// <returns>Back buffer width in pixels.</returns>
-	public int GetBackBufferWidth()
+	public bool IsWindowSizeInitialized()
 	{
-		return Graphics.PreferredBackBufferWidth;
-	}
-
-	/// <summary>
-	/// Gets the back buffer height.
-	/// These dimensions only include the application's rendered area and do not
-	/// include window dressing like the the title bar.
-	/// </summary>
-	/// <returns>Back buffer height in pixels.</returns>
-	public int GetBackBufferHeight()
-	{
-		return Graphics.PreferredBackBufferHeight;
+		// On the first frame the backbuffer and form may not be set to correct values.
+		// On first launch where the default setting is to be maximized this results in
+		// incorrect values being used for layouts which depend on window size. This
+		// occurs because Monogame performs one update before processing the events from
+		// the OS about the window size. We can't assume the maximized backbuffer size
+		// from the window size because of DPI / OS-specific dressing sizes. Because of
+		// all of this we need to wait one frame before performing any logic which depends
+		// on window size.
+		return FrameCount > 1L;
 	}
 
 	#endregion Window Resizing
 
 	#region Focal Point
 
-	public int GetFocalPointX()
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	private int TransformChartSpaceXToScreenSpaceX(int chartSpaceX)
+	{
+		return ChartArea.X + chartSpaceX;
+	}
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	private int TransformChartSpaceYToScreenSpaceY(int chartSpaceY)
+	{
+		return ChartArea.Y + chartSpaceY;
+	}
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	private int TransformScreenSpaceXToChartSpaceX(int screenSpaceX)
+	{
+		return screenSpaceX - ChartArea.X;
+	}
+
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	private int TransformScreenSpaceYToChartSpaceY(int screenSpaceY)
+	{
+		return screenSpaceY - ChartArea.Y;
+	}
+
+	public int GetFocalPointChartSpaceX()
 	{
 		if (Preferences.Instance.PreferencesReceptors.CenterHorizontally)
-			return GetViewportWidth() >> 1;
-		return Preferences.Instance.PreferencesReceptors.PositionX;
+			return ChartArea.Width >> 1;
+		return Preferences.Instance.PreferencesReceptors.ChartSpacePositionX;
 	}
 
-	public int GetFocalPointY()
+	public int GetFocalPointScreenSpaceX()
 	{
-		return Preferences.Instance.PreferencesReceptors.PositionY;
+		return TransformChartSpaceXToScreenSpaceX(GetFocalPointChartSpaceX());
 	}
 
-	public Vector2 GetFocalPoint()
+	public int GetFocalPointChartSpaceY()
 	{
-		return new Vector2(GetFocalPointX(), GetFocalPointY());
+		return Preferences.Instance.PreferencesReceptors.ChartSpacePositionY;
+	}
+
+	public int GetFocalPointScreenSpaceY()
+	{
+		return TransformChartSpaceYToScreenSpaceY(GetFocalPointChartSpaceY());
+	}
+
+	public Vector2 GetFocalPointChartSpace()
+	{
+		return new Vector2(GetFocalPointChartSpaceX(), GetFocalPointChartSpaceY());
+	}
+
+	public Vector2 GetFocalPointScreenSpace()
+	{
+		return new Vector2(GetFocalPointScreenSpaceX(), GetFocalPointScreenSpaceY());
+	}
+
+	private void SetFocalPointScreenSpace(int screenSpaceX, int screenSpaceY)
+	{
+		var p = Preferences.Instance.PreferencesReceptors;
+		p.ChartSpacePositionX = TransformScreenSpaceXToChartSpaceX(screenSpaceX);
+		p.ChartSpacePositionY = TransformScreenSpaceYToChartSpaceY(screenSpaceY);
 	}
 
 	#endregion Focal Point
@@ -1342,7 +1449,7 @@ internal sealed class Editor :
 			return false;
 		if (ActiveSong != null && !ActiveSong.CanAllChartsBeEdited())
 			return false;
-		if (ActiveChart != null && !ActiveChart.CanBeEdited())
+		if (FocusedChart != null && !FocusedChart.CanBeEdited())
 			return false;
 		if (ActionQueue.Instance.IsDoingOrUndoing())
 			return false;
@@ -1405,6 +1512,8 @@ internal sealed class Editor :
 	{
 		Debug.Assert(IsOnMainThread());
 
+		FrameCount++;
+
 		PerformanceMonitor.SetTime(PerformanceTimings.Present, PreviousPresentTime.Ticks);
 
 		PerformanceMonitor.SetEnabled(!Preferences.Instance.PreferencesPerformance.PerformanceMonitorPaused);
@@ -1423,6 +1532,14 @@ internal sealed class Editor :
 					GC.Collect();
 			}
 
+			var newChartArea = UIDockSpace.GetCentralNodeArea();
+			if (newChartArea != ChartArea)
+			{
+				ChartArea = newChartArea;
+				IsChartAreaSet = true;
+				OnChartAreaChanged();
+			}
+
 			CheckForAutoLoadingLastSong();
 
 			ActiveSong?.Update();
@@ -1435,6 +1552,7 @@ internal sealed class Editor :
 
 			PerformanceMonitor.Time(PerformanceTimings.ChartEvents, () =>
 			{
+				UpdateChartPositions();
 				UpdateChartEvents();
 				UpdateAutoPlay();
 			});
@@ -1479,21 +1597,24 @@ internal sealed class Editor :
 
 	private void UpdateMusicAndPosition(double currentTime)
 	{
-		if (!Playing)
+		var focusedChartData = GetFocusedChartData();
+		if (!Playing && focusedChartData != null)
 		{
-			if (Position.IsInterpolatingChartPosition())
+			if (focusedChartData.Position.IsInterpolatingChartPosition())
 			{
 				UpdatingSongTimeDirectly = true;
-				Position.UpdateChartPositionInterpolation(currentTime);
-				MusicManager.SetMusicTimeInSeconds(Position.SongTime);
+				focusedChartData.Position.UpdateChartPositionInterpolation(currentTime);
+				SynchronizeActiveChartTimes();
+				MusicManager.SetMusicTimeInSeconds(focusedChartData.Position.SongTime);
 				UpdatingSongTimeDirectly = false;
 			}
 
-			if (Position.IsInterpolatingSongTime())
+			if (focusedChartData.Position.IsInterpolatingSongTime())
 			{
 				UpdatingSongTimeDirectly = true;
-				Position.UpdateSongTimeInterpolation(currentTime);
-				MusicManager.SetMusicTimeInSeconds(Position.SongTime);
+				focusedChartData.Position.UpdateSongTimeInterpolation(currentTime);
+				SynchronizeActiveChartTimes();
+				MusicManager.SetMusicTimeInSeconds(focusedChartData.Position.SongTime);
 				UpdatingSongTimeDirectly = false;
 			}
 		}
@@ -1509,51 +1630,50 @@ internal sealed class Editor :
 		{
 			UpdatingSongTimeDirectly = true;
 
-			Position.SongTime = PlaybackStartTime +
-			                    PlaybackStopwatch.Elapsed.TotalSeconds * Preferences.Instance.PreferencesAudio.MusicRate;
+			SetSongTime(PlaybackStartTime +
+			            PlaybackStopwatch.Elapsed.TotalSeconds * Preferences.Instance.PreferencesAudio.MusicRate);
 
-			MusicManager.Update(ActiveChart);
+			MusicManager.Update(FocusedChart);
 
-			// The goal is to set the SongTime to match the actual time of the music
-			// being played through FMOD. Querying the time from FMOD does not have high
-			// enough precision, so we need to use our own timer.
-			// The best C# timer for this task is a StopWatch, but StopWatches have been
-			// reported to drift, sometimes up to a half a second per hour. If we detect
-			// it has drifted significantly by comparing it to the time from FMOD, then
-			// snap it back.
-			var maxDeviation = 0.1;
-			var musicSongTime = MusicManager.GetMusicSongTime();
-
-			if (Position.SongTime - musicSongTime > maxDeviation)
+			if (focusedChartData != null)
 			{
-				PlaybackStartTime -= 0.5 * maxDeviation;
-				Position.SongTime = PlaybackStartTime + PlaybackStopwatch.Elapsed.TotalSeconds;
-			}
-			else if (musicSongTime - Position.SongTime > maxDeviation)
-			{
-				PlaybackStartTime += 0.5 * maxDeviation;
-				Position.SongTime = PlaybackStartTime + PlaybackStopwatch.Elapsed.TotalSeconds;
-			}
+				// The goal is to set the SongTime to match the actual time of the music
+				// being played through FMOD. Querying the time from FMOD does not have high
+				// enough precision, so we need to use our own timer.
+				// The best C# timer for this task is a StopWatch, but StopWatches have been
+				// reported to drift, sometimes up to a half a second per hour. If we detect
+				// it has drifted significantly by comparing it to the time from FMOD, then
+				// snap it back.
+				const double maxDeviation = 0.1;
+				var musicSongTime = MusicManager.GetMusicSongTime();
 
-			Position.SetDesiredPositionToCurrent();
+				if (focusedChartData.Position.SongTime - musicSongTime > maxDeviation)
+				{
+					PlaybackStartTime -= 0.5 * maxDeviation;
+					SetSongTime(PlaybackStartTime + PlaybackStopwatch.Elapsed.TotalSeconds);
+				}
+				else if (musicSongTime - focusedChartData.Position.SongTime > maxDeviation)
+				{
+					PlaybackStartTime += 0.5 * maxDeviation;
+					SetSongTime(PlaybackStartTime + PlaybackStopwatch.Elapsed.TotalSeconds);
+				}
+
+				foreach (var activeChartData in ActiveChartData)
+					activeChartData.Position.SetDesiredPositionToCurrent();
+			}
 
 			UpdatingSongTimeDirectly = false;
 		}
 		else
 		{
-			MusicManager.Update(ActiveChart);
+			MusicManager.Update(FocusedChart);
 		}
 	}
 
 	private void UpdateReceptors()
 	{
-		if (Receptors != null)
-		{
-			foreach (var receptor in Receptors)
-			{
-				receptor.Update(Playing, Position.ChartPosition);
-			}
-		}
+		foreach (var activeChartData in ActiveChartData)
+			activeChartData.UpdateReceptors(Playing);
 	}
 
 	private void UpdateWaveFormRenderer()
@@ -1564,12 +1684,28 @@ internal sealed class Editor :
 		if (!pWave.ShowWaveForm || !pWave.EnableWaveForm)
 			return;
 
+		var waveFormPPS = GetFocusedChartData()?.GetWaveFormPPS() ?? 1.0;
+
 		// Update the WaveFormRenderer.
-		WaveFormRenderer.SetFocalPointY(GetFocalPointY());
+		WaveFormRenderer.SetFocalPointLocalY(GetFocalPointChartSpaceY());
 		WaveFormRenderer.SetXPerChannelScale(pWave.WaveFormMaxXPercentagePerChannel);
 		WaveFormRenderer.SetDenseScale(pWave.DenseScale);
-		WaveFormRenderer.SetScaleXWhenZooming(pWave.WaveFormScaleXWhenZooming);
-		WaveFormRenderer.Update(Position.SongTime, ZoomManager.GetSpacingZoom(), WaveFormPPS);
+		WaveFormRenderer.Update(GetPosition().SongTime, waveFormPPS * ZoomManager.GetSpacingZoom());
+	}
+
+	public uint GetWaveFormWidth(ActiveEditorChart activeChart)
+	{
+		var p = Preferences.Instance.PreferencesWaveForm;
+		if (p.WaveFormScaleWidthToChart && activeChart != null)
+		{
+			if (p.WaveFormScaleXWhenZooming)
+				return (uint)Math.Max(0, activeChart.GetLaneAreaWidthWithCurrentScale());
+			return (uint)Math.Max(0, activeChart.GetLaneAreaWidth());
+		}
+
+		if (p.WaveFormScaleXWhenZooming)
+			return (uint)(WaveFormTextureWidth * ZoomManager.GetSizeZoom());
+		return WaveFormTextureWidth;
 	}
 
 	#endregion Update
@@ -1588,7 +1724,8 @@ internal sealed class Editor :
 		CurrentDesiredCursor = MouseCursor.Arrow;
 		CanShowRightClickPopupThisFrame = false;
 
-		SelectedRegion.UpdateTime(currentTime);
+		var focusedChartData = GetFocusedChartData();
+		focusedChartData?.UpdateSelectedRegion(currentTime);
 
 		// TODO: Remove remaining input processing from ImGuiRenderer.
 		ImGuiRenderer.UpdateInput(gameTime);
@@ -1597,12 +1734,15 @@ internal sealed class Editor :
 		// This application also relies on the new frame being begun in input processing
 		// as some inputs need to check bounds with ImGui elements that require pushing
 		// font state.
-		ImGuiRenderer.BeforeLayout();
+		BeginImGuiFrame();
 
 		// Process Mouse Input.
 		var state = Mouse.GetState();
 		var (mouseChartTime, mouseChartPosition) = FindChartTimeAndRowForScreenY(state.Y);
 		EditorMouseState.Update(state, mouseChartTime, mouseChartPosition, inFocus);
+		var lmbState = EditorMouseState.GetButtonState(EditorMouseState.Button.Left);
+		if (lmbState.UpThisFrame())
+			LastMouseUpEventWasUsedForMovingFocalPoint = false;
 
 		// Do not do any further input processing if the application does not have focus.
 		if (!inFocus)
@@ -1617,20 +1757,23 @@ internal sealed class Editor :
 		else
 			KeyCommandManager.Update(currentTime);
 
+		var mouseX = EditorMouseState.X();
+		var mouseY = EditorMouseState.Y();
+
 		// Early out if ImGui is using the mouse.
 		if (imGuiWantMouse)
 		{
+			// The only case where we still want to process mouse input is dragging the chart headers.
+			ProcessInputForDraggingHeader();
+
 			// ImGui may want the mouse on a release when we are selecting. Stop selecting in that case.
-			if (SelectedRegion.IsActive())
-				FinishSelectedRegion();
+			focusedChartData?.FinishSelectedRegion();
 			UpdateCursor();
 			return;
 		}
 
-		var mouseX = EditorMouseState.X();
-		var mouseY = EditorMouseState.Y();
 		var atEdgeOfScreen = mouseX <= 0 || mouseX >= GetViewportWidth() - 1 || mouseY <= 0 || mouseY >= GetViewportHeight() - 1;
-		var downThisFrame = EditorMouseState.GetButtonState(EditorMouseState.Button.Left).DownThisFrame();
+		var downThisFrame = lmbState.DownThisFrame();
 		var clickingToDragWindowEdge = atEdgeOfScreen && downThisFrame;
 
 		// If the user has clicked this frame and they are at the edge of screen treat that as an intent to resize the window.
@@ -1639,26 +1782,26 @@ internal sealed class Editor :
 			var inReceptorArea = Receptor.IsInReceptorArea(
 				mouseX,
 				mouseY,
-				GetFocalPoint(),
+				GetFocalPointScreenSpace(),
 				ZoomManager.GetSizeZoom(),
 				TextureAtlas,
-				ArrowGraphicManager,
-				ActiveChart);
+				GetFocusedChartData()?.GetArrowGraphicManager(),
+				FocusedChart);
 
 			var inDensityArea = DensityGraph.IsInDensityGraphArea(mouseX, mouseY);
 			var inMiniMapArea = MiniMap.IsScreenPositionInMiniMapBounds(mouseX, mouseY);
 			var uiInterferingWithRegionClicking = inDensityArea || inMiniMapArea;
 
 			// Process input for the mini map.
-			if (!SelectedRegion.IsActive() && !MovingFocalPoint && !DensityGraphCapturingMouse)
+			if (!(focusedChartData?.IsSelectedRegionActive() ?? false) && !MovingFocalPoint && !DensityGraphCapturingMouse)
 				ProcessInputForMiniMap();
 
 			// Process input for the density graph
-			if (!SelectedRegion.IsActive() && !MovingFocalPoint && !MiniMapCapturingMouse)
+			if (!(focusedChartData?.IsSelectedRegionActive() ?? false) && !MovingFocalPoint && !MiniMapCapturingMouse)
 				ProcessInputForDensityGraph();
 
 			// Process input for grabbing the receptors and moving the focal point.
-			if (!SelectedRegion.IsActive() && !MiniMapCapturingMouse && !DensityGraphCapturingMouse)
+			if (!(focusedChartData?.IsSelectedRegionActive() ?? false) && !MiniMapCapturingMouse && !DensityGraphCapturingMouse)
 			{
 				ProcessInputForMovingFocalPoint(inReceptorArea);
 				// Update cursor based on whether the receptors could be grabbed.
@@ -1668,7 +1811,34 @@ internal sealed class Editor :
 
 			// Process input for selecting a region.
 			if (!MiniMapCapturingMouse && !MovingFocalPoint && !DensityGraphCapturingMouse)
-				ProcessInputForSelectedRegion(currentTime, uiInterferingWithRegionClicking);
+			{
+				GetFocusedChartData()?.ProcessInputForSelectedRegion(
+					currentTime,
+					uiInterferingWithRegionClicking,
+					EditorMouseState,
+					lmbState);
+			}
+
+			// Process input for clicking an unfocused chart to focus it.
+			if (lmbState.UpThisFrame())
+			{
+				var clickDownPos = lmbState.GetLastClickDownPosition();
+				var clickUpPos = lmbState.GetLastClickUpPosition();
+
+				foreach (var activeChart in ActiveChartData)
+				{
+					var area = activeChart.GetFullChartScreenSpaceArea();
+					if (area.Contains(clickDownPos) && area.Contains(clickUpPos))
+					{
+						if (activeChart != focusedChartData)
+						{
+							SetChartFocused(activeChart.GetChart(), false);
+						}
+
+						break;
+					}
+				}
+			}
 
 			// Process right click popup eligibility.
 			CanShowRightClickPopupThisFrame = !MiniMapCapturingMouse && !MovingFocalPoint && !DensityGraphCapturingMouse;
@@ -1678,6 +1848,15 @@ internal sealed class Editor :
 
 		// Process input for scrolling and zooming.
 		ProcessInputForScrollingAndZooming(currentTime, gameTime.ElapsedGameTime.TotalSeconds);
+	}
+
+	private void BeginImGuiFrame()
+	{
+		ImGuiRenderer.BeforeLayout();
+		if ((ImGui.GetIO().ConfigFlags & ImGuiConfigFlags.DockingEnable) != 0)
+		{
+			UIDockSpace.PrepareDockSpace(IsWindowSizeInitialized());
+		}
 	}
 
 	private void UpdateCursor()
@@ -1695,10 +1874,29 @@ internal sealed class Editor :
 	}
 
 	/// <summary>
+	/// Processes input for moving the focal point with the mouse by dragging a header.
+	/// </summary>
+	/// <remarks>Helper for ProcessInput.</remarks>
+	private void ProcessInputForDraggingHeader()
+	{
+		var overDraggableArea = false;
+		foreach (var chart in ActiveChartData)
+		{
+			if (chart.IsDraggableAreaHovered())
+			{
+				overDraggableArea = true;
+				break;
+			}
+		}
+
+		ProcessInputForMovingFocalPoint(overDraggableArea, true);
+	}
+
+	/// <summary>
 	/// Processes input for moving the focal point with the mouse.
 	/// </summary>
 	/// <remarks>Helper for ProcessInput.</remarks>
-	private void ProcessInputForMovingFocalPoint(bool inReceptorArea)
+	private void ProcessInputForMovingFocalPoint(bool inReceptorArea, bool forceOnlyHorizontalMove = false)
 	{
 		// Begin moving focal point.
 		if (EditorMouseState.GetButtonState(EditorMouseState.Button.Left).DownThisFrame()
@@ -1706,85 +1904,57 @@ internal sealed class Editor :
 		    && !Preferences.Instance.PreferencesReceptors.LockPosition)
 		{
 			MovingFocalPoint = true;
-			FocalPointAtMoveStart = new Vector2(GetFocalPointX(), GetFocalPointY());
-			FocalPointMoveOffset = new Vector2(EditorMouseState.X() - GetFocalPointX(), EditorMouseState.Y() - GetFocalPointY());
+			ForceOnlyHorizontalFocalPointMove = forceOnlyHorizontalMove;
+			FocalPointAtMoveStart = GetFocalPointChartSpace();
+			FocalPointMoveOffset = new Vector2(EditorMouseState.X() - GetFocalPointScreenSpaceX(),
+				EditorMouseState.Y() - GetFocalPointScreenSpaceY());
 		}
 
 		// Move focal point.
 		if (MovingFocalPoint)
 		{
-			var newX = EditorMouseState.X() - (int)FocalPointMoveOffset.X;
-			var newY = EditorMouseState.Y() - (int)FocalPointMoveOffset.Y;
+			void SetReceptorPosition(int x, int y)
+			{
+				var p = Preferences.Instance.PreferencesReceptors;
+				if (p.ChartSpacePositionX != x || p.ChartSpacePositionY != y)
+					FocalPointMoved = true;
+				p.ChartSpacePositionX = x;
+				p.ChartSpacePositionY = y;
+			}
 
-			if (KeyCommandManager.IsShiftDown())
+			var newX = TransformScreenSpaceXToChartSpaceX(EditorMouseState.X()) - (int)FocalPointMoveOffset.X;
+			var newY = TransformScreenSpaceYToChartSpaceY(EditorMouseState.Y()) - (int)FocalPointMoveOffset.Y;
+
+			if (KeyCommandManager.IsAnyInputDown(Preferences.Instance.PreferencesKeyBinds.LockReceptorMoveAxis))
 			{
 				if (Math.Abs(newX - FocalPointAtMoveStart.X) > Math.Abs(newY - FocalPointAtMoveStart.Y))
-				{
-					Preferences.Instance.PreferencesReceptors.PositionX = newX;
-					Preferences.Instance.PreferencesReceptors.PositionY = (int)FocalPointAtMoveStart.Y;
-				}
+					SetReceptorPosition(newX, (int)FocalPointAtMoveStart.Y);
 				else
-				{
-					Preferences.Instance.PreferencesReceptors.PositionX = (int)FocalPointAtMoveStart.X;
-					Preferences.Instance.PreferencesReceptors.PositionY = newY;
-				}
+					SetReceptorPosition((int)FocalPointAtMoveStart.X, newY);
+			}
+			else if (ForceOnlyHorizontalFocalPointMove)
+			{
+				SetReceptorPosition(newX, (int)FocalPointAtMoveStart.Y);
 			}
 			else
 			{
-				Preferences.Instance.PreferencesReceptors.PositionX = newX;
-				Preferences.Instance.PreferencesReceptors.PositionY = newY;
+				SetReceptorPosition(newX, newY);
 			}
 		}
 
 		// Stop moving focal point.
 		if (EditorMouseState.GetButtonState(EditorMouseState.Button.Left).Up() && MovingFocalPoint)
 		{
+			LastMouseUpEventWasUsedForMovingFocalPoint = FocalPointMoved;
 			MovingFocalPoint = false;
+			FocalPointMoved = false;
 			FocalPointMoveOffset = new Vector2();
 		}
 	}
 
-	/// <summary>
-	/// Processes input for selecting regions with the mouse.
-	/// </summary>
-	/// <remarks>Helper for ProcessInput.</remarks>
-	private void ProcessInputForSelectedRegion(double currentTime, bool uiInterferingWithRegionClicking)
+	public bool WasLastMouseUpUsedForMovingFocalPoint()
 	{
-		var sizeZoom = ZoomManager.GetSizeZoom();
-		var button = EditorMouseState.GetButtonState(EditorMouseState.Button.Left);
-
-		// Receptors can interfere with clicking on notes. If there was a click, let the SelectedRegion process it.
-		var forceStartRegionFromClick =
-			button.ClickedThisFrame() && !SelectedRegion.IsActive() && !uiInterferingWithRegionClicking;
-
-		// Starting a selection.
-		if (button.DownThisFrame() || forceStartRegionFromClick)
-		{
-			var y = EditorMouseState.Y();
-			var (chartTime, chartPosition) = FindChartTimeAndRowForScreenY(y);
-			var xInChartSpace = (EditorMouseState.X() - GetFocalPointX()) / sizeZoom;
-			SelectedRegion.Start(
-				xInChartSpace,
-				y,
-				chartTime,
-				chartPosition,
-				sizeZoom,
-				GetFocalPointX(),
-				currentTime);
-		}
-
-		// Dragging a selection.
-		if ((button.Down() && SelectedRegion.IsActive()) || forceStartRegionFromClick)
-		{
-			var xInChartSpace = (EditorMouseState.X() - GetFocalPointX()) / sizeZoom;
-			SelectedRegion.UpdatePerFrameValues(xInChartSpace, EditorMouseState.Y(), sizeZoom, GetFocalPointX());
-		}
-
-		// Releasing a selection.
-		if ((button.Up() && SelectedRegion.IsActive()) || forceStartRegionFromClick)
-		{
-			FinishSelectedRegion();
-		}
+		return LastMouseUpEventWasUsedForMovingFocalPoint;
 	}
 
 	/// <summary>
@@ -1795,6 +1965,7 @@ internal sealed class Editor :
 	{
 		var pScroll = Preferences.Instance.PreferencesScroll;
 		var scrollDelta = (float)EditorMouseState.ScrollDeltaSinceLastFrame() / EditorMouseState.GetDefaultScrollDetentValue();
+		var focusedChartData = GetFocusedChartData();
 
 		// When starting interpolation start at the time from the previous frame. This lets one frame of
 		// movement occur this frame. For input like touch pads and smooth scroll wheels we can receive input
@@ -1814,8 +1985,8 @@ internal sealed class Editor :
 		if (Playing)
 		{
 			PlaybackStartTime += timeDelta;
-			Position.SongTime = PlaybackStartTime +
-			                    PlaybackStopwatch.Elapsed.TotalSeconds * Preferences.Instance.PreferencesAudio.MusicRate;
+			SetSongTime(PlaybackStartTime +
+			            PlaybackStopwatch.Elapsed.TotalSeconds * Preferences.Instance.PreferencesAudio.MusicRate);
 
 			if (pScroll.StopPlaybackWhenScrolling)
 			{
@@ -1823,19 +1994,22 @@ internal sealed class Editor :
 			}
 			else
 			{
-				MusicManager.SetMusicTimeInSeconds(Position.SongTime);
+				MusicManager.SetMusicTimeInSeconds(GetPosition().SongTime);
 			}
 
 			UpdateAutoPlayFromScrolling();
 		}
 		else
 		{
-			if (SnapLevels[Preferences.Instance.SnapIndex].Rows == 0)
+			if (SnapManager.GetCurrentRows() == 0)
 			{
-				if (pScroll.SpacingMode == SpacingMode.ConstantTime)
-					Position.BeginSongTimeInterpolation(startTimeForInput, timeDelta);
-				else
-					Position.BeginChartPositionInterpolation(startTimeForInput, rowDelta);
+				if (focusedChartData != null)
+				{
+					if (pScroll.SpacingMode == SpacingMode.ConstantTime)
+						focusedChartData.Position.BeginSongTimeInterpolation(startTimeForInput, timeDelta);
+					else
+						focusedChartData.Position.BeginChartPositionInterpolation(startTimeForInput, rowDelta);
+				}
 			}
 			else
 			{
@@ -1856,17 +2030,24 @@ internal sealed class Editor :
 		if (MovingFocalPoint)
 		{
 			MovingFocalPoint = false;
-			Preferences.Instance.PreferencesReceptors.PositionX = (int)FocalPointAtMoveStart.X;
-			Preferences.Instance.PreferencesReceptors.PositionY = (int)FocalPointAtMoveStart.Y;
+			Preferences.Instance.PreferencesReceptors.ChartSpacePositionX = (int)FocalPointAtMoveStart.X;
+			Preferences.Instance.PreferencesReceptors.ChartSpacePositionY = (int)FocalPointAtMoveStart.Y;
 			return;
 		}
 
 		if (IsPlayingPreview())
+		{
 			StopPreview();
-		else if (Playing)
+			return;
+		}
+
+		if (Playing)
+		{
 			StopPlayback();
-		else if (Selection.HasSelectedEvents())
-			Selection.ClearSelectedEvents();
+			return;
+		}
+
+		GetFocusedChartData()?.ClearSelection();
 	}
 
 	#endregion Input Processing
@@ -1880,8 +2061,9 @@ internal sealed class Editor :
 
 		StopPreview();
 
-		BeginPlaybackStopwatch(Position.SongTime);
-		MusicManager.StartPlayback(Position.SongTime);
+		var position = GetPosition();
+		BeginPlaybackStopwatch(position.SongTime);
+		MusicManager.StartPlayback(position.SongTime);
 
 		Playing = true;
 
@@ -1903,7 +2085,9 @@ internal sealed class Editor :
 
 		PlaybackStopwatch.Stop();
 		MusicManager.StopPlayback();
-		AutoPlayer?.Stop();
+
+		foreach (var activeChartData in ActiveChartData)
+			activeChartData.StopAutoPlayer();
 
 		Playing = false;
 	}
@@ -1951,7 +2135,8 @@ internal sealed class Editor :
 	private void OnMusicChanged()
 	{
 		StopPreview();
-		MusicManager.LoadMusicAsync(GetFullPathToMusicFile(), false, Preferences.Instance.PreferencesWaveForm.EnableWaveForm);
+		MusicManager.LoadMusicAsync(GetFullPathToFocusedChartMusicFile(), false,
+			Preferences.Instance.PreferencesWaveForm.EnableWaveForm);
 	}
 
 	private void OnMusicPreviewChanged()
@@ -1963,13 +2148,17 @@ internal sealed class Editor :
 	private void OnMusicOffsetChanged()
 	{
 		// Re-set the position to recompute the chart and song times.
-		Position.ChartPosition = Position.ChartPosition;
+		var focusedChartData = GetFocusedChartData();
+		if (focusedChartData != null)
+			SetChartPosition(focusedChartData.Position.ChartPosition);
 	}
 
 	private void OnSyncOffsetChanged()
 	{
 		// Re-set the position to recompute the chart and song times.
-		Position.ChartPosition = Position.ChartPosition;
+		var focusedChartData = GetFocusedChartData();
+		if (focusedChartData != null)
+			SetChartPosition(focusedChartData.Position.ChartPosition);
 	}
 
 	private void OnAudioOffsetChanged()
@@ -1978,7 +2167,7 @@ internal sealed class Editor :
 		if (playing)
 			StopPlayback();
 		MusicManager.SetMusicOffset(Preferences.Instance.PreferencesAudio.AudioOffset);
-		MusicManager.SetMusicTimeInSeconds(Position.SongTime);
+		MusicManager.SetMusicTimeInSeconds(GetPosition().SongTime);
 		if (playing)
 			StartPlayback();
 	}
@@ -1990,8 +2179,8 @@ internal sealed class Editor :
 		{
 			// When adjusting the rate while playing restart our timer and base it on the current music time.
 			var musicSongTime = MusicManager.GetMusicSongTime();
-			Position.SongTime = musicSongTime;
-			BeginPlaybackStopwatch(Position.SongTime);
+			SetSongTime(musicSongTime);
+			BeginPlaybackStopwatch(GetPosition().SongTime);
 		}
 	}
 
@@ -2094,6 +2283,11 @@ internal sealed class Editor :
 		return ZoomManager.GetSpacingZoom();
 	}
 
+	public double GetSizeCap()
+	{
+		return ZoomManager.GetSizeCap();
+	}
+
 	#endregion Zoom
 
 	#region Drawing
@@ -2121,18 +2315,28 @@ internal sealed class Editor :
 
 			SpriteBatch.Begin(SpriteSortMode.Deferred, BlendState.NonPremultiplied);
 
-			DrawMiniMap();
-			if (RenderChart)
+			DrawActiveChartBoundaries();
+			DrawMeasureMarkers();
+			DrawRegions();
+			DrawReceptors();
+			DrawSnapIndicators();
+
+			// Start a window within the central node so we can clip
+			if (UIDockSpace.BeginCentralNodeAreaWindow())
 			{
-				if (RenderMarkers)
-					DrawMeasureMarkers();
-				DrawRegions();
-				DrawReceptors();
-				DrawSnapIndicators();
+				// Draw the chart events, which include misc event widgets needing to be clipped.
 				DrawChartEvents();
-				DrawReceptorForegroundEffects();
-				DrawSelectedRegion();
+
+				// Draw the chart headers which also need to be clipped.
+				DrawChartHeaders();
 			}
+
+			UIDockSpace.EndCentralNodeAreaWindow();
+
+			DrawReceptorForegroundEffects();
+			DrawSelectedRegion();
+
+			DrawMiniMap();
 
 			SpriteBatch.End();
 
@@ -2183,13 +2387,13 @@ internal sealed class Editor :
 		var sparseColor = p.WaveFormSparseColor;
 		switch (p.WaveFormSparseColorOption)
 		{
-			case UIWaveFormPreferences.SparseColorOption.DarkerDenseColor:
+			case PreferencesWaveForm.SparseColorOption.DarkerDenseColor:
 				sparseColor.X = p.WaveFormDenseColor.X * p.WaveFormSparseColorScale;
 				sparseColor.Y = p.WaveFormDenseColor.Y * p.WaveFormSparseColorScale;
 				sparseColor.Z = p.WaveFormDenseColor.Z * p.WaveFormSparseColorScale;
 				sparseColor.W = p.WaveFormDenseColor.W;
 				break;
-			case UIWaveFormPreferences.SparseColorOption.SameAsDenseColor:
+			case PreferencesWaveForm.SparseColorOption.SameAsDenseColor:
 				sparseColor = p.WaveFormDenseColor;
 				break;
 		}
@@ -2208,6 +2412,19 @@ internal sealed class Editor :
 		SpriteBatch.Draw(WaveformRenderTargets[0],
 			new Rectangle(0, 0, WaveformRenderTargets[0].Width, WaveformRenderTargets[0].Height), Color.White);
 		SpriteBatch.End();
+	}
+
+	private void DrawChartHeaders()
+	{
+		UIChartHeader.DrawBackground(ChartArea);
+		for (var i = 0; i < ActiveChartData.Count;)
+		{
+			// The header has a close button which can delete the chart.
+			var chart = ActiveChartData[i];
+			chart.DrawHeader();
+			if (i < ActiveChartData.Count && chart == ActiveChartData[i])
+				i++;
+		}
 	}
 
 	private void DrawBackground()
@@ -2233,20 +2450,37 @@ internal sealed class Editor :
 
 		// Draw the background texture.
 		SpriteBatch.Begin();
-		ActiveSong.GetBackground().GetTexture()
-			.DrawTexture(SpriteBatch, 0, 0, (uint)GetViewportWidth(), (uint)GetViewportHeight());
+		switch (Preferences.Instance.PreferencesOptions.BackgroundImageSize)
+		{
+			case PreferencesOptions.BackgroundImageSizeMode.ChartArea:
+				ActiveSong.GetBackground().GetTexture()
+					.DrawTexture(SpriteBatch, ChartArea.X, ChartArea.Y, (uint)ChartArea.Width, (uint)ChartArea.Height);
+				break;
+			case PreferencesOptions.BackgroundImageSizeMode.Window:
+				ActiveSong.GetBackground().GetTexture()
+					.DrawTexture(SpriteBatch, 0, 0, (uint)GetViewportWidth(), (uint)GetViewportHeight());
+				break;
+		}
+
 		SpriteBatch.End();
+	}
+
+	private bool IsDarkBackgroundVisible()
+	{
+		var p = Preferences.Instance.PreferencesDark;
+		if (!p.ShowDarkBg)
+			return false;
+		if (p.Size == PreferencesDark.SizeMode.Charts && GetFocusedChartData() == null)
+			return false;
+		return true;
 	}
 
 	private void DrawDarkBackground()
 	{
-		if (ActiveChart == null || ArrowGraphicManager == null)
+		if (!IsDarkBackgroundVisible())
 			return;
 
 		var p = Preferences.Instance.PreferencesDark;
-		if (!p.ShowDarkBg)
-			return;
-
 		var (x, w) = GetDarkBgXAndW();
 
 		SpriteBatch.Begin();
@@ -2257,83 +2491,47 @@ internal sealed class Editor :
 
 	private (int, int) GetDarkBgXAndW()
 	{
-		var x = 0;
-		var w = 0;
-		if (ActiveChart == null || ArrowGraphicManager == null)
-			return (x, w);
-
-		var (receptorTextureId, _) = ArrowGraphicManager.GetReceptorTexture(0);
-		var (receptorTextureWidth, _) = TextureAtlas.GetDimensions(receptorTextureId);
-		var zoom = ZoomManager.GetSizeZoom();
-
-		var chartXCurrent = (int)(GetFocalPointX() - ActiveChart.NumInputs * 0.5 * receptorTextureWidth * zoom);
-		var chartXMax = (int)(GetFocalPointX() - ActiveChart.NumInputs * 0.5 * receptorTextureWidth);
-		var chartWMax = ActiveChart.NumInputs * receptorTextureWidth;
-		var chartWCurrent = (int)(ActiveChart.NumInputs * receptorTextureWidth * zoom);
-
-		var waveformXMax = (int)(GetFocalPointX() - WaveFormTextureWidth * 0.5f);
-		var waveformWMax = WaveFormTextureWidth;
-
-		var waveformWCurrent = WaveFormRenderer.GetScaledWaveFormWidth(ZoomManager.GetSpacingZoom());
-		var waveformXCurrent = (int)(waveformXMax + waveformWMax * 0.5f - waveformWCurrent * 0.5f);
-
-		var p = Preferences.Instance.PreferencesDark;
-		switch (p.Size)
+		switch (Preferences.Instance.PreferencesDark.Size)
 		{
-			case PreferencesDark.SizeMode.WaveFormWidthMax:
-				x = waveformXMax;
-				w = waveformWMax;
-				break;
-			case PreferencesDark.SizeMode.WaveFormWidthCurrent:
-				x = waveformXCurrent;
-				w = waveformWCurrent;
-				break;
-			case PreferencesDark.SizeMode.ChartWidthMax:
-				x = chartXMax;
-				w = chartWMax;
-				break;
-			case PreferencesDark.SizeMode.ChartCurrentWidth:
-				x = chartXCurrent;
-				w = chartWCurrent;
-				break;
-			case PreferencesDark.SizeMode.MaxOfWaveFormOrChartCurrentWidth:
-				x = Math.Min(chartXCurrent, waveformXCurrent);
-				w = Math.Max(chartWCurrent, waveformWCurrent);
-				break;
-			case PreferencesDark.SizeMode.MaxOfWaveFormOrChartMaxWidth:
-				x = Math.Min(chartXMax, waveformXMax);
-				w = Math.Max(chartWMax, waveformWMax);
-				break;
+			case PreferencesDark.SizeMode.Charts:
+				return GetActiveChartsXAndWidth();
+			case PreferencesDark.SizeMode.Window:
+				return (0, GetViewportWidth());
 		}
 
-		return (x, w);
+		return (0, 0);
 	}
 
 	private void DrawReceptors()
 	{
-		if (ActiveChart == null || ArrowGraphicManager == null || Receptors == null)
-			return;
-
 		var sizeZoom = ZoomManager.GetSizeZoom();
-		foreach (var receptor in Receptors)
-			receptor.Draw(GetFocalPoint(), sizeZoom, TextureAtlas, SpriteBatch);
+		for (var i = 0; i < ActiveCharts.Count; i++)
+		{
+			if (!ActiveChartData[i].IsVisible())
+				continue;
+			ActiveChartData[i].DrawReceptors(sizeZoom, TextureAtlas, SpriteBatch);
+		}
 	}
 
 	private void DrawSnapIndicators()
 	{
-		if (ActiveChart == null || ArrowGraphicManager == null || Receptors == null)
+		var focusedChartData = GetFocusedChartData();
+		if (focusedChartData == null)
 			return;
-		var snapTextureId = SnapLevels[Preferences.Instance.SnapIndex].Texture;
+		var arrowGraphicManager = focusedChartData.GetArrowGraphicManager();
+		if (arrowGraphicManager == null)
+			return;
+		var snapTextureId = SnapManager.GetCurrentTexture();
 		if (string.IsNullOrEmpty(snapTextureId))
 			return;
-		var (receptorTextureId, _) = ArrowGraphicManager.GetReceptorTexture(0);
+		var (receptorTextureId, _) = arrowGraphicManager.GetReceptorTexture(0);
 		var (receptorTextureWidth, _) = TextureAtlas.GetDimensions(receptorTextureId);
 		var zoom = ZoomManager.GetSizeZoom();
-		var receptorLeftEdge = GetFocalPointX() - ActiveChart.NumInputs * 0.5 * receptorTextureWidth * zoom;
+		var receptorLeftEdge = GetFocalPointScreenSpaceX() - FocusedChart.NumInputs * 0.5 * receptorTextureWidth * zoom;
 
 		var (snapTextureWidth, snapTextureHeight) = TextureAtlas.GetDimensions(snapTextureId);
 		var leftX = receptorLeftEdge - snapTextureWidth * 0.5 * zoom;
-		var y = GetFocalPointY();
+		var y = GetFocalPointScreenSpaceY();
 
 		TextureAtlas.Draw(
 			snapTextureId,
@@ -2348,24 +2546,19 @@ internal sealed class Editor :
 
 	private void DrawReceptorForegroundEffects()
 	{
-		if (ActiveChart == null || ArrowGraphicManager == null || Receptors == null)
-			return;
-
 		var sizeZoom = ZoomManager.GetSizeZoom();
-		foreach (var receptor in Receptors)
-			receptor.DrawForegroundEffects(GetFocalPoint(), sizeZoom, TextureAtlas, SpriteBatch);
+		for (var i = 0; i < ActiveCharts.Count; i++)
+			ActiveChartData[i].DrawReceptorForegroundEffects(sizeZoom, TextureAtlas, SpriteBatch);
 	}
 
 	private void DrawWaveForm()
 	{
 		var p = Preferences.Instance.PreferencesWaveForm;
-		if (!p.ShowWaveForm)
+		if (!p.ShowWaveForm || !p.EnableWaveForm)
 			return;
 
-		var x = GetFocalPointX() - (WaveFormTextureWidth >> 1);
-
-		// At this point WaveformRenderTargets[1] contains the recolored waveform.
-		// We now draw that to the backbuffer with an optional antialiasing pass.
+		if (ActiveCharts.Count == 0)
+			return;
 
 		if (p.AntiAlias)
 		{
@@ -2380,85 +2573,155 @@ internal sealed class Editor :
 
 			// Draw the recolored waveform with antialiasing to the back buffer.
 			SpriteBatch.Begin(SpriteSortMode.Deferred, null, null, null, null, FxaaEffect);
-			SpriteBatch.Draw(WaveformRenderTargets[1],
-				new Rectangle(x, 0, WaveformRenderTargets[1].Width, WaveformRenderTargets[1].Height), Color.White);
+			DrawWaveFormRenderTargetToSpriteBatch();
 			SpriteBatch.End();
 		}
 		else
 		{
 			// Draw the recolored waveform to the back buffer.
 			SpriteBatch.Begin();
-			SpriteBatch.Draw(WaveformRenderTargets[1],
-				new Rectangle(x, 0, WaveformRenderTargets[1].Width, WaveformRenderTargets[1].Height), Color.White);
+			DrawWaveFormRenderTargetToSpriteBatch();
 			SpriteBatch.End();
+		}
+	}
+
+	private void DrawWaveFormRenderTargetToSpriteBatch()
+	{
+		foreach (var activeChart in ActiveChartData)
+			if (activeChart.ShouldDrawWaveForm())
+				DrawWaveFormRenderTargetToSpriteBatch(activeChart);
+	}
+
+	private void DrawWaveFormRenderTargetToSpriteBatch(ActiveEditorChart activeChart)
+	{
+		if (!activeChart.IsVisible())
+			return;
+		var width = (int)GetWaveFormWidth(activeChart);
+		var x = activeChart.GetFocalPointX() - (width >> 1);
+		// At this point WaveformRenderTargets[1] contains the recolored waveform.
+		SpriteBatch.Draw(WaveformRenderTargets[1],
+			new Rectangle(x, TransformChartSpaceYToScreenSpaceY(0), width, WaveformRenderTargets[1].Height), Color.White);
+	}
+
+	private void DrawActiveChartBoundaries()
+	{
+		var y = ChartArea.Y;
+		var w = GetActiveChartBoundaryWidth();
+		var h = ChartArea.Height;
+		foreach (var activeChartData in ActiveChartData)
+		{
+			if (!activeChartData.IsVisible())
+				continue;
+			var textureId = activeChartData.IsFocused() ? TextureIdFocusedChartBoundary : TextureIdUnfocusedChartBoundary;
+			var rect = new Rectangle(activeChartData.GetScreenSpaceXOfFullChartAreaStart(), y, w, h);
+			TextureAtlas.Draw(textureId, SpriteBatch, rect);
+			rect = new Rectangle(activeChartData.GetScreenSpaceXOfFullChartAreaEnd() - w, y, w, h);
+			TextureAtlas.Draw(textureId, SpriteBatch, rect);
 		}
 	}
 
 	private void DrawMeasureMarkers()
 	{
-		foreach (var visibleMarker in VisibleMarkers)
+		if (!Preferences.Instance.PreferencesOptions.RenderMarkers)
+			return;
+
+		foreach (var activeChartData in ActiveChartData)
 		{
-			visibleMarker.Draw(TextureAtlas, SpriteBatch, Font);
+			if (!activeChartData.IsVisible())
+				continue;
+			foreach (var visibleMarker in activeChartData.GetVisibleMarkers())
+			{
+				visibleMarker.Draw(TextureAtlas, SpriteBatch, Font);
+			}
 		}
 	}
 
 	private void DrawRegions()
 	{
-		foreach (var visibleRegion in VisibleRegions)
+		if (!Preferences.Instance.PreferencesOptions.RenderRegions)
+			return;
+
+		foreach (var activeChartData in ActiveChartData)
 		{
-			visibleRegion.DrawRegion(TextureAtlas, SpriteBatch, GetViewportHeight());
+			if (!activeChartData.IsVisible())
+				continue;
+			foreach (var visibleRegion in activeChartData.GetVisibleRegions())
+			{
+				visibleRegion.DrawRegion(TextureAtlas, SpriteBatch, GetViewportHeight());
+			}
 		}
 	}
 
 	private void DrawSelectedRegion()
 	{
-		if (SelectedRegion.IsActive())
+		var selectedRegion = GetFocusedChartData()?.GetSelectedRegion();
+		if (selectedRegion?.IsActive() ?? false)
 		{
-			SelectedRegion.DrawRegion(TextureAtlas, SpriteBatch, GetViewportHeight());
+			selectedRegion.DrawRegion(TextureAtlas, SpriteBatch, GetViewportHeight());
 		}
 	}
 
 	private void DrawChartEvents()
 	{
-		var eventsBeingEdited = new List<EditorEvent>();
+		var renderMiscEvents = Preferences.Instance.PreferencesOptions.RenderMiscEvents;
+		var renderNotes = Preferences.Instance.PreferencesOptions.RenderNotes;
+		if (!renderMiscEvents && !renderNotes)
+			return;
 
-		foreach (var visibleEvent in VisibleEvents)
+		var focalPointScreenSpaceY = GetFocalPointScreenSpaceY();
+
+		foreach (var activeChartData in ActiveChartData)
 		{
-			// Capture events being edited to draw after all events not being edited.
-			if (visibleEvent.IsBeingEdited())
-			{
-				eventsBeingEdited.Add(visibleEvent);
+			if (!activeChartData.IsVisible())
 				continue;
-			}
 
-			if (Playing)
+			var eventsBeingEdited = new List<EditorEvent>();
+			var arrowGraphicManager = activeChartData.GetArrowGraphicManager();
+
+			foreach (var visibleEvent in activeChartData.GetVisibleEvents())
 			{
-				// Skip events entirely above the receptors.
-				if (Preferences.Instance.PreferencesReceptors.AutoPlayHideArrows
-				    && visibleEvent.GetEndChartTime() < Position.ChartTime
-				    && visibleEvent.IsConsumedByReceptors())
+				if (!renderMiscEvents && visibleEvent.IsMiscEvent())
 					continue;
 
-				// Cut off hold end notes which intersect the receptors.
-				if (visibleEvent is EditorHoldNoteEvent hold)
+				if (!renderNotes && !visibleEvent.IsMiscEvent())
+					continue;
+
+				// Capture events being edited to draw after all events not being edited.
+				if (visibleEvent.IsBeingEdited())
 				{
-					if (Playing && hold.IsConsumedByReceptors()
-					            && hold.GetEndChartTime() > Position.ChartTime
-					            && hold.GetChartTime() < Position.ChartTime)
+					eventsBeingEdited.Add(visibleEvent);
+					continue;
+				}
+
+				if (Playing)
+				{
+					// Skip events entirely above the receptors.
+					if (Preferences.Instance.PreferencesReceptors.AutoPlayHideArrows
+					    && visibleEvent.GetEndChartTime() < activeChartData.Position.ChartTime
+					    && visibleEvent.IsConsumedByReceptors())
+						continue;
+
+					// Cut off hold end notes which intersect the receptors.
+					if (visibleEvent is EditorHoldNoteEvent hold)
 					{
-						hold.SetNextDrawActive(true, GetFocalPointY());
+						if (Playing && hold.IsConsumedByReceptors()
+						            && hold.GetEndChartTime() > activeChartData.Position.ChartTime
+						            && hold.GetChartTime() < activeChartData.Position.ChartTime)
+						{
+							hold.SetNextDrawActive(true, focalPointScreenSpaceY);
+						}
 					}
 				}
+
+				// Draw the event.
+				visibleEvent.Draw(TextureAtlas, SpriteBatch, arrowGraphicManager);
 			}
 
-			// Draw the event.
-			visibleEvent.Draw(TextureAtlas, SpriteBatch, ArrowGraphicManager);
-		}
-
-		// Draw events being edited.
-		foreach (var visibleEvent in eventsBeingEdited)
-		{
-			visibleEvent.Draw(TextureAtlas, SpriteBatch, ArrowGraphicManager);
+			// Draw events being edited.
+			foreach (var visibleEvent in eventsBeingEdited)
+			{
+				visibleEvent.Draw(TextureAtlas, SpriteBatch, arrowGraphicManager);
+			}
 		}
 	}
 
@@ -2466,787 +2729,71 @@ internal sealed class Editor :
 
 	#region Chart Update
 
-	/// <summary>
-	/// Sets VisibleEvents, VisibleMarkers, and VisibleRegions to store the currently visible
-	/// objects based on the current EditorPosition and the SpacingMode.
-	/// Updates SelectedRegion.
-	/// </summary>
-	/// <remarks>
-	/// Sets the WaveFormPPS.
-	/// </remarks>
+	private void UpdateChartPositions()
+	{
+		var focalPointX = GetFocalPointScreenSpaceX();
+		var focalPointY = GetFocalPointScreenSpaceY();
+
+		var focusedChartIndex = 0;
+		ActiveEditorChart focusedChartData = null;
+		for (var i = 0; i < ActiveCharts.Count; i++)
+		{
+			if (ActiveCharts[i] == FocusedChart)
+			{
+				focusedChartData = ActiveChartData[i];
+				focusedChartIndex = i;
+				break;
+			}
+		}
+
+		// Focused Chart.
+		var xLeftOfFocusedChart = 0;
+		var xRightOfFocusedChart = 0;
+		if (focusedChartData != null)
+		{
+			focusedChartData.SetFocalPoint(focalPointX, focalPointY);
+			xLeftOfFocusedChart = focusedChartData.GetScreenSpaceXOfFullChartAreaStart();
+			xRightOfFocusedChart = focusedChartData.GetScreenSpaceXOfFullChartAreaEnd();
+		}
+
+		// Charts to the left of the focused chart.
+		var x = xLeftOfFocusedChart;
+		for (var i = focusedChartIndex - 1; i >= 0; i--)
+		{
+			var fullWidth = ActiveChartData[i].GetChartScreenSpaceWidth();
+			var width = ActiveChartData[i].GetLaneAndWaveFormAreaWidth();
+			var xOffset = ActiveChartData[i].GetRelativeXPositionOfLanesAndWaveFormFromChartArea();
+			ActiveChartData[i].SetFocalPoint(x - fullWidth + xOffset + (width >> 1), focalPointY);
+			x -= fullWidth;
+		}
+
+		// Charts to the right of the focused chart.
+		x = xRightOfFocusedChart;
+		for (var i = focusedChartIndex + 1; i < ActiveCharts.Count; i++)
+		{
+			var fullWidth = ActiveChartData[i].GetChartScreenSpaceWidth();
+			var width = ActiveChartData[i].GetLaneAndWaveFormAreaWidth();
+			var xOffset = ActiveChartData[i].GetRelativeXPositionOfLanesAndWaveFormFromChartArea();
+			ActiveChartData[i].SetFocalPoint(x + xOffset + (width >> 1), focalPointY);
+			x += fullWidth;
+		}
+	}
+
+	private (int, int) GetActiveChartsXAndWidth()
+	{
+		if (ActiveChartData.Count == 0)
+			return (0, 0);
+		var x = ActiveChartData[0].GetScreenSpaceXOfFullChartAreaStart();
+		var finalX = ActiveChartData[^1].GetScreenSpaceXOfFullChartAreaEnd();
+		return (x, finalX - x);
+	}
+
 	private void UpdateChartEvents()
 	{
-		// Clear the current state of visible events
-		VisibleEvents.Clear();
-		VisibleMarkers.Clear();
-		VisibleRegions.Clear();
-		RegionsOverlappingStart.Clear();
-		SelectedRegion.ClearPerFrameData();
-
-		if (ActiveChart == null || ActiveChart.GetEvents() == null || ArrowGraphicManager == null)
-			return;
-
-		// Get an EventSpacingHelper to perform y calculations.
-		SpacingHelper = EventSpacingHelper.GetSpacingHelper(ActiveChart);
-
-		var noteEvents = new List<EditorEvent>();
-
 		var screenHeight = GetViewportHeight();
-		var focalPointX = GetFocalPointX();
-		var focalPointY = GetFocalPointY();
-		var numArrows = ActiveChart.NumInputs;
-
-		var spacingZoom = ZoomManager.GetSpacingZoom();
-		var sizeZoom = ZoomManager.GetSizeZoom();
-
-		// Determine graphic dimensions based on the zoom level.
-		var (arrowW, arrowH) = GetArrowDimensions();
-		var (holdCapTexture, _) = ArrowGraphicManager.GetHoldEndTexture(0, 0, false, false);
-		var (_, holdCapTextureHeight) = TextureAtlas.GetDimensions(holdCapTexture);
-		var holdCapHeight = holdCapTextureHeight * sizeZoom;
-		if (ArrowGraphicManager.AreHoldCapsCentered())
-			holdCapHeight *= 0.5;
-
-		// Determine the starting x and y position in screen space.
-		// Y extended slightly above the top of the screen so that we start drawing arrows
-		// before their midpoints.
-		var startPosX = focalPointX - numArrows * arrowW * 0.5;
-		var startPosY = 0.0 - Math.Max(holdCapHeight, arrowH * 0.5);
-
-		var noteAlpha = (float)Interpolation.Lerp(1.0, 0.0, NoteScaleToStartFading, NoteMinScale, sizeZoom);
-
-		// Set up the MiscEventWidgetLayoutManager.
-		var miscEventAlpha = (float)Interpolation.Lerp(1.0, 0.0, MiscEventScaleToStartFading, MiscEventMinScale, sizeZoom);
-		BeginMiscEventWidgetLayoutManagerFrame();
-
-		// TODO: Fix Negative Scrolls resulting in cutting off notes prematurely.
-		// If a chart has negative scrolls then we technically need to render notes which come before
-		// the chart position at the top of the screen.
-		// More likely the most visible problem will be at the bottom of the screen where if we
-		// were to detect the first note which falls below the bottom it would prevent us from
-		// finding the next set of notes which might need to be rendered because they appear 
-		// above.
-
-		// Get the current time and position.
-		var time = Position.ChartTime;
-		var chartPosition = Position.ChartPosition;
-
-		// Find the interpolated scroll rate to use as a multiplier.
-		var interpolatedScrollRate = GetCurrentInterpolatedScrollRate();
-
-		// Now, scroll up to the top of the screen so we can start processing events going downwards.
-		// We know what time / pos we are drawing at the receptors, but not the rate to get to that time from the top
-		// of the screen.
-		// We need to find the greatest preceding rate event, and continue until it is beyond the start of the screen.
-		// Then we need to find the greatest preceding notes by scanning upwards.
-		// Once we find that note, we start iterating downwards while also keeping track of the rate events along the way.
-
-		var rateEnumerator = ActiveChart.GetRateAlteringEvents().FindBest(Position);
-		if (rateEnumerator == null)
-			return;
-
-		// Scan upwards to find the earliest rate altering event that should be used to start rendering.
-		var previousRateEventY = (double)focalPointY;
-		var previousRateEventRow = chartPosition;
-		var previousRateEventTime = time;
-		EditorRateAlteringEvent rateEvent = null;
-		while (previousRateEventY >= startPosY && rateEnumerator.MovePrev())
-		{
-			// On the rate altering event which is active for the current chart position,
-			// Record the pixels per second to use for the WaveForm.
-			if (rateEvent == null)
-				SetWaveFormPps(rateEnumerator.Current, interpolatedScrollRate);
-
-			rateEvent = rateEnumerator.Current;
-			SpacingHelper.UpdatePpsAndPpr(rateEvent, interpolatedScrollRate, spacingZoom);
-			previousRateEventY = SpacingHelper.GetYPreceding(previousRateEventTime, previousRateEventRow, previousRateEventY,
-				rateEvent!.GetChartTime(), rateEvent.GetRow());
-			previousRateEventRow = rateEvent.GetRow();
-			previousRateEventTime = rateEvent.GetChartTime();
-		}
-
-		// Now we know the position of first rate altering event to use.
-		// We can now determine the chart time and position at the top of the screen.
-		var (chartTimeAtTopOfScreen, chartPositionAtTopOfScreen) =
-			SpacingHelper.GetChartTimeAndRow(startPosY, previousRateEventY, rateEvent!.GetChartTime(), rateEvent.GetRow());
-
-		var beatMarkerRow = (int)chartPositionAtTopOfScreen;
-		var beatMarkerLastRecordedRow = -1;
-		var numRateAlteringEventsProcessed = 1;
-
-		// Now that we know the position at the start of the screen we can find the first event to start rendering.
-		var enumerator = ActiveChart.GetEvents().FindBestByPosition(chartPositionAtTopOfScreen);
-		if (enumerator == null)
-			return;
-
-		// Scan backwards until we have checked every lane for a long note which may
-		// be extending through the given start row. We cannot add the end events yet because
-		// we do not know at what position they will end until we scan down.
-		var holdsNeedingToBeCompleted = new HashSet<EditorHoldNoteEvent>();
-		var holdNotes = ScanBackwardsForHolds(enumerator, chartPositionAtTopOfScreen);
-		foreach (var hn in holdNotes)
-		{
-			// This is technically incorrect.
-			// We are using the rate altering event active at the screen, but there could be more
-			// rate altering events between the top of the screen and the start of the hold.
-			hn.SetDimensions(
-				startPosX + hn.GetLane() * arrowW,
-				SpacingHelper.GetY(hn, previousRateEventY) - arrowH * 0.5,
-				arrowW,
-				0.0, // we do not know the height yet.
-				sizeZoom);
-			noteEvents.Add(hn);
-
-			holdsNeedingToBeCompleted.Add(hn);
-		}
-
-		var hasNextRateEvent = rateEnumerator.MoveNext();
-		var nextRateEvent = hasNextRateEvent ? rateEnumerator.Current : null;
-
-		var regionsNeedingToBeAdded = new List<IChartRegion>();
-		var addedRegions = new HashSet<IChartRegion>();
-
-		// Start any regions including the selected region.
-		// This call will also check for completing regions within the current rate altering event.
-		StartRegions(ref regionsNeedingToBeAdded, ref addedRegions, previousRateEventY, rateEvent, nextRateEvent, startPosX,
-			numArrows * arrowW, chartTimeAtTopOfScreen, chartPositionAtTopOfScreen);
-		// Check for completing holds within the current rate altering event.
-		CheckForCompletingHolds(holdsNeedingToBeCompleted, previousRateEventY, nextRateEvent);
-
-		// Now we can scan forward
-		var reachedEndOfScreen = false;
-		while (enumerator.MoveNext())
-		{
-			var e = enumerator.Current;
-
-			// Check to see if we have crossed into a new rate altering event section
-			if (nextRateEvent != null && e == nextRateEvent)
-			{
-				// Add a misc widget for this rate event.
-				var rateEventY = SpacingHelper.GetY(e, previousRateEventY);
-				nextRateEvent.Alpha = miscEventAlpha;
-				MiscEventWidgetLayoutManager.PositionEvent(nextRateEvent, rateEventY);
-				noteEvents.Add(nextRateEvent);
-
-				// Add a region for this event if appropriate.
-				if (nextRateEvent is IChartRegion region)
-					AddRegion(region, false, ref regionsNeedingToBeAdded, ref addedRegions, previousRateEventY, nextRateEvent,
-						startPosX,
-						numArrows * arrowW);
-
-				// Update beat markers for the section for the previous rate event.
-				UpdateBeatMarkers(rateEvent, ref beatMarkerRow, ref beatMarkerLastRecordedRow, nextRateEvent, startPosX, sizeZoom,
-					previousRateEventY);
-
-				// Update rate parameters.
-				rateEvent = nextRateEvent;
-				SpacingHelper.UpdatePpsAndPpr(rateEvent, interpolatedScrollRate, spacingZoom);
-				previousRateEventY = rateEventY;
-
-				// Advance next rate altering event.
-				hasNextRateEvent = rateEnumerator.MoveNext();
-				nextRateEvent = hasNextRateEvent ? rateEnumerator.Current : null;
-
-				// Update any regions needing to be updated based on the new rate altering event.
-				UpdateRegions(ref regionsNeedingToBeAdded, ref addedRegions, previousRateEventY, rateEvent, nextRateEvent);
-				// Check for completing any holds needing to be completed within the new rate altering event.
-				CheckForCompletingHolds(holdsNeedingToBeCompleted, previousRateEventY, nextRateEvent);
-
-				numRateAlteringEventsProcessed++;
-				continue;
-			}
-
-			// Determine y position.
-			var y = SpacingHelper.GetY(e, previousRateEventY);
-			var arrowY = y - arrowH * 0.5;
-
-			// If we have advanced beyond the end of the screen we can finish.
-			// An exception to this rule is if the current scroll rate is negative. We do not
-			// want to end processing on a negative region, particularly for regions which end
-			// beyond the end of the screen.
-			if (arrowY > screenHeight && !SpacingHelper.IsScrollRateNegative())
-			{
-				reachedEndOfScreen = true;
-				break;
-			}
-
-			// Record note.
-			if (e!.IsLaneNote())
-			{
-				noteEvents.Add(e);
-				e.SetDimensions(startPosX + e.GetLane() * arrowW, arrowY, arrowW, arrowH, sizeZoom);
-				e.Alpha = noteAlpha;
-
-				if (e is EditorHoldNoteEvent hn)
-				{
-					// Record that there is in an in-progress hold that will need to be ended.
-					if (!CheckForCompletingHold(hn, previousRateEventY, nextRateEvent))
-						holdsNeedingToBeCompleted.Add(hn);
-				}
-			}
-			else
-			{
-				if (e!.IsMiscEvent())
-				{
-					e.Alpha = miscEventAlpha;
-					MiscEventWidgetLayoutManager.PositionEvent(e, y);
-				}
-
-				noteEvents.Add(e);
-
-				// Add a region for this event if appropriate.
-				if (e is IChartRegion region)
-					AddRegion(region, false, ref regionsNeedingToBeAdded, ref addedRegions, previousRateEventY, nextRateEvent,
-						startPosX,
-						numArrows * arrowW);
-			}
-
-			// If we have collected the maximum number of events per frame, stop processing.
-			if (noteEvents.Count > MaxEventsToDraw)
-				break;
-		}
-
-		// Now we need to wrap up any holds which are still not yet complete.
-		// We do not need to scan forward for more rate events.
-		CheckForCompletingHolds(holdsNeedingToBeCompleted, previousRateEventY, null);
-
-		// We also need to update beat markers beyond the final note.
-		UpdateBeatMarkers(rateEvent, ref beatMarkerRow, ref beatMarkerLastRecordedRow, nextRateEvent, startPosX, sizeZoom,
-			previousRateEventY);
-
-		// If the user is selecting a region and is zoomed out so far that we processed the maximum number of notes
-		// per frame without finding both ends of the selected region, then keep iterating through rate altering events
-		// to try and complete the selected region.
-		if (!reachedEndOfScreen && SelectedRegion.IsActive())
-		{
-			while (nextRateEvent != null
-			       && (!SelectedRegion.HasStartYBeenUpdatedThisFrame() || !SelectedRegion.HaveCurrentValuesBeenUpdatedThisFrame())
-			       && numRateAlteringEventsProcessed < MaxRateAlteringEventsToProcessPerFrame)
-			{
-				var rateEventY = SpacingHelper.GetY(nextRateEvent, previousRateEventY);
-				rateEvent = nextRateEvent;
-				SpacingHelper.UpdatePpsAndPpr(rateEvent, interpolatedScrollRate, spacingZoom);
-				previousRateEventY = rateEventY;
-
-				// Advance to the next rate altering event.
-				hasNextRateEvent = rateEnumerator.MoveNext();
-				nextRateEvent = hasNextRateEvent ? rateEnumerator.Current : null;
-
-				// Update any regions needing to be updated based on the new rate altering event.
-				UpdateRegions(ref regionsNeedingToBeAdded, ref addedRegions, previousRateEventY, rateEvent, nextRateEvent);
-				numRateAlteringEventsProcessed++;
-			}
-		}
-
-		// Normal case of needing to complete regions which end beyond the bounds of the screen.
-		EndRegions(ref regionsNeedingToBeAdded, ref addedRegions, previousRateEventY, rateEvent);
-
-		// Sort regions by their z value.
-		VisibleRegions.Sort((lhs, rhs) => lhs.GetRegionZ().CompareTo(rhs.GetRegionZ()));
-
-		// Store the notes and holds so we can render them.
-		VisibleEvents.AddRange(noteEvents);
-	}
-
-	private (double, double) GetArrowDimensions(bool scaled = true)
-	{
-		var (arrowTexture, _) = ArrowGraphicManager.GetArrowTexture(0, 0, false);
-		(double arrowW, double arrowH) = TextureAtlas.GetDimensions(arrowTexture);
-		if (scaled)
-		{
-			var sizeZoom = ZoomManager.GetSizeZoom();
-			arrowW *= sizeZoom;
-			arrowH *= sizeZoom;
-		}
-
-		return (arrowW, arrowH);
-	}
-
-	private double GetHoldCapHeight()
-	{
-		var (holdCapTexture, _) = ArrowGraphicManager.GetHoldEndTexture(0, 0, false, false);
-		var (_, holdCapTextureHeight) = TextureAtlas.GetDimensions(holdCapTexture);
-		var holdCapHeight = holdCapTextureHeight * ZoomManager.GetSizeZoom();
-		if (ArrowGraphicManager.AreHoldCapsCentered())
-			holdCapHeight *= 0.5;
-		return holdCapHeight;
-	}
-
-	private void BeginMiscEventWidgetLayoutManagerFrame()
-	{
-		const int widgetStartPadding = 10;
-		const int widgetMeasureNumberFudge = 10;
-
-		var (arrowW, _) = GetArrowDimensions();
-
-		var focalPointX = GetFocalPointX();
-		var startPosX = focalPointX - ActiveChart.NumInputs * arrowW * 0.5;
-		var endXPos = focalPointX + ActiveChart.NumInputs * arrowW * 0.5;
-
-		var lMiscWidgetPos = startPosX
-		                     - widgetStartPadding
-		                     + EditorMarkerEvent.GetNumberRelativeAnchorPos(ZoomManager.GetSizeZoom())
-		                     - EditorMarkerEvent.GetNumberAlpha(ZoomManager.GetSizeZoom()) * widgetMeasureNumberFudge;
-		var rMiscWidgetPos = endXPos + widgetStartPadding;
-		MiscEventWidgetLayoutManager.BeginFrame(lMiscWidgetPos, rMiscWidgetPos);
-	}
-
-	/// <summary>
-	/// Sets the pixels per second to use on the WaveFormRenderer.
-	/// </summary>
-	/// <param name="rateEvent">Current rate altering event.</param>
-	/// <param name="interpolatedScrollRate">Current interpolated scroll rate.</param>
-	/// <remarks>Helper for UpdateChartEvents.</remarks>
-	private void SetWaveFormPps(EditorRateAlteringEvent rateEvent, double interpolatedScrollRate)
-	{
-		var pScroll = Preferences.Instance.PreferencesScroll;
-		switch (pScroll.SpacingMode)
-		{
-			case SpacingMode.ConstantTime:
-				WaveFormPPS = pScroll.TimeBasedPixelsPerSecond;
-				break;
-			case SpacingMode.ConstantRow:
-				WaveFormPPS = pScroll.RowBasedPixelsPerRow * rateEvent.GetRowsPerSecond();
-				if (pScroll.RowBasedWaveFormScrollMode == WaveFormScrollMode.MostCommonTempo)
-					WaveFormPPS *= ActiveChart.GetMostCommonTempo() / rateEvent.GetTempo();
-				break;
-			case SpacingMode.Variable:
-				var tempo = ActiveChart.GetMostCommonTempo();
-				if (pScroll.RowBasedWaveFormScrollMode != WaveFormScrollMode.MostCommonTempo)
-					tempo = rateEvent.GetTempo();
-				var useRate = pScroll.RowBasedWaveFormScrollMode ==
-				              WaveFormScrollMode.CurrentTempoAndRate;
-				WaveFormPPS = pScroll.VariablePixelsPerSecondAtDefaultBPM
-				              * (tempo / PreferencesScroll.DefaultVariablePixelsPerSecondAtDefaultBPM);
-				if (useRate)
-				{
-					var rate = rateEvent.GetScrollRate() * interpolatedScrollRate;
-					if (rate <= 0.0)
-						rate = 1.0;
-					WaveFormPPS *= rate;
-				}
-
-				break;
-		}
-	}
-
-	/// <summary>
-	/// Gets the current interpolated scroll rate to use for the active Chart.
-	/// </summary>
-	/// <remarks>Helper for UpdateChartEvents.</remarks>
-	/// <returns>Interpolated scroll rate.</returns>
-	private double GetCurrentInterpolatedScrollRate()
-	{
-		// Find the interpolated scroll rate to use as a multiplier.
-		// The interpolated scroll rate to use is the value at the current exact time.
-		if (Preferences.Instance.PreferencesScroll.SpacingMode == SpacingMode.Variable)
-			return ActiveChart.GetInterpolatedScrollRateEvents().FindScrollRate(Position);
-		return 1.0;
-	}
-
-	/// <summary>
-	/// Given a chart position, scans backwards for hold notes which begin earlier and end later.
-	/// </summary>
-	/// <param name="enumerator">Enumerator to use for scanning backwards.</param>
-	/// <param name="chartPosition">Chart position to use for checking.</param>
-	/// <remarks>Helper for UpdateChartEvents.</remarks>
-	/// <returns>List of EditorHoldStartNotes.</returns>
-	private List<EditorHoldNoteEvent> ScanBackwardsForHolds(
-		IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator enumerator,
-		double chartPosition)
-	{
-		// Get all the holds overlapping the given position.
-		var holdsPerLane = ActiveChart.GetHoldsOverlappingPosition(chartPosition, enumerator);
-		var holds = new List<EditorHoldNoteEvent>();
-		foreach (var hold in holdsPerLane)
-		{
-			if (hold != null)
-				holds.Add(hold);
-		}
-
-		// Add holds being edited.
-		foreach (var editState in LaneEditStates)
-		{
-			if (!editState.IsActive())
-				continue;
-			if (!(editState.GetEventBeingEdited() is EditorHoldNoteEvent hn))
-				continue;
-			if (hn.GetRow() < chartPosition && hn.GetRow() + hn.GetRowDuration() > chartPosition)
-				holds.Add(hn);
-		}
-
-		return holds;
-	}
-
-	private void AddRegion(
-		IChartRegion region,
-		bool overlapsStart,
-		ref List<IChartRegion> regionsNeedingToBeAdded,
-		ref HashSet<IChartRegion> addedRegions,
-		double previousRateEventY,
-		EditorRateAlteringEvent nextRateEvent,
-		double x,
-		double w)
-	{
-		if (region == null)
-			return;
-		if (regionsNeedingToBeAdded.Contains(region) || addedRegions.Contains(region))
-			return;
-		if (!SpacingHelper.DoesRegionHavePositiveDuration(region))
-			return;
-		region.SetRegionX(x);
-		region.SetRegionY(SpacingHelper.GetRegionY(region, previousRateEventY));
-		region.SetRegionW(w);
-		regionsNeedingToBeAdded.Add(region);
-
-		if (overlapsStart)
-			RegionsOverlappingStart.Add(region);
-
-		// This region may also complete during this rate altering event.
-		CheckForCompletingRegions(ref regionsNeedingToBeAdded, ref addedRegions, previousRateEventY, nextRateEvent);
-	}
-
-	private void CheckForCompletingRegions(
-		ref List<IChartRegion> regionsNeedingToBeAdded,
-		ref HashSet<IChartRegion> addedRegions,
-		double previousRateEventY,
-		EditorRateAlteringEvent nextRateEvent)
-	{
-		var remainingRegionsNeededToBeAdded = new List<IChartRegion>();
-		foreach (var region in regionsNeedingToBeAdded)
-		{
-			if (nextRateEvent == null || SpacingHelper.DoesRegionEndBeforeEvent(region, nextRateEvent))
-			{
-				var h = SpacingHelper.GetRegionH(region, previousRateEventY);
-
-				// If when rendering the first rate altering event we have is something like stop, it will then cause regions
-				// overlapping the start of the viewable area to have positive Y values even when they occur before the stop.
-				// For the normal SpacingHelper math to work, we need to ensure that we do math based on off a preceding rate
-				// altering event and not a following one. But for very long regions (like patterns), we don't really want to
-				// be iterating backwards to find that event to get an accurate start time. Instead just ensure that any region
-				// that actually starts above the screen doesn't render as starting below the top of the screen. This makes the
-				// region bounds technically wrong, but they are wrong already due to similar issues in ending them when they
-				// end beyond the end of the screen. The regions are used for rendering so this is acceptable.
-				if (RegionsOverlappingStart.Contains(region))
-				{
-					var regionY = region.GetRegionY();
-					if (regionY > 0.0)
-					{
-						region.SetRegionY(0.0);
-						h += regionY;
-					}
-
-					RegionsOverlappingStart.Remove(region);
-				}
-
-				region.SetRegionH(h);
-				VisibleRegions.Add(region);
-				addedRegions.Add(region);
-				continue;
-			}
-
-			remainingRegionsNeededToBeAdded.Add(region);
-		}
-
-		regionsNeedingToBeAdded = remainingRegionsNeededToBeAdded;
-	}
-
-	private void CheckForUpdatingSelectedRegionStartY(double previousRateEventY, EditorRateAlteringEvent rateEvent,
-		EditorRateAlteringEvent nextRateEvent)
-	{
-		if (!SelectedRegion.IsActive() || SelectedRegion.HasStartYBeenUpdatedThisFrame())
-			return;
-
-		switch (Preferences.Instance.PreferencesScroll.SpacingMode)
-		{
-			case SpacingMode.ConstantTime:
-			{
-				if (SelectedRegion.GetStartChartTime() < rateEvent.GetChartTime()
-				    || nextRateEvent == null
-				    || SelectedRegion.GetStartChartTime() < nextRateEvent.GetChartTime())
-				{
-					SelectedRegion.UpdatePerFrameDerivedStartY(SpacingHelper.GetY(SelectedRegion.GetStartChartTime(),
-						SelectedRegion.GetStartChartPosition(), previousRateEventY, rateEvent.GetChartTime(),
-						rateEvent.GetRow()));
-				}
-
-				break;
-			}
-			case SpacingMode.ConstantRow:
-			case SpacingMode.Variable:
-			{
-				if (SelectedRegion.GetStartChartPosition() < rateEvent.GetRow()
-				    || nextRateEvent == null
-				    || SelectedRegion.GetStartChartPosition() < nextRateEvent.GetRow())
-				{
-					SelectedRegion.UpdatePerFrameDerivedStartY(SpacingHelper.GetY(SelectedRegion.GetStartChartTime(),
-						SelectedRegion.GetStartChartPosition(), previousRateEventY, rateEvent.GetChartTime(),
-						rateEvent.GetRow()));
-				}
-
-				break;
-			}
-		}
-	}
-
-	private void CheckForUpdatingSelectedRegionCurrentValues(
-		double previousRateEventY,
-		EditorRateAlteringEvent rateEvent,
-		EditorRateAlteringEvent nextRateEvent)
-	{
-		if (!SelectedRegion.IsActive() || SelectedRegion.HaveCurrentValuesBeenUpdatedThisFrame())
-			return;
-
-		if (SelectedRegion.GetCurrentY() < previousRateEventY
-		    || nextRateEvent == null
-		    || SelectedRegion.GetCurrentY() < SpacingHelper.GetY(nextRateEvent, previousRateEventY))
-		{
-			var (chartTime, chartPosition) = SpacingHelper.GetChartTimeAndRow(
-				SelectedRegion.GetCurrentY(), previousRateEventY, rateEvent.GetChartTime(), rateEvent.GetRow());
-			SelectedRegion.UpdatePerFrameDerivedChartTimeAndPosition(chartTime, chartPosition);
-		}
-	}
-
-	/// <summary>
-	/// Handles starting and updating any pending regions at the start of the main tick loop
-	/// when the first rate altering event is known.
-	/// Pending regions include normal regions needing to be added to VisibleRegions,
-	/// the preview region, and the SelectedRegion.
-	/// </summary>
-	/// <remarks>Helper for UpdateChartEvents.</remarks>
-	private void StartRegions(
-		ref List<IChartRegion> regionsNeedingToBeAdded,
-		ref HashSet<IChartRegion> addedRegions,
-		double previousRateEventY,
-		EditorRateAlteringEvent rateEvent,
-		EditorRateAlteringEvent nextRateEvent,
-		double chartRegionX,
-		double chartRegionW,
-		double chartTimeAtTopOfScreen,
-		double chartPositionAtTopOfScreen)
-	{
-		// Check for adding regions which extend through the top of the screen.
-		var regions = ActiveChart.GetRegionsOverlapping(chartPositionAtTopOfScreen, chartTimeAtTopOfScreen);
-		foreach (var region in regions)
-		{
-			AddRegion(region, true, ref regionsNeedingToBeAdded, ref addedRegions, previousRateEventY, nextRateEvent,
-				chartRegionX,
-				chartRegionW);
-		}
-
-		// Check to see if any regions needing to be added will complete before the next rate altering event.
-		CheckForCompletingRegions(ref regionsNeedingToBeAdded, ref addedRegions, previousRateEventY, nextRateEvent);
-
-		// Check for updating the SelectedRegion.
-		CheckForUpdatingSelectedRegionStartY(previousRateEventY, rateEvent, nextRateEvent);
-		CheckForUpdatingSelectedRegionCurrentValues(previousRateEventY, rateEvent, nextRateEvent);
-	}
-
-	/// <summary>
-	/// Handles updating any pending regions when the current rate altering event changes
-	/// while processing events in the main tick loop.
-	/// Pending regions include normal regions needing to be added to VisibleRegions,
-	/// the preview region, and the SelectedRegion.
-	/// </summary>
-	/// <remarks>Helper for UpdateChartEvents.</remarks>
-	private void UpdateRegions(
-		ref List<IChartRegion> regionsNeedingToBeAdded,
-		ref HashSet<IChartRegion> addedRegions,
-		double previousRateEventY,
-		EditorRateAlteringEvent rateEvent,
-		EditorRateAlteringEvent nextRateEvent)
-	{
-		// Check to see if any regions needing to be added will complete before the next rate altering event.
-		CheckForCompletingRegions(ref regionsNeedingToBeAdded, ref addedRegions, previousRateEventY, nextRateEvent);
-
-		// Check for updating the SelectedRegion.
-		CheckForUpdatingSelectedRegionStartY(previousRateEventY, rateEvent, nextRateEvent);
-		CheckForUpdatingSelectedRegionCurrentValues(previousRateEventY, rateEvent, nextRateEvent);
-	}
-
-	/// <summary>
-	/// Handles completing any pending regions this tick.
-	/// Pending regions include normal regions needing to be added to VisibleRegions,
-	/// and the SelectedRegion.
-	/// </summary>
-	/// <remarks>Helper for UpdateChartEvents.</remarks>
-	private void EndRegions(
-		ref List<IChartRegion> regionsNeedingToBeAdded,
-		ref HashSet<IChartRegion> addedRegions,
-		double previousRateEventY,
-		EditorRateAlteringEvent rateEvent)
-	{
-		// We do not need to scan forward for more rate mods so we can use null for the next rate event.
-		CheckForCompletingRegions(ref regionsNeedingToBeAdded, ref addedRegions, previousRateEventY, null);
-
-		// Check for updating the SelectedRegion.
-		CheckForUpdatingSelectedRegionStartY(previousRateEventY, rateEvent, null);
-		CheckForUpdatingSelectedRegionCurrentValues(previousRateEventY, rateEvent, null);
-	}
-
-	/// <summary>
-	/// Handles completing any pending holds when the current rate altering event changes
-	/// while processing events in the main tick loop and holds end within the new rate
-	/// altering event range.
-	/// </summary>
-	/// <remarks>Helper for UpdateChartEvents.</remarks>
-	private void CheckForCompletingHolds(
-		HashSet<EditorHoldNoteEvent> holds,
-		double previousRateEventY,
-		EditorRateAlteringEvent nextRateEvent)
-	{
-		if (holds.Count == 0)
-			return;
-
-		List<EditorHoldNoteEvent> holdsToRemove = null;
-		foreach (var hold in holds)
-		{
-			if (CheckForCompletingHold(hold, previousRateEventY, nextRateEvent))
-			{
-				holdsToRemove ??= new List<EditorHoldNoteEvent>();
-				holdsToRemove.Add(hold);
-			}
-		}
-
-		if (holdsToRemove == null)
-			return;
-
-		foreach (var hold in holdsToRemove)
-			holds.Remove(hold);
-	}
-
-	/// <summary>
-	/// Handles completing a pending hold when the current rate altering event changes
-	/// while processing events in the main tick loop and the hold ends within the new rate
-	/// altering event range.
-	/// </summary>
-	/// <remarks>Helper for UpdateChartEvents.</remarks>
-	private bool CheckForCompletingHold(
-		EditorHoldNoteEvent hold,
-		double previousRateEventY,
-		EditorRateAlteringEvent nextRateEvent)
-	{
-		var holdEndEvent = hold.GetAdditionalEvent();
-		if (nextRateEvent == null || EditorEvent.CompareEditorEventToSmEvent(nextRateEvent, holdEndEvent) > 0)
-		{
-			var holdEndRow = hold.GetRow() + hold.GetRowDuration();
-			var holdEndY = SpacingHelper.GetYForRow(holdEndRow, previousRateEventY) + GetHoldCapHeight();
-			hold.H = holdEndY - hold.Y;
-			return true;
-		}
-
-		return false;
-	}
-
-	/// <summary>
-	/// Helper method to update beat marker events.
-	/// Adds new MarkerEvents to VisibleMarkers.
-	/// Expected to be called in a loop over EditorRateAlteringEvents which encompass the visible area.
-	/// </summary>
-	/// <param name="currentRateEvent">
-	/// The current EditorRateAlteringEvent.
-	/// MarkerEvents will be filled for the region in this event up until the given
-	/// nextRateEvent, or end of the visible area defined by the viewport's height.
-	/// </param>
-	/// <param name="currentRow">
-	/// The current row to start with. This row may not be on a beat boundary. If it is not on a beat
-	/// boundary then MarkerEvents will be added starting with the following beat.
-	/// This parameter is passed by reference so the beat marker logic can maintain state about where
-	/// it left off.
-	/// </param>
-	/// <param name="lastRecordedRow">
-	/// The last row that this method recorded a beat for.
-	/// This parameter is passed by reference so the beat marker logic can maintain state about where
-	/// it left off.
-	/// </param>
-	/// <param name="nextRateEvent">
-	/// The EditorRateAlteringEvent following currentRateEvent or null if no such event follows it.
-	/// </param>
-	/// <param name="x">X position in pixels to set on the MarkerEvents.</param>
-	/// <param name="sizeZoom">Current zoom level to use for setting the width and scale of the MarkerEvents.</param>
-	/// <param name="previousRateEventY">Y position of previous rate altering event.</param>
-	/// <remarks>Helper for UpdateChartEvents.</remarks>
-	private void UpdateBeatMarkers(
-		EditorRateAlteringEvent currentRateEvent,
-		ref int currentRow,
-		ref int lastRecordedRow,
-		EditorRateAlteringEvent nextRateEvent,
-		double x,
-		double sizeZoom,
-		double previousRateEventY)
-	{
-		if (sizeZoom < MeasureMarkerMinScale)
-			return;
-		if (VisibleMarkers.Count >= MaxMarkersToDraw)
-			return;
-
-		var ts = currentRateEvent.GetTimeSignature();
-
-		// Based on the current rate altering event, determine the beat spacing and snap the current row to a beat.
-		var beatsPerMeasure = ts.GetNumerator();
-		var rowsPerBeat = MaxValidDenominator * NumBeatsPerMeasure * beatsPerMeasure
-		                  / ts.GetDenominator() / beatsPerMeasure;
-
-		// Determine which integer measure and beat we are on. Clamped due to warps.
-		var rowRelativeToTimeSignatureStart = Math.Max(0, currentRow - ts.GetRow());
-		// We need to snap the row forward since we are starting with a row that might not be on a beat boundary.
-		var beatRelativeToTimeSignatureStart = rowRelativeToTimeSignatureStart / rowsPerBeat;
-		currentRow = ts.GetRow() + beatRelativeToTimeSignatureStart * rowsPerBeat;
-
-		var markerWidth = ActiveChart.NumInputs * MarkerTextureWidth * sizeZoom;
-
-		while (true)
-		{
-			// When changing time signatures we don't want to render the same row twice,
-			// so advance if we have already processed this row.
-			// Also check to ensure that the current row is within range for the current rate event.
-			// In some edge cases it may not be. For example, when we have finished but the last
-			// rate altering event is negative so we consider one more rate altering event.
-			if (currentRow == lastRecordedRow || currentRow < currentRateEvent.GetRow())
-			{
-				currentRow += rowsPerBeat;
-				continue;
-			}
-
-			var y = SpacingHelper.GetYForRow(currentRow, previousRateEventY);
-
-			// If advancing this beat forward moved us over the next rate altering event boundary, loop again.
-			if (nextRateEvent != null && currentRow > nextRateEvent.GetRow())
-			{
-				currentRow = nextRateEvent.GetRow();
-				return;
-			}
-
-			// If advancing moved beyond the end of the screen then we are done.
-			if (y > GetViewportHeight())
-				return;
-
-			// Determine if this marker is a measure marker instead of a beat marker.
-			rowRelativeToTimeSignatureStart = currentRow - ts.GetRow();
-			beatRelativeToTimeSignatureStart = rowRelativeToTimeSignatureStart / rowsPerBeat;
-			var measureMarker = beatRelativeToTimeSignatureStart % beatsPerMeasure == 0;
-			var measure = ts.Measure + beatRelativeToTimeSignatureStart / beatsPerMeasure;
-
-			// If this row falls on a measure boundary for a new time signature at an unexpected row, treat it as a measure marker.
-			if (nextRateEvent != null && currentRow == nextRateEvent.GetRow() &&
-			    currentRow == nextRateEvent.GetTimeSignature().GetRow())
-			{
-				measureMarker = true;
-				measure = nextRateEvent.GetTimeSignature().Measure;
-			}
-
-			// Record the marker.
-			if (measureMarker || sizeZoom > BeatMarkerMinScale)
-				VisibleMarkers.Add(new EditorMarkerEvent(x, y, markerWidth, 1, sizeZoom, measureMarker, measure));
-
-			lastRecordedRow = currentRow;
-
-			if (VisibleMarkers.Count >= MaxMarkersToDraw)
-				return;
-
-			// Advance one beat.
-			currentRow += rowsPerBeat;
-		}
+		for (var i = 0; i < ActiveCharts.Count; i++)
+			if (ActiveChartData[i].IsVisible())
+				ActiveChartData[i].UpdateChartEvents(screenHeight);
 	}
 
 	/// <summary>
@@ -3259,82 +2806,10 @@ internal sealed class Editor :
 	/// <returns>Tuple where the first value is the chart time and the second is the row.</returns>
 	private (double, double) FindChartTimeAndRowForScreenY(int desiredScreenY)
 	{
-		if (ActiveChart == null)
+		var focusedChartData = GetFocusedChartData();
+		if (focusedChartData == null)
 			return (0.0, 0.0);
-
-		// Set up a spacing helper with isolated state for searching for the time and row.
-		var spacingHelper = EventSpacingHelper.GetSpacingHelper(ActiveChart);
-
-		double desiredY = desiredScreenY;
-
-		// The only point where we know the screen space y position as well as the chart time and chart position
-		// is at the focal point. We will use this as an anchor for scanning for the rate event to use for the
-		// desired Y position. As we scan upwards or downwards through rate events we can keep track of the rate
-		// event's Y position by calculating it from the previous rate event, and then finally calculate the
-		// desired Y position's chart time and chart position from rate event's screen Y position and its rate
-		// information.
-		var focalPointChartTime = Position.ChartTime;
-		var focalPointChartPosition = Position.ChartPosition;
-		var focalPointY = (double)GetFocalPointY();
-		var rateEnumerator = ActiveChart.GetRateAlteringEvents().FindBest(Position);
-		if (rateEnumerator == null)
-			return (0.0, 0.0);
-		rateEnumerator.MoveNext();
-
-		var interpolatedScrollRate = GetCurrentInterpolatedScrollRate();
-		var spacingZoom = ZoomManager.GetSpacingZoom();
-
-		// Determine the active rate event's position and rate information.
-		spacingHelper.UpdatePpsAndPpr(rateEnumerator.Current, interpolatedScrollRate, spacingZoom);
-		var rateEventY = spacingHelper.GetY(rateEnumerator.Current, focalPointY, focalPointChartTime, focalPointChartPosition);
-		var rateChartTime = rateEnumerator.Current!.GetChartTime();
-		var rateRow = rateEnumerator.Current.GetRow();
-
-		// If the desired Y is above the focal point.
-		if (desiredY < focalPointY)
-		{
-			// Scan upwards until we find the rate event that is active for the desired Y.
-			while (true)
-			{
-				// If the current rate event is above the focal point, or there is no preceding rate event,
-				// then this is the rate event we should use for determining the chart time and row of the
-				// desired position.
-				if (rateEventY <= desiredY || !rateEnumerator.MovePrev())
-					return spacingHelper.GetChartTimeAndRow(desiredY, rateEventY, rateChartTime, rateRow);
-
-				// Otherwise, now that we have advance the rate enumerator to its preceding event, we can
-				// update the the current rate event variables to check again next loop.
-				spacingHelper.UpdatePpsAndPpr(rateEnumerator.Current, interpolatedScrollRate, spacingZoom);
-				rateEventY = spacingHelper.GetY(rateEnumerator.Current, rateEventY, rateChartTime, rateRow);
-				rateChartTime = rateEnumerator.Current.GetChartTime();
-				rateRow = rateEnumerator.Current.GetRow();
-			}
-		}
-		// If the desired Y is below the focal point.
-		else if (desiredY > focalPointY)
-		{
-			while (true)
-			{
-				// If there is no following rate event then the current rate event should be used for
-				// determining the chart time and row of the desired position.
-				if (!rateEnumerator.MoveNext())
-					return spacingHelper.GetChartTimeAndRow(desiredY, rateEventY, rateChartTime, rateRow);
-
-				// Otherwise, we need to determine the position of the next rate event. If it is beyond
-				// the desired position then we have gone to far and we need to use the previous rate
-				// information to determine the chart time and row of the desired position.
-				rateEventY = spacingHelper.GetY(rateEnumerator.Current, rateEventY, rateChartTime, rateRow);
-				spacingHelper.UpdatePpsAndPpr(rateEnumerator.Current, interpolatedScrollRate, spacingZoom);
-				rateChartTime = rateEnumerator.Current.GetChartTime();
-				rateRow = rateEnumerator.Current.GetRow();
-
-				if (rateEventY >= desiredY)
-					return spacingHelper.GetChartTimeAndRowFromPreviousRate(desiredY, rateEventY, rateChartTime, rateRow);
-			}
-		}
-
-		// The desired Y is exactly at the focal point.
-		return (focalPointChartTime, focalPointChartPosition);
+		return focusedChartData.FindChartTimeAndRowForScreenSpaceY(desiredScreenY);
 	}
 
 	#endregion Chart Update
@@ -3345,12 +2820,14 @@ internal sealed class Editor :
 	{
 		if (!Playing)
 			return;
-		AutoPlayer?.Update(Position);
+		foreach (var activeChartData in ActiveChartData)
+			activeChartData.UpdateAutoPlayer();
 	}
 
 	private void UpdateAutoPlayFromScrolling()
 	{
-		AutoPlayer?.Stop();
+		foreach (var activeChartData in ActiveChartData)
+			activeChartData.StopAutoPlayer();
 	}
 
 	#endregion Autoplay
@@ -3360,7 +2837,7 @@ internal sealed class Editor :
 	private void ProcessInputForMiniMap()
 	{
 		var pScroll = Preferences.Instance.PreferencesScroll;
-		var focalPointY = GetFocalPointY();
+		var focalPointY = GetFocalPointScreenSpaceY();
 
 		var miniMapCapturingMouseLastFrame = MiniMapCapturingMouse;
 
@@ -3397,14 +2874,14 @@ internal sealed class Editor :
 			{
 				case SpacingMode.ConstantTime:
 				{
-					Position.ChartTime =
-						editorPosition + focalPointY / (pScroll.TimeBasedPixelsPerSecond * ZoomManager.GetSpacingZoom());
+					SetChartTime(editorPosition +
+					             focalPointY / (pScroll.TimeBasedPixelsPerSecond * ZoomManager.GetSpacingZoom()));
 					break;
 				}
 				case SpacingMode.ConstantRow:
 				{
-					Position.ChartPosition =
-						editorPosition + focalPointY / (pScroll.RowBasedPixelsPerRow * ZoomManager.GetSpacingZoom());
+					SetChartPosition(editorPosition +
+					                 focalPointY / (pScroll.RowBasedPixelsPerRow * ZoomManager.GetSpacingZoom()));
 					break;
 				}
 			}
@@ -3423,49 +2900,47 @@ internal sealed class Editor :
 	private void UpdateMiniMapBounds()
 	{
 		var p = Preferences.Instance;
-		var focalPointX = GetFocalPointX();
 		var x = 0;
-		var sizeZoom = ZoomManager.GetSizeZoom();
 		switch (p.PreferencesMiniMap.MiniMapPosition)
 		{
-			case MiniMap.Position.RightSideOfWindow:
+			case Position.RightSideOfWindow:
 			{
-				x = GetBackBufferWidth() - (int)p.PreferencesMiniMap.MiniMapXPadding -
-				    (int)p.PreferencesMiniMap.MiniMapWidth;
+				x = ChartArea.X + ChartArea.Width - p.PreferencesMiniMap.GetPositionOffsetUiScaled() -
+				    p.PreferencesMiniMap.GetMiniMapWidthScaled();
 				break;
 			}
-			case MiniMap.Position.RightOfChartArea:
+			case Position.LeftSideOfWindow:
 			{
-				x = focalPointX + (WaveFormTextureWidth >> 1) + (int)p.PreferencesMiniMap.MiniMapXPadding;
+				x = ChartArea.X + p.PreferencesMiniMap.GetPositionOffsetUiScaled();
 				break;
 			}
-			case MiniMap.Position.MountedToWaveForm:
+			case Position.FocusedChartWithoutScaling:
 			{
-				if (p.PreferencesWaveForm.WaveFormScaleXWhenZooming)
-				{
-					x = (int)(focalPointX + (WaveFormTextureWidth >> 1) * sizeZoom + (int)p.PreferencesMiniMap.MiniMapXPadding);
-				}
-				else
-				{
-					x = focalPointX + (WaveFormTextureWidth >> 1) + (int)p.PreferencesMiniMap.MiniMapXPadding;
-				}
-
+				var focusedChartData = GetFocusedChartData();
+				if (focusedChartData != null)
+					x = focusedChartData.GetScreenSpaceXOfMiscEventsEnd() + p.PreferencesMiniMap.GetPositionOffsetUiScaled();
 				break;
 			}
-			case MiniMap.Position.MountedToChart:
+			case Position.FocusedChartWithScaling:
 			{
-				var receptorBounds =
-					Receptor.GetBounds(GetFocalPoint(), sizeZoom, TextureAtlas, ArrowGraphicManager, ActiveChart);
-				x = receptorBounds.Item1 + receptorBounds.Item3 + (int)p.PreferencesMiniMap.MiniMapXPadding;
+				var focusedChartData = GetFocusedChartData();
+				if (focusedChartData != null)
+					x = focusedChartData.GetScreenSpaceXOfMiscEventsEndWithCurrentScale() +
+					    p.PreferencesMiniMap.GetPositionOffsetUiScaled();
 				break;
 			}
 		}
 
-		var h = Math.Max(0, GetBackBufferHeight() - GetMiniMapYPaddingFromTop() - GetMiniMapYPaddingFromBottom());
+		var y = TransformChartSpaceYToScreenSpaceY(GetMiniMapYPaddingFromTopInChartSpace());
+		var textureHeight = Math.Max(0,
+			GetViewportHeight() - GetMiniMapYPaddingFromTopInScreenSpace() - GetMiniMapYPaddingFromBottom());
+		var visibleHeight = (uint)Math.Min(textureHeight,
+			Math.Max(0, ChartArea.Height - GetMiniMapYPaddingFromTopInChartSpace() - GetMiniMapYPaddingFromBottom()));
 
 		MiniMap.UpdateBounds(
 			GraphicsDevice,
-			new Rectangle(x, GetMiniMapYPaddingFromTop(), (int)p.PreferencesMiniMap.MiniMapWidth, h));
+			new Rectangle(x, y, p.PreferencesMiniMap.GetMiniMapWidthScaled(), textureHeight),
+			visibleHeight);
 	}
 
 	private void UpdateMiniMapSpacing()
@@ -3491,7 +2966,9 @@ internal sealed class Editor :
 		if (!pMiniMap.ShowMiniMap)
 			return;
 
-		if (ActiveChart?.GetEvents() == null || ArrowGraphicManager == null)
+		var chartData = GetFocusedChartData();
+		var arrowGraphicManager = chartData?.GetArrowGraphicManager();
+		if (FocusedChart?.GetEvents() == null || chartData == null || arrowGraphicManager == null)
 		{
 			MiniMap.UpdateNoChart();
 			return;
@@ -3503,12 +2980,13 @@ internal sealed class Editor :
 		var pScroll = Preferences.Instance.PreferencesScroll;
 
 		MiniMap.SetSelectMode(pMiniMap.MiniMapSelectMode);
-		MiniMap.SetNumLanes((uint)ActiveChart.NumInputs);
+		MiniMap.SetNumLanes((uint)FocusedChart.NumInputs);
 
+		var position = GetPosition();
 		var screenHeight = GetViewportHeight();
 		var spacingZoom = ZoomManager.GetSpacingZoom();
-		var chartTime = Position.ChartTime;
-		var chartPosition = Position.ChartPosition;
+		var chartTime = position.ChartTime;
+		var chartPosition = position.ChartPosition;
 		var spaceByRow = GetMiniMapSpacingMode() == SpacingMode.ConstantRow;
 
 		// Configure the region to show in the mini map.
@@ -3516,19 +2994,19 @@ internal sealed class Editor :
 		{
 			// Editor Area. The visible time range.
 			var pps = pScroll.TimeBasedPixelsPerSecond * spacingZoom;
-			var editorAreaTimeStart = chartTime - GetFocalPointY() / pps;
+			var editorAreaTimeStart = chartTime - GetFocalPointScreenSpaceY() / pps;
 			var editorAreaTimeEnd = editorAreaTimeStart + screenHeight / pps;
 			var editorAreaTimeRange = editorAreaTimeEnd - editorAreaTimeStart;
 
 			// Determine the end time.
-			var maxTimeFromChart = ActiveChart.GetEndChartTime();
+			var maxTimeFromChart = FocusedChart.GetEndChartTime();
 
 			// Full Area. The time from the chart, extended in both directions by the editor range.
-			var fullAreaTimeStart = ActiveChart.GetStartChartTime() - editorAreaTimeRange;
+			var fullAreaTimeStart = FocusedChart.GetStartChartTime() - editorAreaTimeRange;
 			var fullAreaTimeEnd = maxTimeFromChart + editorAreaTimeRange;
 
 			// Content Area. The time from the chart.
-			var contentAreaTimeStart = ActiveChart.GetStartChartTime();
+			var contentAreaTimeStart = FocusedChart.GetStartChartTime();
 			var contentAreaTimeEnd = maxTimeFromChart;
 
 			// Update the MiniMap with the ranges.
@@ -3538,18 +3016,18 @@ internal sealed class Editor :
 				pMiniMap.MiniMapVisibleTimeRange,
 				editorAreaTimeStart, editorAreaTimeEnd,
 				chartTime,
-				ArrowGraphicManager);
+				arrowGraphicManager);
 		}
 		else
 		{
 			// Editor Area. The visible row range.
 			var ppr = pScroll.RowBasedPixelsPerRow * spacingZoom;
-			var editorAreaRowStart = chartPosition - GetFocalPointY() / ppr;
+			var editorAreaRowStart = chartPosition - GetFocalPointScreenSpaceY() / ppr;
 			var editorAreaRowEnd = editorAreaRowStart + screenHeight / ppr;
 			var editorAreaRowRange = editorAreaRowEnd - editorAreaRowStart;
 
 			// Determine the end row.
-			var maxRowFromChart = ActiveChart.GetEndPosition();
+			var maxRowFromChart = FocusedChart.GetEndPosition();
 
 			// Full Area. The area from the chart, extended in both directions by the editor range.
 			var fullAreaRowStart = 0.0 - editorAreaRowRange;
@@ -3560,26 +3038,26 @@ internal sealed class Editor :
 			var contentAreaTimeEnd = maxRowFromChart;
 
 			// Update the MiniMap with the ranges.
-			MiniMap.SetNumLanes((uint)ActiveChart.NumInputs);
+			MiniMap.SetNumLanes((uint)FocusedChart.NumInputs);
 			MiniMap.UpdateBegin(
 				fullAreaRowStart, fullAreaRowEnd,
 				contentAreaTimeStart, contentAreaTimeEnd,
 				pMiniMap.MiniMapVisibleRowRange,
 				editorAreaRowStart, editorAreaRowEnd,
 				chartPosition,
-				ArrowGraphicManager);
+				arrowGraphicManager);
 		}
 
 		// Set the chartPosition to the top of the area so we can use it for scanning down for notes to add.
 		if (spaceByRow)
 			chartPosition = MiniMap.GetMiniMapAreaStart();
 		else
-			ActiveChart.TryGetChartPositionFromTime(MiniMap.GetMiniMapAreaStart(), ref chartPosition);
+			FocusedChart.TryGetChartPositionFromTime(MiniMap.GetMiniMapAreaStart(), ref chartPosition);
 
 		// Add patterns.
 		if (pMiniMap.ShowPatterns)
 		{
-			var patterns = ActiveChart.GetPatterns();
+			var patterns = FocusedChart.GetPatterns();
 			var patternEnumerator = patterns.FindBestByPosition(chartPosition);
 			EditorPatternEvent eventNeedingToBeAdded = null;
 			var eventNeedingToBeAddedEndRow = 0;
@@ -3626,7 +3104,7 @@ internal sealed class Editor :
 		// Add preview.
 		if (pMiniMap.ShowPreview)
 		{
-			var preview = ActiveChart.GetPreview();
+			var preview = FocusedChart.GetPreview();
 			if (spaceByRow)
 				MiniMap.AddPreview(preview.GetChartPosition(), preview.GetEndChartPosition());
 			else
@@ -3636,7 +3114,7 @@ internal sealed class Editor :
 		// Add labels.
 		if (pMiniMap.ShowLabels)
 		{
-			var labels = ActiveChart.GetLabels();
+			var labels = FocusedChart.GetLabels();
 			var labelEnumerator = labels.FindBestByPosition(chartPosition);
 			while (labelEnumerator != null && labelEnumerator.MoveNext())
 			{
@@ -3651,7 +3129,7 @@ internal sealed class Editor :
 		}
 
 		// Add notes.
-		var enumerator = ActiveChart.GetEvents().FindBestByPosition(chartPosition);
+		var enumerator = FocusedChart.GetEvents().FindBestByPosition(chartPosition);
 		if (enumerator == null)
 		{
 			MiniMap.UpdateEnd();
@@ -3659,10 +3137,11 @@ internal sealed class Editor :
 		}
 
 		var numNotesAdded = 0;
+		var maxNotesToAdd = Preferences.Instance.PreferencesOptions.MiniMapMaxNotesToDraw;
 
 		// Scan backwards until we have checked every lane for a long note which may
 		// be extending through the given start row.
-		var holdStartNotes = ScanBackwardsForHolds(enumerator, chartPosition);
+		var holdStartNotes = chartData.ScanBackwardsForHolds(enumerator, chartPosition);
 		foreach (var hsn in holdStartNotes)
 		{
 			MiniMap.AddHold(
@@ -3706,7 +3185,7 @@ internal sealed class Editor :
 					break;
 			}
 
-			if (numNotesAdded > MiniMapMaxNotesToDraw)
+			if (numNotesAdded > maxNotesToAdd)
 				break;
 		}
 
@@ -3717,7 +3196,7 @@ internal sealed class Editor :
 	{
 		if (!Preferences.Instance.PreferencesMiniMap.ShowMiniMap)
 			return;
-		if (ActiveChart == null)
+		if (FocusedChart == null)
 			return;
 		MiniMap.Draw(SpriteBatch);
 	}
@@ -3732,9 +3211,9 @@ internal sealed class Editor :
 
 		var screenHeight = GetViewportHeight();
 		var spacingZoom = ZoomManager.GetSpacingZoom();
-		var chartTime = Position.ChartTime;
+		var chartTime = GetPosition().ChartTime;
 		var pps = Preferences.Instance.PreferencesScroll.TimeBasedPixelsPerSecond * spacingZoom;
-		var timeStart = chartTime - GetFocalPointY() / pps;
+		var timeStart = chartTime - GetFocalPointScreenSpaceY() / pps;
 		var timeEnd = timeStart + screenHeight / pps;
 		DensityGraph.Update(timeStart, timeEnd, chartTime);
 	}
@@ -3742,11 +3221,6 @@ internal sealed class Editor :
 	private void UpdateDensityGraphBounds()
 	{
 		var p = Preferences.Instance.PreferencesDensityGraph;
-		var focalPointX = GetFocalPointX();
-		var sizeZoom = ZoomManager.GetSizeZoom();
-		var screenW = GetBackBufferWidth();
-		var screenH = GetBackBufferHeight();
-		var topPadding = GetMenuBarHeight();
 		var x = 0;
 		var y = 0;
 		var w = 0;
@@ -3755,48 +3229,75 @@ internal sealed class Editor :
 		switch (p.DensityGraphPositionValue)
 		{
 			case PreferencesDensityGraph.DensityGraphPosition.RightSideOfWindow:
-				w = p.DensityGraphHeight;
-				x = screenW - w - p.DensityGraphPositionOffset;
-				h = screenH - topPadding + p.DensityGraphWidthOffset * 2;
-				y = topPadding - p.DensityGraphWidthOffset;
+			{
+				w = p.GetDensityGraphHeightUiScaled();
+				x = ChartArea.X + ChartArea.Width - w - p.GetDensityGraphPositionOffsetUiScaled();
+				h = ChartArea.Height - GetChartHeaderHeight() + p.GetDensityGraphWidthOffsetUiScaled() * 2;
+				y = ChartArea.Y + GetChartHeaderHeight() - p.GetDensityGraphWidthOffsetUiScaled();
 				break;
-			case PreferencesDensityGraph.DensityGraphPosition.RightOfChartArea:
-				w = p.DensityGraphHeight;
-				x = focalPointX + (WaveFormTextureWidth >> 1) + p.DensityGraphPositionOffset;
-				h = screenH - topPadding + p.DensityGraphWidthOffset * 2;
-				y = topPadding - p.DensityGraphWidthOffset;
+			}
+			case PreferencesDensityGraph.DensityGraphPosition.LeftSideOfWindow:
+			{
+				w = p.GetDensityGraphHeightUiScaled();
+				x = ChartArea.X + p.GetDensityGraphPositionOffsetUiScaled();
+				h = ChartArea.Height - GetChartHeaderHeight() + p.GetDensityGraphWidthOffsetUiScaled() * 2;
+				y = ChartArea.Y + GetChartHeaderHeight() - p.GetDensityGraphWidthOffsetUiScaled();
 				break;
-			case PreferencesDensityGraph.DensityGraphPosition.MountedToWaveForm:
-				w = p.DensityGraphHeight;
-				if (Preferences.Instance.PreferencesWaveForm.WaveFormScaleXWhenZooming)
-					x = (int)(focalPointX + (WaveFormTextureWidth >> 1) * sizeZoom + p.DensityGraphPositionOffset);
-				else
-					x = focalPointX + (WaveFormTextureWidth >> 1) + p.DensityGraphPositionOffset;
-				h = screenH - topPadding + p.DensityGraphWidthOffset * 2;
-				y = topPadding - p.DensityGraphWidthOffset;
+			}
+			case PreferencesDensityGraph.DensityGraphPosition.FocusedChartWithoutScaling:
+			{
+				var focusedChartData = GetFocusedChartData();
+				if (focusedChartData != null)
+					x = focusedChartData.GetScreenSpaceXOfMiscEventsEnd() + p.GetDensityGraphPositionOffsetUiScaled();
+				w = p.GetDensityGraphHeightUiScaled();
+				h = ChartArea.Height - GetChartHeaderHeight() + p.GetDensityGraphWidthOffsetUiScaled() * 2;
+				y = ChartArea.Y + GetChartHeaderHeight() - p.GetDensityGraphWidthOffsetUiScaled();
 				break;
-			case PreferencesDensityGraph.DensityGraphPosition.MountedToChart:
-				var receptorBounds =
-					Receptor.GetBounds(GetFocalPoint(), sizeZoom, TextureAtlas, ArrowGraphicManager, ActiveChart);
-				w = p.DensityGraphHeight;
-				x = receptorBounds.Item1 + receptorBounds.Item3 + p.DensityGraphPositionOffset;
-				h = screenH - topPadding + p.DensityGraphWidthOffset * 2;
-				y = topPadding - p.DensityGraphWidthOffset;
+			}
+			case PreferencesDensityGraph.DensityGraphPosition.FocusedChartWithScaling:
+			{
+				var focusedChartData = GetFocusedChartData();
+				if (focusedChartData != null)
+					x = focusedChartData.GetScreenSpaceXOfMiscEventsEndWithCurrentScale() +
+					    p.GetDensityGraphPositionOffsetUiScaled();
+				w = p.GetDensityGraphHeightUiScaled();
+				h = ChartArea.Height - GetChartHeaderHeight() + p.GetDensityGraphWidthOffsetUiScaled() * 2;
+				y = ChartArea.Y + GetChartHeaderHeight() - p.GetDensityGraphWidthOffsetUiScaled();
 				break;
-			case PreferencesDensityGraph.DensityGraphPosition.TopOfWaveForm:
-				x = focalPointX - (WaveFormTextureWidth >> 1) - p.DensityGraphWidthOffset;
-				w = WaveFormTextureWidth + p.DensityGraphWidthOffset * 2;
-				y = topPadding + p.DensityGraphPositionOffset;
-				h = p.DensityGraphHeight;
+			}
+			case PreferencesDensityGraph.DensityGraphPosition.TopOfFocusedChart:
+			{
+				var focusedChartData = GetFocusedChartData();
+				if (focusedChartData != null)
+				{
+					var x1 = focusedChartData.GetScreenSpaceXOfLanesStart();
+					var x2 = focusedChartData.GetScreenSpaceXOfLanesEnd();
+					x = x1 - p.GetDensityGraphWidthOffsetUiScaled();
+					w = x2 - x1 + p.GetDensityGraphWidthOffsetUiScaled() * 2;
+				}
+
+				y = ChartArea.Y + p.GetDensityGraphPositionOffsetUiScaled();
+				h = p.GetDensityGraphHeightUiScaled();
 				orientation = StepDensityEffect.Orientation.Horizontal;
 				break;
-			case PreferencesDensityGraph.DensityGraphPosition.BottomOfWaveForm:
-				x = focalPointX - (WaveFormTextureWidth >> 1) - p.DensityGraphWidthOffset;
-				w = WaveFormTextureWidth + p.DensityGraphWidthOffset * 2;
-				y = screenH - p.DensityGraphHeight - p.DensityGraphPositionOffset;
-				h = p.DensityGraphHeight;
+			}
+			case PreferencesDensityGraph.DensityGraphPosition.BottomOfFocusedChart:
+			{
+				var focusedChartData = GetFocusedChartData();
+				if (focusedChartData != null)
+				{
+					var x1 = focusedChartData.GetScreenSpaceXOfLanesStart();
+					var x2 = focusedChartData.GetScreenSpaceXOfLanesEnd();
+					x = x1 - p.GetDensityGraphWidthOffsetUiScaled();
+					w = x2 - x1 + p.GetDensityGraphWidthOffsetUiScaled() * 2;
+				}
+
+				y = ChartArea.Y + ChartArea.Height - p.GetDensityGraphHeightUiScaled() -
+				    p.GetDensityGraphPositionOffsetUiScaled();
+				h = p.GetDensityGraphHeightUiScaled();
 				orientation = StepDensityEffect.Orientation.Horizontal;
 				break;
+			}
 		}
 
 		DensityGraph.UpdateBounds(new Rectangle(x, y, w, h), orientation);
@@ -3836,7 +3337,7 @@ internal sealed class Editor :
 			}
 
 			// Set the music position based off of the scroll bar time.
-			Position.ChartTime = DensityGraph.GetTimeFromScrollBar();
+			SetChartTime(DensityGraph.GetTimeFromScrollBar());
 
 			UpdateAutoPlayFromScrolling();
 		}
@@ -3851,7 +3352,7 @@ internal sealed class Editor :
 
 	private void DrawDensityGraph()
 	{
-		if (ActiveChart == null)
+		if (FocusedChart == null)
 			return;
 		DensityGraph.Draw();
 	}
@@ -3877,41 +3378,37 @@ internal sealed class Editor :
 		UIFTUE.Draw();
 
 #if DEBUG
-		UIDebug.Draw();
+		UIDebug.Instance.Draw();
 #endif
-		UIPerformance.Draw();
+		UIPerformance.Instance.Draw();
 		DrawImGuiTestWindow();
 
-		UIAbout.Draw();
-		UIControls.Draw();
-		UILog.Draw(LogBuffer, LogBufferLock, LogFilePath);
-		UIScrollPreferences.Draw();
-		UISelectionPreferences.Draw();
-		UIWaveFormPreferences.Draw();
-		UIDarkPreferences.Draw();
-		UIMiniMapPreferences.Draw();
-		UIReceptorPreferences.Draw();
-		UIOptions.Draw();
-		UIAudioPreferences.Draw();
-		UIStreamPreferences.Draw();
-		UIDensityGraphPreferences.Draw();
+		UIAbout.Instance.Draw();
+		UIControls.Instance.Draw();
+		UILog.Instance.Draw(LogBuffer, LogBufferLock, LogFilePath);
+		UIScrollPreferences.Instance.Draw();
+		UISelectionPreferences.Instance.Draw();
+		UIWaveFormPreferences.Instance.Draw();
+		UIDarkPreferences.Instance.Draw();
+		UIMiniMapPreferences.Instance.Draw();
+		UIReceptorPreferences.Instance.Draw();
+		UIOptions.Instance.Draw();
+		UIAudioPreferences.Instance.Draw();
+		UIStreamPreferences.Instance.Draw();
+		UIDensityGraphPreferences.Instance.Draw();
 
-		UISongProperties.Draw(ActiveSong);
-		UIChartProperties.Draw(ActiveChart);
-		UIChartList.Draw(ActiveSong, ActiveChart);
-		UIExpressedChartConfig.Draw();
-		UIPerformedChartConfig.Draw();
-		UIPatternConfig.Draw();
-		UIAutogenConfigs.Draw();
-		UIAutogenChart.Draw();
-		UIAutogenChartsForChartType.Draw();
-		UICopyEventsBetweenCharts.Draw();
-		UIPatternEvent.Draw(LastSelectedPatternEvent);
-
-		UIChartPosition.Draw(
-			GetFocalPointX(),
-			Graphics.PreferredBackBufferHeight - GetChartPositionUIYPaddingFromBottom() - (int)(UIChartPosition.Height * 0.5),
-			SnapLevels[Preferences.Instance.SnapIndex]);
+		UISongProperties.Instance.Draw(ActiveSong);
+		UIChartProperties.Instance.Draw(FocusedChart);
+		UIChartList.Instance.Draw(ActiveSong, FocusedChart);
+		UIExpressedChartConfig.Instance.Draw();
+		UIPerformedChartConfig.Instance.Draw();
+		UIPatternConfig.Instance.Draw();
+		UIAutogenConfigs.Instance.Draw();
+		UIAutogenChart.Instance.Draw();
+		UIAutogenChartsForChartType.Instance.Draw();
+		UICopyEventsBetweenCharts.Instance.Draw();
+		UIPatternEvent.Instance.Draw(GetFocusedChartData()?.GetLastSelectedPatternEvent());
+		UIHotbar.Instance.Draw();
 
 		if (CanShowRightClickPopupThisFrame && EditorMouseState.GetButtonState(EditorMouseState.Button.Right).UpThisFrame())
 		{
@@ -3927,22 +3424,23 @@ internal sealed class Editor :
 	private void DrawMainMenuUI()
 	{
 		var p = Preferences.Instance;
+		var keyBinds = p.PreferencesKeyBinds;
 		var canEdit = CanEdit();
 		var hasSong = ActiveSong != null;
-		var hasChart = ActiveChart != null;
+		var hasChart = FocusedChart != null;
 		var canEditSong = canEdit && hasSong;
 		var canOpen = CanLoadSongs();
 		if (ImGui.BeginMainMenuBar())
 		{
 			if (ImGui.BeginMenu("File"))
 			{
-				if (ImGui.MenuItem("New Song", "Ctrl+N", false, canOpen))
+				if (ImGui.MenuItem("New Song", UIControls.GetCommandString(keyBinds.New), false, canOpen))
 				{
 					OnNew();
 				}
 
 				ImGui.Separator();
-				if (ImGui.MenuItem("Open", "Ctrl+O", false, canOpen))
+				if (ImGui.MenuItem("Open", UIControls.GetCommandString(keyBinds.Open), false, canOpen))
 				{
 					OnOpen();
 				}
@@ -3964,42 +3462,30 @@ internal sealed class Editor :
 					ImGui.EndMenu();
 				}
 
-				if (ImGui.MenuItem("Open Containing Folder", "Ctrl+Shift+O", false, hasSong))
-				{
+				if (ImGui.MenuItem("Open Containing Folder", UIControls.GetCommandString(keyBinds.OpenContainingFolder), false,
+					    hasSong))
 					OnOpenContainingFolder();
-				}
-
-				if (ImGui.MenuItem("Reload", "Ctrl+R", false, canOpen && canEditSong && p.RecentFiles.Count > 0))
-				{
+				if (ImGui.MenuItem("Reload", UIControls.GetCommandString(keyBinds.Reload), false,
+					    canOpen && canEditSong && p.RecentFiles.Count > 0))
 					OnReload();
-				}
-
 				if (ImGui.MenuItem("Close", "", false, canEditSong))
-				{
 					OnClose();
-				}
 
 				ImGui.Separator();
 				var editorFileName = ActiveSong?.GetFileName();
 				if (!string.IsNullOrEmpty(editorFileName))
 				{
-					if (ImGui.MenuItem($"Save {editorFileName}", "Ctrl+S", false, canEditSong))
-					{
+					if (ImGui.MenuItem($"Save {editorFileName}", UIControls.GetCommandString(keyBinds.Save), false, canEditSong))
 						OnSave();
-					}
 				}
 				else
 				{
-					if (ImGui.MenuItem("Save", "Ctrl+S", false, canEditSong))
-					{
+					if (ImGui.MenuItem("Save", UIControls.GetCommandString(keyBinds.Save), false, canEditSong))
 						OnSave();
-					}
 				}
 
-				if (ImGui.MenuItem("Save As...", "Ctrl+Shift+S", false, canEditSong))
-				{
+				if (ImGui.MenuItem("Save As...", UIControls.GetCommandString(keyBinds.SaveAs), false, canEditSong))
 					OnSaveAs();
-				}
 
 				if (ImGui.BeginMenu("Advanced Save Options"))
 				{
@@ -4057,16 +3543,14 @@ internal sealed class Editor :
 
 				ImGui.Separator();
 				if (ImGui.MenuItem("Exit", "Alt+F4"))
-				{
 					OnExit();
-				}
 
 				ImGui.EndMenu();
 			}
 
 			if (ImGui.BeginMenu("Edit"))
 			{
-				var selectedEvents = Selection.GetSelectedEvents();
+				var selectedEvents = GetFocusedChartData()?.GetSelection()?.GetSelectedEvents();
 				UIEditEvents.DrawAddEventMenu();
 				ImGui.Separator();
 				UIEditEvents.DrawSelectAllMenu();
@@ -4076,122 +3560,62 @@ internal sealed class Editor :
 				UIEditEvents.DrawConvertAllMenu();
 				UIEditEvents.DrawShiftAllMenu();
 				ImGui.Separator();
-				if (ImGui.MenuItem("Copy", "Ctrl+C"))
-				{
+				if (ImGui.MenuItem("Copy", UIControls.GetCommandString(keyBinds.Copy)))
 					OnCopy();
-				}
-
-				if (ImGui.MenuItem("Paste", "Ctrl+V"))
-				{
+				if (ImGui.MenuItem("Paste", UIControls.GetCommandString(keyBinds.Paste)))
 					OnPaste();
-				}
-
-				if (ImGui.MenuItem("Delete", "Del"))
-				{
+				if (ImGui.MenuItem("Delete", UIControls.GetCommandString(keyBinds.Delete)))
 					OnDelete();
-				}
-
 				ImGui.EndMenu();
 			}
 
 			if (ImGui.BeginMenu("View"))
 			{
 				if (ImGui.MenuItem("Options"))
-				{
-					p.PreferencesOptions.ShowOptionsWindow = true;
-					ImGui.SetWindowFocus(UIOptions.WindowTitle);
-				}
+					UIOptions.Instance.Open(true);
 
 				ImGui.Separator();
 				if (ImGui.MenuItem("Song Properties"))
-				{
-					p.ShowSongPropertiesWindow = true;
-					ImGui.SetWindowFocus(UISongProperties.WindowTitle);
-				}
-
+					UISongProperties.Instance.Open(true);
 				if (ImGui.MenuItem("Chart Properties"))
-				{
-					p.ShowChartPropertiesWindow = true;
-					ImGui.SetWindowFocus(UIChartProperties.WindowTitle);
-				}
-
+					UIChartProperties.Instance.Open(true);
 				if (ImGui.MenuItem("Chart List"))
-				{
-					p.ShowChartListWindow = true;
-					ImGui.SetWindowFocus(UIChartList.WindowTitle);
-				}
+					UIChartList.Instance.Open(true);
+				if (ImGui.MenuItem("Hotbar"))
+					UIHotbar.Instance.Open(true);
 
 				ImGui.Separator();
 				if (ImGui.MenuItem("Scroll Preferences"))
-				{
-					p.PreferencesScroll.ShowScrollControlPreferencesWindow = true;
-					ImGui.SetWindowFocus(UIScrollPreferences.WindowTitle);
-				}
-
+					UIScrollPreferences.Instance.Open(true);
 				if (ImGui.MenuItem("Selection Preferences"))
-				{
-					p.PreferencesSelection.ShowSelectionControlPreferencesWindow = true;
-					ImGui.SetWindowFocus(UISelectionPreferences.WindowTitle);
-				}
+					UISelectionPreferences.Instance.Open(true);
 
 				ImGui.Separator();
 				if (ImGui.MenuItem("Waveform Preferences"))
-				{
-					p.PreferencesWaveForm.ShowWaveFormPreferencesWindow = true;
-					ImGui.SetWindowFocus(UIWaveFormPreferences.WindowTitle);
-				}
-
+					UIWaveFormPreferences.Instance.Open(true);
 				if (ImGui.MenuItem("Dark Preferences"))
-				{
-					p.PreferencesDark.ShowDarkPreferencesWindow = true;
-					ImGui.SetWindowFocus(UIDarkPreferences.WindowTitle);
-				}
-
+					UIDarkPreferences.Instance.Open(true);
 				if (ImGui.MenuItem("Mini Map Preferences"))
-				{
-					p.PreferencesMiniMap.ShowMiniMapPreferencesWindow = true;
-					ImGui.SetWindowFocus(UIMiniMapPreferences.WindowTitle);
-				}
-
+					UIMiniMapPreferences.Instance.Open(true);
 				if (ImGui.MenuItem("Receptor Preferences"))
-				{
-					p.PreferencesReceptors.ShowReceptorPreferencesWindow = true;
-					ImGui.SetWindowFocus(UIReceptorPreferences.WindowTitle);
-				}
-
+					UIReceptorPreferences.Instance.Open(true);
 				if (ImGui.MenuItem("Stream Preferences"))
-				{
-					p.PreferencesStream.ShowStreamPreferencesWindow = true;
-					ImGui.SetWindowFocus(UIStreamPreferences.WindowTitle);
-				}
-
+					UIStreamPreferences.Instance.Open(true);
 				if (ImGui.MenuItem("Density Graph Preferences"))
-				{
-					p.PreferencesDensityGraph.ShowDensityGraphPreferencesWindow = true;
-					ImGui.SetWindowFocus(UIDensityGraphPreferences.WindowTitle);
-				}
+					UIDensityGraphPreferences.Instance.Open(true);
 
 				ImGui.Separator();
 				if (ImGui.MenuItem("Log"))
-				{
-					p.ShowLogWindow = true;
-					ImGui.SetWindowFocus(UILog.WindowTitle);
-				}
+					UILog.Instance.Open(true);
 
 				ImGui.Separator();
 				if (ImGui.MenuItem("Performance Metrics"))
-				{
-					p.PreferencesPerformance.ShowPerformanceWindow = true;
-					ImGui.SetWindowFocus("Performance");
-				}
+					UIPerformance.Instance.Open(true);
 #if DEBUG
 				if (ImGui.MenuItem("ImGui Demo Window"))
 					ShowImGuiTestWindow = true;
 				if (ImGui.MenuItem("Debug Window"))
-				{
-					Preferences.Instance.ShowDebugWindow = true;
-					ImGui.SetWindowFocus(UIDebug.WindowTitle);
-				}
+					UIDebug.Instance.Open(true);
 #endif
 				ImGui.EndMenu();
 			}
@@ -4204,41 +3628,24 @@ internal sealed class Editor :
 					ImGui.EndMenu();
 				}
 
-				if (ImGui.MenuItem("Clone Current Chart", canEditSong && hasChart))
-				{
-					ActionQueue.Instance.Do(new ActionCloneChart(this, ActiveChart));
-				}
-
+				var chartName = FocusedChart == null ? "Current" : FocusedChart.GetShortName();
+				if (ImGui.MenuItem($"Clone {chartName} Chart", canEditSong && hasChart))
+					ActionQueue.Instance.Do(new ActionCloneChart(this, FocusedChart));
 				if (ImGui.MenuItem("Autogen New Chart...", canEditSong && hasChart))
-				{
-					ShowAutogenChartUI(ActiveChart);
-				}
+					ShowAutogenChartUI(FocusedChart);
 
 				ImGui.Separator();
-
 				if (ImGui.MenuItem("View Chart Properties"))
-				{
-					p.ShowChartPropertiesWindow = true;
-					ImGui.SetWindowFocus(UIChartProperties.WindowTitle);
-				}
-
+					UIChartProperties.Instance.Open(true);
 				if (ImGui.MenuItem("View Chart List"))
-				{
-					p.ShowChartListWindow = true;
-					ImGui.SetWindowFocus(UIChartList.WindowTitle);
-				}
+					UIChartList.Instance.Open(true);
 
 				ImGui.Separator();
-
-				DrawCopyChartEventsMenuItems(ActiveChart);
+				DrawCopyChartEventsMenuItems(FocusedChart);
 
 				ImGui.Separator();
-
 				if (ImGui.MenuItem("Advanced Event Copy..."))
-				{
-					UICopyEventsBetweenCharts.Show();
-					ImGui.SetWindowFocus(UICopyEventsBetweenCharts.WindowTitle);
-				}
+					UICopyEventsBetweenCharts.Instance.Open(true);
 
 				ImGui.EndMenu();
 			}
@@ -4250,87 +3657,59 @@ internal sealed class Editor :
 					PushDisabled();
 
 				if (ImGui.MenuItem("Autogen New Chart...", hasChart))
-				{
-					ShowAutogenChartUI(ActiveChart);
-				}
-
+					ShowAutogenChartUI(FocusedChart);
 				if (ImGui.MenuItem("Autogen New Set of Charts...", hasChart))
-				{
-					UIAutogenChartsForChartType.Show();
-					ImGui.SetWindowFocus(UIAutogenChartsForChartType.WindowTitle);
-				}
+					UIAutogenChartsForChartType.Instance.Open(true);
 
 				ImGui.Separator();
 
-				var hasPatterns = ActiveChart != null && ActiveChart.HasPatterns();
+				var hasPatterns = FocusedChart != null && FocusedChart.HasPatterns();
 				if (!hasPatterns)
 					PushDisabled();
 
-				if (ImGui.MenuItem("Regenerate All Patterns (Fixed Seeds)", "Alt+P"))
-				{
+				if (ImGui.MenuItem("Regenerate All Patterns (Fixed Seeds)",
+					    UIControls.GetCommandString(keyBinds.RegenerateAllPatternsFixedSeeds)))
 					OnRegenerateAllPatterns();
-				}
-
-				if (ImGui.MenuItem("Regenerate All Patterns (New Seeds)", "Alt+Shift+P"))
-				{
+				if (ImGui.MenuItem("Regenerate All Patterns (New Seeds)",
+					    UIControls.GetCommandString(keyBinds.RegenerateAllPatternsNewSeeds)))
 					OnRegenerateAllPatternsWithNewSeeds();
-				}
-
 				if (ImGui.Selectable("Clear All Patterns"))
-				{
 					ActionQueue.Instance.Do(new ActionDeletePatternNotes(
-						ActiveChart,
-						ActiveChart!.GetPatterns()));
-				}
+						FocusedChart,
+						FocusedChart!.GetPatterns()));
 
 				ImGui.Separator();
 
-				var hasSelectedPatterns = Selection.HasSelectedPatterns();
+				var hasSelectedPatterns = GetFocusedChartData()?.GetSelection()?.HasSelectedPatterns() ?? false;
 				if (!hasSelectedPatterns)
 					PushDisabled();
 
-				if (ImGui.MenuItem("Regenerate Selected Patterns (Fixed Seeds)", "Ctrl+Alt+P"))
-				{
+				if (ImGui.MenuItem("Regenerate Selected Patterns (Fixed Seeds)",
+					    UIControls.GetCommandString(keyBinds.RegenerateSelectedPatternsFixedSeeds)))
 					OnRegenerateSelectedPatterns();
-				}
-
-				if (ImGui.MenuItem("Regenerate Selected Patterns (New Seeds)", "Ctrl+Alt+Shift+P"))
-				{
+				if (ImGui.MenuItem("Regenerate Selected Patterns (New Seeds)",
+					    UIControls.GetCommandString(keyBinds.RegenerateSelectedPatternsNewSeeds)))
 					OnRegenerateSelectedPatternsWithNewSeeds();
-				}
-
 				if (ImGui.Selectable("Clear Selected Patterns"))
-				{
 					ActionQueue.Instance.Do(new ActionDeletePatternNotes(
-						ActiveChart,
-						Selection.GetSelectedPatterns()));
-				}
+						FocusedChart,
+						GetFocusedChartData()?.GetSelection()?.GetSelectedPatterns()));
 
 				if (!hasSelectedPatterns)
 					PopDisabled();
 
 				ImGui.Separator();
-
-				if (ImGui.MenuItem("Next Pattern", "Ctrl+P"))
-				{
+				if (ImGui.MenuItem("Next Pattern", UIControls.GetCommandString(keyBinds.MoveToNextPattern)))
 					OnMoveToNextPattern();
-				}
-
-				if (ImGui.MenuItem("Previous Pattern", "Ctrl+Shift+P"))
-				{
+				if (ImGui.MenuItem("Previous Pattern", UIControls.GetCommandString(keyBinds.MoveToPreviousPattern)))
 					OnMoveToPreviousPattern();
-				}
 
 				if (!hasPatterns)
 					PopDisabled();
 
 				ImGui.Separator();
-
 				if (ImGui.MenuItem("Configuration..."))
-				{
-					p.ShowAutogenConfigsWindow = true;
-					ImGui.SetWindowFocus(UIAutogenConfigs.WindowTitle);
-				}
+					UIAutogenConfigs.Instance.Open(true);
 
 				if (disabled)
 					PopDisabled();
@@ -4341,9 +3720,34 @@ internal sealed class Editor :
 			if (ImGui.BeginMenu("Audio"))
 			{
 				if (ImGui.MenuItem("Audio Preferences"))
+					UIAudioPreferences.Instance.Open(true);
+				ImGui.EndMenu();
+			}
+
+			if (ImGui.BeginMenu("Layout"))
+			{
+				if (ImGui.BeginMenu("Reset Layout"))
 				{
-					p.PreferencesAudio.ShowAudioPreferencesWindow = true;
-					ImGui.SetWindowFocus(UIAudioPreferences.WindowTitle);
+					if (ImGui.MenuItem("Default Layout"))
+						p.PreferencesOptions.ResetLayout = PreferencesOptions.Layout.Default;
+					if (ImGui.MenuItem("Expanded Layout"))
+						p.PreferencesOptions.ResetLayout = PreferencesOptions.Layout.Expanded;
+					ImGui.EndMenu();
+				}
+
+				ImGui.Separator();
+				if (ImGui.BeginMenu("Resolution"))
+				{
+					var sortedModes = new List<DisplayMode>(GraphicsAdapter.DefaultAdapter.SupportedDisplayModes);
+					for (var i = sortedModes.Count - 1; i >= 0; i--)
+					{
+						if (ImGui.MenuItem($"{sortedModes[i].Width,5} x{sortedModes[i].Height,5}"))
+						{
+							SetResolution(sortedModes[i].Width, sortedModes[i].Height);
+						}
+					}
+
+					ImGui.EndMenu();
 				}
 
 				ImGui.EndMenu();
@@ -4352,27 +3756,13 @@ internal sealed class Editor :
 			if (ImGui.BeginMenu("Help"))
 			{
 				if (ImGui.Selectable($"About {GetAppName()}"))
-				{
-					p.ShowAboutWindow = true;
-					ImGui.SetWindowFocus(UIAbout.WindowTitle);
-				}
-
+					UIAbout.Instance.Open(true);
 				if (ImGui.Selectable("Controls"))
-				{
-					p.ShowControlsWindow = true;
-					ImGui.SetWindowFocus(WindowTitle);
-				}
-
+					UIControls.Instance.Open(true);
 				if (ImGui.Selectable("Documentation"))
-				{
 					Documentation.OpenDocumentation();
-				}
-
 				if (ImGui.Selectable($"Open {GetAppName()} on GitHub"))
-				{
 					Documentation.OpenGitHub();
-				}
-
 				if (ImGui.Selectable("Show Intro Dialogs"))
 				{
 					Preferences.Instance.LastCompletedFtueVersion = null;
@@ -4388,16 +3778,17 @@ internal sealed class Editor :
 
 	public void DrawCopyChartEventsMenuItems(EditorChart chart)
 	{
-		var song = chart?.GetEditorSong();
+		if (chart == null)
+			return;
+		var song = chart.GetEditorSong();
 		var canEditSong = CanEdit() && song != null;
-		var canEditChart = CanEdit() && chart != null;
+		var canEditChart = CanEdit();
 
-		if (ImGui.BeginMenu("Replace this Chart's Non-Step Events From", canEditSong && canEditChart))
+		if (ImGui.BeginMenu($"Replace {chart.GetShortName()} Chart's Non-Step Events From", canEditSong && canEditChart))
 		{
 			UIChartList.DrawChartList(
 				song,
 				chart,
-				null,
 				selectedChart =>
 				{
 					if (chart != selectedChart)
@@ -4407,19 +3798,16 @@ internal sealed class Editor :
 							UICopyEventsBetweenCharts.GetStepmaniaTypes(),
 							new List<EditorChart> { chart }));
 					}
-				},
-				false,
-				null);
+				});
 
 			ImGui.EndMenu();
 		}
 
-		if (ImGui.BeginMenu("Replace this Chart's Timing and Scroll Events From", canEditSong && canEditChart))
+		if (ImGui.BeginMenu($"Replace {chart.GetShortName()} Chart's Timing and Scroll Events From", canEditSong && canEditChart))
 		{
 			UIChartList.DrawChartList(
 				song,
 				chart,
-				null,
 				selectedChart =>
 				{
 					if (chart != selectedChart)
@@ -4429,19 +3817,16 @@ internal sealed class Editor :
 							UICopyEventsBetweenCharts.GetTimingAndScrollTypes(),
 							new List<EditorChart> { chart }));
 					}
-				},
-				false,
-				null);
+				});
 
 			ImGui.EndMenu();
 		}
 
-		if (ImGui.BeginMenu("Replace this Chart's Timing Events From", canEditSong && canEditChart))
+		if (ImGui.BeginMenu($"Replace {chart.GetShortName()} Chart's Timing Events From", canEditSong && canEditChart))
 		{
 			UIChartList.DrawChartList(
 				song,
 				chart,
-				null,
 				selectedChart =>
 				{
 					if (chart != selectedChart)
@@ -4451,14 +3836,12 @@ internal sealed class Editor :
 							UICopyEventsBetweenCharts.GetTimingTypes(),
 							new List<EditorChart> { chart }));
 					}
-				},
-				false,
-				null);
+				});
 
 			ImGui.EndMenu();
 		}
 
-		if (ImGui.BeginMenu("Copy this Chart's Non-Step Events To", canEditSong && canEditChart))
+		if (ImGui.BeginMenu($"Copy {chart.GetShortName()} Chart's Non-Step Events To", canEditSong && canEditChart))
 		{
 			if (ImGui.MenuItem("All Charts", canEditSong && canEditChart))
 			{
@@ -4482,7 +3865,6 @@ internal sealed class Editor :
 			UIChartList.DrawChartList(
 				song,
 				chart,
-				null,
 				selectedChart =>
 				{
 					if (chart != selectedChart)
@@ -4492,14 +3874,12 @@ internal sealed class Editor :
 							UICopyEventsBetweenCharts.GetStepmaniaTypes(),
 							new List<EditorChart> { selectedChart }));
 					}
-				},
-				false,
-				null);
+				});
 
 			ImGui.EndMenu();
 		}
 
-		if (ImGui.BeginMenu("Copy this Chart's Timing and Scroll Events To", canEditSong && canEditChart))
+		if (ImGui.BeginMenu($"Copy {chart.GetShortName()} Chart's Timing and Scroll Events To", canEditSong && canEditChart))
 		{
 			if (ImGui.MenuItem("All Charts", canEditSong && canEditChart))
 			{
@@ -4523,7 +3903,6 @@ internal sealed class Editor :
 			UIChartList.DrawChartList(
 				song,
 				chart,
-				null,
 				selectedChart =>
 				{
 					if (chart != selectedChart)
@@ -4533,14 +3912,12 @@ internal sealed class Editor :
 							UICopyEventsBetweenCharts.GetTimingAndScrollTypes(),
 							new List<EditorChart> { selectedChart }));
 					}
-				},
-				false,
-				null);
+				});
 
 			ImGui.EndMenu();
 		}
 
-		if (ImGui.BeginMenu("Copy this Chart's Timing Events To", canEditSong && canEditChart))
+		if (ImGui.BeginMenu($"Copy {chart.GetShortName()} Chart's Timing Events To", canEditSong && canEditChart))
 		{
 			if (ImGui.MenuItem("All Charts", canEditSong && canEditChart))
 			{
@@ -4564,7 +3941,6 @@ internal sealed class Editor :
 			UIChartList.DrawChartList(
 				song,
 				chart,
-				null,
 				selectedChart =>
 				{
 					if (chart != selectedChart)
@@ -4574,9 +3950,7 @@ internal sealed class Editor :
 							UICopyEventsBetweenCharts.GetTimingTypes(),
 							new List<EditorChart> { selectedChart }));
 					}
-				},
-				false,
-				null);
+				});
 
 			ImGui.EndMenu();
 		}
@@ -4595,29 +3969,44 @@ internal sealed class Editor :
 
 	public void ShowAutogenChartUI(EditorChart sourceChart = null)
 	{
-		UIAutogenChart.Show(sourceChart);
-		ImGui.SetWindowFocus(UIAutogenChart.WindowTitle);
+		UIAutogenChart.Instance.SetChart(sourceChart);
+		UIAutogenChart.Instance.Open(true);
 	}
 
 	private void DrawRightClickMenu(int x, int y)
 	{
 		if (ImGui.BeginPopup("RightClickPopup"))
 		{
+			var anyItemsDrawn = false;
+
 			if (ActiveSong == null)
 			{
-				if (ImGui.MenuItem("New Song", "Ctrl+N"))
+				anyItemsDrawn = true;
+				if (ImGui.MenuItem("New Song", UIControls.GetCommandString(Preferences.Instance.PreferencesKeyBinds.New)))
 				{
 					OnNew();
 				}
 			}
 
+			var focusedChartData = GetFocusedChartData();
+			var activeChartUnderCursor = GetChartForRightClickMenu(x, y);
+
+			// Check what items are under the cursor.
 			var isInMiniMapArea = Preferences.Instance.PreferencesMiniMap.ShowMiniMap
 			                      && MiniMap.IsScreenPositionInMiniMapBounds(x, y);
 			var isInDensityGraphArea = Preferences.Instance.PreferencesDensityGraph.ShowDensityGraph
 			                           && DensityGraph.IsInDensityGraphArea(x, y);
-			var isInWaveFormArea = Preferences.Instance.PreferencesWaveForm.ShowWaveForm
-			                       && x >= GetFocalPointX() - (WaveFormTextureWidth >> 1)
-			                       && x <= GetFocalPointX() + (WaveFormTextureWidth >> 1);
+			var isInWaveFormArea = false;
+			if (activeChartUnderCursor != null)
+			{
+				var waveformWidth = GetWaveFormWidth(activeChartUnderCursor);
+				var focalPointX = activeChartUnderCursor.GetFocalPointX();
+				isInWaveFormArea = Preferences.Instance.PreferencesWaveForm.ShowWaveForm
+				                   && Preferences.Instance.PreferencesWaveForm.EnableWaveForm
+				                   && x >= focalPointX - (waveformWidth >> 1)
+				                   && x <= focalPointX + (waveformWidth >> 1);
+			}
+
 			var isInDarkArea = false;
 			if (Preferences.Instance.PreferencesDark.ShowDarkBg)
 			{
@@ -4625,27 +4014,62 @@ internal sealed class Editor :
 				isInDarkArea = x >= darkX && x <= darkX + darkW;
 			}
 
-			var isInReceptorArea = Receptor.IsInReceptorArea(x, y, GetFocalPoint(), ZoomManager.GetSizeZoom(), TextureAtlas,
-				ArrowGraphicManager, ActiveChart);
+			var isInReceptorArea = Receptor.IsInReceptorArea(x, y, GetFocalPointScreenSpace(), ZoomManager.GetSizeZoom(),
+				TextureAtlas,
+				focusedChartData?.GetArrowGraphicManager(), FocusedChart);
 
-			if (Selection.HasSelectedEvents())
+			// Selection Items.
+			// Only show items if it is obvious what chart they are for.
+			if (focusedChartData?.GetSelection().HasSelectedEvents() ?? false)
+			{
+				anyItemsDrawn = true;
 				UIEditEvents.DrawSelectionMenu();
+			}
 
-			UIEditEvents.DrawSelectAllMenu();
+			if (focusedChartData == activeChartUnderCursor && activeChartUnderCursor != null)
+			{
+				anyItemsDrawn = true;
+				UIEditEvents.DrawSelectAllMenu();
+				UIEditEvents.DrawAddEventMenu();
+			}
 
+			// Chart Delete / Clone / Autogen.
+			if (activeChartUnderCursor != null)
+			{
+				var chart = activeChartUnderCursor.GetChart();
+				if (anyItemsDrawn)
+					ImGui.Separator();
+				if (ImGui.MenuItem($"Delete {chart.GetShortName()} Chart"))
+					ActionQueue.Instance.Do(new ActionDeleteChart(this, chart));
+				if (ImGui.MenuItem($"Clone {chart.GetShortName()} Chart"))
+					ActionQueue.Instance.Do(new ActionCloneChart(this, chart));
+				if (ImGui.MenuItem($"Autogen New Chart From {chart.GetShortName()} Chart..."))
+					ShowAutogenChartUI(chart);
+
+				ImGui.Separator();
+				DrawCopyChartEventsMenuItems(chart);
+				anyItemsDrawn = true;
+			}
+
+			// Preferences based on what is under the cursor.
 			var anyObjectHovered = false;
 			if (isInMiniMapArea)
 			{
+				if (anyItemsDrawn)
+					ImGui.Separator();
 				if (ImGui.BeginMenu("Mini Map Preferences"))
 				{
-					UIMiniMapPreferences.DrawContents();
+					UIMiniMapPreferences.Instance.DrawContents();
 					ImGui.EndMenu();
 				}
 
 				anyObjectHovered = true;
+				anyItemsDrawn = true;
 			}
 			else if (isInDensityGraphArea)
 			{
+				if (anyItemsDrawn)
+					ImGui.Separator();
 				if (ImGui.BeginMenu("Density Graph Preferences"))
 				{
 					UIDensityGraphPreferences.DrawContents();
@@ -4659,44 +4083,58 @@ internal sealed class Editor :
 				}
 
 				anyObjectHovered = true;
+				anyItemsDrawn = true;
 			}
 			else if (isInReceptorArea)
 			{
+				if (anyItemsDrawn)
+					ImGui.Separator();
 				if (ImGui.BeginMenu("Receptor Preferences"))
 				{
-					UIReceptorPreferences.DrawContents();
+					UIReceptorPreferences.Instance.DrawContents();
 					ImGui.EndMenu();
 				}
 
 				anyObjectHovered = true;
+				anyItemsDrawn = true;
 			}
 			else
 			{
 				if (isInWaveFormArea)
 				{
+					if (anyItemsDrawn)
+						ImGui.Separator();
 					if (ImGui.BeginMenu("Waveform Preferences"))
 					{
-						UIWaveFormPreferences.DrawContents();
+						UIWaveFormPreferences.Instance.DrawContents();
 						ImGui.EndMenu();
 					}
 
 					anyObjectHovered = true;
+					anyItemsDrawn = true;
 				}
 
 				if (isInDarkArea)
 				{
+					if (!anyObjectHovered && anyItemsDrawn)
+						ImGui.Separator();
+
 					if (ImGui.BeginMenu("Dark Preferences"))
 					{
-						UIDarkPreferences.DrawContents();
+						UIDarkPreferences.Instance.DrawContents();
 						ImGui.EndMenu();
 					}
 
 					anyObjectHovered = true;
+					anyItemsDrawn = true;
 				}
 			}
 
-			if (!anyObjectHovered)
+			if (!anyObjectHovered && (ActiveSong?.GetBackground()?.GetTexture()?.IsBound() ?? false))
 			{
+				if (anyItemsDrawn)
+					ImGui.Separator();
+
 				var o = Preferences.Instance.PreferencesOptions;
 				var hideBg = o.HideSongBackground;
 				if (ImGui.Checkbox("Hide Background", ref hideBg))
@@ -4712,13 +4150,15 @@ internal sealed class Editor :
 
 				// ReSharper disable once RedundantAssignment
 				anyObjectHovered = true;
+				anyItemsDrawn = true;
 			}
 
-			if (ActiveChart != null)
-				UIEditEvents.DrawAddEventMenu();
-
+			// New Chart.
 			if (ActiveSong != null)
 			{
+				if (anyItemsDrawn)
+					ImGui.Separator();
+
 				var canEditSong = ActiveSong.CanBeEdited();
 				if (!canEditSong)
 					PushDisabled();
@@ -4735,6 +4175,16 @@ internal sealed class Editor :
 
 			ImGui.EndPopup();
 		}
+	}
+
+	private ActiveEditorChart GetChartForRightClickMenu(int x, int y)
+	{
+		if (ActiveCharts.Count == 1)
+			return FocusedChartData;
+		foreach (var activeChart in ActiveChartData)
+			if (activeChart.GetFullChartScreenSpaceArea().Contains(x, y))
+				return activeChart;
+		return null;
 	}
 
 	private void ShowUnsavedChangesModal()
@@ -5132,7 +4582,7 @@ internal sealed class Editor :
 		var saveParameters = new EditorSong.SaveParameters(fileType, fullPath, (success) =>
 		{
 			UpdateWindowTitle();
-			UpdateRecentFilesForActiveSong(Position.ChartPosition, ZoomManager.GetSpacingZoom());
+			UpdateRecentFilesForActiveSong();
 			if (success)
 			{
 				ActionQueue.Instance.OnSaved();
@@ -5177,8 +4627,7 @@ internal sealed class Editor :
 			var fileName = openFileDialog.FileName;
 			Preferences.Instance.OpenFileDialogInitialDirectory = System.IO.Path.GetDirectoryName(fileName);
 			OpenSongFileAsync(openFileDialog.FileName,
-				pOptions.DefaultStepsType,
-				pOptions.DefaultDifficultyType);
+				new DefaultChartListProvider(pOptions.DefaultStepsType, pOptions.DefaultDifficultyType));
 		}
 	}
 
@@ -5187,12 +4636,10 @@ internal sealed class Editor :
 	/// Will cancel previous OpenSongFileAsync requests if called while already loading.
 	/// </summary>
 	/// <param name="fileName">File name of the Song file to open.</param>
-	/// <param name="chartType">Desired ChartType (StepMania StepsType) to default to once open.</param>
-	/// <param name="chartDifficultyType">Desired DifficultyType to default to once open.</param>
+	/// <param name="chartListProvider">IActiveChartListProvider for determining which active charts to use.</param>
 	private async void OpenSongFileAsync(
 		string fileName,
-		ChartType chartType,
-		ChartDifficultyType chartDifficultyType)
+		IActiveChartListProvider chartListProvider)
 	{
 		if (!CanLoadSongs())
 			return;
@@ -5201,10 +4648,10 @@ internal sealed class Editor :
 
 		// Start the load. If we are already loading, return.
 		// The previous call will use the newly provided file state.
-		var taskComplete = await SongLoadTask.Start(new SongLoadState(fileName, chartType, chartDifficultyType));
+		var taskComplete = await SongLoadTask.Start(new SongLoadState(fileName, chartListProvider));
 		if (!taskComplete)
 			return;
-		var (newActiveSong, newActiveChart, newFileName) = SongLoadTask.GetResults();
+		var (newActiveSong, newFocusedChart, newActiveCharts, newFileName) = SongLoadTask.GetResults();
 
 		Debug.Assert(IsOnMainThread());
 
@@ -5233,15 +4680,24 @@ internal sealed class Editor :
 			desiredZoom = savedInfo.SpacingZoom;
 		}
 
-		// Insert a new entry at the top of the saved recent files.
-		UpdateRecentFilesForActiveSong(desiredChartPosition, desiredZoom);
-
-		OnChartSelected(newActiveChart, false);
+		// Set the active and focused charts. Ensure the focal point doesn't move.
+		// Set every chart to have a dedicated tab.
+		var focalPointX = GetFocalPointScreenSpaceX();
+		var focalPointY = GetFocalPointScreenSpaceY();
+		ActiveCharts.Clear();
+		ActiveChartData.Clear();
+		foreach (var activeChart in newActiveCharts)
+			SetChartHasDedicatedTab(activeChart, true);
+		SetChartFocused(newFocusedChart);
+		SetFocalPointScreenSpace(focalPointX, focalPointY);
 
 		// Set position and zoom.
-		Position.Reset();
-		Position.ChartPosition = desiredChartPosition;
+		ResetPosition();
+		SetChartPosition(desiredChartPosition);
 		ZoomManager.SetZoom(desiredZoom);
+
+		// Insert a new entry at the top of the saved recent files.
+		UpdateRecentFilesForActiveSong();
 	}
 
 	private void StartObservingSongFile(string fileName)
@@ -5308,7 +4764,7 @@ internal sealed class Editor :
 		SongFileWatcher = null;
 	}
 
-	private Preferences.SavedSongInformation GetMostRecentSavedSongInfoForActiveSong()
+	private SavedSongInformation GetMostRecentSavedSongInfoForActiveSong()
 	{
 		if (ActiveSong == null || string.IsNullOrEmpty(ActiveSong.GetFileFullPath()))
 			return null;
@@ -5323,21 +4779,22 @@ internal sealed class Editor :
 		return null;
 	}
 
-	private void UpdateRecentFilesForActiveSong(double chartPosition, double spacingZoom)
+	private void UpdateRecentFilesForActiveSong()
 	{
 		if (ActiveSong == null || string.IsNullOrEmpty(ActiveSong.GetFileFullPath()))
 			return;
 
+		var chartPosition = GetPosition().ChartPosition;
+		var spacingZoom = ZoomManager.GetSpacingZoom();
+
 		var p = Preferences.Instance;
 		var pOptions = p.PreferencesOptions;
-		var savedSongInfo = new Preferences.SavedSongInformation
-		{
-			FileName = ActiveSong.GetFileFullPath(),
-			LastChartType = ActiveChart?.ChartType ?? pOptions.DefaultStepsType,
-			LastChartDifficultyType = ActiveChart?.ChartDifficultyType ?? pOptions.DefaultDifficultyType,
-			SpacingZoom = spacingZoom,
-			ChartPosition = chartPosition,
-		};
+		var savedSongInfo = new SavedSongInformation(
+			ActiveSong.GetFileFullPath(),
+			spacingZoom,
+			chartPosition,
+			ActiveChartData,
+			GetFocusedChartData());
 		p.RecentFiles.RemoveAll(info => info.FileName == ActiveSong.GetFileFullPath());
 		p.RecentFiles.Insert(0, savedSongInfo);
 		if (p.RecentFiles.Count > pOptions.RecentFilesHistorySize)
@@ -5348,19 +4805,9 @@ internal sealed class Editor :
 		}
 	}
 
-	private string GetFullPathToMusicFile()
+	private string GetFullPathToFocusedChartMusicFile()
 	{
-		string musicFile = null;
-
-		// If the active chart has a music file defined, use that.
-		if (ActiveChart != null)
-			musicFile = ActiveChart.MusicPath;
-
-		// If the active chart does not have a music file defined, fall back to use the song's music file.
-		if (string.IsNullOrEmpty(musicFile))
-			musicFile = ActiveSong?.MusicPath;
-
-		return GetFullPathToSongResource(musicFile);
+		return GetFullPathToSongResource(FocusedChart?.GetMusicFileToUseForChart());
 	}
 
 	private string GetFullPathToMusicPreviewFile()
@@ -5446,8 +4893,7 @@ internal sealed class Editor :
 			return;
 		var pOptions = Preferences.Instance.PreferencesOptions;
 		OpenSongFileAsync(PendingOpenSongFileName,
-			pOptions.DefaultStepsType,
-			pOptions.DefaultDifficultyType);
+			new DefaultChartListProvider(pOptions.DefaultStepsType, pOptions.DefaultDifficultyType));
 	}
 
 	private void OnReload()
@@ -5492,9 +4938,7 @@ internal sealed class Editor :
 		if (OpenRecentIndex >= p.RecentFiles.Count)
 			return;
 
-		OpenSongFileAsync(p.RecentFiles[OpenRecentIndex].FileName,
-			p.RecentFiles[OpenRecentIndex].LastChartType,
-			p.RecentFiles[OpenRecentIndex].LastChartDifficultyType);
+		OpenSongFileAsync(p.RecentFiles[OpenRecentIndex].FileName, p.RecentFiles[OpenRecentIndex]);
 	}
 
 	private void OnNew()
@@ -5570,7 +5014,7 @@ internal sealed class Editor :
 			PendingVideoFile = null;
 		}
 
-		Position.Reset();
+		ResetPosition();
 		ZoomManager.SetZoom(1.0);
 	}
 
@@ -5590,7 +5034,7 @@ internal sealed class Editor :
 	private void OnCloseNoSave()
 	{
 		CloseSong();
-		Position.Reset();
+		ResetPosition();
 		ZoomManager.SetZoom(1.0);
 	}
 
@@ -5599,7 +5043,7 @@ internal sealed class Editor :
 		// First, save the current zoom and position to the song history so we can restore them when
 		// opening this song again later.
 		var savedSongInfo = GetMostRecentSavedSongInfoForActiveSong();
-		savedSongInfo?.UpdatePosition(ZoomManager.GetSpacingZoom(), Position.ChartPosition);
+		savedSongInfo?.Update(ActiveChartData, GetFocusedChartData(), ZoomManager.GetSpacingZoom(), GetPosition().ChartPosition);
 		UnloadSongResources();
 	}
 
@@ -5623,23 +5067,23 @@ internal sealed class Editor :
 		ActiveSong?.RemoveObservers(this, this);
 
 		// Close any UI which holds on to Song/Chart state.
-		UIAutogenChart.Close();
-		UIAutogenChartsForChartType.Close();
-		UICopyEventsBetweenCharts.Close();
+		UIAutogenChart.Instance.Close();
+		UIAutogenChartsForChartType.Instance.Close();
+		UICopyEventsBetweenCharts.Instance.Close();
 
 		StopPlayback();
 		MusicManager.UnloadAsync();
-		LaneEditStates = Array.Empty<LaneEditState>();
-		Selection.ClearSelectedEvents();
 		SongLoadTask.ClearResults();
 		ActiveSong = null;
-		ActiveChart = null;
-		LastSelectedPatternEvent = null;
-		Position.ActiveChart = null;
-		ArrowGraphicManager = null;
-		Receptors = null;
-		AutoPlayer = null;
-		MovingNotes.Clear();
+		FocusedChart = null;
+		FocusedChartData = null;
+		foreach (var activeChartDat in ActiveChartData)
+		{
+			activeChartDat.Clear();
+		}
+
+		ActiveChartData.Clear();
+		ActiveCharts.Clear();
 		EditorMouseState.SetActiveChart(null);
 		DensityGraph.SetStepDensity(null);
 		DensityGraph.ResetBufferCapacities();
@@ -5669,10 +5113,10 @@ internal sealed class Editor :
 			sb.Append(" * ");
 		}
 
-		if (ActiveChart != null)
+		if (FocusedChart != null)
 		{
 			sb.Append(
-				$" [{GetPrettyEnumString(ActiveChart.ChartType)} - {GetPrettyEnumString(ActiveChart.ChartDifficultyType)}]");
+				$" [{GetPrettyEnumString(FocusedChart.ChartType)} - {GetPrettyEnumString(FocusedChart.ChartDifficultyType)}]");
 		}
 
 		sb.Append(" - ");
@@ -5693,7 +5137,7 @@ internal sealed class Editor :
 
 	public IReadOnlySelection GetSelection()
 	{
-		return Selection;
+		return GetFocusedChartData()?.GetSelection();
 	}
 
 	public void OnNoteTransformationBegin()
@@ -5713,33 +5157,50 @@ internal sealed class Editor :
 		// events. However, this logic also guarantees that after a transform,
 		// including transforms initiated from undo and redo, the selection contains
 		// the modified notes.
-		Selection.SetSelectEvents(transformedEvents);
+		ActiveEditorChart activeChartDataForSelection = null;
+		if (transformedEvents != null && transformedEvents.Count > 0)
+		{
+			activeChartDataForSelection = GetActiveChartData(transformedEvents[0].GetEditorChart());
+			if (activeChartDataForSelection != null)
+			{
+				// Do not set the selection if it isn't the focused chart. We only ever want the
+				// focused chart to have selected notes.
+				if (activeChartDataForSelection == FocusedChartData)
+					activeChartDataForSelection.SetSelectedEvents(transformedEvents);
+				else
+					activeChartDataForSelection.ClearSelection();
+			}
+		}
+
+		// Clear the selection for every other active chart.
+		// This is a stopgap measure to ensure that active charts do not hold on to deleted
+		// events in their selections. Technically the TransformingSelectedNotes flag has
+		// some issues. If we paste notes from chart A to B, B has focus. Then we undo. This
+		// causes the notes in B to become deleted but chart B ignores that for deleting them
+		// from its selection due to the transform flag. B then holds on to deleted notes in
+		// its selection.
+		foreach (var otherActiveChartData in ActiveChartData)
+		{
+			if (otherActiveChartData == activeChartDataForSelection)
+				continue;
+			otherActiveChartData.ClearSelection();
+		}
 	}
 
 	private void OnDelete()
 	{
 		if (EditEarlyOut())
 			return;
-
-		if (ActiveChart == null || !Selection.HasSelectedEvents())
+		var focusedChartData = GetFocusedChartData();
+		if (focusedChartData == null)
 			return;
-		var eventsToDelete = new List<EditorEvent>();
-		foreach (var editorEvent in Selection.GetSelectedEvents())
-		{
-			if (!editorEvent.CanBeDeleted())
-				continue;
-			eventsToDelete.Add(editorEvent);
-		}
-
-		if (eventsToDelete.Count == 0)
-			return;
-		ActionQueue.Instance.Do(new ActionDeleteEditorEvents(eventsToDelete, false));
+		GetFocusedChartData().OnDelete();
 	}
 
 	private void OnEventAdded(EditorEvent addedEvent)
 	{
-		// When adding notes, reset the AutoPlayer so it picks up the new state.
-		AutoPlayer?.Stop();
+		var activeChartData = GetActiveChartData(addedEvent.GetEditorChart());
+		activeChartData?.OnEventAdded(addedEvent);
 
 		// When adding a pattern, select it.
 		if (addedEvent is EditorPatternEvent pattern)
@@ -5750,624 +5211,136 @@ internal sealed class Editor :
 
 	private void OnEventsAdded(IReadOnlyList<EditorEvent> addedEvents)
 	{
-		// When adding notes, reset the AutoPlayer so it picks up the new state.
-		AutoPlayer?.Stop();
+		if (addedEvents == null || addedEvents.Count == 0)
+			return;
+		var activeChartData = GetActiveChartData(addedEvents[0].GetEditorChart());
+		activeChartData?.OnEventsAdded(addedEvents);
 
 		// When adding a pattern, select it.
 		// If multiple patterns were added, select the last one.
-		if (addedEvents != null)
+		for (var i = addedEvents.Count - 1; i >= 0; i--)
 		{
-			for (var i = addedEvents.Count - 1; i >= 0; i--)
+			if (addedEvents[i] is EditorPatternEvent pattern)
 			{
-				if (addedEvents[i] is EditorPatternEvent pattern)
-				{
-					OnSelectPattern(pattern);
-					break;
-				}
+				OnSelectPattern(pattern);
+				break;
 			}
 		}
 	}
 
 	private void OnEventDeleted(EditorEvent deletedEvent)
 	{
-		// When deleting notes, reset the AutoPlayer so it picks up the new state.
-		AutoPlayer?.Stop();
-
-		// Don't consider events which are deleted as part of a move.
-		if (!MovingNotes.Contains(deletedEvent))
-		{
-			// If a selected note was deleted, deselect it.
-			// When transforming notes we expect selected notes to be moved which requires
-			// deleting them, then modifying them, and then re-adding them. We don't want
-			// to deselect notes when they are moving.
-			if (!TransformingSelectedNotes)
-				Selection.DeselectEvent(deletedEvent);
-
-			// If an event was deleted that is in a member variable, remove the reference.
-			if (ReferenceEquals(deletedEvent, LastSelectedPatternEvent))
-				LastSelectedPatternEvent = null;
-		}
+		var activeChartData = GetActiveChartData(deletedEvent.GetEditorChart());
+		activeChartData?.OnEventDeleted(deletedEvent, TransformingSelectedNotes);
 	}
 
 	private void OnEventsDeleted(IReadOnlyList<EditorEvent> deletedEvents)
 	{
-		// When deleting notes, reset the AutoPlayer so it picks up the new state.
-		AutoPlayer?.Stop();
-
-		// Don't consider events which are deleted as part of a move.
-		if (MovingNotes.Count > 0)
-		{
-			var deletedEventsToConsider = new List<EditorEvent>();
-			foreach (var deletedEvent in deletedEvents)
-			{
-				if (!MovingNotes.Contains(deletedEvent))
-				{
-					deletedEventsToConsider.Add(deletedEvent);
-				}
-			}
-
-			deletedEvents = deletedEventsToConsider;
-		}
-
-		foreach (var deletedEvent in deletedEvents)
-		{
-			// If a selected note was deleted, deselect it.
-			// When transforming notes we expect selected notes to be moved which requires
-			// deleting them, then modifying them, and then re-adding them. We don't want
-			// to deselect notes when they are moving.
-			if (!TransformingSelectedNotes)
-				Selection.DeselectEvent(deletedEvent);
-
-			// If an event was deleted that is in a member variable, remove the reference.
-			if (ReferenceEquals(deletedEvent, LastSelectedPatternEvent))
-				LastSelectedPatternEvent = null;
-		}
+		if (deletedEvents == null || deletedEvents.Count == 0)
+			return;
+		var activeChartData = GetActiveChartData(deletedEvents[0].GetEditorChart());
+		activeChartData?.OnEventsDeleted(deletedEvents, TransformingSelectedNotes);
 	}
 
 	public void OnSelectAll()
 	{
-		OnSelectAll((e) => e.IsSelectableWithoutModifiers());
+		GetFocusedChartData()?.OnSelectAll();
 	}
 
 	public void OnSelectAllAlt()
 	{
-		OnSelectAll((e) => e.IsSelectableWithModifiers());
+		GetFocusedChartData()?.OnSelectAllAlt();
 	}
 
 	public void OnSelectAllShift()
 	{
-		OnSelectAll((e) => e.IsSelectableWithoutModifiers() || e.IsSelectableWithModifiers());
+		GetFocusedChartData()?.OnSelectAllShift();
 	}
 
 	public void OnSelectAll(Func<EditorEvent, bool> isSelectable)
 	{
-		if (ActiveChart == null)
-			return;
-
-		EditorEvent lastEvent = null;
-		foreach (var editorEvent in ActiveChart.GetEvents())
-		{
-			if (isSelectable(editorEvent))
-			{
-				Selection.SelectEvent(editorEvent, false);
-				lastEvent = editorEvent;
-			}
-		}
-
-		if (lastEvent != null)
-			Selection.SelectEvent(lastEvent, true);
-	}
-
-	/// <summary>
-	/// Finishes selecting a region with the mouse.
-	/// </summary>
-	private void FinishSelectedRegion()
-	{
-		if (ActiveChart == null)
-		{
-			SelectedRegion.Stop();
-			return;
-		}
-
-		var lastSelectedEvent = Selection.GetLastSelectedEvent();
-
-		// Collect the newly selected notes.
-		var newlySelectedEvents = new List<EditorEvent>();
-
-		var alt = KeyCommandManager.IsAltDown();
-		Func<EditorEvent, bool> isSelectable = alt
-			? (e) => e.IsSelectableWithModifiers()
-			: (e) => e.IsSelectableWithoutModifiers();
-
-		var (_, arrowHeightUnscaled) = GetArrowDimensions(false);
-		var halfArrowH = arrowHeightUnscaled * ZoomManager.GetSizeZoom() * 0.5;
-		var halfMiscEventH = ImGuiLayoutUtils.GetMiscEditorEventHeight() * 0.5;
-
-		// For clicking, we want to select only one note. The latest note whose bounding rect
-		// overlaps with the point that was clicked. The events are sorted but we cannot binary
-		// search them because we only want to consider events which are in the same lane as
-		// the click. A binary search won't consider every event so we may miss an event which
-		// overlaps the click. However, the visible events list is limited in size such that it
-		// small enough to iterate through when updating and rendering. A click happens rarely,
-		// and when it does happen it happens at most once per frame, so iterating when clicking
-		// is performant enough.
-		var isClick = SelectedRegion.IsClick();
-		if (isClick)
-		{
-			var (x, y) = SelectedRegion.GetCurrentPosition();
-			EditorEvent best = null;
-			foreach (var visibleEvent in VisibleEvents)
-			{
-				// Early out if we have searched beyond the selected y. Add an extra half arrow
-				// height to this check so that short miscellaneous events do not cause us to
-				// early out prematurely.
-				if (visibleEvent.Y > y + halfArrowH)
-					break;
-				if (visibleEvent.DoesPointIntersect(x, y))
-					best = visibleEvent;
-			}
-
-			if (best != null)
-				newlySelectedEvents.Add(best);
-		}
-
-		// A region was selected, collect all notes in the selected region.
-		else
-		{
-			var (minLane, maxLane) = GetSelectedLanes();
-
-			var fullyOutsideLanes = maxLane < 0 || minLane >= ActiveChart.NumInputs;
-			var partiallyOutsideLanes = !fullyOutsideLanes && (minLane < 0 || maxLane >= ActiveChart.NumInputs);
-			var selectMiscEvents = alt || fullyOutsideLanes;
-
-			// Select by time.
-			if (Preferences.Instance.PreferencesScroll.SpacingMode == SpacingMode.ConstantTime)
-			{
-				var (minTime, maxTime) = SelectedRegion.GetSelectedChartTimeRange();
-
-				// Select notes.
-				if (!selectMiscEvents)
-				{
-					// Adjust the time to account for the selection preference for how much of an event should be
-					// within the selected region.
-					var (adjustedMinTime, adjustedMaxTime) = AdjustSelectionTimeRange(minTime, maxTime, halfArrowH);
-					if (adjustedMinTime < adjustedMaxTime)
-					{
-						var enumerator = ActiveChart.GetEvents().FindLeastAfterChartTime(adjustedMinTime);
-						while (enumerator.MoveNext())
-						{
-							if (enumerator.Current!.GetChartTime() > adjustedMaxTime)
-								break;
-							if (!isSelectable(enumerator.Current))
-								continue;
-							var lane = enumerator.Current.GetLane();
-							if (lane < minLane || lane > maxLane)
-								continue;
-							newlySelectedEvents.Add(enumerator.Current);
-						}
-					}
-
-					// If nothing was selected and the selection was partially outside of the lanes, treat it as
-					// an attempt to select misc events.
-					if (newlySelectedEvents.Count == 0 && partiallyOutsideLanes)
-						selectMiscEvents = true;
-				}
-
-				// Select misc. events.
-				if (selectMiscEvents)
-				{
-					// Adjust the time to account for the selection preference for how much of an event should be
-					// within the selected region.
-					var (adjustedMinTime, adjustedMaxTime) = AdjustSelectionTimeRange(minTime, maxTime, halfMiscEventH);
-
-					// Collect potential misc events.
-					var potentialEvents = new List<EditorEvent>();
-
-					// Loop over the misc events in the selected time range and determine their positions.
-					BeginMiscEventWidgetLayoutManagerFrame();
-					var minPosition = 0.0;
-					ActiveChart.TryGetChartPositionFromTime(adjustedMinTime, ref minPosition);
-					var enumerator = ActiveChart.GetMiscEvents().FindBestByPosition(minPosition);
-					while (enumerator != null && enumerator.MoveNext())
-					{
-						var miscEvent = enumerator.Current;
-						if (miscEvent!.GetChartTime() > adjustedMaxTime)
-							break;
-						MiscEventWidgetLayoutManager.PositionEvent(miscEvent);
-						if (!miscEvent.IsSelectableWithModifiers())
-							continue;
-						potentialEvents.Add(miscEvent);
-					}
-
-					// Now that we know the x positions of the potential misc events, check each
-					// event to see if it overlaps the selected region and add it to newlySelectedEvents.
-					var (xStart, xEnd) = SelectedRegion.GetSelectedXRange();
-					foreach (var potentialEvent in potentialEvents)
-					{
-						if (!(potentialEvent.GetChartTime() >= adjustedMinTime &&
-						      potentialEvent.GetChartTime() <= adjustedMaxTime))
-							continue;
-						if (!DoesMiscEventFallWithinRange(potentialEvent, xStart, xEnd))
-							continue;
-						newlySelectedEvents.Add(potentialEvent);
-					}
-				}
-			}
-
-			// Select by chart position.
-			else
-			{
-				var (minPosition, maxPosition) = SelectedRegion.GetSelectedChartPositionRange();
-
-				// Select notes.
-				if (!selectMiscEvents)
-				{
-					// Adjust the position to account for the selection preference for how much of an event should be
-					// within the selected region.
-					var (adjustedMinPosition, adjustedMaxPosition) =
-						AdjustSelectionPositionRange(minPosition, maxPosition, halfArrowH);
-					if (adjustedMinPosition < adjustedMaxPosition)
-					{
-						var enumerator = ActiveChart.GetEvents().FindLeastAfterChartPosition(adjustedMinPosition);
-						while (enumerator != null && enumerator.MoveNext())
-						{
-							if (enumerator.Current!.GetRow() > adjustedMaxPosition)
-								break;
-							if (!isSelectable(enumerator.Current))
-								continue;
-							var lane = enumerator.Current.GetLane();
-							if (lane < minLane || lane > maxLane)
-								continue;
-							newlySelectedEvents.Add(enumerator.Current);
-						}
-					}
-
-					// If nothing was selected and the selection was partially outside of the lanes, treat it as
-					// an attempt to select misc events.
-					if (newlySelectedEvents.Count == 0 && partiallyOutsideLanes)
-						selectMiscEvents = true;
-				}
-
-				// Select misc. events.
-				if (selectMiscEvents)
-				{
-					// Adjust the position to account for the selection preference for how much of an event should be
-					// within the selected region.
-					var (adjustedMinPosition, adjustedMaxPosition) =
-						AdjustSelectionPositionRange(minPosition, maxPosition, halfMiscEventH);
-
-					// Collect potential misc events.
-					var potentialEvents = new List<EditorEvent>();
-
-					// Loop over the misc events in the selected time range and determine their positions.
-					BeginMiscEventWidgetLayoutManagerFrame();
-					var enumerator = ActiveChart.GetMiscEvents().FindBestByPosition(adjustedMinPosition);
-					while (enumerator != null && enumerator.MoveNext())
-					{
-						var miscEvent = enumerator.Current;
-						if (miscEvent!.GetRow() > adjustedMaxPosition)
-							break;
-						MiscEventWidgetLayoutManager.PositionEvent(miscEvent);
-						if (!miscEvent.IsSelectableWithModifiers())
-							continue;
-						potentialEvents.Add(miscEvent);
-					}
-
-					// Now that we know the x positions of the potential misc events, check each
-					// event to see if it overlaps the selected region and add it to newlySelectedEvents.
-					var (xStart, xEnd) = SelectedRegion.GetSelectedXRange();
-					foreach (var potentialEvent in potentialEvents)
-					{
-						if (!(potentialEvent.GetRow() >= adjustedMinPosition && potentialEvent.GetRow() <= adjustedMaxPosition))
-							continue;
-						if (!DoesMiscEventFallWithinRange(potentialEvent, xStart, xEnd))
-							continue;
-						newlySelectedEvents.Add(potentialEvent);
-					}
-				}
-			}
-		}
-
-		var ctrl = KeyCommandManager.IsControlDown();
-		var shift = KeyCommandManager.IsShiftDown();
-
-		// If holding shift, select everything from the previously selected note
-		// to the newly selected notes, in addition to the newly selected notes.
-		if (shift)
-		{
-			if (lastSelectedEvent != null && newlySelectedEvents.Count > 0)
-			{
-				IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator enumerator;
-				EditorEvent end;
-				var firstNewNote = newlySelectedEvents[0];
-				if (firstNewNote.CompareTo(lastSelectedEvent) < 0)
-				{
-					enumerator = ActiveChart.GetEvents().Find(firstNewNote);
-					end = lastSelectedEvent;
-				}
-				else
-				{
-					enumerator = ActiveChart.GetEvents().Find(lastSelectedEvent);
-					end = firstNewNote;
-				}
-
-				if (enumerator != null)
-				{
-					var checkLane = Preferences.Instance.PreferencesSelection.RegionMode ==
-					                PreferencesSelection.SelectionRegionMode.TimeOrPositionAndLane;
-					var minLane = Math.Min(newlySelectedEvents[0].GetLane(),
-						Math.Min(lastSelectedEvent.GetLane(), newlySelectedEvents[^1].GetLane()));
-					var maxLane = Math.Max(newlySelectedEvents[0].GetLane(),
-						Math.Max(lastSelectedEvent.GetLane(), newlySelectedEvents[^1].GetLane()));
-
-					while (enumerator.MoveNext())
-					{
-						var last = enumerator.Current == end;
-						if (isSelectable(enumerator.Current))
-						{
-							if (!checkLane ||
-							    (enumerator.Current!.GetLane() >= minLane && enumerator.Current.GetLane() <= maxLane))
-							{
-								Selection.SelectEvent(enumerator.Current, last);
-							}
-						}
-
-						if (last)
-							break;
-					}
-				}
-			}
-
-			// Select the newly selected notes.
-			for (var i = 0; i < newlySelectedEvents.Count; i++)
-			{
-				Selection.SelectEvent(newlySelectedEvents[i], i == newlySelectedEvents.Count - 1);
-			}
-		}
-
-		// If holding control, toggle the selected notes.
-		else if (ctrl)
-		{
-			for (var i = 0; i < newlySelectedEvents.Count; i++)
-			{
-				if (newlySelectedEvents[i].IsSelected())
-					Selection.DeselectEvent(newlySelectedEvents[i]);
-				else
-					Selection.SelectEvent(newlySelectedEvents[i], i == newlySelectedEvents.Count - 1);
-			}
-		}
-
-		// If holding no modifier key, deselect everything and select the newly
-		// selected notes.
-		else
-		{
-			Selection.ClearSelectedEvents();
-			for (var i = 0; i < newlySelectedEvents.Count; i++)
-			{
-				Selection.SelectEvent(newlySelectedEvents[i], i == newlySelectedEvents.Count - 1);
-			}
-		}
-
-		SelectedRegion.Stop();
-	}
-
-	/// <summary>
-	/// Gets the min and max lanes encompassed by the SelectedRegion based on the current selection preferences.
-	/// </summary>
-	/// <returns>Min and max lanes from the SelectedRegion.</returns>
-	/// <remarks>Helper for FinishSelectedRegion.</remarks>
-	private (int, int) GetSelectedLanes()
-	{
-		var (arrowWidthUnscaled, _) = GetArrowDimensions(false);
-		var lanesWidth = ActiveChart.NumInputs * arrowWidthUnscaled;
-		var (minChartX, maxChartX) = SelectedRegion.GetSelectedXChartSpaceRange();
-
-		// Determine the min and max lanes to consider for selection based on the preference for how notes should be considered.
-		int minLane, maxLane;
-		switch (Preferences.Instance.PreferencesSelection.Mode)
-		{
-			case PreferencesSelection.SelectionMode.OverlapAny:
-				minLane = (int)Math.Floor((minChartX + lanesWidth * 0.5) / arrowWidthUnscaled);
-				maxLane = (int)Math.Floor((maxChartX + lanesWidth * 0.5) / arrowWidthUnscaled);
-				break;
-			case PreferencesSelection.SelectionMode.OverlapCenter:
-			default:
-				minLane = (int)Math.Floor((minChartX + lanesWidth * 0.5 + arrowWidthUnscaled * 0.5) / arrowWidthUnscaled);
-				maxLane = (int)Math.Floor((maxChartX + lanesWidth * 0.5 - arrowWidthUnscaled * 0.5) / arrowWidthUnscaled);
-				break;
-			case PreferencesSelection.SelectionMode.OverlapAll:
-				minLane = (int)Math.Ceiling((minChartX + lanesWidth * 0.5) / arrowWidthUnscaled);
-				maxLane = (int)Math.Floor((maxChartX + lanesWidth * 0.5) / arrowWidthUnscaled) - 1;
-				break;
-		}
-
-		return (minLane, maxLane);
-	}
-
-	/// <summary>
-	/// Given a time range defined by the given min and max time, returns an adjusted min and max time that
-	/// are expanded by the given distance value. The given distance value is typically half the height of
-	/// an event that should be captured by a selection, like half of an arrow height or half of a misc.
-	/// event height.
-	/// </summary>
-	/// <returns>Adjusted min and max time.</returns>
-	/// <remarks>Helper for FinishSelectedRegion.</remarks>
-	private (double, double) AdjustSelectionTimeRange(double minTime, double maxTime, double halfHeight)
-	{
-		switch (Preferences.Instance.PreferencesSelection.Mode)
-		{
-			case PreferencesSelection.SelectionMode.OverlapAny:
-				// This is an approximation as there may be rate altering events during the range.
-				return (minTime - GetTimeRangeOfYPixelDurationAtTime(minTime, halfHeight),
-					maxTime + GetTimeRangeOfYPixelDurationAtTime(maxTime, halfHeight));
-			case PreferencesSelection.SelectionMode.OverlapAll:
-				// This is an approximation as there may be rate altering events during the range.
-				return (minTime + GetTimeRangeOfYPixelDurationAtTime(minTime, halfHeight),
-					maxTime - GetTimeRangeOfYPixelDurationAtTime(maxTime, halfHeight));
-			case PreferencesSelection.SelectionMode.OverlapCenter:
-			default:
-				return (minTime, maxTime);
-		}
-	}
-
-	/// <summary>
-	/// Given a position range defined by the given min and max position, returns an adjusted min and max
-	/// position that are expanded by the given distance value. The given distance value is typically half
-	/// the height of an event that should be captured by a selection, like half of an arrow height or half
-	/// of a misc. event height.
-	/// </summary>
-	/// <returns>Adjusted min and max position.</returns>
-	/// <remarks>Helper for FinishSelectedRegion.</remarks>
-	private (double, double) AdjustSelectionPositionRange(double minPosition, double maxPosition, double halfHeight)
-	{
-		switch (Preferences.Instance.PreferencesSelection.Mode)
-		{
-			case PreferencesSelection.SelectionMode.OverlapAny:
-				// This is an approximation as there may be rate altering events during the range.
-				return (minPosition - GetPositionRangeOfYPixelDurationAtPosition(minPosition, halfHeight),
-					maxPosition + GetPositionRangeOfYPixelDurationAtPosition(maxPosition, halfHeight));
-			case PreferencesSelection.SelectionMode.OverlapAll:
-				// This is an approximation as there may be rate altering events during the range.
-				return (minPosition + GetPositionRangeOfYPixelDurationAtPosition(minPosition, halfHeight),
-					maxPosition - GetPositionRangeOfYPixelDurationAtPosition(maxPosition, halfHeight));
-			case PreferencesSelection.SelectionMode.OverlapCenter:
-			default:
-				return (minPosition, maxPosition);
-		}
-	}
-
-	/// <summary>
-	/// Returns whether the given EditorEvent is eligible to be selected based on its x values by checking
-	/// if the range defined by it falls within the given start and end x values, taking into account the
-	/// current selection preferences.
-	/// </summary>
-	/// <returns>Whether the given EditorEvent falls within the given range.</returns>
-	/// <remarks>Helper for FinishSelectedRegion.</remarks>
-	private bool DoesMiscEventFallWithinRange(EditorEvent editorEvent, double xStart, double xEnd)
-	{
-		switch (Preferences.Instance.PreferencesSelection.Mode)
-		{
-			case PreferencesSelection.SelectionMode.OverlapAny:
-				return editorEvent.X <= xEnd && editorEvent.X + editorEvent.W >= xStart;
-			case PreferencesSelection.SelectionMode.OverlapAll:
-				return editorEvent.X >= xStart && editorEvent.X + editorEvent.W <= xEnd;
-			case PreferencesSelection.SelectionMode.OverlapCenter:
-			default:
-				return editorEvent.X + editorEvent.W * 0.5 >= xStart && editorEvent.X + editorEvent.W * 0.5 <= xEnd;
-		}
-	}
-
-	/// <summary>
-	/// Given a duration in pixel space in y, returns that duration as time based on the
-	/// rate altering event present at the given time. Note that this duration is an
-	/// approximation as the given pixel range may cover multiple rate altering events
-	/// and only the rate altering event present at the given time is considered.
-	/// </summary>
-	/// <param name="time">Time to use for determining the current rate.</param>
-	/// <param name="duration">Y duration in pixels,</param>
-	/// <returns>Duration in time.</returns>
-	/// <remarks>
-	/// Helper for FinishSelectedRegion. Used to approximate the time of arrow tops and bottoms
-	/// from their centers.
-	/// </remarks>
-	private double GetTimeRangeOfYPixelDurationAtTime(double time, double duration)
-	{
-		var rae = ActiveChart.GetRateAlteringEvents().FindActiveRateAlteringEventForTime(time);
-		var spacingHelper = EventSpacingHelper.GetSpacingHelper(ActiveChart);
-		spacingHelper.UpdatePpsAndPpr(rae, GetCurrentInterpolatedScrollRate(), ZoomManager.GetSpacingZoom());
-
-		return duration / spacingHelper.GetPps();
-	}
-
-	/// <summary>
-	/// Given a duration in pixel space in y, returns that duration as rows based on the
-	/// rate altering event present at the given time. Note that this duration is an
-	/// approximation as the given pixel range may cover multiple rate altering events
-	/// and only the rate altering event present at the given position is considered.
-	/// </summary>
-	/// <param name="position">Chart position to use for determining the current rate.</param>
-	/// <param name="duration">Y duration in pixels,</param>
-	/// <returns>Duration in rows.</returns>
-	/// <remarks>
-	/// Helper for FinishSelectedRegion. Used to approximate the row of arrow tops and bottoms
-	/// from their centers.
-	/// </remarks>
-	private double GetPositionRangeOfYPixelDurationAtPosition(double position, double duration)
-	{
-		var rae = ActiveChart.GetRateAlteringEvents().FindActiveRateAlteringEventForPosition(position);
-		var spacingHelper = EventSpacingHelper.GetSpacingHelper(ActiveChart);
-		spacingHelper.UpdatePpsAndPpr(rae, GetCurrentInterpolatedScrollRate(), ZoomManager.GetSpacingZoom());
-
-		return duration / spacingHelper.GetPpr();
+		GetFocusedChartData()?.OnSelectAll(isSelectable);
 	}
 
 	public void OnShiftSelectedNotesLeft()
 	{
 		if (EditEarlyOut())
 			return;
-		if (!Selection.HasSelectedEvents())
-			return;
-		OnShiftNotesLeft(Selection.GetSelectedEvents());
+		GetFocusedChartData()?.OnShiftSelectedNotesLeft();
 	}
 
 	public void OnShiftNotesLeft(IEnumerable<EditorEvent> events)
 	{
 		if (EditEarlyOut())
 			return;
-		ActionQueue.Instance.Do(new ActionShiftSelectionLane(this, ActiveChart, events, false, false));
+		foreach (var editorEvent in events)
+		{
+			var activeChartData = GetActiveChartData(editorEvent.GetEditorChart());
+			activeChartData?.OnShiftNotesLeft(events);
+			break;
+		}
 	}
 
 	public void OnShiftSelectedNotesLeftAndWrap()
 	{
 		if (EditEarlyOut())
 			return;
-		if (!Selection.HasSelectedEvents())
-			return;
-		OnShiftNotesLeftAndWrap(Selection.GetSelectedEvents());
+		GetFocusedChartData()?.OnShiftSelectedNotesLeftAndWrap();
 	}
 
 	public void OnShiftNotesLeftAndWrap(IEnumerable<EditorEvent> events)
 	{
 		if (EditEarlyOut())
 			return;
-		ActionQueue.Instance.Do(new ActionShiftSelectionLane(this, ActiveChart, events, false, true));
+		foreach (var editorEvent in events)
+		{
+			var activeChartData = GetActiveChartData(editorEvent.GetEditorChart());
+			activeChartData?.OnShiftNotesLeftAndWrap(events);
+			break;
+		}
 	}
 
 	public void OnShiftSelectedNotesRight()
 	{
 		if (EditEarlyOut())
 			return;
-		if (!Selection.HasSelectedEvents())
-			return;
-		OnShiftNotesRight(Selection.GetSelectedEvents());
+		GetFocusedChartData()?.OnShiftSelectedNotesRight();
 	}
 
 	public void OnShiftNotesRight(IEnumerable<EditorEvent> events)
 	{
 		if (EditEarlyOut())
 			return;
-		ActionQueue.Instance.Do(new ActionShiftSelectionLane(this, ActiveChart, events, true, false));
+		foreach (var editorEvent in events)
+		{
+			var activeChartData = GetActiveChartData(editorEvent.GetEditorChart());
+			activeChartData?.OnShiftNotesRight(events);
+			break;
+		}
 	}
 
 	public void OnShiftSelectedNotesRightAndWrap()
 	{
 		if (EditEarlyOut())
 			return;
-		if (!Selection.HasSelectedEvents())
-			return;
-		OnShiftNotesRightAndWrap(Selection.GetSelectedEvents());
+		GetFocusedChartData()?.OnShiftSelectedNotesRightAndWrap();
 	}
 
 	public void OnShiftNotesRightAndWrap(IEnumerable<EditorEvent> events)
 	{
 		if (EditEarlyOut())
 			return;
-		ActionQueue.Instance.Do(new ActionShiftSelectionLane(this, ActiveChart, events, true, true));
+		foreach (var editorEvent in events)
+		{
+			var activeChartData = GetActiveChartData(editorEvent.GetEditorChart());
+			activeChartData?.OnShiftNotesRightAndWrap(events);
+			break;
+		}
 	}
 
 	public int GetShiftNotesRows()
 	{
-		var rows = SnapLevels[Preferences.Instance.SnapIndex].Rows;
+		var rows = SnapManager.GetCurrentRows();
 		if (rows == 0)
 			rows = MaxValidDenominator;
 		return rows;
@@ -6377,34 +5350,28 @@ internal sealed class Editor :
 	{
 		if (EditEarlyOut())
 			return;
-		if (!Selection.HasSelectedEvents())
-			return;
-		OnShiftNotesEarlier(Selection.GetSelectedEvents());
+		GetFocusedChartData()?.OnShiftSelectedNotesEarlier(GetShiftNotesRows());
 	}
 
 	public void OnShiftNotesEarlier(IEnumerable<EditorEvent> events)
 	{
 		if (EditEarlyOut())
 			return;
-		var rows = GetShiftNotesRows();
-		ActionQueue.Instance.Do(new ActionShiftSelectionRow(this, ActiveChart, events, -rows));
+		GetFocusedChartData()?.OnShiftNotesEarlier(events, GetShiftNotesRows());
 	}
 
 	public void OnShiftSelectedNotesLater()
 	{
 		if (EditEarlyOut())
 			return;
-		if (!Selection.HasSelectedEvents())
-			return;
-		OnShiftNotesLater(Selection.GetSelectedEvents());
+		GetFocusedChartData()?.OnShiftSelectedNotesLater(GetShiftNotesRows());
 	}
 
 	public void OnShiftNotesLater(IEnumerable<EditorEvent> events)
 	{
 		if (EditEarlyOut())
 			return;
-		var rows = GetShiftNotesRows();
-		ActionQueue.Instance.Do(new ActionShiftSelectionRow(this, ActiveChart, events, rows));
+		GetFocusedChartData()?.OnShiftNotesLater(events, GetShiftNotesRows());
 	}
 
 	#endregion Selection
@@ -6413,12 +5380,17 @@ internal sealed class Editor :
 
 	private void OnCopy()
 	{
+		var focusedChartData = GetFocusedChartData();
+		var selection = focusedChartData?.GetSelection();
+		if (selection == null)
+			return;
+
 		// Do not alter the currently copied events if nothing is selected.
-		if (!Selection.HasSelectedEvents())
+		if (!selection.HasSelectedEvents())
 			return;
 
 		CopiedEvents.Clear();
-		foreach (var selectedEvent in Selection.GetSelectedEvents())
+		foreach (var selectedEvent in selection.GetSelectedEvents())
 			CopiedEvents.Add(selectedEvent);
 		CopiedEvents.Sort();
 	}
@@ -6433,35 +5405,33 @@ internal sealed class Editor :
 	{
 		if (EditEarlyOut())
 			return;
-		if (ActiveChart == null)
-			return;
 		if (CopiedEvents.Count == 0)
 			return;
 		var earliestRow = CopiedEvents[0].GetRow();
-		var currentRow = Math.Max(0, Position.GetNearestRow());
-		ActionQueue.Instance.Do(new ActionPasteEvents(this, ActiveChart, CopiedEvents, currentRow - earliestRow));
+		var currentRow = Math.Max(0, GetPosition().GetNearestRow());
+		ActionQueue.Instance.Do(new ActionPasteEvents(this, FocusedChart, CopiedEvents, currentRow - earliestRow));
 	}
 
 	#endregion Copy Paste
 
 	#region Chart Navigation
 
-	private void OnMoveToPreviousChart()
+	private void OpenPreviousChart()
 	{
-		if (ActiveSong == null || ActiveChart == null)
+		if (ActiveSong == null || FocusedChart == null)
 			return;
 
 		var index = 0;
 		var sortedCharts = ActiveSong.GetSortedCharts();
 		foreach (var chart in sortedCharts)
 		{
-			if (chart == ActiveChart)
+			if (chart == FocusedChart)
 			{
 				var previousIndex = index - 1;
 				if (previousIndex < 0)
 					previousIndex = sortedCharts.Count - 1;
 				if (previousIndex != index)
-					OnChartSelected(sortedCharts[previousIndex]);
+					SetChartFocused(sortedCharts[previousIndex]);
 				return;
 			}
 
@@ -6469,25 +5439,82 @@ internal sealed class Editor :
 		}
 	}
 
-	private void OnMoveToNextChart()
+	private void OpenNextChart()
 	{
-		if (ActiveSong == null || ActiveChart == null)
+		if (ActiveSong == null || FocusedChart == null)
 			return;
 
 		var index = 0;
 		var sortedCharts = ActiveSong.GetSortedCharts();
 		foreach (var chart in sortedCharts)
 		{
-			if (chart == ActiveChart)
+			if (chart == FocusedChart)
 			{
 				var nextIndex = (index + 1) % sortedCharts.Count;
 				if (nextIndex != index)
-					OnChartSelected(sortedCharts[nextIndex]);
+					SetChartFocused(sortedCharts[nextIndex]);
 				return;
 			}
 
 			index++;
 		}
+	}
+
+	private void FocusPreviousChart()
+	{
+		if (ActiveSong == null || FocusedChart == null || ActiveCharts.Count < 1)
+			return;
+		var index = 0;
+		foreach (var activeChart in ActiveCharts)
+		{
+			if (activeChart == FocusedChart)
+			{
+				var newFocusedChartIndex = index - 1;
+				if (newFocusedChartIndex < 0)
+					newFocusedChartIndex = ActiveCharts.Count - 1;
+				SetChartFocused(ActiveCharts[newFocusedChartIndex]);
+				return;
+			}
+
+			index++;
+		}
+	}
+
+	private void FocusNextChart()
+	{
+		if (ActiveSong == null || FocusedChart == null || ActiveCharts.Count < 1)
+			return;
+		var index = 0;
+		foreach (var activeChart in ActiveCharts)
+		{
+			if (activeChart == FocusedChart)
+			{
+				SetChartFocused(ActiveCharts[(index + 1) % ActiveCharts.Count]);
+				return;
+			}
+
+			index++;
+		}
+	}
+
+	private void MoveFocusedChartLeft()
+	{
+		MoveActiveChartLeft(GetFocusedChart());
+	}
+
+	private void MoveFocusedChartRight()
+	{
+		MoveActiveChartRight(GetFocusedChart());
+	}
+
+	private void CloseFocusedChart()
+	{
+		CloseChart(GetFocusedChart());
+	}
+
+	private void SetFocusedChartHasDedicatedTab()
+	{
+		SetChartHasDedicatedTab(GetFocusedChart(), true);
 	}
 
 	private void OnToggleSpacingMode()
@@ -6499,16 +5526,16 @@ internal sealed class Editor :
 		Logger.Info($"Set Spacing Mode to {Preferences.Instance.PreferencesScroll.SpacingMode}");
 	}
 
-	private void OnPositionChanged()
+	public void OnActiveChartPositionChanged(ActiveEditorChart activeChart)
 	{
-		// Update events being edited.
-		UpdateLaneEditStatesFromPosition();
+		if (activeChart != GetFocusedChartData())
+			return;
 
 		// Update the music time
 		if (!UpdatingSongTimeDirectly)
 		{
-			var songTime = Position.SongTime;
-			Position.SetDesiredPositionToCurrent();
+			var songTime = activeChart.Position.SongTime;
+			activeChart.Position.SetDesiredPositionToCurrent();
 			MusicManager.SetMusicTimeInSeconds(songTime);
 
 			if (Playing)
@@ -6518,119 +5545,121 @@ internal sealed class Editor :
 		}
 	}
 
+	public SnapManager GetSnapManager()
+	{
+		return SnapManager;
+	}
+
 	private void OnDecreaseSnap()
 	{
-		var p = Preferences.Instance;
-		p.SnapIndex--;
-		if (p.SnapIndex < 0)
-			p.SnapIndex = SnapLevels.Length - 1;
+		SnapManager.DecreaseSnap();
 	}
 
 	private void OnIncreaseSnap()
 	{
-		var p = Preferences.Instance;
-		p.SnapIndex++;
-		if (p.SnapIndex >= SnapLevels.Length)
-			p.SnapIndex = 0;
+		SnapManager.IncreaseSnap();
 	}
 
-	private void OnMoveUp()
+	public void OnMoveUp()
 	{
 		if (Preferences.Instance.PreferencesScroll.StopPlaybackWhenScrolling)
 			StopPlayback();
 
-		var rows = SnapLevels[Preferences.Instance.SnapIndex].Rows;
+		var rows = SnapManager.GetCurrentRows();
 		if (rows == 0)
 		{
 			OnMoveToPreviousMeasure();
 		}
 		else
 		{
-			var newChartPosition = (int)Position.ChartPosition / rows * rows;
-			if (newChartPosition == (int)Position.ChartPosition)
+			var chartPosition = GetPosition().ChartPosition;
+			var newChartPosition = (int)chartPosition / rows * rows;
+			if (newChartPosition == (int)chartPosition)
 				newChartPosition -= rows;
-			Position.ChartPosition = newChartPosition;
+			SetChartPosition(newChartPosition);
 			UpdateAutoPlayFromScrolling();
 		}
 	}
 
-	private void OnMoveDown()
+	public void OnMoveDown()
 	{
 		if (Preferences.Instance.PreferencesScroll.StopPlaybackWhenScrolling)
 			StopPlayback();
 
-		var rows = SnapLevels[Preferences.Instance.SnapIndex].Rows;
+		var rows = SnapManager.GetCurrentRows();
 		if (rows == 0)
 		{
 			OnMoveToNextMeasure();
 		}
 		else
 		{
-			var newChartPosition = (int)Position.ChartPosition / rows * rows + rows;
-			Position.ChartPosition = newChartPosition;
+			var newChartPosition = (int)GetPosition().ChartPosition / rows * rows + rows;
+			SetChartPosition(newChartPosition);
 			UpdateAutoPlayFromScrolling();
 		}
 	}
 
 	private void OnMoveToPreviousMeasure()
 	{
-		var rate = ActiveChart?.GetRateAlteringEvents().FindActiveRateAlteringEventForPosition(Position.ChartPosition);
+		var chartPosition = GetPosition().ChartPosition;
+		var rate = FocusedChart?.GetRateAlteringEvents().FindActiveRateAlteringEventForPosition(chartPosition);
 		if (rate == null)
 			return;
 		var sig = rate.GetTimeSignature();
 		var rows = sig.GetNumerator() * (MaxValidDenominator * NumBeatsPerMeasure / sig.GetDenominator());
-		Position.ChartPosition -= rows;
+		SetChartPosition(chartPosition - rows);
 
 		UpdateAutoPlayFromScrolling();
 	}
 
 	private void OnMoveToNextMeasure()
 	{
-		var rate = ActiveChart?.GetRateAlteringEvents().FindActiveRateAlteringEventForPosition(Position.ChartPosition);
+		var chartPosition = GetPosition().ChartPosition;
+		var rate = FocusedChart?.GetRateAlteringEvents().FindActiveRateAlteringEventForPosition(chartPosition);
 		if (rate == null)
 			return;
 		var sig = rate.GetTimeSignature();
 		var rows = sig.GetNumerator() * (MaxValidDenominator * NumBeatsPerMeasure / sig.GetDenominator());
-		Position.ChartPosition += rows;
+		SetChartPosition(chartPosition + rows);
 
 		UpdateAutoPlayFromScrolling();
 	}
 
 	public void OnMoveToPreviousLabel()
 	{
-		OnMoveToPreviousLabel(Position.ChartPosition);
+		OnMoveToPreviousLabel(GetPosition().ChartPosition);
 	}
 
 	public void OnMoveToPreviousLabel(double chartPosition)
 	{
-		var label = ActiveChart?.GetLabels()?.FindPreviousEventWithLooping(chartPosition);
+		var label = FocusedChart?.GetLabels()?.FindPreviousEventWithLooping(chartPosition);
 		if (label == null)
 			return;
 
 		var desiredRow = label.GetRow();
-		Position.ChartPosition = desiredRow;
+		SetChartPosition(desiredRow);
 		UpdateAutoPlayFromScrolling();
 	}
 
 	public void OnMoveToNextLabel()
 	{
-		OnMoveToNextLabel(Position.ChartPosition);
+		OnMoveToNextLabel(GetPosition().ChartPosition);
 	}
 
 	public void OnMoveToNextLabel(double chartPosition)
 	{
-		var label = ActiveChart?.GetLabels()?.FindNextEventWithLooping(chartPosition);
+		var label = FocusedChart?.GetLabels()?.FindNextEventWithLooping(chartPosition);
 		if (label == null)
 			return;
 
 		var desiredRow = label.GetRow();
-		Position.ChartPosition = desiredRow;
+		SetChartPosition(desiredRow);
 		UpdateAutoPlayFromScrolling();
 	}
 
 	public void OnMoveToPreviousPattern()
 	{
-		OnMoveToPreviousPattern(Position.ChartPosition);
+		OnMoveToPreviousPattern(GetPosition().ChartPosition);
 	}
 
 	public void OnMoveToPreviousPattern(EditorPatternEvent currentPattern)
@@ -6640,9 +5669,9 @@ internal sealed class Editor :
 
 	private void OnMoveToPreviousPattern(double chartPosition)
 	{
-		if (ActiveChart == null)
+		if (FocusedChart == null)
 			return;
-		var patterns = ActiveChart.GetPatterns();
+		var patterns = FocusedChart.GetPatterns();
 		if (patterns.GetCount() == 0)
 			return;
 
@@ -6661,7 +5690,7 @@ internal sealed class Editor :
 
 		// Move to the position of the next pattern.
 		var desiredRow = patternEvent!.ChartRow;
-		Position.ChartPosition = desiredRow;
+		SetChartPosition(desiredRow);
 		UpdateAutoPlayFromScrolling();
 
 		// Select the pattern.
@@ -6670,7 +5699,7 @@ internal sealed class Editor :
 
 	public void OnMoveToNextPattern()
 	{
-		OnMoveToNextPattern(Position.ChartPosition);
+		OnMoveToNextPattern(GetPosition().ChartPosition);
 	}
 
 	public void OnMoveToNextPattern(EditorPatternEvent currentPattern)
@@ -6680,9 +5709,9 @@ internal sealed class Editor :
 
 	private void OnMoveToNextPattern(double chartPosition)
 	{
-		if (ActiveChart == null)
+		if (FocusedChart == null)
 			return;
-		var patterns = ActiveChart.GetPatterns();
+		var patterns = FocusedChart.GetPatterns();
 		if (patterns.GetCount() == 0)
 			return;
 
@@ -6701,7 +5730,7 @@ internal sealed class Editor :
 
 		// Move to the position of the next pattern.
 		var desiredRow = patternEvent!.ChartRow;
-		Position.ChartPosition = desiredRow;
+		SetChartPosition(desiredRow);
 		UpdateAutoPlayFromScrolling();
 
 		// Select the pattern.
@@ -6710,9 +5739,8 @@ internal sealed class Editor :
 
 	private void OnSelectPattern(EditorPatternEvent pattern)
 	{
-		LastSelectedPatternEvent = pattern;
-		Preferences.Instance.ShowPatternEventWindow = true;
-		ImGui.SetWindowFocus(UIPatternEvent.WindowTitle);
+		GetActiveChartData(pattern.GetEditorChart())?.SelectPattern(pattern);
+		UIPatternEvent.Instance.Open(true);
 	}
 
 	private void OnMoveToChartStart()
@@ -6720,7 +5748,7 @@ internal sealed class Editor :
 		if (Preferences.Instance.PreferencesScroll.StopPlaybackWhenScrolling)
 			StopPlayback();
 
-		Position.ChartPosition = 0.0;
+		SetChartPosition(0.0);
 
 		UpdateAutoPlayFromScrolling();
 	}
@@ -6730,10 +5758,10 @@ internal sealed class Editor :
 		if (Preferences.Instance.PreferencesScroll.StopPlaybackWhenScrolling)
 			StopPlayback();
 
-		if (ActiveChart != null)
-			Position.ChartPosition = ActiveChart.GetEndPosition();
+		if (FocusedChart != null)
+			SetChartPosition(FocusedChart.GetEndPosition());
 		else
-			Position.ChartPosition = 0.0;
+			SetChartPosition(0.0);
 
 		UpdateAutoPlayFromScrolling();
 	}
@@ -6751,349 +5779,40 @@ internal sealed class Editor :
 		Logger.Info($"Set Note Entry Mode to {Preferences.Instance.NoteEntryMode}");
 	}
 
-	private void OnShiftDown()
+	private void OnArrowModificationKeyDown()
 	{
-		if (LaneEditStates == null)
+		if (EditEarlyOut())
 			return;
-
-		foreach (var laneEditState in LaneEditStates)
-		{
-			if (laneEditState.IsActive() && laneEditState.GetEventBeingEdited() != null)
-			{
-				laneEditState.Shift(false);
-			}
-		}
+		var focusedChartData = GetFocusedChartData();
+		focusedChartData?.OnArrowModificationKeyDown();
 	}
 
-	private void OnShiftUp()
+	private void OnArrowModificationKeyUp()
 	{
-		if (LaneEditStates == null)
+		if (EditEarlyOut())
 			return;
-
-		foreach (var laneEditState in LaneEditStates)
-		{
-			if (laneEditState.IsActive() && laneEditState.GetEventBeingEdited() != null)
-			{
-				laneEditState.Shift(true);
-			}
-		}
+		var focusedChartData = GetFocusedChartData();
+		focusedChartData?.OnArrowModificationKeyUp();
 	}
 
 	private void OnLaneInputDown(int lane)
 	{
 		if (EditEarlyOut())
 			return;
-
-		if (ActiveChart == null)
-			return;
-		if (lane < 0 || lane >= ActiveChart.NumInputs)
-			return;
-
-		Receptors?[lane].OnInputDown();
-
-		if (Position.ChartPosition < 0)
-			return;
-
-		// TODO: If playing we should take sync into account and adjust the position.
-
-		var p = Preferences.Instance;
-		var row = Position.GetNearestRow();
-		if (SnapLevels[p.SnapIndex].Rows != 0)
-		{
-			var snappedRow = row / SnapLevels[p.SnapIndex].Rows * SnapLevels[p.SnapIndex].Rows;
-			if (row - snappedRow >= SnapLevels[p.SnapIndex].Rows * 0.5)
-				snappedRow += SnapLevels[p.SnapIndex].Rows;
-			row = snappedRow;
-		}
-
-		// If there is a tap, mine, or hold start at this location, delete it now.
-		// Deleting immediately feels more responsive than deleting on the input up event.
-		var deletedNote = false;
-		var existingEvent = ActiveChart.GetEvents().FindNoteAt(row, lane, true);
-		if (existingEvent != null && existingEvent.GetRow() == row)
-		{
-			deletedNote = true;
-			LaneEditStates[lane].StartEditingWithDelete(row, new ActionDeleteEditorEvents(existingEvent));
-		}
-
-		SetLaneInputDownNote(lane, row);
-
-		// If we are playing, immediately commit the note so it comes out as a tap and not a short hold.
-		if (Playing)
-		{
-			OnLaneInputUp(lane);
-		}
-		else
-		{
-			// If the NoteEntryMode is set to advance by the snap value and the snap is set, then advance.
-			// We do not want to do this while playing.
-			if (p.NoteEntryMode == NoteEntryMode.AdvanceBySnap && p.SnapIndex != 0 && !deletedNote)
-			{
-				OnLaneInputUp(lane);
-				OnMoveDown();
-			}
-		}
-	}
-
-	private void SetLaneInputDownNote(int lane, int row)
-	{
-		// If the existing state is only a delete, revert back to that delete operation.
-		if (LaneEditStates[lane].IsOnlyDelete())
-		{
-			LaneEditStates[lane].Clear(false);
-		}
-
-		// Otherwise, set the state to be editing a tap or a mine.
-		else
-		{
-			if (KeyCommandManager.IsShiftDown())
-			{
-				var config = EventConfig.CreateMineConfig(ActiveChart, row, lane);
-				config.IsBeingEdited = true;
-				LaneEditStates[lane].SetEditingTapOrMine(EditorEvent.CreateEvent(config));
-			}
-			else
-			{
-				var config = EventConfig.CreateTapConfig(ActiveChart, row, lane);
-				config.IsBeingEdited = true;
-				LaneEditStates[lane].SetEditingTapOrMine(EditorEvent.CreateEvent(config));
-			}
-		}
+		var focusedChartData = GetFocusedChartData();
+		focusedChartData?.OnLaneInputDown(lane, Playing, SnapManager.GetCurrentRows());
 	}
 
 	private void OnLaneInputUp(int lane)
 	{
-		if (ActiveChart == null)
-			return;
-		if (lane < 0 || lane >= ActiveChart.NumInputs)
-			return;
-
-		Receptors?[lane].OnInputUp();
-
-		if (!LaneEditStates[lane].IsActive())
-			return;
-
-		// If this action is only a delete, just commit the existing delete action.
-		if (LaneEditStates[lane].IsOnlyDelete())
-		{
-			LaneEditStates[lane].Commit();
-			return;
-		}
-
-		var row = LaneEditStates[lane].GetEventBeingEdited().GetRow();
-		var existingEvent = ActiveChart.GetEvents().FindNoteAt(row, lane, true);
-
-		var newNoteIsMine = LaneEditStates[lane].GetEventBeingEdited() is EditorMineNoteEvent;
-		var newNoteIsTap = LaneEditStates[lane].GetEventBeingEdited() is EditorTapNoteEvent;
-
-		// Handle a new tap note overlapping an existing note.
-		if (newNoteIsMine || newNoteIsTap)
-		{
-			if (existingEvent != null)
-			{
-				var existingIsTap = existingEvent is EditorTapNoteEvent;
-				var existingIsMine = existingEvent is EditorMineNoteEvent;
-
-				// Tap note over existing tap note.
-				if (existingIsTap || existingIsMine)
-				{
-					// If the existing note is a tap and this note is a mine, then replace it with the mine.
-					if (!existingIsMine && newNoteIsMine)
-					{
-						LaneEditStates[lane].SetEditingTapOrMine(LaneEditStates[lane].GetEventBeingEdited(),
-							new List<EditorAction>
-							{
-								new ActionDeleteEditorEvents(existingEvent),
-							});
-					}
-
-					// In all other cases, just delete the existing note and don't add anything else.
-					else
-					{
-						LaneEditStates[lane].Clear(true);
-						ActionQueue.Instance.Do(new ActionDeleteEditorEvents(existingEvent));
-						return;
-					}
-				}
-
-				// Tap note over hold note.
-				else if (existingEvent is EditorHoldNoteEvent hn)
-				{
-					// If the tap note starts at the beginning of the hold, delete the hold.
-					if (row == existingEvent.GetRow())
-					{
-						LaneEditStates[lane].SetEditingTapOrMine(LaneEditStates[lane].GetEventBeingEdited(),
-							new List<EditorAction>
-							{
-								new ActionDeleteEditorEvents(existingEvent),
-							});
-					}
-
-					// If the tap note is in the in the middle of the hold, shorten the hold.
-					else
-					{
-						// Move the hold up by a 16th.
-						var newHoldEndRow = row - MaxValidDenominator / 4;
-
-						// If the hold would have a non-positive length, delete it and replace it with a tap.
-						if (newHoldEndRow <= existingEvent.GetRow())
-						{
-							var deleteHold = new ActionDeleteEditorEvents(existingEvent);
-
-							var config = EventConfig.CreateTapConfig(existingEvent);
-							var insertNewNoteAtHoldStart = new ActionAddEditorEvent(EditorEvent.CreateEvent(config));
-
-							LaneEditStates[lane].SetEditingTapOrMine(LaneEditStates[lane].GetEventBeingEdited(),
-								new List<EditorAction>
-								{
-									deleteHold,
-									insertNewNoteAtHoldStart,
-								});
-						}
-
-						// Otherwise, the new length is valid. Update it.
-						else
-						{
-							var changeLength = new ActionChangeHoldLength(hn, newHoldEndRow - hn.GetRow());
-							LaneEditStates[lane].SetEditingTapOrMine(LaneEditStates[lane].GetEventBeingEdited(),
-								new List<EditorAction>
-								{
-									changeLength,
-								});
-						}
-					}
-				}
-			}
-		}
-
-		// Handle a new hold note overlapping any existing notes
-		else if (LaneEditStates[lane].GetEventBeingEdited() is EditorHoldNoteEvent editHold)
-		{
-			var length = editHold.GetRowDuration();
-			var roll = editHold.IsRoll();
-
-			// If the hold is completely within another hold, do not add or delete notes, but make sure the outer
-			// hold is the same type (hold/roll) as the new type.
-			if (existingEvent is EditorHoldNoteEvent holdFull
-			    && holdFull.GetRow() <= row
-			    && holdFull.GetRow() + holdFull.GetRowDuration() >= row + length)
-			{
-				LaneEditStates[lane].Clear(true);
-				if (holdFull.IsRoll() != roll)
-					ActionQueue.Instance.Do(new ActionChangeHoldType(holdFull, roll));
-				return;
-			}
-
-			var deleteActions = new List<EditorAction>();
-
-			// If existing holds overlap with only the start or end of the new hold, delete them and extend the
-			// new hold to cover their range. We just need to extend the new event now. The deletion of the
-			// old event will will be handled below when we check for events fully contained within the new
-			// hold region.
-			if (existingEvent is EditorHoldNoteEvent hsnStart
-			    && hsnStart.GetRow() < row
-			    && hsnStart.GetEndRow() >= row
-			    && hsnStart.GetEndRow() < row + length)
-			{
-				row = hsnStart.GetRow();
-				length = editHold.GetEndRow() - hsnStart.GetRow();
-			}
-
-			existingEvent = ActiveChart.GetEvents().FindNoteAt(row + length, lane, true);
-			if (existingEvent is EditorHoldNoteEvent hsnEnd
-			    && hsnEnd.GetRow() <= row + length
-			    && hsnEnd.GetEndRow() >= row + length
-			    && hsnEnd.GetRow() > row)
-			{
-				length = hsnEnd.GetEndRow() - row;
-			}
-
-			// For any event in the same lane within the region of the new hold, delete them.
-			var e = ActiveChart.GetEvents().FindBestByPosition(row);
-			if (e != null)
-			{
-				while (e.MoveNext() && e.Current!.GetRow() <= row + length)
-				{
-					if (e.Current.GetRow() < row)
-						continue;
-					if (e.Current.GetLane() != lane)
-						continue;
-					if (e.Current.IsBeingEdited())
-						continue;
-					if (e.Current is EditorTapNoteEvent or EditorMineNoteEvent or EditorFakeNoteEvent or EditorLiftNoteEvent)
-						deleteActions.Add(new ActionDeleteEditorEvents(e.Current));
-					else if (e.Current is EditorHoldNoteEvent innerHold && innerHold.GetEndRow() <= row + length)
-						deleteActions.Add(new ActionDeleteEditorEvents(innerHold));
-				}
-			}
-
-			// Set the state to be editing a new hold after running the delete actions.
-			LaneEditStates[lane].SetEditingHold(ActiveChart, lane, row, LaneEditStates[lane].GetStartingRow(), length, roll,
-				deleteActions);
-		}
-
-		LaneEditStates[lane].Commit();
-	}
-
-	private void UpdateLaneEditStatesFromPosition()
-	{
-		if (LaneEditStates == null)
-			return;
-
-		var row = Math.Max(0, Position.GetNearestRow());
-		for (var lane = 0; lane < LaneEditStates.Length; lane++)
-		{
-			var laneEditState = LaneEditStates[lane];
-			if (!laneEditState.IsActive())
-				continue;
-
-			// If moving back to the starting position.
-			// In other words, the current state of the note being edited should be a tap.
-			if (laneEditState.GetStartingRow() == row)
-			{
-				// If the event is a hold, convert it to a tap.
-				// This will also convert holds to tap even if the starting action was deleting an existing note.
-				if (laneEditState.GetEventBeingEdited() is EditorHoldNoteEvent)
-				{
-					SetLaneInputDownNote(lane, row);
-				}
-			}
-
-			// If the current position is different than the starting position.
-			// In other words, the current state of the note being edited should be a hold.
-			else
-			{
-				var holdStartRow = laneEditState.GetStartingRow() < row ? laneEditState.GetStartingRow() : row;
-				var holdEndRow = laneEditState.GetStartingRow() > row ? laneEditState.GetStartingRow() : row;
-
-				// If the event is a tap, mine, deletion, or it is a hold with different bounds, convert it to a new hold.
-				if (laneEditState.GetEventBeingEdited() is null
-				    || laneEditState.GetEventBeingEdited() is EditorTapNoteEvent
-				    || laneEditState.GetEventBeingEdited() is EditorMineNoteEvent
-				    || (laneEditState.GetEventBeingEdited() is EditorHoldNoteEvent h
-				        && (holdStartRow != h.GetRow() || holdEndRow != h.GetEndRow())))
-				{
-					var roll = KeyCommandManager.IsShiftDown();
-					LaneEditStates[lane].SetEditingHold(ActiveChart, lane, holdStartRow, laneEditState.GetStartingRow(),
-						holdEndRow - holdStartRow, roll);
-				}
-			}
-		}
+		var focusedChartData = GetFocusedChartData();
+		focusedChartData?.OnLaneInputUp(lane);
 	}
 
 	private bool CancelLaneInput()
 	{
-		var anyCancelled = false;
-		foreach (var laneEditState in LaneEditStates)
-		{
-			if (laneEditState.IsActive())
-			{
-				laneEditState.Clear(true);
-				anyCancelled = true;
-			}
-		}
-
-		return anyCancelled;
+		var focusedChartData = GetFocusedChartData();
+		return focusedChartData?.CancelLaneInput() ?? false;
 	}
 
 	#endregion Lane Input
@@ -7248,14 +5967,269 @@ internal sealed class Editor :
 
 	#region Chart Selection
 
-	public void OnChartSelected(EditorChart chart, bool undoable = true)
+	public int GetNumVisibleActiveCharts()
+	{
+		var numVisible = 0;
+		foreach (var activeChart in ActiveChartData)
+			if (activeChart.IsVisible())
+				numVisible++;
+		return numVisible;
+	}
+
+	public int GetNumEventsForAllVisibleActiveCharts()
+	{
+		var numEvents = 0;
+		foreach (var activeChart in ActiveChartData)
+			if (activeChart.IsVisible())
+				numEvents += activeChart.GetChart().GetEvents().GetCount();
+		return numEvents;
+	}
+
+	public int GetNumRateAlteringEventsForAllVisibleActiveCharts()
+	{
+		var numEvents = 0;
+		foreach (var activeChart in ActiveChartData)
+			if (activeChart.IsVisible())
+				numEvents += activeChart.GetChart().GetRateAlteringEvents().GetCount();
+		return numEvents;
+	}
+
+	public ActiveEditorChart GetFocusedChartData()
+	{
+		return FocusedChartData;
+	}
+
+	public ActiveEditorChart GetActiveChartData(EditorChart chart)
+	{
+		for (var i = 0; i < ActiveCharts.Count; i++)
+		{
+			if (ActiveCharts[i] == chart)
+				return ActiveChartData[i];
+		}
+
+		return null;
+	}
+
+	public bool IsChartActive(EditorChart chart)
+	{
+		return GetActiveChartData(chart) != null;
+	}
+
+	public bool DoesChartHaveDedicatedTab(EditorChart chart)
+	{
+		return GetActiveChartData(chart)?.HasDedicatedTab() ?? false;
+	}
+
+	private void RemoveActiveChart(EditorChart chart)
+	{
+		for (var i = 0; i < ActiveCharts.Count; i++)
+		{
+			if (ActiveCharts[i] == chart)
+			{
+				ActiveChartData[i].Clear();
+				ActiveChartData.RemoveAt(i);
+				ActiveCharts.RemoveAt(i);
+				break;
+			}
+		}
+	}
+
+	public void SetChartHasDedicatedTab(EditorChart chart, bool hasDedicatedTab)
+	{
+		if (chart == null)
+			return;
+
+		if (hasDedicatedTab)
+		{
+			ShowChart(chart, true);
+			GetActiveChartData(chart)?.SetDedicatedTab(true);
+		}
+		else
+		{
+			// When setting a chart inactive, it is the only active chart, then do not close it.
+			if (chart == FocusedChart && ActiveCharts.Count == 1)
+			{
+				GetActiveChartData(chart)?.SetDedicatedTab(false);
+			}
+			else
+			{
+				CloseChart(chart);
+			}
+		}
+	}
+
+	public void CloseChart(EditorChart chart)
+	{
+		if (chart == null)
+			return;
+
+		var removingFocusedChart = FocusedChart == chart;
+
+		// Get the original focal point so we can ensure it doesn't move.
+		var focalPointX = GetFocalPointScreenSpaceX();
+		var focalPointY = GetFocalPointScreenSpaceY();
+
+		// Focus on an adjacent chart if we are removing the focused chart and an adjacent chart
+		// exists. Do this first before removing the active chart because otherwise we'd temporarily
+		// not be able to retrieve the old focused chart data while updating the focus.
+		if (removingFocusedChart)
+		{
+			var focusedChartIndex = 0;
+			for (var i = 0; i < ActiveCharts.Count; i++)
+			{
+				if (ActiveCharts[i] == chart)
+				{
+					focusedChartIndex = i;
+					break;
+				}
+			}
+
+			if (ActiveCharts.Count > 1)
+			{
+				if (focusedChartIndex + 1 < ActiveCharts.Count)
+					SetChartFocused(ActiveCharts[focusedChartIndex + 1]);
+				else if (focusedChartIndex - 1 >= 0 && focusedChartIndex - 1 < ActiveCharts.Count)
+					SetChartFocused(ActiveCharts[focusedChartIndex - 1]);
+			}
+		}
+
+		// Close the chart.
+		RemoveActiveChart(chart);
+
+		// If there are no more charts, clear the FocusedChart member.
+		if (removingFocusedChart && ActiveCharts.Count == 0)
+		{
+			FocusedChart = null;
+			FocusedChartData = null;
+		}
+
+		// Prevent the focal point from moving.
+		SetFocalPointScreenSpace(focalPointX, focalPointY);
+
+		UpdateChartPositions();
+	}
+
+	public void MoveActiveChartLeft(EditorChart chart)
+	{
+		if (chart == null)
+			return;
+
+		var index = int.MaxValue;
+		for (var i = 0; i < ActiveCharts.Count; i++)
+		{
+			if (chart == ActiveCharts[i])
+			{
+				index = i;
+				break;
+			}
+		}
+
+		if (index == int.MaxValue || index == 0)
+			return;
+
+		(ActiveCharts[index - 1], ActiveCharts[index]) = (ActiveCharts[index], ActiveCharts[index - 1]);
+		(ActiveChartData[index - 1], ActiveChartData[index]) = (ActiveChartData[index], ActiveChartData[index - 1]);
+	}
+
+	public void MoveActiveChartRight(EditorChart chart)
+	{
+		if (chart == null)
+			return;
+
+		var index = int.MaxValue;
+		for (var i = 0; i < ActiveCharts.Count; i++)
+		{
+			if (chart == ActiveCharts[i])
+			{
+				index = i;
+				break;
+			}
+		}
+
+		if (index == int.MaxValue || index == ActiveCharts.Count - 1)
+			return;
+
+		(ActiveCharts[index + 1], ActiveCharts[index]) = (ActiveCharts[index], ActiveCharts[index + 1]);
+		(ActiveChartData[index + 1], ActiveChartData[index]) = (ActiveChartData[index], ActiveChartData[index + 1]);
+	}
+
+	public void ShowChart(EditorChart chart, bool withDedicatedTab)
+	{
+		if (chart == null)
+			return;
+
+		// If this chart is already active then return. It is already being shown.
+		if (IsChartActive(chart))
+			return;
+
+		// Add an ActiveEditorChart for this chart, making it active and visible.
+		ActiveCharts.Add(chart);
+		var activeChartData = new ActiveEditorChart(
+			this,
+			chart,
+			ZoomManager,
+			TextureAtlas,
+			KeyCommandManager);
+		ActiveChartData.Add(activeChartData);
+		SynchronizeActiveChartTime(activeChartData);
+
+		// If this is the only shown chart, set it focused.
+		if (ActiveCharts.Count == 1)
+			SetChartFocused(chart);
+
+		if (withDedicatedTab)
+			activeChartData.SetDedicatedTab(true);
+
+		// If there are now multiple charts shown without dedicated tabs, close the other charts.
+		CleanUpActiveChartsWithoutDedicatedTabs(activeChartData);
+
+		UpdateChartPositions();
+	}
+
+	private void CleanUpActiveChartsWithoutDedicatedTabs(ActiveEditorChart chartWithoutDedicatedTabToKeep)
+	{
+		var numChartsWithoutDedicatedTabs = 0;
+		for (var i = 0; i < ActiveChartData.Count; i++)
+		{
+			if (!ActiveChartData[i].HasDedicatedTab())
+			{
+				numChartsWithoutDedicatedTabs++;
+				if (numChartsWithoutDedicatedTabs > 1)
+					break;
+			}
+		}
+
+		if (numChartsWithoutDedicatedTabs <= 1)
+			return;
+
+		for (var i = ActiveChartData.Count - 1; i >= 0; i--)
+		{
+			if (ActiveChartData[i] == chartWithoutDedicatedTabToKeep)
+				continue;
+			if (!ActiveChartData[i].HasDedicatedTab())
+			{
+				CloseChart(ActiveCharts[i]);
+				numChartsWithoutDedicatedTabs--;
+			}
+
+			if (numChartsWithoutDedicatedTabs <= 1)
+				break;
+		}
+	}
+
+	public void SetChartFocused(EditorChart chart, bool undoable = false)
 	{
 		Debug.Assert(IsOnMainThread());
 
-		if (ActiveSong == null || ActiveChart == chart)
+		if (chart == null)
 			return;
 
-		// If the active chart is being changed as an undoable action, enqueue the action and return.
+		var oldSongTime = GetPosition().SongTime;
+		var oldFocusedChartData = GetFocusedChartData();
+		if (ActiveSong == null || FocusedChart == chart)
+			return;
+
+		// If the focused chart is being changed as an undoable action, enqueue the action and return.
 		// The ActionSelectChart will invoke this method again with undoable set to false.
 		if (undoable)
 		{
@@ -7263,43 +6237,54 @@ internal sealed class Editor :
 			return;
 		}
 
-		Selection.ClearSelectedEvents();
-		ActiveChart = chart;
-		DensityGraph.SetStepDensity(ActiveChart?.GetStepDensity());
+		int? leftPosOfAllCharts = null;
+		if (ActiveChartData.Count > 0)
+			leftPosOfAllCharts = ActiveChartData[0].GetScreenSpaceXOfFullChartAreaStart();
 
-		// The Position needs to know about the active chart for doing time and row calculations.
-		Position.ActiveChart = ActiveChart;
-		EditorMouseState.SetActiveChart(ActiveChart);
+		var currentActiveChart = GetActiveChartData(chart);
 
-		if (ActiveChart != null)
+		// Set the focused chart.
+		oldFocusedChartData?.SetFocused(false);
+		FocusedChart = chart;
+
+		// Ensure that if we are focusing on a chart, it is active.
+		if (FocusedChart != null && currentActiveChart == null)
 		{
-			// Update the recent file entry for the current song so that tracks the selected chart
-			var p = Preferences.Instance;
-			if (p.RecentFiles.Count > 0 && p.RecentFiles[0].FileName == ActiveSong.GetFileFullPath())
-			{
-				p.RecentFiles[0].UpdateChart(ActiveChart.ChartType, ActiveChart.ChartDifficultyType);
-			}
-
-			// The receptors and arrow graphics depend on the active chart.
-			ArrowGraphicManager = ArrowGraphicManager.CreateArrowGraphicManager(ActiveChart.ChartType);
-			var laneEditStates = new LaneEditState[ActiveChart.NumInputs];
-			var receptors = new Receptor[ActiveChart.NumInputs];
-			for (var i = 0; i < ActiveChart.NumInputs; i++)
-			{
-				laneEditStates[i] = new LaneEditState();
-				receptors[i] = new Receptor(i, ArrowGraphicManager, ActiveChart);
-			}
-
-			Receptors = receptors;
-			AutoPlayer = new AutoPlayer(ActiveChart, Receptors);
-			LaneEditStates = laneEditStates;
+			ActiveCharts.Insert(0, FocusedChart);
+			var activeChartData = new ActiveEditorChart(
+				this,
+				chart,
+				ZoomManager,
+				TextureAtlas,
+				KeyCommandManager);
+			ActiveChartData.Insert(0, activeChartData);
 		}
-		else
+
+		for (var i = 0; i < ActiveCharts.Count; i++)
 		{
-			ArrowGraphicManager = null;
-			Receptors = null;
-			LaneEditStates = null;
+			if (ActiveCharts[i] == FocusedChart)
+				FocusedChartData = ActiveChartData[i];
 		}
+
+		FocusedChartData.Position.SongTime = oldSongTime;
+		FocusedChartData.Position.SetDesiredPositionToCurrent();
+		FocusedChartData.SetFocused(true);
+		CleanUpActiveChartsWithoutDedicatedTabs(FocusedChartData);
+
+		// Adjust the focal point to keep the charts in the same spot.
+		UpdateChartPositions();
+		if (leftPosOfAllCharts != null)
+		{
+			var delta = ActiveChartData[0].GetScreenSpaceXOfFullChartAreaStart() - (int)leftPosOfAllCharts;
+			if (delta != 0)
+			{
+				SetFocalPointScreenSpace(GetFocalPointScreenSpaceX() - delta, GetFocalPointScreenSpaceY());
+				UpdateChartPositions();
+			}
+		}
+
+		DensityGraph.SetStepDensity(FocusedChart?.GetStepDensity());
+		EditorMouseState.SetActiveChart(FocusedChart);
 
 		// Window title depends on the active chart.
 		UpdateWindowTitle();
@@ -7318,7 +6303,7 @@ internal sealed class Editor :
 		var chart = ActiveSong.AddChart(chartType);
 		chart?.AddObserver(this);
 		if (selectNewChart)
-			OnChartSelected(chart, false);
+			SetChartFocused(chart);
 		return chart;
 	}
 
@@ -7331,7 +6316,7 @@ internal sealed class Editor :
 		ActiveSong.AddChart(chart);
 		chart.AddObserver(this);
 		if (selectNewChart)
-			OnChartSelected(chart, false);
+			SetChartFocused(chart);
 		return chart;
 	}
 
@@ -7341,17 +6326,19 @@ internal sealed class Editor :
 
 		if (ActiveSong == null)
 			return;
+
+		CloseChart(chart);
 		chart.RemoveObserver(this);
 		ActiveSong.DeleteChart(chart);
 
 		if (chartToSelect != null)
 		{
-			OnChartSelected(chartToSelect, false);
+			SetChartFocused(chartToSelect);
 		}
-		else if (ActiveChart == chart)
+		else if (FocusedChart == chart)
 		{
-			var newActiveChart = ActiveSong.SelectBestChart(ActiveChart.ChartType, ActiveChart.ChartDifficultyType);
-			OnChartSelected(newActiveChart, false);
+			var newActiveChart = ActiveSong.SelectBestChart(FocusedChart.ChartType, FocusedChart.ChartDifficultyType);
+			SetChartFocused(newActiveChart);
 		}
 	}
 
@@ -7467,28 +6454,32 @@ internal sealed class Editor :
 
 	private void OnRegenerateSelectedPatterns()
 	{
-		RegeneratePatterns(Selection.GetSelectedPatterns(), false);
+		var selection = GetFocusedChartData()?.GetSelection();
+		if (selection == null)
+			return;
+		RegeneratePatterns(selection.GetSelectedPatterns(), false);
 	}
 
 	private void OnRegenerateSelectedPatternsWithNewSeeds()
 	{
-		if (ActiveChart == null)
+		var selection = GetFocusedChartData()?.GetSelection();
+		if (selection == null)
 			return;
-		RegeneratePatterns(Selection.GetSelectedPatterns(), true);
+		RegeneratePatterns(selection.GetSelectedPatterns(), true);
 	}
 
 	private void OnRegenerateAllPatterns()
 	{
-		if (ActiveChart == null)
+		if (FocusedChart == null)
 			return;
-		RegeneratePatterns(ActiveChart.GetPatterns(), false);
+		RegeneratePatterns(FocusedChart.GetPatterns(), false);
 	}
 
 	private void OnRegenerateAllPatternsWithNewSeeds()
 	{
-		if (ActiveChart == null)
+		if (FocusedChart == null)
 			return;
-		RegeneratePatterns(ActiveChart.GetPatterns(), true);
+		RegeneratePatterns(FocusedChart.GetPatterns(), true);
 	}
 
 	private void RegeneratePatterns(IEnumerable<EditorPatternEvent> patterns, bool useNewSeeds)
@@ -7515,7 +6506,7 @@ internal sealed class Editor :
 		}
 
 		// Regenerate the patterns.
-		ActionQueue.Instance.Do(new ActionAutoGeneratePatterns(this, ActiveChart, patterns));
+		ActionQueue.Instance.Do(new ActionAutoGeneratePatterns(this, FocusedChart, patterns));
 	}
 
 	public UIPatternComparer GetPatternComparer()
@@ -7559,8 +6550,9 @@ internal sealed class Editor :
 
 	public void OnNotify(string eventId, EditorChart chart, object payload)
 	{
-		if (chart != ActiveChart)
+		if (chart != FocusedChart)
 			return;
+		var focusedChartData = GetFocusedChartData();
 
 		switch (eventId)
 		{
@@ -7593,10 +6585,10 @@ internal sealed class Editor :
 				OnEventsDeleted((List<EditorEvent>)payload);
 				break;
 			case EditorChart.NotificationEventsMoveStart:
-				MovingNotes.Add((EditorPatternEvent)payload);
+				focusedChartData.OnEventMoveStart((EditorEvent)payload);
 				break;
 			case EditorChart.NotificationEventsMoveEnd:
-				MovingNotes.Remove((EditorPatternEvent)payload);
+				focusedChartData.OnEventMoveEnd((EditorEvent)payload);
 				break;
 			case EditorChart.NotificationPatternRequestEdit:
 				OnSelectPattern((EditorPatternEvent)payload);
@@ -7682,37 +6674,15 @@ internal sealed class Editor :
 	[Conditional("DEBUG")]
 	public void DebugSaveTimeAndZoom()
 	{
-		Preferences.Instance.DebugSongTime = Position.SongTime;
+		Preferences.Instance.DebugSongTime = GetPosition().SongTime;
 		Preferences.Instance.DebugZoom = ZoomManager.GetSpacingZoom();
 	}
 
 	[Conditional("DEBUG")]
 	public void DebugLoadTimeAndZoom()
 	{
-		Position.SongTime = Preferences.Instance.DebugSongTime;
+		SetSongTime(Preferences.Instance.DebugSongTime);
 		ZoomManager.SetZoom(Preferences.Instance.DebugZoom);
-	}
-
-	[Conditional("DEBUG")]
-	public void DebugSetShouldRenderChart(bool renderChart)
-	{
-		RenderChart = renderChart;
-	}
-
-	public bool DebugGetShouldRenderChart()
-	{
-		return RenderChart;
-	}
-
-	[Conditional("DEBUG")]
-	public void DebugSetShouldRenderMarkers(bool renderMarkers)
-	{
-		RenderMarkers = renderMarkers;
-	}
-
-	public bool DebugGetShouldRenderMarkers()
-	{
-		return RenderMarkers;
 	}
 
 #endif

@@ -13,6 +13,8 @@ internal sealed class PreferencesScroll : Notifier<PreferencesScroll>
 	public const string NotificationTimeBasedPpsChanged = "TimeBasedPpsChanged";
 	public const string NotificationRowBasedPprChanged = "RowBasedPprChanged";
 	public const string NotificationVariablePpsChanged = "VariablePpsChanged";
+	public const string NotificationSizeCapChanged = "SizeCapChanged";
+	public const string NotificationLimitZoomToSizeChanged = "LimitZoomToSizeChanged";
 
 	// Default values.
 	public const Editor.SpacingMode DefaultSpacingMode = Editor.SpacingMode.ConstantTime;
@@ -26,6 +28,8 @@ internal sealed class PreferencesScroll : Notifier<PreferencesScroll>
 	public const double DefaultScrollWheelTime = 0.25;
 	public const int DefaultScrollWheelRows = 48;
 	public const double DefaultScrollInterpolationDuration = 0.1;
+	public const double DefaultSizeCap = 1.0;
+	public const bool DefaultLimitZoomToSize = false;
 
 	// Preferences.
 	[JsonInclude] public bool ShowScrollControlPreferencesWindow;
@@ -109,6 +113,38 @@ internal sealed class PreferencesScroll : Notifier<PreferencesScroll>
 
 	private double VariablePixelsPerSecondAtDefaultBPMInternal = DefaultVariablePixelsPerSecondAtDefaultBPM;
 
+	[JsonInclude]
+	public double SizeCap
+	{
+		get => SizeCapInternal;
+		set
+		{
+			if (!SizeCapInternal.DoubleEquals(value))
+			{
+				SizeCapInternal = value;
+				Notify(NotificationSizeCapChanged, this);
+			}
+		}
+	}
+
+	private double SizeCapInternal = DefaultSizeCap;
+
+	[JsonInclude]
+	public bool LimitZoomToSize
+	{
+		get => LimitZoomToSizeInternal;
+		set
+		{
+			if (LimitZoomToSizeInternal != value)
+			{
+				LimitZoomToSizeInternal = value;
+				Notify(NotificationLimitZoomToSizeChanged, this);
+			}
+		}
+	}
+
+	private bool LimitZoomToSizeInternal = DefaultLimitZoomToSize;
+
 	[JsonInclude] public Editor.WaveFormScrollMode RowBasedWaveFormScrollMode = DefaultRowBasedWaveFormScrollMode;
 	[JsonInclude] public bool StopPlaybackWhenScrolling = DefaultStopPlaybackWhenScrolling;
 	[JsonInclude] public bool StopPlaybackWhenDraggingScrollBars = DefaultStopPlaybackWhenDraggingScrollBars;
@@ -129,7 +165,9 @@ internal sealed class PreferencesScroll : Notifier<PreferencesScroll>
 		       && ZoomMultiplier.DoubleEquals(DefaultZoomMultiplier)
 		       && ScrollWheelTime.DoubleEquals(DefaultScrollWheelTime)
 		       && ScrollWheelRows == DefaultScrollWheelRows
-		       && ScrollInterpolationDuration.DoubleEquals(DefaultScrollInterpolationDuration);
+		       && ScrollInterpolationDuration.DoubleEquals(DefaultScrollInterpolationDuration)
+		       && SizeCap.DoubleEquals(SizeCap)
+		       && LimitZoomToSize == DefaultLimitZoomToSize;
 	}
 
 	public void RestoreDefaults()
@@ -157,6 +195,8 @@ internal sealed class ActionRestoreScrollPreferenceDefaults : EditorAction
 	private readonly double PreviousScrollWheelTime;
 	private readonly int PreviousScrollWheelRows;
 	private readonly double PreviousScrollInterpolationDuration;
+	private readonly double PreviousSizeCap;
+	private readonly bool PreviousLimitZoomToSize;
 
 	public ActionRestoreScrollPreferenceDefaults() : base(false, false)
 	{
@@ -172,6 +212,8 @@ internal sealed class ActionRestoreScrollPreferenceDefaults : EditorAction
 		PreviousScrollWheelTime = p.ScrollWheelTime;
 		PreviousScrollWheelRows = p.ScrollWheelRows;
 		PreviousScrollInterpolationDuration = p.ScrollInterpolationDuration;
+		PreviousSizeCap = p.SizeCap;
+		PreviousLimitZoomToSize = p.LimitZoomToSize;
 	}
 
 	public override bool AffectsFile()
@@ -198,6 +240,8 @@ internal sealed class ActionRestoreScrollPreferenceDefaults : EditorAction
 		p.ScrollWheelTime = PreferencesScroll.DefaultScrollWheelTime;
 		p.ScrollWheelRows = PreferencesScroll.DefaultScrollWheelRows;
 		p.ScrollInterpolationDuration = PreferencesScroll.DefaultScrollInterpolationDuration;
+		p.SizeCap = PreferencesScroll.DefaultSizeCap;
+		p.LimitZoomToSize = PreferencesScroll.DefaultLimitZoomToSize;
 	}
 
 	protected override void UndoImplementation()
@@ -214,5 +258,7 @@ internal sealed class ActionRestoreScrollPreferenceDefaults : EditorAction
 		p.ScrollWheelTime = PreviousScrollWheelTime;
 		p.ScrollWheelRows = PreviousScrollWheelRows;
 		p.ScrollInterpolationDuration = PreviousScrollInterpolationDuration;
+		p.SizeCap = PreviousSizeCap;
+		p.LimitZoomToSize = PreviousLimitZoomToSize;
 	}
 }

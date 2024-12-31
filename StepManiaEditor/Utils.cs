@@ -8,6 +8,7 @@ using System.Text;
 using System.Windows.Forms;
 using Fumen;
 using Fumen.Converters;
+using ImGuiNET;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
@@ -19,6 +20,22 @@ internal sealed class Utils
 
 	public const int MaxLogFiles = 10;
 	public const string CustomSavePropertyPrefix = "GA";
+
+	public const ImGuiWindowFlags ChartAreaChildWindowFlags = ImGuiWindowFlags.NoMove
+	                                                          | ImGuiWindowFlags.NoDecoration
+	                                                          | ImGuiWindowFlags.NoSavedSettings
+	                                                          | ImGuiWindowFlags.NoDocking
+	                                                          | ImGuiWindowFlags.NoBringToFrontOnFocus
+	                                                          | ImGuiWindowFlags.NoFocusOnAppearing
+	                                                          | ImGuiWindowFlags.NoScrollWithMouse;
+
+	public const uint UIWindowColor = 0xFF0A0A0A;
+	public const uint UITableRowBgActiveChartColor = 0x20FFFFFF;
+	public const uint UINonDedicatedTabTextColor = 0xFFE0E0E0;
+	public const uint UIFocusedTabBorderColor = 0xFFFFFFFF;
+	public const uint UIUnfocusedTabBorderColor = 0xFF808080;
+	public const float UIFocusedChartColorMultiplier = 1.25f;
+	public const float UIUnfocusedChartColorMultiplier = 0.75f;
 
 	public const uint UITempoColorRGBA = 0x8A297A79; // yellow
 	public const uint UITimeSignatureColorRGBA = 0x8A297A29; // green
@@ -76,14 +93,10 @@ internal sealed class Utils
 
 	public const float ActiveEditEventAlpha = 0.8f;
 
-	public const int MaxMarkersToDraw = 256;
-	public const int MaxEventsToDraw = 2048;
-	public const int MaxRateAlteringEventsToProcessPerFrame = 256;
-
-	public const int MiniMapMaxNotesToDraw = 6144;
-
 	public const string TextureIdMeasureMarker = "measure-marker";
 	public const string TextureIdBeatMarker = "beat-marker";
+	public const string TextureIdFocusedChartBoundary = "focused-chart-boundary";
+	public const string TextureIdUnfocusedChartBoundary = "unfocused-chart-boundary";
 	public const string TextureIdRegionRect = "region-rect";
 	public const string TextureIdLogoAttribution = "logo-attribution";
 
@@ -218,8 +231,8 @@ internal sealed class Utils
 		// If the chart is not set, try to set it.
 		if (chart == null)
 		{
-			// Use the active Chart, if one exists.
-			chart = editor.GetActiveChart();
+			// Use the focused Chart, if one exists.
+			chart = editor.GetFocusedChart();
 			if (chart != null)
 				return;
 

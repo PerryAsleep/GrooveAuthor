@@ -36,7 +36,7 @@ internal sealed class ImGuiLayoutUtils
 	private static readonly Dictionary<string, object> Cache = new();
 
 	private static string CacheKeyPrefix = "";
-	private const string DragHelpText = "\nShift+drag for large adjustments.\nAlt+drag for small adjustments.";
+	private const string DragHelpText = "\n\nShift+drag for large adjustments.\nAlt+drag for small adjustments.";
 
 	private static ImFontPtr ImGuiFont;
 
@@ -69,9 +69,11 @@ internal sealed class ImGuiLayoutUtils
 	public static readonly float ArrowIconHeight = UiScaled(16);
 	public static readonly Vector2 ArrowIconSize = new(ArrowIconWidth, ArrowIconHeight);
 	public static readonly float ButtonApplyTimingWidth = UiScaled(80);
-	public static readonly float ButtonApplyTimingAndScrollWidth = UiScaled(138);
+	public static readonly float ButtonApplyTimingAndScrollWidth = UiScaled(40);
 	public static readonly Vector2 ButtonCopySize = new(UiScaled(32), 0);
 	public static readonly Vector2 ButtonSettingsSize = new(UiScaled(56), 0);
+	public static readonly float SnapLimitTextWidth = UiScaled(30);
+	public static readonly float TableRowRightPadding = UiScaled(1);
 
 	static ImGuiLayoutUtils()
 	{
@@ -131,7 +133,7 @@ internal sealed class ImGuiLayoutUtils
 	{
 		CacheKeyPrefix = title ?? "";
 		var ret = ImGui.BeginTable(title, 2, ImGuiTableFlags.None,
-			new Vector2(titleColumnWidth + contentColumnWidth, -1.0f));
+			new Vector2(titleColumnWidth + contentColumnWidth + ImGui.GetStyle().ItemSpacing.X, 0.0f));
 		if (ret)
 		{
 			ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed, titleColumnWidth);
@@ -197,12 +199,35 @@ internal sealed class ImGuiLayoutUtils
 		return string.IsNullOrEmpty(helpText) ? null : helpText + DragHelpText;
 	}
 
+	public static float GetTableWidth()
+	{
+		// When drawing tables as the widget for a row they are cut off on the right by one pixel
+		// and I am not sure why. This is a hack to compensate for it.
+		return ImGui.GetContentRegionAvail().X - TableRowRightPadding;
+	}
+
 	#region Checkbox
 
 	public static bool DrawRowCheckbox(string title, ref bool value, string help = null)
 	{
 		DrawRowTitleAndAdvanceColumn(title);
 		return DrawCheckbox(title, ref value, ImGui.GetContentRegionAvail().X, help);
+	}
+
+	public static bool DrawRowCheckboxWithButton(string title, ref bool value,
+		string buttonText, Action buttonAction, string help = null)
+	{
+		DrawRowTitleAndAdvanceColumn(title);
+		var buttonWidth = DrawHelp(help, ImGui.GetContentRegionAvail().X) - CheckBoxWidth - ImGui.GetStyle().ItemSpacing.X;
+		ImGui.SetNextItemWidth(CheckBoxWidth);
+		var ret = ImGui.Checkbox(GetElementTitle(title), ref value);
+		ImGui.SameLine();
+		if (ImGui.Button($"{buttonText}{GetElementTitle(title, "Button")}", new Vector2(buttonWidth, 0.0f)))
+		{
+			buttonAction();
+		}
+
+		return ret;
 	}
 
 	public static bool DrawRowCheckbox(bool undoable, string title, object o, string fieldName, bool affectsFile,
@@ -748,8 +773,7 @@ internal sealed class ImGuiLayoutUtils
 		ImGui.SameLine();
 		if (ImGui.Button($"View All{elementTitle}", new Vector2(ConfigFromListViewAllWidth, 0.0f)))
 		{
-			Preferences.Instance.ShowAutogenConfigsWindow = true;
-			ImGui.SetWindowFocus(UIAutogenConfigs.WindowTitle);
+			UIAutogenConfigs.Instance.Open(true);
 		}
 
 		ImGui.SameLine();
@@ -837,8 +861,7 @@ internal sealed class ImGuiLayoutUtils
 		ImGui.SameLine();
 		if (ImGui.Button($"View All{elementTitle}", new Vector2(ConfigFromListViewAllWidth, 0.0f)))
 		{
-			Preferences.Instance.ShowAutogenConfigsWindow = true;
-			ImGui.SetWindowFocus(UIAutogenConfigs.WindowTitle);
+			UIAutogenConfigs.Instance.Open(true);
 		}
 
 		ImGui.SameLine();
@@ -912,8 +935,7 @@ internal sealed class ImGuiLayoutUtils
 		ImGui.SameLine();
 		if (ImGui.Button($"View All{elementTitle}", new Vector2(ConfigFromListViewAllWidth, 0.0f)))
 		{
-			Preferences.Instance.ShowAutogenConfigsWindow = true;
-			ImGui.SetWindowFocus(UIAutogenConfigs.WindowTitle);
+			UIAutogenConfigs.Instance.Open(true);
 		}
 
 		ImGui.SameLine();
@@ -1767,6 +1789,50 @@ internal sealed class ImGuiLayoutUtils
 		}
 	}
 
+	public static bool DrawRowDragDoubleWithThreeButtons(
+		string title,
+		ref double value,
+		Action action1,
+		string text1,
+		float width1,
+		Action action2,
+		string text2,
+		float width2,
+		Action action3,
+		string text3,
+		float width3,
+		string help = null,
+		float speed = 0.0001f,
+		string format = "%.6f",
+		double min = double.MinValue,
+		double max = double.MaxValue)
+	{
+		DrawRowTitleAndAdvanceColumn(title);
+
+		var dragDoubleWidth = ImGui.GetContentRegionAvail().X - width1 - width2 - width3 - ImGui.GetStyle().ItemSpacing.X * 3;
+		var ret = DrawDragDouble(title, ref value, dragDoubleWidth, help, speed, format, min, max);
+
+		ImGui.SameLine();
+		if (ImGui.Button($"{text1}{GetElementTitle(title)}", new Vector2(width1, 0.0f)))
+		{
+			action1();
+		}
+
+		ImGui.SameLine();
+		if (ImGui.Button($"{text2}{GetElementTitle(title)}", new Vector2(width2, 0.0f)))
+		{
+			action2();
+		}
+
+		ImGui.SameLine();
+		if (ImGui.Button($"{text3}{GetElementTitle(title)}", new Vector2(width3, 0.0f)))
+		{
+			action3();
+		}
+
+		return ret;
+	}
+
 	private static bool DrawDragDouble(
 		bool undoable,
 		string title,
@@ -1972,6 +2038,25 @@ internal sealed class ImGuiLayoutUtils
 	{
 		DrawRowTitleAndAdvanceColumn(title);
 		return DrawEnum(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, null, affectsFile, help, defaultValue);
+	}
+
+	public static bool DrawRowEnumWithButton<T>(bool undoable, string title, object o, string fieldName, bool affectsFile,
+		string buttonText, Action buttonAction, float buttonWidth,
+		string help = null, T defaultValue = default)
+		where T : struct, Enum
+	{
+		DrawRowTitleAndAdvanceColumn(title);
+		var enumWidth = ImGui.GetContentRegionAvail().X - ImGui.GetStyle().ItemSpacing.X - buttonWidth;
+
+		var returnValue = DrawEnum(undoable, title, o, fieldName, enumWidth, null, affectsFile, help, defaultValue);
+
+		ImGui.SameLine();
+		if (ImGui.Button($"{buttonText}{GetElementTitle(title, "Button")}", new Vector2(buttonWidth, 0.0f)))
+		{
+			buttonAction();
+		}
+
+		return returnValue;
 	}
 
 	public static bool DrawRowEnum<T>(bool undoable, string title, object o, string fieldName, T[] allowedValues,
@@ -2585,9 +2670,7 @@ internal sealed class ImGuiLayoutUtils
 		{
 			// Determine the width of the buttons and update the drag int width.
 			var numLanes = GetChartProperties(chartType.Value).GetNumInputs();
-			var buttonHeight = ImGui.GetFontSize() + ImGui.GetStyle().FramePadding.Y * 2;
-			var padding = (int)((buttonHeight - ArrowIconHeight) * 0.5f);
-			var buttonsWidth = numLanes * (ArrowIconWidth + padding * 2);
+			var buttonsWidth = numLanes * (ArrowIconWidth + ImGui.GetStyle().FramePadding.X * 2);
 			dragIntWidth -= buttonsWidth + defaultXSpacing;
 
 			// Set tighter spacing.
@@ -2612,18 +2695,14 @@ internal sealed class ImGuiLayoutUtils
 
 				var (x, y, w, h) = textureAtlas.GetSubTextureBounds(selectedLane == lane ? icons[lane] : dimIcons[lane]);
 
-				ImGui.PushID($"##{id}SingleLaneChoice{lane}");
-				if (ImGui.ImageButton(
+				if (ImGui.ImageButton($"##{id}SingleLaneChoice{lane}",
 					    imGuiTextureAtlasTexture,
 					    ArrowIconSize,
 					    new Vector2(x / (float)atlasW, y / (float)atlasH),
-					    new Vector2((x + w) / (float)atlasW, (y + h) / (float)atlasH),
-					    padding))
+					    new Vector2((x + w) / (float)atlasW, (y + h) / (float)atlasH)))
 				{
 					selectedLane = lane;
 				}
-
-				ImGui.PopID();
 
 				// We need to set the spacing before calling SameLine.
 				if (lane == 0)
@@ -2728,12 +2807,139 @@ internal sealed class ImGuiLayoutUtils
 		}
 	}
 
+	public static void DrawRowSnapLevels(
+		string title,
+		SnapManager snapManager,
+		string help = null)
+	{
+		DrawRowTitleAndAdvanceColumn(title);
+
+		var p = Preferences.Instance;
+		var snapLevels = snapManager.GetSnapLevels();
+		var snapLevelIndex = p.SnapIndex;
+
+		var comboWidth = DrawHelp(help, ImGui.GetContentRegionAvail().X);
+		var elementTitle = GetElementTitle(title);
+
+		// Snap level.
+		ImGui.SetNextItemWidth(comboWidth);
+		ImGui.PushStyleColor(ImGuiCol.Text, snapLevels[snapLevelIndex].GetColor());
+		if (ImGui.BeginCombo($"{elementTitle}SnapLevels", snapLevels[snapLevelIndex].GetText()))
+		{
+			var newIndex = snapLevelIndex;
+			ImGui.PopStyleColor();
+
+			for (var snapIndex = 0; snapIndex < snapLevels.Count; snapIndex++)
+			{
+				if (!SnapManager.IsSnapIndexValidForSnapLock(snapIndex))
+					continue;
+
+				var snapLevel = snapLevels[snapIndex];
+				ImGui.PushStyleColor(ImGuiCol.Text, snapLevel.GetColor());
+				var isSelected = snapIndex == snapLevelIndex;
+				if (ImGui.Selectable(snapLevel.GetText(), isSelected))
+				{
+					newIndex = snapIndex;
+				}
+
+				if (isSelected)
+				{
+					ImGui.SetItemDefaultFocus();
+				}
+
+				ImGui.PopStyleColor();
+			}
+
+			// Update the snap level.
+			p.SnapIndex = newIndex;
+
+			ImGui.EndCombo();
+		}
+		else
+		{
+			ImGui.PopStyleColor();
+		}
+	}
+
+	public static void DrawRowSnapLockLevels(
+		string title,
+		SnapManager snapManager,
+		string help = null)
+	{
+		DrawRowTitleAndAdvanceColumn(title);
+
+		var p = Preferences.Instance;
+		var snapLevels = snapManager.GetSnapLevels();
+		var snapLockIndex = p.SnapLockIndex;
+
+		var comboWidth = DrawHelp(help, ImGui.GetContentRegionAvail().X);
+		var elementTitle = GetElementTitle(title);
+
+		// Snap lock level.
+		ImGui.SameLine();
+		ImGui.SetNextItemWidth(comboWidth);
+		ImGui.PushStyleColor(ImGuiCol.Text, snapLevels[snapLockIndex].GetColor());
+		if (ImGui.BeginCombo($"{elementTitle}SnapLockLevels", snapLevels[snapLockIndex].GetText()))
+		{
+			var newIndex = snapLockIndex;
+			ImGui.PopStyleColor();
+
+			for (var snapIndex = 0; snapIndex < snapLevels.Count; snapIndex++)
+			{
+				var snapLevel = snapLevels[snapIndex];
+				ImGui.PushStyleColor(ImGuiCol.Text, snapLevel.GetColor());
+				var isSelected = snapIndex == snapLockIndex;
+				if (ImGui.Selectable(snapLevel.GetText(), isSelected))
+				{
+					newIndex = snapIndex;
+				}
+
+				if (isSelected)
+				{
+					ImGui.SetItemDefaultFocus();
+				}
+
+				ImGui.PopStyleColor();
+			}
+
+			// Update the lock level and ensure the snap index is valid for it.
+			if (newIndex != snapLockIndex)
+			{
+				p.SnapLockIndex = newIndex;
+				var shouldAdjustSnapIndex = false;
+				while (!SnapManager.IsSnapIndexValidForSnapLock(p.SnapIndex))
+				{
+					shouldAdjustSnapIndex = true;
+					p.SnapIndex++;
+					if (p.SnapIndex >= snapLevels.Count)
+						p.SnapIndex = 0;
+				}
+
+				// When changing the snap lock and the snap index was set to specific note type
+				// we should avoid setting it to None. It is better to set it to the new lock level.
+				if (shouldAdjustSnapIndex && p.SnapLockIndex != 0 && p.SnapIndex == 0)
+					p.SnapIndex = p.SnapLockIndex;
+			}
+
+			ImGui.EndCombo();
+		}
+		else
+		{
+			ImGui.PopStyleColor();
+		}
+	}
+
 	#endregion Subdivisions
 
 	#region Misc Editor Events
 
+	private static double? MiscEditorEventHeight;
+
 	public static double GetMiscEditorEventHeight()
 	{
+		if (MiscEditorEventHeight != null)
+			return (double)MiscEditorEventHeight;
+
 		unsafe
 		{
 			if (ImGuiFont.NativePtr == null || !ImGuiFont.IsLoaded())
@@ -2741,9 +2947,9 @@ internal sealed class ImGuiLayoutUtils
 		}
 
 		ImGui.PushFont(ImGuiFont);
-		var h = ImGui.GetStyle().FramePadding.Y * 2 + ImGui.GetFontSize() + 2;
+		MiscEditorEventHeight = ImGui.GetStyle().FramePadding.Y * 2 + ImGui.GetFontSize() + 2;
 		ImGui.PopFont();
-		return h;
+		return (double)MiscEditorEventHeight;
 	}
 
 	public static double GetMiscEditorEventDragIntWidgetWidth(int i, string format)
@@ -3032,9 +3238,14 @@ internal sealed class ImGuiLayoutUtils
 		// Selected coloring.
 		if (selected)
 		{
-			ImGui.PushStyleColor(ImGuiCol.WindowBg, 0x484848FF);
+			ImGui.PushStyleColor(ImGuiCol.ChildBg, 0xFF484848);
 			ImGui.PushStyleColor(ImGuiCol.Border, 0xFFFFFFFF);
 			colorPushCount += 2;
+		}
+		else
+		{
+			ImGui.PushStyleColor(ImGuiCol.ChildBg, UIWindowColor);
+			colorPushCount += 1;
 		}
 
 		// Color the frame background to help differentiate controls.
@@ -3044,7 +3255,7 @@ internal sealed class ImGuiLayoutUtils
 		// If fading out, multiply key window elements by the alpha value.
 		if (alpha < 1.0f)
 		{
-			PushAlpha(ImGuiCol.WindowBg, alpha);
+			PushAlpha(ImGuiCol.ChildBg, alpha);
 			PushAlpha(ImGuiCol.Button, alpha);
 			PushAlpha(ImGuiCol.FrameBg, alpha);
 			PushAlpha(ImGuiCol.Text, alpha);
@@ -3052,7 +3263,7 @@ internal sealed class ImGuiLayoutUtils
 			colorPushCount += 5;
 		}
 
-		var height = (int)GetMiscEditorEventHeight();
+		var height = (int)e.H;
 
 		// Record window size and padding values so we can edit and restore them.
 		var originalWindowPaddingX = ImGui.GetStyle().WindowPadding.X;
@@ -3073,13 +3284,7 @@ internal sealed class ImGuiLayoutUtils
 		// Start the window.
 		ImGui.SetNextWindowPos(new Vector2(x, y));
 		ImGui.SetNextWindowSize(new Vector2(width, height));
-		if (ImGui.Begin($"##Widget{id}",
-			    ImGuiWindowFlags.NoMove
-			    | ImGuiWindowFlags.NoDecoration
-			    | ImGuiWindowFlags.NoSavedSettings
-			    | ImGuiWindowFlags.NoDocking
-			    | ImGuiWindowFlags.NoBringToFrontOnFocus
-			    | ImGuiWindowFlags.NoFocusOnAppearing))
+		if (ImGui.BeginChild($"##Widget{id}", new Vector2(width, height), ImGuiChildFlags.Border, ChartAreaChildWindowFlags))
 		{
 			var elementWidth = width - GetCloseWidth();
 
@@ -3100,7 +3305,7 @@ internal sealed class ImGuiLayoutUtils
 				PopDisabled();
 		}
 
-		ImGui.End();
+		ImGui.EndChild();
 
 		// Restore window size and padding values.
 		ImGui.GetStyle().FramePadding.X = originalFramePaddingX;
@@ -3496,7 +3701,6 @@ internal sealed class ImGuiLayoutUtils
 				UIChartList.DrawChartList(
 					song,
 					chart,
-					null,
 					selectedChart =>
 					{
 						if (chart != selectedChart)
@@ -3511,9 +3715,7 @@ internal sealed class ImGuiLayoutUtils
 								song.TimingChart = selectedChart;
 							}
 						}
-					},
-					false,
-					null);
+					});
 				ImGui.EndCombo();
 			}
 
@@ -3542,7 +3744,7 @@ internal sealed class ImGuiLayoutUtils
 			}
 
 			ImGui.SameLine();
-			if (ImGui.Button($"Apply Timing + Scroll{GetElementTitle(title, "ApplyTimingAndScrollButton")}",
+			if (ImGui.Button($"Apply{GetElementTitle(title, "ApplyTimingAndScrollButton")}",
 				    new Vector2(ButtonApplyTimingAndScrollWidth, 0.0f)))
 			{
 				var allOtherCharts = new List<EditorChart>();
@@ -3615,8 +3817,7 @@ internal sealed class ImGuiLayoutUtils
 		ImGui.SameLine();
 		if (ImGui.Button("Settings", ButtonSettingsSize))
 		{
-			Preferences.Instance.PreferencesStream.ShowStreamPreferencesWindow = true;
-			ImGui.SetWindowFocus(UIStreamPreferences.WindowTitle);
+			UIStreamPreferences.Instance.Open(true);
 		}
 
 		ImGui.SameLine();

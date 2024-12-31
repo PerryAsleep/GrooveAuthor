@@ -43,11 +43,11 @@
 		<TrimmerRootAssembly Include="Microsoft.Xna.Framework.Content.ContentTypeReader" Visible="false" />
 	</ItemGroup>
 	<ItemGroup>
-		<PackageReference Include="ImGui.NET" Version="1.87.3" />
 		<PackageReference Include="MonoGame.Content.Builder.Task" Version="3.8.1.303" />
 		<PackageReference Include="System.Text.Json" Version="7.0.3" />
 	</ItemGroup>
 	<ItemGroup>
+		<ProjectReference Include="..\ImGui.NET\src\ImGui.NET\ImGui.NET.csproj" />
 		<ProjectReference Include="..\MonoGameExtensions\MonoGameExtensions.csproj" />
 		<ProjectReference Include="..\StepManiaLibrary\Fumen\Fumen\Fumen.csproj" />
 		<ProjectReference Include="..\StepManiaLibrary\StepManiaLibrary\StepManiaLibrary.csproj" />

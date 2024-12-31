@@ -7,18 +7,34 @@ namespace StepManiaEditor;
 /// <summary>
 /// Class for drawing audio control UI.
 /// </summary>
-internal sealed class UIAudioPreferences
+internal sealed class UIAudioPreferences : UIWindow
 {
-	public const string WindowTitle = "Audio Preferences";
-
 	private static readonly int TitleColumnWidth = UiScaled(160);
 	private static readonly int DefaultWidth = UiScaled(460);
 
-	private readonly SoundManager SoundManager;
+	private SoundManager SoundManager;
 
-	public UIAudioPreferences(SoundManager soundManager)
+	public static UIAudioPreferences Instance { get; } = new();
+
+	private UIAudioPreferences() : base("Audio Preferences")
+	{
+	}
+
+	public void Init(SoundManager soundManager)
 	{
 		SoundManager = soundManager;
+	}
+
+	public override void Open(bool focus)
+	{
+		Preferences.Instance.PreferencesAudio.ShowAudioPreferencesWindow = true;
+		if (focus)
+			Focus();
+	}
+
+	public override void Close()
+	{
+		Preferences.Instance.PreferencesAudio.ShowAudioPreferencesWindow = false;
 	}
 
 	public void Draw()
@@ -31,9 +47,11 @@ internal sealed class UIAudioPreferences
 		{
 			if (ImGuiLayoutUtils.BeginTable("Audio", TitleColumnWidth))
 			{
+				var decreaseKeybind = UIControls.GetCommandString(Preferences.Instance.PreferencesKeyBinds.DecreaseMusicRate);
+				var increaseKeybind = UIControls.GetCommandString(Preferences.Instance.PreferencesKeyBinds.IncreaseMusicRate);
 				ImGuiLayoutUtils.DrawRowDragDouble(true, "Music Rate", p, nameof(PreferencesAudio.MusicRate), false,
 					"Music Rate."
-					+ "\nThe music rate can also be adjusted with Shift+Left and Shift+Right",
+					+ $"\nThe music rate can also be adjusted with {decreaseKeybind} and {increaseKeybind}",
 					0.001f, "%.3fx", MusicManager.MinMusicRate, MusicManager.MaxMusicRate);
 
 				ImGuiLayoutUtils.DrawRowSliderFloat(true, "Main Volume", p, nameof(PreferencesAudio.MainVolume),

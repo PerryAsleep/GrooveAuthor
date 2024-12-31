@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Text;
 using System.Text.Json.Serialization;
-using ImGuiNET;
 using StepManiaLibrary.PerformedChart;
 using static StepManiaEditor.AutogenConfig.EditorPatternConfig;
 using static StepManiaEditor.Utils;
@@ -446,8 +445,7 @@ internal sealed class EditorPatternConfig : EditorConfig<Config>, IEquatable<Edi
 	public static void ShowEditUI(Guid configGuid)
 	{
 		Preferences.Instance.ActivePatternConfigForWindow = configGuid;
-		Preferences.Instance.ShowPatternListWindow = true;
-		ImGui.SetWindowFocus(UIPatternConfig.WindowTitle);
+		UIPatternConfig.Instance.Open(true);
 	}
 
 	#region IEquatable

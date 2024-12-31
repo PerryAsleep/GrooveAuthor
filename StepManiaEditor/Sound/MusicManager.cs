@@ -810,9 +810,8 @@ internal sealed class MusicManager
 			// We want to get the time that the music is playing, which is offset from the song time.
 			// To accomplish this, we pass in a 0.0 offset parameter when getting the time.
 			var currentSongTime = GetTimeFromSampleIndex(SampleIndex, 0.0) - precedingTimeCompensation;
-			var position = new EditorPosition(null)
+			var position = new EditorPosition(null, chart)
 			{
-				ActiveChart = chart,
 				SongTime = currentSongTime,
 			};
 			var chartPositionRow = (long)position.ChartPosition;

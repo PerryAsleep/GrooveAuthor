@@ -10,7 +10,7 @@ internal sealed class ActionAddChart : EditorAction
 	private readonly Editor Editor;
 	private readonly ChartType ChartType;
 	private EditorChart AddedChart;
-	private EditorChart PreviouslyActiveChart;
+	private EditorChart PreviouslyFocusedChart;
 
 	public ActionAddChart(Editor editor, ChartType chartType) : base(false, false)
 	{
@@ -30,7 +30,7 @@ internal sealed class ActionAddChart : EditorAction
 
 	protected override void DoImplementation()
 	{
-		PreviouslyActiveChart = Editor.GetActiveChart();
+		PreviouslyFocusedChart = Editor.GetFocusedChart();
 
 		// Through undoing and redoing we may add the same chart multiple times.
 		// Other actions like ActionAddEditorEvent reference specific charts.
@@ -44,6 +44,6 @@ internal sealed class ActionAddChart : EditorAction
 
 	protected override void UndoImplementation()
 	{
-		Editor.DeleteChart(AddedChart, PreviouslyActiveChart);
+		Editor.DeleteChart(AddedChart, PreviouslyFocusedChart);
 	}
 }

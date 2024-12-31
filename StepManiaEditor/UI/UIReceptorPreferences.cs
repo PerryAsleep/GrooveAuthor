@@ -6,18 +6,34 @@ namespace StepManiaEditor;
 /// <summary>
 /// Class for drawing receptor preferences UI.
 /// </summary>
-internal sealed class UIReceptorPreferences
+internal sealed class UIReceptorPreferences : UIWindow
 {
-	public const string WindowTitle = "Receptor Preferences";
-
-	private readonly Editor Editor;
+	private Editor Editor;
 
 	private static readonly int TitleColumnWidth = UiScaled(120);
 	private static readonly int DefaultWidth = UiScaled(460);
 
-	public UIReceptorPreferences(Editor editor)
+	public static UIReceptorPreferences Instance { get; } = new();
+
+	private UIReceptorPreferences() : base("Receptor Preferences")
+	{
+	}
+
+	public void Init(Editor editor)
 	{
 		Editor = editor;
+	}
+
+	public override void Open(bool focus)
+	{
+		Preferences.Instance.PreferencesReceptors.ShowReceptorPreferencesWindow = true;
+		if (focus)
+			Focus();
+	}
+
+	public override void Close()
+	{
+		Preferences.Instance.PreferencesReceptors.ShowReceptorPreferencesWindow = false;
 	}
 
 	public void Draw()
@@ -46,11 +62,13 @@ internal sealed class UIReceptorPreferences
 				false,
 				"Whether to keep the receptors centered horizontally in the window.");
 
-			ImGuiLayoutUtils.DrawRowDragInt2(true, "Position", p, nameof(PreferencesReceptors.PositionX),
-				nameof(PreferencesReceptors.PositionY), false, !p.CenterHorizontally, true,
+			var keybind = UIControls.GetCommandString(Preferences.Instance.PreferencesKeyBinds.LockReceptorMoveAxis);
+			ImGuiLayoutUtils.DrawRowDragInt2(true, "Position", p, nameof(PreferencesReceptors.ChartSpacePositionX),
+				nameof(PreferencesReceptors.ChartSpacePositionY), false, !p.CenterHorizontally, true,
 				"Position of the receptors."
 				+ "\nThe receptors can also be moved by dragging them with the left mouse button."
-				+ "\nHold shift while dragging to limit movement to one dimension.", 1.0f, "%i", 0, Editor.GetViewportWidth() - 1,
+				+ $"\nHold {keybind} while dragging to limit movement to one dimension.", 1.0f, "%i", 0,
+				Editor.GetViewportWidth() - 1,
 				0, Editor.GetViewportHeight() - 1);
 
 			if (pushDisabled)

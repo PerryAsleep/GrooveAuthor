@@ -7,14 +7,30 @@ namespace StepManiaEditor;
 /// <summary>
 /// Class for drawing density graph preferences UI.
 /// </summary>
-internal sealed class UIDensityGraphPreferences
+internal sealed class UIDensityGraphPreferences : UIWindow
 {
-	public const string WindowTitle = "Density Graph Preferences";
-
 	private static readonly int TitleColumnWidth = UiScaled(120);
 	private static readonly int DefaultWidth = UiScaled(460);
 
-	public static void Draw()
+	public static UIDensityGraphPreferences Instance { get; } = new();
+
+	private UIDensityGraphPreferences() : base("Density Graph Preferences")
+	{
+	}
+
+	public override void Open(bool focus)
+	{
+		Preferences.Instance.PreferencesDensityGraph.ShowDensityGraphPreferencesWindow = true;
+		if (focus)
+			Focus();
+	}
+
+	public override void Close()
+	{
+		Preferences.Instance.PreferencesDensityGraph.ShowDensityGraphPreferencesWindow = false;
+	}
+
+	public void Draw()
 	{
 		var p = Preferences.Instance.PreferencesDensityGraph;
 		if (!p.ShowDensityGraphPreferencesWindow)

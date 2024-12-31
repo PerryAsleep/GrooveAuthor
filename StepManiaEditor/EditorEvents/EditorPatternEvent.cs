@@ -324,6 +324,12 @@ internal sealed class EditorPatternEvent : EditorEvent, IEquatable<EditorPattern
 		set => WidthInternal = value;
 	}
 
+	public override double H
+	{
+		get => ImGuiLayoutUtils.GetMiscEditorEventHeight();
+		set { }
+	}
+
 	private bool WidthDirty;
 
 	/// <summary>
@@ -528,7 +534,7 @@ internal sealed class EditorPatternEvent : EditorEvent, IEquatable<EditorPattern
 	/// <returns>Unique identifier for this event to use for ImGui widgets that draw this event.</returns>
 	protected override string GetImGuiId()
 	{
-		return $"PatternEvent{ChartRow}";
+		return $"{EditorChart.GetIndexInSong()}PatternEvent{ChartRow}";
 	}
 
 	/// <summary>

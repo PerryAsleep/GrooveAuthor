@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Numerics;
 using ImGuiNET;
 using StepManiaEditor.AutogenConfig;
 using StepManiaLibrary.PerformedChart;
@@ -9,20 +10,24 @@ namespace StepManiaEditor;
 /// <summary>
 /// Class for drawing UI to edit an EditorPerformedChartConfig.
 /// </summary>
-internal sealed class UIPerformedChartConfig
+internal sealed class UIPerformedChartConfig : UIWindow
 {
 	private static readonly int TitleColumnWidth = UiScaled(200);
 	private static readonly int DefaultWidth = UiScaled(460);
-
-	public const string WindowTitle = "Performed Chart Config";
 
 	public static readonly string HelpText =
 		$"Performed Chart Configs are settings used by {Utils.GetAppName()} to generate Charts and patterns."
 		+ " These settings are used to control how new steps are performed when their types and timings are"
 		+ " already known. Full details can be found in the documentation.";
 
-	private readonly Editor Editor;
+	private Editor Editor;
 	private static readonly List<ImGuiArrowWeightsWidget> ArrowWeightsWidgets;
+
+	public static UIPerformedChartConfig Instance { get; } = new();
+
+	private UIPerformedChartConfig() : base("Performed Chart Config")
+	{
+	}
 
 	static UIPerformedChartConfig()
 	{
@@ -33,7 +38,19 @@ internal sealed class UIPerformedChartConfig
 		}
 	}
 
-	public UIPerformedChartConfig(Editor editor)
+	public override void Open(bool focus)
+	{
+		Preferences.Instance.ShowPerformedChartListWindow = true;
+		if (focus)
+			Focus();
+	}
+
+	public override void Close()
+	{
+		Preferences.Instance.ShowPerformedChartListWindow = false;
+	}
+
+	public void Init(Editor editor)
 	{
 		Editor = editor;
 	}
@@ -251,7 +268,9 @@ internal sealed class UIPerformedChartConfig
 				ImGuiLayoutUtils.DrawTitle("Arrow Weights",
 					"Desired distribution of arrows per Chart type.");
 
-				if (ImGui.BeginTable("Arrow Weights Table", 2, ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders))
+				var width = ImGuiLayoutUtils.GetTableWidth();
+				if (ImGui.BeginTable("Arrow Weights Table", 2, ImGuiTableFlags.RowBg | ImGuiTableFlags.Borders,
+					    new Vector2(width, 0), width))
 				{
 					ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100);
 					ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthFixed,

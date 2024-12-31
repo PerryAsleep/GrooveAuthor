@@ -5,6 +5,7 @@ using System.Numerics;
 using System.Text.Json.Serialization;
 using Fumen;
 using static StepManiaEditor.PreferencesDensityGraph;
+using static StepManiaEditor.ImGuiUtils;
 
 namespace StepManiaEditor;
 
@@ -27,12 +28,11 @@ internal sealed class PreferencesDensityGraph : Notifier<PreferencesDensityGraph
 	public enum DensityGraphPosition
 	{
 		RightSideOfWindow,
-		RightOfChartArea,
-		MountedToWaveForm,
-		MountedToChart,
-
-		TopOfWaveForm,
-		BottomOfWaveForm,
+		LeftSideOfWindow,
+		FocusedChartWithoutScaling,
+		FocusedChartWithScaling,
+		TopOfFocusedChart,
+		BottomOfFocusedChart,
 	}
 
 	public const bool DefaultShowDensityGraph = true;
@@ -42,28 +42,36 @@ internal sealed class PreferencesDensityGraph : Notifier<PreferencesDensityGraph
 	public static readonly Vector4 DefaultDensityGraphLowColor = new(0.251f, 0.647f, 0.419f, 1.0f);
 	public static readonly Vector4 DefaultDensityGraphHighColor = new(0.705f, 0.282f, 0.282f, 1.0f);
 	public const DensityGraphColorMode DefaultDensityGraphColorModeValue = DensityGraphColorMode.ColorByHeight;
-	public const DensityGraphPosition DefaultDensityGraphPositionValue = DensityGraphPosition.RightOfChartArea;
+	public const DensityGraphPosition DefaultDensityGraphPositionValue = DensityGraphPosition.LeftSideOfWindow;
 
 	public const int DefaultDensityGraphHeight = 90;
 
 	public static Dictionary<DensityGraphPosition, int> DefaultDensityGraphPositionOffsets = new()
 	{
-		{ DensityGraphPosition.RightSideOfWindow, 10 },
-		{ DensityGraphPosition.RightOfChartArea, 134 }, // This value takes into account the default position of the mini map.
-		{ DensityGraphPosition.MountedToWaveForm, 134 },
-		{ DensityGraphPosition.MountedToChart, 134 },
-		{ DensityGraphPosition.TopOfWaveForm, 10 },
-		{ DensityGraphPosition.BottomOfWaveForm, 81 },
+		{ DensityGraphPosition.RightSideOfWindow, SceneWidgetPaddingDefaultDPI },
+		{ DensityGraphPosition.LeftSideOfWindow, SceneWidgetPaddingDefaultDPI },
+		// When mounting to the chart the mini map is closer.
+		// These values takes into account the default position of the mini map.
+		{
+			DensityGraphPosition.FocusedChartWithoutScaling,
+			(int)PreferencesMiniMap.DefaultMiniMapWidth + SceneWidgetPaddingDefaultDPI * 2
+		},
+		{
+			DensityGraphPosition.FocusedChartWithScaling,
+			(int)PreferencesMiniMap.DefaultMiniMapWidth + SceneWidgetPaddingDefaultDPI * 2
+		},
+		{ DensityGraphPosition.TopOfFocusedChart, SceneWidgetPaddingDefaultDPI },
+		{ DensityGraphPosition.BottomOfFocusedChart, SceneWidgetPaddingDefaultDPI },
 	};
 
 	public static Dictionary<DensityGraphPosition, int> DefaultDensityGraphWidthOffsets = new()
 	{
-		{ DensityGraphPosition.RightSideOfWindow, -10 },
-		{ DensityGraphPosition.RightOfChartArea, -10 },
-		{ DensityGraphPosition.MountedToWaveForm, -10 },
-		{ DensityGraphPosition.MountedToChart, -10 },
-		{ DensityGraphPosition.TopOfWaveForm, 0 },
-		{ DensityGraphPosition.BottomOfWaveForm, -112 },
+		{ DensityGraphPosition.RightSideOfWindow, -SceneWidgetPaddingDefaultDPI },
+		{ DensityGraphPosition.LeftSideOfWindow, -SceneWidgetPaddingDefaultDPI },
+		{ DensityGraphPosition.FocusedChartWithoutScaling, -SceneWidgetPaddingDefaultDPI },
+		{ DensityGraphPosition.FocusedChartWithScaling, -SceneWidgetPaddingDefaultDPI },
+		{ DensityGraphPosition.TopOfFocusedChart, 0 },
+		{ DensityGraphPosition.BottomOfFocusedChart, 0 },
 	};
 
 	// Preferences.
@@ -180,6 +188,27 @@ internal sealed class PreferencesDensityGraph : Notifier<PreferencesDensityGraph
 	{
 		get => DensityGraphWidthOffsets[DensityGraphPositionValue];
 		set => DensityGraphWidthOffsets[DensityGraphPositionValue] = value;
+	}
+
+	public int GetDensityGraphPositionOffsetUiScaled()
+	{
+		return UiScaled(DensityGraphPositionOffset);
+	}
+
+	public int GetDensityGraphWidthOffsetUiScaled()
+	{
+		return UiScaled(DensityGraphWidthOffset);
+	}
+
+	public int GetDensityGraphHeightUiScaled()
+	{
+		return UiScaled(DensityGraphHeight);
+	}
+
+	public static void RegisterDefaultsForInvalidEnumValues(PermissiveEnumJsonConverterFactory factory)
+	{
+		factory.RegisterDefault(DefaultDensityGraphColorModeValue);
+		factory.RegisterDefault(DefaultDensityGraphPositionValue);
 	}
 
 	public void PostLoad()

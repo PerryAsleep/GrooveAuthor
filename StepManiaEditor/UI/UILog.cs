@@ -12,10 +12,8 @@ namespace StepManiaEditor;
 /// <summary>
 /// Class for drawing the log.
 /// </summary>
-internal class UILog
+internal class UILog : UIWindow
 {
-	public const string WindowTitle = "Log";
-
 	private static readonly string[] LogWindowDateStrings =
 	{
 		"None",
@@ -38,16 +36,34 @@ internal class UILog
 	private static readonly int WrapCheckBoxWidth = UiScaled(20);
 	private static readonly int WrapTextWidth = UiScaled(24);
 	private static readonly Vector2 ButtonSize = new(UiScaled(50), 0.0f);
-	private static readonly int DefaultWidth = UiScaled(561);
-	private static readonly int DefaultHeight = UiScaled(300);
+	public static readonly int DefaultWidth = UiScaled(561);
+	public static readonly int DefaultHeight = UiScaled(300);
 	private static readonly int DefaultWindowY = UiScaled(21);
 	private static readonly int DefaultWindowX = UiScaled(1870);
 
-	private readonly Editor Editor;
+	private Editor Editor;
 
-	public UILog(Editor editor)
+	public static UILog Instance { get; } = new();
+
+	private UILog() : base("Log")
+	{
+	}
+
+	public void Init(Editor editor)
 	{
 		Editor = editor;
+	}
+
+	public override void Open(bool focus)
+	{
+		Preferences.Instance.ShowLogWindow = true;
+		if (focus)
+			Focus();
+	}
+
+	public override void Close()
+	{
+		Preferences.Instance.ShowLogWindow = false;
 	}
 
 	public static Vector4 GetColor(LogLevel level)
@@ -162,7 +178,7 @@ internal class UILog
 				var flags = Preferences.Instance.LogWindowLineWrap ? ImGuiWindowFlags.None : ImGuiWindowFlags.HorizontalScrollbar;
 				var first = true;
 				var logDate = Preferences.Instance.LogWindowDateDisplay != 0;
-				ImGui.BeginChild("LogMessages", Vector2.Zero, false, flags);
+				ImGui.BeginChild("LogMessages", Vector2.Zero, ImGuiChildFlags.None, flags);
 				{
 					var node = logBuffer.First;
 					while (node != null)

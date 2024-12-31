@@ -1,10 +1,16 @@
 ﻿using System;
 using System.Collections.Generic;
 using Fumen;
-using Microsoft.Xna.Framework.Input;
 using static StepManiaEditor.Editor;
 
 namespace StepManiaEditor;
+
+internal interface IReadOnlyZoomManager
+{
+	public double GetSizeZoom();
+	public double GetSpacingZoom();
+	public double GetSizeCap();
+}
 
 /// <summary>
 /// Class for managing zoom values controlled by the mouse scroll wheel.
@@ -12,7 +18,7 @@ namespace StepManiaEditor;
 ///  Call ProcessInput once per frame.
 ///  Call Update once per frame after ProcessInput.
 /// </summary>
-internal class ZoomManager : Fumen.IObserver<PreferencesScroll>
+internal class ZoomManager : Fumen.IObserver<PreferencesScroll>, IReadOnlyZoomManager
 {
 	/// <summary>
 	/// Data for a zoom value that can be changed directly or interpolated to a new value.
@@ -23,8 +29,8 @@ internal class ZoomManager : Fumen.IObserver<PreferencesScroll>
 		private double Value;
 		private double ValueAtStartOfInterpolation;
 		private double DesiredValue;
-		private readonly double Min;
-		private readonly double Max;
+		private double Min;
+		private double Max;
 		private readonly Action<double> OnChangeCallback;
 		private bool SettingValue;
 
@@ -35,6 +41,14 @@ internal class ZoomManager : Fumen.IObserver<PreferencesScroll>
 			SetValue(current, true);
 			ValueAtStartOfInterpolation = Value;
 			OnChangeCallback = onChangeCallback;
+		}
+
+		public void UpdateBounds(double min, double max)
+		{
+			Min = min;
+			Max = max;
+			if (Value < min || Value > max)
+				SetValue(Value, true);
 		}
 
 		public void Update(double currentTime)
@@ -98,6 +112,8 @@ internal class ZoomManager : Fumen.IObserver<PreferencesScroll>
 	public const double SpacingDataScrollFactor = 1.2;
 	public const double MinZoom = 0.000001;
 	public const double MaxZoom = 1000000.0;
+	public const double MinSizeCap = MinZoom;
+	public const double MaxSizeCap = 1.0;
 	public const double MinConstantTimeSpeed = 10.0;
 	public const double MaxConstantTimeSpeed = 100000.0;
 	public const double MinConstantRowSpacing = 0.1;
@@ -110,6 +126,7 @@ internal class ZoomManager : Fumen.IObserver<PreferencesScroll>
 	private readonly InterpolatedValueData ConstantRowSpacingData;
 	private readonly InterpolatedValueData VariableSpacingData;
 	private readonly List<InterpolatedValueData> AllValues;
+	private double SizeCap = MaxSizeCap;
 
 	/// <summary>
 	/// Constructor.
@@ -128,6 +145,7 @@ internal class ZoomManager : Fumen.IObserver<PreferencesScroll>
 		VariableSpacingData = new InterpolatedValueData(MinVariableSpeed, MaxVariableSpeed,
 			pScroll.VariablePixelsPerSecondAtDefaultBPM,
 			newValue => { pScroll.VariablePixelsPerSecondAtDefaultBPM = newValue; });
+		SizeCap = pScroll.SizeCap;
 
 		AllValues = new List<InterpolatedValueData>
 		{
@@ -138,6 +156,7 @@ internal class ZoomManager : Fumen.IObserver<PreferencesScroll>
 		};
 
 		Preferences.Instance.PreferencesScroll.AddObserver(this);
+		RefreshZoomLimit();
 	}
 
 	/// <summary>
@@ -150,19 +169,10 @@ internal class ZoomManager : Fumen.IObserver<PreferencesScroll>
 	public bool ProcessInput(double currentTime, KeyCommandManager keyCommandManager, float scrollDelta)
 	{
 		var pScroll = Preferences.Instance.PreferencesScroll;
-		var scrollShouldZoom = keyCommandManager.IsControlDown();
-		var scrollShouldScaleDefaultSpacing = !scrollShouldZoom && keyCommandManager.IsShiftDown();
+		var pKeyBinds = Preferences.Instance.PreferencesKeyBinds;
 
-		// Hack.
-		if (keyCommandManager.IsKeyDown(Keys.OemPlus))
-		{
-			ZoomData.SetValue(ZoomData.GetValue() * 1.0001f, true);
-		}
-
-		if (keyCommandManager.IsKeyDown(Keys.OemMinus))
-		{
-			ZoomData.SetValue(ZoomData.GetValue() / 1.0001f, true);
-		}
+		var scrollShouldZoom = keyCommandManager.IsAnyInputDown(pKeyBinds.ScrollZoom);
+		var scrollShouldScaleDefaultSpacing = !scrollShouldZoom && keyCommandManager.IsAnyInputDown(pKeyBinds.ScrollSpacing);
 
 		// If the scroll wheel hasn't moved we don't need the input.
 		if (scrollDelta.FloatEquals(0.0f))
@@ -221,13 +231,28 @@ internal class ZoomManager : Fumen.IObserver<PreferencesScroll>
 	}
 
 	/// <summary>
+	/// Sets the size cap. Will be clamped.
+	/// </summary>
+	/// <param name="sizeCap">New size cap value.</param>
+	public void SetSizeCap(double sizeCap)
+	{
+		SizeCap = Math.Clamp(sizeCap, MinSizeCap, MaxSizeCap);
+		RefreshZoomLimit();
+	}
+
+	private void RefreshZoomLimit()
+	{
+		ZoomData.UpdateBounds(MinZoom, Preferences.Instance.PreferencesScroll.LimitZoomToSize ? SizeCap : MaxZoom);
+	}
+
+	/// <summary>
 	/// Gets the zoom to use for sizing objects.
 	/// When zooming in we only zoom the spacing, not the scale of objects.
 	/// </summary>
 	/// <returns>Zoom level to be used as a multiplier.</returns>
 	public double GetSizeZoom()
 	{
-		return ZoomData.GetValue() > 1.0 ? 1.0 : ZoomData.GetValue();
+		return Math.Min(SizeCap, ZoomData.GetValue() > MaxSizeCap ? MaxSizeCap : ZoomData.GetValue());
 	}
 
 	/// <summary>
@@ -238,6 +263,15 @@ internal class ZoomManager : Fumen.IObserver<PreferencesScroll>
 	public double GetSpacingZoom()
 	{
 		return ZoomData.GetValue();
+	}
+
+	/// <summary>
+	/// Gets the size cap value.
+	/// </summary>
+	/// <returns>Size cap value.</returns>
+	public double GetSizeCap()
+	{
+		return SizeCap;
 	}
 
 	/// <summary>
@@ -255,6 +289,12 @@ internal class ZoomManager : Fumen.IObserver<PreferencesScroll>
 				break;
 			case PreferencesScroll.NotificationVariablePpsChanged:
 				VariableSpacingData.OnValueChanged(notifier.VariablePixelsPerSecondAtDefaultBPM);
+				break;
+			case PreferencesScroll.NotificationSizeCapChanged:
+				SetSizeCap(Preferences.Instance.PreferencesScroll.SizeCap);
+				break;
+			case PreferencesScroll.NotificationLimitZoomToSizeChanged:
+				RefreshZoomLimit();
 				break;
 		}
 	}

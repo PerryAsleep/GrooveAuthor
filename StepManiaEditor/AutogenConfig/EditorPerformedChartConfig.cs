@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Text;
 using System.Text.Json.Serialization;
 using Fumen;
-using ImGuiNET;
 using StepManiaLibrary;
 using static Fumen.Converters.SMCommon;
 
@@ -597,8 +596,7 @@ internal sealed class EditorPerformedChartConfig :
 	public static void ShowEditUI(Guid configGuid)
 	{
 		Preferences.Instance.ActivePerformedChartConfigForWindow = configGuid;
-		Preferences.Instance.ShowPerformedChartListWindow = true;
-		ImGui.SetWindowFocus(UIPerformedChartConfig.WindowTitle);
+		UIPerformedChartConfig.Instance.Open(true);
 	}
 
 	#region IEquatable

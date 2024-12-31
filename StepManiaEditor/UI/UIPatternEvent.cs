@@ -7,18 +7,34 @@ namespace StepManiaEditor.UI;
 /// <summary>
 /// Class for drawing information about an EditorPatternEvent in a chart.
 /// </summary>
-internal sealed class UIPatternEvent
+internal sealed class UIPatternEvent : UIWindow
 {
 	private static readonly int TitleColumnWidth = UiScaled(180);
 	private static readonly int DefaultWidth = UiScaled(460);
 
-	public const string WindowTitle = "Pattern Event Properties";
+	private Editor Editor;
 
-	private readonly Editor Editor;
+	public static UIPatternEvent Instance { get; } = new();
 
-	public UIPatternEvent(Editor editor)
+	private UIPatternEvent() : base("Pattern Event Properties")
+	{
+	}
+
+	public void Init(Editor editor)
 	{
 		Editor = editor;
+	}
+
+	public override void Open(bool focus)
+	{
+		Preferences.Instance.ShowPatternEventWindow = true;
+		if (focus)
+			Focus();
+	}
+
+	public override void Close()
+	{
+		Preferences.Instance.ShowPatternEventWindow = false;
 	}
 
 	public void Draw(EditorPatternEvent patternEvent)
@@ -30,8 +46,6 @@ internal sealed class UIPatternEvent
 
 		if (!Preferences.Instance.ShowPatternEventWindow)
 			return;
-
-		// TODO: should we show more than one of these at a time? Might need to push the id.
 
 		if (BeginWindow(WindowTitle, ref Preferences.Instance.ShowPatternEventWindow, DefaultWidth))
 		{
@@ -108,14 +122,16 @@ internal sealed class UIPatternEvent
 				if (!multiplePatterns)
 					PushDisabled();
 
+				var nextKeybind = UIControls.GetCommandString(Preferences.Instance.PreferencesKeyBinds.MoveToNextPattern);
+				var prevKeybind = UIControls.GetCommandString(Preferences.Instance.PreferencesKeyBinds.MoveToPreviousPattern);
 				ImGuiLayoutUtils.DrawRowTwoButtons("Navigate",
 					"Previous Pattern",
 					() => { Editor.OnMoveToPreviousPattern(patternEvent); },
 					"Next Pattern",
 					() => { Editor.OnMoveToNextPattern(patternEvent); },
 					"Navigate to other patterns." +
-					"\nCtrl+P will also navigate to the next pattern." +
-					"\nCtrl+Shift+P will also navigate to the previous pattern.");
+					$"\n{nextKeybind} will also navigate to the next pattern." +
+					$"\n{prevKeybind} will also navigate to the previous pattern.");
 
 				if (!multiplePatterns)
 					PopDisabled();

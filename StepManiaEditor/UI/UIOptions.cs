@@ -1,20 +1,37 @@
 ﻿using Fumen.Converters;
 using ImGuiNET;
 using static StepManiaEditor.ImGuiUtils;
+using static StepManiaEditor.PreferencesOptions;
 
 namespace StepManiaEditor;
 
 /// <summary>
 /// Class for drawing options UI.
 /// </summary>
-public class UIOptions
+internal class UIOptions : UIWindow
 {
-	public const string WindowTitle = "Options";
-
 	private static readonly int TitleColumnWidth = UiScaled(160);
 	private static readonly float ButtonSyncWidth = UiScaled(60);
 	private static readonly float ButtonHelpWidth = UiScaled(32);
 	private static readonly int DefaultWidth = UiScaled(606);
+
+	public static UIOptions Instance { get; } = new();
+
+	private UIOptions() : base("Options")
+	{
+	}
+
+	public override void Open(bool focus)
+	{
+		Preferences.Instance.PreferencesOptions.ShowOptionsWindow = true;
+		if (focus)
+			Focus();
+	}
+
+	public override void Close()
+	{
+		Preferences.Instance.PreferencesOptions.ShowOptionsWindow = false;
+	}
 
 	public void Draw()
 	{
@@ -70,23 +87,7 @@ public class UIOptions
 			ImGui.Separator();
 			if (ImGuiLayoutUtils.BeginTable("Options Time Signature", TitleColumnWidth))
 			{
-				ImGuiLayoutUtils.DrawRowEnum<PreferencesOptions.StepColorMethod>(true, "Step Coloring", p,
-					nameof(PreferencesOptions.StepColorMethodValue), false,
-					"How to color steps for chart types which color steps based on rhythm." +
-					"\nStepmania: Use the same logic for coloring notes as Stepmania." +
-					$"\n           Stepmania always effectively uses a {SMCommon.NumBeatsPerMeasure}/{SMCommon.NumBeatsPerMeasure} time signature." +
-					"\n           Steps are colored by their note type." +
-					$"\n           Quarter notes will occur every {SMCommon.MaxValidDenominator} rows." +
-					"\nNote:      Use the time signature to color steps." +
-					$"\n           Quarter notes will occur every {SMCommon.MaxValidDenominator} rows within a measure regardless of" +
-					"\n           the time signature denominator." +
-					"\n           Steps are colored by their note type." +
-					"\n           For example a 7/8 measure of eighth notes will be red blue red blue red blue red." +
-					"\n           WARNING: Step coloring will not match Stepmania for odd time signatures." +
-					"\nBeat:      Use the time signature to color steps." +
-					"\n           Steps are colored based on the time signature denominator." +
-					"\n           For example a 7/8 measure of eighth notes will be all red." +
-					"\n           WARNING: Step coloring will not match Stepmania for odd time signatures.");
+				DrawStepColoring();
 				ImGuiLayoutUtils.EndTable();
 			}
 
@@ -96,6 +97,12 @@ public class UIOptions
 				ImGuiLayoutUtils.DrawRowCheckbox(true, "Hide Song Background", p,
 					nameof(PreferencesOptions.HideSongBackground), false,
 					"Whether or not to hide the song's Background image in the editor.");
+
+				ImGuiLayoutUtils.DrawRowEnum<BackgroundImageSizeMode>(true, "Song Background Size", p,
+					nameof(PreferencesOptions.BackgroundImageSize), false,
+					"How to scale the song background image in the editor." +
+					"\nChartArea: Fill the area reserved for displaying the charts when using docked UI." +
+					"\nWindow:    Fill the entire window.");
 
 				ImGuiLayoutUtils.EndTable();
 			}
@@ -113,6 +120,11 @@ public class UIOptions
 					//+ $"\nIf not specified, the default value for this computer ({defaultDpiScale}) will be used."
 					+ "\nChanges to this value take effect on an application restart.",
 					0.01f, "%.2f", 0.25, 8.0);
+
+				ImGuiLayoutUtils.DrawRowDragInt(true, "Misc. Event Area Width", p, nameof(PreferencesOptions.MiscEventAreaWidth),
+					false,
+					"Width of the area on the sides of the focused chart for drawing miscellaneous events.", 0.1f, "%i pixels", 0,
+					200);
 
 				ImGuiLayoutUtils.EndTable();
 			}
@@ -189,6 +201,27 @@ public class UIOptions
 			+ "\nThe song sync value is configurable per song. This value is only used for setting the"
 			+ "\nsong sync value when opening songs that don't have a specified song sync offset.",
 			0.0001f, "%.6f seconds", 0.0);
+	}
+
+	public static void DrawStepColoring(string title = "Step Coloring")
+	{
+		ImGuiLayoutUtils.DrawRowEnum<StepColorMethod>(true, title, Preferences.Instance.PreferencesOptions,
+			nameof(PreferencesOptions.StepColorMethodValue), false,
+			"How to color steps for chart types which color steps based on rhythm." +
+			"\nStepmania: Use the same logic for coloring notes as Stepmania." +
+			$"\n           Stepmania always effectively uses a {SMCommon.NumBeatsPerMeasure}/{SMCommon.NumBeatsPerMeasure} time signature." +
+			"\n           Steps are colored by their note type." +
+			$"\n           Quarter notes will occur every {SMCommon.MaxValidDenominator} rows." +
+			"\nNote:      Use the time signature to color steps." +
+			$"\n           Quarter notes will occur every {SMCommon.MaxValidDenominator} rows within a measure regardless of" +
+			"\n           the time signature denominator." +
+			"\n           Steps are colored by their note type." +
+			"\n           For example a 7/8 measure of eighth notes will be red blue red blue red blue red." +
+			"\n           WARNING: Step coloring will not match Stepmania for odd time signatures." +
+			"\nBeat:      Use the time signature to color steps." +
+			"\n           Steps are colored based on the time signature denominator." +
+			"\n           For example a 7/8 measure of eighth notes will be all red." +
+			"\n           WARNING: Step coloring will not match Stepmania for odd time signatures.");
 	}
 
 	private static void SetNewSongSyncItg()

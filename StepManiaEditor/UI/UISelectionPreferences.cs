@@ -6,12 +6,28 @@ namespace StepManiaEditor;
 /// <summary>
 /// Class for drawing selection preferences UI.
 /// </summary>
-internal sealed class UISelectionPreferences
+internal sealed class UISelectionPreferences : UIWindow
 {
-	public const string WindowTitle = "Selection Preferences";
-
 	private static readonly int TitleColumnWidth = UiScaled(120);
 	private static readonly int DefaultWidth = UiScaled(460);
+
+	public static UISelectionPreferences Instance { get; } = new();
+
+	private UISelectionPreferences() : base("Selection Preferences")
+	{
+	}
+
+	public override void Open(bool focus)
+	{
+		Preferences.Instance.PreferencesSelection.ShowSelectionControlPreferencesWindow = true;
+		if (focus)
+			Focus();
+	}
+
+	public override void Close()
+	{
+		Preferences.Instance.PreferencesSelection.ShowSelectionControlPreferencesWindow = false;
+	}
 
 	public void Draw()
 	{
@@ -30,9 +46,10 @@ internal sealed class UISelectionPreferences
 					+ "\nOverlap Center: If the region overlaps the center of a note, it will be selected."
 					+ "\nOverlap All:    If the region overlaps the entire note, it will be selected.");
 
+				var keybind = UIControls.GetCommandString(Preferences.Instance.PreferencesKeyBinds.MouseSelectionShiftBehavior);
 				ImGuiLayoutUtils.DrawRowEnum<PreferencesSelection.SelectionRegionMode>(true, "Click Mode", p,
 					nameof(PreferencesSelection.RegionMode), false,
-					"How notes should be selected when clicking a subsequent note while holding shift."
+					$"How notes should be selected when clicking a subsequent note while holding {keybind}."
 					+ "\nFor all options notes are selected by time when the Spacing Mode is Constant Time and Row is used when"
 					+ "\nthe Spacing Mode is Constant Row or Variable."
 					+ "\nTime Or Position:          Select all notes in between the previously selected note and the newly"

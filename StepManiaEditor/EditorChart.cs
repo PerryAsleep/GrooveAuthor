@@ -82,6 +82,16 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	};
 
 	/// <summary>
+	/// Guid to uniquely identify this Chart;
+	/// </summary>
+	private readonly Guid Id;
+
+	/// <summary>
+	/// Index of this Chart within it's song.
+	/// </summary>
+	private int IndexInSong;
+
+	/// <summary>
 	/// WorkQueue for long running tasks like saving.
 	/// </summary>
 	private readonly WorkQueue WorkQueue;
@@ -440,6 +450,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	/// <param name="chart">Chart to use.</param>
 	public EditorChart(EditorSong editorSong, Chart chart)
 	{
+		Id = Guid.NewGuid();
 		WorkQueue = new WorkQueue();
 		ExpressedChartConfigInternal = ExpressedChartConfigManager.DefaultExpressedChartDynamicConfigGuid;
 
@@ -499,6 +510,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	/// <param name="chartType">ChartType to create.</param>
 	public EditorChart(EditorSong editorSong, ChartType chartType)
 	{
+		Id = Guid.NewGuid();
 		WorkQueue = new WorkQueue();
 
 		ExpressedChartConfigInternal = ExpressedChartConfigManager.DefaultExpressedChartDynamicConfigGuid;
@@ -550,6 +562,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	/// <param name="other">Other EditorChart to clone.</param>
 	public EditorChart(EditorChart other)
 	{
+		Id = Guid.NewGuid();
 		WorkQueue = new WorkQueue();
 
 		ExpressedChartConfigInternal = other.ExpressedChartConfigInternal;
@@ -855,6 +868,25 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 	#endregion Constructors
 
+	#region Idenfitication
+
+	public Guid GetGuid()
+	{
+		return Id;
+	}
+
+	public int GetIndexInSong()
+	{
+		return IndexInSong;
+	}
+
+	public void SetIndexInSong(int indexInSong)
+	{
+		IndexInSong = indexInSong;
+	}
+
+	#endregion Identification
+
 	#region Accessors
 
 	public IReadOnlyEventTree GetEvents()
@@ -959,6 +991,11 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	{
 		var rae = RateAlteringEvents?.FindActiveRateAlteringEventForPosition(0.0);
 		return rae?.GetTimeSignature().GetSignature() ?? DefaultTimeSignature;
+	}
+
+	public string GetShortName()
+	{
+		return $"{ImGuiUtils.GetPrettyEnumString(ChartType)} {ImGuiUtils.GetPrettyEnumString(ChartDifficultyType)}";
 	}
 
 	public string GetDescriptiveName()
@@ -2881,6 +2918,19 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 	#region Misc
 
+	/// <summary>
+	/// Gets the music file which should be used for this Chart.
+	/// This may be defined on the Song.
+	/// </summary>
+	/// <returns>The music file which should be used for this Chart</returns>
+	public string GetMusicFileToUseForChart()
+	{
+		var musicFile = MusicPath;
+		if (string.IsNullOrEmpty(musicFile))
+			musicFile = EditorSong?.MusicPath;
+		return musicFile;
+	}
+
 	public void CopyDisplayTempo(DisplayTempo displayTempo)
 	{
 		DisplayTempo = new DisplayTempo(displayTempo);
@@ -3526,26 +3576,22 @@ internal sealed class ChartComparer : IComparer<EditorChart>
 				return comparison;
 		}
 
-		// Compare by DifficultyType
 		comparison = c1.ChartDifficultyType - c2.ChartDifficultyType;
 		if (comparison != 0)
 			return comparison;
-
-		// Compare by Rating
 		comparison = c1.Rating - c2.Rating;
 		if (comparison != 0)
 			return comparison;
-
 		comparison = StringCompare(c1.Name, c2.Name);
 		if (comparison != 0)
 			return comparison;
-
 		comparison = StringCompare(c1.Description, c2.Description);
 		if (comparison != 0)
 			return comparison;
-
-		// TODO: This should use note count not event count.
-		return c1.GetEvents().GetCount() - c2.GetEvents().GetCount();
+		comparison = c1.GetStepTotals().GetStepCount() - c2.GetStepTotals().GetStepCount();
+		if (comparison != 0)
+			return comparison;
+		return c1.GetGuid().CompareTo(c2.GetGuid());
 	}
 
 	int IComparer<EditorChart>.Compare(EditorChart c1, EditorChart c2)

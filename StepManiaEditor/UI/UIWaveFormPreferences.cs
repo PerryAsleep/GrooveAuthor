@@ -7,25 +7,34 @@ namespace StepManiaEditor;
 /// <summary>
 /// Class for drawing WaveForm preferences UI.
 /// </summary>
-internal sealed class UIWaveFormPreferences
+internal sealed class UIWaveFormPreferences : UIWindow
 {
-	public const string WindowTitle = "Waveform Preferences";
-
-	public enum SparseColorOption
-	{
-		DarkerDenseColor,
-		SameAsDenseColor,
-		UniqueColor,
-	}
-
 	private static readonly int TitleColumnWidth = UiScaled(120);
 	private static readonly int DefaultWidth = UiScaled(460);
 
-	private readonly MusicManager MusicManager;
+	private MusicManager MusicManager;
 
-	public UIWaveFormPreferences(MusicManager musicManager)
+	public static UIWaveFormPreferences Instance { get; } = new();
+
+	private UIWaveFormPreferences() : base("Waveform Preferences")
+	{
+	}
+
+	public void Init(MusicManager musicManager)
 	{
 		MusicManager = musicManager;
+	}
+
+	public override void Open(bool focus)
+	{
+		Preferences.Instance.PreferencesWaveForm.ShowWaveFormPreferencesWindow = true;
+		if (focus)
+			Focus();
+	}
+
+	public override void Close()
+	{
+		Preferences.Instance.PreferencesWaveForm.ShowWaveFormPreferencesWindow = false;
 	}
 
 	public void Draw()
@@ -54,6 +63,13 @@ internal sealed class UIWaveFormPreferences
 				"\nUnchecking this box will prevent the waveform from being generated." +
 				"\nThe waveform uses a significant amount of memory, especially for very long songs." +
 				"\nChanging this value will take effect the next time a song is loaded.");
+			ImGuiLayoutUtils.DrawRowEnum<PreferencesWaveForm.DrawLocation>(true, "Location", p,
+				nameof(PreferencesWaveForm.WaveFormDrawLocation), false,
+				"Where to draw the waveform." +
+				"\nFocused Chart:              Draw behind the focused chart." +
+				"\nAll Charts:                 Draw behind all active charts." +
+				"\nAll Charts With Same Music: Draw behind all active charts which have the same music" +
+				"\n                            and music offset as the focused chart.");
 			ImGuiLayoutUtils.EndTable();
 		}
 
@@ -62,10 +78,14 @@ internal sealed class UIWaveFormPreferences
 		{
 			UIScrollPreferences.DrawWaveFormScrollMode();
 
-			ImGuiLayoutUtils.DrawRowCheckbox(true, "Scale Width", p,
+			ImGuiLayoutUtils.DrawRowCheckbox(true, "Scale With Zoom", p,
 				nameof(PreferencesWaveForm.WaveFormScaleXWhenZooming), false,
-				"When zooming, whether the waveform should scale its width to match" +
-				"\nthe chart instead of staying a constant width.");
+				"If enabled the waveform will scale its width to match the zoom level.");
+
+			ImGuiLayoutUtils.DrawRowCheckbox(true, "Size To Chart", p,
+				nameof(PreferencesWaveForm.WaveFormScaleWidthToChart), false,
+				"If enabled the waveform will scale its width to the chart." +
+				" If disabled the waveform will use a default width that may be wider or narrower than the current chart.");
 
 			ImGuiLayoutUtils.DrawRowSliderFloat(true, "Channel Width", p,
 				nameof(PreferencesWaveForm.WaveFormMaxXPercentagePerChannel),
@@ -87,7 +107,7 @@ internal sealed class UIWaveFormPreferences
 				nameof(PreferencesWaveForm.DenseScale),
 				0.0f, 10.0f, false, "Scale of the dense region of the waveform.");
 
-			ImGuiLayoutUtils.DrawRowEnum<SparseColorOption>(true, "Sparse Color", p,
+			ImGuiLayoutUtils.DrawRowEnum<PreferencesWaveForm.SparseColorOption>(true, "Sparse Color", p,
 				nameof(PreferencesWaveForm.WaveFormSparseColorOption), false,
 				"How to color the sparse area of the waveform." +
 				"\nFor each y pixel in the waveform, the sparse area is the range of all" +
@@ -95,7 +115,7 @@ internal sealed class UIWaveFormPreferences
 
 			switch (p.WaveFormSparseColorOption)
 			{
-				case SparseColorOption.DarkerDenseColor:
+				case PreferencesWaveForm.SparseColorOption.DarkerDenseColor:
 				{
 					ImGuiLayoutUtils.DrawRowSliderFloat(true, "Sparse Color Scale", p,
 						nameof(PreferencesWaveForm.WaveFormSparseColorScale),
@@ -103,11 +123,11 @@ internal sealed class UIWaveFormPreferences
 						"Treat the sparse color as the dense color darkened by this percentage.");
 					break;
 				}
-				case SparseColorOption.SameAsDenseColor:
+				case PreferencesWaveForm.SparseColorOption.SameAsDenseColor:
 				{
 					break;
 				}
-				case SparseColorOption.UniqueColor:
+				case PreferencesWaveForm.SparseColorOption.UniqueColor:
 				{
 					ImGuiLayoutUtils.DrawRowColorEdit4(true, "Sparse Color", p,
 						nameof(PreferencesWaveForm.WaveFormSparseColor),

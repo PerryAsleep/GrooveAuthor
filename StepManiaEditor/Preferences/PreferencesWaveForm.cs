@@ -1,6 +1,7 @@
 ﻿using System.Numerics;
 using System.Text.Json.Serialization;
-using static Fumen.FumenExtensions;
+using Fumen;
+using static StepManiaEditor.PreferencesWaveForm;
 
 namespace StepManiaEditor;
 
@@ -9,14 +10,26 @@ namespace StepManiaEditor;
 /// </summary>
 internal sealed class PreferencesWaveForm
 {
+	public enum SparseColorOption
+	{
+		DarkerDenseColor,
+		SameAsDenseColor,
+		UniqueColor,
+	}
+
+	public enum DrawLocation
+	{
+		FocusedChart,
+		AllCharts,
+		AllChartsWithSameMusic,
+	}
+
 	// Default values.
 	public const bool DefaultShowWaveForm = true;
 	public const bool DefaultEnableWaveForm = true;
 	public const bool DefaultWaveFormScaleXWhenZooming = false;
-
-	public const UIWaveFormPreferences.SparseColorOption DefaultWaveFormSparseColorOption =
-		UIWaveFormPreferences.SparseColorOption.DarkerDenseColor;
-
+	public const bool DefaultWaveFormScaleWidthToChart = true;
+	public const SparseColorOption DefaultWaveFormSparseColorOption = SparseColorOption.DarkerDenseColor;
 	public const float DefaultWaveFormSparseColorScale = 0.8f;
 	public static readonly Vector4 DefaultWaveFormDenseColor = new(0.0f, 0.389f, 0.183f, 0.8f);
 	public static readonly Vector4 DefaultWaveFormSparseColor = new(0.0f, 0.350f, 0.164f, 0.8f);
@@ -28,13 +41,14 @@ internal sealed class PreferencesWaveForm
 	public const float DefaultAntiAliasSubpix = 0.2f;
 	public const float DefaultAntiAliasEdgeThreshold = 0.166f;
 	public const float DefaultAntiAliasEdgeThresholdMin = 0.0833f;
+	public const DrawLocation DefaultWaveFormDrawLocation = DrawLocation.AllChartsWithSameMusic;
 
 	// Preferences.
 	[JsonInclude] public bool ShowWaveFormPreferencesWindow;
 	[JsonInclude] public bool ShowWaveForm = DefaultShowWaveForm;
 	[JsonInclude] public bool EnableWaveForm = DefaultEnableWaveForm;
 	[JsonInclude] public bool WaveFormScaleXWhenZooming = DefaultWaveFormScaleXWhenZooming;
-	[JsonInclude] public UIWaveFormPreferences.SparseColorOption WaveFormSparseColorOption = DefaultWaveFormSparseColorOption;
+	[JsonInclude] public SparseColorOption WaveFormSparseColorOption = DefaultWaveFormSparseColorOption;
 	[JsonInclude] public float WaveFormSparseColorScale = DefaultWaveFormSparseColorScale;
 	[JsonInclude] public Vector4 WaveFormDenseColor = DefaultWaveFormDenseColor;
 	[JsonInclude] public Vector4 WaveFormSparseColor = DefaultWaveFormSparseColor;
@@ -46,10 +60,17 @@ internal sealed class PreferencesWaveForm
 	[JsonInclude] public float AntiAliasSubpix = DefaultAntiAliasSubpix;
 	[JsonInclude] public float AntiAliasEdgeThreshold = DefaultAntiAliasEdgeThreshold;
 	[JsonInclude] public float AntiAliasEdgeThresholdMin = DefaultAntiAliasEdgeThresholdMin;
+	[JsonInclude] public bool WaveFormScaleWidthToChart = DefaultWaveFormScaleWidthToChart;
+	[JsonInclude] public DrawLocation WaveFormDrawLocation = DefaultWaveFormDrawLocation;
 
 	public static void InitializeRuntimeDefaults(int defaultWaveformLoadParallelism)
 	{
 		DefaultWaveFormLoadingMaxParallelism = defaultWaveformLoadParallelism;
+	}
+
+	public static void RegisterDefaultsForInvalidEnumValues(PermissiveEnumJsonConverterFactory factory)
+	{
+		factory.RegisterDefault(DefaultWaveFormSparseColorOption);
 	}
 
 	public void PostLoad()
@@ -76,7 +97,9 @@ internal sealed class PreferencesWaveForm
 		       && AntiAlias == DefaultAntiAlias
 		       && AntiAliasSubpix.FloatEquals(DefaultAntiAliasSubpix)
 		       && AntiAliasEdgeThreshold.FloatEquals(DefaultAntiAliasEdgeThreshold)
-		       && AntiAliasEdgeThresholdMin.FloatEquals(DefaultAntiAliasEdgeThresholdMin);
+		       && AntiAliasEdgeThresholdMin.FloatEquals(DefaultAntiAliasEdgeThresholdMin)
+		       && WaveFormScaleWidthToChart == DefaultWaveFormScaleWidthToChart
+		       && WaveFormDrawLocation == DefaultWaveFormDrawLocation;
 	}
 
 	public void RestoreDefaults()
@@ -96,7 +119,7 @@ internal sealed class ActionRestoreWaveFormPreferenceDefaults : EditorAction
 	private readonly bool PreviousShowWaveForm;
 	private readonly bool PreviousEnableWaveForm;
 	private readonly bool PreviousWaveFormScaleXWhenZooming;
-	private readonly UIWaveFormPreferences.SparseColorOption PreviousWaveFormSparseColorOption;
+	private readonly SparseColorOption PreviousWaveFormSparseColorOption;
 	private readonly float PreviousWaveFormSparseColorScale;
 	private readonly Vector4 PreviousWaveFormDenseColor;
 	private readonly Vector4 PreviousWaveFormSparseColor;
@@ -108,6 +131,8 @@ internal sealed class ActionRestoreWaveFormPreferenceDefaults : EditorAction
 	private readonly float PreviousAntiAliasSubpix;
 	private readonly float PreviousAntiAliasEdgeThreshold;
 	private readonly float PreviousAntiAliasEdgeThresholdMin;
+	private readonly bool PreviousWaveFormScaleWidthToChart;
+	private readonly DrawLocation PreviousWaveFormDrawLocation;
 
 	public ActionRestoreWaveFormPreferenceDefaults() : base(false, false)
 	{
@@ -127,6 +152,8 @@ internal sealed class ActionRestoreWaveFormPreferenceDefaults : EditorAction
 		PreviousAntiAliasSubpix = p.AntiAliasSubpix;
 		PreviousAntiAliasEdgeThreshold = p.AntiAliasEdgeThreshold;
 		PreviousAntiAliasEdgeThresholdMin = p.AntiAliasEdgeThresholdMin;
+		PreviousWaveFormScaleWidthToChart = p.WaveFormScaleWidthToChart;
+		PreviousWaveFormDrawLocation = p.WaveFormDrawLocation;
 	}
 
 	public override bool AffectsFile()
@@ -142,21 +169,23 @@ internal sealed class ActionRestoreWaveFormPreferenceDefaults : EditorAction
 	protected override void DoImplementation()
 	{
 		var p = Preferences.Instance.PreferencesWaveForm;
-		p.ShowWaveForm = PreferencesWaveForm.DefaultShowWaveForm;
-		p.EnableWaveForm = PreferencesWaveForm.DefaultEnableWaveForm;
-		p.WaveFormScaleXWhenZooming = PreferencesWaveForm.DefaultWaveFormScaleXWhenZooming;
-		p.WaveFormSparseColorOption = PreferencesWaveForm.DefaultWaveFormSparseColorOption;
-		p.WaveFormSparseColorScale = PreferencesWaveForm.DefaultWaveFormSparseColorScale;
-		p.WaveFormDenseColor = PreferencesWaveForm.DefaultWaveFormDenseColor;
-		p.WaveFormSparseColor = PreferencesWaveForm.DefaultWaveFormSparseColor;
-		p.WaveFormBackgroundColor = PreferencesWaveForm.DefaultWaveFormBackgroundColor;
-		p.WaveFormMaxXPercentagePerChannel = PreferencesWaveForm.DefaultWaveFormMaxXPercentagePerChannel;
-		p.WaveFormLoadingMaxParallelism = PreferencesWaveForm.DefaultWaveFormLoadingMaxParallelism;
-		p.DenseScale = PreferencesWaveForm.DefaultDenseScale;
-		p.AntiAlias = PreferencesWaveForm.DefaultAntiAlias;
-		p.AntiAliasSubpix = PreferencesWaveForm.DefaultAntiAliasSubpix;
-		p.AntiAliasEdgeThreshold = PreferencesWaveForm.DefaultAntiAliasEdgeThreshold;
-		p.AntiAliasEdgeThresholdMin = PreferencesWaveForm.DefaultAntiAliasEdgeThresholdMin;
+		p.ShowWaveForm = DefaultShowWaveForm;
+		p.EnableWaveForm = DefaultEnableWaveForm;
+		p.WaveFormScaleXWhenZooming = DefaultWaveFormScaleXWhenZooming;
+		p.WaveFormSparseColorOption = DefaultWaveFormSparseColorOption;
+		p.WaveFormSparseColorScale = DefaultWaveFormSparseColorScale;
+		p.WaveFormDenseColor = DefaultWaveFormDenseColor;
+		p.WaveFormSparseColor = DefaultWaveFormSparseColor;
+		p.WaveFormBackgroundColor = DefaultWaveFormBackgroundColor;
+		p.WaveFormMaxXPercentagePerChannel = DefaultWaveFormMaxXPercentagePerChannel;
+		p.WaveFormLoadingMaxParallelism = DefaultWaveFormLoadingMaxParallelism;
+		p.DenseScale = DefaultDenseScale;
+		p.AntiAlias = DefaultAntiAlias;
+		p.AntiAliasSubpix = DefaultAntiAliasSubpix;
+		p.AntiAliasEdgeThreshold = DefaultAntiAliasEdgeThreshold;
+		p.AntiAliasEdgeThresholdMin = DefaultAntiAliasEdgeThresholdMin;
+		p.WaveFormScaleWidthToChart = DefaultWaveFormScaleWidthToChart;
+		p.WaveFormDrawLocation = DefaultWaveFormDrawLocation;
 	}
 
 	protected override void UndoImplementation()
@@ -177,5 +206,7 @@ internal sealed class ActionRestoreWaveFormPreferenceDefaults : EditorAction
 		p.AntiAliasSubpix = PreviousAntiAliasSubpix;
 		p.AntiAliasEdgeThreshold = PreviousAntiAliasEdgeThreshold;
 		p.AntiAliasEdgeThresholdMin = PreviousAntiAliasEdgeThresholdMin;
+		p.WaveFormScaleWidthToChart = PreviousWaveFormScaleWidthToChart;
+		p.WaveFormDrawLocation = PreviousWaveFormDrawLocation;
 	}
 }

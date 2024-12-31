@@ -73,6 +73,12 @@ internal sealed class EditorScrollRateEvent : EditorRateAlteringEvent
 		set => WidthInternal = value;
 	}
 
+	public override double H
+	{
+		get => ImGuiLayoutUtils.GetMiscEditorEventHeight();
+		set { }
+	}
+
 	public EditorScrollRateEvent(EventConfig config, ScrollRate chartEvent) : base(config)
 	{
 		ScrollRateEvent = chartEvent;

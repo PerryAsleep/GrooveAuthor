@@ -4,6 +4,24 @@ using static System.Math;
 
 namespace StepManiaEditor;
 
+internal interface IReadOnlySelectedRegion : IRegion
+{
+	public double GetStartChartTime();
+	public double GetCurrentChartTime();
+	public double GetStartChartPosition();
+	public double GetCurrentChartPosition();
+	public double GetStartXInChartSpace();
+	public double GetCurrentXInChartSpace();
+	public double GetCurrentYInScreenSpace();
+	public (double, double) GetSelectedXChartSpaceRange();
+	public (double, double) GetSelectedXScreenSpaceRange();
+	public (double, double) GetSelectedChartTimeRange();
+	public (double, double) GetSelectedChartPositionRange();
+	public (double, double) GetCurrentScreenSpacePosition();
+	public bool IsClick();
+	public bool IsActive();
+}
+
 /// <summary>
 /// A region of the chart selected with the cursor.
 /// Internally the x position of the selected region points is relative to the focal
@@ -26,28 +44,28 @@ namespace StepManiaEditor;
 ///   GetStartChartTime()/GetCurrentChartTime()
 ///   GetStartChartPosition()/GetCurrentChartPosition()
 /// </summary>
-internal sealed class SelectedRegion : IRegion
+internal sealed class SelectedRegion : IReadOnlySelectedRegion
 {
 	#region IRegion Implementation
 
 	public double GetRegionX()
 	{
-		return StartX;
+		return StartXScreenSpace;
 	}
 
 	public double GetRegionY()
 	{
-		return StartY;
+		return StartYScreenSpace;
 	}
 
 	public double GetRegionW()
 	{
-		return CurrentX - StartX;
+		return CurrentXScreenSpace - StartXScreenSpace;
 	}
 
 	public double GetRegionH()
 	{
-		return CurrentY - StartY;
+		return CurrentYScreenSpace - StartYScreenSpace;
 	}
 
 	public double GetRegionZ()
@@ -70,25 +88,21 @@ internal sealed class SelectedRegion : IRegion
 
 	// Time tracking.
 	private double StartTime;
-
 	private double CurrentTime;
 
 	// Pixel space values.
-	private double StartY;
-	private double StartYUnmodified;
-	private double StartX;
-	private double CurrentY;
-
-	private double CurrentX;
+	private double StartYScreenSpace;
+	private double StartYScreenSpaceUnmodified;
+	private double StartXScreenSpace;
+	private double CurrentYScreenSpace;
+	private double CurrentXScreenSpace;
 
 	// Starting y values.
 	private double StartChartTime;
-
 	private double StartChartPosition;
 
 	// Current y values.
 	private double CurrentChartTime;
-
 	private double CurrentChartPosition;
 
 	// Starting x value.
@@ -127,9 +141,9 @@ internal sealed class SelectedRegion : IRegion
 		return CurrentXInChartSpace;
 	}
 
-	public double GetCurrentY()
+	public double GetCurrentYInScreenSpace()
 	{
-		return CurrentY;
+		return CurrentYScreenSpace;
 	}
 
 	public (double, double) GetSelectedXChartSpaceRange()
@@ -139,11 +153,11 @@ internal sealed class SelectedRegion : IRegion
 		return (CurrentXInChartSpace, StartXInChartSpace);
 	}
 
-	public (double, double) GetSelectedXRange()
+	public (double, double) GetSelectedXScreenSpaceRange()
 	{
-		if (StartX <= CurrentX)
-			return (StartX, CurrentX);
-		return (CurrentX, StartX);
+		if (StartXScreenSpace <= CurrentXScreenSpace)
+			return (StartXScreenSpace, CurrentXScreenSpace);
+		return (CurrentXScreenSpace, StartXScreenSpace);
 	}
 
 	public (double, double) GetSelectedChartTimeRange()
@@ -160,16 +174,16 @@ internal sealed class SelectedRegion : IRegion
 		return (CurrentChartPosition, StartChartPosition);
 	}
 
-	public (double, double) GetCurrentPosition()
+	public (double, double) GetCurrentScreenSpacePosition()
 	{
-		return (CurrentX, CurrentY);
+		return (CurrentXScreenSpace, CurrentYScreenSpace);
 	}
 
 	public bool IsClick()
 	{
 		// Allow some movement to still count as clicks if it happens quickly.
-		var dx = Round(CurrentX) - Round(StartX);
-		var dy = Round(CurrentY) - Round(StartYUnmodified);
+		var dx = Round(CurrentXScreenSpace) - Round(StartXScreenSpace);
+		var dy = Round(CurrentYScreenSpace) - Round(StartYScreenSpaceUnmodified);
 		var d = Sqrt(dx * dx + dy * dy);
 		if (d <= 2.0)
 			return true;
@@ -207,24 +221,24 @@ internal sealed class SelectedRegion : IRegion
 	/// </summary>
 	public void Start(
 		double xInChartSpace,
-		double y,
+		double screenSpaceY,
 		double chartTime,
 		double chartPosition,
 		double xScale,
-		double focalPointX,
+		double focalPointScreenSpaceX,
 		double time)
 	{
 		StartXInChartSpace = xInChartSpace;
 		CurrentXInChartSpace = xInChartSpace;
 		StartTime = time;
-		StartY = y;
-		StartYUnmodified = y;
+		StartYScreenSpace = screenSpaceY;
+		StartYScreenSpaceUnmodified = screenSpaceY;
 		StartChartTime = chartTime;
 		StartChartPosition = chartPosition;
 		CurrentChartTime = chartTime;
 		CurrentChartPosition = chartPosition;
-		StartX = XPosToScreenSpace(StartXInChartSpace, focalPointX, xScale);
-		CurrentX = StartX;
+		StartXScreenSpace = XPosChartSpaceToScreenSpace(StartXInChartSpace, focalPointScreenSpaceX, xScale);
+		CurrentXScreenSpace = StartXScreenSpace;
 		Active = true;
 	}
 
@@ -232,21 +246,22 @@ internal sealed class SelectedRegion : IRegion
 	/// Update per frame values which do not need to be derived by walking through rate altering events.
 	/// From the cursor position alone we know the x value in screen and chart space, and the y value in screen space.
 	/// </summary>
-	public void UpdatePerFrameValues(double currentXInChartSpace, double currentY, double xScale, double focalPointX)
+	public void UpdatePerFrameValues(double currentXInChartSpace, double currentYInScreenSpace, double xScale,
+		double focalPointScreenSpaceX)
 	{
 		CurrentXInChartSpace = currentXInChartSpace;
-		CurrentY = currentY;
-		StartX = XPosToScreenSpace(StartXInChartSpace, focalPointX, xScale);
-		CurrentX = XPosToScreenSpace(CurrentXInChartSpace, focalPointX, xScale);
+		CurrentYScreenSpace = currentYInScreenSpace;
+		StartXScreenSpace = XPosChartSpaceToScreenSpace(StartXInChartSpace, focalPointScreenSpaceX, xScale);
+		CurrentXScreenSpace = XPosChartSpaceToScreenSpace(CurrentXInChartSpace, focalPointScreenSpaceX, xScale);
 	}
 
 	/// <summary>
 	/// Update the starting y value, which is derived from the starting chart time and starting chart position.
 	/// Deriving this value requires walking through the visible rate altering events.
 	/// </summary>
-	public void UpdatePerFrameDerivedStartY(double startY)
+	public void UpdatePerFrameDerivedStartY(double startYScreenSpace)
 	{
-		StartY = startY;
+		StartYScreenSpace = startYScreenSpace;
 		StartYHasBeenUpdatedThisFrame = true;
 	}
 
@@ -287,21 +302,21 @@ internal sealed class SelectedRegion : IRegion
 		CurrentValuesHaveBeenUpdatedThisFrame = false;
 		StartTime = 0.0;
 		CurrentTime = 0.0;
-		StartY = 0.0;
-		StartYUnmodified = 0.0;
-		StartX = 0.0;
+		StartYScreenSpace = 0.0;
+		StartYScreenSpaceUnmodified = 0.0;
+		StartXScreenSpace = 0.0;
 		StartChartTime = 0.0;
 		StartChartPosition = 0.0;
-		CurrentY = 0.0;
-		CurrentX = 0.0;
+		CurrentYScreenSpace = 0.0;
+		CurrentXScreenSpace = 0.0;
 		CurrentChartTime = 0.0;
 		CurrentChartPosition = 0.0;
 		StartXInChartSpace = 0.0;
 		CurrentXInChartSpace = 0.0;
 	}
 
-	private double XPosToScreenSpace(double xInChartSpace, double focalPointX, double xScale)
+	private double XPosChartSpaceToScreenSpace(double xInChartSpace, double focalPointScreenSpaceX, double xScale)
 	{
-		return focalPointX + xInChartSpace * xScale;
+		return focalPointScreenSpaceX + xInChartSpace * xScale;
 	}
 }

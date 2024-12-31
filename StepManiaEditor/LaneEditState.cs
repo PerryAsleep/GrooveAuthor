@@ -133,12 +133,12 @@ internal sealed class LaneEditState
 	}
 
 	/// <summary>
-	/// Swaps note state based on the shift key.
+	/// Swaps note state based on the arrow modification key (e.g. shift).
 	/// For taps, this will alternate between mines and taps.
 	/// For holds, this will alternate between holds and rolls.
 	/// </summary>
-	/// <param name="up">Whether the shift key is up or down.</param>
-	public void Shift(bool up)
+	/// <param name="up">Whether the arrow modification key is up or down.</param>
+	public void ArrowModificationKeyPressed(bool up)
 	{
 		switch (EventBeingEdited)
 		{

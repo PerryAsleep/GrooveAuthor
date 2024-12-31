@@ -8,24 +8,28 @@ namespace StepManiaEditor;
 /// <summary>
 /// Class for drawing performance monitoring information.
 /// </summary>
-internal sealed class UIPerformance
+internal sealed class UIPerformance : UIWindow
 {
-	public const string WindowTitle = "Performance";
-
 	private static readonly int TitleColumnWidth = UiScaled(150);
 	private static readonly float PlotHeight = UiScaled(80);
 	private static readonly int DefaultWidth = UiScaled(1024);
 
-	private readonly PerformanceMonitor PerformanceMonitor;
+	private PerformanceMonitor PerformanceMonitor;
 
 	// Members to avoid per-frame allocations.
-	private readonly float[] FrameTimeValues;
-	private readonly float[] TimingValues;
-	private readonly float[] TimingLastFrameValues;
-	private readonly float[] TimingAverages;
-	private readonly float[] MaxTimePerTiming;
+	private float[] FrameTimeValues;
+	private float[] TimingValues;
+	private float[] TimingLastFrameValues;
+	private float[] TimingAverages;
+	private float[] MaxTimePerTiming;
 
-	public UIPerformance(PerformanceMonitor performanceMonitor)
+	public static UIPerformance Instance { get; } = new();
+
+	private UIPerformance() : base("Performance")
+	{
+	}
+
+	public void Init(PerformanceMonitor performanceMonitor)
 	{
 		PerformanceMonitor = performanceMonitor;
 
@@ -37,6 +41,18 @@ internal sealed class UIPerformance
 		TimingLastFrameValues = new float[timingsPerFrame];
 		TimingAverages = new float[timingsPerFrame];
 		MaxTimePerTiming = new float[timingsPerFrame];
+	}
+
+	public override void Open(bool focus)
+	{
+		Preferences.Instance.PreferencesPerformance.ShowPerformanceWindow = true;
+		if (focus)
+			Focus();
+	}
+
+	public override void Close()
+	{
+		Preferences.Instance.PreferencesPerformance.ShowPerformanceWindow = false;
 	}
 
 	public void Draw()

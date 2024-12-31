@@ -26,37 +26,30 @@ internal sealed class Preferences
 	/// <summary>
 	/// Serialization options.
 	/// </summary>
-	private static JsonSerializerOptions SerializationOptions = new()
+	private static JsonSerializerOptions SerializationOptions;
+
+	static Preferences()
 	{
-		Converters =
-		{
-			new JsonStringEnumConverter(JsonNamingPolicy.CamelCase),
-		},
-		ReadCommentHandling = JsonCommentHandling.Skip,
-		AllowTrailingCommas = true,
-		IncludeFields = true,
-		WriteIndented = true,
-	};
+		// Collect default values from Enums which may have changed between versions.
+		// We want to allow deserialization of now invalid values and fallback to good defaults.
+		var factory = new PermissiveEnumJsonConverterFactory();
+		PreferencesDark.RegisterDefaultsForInvalidEnumValues(factory);
+		PreferencesDensityGraph.RegisterDefaultsForInvalidEnumValues(factory);
+		PreferencesMiniMap.RegisterDefaultsForInvalidEnumValues(factory);
+		PreferencesOptions.RegisterDefaultsForInvalidEnumValues(factory);
+		PreferencesPerformance.RegisterDefaultsForInvalidEnumValues(factory);
+		PreferencesSelection.RegisterDefaultsForInvalidEnumValues(factory);
+		PreferencesStream.RegisterDefaultsForInvalidEnumValues(factory);
+		PreferencesWaveForm.RegisterDefaultsForInvalidEnumValues(factory);
 
-	public class SavedSongInformation
-	{
-		public void UpdateChart(ChartType chartType, ChartDifficultyType difficultyType)
+		SerializationOptions = new JsonSerializerOptions
 		{
-			LastChartType = chartType;
-			LastChartDifficultyType = difficultyType;
-		}
-
-		public void UpdatePosition(double spacingZoom, double chartPosition)
-		{
-			SpacingZoom = spacingZoom;
-			ChartPosition = chartPosition;
-		}
-
-		[JsonInclude] public string FileName;
-		[JsonInclude] public ChartType LastChartType;
-		[JsonInclude] public ChartDifficultyType LastChartDifficultyType;
-		[JsonInclude] public double SpacingZoom = 1.0;
-		[JsonInclude] public double ChartPosition;
+			Converters = { factory },
+			ReadCommentHandling = JsonCommentHandling.Skip,
+			AllowTrailingCommas = true,
+			IncludeFields = true,
+			WriteIndented = true,
+		};
 	}
 
 	/// <summary>
@@ -67,9 +60,12 @@ internal sealed class Preferences
 	private Editor Editor;
 
 	// Window preferences
-	[JsonInclude] public int WindowWidth = 1920;
-	[JsonInclude] public int WindowHeight = 1080;
-	[JsonInclude] public bool WindowFullScreen;
+	[JsonInclude] [JsonPropertyName("WindowWidth")]
+	public int ViewportWidth = 1920;
+
+	[JsonInclude] [JsonPropertyName("WindowHeight")]
+	public int ViewportHeight = 1080;
+
 	[JsonInclude] public bool WindowMaximized = true;
 
 	// FTUE state
@@ -120,6 +116,9 @@ internal sealed class Preferences
 	[JsonInclude] public PreferencesStream PreferencesStream = new();
 	[JsonInclude] public PreferencesDensityGraph PreferencesDensityGraph = new();
 
+	// Key Binds
+	[JsonInclude] public PreferencesKeyBinds PreferencesKeyBinds = new();
+
 	// Log preferences
 	[JsonInclude] public bool ShowLogWindow = true;
 	[JsonInclude] public int LogWindowDateDisplay = 1;
@@ -136,14 +135,15 @@ internal sealed class Preferences
 	[JsonInclude] public bool ShowChartPropertiesWindow = true;
 	[JsonInclude] public bool ShowAutogenConfigsWindow;
 	[JsonInclude] public bool ShowChartListWindow = true;
-	[JsonInclude] public bool FirstTimeTryingToShowChartListWindow = true;
 	[JsonInclude] public bool ShowAboutWindow;
 	[JsonInclude] public bool ShowDebugWindow;
 	[JsonInclude] public bool ShowControlsWindow;
+	[JsonInclude] public bool ShowHotbar = true;
 	[JsonInclude] public string OpenFileDialogInitialDirectory = @"C:\Games\StepMania 5\Songs\";
 	[JsonInclude] public List<SavedSongInformation> RecentFiles = new();
 	[JsonInclude] public Editor.NoteEntryMode NoteEntryMode = Editor.NoteEntryMode.Normal;
 	[JsonInclude] public int SnapIndex;
+	[JsonInclude] public int SnapLockIndex;
 	[JsonInclude] public ChartType LastSelectedAutogenChartType = ChartType.dance_single;
 
 	[JsonInclude] public Guid LastSelectedAutogenPerformedChartConfig =
@@ -164,8 +164,11 @@ internal sealed class Preferences
 
 	private void PostLoad()
 	{
+		foreach (var savedSongData in RecentFiles)
+			savedSongData.PostLoad();
 		PreferencesReceptors.SetEditor(Editor);
 		PreferencesWaveForm.PostLoad();
+		PreferencesMiniMap.PostLoad();
 		PreferencesDensityGraph.PostLoad();
 	}
 

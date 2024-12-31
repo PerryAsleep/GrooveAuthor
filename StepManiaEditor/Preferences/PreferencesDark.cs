@@ -1,5 +1,6 @@
 ﻿using System.Numerics;
 using System.Text.Json.Serialization;
+using Fumen;
 using static StepManiaEditor.PreferencesDark;
 
 namespace StepManiaEditor;
@@ -11,12 +12,8 @@ internal sealed class PreferencesDark
 {
 	public enum SizeMode
 	{
-		WaveFormWidthMax,
-		WaveFormWidthCurrent,
-		ChartWidthMax,
-		ChartCurrentWidth,
-		MaxOfWaveFormOrChartCurrentWidth,
-		MaxOfWaveFormOrChartMaxWidth,
+		Charts,
+		Window,
 	}
 
 	public enum DrawOrder
@@ -26,8 +23,8 @@ internal sealed class PreferencesDark
 	}
 
 	// Default values.
-	public const bool DefaultShowDarkBg = true;
-	public const SizeMode DefaultSize = SizeMode.MaxOfWaveFormOrChartMaxWidth;
+	public const bool DefaultShowDarkBg = false;
+	public const SizeMode DefaultSize = SizeMode.Window;
 	public const DrawOrder DefaultDrawOrder = DrawOrder.AfterBackground;
 	public static readonly Vector4 DefaultColor = new(0.0f, 0.0f, 0.0f, 0.8f);
 
@@ -37,6 +34,12 @@ internal sealed class PreferencesDark
 	[JsonInclude] public SizeMode Size = DefaultSize;
 	[JsonInclude] public DrawOrder DarkBgDrawOrder = DefaultDrawOrder;
 	[JsonInclude] public Vector4 Color = DefaultColor;
+
+	public static void RegisterDefaultsForInvalidEnumValues(PermissiveEnumJsonConverterFactory factory)
+	{
+		factory.RegisterDefault(DefaultSize);
+		factory.RegisterDefault(DefaultDrawOrder);
+	}
 
 	public bool IsUsingDefaults()
 	{
