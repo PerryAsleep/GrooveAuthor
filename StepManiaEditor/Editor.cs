@@ -570,9 +570,13 @@ internal sealed class Editor :
 		const string selection = "Selection";
 		UIControls.Instance.AddCommand(selection, "Select Note", "Left Mouse Button");
 		UIControls.Instance.AddCommand(selection, "Select In Region", "Drag Left Mouse Button");
-		UIControls.Instance.AddCommand(selection, "Select Misc. Events In Region", "Alt+Drag Left Mouse Button");
-		UIControls.Instance.AddCommand(selection, "Add to Selection", "Ctrl+Left Mouse Button");
-		UIControls.Instance.AddCommand(selection, "Extend Selection", "Shift+Left Mouse Button");
+
+		UIControls.Instance.AddCommand(selection, "Select Misc. Events In Region",
+			UIControls.GetCommandString(p.MouseSelectionAltBehavior) + UIControls.MultipleKeysJoinString + "Drag Left Mouse Button");
+		UIControls.Instance.AddCommand(selection, "Add to Selection", 
+			UIControls.GetCommandString(p.MouseSelectionControlBehavior) + UIControls.MultipleKeysJoinString + "Left Mouse Button");
+		UIControls.Instance.AddCommand(selection, "Extend Selection",
+			UIControls.GetCommandString(p.MouseSelectionShiftBehavior) + UIControls.MultipleKeysJoinString + "Left Mouse Button");
 		AddKeyCommand(selection, "Select All Notes", p.SelectAllNotes, OnSelectAll);
 		AddKeyCommand(selection, "Select All Misc. Events", p.SelectAllMiscEvents, OnSelectAllAlt);
 		AddKeyCommand(selection, "Select All", p.SelectAll, OnSelectAllShift);
@@ -608,10 +612,14 @@ internal sealed class Editor :
 		AddKeyCommand(chartSelection, "Focus Next Chart", p.FocusNextChart, FocusNextChart);
 
 		const string zoom = "Zoom";
-		UIControls.Instance.AddCommand(zoom, "Zoom In", "Ctrl+Scroll Up");
-		UIControls.Instance.AddCommand(zoom, "Zoom Out", "Ctrl+Scroll Down");
-		UIControls.Instance.AddCommand(zoom, "Increasing Spacing For Current Mode", "Shift+Scroll Up");
-		UIControls.Instance.AddCommand(zoom, "Decrease Spacing For Current Mode", "Shift+Scroll Down");
+		UIControls.Instance.AddCommand(zoom, "Zoom In",
+			UIControls.GetCommandString(p.ScrollZoom) + UIControls.MultipleKeysJoinString + "Scroll Up");
+		UIControls.Instance.AddCommand(zoom, "Zoom Out",
+			UIControls.GetCommandString(p.ScrollZoom) + UIControls.MultipleKeysJoinString + "Scroll Down");
+		UIControls.Instance.AddCommand(zoom, "Increasing Spacing For Current Mode",
+			UIControls.GetCommandString(p.ScrollSpacing) + UIControls.MultipleKeysJoinString + "Scroll Up");
+		UIControls.Instance.AddCommand(zoom, "Decrease Spacing For Current Mode",
+			UIControls.GetCommandString(p.ScrollSpacing) + UIControls.MultipleKeysJoinString + "Scroll Down");
 
 		const string navigation = "Navigation";
 		AddKeyCommand(navigation, "Decrease Snap", p.DecreaseSnap, OnDecreaseSnap, true);
@@ -690,8 +698,13 @@ internal sealed class Editor :
 		}
 
 		foreach (var input in p.ArrowModification)
+		{
+			// Don't let this block input. It is the only keybind that we register with the KeyCommandManager
+			// where really we just want to check is a key down or not without blocking input. Other inputs like
+			// this (e.g. holding alt while selecting) are registered.
 			KeyCommandManager.Register(new KeyCommandManager.Command(input, OnArrowModificationKeyDown, false,
-				OnArrowModificationKeyUp));
+				OnArrowModificationKeyUp, false));
+		}
 	}
 
 	/// <summary>

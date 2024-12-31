@@ -71,8 +71,7 @@ internal sealed class UIScrollPreferences : UIWindow
 			ImGui.Separator();
 			if (ImGuiLayoutUtils.BeginTable("Spacing Options", TitleColumnWidth))
 			{
-				ImGuiLayoutUtils.DrawTitle("Spacing Options",
-					"Shift+Scroll while over the chart changes how the notes are spaced for the current Spacing mode.");
+				ImGuiLayoutUtils.DrawTitle("Spacing Options", GetSpacingHelpText());
 
 				if (p.SpacingMode != Editor.SpacingMode.ConstantTime)
 					PushDisabled();
@@ -144,6 +143,17 @@ internal sealed class UIScrollPreferences : UIWindow
 			if (ImGuiLayoutUtils.BeginTable("Size Cap", TitleColumnWidth))
 			{
 				DrawSizeCapRow();
+
+				ImGuiLayoutUtils.DrawRowCheckbox(true, "Limit Zoom to Size", p, nameof(PreferencesScroll.LimitZoomToSize),
+					false,
+					"Whether or not to limit zoom to the size cap." +
+					"\n\nIf unchecked, zooming in and out will be effectively unbounded in both directions. When zooming "
+					+ "in and notes reach their size cap, zooming will continue without affecting the note size. Use this "
+					+ "option if you prefer zooming to be unbounded."
+					+ "\n\nIf checked, zooming in will be bounded by the note size cap, meaning once notes reach their "
+					+ "maximum size zooming in further will have no effect. Use this option if you prefer zooming to only "
+					+ "affect note size and not affect note spacing of notes relative to their size.");
+
 				ImGuiLayoutUtils.EndTable();
 			}
 
@@ -161,6 +171,15 @@ internal sealed class UIScrollPreferences : UIWindow
 		}
 
 		ImGui.End();
+	}
+
+	public static string GetSpacingHelpText()
+	{
+		var pKeyBinds = Preferences.Instance.PreferencesKeyBinds;
+		var keyBind = UIControls.GetCommandString(pKeyBinds.ScrollSpacing) + UIControls.MultipleKeysJoinString + "Scroll";
+		var spacingHelperText = "Spacing affects note speed and has a similar effect to StepMania speed mods."
+		                        + $"\n\nSpacing can be adjusted with {keyBind}.";
+		return spacingHelperText;
 	}
 
 	public static void DrawWaveFormScrollMode()
@@ -217,7 +236,7 @@ internal sealed class UIScrollPreferences : UIWindow
 			() => { p.SizeCap = 1.0; }, "1", ButtonSizeCapWidth,
 			() => { p.SizeCap = 0.5; }, "1/2", ButtonSizeCapWidth,
 			() => { p.SizeCap = 0.25; }, "1/4", ButtonSizeCapWidth,
-			"Maximum allowed size of the notes.",
+			"Maximum allowed size of the notes. Lowering this value can achieve an effect similar to \"mini\" in StepMania.",
 			0.001f, "%.6f", ZoomManager.MinSizeCap, ZoomManager.MaxSizeCap);
 	}
 }

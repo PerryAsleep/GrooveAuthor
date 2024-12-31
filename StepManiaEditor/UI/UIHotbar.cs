@@ -88,7 +88,7 @@ internal sealed class UIHotbar : UIWindow
 				UIScrollPreferences.DrawSpacingModeRow("Spacing Mode", true);
 
 				// Spacing.
-				var keyBind = UIControls.GetCommandString(pKeyBinds.ScrollSpacing) + UIControls.MultipleKeysJoinString + "Scroll";
+				var spacingHelperText = $"\n\n{UIScrollPreferences.GetSpacingHelpText()}";
 				switch (pScroll.SpacingMode)
 				{
 					case SpacingMode.ConstantRow:
@@ -102,8 +102,7 @@ internal sealed class UIHotbar : UIWindow
 							(float)ZoomManager.MaxConstantRowSpacing,
 							(float)PreferencesScroll.DefaultRowBasedPixelsPerRow,
 							false,
-							"Spacing in pixels per row at default zoom level." +
-							$"\n\nSpacing can be adjusted with {keyBind}.",
+							"Spacing in pixels per row at default zoom level." + spacingHelperText,
 							"%.3f",
 							ImGuiSliderFlags.Logarithmic);
 						break;
@@ -119,8 +118,7 @@ internal sealed class UIHotbar : UIWindow
 							(float)ZoomManager.MaxConstantTimeSpeed,
 							(float)PreferencesScroll.DefaultTimeBasedPixelsPerSecond,
 							false,
-							"Speed in pixels per second at default zoom level." +
-							$"\n\nSpacing can be adjusted with {keyBind}.",
+							"Speed in pixels per second at default zoom level." + spacingHelperText,
 							"%.3f",
 							ImGuiSliderFlags.Logarithmic);
 						break;
@@ -137,7 +135,7 @@ internal sealed class UIHotbar : UIWindow
 							(float)PreferencesScroll.DefaultVariablePixelsPerSecondAtDefaultBPM,
 							false,
 							$"Speed in pixels per second at default zoom level at {PreferencesScroll.DefaultVariableSpeedBPM} BPM." +
-							$"\n\nSpacing can be adjusted with {keyBind}.",
+							spacingHelperText,
 							"%.3f",
 							ImGuiSliderFlags.Logarithmic);
 						break;
@@ -149,7 +147,7 @@ internal sealed class UIHotbar : UIWindow
 				// Casting to a float to allow use of ImGuiSliderFlags.Logarithmic.
 				var zoom = (float)Editor.GetSpacingZoom();
 				var originalZoom = zoom;
-				keyBind = UIControls.GetCommandString(pKeyBinds.ScrollZoom) + UIControls.MultipleKeysJoinString + "Scroll";
+				var keyBind = UIControls.GetCommandString(pKeyBinds.ScrollZoom) + UIControls.MultipleKeysJoinString + "Scroll";
 				ImGuiLayoutUtils.DrawRowDragFloat("Zoom", ref zoom,
 					"Chart zoom level." +
 					$"\n\nZoom level can be adjusted with {keyBind}.",

@@ -58,13 +58,19 @@ internal sealed class KeyCommandManager : IReadOnlyKeyCommandManager
 		/// </summary>
 		public readonly bool Repeat;
 
-		public Command(Keys[] input, Action callback, bool repeat = false, Action releaseCallback = null)
+		/// <summary>
+		/// Whether or not this command blocks input to other commands when it is active.
+		/// </summary>
+		public readonly bool BlocksInput;
+
+		public Command(Keys[] input, Action callback, bool repeat = false, Action releaseCallback = null, bool blocksInput = true)
 		{
 			Input = new Keys[input.Length];
 			Array.Copy(input, Input, input.Length);
 			Callback = callback;
 			ReleaseCallback = releaseCallback;
 			Repeat = repeat;
+			BlocksInput = blocksInput;
 		}
 
 		/// <summary>
@@ -139,7 +145,7 @@ internal sealed class KeyCommandManager : IReadOnlyKeyCommandManager
 			var canActivate = true;
 			foreach (var activeCommand in activeCommands)
 			{
-				if (activeCommand == this)
+				if (activeCommand == this || !activeCommand.Command.BlocksInput)
 					continue;
 				if (Command.IsInputSubsetOfOther(activeCommand.Command)
 				    || activeCommand.Command.IsInputSubsetOfOther(Command))

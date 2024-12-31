@@ -29,8 +29,8 @@ internal class ZoomManager : Fumen.IObserver<PreferencesScroll>, IReadOnlyZoomMa
 		private double Value;
 		private double ValueAtStartOfInterpolation;
 		private double DesiredValue;
-		private readonly double Min;
-		private readonly double Max;
+		private double Min;
+		private double Max;
 		private readonly Action<double> OnChangeCallback;
 		private bool SettingValue;
 
@@ -41,6 +41,14 @@ internal class ZoomManager : Fumen.IObserver<PreferencesScroll>, IReadOnlyZoomMa
 			SetValue(current, true);
 			ValueAtStartOfInterpolation = Value;
 			OnChangeCallback = onChangeCallback;
+		}
+
+		public void UpdateBounds(double min, double max)
+		{
+			Min = min;
+			Max = max;
+			if (Value < min || Value > max)
+				SetValue(Value, true);
 		}
 
 		public void Update(double currentTime)
@@ -104,7 +112,7 @@ internal class ZoomManager : Fumen.IObserver<PreferencesScroll>, IReadOnlyZoomMa
 	public const double SpacingDataScrollFactor = 1.2;
 	public const double MinZoom = 0.000001;
 	public const double MaxZoom = 1000000.0;
-	public const double MinSizeCap = 0.0;
+	public const double MinSizeCap = MinZoom;
 	public const double MaxSizeCap = 1.0;
 	public const double MinConstantTimeSpeed = 10.0;
 	public const double MaxConstantTimeSpeed = 100000.0;
@@ -148,6 +156,7 @@ internal class ZoomManager : Fumen.IObserver<PreferencesScroll>, IReadOnlyZoomMa
 		};
 
 		Preferences.Instance.PreferencesScroll.AddObserver(this);
+		RefreshZoomLimit();
 	}
 
 	/// <summary>
@@ -228,6 +237,12 @@ internal class ZoomManager : Fumen.IObserver<PreferencesScroll>, IReadOnlyZoomMa
 	public void SetSizeCap(double sizeCap)
 	{
 		SizeCap = Math.Clamp(sizeCap, MinSizeCap, MaxSizeCap);
+		RefreshZoomLimit();
+	}
+
+	private void RefreshZoomLimit()
+	{
+		ZoomData.UpdateBounds(MinZoom, Preferences.Instance.PreferencesScroll.LimitZoomToSize ? SizeCap : MaxZoom);
 	}
 
 	/// <summary>
@@ -277,6 +292,9 @@ internal class ZoomManager : Fumen.IObserver<PreferencesScroll>, IReadOnlyZoomMa
 				break;
 			case PreferencesScroll.NotificationSizeCapChanged:
 				SetSizeCap(Preferences.Instance.PreferencesScroll.SizeCap);
+				break;
+			case PreferencesScroll.NotificationLimitZoomToSizeChanged:
+				RefreshZoomLimit();
 				break;
 		}
 	}

@@ -122,14 +122,16 @@ internal sealed class UIPatternEvent : UIWindow
 				if (!multiplePatterns)
 					PushDisabled();
 
+				var nextKeybind = UIControls.GetCommandString(Preferences.Instance.PreferencesKeyBinds.MoveToNextPattern);
+				var prevKeybind = UIControls.GetCommandString(Preferences.Instance.PreferencesKeyBinds.MoveToPreviousPattern);
 				ImGuiLayoutUtils.DrawRowTwoButtons("Navigate",
 					"Previous Pattern",
 					() => { Editor.OnMoveToPreviousPattern(patternEvent); },
 					"Next Pattern",
 					() => { Editor.OnMoveToNextPattern(patternEvent); },
 					"Navigate to other patterns." +
-					"\nCtrl+P will also navigate to the next pattern." +
-					"\nCtrl+Shift+P will also navigate to the previous pattern.");
+					$"\n{nextKeybind} will also navigate to the next pattern." +
+					$"\n{prevKeybind} will also navigate to the previous pattern.");
 
 				if (!multiplePatterns)
 					PopDisabled();

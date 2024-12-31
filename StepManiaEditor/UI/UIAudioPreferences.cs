@@ -47,9 +47,11 @@ internal sealed class UIAudioPreferences : UIWindow
 		{
 			if (ImGuiLayoutUtils.BeginTable("Audio", TitleColumnWidth))
 			{
+				var decreaseKeybind = UIControls.GetCommandString(Preferences.Instance.PreferencesKeyBinds.DecreaseMusicRate);
+				var increaseKeybind = UIControls.GetCommandString(Preferences.Instance.PreferencesKeyBinds.IncreaseMusicRate);
 				ImGuiLayoutUtils.DrawRowDragDouble(true, "Music Rate", p, nameof(PreferencesAudio.MusicRate), false,
 					"Music Rate."
-					+ "\nThe music rate can also be adjusted with Shift+Left and Shift+Right",
+					+ $"\nThe music rate can also be adjusted with {decreaseKeybind} and {increaseKeybind}",
 					0.001f, "%.3fx", MusicManager.MinMusicRate, MusicManager.MaxMusicRate);
 
 				ImGuiLayoutUtils.DrawRowSliderFloat(true, "Main Volume", p, nameof(PreferencesAudio.MainVolume),
