@@ -1,4 +1,5 @@
 ﻿using System;
+using Fumen;
 using ImGuiNET;
 using Microsoft.Xna.Framework;
 using Vector2 = System.Numerics.Vector2;
@@ -20,7 +21,7 @@ internal sealed class UIDockSpace
 	/// <remarks>
 	/// The contents of this function are largely taken from the internals of DockSpaceOverViewport.
 	/// </remarks>
-	public static void PrepareDockSpace()
+	public static void PrepareDockSpace(bool isWindowSizeInitialized)
 	{
 		var io = ImGui.GetIO();
 		if ((io.ConfigFlags & ImGuiConfigFlags.DockingEnable) == 0)
@@ -58,8 +59,10 @@ internal sealed class UIDockSpace
 		rootWindowSize.Y -= ImGui.GetFrameHeight();
 
 		// Reset the windows.
-		if (Preferences.Instance.PreferencesOptions.ResetLayout != PreferencesOptions.Layout.None)
+		if (Preferences.Instance.PreferencesOptions.ResetLayout != PreferencesOptions.Layout.None && isWindowSizeInitialized)
 		{
+			Logger.Info($"Resetting Layout with window size ({rootWindowSize.X},{rootWindowSize.Y})");
+
 			var leftPanelWidth = UISongProperties.DefaultSizeSmall.X;
 			if (Preferences.Instance.PreferencesOptions.ResetLayout == PreferencesOptions.Layout.Expanded)
 				leftPanelWidth = UISongProperties.DefaultSize.X;

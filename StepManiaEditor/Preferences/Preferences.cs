@@ -60,8 +60,12 @@ internal sealed class Preferences
 	private Editor Editor;
 
 	// Window preferences
-	[JsonInclude] public int WindowWidth = 1920;
-	[JsonInclude] public int WindowHeight = 1080;
+	[JsonInclude] [JsonPropertyName("WindowWidth")]
+	public int ViewportWidth = 1920;
+
+	[JsonInclude] [JsonPropertyName("WindowHeight")]
+	public int ViewportHeight = 1080;
+
 	[JsonInclude] public bool WindowMaximized = true;
 
 	// FTUE state

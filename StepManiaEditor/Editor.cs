@@ -189,6 +189,7 @@ internal sealed class Editor :
 	private bool ShouldCheckForShowingSongFileChangedNotification;
 	private bool ShowingSongFileChangedNotification;
 	private int GarbageCollectFrame;
+	private long FrameCount;
 
 	private readonly Dictionary<ChartType, PadData> PadDataByChartType = new();
 	private readonly Dictionary<ChartType, StepGraph> StepGraphByChartType = new();
@@ -816,8 +817,8 @@ internal sealed class Editor :
 	private void InitializeWindowSize()
 	{
 		var p = Preferences.Instance;
-		Graphics.PreferredBackBufferHeight = p.WindowHeight;
-		Graphics.PreferredBackBufferWidth = p.WindowWidth;
+		Graphics.PreferredBackBufferWidth = p.ViewportWidth;
+		Graphics.PreferredBackBufferHeight = p.ViewportHeight;
 		Graphics.IsFullScreen = false;
 		Graphics.ApplyChanges();
 	}
@@ -835,9 +836,7 @@ internal sealed class Editor :
 			return;
 
 		if (p.WindowMaximized)
-		{
 			form.WindowState = FormWindowState.Maximized;
-		}
 
 		form.FormClosing += ClosingForm;
 		form.AllowDrop = true;
@@ -1273,7 +1272,7 @@ internal sealed class Editor :
 		if (form == null)
 			return;
 		form.WindowState = FormWindowState.Normal;
-		form.Size = new System.Drawing.Size(x, y);
+		form.ClientSize = new System.Drawing.Size(x, y);
 	}
 
 	public void OnResize(object sender, EventArgs e)
@@ -1282,14 +1281,12 @@ internal sealed class Editor :
 		if (form == null)
 			return;
 		var maximized = form.WindowState == FormWindowState.Maximized;
-		var w = GetViewportWidth();
-		var h = GetViewportHeight();
 
 		// Update window preferences.
 		if (!maximized)
 		{
-			Preferences.Instance.WindowWidth = w;
-			Preferences.Instance.WindowHeight = h;
+			Preferences.Instance.ViewportWidth = GetViewportWidth();
+			Preferences.Instance.ViewportHeight = GetViewportHeight();
 		}
 
 		Preferences.Instance.WindowMaximized = maximized;
@@ -1331,7 +1328,7 @@ internal sealed class Editor :
 
 	/// <summary>
 	/// Gets the viewport width.
-	/// These dimensions include window dressing like the the title bar.
+	/// These dimensions include ImGui window dressing but do not include OS level window dressing.
 	/// </summary>
 	/// <returns>Viewport width in pixels.</returns>
 	public int GetViewportWidth()
@@ -1340,35 +1337,26 @@ internal sealed class Editor :
 	}
 
 	/// <summary>
-	/// Gets the viewport width.
-	/// These dimensions include window dressing like the the title bar.
+	/// Gets the viewport height.
+	/// These dimensions include ImGui window dressing but do not include OS level window dressing.
 	/// </summary>
-	/// <returns>Viewport width in pixels.</returns>
+	/// <returns>Viewport height in pixels.</returns>
 	public int GetViewportHeight()
 	{
 		return Graphics.GraphicsDevice.Viewport.Height;
 	}
 
-	/// <summary>
-	/// Gets the back buffer width.
-	/// These dimensions only include the application's rendered area and do not
-	/// include window dressing like the the title bar.
-	/// </summary>
-	/// <returns>Back buffer width in pixels.</returns>
-	public int GetBackBufferWidth()
+	public bool IsWindowSizeInitialized()
 	{
-		return Graphics.PreferredBackBufferWidth;
-	}
-
-	/// <summary>
-	/// Gets the back buffer height.
-	/// These dimensions only include the application's rendered area and do not
-	/// include window dressing like the the title bar.
-	/// </summary>
-	/// <returns>Back buffer height in pixels.</returns>
-	public int GetBackBufferHeight()
-	{
-		return Graphics.PreferredBackBufferHeight;
+		// On the first frame the backbuffer and form may not be set to correct values.
+		// On first launch where the default setting is to be maximized this results in
+		// incorrect values being used for layouts which depend on window size. This
+		// occurs because Monogame performs one update before processing the events from
+		// the OS about the window size. We can't assume the maximized backbuffer size
+		// from the window size because of DPI / OS-specific dressing sizes. Because of
+		// all of this we need to wait one frame before performing any logic which depends
+		// on window size.
+		return FrameCount > 1L;
 	}
 
 	#endregion Window Resizing
@@ -1510,6 +1498,8 @@ internal sealed class Editor :
 	protected override void Update(GameTime gameTime)
 	{
 		Debug.Assert(IsOnMainThread());
+
+		FrameCount++;
 
 		PerformanceMonitor.SetTime(PerformanceTimings.Present, PreviousPresentTime.Ticks);
 
@@ -1852,7 +1842,7 @@ internal sealed class Editor :
 		ImGuiRenderer.BeforeLayout();
 		if ((ImGui.GetIO().ConfigFlags & ImGuiConfigFlags.DockingEnable) != 0)
 		{
-			UIDockSpace.PrepareDockSpace();
+			UIDockSpace.PrepareDockSpace(IsWindowSizeInitialized());
 		}
 	}
 
@@ -2930,7 +2920,7 @@ internal sealed class Editor :
 
 		var y = TransformChartSpaceYToScreenSpaceY(GetMiniMapYPaddingFromTopInChartSpace());
 		var textureHeight = Math.Max(0,
-			GetBackBufferHeight() - GetMiniMapYPaddingFromTopInScreenSpace() - GetMiniMapYPaddingFromBottom());
+			GetViewportHeight() - GetMiniMapYPaddingFromTopInScreenSpace() - GetMiniMapYPaddingFromBottom());
 		var visibleHeight = (uint)Math.Min(textureHeight,
 			Math.Max(0, ChartArea.Height - GetMiniMapYPaddingFromTopInChartSpace() - GetMiniMapYPaddingFromBottom()));
 
