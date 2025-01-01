@@ -3280,8 +3280,8 @@ internal sealed class Editor :
 				var focusedChartData = GetFocusedChartData();
 				if (focusedChartData != null)
 				{
-					var x1 = focusedChartData.GetScreenSpaceXOfMiscEventsStart();
-					var x2 = focusedChartData.GetScreenSpaceXOfMiscEventsEnd();
+					var x1 = focusedChartData.GetScreenSpaceXOfLanesStart();
+					var x2 = focusedChartData.GetScreenSpaceXOfLanesEnd();
 					x = x1 - p.GetDensityGraphWidthOffsetUiScaled();
 					w = x2 - x1 + p.GetDensityGraphWidthOffsetUiScaled() * 2;
 				}
@@ -3296,8 +3296,8 @@ internal sealed class Editor :
 				var focusedChartData = GetFocusedChartData();
 				if (focusedChartData != null)
 				{
-					var x1 = focusedChartData.GetScreenSpaceXOfMiscEventsStart();
-					var x2 = focusedChartData.GetScreenSpaceXOfMiscEventsEnd();
+					var x1 = focusedChartData.GetScreenSpaceXOfLanesStart();
+					var x2 = focusedChartData.GetScreenSpaceXOfLanesEnd();
 					x = x1 - p.GetDensityGraphWidthOffsetUiScaled();
 					w = x2 - x1 + p.GetDensityGraphWidthOffsetUiScaled() * 2;
 				}
