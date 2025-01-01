@@ -7,7 +7,7 @@ const string appName = "GrooveAuthor";
 const string projectName = "StepManiaEditor";
 const string relativeProjectRoot = "..\\..\\..\\..";
 const string relativeSlnPath = $"{relativeProjectRoot}\\{appName}.sln";
-const string relativeExeFolderPath = $"{relativeProjectRoot}\\{projectName}\\bin\\Release\\net7.0-windows";
+const string relativeExeFolderPath = $"{relativeProjectRoot}\\{projectName}\\bin\\Release\\net8.0-windows7.0";
 const string relativeExePath = $"{relativeExeFolderPath}\\{appName}.exe";
 const string relativeReleasesFolderPath = $"{relativeProjectRoot}\\Releases";
 

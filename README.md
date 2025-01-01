@@ -60,7 +60,7 @@ Other editors stutter or lock up when editing long files but `GrooveAuthor` is b
 
 `GrooveAuthor` is available for Windows. Download the latest version from the [Releases](https://github.com/PerryAsleep/GrooveAuthor/releases) page and extract it to a desired location. To run `GrooveAuthor` open the `GrooveAuthor` folder and run `GrooveAuthor.exe`.
 
-`GrooveAuthor` requires [.Net Runtime 7.0](https://dotnet.microsoft.com/en-us/download/dotnet/7.0).
+`GrooveAuthor` requires [.Net Runtime 8.0](https://dotnet.microsoft.com/en-us/download/dotnet/8.0).
 
 ## Documentation
 
