@@ -718,13 +718,23 @@ internal sealed class Editor :
 		bool repeat = false,
 		Action releaseCallback = null)
 	{
+		var unbound = true;
 		foreach (var input in inputs)
 		{
+			if (input == null || input.Length == 0)
+				continue;
+
 			// Register the command, potentially multiple times due to left and right modifier keys.
 			var adjustedInput = new Keys[input.Length];
 			RegisterKeyCommand(input, adjustedInput, 0, callback, repeat, releaseCallback);
 			// Add the command to the UI.
 			UIControls.Instance.AddCommand(category, name, input);
+			unbound = false;
+		}
+
+		if (unbound)
+		{
+			UIControls.Instance.AddCommand(category, name, Array.Empty<Keys>());
 		}
 	}
 
