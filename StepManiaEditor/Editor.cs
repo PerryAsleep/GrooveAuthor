@@ -5428,11 +5428,14 @@ internal sealed class Editor :
 
 	private void OpenPreviousChart()
 	{
-		if (ActiveSong == null || FocusedChart == null)
+		if (ActiveSong == null)
 			return;
 
 		var index = 0;
 		var sortedCharts = ActiveSong.GetSortedCharts();
+		if (sortedCharts.Count == 0)
+			return;
+
 		foreach (var chart in sortedCharts)
 		{
 			if (chart == FocusedChart)
@@ -5447,15 +5450,20 @@ internal sealed class Editor :
 
 			index++;
 		}
+
+		SetChartFocused(sortedCharts[^1]);
 	}
 
 	private void OpenNextChart()
 	{
-		if (ActiveSong == null || FocusedChart == null)
+		if (ActiveSong == null)
 			return;
 
 		var index = 0;
 		var sortedCharts = ActiveSong.GetSortedCharts();
+		if (sortedCharts.Count == 0)
+			return;
+
 		foreach (var chart in sortedCharts)
 		{
 			if (chart == FocusedChart)
@@ -5468,6 +5476,8 @@ internal sealed class Editor :
 
 			index++;
 		}
+
+		SetChartFocused(sortedCharts[0]);
 	}
 
 	private void FocusPreviousChart()
