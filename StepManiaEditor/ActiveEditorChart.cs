@@ -131,51 +131,24 @@ internal sealed class ActiveEditorChart
 
 	public int GetScreenSpaceXOfLanesStart()
 	{
-		return FocalPointScreenSpaceX - (GetLaneAreaWidth() >> 1) - GetRelativeXPositionOfLanesAndWaveFormFromChartArea();
+		return FocalPointScreenSpaceX - (GetLaneAreaWidth() >> 1);
 	}
 
 	public int GetScreenSpaceXOfMiscEventsStart()
 	{
 		var x = GetScreenSpaceXOfLanesStart();
 		if (ShouldDrawMiscEvents())
+		{
+			x -= GetLeftMiscEventPadding();
 			x -= Preferences.Instance.PreferencesOptions.MiscEventAreaWidth;
+		}
+
 		return x;
-	}
-
-	public int GetScreenSpaceXOfMiscEventsStartWithCurrentScale()
-	{
-		var x = GetScreenSpaceXOfLanesStartWithCurrentScale();
-		if (ShouldDrawMiscEvents())
-			x -= Preferences.Instance.PreferencesOptions.MiscEventAreaWidth;
-		return x;
-	}
-
-	public int GetScreenSpaceXOfLanesStartWithCurrentScale()
-	{
-		return FocalPointScreenSpaceX - (GetLaneAreaWidthWithCurrentScale() >> 1) -
-		       GetRelativeXPositionOfLanesAndWaveFormFromChartArea();
-	}
-
-	public int GetScreenSpaceXOfLaneAndWaveFormStart()
-	{
-		return FocalPointScreenSpaceX - (GetLaneAndWaveFormAreaWidth() >> 1) -
-		       GetRelativeXPositionOfLanesAndWaveFormFromChartArea();
-	}
-
-	public int GetScreenSpaceXOfLaneAndWaveFormStartWithCurrentScale()
-	{
-		return FocalPointScreenSpaceX - (GetLaneAndWaveFormAreaWidthWithCurrentScale() >> 1) -
-		       GetRelativeXPositionOfLanesAndWaveFormFromChartArea();
 	}
 
 	public int GetScreenSpaceXOfLanesEnd()
 	{
 		return FocalPointScreenSpaceX + (GetLaneAreaWidth() >> 1);
-	}
-
-	public int GetScreenSpaceXOfLanesEndWithCurrentScale()
-	{
-		return FocalPointScreenSpaceX + (GetLaneAreaWidthWithCurrentScale() >> 1);
 	}
 
 	public int GetScreenSpaceXOfLanesAndWaveFormEnd()
