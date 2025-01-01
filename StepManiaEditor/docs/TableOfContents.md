@@ -2,6 +2,11 @@
 
 # Table of Contents
 
+## General Usage
+
+ - [Key Bindings](Keybinds.md)
+ - [Chart Navigation](ChartNavigation.md)
+
 ## Sync and Timing
 
  - [Song Sync](SongSync.md)
