@@ -11,7 +11,7 @@ internal sealed class UIAbout : UIWindow
 	private const string LicenseStepManiaEditor =
 		@"MIT License
 
-Copyright (c) 2023-2024 Perry Lynch
+Copyright (c) 2023-2025 Perry Lynch
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the ""Software""), to deal
