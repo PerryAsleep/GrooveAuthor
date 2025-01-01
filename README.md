@@ -22,6 +22,11 @@
 
 ![Pattern Generation SMX](StepManiaEditor/docs/pattern-generation-smx.gif "Patterns integrate seamlessly with existing steps and work for all chart types.")
 
+### Simultaneous Chart Viewing
+`GrooveAuthor` allows for many charts to be [open simultaneously](StepManiaEditor/docs/ChartNavigation.md), easing the workflow for full-difficulty and multi-mode files.
+
+![Simultaneous Charts](StepManiaEditor/docs/simultaneous-charts.gif)
+
 ### SSC Gimmicks
 `GrooveAuthor` renders `ssc` effects accurately.
 
@@ -44,8 +49,12 @@ Other editors stutter or lock up when editing long files but `GrooveAuthor` is b
 - Robust autogen functionality. All the functionality from [StepManiaChartGenerator](https://github.com/PerryAsleep/StepManiaChartGenerator) is available in-editor.
 - Accurate `ssc` scroll rate rendering.
 - Near infinite zooming with 100% accurate waveform rendering and offset compensation.
+- Open many charts simultaneously.
 - Optional automove. Press one key to add a note and advance for quickly writing streams.
 - Modern editing conveniences like copy/paste, undo/redo, intuitive mouse and keyboard controls, mini-map scrollbar, etc.
+- Stamina-conscious features including scrollable density graph, stream breakdowns, and NPS counts.
+- Performant even on massive, hours-long simfiles.
+- Customizable and dockable UI.
 
 ## Installation
 
