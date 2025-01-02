@@ -20,7 +20,7 @@ internal sealed class PreferencesReceptors
 	public const bool DefaultPulseReceptorsWithTempo = true;
 	public const bool DefaultCenterHorizontally = false;
 	public const bool DefaultLockPosition = false;
-	public const int DefaultChartSpacePositionX = 1134;
+	public const int DefaultChartSpacePositionX = 842;
 	public const int DefaultChartSpacePositionY = 110;
 
 	// Preferences.
