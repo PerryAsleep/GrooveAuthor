@@ -106,7 +106,8 @@ internal class ActionPasteEvents : EditorAction
 
 			// Add the new event and record the side effects so they can be undone.
 			var (addedFromAlteration, deletedFromAlteration) = Chart.ForceAddEvents(new List<EditorEvent> { newEvent });
-			SideEffects.Add(new ForceAddSideEffect(addedFromAlteration, deletedFromAlteration));
+			if (addedFromAlteration.Count > 0 || deletedFromAlteration.Count > 0)
+				SideEffects.Add(new ForceAddSideEffect(addedFromAlteration, deletedFromAlteration));
 
 			// Record the new event. When we undo, we will need to know which events
 			// were successfully transformed (as opposed to removed) so we can undo them.
@@ -132,7 +133,8 @@ internal class ActionPasteEvents : EditorAction
 			var (addedFromAlteration, deletedFromAlteration) = Chart.ForceAddEvents(new List<EditorEvent> { editorEvent });
 
 			// Record the side effects so that they can be undone.
-			SideEffects.Add(new ForceAddSideEffect(addedFromAlteration, deletedFromAlteration));
+			if (addedFromAlteration.Count > 0 || deletedFromAlteration.Count > 0)
+				SideEffects.Add(new ForceAddSideEffect(addedFromAlteration, deletedFromAlteration));
 		}
 	}
 

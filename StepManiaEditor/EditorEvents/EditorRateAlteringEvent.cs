@@ -86,6 +86,16 @@ internal abstract class EditorRateAlteringEvent : EditorEvent, IComparable<Edito
 		SecondsPerRow = secondsPerRow;
 	}
 
+	/// <summary>
+	/// Updates this event's last time signature.
+	/// When initializing rate altering events some events' last time signatures may not be known
+	/// until a future event defines the first time signature.
+	/// </summary>
+	public void UpdateLastTimeSignature(EditorTimeSignatureEvent lastTimeSignature)
+	{
+		LastTimeSignature = lastTimeSignature;
+	}
+
 	public override string GetShortTypeName()
 	{
 		return "Rate Altering Event";

@@ -1027,6 +1027,13 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	/// </summary>
 	private void RefreshRateAlteringEvents()
 	{
+		// It is possible for there to be no rate altering events in the middle of undoing a paste of events
+		// which include all rate altering events for a chart. This a momentary state which will correct itself
+		// as the paste completes and its side effects are resolved and the original rate altering events are
+		// re-added.
+		if (RateAlteringEvents.GetCount() == 0)
+			return;
+
 		var lastScrollRate = 1.0;
 		var lastTempo = 1.0;
 		var firstTempo = true;
@@ -1148,6 +1155,16 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 				}
 				case EditorTimeSignatureEvent timeSignature:
 				{
+					// Update any events which precede the first time signature so they can have accurate
+					// row-dependent data.
+					if (firstTimeSignature)
+					{
+						foreach (var previousRateAlteringEvent in previousEvents)
+						{
+							previousRateAlteringEvent.UpdateLastTimeSignature(timeSignature);
+						}
+					}
+
 					isPositionImmutable = firstTimeSignature;
 					lastTimeSignature = timeSignature;
 					firstTimeSignature = false;

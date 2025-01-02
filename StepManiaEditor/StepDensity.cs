@@ -428,7 +428,8 @@ internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<Prefe
 	{
 		var numMeasures = Measures.GetSize();
 		var enumerator = EditorChart.GetRateAlteringEvents().First();
-		enumerator.MoveNext();
+		if (!enumerator.MoveNext())
+			return;
 		var currentRae = enumerator.Current!;
 		EditorRateAlteringEvent nextRae = null;
 		var nextRaeRow = 0;

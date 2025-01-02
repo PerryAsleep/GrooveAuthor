@@ -420,6 +420,10 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 		// Update everything which is derived from position, but requires knowing the active rate altering event.
 		// First look up the rate altering event, then provide it to everything which needs it.
 		activeRateAlteringEvent ??= EditorChart.GetRateAlteringEvents().FindActiveRateAlteringEvent(this);
+		// It is possible when undoing pasting to be in a momentary state where there are
+		// no rate altering events because we have deleted them to restore the originals.
+		if (activeRateAlteringEvent == null)
+			return;
 		// Time is computed from row using the active rate altering event.
 		RefreshTimeBasedOnRow(activeRateAlteringEvent);
 		// Measure information is computed from row using the active rate altering event.
@@ -480,6 +484,16 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	{
 		if (ChartEvent == null)
 			return;
+
+		// When pasting a time signature over the first time signature we will momentarily
+		// have deleted the first time signature while we replace it. In this scenario the
+		// LastTimeSignature associated with a rate altering event may be null. However we
+		// will immediately add the new time signature and correct this by calling
+		// RefreshEventTimingData. We should ignore a null time signature here to avoid
+		// crashing during this scenario.
+		if (ts == null)
+			return;
+
 		SetMeasurePosition((short)ts.GetRowRelativeToMeasureStart(GetRow()), (short)ts.GetDenominator());
 	}
 
