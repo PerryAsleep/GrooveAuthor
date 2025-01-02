@@ -10,7 +10,7 @@
 	<PropertyGroup>
 		<AssemblyName>GrooveAuthor</AssemblyName>
 		<ApplicationIcon>Icon.ico</ApplicationIcon>
-		<Version>0.2.3</Version>
+		<Version>0.3.0</Version>
 	</PropertyGroup>
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
