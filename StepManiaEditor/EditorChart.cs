@@ -2868,7 +2868,12 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	/// <returns>True if the given EditorEvent can exist at the given row and false otherwise.</returns>
 	public bool CanEventExistAtRow(EditorEvent editorEvent, int row)
 	{
-		return row >= 0;
+		if (row < 0)
+			return false;
+		var lane = editorEvent.GetLane();
+		if ((lane != InvalidArrowIndex && lane < 0) || lane >= NumInputs)
+			return false;
+		return true;
 	}
 
 	/// <summary>
