@@ -208,16 +208,21 @@ internal sealed class SavedSongInformation : IActiveChartListProvider
 
 	public EditorChart GetChartToUseForFocusedChart(EditorSong song)
 	{
-		// Try to use the exact match.
-		var focusedChartData = ActiveCharts[FocusedChartIndex];
-		var match = focusedChartData.GetChartMatchingExactly(song);
-		if (match != null)
-			return match;
+		EditorChart match;
 
-		// Failing that, try to use any chart which matches the ChartType and ChartDifficultyType.
-		match = focusedChartData.GetChartMatchingTypeAndDifficultyType(song);
-		if (match != null)
-			return match;
+		// Try to use the exact match.
+		if (FocusedChartIndex >= 0 && FocusedChartIndex < ActiveCharts.Count)
+		{
+			var focusedChartData = ActiveCharts[FocusedChartIndex];
+			match = focusedChartData.GetChartMatchingExactly(song);
+			if (match != null)
+				return match;
+
+			// Failing that, try to use any chart which matches the ChartType and ChartDifficultyType.
+			match = focusedChartData.GetChartMatchingTypeAndDifficultyType(song);
+			if (match != null)
+				return match;
+		}
 
 		// Failing that try to use one of the other active charts if they have exact matches.
 		for (var i = 0; i < ActiveCharts.Count; i++)
@@ -244,7 +249,8 @@ internal sealed class SavedSongInformation : IActiveChartListProvider
 		// saved off active charts. Fallback to the Song's SelectBestChart method using
 		// the Preferences for default ChartType and ChartDifficultyType.
 		var p = Preferences.Instance.PreferencesOptions;
-		return song.SelectBestChart(p.DefaultStepsType, p.DefaultDifficultyType);
+		match = song.SelectBestChart(p.DefaultStepsType, p.DefaultDifficultyType);
+		return match;
 	}
 
 	#endregion IActiveChartListProvider
