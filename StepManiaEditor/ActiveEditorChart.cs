@@ -454,28 +454,39 @@ internal sealed class ActiveEditorChart
 
 	#region Chart Event Updates
 
-	private int GetMaxMarkersToDrawPerFrame()
+	private (int maxMarkers, int maxEvents, int maxRateAlteringEvents) GetMaxEventsToDrawPerFrame()
 	{
-		var numVisible = Math.Max(1, Editor.GetNumVisibleActiveCharts());
-		return Preferences.Instance.PreferencesOptions.MaxMarkersToDraw / numVisible;
-	}
+		// Divide half the budget of events to draw up evenly per visible chart.
+		// For the other half, scale it based on the number of events this chart has compared to others.
+		// We can't just use a scale because it results in new charts only drawing 1 or 2 notes even when
+		// they have more notes to draw when they are alongside a large chart.
+		// We can't just split evenly because it results in fewer notes being drawn per chart than we
+		// could draw.
+		const double percentageToScale = 0.5;
+		const double percentageToDivideEvenly = 1.0 - percentageToScale;
 
-	private int GetMaxEventsToDrawPerFrame()
-	{
-		var percentage = Chart.GetEvents().GetCount() / (double)Editor.GetNumEventsForAllVisibleActiveCharts();
-		percentage = Math.Clamp(percentage, 0.0, 1.0);
-		return (int)(Preferences.Instance.PreferencesOptions.MaxEventsToDraw * percentage);
-	}
+		var p = Preferences.Instance.PreferencesOptions;
+		var (numVisibleCharts, totalEvents, totalRateAlteringEvents) = Editor.GetActiveChartCounts();
+		numVisibleCharts = Math.Max(1, numVisibleCharts);
+		totalEvents = Math.Max(1, totalEvents);
+		totalRateAlteringEvents = Math.Max(1, totalRateAlteringEvents);
 
-	private int GetMaxRateAlteringEventsToProcessPerFrame()
-	{
-		var percentage = Chart.GetRateAlteringEvents().GetCount() /
-		                 (double)Editor.GetNumRateAlteringEventsForAllVisibleActiveCharts();
-		percentage = Math.Clamp(percentage, 0.0, 1.0);
-		var numEvents = (int)(Preferences.Instance.PreferencesOptions.MaxRateAlteringEventsToProcessPerFrame * percentage);
-		// Always return at least a small number of events to correctly process the common
-		// events at the start of a chart.
-		return Math.Max(numEvents, 7);
+		// Don't bother scaling markers. They don't change per chart like event count does.
+		var maxMarkers = p.MaxMarkersToDraw / numVisibleCharts;
+
+		// Scale events.
+		var eventCount = Chart.GetEvents().GetCount();
+		var maxEvents = (int)((double)eventCount / totalEvents * percentageToScale * p.MaxEventsToDraw +
+		                      1.0 / numVisibleCharts * percentageToDivideEvenly * p.MaxEventsToDraw);
+
+		// Scale rate altering events.
+		var rateAlteringEventCount = Chart.GetRateAlteringEvents().GetCount();
+		var maxRateAlteringEvents = (int)((double)rateAlteringEventCount / totalRateAlteringEvents * percentageToScale *
+		                                  p.MaxRateAlteringEventsToProcessPerFrame +
+		                                  1.0 / numVisibleCharts * percentageToDivideEvenly *
+		                                  p.MaxRateAlteringEventsToProcessPerFrame);
+
+		return (maxMarkers, maxEvents, maxRateAlteringEvents);
 	}
 
 	/// <summary>
@@ -501,9 +512,7 @@ internal sealed class ActiveEditorChart
 		// Get an EventSpacingHelper to perform y calculations.
 		SpacingHelper = EventSpacingHelper.GetSpacingHelper(Chart);
 
-		var maxEventsToDraw = GetMaxEventsToDrawPerFrame();
-		var maxRateAlteringEventsToProcess = GetMaxRateAlteringEventsToProcessPerFrame();
-		var maxMarkersToDraw = GetMaxMarkersToDrawPerFrame();
+		var (maxMarkersToDraw, maxEventsToDraw, maxRateAlteringEventsToProcess) = GetMaxEventsToDrawPerFrame();
 
 		var noteEvents = new List<EditorEvent>();
 		var numArrows = Chart.NumInputs;

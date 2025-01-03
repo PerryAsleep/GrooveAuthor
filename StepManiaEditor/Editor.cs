@@ -5987,32 +5987,32 @@ internal sealed class Editor :
 
 	#region Chart Selection
 
-	public int GetNumVisibleActiveCharts()
+	/// <summary>
+	/// Returns counts used for ActiveEditorCharts to determine their rendering limits.
+	/// </summary>
+	/// <returns>
+	/// Number of visible charts.
+	/// Total number of events for all visible charts.
+	/// Total number of rate altering events for all visible charts.
+	/// </returns>
+	public (int numVisibleCharts, int numEvents, int numRateAlteringEvents) GetActiveChartCounts()
 	{
 		var numVisible = 0;
+		var numEvents = 0;
+		var numRateAlteringEvents = 0;
 		foreach (var activeChart in ActiveChartData)
+		{
 			if (activeChart.IsVisible())
+			{
 				numVisible++;
-		return numVisible;
-	}
-
-	public int GetNumEventsForAllVisibleActiveCharts()
-	{
-		var numEvents = 0;
-		foreach (var activeChart in ActiveChartData)
-			if (activeChart.IsVisible())
 				numEvents += activeChart.GetChart().GetEvents().GetCount();
-		return numEvents;
+				numRateAlteringEvents += activeChart.GetChart().GetRateAlteringEvents().GetCount();
+			}
+		}
+
+		return (numVisible, numEvents, numRateAlteringEvents);
 	}
 
-	public int GetNumRateAlteringEventsForAllVisibleActiveCharts()
-	{
-		var numEvents = 0;
-		foreach (var activeChart in ActiveChartData)
-			if (activeChart.IsVisible())
-				numEvents += activeChart.GetChart().GetRateAlteringEvents().GetCount();
-		return numEvents;
-	}
 
 	public ActiveEditorChart GetFocusedChartData()
 	{
