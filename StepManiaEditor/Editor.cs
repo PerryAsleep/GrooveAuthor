@@ -256,6 +256,7 @@ internal sealed class Editor :
 
 	// Movement controls.
 	private bool UpdatingSongTimeDirectly;
+	private double? LastKnownSongTime;
 
 	private KeyCommandManager KeyCommandManager;
 	private bool Playing;
@@ -606,10 +607,10 @@ internal sealed class Editor :
 		AddKeyCommand(chartSelection, "Open Next Chart", p.OpenNextChart, OpenNextChart);
 		AddKeyCommand(chartSelection, "Close Focused Chart", p.CloseFocusedChart, CloseFocusedChart);
 		AddKeyCommand(chartSelection, "Keep Chart Open", p.KeepChartOpen, SetFocusedChartHasDedicatedTab);
-		AddKeyCommand(chartSelection, "Move Focused Chart Left", p.MoveFocusedChartLeft, MoveFocusedChartLeft);
-		AddKeyCommand(chartSelection, "Move Focused Chart Right", p.MoveFocusedChartRight, MoveFocusedChartRight);
-		AddKeyCommand(chartSelection, "Focus Previous Chart", p.FocusPreviousChart, FocusPreviousChart);
-		AddKeyCommand(chartSelection, "Focus Next Chart", p.FocusNextChart, FocusNextChart);
+		AddKeyCommand(chartSelection, "Move Focused Chart Left", p.MoveFocusedChartLeft, MoveFocusedChartLeft, true);
+		AddKeyCommand(chartSelection, "Move Focused Chart Right", p.MoveFocusedChartRight, MoveFocusedChartRight, true);
+		AddKeyCommand(chartSelection, "Focus Previous Chart", p.FocusPreviousChart, FocusPreviousChart, true);
+		AddKeyCommand(chartSelection, "Focus Next Chart", p.FocusNextChart, FocusNextChart, true);
 
 		const string zoom = "Zoom";
 		UIControls.Instance.AddCommand(zoom, "Zoom In",
@@ -1998,20 +1999,23 @@ internal sealed class Editor :
 		var rowDelta = pScroll.ScrollWheelRows / ZoomManager.GetSpacingZoom() * -scrollDelta;
 		if (Playing)
 		{
-			PlaybackStartTime += timeDelta;
-			SetSongTime(PlaybackStartTime +
-			            PlaybackStopwatch.Elapsed.TotalSeconds * Preferences.Instance.PreferencesAudio.MusicRate);
-
-			if (pScroll.StopPlaybackWhenScrolling)
+			if (focusedChartData != null)
 			{
-				StopPlayback();
-			}
-			else
-			{
-				MusicManager.SetMusicTimeInSeconds(GetPosition().SongTime);
-			}
+				PlaybackStartTime += timeDelta;
+				SetSongTime(PlaybackStartTime +
+				            PlaybackStopwatch.Elapsed.TotalSeconds * Preferences.Instance.PreferencesAudio.MusicRate);
 
-			UpdateAutoPlayFromScrolling();
+				if (pScroll.StopPlaybackWhenScrolling)
+				{
+					StopPlayback();
+				}
+				else
+				{
+					MusicManager.SetMusicTimeInSeconds(GetPosition().SongTime);
+				}
+
+				UpdateAutoPlayFromScrolling();
+			}
 		}
 		else
 		{
@@ -5091,6 +5095,7 @@ internal sealed class Editor :
 		ActiveSong = null;
 		FocusedChart = null;
 		FocusedChartData = null;
+		LastKnownSongTime = null;
 		foreach (var activeChartDat in ActiveChartData)
 		{
 			activeChartDat.Clear();
@@ -5554,6 +5559,8 @@ internal sealed class Editor :
 	{
 		if (activeChart != GetFocusedChartData())
 			return;
+
+		LastKnownSongTime = activeChart.Position.SongTime;
 
 		// Update the music time
 		if (!UpdatingSongTimeDirectly)
@@ -6248,7 +6255,26 @@ internal sealed class Editor :
 		if (chart == null)
 			return;
 
+		// We want to ensure the newly focused chart uses the same song time as the previously focused
+		// chart. This prevents charts from jumping when they use different rate altering events.
 		var oldSongTime = GetPosition().SongTime;
+		// In the case of no active charts the position will be at row / chart position 0. Use a
+		// better position.
+		if (ActiveCharts.Count == 0)
+		{
+			// If we are playing the music, get the position from the music.
+			if (Playing)
+			{
+				oldSongTime = MusicManager.GetMusicSongTime();
+			}
+			// Failing that, use the last song time from when a chart was open.
+			else if (LastKnownSongTime != null)
+			{
+				oldSongTime = (double)LastKnownSongTime;
+			}
+		}
+
+
 		var oldFocusedChartData = GetFocusedChartData();
 		if (ActiveSong == null || FocusedChart == chart)
 			return;
@@ -6290,8 +6316,10 @@ internal sealed class Editor :
 				FocusedChartData = ActiveChartData[i];
 		}
 
+		UpdatingSongTimeDirectly = true;
 		FocusedChartData.Position.SongTime = oldSongTime;
 		FocusedChartData.Position.SetDesiredPositionToCurrent();
+		UpdatingSongTimeDirectly = false;
 		FocusedChartData.SetFocused(true);
 		CleanUpActiveChartsWithoutDedicatedTabs(FocusedChartData);
 
