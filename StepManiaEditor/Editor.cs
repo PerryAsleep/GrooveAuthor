@@ -1802,6 +1802,8 @@ internal sealed class Editor :
 			var inMiniMapArea = MiniMap.IsScreenPositionInMiniMapBounds(mouseX, mouseY);
 			var uiInterferingWithRegionClicking = inDensityArea || inMiniMapArea;
 
+			var wereSceneElementsCapturingMouse = MiniMapCapturingMouse || MovingFocalPoint || DensityGraphCapturingMouse;
+
 			// Process input for the mini map.
 			if (!(focusedChartData?.IsSelectedRegionActive() ?? false) && !MovingFocalPoint && !DensityGraphCapturingMouse)
 				ProcessInputForMiniMap();
@@ -1819,8 +1821,10 @@ internal sealed class Editor :
 					CurrentDesiredCursor = MouseCursor.SizeAll;
 			}
 
+			var areSceneElementsCapturingMouse = MiniMapCapturingMouse || MovingFocalPoint || DensityGraphCapturingMouse;
+
 			// Process input for selecting a region.
-			if (!MiniMapCapturingMouse && !MovingFocalPoint && !DensityGraphCapturingMouse)
+			if (!areSceneElementsCapturingMouse)
 			{
 				GetFocusedChartData()?.ProcessInputForSelectedRegion(
 					currentTime,
@@ -1830,7 +1834,7 @@ internal sealed class Editor :
 			}
 
 			// Process input for clicking an unfocused chart to focus it.
-			if (lmbState.UpThisFrame())
+			if (lmbState.UpThisFrame() && !wereSceneElementsCapturingMouse && !areSceneElementsCapturingMouse)
 			{
 				var clickDownPos = lmbState.GetLastClickDownPosition();
 				var clickUpPos = lmbState.GetLastClickUpPosition();
