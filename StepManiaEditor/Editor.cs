@@ -771,9 +771,8 @@ internal sealed class Editor :
 			if (input == null || input.Length == 0)
 				continue;
 
-			// Register the command, potentially multiple times due to left and right modifier keys.
-			var adjustedInput = new Keys[input.Length];
-			RegisterKeyCommand(input, adjustedInput, 0, callback, repeat, releaseCallback);
+			// Register the command.
+			KeyCommandManager.Register(new KeyCommandManager.Command(input, callback, repeat, releaseCallback));
 			// Add the command to the UI.
 			UIControls.Instance.AddCommand(category, name, input);
 			unbound = false;
@@ -782,65 +781,6 @@ internal sealed class Editor :
 		if (unbound)
 		{
 			UIControls.Instance.AddCommand(category, name, Array.Empty<Keys>());
-		}
-	}
-
-	/// <summary>
-	/// Recursive helper to register multiple commands for inputs with left modifier keys so they include
-	/// right modifier keys as well.
-	/// </summary>
-	private void RegisterKeyCommand(
-		Keys[] input,
-		Keys[] adjustedInput,
-		int inputIndex,
-		Action callback,
-		bool repeat = false,
-		Action releaseCallback = null)
-	{
-		if (inputIndex == adjustedInput.Length)
-		{
-			KeyCommandManager.Register(new KeyCommandManager.Command(adjustedInput, callback, repeat, releaseCallback));
-			return;
-		}
-
-		switch (input[inputIndex])
-		{
-			case Keys.LeftControl:
-			{
-				adjustedInput[inputIndex] = Keys.LeftControl;
-				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback);
-				adjustedInput[inputIndex] = Keys.RightControl;
-				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback);
-				break;
-			}
-			case Keys.LeftShift:
-			{
-				adjustedInput[inputIndex] = Keys.LeftShift;
-				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback);
-				adjustedInput[inputIndex] = Keys.RightShift;
-				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback);
-				break;
-			}
-			case Keys.LeftAlt:
-			{
-				adjustedInput[inputIndex] = Keys.LeftAlt;
-				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback);
-				adjustedInput[inputIndex] = Keys.RightAlt;
-				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback);
-				break;
-			}
-			case Keys.LeftWindows:
-			{
-				adjustedInput[inputIndex] = Keys.LeftWindows;
-				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback);
-				adjustedInput[inputIndex] = Keys.RightWindows;
-				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback);
-				break;
-			}
-			default:
-				adjustedInput[inputIndex] = input[inputIndex];
-				RegisterKeyCommand(input, adjustedInput, inputIndex + 1, callback, repeat, releaseCallback);
-				break;
 		}
 	}
 

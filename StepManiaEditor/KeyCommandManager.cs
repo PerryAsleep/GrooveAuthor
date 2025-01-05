@@ -161,7 +161,7 @@ internal sealed class KeyCommandManager : IReadOnlyKeyCommandManager
 			for (var i = 0; i < Command.Input.Length; i++)
 			{
 				var last = i == Command.Input.Length - 1;
-				if (state.IsKeyDown(Command.Input[i]))
+				if (IsKeyDown(ref state, Command.Input[i]))
 				{
 					allUp = false;
 					if (StartTimeAnyHeld < 0)
@@ -334,27 +334,33 @@ internal sealed class KeyCommandManager : IReadOnlyKeyCommandManager
 
 	private bool IsKeyDownThisFrame(Keys key)
 	{
-		return IsKeyDown(key) && !PreviousState.IsKeyDown(key);
+		return IsKeyDown(key) && !IsKeyDown(ref PreviousState, key);
 	}
 
-	private bool IsKeyDown(Keys key)
+	private static bool IsKeyDown(Keys key)
+	{
+		var state = Keyboard.GetState();
+		return IsKeyDown(ref state, key);
+	}
+
+	private static bool IsKeyDown(ref KeyboardState state, Keys key)
 	{
 		switch (key)
 		{
 			case Keys.LeftControl:
 			case Keys.RightControl:
-				return Keyboard.GetState().IsKeyDown(Keys.LeftControl) || Keyboard.GetState().IsKeyDown(Keys.RightControl);
+				return state.IsKeyDown(Keys.LeftControl) || state.IsKeyDown(Keys.RightControl);
 			case Keys.LeftShift:
 			case Keys.RightShift:
-				return Keyboard.GetState().IsKeyDown(Keys.LeftShift) || Keyboard.GetState().IsKeyDown(Keys.RightShift);
+				return state.IsKeyDown(Keys.LeftShift) || state.IsKeyDown(Keys.RightShift);
 			case Keys.LeftAlt:
 			case Keys.RightAlt:
-				return Keyboard.GetState().IsKeyDown(Keys.LeftAlt) || Keyboard.GetState().IsKeyDown(Keys.RightAlt);
+				return state.IsKeyDown(Keys.LeftAlt) || state.IsKeyDown(Keys.RightAlt);
 			case Keys.LeftWindows:
 			case Keys.RightWindows:
-				return Keyboard.GetState().IsKeyDown(Keys.LeftWindows) || Keyboard.GetState().IsKeyDown(Keys.RightWindows);
+				return state.IsKeyDown(Keys.LeftWindows) || state.IsKeyDown(Keys.RightWindows);
 			default:
-				return Keyboard.GetState().IsKeyDown(key);
+				return state.IsKeyDown(key);
 		}
 	}
 
