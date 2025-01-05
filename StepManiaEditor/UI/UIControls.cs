@@ -82,7 +82,7 @@ internal sealed class UIControls : UIWindow
 	public const string MultipleInputsJoinString = " / ";
 	public const string MultipleKeysJoinString = "+";
 	public const string OrString = "/";
-	public const string Unbound = "<UNBOUND>";
+	public const string Unbound = "Unbound";
 
 	private UIControls() : base("Controls")
 	{

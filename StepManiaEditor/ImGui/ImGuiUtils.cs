@@ -375,6 +375,20 @@ internal sealed class ImGuiUtils
 	}
 
 	/// <summary>
+	/// Draws an ImGui MenuItem with a given background color.
+	/// </summary>
+	/// <param name="label">Label text for the MenuItem.</param>
+	/// <param name="shortcut">Shortcut text for the MenuItem.</param>
+	/// <param name="enabled">Whether or not the MenuItem is enabled.</param>
+	/// <param name="color">The color to draw behind the MenuItem.</param>
+	/// <returns>Whether the MenuItem was selected.</returns>
+	public static bool MenuItemWithColor(string label, string shortcut, bool enabled, uint color)
+	{
+		SetMenuColor(color);
+		return ImGui.MenuItem(label, shortcut, false, enabled);
+	}
+
+	/// <summary>
 	/// Draws an ImGui BeginMenu with a given background color.
 	/// </summary>
 	/// <param name="label">Label text for the MenuItem.</param>

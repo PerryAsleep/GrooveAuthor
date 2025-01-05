@@ -2401,6 +2401,27 @@ internal sealed class ActiveEditorChart
 		ActionQueue.Instance.Do(new ActionShiftSelectionRow(Editor, Chart, events, rows));
 	}
 
+	public void OnMirrorSelection()
+	{
+		if (!Selection.HasSelectedEvents())
+			return;
+		ActionQueue.Instance.Do(new ActionMirrorSelection(Editor, Chart, Selection.GetSelectedEvents()));
+	}
+
+	public void OnFlipSelection()
+	{
+		if (!Selection.HasSelectedEvents())
+			return;
+		ActionQueue.Instance.Do(new ActionFlipSelection(Editor, Chart, Selection.GetSelectedEvents()));
+	}
+
+	public void OnMirrorAndFlipSelection()
+	{
+		if (!Selection.HasSelectedEvents())
+			return;
+		ActionQueue.Instance.Do(new ActionMirrorAndFlipSelection(Editor, Chart, Selection.GetSelectedEvents()));
+	}
+
 	public void ClearSelection()
 	{
 		Selection.ClearSelectedEvents();
