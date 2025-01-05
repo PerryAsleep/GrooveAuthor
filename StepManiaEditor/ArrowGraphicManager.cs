@@ -123,6 +123,17 @@ internal abstract class ArrowGraphicManager
 			"icon-dance-down",
 			"icon-dance-up-right",
 		},
+		[ChartType.dance_routine] = new List<string>
+		{
+			"icon-dance-left",
+			"icon-dance-down",
+			"icon-dance-up",
+			"icon-dance-right",
+			"icon-dance-left",
+			"icon-dance-down",
+			"icon-dance-up",
+			"icon-dance-right",
+		},
 		[ChartType.pump_single] = new List<string>
 		{
 			"icon-pump-down-left",
@@ -141,6 +152,19 @@ internal abstract class ArrowGraphicManager
 			"icon-pump-center",
 		},
 		[ChartType.pump_double] = new List<string>
+		{
+			"icon-pump-down-left",
+			"icon-pump-up-left",
+			"icon-pump-center",
+			"icon-pump-up-right",
+			"icon-pump-down-right",
+			"icon-pump-down-left",
+			"icon-pump-up-left",
+			"icon-pump-center",
+			"icon-pump-up-right",
+			"icon-pump-down-right",
+		},
+		[ChartType.pump_routine] = new List<string>
 		{
 			"icon-pump-down-left",
 			"icon-pump-up-left",
@@ -177,6 +201,19 @@ internal abstract class ArrowGraphicManager
 			"icon-dance-right",
 		},
 		[ChartType.smx_full] = new List<string>
+		{
+			"icon-dance-left",
+			"icon-dance-down",
+			"icon-dance-center",
+			"icon-dance-up",
+			"icon-dance-right",
+			"icon-dance-left",
+			"icon-dance-down",
+			"icon-dance-center",
+			"icon-dance-up",
+			"icon-dance-right",
+		},
+		[ChartType.smx_team] = new List<string>
 		{
 			"icon-dance-left",
 			"icon-dance-down",

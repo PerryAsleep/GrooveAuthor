@@ -373,7 +373,7 @@ internal sealed class UIChartList : UIWindow
 			ChartPendingClone = chart;
 		}
 
-		if (ImGui.MenuItem($"Autogen New Chart From {chart.GetShortName()} Chart..."))
+		if (ImGui.MenuItem($"Autogen New Chart From {chart.GetShortName()} Chart...", chart.SupportsAutogenFeatures()))
 		{
 			Editor.ShowAutogenChartUI(chart);
 		}

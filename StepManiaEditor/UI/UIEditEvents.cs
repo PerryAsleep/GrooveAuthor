@@ -491,7 +491,9 @@ internal sealed class UIEditEvents
 					row, EditorChart.DefaultTimeSignature)));
 			DrawAddEventMenuItem("Label", !hasLabelEvent, UILabelColorRGBA, EditorLabelEvent.EventShortDescription, row,
 				() => EditorEvent.CreateEvent(EventConfig.CreateLabelConfig(chart, row)));
-			DrawAddEventMenuItem("Pattern", !hasPatternEvent, UIPatternColorRGBA,
+
+			var patternsDisabled = chart == null || !chart.SupportsAutogenFeatures() || hasPatternEvent;
+			DrawAddEventMenuItem("Pattern", patternsDisabled, UIPatternColorRGBA,
 				EditorPatternEvent.EventShortDescription, row,
 				() => EditorEvent.CreateEvent(EventConfig.CreatePatternConfig(chart, row)));
 

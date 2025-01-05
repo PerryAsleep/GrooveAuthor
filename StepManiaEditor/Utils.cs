@@ -196,7 +196,9 @@ internal sealed class Utils
 	/// </summary>
 	/// <param name="chart">The EditorChart to set.</param>
 	/// <param name="editor">The Editor to use fallback choices.</param>
-	public static void EnsureChartReferencesValidChartFromActiveSong(ref EditorChart chart, Editor editor)
+	/// <param name="withAutogenFeatures">If true then the chart must support autogen features.</param>
+	public static void EnsureChartReferencesValidChartFromActiveSong(ref EditorChart chart, Editor editor,
+		bool withAutogenFeatures)
 	{
 		var song = editor.GetActiveSong();
 
@@ -204,7 +206,11 @@ internal sealed class Utils
 		// If the Chart does not exist, set the chart to null.
 		if (chart != null)
 		{
-			if (song == null)
+			if (withAutogenFeatures && !chart.SupportsAutogenFeatures())
+			{
+				chart = null;
+			}
+			else if (song == null)
 			{
 				chart = null;
 			}
@@ -234,15 +240,35 @@ internal sealed class Utils
 			// Use the focused Chart, if one exists.
 			chart = editor.GetFocusedChart();
 			if (chart != null)
-				return;
+			{
+				if (withAutogenFeatures && !chart.SupportsAutogenFeatures())
+					chart = null;
+				else
+					return;
+			}
 
 			// Failing that use, use any Chart from the active Song.
 			if (song != null)
 			{
 				var charts = song.GetCharts();
-				if (charts?.Count > 0)
+				if (charts != null)
 				{
-					chart = charts[0];
+					foreach (var existingChart in charts)
+					{
+						if (withAutogenFeatures)
+						{
+							if (existingChart.SupportsAutogenFeatures())
+							{
+								chart = existingChart;
+								break;
+							}
+						}
+						else
+						{
+							chart = existingChart;
+							break;
+						}
+					}
 				}
 			}
 		}

@@ -2973,6 +2973,11 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		WorkQueue.Update();
 	}
 
+	public bool SupportsAutogenFeatures()
+	{
+		return NumPlayers == 1;
+	}
+
 	#endregion Misc
 
 	#region Pattern Helpers

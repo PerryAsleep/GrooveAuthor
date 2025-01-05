@@ -135,25 +135,39 @@ internal sealed class Editor :
 	private bool AutogenConfigsLoaded;
 	private bool HasCheckedForAutoLoadingLastSong;
 
+	public static readonly ChartType[] SupportedSinglePlayerChartTypes =
+	{
+		ChartType.dance_single,
+		ChartType.dance_double,
+		ChartType.dance_solo,
+		ChartType.dance_threepanel,
+		ChartType.pump_single,
+		ChartType.pump_halfdouble,
+		ChartType.pump_double,
+		ChartType.smx_beginner,
+		ChartType.smx_single,
+		ChartType.smx_dual,
+		ChartType.smx_full,
+	};
+
 	public static readonly ChartType[] SupportedChartTypes =
 	{
 		ChartType.dance_single,
 		ChartType.dance_double,
 		//dance_couple,
-		//dance_routine,
+		ChartType.dance_routine,
 		ChartType.dance_solo,
 		ChartType.dance_threepanel,
-
 		ChartType.pump_single,
 		ChartType.pump_halfdouble,
 		ChartType.pump_double,
 		//pump_couple,
-		//pump_routine,
+		ChartType.pump_routine,
 		ChartType.smx_beginner,
 		ChartType.smx_single,
 		ChartType.smx_dual,
 		ChartType.smx_full,
-		//ChartType.smx_team,
+		ChartType.smx_team,
 	};
 
 	private static readonly int MaxNumLanesForAnySupportedChartType;
@@ -3987,6 +4001,9 @@ internal sealed class Editor :
 
 	public void ShowAutogenChartUI(EditorChart sourceChart = null)
 	{
+		if (sourceChart != null && !sourceChart.SupportsAutogenFeatures())
+			sourceChart = null;
+
 		UIAutogenChart.Instance.SetChart(sourceChart);
 		UIAutogenChart.Instance.Open(true);
 	}
@@ -4061,7 +4078,7 @@ internal sealed class Editor :
 					ActionQueue.Instance.Do(new ActionDeleteChart(this, chart));
 				if (ImGui.MenuItem($"Clone {chart.GetShortName()} Chart"))
 					ActionQueue.Instance.Do(new ActionCloneChart(this, chart));
-				if (ImGui.MenuItem($"Autogen New Chart From {chart.GetShortName()} Chart..."))
+				if (ImGui.MenuItem($"Autogen New Chart From {chart.GetShortName()} Chart...", chart.SupportsAutogenFeatures()))
 					ShowAutogenChartUI(chart);
 
 				ImGui.Separator();
@@ -4314,30 +4331,32 @@ internal sealed class Editor :
 	/// </summary>
 	private async void InitStepGraphDataAsync()
 	{
-		foreach (var chartType in SupportedChartTypes)
+		var supportedTypes = SupportedSinglePlayerChartTypes;
+
+		foreach (var chartType in supportedTypes)
 		{
 			PadDataByChartType[chartType] = null;
 			StepGraphByChartType[chartType] = null;
 		}
 
 		// Attempt to load pad data for all supported chart types.
-		var padDataTasks = new Task<PadData>[SupportedChartTypes.Length];
-		for (var i = 0; i < SupportedChartTypes.Length; i++)
+		var padDataTasks = new Task<PadData>[supportedTypes.Length];
+		for (var i = 0; i < supportedTypes.Length; i++)
 		{
-			PadDataByChartType[SupportedChartTypes[i]] = null;
-			padDataTasks[i] = LoadPadData(SupportedChartTypes[i]);
+			PadDataByChartType[supportedTypes[i]] = null;
+			padDataTasks[i] = LoadPadData(supportedTypes[i]);
 		}
 
 		await Task.WhenAll(padDataTasks);
-		for (var i = 0; i < SupportedChartTypes.Length; i++)
+		for (var i = 0; i < supportedTypes.Length; i++)
 		{
-			PadDataByChartType[SupportedChartTypes[i]] = padDataTasks[i].Result;
+			PadDataByChartType[supportedTypes[i]] = padDataTasks[i].Result;
 		}
 
 		// Create StepGraphs.
 		var pOptions = Preferences.Instance.PreferencesOptions;
 		var validStepGraphTypes = new List<ChartType>();
-		foreach (var chartType in SupportedChartTypes)
+		foreach (var chartType in supportedTypes)
 		{
 			if (pOptions.StartupStepGraphs.Contains(chartType))
 			{

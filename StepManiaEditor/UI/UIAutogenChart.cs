@@ -67,7 +67,7 @@ internal sealed class UIAutogenChart : UIWindow
 		if (!Showing)
 			return;
 
-		Utils.EnsureChartReferencesValidChartFromActiveSong(ref SourceChart, Editor);
+		Utils.EnsureChartReferencesValidChartFromActiveSong(ref SourceChart, Editor, true);
 
 		if (BeginWindow(WindowTitle, ref Showing, DefaultWidth, ImGuiWindowFlags.NoCollapse))
 		{
@@ -106,7 +106,7 @@ internal sealed class UIAutogenChart : UIWindow
 				// Destination ChartType.
 				ImGuiLayoutUtils.DrawRowEnum("New Chart Type", "AutogenChartChartType",
 					ref Preferences.Instance.LastSelectedAutogenChartType,
-					Editor.SupportedChartTypes,
+					Editor.SupportedSinglePlayerChartTypes,
 					"Type of Chart to generate.");
 
 				// Performed Chart Config.

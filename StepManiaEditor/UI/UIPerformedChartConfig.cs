@@ -31,8 +31,8 @@ internal sealed class UIPerformedChartConfig : UIWindow
 
 	static UIPerformedChartConfig()
 	{
-		ArrowWeightsWidgets = new List<ImGuiArrowWeightsWidget>(Editor.SupportedChartTypes.Length);
-		foreach (var _ in Editor.SupportedChartTypes)
+		ArrowWeightsWidgets = new List<ImGuiArrowWeightsWidget>(Editor.SupportedSinglePlayerChartTypes.Length);
+		foreach (var _ in Editor.SupportedSinglePlayerChartTypes)
 		{
 			ArrowWeightsWidgets.Add(new ImGuiArrowWeightsWidget());
 		}
@@ -277,7 +277,7 @@ internal sealed class UIPerformedChartConfig : UIWindow
 						ImGuiArrowWeightsWidget.GetFullWidth(editorConfig));
 
 					var index = 0;
-					foreach (var chartType in Editor.SupportedChartTypes)
+					foreach (var chartType in Editor.SupportedSinglePlayerChartTypes)
 					{
 						ImGui.TableNextRow();
 
