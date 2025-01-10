@@ -15,7 +15,7 @@ namespace StepManiaEditor;
 ///  Call Draw to draw.
 ///  Categories and commands will be drawn in the order they were added.
 /// </summary>
-internal sealed class UIControls : UIWindow
+internal sealed class UIControls : UIWindow, Fumen.IObserver<PreferencesKeyBinds>
 {
 	private static readonly int TitleColumnWidth = UiScaled(260);
 	private static readonly Vector2 DefaultSize = new(UiScaled(538), UiScaled(800));
@@ -69,7 +69,7 @@ internal sealed class UIControls : UIWindow
 	/// <summary>
 	/// KeyBindCommands have one or more inputs and can be remapped.
 	/// </summary>
-	internal class KeyBindCommand : ICommand, Fumen.IObserver<PreferencesKeyBinds>
+	internal class KeyBindCommand : ICommand
 	{
 		private readonly KeyCommandManager KeyCommandManager;
 		private readonly string Name;
@@ -91,8 +91,7 @@ internal sealed class UIControls : UIWindow
 
 			var p = Preferences.Instance.PreferencesKeyBinds;
 			Defaults = p.GetDefaults(Id);
-			p.AddObserver(this);
-			ResetInputFromPreferences(true);
+			ResetInputFromPreferences();
 		}
 
 		public void RefreshConflicts()
@@ -104,7 +103,7 @@ internal sealed class UIControls : UIWindow
 			}
 		}
 
-		private void ResetInputFromPreferences(bool initializing)
+		public void ResetInputFromPreferences()
 		{
 			// Reset Inputs.
 			var p = Preferences.Instance.PreferencesKeyBinds;
@@ -117,15 +116,6 @@ internal sealed class UIControls : UIWindow
 			InputsAsStrings.Clear();
 			foreach (var input in Inputs)
 				InputsAsStrings.Add(GetCommandString(input));
-
-			// If we aren't initializing then we assume the inputs have changed.
-			// This means we need to refresh the state for whether we are conflicting with
-			// other commands or not. Additionally we need other commands to refresh in
-			// case they now conflict with us. This could be improved but there aren't
-			// many commands and this occurs infrequently so just refresh the conflicting
-			// state for every command.
-			if (!initializing)
-				Instance.RefreshConflicts();
 		}
 
 		private void RefreshModifiedState()
@@ -281,14 +271,6 @@ internal sealed class UIControls : UIWindow
 					});
 			}
 		}
-
-		public void OnNotify(string eventId, PreferencesKeyBinds notifier, object payload)
-		{
-			if (eventId == PreferencesKeyBinds.NotificationKeyBindingChanged && (string)payload == Id)
-			{
-				ResetInputFromPreferences(false);
-			}
-		}
 	}
 
 	#endregion Commands
@@ -337,7 +319,7 @@ internal sealed class UIControls : UIWindow
 	/// </summary>
 	private readonly List<Category> Categories = new();
 
-	private readonly List<KeyBindCommand> AllKeyBindCommands = new();
+	private readonly Dictionary<string, KeyBindCommand> AllKeyBindCommands = new();
 	public const string MultipleInputsJoinString = " / ";
 	public const string MultipleKeysJoinString = "+";
 	public const string OrString = "/";
@@ -349,9 +331,10 @@ internal sealed class UIControls : UIWindow
 	{
 	}
 
-	public void SetKeyCommandManager(KeyCommandManager keyCommandManager)
+	public void Initialize(KeyCommandManager keyCommandManager)
 	{
 		KeyCommandManager = keyCommandManager;
+		Preferences.Instance.PreferencesKeyBinds.AddObserver(this);
 	}
 
 	public static string GetCommandString(List<Keys[]> inputs)
@@ -452,7 +435,7 @@ internal sealed class UIControls : UIWindow
 		var newCategory = GetOrCreateCategory(categoryName);
 		var newCommand = new KeyBindCommand(KeyCommandManager, commandName, id, additionalInputText);
 		newCategory.AddCommand(newCommand);
-		AllKeyBindCommands.Add(newCommand);
+		AllKeyBindCommands.Add(id, newCommand);
 	}
 
 	public void FinishAddingCommands()
@@ -462,9 +445,9 @@ internal sealed class UIControls : UIWindow
 
 	public void RefreshConflicts()
 	{
-		foreach (var command in AllKeyBindCommands)
+		foreach (var kvp in AllKeyBindCommands)
 		{
-			command.RefreshConflicts();
+			kvp.Value.RefreshConflicts();
 		}
 	}
 
@@ -495,5 +478,17 @@ internal sealed class UIControls : UIWindow
 			foreach (var category in Categories)
 				category.Draw();
 		ImGui.End();
+	}
+
+	public void OnNotify(string eventId, PreferencesKeyBinds notifier, object payload)
+	{
+		if (eventId == PreferencesKeyBinds.NotificationKeyBindingChanged)
+		{
+			if (AllKeyBindCommands.TryGetValue((string)payload, out var command))
+			{
+				command.ResetInputFromPreferences();
+				RefreshConflicts();
+			}
+		}
 	}
 }

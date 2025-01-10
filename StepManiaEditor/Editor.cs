@@ -553,7 +553,7 @@ internal sealed class Editor :
 	{
 		KeyCommandManager = new KeyCommandManager();
 		UIKeyRebindModal.Instance.SetKeyCommandManager(KeyCommandManager);
-		UIControls.Instance.SetKeyCommandManager(KeyCommandManager);
+		UIControls.Instance.Initialize(KeyCommandManager);
 
 		// @formatter:off
 		const string fileIo = "File I/O";
