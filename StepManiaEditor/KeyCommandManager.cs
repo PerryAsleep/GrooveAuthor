@@ -17,7 +17,7 @@ public interface IReadOnlyKeyCommandManager
 ///  Register Commands with Register.
 ///  Call Update once each frame.
 /// </summary>
-internal sealed class KeyCommandManager : IReadOnlyKeyCommandManager
+internal sealed class KeyCommandManager : IReadOnlyKeyCommandManager, Fumen.IObserver<PreferencesKeyBinds>
 {
 	/// <summary>
 	/// For repeatable Commands, number of seconds the keys need to be held for before the first repeat occurs.
@@ -30,12 +30,24 @@ internal sealed class KeyCommandManager : IReadOnlyKeyCommandManager
 	/// </summary>
 	private const double RepeatTimeSubsequent = 0.02;
 
+	#region Commands
+
 	/// <summary>
 	/// Command configuration. Used to specify a sequence of keys that when pressed
 	/// together should invoke a callback Action.
 	/// </summary>
 	public class Command
 	{
+		/// <summary>
+		/// User-facing command name.
+		/// </summary>
+		public readonly string Name;
+
+		/// <summary>
+		/// Internal key bind identifier.
+		/// </summary>
+		public readonly string Id;
+
 		/// <summary>
 		/// Action to invoke when the Command is activated.
 		/// </summary>
@@ -50,7 +62,7 @@ internal sealed class KeyCommandManager : IReadOnlyKeyCommandManager
 		/// Sequence of Keys which much be pressed to activate the Command.
 		/// Order is important in that that last Keys must be pressed last.
 		/// </summary>
-		public readonly Keys[] Input;
+		public readonly List<Keys[]> Inputs;
 
 		/// <summary>
 		/// Whether or not this Command should repeatedly invoke the Callback
@@ -63,14 +75,45 @@ internal sealed class KeyCommandManager : IReadOnlyKeyCommandManager
 		/// </summary>
 		public readonly bool BlocksInput;
 
-		public Command(Keys[] input, Action callback, bool repeat = false, Action releaseCallback = null, bool blocksInput = true)
+		public Command(string name, string id, Action callback, bool repeat = false,
+			Action releaseCallback = null, bool blocksInput = true)
 		{
-			Input = new Keys[input.Length];
-			Array.Copy(input, Input, input.Length);
+			Name = name;
+			Id = id;
 			Callback = callback;
 			ReleaseCallback = releaseCallback;
 			Repeat = repeat;
 			BlocksInput = blocksInput;
+		}
+	}
+
+	/// <summary>
+	/// State for each Command registered in the KeyCommandManager.
+	/// </summary>
+	private class CommandState
+	{
+		private const double UnsetTime = -1.0;
+
+		public readonly Command Command;
+		public readonly Keys[] Input;
+		private double StartTimeAnyHeld = UnsetTime;
+		private double StartTimeLastHeld = UnsetTime;
+		private double NextTriggerTime = UnsetTime;
+		private bool ActivatedWhileOtherBlockingCommandActive;
+		private bool Active;
+
+		public CommandState(Command command, Keys[] input)
+		{
+			Command = command;
+			if (input == null || input.Length == 0)
+			{
+				Input = Array.Empty<Keys>();
+			}
+			else
+			{
+				Input = new Keys[input.Length];
+				Array.Copy(input, Input, input.Length);
+			}
 		}
 
 		/// <summary>
@@ -78,9 +121,11 @@ internal sealed class KeyCommandManager : IReadOnlyKeyCommandManager
 		/// </summary>
 		/// <param name="other">Other Command to check.</param>
 		/// <returns>True if this Command's Inputs are a subset of the other's and false otherwise.</returns>
-		public bool IsInputSubsetOfOther(Command other)
+		private bool IsInputSubsetOfOther(CommandState other)
 		{
 			if (Input.Length >= other.Input.Length)
+				return false;
+			if (Input.Length == 0)
 				return false;
 			for (var i = 0; i < Input.Length; i++)
 			{
@@ -100,26 +145,73 @@ internal sealed class KeyCommandManager : IReadOnlyKeyCommandManager
 
 			return true;
 		}
-	}
 
-	/// <summary>
-	/// State for each Command registered in the KeyCommandManager.
-	/// </summary>
-	private class CommandState
-	{
-		public readonly Command Command;
 
-		private const double UnsetTime = -1.0;
-
-		private double StartTimeAnyHeld = UnsetTime;
-		private double StartTimeLastHeld = UnsetTime;
-		private double NextTriggerTime = UnsetTime;
-		private bool ActivatedWhileOtherBlockingCommandActive;
-		private bool Active;
-
-		public CommandState(Command command)
+		/// <summary>
+		/// Returns true if the given inputs would conflict with the other given input and prevent
+		/// it from triggering. This means the given inputs are a subset of the other inputs and they
+		/// would end before the others, and the given inputs are configured to block input.
+		/// </summary>
+		/// <param name="blocksInput">Whether the given input should block other input.</param>
+		/// <param name="input">The input to check to see if it conflicts with the other given input.</param>
+		/// <param name="otherInput">The other input to check against the given input.</param>
+		/// <returns>True if this Command's Inputs would prevent the other's from triggering and false otherwise.</returns>
+		public static bool ConflictsWithOther(bool blocksInput, Keys[] input, Keys[] otherInput)
 		{
-			Command = command;
+			if (!blocksInput)
+				return false;
+			if (input.Length == 0 || otherInput.Length == 0)
+				return false;
+			if (input.Length > otherInput.Length)
+				return false;
+
+			// The given input is the same length as the other.
+			// For the given input to conflict with the other they
+			// must contain all the same keys.
+			if (input.Length == otherInput.Length)
+			{
+				for (var i = 0; i < input.Length; i++)
+				{
+					var keyInOther = false;
+					for (var j = 0; j < otherInput.Length; j++)
+					{
+						if (input[i] == otherInput[j])
+						{
+							keyInOther = true;
+							break;
+						}
+					}
+
+					if (!keyInOther)
+						return false;
+				}
+
+				return true;
+			}
+
+			// The given input is shorter than the other.
+			// For the given input to conflict with the other all the inputs
+			// from the given input must be in the other before the final input
+			// of the other.
+			for (var i = 0; i < input.Length; i++)
+			{
+				var keyInOther = false;
+				for (var j = 0; j < otherInput.Length; j++)
+				{
+					if (input[i] == otherInput[j])
+					{
+						if (j == otherInput.Length - 1)
+							return false;
+						keyInOther = true;
+						break;
+					}
+				}
+
+				if (!keyInOther)
+					return false;
+			}
+
+			return true;
 		}
 
 		/// <summary>
@@ -142,13 +234,15 @@ internal sealed class KeyCommandManager : IReadOnlyKeyCommandManager
 		public void Update(double timeInSeconds, HashSet<CommandState> activeCommands, KeyCommandManager keyCommandManager,
 			ref KeyboardState state)
 		{
+			if (Input.Length == 0)
+				return;
+
 			var canActivate = true;
 			foreach (var activeCommand in activeCommands)
 			{
 				if (activeCommand == this || !activeCommand.Command.BlocksInput)
 					continue;
-				if (Command.IsInputSubsetOfOther(activeCommand.Command)
-				    || activeCommand.Command.IsInputSubsetOfOther(Command))
+				if (IsInputSubsetOfOther(activeCommand) || activeCommand.IsInputSubsetOfOther(this))
 				{
 					canActivate = false;
 					break;
@@ -158,10 +252,10 @@ internal sealed class KeyCommandManager : IReadOnlyKeyCommandManager
 			// Loop over every key in the inputs and record the current state.
 			var allDown = true;
 			var allUp = true;
-			for (var i = 0; i < Command.Input.Length; i++)
+			for (var i = 0; i < Input.Length; i++)
 			{
-				var last = i == Command.Input.Length - 1;
-				if (IsKeyDown(ref state, Command.Input[i]))
+				var last = i == Input.Length - 1;
+				if (IsKeyDown(ref state, Input[i]))
 				{
 					allUp = false;
 					if (StartTimeAnyHeld < 0)
@@ -178,7 +272,7 @@ internal sealed class KeyCommandManager : IReadOnlyKeyCommandManager
 						// someone were to hold Ctrl+S, then release Ctrl and S is still held, we do not
 						// want to activate a command that just requires pressing S.
 						// See also https://github.com/PerryAsleep/GrooveAuthor/issues/7
-						if (keyCommandManager.IsKeyDownThisFrame(Command.Input[i]) && !canActivate)
+						if (keyCommandManager.IsKeyDownThisFrame(Input[i]) && !canActivate)
 							ActivatedWhileOtherBlockingCommandActive = true;
 
 						if (StartTimeLastHeld < 0)
@@ -256,24 +350,34 @@ internal sealed class KeyCommandManager : IReadOnlyKeyCommandManager
 		}
 	}
 
+	#endregion Commands
+
 	/// <summary>
 	/// CommandStates for all registered Commands. Processed in order.
 	/// </summary>
-	private List<CommandState> Commands = new();
+	private List<CommandState> CommandStates = new();
+
+	/// <summary>
+	/// All Commands keyed by their Id.
+	/// </summary>
+	private readonly Dictionary<string, Command> Commands = new();
 
 	private bool CommandsDirty;
-
 	private KeyboardState PreviousState;
+	private bool IsRebinding;
+
+	public KeyCommandManager()
+	{
+		Preferences.Instance.PreferencesKeyBinds.AddObserver(this);
+	}
 
 	/// <summary>
 	/// Cancels all commands.
 	/// </summary>
 	public void CancelAllCommands()
 	{
-		foreach (var command in Commands)
-		{
-			command.Cancel();
-		}
+		foreach (var state in CommandStates)
+			state.Cancel();
 	}
 
 	/// <summary>
@@ -289,16 +393,21 @@ internal sealed class KeyCommandManager : IReadOnlyKeyCommandManager
 			// Sort the Commands by the length of their inputs.
 			// This ensures that commands which are subsets of other commands aren't triggered in the wrong order.
 			// For example, when holding Ctrl + Shift + Z, Ctrl + Z should not trigger.
-			Commands = Commands.OrderByDescending(commandState => commandState.Command.Input.Length).ToList();
+			CommandStates = CommandStates.OrderByDescending(commandState => commandState.Input.Length).ToList();
 			CommandsDirty = false;
 		}
+
+		// Do not process any input while rebinding keys.
+		// Ideally this would use the observer pattern but UIKeyRebindModal is static.
+		if (IsRebinding)
+			return;
 
 		var state = Keyboard.GetState();
 
 		// Check if any Command is active.
 		// Active Commands prevent other Commands from activating.
 		var activeCommands = new HashSet<CommandState>();
-		foreach (var command in Commands)
+		foreach (var command in CommandStates)
 		{
 			if (command.IsActive())
 			{
@@ -308,9 +417,16 @@ internal sealed class KeyCommandManager : IReadOnlyKeyCommandManager
 		}
 
 		// Handle each Command.
-		foreach (var command in Commands)
+		foreach (var command in CommandStates)
 		{
 			command.Update(timeInSeconds, activeCommands, this, ref state);
+
+			// Commands can alter CommandStates. For example a command, Ctrl+Z, might undo an action
+			// to change key bindings, which will call KeyBindingsChanged and mutate CommandStates.
+			// Use the CommandsDirty flag to detect this and break.
+			if (CommandsDirty)
+				break;
+
 			if (command.IsActive())
 			{
 				activeCommands.Add(command);
@@ -326,9 +442,17 @@ internal sealed class KeyCommandManager : IReadOnlyKeyCommandManager
 	/// <param name="command">Command to register.</param>
 	public void Register(Command command)
 	{
-		// Add the command at the end of the list and set a flag
-		// so that we can sort the commands the next time we update.
-		Commands.Add(new CommandState(command));
+		Commands[command.Id] = command;
+		AddStateForCommand(command);
+		CommandsDirty = true;
+	}
+
+	private void AddStateForCommand(Command command)
+	{
+		var p = Preferences.Instance.PreferencesKeyBinds;
+		var inputs = Utils.GetValueFromFieldOrProperty<List<Keys[]>>(p, command.Id);
+		foreach (var input in inputs)
+			CommandStates.Add(new CommandState(command, input));
 		CommandsDirty = true;
 	}
 
@@ -384,4 +508,75 @@ internal sealed class KeyCommandManager : IReadOnlyKeyCommandManager
 
 		return false;
 	}
+
+	/// <summary>
+	/// Gets all commands which conflict with the given input.
+	/// </summary>
+	/// <param name="id">Id of the key binding.</param>
+	/// <param name="input">Input sequence for the given key binding.</param>
+	/// <returns>List of all commands conflicting with the given input, represented by their names.</returns>
+	public List<string> GetConflictingCommands(string id, Keys[] input)
+	{
+		var blocksInput = Preferences.Instance.PreferencesKeyBinds.BlocksInput(id);
+		var matches = new List<string>();
+		var givenInputIsRegistered = false;
+		foreach (var commandState in CommandStates)
+		{
+			// Ignore the given command. Ideally we only ignore the one specific input being checked rather
+			// than all potential inputs for the command but we don't have a good way of identifying them
+			// and it is rare to have move than one per command, let alone one which conflicts with another
+			// from the same command.
+			if (commandState.Command.Id == id)
+			{
+				givenInputIsRegistered = true;
+				continue;
+			}
+
+			if (!matches.Contains(commandState.Command.Name) && (
+				    CommandState.ConflictsWithOther(blocksInput, input, commandState.Input)
+				    || CommandState.ConflictsWithOther(commandState.Command.BlocksInput, commandState.Input, input)))
+			{
+				matches.Add(commandState.Command.Name);
+			}
+		}
+
+		// If the given input isn't even registered with the KeyCommandManager it can't conflict with anything.
+		if (!givenInputIsRegistered)
+			matches.Clear();
+
+		return matches;
+	}
+
+	#region IObserver
+
+	public void OnNotify(string eventId, PreferencesKeyBinds notifier, object payload)
+	{
+		if (eventId == PreferencesKeyBinds.NotificationKeyBindingChanged)
+		{
+			var preferenceName = (string)payload;
+			if (!Commands.TryGetValue(preferenceName, out var command))
+				return;
+
+			// Remove state associated with the changed command.
+			for (var i = CommandStates.Count - 1; i >= 0; i--)
+				if (CommandStates[i].Command.Name == command.Name)
+					CommandStates.RemoveAt(i);
+
+			// Add state for the new inputs for the command.
+			AddStateForCommand(command);
+			CommandsDirty = true;
+		}
+	}
+
+	public void NotifyRebindingStart()
+	{
+		IsRebinding = true;
+	}
+
+	public void NotifyRebindingEnd()
+	{
+		IsRebinding = false;
+	}
+
+	#endregion #IObserver
 }

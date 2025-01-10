@@ -25,7 +25,6 @@ using static StepManiaEditor.ImGuiUtils;
 using static Fumen.Converters.SMCommon;
 using static StepManiaEditor.EditorSongImageUtils;
 using static StepManiaEditor.MiniMap;
-using Keys = Microsoft.Xna.Framework.Input.Keys;
 using Path = Fumen.Path;
 
 [assembly: InternalsVisibleTo("StepManiaEditorTests")]
@@ -552,206 +551,159 @@ internal sealed class Editor :
 
 	private void InitializeKeyCommandManager()
 	{
-		var p = Preferences.Instance.PreferencesKeyBinds;
-		// @formatter:off
 		KeyCommandManager = new KeyCommandManager();
+		UIKeyRebindModal.Instance.SetKeyCommandManager(KeyCommandManager);
+		UIControls.Instance.SetKeyCommandManager(KeyCommandManager);
 
+		// @formatter:off
 		const string fileIo = "File I/O";
-		AddKeyCommand(fileIo, "Open", p.Open, OnOpen);
-		AddKeyCommand(fileIo, "Open Containing Folder", p.OpenContainingFolder, OnOpenContainingFolder);
-		AddKeyCommand(fileIo, "Save As", p.SaveAs, OnSaveAs);
-		AddKeyCommand(fileIo, "Save", p.Save, OnSave);
-		AddKeyCommand(fileIo, "New", p.New, OnNew);
-		AddKeyCommand(fileIo, "Reload", p.Reload, OnReload);
-		AddKeyCommand(fileIo, "Close", p.Close, OnClose);
+		AddKeyCommand(fileIo, "Open", nameof(PreferencesKeyBinds.Open), OnOpen);
+		AddKeyCommand(fileIo, "Open Containing Folder", nameof(PreferencesKeyBinds.OpenContainingFolder), OnOpenContainingFolder);
+		AddKeyCommand(fileIo, "Save As", nameof(PreferencesKeyBinds.SaveAs), OnSaveAs);
+		AddKeyCommand(fileIo, "Save", nameof(PreferencesKeyBinds.Save), OnSave);
+		AddKeyCommand(fileIo, "New", nameof(PreferencesKeyBinds.New), OnNew);
+		AddKeyCommand(fileIo, "Reload", nameof(PreferencesKeyBinds.Reload), OnReload);
+		AddKeyCommand(fileIo, "Close", nameof(PreferencesKeyBinds.Close), OnClose);
 
 		const string undo = "Undo";
-		AddKeyCommand(undo, "Undo", p.Undo, OnUndo, true);
-		AddKeyCommand(undo, "Redo", p.Redo, OnRedo, true);
+		AddKeyCommand(undo, "Undo", nameof(PreferencesKeyBinds.Undo), OnUndo, true);
+		AddKeyCommand(undo, "Redo", nameof(PreferencesKeyBinds.Redo), OnRedo, true);
 
 		const string selection = "Selection";
-		UIControls.Instance.AddCommand(selection, "Select Note", "Left Mouse Button");
-		UIControls.Instance.AddCommand(selection, "Select In Region", "Drag Left Mouse Button");
-
-		UIControls.Instance.AddCommand(selection, "Select Misc. Events In Region",
-			UIControls.GetCommandString(p.MouseSelectionAltBehavior) + UIControls.MultipleKeysJoinString + "Drag Left Mouse Button");
-		UIControls.Instance.AddCommand(selection, "Add to Selection", 
-			UIControls.GetCommandString(p.MouseSelectionControlBehavior) + UIControls.MultipleKeysJoinString + "Left Mouse Button");
-		UIControls.Instance.AddCommand(selection, "Extend Selection",
-			UIControls.GetCommandString(p.MouseSelectionShiftBehavior) + UIControls.MultipleKeysJoinString + "Left Mouse Button");
-		AddKeyCommand(selection, "Select All Notes", p.SelectAllNotes, OnSelectAll);
-		AddKeyCommand(selection, "Select All Taps", p.SelectAllTaps, () => OnSelectAll(e => e is EditorTapNoteEvent));
-		AddKeyCommand(selection, "Select All Mines", p.SelectAllMines, () => OnSelectAll(e => e is EditorMineNoteEvent));
-		AddKeyCommand(selection, "Select All Fakes", p.SelectAllFakes, () => OnSelectAll(e => e is EditorFakeNoteEvent));
-		AddKeyCommand(selection, "Select All Lifts", p.SelectAllLifts, () => OnSelectAll(e => e is EditorLiftNoteEvent));
-		AddKeyCommand(selection, "Select All Holds", p.SelectAllHolds, () => OnSelectAll(e => e is EditorHoldNoteEvent hn && !hn.IsRoll()));
-		AddKeyCommand(selection, "Select All Rolls", p.SelectAllRolls, () => OnSelectAll(e => e is EditorHoldNoteEvent hn && hn.IsRoll()));
-		AddKeyCommand(selection, "Select All Holds and Rolls", p.SelectAllHoldsAndRolls, () => OnSelectAll(e => e is EditorHoldNoteEvent));
-		AddKeyCommand(selection, "Select All Misc. Events", p.SelectAllMiscEvents, OnSelectAllAlt);
-		AddKeyCommand(selection, "Select All", p.SelectAll, OnSelectAllShift);
-		AddKeyCommand(selection, "Select All Patterns", p.SelectAllPatterns, () => OnSelectAll(e => e is EditorPatternEvent));
+		UIControls.Instance.AddStaticCommand(selection, "Select Note", "Left Mouse Button");
+		UIControls.Instance.AddStaticCommand(selection, "Select Region", "Drag Left Mouse Button");
+		UIControls.Instance.AddCommand(selection, "Select Misc. Events In Region", nameof(PreferencesKeyBinds.MouseSelectionAltBehavior), UIControls.MultipleKeysJoinString + "Drag Left Mouse Button");
+		UIControls.Instance.AddCommand(selection, "Add to Selection", nameof(PreferencesKeyBinds.MouseSelectionControlBehavior), UIControls.MultipleKeysJoinString + "Left Mouse Button");
+		UIControls.Instance.AddCommand(selection, "Extend Selection", nameof(PreferencesKeyBinds.MouseSelectionShiftBehavior), UIControls.MultipleKeysJoinString + "Left Mouse Button");
+		AddKeyCommand(selection, "Select All Notes", nameof(PreferencesKeyBinds.SelectAllNotes), OnSelectAll);
+		AddKeyCommand(selection, "Select All Taps", nameof(PreferencesKeyBinds.SelectAllTaps), () => OnSelectAll(e => e is EditorTapNoteEvent));
+		AddKeyCommand(selection, "Select All Mines", nameof(PreferencesKeyBinds.SelectAllMines), () => OnSelectAll(e => e is EditorMineNoteEvent));
+		AddKeyCommand(selection, "Select All Fakes", nameof(PreferencesKeyBinds.SelectAllFakes), () => OnSelectAll(e => e is EditorFakeNoteEvent));
+		AddKeyCommand(selection, "Select All Lifts", nameof(PreferencesKeyBinds.SelectAllLifts), () => OnSelectAll(e => e is EditorLiftNoteEvent));
+		AddKeyCommand(selection, "Select All Holds", nameof(PreferencesKeyBinds.SelectAllHolds), () => OnSelectAll(e => e is EditorHoldNoteEvent hn && !hn.IsRoll()));
+		AddKeyCommand(selection, "Select All Rolls", nameof(PreferencesKeyBinds.SelectAllRolls), () => OnSelectAll(e => e is EditorHoldNoteEvent hn && hn.IsRoll()));
+		AddKeyCommand(selection, "Select All Holds and Rolls", nameof(PreferencesKeyBinds.SelectAllHoldsAndRolls), () => OnSelectAll(e => e is EditorHoldNoteEvent));
+		AddKeyCommand(selection, "Select All Misc. Events", nameof(PreferencesKeyBinds.SelectAllMiscEvents), OnSelectAllAlt);
+		AddKeyCommand(selection, "Select All", nameof(PreferencesKeyBinds.SelectAll), OnSelectAllShift);
+		AddKeyCommand(selection, "Select All Patterns", nameof(PreferencesKeyBinds.SelectAllPatterns), () => OnSelectAll(e => e is EditorPatternEvent));
 
 		const string copyPaste = "Copy / Paste";
-		AddKeyCommand(copyPaste, "Copy", p.Copy, OnCopy, true);
-		AddKeyCommand(copyPaste, "Cut", p.Cut, OnCut, true);
-		AddKeyCommand(copyPaste, "Paste", p.Paste, OnPaste, true);
+		AddKeyCommand(copyPaste, "Copy", nameof(PreferencesKeyBinds.Copy), OnCopy, true);
+		AddKeyCommand(copyPaste, "Cut", nameof(PreferencesKeyBinds.Cut), OnCut, true);
+		AddKeyCommand(copyPaste, "Paste", nameof(PreferencesKeyBinds.Paste), OnPaste, true);
 
 		const string sound = "Sound";
-		AddKeyCommand(sound, "Toggle Preview", p.TogglePreview, OnTogglePlayPreview);
-		AddKeyCommand(sound, "Toggle Assist Tick", p.ToggleAssistTick, OnToggleAssistTick);
-		AddKeyCommand(sound, "Toggle Beat Tick", p.ToggleBeatTick, OnToggleBeatTick);
-		AddKeyCommand(sound, "Decrease Music Rate", p.DecreaseMusicRate, OnDecreaseMusicRate, true);
-		AddKeyCommand(sound, "Increase Music Rate", p.IncreaseMusicRate, OnIncreaseMusicRate, true);
+		AddKeyCommand(sound, "Toggle Preview", nameof(PreferencesKeyBinds.TogglePreview), OnTogglePlayPreview);
+		AddKeyCommand(sound, "Toggle Assist Tick", nameof(PreferencesKeyBinds.ToggleAssistTick), OnToggleAssistTick);
+		AddKeyCommand(sound, "Toggle Beat Tick", nameof(PreferencesKeyBinds.ToggleBeatTick), OnToggleBeatTick);
+		AddKeyCommand(sound, "Decrease Music Rate", nameof(PreferencesKeyBinds.DecreaseMusicRate), OnDecreaseMusicRate, true);
+		AddKeyCommand(sound, "Increase Music Rate", nameof(PreferencesKeyBinds.IncreaseMusicRate), OnIncreaseMusicRate, true);
 
 		const string general = "General";
-		AddKeyCommand(general, "Play / Pause", p.PlayPause, OnTogglePlayback);
-		AddKeyCommand(general, "Cancel / Go Back", p.CancelGoBack, OnEscape);
-		AddKeyCommand(general, "Toggle Note Entry Mode", p.ToggleNoteEntryMode, OnToggleNoteEntryMode);
-		AddKeyCommand(general, "Toggle Spacing Mode", p.ToggleSpacingMode, OnToggleSpacingMode);
-		UIControls.Instance.AddCommand(general, "Context Menu", "Right Mouse Button");
-		UIControls.Instance.AddCommand(general, "Exit", "Alt+F4");
+		AddKeyCommand(general, "Play / Pause", nameof(PreferencesKeyBinds.PlayPause), OnTogglePlayback);
+		AddKeyCommand(general, "Cancel / Go Back", nameof(PreferencesKeyBinds.CancelGoBack), OnEscape);
+		AddKeyCommand(general, "Toggle Note Entry Mode", nameof(PreferencesKeyBinds.ToggleNoteEntryMode), OnToggleNoteEntryMode);
+		AddKeyCommand(general, "Toggle Spacing Mode", nameof(PreferencesKeyBinds.ToggleSpacingMode), OnToggleSpacingMode);
+		UIControls.Instance.AddStaticCommand(general, "Context Menu", "Right Mouse Button");
+		UIControls.Instance.AddStaticCommand(general, "Exit", "Alt+F4");
 
 		const string chartSelection ="Chart Selection";
-		AddKeyCommand(chartSelection, "Open Previous Chart", p.OpenPreviousChart, OpenPreviousChart);
-		AddKeyCommand(chartSelection, "Open Next Chart", p.OpenNextChart, OpenNextChart);
-		AddKeyCommand(chartSelection, "Close Focused Chart", p.CloseFocusedChart, CloseFocusedChart);
-		AddKeyCommand(chartSelection, "Keep Chart Open", p.KeepChartOpen, SetFocusedChartHasDedicatedTab);
-		AddKeyCommand(chartSelection, "Move Focused Chart Left", p.MoveFocusedChartLeft, MoveFocusedChartLeft, true);
-		AddKeyCommand(chartSelection, "Move Focused Chart Right", p.MoveFocusedChartRight, MoveFocusedChartRight, true);
-		AddKeyCommand(chartSelection, "Focus Previous Chart", p.FocusPreviousChart, FocusPreviousChart, true);
-		AddKeyCommand(chartSelection, "Focus Next Chart", p.FocusNextChart, FocusNextChart, true);
+		AddKeyCommand(chartSelection, "Open Previous Chart", nameof(PreferencesKeyBinds.OpenPreviousChart), OpenPreviousChart);
+		AddKeyCommand(chartSelection, "Open Next Chart", nameof(PreferencesKeyBinds.OpenNextChart), OpenNextChart);
+		AddKeyCommand(chartSelection, "Close Focused Chart", nameof(PreferencesKeyBinds.CloseFocusedChart), CloseFocusedChart);
+		AddKeyCommand(chartSelection, "Keep Chart Open", nameof(PreferencesKeyBinds.KeepChartOpen), SetFocusedChartHasDedicatedTab);
+		AddKeyCommand(chartSelection, "Move Focused Chart Left", nameof(PreferencesKeyBinds.MoveFocusedChartLeft), MoveFocusedChartLeft, true);
+		AddKeyCommand(chartSelection, "Move Focused Chart Right", nameof(PreferencesKeyBinds.MoveFocusedChartRight), MoveFocusedChartRight, true);
+		AddKeyCommand(chartSelection, "Focus Previous Chart", nameof(PreferencesKeyBinds.FocusPreviousChart), FocusPreviousChart, true);
+		AddKeyCommand(chartSelection, "Focus Next Chart", nameof(PreferencesKeyBinds.FocusNextChart), FocusNextChart, true);
 
 		const string zoom = "Zoom";
-		UIControls.Instance.AddCommand(zoom, "Zoom In",
-			UIControls.GetCommandString(p.ScrollZoom) + UIControls.MultipleKeysJoinString + "Scroll Up");
-		UIControls.Instance.AddCommand(zoom, "Zoom Out",
-			UIControls.GetCommandString(p.ScrollZoom) + UIControls.MultipleKeysJoinString + "Scroll Down");
-		UIControls.Instance.AddCommand(zoom, "Increasing Spacing For Current Mode",
-			UIControls.GetCommandString(p.ScrollSpacing) + UIControls.MultipleKeysJoinString + "Scroll Up");
-		UIControls.Instance.AddCommand(zoom, "Decrease Spacing For Current Mode",
-			UIControls.GetCommandString(p.ScrollSpacing) + UIControls.MultipleKeysJoinString + "Scroll Down");
+		UIControls.Instance.AddCommand(zoom, "Zoom", nameof(PreferencesKeyBinds.ScrollZoom), UIControls.MultipleKeysJoinString + "Scroll");
+		UIControls.Instance.AddCommand(zoom, "Change Spacing For Current Mode", nameof(PreferencesKeyBinds.ScrollSpacing), UIControls.MultipleKeysJoinString + "Scroll");
 
 		const string navigation = "Navigation";
-		AddKeyCommand(navigation, "Decrease Snap", p.DecreaseSnap, OnDecreaseSnap, true);
-		AddKeyCommand(navigation, "Increase Snap", p.IncreaseSnap, OnIncreaseSnap, true);
-		AddKeyCommand(navigation, "Move Up", p.MoveUp, OnMoveUp, true);
-		UIControls.Instance.AddCommand(navigation, "Move Up", "Scroll Up");
-		AddKeyCommand(navigation, "Move Down", p.MoveDown, OnMoveDown, true);
-		UIControls.Instance.AddCommand(navigation, "Move Down", "Scroll Down");
-		AddKeyCommand(navigation, "Move To Previous Measure", p.MoveToPreviousMeasure, OnMoveToPreviousMeasure, true);
-		AddKeyCommand(navigation, "Move To Next Measure", p.MoveToNextMeasure, OnMoveToNextMeasure, true);
-		AddKeyCommand(navigation, "Move To Chart Start", p.MoveToChartStart, OnMoveToChartStart);
-		AddKeyCommand(navigation, "Move To Chart End", p.MoveToChartEnd, OnMoveToChartEnd);
-		AddKeyCommand(navigation, "Move To Next Label", p.MoveToNextLabel, OnMoveToNextLabel, true);
-		AddKeyCommand(navigation, "Move To Previous Label", p.MoveToPreviousLabel, OnMoveToPreviousLabel, true);
+		AddKeyCommand(navigation, "Decrease Snap", nameof(PreferencesKeyBinds.DecreaseSnap), OnDecreaseSnap, true);
+		AddKeyCommand(navigation, "Increase Snap", nameof(PreferencesKeyBinds.IncreaseSnap), OnIncreaseSnap, true);
+		AddKeyCommand(navigation, "Move Up", nameof(PreferencesKeyBinds.MoveUp), OnMoveUp, true);
+		UIControls.Instance.AddStaticCommand(navigation, "Move Up", "Scroll Up");
+		AddKeyCommand(navigation, "Move Down", nameof(PreferencesKeyBinds.MoveDown), OnMoveDown, true);
+		UIControls.Instance.AddStaticCommand(navigation, "Move Down", "Scroll Down");
+		AddKeyCommand(navigation, "Move To Previous Measure", nameof(PreferencesKeyBinds.MoveToPreviousMeasure), OnMoveToPreviousMeasure, true);
+		AddKeyCommand(navigation, "Move To Next Measure", nameof(PreferencesKeyBinds.MoveToNextMeasure), OnMoveToNextMeasure, true);
+		AddKeyCommand(navigation, "Move To Chart Start", nameof(PreferencesKeyBinds.MoveToChartStart), OnMoveToChartStart);
+		AddKeyCommand(navigation, "Move To Chart End", nameof(PreferencesKeyBinds.MoveToChartEnd), OnMoveToChartEnd);
+		AddKeyCommand(navigation, "Move To Next Label", nameof(PreferencesKeyBinds.MoveToNextLabel), OnMoveToNextLabel, true);
+		AddKeyCommand(navigation, "Move To Previous Label", nameof(PreferencesKeyBinds.MoveToPreviousLabel), OnMoveToPreviousLabel, true);
 
 		const string patterns = "Patterns";
-		AddKeyCommand(patterns, "Move To Next Pattern", p.MoveToNextPattern, OnMoveToNextPattern, true);
-		AddKeyCommand(patterns, "Move To Previous Pattern", p.MoveToPreviousPattern, OnMoveToPreviousPattern, true);
-		AddKeyCommand(patterns, "Regenerate All Patterns (Fixed Seeds)", p.RegenerateAllPatternsFixedSeeds, OnRegenerateAllPatterns);
-		AddKeyCommand(patterns, "Regenerate All Patterns (New Seeds)", p.RegenerateAllPatternsNewSeeds, OnRegenerateAllPatternsWithNewSeeds);
-		AddKeyCommand(patterns, "Regenerate Selected Patterns (Fixed Seeds)", p.RegenerateSelectedPatternsFixedSeeds, OnRegenerateSelectedPatterns);
-		AddKeyCommand(patterns, "Regenerate Selected Patterns (New Seeds)", p.RegenerateSelectedPatternsNewSeeds, OnRegenerateSelectedPatternsWithNewSeeds);
+		AddKeyCommand(patterns, "Move To Next Pattern", nameof(PreferencesKeyBinds.MoveToNextPattern), OnMoveToNextPattern, true);
+		AddKeyCommand(patterns, "Move To Previous Pattern", nameof(PreferencesKeyBinds.MoveToPreviousPattern), OnMoveToPreviousPattern, true);
+		AddKeyCommand(patterns, "Regenerate All Patterns (Fixed Seeds)", nameof(PreferencesKeyBinds.RegenerateAllPatternsFixedSeeds), OnRegenerateAllPatterns);
+		AddKeyCommand(patterns, "Regenerate All Patterns (New Seeds)", nameof(PreferencesKeyBinds.RegenerateAllPatternsNewSeeds), OnRegenerateAllPatternsWithNewSeeds);
+		AddKeyCommand(patterns, "Regenerate Selected Patterns (Fixed Seeds)", nameof(PreferencesKeyBinds.RegenerateSelectedPatternsFixedSeeds), OnRegenerateSelectedPatterns);
+		AddKeyCommand(patterns, "Regenerate Selected Patterns (New Seeds)", nameof(PreferencesKeyBinds.RegenerateSelectedPatternsNewSeeds), OnRegenerateSelectedPatternsWithNewSeeds);
 
 		const string editSelection = "Edit Selection";
-		AddKeyCommand(editSelection, "Delete", p.Delete, OnDelete);
-		AddKeyCommand(editSelection, "Mirror", p.Mirror, OnMirrorSelection);
-		AddKeyCommand(editSelection, "Flip", p.Flip, OnFlipSelection);
-		AddKeyCommand(editSelection, "Mirror and Flip", p.MirrorAndFlip, OnMirrorAndFlipSelection);
-		AddKeyCommand(editSelection, "Shift Left", p.ShiftLeft, OnShiftSelectedNotesLeft, true);
-		AddKeyCommand(editSelection, "Shift Left And Wrap", p.ShiftLeftAndWrap, OnShiftSelectedNotesLeftAndWrap, true);
-		AddKeyCommand(editSelection, "Shift Right", p.ShiftRight, OnShiftSelectedNotesRight, true);
-		AddKeyCommand(editSelection, "Shift Right And Wrap", p.ShiftRightAndWrap, OnShiftSelectedNotesRightAndWrap, true);
-		AddKeyCommand(editSelection, "Shift Earlier", p.ShiftEarlier, OnShiftSelectedNotesEarlier, true);
-		AddKeyCommand(editSelection, "Shift Later", p.ShiftLater, OnShiftSelectedNotesLater, true);
+		AddKeyCommand(editSelection, "Delete", nameof(PreferencesKeyBinds.Delete), OnDelete);
+		AddKeyCommand(editSelection, "Mirror", nameof(PreferencesKeyBinds.Mirror), OnMirrorSelection);
+		AddKeyCommand(editSelection, "Flip", nameof(PreferencesKeyBinds.Flip), OnFlipSelection);
+		AddKeyCommand(editSelection, "Mirror and Flip", nameof(PreferencesKeyBinds.MirrorAndFlip), OnMirrorAndFlipSelection);
+		AddKeyCommand(editSelection, "Shift Left", nameof(PreferencesKeyBinds.ShiftLeft), OnShiftSelectedNotesLeft, true);
+		AddKeyCommand(editSelection, "Shift Left And Wrap", nameof(PreferencesKeyBinds.ShiftLeftAndWrap), OnShiftSelectedNotesLeftAndWrap, true);
+		AddKeyCommand(editSelection, "Shift Right", nameof(PreferencesKeyBinds.ShiftRight), OnShiftSelectedNotesRight, true);
+		AddKeyCommand(editSelection, "Shift Right And Wrap", nameof(PreferencesKeyBinds.ShiftRightAndWrap), OnShiftSelectedNotesRightAndWrap, true);
+		AddKeyCommand(editSelection, "Shift Earlier", nameof(PreferencesKeyBinds.ShiftEarlier), OnShiftSelectedNotesEarlier, true);
+		AddKeyCommand(editSelection, "Shift Later", nameof(PreferencesKeyBinds.ShiftLater), OnShiftSelectedNotesLater, true);
 
 		const string convertSelection = "Convert Selection";
-		AddKeyCommand(convertSelection, "Taps to Mines", p.ConvertSelectedTapsToMines, () => UIEditEvents.ConvertSelectedTapsToMines());
-		AddKeyCommand(convertSelection, "Taps to Fakes", p.ConvertSelectedTapsToFakes, () => UIEditEvents.ConvertSelectedTapsToFakes());
-		AddKeyCommand(convertSelection, "Taps to Lifts", p.ConvertSelectedTapsToLifts, () => UIEditEvents.ConvertSelectedTapsToLifts());
-		AddKeyCommand(convertSelection, "Mines to Taps", p.ConvertSelectedMinesToTaps, () => UIEditEvents.ConvertSelectedMinesToTaps());
-		AddKeyCommand(convertSelection, "Mines to Fakes", p.ConvertSelectedMinesToFakes, () => UIEditEvents.ConvertSelectedMinesToFakes());
-		AddKeyCommand(convertSelection, "Mines to Lifts", p.ConvertSelectedMinesToLifts, () => UIEditEvents.ConvertSelectedMinesToLifts());
-		AddKeyCommand(convertSelection, "Fakes to Taps", p.ConvertSelectedFakesToTaps, () => UIEditEvents.ConvertSelectedFakesToTaps());
-		AddKeyCommand(convertSelection, "Lifts to Taps", p.ConvertSelectedLiftsToTaps, () => UIEditEvents.ConvertSelectedLiftsToTaps());
-		AddKeyCommand(convertSelection, "Holds to Rolls", p.ConvertSelectedHoldsToRolls, () => UIEditEvents.ConvertSelectedHoldsToRolls());
-		AddKeyCommand(convertSelection, "Holds to Taps", p.ConvertSelectedHoldsToTaps, () => UIEditEvents.ConvertSelectedHoldsToTaps());
-		AddKeyCommand(convertSelection, "Holds to Mines", p.ConvertSelectedHoldsToMines, () => UIEditEvents.ConvertSelectedHoldsToMines());
-		AddKeyCommand(convertSelection, "Rolls to Holds", p.ConvertSelectedRollsToHolds, () => UIEditEvents.ConvertSelectedRollsToHolds());
-		AddKeyCommand(convertSelection, "Rolls to Taps", p.ConvertSelectedRollsToTaps, () => UIEditEvents.ConvertSelectedRollsToTaps());
-		AddKeyCommand(convertSelection, "Rolls to Mines", p.ConvertSelectedRollsToMines, () => UIEditEvents.ConvertSelectedRollsToMines());
-		AddKeyCommand(convertSelection, "Warps to Negative Stops", p.ConvertSelectedWarpsToNegativeStops, () => UIEditEvents.ConvertSelectedWarpsToNegativeStops());
-		AddKeyCommand(convertSelection, "Negative Stops to Warps", p.ConvertSelectedNegativeStopsToWarps, () => UIEditEvents.ConvertSelectedNegativeStopsToWarps());
+		AddKeyCommand(convertSelection, "Taps to Mines", nameof(PreferencesKeyBinds.ConvertSelectedTapsToMines), () => UIEditEvents.ConvertSelectedTapsToMines());
+		AddKeyCommand(convertSelection, "Taps to Fakes", nameof(PreferencesKeyBinds.ConvertSelectedTapsToFakes), () => UIEditEvents.ConvertSelectedTapsToFakes());
+		AddKeyCommand(convertSelection, "Taps to Lifts", nameof(PreferencesKeyBinds.ConvertSelectedTapsToLifts), () => UIEditEvents.ConvertSelectedTapsToLifts());
+		AddKeyCommand(convertSelection, "Mines to Taps", nameof(PreferencesKeyBinds.ConvertSelectedMinesToTaps), () => UIEditEvents.ConvertSelectedMinesToTaps());
+		AddKeyCommand(convertSelection, "Mines to Fakes", nameof(PreferencesKeyBinds.ConvertSelectedMinesToFakes), () => UIEditEvents.ConvertSelectedMinesToFakes());
+		AddKeyCommand(convertSelection, "Mines to Lifts", nameof(PreferencesKeyBinds.ConvertSelectedMinesToLifts), () => UIEditEvents.ConvertSelectedMinesToLifts());
+		AddKeyCommand(convertSelection, "Fakes to Taps", nameof(PreferencesKeyBinds.ConvertSelectedFakesToTaps), () => UIEditEvents.ConvertSelectedFakesToTaps());
+		AddKeyCommand(convertSelection, "Lifts to Taps", nameof(PreferencesKeyBinds.ConvertSelectedLiftsToTaps), () => UIEditEvents.ConvertSelectedLiftsToTaps());
+		AddKeyCommand(convertSelection, "Holds to Rolls", nameof(PreferencesKeyBinds.ConvertSelectedHoldsToRolls), () => UIEditEvents.ConvertSelectedHoldsToRolls());
+		AddKeyCommand(convertSelection, "Holds to Taps", nameof(PreferencesKeyBinds.ConvertSelectedHoldsToTaps), () => UIEditEvents.ConvertSelectedHoldsToTaps());
+		AddKeyCommand(convertSelection, "Holds to Mines", nameof(PreferencesKeyBinds.ConvertSelectedHoldsToMines), () => UIEditEvents.ConvertSelectedHoldsToMines());
+		AddKeyCommand(convertSelection, "Rolls to Holds", nameof(PreferencesKeyBinds.ConvertSelectedRollsToHolds), () => UIEditEvents.ConvertSelectedRollsToHolds());
+		AddKeyCommand(convertSelection, "Rolls to Taps", nameof(PreferencesKeyBinds.ConvertSelectedRollsToTaps), () => UIEditEvents.ConvertSelectedRollsToTaps());
+		AddKeyCommand(convertSelection, "Rolls to Mines", nameof(PreferencesKeyBinds.ConvertSelectedRollsToMines), () => UIEditEvents.ConvertSelectedRollsToMines());
+		AddKeyCommand(convertSelection, "Warps to Negative Stops", nameof(PreferencesKeyBinds.ConvertSelectedWarpsToNegativeStops), () => UIEditEvents.ConvertSelectedWarpsToNegativeStops());
+		AddKeyCommand(convertSelection, "Negative Stops to Warps", nameof(PreferencesKeyBinds.ConvertSelectedNegativeStopsToWarps), () => UIEditEvents.ConvertSelectedNegativeStopsToWarps());
 
 		const string eventEntry = "Event Entry";
-		AddKeyCommand(eventEntry, "Add Tempo", p.AddEventTempo, () => UIEditEvents.AddTempoEvent());
-		AddKeyCommand(eventEntry, "Add Interpolated Scroll Rate", p.AddEventInterpolatedScrollRate, () => UIEditEvents.AddInterpolatedScrollRateEvent());
-		AddKeyCommand(eventEntry, "Add Scroll Rate", p.AddEventScrollRate, () => UIEditEvents.AddScrollRateEvent());
-		AddKeyCommand(eventEntry, "Add Stop", p.AddEventStop, () => UIEditEvents.AddStopEvent());
-		AddKeyCommand(eventEntry, "Add Delay", p.AddEventDelay, () => UIEditEvents.AddDelayEvent());
-		AddKeyCommand(eventEntry, "Add Warp", p.AddEventWarp, () => UIEditEvents.AddWarpEvent());
-		AddKeyCommand(eventEntry, "Add Fake Region", p.AddEventFakeRegion, () => UIEditEvents.AddFakeRegionEvent());
-		AddKeyCommand(eventEntry, "Add Ticks", p.AddEventTicks, () => UIEditEvents.AddTicksEvent());
-		AddKeyCommand(eventEntry, "Add Combo Multipliers", p.AddEventComboMultipliers, () => UIEditEvents.AddComboMultipliersEvent());
-		AddKeyCommand(eventEntry, "Add Time Signature", p.AddEventTimeSignature, () => UIEditEvents.AddTimeSignatureEvent());
-		AddKeyCommand(eventEntry, "Add Label", p.AddEventLabel, () => UIEditEvents.AddLabelEvent());
-		AddKeyCommand(eventEntry, "Add Pattern", p.AddEventPattern, () => UIEditEvents.AddPatternEvent());
-		AddKeyCommand(eventEntry, "Move Music Preview", p.MoveEventPreview, () => UIEditEvents.MoveMusicPreview());
-		AddKeyCommand(eventEntry, "Move End Hint", p.MoveEventEndHint, () => UIEditEvents.MoveEndHint());
-		// @formatter:on
+		AddKeyCommand(eventEntry, "Add Tempo", nameof(PreferencesKeyBinds.AddEventTempo), () => UIEditEvents.AddTempoEvent());
+		AddKeyCommand(eventEntry, "Add Interpolated Scroll Rate", nameof(PreferencesKeyBinds.AddEventInterpolatedScrollRate), () => UIEditEvents.AddInterpolatedScrollRateEvent());
+		AddKeyCommand(eventEntry, "Add Scroll Rate", nameof(PreferencesKeyBinds.AddEventScrollRate), () => UIEditEvents.AddScrollRateEvent());
+		AddKeyCommand(eventEntry, "Add Stop", nameof(PreferencesKeyBinds.AddEventStop), () => UIEditEvents.AddStopEvent());
+		AddKeyCommand(eventEntry, "Add Delay", nameof(PreferencesKeyBinds.AddEventDelay), () => UIEditEvents.AddDelayEvent());
+		AddKeyCommand(eventEntry, "Add Warp", nameof(PreferencesKeyBinds.AddEventWarp), () => UIEditEvents.AddWarpEvent());
+		AddKeyCommand(eventEntry, "Add Fake Region", nameof(PreferencesKeyBinds.AddEventFakeRegion), () => UIEditEvents.AddFakeRegionEvent());
+		AddKeyCommand(eventEntry, "Add Ticks", nameof(PreferencesKeyBinds.AddEventTicks), () => UIEditEvents.AddTicksEvent());
+		AddKeyCommand(eventEntry, "Add Combo Multipliers", nameof(PreferencesKeyBinds.AddEventComboMultipliers), () => UIEditEvents.AddComboMultipliersEvent());
+		AddKeyCommand(eventEntry, "Add Time Signature", nameof(PreferencesKeyBinds.AddEventTimeSignature), () => UIEditEvents.AddTimeSignatureEvent());
+		AddKeyCommand(eventEntry, "Add Label", nameof(PreferencesKeyBinds.AddEventLabel), () => UIEditEvents.AddLabelEvent());
+		AddKeyCommand(eventEntry, "Add Pattern", nameof(PreferencesKeyBinds.AddEventPattern), () => UIEditEvents.AddPatternEvent());
+		AddKeyCommand(eventEntry, "Move Music Preview", nameof(PreferencesKeyBinds.MoveEventPreview), () => UIEditEvents.MoveMusicPreview());
+		AddKeyCommand(eventEntry, "Move End Hint", nameof(PreferencesKeyBinds.MoveEventEndHint), () => UIEditEvents.MoveEndHint());
 
 		const string noteEntry = "Note Entry";
-		for (var l = 0; l < PreferencesKeyBinds.NumLaneInputs; l++)
-		{
-			var capturedLane = l;
-			AddKeyCommand(noteEntry, $"Lane {capturedLane + 1:D2} Tap",
-				p.GetArrowInputs(capturedLane),
-				() => OnLaneInputDown(capturedLane),
-				false,
-				() => OnLaneInputUp(capturedLane));
-		}
+		AddKeyCommand(noteEntry, "Lane 01", nameof(PreferencesKeyBinds.Arrow0), () => OnLaneInputDown(0), false, () => OnLaneInputUp(0));
+		AddKeyCommand(noteEntry, "Lane 02", nameof(PreferencesKeyBinds.Arrow1), () => OnLaneInputDown(1), false, () => OnLaneInputUp(1));
+		AddKeyCommand(noteEntry, "Lane 03", nameof(PreferencesKeyBinds.Arrow2), () => OnLaneInputDown(2), false, () => OnLaneInputUp(2));
+		AddKeyCommand(noteEntry, "Lane 04", nameof(PreferencesKeyBinds.Arrow3), () => OnLaneInputDown(3), false, () => OnLaneInputUp(3));
+		AddKeyCommand(noteEntry, "Lane 05", nameof(PreferencesKeyBinds.Arrow4), () => OnLaneInputDown(4), false, () => OnLaneInputUp(4));
+		AddKeyCommand(noteEntry, "Lane 06", nameof(PreferencesKeyBinds.Arrow5), () => OnLaneInputDown(5), false, () => OnLaneInputUp(5));
+		AddKeyCommand(noteEntry, "Lane 07", nameof(PreferencesKeyBinds.Arrow6), () => OnLaneInputDown(6), false, () => OnLaneInputUp(6));
+		AddKeyCommand(noteEntry, "Lane 08", nameof(PreferencesKeyBinds.Arrow7), () => OnLaneInputDown(7), false, () => OnLaneInputUp(7));
+		AddKeyCommand(noteEntry, "Lane 09", nameof(PreferencesKeyBinds.Arrow8), () => OnLaneInputDown(8), false, () => OnLaneInputUp(8));
+		AddKeyCommand(noteEntry, "Lane 10", nameof(PreferencesKeyBinds.Arrow9), () => OnLaneInputDown(9), false, () => OnLaneInputUp(9));
+		AddKeyCommand(noteEntry, "Switch Note to Mine / Roll", nameof(PreferencesKeyBinds.ArrowModification), OnArrowModificationKeyDown, false, OnArrowModificationKeyUp);
+		// @formatter:on
 
-		for (var l = 0; l < PreferencesKeyBinds.NumLaneInputs; l++)
-		{
-			var holdCommandString =
-				UIControls.GetCommandString(p.GetArrowInputs(l))
-				+ UIControls.MultipleKeysJoinString
-				+ UIControls.GetCommandString(p.MoveUp)
-				+ UIControls.OrString
-				+ UIControls.GetCommandString(p.MoveDown);
-			UIControls.Instance.AddCommand(noteEntry, $"Lane {l + 1:D2} Hold", holdCommandString);
-		}
-
-		for (var l = 0; l < PreferencesKeyBinds.NumLaneInputs; l++)
-		{
-			var mineCommandString =
-				UIControls.GetCommandString(p.GetArrowInputs(l))
-				+ UIControls.MultipleKeysJoinString
-				+ UIControls.GetCommandString(p.ArrowModification);
-			UIControls.Instance.AddCommand(noteEntry, $"Lane {l + 1:D2} Mine", mineCommandString);
-		}
-
-		for (var l = 0; l < PreferencesKeyBinds.NumLaneInputs; l++)
-		{
-			var rollCommandString =
-				UIControls.GetCommandString(p.GetArrowInputs(l))
-				+ UIControls.MultipleKeysJoinString
-				+ UIControls.GetCommandString(p.ArrowModification)
-				+ UIControls.MultipleKeysJoinString
-				+ UIControls.GetCommandString(p.MoveUp)
-				+ UIControls.OrString
-				+ UIControls.GetCommandString(p.MoveDown);
-			UIControls.Instance.AddCommand(noteEntry, $"Lane {l + 1:D2} Roll", rollCommandString);
-		}
-
-		foreach (var input in p.ArrowModification)
-		{
-			// Don't let this block input. It is the only keybind that we register with the KeyCommandManager
-			// where really we just want to check is a key down or not without blocking input. Other inputs like
-			// this (e.g. holding alt while selecting) are registered.
-			KeyCommandManager.Register(new KeyCommandManager.Command(input, OnArrowModificationKeyDown, false,
-				OnArrowModificationKeyUp, false));
-		}
+		UIControls.Instance.FinishAddingCommands();
 	}
 
 	/// <summary>
@@ -760,28 +712,15 @@ internal sealed class Editor :
 	private void AddKeyCommand(
 		string category,
 		string name,
-		List<Keys[]> inputs,
+		string id,
 		Action callback,
 		bool repeat = false,
 		Action releaseCallback = null)
 	{
-		var unbound = true;
-		foreach (var input in inputs)
-		{
-			if (input == null || input.Length == 0)
-				continue;
-
-			// Register the command.
-			KeyCommandManager.Register(new KeyCommandManager.Command(input, callback, repeat, releaseCallback));
-			// Add the command to the UI.
-			UIControls.Instance.AddCommand(category, name, input);
-			unbound = false;
-		}
-
-		if (unbound)
-		{
-			UIControls.Instance.AddCommand(category, name, Array.Empty<Keys>());
-		}
+		var blocksInput = Preferences.Instance.PreferencesKeyBinds.BlocksInput(id);
+		KeyCommandManager.Register(new KeyCommandManager.Command(name, id, callback, repeat, releaseCallback,
+			blocksInput));
+		UIControls.Instance.AddCommand(category, name, id);
 	}
 
 	private void InitializeContentManager()

@@ -1,5 +1,5 @@
-﻿using StepManiaLibrary;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using StepManiaLibrary;
 
 namespace StepManiaEditor;
 

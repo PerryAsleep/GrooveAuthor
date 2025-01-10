@@ -40,9 +40,16 @@ internal sealed class UIModals
 			public readonly Action Callback;
 		}
 
+		public readonly string Title;
+		public readonly string Message;
+		public readonly List<ButtonData> Buttons;
+		public readonly Action CustomBodyUI;
+		public readonly Vector2 Size;
+		public bool ShouldPlaySound;
+
 		public ModalState(string title, string message,
 			string buttonText, Action buttonCallback,
-			Action customBodyUI = null)
+			Vector2 size, Action customBodyUI, bool shouldPlaySound)
 		{
 			Title = title;
 			Message = message;
@@ -51,12 +58,14 @@ internal sealed class UIModals
 			{
 				new(buttonText, buttonCallback),
 			};
+			Size = size;
+			ShouldPlaySound = shouldPlaySound;
 		}
 
 		public ModalState(string title, string message,
 			string button1Text, Action button1Callback,
 			string button2Text, Action button2Callback,
-			Action customBodyUI = null)
+			Vector2 size, Action customBodyUI, bool shouldPlaySound)
 		{
 			Title = title;
 			Message = message;
@@ -66,13 +75,15 @@ internal sealed class UIModals
 				new(button1Text, button1Callback),
 				new(button2Text, button2Callback),
 			};
+			Size = size;
+			ShouldPlaySound = shouldPlaySound;
 		}
 
 		public ModalState(string title, string message,
 			string button1Text, Action button1Callback,
 			string button2Text, Action button2Callback,
 			string button3Text, Action button3Callback,
-			Action customBodyUI = null)
+			Vector2 size, Action customBodyUI, bool shouldPlaySound)
 		{
 			Title = title;
 			Message = message;
@@ -83,12 +94,9 @@ internal sealed class UIModals
 				new(button2Text, button2Callback),
 				new(button3Text, button3Callback),
 			};
+			Size = size;
+			ShouldPlaySound = shouldPlaySound;
 		}
-
-		public readonly string Title;
-		public readonly string Message;
-		public readonly List<ButtonData> Buttons;
-		public readonly Action CustomBodyUI;
 	}
 
 	/// <summary>
@@ -115,81 +123,123 @@ internal sealed class UIModals
 	/// </summary>
 	public static void Draw()
 	{
-		// Draw modals in reverse order.
-		for (var i = Modals.Count - 1; i >= 0; i--)
+		// Draw modals in the order they were enqueued.
+		while (Modals.Count > 0)
 		{
-			var modal = Modals[i];
-			if (BeginModal(modal.Title))
+			var modal = Modals[0];
+			var closedModal = false;
+			if (BeginModal(modal.Title, modal.Size))
 			{
+				if (modal.ShouldPlaySound)
+				{
+					SystemSounds.Exclamation.Play();
+					modal.ShouldPlaySound = false;
+				}
+
+				var hasMessage = !string.IsNullOrEmpty(modal.Message);
 				// Draw the message.
-				ImGui.TextWrapped(modal.Message);
+				if (hasMessage)
+					ImGui.TextWrapped(modal.Message);
 
 				// Draw any custom body UI.
 				if (modal.CustomBodyUI != null)
 				{
-					ImGui.Separator();
+					if (hasMessage)
+						ImGui.Separator();
 					modal.CustomBodyUI();
 				}
 
 				// Draw the buttons. If any button is pressed, close the modal.
 				if (DrawButtonsRow(modal.Buttons))
-					Modals.RemoveAt(i);
+				{
+					Modals.RemoveAt(0);
+					closedModal = true;
+				}
+
 				ImGui.EndPopup();
+
+				if (!closedModal)
+					break;
 			}
 		}
 	}
 
 	public static void OpenModalOneButton(string title, string message,
 		string buttonText, Action buttonCallback,
-		Action customBodyUI = null)
+		Action customBodyUI = null,
+		bool playSound = true,
+		int customSizeX = 0,
+		int customSizeY = 0)
 	{
-		SystemSounds.Exclamation.Play();
+		var size = DefaultSize;
+		if (customSizeX != 0)
+			size.X = customSizeX;
+		if (customSizeY != 0)
+			size.Y = customSizeY;
+
 		Modals.Add(new ModalState(title, message,
-			buttonText, buttonCallback,
-			customBodyUI));
+			buttonText, buttonCallback, size,
+			customBodyUI, playSound));
 	}
 
 	public static void OpenModalTwoButtons(string title, string message,
 		string button1Text, Action button1Callback,
 		string button2Text, Action button2Callback,
-		Action customBodyUI = null)
+		Action customBodyUI = null,
+		bool playSound = true,
+		int customSizeX = 0,
+		int customSizeY = 0)
 	{
-		SystemSounds.Exclamation.Play();
+		var size = DefaultSize;
+		if (customSizeX != 0)
+			size.X = customSizeX;
+		if (customSizeY != 0)
+			size.Y = customSizeY;
+
 		Modals.Add(new ModalState(title, message,
 			button1Text, button1Callback,
 			button2Text, button2Callback,
-			customBodyUI));
+			size, customBodyUI, playSound));
 	}
 
 	public static void OpenModalThreeButtons(string title, string message,
 		string button1Text, Action button1Callback,
 		string button2Text, Action button2Callback,
 		string button3Text, Action button3Callback,
-		Action customBodyUI = null)
+		Action customBodyUI = null,
+		bool playSound = true,
+		int customSizeX = 0,
+		int customSizeY = 0)
 	{
-		SystemSounds.Exclamation.Play();
+		var size = DefaultSize;
+		if (customSizeX != 0)
+			size.X = customSizeX;
+		if (customSizeY != 0)
+			size.Y = customSizeY;
+
 		Modals.Add(new ModalState(title, message,
 			button1Text, button1Callback,
 			button2Text, button2Callback,
 			button3Text, button3Callback,
-			customBodyUI));
+			size, customBodyUI, playSound));
 	}
 
 	/// <summary>
 	/// Begin drawing a modal window.
 	/// </summary>
 	/// <param name="title">Title of the window.</param>
+	/// <param name="size">Size of the modal.</param>
 	/// <returns>True if the window is open.</returns>
-	private static bool BeginModal(string title)
+	private static bool BeginModal(string title, Vector2 size)
 	{
 		var screenW = Editor.GetViewportWidth();
 		var screenH = Editor.GetViewportHeight();
 
-		var windowPos = new Vector2((screenW - DefaultSize.X) * 0.5f, (screenH - DefaultSize.Y) * 0.5f);
+		var windowPos = new Vector2((screenW - size.X) * 0.5f, (screenH - size.Y) * 0.5f);
 
 		var openFlag = true;
 		ImGui.OpenPopup(title);
-		ImGui.SetNextWindowSize(DefaultSize);
+		ImGui.SetNextWindowSize(size);
 		ImGui.SetNextWindowPos(windowPos, ImGuiCond.Always);
 		var open = ImGui.BeginPopupModal(title, ref openFlag,
 			ImGuiWindowFlags.NoResize |

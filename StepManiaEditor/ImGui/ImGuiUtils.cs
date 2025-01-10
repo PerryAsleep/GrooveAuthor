@@ -430,6 +430,32 @@ internal sealed class ImGuiUtils
 		}
 	}
 
+	/// <summary>
+	/// Draws a colored ImGui Text element with a specified width.
+	/// </summary>
+	/// <param name="color">The color of the text.</param>
+	/// <param name="text">Text to display in the ImGUi Text element.</param>
+	/// <param name="width">Width of the element.</param>
+	public static void TextColored(Vector4 color, string text, float width)
+	{
+		// The table below will render a line / border if the text is empty.
+		if (string.IsNullOrEmpty(text))
+		{
+			ImGui.Dummy(new Vector2(width, 0));
+			return;
+		}
+
+		// Wrap the text in Table in order to control the size precisely.
+		if (ImGui.BeginTable(text, 1, ImGuiTableFlags.None, new Vector2(width, 0), width))
+		{
+			ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100.0f);
+			ImGui.TableNextRow();
+			ImGui.TableSetColumnIndex(0);
+			ImGui.TextColored(color, text);
+			ImGui.EndTable();
+		}
+	}
+
 	public static bool SliderUInt(string text, ref uint value, uint min, uint max, string format, ImGuiSliderFlags flags)
 	{
 		var iValue = (int)value;
