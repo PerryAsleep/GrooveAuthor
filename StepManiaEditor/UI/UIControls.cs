@@ -179,6 +179,7 @@ internal sealed class UIControls : UIWindow, Fumen.IObserver<PreferencesKeyBinds
 			{
 				ImGuiLayoutUtils.DrawRowTitleAndAdvanceColumn(Name);
 
+				// Reset and add buttons.
 				if (i == 0)
 				{
 					if (!canReset)
@@ -205,29 +206,39 @@ internal sealed class UIControls : UIWindow, Fumen.IObserver<PreferencesKeyBinds
 					ImGui.SameLine();
 				}
 
+				// Text.
+				var additionalTextWidth = 0.0f;
 				var textWidth = ImGui.GetContentRegionAvail().X - (EditButtonWidth + DeleteButtonWidth + spacing * 2);
 				var text = InputsAsStrings[i];
 				if (!string.IsNullOrEmpty(AdditionalInputText))
-					text += AdditionalInputText;
+				{
+					var baseTextWidth = ImGui.CalcTextSize(text).X;
+					additionalTextWidth = textWidth - baseTextWidth;
+					if (additionalTextWidth > 0)
+						textWidth = baseTextWidth;
+				}
 
 				if (i < Conflicts.Count && Conflicts[i])
-				{
 					TextColored(UILog.GetColor(LogLevel.Warn), text, textWidth);
-				}
 				else
-				{
 					Text(text, textWidth);
+				if (additionalTextWidth > 0)
+				{
+					ImGui.GetStyle().ItemSpacing.X = 0;
+					ImGui.SameLine();
+					Text(AdditionalInputText, additionalTextWidth, true);
+					ImGui.GetStyle().ItemSpacing.X = spacing;
 				}
 
+				// Edit button.
 				ImGui.SameLine();
-
 				if (ImGui.Button($"Edit##{Id}{i}", new Vector2(EditButtonWidth, 0.0f)))
 				{
 					rebindIndex = i;
 				}
 
+				// Delete button.
 				ImGui.SameLine();
-
 				if (!canDelete)
 					PushDisabled();
 				if (ImGui.Button($"X##{Id}{i}", new Vector2(AddButtonWidth, 0.0f)))

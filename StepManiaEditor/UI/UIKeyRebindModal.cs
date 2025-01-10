@@ -87,14 +87,10 @@ internal sealed class UIKeyRebindModal
 
 		UpdateKeys(id);
 
-		if (!string.IsNullOrEmpty(additionalInputText))
-			ImGui.Text($"Old Binding: {oldInputString}{additionalInputText}");
-		else
-			ImGui.Text($"Old Binding: {oldInputString}");
-
+		DrawInput("Old Binding: ", oldInputString, additionalInputText, ImGui.GetContentRegionAvail().X);
 		var textWidth = ImGui.GetContentRegionAvail().X - (ImGui.GetStyle().ItemSpacing.X + ResetButtonWidth);
-		if (!string.IsNullOrEmpty(additionalInputText) && NewKeys.Count > 0)
-			Text($"New Binding: {CommandString}{additionalInputText}", textWidth);
+		if (NewKeys.Count > 0)
+			DrawInput("New Binding: ", CommandString, additionalInputText, textWidth);
 		else
 			Text($"New Binding: {CommandString}", textWidth);
 		ImGui.SameLine();
@@ -130,6 +126,29 @@ internal sealed class UIKeyRebindModal
 		}
 
 		ImGui.EndChild();
+	}
+
+	private void DrawInput(string prefix, string input, string additionalInputText, float textWidth)
+	{
+		var additionalTextWidth = 0.0f;
+		var text = prefix + input;
+		if (!string.IsNullOrEmpty(additionalInputText))
+		{
+			var baseTextWidth = ImGui.CalcTextSize(text).X;
+			additionalTextWidth = textWidth - baseTextWidth;
+			if (additionalTextWidth > 0)
+				textWidth = baseTextWidth;
+		}
+
+		Text(text, textWidth);
+		if (additionalTextWidth > 0)
+		{
+			var spacing = ImGui.GetStyle().ItemSpacing.X;
+			ImGui.GetStyle().ItemSpacing.X = 0;
+			ImGui.SameLine();
+			Text(additionalInputText, additionalTextWidth, true);
+			ImGui.GetStyle().ItemSpacing.X = spacing;
+		}
 	}
 
 	private void UpdateKeys(string id)
