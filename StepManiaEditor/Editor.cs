@@ -603,7 +603,7 @@ internal sealed class Editor :
 		AddKeyCommand(general, "Play / Pause", nameof(PreferencesKeyBinds.PlayPause), OnTogglePlayback);
 		AddKeyCommand(general, "Cancel / Go Back", nameof(PreferencesKeyBinds.CancelGoBack), OnEscape);
 		AddKeyCommand(general, "Toggle Note Entry Mode", nameof(PreferencesKeyBinds.ToggleNoteEntryMode), OnToggleNoteEntryMode);
-		AddKeyCommand(general, "Toggle Spacing Mode", nameof(PreferencesKeyBinds.ToggleSpacingMode), OnToggleSpacingMode);
+		UIControls.Instance.AddCommand(general, "Lock Receptor Move Axis", nameof(PreferencesKeyBinds.LockReceptorMoveAxis));
 		UIControls.Instance.AddStaticCommand(general, "Context Menu", "Right Mouse Button");
 		UIControls.Instance.AddStaticCommand(general, "Exit", "Alt+F4");
 
