@@ -78,7 +78,7 @@ internal sealed class UIControls : UIWindow, Fumen.IObserver<PreferencesKeyBinds
 		private readonly List<string> InputsAsStrings = new();
 		private List<Keys[]> Inputs;
 		private readonly List<Keys[]> Defaults;
-		private readonly List<bool> Conflicts = new();
+		private readonly List<List<string>> Conflicts = new();
 		private bool Modified;
 
 		public KeyBindCommand(KeyCommandManager keyCommandManager, string name, string id,
@@ -99,7 +99,38 @@ internal sealed class UIControls : UIWindow, Fumen.IObserver<PreferencesKeyBinds
 			Conflicts.Clear();
 			for (var i = 0; i < Inputs.Count; i++)
 			{
-				Conflicts.Add(KeyCommandManager.GetConflictingCommands(Id, Inputs[i]).Count > 0);
+				// Try to store conflicts by their name so they can be presented nicely to the user.
+				// Fallback to using ids if a name cannot be found.
+				var conflictingIds = KeyCommandManager.GetConflictingCommands(Id, Inputs[i]);
+				if (conflictingIds.Count > 0)
+				{
+					var conflictingCommandNames = new List<string>();
+					foreach (var conflictingId in conflictingIds)
+					{
+						if (Instance.TryGetKeyBindCommand(conflictingId, out var conflictingCommand))
+							conflictingCommandNames.Add(conflictingCommand.Name);
+						else
+							conflictingCommandNames.Add(conflictingId);
+					}
+
+					Conflicts.Add(conflictingCommandNames);
+				}
+				else
+				{
+					Conflicts.Add(conflictingIds);
+				}
+			}
+		}
+
+		public void LogConflicts()
+		{
+			for (var i = 0; i < Inputs.Count; i++)
+			{
+				if (i < Conflicts.Count && Conflicts[i].Count > 0)
+				{
+					Logger.Warn(
+						$"\"{Name}\" binding \"{InputsAsStrings[i]}\" conflicts with the following other bindings: {string.Join(", ", Conflicts[i])}.");
+				}
 			}
 		}
 
@@ -218,7 +249,7 @@ internal sealed class UIControls : UIWindow, Fumen.IObserver<PreferencesKeyBinds
 						textWidth = baseTextWidth;
 				}
 
-				if (i < Conflicts.Count && Conflicts[i])
+				if (i < Conflicts.Count && Conflicts[i].Count > 0)
 					TextColored(UILog.GetColor(LogLevel.Warn), text, textWidth);
 				else
 					Text(text, textWidth);
@@ -452,6 +483,19 @@ internal sealed class UIControls : UIWindow, Fumen.IObserver<PreferencesKeyBinds
 	public void FinishAddingCommands()
 	{
 		RefreshConflicts();
+	}
+
+	public bool TryGetKeyBindCommand(string id, out KeyBindCommand command)
+	{
+		return AllKeyBindCommands.TryGetValue(id, out command);
+	}
+
+	public void LogConflicts()
+	{
+		foreach (var kvp in AllKeyBindCommands)
+		{
+			kvp.Value.LogConflicts();
+		}
 	}
 
 	public void RefreshConflicts()

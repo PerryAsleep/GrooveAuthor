@@ -704,6 +704,7 @@ internal sealed class Editor :
 		// @formatter:on
 
 		UIControls.Instance.FinishAddingCommands();
+		UIControls.Instance.LogConflicts();
 	}
 
 	/// <summary>

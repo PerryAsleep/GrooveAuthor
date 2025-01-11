@@ -1758,6 +1758,7 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 
 	public void PostLoad()
 	{
+		var invalidKeys = new List<Keys>();
 		foreach (var propInfo in GetType().GetProperties(BindingFlags.Public | BindingFlags.Instance))
 		{
 			if (propInfo.PropertyType == typeof(List<Keys[]>))
@@ -1774,17 +1775,17 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 				for (var i = 0; i < value.Count; i++)
 				{
 					var keyList = value[i];
-					var hasInvalidKeys = false;
+					invalidKeys.Clear();
 					foreach (var key in keyList)
 					{
 						if (!IsValidKeyForBinding(key))
 						{
-							hasInvalidKeys = true;
+							invalidKeys.Add(key);
 							break;
 						}
 					}
 
-					if (hasInvalidKeys)
+					if (invalidKeys.Count > 0)
 					{
 						var newKeys = new List<Keys>();
 						foreach (var key in keyList)
@@ -1794,6 +1795,12 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 								newKeys.Add(key);
 							}
 						}
+
+						var newBinding = newKeys.Count > 0 ? $"\"{string.Join(", ", newKeys)}\"" : "Unbound";
+						Logger.Warn(
+							$"Key binding {propInfo.Name} contains unsupported keys in \"{string.Join(", ", keyList)}\"." +
+							$" These keys will be removed: \"{string.Join(", ", invalidKeys)}\"." +
+							$" New Binding: {newBinding}");
 
 						value[i] = newKeys.ToArray();
 					}
