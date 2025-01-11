@@ -7,7 +7,7 @@ Key bindings can be viewed and edited under `Help` > `Controls`.
 ### Key Binding Behavior
 
 > [!NOTE]
->Prior to v0.3.1 editing key bindings required modifying `Preferences.json`. This is now discouraged in favor of editing through the `Controls` window.
+>Prior to `v0.3.1` editing key bindings required modifying `Preferences.json`. This is now discouraged in favor of editing through the `Controls` window.
 
 Please be aware of the following if you edit your key bindings:
 - A binding will not trigger if another binding containing the same keys is triggering.
