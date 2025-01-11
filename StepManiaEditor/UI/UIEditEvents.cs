@@ -840,7 +840,7 @@ internal sealed class UIEditEvents
 
 	private void MoveValidatedEndHint()
 	{
-		var currentTime = Math.Max(0.0, Editor.GetPosition().ChartTime);
+		var currentTime = Math.Max(0.0, Editor.GetPosition().SongTime);
 		ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyValue<double>(Editor.GetActiveSong(),
 			nameof(EditorSong.LastSecondHint), currentTime, true));
 	}

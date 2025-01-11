@@ -122,7 +122,7 @@ internal sealed class EditorLastSecondHintEvent : EditorEvent
 		// This would cause an infinite loop.
 		if (!Initialized)
 			return;
-		EditorChart.GetEditorSong().LastSecondHint = chartTime;
+		EditorChart.GetEditorSong().LastSecondHint = EditorPosition.GetSongTimeFromChartTime(EditorChart, chartTime);
 	}
 
 	/// <summary>
@@ -131,7 +131,7 @@ internal sealed class EditorLastSecondHintEvent : EditorEvent
 	/// </summary>
 	public override double GetChartTime()
 	{
-		return EditorChart.GetEditorSong().LastSecondHint;
+		return EditorPosition.GetChartTimeFromSongTime(EditorChart, EditorChart.GetEditorSong().LastSecondHint);
 	}
 
 	public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)

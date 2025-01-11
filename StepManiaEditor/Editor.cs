@@ -603,6 +603,7 @@ internal sealed class Editor :
 		AddKeyCommand(general, "Play / Pause", nameof(PreferencesKeyBinds.PlayPause), OnTogglePlayback);
 		AddKeyCommand(general, "Cancel / Go Back", nameof(PreferencesKeyBinds.CancelGoBack), OnEscape);
 		AddKeyCommand(general, "Toggle Note Entry Mode", nameof(PreferencesKeyBinds.ToggleNoteEntryMode), OnToggleNoteEntryMode);
+		AddKeyCommand(general, "Toggle Spacing Mode", nameof(PreferencesKeyBinds.ToggleSpacingMode), OnToggleSpacingMode);
 		UIControls.Instance.AddCommand(general, "Lock Receptor Move Axis", nameof(PreferencesKeyBinds.LockReceptorMoveAxis));
 		UIControls.Instance.AddStaticCommand(general, "Context Menu", "Right Mouse Button");
 		UIControls.Instance.AddStaticCommand(general, "Exit", "Alt+F4");
@@ -626,6 +627,10 @@ internal sealed class Editor :
 		UIControls.Instance.AddStaticCommand(navigation, "Move Up", "Scroll Up");
 		AddKeyCommand(navigation, "Move Down", nameof(PreferencesKeyBinds.MoveDown), OnMoveDown, true);
 		UIControls.Instance.AddStaticCommand(navigation, "Move Down", "Scroll Down");
+		AddKeyCommand(navigation, "Move To Previous Row With Steps", nameof(PreferencesKeyBinds.MoveToPreviousRowWithSteps), OnMoveToPreviousRowWithSteps, true);
+		AddKeyCommand(navigation, "Move To Next Row With Steps", nameof(PreferencesKeyBinds.MoveToNextRowWithSteps), OnMoveToNextRowWithSteps, true);
+		AddKeyCommand(navigation, "Move To Previous Row With Events", nameof(PreferencesKeyBinds.MoveToPreviousRowWithEvent), OnMoveToPreviousRowWithEvents, true);
+		AddKeyCommand(navigation, "Move To Next Row With Events", nameof(PreferencesKeyBinds.MoveToNextRowWithEvent), OnMoveToNextRowWithEvents, true);
 		AddKeyCommand(navigation, "Move To Previous Measure", nameof(PreferencesKeyBinds.MoveToPreviousMeasure), OnMoveToPreviousMeasure, true);
 		AddKeyCommand(navigation, "Move To Next Measure", nameof(PreferencesKeyBinds.MoveToNextMeasure), OnMoveToNextMeasure, true);
 		AddKeyCommand(navigation, "Move To Chart Start", nameof(PreferencesKeyBinds.MoveToChartStart), OnMoveToChartStart);
@@ -5587,6 +5592,86 @@ internal sealed class Editor :
 			SetChartPosition(newChartPosition);
 			UpdateAutoPlayFromScrolling();
 		}
+	}
+
+	private void OnMoveToPreviousRowWithSteps()
+	{
+		if (FocusedChart == null)
+			return;
+
+		var chartPosition = GetPosition().ChartPosition;
+		var enumerator = FocusedChart.GetEvents().FindGreatestBeforeChartPosition(chartPosition);
+		if (enumerator == null)
+			return;
+		while (enumerator.MovePrev())
+		{
+			if (!enumerator.Current!.IsStep())
+				continue;
+
+			if (Preferences.Instance.PreferencesScroll.StopPlaybackWhenScrolling)
+				StopPlayback();
+			var newChartPosition = enumerator.Current!.GetChartPosition();
+			SetChartPosition(newChartPosition);
+			UpdateAutoPlayFromScrolling();
+			break;
+		}
+	}
+
+	private void OnMoveToNextRowWithSteps()
+	{
+		if (FocusedChart == null)
+			return;
+
+		var chartPosition = GetPosition().ChartPosition;
+		var enumerator = FocusedChart.GetEvents().FindLeastAfterChartPosition(chartPosition);
+		if (enumerator == null)
+			return;
+		while (enumerator.MoveNext())
+		{
+			if (!enumerator.Current!.IsStep())
+				continue;
+
+			if (Preferences.Instance.PreferencesScroll.StopPlaybackWhenScrolling)
+				StopPlayback();
+			var newChartPosition = enumerator.Current!.GetChartPosition();
+			SetChartPosition(newChartPosition);
+			UpdateAutoPlayFromScrolling();
+			break;
+		}
+	}
+
+	private void OnMoveToPreviousRowWithEvents()
+	{
+		if (FocusedChart == null)
+			return;
+
+		var chartPosition = GetPosition().ChartPosition;
+		var enumerator = FocusedChart.GetEvents().FindGreatestBeforeChartPosition(chartPosition);
+		if (enumerator == null || !enumerator.MoveNext() || !enumerator.IsCurrentValid())
+			return;
+
+		if (Preferences.Instance.PreferencesScroll.StopPlaybackWhenScrolling)
+			StopPlayback();
+		var newChartPosition = enumerator.Current!.GetChartPosition();
+		SetChartPosition(newChartPosition);
+		UpdateAutoPlayFromScrolling();
+	}
+
+	private void OnMoveToNextRowWithEvents()
+	{
+		if (FocusedChart == null)
+			return;
+
+		var chartPosition = GetPosition().ChartPosition;
+		var enumerator = FocusedChart.GetEvents().FindLeastAfterChartPosition(chartPosition);
+		if (enumerator == null || !enumerator.MoveNext() || !enumerator.IsCurrentValid())
+			return;
+
+		if (Preferences.Instance.PreferencesScroll.StopPlaybackWhenScrolling)
+			StopPlayback();
+		var newChartPosition = enumerator.Current!.GetChartPosition();
+		SetChartPosition(newChartPosition);
+		UpdateAutoPlayFromScrolling();
 	}
 
 	private void OnMoveToPreviousMeasure()

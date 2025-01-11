@@ -208,6 +208,10 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 	private static readonly List<Keys[]> DefaultIncreaseSnap                         = new() { new[] { Keys.Right } };
 	private static readonly List<Keys[]> DefaultMoveUp                               = new() { new[] { Keys.Up } };
 	private static readonly List<Keys[]> DefaultMoveDown                             = new() { new[] { Keys.Down } };
+	private static readonly List<Keys[]> DefaultMoveToPreviousRowWithSteps           = new() { Array.Empty<Keys>() };
+	private static readonly List<Keys[]> DefaultMoveToNextRowWithSteps               = new() { Array.Empty<Keys>() };
+	private static readonly List<Keys[]> DefaultMoveToPreviousRowWithEvent           = new() { Array.Empty<Keys>() };
+	private static readonly List<Keys[]> DefaultMoveToNextRowWithEvent               = new() { Array.Empty<Keys>() };
 	private static readonly List<Keys[]> DefaultMoveToPreviousMeasure                = new() { new[] { Keys.PageUp } };
 	private static readonly List<Keys[]> DefaultMoveToNextMeasure                    = new() { new[] { Keys.PageDown } };
 	private static readonly List<Keys[]> DefaultMoveToChartStart                     = new() { new[] { Keys.Home } };
@@ -868,6 +872,63 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 	}
 
 	private List<Keys[]> MoveDownInternal = DefaultMoveDown;
+
+
+	[JsonInclude]
+	public List<Keys[]> MoveToPreviousRowWithSteps
+	{
+		get => MoveToPreviousRowWithStepsInternal;
+		set
+		{
+			MoveToPreviousRowWithStepsInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(MoveToPreviousRowWithSteps));
+		}
+	}
+
+	private List<Keys[]> MoveToPreviousRowWithStepsInternal = DefaultMoveToPreviousRowWithSteps;
+
+
+	[JsonInclude]
+	public List<Keys[]> MoveToNextRowWithSteps
+	{
+		get => MoveToNextRowWithStepsInternal;
+		set
+		{
+			MoveToNextRowWithStepsInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(MoveToNextRowWithSteps));
+		}
+	}
+
+	private List<Keys[]> MoveToNextRowWithStepsInternal = DefaultMoveToNextRowWithSteps;
+
+
+	[JsonInclude]
+	public List<Keys[]> MoveToPreviousRowWithEvent
+	{
+		get => MoveToPreviousRowWithEventInternal;
+		set
+		{
+			MoveToPreviousRowWithEventInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(MoveToPreviousRowWithEvent));
+		}
+	}
+
+	private List<Keys[]> MoveToPreviousRowWithEventInternal = DefaultMoveToPreviousRowWithEvent;
+
+
+	[JsonInclude]
+	public List<Keys[]> MoveToNextRowWithEvent
+	{
+		get => MoveToNextRowWithEventInternal;
+		set
+		{
+			MoveToNextRowWithEventInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(MoveToNextRowWithEvent));
+		}
+	}
+
+	private List<Keys[]> MoveToNextRowWithEventInternal = DefaultMoveToNextRowWithEvent;
+
 
 	[JsonInclude]
 	public List<Keys[]> MoveToPreviousMeasure
