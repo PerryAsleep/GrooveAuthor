@@ -55,6 +55,7 @@ Other editors stutter or lock up when editing long files but `GrooveAuthor` is b
 - Stamina-conscious features including scrollable density graph, stream breakdowns, and NPS counts.
 - Performant even on massive, hours-long simfiles.
 - Customizable and dockable UI.
+- Customizable key bindings for simple and advanced tasks.
 
 ## Installation
 
