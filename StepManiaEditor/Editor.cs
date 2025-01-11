@@ -622,8 +622,6 @@ internal sealed class Editor :
 		UIControls.Instance.AddCommand(zoom, "Change Spacing For Current Mode", nameof(PreferencesKeyBinds.ScrollSpacing), UIControls.MultipleKeysJoinString + "Scroll");
 
 		const string navigation = "Navigation";
-		AddKeyCommand(navigation, "Decrease Snap", nameof(PreferencesKeyBinds.DecreaseSnap), OnDecreaseSnap, true);
-		AddKeyCommand(navigation, "Increase Snap", nameof(PreferencesKeyBinds.IncreaseSnap), OnIncreaseSnap, true);
 		AddKeyCommand(navigation, "Move Up", nameof(PreferencesKeyBinds.MoveUp), OnMoveUp, true);
 		UIControls.Instance.AddStaticCommand(navigation, "Move Up", "Scroll Up");
 		AddKeyCommand(navigation, "Move Down", nameof(PreferencesKeyBinds.MoveDown), OnMoveDown, true);
@@ -634,6 +632,20 @@ internal sealed class Editor :
 		AddKeyCommand(navigation, "Move To Chart End", nameof(PreferencesKeyBinds.MoveToChartEnd), OnMoveToChartEnd);
 		AddKeyCommand(navigation, "Move To Next Label", nameof(PreferencesKeyBinds.MoveToNextLabel), OnMoveToNextLabel, true);
 		AddKeyCommand(navigation, "Move To Previous Label", nameof(PreferencesKeyBinds.MoveToPreviousLabel), OnMoveToPreviousLabel, true);
+
+		const string snap = "Snap";
+		AddKeyCommand(snap, "Decrease Snap", nameof(PreferencesKeyBinds.DecreaseSnap), OnDecreaseSnap, true);
+		AddKeyCommand(snap, "Increase Snap", nameof(PreferencesKeyBinds.IncreaseSnap), OnIncreaseSnap, true);
+		AddKeyCommand(snap, "Snap to None", nameof(PreferencesKeyBinds.SnapToNone), () => { SnapManager.SetSnapToLevel(0); });
+		AddKeyCommand(snap, "Snap to 1/4", nameof(PreferencesKeyBinds.SnapToQuarters), () => { SnapManager.SetSnapToLevel(1); });
+		AddKeyCommand(snap, "Snap to 1/8", nameof(PreferencesKeyBinds.SnapToEighths), () => { SnapManager.SetSnapToLevel(2); });
+		AddKeyCommand(snap, "Snap to 1/12", nameof(PreferencesKeyBinds.SnapToTwelfths), () => { SnapManager.SetSnapToLevel(3); });
+		AddKeyCommand(snap, "Snap to 1/16", nameof(PreferencesKeyBinds.SnapToSixteenths), () => { SnapManager.SetSnapToLevel(4); });
+		AddKeyCommand(snap, "Snap to 1/24", nameof(PreferencesKeyBinds.SnapToTwentyFourths), () => { SnapManager.SetSnapToLevel(5); });
+		AddKeyCommand(snap, "Snap to 1/32", nameof(PreferencesKeyBinds.SnapToThirtySeconds), () => { SnapManager.SetSnapToLevel(6); });
+		AddKeyCommand(snap, "Snap to 1/48", nameof(PreferencesKeyBinds.SnapToFortyEighths), () => { SnapManager.SetSnapToLevel(7); });
+		AddKeyCommand(snap, "Snap to 1/64", nameof(PreferencesKeyBinds.SnapToSixtyFourths), () => { SnapManager.SetSnapToLevel(8); });
+		AddKeyCommand(snap, "Snap to 1/192", nameof(PreferencesKeyBinds.SnapToOneHundredNinetySeconds), () => { SnapManager.SetSnapToLevel(9); });
 
 		const string patterns = "Patterns";
 		AddKeyCommand(patterns, "Move To Next Pattern", nameof(PreferencesKeyBinds.MoveToNextPattern), OnMoveToNextPattern, true);

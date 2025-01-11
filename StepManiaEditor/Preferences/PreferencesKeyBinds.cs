@@ -277,12 +277,24 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 	private static readonly List<Keys[]> DefaultConvertSelectedRollsToMines          = new() { Array.Empty<Keys>() };
 	private static readonly List<Keys[]> DefaultConvertSelectedWarpsToNegativeStops  = new() { Array.Empty<Keys>() };
 	private static readonly List<Keys[]> DefaultConvertSelectedNegativeStopsToWarps  = new() { Array.Empty<Keys>() };
+	private static readonly List<Keys[]> DefaultSnapToNone                           = new() { Array.Empty<Keys>() };
+	private static readonly List<Keys[]> DefaultSnapToQuarters                       = new() { Array.Empty<Keys>() };
+	private static readonly List<Keys[]> DefaultSnapToEighths                        = new() { Array.Empty<Keys>() };
+	private static readonly List<Keys[]> DefaultSnapToTwelfths                       = new() { Array.Empty<Keys>() };
+	private static readonly List<Keys[]> DefaultSnapToSixteenths                     = new() { Array.Empty<Keys>() };
+	private static readonly List<Keys[]> DefaultSnapToTwentyFourths                  = new() { Array.Empty<Keys>() };
+	private static readonly List<Keys[]> DefaultSnapToThirtySeconds                  = new() { Array.Empty<Keys>() };
+	private static readonly List<Keys[]> DefaultSnapToFortyEighths                   = new() { Array.Empty<Keys>() };
+	private static readonly List<Keys[]> DefaultSnapToSixtyFourths                   = new() { Array.Empty<Keys>() };
+	private static readonly List<Keys[]> DefaultSnapToOneHundredNinetySeconds        = new() { Array.Empty<Keys>() };
 	// @formatter:on
 
 	#region Properties
 
 	// Regex to generate the properties below.
-	// $1 is the Property name like Open, OpenContainingFolder, etc.
+	// Copy new Defaults below, then search for this in selection:
+	// .*private static readonly List\<Keys\[\]\> Default([a-zA-Z0-9]+) +.*;
+	// Replace with this:
 	// \t[JsonInclude]\r\n\tpublic List<Keys[]> $1\r\n\t{\r\n\t\tget => $1Internal;\r\n\t\tset\r\n\t\t{\r\n\t\t\t$1Internal = value;\r\n\t\t\tNotify(NotificationKeyBindingChanged, this, nameof($1));\r\n\t\t}\r\n\t}\r\n\tprivate List<Keys[]> $1Internal = Default$1;\r\n\r\n
 
 	[JsonInclude]
@@ -1753,6 +1765,145 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 	}
 
 	private List<Keys[]> ConvertSelectedNegativeStopsToWarpsInternal = DefaultConvertSelectedNegativeStopsToWarps;
+
+	[JsonInclude]
+	public List<Keys[]> SnapToNone
+	{
+		get => SnapToNoneInternal;
+		set
+		{
+			SnapToNoneInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(SnapToNone));
+		}
+	}
+
+	private List<Keys[]> SnapToNoneInternal = DefaultSnapToNone;
+
+
+	[JsonInclude]
+	public List<Keys[]> SnapToQuarters
+	{
+		get => SnapToQuartersInternal;
+		set
+		{
+			SnapToQuartersInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(SnapToQuarters));
+		}
+	}
+
+	private List<Keys[]> SnapToQuartersInternal = DefaultSnapToQuarters;
+
+
+	[JsonInclude]
+	public List<Keys[]> SnapToEighths
+	{
+		get => SnapToEighthsInternal;
+		set
+		{
+			SnapToEighthsInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(SnapToEighths));
+		}
+	}
+
+	private List<Keys[]> SnapToEighthsInternal = DefaultSnapToEighths;
+
+
+	[JsonInclude]
+	public List<Keys[]> SnapToTwelfths
+	{
+		get => SnapToTwelfthsInternal;
+		set
+		{
+			SnapToTwelfthsInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(SnapToTwelfths));
+		}
+	}
+
+	private List<Keys[]> SnapToTwelfthsInternal = DefaultSnapToTwelfths;
+
+
+	[JsonInclude]
+	public List<Keys[]> SnapToSixteenths
+	{
+		get => SnapToSixteenthsInternal;
+		set
+		{
+			SnapToSixteenthsInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(SnapToSixteenths));
+		}
+	}
+
+	private List<Keys[]> SnapToSixteenthsInternal = DefaultSnapToSixteenths;
+
+
+	[JsonInclude]
+	public List<Keys[]> SnapToTwentyFourths
+	{
+		get => SnapToTwentyFourthsInternal;
+		set
+		{
+			SnapToTwentyFourthsInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(SnapToTwentyFourths));
+		}
+	}
+
+	private List<Keys[]> SnapToTwentyFourthsInternal = DefaultSnapToTwentyFourths;
+
+
+	[JsonInclude]
+	public List<Keys[]> SnapToThirtySeconds
+	{
+		get => SnapToThirtySecondsInternal;
+		set
+		{
+			SnapToThirtySecondsInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(SnapToThirtySeconds));
+		}
+	}
+
+	private List<Keys[]> SnapToThirtySecondsInternal = DefaultSnapToThirtySeconds;
+
+
+	[JsonInclude]
+	public List<Keys[]> SnapToFortyEighths
+	{
+		get => SnapToFortyEighthsInternal;
+		set
+		{
+			SnapToFortyEighthsInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(SnapToFortyEighths));
+		}
+	}
+
+	private List<Keys[]> SnapToFortyEighthsInternal = DefaultSnapToFortyEighths;
+
+
+	[JsonInclude]
+	public List<Keys[]> SnapToSixtyFourths
+	{
+		get => SnapToSixtyFourthsInternal;
+		set
+		{
+			SnapToSixtyFourthsInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(SnapToSixtyFourths));
+		}
+	}
+
+	private List<Keys[]> SnapToSixtyFourthsInternal = DefaultSnapToSixtyFourths;
+
+
+	[JsonInclude]
+	public List<Keys[]> SnapToOneHundredNinetySeconds
+	{
+		get => SnapToOneHundredNinetySecondsInternal;
+		set
+		{
+			SnapToOneHundredNinetySecondsInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(SnapToOneHundredNinetySeconds));
+		}
+	}
+
+	private List<Keys[]> SnapToOneHundredNinetySecondsInternal = DefaultSnapToOneHundredNinetySeconds;
 
 	#endregion Properties
 
