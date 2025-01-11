@@ -1,5 +1,7 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.Numerics;
+using Fumen;
 using ImGuiNET;
 using Microsoft.Xna.Framework.Input;
 using static StepManiaEditor.ImGuiUtils;
@@ -7,85 +9,374 @@ using static StepManiaEditor.ImGuiUtils;
 namespace StepManiaEditor;
 
 /// <summary>
-/// Class for drawing controls.
+/// Class for drawing and remapping controls.
 /// Expected Usage:
 ///  Call AddCommand as needed before first Draw.
 ///  Call Draw to draw.
 ///  Categories and commands will be drawn in the order they were added.
 /// </summary>
-internal sealed class UIControls : UIWindow
+internal sealed class UIControls : UIWindow, Fumen.IObserver<PreferencesKeyBinds>
 {
 	private static readonly int TitleColumnWidth = UiScaled(260);
 	private static readonly Vector2 DefaultSize = new(UiScaled(538), UiScaled(800));
+	private static readonly int EditButtonWidth = UiScaled(40);
+	private static readonly int DeleteButtonWidth = UiScaled(20);
+	private static readonly int AddButtonWidth = UiScaled(20);
+	private static readonly int ResetButtonWidth = UiScaled(40);
+
+	#region Commands
+
+	internal interface ICommand
+	{
+		public void Draw();
+	}
+
+	/// <summary>
+	/// StaticCommands can't be remapped.
+	/// They just show the command name and the inputs.
+	/// </summary>
+	internal class StaticCommand : ICommand
+	{
+		private readonly string Name;
+		private readonly string InputString;
+
+		public StaticCommand(string name, string inputString)
+		{
+			Name = name;
+			InputString = inputString;
+		}
+
+		public void Draw()
+		{
+			var spacing = ImGui.GetStyle().ItemSpacing.X;
+
+			PushDisabled();
+			ImGuiLayoutUtils.DrawRowTitleAndAdvanceColumn(Name);
+			ImGui.Button($"Reset##{Name}", new Vector2(ResetButtonWidth, 0.0f));
+			ImGui.SameLine();
+			ImGui.Button($"+##{Name}", new Vector2(AddButtonWidth, 0.0f));
+			ImGui.SameLine();
+			var textWidth = ImGui.GetContentRegionAvail().X - (EditButtonWidth + DeleteButtonWidth + spacing * 2);
+			Text(InputString, textWidth);
+			ImGui.SameLine();
+			ImGui.Button($"Edit##{Name}", new Vector2(EditButtonWidth, 0.0f));
+			ImGui.SameLine();
+			ImGui.Button($"X##{Name}", new Vector2(AddButtonWidth, 0.0f));
+			PopDisabled();
+		}
+	}
+
+	/// <summary>
+	/// KeyBindCommands have one or more inputs and can be remapped.
+	/// </summary>
+	internal class KeyBindCommand : ICommand
+	{
+		private readonly KeyCommandManager KeyCommandManager;
+		private readonly string Name;
+		private readonly string AdditionalInputText;
+		private readonly string Id;
+		private readonly List<string> InputsAsStrings = new();
+		private List<Keys[]> Inputs;
+		private readonly List<Keys[]> Defaults;
+		private readonly List<List<string>> Conflicts = new();
+		private bool Modified;
+
+		public KeyBindCommand(KeyCommandManager keyCommandManager, string name, string id,
+			string additionalInputText = null)
+		{
+			KeyCommandManager = keyCommandManager;
+			Name = name;
+			Id = id;
+			AdditionalInputText = additionalInputText;
+
+			var p = Preferences.Instance.PreferencesKeyBinds;
+			Defaults = p.GetDefaults(Id);
+			ResetInputFromPreferences();
+		}
+
+		public void RefreshConflicts()
+		{
+			Conflicts.Clear();
+			for (var i = 0; i < Inputs.Count; i++)
+			{
+				// Try to store conflicts by their name so they can be presented nicely to the user.
+				// Fallback to using ids if a name cannot be found.
+				var conflictingIds = KeyCommandManager.GetConflictingCommands(Id, Inputs[i]);
+				if (conflictingIds.Count > 0)
+				{
+					var conflictingCommandNames = new List<string>();
+					foreach (var conflictingId in conflictingIds)
+					{
+						if (Instance.TryGetKeyBindCommand(conflictingId, out var conflictingCommand))
+							conflictingCommandNames.Add(conflictingCommand.Name);
+						else
+							conflictingCommandNames.Add(conflictingId);
+					}
+
+					Conflicts.Add(conflictingCommandNames);
+				}
+				else
+				{
+					Conflicts.Add(conflictingIds);
+				}
+			}
+		}
+
+		public void LogConflicts()
+		{
+			for (var i = 0; i < Inputs.Count; i++)
+			{
+				if (i < Conflicts.Count && Conflicts[i].Count > 0)
+				{
+					Logger.Warn(
+						$"\"{Name}\" binding \"{InputsAsStrings[i]}\" conflicts with the following other bindings: {string.Join(", ", Conflicts[i])}.");
+				}
+			}
+		}
+
+		public void ResetInputFromPreferences()
+		{
+			// Reset Inputs.
+			var p = Preferences.Instance.PreferencesKeyBinds;
+			Inputs = p.CloneKeyBinding(Id);
+
+			// Refresh our cached state for if the sate is modified from the Defaults.
+			RefreshModifiedState();
+
+			// Refresh our cached input strings.
+			InputsAsStrings.Clear();
+			foreach (var input in Inputs)
+				InputsAsStrings.Add(GetCommandString(input));
+		}
+
+		private void RefreshModifiedState()
+		{
+			Modified = false;
+			if (Inputs.Count != Defaults.Count)
+			{
+				Modified = true;
+				return;
+			}
+
+			for (var i = 0; i < Inputs.Count; i++)
+			{
+				var currentInput = Inputs[i];
+				var defaultInput = Defaults[i];
+				if (currentInput.Length != defaultInput.Length)
+				{
+					Modified = true;
+					return;
+				}
+
+				for (var j = 0; j < currentInput.Length; j++)
+				{
+					if (currentInput[j] != defaultInput[j])
+					{
+						Modified = true;
+						return;
+					}
+				}
+			}
+		}
+
+		private void Reset()
+		{
+			// Set the state to Defaults.
+			// We will listen for this change and refresh cached state in response.
+			ActionQueue.Instance.Do(new ActionUpdateKeyBinding(Id, Name, Defaults));
+			//RefreshState();
+		}
+
+		private void Update()
+		{
+			// Commit our locally modified Inputs to preferences.
+			// We will listen for this change and refresh cached state in response.
+			ActionQueue.Instance.Do(new ActionUpdateKeyBinding(Id, Name, Inputs));
+		}
+
+		public void Draw()
+		{
+			var canReset = Modified;
+			var reset = false;
+			var add = false;
+			var rebindIndex = -1;
+			var deleteIndex = -1;
+			var spacing = ImGui.GetStyle().ItemSpacing.X;
+
+			// Can't delete if there is only one input and it is unbound.
+			var canDelete = !(Inputs.Count == 1 && (Inputs[0] == null || Inputs[0].Length == 0));
+
+			for (var i = 0; i < Inputs.Count; i++)
+			{
+				ImGuiLayoutUtils.DrawRowTitleAndAdvanceColumn(Name);
+
+				// Reset and add buttons.
+				if (i == 0)
+				{
+					if (!canReset)
+						PushDisabled();
+					if (ImGui.Button($"Reset##{Id}", new Vector2(ResetButtonWidth, 0.0f)))
+					{
+						reset = true;
+					}
+
+					if (!canReset)
+						PopDisabled();
+					ImGui.SameLine();
+
+					if (ImGui.Button($"+##{Id}", new Vector2(AddButtonWidth, 0.0f)))
+					{
+						add = true;
+					}
+
+					ImGui.SameLine();
+				}
+				else
+				{
+					ImGui.Dummy(new Vector2(ResetButtonWidth + AddButtonWidth + spacing, 0.0f));
+					ImGui.SameLine();
+				}
+
+				// Text.
+				var additionalTextWidth = 0.0f;
+				var textWidth = ImGui.GetContentRegionAvail().X - (EditButtonWidth + DeleteButtonWidth + spacing * 2);
+				var text = InputsAsStrings[i];
+				if (!string.IsNullOrEmpty(AdditionalInputText))
+				{
+					var baseTextWidth = ImGui.CalcTextSize(text).X;
+					additionalTextWidth = textWidth - baseTextWidth;
+					if (additionalTextWidth > 0)
+						textWidth = baseTextWidth;
+				}
+
+				if (i < Conflicts.Count && Conflicts[i].Count > 0)
+					TextColored(UILog.GetColor(LogLevel.Warn), text, textWidth);
+				else
+					Text(text, textWidth);
+				if (additionalTextWidth > 0)
+				{
+					ImGui.GetStyle().ItemSpacing.X = 0;
+					ImGui.SameLine();
+					Text(AdditionalInputText, additionalTextWidth, true);
+					ImGui.GetStyle().ItemSpacing.X = spacing;
+				}
+
+				// Edit button.
+				ImGui.SameLine();
+				if (ImGui.Button($"Edit##{Id}{i}", new Vector2(EditButtonWidth, 0.0f)))
+				{
+					rebindIndex = i;
+				}
+
+				// Delete button.
+				ImGui.SameLine();
+				if (!canDelete)
+					PushDisabled();
+				if (ImGui.Button($"X##{Id}{i}", new Vector2(AddButtonWidth, 0.0f)))
+				{
+					deleteIndex = i;
+				}
+
+				if (!canDelete)
+					PopDisabled();
+			}
+
+			if (reset)
+			{
+				Reset();
+			}
+
+			if (add)
+			{
+				Inputs.Add(Array.Empty<Keys>());
+				Update();
+			}
+
+			if (deleteIndex != -1)
+			{
+				Inputs.RemoveAt(deleteIndex);
+				if (Inputs.Count == 0)
+					Inputs.Add(Array.Empty<Keys>());
+				Update();
+			}
+
+			if (rebindIndex != -1)
+			{
+				UIKeyRebindModal.Instance.Open(Name, Id, AdditionalInputText, InputsAsStrings[rebindIndex],
+					(newInput) =>
+					{
+						if (rebindIndex < Inputs.Count)
+						{
+							Inputs[rebindIndex] = (Keys[])newInput.Clone();
+							Update();
+						}
+					});
+			}
+		}
+	}
+
+	#endregion Commands
 
 	/// <summary>
 	/// A group of commands under the same category.
 	/// </summary>
 	internal class Category
 	{
-		public readonly string Name;
-		public List<Command> Commands = new();
+		private readonly string Name;
+		private readonly List<ICommand> Commands = new();
 
 		public Category(string name)
 		{
 			Name = name;
 		}
 
-		public Command GetOrCreateCommand(string commandName)
+		public string GetName()
 		{
-			foreach (var command in Commands)
+			return Name;
+		}
+
+		public void AddCommand(ICommand command)
+		{
+			Commands.Add(command);
+		}
+
+		public void Draw()
+		{
+			if (ImGui.CollapsingHeader(Name, ImGuiTreeNodeFlags.DefaultOpen))
 			{
-				if (command.Name == commandName)
-					return command;
+				if (ImGuiLayoutUtils.BeginTable(Name, TitleColumnWidth))
+				{
+					foreach (var command in Commands)
+						command.Draw();
+					ImGuiLayoutUtils.EndTable();
+				}
 			}
-
-			var newCommand = new Command(commandName);
-			Commands.Add(newCommand);
-			return newCommand;
 		}
 	}
 
-	/// <summary>
-	/// An individual command with one or more inputs.
-	/// </summary>
-	internal class Command
-	{
-		public readonly string Name;
-		public string Input = "";
-
-		public Command(string name)
-		{
-			Name = name;
-		}
-
-		public void AddInput(Keys[] input)
-		{
-			AddInput(GetCommandString(input));
-		}
-
-		public void AddInput(string input)
-		{
-			if (string.IsNullOrEmpty(Input))
-				Input = input;
-			else
-				Input += MultipleInputsJoinString + input;
-		}
-	}
+	public static UIControls Instance { get; } = new();
 
 	/// <summary>
 	/// All Categories.
 	/// </summary>
 	private readonly List<Category> Categories = new();
 
-	public static UIControls Instance { get; } = new();
-
+	private readonly Dictionary<string, KeyBindCommand> AllKeyBindCommands = new();
 	public const string MultipleInputsJoinString = " / ";
 	public const string MultipleKeysJoinString = "+";
 	public const string OrString = "/";
-	public const string Unbound = "<UNBOUND>";
+	public const string Unbound = "Unbound";
+
+	private KeyCommandManager KeyCommandManager;
 
 	private UIControls() : base("Controls")
 	{
+	}
+
+	public void Initialize(KeyCommandManager keyCommandManager)
+	{
+		KeyCommandManager = keyCommandManager;
+		Preferences.Instance.PreferencesKeyBinds.AddObserver(this);
 	}
 
 	public static string GetCommandString(List<Keys[]> inputs)
@@ -180,25 +471,52 @@ internal sealed class UIControls : UIWindow
 		Preferences.Instance.ShowControlsWindow = false;
 	}
 
-	public void AddCommand(string categoryName, string commandName, Keys[] input)
+	public void AddCommand(string categoryName, string commandName, string id,
+		string additionalInputText = null)
 	{
-		var category = GetOrCreateCategory(categoryName);
-		var command = category.GetOrCreateCommand(commandName);
-		command.AddInput(input);
+		var newCategory = GetOrCreateCategory(categoryName);
+		var newCommand = new KeyBindCommand(KeyCommandManager, commandName, id, additionalInputText);
+		newCategory.AddCommand(newCommand);
+		AllKeyBindCommands.Add(id, newCommand);
 	}
 
-	public void AddCommand(string categoryName, string commandName, string input)
+	public void FinishAddingCommands()
+	{
+		RefreshConflicts();
+	}
+
+	public bool TryGetKeyBindCommand(string id, out KeyBindCommand command)
+	{
+		return AllKeyBindCommands.TryGetValue(id, out command);
+	}
+
+	public void LogConflicts()
+	{
+		foreach (var kvp in AllKeyBindCommands)
+		{
+			kvp.Value.LogConflicts();
+		}
+	}
+
+	public void RefreshConflicts()
+	{
+		foreach (var kvp in AllKeyBindCommands)
+		{
+			kvp.Value.RefreshConflicts();
+		}
+	}
+
+	public void AddStaticCommand(string categoryName, string commandName, string input)
 	{
 		var category = GetOrCreateCategory(categoryName);
-		var command = category.GetOrCreateCommand(commandName);
-		command.AddInput(input);
+		category.AddCommand(new StaticCommand(commandName, input));
 	}
 
 	private Category GetOrCreateCategory(string name)
 	{
 		foreach (var category in Categories)
 		{
-			if (category.Name == name)
+			if (category.GetName() == name)
 				return category;
 		}
 
@@ -211,26 +529,21 @@ internal sealed class UIControls : UIWindow
 	{
 		if (!Preferences.Instance.ShowControlsWindow)
 			return;
-
 		if (BeginWindow(WindowTitle, ref Preferences.Instance.ShowControlsWindow, DefaultSize))
-		{
 			foreach (var category in Categories)
-			{
-				if (ImGui.CollapsingHeader(category.Name, ImGuiTreeNodeFlags.DefaultOpen))
-				{
-					if (ImGuiLayoutUtils.BeginTable(category.Name, TitleColumnWidth))
-					{
-						foreach (var command in category.Commands)
-						{
-							ImGuiLayoutUtils.DrawRowTitleAndText(command.Name, command.Input);
-						}
+				category.Draw();
+		ImGui.End();
+	}
 
-						ImGuiLayoutUtils.EndTable();
-					}
-				}
+	public void OnNotify(string eventId, PreferencesKeyBinds notifier, object payload)
+	{
+		if (eventId == PreferencesKeyBinds.NotificationKeyBindingChanged)
+		{
+			if (AllKeyBindCommands.TryGetValue((string)payload, out var command))
+			{
+				command.ResetInputFromPreferences();
+				RefreshConflicts();
 			}
 		}
-
-		ImGui.End();
 	}
 }

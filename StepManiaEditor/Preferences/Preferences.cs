@@ -170,6 +170,7 @@ internal sealed class Preferences
 		PreferencesWaveForm.PostLoad();
 		PreferencesMiniMap.PostLoad();
 		PreferencesDensityGraph.PostLoad();
+		PreferencesKeyBinds.PostLoad();
 	}
 
 	private void PreSave()

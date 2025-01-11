@@ -77,4 +77,11 @@ internal sealed class SnapManager
 				p.SnapIndex = 0;
 		} while (!IsSnapIndexValidForSnapLock(p.SnapIndex));
 	}
+
+	public void SetSnapToLevel(int snapLevel)
+	{
+		if (!IsSnapIndexValidForSnapLock(snapLevel))
+			return;
+		Preferences.Instance.SnapIndex = snapLevel;
+	}
 }
