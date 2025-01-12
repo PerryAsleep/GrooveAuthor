@@ -404,6 +404,32 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	}
 
 	/// <summary>
+	/// Gets the player index associated with this event.
+	/// </summary>
+	/// <returns>Player index associated with this event.</returns>
+	public int GetPlayer()
+	{
+		if (ChartEvent is Note n)
+			return n.Player;
+		return 0;
+	}
+
+	/// <summary>
+	/// Sets the player index associated with this event.
+	/// </summary>
+	/// <param name="player">Player index to set.</param>
+	/// <remarks>
+	/// Set this carefully. This changes how events are sorted.
+	/// This cannot be changed while this event is in a sorted list without resorting.
+	/// </remarks>
+	public void SetPlayer(int player)
+	{
+		Assert(ChartEvent is Note);
+		if (ChartEvent is Note n)
+			n.Player = player;
+	}
+
+	/// <summary>
 	/// Updates all information dependent on the row.
 	/// </summary>
 	/// <remarks>
@@ -1046,7 +1072,7 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 		double arrowY)
 	{
 		// Draw the fake marker. Do not draw it with the selection overlay as it looks weird.
-		var fakeTextureId = ArrowGraphicManager.GetFakeMarkerTexture(GetRow(), GetLane(), false);
+		var fakeTextureId = ArrowGraphicManager.GetFakeMarkerTexture(GetRow(), GetPlayer(), GetLane(), false);
 		var (arrowW, arrowH) = textureAtlas.GetDimensions(arrowTextureId);
 		var (markerW, markerH) = textureAtlas.GetDimensions(fakeTextureId);
 		var markerX = arrowX + (arrowW - markerW) * 0.5 * Scale;

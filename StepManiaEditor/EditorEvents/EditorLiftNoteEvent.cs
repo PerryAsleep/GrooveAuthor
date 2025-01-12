@@ -60,8 +60,11 @@ internal sealed class EditorLiftNoteEvent : EditorEvent
 		if (alpha <= 0.0f)
 			return;
 
+		var lane = GetLane();
+		var player = GetPlayer();
+
 		// Draw the arrow.
-		var (textureId, rot) = arrowGraphicManager.GetArrowTexture(GetStepColorRow(), LaneTapNote.Lane, IsSelected());
+		var (textureId, rot) = arrowGraphicManager.GetArrowTexture(GetStepColorRow(), player, lane, IsSelected());
 		textureAtlas.Draw(
 			textureId,
 			spriteBatch,
@@ -75,7 +78,7 @@ internal sealed class EditorLiftNoteEvent : EditorEvent
 		// relaying fake information is more important than relaying lift information.
 		if (!IsFake())
 		{
-			var liftTextureId = ArrowGraphicManager.GetLiftMarkerTexture(LaneTapNote.IntegerPosition, LaneTapNote.Lane, false);
+			var liftTextureId = ArrowGraphicManager.GetLiftMarkerTexture(LaneTapNote.IntegerPosition, player, lane, false);
 			var (arrowW, arrowH) = textureAtlas.GetDimensions(textureId);
 			var (markerW, markerH) = textureAtlas.GetDimensions(liftTextureId);
 			var markerX = X + (arrowW - markerW) * 0.5 * Scale;

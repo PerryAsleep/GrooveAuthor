@@ -59,7 +59,8 @@ internal sealed class EditorTapNoteEvent : EditorEvent
 		var alpha = GetRenderAlpha();
 		if (alpha <= 0.0f)
 			return;
-		var (textureId, rot) = arrowGraphicManager.GetArrowTexture(GetStepColorRow(), LaneTapNote.Lane, IsSelected());
+		var (textureId, rot) =
+			arrowGraphicManager.GetArrowTexture(GetStepColorRow(), GetPlayer(), LaneTapNote.Lane, IsSelected());
 		textureAtlas.Draw(
 			textureId,
 			spriteBatch,

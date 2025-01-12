@@ -29,6 +29,7 @@ internal class TextureGeneratorGame : Game
 {
 	private static readonly string[] ArrowSquareSubImageIds = new[]
 	{
+		// Row 1.
 		"itg-down-1-4",
 		"itg-solo-1-4",
 		"itg-center-1-4",
@@ -38,6 +39,9 @@ internal class TextureGeneratorGame : Game
 		"itg-down-1-32",
 		"itg-solo-1-32",
 		"itg-center-1-32",
+		"piu-hold-corner-yellow",
+
+		// Row 2.
 		"itg-down-receptor",
 		"itg-solo-receptor",
 		"itg-center-receptor",
@@ -47,6 +51,9 @@ internal class TextureGeneratorGame : Game
 		"itg-down-1-48",
 		"itg-solo-1-48",
 		"itg-center-1-48",
+		"piu-roll-corner-yellow",
+
+		// Row 3.
 		"itg-down-receptor-held",
 		"itg-solo-receptor-held",
 		"itg-center-receptor-held",
@@ -56,52 +63,91 @@ internal class TextureGeneratorGame : Game
 		"itg-down-1-64",
 		"itg-solo-1-64",
 		"itg-center-1-64",
+		"pit-hold-corner-green",
+
+		// Row 4.
 		"itg-down-receptor-glow",
 		"itg-solo-receptor-glow",
 		"itg-center-receptor-glow",
 		"itg-down-1-24",
 		"itg-solo-1-24",
 		"itg-center-1-24",
-		"piu-diagonal-red",
-		"piu-center",
-		"piu-diagonal-blue",
+		"piu-corner-red",
+		"piu-center-yellow",
+		"piu-corner-blue",
+		"piu-roll-corner-green",
+
+		// Row 5.
 		"itg-hold-body-inactive",
 		null, //"itg-hold-end-inactive",
 		"itg-hold-center-body-inactive",
 		null, //"itg-hold-center-end-inactive",
 		"itg-hold-solo-body-inactive",
 		null, //"itg-hold-solo-end-inactive",
-		"piu-diagonal-receptor",
+		"piu-corner-receptor",
 		"piu-center-receptor",
-		"piu-hold-blue",
+		"piu-hold-corner-blue",
+		"piu-hold-center-red",
+
+		// Row 6.
 		"itg-roll-body-inactive",
 		null, //"itg-roll-end-inactive",
 		"itg-roll-center-body-inactive",
 		null, //"itg-roll-center-end-inactive",
 		"itg-roll-solo-body-inactive",
 		null, //"itg-roll-solo-end-inactive",
-		"piu-diagonal-receptor-held",
+		"piu-corner-receptor-held",
 		"piu-center-receptor-held",
-		"piu-roll-blue",
+		"piu-roll-corner-blue",
+		"piu-roll-center-red",
+
+		// Row 7.
 		"itg-hold-body-active",
 		null, //"itg-hold-end-active",
 		"itg-hold-center-body-active",
 		null, //"itg-hold-center-end-active",
 		"itg-hold-solo-body-active",
 		null, //"itg-hold-solo-end-active",
-		"piu-diagonal-receptor-glow",
+		"piu-corner-receptor-glow",
 		"piu-center-receptor-glow",
-		"piu-hold-red",
+		"piu-hold-corner-red",
+		"piu-hold-center-blue",
+
+		// Row 8.
 		"itg-roll-body-active",
 		null, //"itg-roll-end-active",
 		"itg-roll-center-body-active",
 		null, //"itg-roll-center-end-active",
 		"itg-roll-solo-body-active",
 		null, //"itg-roll-solo-end-active",
-		"piu-roll-center",
-		"piu-hold-center",
-		"piu-roll-red",
+		"piu-roll-center-yellow",
+		"piu-hold-center-yellow",
+		"piu-roll-corner-red",
+		"piu-roll-center-blue",
+
+		// Row 9.
 		"mine",
+		null, // "itg-hold-solo-start-active"
+		null, // "itg-hold-solo-start-inactive"
+		null, // "itg-roll-solo-start-active"
+		null, // "itg-roll-solo-start-inactive"
+		null, // "fake-marker" / "lift-marker"
+		null, // snap icons
+		null, // snap icons
+		null, // empty
+		"piu-hold-center-green",
+
+		// Row 10.
+		"mine-red",
+		"mine-blue",
+		"mine-yellow",
+		"mine-green",
+		"piu-corner-yellow",
+		"piu-corner-green",
+		"piu-center-red",
+		"piu-center-blue",
+		"piu-center-green",
+		"piu-roll-center-green",
 	};
 
 	private static readonly string[] ArrowSnapSubImageIds = new[]
@@ -164,8 +210,8 @@ internal class TextureGeneratorGame : Game
 	private const string InputIcons = "icons.png";
 	private const string OutputImage = "atlas.png";
 	private const string OutputAtlas = "atlas.json";
-	private const int OutputAtlasWidth = 1800;
-	private const int OutputAtlasHeight = 1800;
+	private const int OutputAtlasWidth = 2048;
+	private const int OutputAtlasHeight = 2048;
 	private const int MarkerTextureWidth = 128;
 
 	// Selected texture variant parameters.
@@ -354,7 +400,7 @@ internal class TextureGeneratorGame : Game
 		if (arrowsTexture == null)
 			return;
 
-		ProcessGridOfImages(arrowsTexture, ArrowSquareSubImageIds, 9, 0, 0, 128, 128, 0);
+		ProcessGridOfImages(arrowsTexture, ArrowSquareSubImageIds, 10, 0, 0, 128, 128, 0);
 		ProcessGridOfImages(arrowsTexture, ArrowSnapSubImageIds, 4, 776, 1032, 40, 40, 8);
 		ProcessGridOfImages(arrowsTexture, ArrowHoldStartSubImageIds, 4, 128, 1060, 128, 28, 0);
 		ProcessGridOfImages(arrowsTexture, ArrowSpecialTapMarkerIds, 2, 648, 1032, 40, 40, 8);

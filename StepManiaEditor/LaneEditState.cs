@@ -108,8 +108,9 @@ internal sealed class LaneEditState
 	/// </summary>
 	public void SetEditingHold(
 		EditorChart activeChart,
-		int lane,
 		int row,
+		int lane,
+		int player,
 		int startingRow,
 		int length,
 		bool roll,
@@ -125,7 +126,7 @@ internal sealed class LaneEditState
 			}
 		}
 
-		var addHoldEvent = new ActionAddHoldEvent(activeChart, lane, row, length, roll, true);
+		var addHoldEvent = new ActionAddHoldEvent(activeChart, row, lane, player, length, roll, true);
 		EventBeingEdited = addHoldEvent.GetHoldEvent();
 		Actions.EnqueueAndDo(addHoldEvent);
 		Active = true;

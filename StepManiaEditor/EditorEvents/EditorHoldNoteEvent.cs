@@ -180,11 +180,12 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 		var active = NextDrawActive && Preferences.Instance.PreferencesReceptors.AutoPlayLightHolds;
 		var activeAndCutoff = NextDrawActive && Preferences.Instance.PreferencesReceptors.AutoPlayHideArrows;
 		var selected = IsSelected();
+		var player = GetPlayer();
 
 		var startRowForColoring = GetStepColorRow();
 
 		var (startArrowTexture, holdRot) =
-			arrowGraphicManager.GetArrowTexture(startRowForColoring, GetLane(), selected);
+			arrowGraphicManager.GetArrowTexture(startRowForColoring, player, GetLane(), selected);
 		var (_, startArrowHeight) = textureAtlas.GetDimensions(startArrowTexture);
 		var halfArrowHeight = startArrowHeight * 0.5 * Scale;
 
@@ -192,17 +193,21 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 
 		// The hold body texture is a tiled texture that starts at the end of the hold and ends at the arrow.
 		var (holdBodyTextureId, holdBodyMirrored) = roll
-			? arrowGraphicManager.GetRollBodyTexture(LaneHoldEndNote.IntegerPosition, LaneHoldEndNote.Lane, active, selected)
-			: arrowGraphicManager.GetHoldBodyTexture(LaneHoldEndNote.IntegerPosition, LaneHoldEndNote.Lane, active, selected);
+			? arrowGraphicManager.GetRollBodyTexture(LaneHoldEndNote.IntegerPosition, player, LaneHoldEndNote.Lane, active,
+				selected)
+			: arrowGraphicManager.GetHoldBodyTexture(LaneHoldEndNote.IntegerPosition, player, LaneHoldEndNote.Lane, active,
+				selected);
 		// The hold cap texture is a texture that is drawn once at the end of the hold.
 		var (holdCapTextureId, holdCapRotation) = roll
-			? arrowGraphicManager.GetRollEndTexture(LaneHoldEndNote.IntegerPosition, LaneHoldEndNote.Lane, active, selected)
-			: arrowGraphicManager.GetHoldEndTexture(LaneHoldEndNote.IntegerPosition, LaneHoldEndNote.Lane, active, selected);
+			? arrowGraphicManager.GetRollEndTexture(LaneHoldEndNote.IntegerPosition, player, LaneHoldEndNote.Lane, active,
+				selected)
+			: arrowGraphicManager.GetHoldEndTexture(LaneHoldEndNote.IntegerPosition, player, LaneHoldEndNote.Lane, active,
+				selected);
 		// The hold start texture is only used to extend the start of the hold upward into the arrow for certain
 		// arrow graphics which wouldn't otherwise mask the hold start, like solo diagonals.
 		var (holdBodyStartTexture, holdBodyStartMirror) = roll
-			? arrowGraphicManager.GetRollStartTexture(startRowForColoring, GetLane(), NextDrawActive, selected)
-			: arrowGraphicManager.GetHoldStartTexture(startRowForColoring, GetLane(), NextDrawActive, selected);
+			? arrowGraphicManager.GetRollStartTexture(startRowForColoring, player, GetLane(), NextDrawActive, selected)
+			: arrowGraphicManager.GetHoldStartTexture(startRowForColoring, player, GetLane(), NextDrawActive, selected);
 
 		var (_, capH) = textureAtlas.GetDimensions(holdCapTextureId);
 		var (bodyTexW, bodyTexH) = textureAtlas.GetDimensions(holdBodyTextureId);

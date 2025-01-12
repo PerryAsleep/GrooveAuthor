@@ -322,7 +322,7 @@ internal sealed class UIEditEvents
 		ActionQueue.Instance.Do(new ActionChangeNoteType(Editor, chart, events,
 			(e) => e is EditorHoldNoteEvent hn && !hn.IsRoll(),
 			(e) => EditorEvent.CreateEvent(
-				EventConfig.CreateHoldConfig(chart, e.GetRow(), e.GetLane(), e.GetRowDuration(),
+				EventConfig.CreateHoldConfig(chart, e.GetRow(), e.GetLane(), e.GetPlayer(), e.GetRowDuration(),
 					true))));
 	}
 
@@ -338,7 +338,7 @@ internal sealed class UIEditEvents
 		ActionQueue.Instance.Do(new ActionChangeNoteType(Editor, chart, events,
 			(e) => e is EditorHoldNoteEvent hn && !hn.IsRoll(),
 			(e) => EditorEvent.CreateEvent(
-				EventConfig.CreateMineConfig(chart, e.GetRow(), e.GetLane()))));
+				EventConfig.CreateMineConfig(chart, e.GetRow(), e.GetLane(), e.GetPlayer()))));
 	}
 
 	private void ConvertRollsToHolds(EditorChart chart, IEnumerable<EditorEvent> events)
@@ -346,7 +346,7 @@ internal sealed class UIEditEvents
 		ActionQueue.Instance.Do(new ActionChangeNoteType(Editor, chart, events,
 			(e) => e is EditorHoldNoteEvent hn && hn.IsRoll(),
 			(e) => EditorEvent.CreateEvent(
-				EventConfig.CreateHoldConfig(chart, e.GetRow(), e.GetLane(), e.GetRowDuration(),
+				EventConfig.CreateHoldConfig(chart, e.GetRow(), e.GetLane(), e.GetPlayer(), e.GetRowDuration(),
 					false))));
 	}
 
@@ -362,7 +362,7 @@ internal sealed class UIEditEvents
 		ActionQueue.Instance.Do(new ActionChangeNoteType(Editor, chart, events,
 			(e) => e is EditorHoldNoteEvent hn && hn.IsRoll(),
 			(e) => EditorEvent.CreateEvent(
-				EventConfig.CreateMineConfig(chart, e.GetRow(), e.GetLane()))));
+				EventConfig.CreateMineConfig(chart, e.GetRow(), e.GetLane(), e.GetPlayer()))));
 	}
 
 	private void ConvertWarpsToNegativeStops(EditorChart chart, IEnumerable<EditorEvent> events, bool allEvents)

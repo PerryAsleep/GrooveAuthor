@@ -49,7 +49,7 @@ internal sealed class EditorMineNoteEvent : EditorEvent
 		var alpha = GetRenderAlpha();
 		if (alpha <= 0.0f)
 			return;
-		var textureId = ArrowGraphicManager.GetMineTexture(GetRow(), LaneNote.Lane, IsSelected());
+		var textureId = arrowGraphicManager.GetMineTexture(GetRow(), GetPlayer(), LaneNote.Lane, IsSelected());
 		textureAtlas.Draw(
 			textureId,
 			spriteBatch,

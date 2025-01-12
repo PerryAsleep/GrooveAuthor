@@ -2751,7 +2751,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 						{
 							// We need to recompute the hold end time, so don't provide any explicit times.
 							var replacementEvent = EditorEvent.CreateEvent(EventConfig.CreateHoldConfig(this,
-								existingNote.GetRow(), existingNote.GetLane(), newExistingHoldEndRow - existingNote.GetRow(),
+								existingNote.GetRow(), existingNote.GetLane(), existingNote.GetPlayer(),
+								newExistingHoldEndRow - existingNote.GetRow(),
 								existingHold.IsRoll()));
 							AddEvent(replacementEvent);
 							sideEffectAddedEvents.Add(replacementEvent);
