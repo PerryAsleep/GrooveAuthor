@@ -43,23 +43,23 @@ public class TestFakes
 		c.AddEvent(EditorEvent.CreateEvent(EventConfig.CreateFakeConfig(c, row, len)));
 		Assert.AreEqual(1, c.GetFakes().GetCount());
 
-		var eventBeforeFake = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row - 1, 0));
+		var eventBeforeFake = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row - 1, 0, 0));
 		c.AddEvent(eventBeforeFake);
 		AssertFake(eventBeforeFake, false);
 
-		var eventAtSameRowAsFake = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row, 0));
+		var eventAtSameRowAsFake = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row, 0, 0));
 		c.AddEvent(eventAtSameRowAsFake);
 		AssertFake(eventAtSameRowAsFake, true);
 
-		var eventWithinFake = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row + 1, 0));
+		var eventWithinFake = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row + 1, 0, 0));
 		c.AddEvent(eventWithinFake);
 		AssertFake(eventWithinFake, true);
 
-		var eventAtSameRowAsFakeEnd = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row + len, 0));
+		var eventAtSameRowAsFakeEnd = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row + len, 0, 0));
 		c.AddEvent(eventAtSameRowAsFakeEnd);
 		AssertFake(eventAtSameRowAsFakeEnd, false);
 
-		var eventAfterFakeEnd = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row + len + 1, 0));
+		var eventAfterFakeEnd = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row + len + 1, 0, 0));
 		c.AddEvent(eventAfterFakeEnd);
 		AssertFake(eventAfterFakeEnd, false);
 	}
@@ -74,23 +74,23 @@ public class TestFakes
 		c.AddEvent(EditorEvent.CreateEvent(EventConfig.CreateWarpConfig(c, row, len)));
 		Assert.AreEqual(1, c.GetWarps().GetCount());
 
-		var eventBeforeWarp = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row - 1, 0));
+		var eventBeforeWarp = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row - 1, 0, 0));
 		c.AddEvent(eventBeforeWarp);
 		AssertFake(eventBeforeWarp, false);
 
-		var eventAtSameRowAsWarp = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row, 0));
+		var eventAtSameRowAsWarp = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row, 0, 0));
 		c.AddEvent(eventAtSameRowAsWarp);
 		AssertFake(eventAtSameRowAsWarp, true);
 
-		var eventWithinWarp = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row + 1, 0));
+		var eventWithinWarp = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row + 1, 0, 0));
 		c.AddEvent(eventWithinWarp);
 		AssertFake(eventWithinWarp, true);
 
-		var eventAtSameRowAsWarpEnd = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row + len, 0));
+		var eventAtSameRowAsWarpEnd = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row + len, 0, 0));
 		c.AddEvent(eventAtSameRowAsWarpEnd);
 		AssertFake(eventAtSameRowAsWarpEnd, false);
 
-		var eventAfterWarpEnd = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row + len + 1, 0));
+		var eventAfterWarpEnd = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row + len + 1, 0, 0));
 		c.AddEvent(eventAfterWarpEnd);
 		AssertFake(eventAfterWarpEnd, false);
 	}
@@ -105,23 +105,23 @@ public class TestFakes
 		c.AddEvent(EditorEvent.CreateEvent(EventConfig.CreateStopConfig(c, row, time)));
 		Assert.AreEqual(1, c.GetStops().GetCount());
 
-		var eventBeforeNegativeStop = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row - 1, 0));
+		var eventBeforeNegativeStop = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row - 1, 0, 0));
 		c.AddEvent(eventBeforeNegativeStop);
 		AssertFake(eventBeforeNegativeStop, false);
 
-		var eventAtSameRowAsNegativeStop = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row, 0));
+		var eventAtSameRowAsNegativeStop = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row, 0, 0));
 		c.AddEvent(eventAtSameRowAsNegativeStop);
 		AssertFake(eventAtSameRowAsNegativeStop, true);
 
-		var eventWithinNegativeStop = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row + 1, 0));
+		var eventWithinNegativeStop = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row + 1, 0, 0));
 		c.AddEvent(eventWithinNegativeStop);
 		AssertFake(eventWithinNegativeStop, true);
 
-		var eventAtSameRowAsNegativeStopEnd = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row + len, 0));
+		var eventAtSameRowAsNegativeStopEnd = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row + len, 0, 0));
 		c.AddEvent(eventAtSameRowAsNegativeStopEnd);
 		AssertFake(eventAtSameRowAsNegativeStopEnd, false);
 
-		var eventAfterNegativeStopEnd = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row + len + 1, 0));
+		var eventAfterNegativeStopEnd = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row + len + 1, 0, 0));
 		c.AddEvent(eventAfterNegativeStopEnd);
 		AssertFake(eventAfterNegativeStopEnd, false);
 	}
@@ -139,24 +139,24 @@ public class TestFakes
 		Assert.AreEqual(1, c.GetWarps().GetCount());
 		Assert.AreEqual(1, c.GetStops().GetCount());
 
-		var eventBeforeWarp = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row - 1, 0));
+		var eventBeforeWarp = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row - 1, 0, 0));
 		c.AddEvent(eventBeforeWarp);
 		AssertFake(eventBeforeWarp, false);
 
 		// Events at the same time as warps that are coincident with stops are not fake.
-		var eventAtSameRowAsWarp = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row, 0));
+		var eventAtSameRowAsWarp = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row, 0, 0));
 		c.AddEvent(eventAtSameRowAsWarp);
 		AssertFake(eventAtSameRowAsWarp, false);
 
-		var eventWithinWarp = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row + 1, 0));
+		var eventWithinWarp = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row + 1, 0, 0));
 		c.AddEvent(eventWithinWarp);
 		AssertFake(eventWithinWarp, true);
 
-		var eventAtSameRowAsWarpEnd = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row + warpLen, 0));
+		var eventAtSameRowAsWarpEnd = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row + warpLen, 0, 0));
 		c.AddEvent(eventAtSameRowAsWarpEnd);
 		AssertFake(eventAtSameRowAsWarpEnd, false);
 
-		var eventAfterWarpEnd = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row + warpLen + 1, 0));
+		var eventAfterWarpEnd = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row + warpLen + 1, 0, 0));
 		c.AddEvent(eventAfterWarpEnd);
 		AssertFake(eventAfterWarpEnd, false);
 	}
@@ -174,24 +174,24 @@ public class TestFakes
 		Assert.AreEqual(1, c.GetWarps().GetCount());
 		Assert.AreEqual(1, c.GetDelays().GetCount());
 
-		var eventBeforeWarp = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row - 1, 0));
+		var eventBeforeWarp = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row - 1, 0, 0));
 		c.AddEvent(eventBeforeWarp);
 		AssertFake(eventBeforeWarp, false);
 
 		// Events at the same time as warps that are coincident with delays are not fake.
-		var eventAtSameRowAsWarp = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row, 0));
+		var eventAtSameRowAsWarp = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row, 0, 0));
 		c.AddEvent(eventAtSameRowAsWarp);
 		AssertFake(eventAtSameRowAsWarp, false);
 
-		var eventWithinWarp = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row + 1, 0));
+		var eventWithinWarp = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row + 1, 0, 0));
 		c.AddEvent(eventWithinWarp);
 		AssertFake(eventWithinWarp, true);
 
-		var eventAtSameRowAsWarpEnd = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row + warpLen, 0));
+		var eventAtSameRowAsWarpEnd = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row + warpLen, 0, 0));
 		c.AddEvent(eventAtSameRowAsWarpEnd);
 		AssertFake(eventAtSameRowAsWarpEnd, false);
 
-		var eventAfterWarpEnd = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row + warpLen + 1, 0));
+		var eventAfterWarpEnd = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row + warpLen + 1, 0, 0));
 		c.AddEvent(eventAfterWarpEnd);
 		AssertFake(eventAfterWarpEnd, false);
 	}
@@ -209,24 +209,24 @@ public class TestFakes
 		Assert.AreEqual(1, c.GetStops().GetCount());
 		Assert.AreEqual(1, c.GetDelays().GetCount());
 
-		var eventBeforeNegativeStop = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row - 1, 0));
+		var eventBeforeNegativeStop = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row - 1, 0, 0));
 		c.AddEvent(eventBeforeNegativeStop);
 		AssertFake(eventBeforeNegativeStop, false);
 
 		// Events at the same time as negative stops that are coincident with delays are not fake.
-		var eventAtSameRowAsNegativeStop = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row, 0));
+		var eventAtSameRowAsNegativeStop = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row, 0, 0));
 		c.AddEvent(eventAtSameRowAsNegativeStop);
 		AssertFake(eventAtSameRowAsNegativeStop, false);
 
-		var eventWithinNegativeStop = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row + 1, 0));
+		var eventWithinNegativeStop = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row + 1, 0, 0));
 		c.AddEvent(eventWithinNegativeStop);
 		AssertFake(eventWithinNegativeStop, true);
 
-		var eventAtSameRowAsNegativeStopEnd = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row + stopLen, 0));
+		var eventAtSameRowAsNegativeStopEnd = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row + stopLen, 0, 0));
 		c.AddEvent(eventAtSameRowAsNegativeStopEnd);
 		AssertFake(eventAtSameRowAsNegativeStopEnd, false);
 
-		var eventAfterNegativeStopEnd = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row + stopLen + 1, 0));
+		var eventAfterNegativeStopEnd = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row + stopLen + 1, 0, 0));
 		c.AddEvent(eventAfterNegativeStopEnd);
 		AssertFake(eventAfterNegativeStopEnd, false);
 	}
@@ -244,27 +244,27 @@ public class TestFakes
 		c.AddEvent(EditorEvent.CreateEvent(EventConfig.CreateStopConfig(c, positiveStopRow, positiveStopTime)));
 		Assert.AreEqual(2, c.GetStops().GetCount());
 
-		var eventBeforeNegativeStop = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, negativeStopRow - 1, 0));
+		var eventBeforeNegativeStop = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, negativeStopRow - 1, 0, 0));
 		c.AddEvent(eventBeforeNegativeStop);
 		AssertFake(eventBeforeNegativeStop, false);
 
-		var eventAtSameRowAsNegativeStop = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, negativeStopRow, 0));
+		var eventAtSameRowAsNegativeStop = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, negativeStopRow, 0, 0));
 		c.AddEvent(eventAtSameRowAsNegativeStop);
 		AssertFake(eventAtSameRowAsNegativeStop, true);
 
-		var eventWithinNegativeStop = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, negativeStopRow + 1, 0));
+		var eventWithinNegativeStop = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, negativeStopRow + 1, 0, 0));
 		c.AddEvent(eventWithinNegativeStop);
 		AssertFake(eventWithinNegativeStop, true);
 
-		var eventAtPositionOfPositiveStop = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, positiveStopRow, 0));
+		var eventAtPositionOfPositiveStop = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, positiveStopRow, 0, 0));
 		c.AddEvent(eventAtPositionOfPositiveStop);
 		AssertFake(eventAtPositionOfPositiveStop, true);
 
-		var eventAtSameRowAsStopEnd = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, bothStopEndRow, 0));
+		var eventAtSameRowAsStopEnd = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, bothStopEndRow, 0, 0));
 		c.AddEvent(eventAtSameRowAsStopEnd);
 		AssertFake(eventAtSameRowAsStopEnd, false);
 
-		var eventAfterNegativeStopEnd = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, bothStopEndRow + 1, 0));
+		var eventAfterNegativeStopEnd = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, bothStopEndRow + 1, 0, 0));
 		c.AddEvent(eventAfterNegativeStopEnd);
 		AssertFake(eventAfterNegativeStopEnd, false);
 	}
@@ -283,31 +283,31 @@ public class TestFakes
 		c.AddEvent(EditorEvent.CreateEvent(EventConfig.CreateStopConfig(c, positiveStopRow, positiveStopTime)));
 		Assert.AreEqual(2, c.GetStops().GetCount());
 
-		var eventBeforeNegativeStop = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, negativeStopRow - 1, 0));
+		var eventBeforeNegativeStop = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, negativeStopRow - 1, 0, 0));
 		c.AddEvent(eventBeforeNegativeStop);
 		AssertFake(eventBeforeNegativeStop, false);
 
-		var eventAtSameRowAsNegativeStop = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, negativeStopRow, 0));
+		var eventAtSameRowAsNegativeStop = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, negativeStopRow, 0, 0));
 		c.AddEvent(eventAtSameRowAsNegativeStop);
 		AssertFake(eventAtSameRowAsNegativeStop, true);
 
-		var eventWithinNegativeStop = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, negativeStopRow + 1, 0));
+		var eventWithinNegativeStop = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, negativeStopRow + 1, 0, 0));
 		c.AddEvent(eventWithinNegativeStop);
 		AssertFake(eventWithinNegativeStop, true);
 
-		var eventAtPositionOfPositiveStop = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, positiveStopRow, 0));
+		var eventAtPositionOfPositiveStop = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, positiveStopRow, 0, 0));
 		c.AddEvent(eventAtPositionOfPositiveStop);
 		AssertFake(eventAtPositionOfPositiveStop, true);
 
-		var eventAtSameRowAsPositiveStopEnd = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, positiveStopEndRow, 0));
+		var eventAtSameRowAsPositiveStopEnd = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, positiveStopEndRow, 0, 0));
 		c.AddEvent(eventAtSameRowAsPositiveStopEnd);
 		AssertFake(eventAtSameRowAsPositiveStopEnd, true);
 
-		var eventAtSameRowAsNegativeStopEnd = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, negativeStopEndRow, 0));
+		var eventAtSameRowAsNegativeStopEnd = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, negativeStopEndRow, 0, 0));
 		c.AddEvent(eventAtSameRowAsNegativeStopEnd);
 		AssertFake(eventAtSameRowAsNegativeStopEnd, false);
 
-		var eventAfterNegativeStopEnd = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, negativeStopEndRow + 1, 0));
+		var eventAfterNegativeStopEnd = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, negativeStopEndRow + 1, 0, 0));
 		c.AddEvent(eventAfterNegativeStopEnd);
 		AssertFake(eventAfterNegativeStopEnd, false);
 	}
@@ -325,29 +325,29 @@ public class TestFakes
 		c.AddEvent(EditorEvent.CreateEvent(EventConfig.CreateStopConfig(c, positiveStopRow, positiveStopTime)));
 		Assert.AreEqual(2, c.GetStops().GetCount());
 
-		var eventBeforeNegativeStop = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, negativeStopRow - 1, 0));
+		var eventBeforeNegativeStop = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, negativeStopRow - 1, 0, 0));
 		c.AddEvent(eventBeforeNegativeStop);
 		AssertFake(eventBeforeNegativeStop, false);
 
-		var eventAtSameRowAsNegativeStop = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, negativeStopRow, 0));
+		var eventAtSameRowAsNegativeStop = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, negativeStopRow, 0, 0));
 		c.AddEvent(eventAtSameRowAsNegativeStop);
 		AssertFake(eventAtSameRowAsNegativeStop, true);
 
-		var eventWithinNegativeStop = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, negativeStopRow + 1, 0));
+		var eventWithinNegativeStop = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, negativeStopRow + 1, 0, 0));
 		c.AddEvent(eventWithinNegativeStop);
 		AssertFake(eventWithinNegativeStop, true);
 
 		// The positive stop brings in the end of the negative stop causing it to be coincident with the positive row
 		// start, and events which are coincident with negative stop ends are not warped over.
-		var eventAtPositionOfPositiveStop = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, positiveStopRow, 0));
+		var eventAtPositionOfPositiveStop = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, positiveStopRow, 0, 0));
 		c.AddEvent(eventAtPositionOfPositiveStop);
 		AssertFake(eventAtPositionOfPositiveStop, false);
 
-		var eventAtSameRowAsPositiveStopEnd = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, stopEndRow, 0));
+		var eventAtSameRowAsPositiveStopEnd = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, stopEndRow, 0, 0));
 		c.AddEvent(eventAtSameRowAsPositiveStopEnd);
 		AssertFake(eventAtSameRowAsPositiveStopEnd, false);
 
-		var eventAfterNegativeStopEnd = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, stopEndRow + 1, 0));
+		var eventAfterNegativeStopEnd = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, stopEndRow + 1, 0, 0));
 		c.AddEvent(eventAfterNegativeStopEnd);
 		AssertFake(eventAfterNegativeStopEnd, false);
 	}

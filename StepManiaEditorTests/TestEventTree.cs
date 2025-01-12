@@ -21,7 +21,7 @@ public class TestEventTree
 		var c = new EditorChart(s, SMCommon.ChartType.dance_single);
 		foreach (var row in rows)
 			for (var l = 0; l < c.NumInputs; l++)
-				c.AddEvent(EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row, l)));
+				c.AddEvent(EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row, l, 0)));
 		AssertEventsAreInOrder(c);
 		return c;
 	}
@@ -34,7 +34,7 @@ public class TestEventTree
 		{
 			for (var l = 0; l < c.NumInputs; l++)
 			{
-				var config = EventConfig.CreateTapConfig(c, row, l);
+				var config = EventConfig.CreateTapConfig(c, row, l, 0);
 				config.IsBeingEdited = true;
 				c.AddEvent(EditorEvent.CreateEvent(config));
 			}
