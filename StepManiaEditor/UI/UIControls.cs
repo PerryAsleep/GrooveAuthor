@@ -433,6 +433,39 @@ internal sealed class UIControls : UIWindow, Fumen.IObserver<PreferencesKeyBinds
 				case Keys.RightWindows:
 					inputString += "Win";
 					break;
+				case Keys.OemSemicolon:
+					inputString += ";";
+					break;
+				case Keys.OemPlus:
+					inputString += "=";
+					break;
+				case Keys.OemComma:
+					inputString += ",";
+					break;
+				case Keys.OemMinus:
+					inputString += "-";
+					break;
+				case Keys.OemPeriod:
+					inputString += ".";
+					break;
+				case Keys.OemQuestion:
+					inputString += "/";
+					break;
+				case Keys.OemTilde:
+					inputString += "~";
+					break;
+				case Keys.OemOpenBrackets:
+					inputString += "[";
+					break;
+				case Keys.OemPipe:
+					inputString += "\\";
+					break;
+				case Keys.OemCloseBrackets:
+					inputString += "]";
+					break;
+				case Keys.OemQuotes:
+					inputString += "'";
+					break;
 				case Keys.D0:
 				case Keys.D1:
 				case Keys.D2:
