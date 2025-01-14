@@ -34,6 +34,14 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		public bool ShouldUseChartMusicOffset;
 		public Guid ExpressedChartConfig = ExpressedChartConfigManager.DefaultExpressedChartDynamicConfigGuid;
 		public Dictionary<int, EditorPatternEvent.Definition> Patterns;
+
+		/// <summary>
+		/// The max player count for the chart.
+		/// Save the index because most charts are for 1 player and writing 0 lets us
+		/// easily omit the value from serialization.
+		/// </summary>
+		[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+		public int MaxPlayerIndex;
 	}
 
 	/// <summary>
@@ -198,9 +206,9 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	public readonly int NumInputs;
 
 	/// <summary>
-	/// Number of players.
+	/// Default number of players for this type of chart.
 	/// </summary>
-	public readonly int NumPlayers;
+	public readonly int DefaultNumPlayers;
 
 	/// <summary>
 	/// Cached step totals.
@@ -438,6 +446,30 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 	private Guid ExpressedChartConfigInternal;
 
+	public int MaxPlayers
+	{
+		get => MaxPlayersInternal;
+		set
+		{
+			Assert(CanBeEdited());
+			if (!CanBeEdited())
+				return;
+
+			if (SupportsVariableNumberOfPlayers())
+			{
+				MaxPlayersInternal = Math.Max(value, 1);
+			}
+			else
+			{
+				// Ignore the input value. This chart does not support a variable number of players.
+				// The number of players can only ever be the specified number for the chart type.
+				MaxPlayersInternal = DefaultNumPlayers;
+			}
+		}
+	}
+
+	private int MaxPlayersInternal;
+
 	#endregion Properties
 
 	#region Constructors
@@ -464,7 +496,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 		var chartProperties = GetChartProperties(ChartType);
 		NumInputs = chartProperties.GetNumInputs();
-		NumPlayers = chartProperties.GetNumPlayers();
+		DefaultNumPlayers = chartProperties.GetNumPlayers();
+		MaxPlayers = DefaultNumPlayers;
 
 		chart.Extras.TryGetExtra(TagChartName, out string parsedName, true);
 		NameInternal = parsedName ?? "";
@@ -520,7 +553,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 		var chartProperties = GetChartProperties(ChartType);
 		NumInputs = chartProperties.GetNumInputs();
-		NumPlayers = chartProperties.GetNumPlayers();
+		DefaultNumPlayers = chartProperties.GetNumPlayers();
+		MaxPlayers = DefaultNumPlayers;
 
 		Name = "";
 		Description = "";
@@ -571,7 +605,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		ChartTypeInternal = other.ChartTypeInternal;
 
 		NumInputs = other.NumInputs;
-		NumPlayers = other.NumPlayers;
+		DefaultNumPlayers = other.DefaultNumPlayers;
+		MaxPlayers = other.MaxPlayers;
 
 		Name = other.Name;
 		Description = other.Description;
@@ -1015,6 +1050,16 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	public StepDensity GetStepDensity()
 	{
 		return StepDensity;
+	}
+
+	public bool IsMultiPlayer()
+	{
+		return DefaultNumPlayers > 1;
+	}
+
+	public bool SupportsVariableNumberOfPlayers()
+	{
+		return GetChartProperties(ChartType).GetSupportsVariableNumberOfPlayers();
 	}
 
 	#endregion Accessors
@@ -2976,7 +3021,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 	public bool SupportsAutogenFeatures()
 	{
-		return NumPlayers == 1;
+		return !IsMultiPlayer();
 	}
 
 	#endregion Misc
@@ -3342,7 +3387,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 				chart.Type = ChartTypeString(ChartType);
 				chart.DifficultyType = ChartDifficultyType.ToString();
 				chart.NumInputs = NumInputs;
-				chart.NumPlayers = NumPlayers;
+				chart.NumPlayers = MaxPlayers;
 				chart.DifficultyRating = Rating;
 				chart.Extras.AddDestExtra(TagMusic, MusicPath, true);
 				chart.Tempo = DisplayTempo.ToString();
@@ -3402,6 +3447,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			ShouldUseChartMusicOffset = UsesChartMusicOffset,
 			ExpressedChartConfig = ExpressedChartConfig,
 			Patterns = patterns,
+			MaxPlayerIndex = MaxPlayersInternal - 1,
 		};
 		var jsonString = JsonSerializer.Serialize(customSaveData, CustomSaveDataSerializationOptions);
 
@@ -3458,6 +3504,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			MusicOffset = customSaveData.MusicOffset;
 			UsesChartMusicOffset = customSaveData.ShouldUseChartMusicOffset;
 			ExpressedChartConfig = customSaveData.ExpressedChartConfig;
+			MaxPlayers = customSaveData.MaxPlayerIndex + 1;
 
 			// Add pattern events.
 			var alteredPatterns = false;

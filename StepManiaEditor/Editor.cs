@@ -666,6 +666,13 @@ internal sealed class Editor :
 		AddKeyCommand(snap, "Snap to 1/64", nameof(PreferencesKeyBinds.SnapToSixtyFourths), () => { SnapManager.SetSnapToLevel(8); });
 		AddKeyCommand(snap, "Snap to 1/192", nameof(PreferencesKeyBinds.SnapToOneHundredNinetySeconds), () => { SnapManager.SetSnapToLevel(9); });
 
+		const string routine = "Routine / Couples / Co-op";
+		AddKeyCommand(routine, "Toggle Player", nameof(PreferencesKeyBinds.TogglePlayer), OnTogglePlayer);
+		AddKeyCommand(routine, "Set Player 1", nameof(PreferencesKeyBinds.SetPlayer1), () => { SetPlayer(0); } );
+		AddKeyCommand(routine, "Set Player 2", nameof(PreferencesKeyBinds.SetPlayer2), () => { SetPlayer(1); } );
+		AddKeyCommand(routine, "Set Player 3", nameof(PreferencesKeyBinds.SetPlayer3), () => { SetPlayer(2); } );
+		AddKeyCommand(routine, "Set Player 4", nameof(PreferencesKeyBinds.SetPlayer4), () => { SetPlayer(3); } );
+
 		const string patterns = "Patterns";
 		AddKeyCommand(patterns, "Move To Next Pattern", nameof(PreferencesKeyBinds.MoveToNextPattern), OnMoveToNextPattern, true);
 		AddKeyCommand(patterns, "Move To Previous Pattern", nameof(PreferencesKeyBinds.MoveToPreviousPattern), OnMoveToPreviousPattern, true);
@@ -5071,6 +5078,7 @@ internal sealed class Editor :
 		UpdateWindowTitle();
 		ActionQueue.Instance.Clear();
 		StopObservingSongFile();
+		RefreshPlayerLimitFromFocusedChart();
 	}
 
 	private void UpdateWindowTitle()
@@ -6201,6 +6209,7 @@ internal sealed class Editor :
 		SetFocalPointScreenSpace(focalPointX, focalPointY);
 
 		UpdateChartPositions();
+		RefreshPlayerLimitFromFocusedChart();
 	}
 
 	public void MoveActiveChartLeft(EditorChart chart)
@@ -6400,6 +6409,8 @@ internal sealed class Editor :
 
 		DensityGraph.SetStepDensity(FocusedChart?.GetStepDensity());
 		EditorMouseState.SetActiveChart(FocusedChart);
+
+		RefreshPlayerLimitFromFocusedChart();
 
 		// Window title depends on the active chart.
 		UpdateWindowTitle();
@@ -6635,6 +6646,38 @@ internal sealed class Editor :
 	}
 
 	#endregion Patterns
+
+	#region Routine
+
+	private void OnTogglePlayer()
+	{
+		if (FocusedChart == null)
+			return;
+		var p = Preferences.Instance;
+		p.Player = (p.Player + 1) % FocusedChart.MaxPlayers;
+	}
+
+	private void SetPlayer(int player)
+	{
+		if (FocusedChart == null)
+			return;
+		var p = Preferences.Instance;
+		p.Player = Math.Clamp(player, 0, FocusedChart.MaxPlayers - 1);
+	}
+
+	private void RefreshPlayerLimitFromFocusedChart()
+	{
+		var p = Preferences.Instance;
+		if (FocusedChart == null)
+		{
+			p.Player = 0;
+			return;
+		}
+
+		p.Player = Math.Clamp(p.Player, 0, FocusedChart.MaxPlayers - 1);
+	}
+
+	#endregion Routine
 
 	#region IObserver
 

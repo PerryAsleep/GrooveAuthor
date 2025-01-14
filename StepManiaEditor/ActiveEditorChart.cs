@@ -2493,7 +2493,8 @@ internal sealed class ActiveEditorChart
 
 	private int GetPlayer()
 	{
-		// TODO: Routine: Use correct player.
+		// TODO: Routine: Improve caching player per active chart.
+		// This should be cached in some way per chart so moving between charts doesn't reset it.
 		return Preferences.Instance.Player;
 	}
 
@@ -2801,7 +2802,7 @@ internal sealed class ActiveEditorChart
 				}
 			}
 
-			// If the current position is different than the starting position.
+			// If the current position is different from the starting position.
 			// In other words, the current state of the note being edited should be a hold.
 			else
 			{
