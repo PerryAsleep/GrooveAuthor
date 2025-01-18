@@ -1,10 +1,6 @@
-﻿using Fumen;
-using Fumen.ChartDefinition;
-using Microsoft.Xna.Framework;
+﻿using Fumen.ChartDefinition;
 using Microsoft.Xna.Framework.Graphics;
-using Microsoft.Xna.Framework.Graphics.PackedVector;
 using MonoGameExtensions;
-using static System.ComponentModel.Design.ObjectSelectorEditor;
 
 namespace StepManiaEditor;
 

@@ -87,26 +87,27 @@ internal sealed class ImGuiLayoutUtils
 		var numAddedDanceTypes = 0;
 		var numAddedPumpTypes = 0;
 		var numAddedSmxTypes = 0;
-		for (var i = 0; i < SupportedChartTypes.Length; i++)
+		for (var i = 0; i < SupportedSinglePlayerChartTypes.Length; i++)
 		{
-			if (IsDanceType(SupportedChartTypes[i]))
+			if (IsDanceType(SupportedSinglePlayerChartTypes[i]))
 			{
-				StartupStepGraphOptions[numAddedDanceTypes * 3] = SupportedChartTypes[i];
+				StartupStepGraphOptions[numAddedDanceTypes * 3] = SupportedSinglePlayerChartTypes[i];
 				numAddedDanceTypes++;
 			}
-			else if (IsPumpType(SupportedChartTypes[i]))
+			else if (IsPumpType(SupportedSinglePlayerChartTypes[i]))
 			{
-				StartupStepGraphOptions[1 + numAddedPumpTypes * 3] = SupportedChartTypes[i];
+				StartupStepGraphOptions[1 + numAddedPumpTypes * 3] = SupportedSinglePlayerChartTypes[i];
 				numAddedPumpTypes++;
 			}
-			else if (IsSmxType(SupportedChartTypes[i]))
+			else if (IsSmxType(SupportedSinglePlayerChartTypes[i]))
 			{
-				StartupStepGraphOptions[2 + numAddedSmxTypes * 3] = SupportedChartTypes[i];
+				StartupStepGraphOptions[2 + numAddedSmxTypes * 3] = SupportedSinglePlayerChartTypes[i];
 				numAddedSmxTypes++;
 			}
 			else
 			{
-				Assert(false, $"Unexpected ChartType {SupportedChartTypes[i]} in Editor.SupportedChartTypes.");
+				Assert(false,
+					$"Unexpected ChartType {SupportedSinglePlayerChartTypes[i]} in Editor.SupportedSinglePlayerChartTypes.");
 			}
 		}
 	}
@@ -2122,7 +2123,7 @@ internal sealed class ImGuiLayoutUtils
 				if (undoable)
 				{
 					var allSet = new HashSet<ChartType>();
-					foreach (var chartType in SupportedChartTypes)
+					foreach (var chartType in SupportedSinglePlayerChartTypes)
 						allSet.Add(chartType);
 
 					ActionQueue.Instance.Do(
@@ -2132,7 +2133,7 @@ internal sealed class ImGuiLayoutUtils
 				else
 				{
 					originalValues.Clear();
-					foreach (var chartType in SupportedChartTypes)
+					foreach (var chartType in SupportedSinglePlayerChartTypes)
 						originalValues.Add(chartType);
 				}
 			}
@@ -2176,7 +2177,7 @@ internal sealed class ImGuiLayoutUtils
 								{
 									// Replace the set with a new set.
 									var newValues = new HashSet<ChartType>();
-									foreach (var chartType in SupportedChartTypes)
+									foreach (var chartType in SupportedSinglePlayerChartTypes)
 									{
 										if (chartType == StartupStepGraphOptions[i].Value)
 										{

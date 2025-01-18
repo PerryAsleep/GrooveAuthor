@@ -11,7 +11,6 @@ using StepManiaLibrary;
 using static StepManiaLibrary.Constants;
 using static System.Diagnostics.Debug;
 using static StepManiaEditor.Utils;
-using Microsoft.Xna.Framework.Graphics.PackedVector;
 
 namespace StepManiaEditor;
 
@@ -1098,7 +1097,8 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 		DrawTap(textureAtlas, spriteBatch, arrowGraphicManager, X, Y);
 	}
 
-	protected void DrawTap(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager, double x, double y)
+	protected void DrawTap(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager, double x,
+		double y)
 	{
 		var alpha = GetRenderAlpha();
 		var pos = new Vector2((float)x, (float)y);

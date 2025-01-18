@@ -67,6 +67,7 @@ internal sealed class UIMultiplayerPreferences : UIWindow
 				ImGuiLayoutUtils.EndTable();
 			}
 		}
+
 		ImGui.End();
 	}
 

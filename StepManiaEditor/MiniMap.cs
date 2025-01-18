@@ -790,7 +790,8 @@ internal sealed class MiniMap
 		return AddShortNote(
 			GetYPixelRelativeToBounds(position),
 			LaneXPositions[chartEvent.GetLane()],
-			ArrowGraphicManager.GetArrowColor(chartEvent.GetStepColorRow(), chartEvent.GetLane(), selected, chartEvent.GetPlayer()));
+			ArrowGraphicManager.GetArrowColor(chartEvent.GetStepColorRow(), chartEvent.GetLane(), selected,
+				chartEvent.GetPlayer()));
 	}
 
 	/// <summary>

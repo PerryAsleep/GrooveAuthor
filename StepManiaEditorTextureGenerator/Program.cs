@@ -292,7 +292,7 @@ internal class TextureGeneratorGame : Game
 			{
 				var i = y * SelectionMaskDimension + x;
 				SelectionDistances[i] = (float)Math.Sqrt((x - SelectionRimSize) * (x - SelectionRimSize) +
-														 (y - SelectionRimSize) * (y - SelectionRimSize));
+				                                         (y - SelectionRimSize) * (y - SelectionRimSize));
 			}
 		}
 	}
@@ -721,7 +721,7 @@ internal class TextureGeneratorGame : Game
 			filled[v] = true;
 
 			(x, y) = UnHash(v);
-			
+
 			if (x - 1 >= 0)
 			{
 				var hash = Hash(x - 1, y);
@@ -762,12 +762,13 @@ internal class TextureGeneratorGame : Game
 				set.Remove(val);
 				return val;
 			}
+
 			return 0;
 		}
 
 		(int, int) UnHash(int i)
 		{
-			var iy = (i / w);
+			var iy = i / w;
 			var ix = i - iy * w;
 			return (ix, iy);
 		}

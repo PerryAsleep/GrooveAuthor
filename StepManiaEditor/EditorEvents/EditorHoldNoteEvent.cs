@@ -173,37 +173,40 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 		private readonly SpriteBatch SpriteBatch;
 		private readonly ArrowGraphicManager ArrowGraphicManager;
 
-		public bool Multiplayer;
-		public float Alpha;
-		public double Scale;
+		private readonly bool Multiplayer;
+		private readonly float Alpha;
+		private readonly double Scale;
 
-		public string StartArrowTextureId;
-		public float StartArrowRotation;
+		public readonly string StartArrowTextureId;
+		private readonly float StartArrowRotation;
 
-		public string BodyTextureId;
-		public bool BodyMirrored;
-		public string CapTextureId;
-		public float CapRotation;
-		public string StartTextureId;
-		public bool StartMirrored;
+		private readonly string BodyTextureId;
+		private readonly bool BodyMirrored;
+		public readonly string CapTextureId;
+		private readonly float CapRotation;
+		private readonly string StartTextureId;
+		private readonly bool StartMirrored;
 
-		public string BodyFillTextureId;
-		public bool BodyFillMirrored;
-		public Color BodyColor;
-		public string BodyRimTextureId;
-		public bool BodyRimMirrored;
+		private readonly string BodyFillTextureId;
+		private readonly bool BodyFillMirrored;
+		private readonly Color BodyColor;
+		private readonly string BodyRimTextureId;
+		private readonly bool BodyRimMirrored;
 
-		public string StartFillTextureId;
-		public bool StartFillMirrored;
-		public Color StartColor;
-		public string StartRimTextureId;
-		public float StartRimRotation;
+		private readonly string StartFillTextureId;
+		private readonly bool StartFillMirrored;
+		private readonly Color StartColor;
+		private readonly string StartRimTextureId;
+		private readonly float StartRimRotation;
 
-		public string EndFillTextureId;
-		public float EndFillRotation;
-		public Color EndColor;
-		public string EndRimTextureId;
-		public float EndRimRotation;
+		private readonly string EndFillTextureId;
+		private readonly float EndFillRotation;
+		private readonly Color EndColor;
+		private readonly string EndRimTextureId;
+		private readonly float EndRimRotation;
+
+		private int BodyTextureWidth;
+		private int BodyTextureHeight;
 
 		public HoldRenderState(
 			TextureAtlas textureAtlas,
@@ -262,7 +265,7 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 					ArrowGraphicManager.GetHoldBodyTexture(row, lane, active, selected);
 				(CapTextureId, CapRotation) =
 					ArrowGraphicManager.GetHoldEndTexture(row, lane, active, selected);
-				(StartTextureId, StartMirrored) = 
+				(StartTextureId, StartMirrored) =
 					ArrowGraphicManager.GetHoldStartTexture(startRowForColoring, lane, startActive, selected);
 				if (Multiplayer)
 				{
@@ -280,6 +283,8 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 						ArrowGraphicManager.GetPlayerHoldEndTextureRim(lane, selected);
 				}
 			}
+
+			(BodyTextureWidth, BodyTextureHeight) = textureAtlas.GetDimensions(BodyTextureId);
 		}
 
 		public void DrawStart(int x, int y, int w)
@@ -299,8 +304,46 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 				Alpha,
 				StartMirrored ? SpriteEffects.FlipHorizontally : SpriteEffects.None);
 		}
-		public void DrawBody()
+
+		public void DrawBody(int x, int y, int w, int minY)
 		{
+			var bodyTileH = (int)(BodyTextureHeight * Scale + 0.5);
+			var spriteEffects = BodyMirrored ? SpriteEffects.FlipHorizontally : SpriteEffects.None;
+
+			// Draw the body by looping up from the bottom, ensuring that each tiled body texture aligns
+			// perfectly with the previous one.
+			while (y >= minY)
+			{
+				var h = Math.Min(bodyTileH, y - minY);
+				if (h == 0)
+					break;
+				y -= h;
+				if (y < -bodyTileH)
+					break;
+				if (h < bodyTileH)
+				{
+					var sourceH = (int)(BodyTextureHeight * ((double)h / bodyTileH));
+
+					TextureAtlas.Draw(
+						BodyTextureId,
+						SpriteBatch,
+						new Rectangle(0, BodyTextureHeight - sourceH, BodyTextureWidth, sourceH),
+						new Rectangle(x, y, w, h),
+						0.0f,
+						Alpha,
+						spriteEffects);
+				}
+				else
+				{
+					TextureAtlas.Draw(
+						BodyTextureId,
+						SpriteBatch,
+						new Rectangle(x, y, w, h),
+						0.0f,
+						Alpha,
+						spriteEffects);
+				}
+			}
 		}
 
 		public void DrawCap(int x, int y, int w, int h)
@@ -328,11 +371,11 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 		var active = NextDrawActive && Preferences.Instance.PreferencesReceptors.AutoPlayLightHolds;
 		var activeAndCutoff = NextDrawActive && Preferences.Instance.PreferencesReceptors.AutoPlayHideArrows;
 
-		HoldRenderState state = new HoldRenderState(textureAtlas, spriteBatch, arrowGraphicManager, this, active, NextDrawActive, alpha, Scale);
+		var state = new HoldRenderState(textureAtlas, spriteBatch, arrowGraphicManager, this, active, NextDrawActive, alpha,
+			Scale);
 		var (_, startArrowHeight) = textureAtlas.GetDimensions(state.StartArrowTextureId);
 		var halfArrowHeight = startArrowHeight * 0.5 * Scale;
 		var (_, capH) = textureAtlas.GetDimensions(state.CapTextureId);
-		var (bodyTexW, bodyTexH) = textureAtlas.GetDimensions(state.BodyTextureId);
 
 		// Determine the Y value and height to use.
 		// If the note is active, we should bring down the top to the cutoff point.
@@ -345,7 +388,6 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 		}
 
 		capH = (int)(capH * Scale + 0.5);
-		var bodyTileH = (int)(bodyTexH * Scale + 0.5);
 		var y = (int)(bodyY + noteH + 0.5) - capH;
 		var minY = (int)(bodyY + 0.5);
 		var x = (int)(X + 0.5);
@@ -369,31 +411,8 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 			y -= (y - (int)ScreenHeight) / capH * capH;
 		}
 
-		// Draw the body by looping up from the bottom, ensuring that each tiled body texture aligns
-		// perfectly with the previous one.
-		var spriteEffects = holdBodyMirrored ? SpriteEffects.FlipHorizontally : SpriteEffects.None;
-		
-		while (y >= minY)
-		{
-			var h = Math.Min(bodyTileH, y - minY);
-			if (h == 0)
-				break;
-			y -= h;
-			if (y < -bodyTileH)
-				break;
-			if (h < bodyTileH)
-			{
-				var sourceH = (int)(bodyTexH * ((double)h / bodyTileH));
-				textureAtlas.Draw(holdBodyTextureId, spriteBatch, new Rectangle(0, bodyTexH - sourceH, bodyTexW, sourceH),
-					new Rectangle(x, y, w, h), 0.0f, alpha, spriteEffects);
-			}
-			else
-			{
-				state.DrawStart(textureAtlas, S);
-
-				textureAtlas.Draw(holdBodyTextureId, spriteBatch, new Rectangle(x, y, w, h), 0.0f, alpha, spriteEffects);
-			}
-		}
+		// Draw the body.
+		state.DrawBody(x, y, w, minY);
 
 		// Some arrows, like solo diagonals need a hold start graphic to fill the gap at the top of the hold
 		// between the arrow midpoint and the widest part of the arrow.
@@ -412,6 +431,7 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 		var holdStartY = bodyY - halfArrowHeight;
 		DrawTap(textureAtlas, spriteBatch, arrowGraphicManager, X, holdStartY);
 
+		// Draw the fake marker if this note is a fake.
 		if (IsFake())
 			DrawFakeMarker(textureAtlas, spriteBatch, state.StartArrowTextureId, X, holdStartY);
 

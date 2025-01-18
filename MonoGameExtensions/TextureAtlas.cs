@@ -467,7 +467,8 @@ public abstract class TextureAtlas : IReadOnlyTextureAtlas
 	public void Draw(string subTextureId, SpriteBatch spriteBatch, Rectangle sourceRectangle, Rectangle destinationRectangle,
 		float rotation, float alpha, SpriteEffects spriteEffects)
 	{
-		Draw(subTextureId, spriteBatch, sourceRectangle, destinationRectangle, rotation, new Color(1.0f, 1.0f, 1.0f, alpha), spriteEffects);
+		Draw(subTextureId, spriteBatch, sourceRectangle, destinationRectangle, rotation, new Color(1.0f, 1.0f, 1.0f, alpha),
+			spriteEffects);
 	}
 
 	public void Draw(string subTextureId, SpriteBatch spriteBatch, Rectangle sourceRectangle, Rectangle destinationRectangle,

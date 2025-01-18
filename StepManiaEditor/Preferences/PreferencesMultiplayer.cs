@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Text.Json.Serialization;
 using Fumen;
 using Microsoft.Xna.Framework;
-using Vector3 = System.Numerics.Vector3;
 using static StepManiaEditor.PreferencesMultiplayer;
+using Vector3 = System.Numerics.Vector3;
 
 namespace StepManiaEditor;
 
@@ -27,7 +27,7 @@ internal sealed class PreferencesMultiplayer
 	public static readonly Vector3 DefaultPlayer9Color = new(0.5f, 1.0f, 0.5f);
 
 	[JsonInclude] public bool ShowMultiplayerPreferencesWindow;
-	
+
 	[JsonInclude]
 	public float RoutineNoteColorAlpha
 	{
@@ -38,6 +38,7 @@ internal sealed class PreferencesMultiplayer
 			RefreshCachedRoutineColors();
 		}
 	}
+
 	private float RoutineNoteColorAlphaInternal = DefaultRoutineNoteColorAlpha;
 
 	[JsonInclude]
@@ -252,15 +253,15 @@ internal sealed class PreferencesMultiplayer
 	public bool IsUsingDefaults()
 	{
 		return Player0Color.Equals(DefaultPlayer0Color)
-			&& Player1Color.Equals(DefaultPlayer1Color)
-			&& Player2Color.Equals(DefaultPlayer2Color)
-			&& Player3Color.Equals(DefaultPlayer3Color)
-			&& Player4Color.Equals(DefaultPlayer4Color)
-			&& Player5Color.Equals(DefaultPlayer5Color)
-			&& Player6Color.Equals(DefaultPlayer6Color)
-			&& Player7Color.Equals(DefaultPlayer7Color)
-			&& Player8Color.Equals(DefaultPlayer8Color)
-			&& Player9Color.Equals(DefaultPlayer9Color);
+		       && Player1Color.Equals(DefaultPlayer1Color)
+		       && Player2Color.Equals(DefaultPlayer2Color)
+		       && Player3Color.Equals(DefaultPlayer3Color)
+		       && Player4Color.Equals(DefaultPlayer4Color)
+		       && Player5Color.Equals(DefaultPlayer5Color)
+		       && Player6Color.Equals(DefaultPlayer6Color)
+		       && Player7Color.Equals(DefaultPlayer7Color)
+		       && Player8Color.Equals(DefaultPlayer8Color)
+		       && Player9Color.Equals(DefaultPlayer9Color);
 	}
 
 	public void RestoreDefaults()
