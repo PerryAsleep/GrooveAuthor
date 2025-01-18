@@ -1,7 +1,10 @@
-﻿using Fumen.ChartDefinition;
+﻿using Fumen;
+using Fumen.ChartDefinition;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Microsoft.Xna.Framework.Graphics.PackedVector;
 using MonoGameExtensions;
+using static System.ComponentModel.Design.ObjectSelectorEditor;
 
 namespace StepManiaEditor;
 
@@ -59,17 +62,8 @@ internal sealed class EditorTapNoteEvent : EditorEvent
 		var alpha = GetRenderAlpha();
 		if (alpha <= 0.0f)
 			return;
-		var (textureId, rot) =
-			arrowGraphicManager.GetArrowTexture(GetStepColorRow(), GetPlayer(), LaneTapNote.Lane, IsSelected());
-		textureAtlas.Draw(
-			textureId,
-			spriteBatch,
-			new Vector2((float)X, (float)Y),
-			Scale,
-			rot,
-			alpha);
-
+		DrawTap(textureAtlas, spriteBatch, arrowGraphicManager);
 		if (IsFake())
-			DrawFakeMarker(textureAtlas, spriteBatch, textureId);
+			DrawFakeMarker(textureAtlas, spriteBatch, arrowGraphicManager);
 	}
 }

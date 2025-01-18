@@ -125,7 +125,7 @@ public abstract class TextureAtlas : IReadOnlyTextureAtlas
 		/// <summary>
 		/// Recursive packing algorithm.
 		/// Packing a texture on the root PackNode will return a new PackNode containing the
-		/// the Texture and it's location with the TextureAtlas.
+		/// Texture and it's location with the TextureAtlas.
 		/// </summary>
 		/// <param name="texture">Texture to pack.</param>
 		/// <param name="padding">Padding in pixels to include around the Texture.</param>
@@ -365,7 +365,7 @@ public abstract class TextureAtlas : IReadOnlyTextureAtlas
 		spriteBatch.Draw(Texture, destinationRectangle, node.TextureRect, new Color(1.0f, 1.0f, 1.0f, alpha));
 	}
 
-	public void Draw(string subTextureId, SpriteBatch spriteBatch, Rectangle destinationRectangle, Color color)
+	public void Draw(string subTextureId, SpriteBatch spriteBatch, Rectangle destinationRectangle, Color c)
 	{
 		if (!GetNode(subTextureId, destinationRectangle, out var node, out _))
 		{
@@ -373,7 +373,7 @@ public abstract class TextureAtlas : IReadOnlyTextureAtlas
 			return;
 		}
 
-		spriteBatch.Draw(Texture, destinationRectangle, node.TextureRect, color);
+		spriteBatch.Draw(Texture, destinationRectangle, node.TextureRect, c);
 	}
 
 	public void Draw(string subTextureId, SpriteBatch spriteBatch, Rectangle destinationRectangle, float rotation, float alpha)
@@ -404,7 +404,7 @@ public abstract class TextureAtlas : IReadOnlyTextureAtlas
 		}
 
 		// When rotating, we need to provide a center offset to rotate by. For textures with odd lengths, this results
-		// in rounding errors. However we need to go through the SpriteBatch Draw method taking rotations in order to
+		// in rounding errors. However, we need to go through the SpriteBatch Draw method taking rotations in order to
 		// use SpriteEffects. When using 0.0f rotation, do not apply the offset to mitigate the rounding issues.
 		var rotationOffset = Vector2.Zero;
 		if (rotation != 0.0f)
@@ -420,6 +420,12 @@ public abstract class TextureAtlas : IReadOnlyTextureAtlas
 	public void Draw(string subTextureId, SpriteBatch spriteBatch, Vector2 position, Vector2 origin, double scale, float rotation,
 		float alpha, SpriteEffects spriteEffects)
 	{
+		Draw(subTextureId, spriteBatch, position, origin, scale, rotation, new Color(1.0f, 1.0f, 1.0f, alpha), spriteEffects);
+	}
+
+	public void Draw(string subTextureId, SpriteBatch spriteBatch, Vector2 position, Vector2 origin, double scale, float rotation,
+		Color c, SpriteEffects spriteEffects)
+	{
 		if (!GetNode(subTextureId, out var node, ref scale, out var mipLevel))
 		{
 			Logger.Warn($"Failed to draw packed texture identified by \"{subTextureId}\". No texture with that id found.");
@@ -434,11 +440,11 @@ public abstract class TextureAtlas : IReadOnlyTextureAtlas
 			origin.Y = (float)(origin.Y * originScale);
 		}
 
-		spriteBatch.Draw(Texture, position, node.TextureRect, new Color(1.0f, 1.0f, 1.0f, alpha), rotation, origin, (float)scale,
+		spriteBatch.Draw(Texture, position, node.TextureRect, c, rotation, origin, (float)scale,
 			spriteEffects, 1.0f);
 	}
 
-	public void Draw(string subTextureId, SpriteBatch spriteBatch, Vector2 position, Vector2 origin, Color color, double scale,
+	public void Draw(string subTextureId, SpriteBatch spriteBatch, Vector2 position, Vector2 origin, Color c, double scale,
 		float rotation, SpriteEffects spriteEffects)
 	{
 		if (!GetNode(subTextureId, out var node, ref scale, out var mipLevel))
@@ -455,11 +461,17 @@ public abstract class TextureAtlas : IReadOnlyTextureAtlas
 			origin.Y = (float)(origin.Y * originScale);
 		}
 
-		spriteBatch.Draw(Texture, position, node.TextureRect, color, rotation, origin, (float)scale, spriteEffects, 1.0f);
+		spriteBatch.Draw(Texture, position, node.TextureRect, c, rotation, origin, (float)scale, spriteEffects, 1.0f);
 	}
 
 	public void Draw(string subTextureId, SpriteBatch spriteBatch, Rectangle sourceRectangle, Rectangle destinationRectangle,
 		float rotation, float alpha, SpriteEffects spriteEffects)
+	{
+		Draw(subTextureId, spriteBatch, sourceRectangle, destinationRectangle, rotation, new Color(1.0f, 1.0f, 1.0f, alpha), spriteEffects);
+	}
+
+	public void Draw(string subTextureId, SpriteBatch spriteBatch, Rectangle sourceRectangle, Rectangle destinationRectangle,
+		float rotation, Color c, SpriteEffects spriteEffects)
 	{
 		if (!GetNode(subTextureId, destinationRectangle, out var node, out var mipLevel))
 		{
@@ -468,7 +480,7 @@ public abstract class TextureAtlas : IReadOnlyTextureAtlas
 		}
 
 		// When rotating, we need to provide a center offset to rotate by. For textures with odd lengths, this results
-		// in rounding errors. However we need to go through the SpriteBatch Draw method taking rotations in order to
+		// in rounding errors. However, we need to go through the SpriteBatch Draw method taking rotations in order to
 		// use SpriteEffects. When using 0.0f rotation, do not apply the offset to mitigate the rounding issues.
 		var rotationOffset = Vector2.Zero;
 		if (rotation != 0.0f)
@@ -491,12 +503,18 @@ public abstract class TextureAtlas : IReadOnlyTextureAtlas
 		sourceRectangle.X += node.TextureRect.X;
 		sourceRectangle.Y += node.TextureRect.Y;
 
-		spriteBatch.Draw(Texture, destinationRectangle, sourceRectangle, new Color(1.0f, 1.0f, 1.0f, alpha), rotation,
+		spriteBatch.Draw(Texture, destinationRectangle, sourceRectangle, c, rotation,
 			rotationOffset, spriteEffects, 1.0f);
 	}
 
 	public void Draw(string subTextureId, SpriteBatch spriteBatch, Rectangle destinationRectangle, float rotation,
 		Vector2 rotationOffset, float alpha)
+	{
+		Draw(subTextureId, spriteBatch, destinationRectangle, rotation, rotationOffset, new Color(1.0f, 1.0f, 1.0f, alpha));
+	}
+
+	public void Draw(string subTextureId, SpriteBatch spriteBatch, Rectangle destinationRectangle, float rotation,
+		Vector2 rotationOffset, Color c)
 	{
 		if (!GetNode(subTextureId, destinationRectangle, out var node, out _))
 		{
@@ -504,7 +522,7 @@ public abstract class TextureAtlas : IReadOnlyTextureAtlas
 			return;
 		}
 
-		spriteBatch.Draw(Texture, destinationRectangle, node.TextureRect, new Color(1.0f, 1.0f, 1.0f, alpha), rotation,
+		spriteBatch.Draw(Texture, destinationRectangle, node.TextureRect, c, rotation,
 			rotationOffset, SpriteEffects.None, 1.0f);
 	}
 
@@ -521,10 +539,15 @@ public abstract class TextureAtlas : IReadOnlyTextureAtlas
 
 	public void Draw(string subTextureId, SpriteBatch spriteBatch, Vector2 position, double scale, float rotation, float alpha)
 	{
-		Draw(subTextureId, spriteBatch, position, scale, rotation, alpha, SpriteEffects.None);
+		Draw(subTextureId, spriteBatch, position, scale, rotation, new Color(1.0f, 1.0f, 1.0f, alpha), SpriteEffects.None);
 	}
 
-	public void Draw(string subTextureId, SpriteBatch spriteBatch, Vector2 position, double scale, float rotation, float alpha,
+	public void Draw(string subTextureId, SpriteBatch spriteBatch, Vector2 position, double scale, float rotation, Color c)
+	{
+		Draw(subTextureId, spriteBatch, position, scale, rotation, c, SpriteEffects.None);
+	}
+
+	public void Draw(string subTextureId, SpriteBatch spriteBatch, Vector2 position, double scale, float rotation, Color c,
 		SpriteEffects spriteEffects)
 	{
 		if (!GetNode(subTextureId, out var node, ref scale, out _))
@@ -534,7 +557,7 @@ public abstract class TextureAtlas : IReadOnlyTextureAtlas
 		}
 
 		// When rotating, we need to provide a center offset to rotate by. For textures with odd lengths, this results
-		// in rounding errors. However we need to go through the SpriteBatch Draw method taking rotations in order to
+		// in rounding errors. However, we need to go through the SpriteBatch Draw method taking rotations in order to
 		// use SpriteEffects. When using 0.0f rotation, do not apply the offset to mitigate the rounding issues.
 		var rotationOffset = Vector2.Zero;
 		if (rotation != 0.0f)
@@ -544,7 +567,7 @@ public abstract class TextureAtlas : IReadOnlyTextureAtlas
 			position.Y += (float)(node.TextureRect.Height * scale * 0.5);
 		}
 
-		spriteBatch.Draw(Texture, position, node.TextureRect, new Color(1.0f, 1.0f, 1.0f, alpha), rotation, rotationOffset,
+		spriteBatch.Draw(Texture, position, node.TextureRect, c, rotation, rotationOffset,
 			(float)scale, spriteEffects, 1.0f);
 	}
 }

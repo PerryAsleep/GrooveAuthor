@@ -167,6 +167,154 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 		NextDrawActiveYCutoffPoint = y;
 	}
 
+	private struct HoldRenderState
+	{
+		private readonly TextureAtlas TextureAtlas;
+		private readonly SpriteBatch SpriteBatch;
+		private readonly ArrowGraphicManager ArrowGraphicManager;
+
+		public bool Multiplayer;
+		public float Alpha;
+		public double Scale;
+
+		public string StartArrowTextureId;
+		public float StartArrowRotation;
+
+		public string BodyTextureId;
+		public bool BodyMirrored;
+		public string CapTextureId;
+		public float CapRotation;
+		public string StartTextureId;
+		public bool StartMirrored;
+
+		public string BodyFillTextureId;
+		public bool BodyFillMirrored;
+		public Color BodyColor;
+		public string BodyRimTextureId;
+		public bool BodyRimMirrored;
+
+		public string StartFillTextureId;
+		public bool StartFillMirrored;
+		public Color StartColor;
+		public string StartRimTextureId;
+		public float StartRimRotation;
+
+		public string EndFillTextureId;
+		public float EndFillRotation;
+		public Color EndColor;
+		public string EndRimTextureId;
+		public float EndRimRotation;
+
+		public HoldRenderState(
+			TextureAtlas textureAtlas,
+			SpriteBatch spriteBatch,
+			ArrowGraphicManager arrowGraphicManager,
+			EditorHoldNoteEvent holdNoteEvent,
+			bool active,
+			bool startActive,
+			float alpha,
+			double scale)
+		{
+			TextureAtlas = textureAtlas;
+			SpriteBatch = spriteBatch;
+			ArrowGraphicManager = arrowGraphicManager;
+			Multiplayer = holdNoteEvent.EditorChart.IsMultiPlayer();
+			Alpha = alpha;
+			Scale = scale;
+
+			var selected = holdNoteEvent.IsSelected();
+			var row = holdNoteEvent.GetRow();
+			var lane = holdNoteEvent.GetLane();
+			var player = holdNoteEvent.GetPlayer();
+			var roll = holdNoteEvent.IsRoll();
+			var startRowForColoring = holdNoteEvent.GetStepColorRow();
+
+			(StartArrowTextureId, StartArrowRotation) =
+				ArrowGraphicManager.GetArrowTexture(startRowForColoring, lane, selected);
+
+			if (roll)
+			{
+				(BodyTextureId, BodyMirrored) =
+					ArrowGraphicManager.GetRollBodyTexture(row, lane, active, selected);
+				(CapTextureId, CapRotation) =
+					ArrowGraphicManager.GetRollEndTexture(row, lane, active, selected);
+				(StartTextureId, StartMirrored) =
+					ArrowGraphicManager.GetRollStartTexture(startRowForColoring, lane, startActive, selected);
+				if (Multiplayer)
+				{
+					(BodyFillTextureId, BodyFillMirrored, BodyColor) =
+						ArrowGraphicManager.GetPlayerRollBodyTextureFill(row, lane, active, selected, player);
+					(BodyRimTextureId, BodyRimMirrored) =
+						ArrowGraphicManager.GetPlayerRollBodyTextureRim(lane, selected);
+					(StartFillTextureId, StartFillMirrored, StartColor) =
+						ArrowGraphicManager.GetPlayerRollStartTextureFill(row, lane, startActive, selected, player);
+					(StartRimTextureId, StartRimRotation) =
+						ArrowGraphicManager.GetPlayerRollStartTextureRim(lane, selected);
+					(EndFillTextureId, EndFillRotation, EndColor) =
+						ArrowGraphicManager.GetPlayerRollEndTextureFill(row, lane, active, selected, player);
+					(EndRimTextureId, EndRimRotation) =
+						ArrowGraphicManager.GetPlayerRollEndTextureRim(lane, selected);
+				}
+			}
+			else
+			{
+				(BodyTextureId, BodyMirrored) =
+					ArrowGraphicManager.GetHoldBodyTexture(row, lane, active, selected);
+				(CapTextureId, CapRotation) =
+					ArrowGraphicManager.GetHoldEndTexture(row, lane, active, selected);
+				(StartTextureId, StartMirrored) = 
+					ArrowGraphicManager.GetHoldStartTexture(startRowForColoring, lane, startActive, selected);
+				if (Multiplayer)
+				{
+					(BodyFillTextureId, BodyFillMirrored, BodyColor) =
+						ArrowGraphicManager.GetPlayerHoldBodyTextureFill(row, lane, active, selected, player);
+					(BodyRimTextureId, BodyRimMirrored) =
+						ArrowGraphicManager.GetPlayerHoldBodyTextureRim(lane, selected);
+					(StartFillTextureId, StartFillMirrored, StartColor) =
+						ArrowGraphicManager.GetPlayerHoldStartTextureFill(row, lane, startActive, selected, player);
+					(StartRimTextureId, StartRimRotation) =
+						ArrowGraphicManager.GetPlayerHoldStartTextureRim(lane, selected);
+					(EndFillTextureId, EndFillRotation, EndColor) =
+						ArrowGraphicManager.GetPlayerHoldEndTextureFill(row, lane, active, selected, player);
+					(EndRimTextureId, EndRimRotation) =
+						ArrowGraphicManager.GetPlayerHoldEndTextureRim(lane, selected);
+				}
+			}
+		}
+
+		public void DrawStart(int x, int y, int w)
+		{
+			if (StartTextureId == null)
+				return;
+
+			// It is assumed there is no height padding baked into this texture.
+			var (_, holdBodyStartHeight) = TextureAtlas.GetDimensions(StartTextureId);
+			var holdBodyStartH = (int)(holdBodyStartHeight * Scale);
+
+			TextureAtlas.Draw(
+				StartTextureId,
+				SpriteBatch,
+				new Rectangle(x, y - holdBodyStartH, w, holdBodyStartH),
+				0.0f,
+				Alpha,
+				StartMirrored ? SpriteEffects.FlipHorizontally : SpriteEffects.None);
+		}
+		public void DrawBody()
+		{
+		}
+
+		public void DrawCap(int x, int y, int w, int h)
+		{
+			TextureAtlas.Draw(
+				CapTextureId,
+				SpriteBatch,
+				new Rectangle(x, y, w, h),
+				CapRotation,
+				Alpha,
+				SpriteEffects.None);
+		}
+	}
+
 	public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)
 	{
 		var alpha = GetRenderAlpha();
@@ -179,38 +327,12 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 
 		var active = NextDrawActive && Preferences.Instance.PreferencesReceptors.AutoPlayLightHolds;
 		var activeAndCutoff = NextDrawActive && Preferences.Instance.PreferencesReceptors.AutoPlayHideArrows;
-		var selected = IsSelected();
-		var player = GetPlayer();
 
-		var startRowForColoring = GetStepColorRow();
-
-		var (startArrowTexture, holdRot) =
-			arrowGraphicManager.GetArrowTexture(startRowForColoring, player, GetLane(), selected);
-		var (_, startArrowHeight) = textureAtlas.GetDimensions(startArrowTexture);
+		HoldRenderState state = new HoldRenderState(textureAtlas, spriteBatch, arrowGraphicManager, this, active, NextDrawActive, alpha, Scale);
+		var (_, startArrowHeight) = textureAtlas.GetDimensions(state.StartArrowTextureId);
 		var halfArrowHeight = startArrowHeight * 0.5 * Scale;
-
-		var roll = IsRoll();
-
-		// The hold body texture is a tiled texture that starts at the end of the hold and ends at the arrow.
-		var (holdBodyTextureId, holdBodyMirrored) = roll
-			? arrowGraphicManager.GetRollBodyTexture(LaneHoldEndNote.IntegerPosition, player, LaneHoldEndNote.Lane, active,
-				selected)
-			: arrowGraphicManager.GetHoldBodyTexture(LaneHoldEndNote.IntegerPosition, player, LaneHoldEndNote.Lane, active,
-				selected);
-		// The hold cap texture is a texture that is drawn once at the end of the hold.
-		var (holdCapTextureId, holdCapRotation) = roll
-			? arrowGraphicManager.GetRollEndTexture(LaneHoldEndNote.IntegerPosition, player, LaneHoldEndNote.Lane, active,
-				selected)
-			: arrowGraphicManager.GetHoldEndTexture(LaneHoldEndNote.IntegerPosition, player, LaneHoldEndNote.Lane, active,
-				selected);
-		// The hold start texture is only used to extend the start of the hold upward into the arrow for certain
-		// arrow graphics which wouldn't otherwise mask the hold start, like solo diagonals.
-		var (holdBodyStartTexture, holdBodyStartMirror) = roll
-			? arrowGraphicManager.GetRollStartTexture(startRowForColoring, player, GetLane(), NextDrawActive, selected)
-			: arrowGraphicManager.GetHoldStartTexture(startRowForColoring, player, GetLane(), NextDrawActive, selected);
-
-		var (_, capH) = textureAtlas.GetDimensions(holdCapTextureId);
-		var (bodyTexW, bodyTexH) = textureAtlas.GetDimensions(holdBodyTextureId);
+		var (_, capH) = textureAtlas.GetDimensions(state.CapTextureId);
+		var (bodyTexW, bodyTexH) = textureAtlas.GetDimensions(state.BodyTextureId);
 
 		// Determine the Y value and height to use.
 		// If the note is active, we should bring down the top to the cutoff point.
@@ -250,6 +372,7 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 		// Draw the body by looping up from the bottom, ensuring that each tiled body texture aligns
 		// perfectly with the previous one.
 		var spriteEffects = holdBodyMirrored ? SpriteEffects.FlipHorizontally : SpriteEffects.None;
+		
 		while (y >= minY)
 		{
 			var h = Math.Min(bodyTileH, y - minY);
@@ -266,26 +389,15 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 			}
 			else
 			{
+				state.DrawStart(textureAtlas, S);
+
 				textureAtlas.Draw(holdBodyTextureId, spriteBatch, new Rectangle(x, y, w, h), 0.0f, alpha, spriteEffects);
 			}
 		}
 
 		// Some arrows, like solo diagonals need a hold start graphic to fill the gap at the top of the hold
 		// between the arrow midpoint and the widest part of the arrow.
-		if (holdBodyStartTexture != null)
-		{
-			// It is assumed there is no height padding baked into this texture.
-			var (_, holdBodyStartHeight) = textureAtlas.GetDimensions(holdBodyStartTexture);
-			var holdBodyStartH = (int)(holdBodyStartHeight * Scale);
-
-			textureAtlas.Draw(
-				holdBodyStartTexture,
-				spriteBatch,
-				new Rectangle(x, minY - holdBodyStartH, w, holdBodyStartH),
-				0.0f,
-				alpha,
-				holdBodyStartMirror ? SpriteEffects.FlipHorizontally : SpriteEffects.None);
-		}
+		state.DrawStart(x, minY, w);
 
 		// Draw the cap, if it is visible.
 		// Also ensure that the cap is below the start. In negative scroll rate regions it may be
@@ -293,22 +405,15 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 		// The cap should be drawn after the body as some caps render on top of the body.
 		if (capY > -capH && capY < ScreenHeight && capY >= minimumCapY)
 		{
-			textureAtlas.Draw(holdCapTextureId, spriteBatch, new Rectangle(x, capY, w, capH), holdCapRotation, alpha,
-				SpriteEffects.None);
+			state.DrawCap(x, capY, w, capH);
 		}
 
 		// Draw the arrow at the start of the hold.
 		var holdStartY = bodyY - halfArrowHeight;
-		textureAtlas.Draw(
-			startArrowTexture,
-			spriteBatch,
-			new Vector2((float)X, (float)holdStartY),
-			Scale,
-			holdRot,
-			alpha);
+		DrawTap(textureAtlas, spriteBatch, arrowGraphicManager, X, holdStartY);
 
 		if (IsFake())
-			DrawFakeMarker(textureAtlas, spriteBatch, startArrowTexture, X, holdStartY);
+			DrawFakeMarker(textureAtlas, spriteBatch, state.StartArrowTextureId, X, holdStartY);
 
 		// Reset active flags.
 		NextDrawActive = false;

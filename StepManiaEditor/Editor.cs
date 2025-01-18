@@ -2295,7 +2295,7 @@ internal sealed class Editor :
 
 			ImGui.PushFont(ImGuiFont);
 
-			SpriteBatch.Begin(SpriteSortMode.Deferred, BlendState.NonPremultiplied);
+			SpriteBatch.Begin(SpriteSortMode.Deferred, BlendState.NonPremultiplied, SamplerState.LinearWrap);
 
 			DrawActiveChartBoundaries();
 			DrawMeasureMarkers();
@@ -3378,6 +3378,7 @@ internal sealed class Editor :
 		UIAudioPreferences.Instance.Draw();
 		UIStreamPreferences.Instance.Draw();
 		UIDensityGraphPreferences.Instance.Draw();
+		UIMultiplayerPreferences.Instance.Draw();
 
 		UISongProperties.Instance.Draw(ActiveSong);
 		UIChartProperties.Instance.Draw(FocusedChart);
@@ -3585,6 +3586,8 @@ internal sealed class Editor :
 					UIStreamPreferences.Instance.Open(true);
 				if (ImGui.MenuItem("Density Graph Preferences"))
 					UIDensityGraphPreferences.Instance.Open(true);
+				if (ImGui.MenuItem("Multiplayer Preferences"))
+					UIMultiplayerPreferences.Instance.Open(true);
 
 				ImGui.Separator();
 				if (ImGui.MenuItem("Log"))

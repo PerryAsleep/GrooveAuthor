@@ -2233,7 +2233,7 @@ internal sealed class ImGuiLayoutUtils
 		DrawColorEdit3(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, flags, affectsFile, help);
 	}
 
-	private static void DrawColorEdit3(
+	public static void DrawColorEdit3(
 		bool undoable,
 		string title,
 		object o,
