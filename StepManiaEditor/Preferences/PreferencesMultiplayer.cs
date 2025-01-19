@@ -14,17 +14,17 @@ namespace StepManiaEditor;
 /// </summary>
 internal sealed class PreferencesMultiplayer
 {
-	public const float DefaultRoutineNoteColorAlpha = 0.75f;
-	public static readonly Vector3 DefaultPlayer0Color = new(1.0f, 0.0f, 1.0f);
-	public static readonly Vector3 DefaultPlayer1Color = new(0.0f, 1.0f, 1.0f);
-	public static readonly Vector3 DefaultPlayer2Color = new(1.0f, 1.0f, 0.0f);
-	public static readonly Vector3 DefaultPlayer3Color = new(0.0f, 1.0f, 0.0f);
-	public static readonly Vector3 DefaultPlayer4Color = new(1.0f, 0.5f, 0.0f);
-	public static readonly Vector3 DefaultPlayer5Color = new(1.0f, 1.0f, 1.0f);
-	public static readonly Vector3 DefaultPlayer6Color = new(0.0f, 0.0f, 0.0f);
-	public static readonly Vector3 DefaultPlayer7Color = new(1.0f, 0.5f, 0.5f);
-	public static readonly Vector3 DefaultPlayer8Color = new(0.5f, 0.5f, 1.0f);
-	public static readonly Vector3 DefaultPlayer9Color = new(0.5f, 1.0f, 0.5f);
+	public const float DefaultRoutineNoteColorAlpha = 0.80f;
+	public static readonly Vector3 DefaultPlayer0Color = new(0.7109375f, 0.09375f, 0.7109375f);
+	public static readonly Vector3 DefaultPlayer1Color = new(0.09375f, 0.7109375f, 0.7109375f);
+	public static readonly Vector3 DefaultPlayer2Color = new(0.7109375f, 0.7109375f, 0.09375f);
+	public static readonly Vector3 DefaultPlayer3Color = new(0.09375f, 0.7109375f, 0.09375f);
+	public static readonly Vector3 DefaultPlayer4Color = new(0.7109375f, 0.390625f, 0.09375f);
+	public static readonly Vector3 DefaultPlayer5Color = new(0.7109375f, 0.7109375f, 0.7109375f);
+	public static readonly Vector3 DefaultPlayer6Color = new(0.09375f, 0.09375f, 0.09375f);
+	public static readonly Vector3 DefaultPlayer7Color = new(0.7109375f, 0.390625f, 0.390625f);
+	public static readonly Vector3 DefaultPlayer8Color = new(0.390625f, 0.390625f, 0.7109375f);
+	public static readonly Vector3 DefaultPlayer9Color = new(0.390625f, 0.7109375f, 0.390625f);
 
 	[JsonInclude] public bool ShowMultiplayerPreferencesWindow;
 

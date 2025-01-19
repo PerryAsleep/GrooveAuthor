@@ -318,7 +318,7 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 					SpriteBatch,
 					new Rectangle(x, y - holdBodyStartH, w, holdBodyStartH),
 					0.0f,
-					new Color(StartColor.R, StartColor.G, StartColor.B, StartColor.A * Alpha),
+					new Color(StartColor.R, StartColor.G, StartColor.B, (byte)(StartColor.A * Alpha)),
 					StartMirrored ? SpriteEffects.FlipHorizontally : SpriteEffects.None);
 
 				// Draw rim.
@@ -352,7 +352,7 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 			var rimSpriteEffects = BodyRimMirrored ? SpriteEffects.FlipHorizontally : SpriteEffects.None;
 			var multiplayer = Multiplayer && !string.IsNullOrEmpty(BodyFillTextureId) && !string.IsNullOrEmpty(BodyRimTextureId);
 			var multiplayerWithAlpha = Preferences.Instance.PreferencesMultiplayer.RoutineNoteColorAlpha < 1.0f;
-			var fillColor = new Color(BodyColor.R, BodyColor.G, BodyColor.B, BodyColor.A * Alpha);
+			var fillColor = new Color(BodyColor.R, BodyColor.G, BodyColor.B, (byte)(BodyColor.A * Alpha));
 
 			// Draw the body by looping up from the bottom, ensuring that each tiled body texture aligns
 			// perfectly with the previous one. We cannot use texture wrapping here because the image
@@ -499,7 +499,7 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 					SpriteBatch,
 					destination,
 					EndFillRotation,
-					new Color(EndColor.R, EndColor.G, EndColor.B, EndColor.A * Alpha),
+					new Color(EndColor.R, EndColor.G, EndColor.B, (byte)(EndColor.A * Alpha)),
 					SpriteEffects.None);
 
 				// Draw rim.

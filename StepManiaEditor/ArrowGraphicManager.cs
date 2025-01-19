@@ -1498,14 +1498,14 @@ internal abstract class ArrowGraphicManagerPIU : ArrowGraphicManager
 	public override (string, bool) GetPlayerHoldBodyTextureRim(int lane, bool selected)
 	{
 		var i = GetTextureIndex(lane);
-		return (ArrowHoldAndRollRimTextures[i], HoldMirrored[i]);
+		return (GetTextureId(ArrowHoldAndRollRimTextures[i], selected), HoldMirrored[i]);
 	}
 
 	public override (string, bool, Color) GetPlayerHoldBodyTextureFill(int integerPosition, int lane, bool held, bool selected,
 		int player)
 	{
 		var i = GetTextureIndex(lane);
-		return (GetTextureId(ArrowHoldFillTextures[i], selected), HoldMirrored[i], GetColorForPlayer(player, selected));
+		return (ArrowHoldFillTextures[i], HoldMirrored[i], GetColorForPlayer(player, selected));
 	}
 
 	public override (string, float) GetPlayerHoldEndTextureRim(int lane, bool selected)
@@ -1517,20 +1517,20 @@ internal abstract class ArrowGraphicManagerPIU : ArrowGraphicManager
 		int player)
 	{
 		var i = GetTextureIndex(lane);
-		return (GetTextureId(ArrowFillTextures[i], selected), ArrowRotations[i], GetColorForPlayer(player, selected));
+		return (ArrowFillTextures[i], ArrowRotations[i], GetColorForPlayer(player, selected));
 	}
 
 	public override (string, bool) GetPlayerRollBodyTextureRim(int lane, bool selected)
 	{
 		var i = GetTextureIndex(lane);
-		return (ArrowHoldAndRollRimTextures[i], HoldMirrored[i]);
+		return (GetTextureId(ArrowHoldAndRollRimTextures[i], selected), HoldMirrored[i]);
 	}
 
 	public override (string, bool, Color) GetPlayerRollBodyTextureFill(int integerPosition, int lane, bool held, bool selected,
 		int player)
 	{
 		var i = GetTextureIndex(lane);
-		return (GetTextureId(ArrowRollFillTextures[i], selected), HoldMirrored[i], GetColorForPlayer(player, selected));
+		return (ArrowRollFillTextures[i], HoldMirrored[i], GetColorForPlayer(player, selected));
 	}
 
 	public override (string, float) GetPlayerRollEndTextureRim(int lane, bool selected)
@@ -1542,7 +1542,7 @@ internal abstract class ArrowGraphicManagerPIU : ArrowGraphicManager
 		int player)
 	{
 		var i = GetTextureIndex(lane);
-		return (GetTextureId(ArrowFillTextures[i], selected), ArrowRotations[i], GetColorForPlayer(player, selected));
+		return (ArrowFillTextures[i], ArrowRotations[i], GetColorForPlayer(player, selected));
 	}
 }
 
