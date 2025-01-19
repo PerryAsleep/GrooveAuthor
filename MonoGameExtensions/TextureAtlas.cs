@@ -382,7 +382,7 @@ public abstract class TextureAtlas : IReadOnlyTextureAtlas
 	}
 
 	public void Draw(string subTextureId, SpriteBatch spriteBatch, Rectangle destinationRectangle, float rotation,
-		Vector2 rotationOffset, float alpha, SpriteEffects spriteEffects)
+		Vector2 rotationOffset, Color c, SpriteEffects spriteEffects)
 	{
 		if (!GetNode(subTextureId, destinationRectangle, out var node, out _))
 		{
@@ -390,11 +390,24 @@ public abstract class TextureAtlas : IReadOnlyTextureAtlas
 			return;
 		}
 
-		spriteBatch.Draw(Texture, destinationRectangle, node.TextureRect, new Color(1.0f, 1.0f, 1.0f, alpha), rotation,
+		spriteBatch.Draw(Texture, destinationRectangle, node.TextureRect, c, rotation,
 			rotationOffset, spriteEffects, 1.0f);
 	}
 
+	public void Draw(string subTextureId, SpriteBatch spriteBatch, Rectangle destinationRectangle, float rotation,
+		Vector2 rotationOffset, float alpha, SpriteEffects spriteEffects)
+	{
+		Draw(subTextureId, spriteBatch, destinationRectangle, rotation, rotationOffset, new Color(1.0f, 1.0f, 1.0f, alpha),
+			spriteEffects);
+	}
+
 	public void Draw(string subTextureId, SpriteBatch spriteBatch, Rectangle destinationRectangle, float rotation, float alpha,
+		SpriteEffects spriteEffects)
+	{
+		Draw(subTextureId, spriteBatch, destinationRectangle, rotation, new Color(1.0f, 1.0f, 1.0f, alpha), spriteEffects);
+	}
+
+	public void Draw(string subTextureId, SpriteBatch spriteBatch, Rectangle destinationRectangle, float rotation, Color c,
 		SpriteEffects spriteEffects)
 	{
 		if (!GetNode(subTextureId, destinationRectangle, out var node, out _))
@@ -414,7 +427,7 @@ public abstract class TextureAtlas : IReadOnlyTextureAtlas
 			destinationRectangle.Y += destinationRectangle.Height >> 1;
 		}
 
-		Draw(subTextureId, spriteBatch, destinationRectangle, rotation, rotationOffset, alpha, spriteEffects);
+		Draw(subTextureId, spriteBatch, destinationRectangle, rotation, rotationOffset, c, spriteEffects);
 	}
 
 	public void Draw(string subTextureId, SpriteBatch spriteBatch, Vector2 position, Vector2 origin, double scale, float rotation,

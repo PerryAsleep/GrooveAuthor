@@ -182,8 +182,8 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 
 		private readonly string BodyTextureId;
 		private readonly bool BodyMirrored;
-		public readonly string CapTextureId;
-		private readonly float CapRotation;
+		public readonly string EndTextureId;
+		private readonly float EndRotation;
 		private readonly string StartTextureId;
 		private readonly bool StartMirrored;
 
@@ -239,7 +239,7 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 			{
 				(BodyTextureId, BodyMirrored) =
 					ArrowGraphicManager.GetRollBodyTexture(row, lane, active, selected);
-				(CapTextureId, CapRotation) =
+				(EndTextureId, EndRotation) =
 					ArrowGraphicManager.GetRollEndTexture(row, lane, active, selected);
 				(StartTextureId, StartMirrored) =
 					ArrowGraphicManager.GetRollStartTexture(startRowForColoring, lane, startActive, selected);
@@ -263,7 +263,7 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 			{
 				(BodyTextureId, BodyMirrored) =
 					ArrowGraphicManager.GetHoldBodyTexture(row, lane, active, selected);
-				(CapTextureId, CapRotation) =
+				(EndTextureId, EndRotation) =
 					ArrowGraphicManager.GetHoldEndTexture(row, lane, active, selected);
 				(StartTextureId, StartMirrored) =
 					ArrowGraphicManager.GetHoldStartTexture(startRowForColoring, lane, startActive, selected);
@@ -296,22 +296,67 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 			var (_, holdBodyStartHeight) = TextureAtlas.GetDimensions(StartTextureId);
 			var holdBodyStartH = (int)(holdBodyStartHeight * Scale);
 
-			TextureAtlas.Draw(
-				StartTextureId,
-				SpriteBatch,
-				new Rectangle(x, y - holdBodyStartH, w, holdBodyStartH),
-				0.0f,
-				Alpha,
-				StartMirrored ? SpriteEffects.FlipHorizontally : SpriteEffects.None);
+			// Draw the multiplayer start graphics.
+			if (Multiplayer && !string.IsNullOrEmpty(StartFillTextureId) && !string.IsNullOrEmpty(StartRimTextureId))
+			{
+				// If the multiplayer overlay has alpha draw the normal graphic below it.
+				var p = Preferences.Instance.PreferencesMultiplayer;
+				if (p.RoutineNoteColorAlpha < 1.0f)
+				{
+					TextureAtlas.Draw(
+						StartTextureId,
+						SpriteBatch,
+						new Rectangle(x, y - holdBodyStartH, w, holdBodyStartH),
+						0.0f,
+						Alpha,
+						StartMirrored ? SpriteEffects.FlipHorizontally : SpriteEffects.None);
+				}
+
+				// Draw fill.
+				TextureAtlas.Draw(
+					StartFillTextureId,
+					SpriteBatch,
+					new Rectangle(x, y - holdBodyStartH, w, holdBodyStartH),
+					0.0f,
+					new Color(StartColor.R, StartColor.G, StartColor.B, StartColor.A * Alpha),
+					StartMirrored ? SpriteEffects.FlipHorizontally : SpriteEffects.None);
+
+				// Draw rim.
+				TextureAtlas.Draw(
+					StartRimTextureId,
+					SpriteBatch,
+					new Rectangle(x, y - holdBodyStartH, w, holdBodyStartH),
+					0.0f,
+					Alpha,
+					StartMirrored ? SpriteEffects.FlipHorizontally : SpriteEffects.None);
+			}
+
+			// Draw the normal start graphic.
+			else
+			{
+				TextureAtlas.Draw(
+					StartTextureId,
+					SpriteBatch,
+					new Rectangle(x, y - holdBodyStartH, w, holdBodyStartH),
+					0.0f,
+					Alpha,
+					StartMirrored ? SpriteEffects.FlipHorizontally : SpriteEffects.None);
+			}
 		}
 
 		public void DrawBody(int x, int y, int w, int minY)
 		{
 			var bodyTileH = (int)(BodyTextureHeight * Scale + 0.5);
 			var spriteEffects = BodyMirrored ? SpriteEffects.FlipHorizontally : SpriteEffects.None;
+			var fillSpriteEffects = BodyFillMirrored ? SpriteEffects.FlipHorizontally : SpriteEffects.None;
+			var rimSpriteEffects = BodyRimMirrored ? SpriteEffects.FlipHorizontally : SpriteEffects.None;
+			var multiplayer = Multiplayer && !string.IsNullOrEmpty(BodyFillTextureId) && !string.IsNullOrEmpty(BodyRimTextureId);
+			var multiplayerWithAlpha = Preferences.Instance.PreferencesMultiplayer.RoutineNoteColorAlpha < 1.0f;
+			var fillColor = new Color(BodyColor.R, BodyColor.G, BodyColor.B, BodyColor.A * Alpha);
 
 			// Draw the body by looping up from the bottom, ensuring that each tiled body texture aligns
-			// perfectly with the previous one.
+			// perfectly with the previous one. We cannot use texture wrapping here because the image
+			// is a sub-texture and wrapping only works on entire textures.
 			while (y >= minY)
 			{
 				var h = Math.Min(bodyTileH, y - minY);
@@ -323,38 +368,161 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 				if (h < bodyTileH)
 				{
 					var sourceH = (int)(BodyTextureHeight * ((double)h / bodyTileH));
+					var sourceRect = new Rectangle(0, BodyTextureHeight - sourceH, BodyTextureWidth, sourceH);
+					var destRect = new Rectangle(x, y, w, h);
 
-					TextureAtlas.Draw(
-						BodyTextureId,
-						SpriteBatch,
-						new Rectangle(0, BodyTextureHeight - sourceH, BodyTextureWidth, sourceH),
-						new Rectangle(x, y, w, h),
-						0.0f,
-						Alpha,
-						spriteEffects);
+					// Draw the multiplayer hold graphics.
+					if (multiplayer)
+					{
+						// If the multiplayer overlay has alpha draw the normal graphic below it.
+						if (multiplayerWithAlpha)
+						{
+							TextureAtlas.Draw(
+								BodyTextureId,
+								SpriteBatch,
+								sourceRect,
+								destRect,
+								0.0f,
+								Alpha,
+								spriteEffects);
+						}
+
+						// Draw fill.
+						TextureAtlas.Draw(
+							BodyFillTextureId,
+							SpriteBatch,
+							sourceRect,
+							destRect,
+							0.0f,
+							fillColor,
+							fillSpriteEffects);
+
+						// Draw rim.
+						TextureAtlas.Draw(
+							BodyRimTextureId,
+							SpriteBatch,
+							sourceRect,
+							destRect,
+							0.0f,
+							Alpha,
+							rimSpriteEffects);
+					}
+
+					// Draw the normal hold.
+					else
+					{
+						TextureAtlas.Draw(
+							BodyTextureId,
+							SpriteBatch,
+							sourceRect,
+							destRect,
+							0.0f,
+							Alpha,
+							spriteEffects);
+					}
 				}
 				else
 				{
-					TextureAtlas.Draw(
-						BodyTextureId,
-						SpriteBatch,
-						new Rectangle(x, y, w, h),
-						0.0f,
-						Alpha,
-						spriteEffects);
+					var destRect = new Rectangle(x, y, w, h);
+
+					// Draw the multiplayer hold graphics.
+					if (multiplayer)
+					{
+						// If the multiplayer overlay has alpha draw the normal graphic below it.
+						if (multiplayerWithAlpha)
+						{
+							TextureAtlas.Draw(
+								BodyTextureId,
+								SpriteBatch,
+								destRect,
+								0.0f,
+								Alpha,
+								spriteEffects);
+						}
+
+						// Draw fill.
+						TextureAtlas.Draw(
+							BodyFillTextureId,
+							SpriteBatch,
+							destRect,
+							0.0f,
+							fillColor,
+							fillSpriteEffects);
+
+						// Draw rim.
+						TextureAtlas.Draw(
+							BodyRimTextureId,
+							SpriteBatch,
+							destRect,
+							0.0f,
+							Alpha,
+							rimSpriteEffects);
+					}
+					// Draw the normal hold.
+					else
+					{
+						TextureAtlas.Draw(
+							BodyTextureId,
+							SpriteBatch,
+							destRect,
+							0.0f,
+							Alpha,
+							spriteEffects);
+					}
 				}
 			}
 		}
 
-		public void DrawCap(int x, int y, int w, int h)
+		public void DrawEnd(int x, int y, int w, int h)
 		{
-			TextureAtlas.Draw(
-				CapTextureId,
-				SpriteBatch,
-				new Rectangle(x, y, w, h),
-				CapRotation,
-				Alpha,
-				SpriteEffects.None);
+			var destination = new Rectangle(x, y, w, h);
+
+			// Draw the multiplayer hold end graphics.
+			if (Multiplayer && !string.IsNullOrEmpty(EndFillTextureId) && !string.IsNullOrEmpty(EndRimTextureId))
+			{
+				// If the multiplayer overlay has alpha draw the normal graphic below it.
+				var p = Preferences.Instance.PreferencesMultiplayer;
+				if (p.RoutineNoteColorAlpha < 1.0f)
+				{
+					TextureAtlas.Draw(
+						EndTextureId,
+						SpriteBatch,
+						destination,
+						EndRotation,
+						Alpha,
+						SpriteEffects.None);
+				}
+
+				// Draw fill.
+				TextureAtlas.Draw(
+					EndFillTextureId,
+					SpriteBatch,
+					destination,
+					EndFillRotation,
+					new Color(EndColor.R, EndColor.G, EndColor.B, EndColor.A * Alpha),
+					SpriteEffects.None);
+
+				// Draw rim.
+				TextureAtlas.Draw(
+					EndRimTextureId,
+					SpriteBatch,
+					destination,
+					EndRimRotation,
+					Alpha,
+					SpriteEffects.None);
+			}
+
+			// Draw the normal hold end.
+			else
+			{
+				TextureAtlas.Draw(
+					EndTextureId,
+					SpriteBatch,
+					destination,
+					EndRotation,
+					Alpha,
+					SpriteEffects.None);
+			}
 		}
 	}
 
@@ -375,7 +543,7 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 			Scale);
 		var (_, startArrowHeight) = textureAtlas.GetDimensions(state.StartArrowTextureId);
 		var halfArrowHeight = startArrowHeight * 0.5 * Scale;
-		var (_, capH) = textureAtlas.GetDimensions(state.CapTextureId);
+		var (_, capH) = textureAtlas.GetDimensions(state.EndTextureId);
 
 		// Determine the Y value and height to use.
 		// If the note is active, we should bring down the top to the cutoff point.
@@ -424,7 +592,7 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 		// The cap should be drawn after the body as some caps render on top of the body.
 		if (capY > -capH && capY < ScreenHeight && capY >= minimumCapY)
 		{
-			state.DrawCap(x, capY, w, capH);
+			state.DrawEnd(x, capY, w, capH);
 		}
 
 		// Draw the arrow at the start of the hold.
