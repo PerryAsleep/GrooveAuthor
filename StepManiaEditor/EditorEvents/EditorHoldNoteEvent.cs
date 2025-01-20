@@ -167,18 +167,16 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 		NextDrawActiveYCutoffPoint = y;
 	}
 
-	private struct HoldRenderState
+	private readonly struct HoldRenderState
 	{
 		private readonly TextureAtlas TextureAtlas;
 		private readonly SpriteBatch SpriteBatch;
-		private readonly ArrowGraphicManager ArrowGraphicManager;
 
 		private readonly bool Multiplayer;
 		private readonly float Alpha;
 		private readonly double Scale;
 
 		public readonly string StartArrowTextureId;
-		private readonly float StartArrowRotation;
 
 		private readonly string BodyTextureId;
 		private readonly bool BodyMirrored;
@@ -197,7 +195,7 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 		private readonly bool StartFillMirrored;
 		private readonly Color StartColor;
 		private readonly string StartRimTextureId;
-		private readonly float StartRimRotation;
+		private readonly bool StartRimMirrored;
 
 		private readonly string EndFillTextureId;
 		private readonly float EndFillRotation;
@@ -205,8 +203,8 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 		private readonly string EndRimTextureId;
 		private readonly float EndRimRotation;
 
-		private int BodyTextureWidth;
-		private int BodyTextureHeight;
+		private readonly int BodyTextureWidth;
+		private readonly int BodyTextureHeight;
 
 		public HoldRenderState(
 			TextureAtlas textureAtlas,
@@ -220,8 +218,8 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 		{
 			TextureAtlas = textureAtlas;
 			SpriteBatch = spriteBatch;
-			ArrowGraphicManager = arrowGraphicManager;
-			Multiplayer = holdNoteEvent.EditorChart.IsMultiPlayer();
+			Multiplayer = holdNoteEvent.EditorChart.IsMultiPlayer() &&
+			              arrowGraphicManager.ShouldColorHoldsAndRollsInMultiplayerCharts();
 			Alpha = alpha;
 			Scale = scale;
 
@@ -232,55 +230,55 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 			var roll = holdNoteEvent.IsRoll();
 			var startRowForColoring = holdNoteEvent.GetStepColorRow();
 
-			(StartArrowTextureId, StartArrowRotation) =
-				ArrowGraphicManager.GetArrowTexture(startRowForColoring, lane, selected);
+			(StartArrowTextureId, _) =
+				arrowGraphicManager.GetArrowTexture(startRowForColoring, lane, selected);
 
 			if (roll)
 			{
 				(BodyTextureId, BodyMirrored) =
-					ArrowGraphicManager.GetRollBodyTexture(row, lane, active, selected);
+					arrowGraphicManager.GetRollBodyTexture(row, lane, active, selected);
 				(EndTextureId, EndRotation) =
-					ArrowGraphicManager.GetRollEndTexture(row, lane, active, selected);
+					arrowGraphicManager.GetRollEndTexture(row, lane, active, selected);
 				(StartTextureId, StartMirrored) =
-					ArrowGraphicManager.GetRollStartTexture(startRowForColoring, lane, startActive, selected);
+					arrowGraphicManager.GetRollStartTexture(startRowForColoring, lane, startActive, selected);
 				if (Multiplayer)
 				{
 					(BodyFillTextureId, BodyFillMirrored, BodyColor) =
-						ArrowGraphicManager.GetPlayerRollBodyTextureFill(row, lane, active, selected, player);
+						arrowGraphicManager.GetPlayerRollBodyTextureFill(row, lane, active, selected, player);
 					(BodyRimTextureId, BodyRimMirrored) =
-						ArrowGraphicManager.GetPlayerRollBodyTextureRim(lane, selected);
+						arrowGraphicManager.GetPlayerRollBodyTextureRim(lane, selected);
 					(StartFillTextureId, StartFillMirrored, StartColor) =
-						ArrowGraphicManager.GetPlayerRollStartTextureFill(row, lane, startActive, selected, player);
-					(StartRimTextureId, StartRimRotation) =
-						ArrowGraphicManager.GetPlayerRollStartTextureRim(lane, selected);
+						arrowGraphicManager.GetPlayerRollStartTextureFill(row, lane, startActive, selected, player);
+					(StartRimTextureId, StartRimMirrored) =
+						arrowGraphicManager.GetPlayerRollStartTextureRim(lane, selected);
 					(EndFillTextureId, EndFillRotation, EndColor) =
-						ArrowGraphicManager.GetPlayerRollEndTextureFill(row, lane, active, selected, player);
+						arrowGraphicManager.GetPlayerRollEndTextureFill(row, lane, active, selected, player);
 					(EndRimTextureId, EndRimRotation) =
-						ArrowGraphicManager.GetPlayerRollEndTextureRim(lane, selected);
+						arrowGraphicManager.GetPlayerRollEndTextureRim(lane, selected);
 				}
 			}
 			else
 			{
 				(BodyTextureId, BodyMirrored) =
-					ArrowGraphicManager.GetHoldBodyTexture(row, lane, active, selected);
+					arrowGraphicManager.GetHoldBodyTexture(row, lane, active, selected);
 				(EndTextureId, EndRotation) =
-					ArrowGraphicManager.GetHoldEndTexture(row, lane, active, selected);
+					arrowGraphicManager.GetHoldEndTexture(row, lane, active, selected);
 				(StartTextureId, StartMirrored) =
-					ArrowGraphicManager.GetHoldStartTexture(startRowForColoring, lane, startActive, selected);
+					arrowGraphicManager.GetHoldStartTexture(startRowForColoring, lane, startActive, selected);
 				if (Multiplayer)
 				{
 					(BodyFillTextureId, BodyFillMirrored, BodyColor) =
-						ArrowGraphicManager.GetPlayerHoldBodyTextureFill(row, lane, active, selected, player);
+						arrowGraphicManager.GetPlayerHoldBodyTextureFill(row, lane, active, selected, player);
 					(BodyRimTextureId, BodyRimMirrored) =
-						ArrowGraphicManager.GetPlayerHoldBodyTextureRim(lane, selected);
+						arrowGraphicManager.GetPlayerHoldBodyTextureRim(lane, selected);
 					(StartFillTextureId, StartFillMirrored, StartColor) =
-						ArrowGraphicManager.GetPlayerHoldStartTextureFill(row, lane, startActive, selected, player);
-					(StartRimTextureId, StartRimRotation) =
-						ArrowGraphicManager.GetPlayerHoldStartTextureRim(lane, selected);
+						arrowGraphicManager.GetPlayerHoldStartTextureFill(row, lane, startActive, selected, player);
+					(StartRimTextureId, StartRimMirrored) =
+						arrowGraphicManager.GetPlayerHoldStartTextureRim(lane, selected);
 					(EndFillTextureId, EndFillRotation, EndColor) =
-						ArrowGraphicManager.GetPlayerHoldEndTextureFill(row, lane, active, selected, player);
+						arrowGraphicManager.GetPlayerHoldEndTextureFill(row, lane, active, selected, player);
 					(EndRimTextureId, EndRimRotation) =
-						ArrowGraphicManager.GetPlayerHoldEndTextureRim(lane, selected);
+						arrowGraphicManager.GetPlayerHoldEndTextureRim(lane, selected);
 				}
 			}
 
@@ -319,7 +317,7 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 					new Rectangle(x, y - holdBodyStartH, w, holdBodyStartH),
 					0.0f,
 					new Color(StartColor.R, StartColor.G, StartColor.B, (byte)(StartColor.A * Alpha)),
-					StartMirrored ? SpriteEffects.FlipHorizontally : SpriteEffects.None);
+					StartFillMirrored ? SpriteEffects.FlipHorizontally : SpriteEffects.None);
 
 				// Draw rim.
 				TextureAtlas.Draw(
@@ -328,7 +326,7 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 					new Rectangle(x, y - holdBodyStartH, w, holdBodyStartH),
 					0.0f,
 					Alpha,
-					StartMirrored ? SpriteEffects.FlipHorizontally : SpriteEffects.None);
+					StartRimMirrored ? SpriteEffects.FlipHorizontally : SpriteEffects.None);
 			}
 
 			// Draw the normal start graphic.

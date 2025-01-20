@@ -2295,7 +2295,7 @@ internal sealed class Editor :
 
 			ImGui.PushFont(ImGuiFont);
 
-			SpriteBatch.Begin(SpriteSortMode.Deferred, BlendState.NonPremultiplied, SamplerState.LinearWrap);
+			SpriteBatch.Begin(SpriteSortMode.Deferred, BlendState.NonPremultiplied);
 
 			DrawActiveChartBoundaries();
 			DrawMeasureMarkers();

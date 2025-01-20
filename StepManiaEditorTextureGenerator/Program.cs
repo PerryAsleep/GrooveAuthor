@@ -149,6 +149,23 @@ internal class TextureGeneratorGame : Game
 		"piu-roll-center-fill",
 		"mine-fill",
 		"mine-rim",
+
+		// Row 12.
+		"itg-hold-body-fill",
+		null, //"itg-hold-end-fill",
+		"itg-hold-center-body-fill",
+		null, //"itg-hold-center-end-fill",
+		"itg-hold-body-rim",
+		null, //"itg-hold-end-rim",
+		"itg-hold-center-body-rim",
+		null, //"itg-hold-center-end-rim",
+		null,
+
+		// Row 13.
+		"itg-roll-body-fill",
+		null, //"itg-roll-end-fill",
+		"itg-roll-center-body-fill",
+		null, //"itg-roll-center-end-fill",
 	};
 
 	private static readonly string[] ArrowSnapSubImageIds = new[]
@@ -430,6 +447,12 @@ internal class TextureGeneratorGame : Game
 		ProcessGridOfImages(arrowsTexture, new[] { "itg-roll-end-active" }, 1, 128, 896, 128, capHeight, 0);
 		ProcessGridOfImages(arrowsTexture, new[] { "itg-roll-center-end-active" }, 1, 384, 896, 128, capHeightCenter, 0);
 		ProcessGridOfImages(arrowsTexture, new[] { "itg-roll-solo-end-active" }, 1, 640, 896, 128, capHeightSolo, 0);
+		ProcessGridOfImages(arrowsTexture, new[] { "itg-hold-end-fill" }, 1, 128, 1408, 128, capHeight, 0);
+		ProcessGridOfImages(arrowsTexture, new[] { "itg-hold-center-end-fill" }, 1, 384, 1408, 128, capHeightCenter, 0);
+		ProcessGridOfImages(arrowsTexture, new[] { "itg-hold-end-rim" }, 1, 640, 1408, 128, capHeight, 0);
+		ProcessGridOfImages(arrowsTexture, new[] { "itg-hold-center-end-rim" }, 1, 896, 1408, 128, capHeightCenter, 0);
+		ProcessGridOfImages(arrowsTexture, new[] { "itg-roll-end-fill" }, 1, 128, 1536, 128, capHeight, 0);
+		ProcessGridOfImages(arrowsTexture, new[] { "itg-roll-center-end-fill" }, 1, 384, 1536, 128, capHeightCenter, 0);
 
 		Logger.Info($"Added images from {InputArrows}.");
 	}

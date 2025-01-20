@@ -36,6 +36,11 @@ internal sealed class UIMultiplayerPreferences : UIWindow
 		{
 			if (ImGuiLayoutUtils.BeginTable("Options Multiplayer", TitleColumnWidth))
 			{
+				ImGuiLayoutUtils.DrawRowCheckbox(true, "Color Holds & Rolls", p,
+					nameof(PreferencesMultiplayer.ColorHoldsAndRolls), false,
+					"Whether to color holds and rolls based on the per-player colors for chart types"
+					+ " which normally use note-agnostic colors for these notes.");
+
 				ImGuiLayoutUtils.DrawRowDragFloat(true, "Note Alpha", p,
 					nameof(PreferencesMultiplayer.RoutineNoteColorAlpha), false,
 					"Alpha value for multiplayer note overlays. This affects transparency of the multiplayer notes"

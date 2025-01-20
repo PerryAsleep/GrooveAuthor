@@ -4,6 +4,7 @@ using System.Text.Json.Serialization;
 using Fumen;
 using Microsoft.Xna.Framework;
 using static StepManiaEditor.PreferencesMultiplayer;
+using static StepManiaEditor.ArrowGraphicManager;
 using Vector3 = System.Numerics.Vector3;
 
 namespace StepManiaEditor;
@@ -14,7 +15,11 @@ namespace StepManiaEditor;
 /// </summary>
 internal sealed class PreferencesMultiplayer
 {
+	private const float SelectionColorMultiplier = 2.0f; // See also SelectionColorMultiplier in StepManiaEditorTextureGenerator.
+	private const float HeldColorMultiplier = 2.0f;
+
 	public const float DefaultRoutineNoteColorAlpha = 0.80f;
+	public const bool DefaultColorHoldsAndRolls = true;
 	public static readonly Vector3 DefaultPlayer0Color = new(0.7109375f, 0.09375f, 0.7109375f);
 	public static readonly Vector3 DefaultPlayer1Color = new(0.09375f, 0.7109375f, 0.7109375f);
 	public static readonly Vector3 DefaultPlayer2Color = new(0.7109375f, 0.7109375f, 0.09375f);
@@ -27,6 +32,7 @@ internal sealed class PreferencesMultiplayer
 	public static readonly Vector3 DefaultPlayer9Color = new(0.390625f, 0.7109375f, 0.390625f);
 
 	[JsonInclude] public bool ShowMultiplayerPreferencesWindow;
+	[JsonInclude] public bool ColorHoldsAndRolls = DefaultColorHoldsAndRolls;
 
 	[JsonInclude]
 	public float RoutineNoteColorAlpha
@@ -171,15 +177,13 @@ internal sealed class PreferencesMultiplayer
 
 	private Vector3 Player9ColorInternal = DefaultPlayer9Color;
 
-	private const float SelectionColorMultiplier = 2.0f; // See also SelectionColorMultiplier in StepManiaEditorTextureGenerator.
-
-	private readonly List<Vector3> RoutineNoteColors = new();
-	private readonly List<Color> RoutineNoteColorsAsXnaColors = new();
-	private readonly List<Color> RoutineSelectedNoteColorsAsXnaColors = new();
-	private readonly List<ushort> RoutineNoteColorsAsBgr565 = new();
-	private readonly List<ushort> RoutineSelectedNoteColorsAsBgr565 = new();
-	private readonly List<uint> RoutineNoteColorsAsRgba = new();
-	private readonly List<uint> RoutineSelectedNoteColorsAsRgba = new();
+	private readonly List<Vector3> NoteColors = new();
+	private readonly List<Color> XnaNoteColors = new();
+	private readonly List<Color> XnaHeldNoteColors = new();
+	private readonly List<Color> XnaSelectedNoteColors = new();
+	private readonly List<Color> XnaHeldAndSelectedNoteColors = new();
+	private readonly List<uint> UINoteColors = new();
+	private readonly List<uint> SelectedUINoteColors = new();
 
 	public void PostLoad()
 	{
@@ -188,71 +192,79 @@ internal sealed class PreferencesMultiplayer
 
 	private void RefreshCachedRoutineColors()
 	{
-		RoutineNoteColors.Clear();
-		RoutineNoteColors.Add(Player0Color);
-		RoutineNoteColors.Add(Player1Color);
-		RoutineNoteColors.Add(Player2Color);
-		RoutineNoteColors.Add(Player3Color);
-		RoutineNoteColors.Add(Player4Color);
-		RoutineNoteColors.Add(Player5Color);
-		RoutineNoteColors.Add(Player6Color);
-		RoutineNoteColors.Add(Player7Color);
-		RoutineNoteColors.Add(Player8Color);
-		RoutineNoteColors.Add(Player9Color);
+		NoteColors.Clear();
+		NoteColors.Add(Player0Color);
+		NoteColors.Add(Player1Color);
+		NoteColors.Add(Player2Color);
+		NoteColors.Add(Player3Color);
+		NoteColors.Add(Player4Color);
+		NoteColors.Add(Player5Color);
+		NoteColors.Add(Player6Color);
+		NoteColors.Add(Player7Color);
+		NoteColors.Add(Player8Color);
+		NoteColors.Add(Player9Color);
 
-		RoutineNoteColorsAsXnaColors.Clear();
-		RoutineSelectedNoteColorsAsXnaColors.Clear();
-		RoutineNoteColorsAsBgr565.Clear();
-		RoutineSelectedNoteColorsAsBgr565.Clear();
-		RoutineNoteColorsAsRgba.Clear();
-		RoutineSelectedNoteColorsAsRgba.Clear();
-		foreach (var color in RoutineNoteColors)
+		XnaNoteColors.Clear();
+		XnaHeldNoteColors.Clear();
+		XnaSelectedNoteColors.Clear();
+		XnaHeldAndSelectedNoteColors.Clear();
+		UINoteColors.Clear();
+		SelectedUINoteColors.Clear();
+		foreach (var color in NoteColors)
 		{
-			var selectedR = Math.Min(1.0f, color.X * SelectionColorMultiplier);
-			var selectedG = Math.Min(1.0f, color.Y * SelectionColorMultiplier);
-			var selectedB = Math.Min(1.0f, color.Z * SelectionColorMultiplier);
-			RoutineNoteColorsAsXnaColors.Add(new Color(color.X, color.Y, color.Z, RoutineNoteColorAlpha));
-			RoutineSelectedNoteColorsAsXnaColors.Add(new Color(selectedR, selectedG, selectedB, RoutineNoteColorAlpha));
-			RoutineNoteColorsAsBgr565.Add(ColorUtils.ToBGR565(color.X, color.Y, color.Z));
-			RoutineSelectedNoteColorsAsBgr565.Add(ColorUtils.ToBGR565(selectedR, selectedG, selectedB));
-			RoutineNoteColorsAsRgba.Add(ColorUtils.ToRGBA(color.X, color.Y, color.Z, RoutineNoteColorAlpha));
-			RoutineSelectedNoteColorsAsRgba.Add(ColorUtils.ToRGBA(selectedR, selectedG, selectedB, RoutineNoteColorAlpha));
+			XnaNoteColors.Add(new Color(color.X, color.Y, color.Z, RoutineNoteColorAlpha));
+			XnaHeldNoteColors.Add(new Color(Math.Min(1.0f, color.X * HeldColorMultiplier),
+				Math.Min(1.0f, color.Y * HeldColorMultiplier), Math.Min(1.0f, color.Z * HeldColorMultiplier),
+				RoutineNoteColorAlpha));
+			XnaSelectedNoteColors.Add(new Color(Math.Min(1.0f, color.X * SelectionColorMultiplier),
+				Math.Min(1.0f, color.Y * SelectionColorMultiplier), Math.Min(1.0f, color.Z * SelectionColorMultiplier),
+				RoutineNoteColorAlpha));
+			XnaHeldAndSelectedNoteColors.Add(new Color(Math.Min(1.0f, color.X * HeldColorMultiplier * SelectionColorMultiplier),
+				Math.Min(1.0f, color.Y * HeldColorMultiplier * SelectionColorMultiplier),
+				Math.Min(1.0f, color.Z * HeldColorMultiplier * SelectionColorMultiplier), RoutineNoteColorAlpha));
+			UINoteColors.Add(ColorUtils.ToRGBA(Math.Min(1.0f, color.X * ArrowUIColorMultiplier),
+				Math.Min(1.0f, color.Y * ArrowUIColorMultiplier), Math.Min(1.0f, color.Z * ArrowUIColorMultiplier), 1.0f));
+			SelectedUINoteColors.Add(ColorUtils.ToRGBA(Math.Min(1.0f, color.X * ArrowUISelectedColorMultiplier),
+				Math.Min(1.0f, color.Y * ArrowUISelectedColorMultiplier),
+				Math.Min(1.0f, color.Z * ArrowUISelectedColorMultiplier), 1.0f));
 		}
 	}
 
 	public Color GetRoutineNoteColor(int player)
 	{
-		return RoutineNoteColorsAsXnaColors[player % RoutineNoteColors.Count];
+		return XnaNoteColors[player % NoteColors.Count];
 	}
 
-	public ushort GetRoutineNoteColorBgr565(int player)
+	public Color GetRoutineHeldNoteColor(int player)
 	{
-		return RoutineNoteColorsAsBgr565[player % RoutineNoteColors.Count];
-	}
-
-	public uint GetRoutineNoteColorRgba(int player)
-	{
-		return RoutineNoteColorsAsRgba[player % RoutineNoteColors.Count];
+		return XnaHeldNoteColors[player % NoteColors.Count];
 	}
 
 	public Color GetRoutineSelectedNoteColor(int player)
 	{
-		return RoutineSelectedNoteColorsAsXnaColors[player % RoutineNoteColors.Count];
+		return XnaSelectedNoteColors[player % NoteColors.Count];
 	}
 
-	public ushort GetRoutineSelectedNoteColorBgr565(int player)
+	public Color GetRoutineHeldAndSelectedNoteColor(int player)
 	{
-		return RoutineSelectedNoteColorsAsBgr565[player % RoutineNoteColors.Count];
+		return XnaHeldAndSelectedNoteColors[player % NoteColors.Count];
 	}
 
-	public uint GetRoutineSelectedNoteColorRgba(int player)
+	public uint GetRoutineUINoteColor(int player)
 	{
-		return RoutineSelectedNoteColorsAsRgba[player % RoutineNoteColors.Count];
+		return UINoteColors[player % NoteColors.Count];
+	}
+
+	public uint GetRoutineSelectedUINoteColor(int player)
+	{
+		return SelectedUINoteColors[player % NoteColors.Count];
 	}
 
 	public bool IsUsingDefaults()
 	{
-		return Player0Color.Equals(DefaultPlayer0Color)
+		return RoutineNoteColorAlpha.FloatEquals(DefaultRoutineNoteColorAlpha)
+		       && ColorHoldsAndRolls == DefaultColorHoldsAndRolls
+		       && Player0Color.Equals(DefaultPlayer0Color)
 		       && Player1Color.Equals(DefaultPlayer1Color)
 		       && Player2Color.Equals(DefaultPlayer2Color)
 		       && Player3Color.Equals(DefaultPlayer3Color)
@@ -279,6 +291,7 @@ internal sealed class PreferencesMultiplayer
 internal sealed class ActionRestoreMultiplayerPreferenceDefaults : EditorAction
 {
 	private readonly float PreviousRoutineNoteColorAlpha;
+	private readonly bool PreviousColorHoldsAndRolls;
 	private readonly Vector3 PreviousPlayer0Color;
 	private readonly Vector3 PreviousPlayer1Color;
 	private readonly Vector3 PreviousPlayer2Color;
@@ -294,6 +307,7 @@ internal sealed class ActionRestoreMultiplayerPreferenceDefaults : EditorAction
 	{
 		var p = Preferences.Instance.PreferencesMultiplayer;
 		PreviousRoutineNoteColorAlpha = p.RoutineNoteColorAlpha;
+		PreviousColorHoldsAndRolls = p.ColorHoldsAndRolls;
 		PreviousPlayer0Color = p.Player0Color;
 		PreviousPlayer1Color = p.Player1Color;
 		PreviousPlayer2Color = p.Player2Color;
@@ -320,6 +334,7 @@ internal sealed class ActionRestoreMultiplayerPreferenceDefaults : EditorAction
 	{
 		var p = Preferences.Instance.PreferencesMultiplayer;
 		p.RoutineNoteColorAlpha = DefaultRoutineNoteColorAlpha;
+		p.ColorHoldsAndRolls = DefaultColorHoldsAndRolls;
 		p.Player0Color = DefaultPlayer0Color;
 		p.Player1Color = DefaultPlayer1Color;
 		p.Player2Color = DefaultPlayer2Color;
@@ -336,6 +351,7 @@ internal sealed class ActionRestoreMultiplayerPreferenceDefaults : EditorAction
 	{
 		var p = Preferences.Instance.PreferencesMultiplayer;
 		p.RoutineNoteColorAlpha = PreviousRoutineNoteColorAlpha;
+		p.ColorHoldsAndRolls = PreviousColorHoldsAndRolls;
 		p.Player0Color = PreviousPlayer0Color;
 		p.Player1Color = PreviousPlayer1Color;
 		p.Player2Color = PreviousPlayer2Color;

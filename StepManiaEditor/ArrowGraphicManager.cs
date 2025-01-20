@@ -14,24 +14,25 @@ namespace StepManiaEditor;
 internal abstract class ArrowGraphicManager
 {
 	/// <summary>
-	/// Set of colors to use for an arrow in various contexts.
+	/// Brightness multiplier for the normal color.
 	/// </summary>
-	protected struct ArrowColorSet
+	public const float ArrowUIColorMultiplier = 1.5f;
+
+	/// <summary>
+	/// Brightness multiplier for the selected color.
+	/// It is intention this is large and will result in whites for many colors.
+	/// This is typically used in contexts where the colored area is small so differentiating
+	/// between a selected and unselected note is more important than differentiating between
+	/// individual note colors.
+	/// </summary>
+	public const float ArrowUISelectedColorMultiplier = 8.0f;
+
+
+	/// <summary>
+	/// Set of colors to use for an arrow in various UI contexts.
+	/// </summary>
+	protected struct ArrowUIColorSet
 	{
-		/// <summary>
-		/// Brightness multiplier for the normal color.
-		/// </summary>
-		private const float ColorMultiplier = 1.5f;
-
-		/// <summary>
-		/// Brightness multiplier for the selected color.
-		/// It is intention this is large and will result in whites for many colors.
-		/// This is typically used in contexts where the colored area is small so differentiating
-		/// between a selected and unselected note is more important than differentiating between
-		/// individual note colors.
-		/// </summary>
-		private const float SelectedColorMultiplier = 8.0f;
-
 		/// <summary>
 		/// RGBA Color.
 		/// </summary>
@@ -43,19 +44,13 @@ internal abstract class ArrowGraphicManager
 		public uint SelectedColor;
 
 		/// <summary>
-		/// BGR565 Color.
-		/// </summary>
-		public ushort ColorBgr565;
-
-		/// <summary>
 		/// Constructor taking a base color from which to generate the color set.
 		/// </summary>
 		/// <param name="color">Base color.</param>
-		public ArrowColorSet(uint color)
+		public ArrowUIColorSet(uint color)
 		{
-			Color = ColorRGBAMultiply(color, ColorMultiplier);
-			SelectedColor = ColorRGBAMultiply(color, SelectedColorMultiplier);
-			ColorBgr565 = ToBGR565(Color);
+			Color = ColorRGBAMultiply(color, ArrowUIColorMultiplier);
+			SelectedColor = ColorRGBAMultiply(color, ArrowUISelectedColorMultiplier);
 		}
 
 		[Pure]
@@ -63,15 +58,9 @@ internal abstract class ArrowGraphicManager
 		{
 			return selected ? SelectedColor : Color;
 		}
-
-		[Pure]
-		public ushort GetColorBgr565()
-		{
-			return ColorBgr565;
-		}
 	}
 
-	private static readonly ArrowColorSet MineColor;
+	private static readonly ArrowUIColorSet MineColor;
 
 	private static readonly string TextureIdMine = "mine";
 	private static readonly string TextureIdMineFill = "mine-fill";
@@ -237,7 +226,7 @@ internal abstract class ArrowGraphicManager
 
 	static ArrowGraphicManager()
 	{
-		MineColor = new ArrowColorSet(0xFFB7B7B7); // light grey
+		MineColor = new ArrowUIColorSet(0xFFB7B7B7); // light grey
 
 		// Set up dim arrow icons.
 		DimArrowIcons = new Dictionary<ChartType, List<string>>();
@@ -327,23 +316,23 @@ internal abstract class ArrowGraphicManager
 	public abstract (string, float) GetReceptorGlowTexture(int lane);
 	public abstract (string, float) GetReceptorHeldTexture(int lane);
 
-	public abstract (string, float) GetArrowTexture(int integerPosition, int lane, bool selected);
-	public abstract (string, bool) GetHoldStartTexture(int integerPosition, int lane, bool held, bool selected);
-	public abstract (string, bool) GetHoldBodyTexture(int integerPosition, int lane, bool held, bool selected);
-	public abstract (string, float) GetHoldEndTexture(int integerPosition, int lane, bool held, bool selected);
-	public abstract (string, bool) GetRollStartTexture(int integerPosition, int lane, bool held, bool selected);
-	public abstract (string, bool) GetRollBodyTexture(int integerPosition, int lane, bool held, bool selected);
-	public abstract (string, float) GetRollEndTexture(int integerPosition, int lane, bool held, bool selected);
+	public abstract (string, float) GetArrowTexture(int row, int lane, bool selected);
+	public abstract (string, bool) GetHoldStartTexture(int row, int lane, bool held, bool selected);
+	public abstract (string, bool) GetHoldBodyTexture(int row, int lane, bool held, bool selected);
+	public abstract (string, float) GetHoldEndTexture(int row, int lane, bool held, bool selected);
+	public abstract (string, bool) GetRollStartTexture(int row, int lane, bool held, bool selected);
+	public abstract (string, bool) GetRollBodyTexture(int row, int lane, bool held, bool selected);
+	public abstract (string, float) GetRollEndTexture(int row, int lane, bool held, bool selected);
 
 	public abstract (string, float) GetPlayerArrowTextureRim(int lane, bool selected);
-	public abstract (string, float, Color) GetPlayerArrowTextureFill(int integerPosition, int lane, bool selected, int player);
+	public abstract (string, float, Color) GetPlayerArrowTextureFill(int row, int lane, bool selected, int player);
 
-	public virtual (string, float) GetPlayerHoldStartTextureRim(int lane, bool selected)
+	public virtual (string, bool) GetPlayerHoldStartTextureRim(int lane, bool selected)
 	{
-		return (null, 0.0f);
+		return (null, false);
 	}
 
-	public virtual (string, bool, Color) GetPlayerHoldStartTextureFill(int integerPosition, int lane, bool held, bool selected,
+	public virtual (string, bool, Color) GetPlayerHoldStartTextureFill(int row, int lane, bool held, bool selected,
 		int player)
 	{
 		return (null, false, Color.White);
@@ -354,7 +343,7 @@ internal abstract class ArrowGraphicManager
 		return (null, false);
 	}
 
-	public virtual (string, bool, Color) GetPlayerHoldBodyTextureFill(int integerPosition, int lane, bool held, bool selected,
+	public virtual (string, bool, Color) GetPlayerHoldBodyTextureFill(int row, int lane, bool held, bool selected,
 		int player)
 	{
 		return (null, false, Color.White);
@@ -365,18 +354,18 @@ internal abstract class ArrowGraphicManager
 		return (null, 0.0f);
 	}
 
-	public virtual (string, float, Color) GetPlayerHoldEndTextureFill(int integerPosition, int lane, bool held, bool selected,
+	public virtual (string, float, Color) GetPlayerHoldEndTextureFill(int row, int lane, bool held, bool selected,
 		int player)
 	{
 		return (null, 0.0f, Color.White);
 	}
 
-	public virtual (string, float) GetPlayerRollStartTextureRim(int lane, bool selected)
+	public virtual (string, bool) GetPlayerRollStartTextureRim(int lane, bool selected)
 	{
-		return (null, 0.0f);
+		return (null, false);
 	}
 
-	public virtual (string, bool, Color) GetPlayerRollStartTextureFill(int integerPosition, int lane, bool held, bool selected,
+	public virtual (string, bool, Color) GetPlayerRollStartTextureFill(int row, int lane, bool held, bool selected,
 		int player)
 	{
 		return (null, false, Color.White);
@@ -387,7 +376,7 @@ internal abstract class ArrowGraphicManager
 		return (null, false);
 	}
 
-	public virtual (string, bool, Color) GetPlayerRollBodyTextureFill(int integerPosition, int lane, bool held, bool selected,
+	public virtual (string, bool, Color) GetPlayerRollBodyTextureFill(int row, int lane, bool held, bool selected,
 		int player)
 	{
 		return (null, false, Color.White);
@@ -398,7 +387,7 @@ internal abstract class ArrowGraphicManager
 		return (null, 0.0f);
 	}
 
-	public virtual (string, float, Color) GetPlayerRollEndTextureFill(int integerPosition, int lane, bool held, bool selected,
+	public virtual (string, float, Color) GetPlayerRollEndTextureFill(int row, int lane, bool held, bool selected,
 		int player)
 	{
 		return (null, 0.0f, Color.White);
@@ -409,44 +398,38 @@ internal abstract class ArrowGraphicManager
 		return ArrowGraphicManagerDance.GetDanceArrowColorForSubdivision(subdivision);
 	}
 
-	public abstract uint GetArrowColor(int integerPosition, int lane, bool selected, int player);
-	public abstract ushort GetArrowColorBGR565(int integerPosition, int lane, bool selected, int player);
-	public abstract uint GetHoldColor(int integerPosition, int lane, bool selected, int player);
-	public abstract ushort GetHoldColorBGR565(int integerPosition, int lane, bool selected, int player);
-	public abstract uint GetRollColor(int integerPosition, int lane, bool selected, int player);
-	public abstract ushort GetRollColorBGR565(int integerPosition, int lane, bool selected, int player);
+	public abstract bool ShouldColorHoldsAndRollsInMultiplayerCharts();
+
+	public abstract uint GetArrowColor(int row, int lane, bool selected, int player);
+	public abstract uint GetHoldColor(int row, int lane, bool selected, int player);
+	public abstract uint GetRollColor(int row, int lane, bool selected, int player);
 
 	public static uint GetMineColor(bool selected)
 	{
 		return MineColor.GetColor(selected);
 	}
 
-	public static ushort GetMineColorBGR565()
-	{
-		return MineColor.GetColorBgr565();
-	}
-
-	public string GetMineTexture(int integerPosition, int lane, bool selected)
+	public string GetMineTexture(int row, int lane, bool selected)
 	{
 		return GetTextureId(TextureIdMine, selected);
 	}
 
-	public string GetMineRimTexture(int integerPosition, int lane, bool selected)
+	public string GetMineRimTexture(int row, int lane, bool selected)
 	{
 		return GetTextureId(TextureIdMineRim, selected);
 	}
 
-	public (string, Color) GetMineFillTexture(int integerPosition, int lane, bool selected, int player)
+	public (string, Color) GetMineFillTexture(int row, int lane, bool selected, int player)
 	{
-		return (TextureIdMineFill, GetColorForPlayer(player, selected));
+		return (TextureIdMineFill, GetColorForPlayer(player, selected, false));
 	}
 
-	public static string GetFakeMarkerTexture(int integerPosition, int lane, bool selected)
+	public static string GetFakeMarkerTexture(int row, int lane, bool selected)
 	{
 		return GetTextureId(TextureIdFakeMarker, selected);
 	}
 
-	public static string GetLiftMarkerTexture(int integerPosition, int lane, bool selected)
+	public static string GetLiftMarkerTexture(int row, int lane, bool selected)
 	{
 		return GetTextureId(TextureIdLiftMarker, selected);
 	}
@@ -462,7 +445,7 @@ internal abstract class ArrowGraphicManager
 
 	public static (string, Color) GetPlayerIndicatorFillTexture(int player)
 	{
-		return (TextureIdPlayerMarkerFill, GetColorForPlayer(player, false));
+		return (TextureIdPlayerMarkerFill, GetColorForPlayer(player, false, false));
 	}
 
 	public static string GetPlayerMarkerRimTexture()
@@ -470,25 +453,25 @@ internal abstract class ArrowGraphicManager
 		return TextureIdPlayerMarkerRim;
 	}
 
-	protected static Color GetColorForPlayer(int player, bool selected)
+	protected static Color GetColorForPlayer(int player, bool selected, bool held)
 	{
 		if (selected)
+		{
+			if (held)
+				return Preferences.Instance.PreferencesMultiplayer.GetRoutineHeldAndSelectedNoteColor(player);
 			return Preferences.Instance.PreferencesMultiplayer.GetRoutineSelectedNoteColor(player);
+		}
+
+		if (held)
+			return Preferences.Instance.PreferencesMultiplayer.GetRoutineHeldNoteColor(player);
 		return Preferences.Instance.PreferencesMultiplayer.GetRoutineNoteColor(player);
 	}
 
-	protected static uint GetRgbaColorForPlayer(int player, bool selected)
+	protected static uint GetUIColorForPlayer(int player, bool selected)
 	{
 		if (selected)
-			return Preferences.Instance.PreferencesMultiplayer.GetRoutineSelectedNoteColorRgba(player);
-		return Preferences.Instance.PreferencesMultiplayer.GetRoutineNoteColorRgba(player);
-	}
-
-	protected static ushort GetBgr565ColorForPlayer(int player, bool selected)
-	{
-		if (selected)
-			return Preferences.Instance.PreferencesMultiplayer.GetRoutineSelectedNoteColorBgr565(player);
-		return Preferences.Instance.PreferencesMultiplayer.GetRoutineNoteColorBgr565(player);
+			return Preferences.Instance.PreferencesMultiplayer.GetRoutineSelectedUINoteColor(player);
+		return Preferences.Instance.PreferencesMultiplayer.GetRoutineUINoteColor(player);
 	}
 }
 
@@ -508,6 +491,19 @@ internal abstract class ArrowGraphicManagerDance : ArrowGraphicManager
 		public UniqueDanceTextures End;
 	}
 
+	protected const string HoldAndRollBodyRimTexture = "itg-hold-body-rim";
+	protected const string HoldAndRollBodyCenterRimTexture = "itg-hold-center-body-rim";
+	protected const string HoldBodyFillTexture = "itg-hold-body-fill";
+	protected const string HoldBodyCenterFillTexture = "itg-hold-center-body-fill";
+	protected const string RollBodyFillTexture = "itg-roll-body-fill";
+	protected const string RollBodyCenterFillTexture = "itg-roll-center-body-fill";
+	protected const string HoldEndFillTexture = "itg-hold-end-fill";
+	protected const string HoldEndCenterFillTexture = "itg-hold-center-end-fill";
+	protected const string HoldAndRollEndRimTexture = "itg-hold-end-rim";
+	protected const string HoldAndRollEndCenterRimTexture = "itg-hold-center-end-rim";
+	protected const string RollEndFillTexture = "itg-roll-end-fill";
+	protected const string RollEndCenterFillTexture = "itg-roll-center-end-fill";
+
 	protected static readonly UniqueDanceTextures ArrowRims;
 	protected static readonly UniqueDanceTextures ArrowFills;
 
@@ -522,10 +518,10 @@ internal abstract class ArrowGraphicManagerDance : ArrowGraphicManager
 	protected static readonly UniqueDanceTextures ReceptorGlowTextures;
 	protected static readonly UniqueDanceTextures ReceptorHeldTextures;
 
-	protected static readonly Dictionary<int, ArrowColorSet> ArrowColorBySubdivision;
-	protected static readonly ArrowColorSet[] ArrowColorByRow;
-	protected static readonly ArrowColorSet HoldColor;
-	protected static readonly ArrowColorSet RollColor;
+	protected static readonly Dictionary<int, ArrowUIColorSet> ArrowColorBySubdivision;
+	protected static readonly ArrowUIColorSet[] ArrowColorByRow;
+	protected static readonly ArrowUIColorSet HoldColor;
+	protected static readonly ArrowUIColorSet RollColor;
 
 	static ArrowGraphicManagerDance()
 	{
@@ -700,19 +696,19 @@ internal abstract class ArrowGraphicManagerDance : ArrowGraphicManager
 			UpLeftArrow = "itg-solo-receptor-held",
 		};
 
-		ArrowColorBySubdivision = new Dictionary<int, ArrowColorSet>
+		ArrowColorBySubdivision = new Dictionary<int, ArrowUIColorSet>
 		{
-			{ 1, new ArrowColorSet(0xFF1818B6) }, // Red
-			{ 2, new ArrowColorSet(0xFFB63518) }, // Blue
-			{ 3, new ArrowColorSet(0xFF37AD36) }, // Green
-			{ 4, new ArrowColorSet(0xFF16CAD1) }, // Yellow
-			{ 6, new ArrowColorSet(0xFFB61884) }, // Purple
-			{ 8, new ArrowColorSet(0xFF98B618) }, // Cyan
-			{ 12, new ArrowColorSet(0xFF8018B6) }, // Pink
-			{ 16, new ArrowColorSet(0xFF586F4F) }, // Pale Grey Green
-			{ 48, new ArrowColorSet(0xFF586F4F) }, // Pale Grey Green
+			{ 1, new ArrowUIColorSet(0xFF1818B6) }, // Red
+			{ 2, new ArrowUIColorSet(0xFFB63518) }, // Blue
+			{ 3, new ArrowUIColorSet(0xFF37AD36) }, // Green
+			{ 4, new ArrowUIColorSet(0xFF16CAD1) }, // Yellow
+			{ 6, new ArrowUIColorSet(0xFFB61884) }, // Purple
+			{ 8, new ArrowUIColorSet(0xFF98B618) }, // Cyan
+			{ 12, new ArrowUIColorSet(0xFF8018B6) }, // Pink
+			{ 16, new ArrowUIColorSet(0xFF586F4F) }, // Pale Grey Green
+			{ 48, new ArrowUIColorSet(0xFF586F4F) }, // Pale Grey Green
 		};
-		ArrowColorByRow = new ArrowColorSet[MaxValidDenominator];
+		ArrowColorByRow = new ArrowUIColorSet[MaxValidDenominator];
 		for (var i = 0; i < MaxValidDenominator; i++)
 		{
 			var key = new Fraction(i, MaxValidDenominator).Reduce().Denominator;
@@ -722,8 +718,8 @@ internal abstract class ArrowGraphicManagerDance : ArrowGraphicManager
 			ArrowColorByRow[i] = ArrowColorBySubdivision[key];
 		}
 
-		HoldColor = new ArrowColorSet(0xFF696969); // Grey
-		RollColor = new ArrowColorSet(0xFF2264A6); // Orange
+		HoldColor = new ArrowUIColorSet(0xFF696969); // Grey
+		RollColor = new ArrowUIColorSet(0xFF2264A6); // Orange
 	}
 
 	public override bool AreHoldCapsCentered()
@@ -731,9 +727,14 @@ internal abstract class ArrowGraphicManagerDance : ArrowGraphicManager
 		return false;
 	}
 
-	public override uint GetArrowColor(int integerPosition, int lane, bool selected, int player)
+	public override bool ShouldColorHoldsAndRollsInMultiplayerCharts()
 	{
-		return ArrowColorByRow[integerPosition % MaxValidDenominator].GetColor(selected);
+		return Preferences.Instance.PreferencesMultiplayer.ColorHoldsAndRolls;
+	}
+
+	public override uint GetArrowColor(int row, int lane, bool selected, int player)
+	{
+		return ArrowColorByRow[row % MaxValidDenominator].GetColor(selected);
 	}
 
 	public static uint GetDanceArrowColorForSubdivision(int subdivision)
@@ -741,29 +742,14 @@ internal abstract class ArrowGraphicManagerDance : ArrowGraphicManager
 		return ArrowColorBySubdivision[subdivision].GetColor(false);
 	}
 
-	public override ushort GetArrowColorBGR565(int integerPosition, int lane, bool selected, int player)
-	{
-		return ArrowColorByRow[integerPosition % MaxValidDenominator].GetColorBgr565();
-	}
-
-	public override uint GetHoldColor(int integerPosition, int lane, bool selected, int player)
+	public override uint GetHoldColor(int row, int lane, bool selected, int player)
 	{
 		return HoldColor.GetColor(selected);
 	}
 
-	public override ushort GetHoldColorBGR565(int integerPosition, int lane, bool selected, int player)
-	{
-		return HoldColor.GetColorBgr565();
-	}
-
-	public override uint GetRollColor(int integerPosition, int lane, bool selected, int player)
+	public override uint GetRollColor(int row, int lane, bool selected, int player)
 	{
 		return RollColor.GetColor(selected);
-	}
-
-	public override ushort GetRollColorBGR565(int integerPosition, int lane, bool selected, int player)
-	{
-		return RollColor.GetColorBgr565();
 	}
 }
 
@@ -777,9 +763,9 @@ internal class ArrowGraphicManagerDanceSingleOrDouble : ArrowGraphicManagerDance
 		(float)Math.PI * 1.5f, // R
 	};
 
-	public override (string, float) GetArrowTexture(int integerPosition, int lane, bool selected)
+	public override (string, float) GetArrowTexture(int row, int lane, bool selected)
 	{
-		return (GetTextureId(ArrowTextureByRow[integerPosition % MaxValidDenominator].DownArrow, selected),
+		return (GetTextureId(ArrowTextureByRow[row % MaxValidDenominator].DownArrow, selected),
 			ArrowRotations[lane % 4]);
 	}
 
@@ -798,32 +784,32 @@ internal class ArrowGraphicManagerDanceSingleOrDouble : ArrowGraphicManagerDance
 		return (ReceptorTextures.DownArrow, ArrowRotations[lane % 4]);
 	}
 
-	public override (string, bool) GetHoldBodyTexture(int integerPosition, int lane, bool held, bool selected)
+	public override (string, bool) GetHoldBodyTexture(int row, int lane, bool held, bool selected)
 	{
 		return (GetTextureId(held ? HoldTexturesActive.Body.DownArrow : HoldTexturesInactive.Body.DownArrow, selected), false);
 	}
 
-	public override (string, float) GetHoldEndTexture(int integerPosition, int lane, bool held, bool selected)
+	public override (string, float) GetHoldEndTexture(int row, int lane, bool held, bool selected)
 	{
 		return (GetTextureId(held ? HoldTexturesActive.End.DownArrow : HoldTexturesInactive.End.DownArrow, selected), 0.0f);
 	}
 
-	public override (string, bool) GetHoldStartTexture(int integerPosition, int lane, bool held, bool selected)
+	public override (string, bool) GetHoldStartTexture(int row, int lane, bool held, bool selected)
 	{
 		return (GetTextureId(held ? HoldTexturesActive.Start.DownArrow : HoldTexturesInactive.Start.DownArrow, selected), false);
 	}
 
-	public override (string, bool) GetRollBodyTexture(int integerPosition, int lane, bool held, bool selected)
+	public override (string, bool) GetRollBodyTexture(int row, int lane, bool held, bool selected)
 	{
 		return (GetTextureId(held ? RollTexturesActive.Body.DownArrow : RollTexturesInactive.Body.DownArrow, selected), false);
 	}
 
-	public override (string, float) GetRollEndTexture(int integerPosition, int lane, bool held, bool selected)
+	public override (string, float) GetRollEndTexture(int row, int lane, bool held, bool selected)
 	{
 		return (GetTextureId(held ? RollTexturesActive.End.DownArrow : RollTexturesInactive.End.DownArrow, selected), 0.0f);
 	}
 
-	public override (string, bool) GetRollStartTexture(int integerPosition, int lane, bool held, bool selected)
+	public override (string, bool) GetRollStartTexture(int row, int lane, bool held, bool selected)
 	{
 		return (GetTextureId(held ? RollTexturesActive.Start.DownArrow : RollTexturesInactive.Start.DownArrow, selected), false);
 	}
@@ -833,22 +819,91 @@ internal class ArrowGraphicManagerDanceSingleOrDouble : ArrowGraphicManagerDance
 		return (GetTextureId(ArrowRims.DownArrow, selected), ArrowRotations[lane % 4]);
 	}
 
-	public override (string, float, Color) GetPlayerArrowTextureFill(int integerPosition, int lane, bool selected, int player)
+	public override (string, float, Color) GetPlayerArrowTextureFill(int row, int lane, bool selected, int player)
 	{
-		return (ArrowFills.DownArrow, ArrowRotations[lane % 4], GetColorForPlayer(player, selected));
+		return (ArrowFills.DownArrow, ArrowRotations[lane % 4], GetColorForPlayer(player, selected, false));
 	}
 }
 
 internal sealed class ArrowGraphicManagerDanceRoutine : ArrowGraphicManagerDanceSingleOrDouble
 {
-	public override uint GetArrowColor(int integerPosition, int lane, bool selected, int player)
+	public override uint GetArrowColor(int row, int lane, bool selected, int player)
 	{
-		return GetRgbaColorForPlayer(player, selected);
+		return GetUIColorForPlayer(player, selected);
 	}
 
-	public override ushort GetArrowColorBGR565(int integerPosition, int lane, bool selected, int player)
+	public override uint GetHoldColor(int row, int lane, bool selected, int player)
 	{
-		return GetBgr565ColorForPlayer(player, selected);
+		if (!ShouldColorHoldsAndRollsInMultiplayerCharts())
+			return base.GetHoldColor(row, lane, selected, player);
+		return GetUIColorForPlayer(player, selected);
+	}
+
+	public override uint GetRollColor(int row, int lane, bool selected, int player)
+	{
+		if (!ShouldColorHoldsAndRollsInMultiplayerCharts())
+			return base.GetRollColor(row, lane, selected, player);
+		return GetUIColorForPlayer(player, selected);
+	}
+
+	public override (string, bool) GetPlayerHoldBodyTextureRim(int lane, bool selected)
+	{
+		if (!ShouldColorHoldsAndRollsInMultiplayerCharts())
+			return base.GetPlayerHoldBodyTextureRim(lane, selected);
+		return (GetTextureId(HoldAndRollBodyRimTexture, selected), false);
+	}
+
+	public override (string, bool, Color) GetPlayerHoldBodyTextureFill(int row, int lane, bool held, bool selected,
+		int player)
+	{
+		if (!ShouldColorHoldsAndRollsInMultiplayerCharts())
+			return base.GetPlayerHoldBodyTextureFill(row, lane, held, selected, player);
+		return (HoldBodyFillTexture, false, GetColorForPlayer(player, selected, held));
+	}
+
+	public override (string, float) GetPlayerHoldEndTextureRim(int lane, bool selected)
+	{
+		if (!ShouldColorHoldsAndRollsInMultiplayerCharts())
+			return base.GetPlayerHoldEndTextureRim(lane, selected);
+		return (GetTextureId(HoldAndRollEndRimTexture, selected), 0.0f);
+	}
+
+	public override (string, float, Color) GetPlayerHoldEndTextureFill(int row, int lane, bool held, bool selected,
+		int player)
+	{
+		if (!ShouldColorHoldsAndRollsInMultiplayerCharts())
+			return base.GetPlayerHoldEndTextureFill(row, lane, held, selected, player);
+		return (HoldEndFillTexture, 0.0f, GetColorForPlayer(player, selected, held));
+	}
+
+	public override (string, bool) GetPlayerRollBodyTextureRim(int lane, bool selected)
+	{
+		if (!ShouldColorHoldsAndRollsInMultiplayerCharts())
+			return base.GetPlayerRollBodyTextureRim(lane, selected);
+		return (GetTextureId(HoldAndRollBodyRimTexture, selected), false);
+	}
+
+	public override (string, bool, Color) GetPlayerRollBodyTextureFill(int row, int lane, bool held, bool selected,
+		int player)
+	{
+		if (!ShouldColorHoldsAndRollsInMultiplayerCharts())
+			return base.GetPlayerRollBodyTextureFill(row, lane, held, selected, player);
+		return (RollBodyFillTexture, false, GetColorForPlayer(player, selected, held));
+	}
+
+	public override (string, float) GetPlayerRollEndTextureRim(int lane, bool selected)
+	{
+		if (!ShouldColorHoldsAndRollsInMultiplayerCharts())
+			return base.GetPlayerRollEndTextureRim(lane, selected);
+		return (GetTextureId(HoldAndRollEndRimTexture, selected), 0.0f);
+	}
+
+	public override (string, float, Color) GetPlayerRollEndTextureFill(int row, int lane, bool held, bool selected,
+		int player)
+	{
+		if (!ShouldColorHoldsAndRollsInMultiplayerCharts())
+			return base.GetPlayerRollEndTextureFill(row, lane, held, selected, player);
+		return (RollEndFillTexture, 0.0f, GetColorForPlayer(player, selected, held));
 	}
 }
 
@@ -857,15 +912,15 @@ internal abstract class ArrowGraphicManagerDanceSoloBase : ArrowGraphicManagerDa
 	protected abstract bool ShouldUseUpLeftArrow(int lane);
 	protected abstract float GetRotation(int lane);
 
-	public override (string, float) GetArrowTexture(int integerPosition, int lane, bool selected)
+	public override (string, float) GetArrowTexture(int row, int lane, bool selected)
 	{
 		if (ShouldUseUpLeftArrow(lane))
 		{
-			return (GetTextureId(ArrowTextureByRow[integerPosition % MaxValidDenominator].UpLeftArrow, selected),
+			return (GetTextureId(ArrowTextureByRow[row % MaxValidDenominator].UpLeftArrow, selected),
 				GetRotation(lane));
 		}
 
-		return (GetTextureId(ArrowTextureByRow[integerPosition % MaxValidDenominator].DownArrow, selected),
+		return (GetTextureId(ArrowTextureByRow[row % MaxValidDenominator].DownArrow, selected),
 			GetRotation(lane));
 	}
 
@@ -899,20 +954,20 @@ internal abstract class ArrowGraphicManagerDanceSoloBase : ArrowGraphicManagerDa
 		return (ReceptorTextures.DownArrow, GetRotation(lane));
 	}
 
-	public override (string, bool) GetHoldBodyTexture(int integerPosition, int lane, bool held, bool selected)
+	public override (string, bool) GetHoldBodyTexture(int row, int lane, bool held, bool selected)
 	{
 		// Always use the narrower diagonal hold graphics in solo.
 		return (GetTextureId(held ? HoldTexturesActive.Body.UpLeftArrow : HoldTexturesInactive.Body.UpLeftArrow, selected),
 			false);
 	}
 
-	public override (string, float) GetHoldEndTexture(int integerPosition, int lane, bool held, bool selected)
+	public override (string, float) GetHoldEndTexture(int row, int lane, bool held, bool selected)
 	{
 		// Always use the narrower diagonal hold graphics in solo.
 		return (GetTextureId(held ? HoldTexturesActive.End.UpLeftArrow : HoldTexturesInactive.End.UpLeftArrow, selected), 0.0f);
 	}
 
-	public override (string, bool) GetHoldStartTexture(int integerPosition, int lane, bool held, bool selected)
+	public override (string, bool) GetHoldStartTexture(int row, int lane, bool held, bool selected)
 	{
 		// Always use the narrower diagonal hold graphics in solo.
 		// But only use the start graphic for diagonal arrows since they have a gap needing to be filled.
@@ -925,20 +980,20 @@ internal abstract class ArrowGraphicManagerDanceSoloBase : ArrowGraphicManagerDa
 		return (GetTextureId(held ? HoldTexturesActive.Start.DownArrow : HoldTexturesInactive.Start.DownArrow, selected), false);
 	}
 
-	public override (string, bool) GetRollBodyTexture(int integerPosition, int lane, bool held, bool selected)
+	public override (string, bool) GetRollBodyTexture(int row, int lane, bool held, bool selected)
 	{
 		// Always use the narrower diagonal hold graphics in solo.
 		return (GetTextureId(held ? RollTexturesActive.Body.UpLeftArrow : RollTexturesInactive.Body.UpLeftArrow, selected),
 			false);
 	}
 
-	public override (string, float) GetRollEndTexture(int integerPosition, int lane, bool held, bool selected)
+	public override (string, float) GetRollEndTexture(int row, int lane, bool held, bool selected)
 	{
 		// Always use the narrower diagonal hold graphics in solo.
 		return (GetTextureId(held ? RollTexturesActive.End.UpLeftArrow : RollTexturesInactive.End.UpLeftArrow, selected), 0.0f);
 	}
 
-	public override (string, bool) GetRollStartTexture(int integerPosition, int lane, bool held, bool selected)
+	public override (string, bool) GetRollStartTexture(int row, int lane, bool held, bool selected)
 	{
 		// Always use the narrower diagonal hold graphics in solo.
 		// But only use the start graphic for diagonal arrows since they have a gap needing to be filled.
@@ -961,14 +1016,14 @@ internal abstract class ArrowGraphicManagerDanceSoloBase : ArrowGraphicManagerDa
 		return (GetTextureId(ArrowRims.DownArrow, selected), GetRotation(lane));
 	}
 
-	public override (string, float, Color) GetPlayerArrowTextureFill(int integerPosition, int lane, bool selected, int player)
+	public override (string, float, Color) GetPlayerArrowTextureFill(int row, int lane, bool selected, int player)
 	{
 		if (ShouldUseUpLeftArrow(lane))
 		{
-			return (ArrowFills.UpLeftArrow, GetRotation(lane), GetColorForPlayer(player, selected));
+			return (ArrowFills.UpLeftArrow, GetRotation(lane), GetColorForPlayer(player, selected, false));
 		}
 
-		return (ArrowFills.DownArrow, GetRotation(lane), GetColorForPlayer(player, selected));
+		return (ArrowFills.DownArrow, GetRotation(lane), GetColorForPlayer(player, selected, false));
 	}
 }
 
@@ -1020,15 +1075,15 @@ internal abstract class ArrowGraphicManagerDanceSMX : ArrowGraphicManagerDance
 	protected abstract bool ShouldUseCenterArrow(int lane);
 	protected abstract float GetRotation(int lane);
 
-	public override (string, float) GetArrowTexture(int integerPosition, int lane, bool selected)
+	public override (string, float) GetArrowTexture(int row, int lane, bool selected)
 	{
 		if (ShouldUseCenterArrow(lane))
 		{
-			return (GetTextureId(ArrowTextureByRow[integerPosition % MaxValidDenominator].CenterArrow, selected),
+			return (GetTextureId(ArrowTextureByRow[row % MaxValidDenominator].CenterArrow, selected),
 				GetRotation(lane));
 		}
 
-		return (GetTextureId(ArrowTextureByRow[integerPosition % MaxValidDenominator].DownArrow, selected),
+		return (GetTextureId(ArrowTextureByRow[row % MaxValidDenominator].DownArrow, selected),
 			GetRotation(lane));
 	}
 
@@ -1062,35 +1117,35 @@ internal abstract class ArrowGraphicManagerDanceSMX : ArrowGraphicManagerDance
 		return (ReceptorTextures.DownArrow, GetRotation(lane));
 	}
 
-	public override (string, bool) GetHoldBodyTexture(int integerPosition, int lane, bool held, bool selected)
+	public override (string, bool) GetHoldBodyTexture(int row, int lane, bool held, bool selected)
 	{
 		return (GetTextureId(held ? HoldTexturesActive.Body.CenterArrow : HoldTexturesInactive.Body.CenterArrow, selected),
 			false);
 	}
 
-	public override (string, float) GetHoldEndTexture(int integerPosition, int lane, bool held, bool selected)
+	public override (string, float) GetHoldEndTexture(int row, int lane, bool held, bool selected)
 	{
 		return (GetTextureId(held ? HoldTexturesActive.End.CenterArrow : HoldTexturesInactive.End.CenterArrow, selected), 0.0f);
 	}
 
-	public override (string, bool) GetHoldStartTexture(int integerPosition, int lane, bool held, bool selected)
+	public override (string, bool) GetHoldStartTexture(int row, int lane, bool held, bool selected)
 	{
 		return (GetTextureId(held ? HoldTexturesActive.Start.CenterArrow : HoldTexturesInactive.Start.CenterArrow, selected),
 			false);
 	}
 
-	public override (string, bool) GetRollBodyTexture(int integerPosition, int lane, bool held, bool selected)
+	public override (string, bool) GetRollBodyTexture(int row, int lane, bool held, bool selected)
 	{
 		return (GetTextureId(held ? RollTexturesActive.Body.CenterArrow : RollTexturesInactive.Body.CenterArrow, selected),
 			false);
 	}
 
-	public override (string, float) GetRollEndTexture(int integerPosition, int lane, bool held, bool selected)
+	public override (string, float) GetRollEndTexture(int row, int lane, bool held, bool selected)
 	{
 		return (GetTextureId(held ? RollTexturesActive.End.CenterArrow : RollTexturesInactive.End.CenterArrow, selected), 0.0f);
 	}
 
-	public override (string, bool) GetRollStartTexture(int integerPosition, int lane, bool held, bool selected)
+	public override (string, bool) GetRollStartTexture(int row, int lane, bool held, bool selected)
 	{
 		return (GetTextureId(held ? RollTexturesActive.Start.CenterArrow : RollTexturesInactive.Start.CenterArrow, selected),
 			false);
@@ -1106,14 +1161,14 @@ internal abstract class ArrowGraphicManagerDanceSMX : ArrowGraphicManagerDance
 		return (GetTextureId(ArrowRims.DownArrow, selected), GetRotation(lane));
 	}
 
-	public override (string, float, Color) GetPlayerArrowTextureFill(int integerPosition, int lane, bool selected, int player)
+	public override (string, float, Color) GetPlayerArrowTextureFill(int row, int lane, bool selected, int player)
 	{
 		if (ShouldUseCenterArrow(lane))
 		{
-			return (ArrowFills.CenterArrow, GetRotation(lane), GetColorForPlayer(player, selected));
+			return (ArrowFills.CenterArrow, GetRotation(lane), GetColorForPlayer(player, selected, false));
 		}
 
-		return (ArrowFills.DownArrow, GetRotation(lane), GetColorForPlayer(player, selected));
+		return (ArrowFills.DownArrow, GetRotation(lane), GetColorForPlayer(player, selected, false));
 	}
 }
 
@@ -1184,30 +1239,99 @@ internal sealed class ArrowGraphicManagerDanceSMXDual : ArrowGraphicManagerDance
 
 internal class ArrowGraphicManagerDanceSMXTeam : ArrowGraphicManagerDanceSMXSingleOrFull
 {
-	public override uint GetArrowColor(int integerPosition, int lane, bool selected, int player)
+	public override uint GetArrowColor(int row, int lane, bool selected, int player)
 	{
-		return GetRgbaColorForPlayer(player, selected);
+		return GetUIColorForPlayer(player, selected);
 	}
 
-	public override ushort GetArrowColorBGR565(int integerPosition, int lane, bool selected, int player)
+	public override uint GetHoldColor(int row, int lane, bool selected, int player)
 	{
-		return GetBgr565ColorForPlayer(player, selected);
+		if (!ShouldColorHoldsAndRollsInMultiplayerCharts())
+			return base.GetHoldColor(row, lane, selected, player);
+		return GetUIColorForPlayer(player, selected);
+	}
+
+	public override uint GetRollColor(int row, int lane, bool selected, int player)
+	{
+		if (!ShouldColorHoldsAndRollsInMultiplayerCharts())
+			return base.GetRollColor(row, lane, selected, player);
+		return GetUIColorForPlayer(player, selected);
+	}
+
+	public override (string, bool) GetPlayerHoldBodyTextureRim(int lane, bool selected)
+	{
+		if (!ShouldColorHoldsAndRollsInMultiplayerCharts())
+			return base.GetPlayerHoldBodyTextureRim(lane, selected);
+		return (GetTextureId(HoldAndRollBodyCenterRimTexture, selected), false);
+	}
+
+	public override (string, bool, Color) GetPlayerHoldBodyTextureFill(int row, int lane, bool held, bool selected,
+		int player)
+	{
+		if (!ShouldColorHoldsAndRollsInMultiplayerCharts())
+			return base.GetPlayerHoldBodyTextureFill(row, lane, held, selected, player);
+		return (HoldBodyCenterFillTexture, false, GetColorForPlayer(player, selected, held));
+	}
+
+	public override (string, float) GetPlayerHoldEndTextureRim(int lane, bool selected)
+	{
+		if (!ShouldColorHoldsAndRollsInMultiplayerCharts())
+			return base.GetPlayerHoldEndTextureRim(lane, selected);
+		return (GetTextureId(HoldAndRollEndCenterRimTexture, selected), 0.0f);
+	}
+
+	public override (string, float, Color) GetPlayerHoldEndTextureFill(int row, int lane, bool held, bool selected,
+		int player)
+	{
+		if (!ShouldColorHoldsAndRollsInMultiplayerCharts())
+			return base.GetPlayerHoldEndTextureFill(row, lane, held, selected, player);
+		return (HoldEndCenterFillTexture, 0.0f, GetColorForPlayer(player, selected, held));
+	}
+
+	public override (string, bool) GetPlayerRollBodyTextureRim(int lane, bool selected)
+	{
+		if (!ShouldColorHoldsAndRollsInMultiplayerCharts())
+			return base.GetPlayerRollBodyTextureRim(lane, selected);
+		return (GetTextureId(HoldAndRollBodyCenterRimTexture, selected), false);
+	}
+
+	public override (string, bool, Color) GetPlayerRollBodyTextureFill(int row, int lane, bool held, bool selected,
+		int player)
+	{
+		if (!ShouldColorHoldsAndRollsInMultiplayerCharts())
+			return base.GetPlayerRollBodyTextureFill(row, lane, held, selected, player);
+		return (RollBodyCenterFillTexture, false, GetColorForPlayer(player, selected, held));
+	}
+
+	public override (string, float) GetPlayerRollEndTextureRim(int lane, bool selected)
+	{
+		if (!ShouldColorHoldsAndRollsInMultiplayerCharts())
+			return base.GetPlayerRollEndTextureRim(lane, selected);
+		return (GetTextureId(HoldAndRollEndCenterRimTexture, selected), 0.0f);
+	}
+
+	public override (string, float, Color) GetPlayerRollEndTextureFill(int row, int lane, bool held, bool selected,
+		int player)
+	{
+		if (!ShouldColorHoldsAndRollsInMultiplayerCharts())
+			return base.GetPlayerRollEndTextureFill(row, lane, held, selected, player);
+		return (RollEndCenterFillTexture, 0.0f, GetColorForPlayer(player, selected, held));
 	}
 }
 
 internal abstract class ArrowGraphicManagerPIU : ArrowGraphicManager
 {
-	protected static readonly ArrowColorSet ArrowColorRed;
-	protected static readonly ArrowColorSet ArrowColorBlue;
-	protected static readonly ArrowColorSet ArrowColorYellow;
+	protected static readonly ArrowUIColorSet ArrowColorRed;
+	protected static readonly ArrowUIColorSet ArrowColorBlue;
+	protected static readonly ArrowUIColorSet ArrowColorYellow;
 
-	protected static readonly ArrowColorSet HoldColorRed;
-	protected static readonly ArrowColorSet HoldColorBlue;
-	protected static readonly ArrowColorSet HoldColorYellow;
+	protected static readonly ArrowUIColorSet HoldColorRed;
+	protected static readonly ArrowUIColorSet HoldColorBlue;
+	protected static readonly ArrowUIColorSet HoldColorYellow;
 
-	protected static readonly ArrowColorSet RollColorRed;
-	protected static readonly ArrowColorSet RollColorBlue;
-	protected static readonly ArrowColorSet RollColorYellow;
+	protected static readonly ArrowUIColorSet RollColorRed;
+	protected static readonly ArrowUIColorSet RollColorBlue;
+	protected static readonly ArrowUIColorSet RollColorYellow;
 
 	protected static readonly float[] ArrowRotationsColored =
 	{
@@ -1335,25 +1459,25 @@ internal abstract class ArrowGraphicManagerPIU : ArrowGraphicManager
 		true, // DR
 	};
 
-	protected static readonly ArrowColorSet[] ArrowColors;
-	protected static readonly ArrowColorSet[] HoldColors;
-	protected static readonly ArrowColorSet[] RollColors;
+	protected static readonly ArrowUIColorSet[] ArrowColors;
+	protected static readonly ArrowUIColorSet[] HoldColors;
+	protected static readonly ArrowUIColorSet[] RollColors;
 
 	protected int StartArrowIndex;
 
 	static ArrowGraphicManagerPIU()
 	{
-		ArrowColorRed = new ArrowColorSet(0xFF371BB3);
-		ArrowColorBlue = new ArrowColorSet(0xFFB3401B);
-		ArrowColorYellow = new ArrowColorSet(0xFF00EAFF);
+		ArrowColorRed = new ArrowUIColorSet(0xFF371BB3);
+		ArrowColorBlue = new ArrowUIColorSet(0xFFB3401B);
+		ArrowColorYellow = new ArrowUIColorSet(0xFF00EAFF);
 
-		HoldColorRed = new ArrowColorSet(0xFF5039B2);
-		HoldColorBlue = new ArrowColorSet(0xFFB35639);
-		HoldColorYellow = new ArrowColorSet(0xFF6BF3FF);
+		HoldColorRed = new ArrowUIColorSet(0xFF5039B2);
+		HoldColorBlue = new ArrowUIColorSet(0xFFB35639);
+		HoldColorYellow = new ArrowUIColorSet(0xFF6BF3FF);
 
-		RollColorRed = new ArrowColorSet(0xFF6B54F8);
-		RollColorBlue = new ArrowColorSet(0xFFB38C1B);
-		RollColorYellow = new ArrowColorSet(0xFF2FABB5);
+		RollColorRed = new ArrowUIColorSet(0xFF6B54F8);
+		RollColorBlue = new ArrowUIColorSet(0xFFB38C1B);
+		RollColorYellow = new ArrowUIColorSet(0xFF2FABB5);
 
 		ArrowColors = new[]
 		{
@@ -1391,6 +1515,11 @@ internal abstract class ArrowGraphicManagerPIU : ArrowGraphicManager
 		return true;
 	}
 
+	public override bool ShouldColorHoldsAndRollsInMultiplayerCharts()
+	{
+		return true;
+	}
+
 	public override (string, float) GetReceptorTexture(int lane)
 	{
 		var i = GetTextureIndex(lane);
@@ -1409,78 +1538,60 @@ internal abstract class ArrowGraphicManagerPIU : ArrowGraphicManager
 		return (ReceptorHeldTextures[i], ArrowRotations[i]);
 	}
 
-	public override (string, float) GetArrowTexture(int integerPosition, int lane, bool selected)
+	public override (string, float) GetArrowTexture(int row, int lane, bool selected)
 	{
 		var i = GetTextureIndex(lane);
 		return (GetTextureId(ArrowTextures[i], selected), ArrowRotationsColored[i]);
 	}
 
-	public override (string, bool) GetHoldStartTexture(int integerPosition, int lane, bool held, bool selected)
+	public override (string, bool) GetHoldStartTexture(int row, int lane, bool held, bool selected)
 	{
 		return (null, false);
 	}
 
-	public override (string, bool) GetHoldBodyTexture(int integerPosition, int lane, bool held, bool selected)
+	public override (string, bool) GetHoldBodyTexture(int row, int lane, bool held, bool selected)
 	{
 		var i = GetTextureIndex(lane);
 		return (GetTextureId(HoldTextures[i], selected), HoldMirrored[i]);
 	}
 
-	public override (string, float) GetHoldEndTexture(int integerPosition, int lane, bool held, bool selected)
+	public override (string, float) GetHoldEndTexture(int row, int lane, bool held, bool selected)
 	{
-		return GetArrowTexture(integerPosition, lane, selected);
+		return GetArrowTexture(row, lane, selected);
 	}
 
-	public override (string, bool) GetRollStartTexture(int integerPosition, int lane, bool held, bool selected)
+	public override (string, bool) GetRollStartTexture(int row, int lane, bool held, bool selected)
 	{
 		return (null, false);
 	}
 
-	public override (string, bool) GetRollBodyTexture(int integerPosition, int lane, bool held, bool selected)
+	public override (string, bool) GetRollBodyTexture(int row, int lane, bool held, bool selected)
 	{
 		var i = GetTextureIndex(lane);
 		return (GetTextureId(RollTextures[i], selected), HoldMirrored[i]);
 	}
 
-	public override (string, float) GetRollEndTexture(int integerPosition, int lane, bool held, bool selected)
+	public override (string, float) GetRollEndTexture(int row, int lane, bool held, bool selected)
 	{
-		return GetArrowTexture(integerPosition, lane, selected);
+		return GetArrowTexture(row, lane, selected);
 	}
 
-	public override uint GetArrowColor(int integerPosition, int lane, bool selected, int player)
+	public override uint GetArrowColor(int row, int lane, bool selected, int player)
 	{
 		var i = GetTextureIndex(lane);
 		return ArrowColors[i].GetColor(selected);
 	}
 
-	public override ushort GetArrowColorBGR565(int integerPosition, int lane, bool selected, int player)
-	{
-		var i = GetTextureIndex(lane);
-		return ArrowColors[i].GetColorBgr565();
-	}
-
-	public override uint GetHoldColor(int integerPosition, int lane, bool selected, int player)
+	public override uint GetHoldColor(int row, int lane, bool selected, int player)
 	{
 		var i = GetTextureIndex(lane);
 		return HoldColors[i].GetColor(selected);
 	}
 
-	public override ushort GetHoldColorBGR565(int integerPosition, int lane, bool selected, int player)
-	{
-		var i = GetTextureIndex(lane);
-		return HoldColors[i].GetColorBgr565();
-	}
-
-	public override uint GetRollColor(int integerPosition, int lane, bool selected, int player)
+	public override uint GetRollColor(int row, int lane, bool selected, int player)
 	{
 		var i = GetTextureIndex(lane);
 		return RollColors[i].GetColor(selected);
-	}
-
-	public override ushort GetRollColorBGR565(int integerPosition, int lane, bool selected, int player)
-	{
-		var i = GetTextureIndex(lane);
-		return RollColors[i].GetColorBgr565();
 	}
 
 	public override (string, float) GetPlayerArrowTextureRim(int lane, bool selected)
@@ -1489,10 +1600,10 @@ internal abstract class ArrowGraphicManagerPIU : ArrowGraphicManager
 		return (GetTextureId(ArrowRimTextures[i], selected), ArrowRotations[i]);
 	}
 
-	public override (string, float, Color) GetPlayerArrowTextureFill(int integerPosition, int lane, bool selected, int player)
+	public override (string, float, Color) GetPlayerArrowTextureFill(int row, int lane, bool selected, int player)
 	{
 		var i = GetTextureIndex(lane);
-		return (ArrowFillTextures[i], ArrowRotations[i], GetColorForPlayer(player, selected));
+		return (ArrowFillTextures[i], ArrowRotations[i], GetColorForPlayer(player, selected, false));
 	}
 
 	public override (string, bool) GetPlayerHoldBodyTextureRim(int lane, bool selected)
@@ -1501,11 +1612,11 @@ internal abstract class ArrowGraphicManagerPIU : ArrowGraphicManager
 		return (GetTextureId(ArrowHoldAndRollRimTextures[i], selected), HoldMirrored[i]);
 	}
 
-	public override (string, bool, Color) GetPlayerHoldBodyTextureFill(int integerPosition, int lane, bool held, bool selected,
+	public override (string, bool, Color) GetPlayerHoldBodyTextureFill(int row, int lane, bool held, bool selected,
 		int player)
 	{
 		var i = GetTextureIndex(lane);
-		return (ArrowHoldFillTextures[i], HoldMirrored[i], GetColorForPlayer(player, selected));
+		return (ArrowHoldFillTextures[i], HoldMirrored[i], GetColorForPlayer(player, selected, false));
 	}
 
 	public override (string, float) GetPlayerHoldEndTextureRim(int lane, bool selected)
@@ -1513,11 +1624,11 @@ internal abstract class ArrowGraphicManagerPIU : ArrowGraphicManager
 		return GetPlayerArrowTextureRim(lane, selected);
 	}
 
-	public override (string, float, Color) GetPlayerHoldEndTextureFill(int integerPosition, int lane, bool held, bool selected,
+	public override (string, float, Color) GetPlayerHoldEndTextureFill(int row, int lane, bool held, bool selected,
 		int player)
 	{
 		var i = GetTextureIndex(lane);
-		return (ArrowFillTextures[i], ArrowRotations[i], GetColorForPlayer(player, selected));
+		return (ArrowFillTextures[i], ArrowRotations[i], GetColorForPlayer(player, selected, false));
 	}
 
 	public override (string, bool) GetPlayerRollBodyTextureRim(int lane, bool selected)
@@ -1526,11 +1637,11 @@ internal abstract class ArrowGraphicManagerPIU : ArrowGraphicManager
 		return (GetTextureId(ArrowHoldAndRollRimTextures[i], selected), HoldMirrored[i]);
 	}
 
-	public override (string, bool, Color) GetPlayerRollBodyTextureFill(int integerPosition, int lane, bool held, bool selected,
+	public override (string, bool, Color) GetPlayerRollBodyTextureFill(int row, int lane, bool held, bool selected,
 		int player)
 	{
 		var i = GetTextureIndex(lane);
-		return (ArrowRollFillTextures[i], HoldMirrored[i], GetColorForPlayer(player, selected));
+		return (ArrowRollFillTextures[i], HoldMirrored[i], GetColorForPlayer(player, selected, false));
 	}
 
 	public override (string, float) GetPlayerRollEndTextureRim(int lane, bool selected)
@@ -1538,11 +1649,11 @@ internal abstract class ArrowGraphicManagerPIU : ArrowGraphicManager
 		return GetPlayerArrowTextureRim(lane, selected);
 	}
 
-	public override (string, float, Color) GetPlayerRollEndTextureFill(int integerPosition, int lane, bool held, bool selected,
+	public override (string, float, Color) GetPlayerRollEndTextureFill(int row, int lane, bool held, bool selected,
 		int player)
 	{
 		var i = GetTextureIndex(lane);
-		return (ArrowFillTextures[i], ArrowRotations[i], GetColorForPlayer(player, selected));
+		return (ArrowFillTextures[i], ArrowRotations[i], GetColorForPlayer(player, selected, false));
 	}
 }
 
@@ -1564,33 +1675,18 @@ internal sealed class ArrowGraphicManagerPIUSingleHalfDouble : ArrowGraphicManag
 
 internal sealed class ArrowGraphicManagerPIURoutine : ArrowGraphicManagerPIUSingleOrDouble
 {
-	public override uint GetArrowColor(int integerPosition, int lane, bool selected, int player)
+	public override uint GetArrowColor(int row, int lane, bool selected, int player)
 	{
-		return GetRgbaColorForPlayer(player, selected);
+		return GetUIColorForPlayer(player, selected);
 	}
 
-	public override ushort GetArrowColorBGR565(int integerPosition, int lane, bool selected, int player)
+	public override uint GetHoldColor(int row, int lane, bool selected, int player)
 	{
-		return GetBgr565ColorForPlayer(player, selected);
+		return GetUIColorForPlayer(player, selected);
 	}
 
-	public override uint GetHoldColor(int integerPosition, int lane, bool selected, int player)
+	public override uint GetRollColor(int row, int lane, bool selected, int player)
 	{
-		return GetRgbaColorForPlayer(player, selected);
-	}
-
-	public override ushort GetHoldColorBGR565(int integerPosition, int lane, bool selected, int player)
-	{
-		return GetBgr565ColorForPlayer(player, selected);
-	}
-
-	public override uint GetRollColor(int integerPosition, int lane, bool selected, int player)
-	{
-		return GetRgbaColorForPlayer(player, selected);
-	}
-
-	public override ushort GetRollColorBGR565(int integerPosition, int lane, bool selected, int player)
-	{
-		return GetBgr565ColorForPlayer(player, selected);
+		return GetUIColorForPlayer(player, selected);
 	}
 }
