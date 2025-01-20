@@ -2301,7 +2301,8 @@ internal sealed class Editor :
 			DrawMeasureMarkers();
 			DrawRegions();
 			DrawReceptors();
-			DrawSnapIndicators();
+			DrawSnapIndicator();
+			DrawPlayerIndicator();
 
 			// Start a window within the central node so we can clip
 			if (UIDockSpace.BeginCentralNodeAreaWindow())
@@ -2495,24 +2496,19 @@ internal sealed class Editor :
 		}
 	}
 
-	private void DrawSnapIndicators()
+	private void DrawSnapIndicator()
 	{
 		var focusedChartData = GetFocusedChartData();
 		if (focusedChartData == null)
 			return;
-		var arrowGraphicManager = focusedChartData.GetArrowGraphicManager();
-		if (arrowGraphicManager == null)
-			return;
 		var snapTextureId = SnapManager.GetCurrentTexture();
 		if (string.IsNullOrEmpty(snapTextureId))
 			return;
-		var (receptorTextureId, _) = arrowGraphicManager.GetReceptorTexture(0);
-		var (receptorTextureWidth, _) = TextureAtlas.GetDimensions(receptorTextureId);
-		var zoom = ZoomManager.GetSizeZoom();
-		var receptorLeftEdge = GetFocalPointScreenSpaceX() - FocusedChart.NumInputs * 0.5 * receptorTextureWidth * zoom;
 
+		var zoom = ZoomManager.GetSizeZoom();
+		var receptorsLeftEdge = focusedChartData.GetScreenSpaceXOfLanesStartWithCurrentScale();
 		var (snapTextureWidth, snapTextureHeight) = TextureAtlas.GetDimensions(snapTextureId);
-		var leftX = receptorLeftEdge - snapTextureWidth * 0.5 * zoom;
+		var leftX = receptorsLeftEdge - snapTextureWidth * 0.5 * zoom;
 		var y = GetFocalPointScreenSpaceY();
 
 		TextureAtlas.Draw(
@@ -2520,6 +2516,49 @@ internal sealed class Editor :
 			SpriteBatch,
 			new Vector2((float)leftX, y),
 			new Vector2((float)(snapTextureWidth * 0.5), (float)(snapTextureHeight * 0.5)),
+			Color.White,
+			(float)zoom,
+			0.0f,
+			SpriteEffects.None);
+	}
+
+	private void DrawPlayerIndicator()
+	{
+		if (FocusedChart == null || !FocusedChart.IsMultiPlayer())
+			return;
+		var focusedChartData = GetFocusedChartData();
+		if (focusedChartData == null)
+			return;
+		var arrowGraphicManager = focusedChartData.GetArrowGraphicManager();
+		if (arrowGraphicManager == null)
+			return;
+		var player = focusedChartData.GetPlayer();
+		var rimTextureId = ArrowGraphicManager.GetPlayerMarkerRimTexture();
+		var (rimW, rimH) = TextureAtlas.GetDimensions(rimTextureId);
+		var (fillTextureId, color) = ArrowGraphicManager.GetPlayerMarkerFillTexture(player);
+		var (fillW, fillH) = TextureAtlas.GetDimensions(fillTextureId);
+
+		var zoom = ZoomManager.GetSizeZoom();
+		var x = focusedChartData.GetScreenSpaceXOfLanesEndWithCurrentScale() + rimW * 0.5 * zoom;
+		var y = GetFocalPointScreenSpaceY();
+
+		// Draw fill.
+		TextureAtlas.Draw(
+			fillTextureId,
+			SpriteBatch,
+			new Vector2((float)x, y),
+			new Vector2((float)(fillW * 0.5), (float)(fillH * 0.5)),
+			color,
+			(float)zoom,
+			0.0f,
+			SpriteEffects.None);
+
+		// Draw rim.
+		TextureAtlas.Draw(
+			rimTextureId,
+			SpriteBatch,
+			new Vector2((float)x, y),
+			new Vector2((float)(rimW * 0.5), (float)(rimH * 0.5)),
 			Color.White,
 			(float)zoom,
 			0.0f,

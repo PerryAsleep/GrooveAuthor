@@ -134,21 +134,19 @@ internal sealed class ActiveEditorChart
 		return FocalPointScreenSpaceX - (GetLaneAreaWidth() >> 1);
 	}
 
-	public int GetScreenSpaceXOfMiscEventsStart()
+	public int GetScreenSpaceXOfLanesStartWithCurrentScale()
 	{
-		var x = GetScreenSpaceXOfLanesStart();
-		if (ShouldDrawMiscEvents())
-		{
-			x -= GetLeftMiscEventPadding();
-			x -= Preferences.Instance.PreferencesOptions.MiscEventAreaWidth;
-		}
-
-		return x;
+		return FocalPointScreenSpaceX - (GetLaneAreaWidthWithCurrentScale() >> 1);
 	}
 
 	public int GetScreenSpaceXOfLanesEnd()
 	{
 		return FocalPointScreenSpaceX + (GetLaneAreaWidth() >> 1);
+	}
+
+	public int GetScreenSpaceXOfLanesEndWithCurrentScale()
+	{
+		return FocalPointScreenSpaceX + (GetLaneAreaWidthWithCurrentScale() >> 1);
 	}
 
 	public int GetScreenSpaceXOfLanesAndWaveFormEnd()
@@ -212,6 +210,13 @@ internal sealed class ActiveEditorChart
 
 	public int GetRightMiscEventPadding()
 	{
+		if (Chart.IsMultiPlayer())
+		{
+			// Reserve room on the right for the player indicator. It should ideally use a precise value that is
+			// determined from the indicator graphic, but it is simpler and symmetric to use the left padding.
+			return GetLeftMiscEventPadding();
+		}
+
 		return GetSceneWidgetPadding();
 	}
 
@@ -2491,7 +2496,7 @@ internal sealed class ActiveEditorChart
 
 	#region Lane Input
 
-	private int GetPlayer()
+	public int GetPlayer()
 	{
 		// TODO: Routine: Improve caching player per active chart.
 		// This should be cached in some way per chart so moving between charts doesn't reset it.

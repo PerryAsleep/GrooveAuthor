@@ -443,7 +443,7 @@ internal abstract class ArrowGraphicManager
 		return texture;
 	}
 
-	public static (string, Color) GetPlayerIndicatorFillTexture(int player)
+	public static (string, Color) GetPlayerMarkerFillTexture(int player)
 	{
 		return (TextureIdPlayerMarkerFill, GetColorForPlayer(player, false, false));
 	}
