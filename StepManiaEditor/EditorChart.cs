@@ -457,7 +457,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 			if (SupportsVariableNumberOfPlayers())
 			{
-				MaxPlayersInternal = Math.Max(value, 1);
+				var newMaxPlayers = Math.Max(value, Math.Max(1, StepTotals.GetNumPlayersWithNotes()));
+				MaxPlayersInternal = newMaxPlayers;
 			}
 			else
 			{
@@ -496,6 +497,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 		var chartProperties = GetChartProperties(ChartType);
 		NumInputs = chartProperties.GetNumInputs();
+		StepTotals = new StepTotals(this);
 		DefaultNumPlayers = chartProperties.GetNumPlayers();
 		MaxPlayers = DefaultNumPlayers;
 
@@ -525,8 +527,6 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		DisplayTempoFromChart = !string.IsNullOrEmpty(chart.Tempo);
 		DisplayTempo.FromString(chart.Tempo);
 
-		StepTotals = new StepTotals(this);
-
 		SetUpEditorEvents(chart);
 
 		DeserializeCustomChartData(chart);
@@ -553,6 +553,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 		var chartProperties = GetChartProperties(ChartType);
 		NumInputs = chartProperties.GetNumInputs();
+		StepTotals = new StepTotals(this);
 		DefaultNumPlayers = chartProperties.GetNumPlayers();
 		MaxPlayers = DefaultNumPlayers;
 
@@ -565,8 +566,6 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		DisplayTempoFromChart = false;
 
 		Rating = DefaultRating;
-
-		StepTotals = new StepTotals(this);
 
 		var tempChart = new Chart();
 		var tempLayer = new Layer();
@@ -605,6 +604,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		ChartTypeInternal = other.ChartTypeInternal;
 
 		NumInputs = other.NumInputs;
+		StepTotals = new StepTotals(this);
 		DefaultNumPlayers = other.DefaultNumPlayers;
 		MaxPlayers = other.MaxPlayers;
 
@@ -618,8 +618,6 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		ChartDifficultyTypeInternal = other.ChartDifficultyTypeInternal;
 
 		Rating = other.Rating;
-
-		StepTotals = new StepTotals(this);
 
 		SetUpEditorEvents(other);
 
@@ -639,6 +637,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		var interpolatedScrollRateEvents = new InterpolatedRateAlteringEventTree(this);
 		var miscEvents = new EventTree(this);
 		var labels = new EventTree(this);
+		var maxPlayer = 1;
 
 		var pendingHoldStarts = new LaneHoldStartNote[NumInputs];
 		var lastScrollRateInterpolationValue = 1.0;
@@ -693,6 +692,9 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		{
 			var chartEvent = chart.Layers[0].Events[eventIndex];
 			EditorEvent editorEvent;
+
+			if (chartEvent is Note n)
+				maxPlayer = Math.Max(maxPlayer, n.Player);
 
 			switch (chartEvent)
 			{
@@ -784,6 +786,9 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		InterpolatedScrollRateEvents = interpolatedScrollRateEvents;
 		MiscEvents = miscEvents;
 		Labels = labels;
+
+		if (maxPlayer > MaxPlayers)
+			MaxPlayers = maxPlayer;
 
 		// TODO: Optimize.
 		// Ideally we only need to do one loop over all the notes. But that means either duplicating much of

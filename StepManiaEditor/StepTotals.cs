@@ -20,6 +20,7 @@ internal interface IReadOnlyStepTotals
 	public int GetLiftCount();
 
 	public int GetMultipliersCount();
+	public int GetNumPlayersWithNotes();
 }
 
 /// <summary>
@@ -31,6 +32,11 @@ internal sealed class StepTotals : IReadOnlyStepTotals
 	/// Total step counts by lane for the EditorChart.
 	/// </summary>
 	private int[] StepCountsByLane;
+
+	/// <summary>
+	/// Total note counts per player for the EditorChart;
+	/// </summary>
+	private readonly Dictionary<int, int> NoteCountsPerPlayer = new();
 
 	/// <summary>
 	/// Total step count for the EditorChart.
@@ -99,6 +105,7 @@ internal sealed class StepTotals : IReadOnlyStepTotals
 		LiftCount = 0;
 		MultipliersCount = 0;
 		StepCountPerRow.Clear();
+		NoteCountsPerPlayer.Clear();
 		StepCountsByLane = new int[EditorChart.NumInputs];
 		for (var a = 0; a < EditorChart.NumInputs; a++)
 			StepCountsByLane[a] = 0;
@@ -163,20 +170,21 @@ internal sealed class StepTotals : IReadOnlyStepTotals
 				break;
 		}
 
+		if (editorEvent.IsLaneNote())
+		{
+			var player = editorEvent.GetPlayer();
+			NoteCountsPerPlayer.TryAdd(player, 0);
+			NoteCountsPerPlayer[player]++;
+		}
+
 		if (isStep)
 		{
 			StepCount++;
 			StepCountsByLane[editorEvent.GetLane()]++;
-			IncrementStepCountPerRow(editorEvent.GetRow());
-		}
-	}
-
-	private void IncrementStepCountPerRow(int row)
-	{
-		if (!StepCountPerRow.ContainsKey(row))
-			StepCountPerRow[row] = 1;
-		else
+			var row = editorEvent.GetRow();
+			StepCountPerRow.TryAdd(row, 0);
 			StepCountPerRow[row]++;
+		}
 	}
 
 	public void OnEventDeleted(EditorEvent editorEvent)
@@ -233,19 +241,23 @@ internal sealed class StepTotals : IReadOnlyStepTotals
 				break;
 		}
 
+		if (editorEvent.IsLaneNote())
+		{
+			var player = editorEvent.GetPlayer();
+			NoteCountsPerPlayer[player]--;
+			if (NoteCountsPerPlayer[player] == 0)
+				NoteCountsPerPlayer.Remove(player);
+		}
+
 		if (isStep)
 		{
 			StepCount--;
 			StepCountsByLane[editorEvent.GetLane()]--;
-			DecrementStepCountPerRow(editorEvent.GetRow());
+			var row = editorEvent.GetRow();
+			StepCountPerRow[row]--;
+			if (StepCountPerRow[row] == 0)
+				StepCountPerRow.Remove(row);
 		}
-	}
-
-	private void DecrementStepCountPerRow(int row)
-	{
-		StepCountPerRow[row]--;
-		if (StepCountPerRow[row] == 0)
-			StepCountPerRow.Remove(row);
 	}
 
 	public void OnHoldTypeChanged(EditorHoldNoteEvent hold)
@@ -330,5 +342,10 @@ internal sealed class StepTotals : IReadOnlyStepTotals
 	public int GetMultipliersCount()
 	{
 		return MultipliersCount;
+	}
+
+	public int GetNumPlayersWithNotes()
+	{
+		return NoteCountsPerPlayer.Keys.Count;
 	}
 }

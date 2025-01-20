@@ -3830,6 +3830,59 @@ internal sealed class ImGuiLayoutUtils
 
 	#endregion Stream
 
+	#region Player Selection
+
+	public static void DrawRowPlayerSelection(string title, int maxPlayers, ArrowGraphicManager arrowGraphicManager,
+		string help = null)
+	{
+		DrawTitle(title, help);
+
+		var currentPlayer = Preferences.Instance.Player;
+		var originalPlayer = currentPlayer;
+
+		if (arrowGraphicManager != null)
+			ImGui.PushStyleColor(ImGuiCol.Text, arrowGraphicManager.GetArrowColor(0, 0, false, originalPlayer));
+		if (ImGui.BeginCombo(GetElementTitle(title), $"Player {originalPlayer + 1}"))
+		{
+			if (arrowGraphicManager != null)
+				ImGui.PopStyleColor();
+
+			for (var i = 0; i < maxPlayers; i++)
+			{
+				if (arrowGraphicManager != null)
+					ImGui.PushStyleColor(ImGuiCol.Text, arrowGraphicManager.GetArrowColor(0, 0, false, i));
+
+				var isSelected = i == originalPlayer;
+				if (ImGui.Selectable($"Player {i + 1}", isSelected))
+				{
+					currentPlayer = i;
+				}
+
+				if (isSelected)
+				{
+					ImGui.SetItemDefaultFocus();
+				}
+
+				if (arrowGraphicManager != null)
+					ImGui.PopStyleColor();
+			}
+
+			ImGui.EndCombo();
+		}
+		else
+		{
+			if (arrowGraphicManager != null)
+				ImGui.PopStyleColor();
+		}
+
+		if (currentPlayer != originalPlayer)
+		{
+			Preferences.Instance.Player = currentPlayer;
+		}
+	}
+
+	#endregion Player Selection
+
 	#region Compare Functions
 
 	private static bool IntCompare(int a, int b)
