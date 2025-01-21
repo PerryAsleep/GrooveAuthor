@@ -4318,32 +4318,29 @@ internal sealed class Editor :
 	/// </summary>
 	private async void InitStepGraphDataAsync()
 	{
-		var supportedTypes = SupportedSinglePlayerChartTypes;
-
-		foreach (var chartType in supportedTypes)
-		{
+		foreach (var chartType in SupportedChartTypes)
 			PadDataByChartType[chartType] = null;
+		foreach (var chartType in SupportedSinglePlayerChartTypes)
 			StepGraphByChartType[chartType] = null;
-		}
 
 		// Attempt to load pad data for all supported chart types.
-		var padDataTasks = new Task<PadData>[supportedTypes.Length];
-		for (var i = 0; i < supportedTypes.Length; i++)
+		var padDataTasks = new Task<PadData>[SupportedChartTypes.Length];
+		for (var i = 0; i < SupportedChartTypes.Length; i++)
 		{
-			PadDataByChartType[supportedTypes[i]] = null;
-			padDataTasks[i] = LoadPadData(supportedTypes[i]);
+			PadDataByChartType[SupportedChartTypes[i]] = null;
+			padDataTasks[i] = LoadPadData(SupportedChartTypes[i]);
 		}
 
 		await Task.WhenAll(padDataTasks);
-		for (var i = 0; i < supportedTypes.Length; i++)
+		for (var i = 0; i < SupportedChartTypes.Length; i++)
 		{
-			PadDataByChartType[supportedTypes[i]] = padDataTasks[i].Result;
+			PadDataByChartType[SupportedChartTypes[i]] = padDataTasks[i].Result;
 		}
 
 		// Create StepGraphs.
 		var pOptions = Preferences.Instance.PreferencesOptions;
 		var validStepGraphTypes = new List<ChartType>();
-		foreach (var chartType in supportedTypes)
+		foreach (var chartType in SupportedSinglePlayerChartTypes)
 		{
 			if (pOptions.StartupStepGraphs.Contains(chartType))
 			{
