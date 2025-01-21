@@ -104,6 +104,10 @@ internal class ActionPasteEvents : EditorAction
 			var newEvent = editorEvent.Clone(Chart);
 			newEvent.SetRow(newRow);
 
+			// Ensure the player is valid for the destination chart.
+			if (newEvent.GetPlayer() >= Chart.MaxPlayers)
+				newEvent.SetPlayer(0);
+
 			// Add the new event and record the side effects so they can be undone.
 			var (addedFromAlteration, deletedFromAlteration) = Chart.ForceAddEvents(new List<EditorEvent> { newEvent });
 			if (addedFromAlteration.Count > 0 || deletedFromAlteration.Count > 0)
