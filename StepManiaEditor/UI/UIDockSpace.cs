@@ -122,7 +122,8 @@ internal sealed class UIDockSpace
 			Preferences.Instance.PreferencesOptions.ResetLayout = PreferencesOptions.Layout.None;
 		}
 
-		SetCentralNodeArea();
+		if (isWindowSizeInitialized)
+			SetCentralNodeArea();
 
 		ImGui.End();
 	}
