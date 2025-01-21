@@ -1702,14 +1702,9 @@ internal sealed class Editor :
 		var focusedChartData = GetFocusedChartData();
 		focusedChartData?.UpdateSelectedRegion(currentTime);
 
+		BeginImGuiFrame();
 		// TODO: Remove remaining input processing from ImGuiRenderer.
 		ImGuiRenderer.UpdateInput(gameTime);
-
-		// ImGui needs to be told when a new frame begins after processing input.
-		// This application also relies on the new frame being begun in input processing
-		// as some inputs need to check bounds with ImGui elements that require pushing
-		// font state.
-		BeginImGuiFrame();
 
 		// Process Mouse Input.
 		var state = Mouse.GetState();
