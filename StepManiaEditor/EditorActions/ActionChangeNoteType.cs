@@ -12,6 +12,8 @@ internal sealed class ActionChangeNoteType : EditorAction
 	private readonly List<EditorEvent> NewEvents;
 	private readonly Editor Editor;
 	private readonly EditorChart Chart;
+	private readonly string OriginalType;
+	private readonly string NewType;
 
 	/// <summary>
 	/// Constructor.
@@ -27,17 +29,23 @@ internal sealed class ActionChangeNoteType : EditorAction
 	/// <param name="converter">
 	/// Function to convert a given EditorEvent into a new EditorEvent.
 	/// </param>
+	/// <param name="originalType">Original type to use for logging.</param>
+	/// <param name="newType">New type to use for logging.</param>
 	public ActionChangeNoteType(
 		Editor editor,
 		EditorChart chart,
 		IEnumerable<EditorEvent> events,
 		Func<EditorEvent, bool> filter,
-		Func<EditorEvent, EditorEvent> converter) : base(false, false)
+		Func<EditorEvent, EditorEvent> converter,
+		string originalType,
+		string newType) : base(false, false)
 	{
 		Editor = editor;
 		Chart = chart;
 		OriginalEvents = new List<EditorEvent>();
 		NewEvents = new List<EditorEvent>();
+		OriginalType = originalType;
+		NewType = newType;
 		foreach (var editorEvent in events)
 		{
 			if (filter(editorEvent))
@@ -52,7 +60,7 @@ internal sealed class ActionChangeNoteType : EditorAction
 
 	public override string ToString()
 	{
-		return $"Convert {OriginalEvents.Count} Notes.";
+		return $"Convert {OriginalEvents.Count} {OriginalType} to {NewType}.";
 	}
 
 	public override bool AffectsFile()

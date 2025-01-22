@@ -181,6 +181,14 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 	private static readonly List<Keys[]> DefaultSelectAllHolds                       = [Array.Empty<Keys>()];
 	private static readonly List<Keys[]> DefaultSelectAllRolls                       = [Array.Empty<Keys>()];
 	private static readonly List<Keys[]> DefaultSelectAllHoldsAndRolls               = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultSelectAllCurrentPlayerNotes          = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultSelectAllCurrentPlayerTaps           = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultSelectAllCurrentPlayerMines          = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultSelectAllCurrentPlayerFakes          = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultSelectAllCurrentPlayerLifts          = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultSelectAllCurrentPlayerHolds          = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultSelectAllCurrentPlayerRolls          = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultSelectAllCurrentPlayerHoldsAndRolls  = [Array.Empty<Keys>()];
 	private static readonly List<Keys[]> DefaultSelectAllMiscEvents                  = [[Keys.LeftControl, Keys.LeftAlt, Keys.A]];
 	private static readonly List<Keys[]> DefaultSelectAll                            = [[Keys.LeftControl, Keys.LeftShift, Keys.A]];
 	private static readonly List<Keys[]> DefaultSelectAllPatterns                    = [Array.Empty<Keys>()];
@@ -201,6 +209,10 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 	private static readonly List<Keys[]> DefaultSetPlayer2                           = [Array.Empty<Keys>()];
 	private static readonly List<Keys[]> DefaultSetPlayer3                           = [Array.Empty<Keys>()];
 	private static readonly List<Keys[]> DefaultSetPlayer4                           = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultConvertSelectedNotesToPlayer1        = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultConvertSelectedNotesToPlayer2        = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultConvertSelectedNotesToPlayer3        = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultConvertSelectedNotesToPlayer4        = [Array.Empty<Keys>()];
 	private static readonly List<Keys[]> DefaultOpenPreviousChart                    = [[Keys.LeftControl, Keys.LeftAlt, Keys.Left]];
 	private static readonly List<Keys[]> DefaultOpenNextChart                        = [[Keys.LeftControl, Keys.LeftAlt, Keys.Right]];
 	private static readonly List<Keys[]> DefaultCloseFocusedChart                    = [[Keys.LeftControl, Keys.F4], [Keys.LeftControl, Keys.W]];
@@ -528,6 +540,118 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 	private List<Keys[]> SelectAllHoldsAndRollsInternal = DefaultSelectAllHoldsAndRolls;
 
 	[JsonInclude]
+	public List<Keys[]> SelectAllCurrentPlayerNotes
+	{
+		get => SelectAllCurrentPlayerNotesInternal;
+		set
+		{
+			SelectAllCurrentPlayerNotesInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(SelectAllCurrentPlayerNotes));
+		}
+	}
+
+	private List<Keys[]> SelectAllCurrentPlayerNotesInternal = DefaultSelectAllCurrentPlayerNotes;
+
+
+	[JsonInclude]
+	public List<Keys[]> SelectAllCurrentPlayerTaps
+	{
+		get => SelectAllCurrentPlayerTapsInternal;
+		set
+		{
+			SelectAllCurrentPlayerTapsInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(SelectAllCurrentPlayerTaps));
+		}
+	}
+
+	private List<Keys[]> SelectAllCurrentPlayerTapsInternal = DefaultSelectAllCurrentPlayerTaps;
+
+
+	[JsonInclude]
+	public List<Keys[]> SelectAllCurrentPlayerMines
+	{
+		get => SelectAllCurrentPlayerMinesInternal;
+		set
+		{
+			SelectAllCurrentPlayerMinesInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(SelectAllCurrentPlayerMines));
+		}
+	}
+
+	private List<Keys[]> SelectAllCurrentPlayerMinesInternal = DefaultSelectAllCurrentPlayerMines;
+
+
+	[JsonInclude]
+	public List<Keys[]> SelectAllCurrentPlayerFakes
+	{
+		get => SelectAllCurrentPlayerFakesInternal;
+		set
+		{
+			SelectAllCurrentPlayerFakesInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(SelectAllCurrentPlayerFakes));
+		}
+	}
+
+	private List<Keys[]> SelectAllCurrentPlayerFakesInternal = DefaultSelectAllCurrentPlayerFakes;
+
+
+	[JsonInclude]
+	public List<Keys[]> SelectAllCurrentPlayerLifts
+	{
+		get => SelectAllCurrentPlayerLiftsInternal;
+		set
+		{
+			SelectAllCurrentPlayerLiftsInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(SelectAllCurrentPlayerLifts));
+		}
+	}
+
+	private List<Keys[]> SelectAllCurrentPlayerLiftsInternal = DefaultSelectAllCurrentPlayerLifts;
+
+
+	[JsonInclude]
+	public List<Keys[]> SelectAllCurrentPlayerHolds
+	{
+		get => SelectAllCurrentPlayerHoldsInternal;
+		set
+		{
+			SelectAllCurrentPlayerHoldsInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(SelectAllCurrentPlayerHolds));
+		}
+	}
+
+	private List<Keys[]> SelectAllCurrentPlayerHoldsInternal = DefaultSelectAllCurrentPlayerHolds;
+
+
+	[JsonInclude]
+	public List<Keys[]> SelectAllCurrentPlayerRolls
+	{
+		get => SelectAllCurrentPlayerRollsInternal;
+		set
+		{
+			SelectAllCurrentPlayerRollsInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(SelectAllCurrentPlayerRolls));
+		}
+	}
+
+	private List<Keys[]> SelectAllCurrentPlayerRollsInternal = DefaultSelectAllCurrentPlayerRolls;
+
+
+	[JsonInclude]
+	public List<Keys[]> SelectAllCurrentPlayerHoldsAndRolls
+	{
+		get => SelectAllCurrentPlayerHoldsAndRollsInternal;
+		set
+		{
+			SelectAllCurrentPlayerHoldsAndRollsInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(SelectAllCurrentPlayerHoldsAndRolls));
+		}
+	}
+
+	private List<Keys[]> SelectAllCurrentPlayerHoldsAndRollsInternal = DefaultSelectAllCurrentPlayerHoldsAndRolls;
+
+
+	[JsonInclude]
 	public List<Keys[]> SelectAllMiscEvents
 	{
 		get => SelectAllMiscEventsInternal;
@@ -791,6 +915,62 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 	}
 
 	private List<Keys[]> SetPlayer4Internal = DefaultSetPlayer4;
+
+
+	[JsonInclude]
+	public List<Keys[]> ConvertSelectedNotesToPlayer1
+	{
+		get => ConvertSelectedNotesToPlayer1Internal;
+		set
+		{
+			ConvertSelectedNotesToPlayer1Internal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(ConvertSelectedNotesToPlayer1));
+		}
+	}
+
+	private List<Keys[]> ConvertSelectedNotesToPlayer1Internal = DefaultConvertSelectedNotesToPlayer1;
+
+
+	[JsonInclude]
+	public List<Keys[]> ConvertSelectedNotesToPlayer2
+	{
+		get => ConvertSelectedNotesToPlayer2Internal;
+		set
+		{
+			ConvertSelectedNotesToPlayer2Internal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(ConvertSelectedNotesToPlayer2));
+		}
+	}
+
+	private List<Keys[]> ConvertSelectedNotesToPlayer2Internal = DefaultConvertSelectedNotesToPlayer2;
+
+
+	[JsonInclude]
+	public List<Keys[]> ConvertSelectedNotesToPlayer3
+	{
+		get => ConvertSelectedNotesToPlayer3Internal;
+		set
+		{
+			ConvertSelectedNotesToPlayer3Internal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(ConvertSelectedNotesToPlayer3));
+		}
+	}
+
+	private List<Keys[]> ConvertSelectedNotesToPlayer3Internal = DefaultConvertSelectedNotesToPlayer3;
+
+
+	[JsonInclude]
+	public List<Keys[]> ConvertSelectedNotesToPlayer4
+	{
+		get => ConvertSelectedNotesToPlayer4Internal;
+		set
+		{
+			ConvertSelectedNotesToPlayer4Internal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(ConvertSelectedNotesToPlayer4));
+		}
+	}
+
+	private List<Keys[]> ConvertSelectedNotesToPlayer4Internal = DefaultConvertSelectedNotesToPlayer4;
 
 
 	[JsonInclude]

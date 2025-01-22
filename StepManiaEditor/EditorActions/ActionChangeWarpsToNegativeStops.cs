@@ -56,7 +56,7 @@ internal sealed class ActionChangeWarpsToNegativeStops : EditorAction
 
 	public override string ToString()
 	{
-		return $"Convert {OriginalEvents.Count} warps to negative stops.";
+		return $"Convert {OriginalEvents.Count} Warps to Negative Stops.";
 	}
 
 	public override bool AffectsFile()

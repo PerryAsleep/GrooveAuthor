@@ -473,6 +473,11 @@ internal abstract class ArrowGraphicManager
 			return Preferences.Instance.PreferencesMultiplayer.GetRoutineSelectedUINoteColor(player);
 		return Preferences.Instance.PreferencesMultiplayer.GetRoutineUINoteColor(player);
 	}
+
+	public static uint GetUIColorForPlayer(int player)
+	{
+		return Preferences.Instance.PreferencesMultiplayer.GetRoutineUINoteColor(player);
+	}
 }
 
 internal abstract class ArrowGraphicManagerDance : ArrowGraphicManager

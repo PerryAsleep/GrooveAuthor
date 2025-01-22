@@ -672,6 +672,18 @@ internal sealed class Editor :
 		AddKeyCommand(routine, "Set Player 2", nameof(PreferencesKeyBinds.SetPlayer2), () => { SetPlayer(1); } );
 		AddKeyCommand(routine, "Set Player 3", nameof(PreferencesKeyBinds.SetPlayer3), () => { SetPlayer(2); } );
 		AddKeyCommand(routine, "Set Player 4", nameof(PreferencesKeyBinds.SetPlayer4), () => { SetPlayer(3); } );
+		AddKeyCommand(routine, "Select All Current Player Notes", nameof(PreferencesKeyBinds.SelectAllCurrentPlayerNotes), OnSelectAllForCurrentPlayer);
+		AddKeyCommand(routine, "Select All Current Player Taps", nameof(PreferencesKeyBinds.SelectAllCurrentPlayerTaps), () => OnSelectAllForCurrentPlayer(e => e is EditorTapNoteEvent));
+		AddKeyCommand(routine, "Select All Current Player Mines", nameof(PreferencesKeyBinds.SelectAllCurrentPlayerMines), () => OnSelectAllForCurrentPlayer(e => e is EditorMineNoteEvent));
+		AddKeyCommand(routine, "Select All Current Player Fakes", nameof(PreferencesKeyBinds.SelectAllCurrentPlayerFakes), () => OnSelectAllForCurrentPlayer(e => e is EditorFakeNoteEvent));
+		AddKeyCommand(routine, "Select All Current Player Lifts", nameof(PreferencesKeyBinds.SelectAllCurrentPlayerLifts), () => OnSelectAllForCurrentPlayer(e => e is EditorLiftNoteEvent));
+		AddKeyCommand(routine, "Select All Current Player Holds", nameof(PreferencesKeyBinds.SelectAllCurrentPlayerHolds), () => OnSelectAllForCurrentPlayer(e => e is EditorHoldNoteEvent hn && !hn.IsRoll()));
+		AddKeyCommand(routine, "Select All Current Player Rolls", nameof(PreferencesKeyBinds.SelectAllCurrentPlayerRolls), () => OnSelectAllForCurrentPlayer(e => e is EditorHoldNoteEvent hn && hn.IsRoll()));
+		AddKeyCommand(routine, "Select All Current Player Holds and Rolls", nameof(PreferencesKeyBinds.SelectAllCurrentPlayerHoldsAndRolls), () => OnSelectAllForCurrentPlayer(e => e is EditorHoldNoteEvent));
+		AddKeyCommand(routine, "Convert Selected Notes to Player 1", nameof(PreferencesKeyBinds.ConvertSelectedNotesToPlayer1), () => { UIEditEvents.ConvertSelectedNotesToPlayer(0); });
+		AddKeyCommand(routine, "Convert Selected Notes to Player 2", nameof(PreferencesKeyBinds.ConvertSelectedNotesToPlayer2), () => { UIEditEvents.ConvertSelectedNotesToPlayer(1); });
+		AddKeyCommand(routine, "Convert Selected Notes to Player 3", nameof(PreferencesKeyBinds.ConvertSelectedNotesToPlayer3), () => { UIEditEvents.ConvertSelectedNotesToPlayer(2); });
+		AddKeyCommand(routine, "Convert Selected Notes to Player 4", nameof(PreferencesKeyBinds.ConvertSelectedNotesToPlayer4), () => { UIEditEvents.ConvertSelectedNotesToPlayer(3); });
 
 		const string patterns = "Patterns";
 		AddKeyCommand(patterns, "Move To Next Pattern", nameof(PreferencesKeyBinds.MoveToNextPattern), OnMoveToNextPattern, true);
@@ -694,38 +706,38 @@ internal sealed class Editor :
 		AddKeyCommand(editSelection, "Shift Later", nameof(PreferencesKeyBinds.ShiftLater), OnShiftSelectedNotesLater, true);
 
 		const string convertSelection = "Convert Selection";
-		AddKeyCommand(convertSelection, "Taps to Mines", nameof(PreferencesKeyBinds.ConvertSelectedTapsToMines), () => UIEditEvents.ConvertSelectedTapsToMines());
-		AddKeyCommand(convertSelection, "Taps to Fakes", nameof(PreferencesKeyBinds.ConvertSelectedTapsToFakes), () => UIEditEvents.ConvertSelectedTapsToFakes());
-		AddKeyCommand(convertSelection, "Taps to Lifts", nameof(PreferencesKeyBinds.ConvertSelectedTapsToLifts), () => UIEditEvents.ConvertSelectedTapsToLifts());
-		AddKeyCommand(convertSelection, "Mines to Taps", nameof(PreferencesKeyBinds.ConvertSelectedMinesToTaps), () => UIEditEvents.ConvertSelectedMinesToTaps());
-		AddKeyCommand(convertSelection, "Mines to Fakes", nameof(PreferencesKeyBinds.ConvertSelectedMinesToFakes), () => UIEditEvents.ConvertSelectedMinesToFakes());
-		AddKeyCommand(convertSelection, "Mines to Lifts", nameof(PreferencesKeyBinds.ConvertSelectedMinesToLifts), () => UIEditEvents.ConvertSelectedMinesToLifts());
-		AddKeyCommand(convertSelection, "Fakes to Taps", nameof(PreferencesKeyBinds.ConvertSelectedFakesToTaps), () => UIEditEvents.ConvertSelectedFakesToTaps());
-		AddKeyCommand(convertSelection, "Lifts to Taps", nameof(PreferencesKeyBinds.ConvertSelectedLiftsToTaps), () => UIEditEvents.ConvertSelectedLiftsToTaps());
-		AddKeyCommand(convertSelection, "Holds to Rolls", nameof(PreferencesKeyBinds.ConvertSelectedHoldsToRolls), () => UIEditEvents.ConvertSelectedHoldsToRolls());
-		AddKeyCommand(convertSelection, "Holds to Taps", nameof(PreferencesKeyBinds.ConvertSelectedHoldsToTaps), () => UIEditEvents.ConvertSelectedHoldsToTaps());
-		AddKeyCommand(convertSelection, "Holds to Mines", nameof(PreferencesKeyBinds.ConvertSelectedHoldsToMines), () => UIEditEvents.ConvertSelectedHoldsToMines());
-		AddKeyCommand(convertSelection, "Rolls to Holds", nameof(PreferencesKeyBinds.ConvertSelectedRollsToHolds), () => UIEditEvents.ConvertSelectedRollsToHolds());
-		AddKeyCommand(convertSelection, "Rolls to Taps", nameof(PreferencesKeyBinds.ConvertSelectedRollsToTaps), () => UIEditEvents.ConvertSelectedRollsToTaps());
-		AddKeyCommand(convertSelection, "Rolls to Mines", nameof(PreferencesKeyBinds.ConvertSelectedRollsToMines), () => UIEditEvents.ConvertSelectedRollsToMines());
-		AddKeyCommand(convertSelection, "Warps to Negative Stops", nameof(PreferencesKeyBinds.ConvertSelectedWarpsToNegativeStops), () => UIEditEvents.ConvertSelectedWarpsToNegativeStops());
-		AddKeyCommand(convertSelection, "Negative Stops to Warps", nameof(PreferencesKeyBinds.ConvertSelectedNegativeStopsToWarps), () => UIEditEvents.ConvertSelectedNegativeStopsToWarps());
+		AddKeyCommand(convertSelection, "Taps to Mines", nameof(PreferencesKeyBinds.ConvertSelectedTapsToMines), UIEditEvents.ConvertSelectedTapsToMines);
+		AddKeyCommand(convertSelection, "Taps to Fakes", nameof(PreferencesKeyBinds.ConvertSelectedTapsToFakes), UIEditEvents.ConvertSelectedTapsToFakes);
+		AddKeyCommand(convertSelection, "Taps to Lifts", nameof(PreferencesKeyBinds.ConvertSelectedTapsToLifts), UIEditEvents.ConvertSelectedTapsToLifts);
+		AddKeyCommand(convertSelection, "Mines to Taps", nameof(PreferencesKeyBinds.ConvertSelectedMinesToTaps), UIEditEvents.ConvertSelectedMinesToTaps);
+		AddKeyCommand(convertSelection, "Mines to Fakes", nameof(PreferencesKeyBinds.ConvertSelectedMinesToFakes), UIEditEvents.ConvertSelectedMinesToFakes);
+		AddKeyCommand(convertSelection, "Mines to Lifts", nameof(PreferencesKeyBinds.ConvertSelectedMinesToLifts), UIEditEvents.ConvertSelectedMinesToLifts);
+		AddKeyCommand(convertSelection, "Fakes to Taps", nameof(PreferencesKeyBinds.ConvertSelectedFakesToTaps), UIEditEvents.ConvertSelectedFakesToTaps);
+		AddKeyCommand(convertSelection, "Lifts to Taps", nameof(PreferencesKeyBinds.ConvertSelectedLiftsToTaps), UIEditEvents.ConvertSelectedLiftsToTaps);
+		AddKeyCommand(convertSelection, "Holds to Rolls", nameof(PreferencesKeyBinds.ConvertSelectedHoldsToRolls), UIEditEvents.ConvertSelectedHoldsToRolls);
+		AddKeyCommand(convertSelection, "Holds to Taps", nameof(PreferencesKeyBinds.ConvertSelectedHoldsToTaps), UIEditEvents.ConvertSelectedHoldsToTaps);
+		AddKeyCommand(convertSelection, "Holds to Mines", nameof(PreferencesKeyBinds.ConvertSelectedHoldsToMines), UIEditEvents.ConvertSelectedHoldsToMines);
+		AddKeyCommand(convertSelection, "Rolls to Holds", nameof(PreferencesKeyBinds.ConvertSelectedRollsToHolds), UIEditEvents.ConvertSelectedRollsToHolds);
+		AddKeyCommand(convertSelection, "Rolls to Taps", nameof(PreferencesKeyBinds.ConvertSelectedRollsToTaps), UIEditEvents.ConvertSelectedRollsToTaps);
+		AddKeyCommand(convertSelection, "Rolls to Mines", nameof(PreferencesKeyBinds.ConvertSelectedRollsToMines), UIEditEvents.ConvertSelectedRollsToMines);
+		AddKeyCommand(convertSelection, "Warps to Negative Stops", nameof(PreferencesKeyBinds.ConvertSelectedWarpsToNegativeStops), UIEditEvents.ConvertSelectedWarpsToNegativeStops);
+		AddKeyCommand(convertSelection, "Negative Stops to Warps", nameof(PreferencesKeyBinds.ConvertSelectedNegativeStopsToWarps), UIEditEvents.ConvertSelectedNegativeStopsToWarps);
 
 		const string eventEntry = "Event Entry";
-		AddKeyCommand(eventEntry, "Add Tempo", nameof(PreferencesKeyBinds.AddEventTempo), () => UIEditEvents.AddTempoEvent());
-		AddKeyCommand(eventEntry, "Add Interpolated Scroll Rate", nameof(PreferencesKeyBinds.AddEventInterpolatedScrollRate), () => UIEditEvents.AddInterpolatedScrollRateEvent());
-		AddKeyCommand(eventEntry, "Add Scroll Rate", nameof(PreferencesKeyBinds.AddEventScrollRate), () => UIEditEvents.AddScrollRateEvent());
-		AddKeyCommand(eventEntry, "Add Stop", nameof(PreferencesKeyBinds.AddEventStop), () => UIEditEvents.AddStopEvent());
-		AddKeyCommand(eventEntry, "Add Delay", nameof(PreferencesKeyBinds.AddEventDelay), () => UIEditEvents.AddDelayEvent());
-		AddKeyCommand(eventEntry, "Add Warp", nameof(PreferencesKeyBinds.AddEventWarp), () => UIEditEvents.AddWarpEvent());
-		AddKeyCommand(eventEntry, "Add Fake Region", nameof(PreferencesKeyBinds.AddEventFakeRegion), () => UIEditEvents.AddFakeRegionEvent());
-		AddKeyCommand(eventEntry, "Add Ticks", nameof(PreferencesKeyBinds.AddEventTicks), () => UIEditEvents.AddTicksEvent());
-		AddKeyCommand(eventEntry, "Add Combo Multipliers", nameof(PreferencesKeyBinds.AddEventComboMultipliers), () => UIEditEvents.AddComboMultipliersEvent());
-		AddKeyCommand(eventEntry, "Add Time Signature", nameof(PreferencesKeyBinds.AddEventTimeSignature), () => UIEditEvents.AddTimeSignatureEvent());
-		AddKeyCommand(eventEntry, "Add Label", nameof(PreferencesKeyBinds.AddEventLabel), () => UIEditEvents.AddLabelEvent());
-		AddKeyCommand(eventEntry, "Add Pattern", nameof(PreferencesKeyBinds.AddEventPattern), () => UIEditEvents.AddPatternEvent());
-		AddKeyCommand(eventEntry, "Move Music Preview", nameof(PreferencesKeyBinds.MoveEventPreview), () => UIEditEvents.MoveMusicPreview());
-		AddKeyCommand(eventEntry, "Move End Hint", nameof(PreferencesKeyBinds.MoveEventEndHint), () => UIEditEvents.MoveEndHint());
+		AddKeyCommand(eventEntry, "Add Tempo", nameof(PreferencesKeyBinds.AddEventTempo), UIEditEvents.AddTempoEvent);
+		AddKeyCommand(eventEntry, "Add Interpolated Scroll Rate", nameof(PreferencesKeyBinds.AddEventInterpolatedScrollRate), UIEditEvents.AddInterpolatedScrollRateEvent);
+		AddKeyCommand(eventEntry, "Add Scroll Rate", nameof(PreferencesKeyBinds.AddEventScrollRate), UIEditEvents.AddScrollRateEvent);
+		AddKeyCommand(eventEntry, "Add Stop", nameof(PreferencesKeyBinds.AddEventStop), UIEditEvents.AddStopEvent);
+		AddKeyCommand(eventEntry, "Add Delay", nameof(PreferencesKeyBinds.AddEventDelay), UIEditEvents.AddDelayEvent);
+		AddKeyCommand(eventEntry, "Add Warp", nameof(PreferencesKeyBinds.AddEventWarp), UIEditEvents.AddWarpEvent);
+		AddKeyCommand(eventEntry, "Add Fake Region", nameof(PreferencesKeyBinds.AddEventFakeRegion), UIEditEvents.AddFakeRegionEvent);
+		AddKeyCommand(eventEntry, "Add Ticks", nameof(PreferencesKeyBinds.AddEventTicks), UIEditEvents.AddTicksEvent);
+		AddKeyCommand(eventEntry, "Add Combo Multipliers", nameof(PreferencesKeyBinds.AddEventComboMultipliers), UIEditEvents.AddComboMultipliersEvent);
+		AddKeyCommand(eventEntry, "Add Time Signature", nameof(PreferencesKeyBinds.AddEventTimeSignature), UIEditEvents.AddTimeSignatureEvent);
+		AddKeyCommand(eventEntry, "Add Label", nameof(PreferencesKeyBinds.AddEventLabel), UIEditEvents.AddLabelEvent);
+		AddKeyCommand(eventEntry, "Add Pattern", nameof(PreferencesKeyBinds.AddEventPattern), UIEditEvents.AddPatternEvent);
+		AddKeyCommand(eventEntry, "Move Music Preview", nameof(PreferencesKeyBinds.MoveEventPreview), UIEditEvents.MoveMusicPreview);
+		AddKeyCommand(eventEntry, "Move End Hint", nameof(PreferencesKeyBinds.MoveEventEndHint), UIEditEvents.MoveEndHint);
 
 		const string noteEntry = "Note Entry";
 		AddKeyCommand(noteEntry, "Lane 01", nameof(PreferencesKeyBinds.Arrow0), () => OnLaneInputDown(0), false, () => OnLaneInputUp(0));
@@ -3571,8 +3583,15 @@ internal sealed class Editor :
 				UIEditEvents.DrawAddEventMenu();
 				ImGui.Separator();
 				UIEditEvents.DrawSelectAllMenu();
+
+				var hasSelectedEvents = selectedEvents?.Any() ?? false;
+				if (!hasSelectedEvents)
+					PushDisabled();
 				UIEditEvents.DrawConvertSelectedMenu(selectedEvents);
 				UIEditEvents.DrawShiftSelectedMenu(selectedEvents);
+				if (!hasSelectedEvents)
+					PopDisabled();
+
 				ImGui.Separator();
 				UIEditEvents.DrawConvertAllMenu();
 				UIEditEvents.DrawShiftAllMenu();
@@ -5270,6 +5289,20 @@ internal sealed class Editor :
 		GetFocusedChartData()?.OnSelectAll();
 	}
 
+	public void OnSelectAll(int player)
+	{
+		GetFocusedChartData()?.OnSelectAll(player);
+	}
+
+	public void OnSelectAllForCurrentPlayer()
+	{
+		var focusedChartData = GetFocusedChartData();
+		if (focusedChartData == null)
+			return;
+		var player = focusedChartData.GetPlayer();
+		focusedChartData.OnSelectAll(player);
+	}
+
 	public void OnSelectAllAlt()
 	{
 		GetFocusedChartData()?.OnSelectAllAlt();
@@ -5278,6 +5311,15 @@ internal sealed class Editor :
 	public void OnSelectAllShift()
 	{
 		GetFocusedChartData()?.OnSelectAllShift();
+	}
+
+	public void OnSelectAllForCurrentPlayer(Func<EditorEvent, bool> isSelectable)
+	{
+		var focusedChartData = GetFocusedChartData();
+		if (focusedChartData == null)
+			return;
+		var player = focusedChartData.GetPlayer();
+		focusedChartData.OnSelectAll(e => e.GetPlayer() == player && isSelectable(e));
 	}
 
 	public void OnSelectAll(Func<EditorEvent, bool> isSelectable)

@@ -1487,6 +1487,11 @@ internal sealed class ActiveEditorChart
 		OnSelectAll((e) => e.IsSelectableWithoutModifiers());
 	}
 
+	public void OnSelectAll(int player)
+	{
+		OnSelectAll((e) => e.IsSelectableWithoutModifiers() && e.GetPlayer() == player);
+	}
+
 	public void OnSelectAllAlt()
 	{
 		OnSelectAll((e) => e.IsSelectableWithModifiers());
