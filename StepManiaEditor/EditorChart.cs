@@ -64,6 +64,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	public const string NotificationEventsMoveEnd = "EventsMoveEnd";
 	public const string NotificationPatternRequestEdit = "PatternRequestEdit";
 	public const string NotificationTimingChanged = "TimingChanged";
+	public const string NotificationMaxPlayersChanged = "MaxPlayersChanged";
 
 	public const double DefaultTempo = 120.0;
 	public static readonly Fraction DefaultTimeSignature = new(4, 4);
@@ -458,13 +459,21 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			if (SupportsVariableNumberOfPlayers())
 			{
 				var newMaxPlayers = Math.Max(value, Math.Max(1, StepTotals.GetNumPlayersWithNotes()));
-				MaxPlayersInternal = newMaxPlayers;
+				if (MaxPlayersInternal != newMaxPlayers)
+				{
+					MaxPlayersInternal = newMaxPlayers;
+					Notify(NotificationMaxPlayersChanged, this);
+				}
 			}
 			else
 			{
 				// Ignore the input value. This chart does not support a variable number of players.
 				// The number of players can only ever be the specified number for the chart type.
-				MaxPlayersInternal = DefaultNumPlayers;
+				if (MaxPlayersInternal != DefaultNumPlayers)
+				{
+					MaxPlayersInternal = DefaultNumPlayers;
+					Notify(NotificationMaxPlayersChanged, this);
+				}
 			}
 		}
 	}

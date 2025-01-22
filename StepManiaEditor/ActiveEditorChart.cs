@@ -2501,13 +2501,6 @@ internal sealed class ActiveEditorChart
 
 	#region Lane Input
 
-	public int GetPlayer()
-	{
-		// TODO: Routine: Improve caching player per active chart.
-		// This should be cached in some way per chart so moving between charts doesn't reset it.
-		return Preferences.Instance.Player;
-	}
-
 	public void OnArrowModificationKeyDown()
 	{
 		if (LaneEditStates == null)
@@ -2568,7 +2561,7 @@ internal sealed class ActiveEditorChart
 			LaneEditStates[lane].StartEditingWithDelete(row, new ActionDeleteEditorEvents(existingEvent));
 		}
 
-		SetLaneInputDownNote(row, lane, GetPlayer());
+		SetLaneInputDownNote(row, lane, Editor.GetPlayer(Chart));
 
 		// If we are playing, immediately commit the note so it comes out as a tap and not a short hold.
 		if (playing)
@@ -2827,7 +2820,7 @@ internal sealed class ActiveEditorChart
 				        && (holdStartRow != h.GetRow() || holdEndRow != h.GetEndRow())))
 				{
 					var roll = KeyCommandManager.IsAnyInputDown(Preferences.Instance.PreferencesKeyBinds.ArrowModification);
-					var player = laneEditState.GetEventBeingEdited()?.GetPlayer() ?? GetPlayer();
+					var player = laneEditState.GetEventBeingEdited()?.GetPlayer() ?? Editor.GetPlayer(Chart);
 					LaneEditStates[lane].SetEditingHold(Chart, holdStartRow, lane, player, laneEditState.GetStartingRow(),
 						holdEndRow - holdStartRow, roll);
 				}

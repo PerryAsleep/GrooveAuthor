@@ -570,7 +570,7 @@ internal sealed class UIEditEvents
 			if (multiPlayer)
 			{
 				var numPlayers = Editor.GetFocusedChart().MaxPlayers;
-				var currentPlayer = Editor.GetFocusedChartData().GetPlayer();
+				var currentPlayer = Editor.GetPlayer();
 
 				ImGui.PushStyleColor(ImGuiCol.Text, ArrowGraphicManager.GetUIColorForPlayer(currentPlayer));
 				if (ImGui.BeginMenu($"Current Player ({currentPlayer + 1})"))

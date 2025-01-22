@@ -266,6 +266,7 @@ internal sealed class Editor :
 	private readonly List<EditorChart> ActiveCharts = new();
 	private readonly List<ActiveEditorChart> ActiveChartData = new();
 	private readonly List<EditorEvent> CopiedEvents = new();
+	private Dictionary<EditorChart, int> PlayerPerChart = new();
 
 	// Movement controls.
 	private bool UpdatingSongTimeDirectly;
@@ -2539,7 +2540,7 @@ internal sealed class Editor :
 		var arrowGraphicManager = focusedChartData.GetArrowGraphicManager();
 		if (arrowGraphicManager == null)
 			return;
-		var player = focusedChartData.GetPlayer();
+		var player = GetPlayer(FocusedChart);
 		var rimTextureId = ArrowGraphicManager.GetPlayerMarkerRimTexture();
 		var (rimW, rimH) = TextureAtlas.GetDimensions(rimTextureId);
 		var (fillTextureId, color) = ArrowGraphicManager.GetPlayerMarkerFillTexture(player);
@@ -5125,6 +5126,7 @@ internal sealed class Editor :
 
 		ActiveChartData.Clear();
 		ActiveCharts.Clear();
+		PlayerPerChart.Clear();
 		EditorMouseState.SetActiveChart(null);
 		DensityGraph.SetStepDensity(null);
 		DensityGraph.ResetBufferCapacities();
@@ -5299,7 +5301,7 @@ internal sealed class Editor :
 		var focusedChartData = GetFocusedChartData();
 		if (focusedChartData == null)
 			return;
-		var player = focusedChartData.GetPlayer();
+		var player = GetPlayer(FocusedChart);
 		focusedChartData.OnSelectAll(player);
 	}
 
@@ -5318,7 +5320,7 @@ internal sealed class Editor :
 		var focusedChartData = GetFocusedChartData();
 		if (focusedChartData == null)
 			return;
-		var player = focusedChartData.GetPlayer();
+		var player = GetPlayer(FocusedChart);
 		focusedChartData.OnSelectAll(e => e.GetPlayer() == player && isSelectable(e));
 	}
 
@@ -6503,9 +6505,7 @@ internal sealed class Editor :
 		if (ActiveSong == null)
 			return null;
 		var chart = ActiveSong.AddChart(chartType);
-		chart?.AddObserver(this);
-		if (selectNewChart)
-			SetChartFocused(chart);
+		FinishAddingChart(chart, selectNewChart);
 		return chart;
 	}
 
@@ -6516,10 +6516,19 @@ internal sealed class Editor :
 		if (ActiveSong == null)
 			return null;
 		ActiveSong.AddChart(chart);
+		FinishAddingChart(chart, selectNewChart);
+		return chart;
+	}
+
+	private void FinishAddingChart(EditorChart chart, bool selectNewChart)
+	{
+		if (chart == null)
+			return;
 		chart.AddObserver(this);
 		if (selectNewChart)
 			SetChartFocused(chart);
-		return chart;
+		var player = Math.Max(0, Math.Min(chart.MaxPlayers - 1, Preferences.Instance.Player));
+		PlayerPerChart.TryAdd(chart, player);
 	}
 
 	public void DeleteChart(EditorChart chart, EditorChart chartToSelect)
@@ -6532,6 +6541,7 @@ internal sealed class Editor :
 		CloseChart(chart);
 		chart.RemoveObserver(this);
 		ActiveSong.DeleteChart(chart);
+		PlayerPerChart.Remove(chart);
 
 		if (chartToSelect != null)
 		{
@@ -6729,28 +6739,60 @@ internal sealed class Editor :
 	{
 		if (FocusedChart == null)
 			return;
+
+		// Interpret toggling the player as intent to change it across all charts.
+		PlayerPerChart.Clear();
+
 		var p = Preferences.Instance;
 		p.Player = (p.Player + 1) % FocusedChart.MaxPlayers;
+		PlayerPerChart.Add(FocusedChart, p.Player);
 	}
 
 	private void SetPlayer(int player)
 	{
 		if (FocusedChart == null)
 			return;
+
+		// Interpret setting the player as intent to change it across all charts.
+		PlayerPerChart.Clear();
+
 		var p = Preferences.Instance;
 		p.Player = Math.Clamp(player, 0, FocusedChart.MaxPlayers - 1);
+		PlayerPerChart.Add(FocusedChart, p.Player);
 	}
 
 	private void RefreshPlayerLimitFromFocusedChart()
 	{
-		var p = Preferences.Instance;
-		if (FocusedChart == null)
-		{
-			p.Player = 0;
-			return;
-		}
+		RefreshPlayerLimitFromChart(FocusedChart);
+	}
 
-		p.Player = Math.Clamp(p.Player, 0, FocusedChart.MaxPlayers - 1);
+	private void RefreshPlayerLimitFromChart(EditorChart chart)
+	{
+		if (chart == null)
+			return;
+		var p = Preferences.Instance;
+		var player = p.Player;
+		if (PlayerPerChart.TryGetValue(chart, out var cachedPlayer))
+			player = cachedPlayer;
+		player = Math.Clamp(player, 0, chart.MaxPlayers - 1);
+		PlayerPerChart[chart] = player;
+		if (chart == FocusedChart)
+			p.Player = player;
+	}
+
+	public int GetPlayer()
+	{
+		return GetPlayer(FocusedChart);
+	}
+
+	public int GetPlayer(EditorChart chart)
+	{
+		var p = Preferences.Instance;
+		if (chart == null)
+			return p.Player;
+		if (PlayerPerChart.TryGetValue(chart, out var chartPlayer))
+			return chartPlayer;
+		return Math.Clamp(p.Player, 0, chart.MaxPlayers - 1);
 	}
 
 	#endregion Routine
@@ -6826,6 +6868,9 @@ internal sealed class Editor :
 				break;
 			case EditorChart.NotificationPatternRequestEdit:
 				OnSelectPattern((EditorPatternEvent)payload);
+				break;
+			case EditorChart.NotificationMaxPlayersChanged:
+				RefreshPlayerLimitFromChart(chart);
 				break;
 		}
 	}
