@@ -216,11 +216,6 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	/// </summary>
 	private readonly StepTotals StepTotals;
 
-	/// <summary>
-	/// StepDensity fo this EditorChart.
-	/// </summary>
-	private readonly StepDensity StepDensity;
-
 	#region Properties
 
 	public ChartType ChartType => ChartTypeInternal;
@@ -541,7 +536,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		DeserializeCustomChartData(chart);
 
 		// Construct StepDensity after setting up EditorEvents.
-		StepDensity = new StepDensity(this);
+		StepTotals.InitializeStepDensity();
 	}
 
 	/// <summary>
@@ -594,7 +589,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		SetUpEditorEvents(tempChart);
 
 		// Construct StepDensity after setting up EditorEvents.
-		StepDensity = new StepDensity(this);
+		StepTotals.InitializeStepDensity();
 	}
 
 	/// <summary>
@@ -631,7 +626,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		SetUpEditorEvents(other);
 
 		// Construct StepDensity after setting up EditorEvents.
-		StepDensity = new StepDensity(this);
+		StepTotals.InitializeStepDensity();
 	}
 
 	/// <summary>
@@ -1063,7 +1058,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 	public StepDensity GetStepDensity()
 	{
-		return StepDensity;
+		return StepTotals.GetStepDensity();
 	}
 
 	public bool IsMultiPlayer()
@@ -2472,7 +2467,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		// Perform post-delete operations.
 		if (rowDependentDataDirty)
 			RefreshEventTimingData();
-		StepDensity?.DeleteEvent(editorEvent);
+		StepTotals.CommitAddsAndDeletesToStepDensity();
 		Notify(NotificationEventDeleted, this, editorEvent);
 	}
 
@@ -2496,7 +2491,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		// Perform post-delete operations.
 		if (rowDependentDataDirty)
 			RefreshEventTimingData();
-		StepDensity?.DeleteEvents(editorEvents);
+		StepTotals.CommitAddsAndDeletesToStepDensity();
 		Notify(NotificationEventsDeleted, this, editorEvents);
 	}
 
@@ -2616,7 +2611,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		AddEventInternal(editorEvent);
 
 		// Perform post-add operations.
-		StepDensity?.AddEvent(editorEvent);
+		StepTotals.CommitAddsAndDeletesToStepDensity();
 		Notify(NotificationEventAdded, this, editorEvent);
 	}
 
@@ -2639,7 +2634,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			AddEventInternal(editorEvent);
 
 		// Perform post-add operations.
-		StepDensity?.AddEvents(editorEvents);
+		StepTotals.CommitAddsAndDeletesToStepDensity();
 		Notify(NotificationEventsAdded, this, editorEvents);
 	}
 
@@ -2744,7 +2739,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	/// which were deleted or added as side effects of adding the given events will be
 	/// returned.
 	/// This method expects that the given events are valid with respect to each other
-	/// (for example, no overlapping taps in the the given events) and are valid at their
+	/// (for example, no overlapping taps in the given events) and are valid at their
 	/// positions (for example, no time signatures at invalid rows).
 	/// This method expects that the given events are sorted.
 	/// </summary>
@@ -2886,7 +2881,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			AddEventInternal(editorEvent);
 		}
 
-		StepDensity?.AddEvents(events);
+		StepTotals.CommitAddsAndDeletesToStepDensity();
 		Notify(NotificationEventsAdded, this, events);
 
 		return (sideEffectAddedEvents, sideEffectDeletedEvents);
@@ -2932,6 +2927,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			return false;
 		var lane = editorEvent.GetLane();
 		if ((lane != InvalidArrowIndex && lane < 0) || lane >= NumInputs)
+			return false;
+		if (IsMultiPlayer() && editorEvent is EditorPatternEvent)
 			return false;
 		return true;
 	}
@@ -2993,7 +2990,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 	public string GetStreamBreakdown()
 	{
-		return StepDensity.GetStreamBreakdown();
+		return StepTotals.GetStepDensity().GetStreamBreakdown();
 	}
 
 	#endregion Cached Data

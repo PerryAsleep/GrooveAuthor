@@ -852,9 +852,6 @@ internal sealed class UIEditEvents
 				}
 			}
 
-			var chart = Editor.GetFocusedChart();
-			var patternsDisabled = chart == null || !chart.SupportsAutogenFeatures() || hasPatternEvent;
-
 			DrawAddEventMenuItem("Tempo", p.AddEventTempo, !hasTempoEvent, UITempoColorRGBA,
 				EditorTempoEvent.EventShortDescription, row,
 				() => CreateTempoEvent(row, currentRateAlteringEvent));
@@ -895,9 +892,7 @@ internal sealed class UIEditEvents
 			DrawAddEventMenuItem("Label", p.AddEventLabel, !hasLabelEvent, UILabelColorRGBA,
 				EditorLabelEvent.EventShortDescription, row,
 				() => CreateLabelEvent(row));
-			DrawAddEventMenuItem("Pattern", p.AddEventPattern, !patternsDisabled, UIPatternColorRGBA,
-				EditorPatternEvent.EventShortDescription, row,
-				() => CreatePatternEvent(row));
+			DrawAddPatternMenuItem(row, hasPatternEvent);
 
 			ImGui.Separator();
 			if (MenuItemWithColor("(Move) Music Preview", UIControls.GetCommandString(p.MoveEventPreview), true,
@@ -933,11 +928,50 @@ internal sealed class UIEditEvents
 
 		if (!enabled)
 		{
-			toolTipText +=
-				$"\n\nOnly one {name} event can be specified per row.\nThere is already a {name} specified on row {row}.";
+			toolTipText += GetRowConflictText(name, row);
 		}
 
 		ToolTip(toolTipText);
+	}
+
+	private void DrawAddPatternMenuItem(int row, bool hasPatternEvent)
+	{
+		var p = Preferences.Instance.PreferencesKeyBinds;
+		var chart = Editor.GetFocusedChart();
+		var patternsNotSupported = chart == null || !chart.SupportsAutogenFeatures();
+		var patternsDisabled = patternsNotSupported || hasPatternEvent;
+
+		if (MenuItemWithColor("Pattern", UIControls.GetCommandString(p.AddEventPattern), !patternsDisabled, UIPatternColorRGBA))
+		{
+			AddValidatedEvent(CreatePatternEvent(row));
+		}
+
+		var toolTipText = EditorPatternEvent.EventShortDescription;
+
+		if (patternsNotSupported)
+		{
+			if (chart == null)
+			{
+				toolTipText +=
+					"\n\nPatterns are not supported in this chart.";
+			}
+			else
+			{
+				toolTipText +=
+					$"\n\nPatterns are not supported in {GetPrettyEnumString(chart.ChartType)} charts.";
+			}
+		}
+		else if (hasPatternEvent)
+		{
+			toolTipText += GetRowConflictText("Pattern", row);
+		}
+
+		ToolTip(toolTipText);
+	}
+
+	private static string GetRowConflictText(string name, int row)
+	{
+		return $"\n\nOnly one {name} event can be specified per row.\nThere is already a {name} specified on row {row}.";
 	}
 
 	#endregion Add Events
@@ -1131,6 +1165,12 @@ internal sealed class UIEditEvents
 			return;
 		if (!CanTypeOfEventExistAtRow(eventsAtRow, typeof(EditorPatternEvent)))
 			return;
+
+		// Don't allow patterns in multiplayer charts
+		var focusedChart = Editor.GetFocusedChart();
+		if (focusedChart == null || !focusedChart.IsMultiPlayer())
+			return;
+
 		AddValidatedEvent(CreatePatternEvent(row));
 	}
 
