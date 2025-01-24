@@ -2751,140 +2751,185 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	/// </returns>
 	public (List<EditorEvent>, List<EditorEvent>) ForceAddEvents(List<EditorEvent> events)
 	{
-		var sideEffectAddedEvents = new List<EditorEvent>();
-		var sideEffectDeletedEvents = new List<EditorEvent>();
-
 		Assert(CanBeEdited());
 		if (!CanBeEdited())
-			return (sideEffectAddedEvents, sideEffectDeletedEvents);
+			return (null, null);
+
+		List<EditorEvent> sideEffectAddedEvents = null;
+		List<EditorEvent> sideEffectDeletedEvents = null;
 
 		var rateDirty = false;
 		foreach (var editorEvent in events)
-		{
-			var lane = editorEvent.GetLane();
-
-			// If this event is a tap, delete any note which starts at the same time in the same lane.
-			if (lane != InvalidArrowIndex)
-			{
-				var row = editorEvent.GetRow();
-				var existingNote = EditorEvents.FindNoteAt(row, lane, true);
-
-				// If there is a note at this position, or extending through this position.
-				if (existingNote != null)
-				{
-					// If the existing note is at the same row as the new note, delete it.
-					if (existingNote.GetRow() == row)
-					{
-						DeleteEvent(existingNote);
-						sideEffectDeletedEvents.Add(existingNote);
-					}
-
-					// The existing note is a hold which extends through the new note.
-					else if (existingNote.GetRow() < row && existingNote.GetEndRow() >= row &&
-					         existingNote is EditorHoldNoteEvent existingHold)
-					{
-						// Reduce the length.
-						var newExistingHoldEndRow = editorEvent.GetRow() - MaxValidDenominator / 4;
-
-						// In either case below, delete the existing hold note and replace it with a new hold or a tap.
-						// We could reduce the hold length in place, but then we would need to surface that alteration to the caller
-						// so they can undo it. It's simpler for now to just remove it and add a new one.
-						DeleteEvent(existingNote);
-						sideEffectDeletedEvents.Add(existingNote);
-
-						// If the reduction in length is below the min length for a hold, replace it with a tap.
-						if (newExistingHoldEndRow <= existingNote.GetRow())
-						{
-							var replacementEvent = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(existingNote));
-							AddEvent(replacementEvent);
-							sideEffectAddedEvents.Add(replacementEvent);
-						}
-
-						// Otherwise, reduce the length by deleting the old hold and adding a new hold.
-						else
-						{
-							// We need to recompute the hold end time, so don't provide any explicit times.
-							var replacementEvent = EditorEvent.CreateEvent(EventConfig.CreateHoldConfig(this,
-								existingNote.GetRow(), existingNote.GetLane(), existingNote.GetPlayer(),
-								newExistingHoldEndRow - existingNote.GetRow(),
-								existingHold.IsRoll()));
-							AddEvent(replacementEvent);
-							sideEffectAddedEvents.Add(replacementEvent);
-						}
-					}
-				}
-
-				// If this event is a hold note, delete any note which overlaps the hold.
-				var len = editorEvent.GetRowDuration();
-				if (len > 0)
-				{
-					var enumerator = EditorEvents.FindBestByPosition(row);
-					var overlappedNotes = new List<EditorEvent>();
-					while (enumerator != null && enumerator.MoveNext())
-					{
-						var c = enumerator.Current;
-						if (c!.GetRow() < row)
-							continue;
-						if (c.GetLane() != lane)
-							continue;
-						if (c.GetRow() > row + len)
-							break;
-						overlappedNotes.Add(c);
-					}
-
-					if (overlappedNotes.Count > 0)
-					{
-						DeleteEvents(overlappedNotes);
-						sideEffectDeletedEvents.AddRange(overlappedNotes);
-					}
-				}
-			}
-
-			// Misc event with no lane.
-			else
-			{
-				// If the same kind of event exists at this row, delete it.
-				var eventsAtRow = EditorEvents.FindEventsAtRow(editorEvent.GetRow());
-				foreach (var potentialConflictingEvent in eventsAtRow)
-				{
-					if (editorEvent.GetType() == potentialConflictingEvent.GetType())
-					{
-						DeleteEvent(potentialConflictingEvent);
-						sideEffectDeletedEvents.Add(potentialConflictingEvent);
-
-						// Determine if the side effect of deleting the conflicting note would
-						// affect the rate.
-						if (!rateDirty)
-						{
-							foreach (var deletedEvent in sideEffectDeletedEvents)
-							{
-								if (deletedEvent is EditorRateAlteringEvent)
-								{
-									rateDirty = true;
-									break;
-								}
-							}
-						}
-					}
-				}
-			}
-
-			// By trying to force add this note, we altered the rate. This can happen for
-			// example when forcing a stop to get added over another stop. This will affect
-			// the time of the events being force added, so we need to recompute their times.
-			if (rateDirty)
-			{
-				editorEvent.RefreshRowDependencies();
-			}
-
-			// Now that all conflicting notes are deleted or adjusted, add this note.
-			AddEventInternal(editorEvent);
-		}
+			ForceAddEventInternal(editorEvent, ref rateDirty, ref sideEffectAddedEvents, ref sideEffectDeletedEvents);
 
 		StepTotals.CommitAddsAndDeletesToStepDensity();
 		Notify(NotificationEventsAdded, this, events);
 
 		return (sideEffectAddedEvents, sideEffectDeletedEvents);
+	}
+
+	/// <summary>
+	/// Adds the given event and ensures the chart is in a consistent state afterwards
+	/// by forcibly removing any events which conflict with the event to be added. This
+	/// may result in modifications like shortening holds or converting a hold to a tap
+	/// which requires deleting and then adding a modified event or events. Any events
+	/// which were deleted or added as side effects of adding the given event will be
+	/// returned.
+	/// </summary>
+	/// <param name="editorEvent">Event to add.</param>
+	/// <returns>
+	/// Tuple where the first element is a list of events which were added as a side effect
+	/// of adding the given events and the second element is a list of events which were
+	/// deleted as a side effect of adding the given events.
+	/// </returns>
+	public (List<EditorEvent>, List<EditorEvent>) ForceAddEvent(EditorEvent editorEvent)
+	{
+		Assert(CanBeEdited());
+		if (!CanBeEdited())
+			return (null, null);
+
+		List<EditorEvent> sideEffectAddedEvents = null;
+		List<EditorEvent> sideEffectDeletedEvents = null;
+
+		var rateDirty = false;
+		ForceAddEventInternal(editorEvent, ref rateDirty, ref sideEffectAddedEvents, ref sideEffectDeletedEvents);
+
+		StepTotals.CommitAddsAndDeletesToStepDensity();
+		Notify(NotificationEventAdded, this, editorEvent);
+
+		return (sideEffectAddedEvents, sideEffectDeletedEvents);
+	}
+
+	private void ForceAddEventInternal(
+		EditorEvent editorEvent,
+		ref bool rateDirty,
+		ref List<EditorEvent> sideEffectAddedEvents,
+		ref List<EditorEvent> sideEffectDeletedEvents)
+	{
+		var lane = editorEvent.GetLane();
+
+		// If this event is a tap, delete any note which starts at the same time in the same lane.
+		if (lane != InvalidArrowIndex)
+		{
+			var row = editorEvent.GetRow();
+			var existingNote = EditorEvents.FindNoteAt(row, lane, true);
+
+			// If there is a note at this position, or extending through this position.
+			if (existingNote != null)
+			{
+				// If the existing note is at the same row as the new note, delete it.
+				if (existingNote.GetRow() == row)
+				{
+					DeleteEvent(existingNote);
+					sideEffectDeletedEvents ??= [];
+					sideEffectDeletedEvents.Add(existingNote);
+				}
+
+				// The existing note is a hold which extends through the new note.
+				else if (existingNote.GetRow() < row && existingNote.GetEndRow() >= row &&
+				         existingNote is EditorHoldNoteEvent existingHold)
+				{
+					// Reduce the length.
+					var newExistingHoldEndRow = editorEvent.GetRow() - MaxValidDenominator / 4;
+
+					// In either case below, delete the existing hold note and replace it with a new hold or a tap.
+					// We could reduce the hold length in place, but then we would need to surface that alteration to the caller
+					// so they can undo it. It's simpler for now to just remove it and add a new one.
+					DeleteEvent(existingNote);
+					sideEffectDeletedEvents ??= [];
+					sideEffectDeletedEvents.Add(existingNote);
+
+					// If the reduction in length is below the min length for a hold, replace it with a tap.
+					if (newExistingHoldEndRow <= existingNote.GetRow())
+					{
+						var replacementEvent = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(existingNote));
+						AddEvent(replacementEvent);
+						sideEffectAddedEvents ??= [];
+						sideEffectAddedEvents.Add(replacementEvent);
+					}
+
+					// Otherwise, reduce the length by deleting the old hold and adding a new hold.
+					else
+					{
+						// We need to recompute the hold end time, so don't provide any explicit times.
+						var replacementEvent = EditorEvent.CreateEvent(EventConfig.CreateHoldConfig(this,
+							existingNote.GetRow(), existingNote.GetLane(), existingNote.GetPlayer(),
+							newExistingHoldEndRow - existingNote.GetRow(),
+							existingHold.IsRoll()));
+						AddEvent(replacementEvent);
+						sideEffectAddedEvents ??= [];
+						sideEffectAddedEvents.Add(replacementEvent);
+					}
+				}
+			}
+
+			// If this event is a hold note, delete any note which overlaps the hold.
+			var len = editorEvent.GetRowDuration();
+			if (len > 0)
+			{
+				var enumerator = EditorEvents.FindBestByPosition(row);
+				var overlappedNotes = new List<EditorEvent>();
+				while (enumerator != null && enumerator.MoveNext())
+				{
+					var c = enumerator.Current;
+					if (c!.GetRow() < row)
+						continue;
+					if (c.GetLane() != lane)
+						continue;
+					if (c.GetRow() > row + len)
+						break;
+					overlappedNotes.Add(c);
+				}
+
+				if (overlappedNotes.Count > 0)
+				{
+					DeleteEvents(overlappedNotes);
+					sideEffectDeletedEvents ??= [];
+					sideEffectDeletedEvents.AddRange(overlappedNotes);
+				}
+			}
+		}
+
+		// Misc event with no lane.
+		else
+		{
+			// If the same kind of event exists at this row, delete it.
+			var eventsAtRow = EditorEvents.FindEventsAtRow(editorEvent.GetRow());
+			foreach (var potentialConflictingEvent in eventsAtRow)
+			{
+				if (editorEvent.GetType() == potentialConflictingEvent.GetType())
+				{
+					DeleteEvent(potentialConflictingEvent);
+					sideEffectDeletedEvents ??= [];
+					sideEffectDeletedEvents.Add(potentialConflictingEvent);
+
+					// Determine if the side effect of deleting the conflicting note would
+					// affect the rate.
+					if (!rateDirty)
+					{
+						foreach (var deletedEvent in sideEffectDeletedEvents)
+						{
+							if (deletedEvent is EditorRateAlteringEvent)
+							{
+								rateDirty = true;
+								break;
+							}
+						}
+					}
+				}
+			}
+		}
+
+		// By trying to force add this note, we altered the rate. This can happen for
+		// example when forcing a stop to get added over another stop. This will affect
+		// the time of the events being force added, so we need to recompute their times.
+		if (rateDirty)
+		{
+			editorEvent.RefreshRowDependencies();
+		}
+
+		// Now that all conflicting notes are deleted or adjusted, add this note.
+		AddEventInternal(editorEvent);
 	}
 
 	/// <summary>

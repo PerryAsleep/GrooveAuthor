@@ -115,14 +115,14 @@ internal abstract class ActionTransformSelectionLanes : EditorAction
 
 		// While the transformed events are removed, delete the events which
 		// were added as a side effect.
-		if (AddedFromAlteration.Count > 0)
+		if (AddedFromAlteration?.Count > 0)
 		{
 			Chart.DeleteEvents(AddedFromAlteration);
 		}
 
 		// While the transformed events are removed, add the events which
 		// were deleted as a side effect.
-		if (DeletedFromAlteration.Count > 0)
+		if (DeletedFromAlteration?.Count > 0)
 		{
 			Chart.AddEvents(DeletedFromAlteration);
 		}

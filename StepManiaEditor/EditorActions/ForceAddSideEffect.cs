@@ -26,12 +26,12 @@ internal sealed class ForceAddSideEffect
 
 	public void Undo(EditorChart chart)
 	{
-		if (Additions.Count > 0)
+		if (Additions?.Count > 0)
 		{
 			chart.DeleteEvents(Additions);
 		}
 
-		if (Deletions.Count > 0)
+		if (Deletions?.Count > 0)
 		{
 			// Reset the times of these events before adding them back.
 			// It could be the case that the events being moved as part of this action contain

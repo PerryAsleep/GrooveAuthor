@@ -234,16 +234,17 @@ internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<Prefe
 
 		// Update the step count for this step's measure.
 		var measureNumber = GetMeasureNumber(editorEvent);
-		var previousSteps = Measures[measureNumber].Steps;
+		var previousSteps = measureNumber < Measures.GetSize() ? Measures[measureNumber].Steps : 0;
 		var newSteps = previousSteps + 1;
-		var previousRowsWithSteps = Measures[measureNumber].RowsWithSteps;
+		var previousRowsWithSteps = measureNumber < Measures.GetSize() ? Measures[measureNumber].RowsWithSteps : (byte)0;
 		var newRowsWithSteps = previousRowsWithSteps;
 		if (numStepsAtRow == 1)
 			newRowsWithSteps++;
-		Measures[measureNumber] = new Measure(Measures[measureNumber].StartTime, (byte)newSteps, newRowsWithSteps);
+		if (measureNumber < Measures.GetSize())
+			Measures[measureNumber] = new Measure(Measures[measureNumber].StartTime, (byte)newSteps, newRowsWithSteps);
 
 		// Update the measure count by step number so we can update the greatest step count per measure.
-		var newStepCountForMeasure = Measures[measureNumber].Steps;
+		var newStepCountForMeasure = measureNumber < Measures.GetSize() ? Measures[measureNumber].Steps : 1;
 		MeasuresByStepCount[newStepCountForMeasure - 1]--;
 		MeasuresByStepCount[newStepCountForMeasure]++;
 
@@ -335,7 +336,7 @@ internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<Prefe
 		var measureNumber = GetMeasureNumber(editorEvent);
 		var previousSteps = measureNumber < Measures.GetSize() ? Measures[measureNumber].Steps : 1;
 		var newSteps = previousSteps - 1;
-		var previousRowsWithSteps = Measures[measureNumber].RowsWithSteps;
+		var previousRowsWithSteps = measureNumber < Measures.GetSize() ? Measures[measureNumber].RowsWithSteps : (byte)1;
 		var newRowsWithSteps = previousRowsWithSteps;
 		if (numStepsAtRow == 0)
 			newRowsWithSteps--;

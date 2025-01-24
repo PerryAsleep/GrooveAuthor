@@ -131,7 +131,7 @@ internal sealed class ActionShiftSelectionRow : EditorAction
 			editorEvent.SetRow(newRow);
 
 			// Re-add the event to complete the row transformation.
-			var (addedFromAlteration, deletedFromAlteration) = Chart.ForceAddEvents(new List<EditorEvent> { editorEvent });
+			var (addedFromAlteration, deletedFromAlteration) = Chart.ForceAddEvent(editorEvent);
 
 			// Record the transformation so that it can be undone.
 			Transformations.Add(new Transformation(editorEvent, addedFromAlteration, deletedFromAlteration));
