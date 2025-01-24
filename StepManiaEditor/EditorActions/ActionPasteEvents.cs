@@ -108,7 +108,7 @@ internal class ActionPasteEvents : EditorAction
 	{
 		// Set up lists to hold the events in various states to support undo and redo.
 		SideEffects = new List<ForceAddSideEffect>();
-		PastedEvents = new List<EditorEvent>();
+		PastedEvents = new List<EditorEvent>(OriginalEvents.Count);
 
 		var destinationChartPlayer = Editor.GetPlayer(Chart);
 
@@ -145,6 +145,8 @@ internal class ActionPasteEvents : EditorAction
 			PastedEvents.Add(newEvent);
 		}
 
+		Chart.ForceAddEventsComplete(PastedEvents);
+
 		// Record that the pasted events have been transformed so we can avoid re-transforming them when
 		// redoing the action.
 		EventsHaveBeenTransformed = true;
@@ -167,6 +169,8 @@ internal class ActionPasteEvents : EditorAction
 			if (addedFromAlteration?.Count > 0 || deletedFromAlteration?.Count > 0)
 				SideEffects.Add(new ForceAddSideEffect(addedFromAlteration, deletedFromAlteration));
 		}
+
+		Chart.ForceAddEventsComplete(PastedEvents);
 	}
 
 	protected override void UndoImplementation()

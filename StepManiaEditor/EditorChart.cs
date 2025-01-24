@@ -2742,6 +2742,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	/// (for example, no overlapping taps in the given events) and are valid at their
 	/// positions (for example, no time signatures at invalid rows).
 	/// This method expects that the given events are sorted.
+	/// Callers MUST call ForceAddEventsComplete after calls ForceAddEvents.
 	/// </summary>
 	/// <param name="events">Events to add.</param>
 	/// <returns>
@@ -2762,8 +2763,10 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		foreach (var editorEvent in events)
 			ForceAddEventInternal(editorEvent, ref rateDirty, ref sideEffectAddedEvents, ref sideEffectDeletedEvents);
 
-		StepTotals.CommitAddsAndDeletesToStepDensity();
-		Notify(NotificationEventsAdded, this, events);
+		// Do not update StepTotals or notify listeners yet.
+		// Do this after all events have been added.
+		//StepTotals.CommitAddsAndDeletesToStepDensity();
+		//Notify(NotificationEventsAdded, this, events);
 
 		return (sideEffectAddedEvents, sideEffectDeletedEvents);
 	}
@@ -2775,6 +2778,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	/// which requires deleting and then adding a modified event or events. Any events
 	/// which were deleted or added as side effects of adding the given event will be
 	/// returned.
+	/// Callers MUST call ForceAddEventsComplete after calls ForceAddEvents.
 	/// </summary>
 	/// <param name="editorEvent">Event to add.</param>
 	/// <returns>
@@ -2794,10 +2798,24 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		var rateDirty = false;
 		ForceAddEventInternal(editorEvent, ref rateDirty, ref sideEffectAddedEvents, ref sideEffectDeletedEvents);
 
-		StepTotals.CommitAddsAndDeletesToStepDensity();
-		Notify(NotificationEventAdded, this, editorEvent);
+		// Do not update StepTotals or notify listeners yet.
+		// Do this after all events have been added.
+		//StepTotals.CommitAddsAndDeletesToStepDensity();
+		//Notify(NotificationEventAdded, this, editorEvent);
 
 		return (sideEffectAddedEvents, sideEffectDeletedEvents);
+	}
+
+	/// <summary>
+	/// Finish force adding notes.
+	/// This is implemented as a separate callable function to be called after ForceAddEvent and
+	/// ForceAddEvents as a performance optimization.
+	/// </summary>
+	/// <param name="events">All events which were added.</param>
+	public void ForceAddEventsComplete(List<EditorEvent> events)
+	{
+		StepTotals.CommitAddsAndDeletesToStepDensity();
+		Notify(NotificationEventsAdded, this, events);
 	}
 
 	private void ForceAddEventInternal(

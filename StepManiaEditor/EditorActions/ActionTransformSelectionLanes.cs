@@ -100,6 +100,7 @@ internal abstract class ActionTransformSelectionLanes : EditorAction
 
 		// Add the events back, storing the side effects.
 		(AddedFromAlteration, DeletedFromAlteration) = Chart.ForceAddEvents(RemainingOriginalEventsAfterTransform);
+		Chart.ForceAddEventsComplete(RemainingOriginalEventsAfterTransform);
 
 		// Notify the Editor the transformation is complete.
 		Editor.OnNoteTransformationEnd(RemainingOriginalEventsAfterTransform);
