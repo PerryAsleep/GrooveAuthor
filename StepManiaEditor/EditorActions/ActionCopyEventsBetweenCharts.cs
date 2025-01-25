@@ -141,6 +141,12 @@ internal sealed class ActionCopyEventsBetweenCharts : EditorAction
 					continue;
 				}
 
+				// Don't include patterns if they aren't supported.
+				if (eventToClone is EditorPatternEvent && destChart.IsMultiPlayer())
+				{
+					continue;
+				}
+
 				// Include all other events.
 				chartState.AllAddedEvents.Add(eventToClone.Clone(destChart));
 			}
