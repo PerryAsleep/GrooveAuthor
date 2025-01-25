@@ -164,133 +164,150 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 	#endregion Valid Keys
 
 	// @formatter:off
-	private static readonly List<Keys[]> DefaultOpen                                 = new() { new[] { Keys.LeftControl, Keys.O } };
-	private static readonly List<Keys[]> DefaultOpenContainingFolder                 = new() { new[] { Keys.LeftControl, Keys.LeftShift, Keys.O } };
-	private static readonly List<Keys[]> DefaultSaveAs                               = new() { new[] { Keys.LeftControl, Keys.LeftShift, Keys.S } };
-	private static readonly List<Keys[]> DefaultSave                                 = new() { new[] { Keys.LeftControl, Keys.S } };
-	private static readonly List<Keys[]> DefaultNew                                  = new() { new[] { Keys.LeftControl, Keys.N } };
-	private static readonly List<Keys[]> DefaultReload                               = new() { new[] { Keys.LeftControl, Keys.R } };
-	private static readonly List<Keys[]> DefaultClose                                = new() { new[] { Keys.LeftControl, Keys.LeftShift, Keys.F4 }, new[] { Keys.LeftControl, Keys.LeftShift, Keys.W } };
-	private static readonly List<Keys[]> DefaultUndo                                 = new() { new[] { Keys.LeftControl, Keys.Z } };
-	private static readonly List<Keys[]> DefaultRedo                                 = new() { new[] { Keys.LeftControl, Keys.LeftShift, Keys.Z }, new[] { Keys.LeftControl, Keys.Y } };
-	private static readonly List<Keys[]> DefaultSelectAllNotes                       = new() { new[] { Keys.LeftControl, Keys.A } };
-	private static readonly List<Keys[]> DefaultSelectAllTaps                        = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultSelectAllMines                       = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultSelectAllFakes                       = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultSelectAllLifts                       = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultSelectAllHolds                       = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultSelectAllRolls                       = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultSelectAllHoldsAndRolls               = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultSelectAllMiscEvents                  = new() { new[] { Keys.LeftControl, Keys.LeftAlt, Keys.A } };
-	private static readonly List<Keys[]> DefaultSelectAll                            = new() { new[] { Keys.LeftControl, Keys.LeftShift, Keys.A } };
-	private static readonly List<Keys[]> DefaultSelectAllPatterns                    = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultCopy                                 = new() { new[] { Keys.LeftControl, Keys.C } };
-	private static readonly List<Keys[]> DefaultCut                                  = new() { new[] { Keys.LeftControl, Keys.X } };
-	private static readonly List<Keys[]> DefaultPaste                                = new() { new[] { Keys.LeftControl, Keys.V } };
-	private static readonly List<Keys[]> DefaultTogglePreview                        = new() { new[] { Keys.P } };
-	private static readonly List<Keys[]> DefaultToggleAssistTick                     = new() { new[] { Keys.A } };
-	private static readonly List<Keys[]> DefaultToggleBeatTick                       = new() { new[] { Keys.B } };
-	private static readonly List<Keys[]> DefaultDecreaseMusicRate                    = new() { new[] { Keys.LeftShift, Keys.Left } };
-	private static readonly List<Keys[]> DefaultIncreaseMusicRate                    = new() { new[] { Keys.LeftShift, Keys.Right } };
-	private static readonly List<Keys[]> DefaultPlayPause                            = new() { new[] { Keys.Space } };
-	private static readonly List<Keys[]> DefaultCancelGoBack                         = new() { new[] { Keys.Escape } };
-	private static readonly List<Keys[]> DefaultToggleNoteEntryMode                  = new() { new[] { Keys.M } };
-	private static readonly List<Keys[]> DefaultToggleSpacingMode                    = new() { new[] { Keys.S } };
-	private static readonly List<Keys[]> DefaultOpenPreviousChart                    = new() { new[] { Keys.LeftControl, Keys.LeftAlt, Keys.Left } };
-	private static readonly List<Keys[]> DefaultOpenNextChart                        = new() { new[] { Keys.LeftControl, Keys.LeftAlt, Keys.Right } };
-	private static readonly List<Keys[]> DefaultCloseFocusedChart                    = new() { new[] { Keys.LeftControl, Keys.F4 }, new[] { Keys.LeftControl, Keys.W } };
-	private static readonly List<Keys[]> DefaultKeepChartOpen                        = new() { new[] { Keys.LeftControl, Keys.LeftAlt, Keys.Home } };
-	private static readonly List<Keys[]> DefaultMoveFocusedChartLeft                 = new() { new[] { Keys.LeftControl, Keys.LeftAlt, Keys.PageUp } };
-	private static readonly List<Keys[]> DefaultMoveFocusedChartRight                = new() { new[] { Keys.LeftControl, Keys.LeftAlt, Keys.PageDown } };
-	private static readonly List<Keys[]> DefaultFocusPreviousChart                   = new() { new[] { Keys.LeftControl, Keys.PageUp } };
-	private static readonly List<Keys[]> DefaultFocusNextChart                       = new() { new[] { Keys.LeftControl, Keys.PageDown } };
-	private static readonly List<Keys[]> DefaultDecreaseSnap                         = new() { new[] { Keys.Left } };
-	private static readonly List<Keys[]> DefaultIncreaseSnap                         = new() { new[] { Keys.Right } };
-	private static readonly List<Keys[]> DefaultMoveUp                               = new() { new[] { Keys.Up } };
-	private static readonly List<Keys[]> DefaultMoveDown                             = new() { new[] { Keys.Down } };
-	private static readonly List<Keys[]> DefaultMoveToPreviousRowWithSteps           = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultMoveToNextRowWithSteps               = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultMoveToPreviousRowWithEvent           = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultMoveToNextRowWithEvent               = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultMoveToPreviousMeasure                = new() { new[] { Keys.PageUp } };
-	private static readonly List<Keys[]> DefaultMoveToNextMeasure                    = new() { new[] { Keys.PageDown } };
-	private static readonly List<Keys[]> DefaultMoveToChartStart                     = new() { new[] { Keys.Home } };
-	private static readonly List<Keys[]> DefaultMoveToChartEnd                       = new() { new[] { Keys.End } };
-	private static readonly List<Keys[]> DefaultMoveToNextLabel                      = new() { new[] { Keys.LeftControl, Keys.L } };
-	private static readonly List<Keys[]> DefaultMoveToPreviousLabel                  = new() { new[] { Keys.LeftControl, Keys.LeftShift, Keys.L } };
-	private static readonly List<Keys[]> DefaultMoveToNextPattern                    = new() { new[] { Keys.LeftControl, Keys.P } };
-	private static readonly List<Keys[]> DefaultMoveToPreviousPattern                = new() { new[] { Keys.LeftControl, Keys.LeftShift, Keys.P } };
-	private static readonly List<Keys[]> DefaultRegenerateAllPatternsFixedSeeds      = new() { new[] { Keys.LeftAlt, Keys.P } };
-	private static readonly List<Keys[]> DefaultRegenerateAllPatternsNewSeeds        = new() { new[] { Keys.LeftAlt, Keys.LeftShift, Keys.P } };
-	private static readonly List<Keys[]> DefaultRegenerateSelectedPatternsFixedSeeds = new() { new[] { Keys.LeftControl, Keys.LeftAlt, Keys.P } };
-	private static readonly List<Keys[]> DefaultRegenerateSelectedPatternsNewSeeds   = new() { new[] { Keys.LeftControl, Keys.LeftAlt, Keys.LeftShift, Keys.P } };
-	private static readonly List<Keys[]> DefaultDelete                               = new() { new[] { Keys.Delete } };
-	private static readonly List<Keys[]> DefaultShiftLeft                            = new() { new[] { Keys.LeftControl, Keys.LeftShift, Keys.LeftAlt, Keys.Left } };
-	private static readonly List<Keys[]> DefaultShiftLeftAndWrap                     = new() { new[] { Keys.LeftControl, Keys.LeftShift, Keys.Left } };
-	private static readonly List<Keys[]> DefaultShiftRight                           = new() { new[] { Keys.LeftControl, Keys.LeftShift, Keys.LeftAlt, Keys.Right } };
-	private static readonly List<Keys[]> DefaultShiftRightAndWrap                    = new() { new[] { Keys.LeftControl, Keys.LeftShift, Keys.Right } };
-	private static readonly List<Keys[]> DefaultShiftEarlier                         = new() { new[] { Keys.LeftControl, Keys.LeftShift, Keys.Up } };
-	private static readonly List<Keys[]> DefaultShiftLater                           = new() { new[] { Keys.LeftControl, Keys.LeftShift, Keys.Down } };
-	private static readonly List<Keys[]> DefaultMirror                               = new() { new [] { Keys.LeftControl, Keys.LeftShift, Keys.M } };
-	private static readonly List<Keys[]> DefaultFlip                                 = new() { new [] { Keys.LeftControl, Keys.LeftShift, Keys.F } };
-	private static readonly List<Keys[]> DefaultMirrorAndFlip                        = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultArrow0                               = new() { new[] { Keys.D1 } };
-	private static readonly List<Keys[]> DefaultArrow1                               = new() { new[] { Keys.D2 } };
-	private static readonly List<Keys[]> DefaultArrow2                               = new() { new[] { Keys.D3 } };
-	private static readonly List<Keys[]> DefaultArrow3                               = new() { new[] { Keys.D4 } };
-	private static readonly List<Keys[]> DefaultArrow4                               = new() { new[] { Keys.D5 } };
-	private static readonly List<Keys[]> DefaultArrow5                               = new() { new[] { Keys.D6 } };
-	private static readonly List<Keys[]> DefaultArrow6                               = new() { new[] { Keys.D7 } };
-	private static readonly List<Keys[]> DefaultArrow7                               = new() { new[] { Keys.D8 } };
-	private static readonly List<Keys[]> DefaultArrow8                               = new() { new[] { Keys.D9 } };
-	private static readonly List<Keys[]> DefaultArrow9                               = new() { new[] { Keys.D0 } };
-	private static readonly List<Keys[]> DefaultArrowModification                    = new() { new[] { Keys.LeftShift } };
-	private static readonly List<Keys[]> DefaultScrollZoom                           = new() { new[] { Keys.LeftControl } };
-	private static readonly List<Keys[]> DefaultScrollSpacing                        = new() { new[] { Keys.LeftShift } };
-	private static readonly List<Keys[]> DefaultMouseSelectionControlBehavior        = new() { new[] { Keys.LeftControl } };
-	private static readonly List<Keys[]> DefaultMouseSelectionShiftBehavior          = new() { new[] { Keys.LeftShift } };
-	private static readonly List<Keys[]> DefaultMouseSelectionAltBehavior            = new() { new[] { Keys.LeftAlt } };
-	private static readonly List<Keys[]> DefaultLockReceptorMoveAxis                 = new() { new[] { Keys.LeftShift } };
-	private static readonly List<Keys[]> DefaultAddEventTempo                        = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultAddEventInterpolatedScrollRate       = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultAddEventScrollRate                   = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultAddEventStop                         = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultAddEventDelay                        = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultAddEventWarp                         = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultAddEventFakeRegion                   = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultAddEventTicks                        = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultAddEventComboMultipliers             = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultAddEventTimeSignature                = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultAddEventLabel                        = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultAddEventPattern                      = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultMoveEventPreview                     = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultMoveEventEndHint                     = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultConvertSelectedTapsToMines           = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultConvertSelectedTapsToFakes           = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultConvertSelectedTapsToLifts           = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultConvertSelectedMinesToTaps           = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultConvertSelectedMinesToFakes          = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultConvertSelectedMinesToLifts          = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultConvertSelectedFakesToTaps           = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultConvertSelectedLiftsToTaps           = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultConvertSelectedHoldsToRolls          = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultConvertSelectedHoldsToTaps           = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultConvertSelectedHoldsToMines          = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultConvertSelectedRollsToHolds          = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultConvertSelectedRollsToTaps           = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultConvertSelectedRollsToMines          = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultConvertSelectedWarpsToNegativeStops  = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultConvertSelectedNegativeStopsToWarps  = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultSnapToNone                           = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultSnapToQuarters                       = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultSnapToEighths                        = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultSnapToTwelfths                       = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultSnapToSixteenths                     = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultSnapToTwentyFourths                  = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultSnapToThirtySeconds                  = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultSnapToFortyEighths                   = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultSnapToSixtyFourths                   = new() { Array.Empty<Keys>() };
-	private static readonly List<Keys[]> DefaultSnapToOneHundredNinetySeconds        = new() { Array.Empty<Keys>() };
+	private static readonly List<Keys[]> DefaultOpen                                 = [[Keys.LeftControl, Keys.O]];
+	private static readonly List<Keys[]> DefaultOpenContainingFolder                 = [[Keys.LeftControl, Keys.LeftShift, Keys.O]];
+	private static readonly List<Keys[]> DefaultSaveAs                               = [[Keys.LeftControl, Keys.LeftShift, Keys.S]];
+	private static readonly List<Keys[]> DefaultSave                                 = [[Keys.LeftControl, Keys.S]];
+	private static readonly List<Keys[]> DefaultNew                                  = [[Keys.LeftControl, Keys.N]];
+	private static readonly List<Keys[]> DefaultReload                               = [[Keys.LeftControl, Keys.R]];
+	private static readonly List<Keys[]> DefaultClose                                = [[Keys.LeftControl, Keys.LeftShift, Keys.F4], [Keys.LeftControl, Keys.LeftShift, Keys.W]];
+	private static readonly List<Keys[]> DefaultUndo                                 = [[Keys.LeftControl, Keys.Z]];
+	private static readonly List<Keys[]> DefaultRedo                                 = [[Keys.LeftControl, Keys.LeftShift, Keys.Z], [Keys.LeftControl, Keys.Y]];
+	private static readonly List<Keys[]> DefaultSelectAllNotes                       = [[Keys.LeftControl, Keys.A]];
+	private static readonly List<Keys[]> DefaultSelectAllTaps                        = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultSelectAllMines                       = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultSelectAllFakes                       = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultSelectAllLifts                       = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultSelectAllHolds                       = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultSelectAllRolls                       = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultSelectAllHoldsAndRolls               = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultSelectAllCurrentPlayerNotes          = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultSelectAllCurrentPlayerTaps           = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultSelectAllCurrentPlayerMines          = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultSelectAllCurrentPlayerFakes          = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultSelectAllCurrentPlayerLifts          = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultSelectAllCurrentPlayerHolds          = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultSelectAllCurrentPlayerRolls          = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultSelectAllCurrentPlayerHoldsAndRolls  = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultSelectAllMiscEvents                  = [[Keys.LeftControl, Keys.LeftAlt, Keys.A]];
+	private static readonly List<Keys[]> DefaultSelectAll                            = [[Keys.LeftControl, Keys.LeftShift, Keys.A]];
+	private static readonly List<Keys[]> DefaultSelectAllPatterns                    = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultCopy                                 = [[Keys.LeftControl, Keys.C]];
+	private static readonly List<Keys[]> DefaultCut                                  = [[Keys.LeftControl, Keys.X]];
+	private static readonly List<Keys[]> DefaultPaste                                = [[Keys.LeftControl, Keys.V]];
+	private static readonly List<Keys[]> DefaultTogglePreview                        = [[Keys.P]];
+	private static readonly List<Keys[]> DefaultToggleAssistTick                     = [[Keys.A]];
+	private static readonly List<Keys[]> DefaultToggleBeatTick                       = [[Keys.B]];
+	private static readonly List<Keys[]> DefaultDecreaseMusicRate                    = [[Keys.LeftShift, Keys.Left]];
+	private static readonly List<Keys[]> DefaultIncreaseMusicRate                    = [[Keys.LeftShift, Keys.Right]];
+	private static readonly List<Keys[]> DefaultPlayPause                            = [[Keys.Space]];
+	private static readonly List<Keys[]> DefaultCancelGoBack                         = [[Keys.Escape]];
+	private static readonly List<Keys[]> DefaultToggleNoteEntryMode                  = [[Keys.M]];
+	private static readonly List<Keys[]> DefaultToggleSpacingMode                    = [[Keys.S]];
+	private static readonly List<Keys[]> DefaultTogglePlayer                         = [[Keys.OemQuestion]];
+	private static readonly List<Keys[]> DefaultSetPlayer1                           = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultSetPlayer2                           = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultSetPlayer3                           = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultSetPlayer4                           = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultConvertSelectedNotesToPlayer1        = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultConvertSelectedNotesToPlayer2        = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultConvertSelectedNotesToPlayer3        = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultConvertSelectedNotesToPlayer4        = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultOpenPreviousChart                    = [[Keys.LeftControl, Keys.LeftAlt, Keys.Left]];
+	private static readonly List<Keys[]> DefaultOpenNextChart                        = [[Keys.LeftControl, Keys.LeftAlt, Keys.Right]];
+	private static readonly List<Keys[]> DefaultCloseFocusedChart                    = [[Keys.LeftControl, Keys.F4], [Keys.LeftControl, Keys.W]];
+	private static readonly List<Keys[]> DefaultKeepChartOpen                        = [[Keys.LeftControl, Keys.LeftAlt, Keys.Home]];
+	private static readonly List<Keys[]> DefaultMoveFocusedChartLeft                 = [[Keys.LeftControl, Keys.LeftAlt, Keys.PageUp]];
+	private static readonly List<Keys[]> DefaultMoveFocusedChartRight                = [[Keys.LeftControl, Keys.LeftAlt, Keys.PageDown]];
+	private static readonly List<Keys[]> DefaultFocusPreviousChart                   = [[Keys.LeftControl, Keys.PageUp]];
+	private static readonly List<Keys[]> DefaultFocusNextChart                       = [[Keys.LeftControl, Keys.PageDown]];
+	private static readonly List<Keys[]> DefaultDecreaseSnap                         = [[Keys.Left]];
+	private static readonly List<Keys[]> DefaultIncreaseSnap                         = [[Keys.Right]];
+	private static readonly List<Keys[]> DefaultMoveUp                               = [[Keys.Up]];
+	private static readonly List<Keys[]> DefaultMoveDown                             = [[Keys.Down]];
+	private static readonly List<Keys[]> DefaultMoveToPreviousRowWithSteps           = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultMoveToNextRowWithSteps               = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultMoveToPreviousRowWithEvent           = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultMoveToNextRowWithEvent               = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultMoveToPreviousMeasure                = [[Keys.PageUp]];
+	private static readonly List<Keys[]> DefaultMoveToNextMeasure                    = [[Keys.PageDown]];
+	private static readonly List<Keys[]> DefaultMoveToChartStart                     = [[Keys.Home]];
+	private static readonly List<Keys[]> DefaultMoveToChartEnd                       = [[Keys.End]];
+	private static readonly List<Keys[]> DefaultMoveToNextLabel                      = [[Keys.LeftControl, Keys.L]];
+	private static readonly List<Keys[]> DefaultMoveToPreviousLabel                  = [[Keys.LeftControl, Keys.LeftShift, Keys.L]];
+	private static readonly List<Keys[]> DefaultMoveToNextPattern                    = [[Keys.LeftControl, Keys.P]];
+	private static readonly List<Keys[]> DefaultMoveToPreviousPattern                = [[Keys.LeftControl, Keys.LeftShift, Keys.P]];
+	private static readonly List<Keys[]> DefaultRegenerateAllPatternsFixedSeeds      = [[Keys.LeftAlt, Keys.P]];
+	private static readonly List<Keys[]> DefaultRegenerateAllPatternsNewSeeds        = [[Keys.LeftAlt, Keys.LeftShift, Keys.P]];
+	private static readonly List<Keys[]> DefaultRegenerateSelectedPatternsFixedSeeds = [[Keys.LeftControl, Keys.LeftAlt, Keys.P]];
+	private static readonly List<Keys[]> DefaultRegenerateSelectedPatternsNewSeeds   = [[Keys.LeftControl, Keys.LeftAlt, Keys.LeftShift, Keys.P]];
+	private static readonly List<Keys[]> DefaultDelete                               = [[Keys.Delete]];
+	private static readonly List<Keys[]> DefaultShiftLeft                            = [[Keys.LeftControl, Keys.LeftShift, Keys.LeftAlt, Keys.Left]];
+	private static readonly List<Keys[]> DefaultShiftLeftAndWrap                     = [[Keys.LeftControl, Keys.LeftShift, Keys.Left]];
+	private static readonly List<Keys[]> DefaultShiftRight                           = [[Keys.LeftControl, Keys.LeftShift, Keys.LeftAlt, Keys.Right]];
+	private static readonly List<Keys[]> DefaultShiftRightAndWrap                    = [[Keys.LeftControl, Keys.LeftShift, Keys.Right]];
+	private static readonly List<Keys[]> DefaultShiftEarlier                         = [[Keys.LeftControl, Keys.LeftShift, Keys.Up]];
+	private static readonly List<Keys[]> DefaultShiftLater                           = [[Keys.LeftControl, Keys.LeftShift, Keys.Down]];
+	private static readonly List<Keys[]> DefaultMirror                               = [[Keys.LeftControl, Keys.LeftShift, Keys.M]];
+	private static readonly List<Keys[]> DefaultFlip                                 = [[Keys.LeftControl, Keys.LeftShift, Keys.F]];
+	private static readonly List<Keys[]> DefaultMirrorAndFlip                        = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultArrow0                               = [[Keys.D1]];
+	private static readonly List<Keys[]> DefaultArrow1                               = [[Keys.D2]];
+	private static readonly List<Keys[]> DefaultArrow2                               = [[Keys.D3]];
+	private static readonly List<Keys[]> DefaultArrow3                               = [[Keys.D4]];
+	private static readonly List<Keys[]> DefaultArrow4                               = [[Keys.D5]];
+	private static readonly List<Keys[]> DefaultArrow5                               = [[Keys.D6]];
+	private static readonly List<Keys[]> DefaultArrow6                               = [[Keys.D7]];
+	private static readonly List<Keys[]> DefaultArrow7                               = [[Keys.D8]];
+	private static readonly List<Keys[]> DefaultArrow8                               = [[Keys.D9]];
+	private static readonly List<Keys[]> DefaultArrow9                               = [[Keys.D0]];
+	private static readonly List<Keys[]> DefaultArrowModification                    = [[Keys.LeftShift]];
+	private static readonly List<Keys[]> DefaultScrollZoom                           = [[Keys.LeftControl]];
+	private static readonly List<Keys[]> DefaultScrollSpacing                        = [[Keys.LeftShift]];
+	private static readonly List<Keys[]> DefaultMouseSelectionControlBehavior        = [[Keys.LeftControl]];
+	private static readonly List<Keys[]> DefaultMouseSelectionShiftBehavior          = [[Keys.LeftShift]];
+	private static readonly List<Keys[]> DefaultMouseSelectionAltBehavior            = [[Keys.LeftAlt]];
+	private static readonly List<Keys[]> DefaultLockReceptorMoveAxis                 = [[Keys.LeftShift]];
+	private static readonly List<Keys[]> DefaultAddEventTempo                        = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultAddEventInterpolatedScrollRate       = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultAddEventScrollRate                   = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultAddEventStop                         = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultAddEventDelay                        = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultAddEventWarp                         = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultAddEventFakeRegion                   = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultAddEventTicks                        = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultAddEventComboMultipliers             = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultAddEventTimeSignature                = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultAddEventLabel                        = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultAddEventPattern                      = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultMoveEventPreview                     = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultMoveEventEndHint                     = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultConvertSelectedTapsToMines           = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultConvertSelectedTapsToFakes           = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultConvertSelectedTapsToLifts           = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultConvertSelectedMinesToTaps           = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultConvertSelectedMinesToFakes          = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultConvertSelectedMinesToLifts          = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultConvertSelectedFakesToTaps           = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultConvertSelectedLiftsToTaps           = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultConvertSelectedHoldsToRolls          = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultConvertSelectedHoldsToTaps           = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultConvertSelectedHoldsToMines          = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultConvertSelectedRollsToHolds          = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultConvertSelectedRollsToTaps           = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultConvertSelectedRollsToMines          = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultConvertSelectedWarpsToNegativeStops  = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultConvertSelectedNegativeStopsToWarps  = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultSnapToNone                           = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultSnapToQuarters                       = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultSnapToEighths                        = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultSnapToTwelfths                       = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultSnapToSixteenths                     = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultSnapToTwentyFourths                  = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultSnapToThirtySeconds                  = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultSnapToFortyEighths                   = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultSnapToSixtyFourths                   = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultSnapToOneHundredNinetySeconds        = [Array.Empty<Keys>()];
 	// @formatter:on
 
 	#region Properties
@@ -523,6 +540,118 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 	private List<Keys[]> SelectAllHoldsAndRollsInternal = DefaultSelectAllHoldsAndRolls;
 
 	[JsonInclude]
+	public List<Keys[]> SelectAllCurrentPlayerNotes
+	{
+		get => SelectAllCurrentPlayerNotesInternal;
+		set
+		{
+			SelectAllCurrentPlayerNotesInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(SelectAllCurrentPlayerNotes));
+		}
+	}
+
+	private List<Keys[]> SelectAllCurrentPlayerNotesInternal = DefaultSelectAllCurrentPlayerNotes;
+
+
+	[JsonInclude]
+	public List<Keys[]> SelectAllCurrentPlayerTaps
+	{
+		get => SelectAllCurrentPlayerTapsInternal;
+		set
+		{
+			SelectAllCurrentPlayerTapsInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(SelectAllCurrentPlayerTaps));
+		}
+	}
+
+	private List<Keys[]> SelectAllCurrentPlayerTapsInternal = DefaultSelectAllCurrentPlayerTaps;
+
+
+	[JsonInclude]
+	public List<Keys[]> SelectAllCurrentPlayerMines
+	{
+		get => SelectAllCurrentPlayerMinesInternal;
+		set
+		{
+			SelectAllCurrentPlayerMinesInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(SelectAllCurrentPlayerMines));
+		}
+	}
+
+	private List<Keys[]> SelectAllCurrentPlayerMinesInternal = DefaultSelectAllCurrentPlayerMines;
+
+
+	[JsonInclude]
+	public List<Keys[]> SelectAllCurrentPlayerFakes
+	{
+		get => SelectAllCurrentPlayerFakesInternal;
+		set
+		{
+			SelectAllCurrentPlayerFakesInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(SelectAllCurrentPlayerFakes));
+		}
+	}
+
+	private List<Keys[]> SelectAllCurrentPlayerFakesInternal = DefaultSelectAllCurrentPlayerFakes;
+
+
+	[JsonInclude]
+	public List<Keys[]> SelectAllCurrentPlayerLifts
+	{
+		get => SelectAllCurrentPlayerLiftsInternal;
+		set
+		{
+			SelectAllCurrentPlayerLiftsInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(SelectAllCurrentPlayerLifts));
+		}
+	}
+
+	private List<Keys[]> SelectAllCurrentPlayerLiftsInternal = DefaultSelectAllCurrentPlayerLifts;
+
+
+	[JsonInclude]
+	public List<Keys[]> SelectAllCurrentPlayerHolds
+	{
+		get => SelectAllCurrentPlayerHoldsInternal;
+		set
+		{
+			SelectAllCurrentPlayerHoldsInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(SelectAllCurrentPlayerHolds));
+		}
+	}
+
+	private List<Keys[]> SelectAllCurrentPlayerHoldsInternal = DefaultSelectAllCurrentPlayerHolds;
+
+
+	[JsonInclude]
+	public List<Keys[]> SelectAllCurrentPlayerRolls
+	{
+		get => SelectAllCurrentPlayerRollsInternal;
+		set
+		{
+			SelectAllCurrentPlayerRollsInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(SelectAllCurrentPlayerRolls));
+		}
+	}
+
+	private List<Keys[]> SelectAllCurrentPlayerRollsInternal = DefaultSelectAllCurrentPlayerRolls;
+
+
+	[JsonInclude]
+	public List<Keys[]> SelectAllCurrentPlayerHoldsAndRolls
+	{
+		get => SelectAllCurrentPlayerHoldsAndRollsInternal;
+		set
+		{
+			SelectAllCurrentPlayerHoldsAndRollsInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(SelectAllCurrentPlayerHoldsAndRolls));
+		}
+	}
+
+	private List<Keys[]> SelectAllCurrentPlayerHoldsAndRollsInternal = DefaultSelectAllCurrentPlayerHoldsAndRolls;
+
+
+	[JsonInclude]
 	public List<Keys[]> SelectAllMiscEvents
 	{
 		get => SelectAllMiscEventsInternal;
@@ -716,6 +845,133 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 	}
 
 	private List<Keys[]> ToggleSpacingModeInternal = DefaultToggleSpacingMode;
+
+
+	[JsonInclude]
+	public List<Keys[]> TogglePlayer
+	{
+		get => TogglePlayerInternal;
+		set
+		{
+			TogglePlayerInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(TogglePlayer));
+		}
+	}
+
+	private List<Keys[]> TogglePlayerInternal = DefaultTogglePlayer;
+
+
+	[JsonInclude]
+	public List<Keys[]> SetPlayer1
+	{
+		get => SetPlayer1Internal;
+		set
+		{
+			SetPlayer1Internal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(SetPlayer1));
+		}
+	}
+
+	private List<Keys[]> SetPlayer1Internal = DefaultSetPlayer1;
+
+
+	[JsonInclude]
+	public List<Keys[]> SetPlayer2
+	{
+		get => SetPlayer2Internal;
+		set
+		{
+			SetPlayer2Internal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(SetPlayer2));
+		}
+	}
+
+	private List<Keys[]> SetPlayer2Internal = DefaultSetPlayer2;
+
+
+	[JsonInclude]
+	public List<Keys[]> SetPlayer3
+	{
+		get => SetPlayer3Internal;
+		set
+		{
+			SetPlayer3Internal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(SetPlayer3));
+		}
+	}
+
+	private List<Keys[]> SetPlayer3Internal = DefaultSetPlayer3;
+
+
+	[JsonInclude]
+	public List<Keys[]> SetPlayer4
+	{
+		get => SetPlayer4Internal;
+		set
+		{
+			SetPlayer4Internal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(SetPlayer4));
+		}
+	}
+
+	private List<Keys[]> SetPlayer4Internal = DefaultSetPlayer4;
+
+
+	[JsonInclude]
+	public List<Keys[]> ConvertSelectedNotesToPlayer1
+	{
+		get => ConvertSelectedNotesToPlayer1Internal;
+		set
+		{
+			ConvertSelectedNotesToPlayer1Internal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(ConvertSelectedNotesToPlayer1));
+		}
+	}
+
+	private List<Keys[]> ConvertSelectedNotesToPlayer1Internal = DefaultConvertSelectedNotesToPlayer1;
+
+
+	[JsonInclude]
+	public List<Keys[]> ConvertSelectedNotesToPlayer2
+	{
+		get => ConvertSelectedNotesToPlayer2Internal;
+		set
+		{
+			ConvertSelectedNotesToPlayer2Internal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(ConvertSelectedNotesToPlayer2));
+		}
+	}
+
+	private List<Keys[]> ConvertSelectedNotesToPlayer2Internal = DefaultConvertSelectedNotesToPlayer2;
+
+
+	[JsonInclude]
+	public List<Keys[]> ConvertSelectedNotesToPlayer3
+	{
+		get => ConvertSelectedNotesToPlayer3Internal;
+		set
+		{
+			ConvertSelectedNotesToPlayer3Internal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(ConvertSelectedNotesToPlayer3));
+		}
+	}
+
+	private List<Keys[]> ConvertSelectedNotesToPlayer3Internal = DefaultConvertSelectedNotesToPlayer3;
+
+
+	[JsonInclude]
+	public List<Keys[]> ConvertSelectedNotesToPlayer4
+	{
+		get => ConvertSelectedNotesToPlayer4Internal;
+		set
+		{
+			ConvertSelectedNotesToPlayer4Internal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(ConvertSelectedNotesToPlayer4));
+		}
+	}
+
+	private List<Keys[]> ConvertSelectedNotesToPlayer4Internal = DefaultConvertSelectedNotesToPlayer4;
+
 
 	[JsonInclude]
 	public List<Keys[]> OpenPreviousChart
@@ -2064,10 +2320,10 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 	{
 		var propertyInfo = GetType().GetProperty(id);
 		if (propertyInfo == null)
-			return new List<Keys[]>();
+			return [];
 		var binding = (List<Keys[]>)propertyInfo.GetValue(this);
 		if (binding == null)
-			return new List<Keys[]>();
+			return [];
 		return CloneKeyBinding(binding);
 	}
 

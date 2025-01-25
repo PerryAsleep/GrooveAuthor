@@ -69,7 +69,6 @@ internal sealed class UIHotbar : UIWindow
 		if (!Preferences.Instance.ShowHotbar)
 			return;
 
-		//ImGui.SetNextWindowSize(new Vector2(Width, Height), ImGuiCond.FirstUseEver);
 		if (ImGui.Begin(WindowTitle, ref Preferences.Instance.ShowHotbar))
 		{
 			var pScroll = Preferences.Instance.PreferencesScroll;
@@ -185,8 +184,21 @@ internal sealed class UIHotbar : UIWindow
 					    $"\n\nAutomove can be toggled with {keyBind}."))
 					Preferences.Instance.NoteEntryMode = autoAdvance ? NoteEntryMode.AdvanceBySnap : NoteEntryMode.Normal;
 
-				// Step Coloring.
-				UIOptions.DrawStepColoring("Step Color");
+				if (Editor.GetFocusedChart()?.IsMultiPlayer() ?? false)
+				{
+					// Player selection.
+					keyBind = UIControls.GetCommandString(pKeyBinds.TogglePlayer);
+					ImGuiLayoutUtils.DrawRowPlayerSelection("Player", Editor.GetFocusedChart().MaxPlayers,
+						Editor.GetFocusedChartData()?.GetArrowGraphicManager(),
+						"Current player. New steps will assigned to this player." +
+						$"\n\nThe player can be toggled with {keyBind}." +
+						"\nThe number of players for a chart can be assigned in the Chart Properties window.");
+				}
+				else
+				{
+					// Step Coloring.
+					UIOptions.DrawStepColoring("Step Color");
+				}
 
 				ImGuiLayoutUtils.EndTable();
 			}

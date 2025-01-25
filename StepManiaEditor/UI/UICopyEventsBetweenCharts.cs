@@ -155,7 +155,7 @@ internal class UICopyEventsBetweenCharts : UIWindow
 		if (!Showing)
 			return;
 
-		Utils.EnsureChartReferencesValidChartFromActiveSong(ref SourceChart, Editor);
+		Utils.EnsureChartReferencesValidChartFromActiveSong(ref SourceChart, Editor, false);
 
 		var numSelectedTypes = 0;
 
@@ -270,7 +270,7 @@ internal class UICopyEventsBetweenCharts : UIWindow
 				// If copying to one chart, add UI for choosing a chart.
 				if (DestinationType == CopyToType.SingleChart)
 				{
-					Utils.EnsureChartReferencesValidChartFromActiveSong(ref DestinationChart, Editor);
+					Utils.EnsureChartReferencesValidChartFromActiveSong(ref DestinationChart, Editor, false);
 
 					// Destination Chart.
 					ImGuiLayoutUtils.DrawTitle("Destination Chart", "The chart to copy events to.");

@@ -1,7 +1,9 @@
-﻿using System.Numerics;
+﻿using System;
+using System.Numerics;
 using Fumen.Converters;
 using ImGuiNET;
 using static StepManiaEditor.ImGuiUtils;
+using static StepManiaEditor.Utils;
 
 namespace StepManiaEditor;
 
@@ -107,10 +109,23 @@ internal sealed class UIChartProperties : UIWindow
 					"\nIn most cases all charts use the same music offset and it is defined at the song level.",
 					0.0001f, "%.6f seconds");
 
-				ImGuiLayoutUtils.DrawExpressedChartConfigCombo(editorChart, "Expression",
-					"(Editor Only) Expressed Chart Configuration."
-					+ $"\nThis configuration is used by {Utils.GetAppName()} to parse the Chart and interpret its steps."
-					+ "\nThis interpretation is used for autogenerating patterns and other Charts.");
+				// Draw either the multiplayer player count or the expression. Multiplayer charts don't support
+				// all the autogen features so expression is meaningless for them.
+				if (editorChart?.IsMultiPlayer() ?? false)
+				{
+					ImGuiLayoutUtils.DrawRowDragInt(true, "Players", editorChart, nameof(EditorChart.MaxPlayers), true,
+						$"(Editor Only) The maximum number of players for this chart. Setting the maximum will prevent {GetAppName()}"
+						+ " from cycling through more players than the chart should support. Please note that while multiplayer charts"
+						+ " support an unbounded number of players most Stepmania themes only support two.",
+						0.1f, "%i players", Math.Max(2, editorChart.GetStepTotals().GetNumPlayersWithNotes()), 128);
+				}
+				else
+				{
+					ImGuiLayoutUtils.DrawExpressedChartConfigCombo(editorChart, "Expression",
+						"(Editor Only) Expressed Chart Configuration."
+						+ $"\nThis configuration is used by {GetAppName()} to parse the Chart and interpret its steps."
+						+ "\nThis interpretation is used for autogenerating patterns and other Charts.");
+				}
 
 				ImGuiLayoutUtils.EndTable();
 			}
@@ -119,7 +134,7 @@ internal sealed class UIChartProperties : UIWindow
 			if (ImGuiLayoutUtils.BeginTable("ChartDetailsTable", TitleColumnWidth))
 			{
 				var noteType = GetSubdivisionTypeString(Preferences.Instance.PreferencesStream.NoteType);
-				var steps = Utils.GetMeasureSubdivision(Preferences.Instance.PreferencesStream.NoteType);
+				var steps = GetMeasureSubdivision(Preferences.Instance.PreferencesStream.NoteType);
 				ImGuiLayoutUtils.DrawRowStream("Stream", editorChart?.GetStreamBreakdown() ?? "",
 					$"Breakdown of {noteType} note stream."
 					+ $"\nThis follows ITGmania / Simply Love rules where a measure is {SMCommon.RowsPerMeasure} rows and a measure"
@@ -250,11 +265,11 @@ internal sealed class UIChartProperties : UIWindow
 
 	private static void BrowseMusicFile(EditorChart editorChart)
 	{
-		var relativePath = Utils.BrowseFile(
+		var relativePath = BrowseFile(
 			"Music",
 			editorChart.GetEditorSong().GetFileDirectory(),
 			editorChart.MusicPath,
-			Utils.FileOpenFilterForAudio("Music", true));
+			FileOpenFilterForAudio("Music", true));
 		if (relativePath != null && relativePath != editorChart.MusicPath)
 			ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(editorChart,
 				nameof(editorChart.MusicPath), relativePath, true));

@@ -87,26 +87,27 @@ internal sealed class ImGuiLayoutUtils
 		var numAddedDanceTypes = 0;
 		var numAddedPumpTypes = 0;
 		var numAddedSmxTypes = 0;
-		for (var i = 0; i < SupportedChartTypes.Length; i++)
+		for (var i = 0; i < SupportedSinglePlayerChartTypes.Length; i++)
 		{
-			if (IsDanceType(SupportedChartTypes[i]))
+			if (IsDanceType(SupportedSinglePlayerChartTypes[i]))
 			{
-				StartupStepGraphOptions[numAddedDanceTypes * 3] = SupportedChartTypes[i];
+				StartupStepGraphOptions[numAddedDanceTypes * 3] = SupportedSinglePlayerChartTypes[i];
 				numAddedDanceTypes++;
 			}
-			else if (IsPumpType(SupportedChartTypes[i]))
+			else if (IsPumpType(SupportedSinglePlayerChartTypes[i]))
 			{
-				StartupStepGraphOptions[1 + numAddedPumpTypes * 3] = SupportedChartTypes[i];
+				StartupStepGraphOptions[1 + numAddedPumpTypes * 3] = SupportedSinglePlayerChartTypes[i];
 				numAddedPumpTypes++;
 			}
-			else if (IsSmxType(SupportedChartTypes[i]))
+			else if (IsSmxType(SupportedSinglePlayerChartTypes[i]))
 			{
-				StartupStepGraphOptions[2 + numAddedSmxTypes * 3] = SupportedChartTypes[i];
+				StartupStepGraphOptions[2 + numAddedSmxTypes * 3] = SupportedSinglePlayerChartTypes[i];
 				numAddedSmxTypes++;
 			}
 			else
 			{
-				Assert(false, $"Unexpected ChartType {SupportedChartTypes[i]} in Editor.SupportedChartTypes.");
+				Assert(false,
+					$"Unexpected ChartType {SupportedSinglePlayerChartTypes[i]} in Editor.SupportedSinglePlayerChartTypes.");
 			}
 		}
 	}
@@ -2122,7 +2123,7 @@ internal sealed class ImGuiLayoutUtils
 				if (undoable)
 				{
 					var allSet = new HashSet<ChartType>();
-					foreach (var chartType in SupportedChartTypes)
+					foreach (var chartType in SupportedSinglePlayerChartTypes)
 						allSet.Add(chartType);
 
 					ActionQueue.Instance.Do(
@@ -2132,7 +2133,7 @@ internal sealed class ImGuiLayoutUtils
 				else
 				{
 					originalValues.Clear();
-					foreach (var chartType in SupportedChartTypes)
+					foreach (var chartType in SupportedSinglePlayerChartTypes)
 						originalValues.Add(chartType);
 				}
 			}
@@ -2176,7 +2177,7 @@ internal sealed class ImGuiLayoutUtils
 								{
 									// Replace the set with a new set.
 									var newValues = new HashSet<ChartType>();
-									foreach (var chartType in SupportedChartTypes)
+									foreach (var chartType in SupportedSinglePlayerChartTypes)
 									{
 										if (chartType == StartupStepGraphOptions[i].Value)
 										{
@@ -2233,7 +2234,7 @@ internal sealed class ImGuiLayoutUtils
 		DrawColorEdit3(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X, flags, affectsFile, help);
 	}
 
-	private static void DrawColorEdit3(
+	public static void DrawColorEdit3(
 		bool undoable,
 		string title,
 		object o,
@@ -3828,6 +3829,59 @@ internal sealed class ImGuiLayoutUtils
 	}
 
 	#endregion Stream
+
+	#region Player Selection
+
+	public static void DrawRowPlayerSelection(string title, int maxPlayers, ArrowGraphicManager arrowGraphicManager,
+		string help = null)
+	{
+		DrawTitle(title, help);
+
+		var currentPlayer = Preferences.Instance.Player;
+		var originalPlayer = currentPlayer;
+
+		if (arrowGraphicManager != null)
+			ImGui.PushStyleColor(ImGuiCol.Text, arrowGraphicManager.GetArrowColor(0, 0, false, originalPlayer));
+		if (ImGui.BeginCombo(GetElementTitle(title), $"Player {originalPlayer + 1}"))
+		{
+			if (arrowGraphicManager != null)
+				ImGui.PopStyleColor();
+
+			for (var i = 0; i < maxPlayers; i++)
+			{
+				if (arrowGraphicManager != null)
+					ImGui.PushStyleColor(ImGuiCol.Text, arrowGraphicManager.GetArrowColor(0, 0, false, i));
+
+				var isSelected = i == originalPlayer;
+				if (ImGui.Selectable($"Player {i + 1}", isSelected))
+				{
+					currentPlayer = i;
+				}
+
+				if (isSelected)
+				{
+					ImGui.SetItemDefaultFocus();
+				}
+
+				if (arrowGraphicManager != null)
+					ImGui.PopStyleColor();
+			}
+
+			ImGui.EndCombo();
+		}
+		else
+		{
+			if (arrowGraphicManager != null)
+				ImGui.PopStyleColor();
+		}
+
+		if (currentPlayer != originalPlayer)
+		{
+			Preferences.Instance.Player = currentPlayer;
+		}
+	}
+
+	#endregion Player Selection
 
 	#region Compare Functions
 

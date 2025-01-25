@@ -61,21 +61,15 @@ internal sealed class EditorLiftNoteEvent : EditorEvent
 			return;
 
 		// Draw the arrow.
-		var (textureId, rot) = arrowGraphicManager.GetArrowTexture(GetStepColorRow(), LaneTapNote.Lane, IsSelected());
-		textureAtlas.Draw(
-			textureId,
-			spriteBatch,
-			new Vector2((float)X, (float)Y),
-			Scale,
-			rot,
-			alpha);
+		DrawTap(textureAtlas, spriteBatch, arrowGraphicManager);
 
 		// Draw the lift marker. Do not draw it with the selection overlay as it looks weird.
 		// Don't draw it if we are going to draw the fake marker as they occupy the same space and
 		// relaying fake information is more important than relaying lift information.
 		if (!IsFake())
 		{
-			var liftTextureId = ArrowGraphicManager.GetLiftMarkerTexture(LaneTapNote.IntegerPosition, LaneTapNote.Lane, false);
+			var liftTextureId = ArrowGraphicManager.GetLiftMarkerTexture(LaneTapNote.IntegerPosition, GetLane(), false);
+			var (textureId, _) = arrowGraphicManager.GetArrowTexture(GetRow(), GetLane(), IsSelected());
 			var (arrowW, arrowH) = textureAtlas.GetDimensions(textureId);
 			var (markerW, markerH) = textureAtlas.GetDimensions(liftTextureId);
 			var markerX = X + (arrowW - markerW) * 0.5 * Scale;
@@ -90,7 +84,7 @@ internal sealed class EditorLiftNoteEvent : EditorEvent
 		}
 		else
 		{
-			DrawFakeMarker(textureAtlas, spriteBatch, textureId);
+			DrawFakeMarker(textureAtlas, spriteBatch, arrowGraphicManager);
 		}
 	}
 }

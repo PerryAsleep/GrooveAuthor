@@ -404,6 +404,32 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	}
 
 	/// <summary>
+	/// Gets the player index associated with this event.
+	/// </summary>
+	/// <returns>Player index associated with this event.</returns>
+	public int GetPlayer()
+	{
+		if (ChartEvent is Note n)
+			return n.Player;
+		return 0;
+	}
+
+	/// <summary>
+	/// Sets the player index associated with this event.
+	/// </summary>
+	/// <param name="player">Player index to set.</param>
+	/// <remarks>
+	/// Set this carefully. This changes how events are sorted.
+	/// This cannot be changed while this event is in a sorted list without resorting.
+	/// </remarks>
+	public void SetPlayer(int player)
+	{
+		Assert(ChartEvent is Note);
+		if (ChartEvent is Note n)
+			n.Player = player;
+	}
+
+	/// <summary>
 	/// Updates all information dependent on the row.
 	/// </summary>
 	/// <remarks>
@@ -1037,6 +1063,12 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 		return IsBeingEdited() ? ActiveEditEventAlpha : Alpha;
 	}
 
+	protected void DrawFakeMarker(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)
+	{
+		var (textureId, _) = arrowGraphicManager.GetArrowTexture(GetRow(), GetLane(), IsSelected());
+		DrawFakeMarker(textureAtlas, spriteBatch, textureId, X, Y);
+	}
+
 	protected void DrawFakeMarker(TextureAtlas textureAtlas, SpriteBatch spriteBatch, string arrowTextureId)
 	{
 		DrawFakeMarker(textureAtlas, spriteBatch, arrowTextureId, X, Y);
@@ -1058,6 +1090,53 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 			Scale,
 			0.0f,
 			GetRenderAlpha());
+	}
+
+	protected void DrawTap(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)
+	{
+		DrawTap(textureAtlas, spriteBatch, arrowGraphicManager, X, Y);
+	}
+
+	protected void DrawTap(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager, double x,
+		double y)
+	{
+		var alpha = GetRenderAlpha();
+		var pos = new Vector2((float)x, (float)y);
+		var selected = IsSelected();
+		string textureId;
+		float rot;
+		var row = GetStepColorRow();
+		var lane = GetLane();
+
+		// Draw the routine note.
+		if (EditorChart.IsMultiPlayer())
+		{
+			// If the multiplayer overlay has alpha draw the normal note below it.
+			var player = GetPlayer();
+			var p = Preferences.Instance.PreferencesMultiplayer;
+			if (p.RoutineNoteColorAlpha < 1.0f)
+			{
+				(textureId, rot) = arrowGraphicManager.GetArrowTexture(row, lane, selected);
+				textureAtlas.Draw(textureId, spriteBatch, pos, Scale, rot, alpha);
+			}
+
+			// Draw fill.
+			(textureId, rot, var c) = arrowGraphicManager.GetPlayerArrowTextureFill(row, lane, selected, player);
+			c.A = (byte)(c.A * alpha);
+			textureAtlas.Draw(textureId, spriteBatch, pos, Scale, rot, c);
+
+			// Draw rim.
+			(textureId, rot) = arrowGraphicManager.GetPlayerArrowTextureRim(lane, selected);
+			textureAtlas.Draw(textureId, spriteBatch, pos, Scale, rot, alpha);
+		}
+
+		// Draw a normal note.
+		else
+		{
+			(textureId, rot) =
+				arrowGraphicManager.GetArrowTexture(row, lane, selected);
+			textureAtlas.Draw(textureId, spriteBatch, pos, Scale, rot, alpha);
+		}
 	}
 
 	#endregion Positioning and Drawing

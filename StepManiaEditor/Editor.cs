@@ -134,25 +134,39 @@ internal sealed class Editor :
 	private bool AutogenConfigsLoaded;
 	private bool HasCheckedForAutoLoadingLastSong;
 
+	public static readonly ChartType[] SupportedSinglePlayerChartTypes =
+	{
+		ChartType.dance_single,
+		ChartType.dance_double,
+		ChartType.dance_solo,
+		ChartType.dance_threepanel,
+		ChartType.pump_single,
+		ChartType.pump_halfdouble,
+		ChartType.pump_double,
+		ChartType.smx_beginner,
+		ChartType.smx_single,
+		ChartType.smx_dual,
+		ChartType.smx_full,
+	};
+
 	public static readonly ChartType[] SupportedChartTypes =
 	{
 		ChartType.dance_single,
 		ChartType.dance_double,
 		//dance_couple,
-		//dance_routine,
+		ChartType.dance_routine,
 		ChartType.dance_solo,
 		ChartType.dance_threepanel,
-
 		ChartType.pump_single,
 		ChartType.pump_halfdouble,
 		ChartType.pump_double,
 		//pump_couple,
-		//pump_routine,
+		ChartType.pump_routine,
 		ChartType.smx_beginner,
 		ChartType.smx_single,
 		ChartType.smx_dual,
 		ChartType.smx_full,
-		//ChartType.smx_team,
+		ChartType.smx_team,
 	};
 
 	private static readonly int MaxNumLanesForAnySupportedChartType;
@@ -252,6 +266,7 @@ internal sealed class Editor :
 	private readonly List<EditorChart> ActiveCharts = new();
 	private readonly List<ActiveEditorChart> ActiveChartData = new();
 	private readonly List<EditorEvent> CopiedEvents = new();
+	private Dictionary<EditorChart, int> PlayerPerChart = new();
 
 	// Movement controls.
 	private bool UpdatingSongTimeDirectly;
@@ -652,6 +667,25 @@ internal sealed class Editor :
 		AddKeyCommand(snap, "Snap to 1/64", nameof(PreferencesKeyBinds.SnapToSixtyFourths), () => { SnapManager.SetSnapToLevel(8); });
 		AddKeyCommand(snap, "Snap to 1/192", nameof(PreferencesKeyBinds.SnapToOneHundredNinetySeconds), () => { SnapManager.SetSnapToLevel(9); });
 
+		const string routine = "Routine / Couples / Co-op";
+		AddKeyCommand(routine, "Toggle Player", nameof(PreferencesKeyBinds.TogglePlayer), OnTogglePlayer);
+		AddKeyCommand(routine, "Set Player 1", nameof(PreferencesKeyBinds.SetPlayer1), () => { SetPlayer(0); } );
+		AddKeyCommand(routine, "Set Player 2", nameof(PreferencesKeyBinds.SetPlayer2), () => { SetPlayer(1); } );
+		AddKeyCommand(routine, "Set Player 3", nameof(PreferencesKeyBinds.SetPlayer3), () => { SetPlayer(2); } );
+		AddKeyCommand(routine, "Set Player 4", nameof(PreferencesKeyBinds.SetPlayer4), () => { SetPlayer(3); } );
+		AddKeyCommand(routine, "Select All Current Player Notes", nameof(PreferencesKeyBinds.SelectAllCurrentPlayerNotes), OnSelectAllForCurrentPlayer);
+		AddKeyCommand(routine, "Select All Current Player Taps", nameof(PreferencesKeyBinds.SelectAllCurrentPlayerTaps), () => OnSelectAllForCurrentPlayer(e => e is EditorTapNoteEvent));
+		AddKeyCommand(routine, "Select All Current Player Mines", nameof(PreferencesKeyBinds.SelectAllCurrentPlayerMines), () => OnSelectAllForCurrentPlayer(e => e is EditorMineNoteEvent));
+		AddKeyCommand(routine, "Select All Current Player Fakes", nameof(PreferencesKeyBinds.SelectAllCurrentPlayerFakes), () => OnSelectAllForCurrentPlayer(e => e is EditorFakeNoteEvent));
+		AddKeyCommand(routine, "Select All Current Player Lifts", nameof(PreferencesKeyBinds.SelectAllCurrentPlayerLifts), () => OnSelectAllForCurrentPlayer(e => e is EditorLiftNoteEvent));
+		AddKeyCommand(routine, "Select All Current Player Holds", nameof(PreferencesKeyBinds.SelectAllCurrentPlayerHolds), () => OnSelectAllForCurrentPlayer(e => e is EditorHoldNoteEvent hn && !hn.IsRoll()));
+		AddKeyCommand(routine, "Select All Current Player Rolls", nameof(PreferencesKeyBinds.SelectAllCurrentPlayerRolls), () => OnSelectAllForCurrentPlayer(e => e is EditorHoldNoteEvent hn && hn.IsRoll()));
+		AddKeyCommand(routine, "Select All Current Player Holds and Rolls", nameof(PreferencesKeyBinds.SelectAllCurrentPlayerHoldsAndRolls), () => OnSelectAllForCurrentPlayer(e => e is EditorHoldNoteEvent));
+		AddKeyCommand(routine, "Convert Selected Notes to Player 1", nameof(PreferencesKeyBinds.ConvertSelectedNotesToPlayer1), () => { UIEditEvents.ConvertSelectedNotesToPlayer(0); });
+		AddKeyCommand(routine, "Convert Selected Notes to Player 2", nameof(PreferencesKeyBinds.ConvertSelectedNotesToPlayer2), () => { UIEditEvents.ConvertSelectedNotesToPlayer(1); });
+		AddKeyCommand(routine, "Convert Selected Notes to Player 3", nameof(PreferencesKeyBinds.ConvertSelectedNotesToPlayer3), () => { UIEditEvents.ConvertSelectedNotesToPlayer(2); });
+		AddKeyCommand(routine, "Convert Selected Notes to Player 4", nameof(PreferencesKeyBinds.ConvertSelectedNotesToPlayer4), () => { UIEditEvents.ConvertSelectedNotesToPlayer(3); });
+
 		const string patterns = "Patterns";
 		AddKeyCommand(patterns, "Move To Next Pattern", nameof(PreferencesKeyBinds.MoveToNextPattern), OnMoveToNextPattern, true);
 		AddKeyCommand(patterns, "Move To Previous Pattern", nameof(PreferencesKeyBinds.MoveToPreviousPattern), OnMoveToPreviousPattern, true);
@@ -673,38 +707,38 @@ internal sealed class Editor :
 		AddKeyCommand(editSelection, "Shift Later", nameof(PreferencesKeyBinds.ShiftLater), OnShiftSelectedNotesLater, true);
 
 		const string convertSelection = "Convert Selection";
-		AddKeyCommand(convertSelection, "Taps to Mines", nameof(PreferencesKeyBinds.ConvertSelectedTapsToMines), () => UIEditEvents.ConvertSelectedTapsToMines());
-		AddKeyCommand(convertSelection, "Taps to Fakes", nameof(PreferencesKeyBinds.ConvertSelectedTapsToFakes), () => UIEditEvents.ConvertSelectedTapsToFakes());
-		AddKeyCommand(convertSelection, "Taps to Lifts", nameof(PreferencesKeyBinds.ConvertSelectedTapsToLifts), () => UIEditEvents.ConvertSelectedTapsToLifts());
-		AddKeyCommand(convertSelection, "Mines to Taps", nameof(PreferencesKeyBinds.ConvertSelectedMinesToTaps), () => UIEditEvents.ConvertSelectedMinesToTaps());
-		AddKeyCommand(convertSelection, "Mines to Fakes", nameof(PreferencesKeyBinds.ConvertSelectedMinesToFakes), () => UIEditEvents.ConvertSelectedMinesToFakes());
-		AddKeyCommand(convertSelection, "Mines to Lifts", nameof(PreferencesKeyBinds.ConvertSelectedMinesToLifts), () => UIEditEvents.ConvertSelectedMinesToLifts());
-		AddKeyCommand(convertSelection, "Fakes to Taps", nameof(PreferencesKeyBinds.ConvertSelectedFakesToTaps), () => UIEditEvents.ConvertSelectedFakesToTaps());
-		AddKeyCommand(convertSelection, "Lifts to Taps", nameof(PreferencesKeyBinds.ConvertSelectedLiftsToTaps), () => UIEditEvents.ConvertSelectedLiftsToTaps());
-		AddKeyCommand(convertSelection, "Holds to Rolls", nameof(PreferencesKeyBinds.ConvertSelectedHoldsToRolls), () => UIEditEvents.ConvertSelectedHoldsToRolls());
-		AddKeyCommand(convertSelection, "Holds to Taps", nameof(PreferencesKeyBinds.ConvertSelectedHoldsToTaps), () => UIEditEvents.ConvertSelectedHoldsToTaps());
-		AddKeyCommand(convertSelection, "Holds to Mines", nameof(PreferencesKeyBinds.ConvertSelectedHoldsToMines), () => UIEditEvents.ConvertSelectedHoldsToMines());
-		AddKeyCommand(convertSelection, "Rolls to Holds", nameof(PreferencesKeyBinds.ConvertSelectedRollsToHolds), () => UIEditEvents.ConvertSelectedRollsToHolds());
-		AddKeyCommand(convertSelection, "Rolls to Taps", nameof(PreferencesKeyBinds.ConvertSelectedRollsToTaps), () => UIEditEvents.ConvertSelectedRollsToTaps());
-		AddKeyCommand(convertSelection, "Rolls to Mines", nameof(PreferencesKeyBinds.ConvertSelectedRollsToMines), () => UIEditEvents.ConvertSelectedRollsToMines());
-		AddKeyCommand(convertSelection, "Warps to Negative Stops", nameof(PreferencesKeyBinds.ConvertSelectedWarpsToNegativeStops), () => UIEditEvents.ConvertSelectedWarpsToNegativeStops());
-		AddKeyCommand(convertSelection, "Negative Stops to Warps", nameof(PreferencesKeyBinds.ConvertSelectedNegativeStopsToWarps), () => UIEditEvents.ConvertSelectedNegativeStopsToWarps());
+		AddKeyCommand(convertSelection, "Taps to Mines", nameof(PreferencesKeyBinds.ConvertSelectedTapsToMines), UIEditEvents.ConvertSelectedTapsToMines);
+		AddKeyCommand(convertSelection, "Taps to Fakes", nameof(PreferencesKeyBinds.ConvertSelectedTapsToFakes), UIEditEvents.ConvertSelectedTapsToFakes);
+		AddKeyCommand(convertSelection, "Taps to Lifts", nameof(PreferencesKeyBinds.ConvertSelectedTapsToLifts), UIEditEvents.ConvertSelectedTapsToLifts);
+		AddKeyCommand(convertSelection, "Mines to Taps", nameof(PreferencesKeyBinds.ConvertSelectedMinesToTaps), UIEditEvents.ConvertSelectedMinesToTaps);
+		AddKeyCommand(convertSelection, "Mines to Fakes", nameof(PreferencesKeyBinds.ConvertSelectedMinesToFakes), UIEditEvents.ConvertSelectedMinesToFakes);
+		AddKeyCommand(convertSelection, "Mines to Lifts", nameof(PreferencesKeyBinds.ConvertSelectedMinesToLifts), UIEditEvents.ConvertSelectedMinesToLifts);
+		AddKeyCommand(convertSelection, "Fakes to Taps", nameof(PreferencesKeyBinds.ConvertSelectedFakesToTaps), UIEditEvents.ConvertSelectedFakesToTaps);
+		AddKeyCommand(convertSelection, "Lifts to Taps", nameof(PreferencesKeyBinds.ConvertSelectedLiftsToTaps), UIEditEvents.ConvertSelectedLiftsToTaps);
+		AddKeyCommand(convertSelection, "Holds to Rolls", nameof(PreferencesKeyBinds.ConvertSelectedHoldsToRolls), UIEditEvents.ConvertSelectedHoldsToRolls);
+		AddKeyCommand(convertSelection, "Holds to Taps", nameof(PreferencesKeyBinds.ConvertSelectedHoldsToTaps), UIEditEvents.ConvertSelectedHoldsToTaps);
+		AddKeyCommand(convertSelection, "Holds to Mines", nameof(PreferencesKeyBinds.ConvertSelectedHoldsToMines), UIEditEvents.ConvertSelectedHoldsToMines);
+		AddKeyCommand(convertSelection, "Rolls to Holds", nameof(PreferencesKeyBinds.ConvertSelectedRollsToHolds), UIEditEvents.ConvertSelectedRollsToHolds);
+		AddKeyCommand(convertSelection, "Rolls to Taps", nameof(PreferencesKeyBinds.ConvertSelectedRollsToTaps), UIEditEvents.ConvertSelectedRollsToTaps);
+		AddKeyCommand(convertSelection, "Rolls to Mines", nameof(PreferencesKeyBinds.ConvertSelectedRollsToMines), UIEditEvents.ConvertSelectedRollsToMines);
+		AddKeyCommand(convertSelection, "Warps to Negative Stops", nameof(PreferencesKeyBinds.ConvertSelectedWarpsToNegativeStops), UIEditEvents.ConvertSelectedWarpsToNegativeStops);
+		AddKeyCommand(convertSelection, "Negative Stops to Warps", nameof(PreferencesKeyBinds.ConvertSelectedNegativeStopsToWarps), UIEditEvents.ConvertSelectedNegativeStopsToWarps);
 
 		const string eventEntry = "Event Entry";
-		AddKeyCommand(eventEntry, "Add Tempo", nameof(PreferencesKeyBinds.AddEventTempo), () => UIEditEvents.AddTempoEvent());
-		AddKeyCommand(eventEntry, "Add Interpolated Scroll Rate", nameof(PreferencesKeyBinds.AddEventInterpolatedScrollRate), () => UIEditEvents.AddInterpolatedScrollRateEvent());
-		AddKeyCommand(eventEntry, "Add Scroll Rate", nameof(PreferencesKeyBinds.AddEventScrollRate), () => UIEditEvents.AddScrollRateEvent());
-		AddKeyCommand(eventEntry, "Add Stop", nameof(PreferencesKeyBinds.AddEventStop), () => UIEditEvents.AddStopEvent());
-		AddKeyCommand(eventEntry, "Add Delay", nameof(PreferencesKeyBinds.AddEventDelay), () => UIEditEvents.AddDelayEvent());
-		AddKeyCommand(eventEntry, "Add Warp", nameof(PreferencesKeyBinds.AddEventWarp), () => UIEditEvents.AddWarpEvent());
-		AddKeyCommand(eventEntry, "Add Fake Region", nameof(PreferencesKeyBinds.AddEventFakeRegion), () => UIEditEvents.AddFakeRegionEvent());
-		AddKeyCommand(eventEntry, "Add Ticks", nameof(PreferencesKeyBinds.AddEventTicks), () => UIEditEvents.AddTicksEvent());
-		AddKeyCommand(eventEntry, "Add Combo Multipliers", nameof(PreferencesKeyBinds.AddEventComboMultipliers), () => UIEditEvents.AddComboMultipliersEvent());
-		AddKeyCommand(eventEntry, "Add Time Signature", nameof(PreferencesKeyBinds.AddEventTimeSignature), () => UIEditEvents.AddTimeSignatureEvent());
-		AddKeyCommand(eventEntry, "Add Label", nameof(PreferencesKeyBinds.AddEventLabel), () => UIEditEvents.AddLabelEvent());
-		AddKeyCommand(eventEntry, "Add Pattern", nameof(PreferencesKeyBinds.AddEventPattern), () => UIEditEvents.AddPatternEvent());
-		AddKeyCommand(eventEntry, "Move Music Preview", nameof(PreferencesKeyBinds.MoveEventPreview), () => UIEditEvents.MoveMusicPreview());
-		AddKeyCommand(eventEntry, "Move End Hint", nameof(PreferencesKeyBinds.MoveEventEndHint), () => UIEditEvents.MoveEndHint());
+		AddKeyCommand(eventEntry, "Add Tempo", nameof(PreferencesKeyBinds.AddEventTempo), UIEditEvents.AddTempoEvent);
+		AddKeyCommand(eventEntry, "Add Interpolated Scroll Rate", nameof(PreferencesKeyBinds.AddEventInterpolatedScrollRate), UIEditEvents.AddInterpolatedScrollRateEvent);
+		AddKeyCommand(eventEntry, "Add Scroll Rate", nameof(PreferencesKeyBinds.AddEventScrollRate), UIEditEvents.AddScrollRateEvent);
+		AddKeyCommand(eventEntry, "Add Stop", nameof(PreferencesKeyBinds.AddEventStop), UIEditEvents.AddStopEvent);
+		AddKeyCommand(eventEntry, "Add Delay", nameof(PreferencesKeyBinds.AddEventDelay), UIEditEvents.AddDelayEvent);
+		AddKeyCommand(eventEntry, "Add Warp", nameof(PreferencesKeyBinds.AddEventWarp), UIEditEvents.AddWarpEvent);
+		AddKeyCommand(eventEntry, "Add Fake Region", nameof(PreferencesKeyBinds.AddEventFakeRegion), UIEditEvents.AddFakeRegionEvent);
+		AddKeyCommand(eventEntry, "Add Ticks", nameof(PreferencesKeyBinds.AddEventTicks), UIEditEvents.AddTicksEvent);
+		AddKeyCommand(eventEntry, "Add Combo Multipliers", nameof(PreferencesKeyBinds.AddEventComboMultipliers), UIEditEvents.AddComboMultipliersEvent);
+		AddKeyCommand(eventEntry, "Add Time Signature", nameof(PreferencesKeyBinds.AddEventTimeSignature), UIEditEvents.AddTimeSignatureEvent);
+		AddKeyCommand(eventEntry, "Add Label", nameof(PreferencesKeyBinds.AddEventLabel), UIEditEvents.AddLabelEvent);
+		AddKeyCommand(eventEntry, "Add Pattern", nameof(PreferencesKeyBinds.AddEventPattern), UIEditEvents.AddPatternEvent);
+		AddKeyCommand(eventEntry, "Move Music Preview", nameof(PreferencesKeyBinds.MoveEventPreview), UIEditEvents.MoveMusicPreview);
+		AddKeyCommand(eventEntry, "Move End Hint", nameof(PreferencesKeyBinds.MoveEventEndHint), UIEditEvents.MoveEndHint);
 
 		const string noteEntry = "Note Entry";
 		AddKeyCommand(noteEntry, "Lane 01", nameof(PreferencesKeyBinds.Arrow0), () => OnLaneInputDown(0), false, () => OnLaneInputUp(0));
@@ -1681,14 +1715,9 @@ internal sealed class Editor :
 		var focusedChartData = GetFocusedChartData();
 		focusedChartData?.UpdateSelectedRegion(currentTime);
 
+		BeginImGuiFrame();
 		// TODO: Remove remaining input processing from ImGuiRenderer.
 		ImGuiRenderer.UpdateInput(gameTime);
-
-		// ImGui needs to be told when a new frame begins after processing input.
-		// This application also relies on the new frame being begun in input processing
-		// as some inputs need to check bounds with ImGui elements that require pushing
-		// font state.
-		BeginImGuiFrame();
 
 		// Process Mouse Input.
 		var state = Mouse.GetState();
@@ -2280,7 +2309,8 @@ internal sealed class Editor :
 			DrawMeasureMarkers();
 			DrawRegions();
 			DrawReceptors();
-			DrawSnapIndicators();
+			DrawSnapIndicator();
+			DrawPlayerIndicator();
 
 			// Start a window within the central node so we can clip
 			if (UIDockSpace.BeginCentralNodeAreaWindow())
@@ -2474,24 +2504,19 @@ internal sealed class Editor :
 		}
 	}
 
-	private void DrawSnapIndicators()
+	private void DrawSnapIndicator()
 	{
 		var focusedChartData = GetFocusedChartData();
 		if (focusedChartData == null)
 			return;
-		var arrowGraphicManager = focusedChartData.GetArrowGraphicManager();
-		if (arrowGraphicManager == null)
-			return;
 		var snapTextureId = SnapManager.GetCurrentTexture();
 		if (string.IsNullOrEmpty(snapTextureId))
 			return;
-		var (receptorTextureId, _) = arrowGraphicManager.GetReceptorTexture(0);
-		var (receptorTextureWidth, _) = TextureAtlas.GetDimensions(receptorTextureId);
-		var zoom = ZoomManager.GetSizeZoom();
-		var receptorLeftEdge = GetFocalPointScreenSpaceX() - FocusedChart.NumInputs * 0.5 * receptorTextureWidth * zoom;
 
+		var zoom = ZoomManager.GetSizeZoom();
+		var receptorsLeftEdge = focusedChartData.GetScreenSpaceXOfLanesStartWithCurrentScale();
 		var (snapTextureWidth, snapTextureHeight) = TextureAtlas.GetDimensions(snapTextureId);
-		var leftX = receptorLeftEdge - snapTextureWidth * 0.5 * zoom;
+		var leftX = receptorsLeftEdge - snapTextureWidth * 0.5 * zoom;
 		var y = GetFocalPointScreenSpaceY();
 
 		TextureAtlas.Draw(
@@ -2499,6 +2524,49 @@ internal sealed class Editor :
 			SpriteBatch,
 			new Vector2((float)leftX, y),
 			new Vector2((float)(snapTextureWidth * 0.5), (float)(snapTextureHeight * 0.5)),
+			Color.White,
+			(float)zoom,
+			0.0f,
+			SpriteEffects.None);
+	}
+
+	private void DrawPlayerIndicator()
+	{
+		if (FocusedChart == null || !FocusedChart.IsMultiPlayer())
+			return;
+		var focusedChartData = GetFocusedChartData();
+		if (focusedChartData == null)
+			return;
+		var arrowGraphicManager = focusedChartData.GetArrowGraphicManager();
+		if (arrowGraphicManager == null)
+			return;
+		var player = GetPlayer(FocusedChart);
+		var rimTextureId = ArrowGraphicManager.GetPlayerMarkerRimTexture();
+		var (rimW, rimH) = TextureAtlas.GetDimensions(rimTextureId);
+		var (fillTextureId, color) = ArrowGraphicManager.GetPlayerMarkerFillTexture(player);
+		var (fillW, fillH) = TextureAtlas.GetDimensions(fillTextureId);
+
+		var zoom = ZoomManager.GetSizeZoom();
+		var x = focusedChartData.GetScreenSpaceXOfLanesEndWithCurrentScale() + rimW * 0.5 * zoom;
+		var y = GetFocalPointScreenSpaceY();
+
+		// Draw fill.
+		TextureAtlas.Draw(
+			fillTextureId,
+			SpriteBatch,
+			new Vector2((float)x, y),
+			new Vector2((float)(fillW * 0.5), (float)(fillH * 0.5)),
+			color,
+			(float)zoom,
+			0.0f,
+			SpriteEffects.None);
+
+		// Draw rim.
+		TextureAtlas.Draw(
+			rimTextureId,
+			SpriteBatch,
+			new Vector2((float)x, y),
+			new Vector2((float)(rimW * 0.5), (float)(rimH * 0.5)),
 			Color.White,
 			(float)zoom,
 			0.0f,
@@ -3357,6 +3425,7 @@ internal sealed class Editor :
 		UIAudioPreferences.Instance.Draw();
 		UIStreamPreferences.Instance.Draw();
 		UIDensityGraphPreferences.Instance.Draw();
+		UIMultiplayerPreferences.Instance.Draw();
 
 		UISongProperties.Instance.Draw(ActiveSong);
 		UIChartProperties.Instance.Draw(FocusedChart);
@@ -3515,8 +3584,15 @@ internal sealed class Editor :
 				UIEditEvents.DrawAddEventMenu();
 				ImGui.Separator();
 				UIEditEvents.DrawSelectAllMenu();
+
+				var hasSelectedEvents = selectedEvents?.Any() ?? false;
+				if (!hasSelectedEvents)
+					PushDisabled();
 				UIEditEvents.DrawConvertSelectedMenu(selectedEvents);
 				UIEditEvents.DrawShiftSelectedMenu(selectedEvents);
+				if (!hasSelectedEvents)
+					PopDisabled();
+
 				ImGui.Separator();
 				UIEditEvents.DrawConvertAllMenu();
 				UIEditEvents.DrawShiftAllMenu();
@@ -3564,6 +3640,8 @@ internal sealed class Editor :
 					UIStreamPreferences.Instance.Open(true);
 				if (ImGui.MenuItem("Density Graph Preferences"))
 					UIDensityGraphPreferences.Instance.Open(true);
+				if (ImGui.MenuItem("Multiplayer Preferences"))
+					UIMultiplayerPreferences.Instance.Open(true);
 
 				ImGui.Separator();
 				if (ImGui.MenuItem("Log"))
@@ -3930,6 +4008,9 @@ internal sealed class Editor :
 
 	public void ShowAutogenChartUI(EditorChart sourceChart = null)
 	{
+		if (sourceChart != null && !sourceChart.SupportsAutogenFeatures())
+			sourceChart = null;
+
 		UIAutogenChart.Instance.SetChart(sourceChart);
 		UIAutogenChart.Instance.Open(true);
 	}
@@ -4004,7 +4085,7 @@ internal sealed class Editor :
 					ActionQueue.Instance.Do(new ActionDeleteChart(this, chart));
 				if (ImGui.MenuItem($"Clone {chart.GetShortName()} Chart"))
 					ActionQueue.Instance.Do(new ActionCloneChart(this, chart));
-				if (ImGui.MenuItem($"Autogen New Chart From {chart.GetShortName()} Chart..."))
+				if (ImGui.MenuItem($"Autogen New Chart From {chart.GetShortName()} Chart...", chart.SupportsAutogenFeatures()))
 					ShowAutogenChartUI(chart);
 
 				ImGui.Separator();
@@ -4258,10 +4339,9 @@ internal sealed class Editor :
 	private async void InitStepGraphDataAsync()
 	{
 		foreach (var chartType in SupportedChartTypes)
-		{
 			PadDataByChartType[chartType] = null;
+		foreach (var chartType in SupportedSinglePlayerChartTypes)
 			StepGraphByChartType[chartType] = null;
-		}
 
 		// Attempt to load pad data for all supported chart types.
 		var padDataTasks = new Task<PadData>[SupportedChartTypes.Length];
@@ -4280,7 +4360,7 @@ internal sealed class Editor :
 		// Create StepGraphs.
 		var pOptions = Preferences.Instance.PreferencesOptions;
 		var validStepGraphTypes = new List<ChartType>();
-		foreach (var chartType in SupportedChartTypes)
+		foreach (var chartType in SupportedSinglePlayerChartTypes)
 		{
 			if (pOptions.StartupStepGraphs.Contains(chartType))
 			{
@@ -5046,12 +5126,14 @@ internal sealed class Editor :
 
 		ActiveChartData.Clear();
 		ActiveCharts.Clear();
+		PlayerPerChart.Clear();
 		EditorMouseState.SetActiveChart(null);
 		DensityGraph.SetStepDensity(null);
 		DensityGraph.ResetBufferCapacities();
 		UpdateWindowTitle();
 		ActionQueue.Instance.Clear();
 		StopObservingSongFile();
+		RefreshPlayerLimitFromFocusedChart();
 	}
 
 	private void UpdateWindowTitle()
@@ -5209,6 +5291,20 @@ internal sealed class Editor :
 		GetFocusedChartData()?.OnSelectAll();
 	}
 
+	public void OnSelectAll(int player)
+	{
+		GetFocusedChartData()?.OnSelectAll(player);
+	}
+
+	public void OnSelectAllForCurrentPlayer()
+	{
+		var focusedChartData = GetFocusedChartData();
+		if (focusedChartData == null)
+			return;
+		var player = GetPlayer(FocusedChart);
+		focusedChartData.OnSelectAll(player);
+	}
+
 	public void OnSelectAllAlt()
 	{
 		GetFocusedChartData()?.OnSelectAllAlt();
@@ -5217,6 +5313,15 @@ internal sealed class Editor :
 	public void OnSelectAllShift()
 	{
 		GetFocusedChartData()?.OnSelectAllShift();
+	}
+
+	public void OnSelectAllForCurrentPlayer(Func<EditorEvent, bool> isSelectable)
+	{
+		var focusedChartData = GetFocusedChartData();
+		if (focusedChartData == null)
+			return;
+		var player = GetPlayer(FocusedChart);
+		focusedChartData.OnSelectAll(e => e.GetPlayer() == player && isSelectable(e));
 	}
 
 	public void OnSelectAll(Func<EditorEvent, bool> isSelectable)
@@ -6182,6 +6287,7 @@ internal sealed class Editor :
 		SetFocalPointScreenSpace(focalPointX, focalPointY);
 
 		UpdateChartPositions();
+		RefreshPlayerLimitFromFocusedChart();
 	}
 
 	public void MoveActiveChartLeft(EditorChart chart)
@@ -6382,6 +6488,8 @@ internal sealed class Editor :
 		DensityGraph.SetStepDensity(FocusedChart?.GetStepDensity());
 		EditorMouseState.SetActiveChart(FocusedChart);
 
+		RefreshPlayerLimitFromFocusedChart();
+
 		// Window title depends on the active chart.
 		UpdateWindowTitle();
 
@@ -6397,9 +6505,7 @@ internal sealed class Editor :
 		if (ActiveSong == null)
 			return null;
 		var chart = ActiveSong.AddChart(chartType);
-		chart?.AddObserver(this);
-		if (selectNewChart)
-			SetChartFocused(chart);
+		FinishAddingChart(chart, selectNewChart);
 		return chart;
 	}
 
@@ -6410,10 +6516,19 @@ internal sealed class Editor :
 		if (ActiveSong == null)
 			return null;
 		ActiveSong.AddChart(chart);
+		FinishAddingChart(chart, selectNewChart);
+		return chart;
+	}
+
+	private void FinishAddingChart(EditorChart chart, bool selectNewChart)
+	{
+		if (chart == null)
+			return;
 		chart.AddObserver(this);
 		if (selectNewChart)
 			SetChartFocused(chart);
-		return chart;
+		var player = Math.Max(0, Math.Min(chart.MaxPlayers - 1, Preferences.Instance.Player));
+		PlayerPerChart.TryAdd(chart, player);
 	}
 
 	public void DeleteChart(EditorChart chart, EditorChart chartToSelect)
@@ -6426,6 +6541,7 @@ internal sealed class Editor :
 		CloseChart(chart);
 		chart.RemoveObserver(this);
 		ActiveSong.DeleteChart(chart);
+		PlayerPerChart.Remove(chart);
 
 		if (chartToSelect != null)
 		{
@@ -6617,6 +6733,70 @@ internal sealed class Editor :
 
 	#endregion Patterns
 
+	#region Routine
+
+	private void OnTogglePlayer()
+	{
+		if (FocusedChart == null)
+			return;
+
+		// Interpret toggling the player as intent to change it across all charts.
+		PlayerPerChart.Clear();
+
+		var p = Preferences.Instance;
+		p.Player = (p.Player + 1) % FocusedChart.MaxPlayers;
+		PlayerPerChart.Add(FocusedChart, p.Player);
+	}
+
+	private void SetPlayer(int player)
+	{
+		if (FocusedChart == null)
+			return;
+
+		// Interpret setting the player as intent to change it across all charts.
+		PlayerPerChart.Clear();
+
+		var p = Preferences.Instance;
+		p.Player = Math.Clamp(player, 0, FocusedChart.MaxPlayers - 1);
+		PlayerPerChart.Add(FocusedChart, p.Player);
+	}
+
+	private void RefreshPlayerLimitFromFocusedChart()
+	{
+		RefreshPlayerLimitFromChart(FocusedChart);
+	}
+
+	private void RefreshPlayerLimitFromChart(EditorChart chart)
+	{
+		if (chart == null)
+			return;
+		var p = Preferences.Instance;
+		var player = p.Player;
+		if (PlayerPerChart.TryGetValue(chart, out var cachedPlayer))
+			player = cachedPlayer;
+		player = Math.Clamp(player, 0, chart.MaxPlayers - 1);
+		PlayerPerChart[chart] = player;
+		if (chart == FocusedChart)
+			p.Player = player;
+	}
+
+	public int GetPlayer()
+	{
+		return GetPlayer(FocusedChart);
+	}
+
+	public int GetPlayer(EditorChart chart)
+	{
+		var p = Preferences.Instance;
+		if (chart == null)
+			return p.Player;
+		if (PlayerPerChart.TryGetValue(chart, out var chartPlayer))
+			return chartPlayer;
+		return Math.Clamp(p.Player, 0, chart.MaxPlayers - 1);
+	}
+
+	#endregion Routine
+
 	#region IObserver
 
 	public void OnNotify(string eventId, EditorSong song, object payload)
@@ -6688,6 +6868,9 @@ internal sealed class Editor :
 				break;
 			case EditorChart.NotificationPatternRequestEdit:
 				OnSelectPattern((EditorPatternEvent)payload);
+				break;
+			case EditorChart.NotificationMaxPlayersChanged:
+				RefreshPlayerLimitFromChart(chart);
 				break;
 		}
 	}

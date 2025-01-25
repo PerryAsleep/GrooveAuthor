@@ -220,21 +220,24 @@ internal sealed class EventConfig
 	/// <param name="chart">EditorChart to own the new hold.</param>
 	/// <param name="row">Hold row.</param>
 	/// <param name="lane">Hold lane.</param>
+	/// <param name="player">Hold player.</param>
 	/// <param name="length">Hold length.</param>
 	/// <param name="roll">Whether or not the hold is a roll.</param>
 	/// <returns>EventConfig for the new EditorHoldNoteEvent.</returns>
-	public static EventConfig CreateHoldConfig(EditorChart chart, int row, int lane, int length, bool roll)
+	public static EventConfig CreateHoldConfig(EditorChart chart, int row, int lane, int player, int length, bool roll)
 	{
 		var holdStartNote = new LaneHoldStartNote
 		{
 			Lane = lane,
 			IntegerPosition = row,
 			SourceType = roll ? NoteStrings[(int)NoteType.RollStart] : null,
+			Player = player,
 		};
 		var holdEndNote = new LaneHoldEndNote
 		{
 			Lane = lane,
 			IntegerPosition = row + length,
+			Player = player,
 		};
 		return new EventConfig(chart, holdStartNote, false, 0.0, 0.0, SpecialType.None, false, true, holdEndNote);
 	}
@@ -247,13 +250,15 @@ internal sealed class EventConfig
 	/// <param name="chart">EditorChart to own the new hold.</param>
 	/// <param name="row">Tap row.</param>
 	/// <param name="lane">Tap lane.</param>
+	/// <param name="player">Tap player.</param>
 	/// <returns>EventConfig for the new EditorTapNoteEvent.</returns>
-	public static EventConfig CreateTapConfig(EditorChart chart, int row, int lane)
+	public static EventConfig CreateTapConfig(EditorChart chart, int row, int lane, int player)
 	{
 		return new EventConfig(chart, new LaneTapNote
 		{
 			Lane = lane,
 			IntegerPosition = row,
+			Player = player,
 		});
 	}
 
@@ -271,6 +276,7 @@ internal sealed class EventConfig
 			{
 				Lane = baseEvent.GetLane(),
 				IntegerPosition = baseEvent.GetRow(),
+				Player = baseEvent.GetPlayer(),
 				TimeSeconds = baseEvent.GetChartTime(),
 			},
 			false,
@@ -293,13 +299,15 @@ internal sealed class EventConfig
 	/// <param name="chart">EditorChart to own the new hold.</param>
 	/// <param name="row">Mine row.</param>
 	/// <param name="lane">Mine lane.</param>
+	/// <param name="player">Mine player.</param>
 	/// <returns>EventConfig for the new EditorMineNoteEvent.</returns>
-	public static EventConfig CreateMineConfig(EditorChart chart, int row, int lane)
+	public static EventConfig CreateMineConfig(EditorChart chart, int row, int lane, int player)
 	{
 		return new EventConfig(chart, new LaneNote
 		{
 			Lane = lane,
 			IntegerPosition = row,
+			Player = player,
 			SourceType = NoteStrings[(int)NoteType.Mine],
 		});
 	}
@@ -318,6 +326,7 @@ internal sealed class EventConfig
 			{
 				Lane = baseEvent.GetLane(),
 				IntegerPosition = baseEvent.GetRow(),
+				Player = baseEvent.GetPlayer(),
 				TimeSeconds = baseEvent.GetChartTime(),
 				SourceType = NoteStrings[(int)NoteType.Mine],
 			},
@@ -347,6 +356,7 @@ internal sealed class EventConfig
 			{
 				Lane = baseEvent.GetLane(),
 				IntegerPosition = baseEvent.GetRow(),
+				Player = baseEvent.GetPlayer(),
 				TimeSeconds = baseEvent.GetChartTime(),
 				SourceType = NoteStrings[(int)NoteType.Fake],
 			},
@@ -376,6 +386,7 @@ internal sealed class EventConfig
 			{
 				Lane = baseEvent.GetLane(),
 				IntegerPosition = baseEvent.GetRow(),
+				Player = baseEvent.GetPlayer(),
 				TimeSeconds = baseEvent.GetChartTime(),
 				SourceType = NoteStrings[(int)NoteType.Lift],
 			},

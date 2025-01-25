@@ -31,8 +31,8 @@ public class TestRateAlteringEventTree
 		// At taps at row 0 and halfway to the first combination row.
 		for (var l = 0; l < c.NumInputs; l++)
 		{
-			c.AddEvent(EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, 0, l)));
-			c.AddEvent(EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, SMCommon.RowsPerMeasure >> 1, l)));
+			c.AddEvent(EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, 0, l, 0)));
+			c.AddEvent(EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, SMCommon.RowsPerMeasure >> 1, l, 0)));
 		}
 
 		// Loop over each combination of events. We will add each combination at a distinct row.
@@ -97,8 +97,8 @@ public class TestRateAlteringEventTree
 			// Also add taps at the row and halfway to the next row with events.
 			for (var l = 0; l < c.NumInputs; l++)
 			{
-				c.AddEvent(EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row, l)));
-				c.AddEvent(EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row + (SMCommon.RowsPerMeasure >> 1), l)));
+				c.AddEvent(EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row, l, 0)));
+				c.AddEvent(EditorEvent.CreateEvent(EventConfig.CreateTapConfig(c, row + (SMCommon.RowsPerMeasure >> 1), l, 0)));
 			}
 		}
 

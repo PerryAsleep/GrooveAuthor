@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -13,10 +12,17 @@ namespace StepManiaEditor;
 /// StepDensity provides density-related information about an EditorChart including:
 ///  - Stream breakdown strings
 ///  - Aggregate Measure data for density visualizations. See StepDensityEffect.
+/// Note that adding and removing events has the potential to be an O(log(N)) + O(M) operation where
+/// N is the number of timing events in the chart and M is the number of measures in the chart. Because
+/// of this adding and removing events have a more complex API in order to minimize the time complexity.
+/// With StepDensity's API the potential O(log(N)) + O(M) cost is only incurred once per group of steps
+/// that are added or removed. Also note that this cost only occurs when needing to resize measures.
 /// Expected Usage:
-///  Construct with EditorChart.
-///  Call AddEvent/AddEvents when EditorEvents are added to the EditorChart.
-///  Call DeleteEvent/DeleteEvents when EditorEvents are deleted from the EditorChart.
+///  - Construct with EditorChart.
+///  - When events are added to the EditorChat, first ensure the EditorChart is updated with the events.
+///    Then, call BeginAddEvents once, then AddEvent for each event, then EndAddEvents once.
+///  - When events are deleted from the EditorChart, first ensure the EditorChart is updated with the events.
+///    Then, call BeginDeleteEvents once, then DeleteEvent for each event, then EndDeleteEvents once.
 /// </summary>
 internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<PreferencesStream>, Fumen.IObserver<EditorChart>
 {
@@ -197,11 +203,25 @@ internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<Prefe
 
 	#region Adding and Deleting Events
 
+	public void BeginAddEvents()
+	{
+		ResizeMeasures();
+	}
+
+	public void EndAddEvents()
+	{
+		Notify(NotificationMeasuresChanged, this);
+	}
+
 	/// <summary>
-	/// Called when adding an event to the EditorChart.
+	/// Performs all logic for adding an EditorEvent that can't be split out when adding
+	/// multiple events simultaneously.
 	/// </summary>
 	/// <param name="editorEvent">EditorEvent added.</param>
-	public void AddEvent(EditorEvent editorEvent)
+	/// <param name="numStepsAtRow">
+	/// The number of steps at the row of the given EditorEvent after the add, including the given event itself.
+	/// </param>
+	public void AddEvent(EditorEvent editorEvent, int numStepsAtRow)
 	{
 		if (editorEvent is EditorLastSecondHintEvent)
 		{
@@ -212,46 +232,19 @@ internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<Prefe
 		if (!editorEvent.IsStep())
 			return;
 
-		ResizeMeasures();
-		AddEventInternal(editorEvent);
-		Notify(NotificationMeasuresChanged, this);
-	}
-
-	/// <summary>
-	/// Called when adding multiple events to the EditorChart.
-	/// Prefer this method over multiple calls to AddEvent for better performance.
-	/// </summary>
-	/// <param name="editorEvents">EditorEvents added.</param>
-	public void AddEvents(List<EditorEvent> editorEvents)
-	{
-		ResizeMeasures();
-		foreach (var editorEvent in editorEvents)
-			AddEventInternal(editorEvent);
-		Notify(NotificationMeasuresChanged, this);
-	}
-
-	/// <summary>
-	/// Performs all logic for adding an EditorEvent that can't be split out when adding
-	/// multiple events simultaneously.
-	/// </summary>
-	/// <param name="editorEvent">EditorEvent added.</param>
-	private void AddEventInternal(EditorEvent editorEvent)
-	{
-		if (!editorEvent.IsStep())
-			return;
-
-		// Update the step count for the this step's measure.
+		// Update the step count for this step's measure.
 		var measureNumber = GetMeasureNumber(editorEvent);
-		var previousSteps = Measures[measureNumber].Steps;
+		var previousSteps = measureNumber < Measures.GetSize() ? Measures[measureNumber].Steps : 0;
 		var newSteps = previousSteps + 1;
-		var previousRowsWithSteps = Measures[measureNumber].RowsWithSteps;
+		var previousRowsWithSteps = measureNumber < Measures.GetSize() ? Measures[measureNumber].RowsWithSteps : (byte)0;
 		var newRowsWithSteps = previousRowsWithSteps;
-		if (EditorChart.GetStepTotals().GetNumStepsAtRow(editorEvent.GetRow()) == 1)
+		if (numStepsAtRow == 1)
 			newRowsWithSteps++;
-		Measures[measureNumber] = new Measure(Measures[measureNumber].StartTime, (byte)newSteps, newRowsWithSteps);
+		if (measureNumber < Measures.GetSize())
+			Measures[measureNumber] = new Measure(Measures[measureNumber].StartTime, (byte)newSteps, newRowsWithSteps);
 
 		// Update the measure count by step number so we can update the greatest step count per measure.
-		var newStepCountForMeasure = Measures[measureNumber].Steps;
+		var newStepCountForMeasure = measureNumber < Measures.GetSize() ? Measures[measureNumber].Steps : 1;
 		MeasuresByStepCount[newStepCountForMeasure - 1]--;
 		MeasuresByStepCount[newStepCountForMeasure]++;
 
@@ -310,11 +303,25 @@ internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<Prefe
 		StreamBreakdownDirty = true;
 	}
 
+	public void BeginDeleteEvents()
+	{
+	}
+
+	public void EndDeleteEvents()
+	{
+		ResizeMeasures();
+		Notify(NotificationMeasuresChanged, this);
+	}
+
 	/// <summary>
-	/// Called when deleting an event from the EditorChart.
+	/// Performs all logic for deleting an EditorEvent that can't be split out when deleting
+	/// multiple events simultaneously.
 	/// </summary>
 	/// <param name="editorEvent">EditorEvent deleted.</param>
-	public void DeleteEvent(EditorEvent editorEvent)
+	/// <param name="numStepsAtRow">
+	/// The number of steps at the row of the given EditorEvent after the deletion.
+	/// </param>
+	public void DeleteEvent(EditorEvent editorEvent, int numStepsAtRow)
 	{
 		if (editorEvent is EditorLastSecondHintEvent)
 		{
@@ -325,41 +332,13 @@ internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<Prefe
 		if (!editorEvent.IsStep())
 			return;
 
-		DeleteEventInternal(editorEvent);
-		ResizeMeasures();
-		Notify(NotificationMeasuresChanged, this);
-	}
-
-	/// <summary>
-	/// Called when deleting multiple events from the EditorChart.
-	/// Prefer this method over multiple calls to DeleteEvent for better performance.
-	/// </summary>
-	/// <param name="editorEvents">EditorEvents deleted.</param>
-	public void DeleteEvents(List<EditorEvent> editorEvents)
-	{
-		foreach (var editorEvent in editorEvents)
-			DeleteEventInternal(editorEvent);
-		ResizeMeasures();
-		Notify(NotificationMeasuresChanged, this);
-	}
-
-	/// <summary>
-	/// Performs all logic for deleting an EditorEvent that can't be split out when deleting
-	/// multiple events simultaneously.
-	/// </summary>
-	/// <param name="editorEvent">EditorEvent deleted.</param>
-	private void DeleteEventInternal(EditorEvent editorEvent)
-	{
-		if (!editorEvent.IsStep())
-			return;
-
-		// Update the step count for the this step's measure.
+		// Update the step count for this step's measure.
 		var measureNumber = GetMeasureNumber(editorEvent);
 		var previousSteps = measureNumber < Measures.GetSize() ? Measures[measureNumber].Steps : 1;
 		var newSteps = previousSteps - 1;
-		var previousRowsWithSteps = Measures[measureNumber].RowsWithSteps;
+		var previousRowsWithSteps = measureNumber < Measures.GetSize() ? Measures[measureNumber].RowsWithSteps : (byte)1;
 		var newRowsWithSteps = previousRowsWithSteps;
-		if (EditorChart.GetStepTotals().GetNumStepsAtRow(editorEvent.GetRow()) == 0)
+		if (numStepsAtRow == 0)
 			newRowsWithSteps--;
 		if (measureNumber < Measures.GetSize())
 			Measures[measureNumber] = new Measure(Measures[measureNumber].StartTime, (byte)newSteps, newRowsWithSteps);

@@ -67,7 +67,7 @@ internal sealed class UIAutogenChartsForChartType : UIWindow
 		{
 			// Use the focused Chart, if one exists.
 			var focusedChart = Editor.GetFocusedChart();
-			if (focusedChart != null)
+			if (focusedChart != null && focusedChart.SupportsAutogenFeatures())
 			{
 				SourceChartType = focusedChart.ChartType;
 				return;
@@ -77,9 +77,16 @@ internal sealed class UIAutogenChartsForChartType : UIWindow
 			if (song != null)
 			{
 				var charts = song.GetCharts();
-				if (charts?.Count > 0)
+				if (charts != null)
 				{
-					SourceChartType = charts[0].ChartType;
+					foreach (var existingChart in charts)
+					{
+						if (existingChart.SupportsAutogenFeatures())
+						{
+							SourceChartType = existingChart.ChartType;
+							break;
+						}
+					}
 				}
 			}
 		}
@@ -103,7 +110,7 @@ internal sealed class UIAutogenChartsForChartType : UIWindow
 				{
 					var sourceType = SourceChartType.Value;
 					ImGuiLayoutUtils.DrawRowEnum(sourceTypeTitle, "AutogenChartsSourceChartType", ref sourceType,
-						Editor.SupportedChartTypes,
+						Editor.SupportedSinglePlayerChartTypes,
 						sourceTypeHelp);
 					SourceChartType = sourceType;
 				}
@@ -116,7 +123,7 @@ internal sealed class UIAutogenChartsForChartType : UIWindow
 
 				// Destination ChartType.
 				ImGuiLayoutUtils.DrawRowEnum("New Type", "AutogenChartsDestinationChartType",
-					ref Preferences.Instance.LastSelectedAutogenChartType, Editor.SupportedChartTypes,
+					ref Preferences.Instance.LastSelectedAutogenChartType, Editor.SupportedSinglePlayerChartTypes,
 					"Type of Charts to generate.");
 
 				// Performed Chart Config.

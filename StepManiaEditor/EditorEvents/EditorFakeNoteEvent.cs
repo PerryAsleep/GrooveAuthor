@@ -1,5 +1,4 @@
 ﻿using Fumen.ChartDefinition;
-using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGameExtensions;
 
@@ -60,16 +59,7 @@ internal sealed class EditorFakeNoteEvent : EditorEvent
 		if (alpha <= 0.0f)
 			return;
 
-		// Draw the arrow.
-		var (textureId, rot) = arrowGraphicManager.GetArrowTexture(GetStepColorRow(), LaneTapNote.Lane, IsSelected());
-		textureAtlas.Draw(
-			textureId,
-			spriteBatch,
-			new Vector2((float)X, (float)Y),
-			Scale,
-			rot,
-			alpha);
-
-		DrawFakeMarker(textureAtlas, spriteBatch, textureId);
+		DrawTap(textureAtlas, spriteBatch, arrowGraphicManager);
+		DrawFakeMarker(textureAtlas, spriteBatch, arrowGraphicManager);
 	}
 }

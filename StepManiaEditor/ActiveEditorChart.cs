@@ -134,21 +134,19 @@ internal sealed class ActiveEditorChart
 		return FocalPointScreenSpaceX - (GetLaneAreaWidth() >> 1);
 	}
 
-	public int GetScreenSpaceXOfMiscEventsStart()
+	public int GetScreenSpaceXOfLanesStartWithCurrentScale()
 	{
-		var x = GetScreenSpaceXOfLanesStart();
-		if (ShouldDrawMiscEvents())
-		{
-			x -= GetLeftMiscEventPadding();
-			x -= Preferences.Instance.PreferencesOptions.MiscEventAreaWidth;
-		}
-
-		return x;
+		return FocalPointScreenSpaceX - (GetLaneAreaWidthWithCurrentScale() >> 1);
 	}
 
 	public int GetScreenSpaceXOfLanesEnd()
 	{
 		return FocalPointScreenSpaceX + (GetLaneAreaWidth() >> 1);
+	}
+
+	public int GetScreenSpaceXOfLanesEndWithCurrentScale()
+	{
+		return FocalPointScreenSpaceX + (GetLaneAreaWidthWithCurrentScale() >> 1);
 	}
 
 	public int GetScreenSpaceXOfLanesAndWaveFormEnd()
@@ -212,6 +210,13 @@ internal sealed class ActiveEditorChart
 
 	public int GetRightMiscEventPadding()
 	{
+		if (Chart.IsMultiPlayer())
+		{
+			// Reserve room on the right for the player indicator. It should ideally use a precise value that is
+			// determined from the indicator graphic, but it is simpler and symmetric to use the left padding.
+			return GetLeftMiscEventPadding();
+		}
+
 		return GetSceneWidgetPadding();
 	}
 
@@ -1482,6 +1487,11 @@ internal sealed class ActiveEditorChart
 		OnSelectAll((e) => e.IsSelectableWithoutModifiers());
 	}
 
+	public void OnSelectAll(int player)
+	{
+		OnSelectAll((e) => e.IsSelectableWithoutModifiers() && e.GetPlayer() == player);
+	}
+
 	public void OnSelectAllAlt()
 	{
 		OnSelectAll((e) => e.IsSelectableWithModifiers());
@@ -2551,7 +2561,7 @@ internal sealed class ActiveEditorChart
 			LaneEditStates[lane].StartEditingWithDelete(row, new ActionDeleteEditorEvents(existingEvent));
 		}
 
-		SetLaneInputDownNote(lane, row);
+		SetLaneInputDownNote(row, lane, Editor.GetPlayer(Chart));
 
 		// If we are playing, immediately commit the note so it comes out as a tap and not a short hold.
 		if (playing)
@@ -2570,7 +2580,7 @@ internal sealed class ActiveEditorChart
 		}
 	}
 
-	private void SetLaneInputDownNote(int lane, int row)
+	private void SetLaneInputDownNote(int row, int lane, int player)
 	{
 		// If the existing state is only a delete, revert back to that delete operation.
 		if (LaneEditStates[lane].IsOnlyDelete())
@@ -2583,13 +2593,13 @@ internal sealed class ActiveEditorChart
 		{
 			if (KeyCommandManager.IsAnyInputDown(Preferences.Instance.PreferencesKeyBinds.ArrowModification))
 			{
-				var config = EventConfig.CreateMineConfig(Chart, row, lane);
+				var config = EventConfig.CreateMineConfig(Chart, row, lane, player);
 				config.IsBeingEdited = true;
 				LaneEditStates[lane].SetEditingTapOrMine(EditorEvent.CreateEvent(config));
 			}
 			else
 			{
-				var config = EventConfig.CreateTapConfig(Chart, row, lane);
+				var config = EventConfig.CreateTapConfig(Chart, row, lane, player);
 				config.IsBeingEdited = true;
 				LaneEditStates[lane].SetEditingTapOrMine(EditorEvent.CreateEvent(config));
 			}
@@ -2706,6 +2716,7 @@ internal sealed class ActiveEditorChart
 		{
 			var length = editHold.GetRowDuration();
 			var roll = editHold.IsRoll();
+			var player = editHold.GetPlayer();
 
 			// If the hold is completely within another hold, do not add or delete notes, but make sure the outer
 			// hold is the same type (hold/roll) as the new type.
@@ -2715,7 +2726,7 @@ internal sealed class ActiveEditorChart
 			{
 				LaneEditStates[lane].Clear(true);
 				if (holdFull.IsRoll() != roll)
-					ActionQueue.Instance.Do(new ActionChangeHoldType(holdFull, roll));
+					ActionQueue.Instance.Do(new ActionChangeHoldType(holdFull, roll, player));
 				return;
 			}
 
@@ -2763,7 +2774,7 @@ internal sealed class ActiveEditorChart
 			}
 
 			// Set the state to be editing a new hold after running the delete actions.
-			LaneEditStates[lane].SetEditingHold(Chart, lane, row, LaneEditStates[lane].GetStartingRow(), length, roll,
+			LaneEditStates[lane].SetEditingHold(Chart, row, lane, player, LaneEditStates[lane].GetStartingRow(), length, roll,
 				deleteActions);
 		}
 
@@ -2788,13 +2799,13 @@ internal sealed class ActiveEditorChart
 			{
 				// If the event is a hold, convert it to a tap.
 				// This will also convert holds to tap even if the starting action was deleting an existing note.
-				if (laneEditState.GetEventBeingEdited() is EditorHoldNoteEvent)
+				if (laneEditState.GetEventBeingEdited() is EditorHoldNoteEvent hn)
 				{
-					SetLaneInputDownNote(lane, row);
+					SetLaneInputDownNote(row, lane, hn.GetPlayer());
 				}
 			}
 
-			// If the current position is different than the starting position.
+			// If the current position is different from the starting position.
 			// In other words, the current state of the note being edited should be a hold.
 			else
 			{
@@ -2809,7 +2820,8 @@ internal sealed class ActiveEditorChart
 				        && (holdStartRow != h.GetRow() || holdEndRow != h.GetEndRow())))
 				{
 					var roll = KeyCommandManager.IsAnyInputDown(Preferences.Instance.PreferencesKeyBinds.ArrowModification);
-					LaneEditStates[lane].SetEditingHold(Chart, lane, holdStartRow, laneEditState.GetStartingRow(),
+					var player = laneEditState.GetEventBeingEdited()?.GetPlayer() ?? Editor.GetPlayer(Chart);
+					LaneEditStates[lane].SetEditingHold(Chart, holdStartRow, lane, player, laneEditState.GetStartingRow(),
 						holdEndRow - holdStartRow, roll);
 				}
 			}

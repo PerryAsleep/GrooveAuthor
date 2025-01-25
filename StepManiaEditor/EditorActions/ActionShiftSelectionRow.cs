@@ -117,6 +117,7 @@ internal sealed class ActionShiftSelectionRow : EditorAction
 		EventsWhichCouldNotBeTransformed = new List<EditorEvent>();
 
 		// Update each event.
+		var allAddedEvents = new List<EditorEvent>(TransformableEvents.Count);
 		foreach (var editorEvent in TransformableEvents)
 		{
 			// If shifting the row would put this event at an invalid position, then remove it.
@@ -131,7 +132,8 @@ internal sealed class ActionShiftSelectionRow : EditorAction
 			editorEvent.SetRow(newRow);
 
 			// Re-add the event to complete the row transformation.
-			var (addedFromAlteration, deletedFromAlteration) = Chart.ForceAddEvents(new List<EditorEvent> { editorEvent });
+			allAddedEvents.Add(editorEvent);
+			var (addedFromAlteration, deletedFromAlteration) = Chart.ForceAddEvent(editorEvent);
 
 			// Record the transformation so that it can be undone.
 			Transformations.Add(new Transformation(editorEvent, addedFromAlteration, deletedFromAlteration));
@@ -140,6 +142,8 @@ internal sealed class ActionShiftSelectionRow : EditorAction
 			// were successfully transformed (as opposed to removed) so we can undo them.
 			RemainingOriginalEventsAfterTransform.Add(editorEvent);
 		}
+
+		Chart.ForceAddEventsComplete(allAddedEvents);
 
 		// Notify the Editor the transformation is complete. Only supply the transformed events
 		// to the Editor. We do not want to supply deleted events.

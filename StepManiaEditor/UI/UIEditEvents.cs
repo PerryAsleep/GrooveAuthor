@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using Fumen.Converters;
 using ImGuiNET;
 using Microsoft.Xna.Framework.Input;
@@ -165,6 +166,35 @@ internal sealed class UIEditEvents
 		if (disabled)
 			PushDisabled();
 
+		if ((chart?.IsMultiPlayer() ?? false) && !allEvents)
+		{
+			for (var i = 0; i < chart.MaxPlayers; i++)
+			{
+				ImGui.PushStyleColor(ImGuiCol.Text, ArrowGraphicManager.GetUIColorForPlayer(i));
+
+				var shortCut = i switch
+				{
+					0 => UIControls.GetCommandString(p.ConvertSelectedNotesToPlayer1),
+					1 => UIControls.GetCommandString(p.ConvertSelectedNotesToPlayer2),
+					2 => UIControls.GetCommandString(p.ConvertSelectedNotesToPlayer3),
+					3 => UIControls.GetCommandString(p.ConvertSelectedNotesToPlayer4),
+					_ => null,
+				};
+
+				if (ImGui.MenuItem($"Notes to Player {i + 1} Notes", shortCut))
+				{
+					ImGui.PopStyleColor();
+					ConvertNotesToPlayer(chart, events, i);
+				}
+				else
+				{
+					ImGui.PopStyleColor();
+				}
+			}
+
+			ImGui.Separator();
+		}
+
 		if (ImGui.MenuItem("Taps to Mines", allEvents ? null : UIControls.GetCommandString(p.ConvertSelectedTapsToMines)))
 		{
 			ConvertTapsToMines(chart, events);
@@ -260,108 +290,127 @@ internal sealed class UIEditEvents
 
 	#region Private Convert Selection Functions
 
+	private void ConvertNotesToPlayer(EditorChart chart, IEnumerable<EditorEvent> events, int player)
+	{
+		ActionQueue.Instance.Do(new ActionChangeNotePlayer(Editor, chart, events, player));
+	}
+
 	private void ConvertTapsToMines(EditorChart chart, IEnumerable<EditorEvent> events)
 	{
 		ActionQueue.Instance.Do(new ActionChangeNoteType(Editor, chart, events,
-			(e) => e is EditorTapNoteEvent,
-			(e) => EditorEvent.CreateEvent(EventConfig.CreateMineConfig(e))));
+			e => e is EditorTapNoteEvent,
+			e => EditorEvent.CreateEvent(EventConfig.CreateMineConfig(e)),
+			"Taps", "Mines"));
 	}
 
 	private void ConvertTapsToFakes(EditorChart chart, IEnumerable<EditorEvent> events)
 	{
 		ActionQueue.Instance.Do(new ActionChangeNoteType(Editor, chart, events,
-			(e) => e is EditorTapNoteEvent,
-			(e) => EditorEvent.CreateEvent(EventConfig.CreateFakeNoteConfig(e))));
+			e => e is EditorTapNoteEvent,
+			e => EditorEvent.CreateEvent(EventConfig.CreateFakeNoteConfig(e)),
+			"Taps", "Fakes"));
 	}
 
 	private void ConvertTapsToLifts(EditorChart chart, IEnumerable<EditorEvent> events)
 	{
 		ActionQueue.Instance.Do(new ActionChangeNoteType(Editor, chart, events,
-			(e) => e is EditorTapNoteEvent,
-			(e) => EditorEvent.CreateEvent(EventConfig.CreateLiftNoteConfig(e))));
+			e => e is EditorTapNoteEvent,
+			e => EditorEvent.CreateEvent(EventConfig.CreateLiftNoteConfig(e)),
+			"Taps", "Lifts"));
 	}
 
 	private void ConvertMinesToTaps(EditorChart chart, IEnumerable<EditorEvent> events)
 	{
 		ActionQueue.Instance.Do(new ActionChangeNoteType(Editor, chart, events,
-			(e) => e is EditorMineNoteEvent,
-			(e) => EditorEvent.CreateEvent(EventConfig.CreateTapConfig(e))));
+			e => e is EditorMineNoteEvent,
+			e => EditorEvent.CreateEvent(EventConfig.CreateTapConfig(e)),
+			"Mines", "Taps"));
 	}
 
 	private void ConvertMinesToFakes(EditorChart chart, IEnumerable<EditorEvent> events)
 	{
 		ActionQueue.Instance.Do(new ActionChangeNoteType(Editor, chart, events,
-			(e) => e is EditorMineNoteEvent,
-			(e) => EditorEvent.CreateEvent(EventConfig.CreateFakeNoteConfig(e))));
+			e => e is EditorMineNoteEvent,
+			e => EditorEvent.CreateEvent(EventConfig.CreateFakeNoteConfig(e)),
+			"Mines", "Fakes"));
 	}
 
 	private void ConvertMinesToLifts(EditorChart chart, IEnumerable<EditorEvent> events)
 	{
 		ActionQueue.Instance.Do(new ActionChangeNoteType(Editor, chart, events,
-			(e) => e is EditorMineNoteEvent,
-			(e) => EditorEvent.CreateEvent(EventConfig.CreateLiftNoteConfig(e))));
+			e => e is EditorMineNoteEvent,
+			e => EditorEvent.CreateEvent(EventConfig.CreateLiftNoteConfig(e)),
+			"Mines", "Lifts"));
 	}
 
 	private void ConvertFakesToTaps(EditorChart chart, IEnumerable<EditorEvent> events)
 	{
 		ActionQueue.Instance.Do(new ActionChangeNoteType(Editor, chart, events,
-			(e) => e is EditorFakeNoteEvent,
-			(e) => EditorEvent.CreateEvent(EventConfig.CreateTapConfig(e))));
+			e => e is EditorFakeNoteEvent,
+			e => EditorEvent.CreateEvent(EventConfig.CreateTapConfig(e)),
+			"Fakes", "Taps"));
 	}
 
 	private void ConvertLiftsToTaps(EditorChart chart, IEnumerable<EditorEvent> events)
 	{
 		ActionQueue.Instance.Do(new ActionChangeNoteType(Editor, chart, events,
-			(e) => e is EditorLiftNoteEvent,
-			(e) => EditorEvent.CreateEvent(EventConfig.CreateTapConfig(e))));
+			e => e is EditorLiftNoteEvent,
+			e => EditorEvent.CreateEvent(EventConfig.CreateTapConfig(e)),
+			"Lifts", "Taps"));
 	}
 
 	private void ConvertHoldsToRolls(EditorChart chart, IEnumerable<EditorEvent> events)
 	{
 		ActionQueue.Instance.Do(new ActionChangeNoteType(Editor, chart, events,
-			(e) => e is EditorHoldNoteEvent hn && !hn.IsRoll(),
-			(e) => EditorEvent.CreateEvent(
-				EventConfig.CreateHoldConfig(chart, e.GetRow(), e.GetLane(), e.GetRowDuration(),
-					true))));
+			e => e is EditorHoldNoteEvent hn && !hn.IsRoll(),
+			e => EditorEvent.CreateEvent(
+				EventConfig.CreateHoldConfig(chart, e.GetRow(), e.GetLane(), e.GetPlayer(), e.GetRowDuration(),
+					true)),
+			"Holds", "Rolls"));
 	}
 
 	private void ConvertHoldsToTaps(EditorChart chart, IEnumerable<EditorEvent> events)
 	{
 		ActionQueue.Instance.Do(new ActionChangeNoteType(Editor, chart, events,
-			(e) => e is EditorHoldNoteEvent hn && !hn.IsRoll(),
-			(e) => EditorEvent.CreateEvent(EventConfig.CreateTapConfig(e))));
+			e => e is EditorHoldNoteEvent hn && !hn.IsRoll(),
+			e => EditorEvent.CreateEvent(EventConfig.CreateTapConfig(e)),
+			"Holds", "Taps"));
 	}
 
 	private void ConvertHoldsToMines(EditorChart chart, IEnumerable<EditorEvent> events)
 	{
 		ActionQueue.Instance.Do(new ActionChangeNoteType(Editor, chart, events,
-			(e) => e is EditorHoldNoteEvent hn && !hn.IsRoll(),
-			(e) => EditorEvent.CreateEvent(
-				EventConfig.CreateMineConfig(chart, e.GetRow(), e.GetLane()))));
+			e => e is EditorHoldNoteEvent hn && !hn.IsRoll(),
+			e => EditorEvent.CreateEvent(
+				EventConfig.CreateMineConfig(chart, e.GetRow(), e.GetLane(), e.GetPlayer())),
+			"Holds", "Mines"));
 	}
 
 	private void ConvertRollsToHolds(EditorChart chart, IEnumerable<EditorEvent> events)
 	{
 		ActionQueue.Instance.Do(new ActionChangeNoteType(Editor, chart, events,
-			(e) => e is EditorHoldNoteEvent hn && hn.IsRoll(),
-			(e) => EditorEvent.CreateEvent(
-				EventConfig.CreateHoldConfig(chart, e.GetRow(), e.GetLane(), e.GetRowDuration(),
-					false))));
+			e => e is EditorHoldNoteEvent hn && hn.IsRoll(),
+			e => EditorEvent.CreateEvent(
+				EventConfig.CreateHoldConfig(chart, e.GetRow(), e.GetLane(), e.GetPlayer(), e.GetRowDuration(),
+					false)),
+			"Rolls", "Holds"));
 	}
 
 	private void ConvertRollsToTaps(EditorChart chart, IEnumerable<EditorEvent> events)
 	{
 		ActionQueue.Instance.Do(new ActionChangeNoteType(Editor, chart, events,
-			(e) => e is EditorHoldNoteEvent hn && hn.IsRoll(),
-			(e) => EditorEvent.CreateEvent(EventConfig.CreateTapConfig(e))));
+			e => e is EditorHoldNoteEvent hn && hn.IsRoll(),
+			e => EditorEvent.CreateEvent(EventConfig.CreateTapConfig(e)),
+			"Rolls", "Taps"));
 	}
 
 	private void ConvertRollsToMines(EditorChart chart, IEnumerable<EditorEvent> events)
 	{
 		ActionQueue.Instance.Do(new ActionChangeNoteType(Editor, chart, events,
-			(e) => e is EditorHoldNoteEvent hn && hn.IsRoll(),
-			(e) => EditorEvent.CreateEvent(
-				EventConfig.CreateMineConfig(chart, e.GetRow(), e.GetLane()))));
+			e => e is EditorHoldNoteEvent hn && hn.IsRoll(),
+			e => EditorEvent.CreateEvent(
+				EventConfig.CreateMineConfig(chart, e.GetRow(), e.GetLane(), e.GetPlayer())),
+			"Rolls", "Mines"));
 	}
 
 	private void ConvertWarpsToNegativeStops(EditorChart chart, IEnumerable<EditorEvent> events, bool allEvents)
@@ -384,114 +433,121 @@ internal sealed class UIEditEvents
 
 	#region Public Convert Selection Functions
 
+	public void ConvertSelectedNotesToPlayer(int player)
+	{
+		if (!TryGetFocusedChartSelection(out var events) || events == null || !events.Any())
+			return;
+		ConvertNotesToPlayer(Editor.GetFocusedChart(), events, player);
+	}
+
 	public void ConvertSelectedTapsToMines()
 	{
-		if (!TryGetFocusedChartSelection(out var events))
+		if (!TryGetFocusedChartSelection(out var events) || events == null || !events.Any())
 			return;
 		ConvertTapsToMines(Editor.GetFocusedChart(), events);
 	}
 
 	public void ConvertSelectedTapsToFakes()
 	{
-		if (!TryGetFocusedChartSelection(out var events))
+		if (!TryGetFocusedChartSelection(out var events) || events == null || !events.Any())
 			return;
 		ConvertTapsToFakes(Editor.GetFocusedChart(), events);
 	}
 
 	public void ConvertSelectedTapsToLifts()
 	{
-		if (!TryGetFocusedChartSelection(out var events))
+		if (!TryGetFocusedChartSelection(out var events) || events == null || !events.Any())
 			return;
 		ConvertTapsToLifts(Editor.GetFocusedChart(), events);
 	}
 
 	public void ConvertSelectedMinesToTaps()
 	{
-		if (!TryGetFocusedChartSelection(out var events))
+		if (!TryGetFocusedChartSelection(out var events) || events == null || !events.Any())
 			return;
 		ConvertMinesToTaps(Editor.GetFocusedChart(), events);
 	}
 
 	public void ConvertSelectedMinesToFakes()
 	{
-		if (!TryGetFocusedChartSelection(out var events))
+		if (!TryGetFocusedChartSelection(out var events) || events == null || !events.Any())
 			return;
 		ConvertMinesToFakes(Editor.GetFocusedChart(), events);
 	}
 
 	public void ConvertSelectedMinesToLifts()
 	{
-		if (!TryGetFocusedChartSelection(out var events))
+		if (!TryGetFocusedChartSelection(out var events) || events == null || !events.Any())
 			return;
 		ConvertMinesToLifts(Editor.GetFocusedChart(), events);
 	}
 
 	public void ConvertSelectedFakesToTaps()
 	{
-		if (!TryGetFocusedChartSelection(out var events))
+		if (!TryGetFocusedChartSelection(out var events) || events == null || !events.Any())
 			return;
 		ConvertFakesToTaps(Editor.GetFocusedChart(), events);
 	}
 
 	public void ConvertSelectedLiftsToTaps()
 	{
-		if (!TryGetFocusedChartSelection(out var events))
+		if (!TryGetFocusedChartSelection(out var events) || events == null || !events.Any())
 			return;
 		ConvertLiftsToTaps(Editor.GetFocusedChart(), events);
 	}
 
 	public void ConvertSelectedHoldsToRolls()
 	{
-		if (!TryGetFocusedChartSelection(out var events))
+		if (!TryGetFocusedChartSelection(out var events) || events == null || !events.Any())
 			return;
 		ConvertHoldsToRolls(Editor.GetFocusedChart(), events);
 	}
 
 	public void ConvertSelectedHoldsToTaps()
 	{
-		if (!TryGetFocusedChartSelection(out var events))
+		if (!TryGetFocusedChartSelection(out var events) || events == null || !events.Any())
 			return;
 		ConvertHoldsToTaps(Editor.GetFocusedChart(), events);
 	}
 
 	public void ConvertSelectedHoldsToMines()
 	{
-		if (!TryGetFocusedChartSelection(out var events))
+		if (!TryGetFocusedChartSelection(out var events) || events == null || !events.Any())
 			return;
 		ConvertHoldsToMines(Editor.GetFocusedChart(), events);
 	}
 
 	public void ConvertSelectedRollsToHolds()
 	{
-		if (!TryGetFocusedChartSelection(out var events))
+		if (!TryGetFocusedChartSelection(out var events) || events == null || !events.Any())
 			return;
 		ConvertRollsToHolds(Editor.GetFocusedChart(), events);
 	}
 
 	public void ConvertSelectedRollsToTaps()
 	{
-		if (!TryGetFocusedChartSelection(out var events))
+		if (!TryGetFocusedChartSelection(out var events) || events == null || !events.Any())
 			return;
 		ConvertRollsToTaps(Editor.GetFocusedChart(), events);
 	}
 
 	public void ConvertSelectedRollsToMines()
 	{
-		if (!TryGetFocusedChartSelection(out var events))
+		if (!TryGetFocusedChartSelection(out var events) || events == null || !events.Any())
 			return;
 		ConvertRollsToMines(Editor.GetFocusedChart(), events);
 	}
 
 	public void ConvertSelectedWarpsToNegativeStops()
 	{
-		if (!TryGetFocusedChartSelection(out var events))
+		if (!TryGetFocusedChartSelection(out var events) || events == null || !events.Any())
 			return;
 		ConvertWarpsToNegativeStops(Editor.GetFocusedChart(), events, false);
 	}
 
 	public void ConvertSelectedNegativeStopsToWarps()
 	{
-		if (!TryGetFocusedChartSelection(out var events))
+		if (!TryGetFocusedChartSelection(out var events) || events == null || !events.Any())
 			return;
 		ConvertNegativeStopsToWarps(Editor.GetFocusedChart(), events, false);
 	}
@@ -510,44 +566,162 @@ internal sealed class UIEditEvents
 			if (disabled)
 				PushDisabled();
 
-			if (ImGui.MenuItem("Notes", UIControls.GetCommandString(p.SelectAll)))
+			var multiPlayer = Editor.GetFocusedChart()?.IsMultiPlayer() ?? false;
+			if (multiPlayer)
+			{
+				var numPlayers = Editor.GetFocusedChart().MaxPlayers;
+				var currentPlayer = Editor.GetPlayer();
+
+				ImGui.PushStyleColor(ImGuiCol.Text, ArrowGraphicManager.GetUIColorForPlayer(currentPlayer));
+				if (ImGui.BeginMenu($"Current Player ({currentPlayer + 1})"))
+				{
+					ImGui.PopStyleColor();
+
+					if (ImGui.MenuItem("Notes", UIControls.GetCommandString(p.SelectAllCurrentPlayerNotes)))
+					{
+						Editor.OnSelectAllForCurrentPlayer();
+					}
+
+					if (ImGui.MenuItem("Taps", UIControls.GetCommandString(p.SelectAllCurrentPlayerTaps)))
+					{
+						Editor.OnSelectAllForCurrentPlayer(e => e is EditorTapNoteEvent);
+					}
+
+					if (ImGui.MenuItem("Mines", UIControls.GetCommandString(p.SelectAllCurrentPlayerMines)))
+					{
+						Editor.OnSelectAllForCurrentPlayer(e => e is EditorMineNoteEvent);
+					}
+
+					if (ImGui.MenuItem("Fakes", UIControls.GetCommandString(p.SelectAllCurrentPlayerFakes)))
+					{
+						Editor.OnSelectAllForCurrentPlayer(e => e is EditorFakeNoteEvent);
+					}
+
+					if (ImGui.MenuItem("Lifts", UIControls.GetCommandString(p.SelectAllCurrentPlayerLifts)))
+					{
+						Editor.OnSelectAllForCurrentPlayer(e => e is EditorLiftNoteEvent);
+					}
+
+					if (ImGui.MenuItem("Holds", UIControls.GetCommandString(p.SelectAllCurrentPlayerHolds)))
+					{
+						Editor.OnSelectAllForCurrentPlayer(e => e is EditorHoldNoteEvent hn && !hn.IsRoll());
+					}
+
+					if (ImGui.MenuItem("Rolls", UIControls.GetCommandString(p.SelectAllCurrentPlayerRolls)))
+					{
+						Editor.OnSelectAllForCurrentPlayer(e => e is EditorHoldNoteEvent hn && hn.IsRoll());
+					}
+
+					if (ImGui.MenuItem("Holds and Rolls", UIControls.GetCommandString(p.SelectAllCurrentPlayerHoldsAndRolls)))
+					{
+						Editor.OnSelectAllForCurrentPlayer(e => e is EditorHoldNoteEvent);
+					}
+
+					ImGui.EndMenu();
+				}
+				else
+				{
+					ImGui.PopStyleColor();
+				}
+
+				ImGui.Separator();
+
+				for (var i = 0; i < numPlayers; i++)
+				{
+					var player = i;
+					ImGui.PushStyleColor(ImGuiCol.Text, ArrowGraphicManager.GetUIColorForPlayer(player));
+					if (ImGui.BeginMenu($"Player {player + 1}"))
+					{
+						ImGui.PopStyleColor();
+						if (ImGui.MenuItem("Notes"))
+						{
+							Editor.OnSelectAll(player);
+						}
+
+						if (ImGui.MenuItem("Taps"))
+						{
+							Editor.OnSelectAll(e => e is EditorTapNoteEvent && e.GetPlayer() == player);
+						}
+
+						if (ImGui.MenuItem("Mines"))
+						{
+							Editor.OnSelectAll(e => e is EditorMineNoteEvent && e.GetPlayer() == player);
+						}
+
+						if (ImGui.MenuItem("Fakes"))
+						{
+							Editor.OnSelectAll(e => e is EditorFakeNoteEvent && e.GetPlayer() == player);
+						}
+
+						if (ImGui.MenuItem("Lifts"))
+						{
+							Editor.OnSelectAll(e => e is EditorLiftNoteEvent && e.GetPlayer() == player);
+						}
+
+						if (ImGui.MenuItem("Holds"))
+						{
+							Editor.OnSelectAll(e => e is EditorHoldNoteEvent hn && !hn.IsRoll() && e.GetPlayer() == player);
+						}
+
+						if (ImGui.MenuItem("Rolls"))
+						{
+							Editor.OnSelectAll(e => e is EditorHoldNoteEvent hn && hn.IsRoll() && e.GetPlayer() == player);
+						}
+
+						if (ImGui.MenuItem("Holds and Rolls"))
+						{
+							Editor.OnSelectAll(e => e is EditorHoldNoteEvent && e.GetPlayer() == player);
+						}
+
+						ImGui.EndMenu();
+					}
+					else
+					{
+						ImGui.PopStyleColor();
+					}
+				}
+
+				ImGui.Separator();
+			}
+
+			if (ImGui.MenuItem("Notes", UIControls.GetCommandString(p.SelectAllNotes)))
 			{
 				Editor.OnSelectAll();
 			}
 
 			if (ImGui.MenuItem("Taps", UIControls.GetCommandString(p.SelectAllTaps)))
 			{
-				Editor.OnSelectAll((e) => e is EditorTapNoteEvent);
+				Editor.OnSelectAll(e => e is EditorTapNoteEvent);
 			}
 
 			if (ImGui.MenuItem("Mines", UIControls.GetCommandString(p.SelectAllMines)))
 			{
-				Editor.OnSelectAll((e) => e is EditorMineNoteEvent);
+				Editor.OnSelectAll(e => e is EditorMineNoteEvent);
 			}
 
 			if (ImGui.MenuItem("Fakes", UIControls.GetCommandString(p.SelectAllFakes)))
 			{
-				Editor.OnSelectAll((e) => e is EditorFakeNoteEvent);
+				Editor.OnSelectAll(e => e is EditorFakeNoteEvent);
 			}
 
 			if (ImGui.MenuItem("Lifts", UIControls.GetCommandString(p.SelectAllLifts)))
 			{
-				Editor.OnSelectAll((e) => e is EditorLiftNoteEvent);
+				Editor.OnSelectAll(e => e is EditorLiftNoteEvent);
 			}
 
 			if (ImGui.MenuItem("Holds", UIControls.GetCommandString(p.SelectAllHolds)))
 			{
-				Editor.OnSelectAll((e) => e is EditorHoldNoteEvent hn && !hn.IsRoll());
+				Editor.OnSelectAll(e => e is EditorHoldNoteEvent hn && !hn.IsRoll());
 			}
 
 			if (ImGui.MenuItem("Rolls", UIControls.GetCommandString(p.SelectAllRolls)))
 			{
-				Editor.OnSelectAll((e) => e is EditorHoldNoteEvent hn && hn.IsRoll());
+				Editor.OnSelectAll(e => e is EditorHoldNoteEvent hn && hn.IsRoll());
 			}
 
 			if (ImGui.MenuItem("Holds and Rolls", UIControls.GetCommandString(p.SelectAllHoldsAndRolls)))
 			{
-				Editor.OnSelectAll((e) => e is EditorHoldNoteEvent);
+				Editor.OnSelectAll(e => e is EditorHoldNoteEvent);
 			}
 
 			if (ImGui.MenuItem("Miscellaneous Events", UIControls.GetCommandString(p.SelectAllMiscEvents)))
@@ -555,14 +729,14 @@ internal sealed class UIEditEvents
 				Editor.OnSelectAllAlt();
 			}
 
-			if (ImGui.MenuItem("Notes and Miscellaneous Events", UIControls.GetCommandString(p.SelectAllNotes)))
+			if (ImGui.MenuItem("Notes and Miscellaneous Events", UIControls.GetCommandString(p.SelectAll)))
 			{
 				Editor.OnSelectAllShift();
 			}
 
 			if (ImGui.MenuItem("Patterns", UIControls.GetCommandString(p.SelectAllPatterns)))
 			{
-				Editor.OnSelectAll((e) => e is EditorPatternEvent);
+				Editor.OnSelectAll(e => e is EditorPatternEvent);
 			}
 
 			if (disabled)
@@ -718,9 +892,7 @@ internal sealed class UIEditEvents
 			DrawAddEventMenuItem("Label", p.AddEventLabel, !hasLabelEvent, UILabelColorRGBA,
 				EditorLabelEvent.EventShortDescription, row,
 				() => CreateLabelEvent(row));
-			DrawAddEventMenuItem("Pattern", p.AddEventPattern, !hasPatternEvent, UIPatternColorRGBA,
-				EditorPatternEvent.EventShortDescription, row,
-				() => CreatePatternEvent(row));
+			DrawAddPatternMenuItem(row, hasPatternEvent);
 
 			ImGui.Separator();
 			if (MenuItemWithColor("(Move) Music Preview", UIControls.GetCommandString(p.MoveEventPreview), true,
@@ -756,11 +928,50 @@ internal sealed class UIEditEvents
 
 		if (!enabled)
 		{
-			toolTipText +=
-				$"\n\nOnly one {name} event can be specified per row.\nThere is already a {name} specified on row {row}.";
+			toolTipText += GetRowConflictText(name, row);
 		}
 
 		ToolTip(toolTipText);
+	}
+
+	private void DrawAddPatternMenuItem(int row, bool hasPatternEvent)
+	{
+		var p = Preferences.Instance.PreferencesKeyBinds;
+		var chart = Editor.GetFocusedChart();
+		var patternsNotSupported = chart == null || !chart.SupportsAutogenFeatures();
+		var patternsDisabled = patternsNotSupported || hasPatternEvent;
+
+		if (MenuItemWithColor("Pattern", UIControls.GetCommandString(p.AddEventPattern), !patternsDisabled, UIPatternColorRGBA))
+		{
+			AddValidatedEvent(CreatePatternEvent(row));
+		}
+
+		var toolTipText = EditorPatternEvent.EventShortDescription;
+
+		if (patternsNotSupported)
+		{
+			if (chart == null)
+			{
+				toolTipText +=
+					"\n\nPatterns are not supported in this chart.";
+			}
+			else
+			{
+				toolTipText +=
+					$"\n\nPatterns are not supported in {GetPrettyEnumString(chart.ChartType)} charts.";
+			}
+		}
+		else if (hasPatternEvent)
+		{
+			toolTipText += GetRowConflictText("Pattern", row);
+		}
+
+		ToolTip(toolTipText);
+	}
+
+	private static string GetRowConflictText(string name, int row)
+	{
+		return $"\n\nOnly one {name} event can be specified per row.\nThere is already a {name} specified on row {row}.";
 	}
 
 	#endregion Add Events
@@ -954,6 +1165,12 @@ internal sealed class UIEditEvents
 			return;
 		if (!CanTypeOfEventExistAtRow(eventsAtRow, typeof(EditorPatternEvent)))
 			return;
+
+		// Don't allow patterns in multiplayer charts
+		var focusedChart = Editor.GetFocusedChart();
+		if (focusedChart == null || !focusedChart.IsMultiPlayer())
+			return;
+
 		AddValidatedEvent(CreatePatternEvent(row));
 	}
 

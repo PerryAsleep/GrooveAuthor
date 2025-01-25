@@ -29,6 +29,7 @@ internal class TextureGeneratorGame : Game
 {
 	private static readonly string[] ArrowSquareSubImageIds = new[]
 	{
+		// Row 1.
 		"itg-down-1-4",
 		"itg-solo-1-4",
 		"itg-center-1-4",
@@ -38,6 +39,8 @@ internal class TextureGeneratorGame : Game
 		"itg-down-1-32",
 		"itg-solo-1-32",
 		"itg-center-1-32",
+
+		// Row 2.
 		"itg-down-receptor",
 		"itg-solo-receptor",
 		"itg-center-receptor",
@@ -47,6 +50,8 @@ internal class TextureGeneratorGame : Game
 		"itg-down-1-48",
 		"itg-solo-1-48",
 		"itg-center-1-48",
+
+		// Row 3.
 		"itg-down-receptor-held",
 		"itg-solo-receptor-held",
 		"itg-center-receptor-held",
@@ -56,6 +61,8 @@ internal class TextureGeneratorGame : Game
 		"itg-down-1-64",
 		"itg-solo-1-64",
 		"itg-center-1-64",
+
+		// Row 4.
 		"itg-down-receptor-glow",
 		"itg-solo-receptor-glow",
 		"itg-center-receptor-glow",
@@ -65,6 +72,8 @@ internal class TextureGeneratorGame : Game
 		"piu-diagonal-red",
 		"piu-center",
 		"piu-diagonal-blue",
+
+		// Row 5.
 		"itg-hold-body-inactive",
 		null, //"itg-hold-end-inactive",
 		"itg-hold-center-body-inactive",
@@ -74,6 +83,8 @@ internal class TextureGeneratorGame : Game
 		"piu-diagonal-receptor",
 		"piu-center-receptor",
 		"piu-hold-blue",
+
+		// Row 6.
 		"itg-roll-body-inactive",
 		null, //"itg-roll-end-inactive",
 		"itg-roll-center-body-inactive",
@@ -83,6 +94,8 @@ internal class TextureGeneratorGame : Game
 		"piu-diagonal-receptor-held",
 		"piu-center-receptor-held",
 		"piu-roll-blue",
+
+		// Row 7.
 		"itg-hold-body-active",
 		null, //"itg-hold-end-active",
 		"itg-hold-center-body-active",
@@ -92,6 +105,8 @@ internal class TextureGeneratorGame : Game
 		"piu-diagonal-receptor-glow",
 		"piu-center-receptor-glow",
 		"piu-hold-red",
+
+		// Row 8.
 		"itg-roll-body-active",
 		null, //"itg-roll-end-active",
 		"itg-roll-center-body-active",
@@ -101,7 +116,56 @@ internal class TextureGeneratorGame : Game
 		"piu-roll-center",
 		"piu-hold-center",
 		"piu-roll-red",
+
+		// Row 9.
 		"mine",
+		null,
+		null,
+		null,
+		null,
+		null,
+		null,
+		null,
+		null,
+
+		// Row 10.
+		"itg-down-fill",
+		"itg-down-rim",
+		"itg-solo-fill",
+		"itg-solo-rim",
+		"itg-center-fill",
+		"itg-center-rim",
+		"piu-diagonal-fill",
+		"piu-diagonal-rim",
+		"piu-center-fill",
+
+		// Row 11.
+		"piu-center-rim",
+		"piu-hold-diagonal-fill",
+		"piu-hold-diagonal-rim",
+		"piu-roll-diagonal-fill",
+		"piu-hold-center-fill",
+		"piu-hold-center-rim",
+		"piu-roll-center-fill",
+		"mine-fill",
+		"mine-rim",
+
+		// Row 12.
+		"itg-hold-body-fill",
+		null, //"itg-hold-end-fill",
+		"itg-hold-center-body-fill",
+		null, //"itg-hold-center-end-fill",
+		"itg-hold-body-rim",
+		null, //"itg-hold-end-rim",
+		"itg-hold-center-body-rim",
+		null, //"itg-hold-center-end-rim",
+		null,
+
+		// Row 13.
+		"itg-roll-body-fill",
+		null, //"itg-roll-end-fill",
+		"itg-roll-center-body-fill",
+		null, //"itg-roll-center-end-fill",
 	};
 
 	private static readonly string[] ArrowSnapSubImageIds = new[]
@@ -128,6 +192,8 @@ internal class TextureGeneratorGame : Game
 	{
 		"fake-marker",
 		"lift-marker",
+		"player-marker-fill",
+		"player-marker-rim",
 	};
 
 	private static readonly string[] IconSubImageIds = new[]
@@ -164,8 +230,8 @@ internal class TextureGeneratorGame : Game
 	private const string InputIcons = "icons.png";
 	private const string OutputImage = "atlas.png";
 	private const string OutputAtlas = "atlas.json";
-	private const int OutputAtlasWidth = 1800;
-	private const int OutputAtlasHeight = 1800;
+	private const int OutputAtlasWidth = 2048;
+	private const int OutputAtlasHeight = 2048;
 	private const int MarkerTextureWidth = 128;
 
 	// Selected texture variant parameters.
@@ -381,6 +447,12 @@ internal class TextureGeneratorGame : Game
 		ProcessGridOfImages(arrowsTexture, new[] { "itg-roll-end-active" }, 1, 128, 896, 128, capHeight, 0);
 		ProcessGridOfImages(arrowsTexture, new[] { "itg-roll-center-end-active" }, 1, 384, 896, 128, capHeightCenter, 0);
 		ProcessGridOfImages(arrowsTexture, new[] { "itg-roll-solo-end-active" }, 1, 640, 896, 128, capHeightSolo, 0);
+		ProcessGridOfImages(arrowsTexture, new[] { "itg-hold-end-fill" }, 1, 128, 1408, 128, capHeight, 0);
+		ProcessGridOfImages(arrowsTexture, new[] { "itg-hold-center-end-fill" }, 1, 384, 1408, 128, capHeightCenter, 0);
+		ProcessGridOfImages(arrowsTexture, new[] { "itg-hold-end-rim" }, 1, 640, 1408, 128, capHeight, 0);
+		ProcessGridOfImages(arrowsTexture, new[] { "itg-hold-center-end-rim" }, 1, 896, 1408, 128, capHeightCenter, 0);
+		ProcessGridOfImages(arrowsTexture, new[] { "itg-roll-end-fill" }, 1, 128, 1536, 128, capHeight, 0);
+		ProcessGridOfImages(arrowsTexture, new[] { "itg-roll-center-end-fill" }, 1, 384, 1536, 128, capHeightCenter, 0);
 
 		Logger.Info($"Added images from {InputArrows}.");
 	}
@@ -414,7 +486,9 @@ internal class TextureGeneratorGame : Game
 					  || identifier.Contains("glow")
 					  || identifier.Contains("icon")
 					  || identifier.Contains("fake")
-					  || identifier.Contains("lift"));
+					  || identifier.Contains("lift")
+					  || identifier.Contains("fill")
+					  || identifier.Contains("player -marker"));
 
 				// Copy the sub-texture out of the source texture.
 				var subTexture = new Texture2D(GraphicsDevice, w, h);
@@ -537,7 +611,14 @@ internal class TextureGeneratorGame : Game
 		var n = w * h;
 		var colorData = new uint[n];
 		var newColorData = new uint[n];
+
 		input.GetData(colorData);
+
+		// Determine the inner transparent pixels via flood fill.
+		// This happens for routine mode graphic rims.
+		var innerTransparentPixels = new bool[n];
+		FloodFill(w, h, colorData, innerTransparentPixels, w >> 1, h >> 1);
+
 		for (var y = 0; y < h; y++)
 		{
 			for (var x = 0; x < w; x++)
@@ -557,11 +638,21 @@ internal class TextureGeneratorGame : Game
 					var alpha = (float)(color >> 24) / byte.MaxValue;
 					var sourceColor = Fumen.ColorUtils.ColorRGBAMultiply(colorData[i], SelectionColorMultiplier);
 					newColorData[i] = Fumen.ColorUtils.ColorRGBAInterpolateBGR(sourceColor, SelectionHighlightColorWhite, alpha);
+
+					// If this partially transparent pixel is part of the inner transparent region then alpha blend it.
+					if (innerTransparentPixels[i])
+					{
+						newColorData[i] = (newColorData[i] & 0x00FFFFFF) | ((uint)(alpha * byte.MaxValue) << 24);
+					}
 				}
 
 				// Fully transparent: Generate a highlight bg color rim around the opaque area.
 				else
 				{
+					// If this is an inner transparent area then do not add a rim.
+					if (innerTransparentPixels[i])
+						continue;
+
 					// Determine the largest source alpha in the mask centered on this pixel.
 					var alpha = 0.0f;
 					var distance = (float)SelectionMaskDimension;
@@ -633,5 +724,81 @@ internal class TextureGeneratorGame : Game
 
 		newTexture.SetData(newColorData);
 		return newTexture;
+	}
+
+	private static void FloodFill(int w, int h, uint[] colorData, bool[] filled, int x, int y)
+	{
+		// Many of the images we deal with are thin rims which aren't actually have fully
+		// opaque on some rounded edges. Use a lower cutoff value to capture the flood
+		// fill region.
+		const uint alphaCutoff = 0x80;
+
+		var toVisit = new HashSet<int> { Hash(x, y) };
+		var visited = new HashSet<int>();
+		while (toVisit.Count > 0)
+		{
+			var v = PopAny(toVisit);
+			visited.Add(v);
+			if (colorData[v] >> 24 >= alphaCutoff)
+				continue;
+			filled[v] = true;
+
+			(x, y) = UnHash(v);
+
+			if (x - 1 >= 0)
+			{
+				var hash = Hash(x - 1, y);
+				if (!visited.Contains(hash))
+					toVisit.Add(hash);
+			}
+
+			if (x + 1 < w)
+			{
+				var hash = Hash(x + 1, y);
+				if (!visited.Contains(hash))
+					toVisit.Add(hash);
+			}
+
+			if (y - 1 >= 0)
+			{
+				var hash = Hash(x, y - 1);
+				if (!visited.Contains(hash))
+					toVisit.Add(hash);
+			}
+
+			if (y + 1 < h)
+			{
+				var hash = Hash(x, y + 1);
+				if (!visited.Contains(hash))
+					toVisit.Add(hash);
+			}
+		}
+
+		return;
+
+		int PopAny(HashSet<int> set)
+		{
+			using var enumerator = set.GetEnumerator();
+			if (enumerator.MoveNext())
+			{
+				var val = enumerator.Current;
+				set.Remove(val);
+				return val;
+			}
+
+			return 0;
+		}
+
+		(int, int) UnHash(int i)
+		{
+			var iy = i / w;
+			var ix = i - iy * w;
+			return (ix, iy);
+		}
+
+		int Hash(int ix, int iy)
+		{
+			return iy * w + ix;
+		}
 	}
 }

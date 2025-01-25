@@ -33,6 +33,11 @@ internal class ActionPasteEvents : EditorAction
 	private List<EditorEvent> PastedEvents;
 
 	/// <summary>
+	/// Whether or not all original events are for the same player.
+	/// </summary>
+	private readonly bool AllOriginalEventsForSamePlayer;
+
+	/// <summary>
 	/// Constructor
 	/// </summary>
 	/// <param name="editor">Editor instance.</param>
@@ -48,8 +53,21 @@ internal class ActionPasteEvents : EditorAction
 		// Copy the given events so we can operate on them without risk of the caller
 		// modifying the provided data structure.
 		OriginalEvents = new List<EditorEvent>();
+		int? previousPlayer = null;
+		AllOriginalEventsForSamePlayer = true;
 		foreach (var chartEvent in events)
+		{
+			if (AllOriginalEventsForSamePlayer && chartEvent.IsLaneNote())
+			{
+				var player = chartEvent.GetPlayer();
+				if (previousPlayer != null && previousPlayer != player)
+					AllOriginalEventsForSamePlayer = false;
+				previousPlayer = player;
+			}
+
 			OriginalEvents.Add(chartEvent);
+		}
+
 		OriginalEvents.Sort();
 	}
 
@@ -90,7 +108,9 @@ internal class ActionPasteEvents : EditorAction
 	{
 		// Set up lists to hold the events in various states to support undo and redo.
 		SideEffects = new List<ForceAddSideEffect>();
-		PastedEvents = new List<EditorEvent>();
+		PastedEvents = new List<EditorEvent>(OriginalEvents.Count);
+
+		var destinationChartPlayer = Editor.GetPlayer(Chart);
 
 		// Update each event.
 		foreach (var editorEvent in OriginalEvents)
@@ -104,15 +124,28 @@ internal class ActionPasteEvents : EditorAction
 			var newEvent = editorEvent.Clone(Chart);
 			newEvent.SetRow(newRow);
 
+			// Ensure the player is valid for the destination chart.
+			if (newEvent.IsLaneNote())
+			{
+				// If all the original charts are for the same player, then use the destination chart's current player.
+				if (AllOriginalEventsForSamePlayer)
+					newEvent.SetPlayer(destinationChartPlayer);
+				// Otherwise clamp the player.
+				else if (newEvent.GetPlayer() >= Chart.MaxPlayers)
+					newEvent.SetPlayer(0);
+			}
+
 			// Add the new event and record the side effects so they can be undone.
-			var (addedFromAlteration, deletedFromAlteration) = Chart.ForceAddEvents(new List<EditorEvent> { newEvent });
-			if (addedFromAlteration.Count > 0 || deletedFromAlteration.Count > 0)
+			var (addedFromAlteration, deletedFromAlteration) = Chart.ForceAddEvent(newEvent);
+			if (addedFromAlteration?.Count > 0 || deletedFromAlteration?.Count > 0)
 				SideEffects.Add(new ForceAddSideEffect(addedFromAlteration, deletedFromAlteration));
 
 			// Record the new event. When we undo, we will need to know which events
 			// were successfully transformed (as opposed to removed) so we can undo them.
 			PastedEvents.Add(newEvent);
 		}
+
+		Chart.ForceAddEventsComplete(PastedEvents);
 
 		// Record that the pasted events have been transformed so we can avoid re-transforming them when
 		// redoing the action.
@@ -130,12 +163,14 @@ internal class ActionPasteEvents : EditorAction
 		// Re-add each already transformed event.
 		foreach (var editorEvent in PastedEvents)
 		{
-			var (addedFromAlteration, deletedFromAlteration) = Chart.ForceAddEvents(new List<EditorEvent> { editorEvent });
+			var (addedFromAlteration, deletedFromAlteration) = Chart.ForceAddEvent(editorEvent);
 
 			// Record the side effects so that they can be undone.
-			if (addedFromAlteration.Count > 0 || deletedFromAlteration.Count > 0)
+			if (addedFromAlteration?.Count > 0 || deletedFromAlteration?.Count > 0)
 				SideEffects.Add(new ForceAddSideEffect(addedFromAlteration, deletedFromAlteration));
 		}
+
+		Chart.ForceAddEventsComplete(PastedEvents);
 	}
 
 	protected override void UndoImplementation()

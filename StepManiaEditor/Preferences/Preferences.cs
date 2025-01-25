@@ -119,6 +119,8 @@ internal sealed class Preferences
 	// Key Binds
 	[JsonInclude] public PreferencesKeyBinds PreferencesKeyBinds = new();
 
+	[JsonInclude] public PreferencesMultiplayer PreferencesMultiplayer = new();
+
 	// Log preferences
 	[JsonInclude] public bool ShowLogWindow = true;
 	[JsonInclude] public int LogWindowDateDisplay = 1;
@@ -144,6 +146,7 @@ internal sealed class Preferences
 	[JsonInclude] public Editor.NoteEntryMode NoteEntryMode = Editor.NoteEntryMode.Normal;
 	[JsonInclude] public int SnapIndex;
 	[JsonInclude] public int SnapLockIndex;
+	[JsonInclude] public int Player;
 	[JsonInclude] public ChartType LastSelectedAutogenChartType = ChartType.dance_single;
 
 	[JsonInclude] public Guid LastSelectedAutogenPerformedChartConfig =
@@ -166,6 +169,7 @@ internal sealed class Preferences
 	{
 		foreach (var savedSongData in RecentFiles)
 			savedSongData.PostLoad();
+		PreferencesMultiplayer.PostLoad();
 		PreferencesReceptors.SetEditor(Editor);
 		PreferencesWaveForm.PostLoad();
 		PreferencesMiniMap.PostLoad();

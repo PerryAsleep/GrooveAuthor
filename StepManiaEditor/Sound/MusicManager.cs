@@ -699,8 +699,8 @@ internal sealed class MusicManager
 	/// needed.
 	/// </summary>
 	/// <param name="chart">The current EditorChart to add assist tick sounds for.</param>
-	/// <param name="rowsToRecord">List to populate with rows that have ticks. Will be ignore if list is null.</param>
-	/// <param name="rowsToSkip">List of rows to skip recording ticks for. Will be ignore if list is null.</param>
+	/// <param name="rowsToRecord">List to populate with rows that have ticks. Will be ignored if list is null.</param>
+	/// <param name="rowsToSkip">List of rows to skip recording ticks for. Will be ignored if list is null.</param>
 	private void UpdateNextAssistTickTimes(EditorChart chart, List<long> rowsToRecord, List<long> rowsToSkip)
 	{
 		// Early out.
@@ -790,8 +790,8 @@ internal sealed class MusicManager
 	/// needed.
 	/// </summary>
 	/// <param name="chart">The current EditorChart to add beat tick sounds for.</param>
-	/// <param name="rowsToRecord">List to populate with rows that have ticks. Will be ignore if list is null.</param>
-	/// <param name="rowsToSkip">List of rows to skip recording ticks for. Will be ignore if list is null.</param>
+	/// <param name="rowsToRecord">List to populate with rows that have ticks. Will be ignored if list is null.</param>
+	/// <param name="rowsToSkip">List of rows to skip recording ticks for. Will be ignored if list is null.</param>
 	private void UpdateNextBeatTickTimes(EditorChart chart, List<long> rowsToRecord, List<long> rowsToSkip)
 	{
 		// Early out.
@@ -1153,7 +1153,7 @@ internal sealed class MusicManager
 	/// <param name="nextTickTimes">
 	/// List of times in sample indexes when ticks should start.
 	/// Some may precede the callback sample range in order to support starting a sound mid-playback.
-	/// Some may exceed teh callback sample range.</param>
+	/// Some may exceed the callback sample range.</param>
 	/// <param name="sampleIndexStartInclusive">
 	/// The inclusive start sample index of the range relevant for the current DSP callback.
 	/// </param>
@@ -1163,7 +1163,7 @@ internal sealed class MusicManager
 	/// <returns>
 	/// Tuple with the following values:
 	///  1: Sample data as float array from the SoundPlaybackState's sound.
-	///  2: Number of channels of the of the SoundPlaybackState's sound.
+	///  2: Number of channels of the SoundPlaybackState's sound.
 	///  3: Number of samples in the SoundPlaybackState's sound.
 	///  4: The index relative to the SoundPlaybackState's sound's sample data that should be used
 	///     at the start of the DSP callback range for rendering.
@@ -1242,7 +1242,7 @@ internal sealed class MusicManager
 					// There may be multiple assist ticks played during this callback. We need to advance the
 					// SampleIndex to the end of the final tick that will play during this callback.
 					// The final tick will be denoted by the last index in NextAssistTickStartMusicSamples.
-					var lastNextTickStartInRange = -1L;
+					long? lastNextTickStartInRange = null;
 					if (nextTickTimes != null)
 					{
 						for (var nextTickTimeIndex = nextTickTimes.Count - 1; nextTickTimeIndex >= 0; nextTickTimeIndex--)
@@ -1255,7 +1255,7 @@ internal sealed class MusicManager
 						}
 					}
 
-					if (lastNextTickStartInRange >= 0L)
+					if (lastNextTickStartInRange != null)
 					{
 						// Scale the start time by the music rate so that ticks play at an unaffected speed.
 						sampleIndex = (long)((sampleIndexEndExclusive - lastNextTickStartInRange) / MusicRate);

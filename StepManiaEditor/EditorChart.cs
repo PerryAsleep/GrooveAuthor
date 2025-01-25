@@ -34,6 +34,14 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		public bool ShouldUseChartMusicOffset;
 		public Guid ExpressedChartConfig = ExpressedChartConfigManager.DefaultExpressedChartDynamicConfigGuid;
 		public Dictionary<int, EditorPatternEvent.Definition> Patterns;
+
+		/// <summary>
+		/// The max player count for the chart.
+		/// Save the index because most charts are for 1 player and writing 0 lets us
+		/// easily omit the value from serialization.
+		/// </summary>
+		[JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+		public int MaxPlayerIndex;
 	}
 
 	/// <summary>
@@ -56,6 +64,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	public const string NotificationEventsMoveEnd = "EventsMoveEnd";
 	public const string NotificationPatternRequestEdit = "PatternRequestEdit";
 	public const string NotificationTimingChanged = "TimingChanged";
+	public const string NotificationMaxPlayersChanged = "MaxPlayersChanged";
 
 	public const double DefaultTempo = 120.0;
 	public static readonly Fraction DefaultTimeSignature = new(4, 4);
@@ -198,19 +207,14 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	public readonly int NumInputs;
 
 	/// <summary>
-	/// Number of players.
+	/// Default number of players for this type of chart.
 	/// </summary>
-	public readonly int NumPlayers;
+	public readonly int DefaultNumPlayers;
 
 	/// <summary>
 	/// Cached step totals.
 	/// </summary>
 	private readonly StepTotals StepTotals;
-
-	/// <summary>
-	/// StepDensity fo this EditorChart.
-	/// </summary>
-	private readonly StepDensity StepDensity;
 
 	#region Properties
 
@@ -438,6 +442,39 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 	private Guid ExpressedChartConfigInternal;
 
+	public int MaxPlayers
+	{
+		get => MaxPlayersInternal;
+		set
+		{
+			Assert(CanBeEdited());
+			if (!CanBeEdited())
+				return;
+
+			if (SupportsVariableNumberOfPlayers())
+			{
+				var newMaxPlayers = Math.Max(value, Math.Max(1, StepTotals.GetNumPlayersWithNotes()));
+				if (MaxPlayersInternal != newMaxPlayers)
+				{
+					MaxPlayersInternal = newMaxPlayers;
+					Notify(NotificationMaxPlayersChanged, this);
+				}
+			}
+			else
+			{
+				// Ignore the input value. This chart does not support a variable number of players.
+				// The number of players can only ever be the specified number for the chart type.
+				if (MaxPlayersInternal != DefaultNumPlayers)
+				{
+					MaxPlayersInternal = DefaultNumPlayers;
+					Notify(NotificationMaxPlayersChanged, this);
+				}
+			}
+		}
+	}
+
+	private int MaxPlayersInternal;
+
 	#endregion Properties
 
 	#region Constructors
@@ -464,7 +501,9 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 		var chartProperties = GetChartProperties(ChartType);
 		NumInputs = chartProperties.GetNumInputs();
-		NumPlayers = chartProperties.GetNumPlayers();
+		StepTotals = new StepTotals(this);
+		DefaultNumPlayers = chartProperties.GetNumPlayers();
+		MaxPlayers = DefaultNumPlayers;
 
 		chart.Extras.TryGetExtra(TagChartName, out string parsedName, true);
 		NameInternal = parsedName ?? "";
@@ -492,14 +531,12 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		DisplayTempoFromChart = !string.IsNullOrEmpty(chart.Tempo);
 		DisplayTempo.FromString(chart.Tempo);
 
-		StepTotals = new StepTotals(this);
-
 		SetUpEditorEvents(chart);
 
 		DeserializeCustomChartData(chart);
 
 		// Construct StepDensity after setting up EditorEvents.
-		StepDensity = new StepDensity(this);
+		StepTotals.InitializeStepDensity();
 	}
 
 	/// <summary>
@@ -520,7 +557,9 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 		var chartProperties = GetChartProperties(ChartType);
 		NumInputs = chartProperties.GetNumInputs();
-		NumPlayers = chartProperties.GetNumPlayers();
+		StepTotals = new StepTotals(this);
+		DefaultNumPlayers = chartProperties.GetNumPlayers();
+		MaxPlayers = DefaultNumPlayers;
 
 		Name = "";
 		Description = "";
@@ -531,8 +570,6 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		DisplayTempoFromChart = false;
 
 		Rating = DefaultRating;
-
-		StepTotals = new StepTotals(this);
 
 		var tempChart = new Chart();
 		var tempLayer = new Layer();
@@ -552,7 +589,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		SetUpEditorEvents(tempChart);
 
 		// Construct StepDensity after setting up EditorEvents.
-		StepDensity = new StepDensity(this);
+		StepTotals.InitializeStepDensity();
 	}
 
 	/// <summary>
@@ -571,7 +608,9 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		ChartTypeInternal = other.ChartTypeInternal;
 
 		NumInputs = other.NumInputs;
-		NumPlayers = other.NumPlayers;
+		StepTotals = new StepTotals(this);
+		DefaultNumPlayers = other.DefaultNumPlayers;
+		MaxPlayers = other.MaxPlayers;
 
 		Name = other.Name;
 		Description = other.Description;
@@ -584,12 +623,10 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 		Rating = other.Rating;
 
-		StepTotals = new StepTotals(this);
-
 		SetUpEditorEvents(other);
 
 		// Construct StepDensity after setting up EditorEvents.
-		StepDensity = new StepDensity(this);
+		StepTotals.InitializeStepDensity();
 	}
 
 	/// <summary>
@@ -604,6 +641,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		var interpolatedScrollRateEvents = new InterpolatedRateAlteringEventTree(this);
 		var miscEvents = new EventTree(this);
 		var labels = new EventTree(this);
+		var maxPlayer = 1;
 
 		var pendingHoldStarts = new LaneHoldStartNote[NumInputs];
 		var lastScrollRateInterpolationValue = 1.0;
@@ -658,6 +696,9 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		{
 			var chartEvent = chart.Layers[0].Events[eventIndex];
 			EditorEvent editorEvent;
+
+			if (chartEvent is Note n)
+				maxPlayer = Math.Max(maxPlayer, n.Player);
 
 			switch (chartEvent)
 			{
@@ -749,6 +790,9 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		InterpolatedScrollRateEvents = interpolatedScrollRateEvents;
 		MiscEvents = miscEvents;
 		Labels = labels;
+
+		if (maxPlayer > MaxPlayers)
+			MaxPlayers = maxPlayer;
 
 		// TODO: Optimize.
 		// Ideally we only need to do one loop over all the notes. But that means either duplicating much of
@@ -1014,7 +1058,17 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 	public StepDensity GetStepDensity()
 	{
-		return StepDensity;
+		return StepTotals.GetStepDensity();
+	}
+
+	public bool IsMultiPlayer()
+	{
+		return DefaultNumPlayers > 1;
+	}
+
+	public bool SupportsVariableNumberOfPlayers()
+	{
+		return GetChartProperties(ChartType).GetSupportsVariableNumberOfPlayers();
 	}
 
 	#endregion Accessors
@@ -2413,7 +2467,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		// Perform post-delete operations.
 		if (rowDependentDataDirty)
 			RefreshEventTimingData();
-		StepDensity?.DeleteEvent(editorEvent);
+		StepTotals.CommitAddsAndDeletesToStepDensity();
 		Notify(NotificationEventDeleted, this, editorEvent);
 	}
 
@@ -2437,7 +2491,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		// Perform post-delete operations.
 		if (rowDependentDataDirty)
 			RefreshEventTimingData();
-		StepDensity?.DeleteEvents(editorEvents);
+		StepTotals.CommitAddsAndDeletesToStepDensity();
 		Notify(NotificationEventsDeleted, this, editorEvents);
 	}
 
@@ -2557,7 +2611,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		AddEventInternal(editorEvent);
 
 		// Perform post-add operations.
-		StepDensity?.AddEvent(editorEvent);
+		StepTotals.CommitAddsAndDeletesToStepDensity();
 		Notify(NotificationEventAdded, this, editorEvent);
 	}
 
@@ -2580,7 +2634,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			AddEventInternal(editorEvent);
 
 		// Perform post-add operations.
-		StepDensity?.AddEvents(editorEvents);
+		StepTotals.CommitAddsAndDeletesToStepDensity();
 		Notify(NotificationEventsAdded, this, editorEvents);
 	}
 
@@ -2685,9 +2739,10 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	/// which were deleted or added as side effects of adding the given events will be
 	/// returned.
 	/// This method expects that the given events are valid with respect to each other
-	/// (for example, no overlapping taps in the the given events) and are valid at their
+	/// (for example, no overlapping taps in the given events) and are valid at their
 	/// positions (for example, no time signatures at invalid rows).
 	/// This method expects that the given events are sorted.
+	/// Callers MUST call ForceAddEventsComplete after calls ForceAddEvents.
 	/// </summary>
 	/// <param name="events">Events to add.</param>
 	/// <returns>
@@ -2697,139 +2752,202 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	/// </returns>
 	public (List<EditorEvent>, List<EditorEvent>) ForceAddEvents(List<EditorEvent> events)
 	{
-		var sideEffectAddedEvents = new List<EditorEvent>();
-		var sideEffectDeletedEvents = new List<EditorEvent>();
-
 		Assert(CanBeEdited());
 		if (!CanBeEdited())
-			return (sideEffectAddedEvents, sideEffectDeletedEvents);
+			return (null, null);
+
+		List<EditorEvent> sideEffectAddedEvents = null;
+		List<EditorEvent> sideEffectDeletedEvents = null;
 
 		var rateDirty = false;
 		foreach (var editorEvent in events)
+			ForceAddEventInternal(editorEvent, ref rateDirty, ref sideEffectAddedEvents, ref sideEffectDeletedEvents);
+
+		// Do not update StepTotals or notify listeners yet.
+		// Do this after all events have been added.
+		//StepTotals.CommitAddsAndDeletesToStepDensity();
+		//Notify(NotificationEventsAdded, this, events);
+
+		return (sideEffectAddedEvents, sideEffectDeletedEvents);
+	}
+
+	/// <summary>
+	/// Adds the given event and ensures the chart is in a consistent state afterwards
+	/// by forcibly removing any events which conflict with the event to be added. This
+	/// may result in modifications like shortening holds or converting a hold to a tap
+	/// which requires deleting and then adding a modified event or events. Any events
+	/// which were deleted or added as side effects of adding the given event will be
+	/// returned.
+	/// Callers MUST call ForceAddEventsComplete after calls ForceAddEvents.
+	/// </summary>
+	/// <param name="editorEvent">Event to add.</param>
+	/// <returns>
+	/// Tuple where the first element is a list of events which were added as a side effect
+	/// of adding the given events and the second element is a list of events which were
+	/// deleted as a side effect of adding the given events.
+	/// </returns>
+	public (List<EditorEvent>, List<EditorEvent>) ForceAddEvent(EditorEvent editorEvent)
+	{
+		Assert(CanBeEdited());
+		if (!CanBeEdited())
+			return (null, null);
+
+		List<EditorEvent> sideEffectAddedEvents = null;
+		List<EditorEvent> sideEffectDeletedEvents = null;
+
+		var rateDirty = false;
+		ForceAddEventInternal(editorEvent, ref rateDirty, ref sideEffectAddedEvents, ref sideEffectDeletedEvents);
+
+		// Do not update StepTotals or notify listeners yet.
+		// Do this after all events have been added.
+		//StepTotals.CommitAddsAndDeletesToStepDensity();
+		//Notify(NotificationEventAdded, this, editorEvent);
+
+		return (sideEffectAddedEvents, sideEffectDeletedEvents);
+	}
+
+	/// <summary>
+	/// Finish force adding notes.
+	/// This is implemented as a separate callable function to be called after ForceAddEvent and
+	/// ForceAddEvents as a performance optimization.
+	/// </summary>
+	/// <param name="events">All events which were added.</param>
+	public void ForceAddEventsComplete(List<EditorEvent> events)
+	{
+		StepTotals.CommitAddsAndDeletesToStepDensity();
+		Notify(NotificationEventsAdded, this, events);
+	}
+
+	private void ForceAddEventInternal(
+		EditorEvent editorEvent,
+		ref bool rateDirty,
+		ref List<EditorEvent> sideEffectAddedEvents,
+		ref List<EditorEvent> sideEffectDeletedEvents)
+	{
+		var lane = editorEvent.GetLane();
+
+		// If this event is a tap, delete any note which starts at the same time in the same lane.
+		if (lane != InvalidArrowIndex)
 		{
-			var lane = editorEvent.GetLane();
+			var row = editorEvent.GetRow();
+			var existingNote = EditorEvents.FindNoteAt(row, lane, true);
 
-			// If this event is a tap, delete any note which starts at the same time in the same lane.
-			if (lane != InvalidArrowIndex)
+			// If there is a note at this position, or extending through this position.
+			if (existingNote != null)
 			{
-				var row = editorEvent.GetRow();
-				var existingNote = EditorEvents.FindNoteAt(row, lane, true);
-
-				// If there is a note at this position, or extending through this position.
-				if (existingNote != null)
+				// If the existing note is at the same row as the new note, delete it.
+				if (existingNote.GetRow() == row)
 				{
-					// If the existing note is at the same row as the new note, delete it.
-					if (existingNote.GetRow() == row)
-					{
-						DeleteEvent(existingNote);
-						sideEffectDeletedEvents.Add(existingNote);
-					}
-
-					// The existing note is a hold which extends through the new note.
-					else if (existingNote.GetRow() < row && existingNote.GetEndRow() >= row &&
-					         existingNote is EditorHoldNoteEvent existingHold)
-					{
-						// Reduce the length.
-						var newExistingHoldEndRow = editorEvent.GetRow() - MaxValidDenominator / 4;
-
-						// In either case below, delete the existing hold note and replace it with a new hold or a tap.
-						// We could reduce the hold length in place, but then we would need to surface that alteration to the caller
-						// so they can undo it. It's simpler for now to just remove it and add a new one.
-						DeleteEvent(existingNote);
-						sideEffectDeletedEvents.Add(existingNote);
-
-						// If the reduction in length is below the min length for a hold, replace it with a tap.
-						if (newExistingHoldEndRow <= existingNote.GetRow())
-						{
-							var replacementEvent = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(existingNote));
-							AddEvent(replacementEvent);
-							sideEffectAddedEvents.Add(replacementEvent);
-						}
-
-						// Otherwise, reduce the length by deleting the old hold and adding a new hold.
-						else
-						{
-							// We need to recompute the hold end time, so don't provide any explicit times.
-							var replacementEvent = EditorEvent.CreateEvent(EventConfig.CreateHoldConfig(this,
-								existingNote.GetRow(), existingNote.GetLane(), newExistingHoldEndRow - existingNote.GetRow(),
-								existingHold.IsRoll()));
-							AddEvent(replacementEvent);
-							sideEffectAddedEvents.Add(replacementEvent);
-						}
-					}
+					DeleteEvent(existingNote);
+					sideEffectDeletedEvents ??= [];
+					sideEffectDeletedEvents.Add(existingNote);
 				}
 
-				// If this event is a hold note, delete any note which overlaps the hold.
-				var len = editorEvent.GetRowDuration();
-				if (len > 0)
+				// The existing note is a hold which extends through the new note.
+				else if (existingNote.GetRow() < row && existingNote.GetEndRow() >= row &&
+				         existingNote is EditorHoldNoteEvent existingHold)
 				{
-					var enumerator = EditorEvents.FindBestByPosition(row);
-					var overlappedNotes = new List<EditorEvent>();
-					while (enumerator != null && enumerator.MoveNext())
+					// Reduce the length.
+					var newExistingHoldEndRow = editorEvent.GetRow() - MaxValidDenominator / 4;
+
+					// In either case below, delete the existing hold note and replace it with a new hold or a tap.
+					// We could reduce the hold length in place, but then we would need to surface that alteration to the caller
+					// so they can undo it. It's simpler for now to just remove it and add a new one.
+					DeleteEvent(existingNote);
+					sideEffectDeletedEvents ??= [];
+					sideEffectDeletedEvents.Add(existingNote);
+
+					// If the reduction in length is below the min length for a hold, replace it with a tap.
+					if (newExistingHoldEndRow <= existingNote.GetRow())
 					{
-						var c = enumerator.Current;
-						if (c!.GetRow() < row)
-							continue;
-						if (c.GetLane() != lane)
-							continue;
-						if (c.GetRow() > row + len)
-							break;
-						overlappedNotes.Add(c);
+						var replacementEvent = EditorEvent.CreateEvent(EventConfig.CreateTapConfig(existingNote));
+						AddEvent(replacementEvent);
+						sideEffectAddedEvents ??= [];
+						sideEffectAddedEvents.Add(replacementEvent);
 					}
 
-					if (overlappedNotes.Count > 0)
+					// Otherwise, reduce the length by deleting the old hold and adding a new hold.
+					else
 					{
-						DeleteEvents(overlappedNotes);
-						sideEffectDeletedEvents.AddRange(overlappedNotes);
+						// We need to recompute the hold end time, so don't provide any explicit times.
+						var replacementEvent = EditorEvent.CreateEvent(EventConfig.CreateHoldConfig(this,
+							existingNote.GetRow(), existingNote.GetLane(), existingNote.GetPlayer(),
+							newExistingHoldEndRow - existingNote.GetRow(),
+							existingHold.IsRoll()));
+						AddEvent(replacementEvent);
+						sideEffectAddedEvents ??= [];
+						sideEffectAddedEvents.Add(replacementEvent);
 					}
 				}
 			}
 
-			// Misc event with no lane.
-			else
+			// If this event is a hold note, delete any note which overlaps the hold.
+			var len = editorEvent.GetRowDuration();
+			if (len > 0)
 			{
-				// If the same kind of event exists at this row, delete it.
-				var eventsAtRow = EditorEvents.FindEventsAtRow(editorEvent.GetRow());
-				foreach (var potentialConflictingEvent in eventsAtRow)
+				var enumerator = EditorEvents.FindBestByPosition(row);
+				var overlappedNotes = new List<EditorEvent>();
+				while (enumerator != null && enumerator.MoveNext())
 				{
-					if (editorEvent.GetType() == potentialConflictingEvent.GetType())
-					{
-						DeleteEvent(potentialConflictingEvent);
-						sideEffectDeletedEvents.Add(potentialConflictingEvent);
+					var c = enumerator.Current;
+					if (c!.GetRow() < row)
+						continue;
+					if (c.GetLane() != lane)
+						continue;
+					if (c.GetRow() > row + len)
+						break;
+					overlappedNotes.Add(c);
+				}
 
-						// Determine if the side effect of deleting the conflicting note would
-						// affect the rate.
-						if (!rateDirty)
+				if (overlappedNotes.Count > 0)
+				{
+					DeleteEvents(overlappedNotes);
+					sideEffectDeletedEvents ??= [];
+					sideEffectDeletedEvents.AddRange(overlappedNotes);
+				}
+			}
+		}
+
+		// Misc event with no lane.
+		else
+		{
+			// If the same kind of event exists at this row, delete it.
+			var eventsAtRow = EditorEvents.FindEventsAtRow(editorEvent.GetRow());
+			foreach (var potentialConflictingEvent in eventsAtRow)
+			{
+				if (editorEvent.GetType() == potentialConflictingEvent.GetType())
+				{
+					DeleteEvent(potentialConflictingEvent);
+					sideEffectDeletedEvents ??= [];
+					sideEffectDeletedEvents.Add(potentialConflictingEvent);
+
+					// Determine if the side effect of deleting the conflicting note would
+					// affect the rate.
+					if (!rateDirty)
+					{
+						foreach (var deletedEvent in sideEffectDeletedEvents)
 						{
-							foreach (var deletedEvent in sideEffectDeletedEvents)
+							if (deletedEvent is EditorRateAlteringEvent)
 							{
-								if (deletedEvent is EditorRateAlteringEvent)
-								{
-									rateDirty = true;
-									break;
-								}
+								rateDirty = true;
+								break;
 							}
 						}
 					}
 				}
 			}
-
-			// By trying to force add this note, we altered the rate. This can happen for
-			// example when forcing a stop to get added over another stop. This will affect
-			// the time of the events being force added, so we need to recompute their times.
-			if (rateDirty)
-			{
-				editorEvent.RefreshRowDependencies();
-			}
-
-			// Now that all conflicting notes are deleted or adjusted, add this note.
-			AddEventInternal(editorEvent);
 		}
 
-		StepDensity?.AddEvents(events);
-		Notify(NotificationEventsAdded, this, events);
+		// By trying to force add this note, we altered the rate. This can happen for
+		// example when forcing a stop to get added over another stop. This will affect
+		// the time of the events being force added, so we need to recompute their times.
+		if (rateDirty)
+		{
+			editorEvent.RefreshRowDependencies();
+		}
 
-		return (sideEffectAddedEvents, sideEffectDeletedEvents);
+		// Now that all conflicting notes are deleted or adjusted, add this note.
+		AddEventInternal(editorEvent);
 	}
 
 	/// <summary>
@@ -2872,6 +2990,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			return false;
 		var lane = editorEvent.GetLane();
 		if ((lane != InvalidArrowIndex && lane < 0) || lane >= NumInputs)
+			return false;
+		if (IsMultiPlayer() && editorEvent is EditorPatternEvent)
 			return false;
 		return true;
 	}
@@ -2933,7 +3053,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 	public string GetStreamBreakdown()
 	{
-		return StepDensity.GetStreamBreakdown();
+		return StepTotals.GetStepDensity().GetStreamBreakdown();
 	}
 
 	#endregion Cached Data
@@ -2971,6 +3091,11 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	public void Update()
 	{
 		WorkQueue.Update();
+	}
+
+	public bool SupportsAutogenFeatures()
+	{
+		return !IsMultiPlayer();
 	}
 
 	#endregion Misc
@@ -3336,7 +3461,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 				chart.Type = ChartTypeString(ChartType);
 				chart.DifficultyType = ChartDifficultyType.ToString();
 				chart.NumInputs = NumInputs;
-				chart.NumPlayers = NumPlayers;
+				chart.NumPlayers = MaxPlayers;
 				chart.DifficultyRating = Rating;
 				chart.Extras.AddDestExtra(TagMusic, MusicPath, true);
 				chart.Tempo = DisplayTempo.ToString();
@@ -3396,6 +3521,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			ShouldUseChartMusicOffset = UsesChartMusicOffset,
 			ExpressedChartConfig = ExpressedChartConfig,
 			Patterns = patterns,
+			MaxPlayerIndex = MaxPlayersInternal - 1,
 		};
 		var jsonString = JsonSerializer.Serialize(customSaveData, CustomSaveDataSerializationOptions);
 
@@ -3452,6 +3578,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			MusicOffset = customSaveData.MusicOffset;
 			UsesChartMusicOffset = customSaveData.ShouldUseChartMusicOffset;
 			ExpressedChartConfig = customSaveData.ExpressedChartConfig;
+			MaxPlayers = customSaveData.MaxPlayerIndex + 1;
 
 			// Add pattern events.
 			var alteredPatterns = false;
