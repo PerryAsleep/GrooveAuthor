@@ -791,8 +791,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		MiscEvents = miscEvents;
 		Labels = labels;
 
-		if (maxPlayer > MaxPlayers)
-			MaxPlayers = maxPlayer;
+		if (maxPlayer + 1 > MaxPlayers)
+			MaxPlayers = maxPlayer + 1;
 
 		// TODO: Optimize.
 		// Ideally we only need to do one loop over all the notes. But that means either duplicating much of
