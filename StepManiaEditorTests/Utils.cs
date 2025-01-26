@@ -6,8 +6,8 @@ namespace StepManiaEditorTests;
 
 internal sealed class Utils
 {
-	internal static readonly Type[] ExpectedEmptyChartTypes = new[]
-	{
+	internal static readonly Type[] ExpectedEmptyChartTypes =
+	[
 		typeof(EditorPreviewRegionEvent),
 		typeof(EditorTimeSignatureEvent),
 		typeof(EditorTempoEvent),
@@ -15,7 +15,7 @@ internal sealed class Utils
 		typeof(EditorMultipliersEvent),
 		typeof(EditorScrollRateEvent),
 		typeof(EditorInterpolatedRateAlteringEvent),
-	};
+	];
 
 	internal static EditorChart CreateEmptyTestChart(SMCommon.ChartType chartType = SMCommon.ChartType.dance_single)
 	{

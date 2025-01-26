@@ -40,6 +40,7 @@ public class TestFakes
 		var c = CreateTestChart();
 		const int row = SMCommon.RowsPerMeasure;
 		const int len = SMCommon.MaxValidDenominator;
+		// ReSharper disable once RedundantArgumentDefaultValue
 		c.AddEvent(EditorEvent.CreateEvent(EventConfig.CreateFakeConfig(c, row, len)));
 		Assert.AreEqual(1, c.GetFakes().GetCount());
 

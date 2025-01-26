@@ -159,12 +159,12 @@ public class TestRateAlteringEventTree
 		// At row 0 we have the default events that are created with all charts.
 		if (row == 0)
 		{
-			return new List<string>
-			{
+			return
+			[
 				nameof(TimeSignature),
 				nameof(Tempo),
 				nameof(ScrollRate),
-			};
+			];
 		}
 
 		var expectedEventTypes = new List<string>();
