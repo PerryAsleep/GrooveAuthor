@@ -27,8 +27,8 @@ internal class Program
 /// </summary>
 internal class TextureGeneratorGame : Game
 {
-	private static readonly string[] ArrowSquareSubImageIds = new[]
-	{
+	private static readonly string[] ArrowSquareSubImageIds =
+	[
 		// Row 1.
 		"itg-down-1-4",
 		"itg-solo-1-4",
@@ -166,10 +166,10 @@ internal class TextureGeneratorGame : Game
 		null, //"itg-roll-end-fill",
 		"itg-roll-center-body-fill",
 		null, //"itg-roll-center-end-fill",
-	};
+	];
 
-	private static readonly string[] ArrowSnapSubImageIds = new[]
-	{
+	private static readonly string[] ArrowSnapSubImageIds =
+	[
 		"snap-1-4",
 		"snap-1-8",
 		"snap-1-24",
@@ -178,26 +178,26 @@ internal class TextureGeneratorGame : Game
 		"snap-1-12",
 		"snap-1-48",
 		"snap-1-64",
-	};
+	];
 
-	private static readonly string[] ArrowHoldStartSubImageIds = new[]
-	{
+	private static readonly string[] ArrowHoldStartSubImageIds =
+	[
 		"itg-hold-solo-start-active",
 		"itg-hold-solo-start-inactive",
 		"itg-roll-solo-start-active",
 		"itg-roll-solo-start-inactive",
-	};
+	];
 
-	private static readonly string[] ArrowSpecialTapMarkerIds = new[]
-	{
+	private static readonly string[] ArrowSpecialTapMarkerIds =
+	[
 		"fake-marker",
 		"lift-marker",
 		"player-marker-fill",
 		"player-marker-rim",
-	};
+	];
 
-	private static readonly string[] IconSubImageIds = new[]
-	{
+	private static readonly string[] IconSubImageIds =
+	[
 		"icon-dance-left",
 		"icon-dance-down",
 		"icon-dance-up",
@@ -222,7 +222,7 @@ internal class TextureGeneratorGame : Game
 		"icon-pump-center-dim",
 		"icon-pump-up-right-dim",
 		"icon-pump-down-right-dim",
-	};
+	];
 
 	private const string ContentDir = @"..\..\..\..\StepManiaEditor\Content\";
 	private const string EditorDir = @"..\..\..\..\StepManiaEditor\";
@@ -357,10 +357,9 @@ internal class TextureGeneratorGame : Game
 		var locationsForSaving = new Dictionary<string, List<int>>();
 		foreach (var (subTextureId, subTextureRect) in locations)
 		{
-			locationsForSaving.Add(subTextureId, new List<int>
-			{
+			locationsForSaving.Add(subTextureId, [
 				subTextureRect.X, subTextureRect.Y, subTextureRect.Width, subTextureRect.Height,
-			});
+			]);
 		}
 
 		JsonSerializerOptions serializerOptions = new()
@@ -435,24 +434,24 @@ internal class TextureGeneratorGame : Game
 		var capHeight = 57 + capHeightPadding;
 		var capHeightCenter = 43 + capHeightPadding;
 		var capHeightSolo = 45 + capHeightPadding;
-		ProcessGridOfImages(arrowsTexture, new[] { "itg-hold-end-inactive" }, 1, 128, 512, 128, capHeight, 0);
-		ProcessGridOfImages(arrowsTexture, new[] { "itg-hold-center-end-inactive" }, 1, 384, 512, 128, capHeightCenter, 0);
-		ProcessGridOfImages(arrowsTexture, new[] { "itg-hold-solo-end-inactive" }, 1, 640, 512, 128, capHeightSolo, 0);
-		ProcessGridOfImages(arrowsTexture, new[] { "itg-roll-end-inactive" }, 1, 128, 640, 128, capHeight, 0);
-		ProcessGridOfImages(arrowsTexture, new[] { "itg-roll-center-end-inactive" }, 1, 384, 640, 128, capHeightCenter, 0);
-		ProcessGridOfImages(arrowsTexture, new[] { "itg-roll-solo-end-inactive" }, 1, 640, 640, 128, capHeightSolo, 0);
-		ProcessGridOfImages(arrowsTexture, new[] { "itg-hold-end-active" }, 1, 128, 768, 128, capHeight, 0);
-		ProcessGridOfImages(arrowsTexture, new[] { "itg-hold-center-end-active" }, 1, 384, 768, 128, capHeightCenter, 0);
-		ProcessGridOfImages(arrowsTexture, new[] { "itg-hold-solo-end-active" }, 1, 640, 768, 128, capHeightSolo, 0);
-		ProcessGridOfImages(arrowsTexture, new[] { "itg-roll-end-active" }, 1, 128, 896, 128, capHeight, 0);
-		ProcessGridOfImages(arrowsTexture, new[] { "itg-roll-center-end-active" }, 1, 384, 896, 128, capHeightCenter, 0);
-		ProcessGridOfImages(arrowsTexture, new[] { "itg-roll-solo-end-active" }, 1, 640, 896, 128, capHeightSolo, 0);
-		ProcessGridOfImages(arrowsTexture, new[] { "itg-hold-end-fill" }, 1, 128, 1408, 128, capHeight, 0);
-		ProcessGridOfImages(arrowsTexture, new[] { "itg-hold-center-end-fill" }, 1, 384, 1408, 128, capHeightCenter, 0);
-		ProcessGridOfImages(arrowsTexture, new[] { "itg-hold-end-rim" }, 1, 640, 1408, 128, capHeight, 0);
-		ProcessGridOfImages(arrowsTexture, new[] { "itg-hold-center-end-rim" }, 1, 896, 1408, 128, capHeightCenter, 0);
-		ProcessGridOfImages(arrowsTexture, new[] { "itg-roll-end-fill" }, 1, 128, 1536, 128, capHeight, 0);
-		ProcessGridOfImages(arrowsTexture, new[] { "itg-roll-center-end-fill" }, 1, 384, 1536, 128, capHeightCenter, 0);
+		ProcessGridOfImages(arrowsTexture, ["itg-hold-end-inactive"], 1, 128, 512, 128, capHeight, 0);
+		ProcessGridOfImages(arrowsTexture, ["itg-hold-center-end-inactive"], 1, 384, 512, 128, capHeightCenter, 0);
+		ProcessGridOfImages(arrowsTexture, ["itg-hold-solo-end-inactive"], 1, 640, 512, 128, capHeightSolo, 0);
+		ProcessGridOfImages(arrowsTexture, ["itg-roll-end-inactive"], 1, 128, 640, 128, capHeight, 0);
+		ProcessGridOfImages(arrowsTexture, ["itg-roll-center-end-inactive"], 1, 384, 640, 128, capHeightCenter, 0);
+		ProcessGridOfImages(arrowsTexture, ["itg-roll-solo-end-inactive"], 1, 640, 640, 128, capHeightSolo, 0);
+		ProcessGridOfImages(arrowsTexture, ["itg-hold-end-active"], 1, 128, 768, 128, capHeight, 0);
+		ProcessGridOfImages(arrowsTexture, ["itg-hold-center-end-active"], 1, 384, 768, 128, capHeightCenter, 0);
+		ProcessGridOfImages(arrowsTexture, ["itg-hold-solo-end-active"], 1, 640, 768, 128, capHeightSolo, 0);
+		ProcessGridOfImages(arrowsTexture, ["itg-roll-end-active"], 1, 128, 896, 128, capHeight, 0);
+		ProcessGridOfImages(arrowsTexture, ["itg-roll-center-end-active"], 1, 384, 896, 128, capHeightCenter, 0);
+		ProcessGridOfImages(arrowsTexture, ["itg-roll-solo-end-active"], 1, 640, 896, 128, capHeightSolo, 0);
+		ProcessGridOfImages(arrowsTexture, ["itg-hold-end-fill"], 1, 128, 1408, 128, capHeight, 0);
+		ProcessGridOfImages(arrowsTexture, ["itg-hold-center-end-fill"], 1, 384, 1408, 128, capHeightCenter, 0);
+		ProcessGridOfImages(arrowsTexture, ["itg-hold-end-rim"], 1, 640, 1408, 128, capHeight, 0);
+		ProcessGridOfImages(arrowsTexture, ["itg-hold-center-end-rim"], 1, 896, 1408, 128, capHeightCenter, 0);
+		ProcessGridOfImages(arrowsTexture, ["itg-roll-end-fill"], 1, 128, 1536, 128, capHeight, 0);
+		ProcessGridOfImages(arrowsTexture, ["itg-roll-center-end-fill"], 1, 384, 1536, 128, capHeightCenter, 0);
 
 		Logger.Info($"Added images from {InputArrows}.");
 	}
