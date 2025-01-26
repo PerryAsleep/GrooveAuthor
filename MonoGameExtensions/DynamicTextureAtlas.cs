@@ -94,7 +94,7 @@ public class DynamicTextureAtlas : TextureAtlas
 
 				mipNodes[i] = node;
 
-				// Add every nodes to the DirtyNodes set so we render them to the texture atlas.
+				// Add every node to the DirtyNodes set so we render them to the texture atlas.
 				DirtyNodes.Add(id, node);
 				i++;
 			}
@@ -115,7 +115,7 @@ public class DynamicTextureAtlas : TextureAtlas
 			}
 
 			// Set the mip levels to be just this PackNode.
-			node.MipLevels = new[] { node };
+			node.MipLevels = [node];
 
 			AddSubTextureNode(subTextureId, node);
 			DirtyNodes.Add(subTextureId, node);

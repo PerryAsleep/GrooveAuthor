@@ -9,7 +9,7 @@ public class TextureUtils
 	{
 		/// <summary>
 		/// Draw the texture at its original size, centered in the destination area. If the texture is larger
-		/// than the destination area then it will be cropped as needed to fit. If it is smaller then it will
+		/// than the destination area then it will be cropped as needed to fit. If it is smaller than it will
 		/// be rendered smaller.
 		/// </summary>
 		OriginalSize,
@@ -27,7 +27,7 @@ public class TextureUtils
 		Fill,
 
 		/// <summary>
-		/// Letterbox or pillarbox as needed such that texture's original aspect ratio is maintained and it fills
+		/// Letterbox or pillarbox as needed such that texture's original aspect ratio is maintained, and it fills
 		/// the destination area as much as possible.
 		/// </summary>
 		Box,
@@ -194,7 +194,7 @@ public class TextureUtils
 	/// </summary>
 	public static List<Texture2D> GenerateMipLevels(GraphicsDevice graphicsDevice, Texture2D texture)
 	{
-		List<Texture2D> mipLevels = new() { texture };
+		List<Texture2D> mipLevels = [texture];
 		RecursiveGenerateMipLevels(graphicsDevice, texture, mipLevels);
 		return mipLevels;
 	}

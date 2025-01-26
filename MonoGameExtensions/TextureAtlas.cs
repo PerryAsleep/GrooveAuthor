@@ -125,7 +125,7 @@ public abstract class TextureAtlas : IReadOnlyTextureAtlas
 		/// <summary>
 		/// Recursive packing algorithm.
 		/// Packing a texture on the root PackNode will return a new PackNode containing the
-		/// Texture and it's location with the TextureAtlas.
+		/// Texture and its location with the TextureAtlas.
 		/// </summary>
 		/// <param name="texture">Texture to pack.</param>
 		/// <param name="padding">Padding in pixels to include around the Texture.</param>
