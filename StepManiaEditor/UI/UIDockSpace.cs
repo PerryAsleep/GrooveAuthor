@@ -137,6 +137,7 @@ internal sealed class UIDockSpace
 			if (node.NativePtr == null)
 			{
 				CentralNodeArea = Rectangle.Empty;
+				return;
 			}
 		}
 
