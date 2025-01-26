@@ -215,6 +215,9 @@ internal sealed class Editor :
 	private bool IsChartAreaSet;
 	private Rectangle ChartArea;
 
+	private bool OpeningSong = false;
+	private EditorPack ActivePack = new();
+
 	private EditorSong ActiveSong
 	{
 		set
@@ -945,6 +948,7 @@ internal sealed class Editor :
 		UILog.Instance.Init(this);
 		UISongProperties.Instance.Init(this, GraphicsDevice, ImGuiRenderer);
 		UIChartProperties.Instance.Init(this);
+		UIPackProperties.Instance.Init(this, ActivePack);
 		UIChartList.Instance.Init(this);
 		UIWaveFormPreferences.Instance.Init(MusicManager);
 		UIReceptorPreferences.Instance.Init(this);
@@ -3429,6 +3433,7 @@ internal sealed class Editor :
 
 		UISongProperties.Instance.Draw(ActiveSong);
 		UIChartProperties.Instance.Draw(FocusedChart);
+		UIPackProperties.Instance.Draw();
 		UIChartList.Instance.Draw(ActiveSong, FocusedChart);
 		UIExpressedChartConfig.Instance.Draw();
 		UIPerformedChartConfig.Instance.Draw();
@@ -3616,6 +3621,8 @@ internal sealed class Editor :
 					UISongProperties.Instance.Open(true);
 				if (ImGui.MenuItem("Chart Properties"))
 					UIChartProperties.Instance.Open(true);
+				if (ImGui.MenuItem("Pack Properties"))
+					UIPackProperties.Instance.Open(true);
 				if (ImGui.MenuItem("Chart List"))
 					UIChartList.Instance.Open(true);
 				if (ImGui.MenuItem("Hotbar"))
@@ -4667,9 +4674,16 @@ internal sealed class Editor :
 		{
 			var fileName = openFileDialog.FileName;
 			Preferences.Instance.OpenFileDialogInitialDirectory = System.IO.Path.GetDirectoryName(fileName);
-			OpenSongFileAsync(openFileDialog.FileName,
+			_ = OpenSongFileAsync(openFileDialog.FileName,
 				new DefaultChartListProvider(pOptions.DefaultStepsType, pOptions.DefaultDifficultyType));
 		}
+	}
+
+	public void OpenSongFile(string fileName)
+	{
+		if (string.IsNullOrEmpty(fileName))
+			return;
+		OnOpenFile(fileName);
 	}
 
 	/// <summary>
@@ -4678,13 +4692,14 @@ internal sealed class Editor :
 	/// </summary>
 	/// <param name="fileName">File name of the Song file to open.</param>
 	/// <param name="chartListProvider">IActiveChartListProvider for determining which active charts to use.</param>
-	private async void OpenSongFileAsync(
+	private async Task OpenSongFileAsync(
 		string fileName,
 		IActiveChartListProvider chartListProvider)
 	{
 		if (!CanLoadSongs())
 			return;
 
+		OpeningSong = true;
 		CloseSong();
 
 		// Start the load. If we are already loading, return.
@@ -4697,9 +4712,11 @@ internal sealed class Editor :
 		Debug.Assert(IsOnMainThread());
 
 		CloseSong();
+		OpeningSong = false;
 
 		// Get the newly loaded song.
 		ActiveSong = newActiveSong;
+		ActivePack.SetSong(ActiveSong);
 		if (ActiveSong == null)
 		{
 			return;
@@ -4933,7 +4950,7 @@ internal sealed class Editor :
 		if (string.IsNullOrEmpty(PendingOpenSongFileName))
 			return;
 		var pOptions = Preferences.Instance.PreferencesOptions;
-		OpenSongFileAsync(PendingOpenSongFileName,
+		_ = OpenSongFileAsync(PendingOpenSongFileName,
 			new DefaultChartListProvider(pOptions.DefaultStepsType, pOptions.DefaultDifficultyType));
 	}
 
@@ -4979,7 +4996,7 @@ internal sealed class Editor :
 		if (OpenRecentIndex >= p.RecentFiles.Count)
 			return;
 
-		OpenSongFileAsync(p.RecentFiles[OpenRecentIndex].FileName, p.RecentFiles[OpenRecentIndex]);
+		_ = OpenSongFileAsync(p.RecentFiles[OpenRecentIndex].FileName, p.RecentFiles[OpenRecentIndex]);
 	}
 
 	private void OnNew()
@@ -5007,6 +5024,7 @@ internal sealed class Editor :
 
 		CloseSong();
 		ActiveSong = new EditorSong(GraphicsDevice, ImGuiRenderer);
+		ActivePack.SetSong(ActiveSong);
 		ActiveSong.AddObservers(this, this);
 
 		if (!string.IsNullOrEmpty(PendingMusicFile))
@@ -5116,6 +5134,8 @@ internal sealed class Editor :
 		MusicManager.UnloadAsync();
 		SongLoadTask.ClearResults();
 		ActiveSong = null;
+		if (!OpeningSong)
+			ActivePack.SetSong(ActiveSong);
 		FocusedChart = null;
 		FocusedChartData = null;
 		LastKnownSongTime = null;

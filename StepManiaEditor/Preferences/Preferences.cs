@@ -135,6 +135,7 @@ internal sealed class Preferences
 	// Misc
 	[JsonInclude] public bool ShowSongPropertiesWindow = true;
 	[JsonInclude] public bool ShowChartPropertiesWindow = true;
+	[JsonInclude] public bool ShowPackPropertiesWindow;
 	[JsonInclude] public bool ShowAutogenConfigsWindow;
 	[JsonInclude] public bool ShowChartListWindow = true;
 	[JsonInclude] public bool ShowAboutWindow;

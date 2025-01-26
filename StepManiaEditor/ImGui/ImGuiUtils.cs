@@ -701,7 +701,9 @@ internal sealed class ImGuiUtils
 		var x = (screenWidth - width) * 0.5f;
 		ImGui.SetNextWindowPos(new Vector2(x, 100.0f), ImGuiCond.FirstUseEver);
 		ImGui.SetNextWindowSize(new Vector2(width, 0.0f), ImGuiCond.FirstUseEver);
-		return ImGui.Begin(title, ref showWindow, ImGuiWindowFlags.NoScrollbar | flags);
+		if ((flags & ImGuiWindowFlags.AlwaysVerticalScrollbar) == ImGuiWindowFlags.None)
+			flags |= ImGuiWindowFlags.NoScrollbar;
+		return ImGui.Begin(title, ref showWindow, flags);
 	}
 
 	public static bool BeginWindow(string title, ref bool showWindow, float width, float height,
@@ -719,7 +721,9 @@ internal sealed class ImGuiUtils
 		var y = Math.Max(0.0f, (screenHeight - size.Y) * 0.5f);
 		ImGui.SetNextWindowPos(new Vector2(x, y), ImGuiCond.FirstUseEver);
 		ImGui.SetNextWindowSize(size, ImGuiCond.FirstUseEver);
-		return ImGui.Begin(title, ref showWindow, ImGuiWindowFlags.NoScrollbar | flags);
+		if ((flags & ImGuiWindowFlags.AlwaysVerticalScrollbar) == ImGuiWindowFlags.None)
+			flags |= ImGuiWindowFlags.NoScrollbar;
+		return ImGui.Begin(title, ref showWindow, flags);
 	}
 
 	#endregion Window Placement
@@ -733,19 +737,31 @@ internal sealed class ImGuiUtils
 			Name = name;
 			ToolTipText = toolTip;
 			Flags = flags;
+			WidthOrWeight = 0.0f;
+		}
+
+		public ColumnData(string name, string toolTip, ImGuiTableColumnFlags flags, float widthOrWeight)
+		{
+			Name = name;
+			ToolTipText = toolTip;
+			Flags = flags;
+			WidthOrWeight = widthOrWeight;
 		}
 
 		public readonly string Name;
 		public readonly string ToolTipText;
 		public readonly ImGuiTableColumnFlags Flags;
+		public readonly float WidthOrWeight;
 	}
 
 	public static void BeginTable(ColumnData[] columnData)
 	{
+		ImGui.TableSetupScrollFreeze(0, 1);
+
 		for (uint i = 0; i < columnData.Length; i++)
 		{
 			var colData = columnData[i];
-			ImGui.TableSetupColumn(colData.Name, colData.Flags, 0.0f, i);
+			ImGui.TableSetupColumn(colData.Name, colData.Flags, colData.WidthOrWeight, i);
 		}
 
 		// Construct headers manually in order to add tool tips.
@@ -761,8 +777,6 @@ internal sealed class ImGuiUtils
 				ToolTip(colData.ToolTipText);
 			ImGui.PopID();
 		}
-
-		ImGui.TableSetupScrollFreeze(0, 1);
 	}
 
 	#endregion Table Headers
