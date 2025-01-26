@@ -195,6 +195,8 @@ internal sealed class UIChartHeader
 			PopButtonStyle();
 		}
 
+		ImGui.PopStyleColor(colorPushCount);
+
 		ImGui.EndChild();
 
 		// Restore window size and padding values.
@@ -205,8 +207,6 @@ internal sealed class UIChartHeader
 		ImGui.GetStyle().WindowMinSize = originalMinWindowSize;
 		ImGui.GetStyle().SelectableTextAlign.Y = originalSelectableTextAlignY;
 		ImGui.GetStyle().WindowPadding.X = originalWindowPadding;
-
-		ImGui.PopStyleColor(colorPushCount);
 	}
 
 	private void PushButtonStyle()
