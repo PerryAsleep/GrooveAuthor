@@ -177,6 +177,7 @@ public class ImGuiRenderer
 		};
 	}
 
+
 	/// <summary>
 	/// Updates the <see cref="Effect" /> to the current matrices and texture
 	/// </summary>
@@ -219,14 +220,10 @@ public class ImGuiRenderer
 			}
 		}
 
-		// Setting modifier keys through ImGuiKeys like ImGuiKey.LeftShift doesn't seem to work as intended.
-		// Setting them through ImGuiKeys like ImGuiKey.ModShift however does seem to work as intended.
-		// The above code only sets the non-modifier keys in ImGui, so we need to set the special modifier
-		// keys below.
-		io.KeyShift = keyboard.IsKeyDown(Keys.LeftShift) || keyboard.IsKeyDown(Keys.RightShift);
-		io.KeyCtrl = keyboard.IsKeyDown(Keys.LeftControl) || keyboard.IsKeyDown(Keys.RightControl);
-		io.KeyAlt = keyboard.IsKeyDown(Keys.LeftAlt) || keyboard.IsKeyDown(Keys.RightAlt);
-		io.KeySuper = keyboard.IsKeyDown(Keys.LeftWindows) || keyboard.IsKeyDown(Keys.RightWindows);
+		io.AddKeyEvent(ImGuiKey.ModCtrl, keyboard.IsKeyDown(Keys.LeftControl) || keyboard.IsKeyDown(Keys.RightControl));
+		io.AddKeyEvent(ImGuiKey.ModShift, keyboard.IsKeyDown(Keys.LeftShift) || keyboard.IsKeyDown(Keys.RightShift));
+		io.AddKeyEvent(ImGuiKey.ModAlt, keyboard.IsKeyDown(Keys.LeftAlt) || keyboard.IsKeyDown(Keys.RightAlt));
+		io.AddKeyEvent(ImGuiKey.ModSuper, keyboard.IsKeyDown(Keys.LeftWindows) || keyboard.IsKeyDown(Keys.RightWindows));
 	}
 
 	private bool TryMapKeys(Keys key, out ImGuiKey imguikey)
