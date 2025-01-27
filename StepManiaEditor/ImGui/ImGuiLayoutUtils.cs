@@ -179,6 +179,23 @@ internal sealed class ImGuiLayoutUtils
 		ImGui.Text(text);
 	}
 
+	public static void DrawRowTitleAndTextWithButton(string title, string text, Action buttonAction, string buttonText,
+		float buttonWidth, string help = null)
+	{
+		DrawRowTitleAndAdvanceColumn(title);
+
+		var remainingWidth = DrawHelp(help, ImGui.GetContentRegionAvail().X);
+		var textWidth = remainingWidth - buttonWidth - ImGui.GetStyle().ItemSpacing.X;
+		ImGui.SetNextItemWidth(textWidth);
+		Text(text, textWidth);
+
+		ImGui.SameLine();
+		if (ImGui.Button($"{buttonText}{GetElementTitle(title, "Button")}", new Vector2(buttonWidth, 0.0f)))
+		{
+			buttonAction?.Invoke();
+		}
+	}
+
 	public static void DrawRowTitleAndTextWithCopy(string title, string text, string help = null)
 	{
 		DrawRowTitleAndAdvanceColumn(title);
@@ -206,6 +223,20 @@ internal sealed class ImGuiLayoutUtils
 		// and I am not sure why. This is a hack to compensate for it.
 		return ImGui.GetContentRegionAvail().X - TableRowRightPadding;
 	}
+
+	#region Texture
+
+	public static void DrawRowTexture(string title, EditorTexture texture, EmptyTexture fallbackTexture, string help = null)
+	{
+		DrawRowTitleAndAdvanceColumn(title);
+		ImGui.SetNextItemWidth(DrawHelp(help, ImGui.GetContentRegionAvail().X));
+		if (!(texture?.Draw() ?? false))
+		{
+			fallbackTexture?.Draw();
+		}
+	}
+
+	#endregion Texture
 
 	#region Checkbox
 
