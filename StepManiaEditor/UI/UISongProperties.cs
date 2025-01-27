@@ -510,7 +510,7 @@ internal sealed class UISongProperties : UIWindow
 
 	private void SetLastSecondHintFromCurrentTime()
 	{
-		var currentTime = Math.Max(0.0, Editor.GetPosition().ChartTime);
+		var currentTime = Math.Max(0.0, Editor.GetPosition().SongTime);
 		ActionQueue.Instance.Do(
 			new ActionSetObjectFieldOrPropertyValue<double>(EditorSong, nameof(EditorSong.LastSecondHint), currentTime, true));
 	}
