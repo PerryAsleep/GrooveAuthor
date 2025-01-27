@@ -216,7 +216,7 @@ internal sealed class Editor :
 	private Rectangle ChartArea;
 
 	private bool OpeningSong = false;
-	private EditorPack ActivePack = new();
+	private EditorPack ActivePack;
 
 	private EditorSong ActiveSong
 	{
@@ -387,6 +387,7 @@ internal sealed class Editor :
 		InitializeWaveFormRenderer();
 		InitializeDensityGraph();
 		InitializeMiniMap();
+		InitializeEditorPack();
 		InitializeUIHelpers();
 		InitializeKeyCommandManager();
 		InitializeSongLoadTask();
@@ -948,7 +949,7 @@ internal sealed class Editor :
 		UILog.Instance.Init(this);
 		UISongProperties.Instance.Init(this, GraphicsDevice, ImGuiRenderer);
 		UIChartProperties.Instance.Init(this);
-		UIPackProperties.Instance.Init(this, ActivePack);
+		UIPackProperties.Instance.Init(this, ActivePack, GraphicsDevice, ImGuiRenderer);
 		UIChartList.Instance.Init(this);
 		UIWaveFormPreferences.Instance.Init(MusicManager);
 		UIReceptorPreferences.Instance.Init(this);
@@ -966,6 +967,11 @@ internal sealed class Editor :
 #if DEBUG
 		UIDebug.Instance.Init(this);
 #endif
+	}
+
+	private void InitializeEditorPack()
+	{
+		ActivePack = new EditorPack(GraphicsDevice, ImGuiRenderer);
 	}
 
 	private void InitializeSongLoadTask()

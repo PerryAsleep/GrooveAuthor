@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using Fumen;
+using Microsoft.Xna.Framework.Graphics;
+using static StepManiaEditor.ImGuiUtils;
 
 namespace StepManiaEditor;
 
@@ -13,10 +15,17 @@ internal sealed class EditorPack
 {
 	private EditorSong ActiveSong;
 	private DirectoryInfo PackDirectoryInfo;
+	private readonly EditorImageData Banner = new(null);
 	private string PackName;
 
 	private List<PackSong> Songs = new();
 	private readonly PackLoadTask PackLoadTask = new();
+
+	public EditorPack(GraphicsDevice graphicsDevice, ImGuiRenderer imGuiRenderer)
+	{
+		Banner = new EditorImageData(null, graphicsDevice, imGuiRenderer, (uint)GetBannerWidth(),
+			(uint)GetBannerHeight(), null, false);
+	}
 
 	public void SetSong(EditorSong song)
 	{
@@ -34,6 +43,11 @@ internal sealed class EditorPack
 	public IReadOnlyList<PackSong> GetSongs()
 	{
 		return Songs;
+	}
+
+	public EditorImageData GetBanner()
+	{
+		return Banner;
 	}
 
 	private static bool AreSongsInSamePack(EditorSong songA, EditorSong songB)
@@ -79,6 +93,7 @@ internal sealed class EditorPack
 		Songs.Clear();
 		PackName = null;
 		PackDirectoryInfo = null;
+		Banner.UpdatePath(null, null);
 		if (ActiveSong == null)
 			return;
 
@@ -98,7 +113,7 @@ internal sealed class EditorPack
 			return;
 		}
 
-		var taskComplete = await PackLoadTask.Start(new PackLoadState(packDirectoryInfo));
+		var taskComplete = await PackLoadTask.Start(new PackLoadState(packDirectoryInfo, Banner));
 		if (!taskComplete)
 			return;
 		if (ActiveSong != null)

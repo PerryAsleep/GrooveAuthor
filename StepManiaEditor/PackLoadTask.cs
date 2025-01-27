@@ -11,15 +11,22 @@ namespace StepManiaEditor;
 internal sealed class PackLoadState
 {
 	private readonly DirectoryInfo PackDirectoryInfo;
+	private readonly EditorImageData PackBannerImage;
 
-	public PackLoadState(DirectoryInfo packDirectoryInfo)
+	public PackLoadState(DirectoryInfo packDirectoryInfo, EditorImageData packBannerImage)
 	{
 		PackDirectoryInfo = packDirectoryInfo;
+		PackBannerImage = packBannerImage;
 	}
 
 	public DirectoryInfo GetPackDirectoryInfo()
 	{
 		return PackDirectoryInfo;
+	}
+
+	public EditorImageData GetPackBannerImage()
+	{
+		return PackBannerImage;
 	}
 }
 
@@ -78,12 +85,50 @@ internal sealed class PackLoadTask : CancellableTask<PackLoadState>
 			songs.Sort(new PackSongComparer());
 		}
 
+		LoadPackBanner(state);
+
 		// Save results
 		lock (Lock)
 		{
 			Songs = songs;
 			PackName = packName;
 		}
+	}
+
+	private void LoadPackBanner(PackLoadState state)
+	{
+		// This order matches Stepmania. See SongManager::AddGroup.
+		List<string> preferredExtensions =
+		[
+			".png",
+			".jpg",
+			".jpeg",
+			".gif",
+			".bmp",
+		];
+
+		FileInfo bannerFileInfo = null;
+		var packDirectoryInfo = state.GetPackDirectoryInfo();
+		var files = packDirectoryInfo.GetFiles();
+		foreach (var extension in preferredExtensions)
+		{
+			foreach (var file in files)
+			{
+				if (file.Extension == extension)
+				{
+					bannerFileInfo = file;
+					break;
+				}
+			}
+
+			if (bannerFileInfo != null)
+				break;
+		}
+
+		if (bannerFileInfo == null)
+			return;
+
+		state.GetPackBannerImage().UpdatePath(bannerFileInfo.DirectoryName, bannerFileInfo.Name);
 	}
 
 	/// <summary>

@@ -2,6 +2,7 @@
 using System.Numerics;
 using Fumen.Converters;
 using ImGuiNET;
+using Microsoft.Xna.Framework.Graphics;
 using static StepManiaEditor.ImGuiUtils;
 
 namespace StepManiaEditor;
@@ -26,6 +27,8 @@ internal sealed class UIPackProperties : UIWindow
 	private Editor Editor;
 	private EditorPack Pack;
 
+	private EmptyTexture EmptyTextureBanner;
+
 	private static readonly ColumnData[] TableColumnData;
 	private static readonly float DefaultWidth = UiScaled(513);
 	private static readonly float RefreshButtonWidth = UiScaled(52);
@@ -48,10 +51,11 @@ internal sealed class UIPackProperties : UIWindow
 	{
 	}
 
-	public void Init(Editor editor, EditorPack pack)
+	public void Init(Editor editor, EditorPack pack, GraphicsDevice graphicsDevice, ImGuiRenderer imGuiRenderer)
 	{
 		Editor = editor;
 		Pack = pack;
+		EmptyTextureBanner = new EmptyTexture(graphicsDevice, imGuiRenderer, (uint)GetBannerWidth(), (uint)GetBannerHeight());
 	}
 
 	public override void Open(bool focus)
@@ -73,20 +77,50 @@ internal sealed class UIPackProperties : UIWindow
 
 		if (BeginWindow(WindowTitle, ref Preferences.Instance.ShowPackPropertiesWindow, DefaultWidth))
 		{
+			var windowWidth = ImGui.GetContentRegionAvail().X;
+
 			// Pack title and refresh button.
-			var titleWidth = ImGui.GetContentRegionAvail().X - ImGui.GetStyle().ItemSpacing.X - RefreshButtonWidth;
-			Text(Pack.GetPackName() ?? "", titleWidth);
+			var titleWidth = windowWidth - ImGui.GetStyle().ItemSpacing.X - RefreshButtonWidth;
+			var packName = Pack.GetPackName();
+			var hasPack = !string.IsNullOrEmpty(packName);
+			if (!hasPack)
+				PushDisabled();
+			Text(packName ?? "", titleWidth);
 			ImGui.SameLine();
 			if (ImGui.Button("Refresh", new Vector2(RefreshButtonWidth, 0.0f)))
 			{
 				_ = Pack.Refresh();
 			}
 
+			ImGui.Separator();
+
+			// Banner.
+			var padding = (windowWidth - GetBannerWidth()) * 0.5f;
+			if (padding > 0.0f)
+			{
+				var originalSpacing = ImGui.GetStyle().ItemSpacing.X;
+				ImGui.GetStyle().ItemSpacing.X = 0;
+				ImGui.Dummy(new Vector2(padding, 0.0f));
+				ImGui.SameLine();
+				ImGui.GetStyle().ItemSpacing.X = originalSpacing;
+			}
+
+			if (!(Pack.GetBanner()?.GetTexture()?.Draw() ?? false))
+			{
+				EmptyTextureBanner.Draw();
+			}
+
+			ToolTip("Stepmania infers a pack's banner from image assets in the pack's folder." +
+			        " It uses the first image asset it finds regardless of its size or dimensions, preferring the following extensions in order: "
+			        + "png, jpg, jpeg, gif, bmp. Depending on the Stepmania theme banners have different recommended sizes."
+			        + "\nITG banners are 418x164."
+			        + "\nDDR banners are 512x160 or 256x80.");
+			ImGui.Separator();
+
 			// Song table.
 			var packSongs = Pack.GetSongs();
 			if (packSongs != null && packSongs.Count > 0)
 			{
-				ImGui.Separator();
 				string fileToOpen = null;
 				if (ImGui.BeginTable("Pack Songs", Enum.GetNames(typeof(Column)).Length,
 					    ImGuiTableFlags.ScrollY
@@ -138,6 +172,9 @@ internal sealed class UIPackProperties : UIWindow
 					Editor.OpenSongFile(fileToOpen);
 				}
 			}
+
+			if (!hasPack)
+				PopDisabled();
 		}
 
 		ImGui.End();
