@@ -229,7 +229,7 @@ internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<Prefe
 			return;
 		}
 
-		if (!editorEvent.IsStep())
+		if (!editorEvent.IsStep() || editorEvent.IsFake())
 			return;
 
 		// Update the step count for this step's measure.
@@ -329,7 +329,7 @@ internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<Prefe
 			return;
 		}
 
-		if (!editorEvent.IsStep())
+		if (!editorEvent.IsStep() || editorEvent.IsFake())
 			return;
 
 		// Update the step count for this step's measure.
@@ -541,7 +541,7 @@ internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<Prefe
 			}
 
 			// Track step towards stream.
-			if (editorEvent.IsStep())
+			if (editorEvent.IsStep() && !editorEvent.IsFake())
 			{
 				var row = editorEvent.GetRow();
 				currentStepsPerMeasure++;
