@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using Fumen;
@@ -45,47 +46,63 @@ internal sealed class PackLoadTask : CancellableTask<PackLoadState>
 		var songs = new List<PackSong>();
 		var packDirectoryInfo = state.GetPackDirectoryInfo();
 		var packName = packDirectoryInfo.Name;
-		var dirs = packDirectoryInfo.EnumerateDirectories();
 		var token = CancellationTokenSource.Token;
-		token.ThrowIfCancellationRequested();
-		foreach (var songDirectory in dirs)
+
+		try
 		{
-			var files = songDirectory.GetFiles();
-			FileInfo smFile = null;
-			FileInfo sscFile = null;
-			foreach (var file in files)
-			{
-				if (file.Extension == ".ssc")
-					sscFile = file;
-				else if (file.Extension == ".sm")
-					smFile = file;
-			}
-
-			if (sscFile != null || smFile != null)
-			{
-				songs.Add(new PackSong(songDirectory, sscFile, smFile));
-			}
-		}
-
-		token.ThrowIfCancellationRequested();
-
-		if (songs.Count > 0)
-		{
-			var tasks = new Task<bool>[songs.Count];
-			for (var i = 0; i < songs.Count; i++)
-			{
-				tasks[i] = songs[i].LoadAsync(CancellationTokenSource.Token);
-			}
-
-			await Task.WhenAll(tasks);
+			var dirs = packDirectoryInfo.EnumerateDirectories();
 			token.ThrowIfCancellationRequested();
-			for (var i = songs.Count - 1; i >= 0; i--)
-				if (!tasks[i].Result)
-					songs.RemoveAt(i);
-			songs.Sort(new PackSongComparer());
+
+			foreach (var songDirectory in dirs)
+			{
+				var files = songDirectory.GetFiles();
+				FileInfo smFile = null;
+				FileInfo sscFile = null;
+				foreach (var file in files)
+				{
+					if (file.Extension == ".ssc")
+						sscFile = file;
+					else if (file.Extension == ".sm")
+						smFile = file;
+				}
+
+				if (sscFile != null || smFile != null)
+				{
+					songs.Add(new PackSong(songDirectory, sscFile, smFile));
+				}
+			}
+
+			token.ThrowIfCancellationRequested();
+
+			if (songs.Count > 0)
+			{
+				var tasks = new Task<bool>[songs.Count];
+				for (var i = 0; i < songs.Count; i++)
+				{
+					tasks[i] = songs[i].LoadAsync(CancellationTokenSource.Token);
+				}
+
+				await Task.WhenAll(tasks);
+				token.ThrowIfCancellationRequested();
+				for (var i = songs.Count - 1; i >= 0; i--)
+					if (!tasks[i].Result)
+						songs.RemoveAt(i);
+				songs.Sort(new PackSongComparer());
+			}
+
+			LoadPackBanner(state);
+		}
+		catch (OperationCanceledException)
+		{
+			// Intentionally ignored.
+		}
+		catch (Exception e)
+		{
+			Logger.Error($"Failed to parse {packName} pack. {e}");
+			songs.Clear();
 		}
 
-		LoadPackBanner(state);
+		token.ThrowIfCancellationRequested();
 
 		// Save results
 		lock (Lock)
