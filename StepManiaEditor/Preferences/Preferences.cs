@@ -128,9 +128,11 @@ internal sealed class Preferences
 	[JsonInclude] public bool LogWindowLineWrap = true;
 
 	// Save Options
+	[JsonInclude] public bool RequireIdenticalTimingInSmFiles = true;
 	[JsonInclude] public bool OmitChartTimingData;
 	[JsonInclude] public bool OmitCustomSaveData;
 	[JsonInclude] public bool AnonymizeSaveData;
+	[JsonInclude] public bool UseStepF2ForPumpRoutine;
 
 	// Misc
 	[JsonInclude] public bool ShowSongPropertiesWindow = true;

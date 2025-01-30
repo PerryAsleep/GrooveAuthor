@@ -75,9 +75,11 @@ If any chart contains events which aren't compatible with the `sm` format, *and 
 
 Warps can be converted to negative stops for compatibility with the `sm` format by selecting `Edit` > `Convert All` > `Warps to Negative Stops`.
 
+Additionally, if any chart has timing data which differs from the `Timing Chart` then an error is displayed and the song will not be saved. This behavior can be overridden by unchecking `Require Identical Timing in SM Files` under `Advanced Save Options`.
+
 ### `sm` Save Warnings
 
-If any chart has any timing data which differs from the `Timing Chart` but those differences would *not* affect actual note timing then warnings will be logged and the song will still be saved using the `Timing Chart`'s data.
+If `Require Identical Timing in SM Files` is disabled, then instead of an error being logged a warning will be logged when any chart has timing data which differs from the `Timing Chart` and the song will still save using the `Timing Chart`'s data.
 
 Any events which are not supported in the `sm` format but do not affect timing will also only be treated as warnings and they will be omitted when saving. The events supported in `sm` files depends on the version of StepMania. `GrooveAuthor` treats the following events as incompatible and will log warnings when they are present:
 - Scroll Rates (`#SCROLLS`)

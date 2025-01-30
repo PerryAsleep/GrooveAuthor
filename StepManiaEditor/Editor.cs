@@ -3530,9 +3530,19 @@ internal sealed class Editor :
 
 				if (ImGui.BeginMenu("Advanced Save Options"))
 				{
-					var titleColumnWidth = UiScaled(150);
+					var titleColumnWidth = UiScaled(220);
 					if (ImGuiLayoutUtils.BeginTable("AdvancedSaveOptionsTable", titleColumnWidth))
 					{
+						ImGuiLayoutUtils.DrawRowCheckbox(true, "Require Identical Timing in SM Files", Preferences.Instance,
+							nameof(Preferences.RequireIdenticalTimingInSmFiles), false,
+							"In sm files all timing events must be identical between all charts. If this option is checked" +
+							$" then when saving sm files {GetAppName()} will treat any discrepancies in timing events between" +
+							" charts as an error and will fail to save the chart. If this option is not checked then discrepancies" +
+							" will be treated as a warning and song's Timing Chart will be used for every chart's timing events." +
+							" Note that if this option is unchecked then for songs with different timing events between" +
+							" charts it can result in sm files with data loss and timing that does not match what you see" +
+							$" in {GetAppName()}.");
+
 						ImGuiLayoutUtils.DrawRowCheckbox(true, "Remove Chart Timing", Preferences.Instance,
 							nameof(Preferences.OmitChartTimingData), false,
 							"If checked then individual charts will have their timing data omitted from their files." +
@@ -3575,6 +3585,13 @@ internal sealed class Editor :
 							"\n\nThis is intended for contest submissions which require anonymized files and expect" +
 							" these fields to be blank.");
 						// ReSharper restore StringLiteralTypo
+
+						ImGuiLayoutUtils.DrawRowCheckbox(true, "Use StepF2 Format for Pump Routine", Preferences.Instance,
+							nameof(Preferences.UseStepF2ForPumpRoutine), false,
+							"StepF2 (a.k.a. StepP1) is a fork of Stepmania which supports Pump Co-Op emulation, however it" +
+							" uses a file format which is not compatible with stock Stepmania and only supports up to four" +
+							" players. This format also does not support rolls, lifts, or per-player mines. If this option" +
+							$" is checked then when {GetAppName()} saves a Pump Routine chart it will use the StepF2 format.");
 
 						ImGuiLayoutUtils.EndTable();
 					}
@@ -4655,9 +4672,11 @@ internal sealed class Editor :
 			TryInvokePostSaveFunction();
 		})
 		{
+			RequireIdenticalTimingInSmFiles = Preferences.Instance.RequireIdenticalTimingInSmFiles,
 			OmitChartTimingData = Preferences.Instance.OmitChartTimingData,
 			OmitCustomSaveData = Preferences.Instance.OmitCustomSaveData,
 			AnonymizeSaveData = Preferences.Instance.AnonymizeSaveData,
+			UseStepF2ForPumpRoutine = Preferences.Instance.UseStepF2ForPumpRoutine,
 		};
 		editorSong?.Save(saveParameters);
 	}

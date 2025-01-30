@@ -85,6 +85,11 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 		public readonly Action<bool> Callback;
 
 		/// <summary>
+		/// Whether or not to require identical timing events between charts when saving sm files.
+		/// </summary>
+		public bool RequireIdenticalTimingInSmFiles;
+
+		/// <summary>
 		/// Whether or not to omit chart timing data and force song timing data.
 		/// </summary>
 		public bool OmitChartTimingData;
@@ -98,6 +103,11 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 		/// Whether or not to anonymize save data.
 		/// </summary>
 		public bool AnonymizeSaveData;
+
+		/// <summary>
+		/// Whether or not to use the StepF2 format for Pump routine charts.
+		/// </summary>
+		public bool UseStepF2ForPumpRoutine;
 	}
 
 	/// <summary>
@@ -1396,33 +1406,65 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 	/// <summary>
 	/// Returns whether or not this song is compatible with the legacy sm format.
 	/// </summary>
+	/// <param name="fileFormat">The FileFormatType being saved to.</param>
+	/// <param name="saveParameters">The SaveParameters being saved with.</param>
 	/// <returns>
 	/// Tuple with the following values:
 	///  compatible: Whether or not the song is compatible with the sm format.
-	///  timingMatches: Whether the timing of all the charts matches.
+	///  timingMismatchProblem: Whether there is a problematic mismatch of timing events between the charts.
 	/// </returns>
-	private (bool compatible, bool timingMatches) IsCompatibleWithSmFormat()
+	private (bool compatible, bool timingMismatchProblem) IsCompatibleWithFormat(FileFormatType fileFormat,
+		SaveParameters saveParameters)
 	{
-		// LastSecondHint values aren't compatible with the sm format but can be safely ignored.
-		if (LastSecondHint > 0.0)
+		var compatible = true;
+
+		// Perform format-specific checks.
+		switch (fileFormat)
 		{
-			Logger.Warn(
-				$"Song has last second hint at {LastSecondHint}. Last second hint values are not compatible with sm files and will be omitted.");
+			case FileFormatType.SM:
+			{
+				// LastSecondHint values aren't compatible with the sm format but can be safely ignored.
+				if (LastSecondHint > 0.0)
+				{
+					Logger.Warn(
+						$"Song has last second hint at {LastSecondHint}. Last second hint values are not compatible with {FileFormatType.SM} files and will be omitted.");
+				}
+
+				break;
+			}
+			case FileFormatType.SSC:
+			{
+				// When forcing song timing log errors on inconsistencies.
+				// We could warn and continue, but it is better to avoid saving lossy data to disk.
+				if (saveParameters.OmitChartTimingData)
+				{
+					if (!DoChartTimingEventsMatch())
+					{
+						Logger.Error(
+							"\"Remove Chart Timing\" was specified but the charts in this song have different timing events." +
+							" Please address incompatibilities and try again." +
+							$" Consider applying the timing and scroll events from {TimingChart.GetDescriptiveName()} to all charts using the button in the Song Properties window.");
+						compatible = false;
+					}
+				}
+
+				break;
+			}
 		}
 
 		// Check each chart.
-		var compatible = true;
 		foreach (var kvp in Charts)
 		{
 			var charts = kvp.Value;
 			foreach (var chart in charts)
 			{
-				if (!chart.IsCompatibleWithSmFormat(true))
+				if (!chart.IsCompatibleWithFormat(fileFormat, saveParameters, true))
 					compatible = false;
 			}
 		}
 
-		return (compatible, DoChartTimingEventsMatch());
+		var chartTimingEventMismatchProblem = fileFormat == FileFormatType.SM && !DoChartTimingEventsMatch();
+		return (compatible, chartTimingEventMismatchProblem);
 	}
 
 	/// <summary>
@@ -1457,44 +1499,6 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 	}
 
 	/// <summary>
-	/// Returns whether or not this song is compatible with the ssc format.
-	/// </summary>
-	/// <returns>
-	/// True if the song is compatible with the ssc format and false otherwise.
-	/// </returns>
-	private bool IsCompatibleWithSscFormat()
-	{
-		// Check each chart.
-		var compatible = true;
-		foreach (var kvp in Charts)
-		{
-			var charts = kvp.Value;
-			foreach (var chart in charts)
-			{
-				if (!chart.IsCompatibleWithSscFormat(true))
-					compatible = false;
-			}
-		}
-
-		return compatible;
-	}
-
-	/// <summary>
-	/// Logs warnings from saving this song with omission of custom save data.
-	/// </summary>
-	private void LogWarningsForOmittingCustomSaveData()
-	{
-		foreach (var kvp in Charts)
-		{
-			var charts = kvp.Value;
-			foreach (var chart in charts)
-			{
-				chart.LogWarningsForOmittingCustomSaveData();
-			}
-		}
-	}
-
-	/// <summary>
 	/// Saves this EditorSong to disk.
 	/// Much of the work for saving occurs asynchronously.
 	/// </summary>
@@ -1516,53 +1520,35 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 			{
 				Logger.Info($"Saving {saveParameters.FullPath}...");
 
-				if (saveParameters.OmitCustomSaveData)
-					LogWarningsForOmittingCustomSaveData();
-
-				// If saving as an sm file check for incompatibilities and early out.
-				if (saveParameters.FileType == FileFormatType.SM)
+				// Check for compatibility problems and early out.
+				var (compatible, timingMismatchProblem) = IsCompatibleWithFormat(saveParameters.FileType, saveParameters);
+				if (timingMismatchProblem)
 				{
-					var (compatible, timingMatches) = IsCompatibleWithSmFormat();
-
-					if (!compatible)
+					if (saveParameters.RequireIdenticalTimingInSmFiles)
 					{
 						Logger.Error(
-							"Song is not compatible with sm format. Please address incompatibilities or save as an ssc file.");
+							$"The charts in this song have different timing events. {saveParameters.FileType} files do not support this. Consider saving this file as an {FileFormatType.SSC} file." +
+							$" You can also force saving of {saveParameters.FileType} files with incompatible timing by unchecking \"Require Identical Timing in SM Files\".");
+
 						complete = true;
 						return;
 					}
 
-					if (!timingMatches)
-					{
-						Logger.Warn(
-							$"The charts in this song have different timing events. sm files do not support this. The saved charts will all use the timing events from {TimingChart.GetDescriptiveName()}.");
-					}
+					Logger.Warn(
+						$"The charts in this song have different timing events. {saveParameters.FileType} files do not support this. The saved charts will all use the timing events from {TimingChart.GetDescriptiveName()}."
+						+ " To treat this as an error you can enable \"Require Identical Timing in SM Files\" in Advanced Save Options.");
 				}
 
-				if (saveParameters.FileType == FileFormatType.SSC)
+				if (!compatible)
 				{
-					// When forcing song timing log errors on inconsistencies.
-					// We could warn and continue but it is better to avoid saving lossy data to disk.
-					if (saveParameters.OmitChartTimingData)
-					{
-						if (!DoChartTimingEventsMatch())
-						{
-							Logger.Error(
-								"\"Remove Chart Timing\" was specified but the charts in this song have different timing events." +
-								" Please address incompatibilities and try again." +
-								$" Consider applying the timing and scroll events from {TimingChart.GetDescriptiveName()} to all charts using the button in the Song Properties window.");
-							complete = true;
-							return;
-						}
-					}
-
-					var compatible = IsCompatibleWithSscFormat();
-					if (!compatible)
-					{
-						Logger.Error("Song is not compatible with ssc format. Please address incompatibilities and try again.");
-						complete = true;
-						return;
-					}
+					var errorString =
+						$"Encountered one or more errors saving {saveParameters.FileType} file. Please address incompatibilities and try again.";
+					if (saveParameters.FileType == FileFormatType.SM)
+						errorString +=
+							$" Consider saving as an {FileFormatType.SSC} file to address {FileFormatType.SM}-specific issues.";
+					Logger.Error(errorString);
+					complete = true;
+					return;
 				}
 
 				var customProperties =
@@ -1659,6 +1645,7 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 							CustomProperties = customProperties,
 							FallbackChart = fallbackChart,
 							ForceOnlySongLevelTiming = saveParameters.OmitChartTimingData,
+							UseStepF2ForPumpMultiplayerCharts = saveParameters.UseStepF2ForPumpRoutine,
 						};
 						switch (saveParameters.FileType)
 						{

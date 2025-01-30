@@ -12,6 +12,10 @@
  - [Song Sync](SongSync.md)
  - [Song And Chart Timing](SongAndChartTiming.md)
 
+## Multiplayer Charts
+
+- [Multiplayer Charts](MultiplayerCharts.md)
+
 ## Autogen
 
 - [Chart Generation](ChartGeneration.md)

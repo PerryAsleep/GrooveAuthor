@@ -11,6 +11,7 @@ using static StepManiaEditor.Utils;
 using static Fumen.Converters.SMCommon;
 using static System.Diagnostics.Debug;
 using static StepManiaLibrary.Constants;
+using static StepManiaEditor.EditorSong;
 
 namespace StepManiaEditor;
 
@@ -3220,88 +3221,192 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	#region Saving
 
 	/// <summary>
-	/// Returns whether or not this chart is compatible with the legacy sm format.
-	/// While the sm format doesn't support many event types, some can be safely ignored.
-	/// For a chart to be considered incompatible it must contain events which if
-	/// ignored would produce a chart with different note timing.
+	/// Returns whether or not this chart is compatible with the given file format.
 	/// </summary>
+	/// <param name="format">FileFormatType to check.</param>
+	/// <param name="saveParameters">SaveParameters used for saving.</param>
 	/// <param name="logIncompatibilities">If true, log incompatibilities as errors.</param>
-	/// <returns>True if this chart is compatible with the sm format and false otherwise.</returns>
-	public bool IsCompatibleWithSmFormat(bool logIncompatibilities)
+	/// <returns>True if this chart is compatible with the given format and false otherwise.</returns>
+	public bool IsCompatibleWithFormat(FileFormatType format, SaveParameters saveParameters, bool logIncompatibilities)
 	{
 		var compatible = true;
 
-		// Warps affect timing and their presence would result in a busted sm chart.
-		if (Warps.GetCount() > 0)
+		// Perform format-agnostic checks.
+		if (saveParameters.OmitCustomSaveData)
 		{
-			if (logIncompatibilities)
-				LogError("Chart has Warps. Stepmania ignores Warps in sm files. Consider using negative Stops.");
-			compatible = false;
+			if (Patterns.GetCount() > 0)
+			{
+				if (logIncompatibilities)
+					LogWarn(
+						"Chart has Patterns. These will be deleted when saving because \"Remove Custom Save Data\" is selected.");
+			}
 		}
 
-		// Warn on other events which aren't supported but can be ignored.
-		if (logIncompatibilities)
+		if (saveParameters.UseStepF2ForPumpRoutine && ChartType == ChartType.pump_routine)
 		{
-			// Fake Segments
-			if (Fakes.GetCount() > 0)
+			// Player count.
+			if (MaxPlayers > StepF2MaxPlayers)
 			{
-				LogWarn("Chart has Fake Regions. Fake Regions are not compatible with sm files.");
+				if (logIncompatibilities)
+				{
+					LogError(
+						$"Pump Routine Chart has {MaxPlayers} Players but StepF2 only supports {StepF2MaxPlayers} Players and \"Use StepF2 Format for Pump Routine\" is selected."
+						+ " Remove steps for unsupported players and reduce the Players in the Chart Properties window, or save without \"Use StepF2 Format for Pump Routine\".");
+				}
+
+				compatible = false;
 			}
 
-			// Multipliers.
-			if (StepTotals.GetMultipliersCount() > 0)
+			// Rolls, lifts, and per-player mines.
+			// This O(N) scan is bad but also using StepF2 format and saving pump-routine is rare.
+			var hasRolls = false;
+			var hasLifts = false;
+			var hasNonP1Mines = false;
+			foreach (var chartEvent in EditorEvents)
 			{
-				var hasIncompatibleMultipliers = true;
-				if (StepTotals.GetMultipliersCount() == 1)
+				if (!hasRolls && chartEvent is EditorHoldNoteEvent hn && hn.IsRoll())
+					hasRolls = true;
+				if (!hasLifts && chartEvent is EditorLiftNoteEvent)
+					hasLifts = true;
+				if (!hasNonP1Mines && chartEvent is EditorMineNoteEvent m && m.GetPlayer() > 0)
+					hasNonP1Mines = true;
+			}
+
+			if (hasRolls)
+			{
+				if (logIncompatibilities)
 				{
-					foreach (var editorEvent in EditorEvents)
+					LogError(
+						"Pump Routine Chart has Rolls but StepF2 does not support Rolls and \"Use StepF2 Format for Pump Routine\" is selected."
+						+ " Remove all Rolls or save without \"Use StepF2 Format for Pump Routine\".");
+				}
+
+				compatible = false;
+			}
+
+			if (hasLifts)
+			{
+				if (logIncompatibilities)
+				{
+					LogError(
+						"Pump Routine Chart has Lifts but StepF2 does not support Lifts and \"Use StepF2 Format for Pump Routine\" is selected."
+						+ " Remove all Lifts or save without \"Use StepF2 Format for Pump Routine\".");
+				}
+
+				compatible = false;
+			}
+
+			if (hasNonP1Mines)
+			{
+				LogWarn(
+					"Pump Routine Chart has per-player Mines but StepF2 does not support per-player Mines and \"Use StepF2 Format for Pump Routine\" is selected."
+					+ " All Mines will be saved as P1 Mines.");
+			}
+		}
+
+		// Perform format-specific checks.
+		switch (format)
+		{
+			case FileFormatType.SM:
+			{
+				// Warps affect timing and their presence would result in a busted sm chart.
+				if (Warps.GetCount() > 0)
+				{
+					if (logIncompatibilities)
+						LogError(
+							$"Chart has Warps. Stepmania ignores Warps in {FileFormatType.SM} files. Consider using negative Stops.");
+					compatible = false;
+				}
+
+				// Warn on other events which aren't supported but can be ignored.
+				if (logIncompatibilities)
+				{
+					// Fake Segments
+					if (Fakes.GetCount() > 0)
 					{
-						if (editorEvent.GetRow() > 0)
-							break;
-						if (editorEvent is EditorMultipliersEvent m)
+						LogWarn($"Chart has Fake Regions. Fake Regions are not compatible with {FileFormatType.SM} files.");
+					}
+
+					// Multipliers.
+					if (StepTotals.GetMultipliersCount() > 0)
+					{
+						var hasIncompatibleMultipliers = true;
+						if (StepTotals.GetMultipliersCount() == 1)
 						{
-							if (m.GetRow() == 0 && m.GetHitMultiplier() == DefaultHitMultiplier &&
-							    m.GetHitMultiplier() == DefaultMissMultiplier)
+							foreach (var editorEvent in EditorEvents)
 							{
-								hasIncompatibleMultipliers = false;
-								break;
+								if (editorEvent.GetRow() > 0)
+									break;
+								if (editorEvent is EditorMultipliersEvent m)
+								{
+									if (m.GetRow() == 0 && m.GetHitMultiplier() == DefaultHitMultiplier &&
+									    m.GetHitMultiplier() == DefaultMissMultiplier)
+									{
+										hasIncompatibleMultipliers = false;
+										break;
+									}
+								}
 							}
 						}
+
+						if (hasIncompatibleMultipliers)
+						{
+							LogWarn(
+								$"Chart has Combo Multipliers. Combo Multipliers are not compatible with {FileFormatType.SM} files.");
+						}
 					}
-				}
 
-				if (hasIncompatibleMultipliers)
-				{
-					LogWarn("Chart has Combo Multipliers. Combo Multipliers are not compatible with sm files.");
-				}
-			}
-
-			// Scroll rate events.
-			foreach (var rateAlteringEvent in RateAlteringEvents)
-			{
-				if (rateAlteringEvent is EditorScrollRateEvent sre)
-				{
-					// Ignore the default scroll rate event.
-					if (sre.GetRow() == 0 && sre.GetScrollRate().DoubleEquals(DefaultScrollRate))
+					// Scroll rate events.
+					foreach (var rateAlteringEvent in RateAlteringEvents)
 					{
-						continue;
+						if (rateAlteringEvent is EditorScrollRateEvent sre)
+						{
+							// Ignore the default scroll rate event.
+							if (sre.GetRow() == 0 && sre.GetScrollRate().DoubleEquals(DefaultScrollRate))
+							{
+								continue;
+							}
+
+							LogWarn($"Chart has Scroll Rates. Scroll Rates are not compatible with {FileFormatType.SM} files.");
+							break;
+						}
 					}
 
-					LogWarn("Chart has Scroll Rates. Scroll Rates are not compatible with sm files.");
-					break;
+					// Interpolated scroll rate events.
+					foreach (var irae in InterpolatedScrollRateEvents)
+					{
+						// Ignore the default interpolated scroll rate event.
+						if (irae.GetRow() == 0 && irae.GetRate().DoubleEquals(DefaultScrollRate) && irae.IsInstant())
+						{
+							continue;
+						}
+
+						LogWarn(
+							$"Chart has Interpolated Scroll Rates. Interpolated Scroll Rates are not compatible with {FileFormatType.SM} files.");
+						break;
+					}
 				}
+
+				break;
 			}
-
-			// Interpolated scroll rate events.
-			foreach (var irae in InterpolatedScrollRateEvents)
+			case FileFormatType.SSC:
 			{
-				// Ignore the default interpolated scroll rate event.
-				if (irae.GetRow() == 0 && irae.GetRate().DoubleEquals(DefaultScrollRate) && irae.IsInstant())
+				// Negative stops are ignored in the ssc format.
+				foreach (var stop in Stops)
 				{
-					continue;
+					if (stop.GetStopLengthSeconds() < 0.0f)
+					{
+						if (logIncompatibilities)
+						{
+							LogError(
+								$"Chart has negative Stops. Stepmania ignores negative Stops in {FileFormatType.SSC} files. Consider using Warps.");
+						}
+
+						compatible = false;
+						break;
+					}
 				}
 
-				LogWarn("Chart has Interpolated Scroll Rates. Interpolated Scroll Rates are not compatible with sm files.");
 				break;
 			}
 		}
@@ -3386,46 +3491,6 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	}
 
 	/// <summary>
-	/// Returns whether or not this chart is compatible with the ssc format.
-	/// For a chart to be considered incompatible it must contain events which if
-	/// ignored would produce a chart with different note timing.
-	/// </summary>
-	/// <param name="logIncompatibilities">If true, log incompatibilities as errors.</param>
-	/// <returns>True if this chart is compatible with the ssc format and false otherwise.</returns>
-	public bool IsCompatibleWithSscFormat(bool logIncompatibilities)
-	{
-		var compatible = true;
-
-		// Negative stops are ignored in the ssc format.
-		foreach (var stop in Stops)
-		{
-			if (stop.GetStopLengthSeconds() < 0.0f)
-			{
-				if (logIncompatibilities)
-				{
-					LogError("Chart has negative Stops. Stepmania ignores negative Stops in ssc files. Consider using Warps.");
-				}
-
-				compatible = false;
-				break;
-			}
-		}
-
-		return compatible;
-	}
-
-	/// <summary>
-	/// Logs warnings from saving this chart with omission of custom save data.
-	/// </summary>
-	public void LogWarningsForOmittingCustomSaveData()
-	{
-		if (Patterns.GetCount() > 0)
-		{
-			LogWarn("Chart has Patterns. These will be deleted when saving because \"Remove Custom Save Data\" is selected.");
-		}
-	}
-
-	/// <summary>
 	/// Generates a list of Events from this EditorChart's EditorEvents.
 	/// The list will be sorted appropriately for Stepmania.
 	/// </summary>
@@ -3448,7 +3513,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		return smEvents;
 	}
 
-	public void SaveToChart(EditorSong.SaveParameters saveParameters, Action<Chart, Dictionary<string, string>> callback)
+	public void SaveToChart(SaveParameters saveParameters, Action<Chart, Dictionary<string, string>> callback)
 	{
 		var chart = new Chart();
 		var customProperties = saveParameters.OmitCustomSaveData ? null : new Dictionary<string, string>();
