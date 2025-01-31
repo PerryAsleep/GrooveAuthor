@@ -650,6 +650,8 @@ internal sealed class Editor :
 		AddKeyCommand(navigation, "Move To Next Row With Steps", nameof(PreferencesKeyBinds.MoveToNextRowWithSteps), OnMoveToNextRowWithSteps, true);
 		AddKeyCommand(navigation, "Move To Previous Row With Events", nameof(PreferencesKeyBinds.MoveToPreviousRowWithEvent), OnMoveToPreviousRowWithEvents, true);
 		AddKeyCommand(navigation, "Move To Next Row With Events", nameof(PreferencesKeyBinds.MoveToNextRowWithEvent), OnMoveToNextRowWithEvents, true);
+		AddKeyCommand(navigation, "Move To Start of Stream", nameof(PreferencesKeyBinds.MoveToStartOfStream), OnMoveToStartOfStream, true);
+		AddKeyCommand(navigation, "Move To End of Stream", nameof(PreferencesKeyBinds.MoveToEndOfStream), OnMoveToEndOfStream, true);
 		AddKeyCommand(navigation, "Move To Previous Measure", nameof(PreferencesKeyBinds.MoveToPreviousMeasure), OnMoveToPreviousMeasure, true);
 		AddKeyCommand(navigation, "Move To Next Measure", nameof(PreferencesKeyBinds.MoveToNextMeasure), OnMoveToNextMeasure, true);
 		AddKeyCommand(navigation, "Move To Chart Start", nameof(PreferencesKeyBinds.MoveToChartStart), OnMoveToChartStart);
@@ -5705,6 +5707,14 @@ internal sealed class Editor :
 		SnapManager.IncreaseSnap();
 	}
 
+	private void MoveToChartPosition(double chartPosition)
+	{
+		if (Preferences.Instance.PreferencesScroll.StopPlaybackWhenScrolling)
+			StopPlayback();
+		SetChartPosition(chartPosition);
+		UpdateAutoPlayFromScrolling();
+	}
+
 	public void OnMoveUp()
 	{
 		if (Preferences.Instance.PreferencesScroll.StopPlaybackWhenScrolling)
@@ -5757,12 +5767,7 @@ internal sealed class Editor :
 		{
 			if (!enumerator.Current!.IsStep())
 				continue;
-
-			if (Preferences.Instance.PreferencesScroll.StopPlaybackWhenScrolling)
-				StopPlayback();
-			var newChartPosition = enumerator.Current!.GetChartPosition();
-			SetChartPosition(newChartPosition);
-			UpdateAutoPlayFromScrolling();
+			MoveToChartPosition(enumerator.Current!.GetChartPosition());
 			break;
 		}
 	}
@@ -5781,11 +5786,7 @@ internal sealed class Editor :
 			if (!enumerator.Current!.IsStep())
 				continue;
 
-			if (Preferences.Instance.PreferencesScroll.StopPlaybackWhenScrolling)
-				StopPlayback();
-			var newChartPosition = enumerator.Current!.GetChartPosition();
-			SetChartPosition(newChartPosition);
-			UpdateAutoPlayFromScrolling();
+			MoveToChartPosition(enumerator.Current!.GetChartPosition());
 			break;
 		}
 	}
@@ -5799,12 +5800,7 @@ internal sealed class Editor :
 		var enumerator = FocusedChart.GetEvents().FindGreatestBeforeChartPosition(chartPosition);
 		if (enumerator == null || !enumerator.MoveNext() || !enumerator.IsCurrentValid())
 			return;
-
-		if (Preferences.Instance.PreferencesScroll.StopPlaybackWhenScrolling)
-			StopPlayback();
-		var newChartPosition = enumerator.Current!.GetChartPosition();
-		SetChartPosition(newChartPosition);
-		UpdateAutoPlayFromScrolling();
+		MoveToChartPosition(enumerator.Current!.GetChartPosition());
 	}
 
 	private void OnMoveToNextRowWithEvents()
@@ -5816,12 +5812,115 @@ internal sealed class Editor :
 		var enumerator = FocusedChart.GetEvents().FindLeastAfterChartPosition(chartPosition);
 		if (enumerator == null || !enumerator.MoveNext() || !enumerator.IsCurrentValid())
 			return;
+		MoveToChartPosition(enumerator.Current!.GetChartPosition());
+	}
 
-		if (Preferences.Instance.PreferencesScroll.StopPlaybackWhenScrolling)
-			StopPlayback();
-		var newChartPosition = enumerator.Current!.GetChartPosition();
-		SetChartPosition(newChartPosition);
-		UpdateAutoPlayFromScrolling();
+	private void OnMoveToStartOfStream()
+	{
+		MoveToStreamBoundary(true);
+	}
+
+	private void OnMoveToEndOfStream()
+	{
+		MoveToStreamBoundary(false);
+	}
+
+	private void MoveToStreamBoundary(bool preceding)
+	{
+		if (FocusedChart == null)
+			return;
+
+		var chartPosition = GetPosition().ChartPosition;
+
+		// Get the step which borders the position in the direction we are searching.
+		var enumerator = preceding
+			? FocusedChart.GetEvents().FindGreatestBeforeChartPosition(chartPosition)
+			: FocusedChart.GetEvents().FindLeastAfterChartPosition(chartPosition);
+		if (enumerator == null || !AdvanceForwards(enumerator) || !enumerator.IsCurrentValid())
+			return;
+		while (!enumerator.Current!.IsStep())
+		{
+			if (!AdvanceForwards(enumerator))
+				return;
+		}
+
+		var borderingStepRow = enumerator.Current!.GetRow();
+		var precedingStepEnumerator = enumerator.Clone();
+		int? streamSpacing = null;
+
+		// Determine the spacing of the stream. Prefer examining the space between the note
+		// and the note in the opposite direction we are searching.
+		AdvanceBackwards(enumerator);
+		while (enumerator.IsCurrentValid())
+		{
+			var note = enumerator.Current!;
+			if (note.IsStep())
+			{
+				streamSpacing = Math.Abs(note.GetRow() - borderingStepRow);
+				break;
+			}
+
+			AdvanceBackwards(enumerator);
+		}
+
+		// If we couldn't find a note in the opposite direction, try the given search direction.
+		if (streamSpacing == null)
+		{
+			enumerator = precedingStepEnumerator.Clone();
+			AdvanceForwards(enumerator);
+			while (enumerator.IsCurrentValid())
+			{
+				var note = enumerator.Current!;
+				if (note.IsStep())
+				{
+					streamSpacing = Math.Abs(borderingStepRow - note.GetRow());
+					break;
+				}
+
+				AdvanceForwards(enumerator);
+			}
+		}
+
+		// If this is the only step, just move to the step.
+		if (streamSpacing == null)
+		{
+			MoveToChartPosition(precedingStepEnumerator.Current!.GetChartPosition());
+			return;
+		}
+
+		// Advance by the stream spacing.
+		enumerator = precedingStepEnumerator.Clone();
+		AdvanceForwards(enumerator);
+		var rowFromPrevious = borderingStepRow;
+		while (enumerator.IsCurrentValid())
+		{
+			var note = enumerator.Current!;
+			if (note.IsStep())
+			{
+				var spacing = Math.Abs(rowFromPrevious - note.GetRow());
+				if (spacing != streamSpacing)
+				{
+					break;
+				}
+
+				rowFromPrevious = note.GetRow();
+			}
+
+			AdvanceForwards(enumerator);
+		}
+
+		MoveToChartPosition(rowFromPrevious);
+		return;
+
+		bool AdvanceBackwards(IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator inEnum)
+		{
+			return preceding ? inEnum.MoveNext() : inEnum.MovePrev();
+		}
+
+		bool AdvanceForwards(IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator inEnum)
+		{
+			return preceding ? inEnum.MovePrev() : inEnum.MoveNext();
+		}
 	}
 
 	private void OnMoveToPreviousMeasure()
@@ -5832,9 +5931,7 @@ internal sealed class Editor :
 			return;
 		var sig = rate.GetTimeSignature();
 		var rows = sig.GetNumerator() * (MaxValidDenominator * NumBeatsPerMeasure / sig.GetDenominator());
-		SetChartPosition(chartPosition - rows);
-
-		UpdateAutoPlayFromScrolling();
+		MoveToChartPosition(chartPosition - rows);
 	}
 
 	private void OnMoveToNextMeasure()
@@ -5845,9 +5942,7 @@ internal sealed class Editor :
 			return;
 		var sig = rate.GetTimeSignature();
 		var rows = sig.GetNumerator() * (MaxValidDenominator * NumBeatsPerMeasure / sig.GetDenominator());
-		SetChartPosition(chartPosition + rows);
-
-		UpdateAutoPlayFromScrolling();
+		MoveToChartPosition(chartPosition + rows);
 	}
 
 	public void OnMoveToPreviousLabel()
@@ -5860,10 +5955,7 @@ internal sealed class Editor :
 		var label = FocusedChart?.GetLabels()?.FindPreviousEventWithLooping(chartPosition);
 		if (label == null)
 			return;
-
-		var desiredRow = label.GetRow();
-		SetChartPosition(desiredRow);
-		UpdateAutoPlayFromScrolling();
+		MoveToChartPosition(label.GetRow());
 	}
 
 	public void OnMoveToNextLabel()
@@ -5876,10 +5968,7 @@ internal sealed class Editor :
 		var label = FocusedChart?.GetLabels()?.FindNextEventWithLooping(chartPosition);
 		if (label == null)
 			return;
-
-		var desiredRow = label.GetRow();
-		SetChartPosition(desiredRow);
-		UpdateAutoPlayFromScrolling();
+		MoveToChartPosition(label.GetRow());
 	}
 
 	public void OnMoveToPreviousPattern()
@@ -5914,9 +6003,7 @@ internal sealed class Editor :
 		var patternEvent = pattern.Current;
 
 		// Move to the position of the next pattern.
-		var desiredRow = patternEvent!.ChartRow;
-		SetChartPosition(desiredRow);
-		UpdateAutoPlayFromScrolling();
+		MoveToChartPosition(patternEvent!.ChartRow);
 
 		// Select the pattern.
 		OnSelectPattern(patternEvent);
@@ -5954,9 +6041,7 @@ internal sealed class Editor :
 		var patternEvent = pattern.Current;
 
 		// Move to the position of the next pattern.
-		var desiredRow = patternEvent!.ChartRow;
-		SetChartPosition(desiredRow);
-		UpdateAutoPlayFromScrolling();
+		MoveToChartPosition(patternEvent!.ChartRow);
 
 		// Select the pattern.
 		OnSelectPattern(patternEvent);
@@ -5970,25 +6055,12 @@ internal sealed class Editor :
 
 	private void OnMoveToChartStart()
 	{
-		if (Preferences.Instance.PreferencesScroll.StopPlaybackWhenScrolling)
-			StopPlayback();
-
-		SetChartPosition(0.0);
-
-		UpdateAutoPlayFromScrolling();
+		MoveToChartPosition(0.0);
 	}
 
 	private void OnMoveToChartEnd()
 	{
-		if (Preferences.Instance.PreferencesScroll.StopPlaybackWhenScrolling)
-			StopPlayback();
-
-		if (FocusedChart != null)
-			SetChartPosition(FocusedChart.GetEndPosition());
-		else
-			SetChartPosition(0.0);
-
-		UpdateAutoPlayFromScrolling();
+		MoveToChartPosition(FocusedChart?.GetEndPosition() ?? 0.0);
 	}
 
 	#endregion Chart Navigation

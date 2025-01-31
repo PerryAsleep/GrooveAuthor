@@ -229,6 +229,8 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 	private static readonly List<Keys[]> DefaultMoveToNextRowWithSteps               = [Array.Empty<Keys>()];
 	private static readonly List<Keys[]> DefaultMoveToPreviousRowWithEvent           = [Array.Empty<Keys>()];
 	private static readonly List<Keys[]> DefaultMoveToNextRowWithEvent               = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultMoveToStartOfStream                  = [[Keys.LeftControl, Keys.Up]];
+	private static readonly List<Keys[]> DefaultMoveToEndOfStream                    = [[Keys.LeftControl, Keys.Down]];
 	private static readonly List<Keys[]> DefaultMoveToPreviousMeasure                = [[Keys.PageUp]];
 	private static readonly List<Keys[]> DefaultMoveToNextMeasure                    = [[Keys.PageDown]];
 	private static readonly List<Keys[]> DefaultMoveToChartStart                     = [[Keys.Home]];
@@ -552,7 +554,6 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 
 	private List<Keys[]> SelectAllCurrentPlayerNotesInternal = DefaultSelectAllCurrentPlayerNotes;
 
-
 	[JsonInclude]
 	public List<Keys[]> SelectAllCurrentPlayerTaps
 	{
@@ -565,7 +566,6 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 	}
 
 	private List<Keys[]> SelectAllCurrentPlayerTapsInternal = DefaultSelectAllCurrentPlayerTaps;
-
 
 	[JsonInclude]
 	public List<Keys[]> SelectAllCurrentPlayerMines
@@ -580,7 +580,6 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 
 	private List<Keys[]> SelectAllCurrentPlayerMinesInternal = DefaultSelectAllCurrentPlayerMines;
 
-
 	[JsonInclude]
 	public List<Keys[]> SelectAllCurrentPlayerFakes
 	{
@@ -593,7 +592,6 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 	}
 
 	private List<Keys[]> SelectAllCurrentPlayerFakesInternal = DefaultSelectAllCurrentPlayerFakes;
-
 
 	[JsonInclude]
 	public List<Keys[]> SelectAllCurrentPlayerLifts
@@ -608,7 +606,6 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 
 	private List<Keys[]> SelectAllCurrentPlayerLiftsInternal = DefaultSelectAllCurrentPlayerLifts;
 
-
 	[JsonInclude]
 	public List<Keys[]> SelectAllCurrentPlayerHolds
 	{
@@ -621,7 +618,6 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 	}
 
 	private List<Keys[]> SelectAllCurrentPlayerHoldsInternal = DefaultSelectAllCurrentPlayerHolds;
-
 
 	[JsonInclude]
 	public List<Keys[]> SelectAllCurrentPlayerRolls
@@ -636,7 +632,6 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 
 	private List<Keys[]> SelectAllCurrentPlayerRollsInternal = DefaultSelectAllCurrentPlayerRolls;
 
-
 	[JsonInclude]
 	public List<Keys[]> SelectAllCurrentPlayerHoldsAndRolls
 	{
@@ -649,7 +644,6 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 	}
 
 	private List<Keys[]> SelectAllCurrentPlayerHoldsAndRollsInternal = DefaultSelectAllCurrentPlayerHoldsAndRolls;
-
 
 	[JsonInclude]
 	public List<Keys[]> SelectAllMiscEvents
@@ -846,7 +840,6 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 
 	private List<Keys[]> ToggleSpacingModeInternal = DefaultToggleSpacingMode;
 
-
 	[JsonInclude]
 	public List<Keys[]> TogglePlayer
 	{
@@ -859,7 +852,6 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 	}
 
 	private List<Keys[]> TogglePlayerInternal = DefaultTogglePlayer;
-
 
 	[JsonInclude]
 	public List<Keys[]> SetPlayer1
@@ -874,7 +866,6 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 
 	private List<Keys[]> SetPlayer1Internal = DefaultSetPlayer1;
 
-
 	[JsonInclude]
 	public List<Keys[]> SetPlayer2
 	{
@@ -887,7 +878,6 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 	}
 
 	private List<Keys[]> SetPlayer2Internal = DefaultSetPlayer2;
-
 
 	[JsonInclude]
 	public List<Keys[]> SetPlayer3
@@ -902,7 +892,6 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 
 	private List<Keys[]> SetPlayer3Internal = DefaultSetPlayer3;
 
-
 	[JsonInclude]
 	public List<Keys[]> SetPlayer4
 	{
@@ -915,7 +904,6 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 	}
 
 	private List<Keys[]> SetPlayer4Internal = DefaultSetPlayer4;
-
 
 	[JsonInclude]
 	public List<Keys[]> ConvertSelectedNotesToPlayer1
@@ -930,7 +918,6 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 
 	private List<Keys[]> ConvertSelectedNotesToPlayer1Internal = DefaultConvertSelectedNotesToPlayer1;
 
-
 	[JsonInclude]
 	public List<Keys[]> ConvertSelectedNotesToPlayer2
 	{
@@ -943,7 +930,6 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 	}
 
 	private List<Keys[]> ConvertSelectedNotesToPlayer2Internal = DefaultConvertSelectedNotesToPlayer2;
-
 
 	[JsonInclude]
 	public List<Keys[]> ConvertSelectedNotesToPlayer3
@@ -958,7 +944,6 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 
 	private List<Keys[]> ConvertSelectedNotesToPlayer3Internal = DefaultConvertSelectedNotesToPlayer3;
 
-
 	[JsonInclude]
 	public List<Keys[]> ConvertSelectedNotesToPlayer4
 	{
@@ -971,7 +956,6 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 	}
 
 	private List<Keys[]> ConvertSelectedNotesToPlayer4Internal = DefaultConvertSelectedNotesToPlayer4;
-
 
 	[JsonInclude]
 	public List<Keys[]> OpenPreviousChart
@@ -1129,7 +1113,6 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 
 	private List<Keys[]> MoveDownInternal = DefaultMoveDown;
 
-
 	[JsonInclude]
 	public List<Keys[]> MoveToPreviousRowWithSteps
 	{
@@ -1142,7 +1125,6 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 	}
 
 	private List<Keys[]> MoveToPreviousRowWithStepsInternal = DefaultMoveToPreviousRowWithSteps;
-
 
 	[JsonInclude]
 	public List<Keys[]> MoveToNextRowWithSteps
@@ -1157,7 +1139,6 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 
 	private List<Keys[]> MoveToNextRowWithStepsInternal = DefaultMoveToNextRowWithSteps;
 
-
 	[JsonInclude]
 	public List<Keys[]> MoveToPreviousRowWithEvent
 	{
@@ -1170,7 +1151,6 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 	}
 
 	private List<Keys[]> MoveToPreviousRowWithEventInternal = DefaultMoveToPreviousRowWithEvent;
-
 
 	[JsonInclude]
 	public List<Keys[]> MoveToNextRowWithEvent
@@ -1185,6 +1165,31 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 
 	private List<Keys[]> MoveToNextRowWithEventInternal = DefaultMoveToNextRowWithEvent;
 
+	[JsonInclude]
+	public List<Keys[]> MoveToStartOfStream
+	{
+		get => MoveToStartOfStreamInternal;
+		set
+		{
+			MoveToStartOfStreamInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(MoveToStartOfStream));
+		}
+	}
+
+	private List<Keys[]> MoveToStartOfStreamInternal = DefaultMoveToStartOfStream;
+
+	[JsonInclude]
+	public List<Keys[]> MoveToEndOfStream
+	{
+		get => MoveToEndOfStreamInternal;
+		set
+		{
+			MoveToEndOfStreamInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(MoveToEndOfStream));
+		}
+	}
+
+	private List<Keys[]> MoveToEndOfStreamInternal = DefaultMoveToEndOfStream;
 
 	[JsonInclude]
 	public List<Keys[]> MoveToPreviousMeasure
@@ -2096,7 +2101,6 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 
 	private List<Keys[]> SnapToNoneInternal = DefaultSnapToNone;
 
-
 	[JsonInclude]
 	public List<Keys[]> SnapToQuarters
 	{
@@ -2109,7 +2113,6 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 	}
 
 	private List<Keys[]> SnapToQuartersInternal = DefaultSnapToQuarters;
-
 
 	[JsonInclude]
 	public List<Keys[]> SnapToEighths
@@ -2124,7 +2127,6 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 
 	private List<Keys[]> SnapToEighthsInternal = DefaultSnapToEighths;
 
-
 	[JsonInclude]
 	public List<Keys[]> SnapToTwelfths
 	{
@@ -2137,7 +2139,6 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 	}
 
 	private List<Keys[]> SnapToTwelfthsInternal = DefaultSnapToTwelfths;
-
 
 	[JsonInclude]
 	public List<Keys[]> SnapToSixteenths
@@ -2152,7 +2153,6 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 
 	private List<Keys[]> SnapToSixteenthsInternal = DefaultSnapToSixteenths;
 
-
 	[JsonInclude]
 	public List<Keys[]> SnapToTwentyFourths
 	{
@@ -2165,7 +2165,6 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 	}
 
 	private List<Keys[]> SnapToTwentyFourthsInternal = DefaultSnapToTwentyFourths;
-
 
 	[JsonInclude]
 	public List<Keys[]> SnapToThirtySeconds
@@ -2180,7 +2179,6 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 
 	private List<Keys[]> SnapToThirtySecondsInternal = DefaultSnapToThirtySeconds;
 
-
 	[JsonInclude]
 	public List<Keys[]> SnapToFortyEighths
 	{
@@ -2194,7 +2192,6 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 
 	private List<Keys[]> SnapToFortyEighthsInternal = DefaultSnapToFortyEighths;
 
-
 	[JsonInclude]
 	public List<Keys[]> SnapToSixtyFourths
 	{
@@ -2207,7 +2204,6 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 	}
 
 	private List<Keys[]> SnapToSixtyFourthsInternal = DefaultSnapToSixtyFourths;
-
 
 	[JsonInclude]
 	public List<Keys[]> SnapToOneHundredNinetySeconds
