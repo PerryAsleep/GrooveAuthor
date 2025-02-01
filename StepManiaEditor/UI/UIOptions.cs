@@ -130,13 +130,17 @@ internal class UIOptions : UIWindow
 			}
 
 			ImGui.Separator();
-			ImGui.Text("Suppress External Modification Notifications");
+			ImGui.Text("Suppress Notifications");
 			if (ImGuiLayoutUtils.BeginTable("Options Notifications", TitleColumnWidth))
 			{
 				ImGuiLayoutUtils.DrawRowCheckbox(true, "Song Modified", p,
 					nameof(PreferencesOptions.SuppressExternalSongModificationNotification),
 					false,
 					"Whether to suppress notifications about the open song file being modified externally.");
+				ImGuiLayoutUtils.DrawRowCheckbox(true, "Update Available", p,
+					nameof(PreferencesOptions.SuppressUpdateNotification),
+					false,
+					$"Whether to suppress notifications that an update is available to {Utils.GetAppName()}.");
 				ImGuiLayoutUtils.EndTable();
 			}
 
