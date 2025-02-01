@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using Fumen;
+using static StepManiaEditor.Utils;
 
 namespace StepManiaEditor;
 
@@ -127,6 +128,9 @@ internal sealed class PackLoadTask : CancellableTask<PackLoadState>
 		FileInfo bannerFileInfo = null;
 		var packDirectoryInfo = state.GetPackDirectoryInfo();
 		var files = packDirectoryInfo.GetFiles();
+		if (files == null || files.Length == 0)
+			return;
+		Array.Sort(files, new FileInfoNameComparer());
 		foreach (var extension in preferredExtensions)
 		{
 			foreach (var file in files)

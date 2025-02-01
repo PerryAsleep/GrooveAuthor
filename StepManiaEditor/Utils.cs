@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Net.Http;
 using System.Reflection;
 using System.Runtime.CompilerServices;
@@ -13,6 +14,7 @@ using Fumen.Converters;
 using ImGuiNET;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Path = Fumen.Path;
 
 namespace StepManiaEditor;
 
@@ -539,6 +541,27 @@ internal sealed class Utils
 	}
 
 	#endregion File Open Helpers
+
+	#region FileComparer
+
+	/// <summary>
+	/// Comparer for comparing FileInfo objects by name.
+	/// </summary>
+	internal sealed class FileInfoNameComparer : IComparer<FileInfo>
+	{
+		public int Compare(FileInfo f1, FileInfo f2)
+		{
+			if (null == f1 && null == f2)
+				return 0;
+			if (null == f1)
+				return 1;
+			if (null == f2)
+				return -1;
+			return string.Compare(f1.Name, f2.Name, StringComparison.Ordinal);
+		}
+	}
+
+	#endregion FielComparer
 
 	#region Application Focus
 

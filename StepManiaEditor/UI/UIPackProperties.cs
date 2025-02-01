@@ -92,7 +92,7 @@ internal sealed class UIPackProperties : UIWindow
 
 				ImGuiLayoutUtils.DrawRowTexture("Banner", Pack.GetBanner()?.GetTexture(), EmptyTextureBanner,
 					"Stepmania infers a pack's banner from image assets in the pack's folder." +
-					" It uses the first image asset it finds regardless of its size or dimensions, preferring the following extensions in order: "
+					" It uses the lexicographically first image asset in the pack folder regardless of its size or dimensions, preferring the following extensions in order: "
 					+ "png, jpg, jpeg, gif, bmp. Depending on the Stepmania theme banners have different recommended sizes."
 					+ "\nITG banners are 418x164."
 					+ "\nDDR banners are 512x160 or 256x80.");
