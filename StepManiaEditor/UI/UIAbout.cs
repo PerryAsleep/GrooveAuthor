@@ -149,7 +149,26 @@ THE SOFTWARE.";
 			var appName = Utils.GetAppName();
 			var version = Utils.GetAppVersion();
 
-			ImGui.Text($"{appName} v{version}");
+			if (version != null)
+				ImGui.Text($"{appName} {Utils.GetPrettyVersion(version)}");
+			else
+				ImGui.Text(appName);
+			var latestVersion = Utils.GetAppLatestVersion();
+			var latestVersionUrl = Utils.GetLatestVersionUrl();
+			if (version != null && latestVersion != null && !string.IsNullOrEmpty(latestVersionUrl))
+			{
+				if (latestVersion <= version)
+				{
+					ImGui.Text("You are on the latest version.");
+				}
+				else
+				{
+					ImGui.Text("An update is available. ");
+					ImGui.SameLine(0, 0);
+					ImGui.TextLinkOpenURL(latestVersionUrl);
+				}
+			}
+
 			if (ImGui.CollapsingHeader("License"))
 			{
 				ImGui.Text(LicenseStepManiaEditor);

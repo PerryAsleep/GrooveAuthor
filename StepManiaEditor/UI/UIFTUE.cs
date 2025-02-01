@@ -37,6 +37,7 @@ internal sealed class UIFTUE
 		Large,
 	}
 
+	private static readonly Version MaxVersionWithFTUE = new(0, 1, 0);
 	private readonly Editor Editor;
 
 	public UIFTUE(Editor editor)
@@ -44,17 +45,28 @@ internal sealed class UIFTUE
 		Editor = editor;
 	}
 
+	public bool HasCompletedFTUE()
+	{
+		var p = Preferences.Instance;
+		if (p.LastCompletedFtueVersion == null)
+			return false;
+		if (p.LastCompletedFtueVersion < MaxVersionWithFTUE)
+			return false;
+		return true;
+	}
+
 	public void Draw()
 	{
 		var p = Preferences.Instance;
 		var version = Utils.GetAppVersion();
-		var maxVersionWithFtue = new Version(0, 1, 0, 0);
 
-		if (p.LastCompletedFtueVersion != null && version >= maxVersionWithFtue)
+		if (version == null)
+			return;
+		if (p.LastCompletedFtueVersion != null && version >= MaxVersionWithFTUE)
 			return;
 
 		// v0.1.0 FTUE
-		var v010 = new Version(0, 1, 0, 0);
+		var v010 = new Version(0, 1, 0);
 		if (p.LastCompletedFtueVersion == null || p.LastCompletedFtueVersion < v010)
 		{
 			NumFtueSteps = 6;

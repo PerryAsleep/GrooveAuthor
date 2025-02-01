@@ -201,6 +201,7 @@ internal sealed class Editor :
 	private FileSystemWatcher SongFileWatcher;
 	private bool ShouldCheckForShowingSongFileChangedNotification;
 	private bool ShowingSongFileChangedNotification;
+	private bool HasShownUpdateModal;
 	private int GarbageCollectFrame;
 	private long FrameCount;
 
@@ -391,6 +392,7 @@ internal sealed class Editor :
 		InitializeUIHelpers();
 		InitializeKeyCommandManager();
 		InitializeSongLoadTask();
+		_ = RefreshLatestVersion();
 		base.Initialize();
 	}
 
@@ -1572,6 +1574,7 @@ internal sealed class Editor :
 				UpdateWindowTitle();
 			}
 
+			CheckForShowingUpdateModal();
 			CheckForShowingSongFileChangedNotification();
 
 			// Update splash screen timer.
@@ -1593,6 +1596,39 @@ internal sealed class Editor :
 				SplashTime = 0.0;
 			}
 		}
+	}
+
+	private void CheckForShowingUpdateModal()
+	{
+		if (!UIFTUE.HasCompletedFTUE())
+			return;
+		if (Preferences.Instance.PreferencesOptions.SuppressUpdateNotification)
+			return;
+		if (HasShownUpdateModal)
+			return;
+
+		var latestVersion = GetAppLatestVersion();
+		var latestVersionUrl = GetLatestVersionUrl();
+		if (latestVersion == null || string.IsNullOrEmpty(latestVersionUrl))
+			return;
+		var version = GetAppVersion();
+		if (version == null)
+			return;
+		if (latestVersion <= version)
+			return;
+
+		UIModals.OpenModalOneButton(
+			"Update Available",
+			$"An update is available from {GetPrettyVersion(version)} to {GetPrettyVersion(latestVersion)}.",
+			"Okay", () => { },
+			() =>
+			{
+				ImGui.TextLinkOpenURL(latestVersionUrl);
+
+				ImGui.Checkbox("Don't notify on available updates.",
+					ref Preferences.Instance.PreferencesOptions.SuppressUpdateNotification);
+			});
+		HasShownUpdateModal = true;
 	}
 
 	private void UpdateMusicAndPosition(double currentTime)

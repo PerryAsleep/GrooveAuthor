@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Net.Http;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using Fumen;
 using Fumen.Converters;
@@ -125,6 +127,7 @@ internal sealed class Utils
 
 	private static string AppName;
 	private static Version AppVersion;
+	private static Version AppLatestVersion;
 
 	public enum HorizontalAlignment
 	{
@@ -152,7 +155,66 @@ internal sealed class Utils
 
 	public static Version GetAppVersion()
 	{
-		return AppVersion ??= Assembly.GetExecutingAssembly().GetName().Version;
+		if (AppVersion == null)
+		{
+			var assemblyVersion = Assembly.GetExecutingAssembly().GetName().Version;
+			if (assemblyVersion != null)
+				AppVersion = new Version(assemblyVersion.Major, assemblyVersion.Minor, assemblyVersion.Build);
+		}
+
+		return AppVersion;
+	}
+
+	public static Version GetAppLatestVersion()
+	{
+		return AppLatestVersion;
+	}
+
+	public static async Task RefreshLatestVersion()
+	{
+		AppLatestVersion = await GetLatestVersionAsync();
+	}
+
+	private static async Task<Version> GetLatestVersionAsync()
+	{
+		try
+		{
+			HttpClient client = new();
+			using var response =
+				await client.GetAsync($"{Documentation.GitHubUrl}/releases/latest");
+			var path = response?.RequestMessage?.RequestUri?.AbsolutePath;
+			if (string.IsNullOrEmpty(path))
+				return null;
+			var index = path.LastIndexOf('/');
+			if (index < 0)
+				return null;
+			// Add 2 to the index to account for "/v".
+			index += 2;
+			if (index >= path.Length)
+				return null;
+			var versionString = path.Substring(index);
+			if (Version.TryParse(versionString, out var version))
+				return version;
+		}
+		catch (Exception e)
+		{
+			Logger.Warn($"Failed to check for latest version. {e}");
+		}
+
+		return null;
+	}
+
+	public static string GetPrettyVersion(Version v)
+	{
+		return $"v{v.Major}.{v.Minor}.{v.Build}";
+	}
+
+	public static string GetLatestVersionUrl()
+	{
+		var version = AppLatestVersion ?? GetAppVersion();
+		if (version == null)
+			return null;
+		return $"{Documentation.GitHubUrl}/releases/tag/{GetPrettyVersion(version)}";
 	}
 
 	public static Vector2 GetDrawPos(

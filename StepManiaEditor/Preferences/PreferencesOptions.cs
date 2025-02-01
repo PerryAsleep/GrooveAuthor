@@ -85,6 +85,7 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 	public const bool DefaultUseCustomDpiScale = false;
 	public const double DefaultDpiScale = 1.0;
 	public const bool DefaultSuppressExternalSongModificationNotification = false;
+	public const bool DefaultSuppressUpdateNotification = false;
 	public const bool DefaultHideSongBackground = false;
 	public const StepColorMethod DefaultStepColorMethodValue = StepColorMethod.Stepmania;
 	public const Layout DefaultResetLayout = Layout.Default;
@@ -112,6 +113,7 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 	[JsonInclude] public bool UseCustomDpiScale = DefaultUseCustomDpiScale;
 	[JsonInclude] public double DpiScale = DefaultDpiScale;
 	[JsonInclude] public bool SuppressExternalSongModificationNotification = DefaultSuppressExternalSongModificationNotification;
+	[JsonInclude] public bool SuppressUpdateNotification = DefaultSuppressUpdateNotification;
 	[JsonInclude] public bool HideSongBackground = DefaultHideSongBackground;
 	[JsonInclude] public StepColorMethod StepColorMethodValue = DefaultStepColorMethodValue;
 	[JsonInclude] public Layout ResetLayout = DefaultResetLayout;
@@ -161,6 +163,7 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 		       && UseCustomDpiScale == DefaultUseCustomDpiScale
 		       && DpiScale.DoubleEquals(DefaultDpiScale)
 		       && SuppressExternalSongModificationNotification == DefaultSuppressExternalSongModificationNotification
+		       && SuppressUpdateNotification == DefaultSuppressUpdateNotification
 		       && HideSongBackground == DefaultHideSongBackground
 		       && StepColorMethodValue == DefaultStepColorMethodValue
 		       // && ResetLayout == DefaultResetLayout
@@ -201,6 +204,7 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 	private readonly bool PreviousUseCustomDpiScale;
 	private readonly double PreviousDpiScale;
 	private readonly bool PreviousSuppressExternalSongModificationNotification;
+	private readonly bool PreviousSuppressUpdateNotification;
 	private readonly bool PreviousHideSongBackground;
 
 	private readonly StepColorMethod PreviousStepColorMethodValue;
@@ -234,6 +238,7 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 		PreviousUseCustomDpiScale = p.UseCustomDpiScale;
 		PreviousDpiScale = p.DpiScale;
 		PreviousSuppressExternalSongModificationNotification = p.SuppressExternalSongModificationNotification;
+		PreviousSuppressUpdateNotification = p.SuppressUpdateNotification;
 		PreviousHideSongBackground = p.HideSongBackground;
 		PreviousStepColorMethodValue = p.StepColorMethodValue;
 		// PreviousResetLayout = p.ResetLayout;
@@ -273,6 +278,7 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 		p.UseCustomDpiScale = DefaultUseCustomDpiScale;
 		p.DpiScale = DefaultDpiScale;
 		p.SuppressExternalSongModificationNotification = DefaultSuppressExternalSongModificationNotification;
+		p.SuppressUpdateNotification = DefaultSuppressUpdateNotification;
 		p.HideSongBackground = DefaultHideSongBackground;
 		p.StepColorMethodValue = DefaultStepColorMethodValue;
 		// p.ResetLayout = DefaultResetLayout;
@@ -302,6 +308,7 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 		p.UseCustomDpiScale = PreviousUseCustomDpiScale;
 		p.DpiScale = PreviousDpiScale;
 		p.SuppressExternalSongModificationNotification = PreviousSuppressExternalSongModificationNotification;
+		p.SuppressUpdateNotification = PreviousSuppressUpdateNotification;
 		p.HideSongBackground = PreviousHideSongBackground;
 		p.StepColorMethodValue = PreviousStepColorMethodValue;
 		// p.ResetLayout = PreviousResetLayout;
