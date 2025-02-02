@@ -59,6 +59,11 @@ internal sealed class EditorImageData : IReadOnlyEditorImageData
 		return Texture;
 	}
 
+	public void Update(double currentTime)
+	{
+		Texture?.Update(currentTime);
+	}
+
 	/// <summary>
 	/// Update the path for this image.
 	/// Will begin an asynchronous load of the texture if the image has changed.

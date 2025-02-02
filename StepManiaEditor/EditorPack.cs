@@ -50,6 +50,16 @@ internal sealed class EditorPack
 		return Banner;
 	}
 
+	/// <summary>
+	/// Updates time dependent data.
+	/// For packs with animated banners this will update the frame.
+	/// </summary>
+	/// <param name="currentTime">Total application time in seconds.</param>
+	public void Update(double currentTime)
+	{
+		Banner?.Update(currentTime);
+	}
+
 	private static bool AreSongsInSamePack(EditorSong songA, EditorSong songB)
 	{
 		try

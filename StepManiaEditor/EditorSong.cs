@@ -1167,10 +1167,19 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 	/// <summary>
 	/// Updates this EditorSong. Expected to be called once per frame.
 	/// </summary>
-	public void Update()
+	/// <param name="currentTime">Total application time in seconds.</param>
+	public void Update(double currentTime)
 	{
 		// Update the WorkQueue.
 		WorkQueue.Update();
+
+		// Update potential texture animations.
+		Banner?.Update(currentTime);
+		Background?.Update(currentTime);
+		Jacket?.Update(currentTime);
+		CDImage?.Update(currentTime);
+		DiscImage?.Update(currentTime);
+		CDTitle?.Update(currentTime);
 
 		// Update all charts.
 		foreach (var editorChartsForChartType in Charts)

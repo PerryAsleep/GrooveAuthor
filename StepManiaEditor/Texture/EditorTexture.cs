@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Drawing;
+using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
@@ -10,10 +12,11 @@ using static MonoGameExtensions.TextureUtils;
 namespace StepManiaEditor;
 
 /// <summary>
-/// A MonoGame Texture to render via ImGui.
+/// A MonoGame Texture to render via ImGui or Monogame.
+/// May internally control multiple Texture2D objects for animated textures like gifs.
 /// Meant for dynamically loaded textures that are not atlassed and not known until runtime.
 /// Provides idempotent asynchronous loading methods to update the Texture with a new file from disk.
-/// When loading a new image over a previous image there will be a brief period of time where two textures
+/// When loading a new image over a previous image there will be a brief period of time when two textures
 /// are loaded in memory at once. The old texture will be released for garbage collection after the new
 /// texture is fully loaded.
 ///
@@ -40,9 +43,14 @@ internal sealed class EditorTexture : IDisposable
 		private readonly GraphicsDevice GraphicsDevice;
 
 		/// <summary>
-		/// The last Texture loaded.
+		/// The last Textures loaded.
 		/// </summary>
-		private Texture2D Texture;
+		private Texture2D[] Textures;
+
+		/// <summary>
+		/// The last frame durations loaded.
+		/// </summary>
+		private double[] FrameDurations;
 
 		/// <summary>
 		/// The color of the last Texture loaded.
@@ -65,11 +73,11 @@ internal sealed class EditorTexture : IDisposable
 			GraphicsDevice = graphicsDevice;
 		}
 
-		public (Texture2D, uint) GetResults()
+		public (Texture2D[], double[], uint) GetResults()
 		{
 			lock (Lock)
 			{
-				return (Texture, TextureColor);
+				return (Textures, FrameDurations, TextureColor);
 			}
 		}
 
@@ -94,16 +102,46 @@ internal sealed class EditorTexture : IDisposable
 		{
 			// The state used is the path of the file for the texture.
 			var filePath = state;
-			Texture2D texture = null;
+			Texture2D[] textures = null;
+			double[] frameDurations = null;
 			uint textureColor = 0;
 			try
 			{
 				// Don't try to load video files. We expect them to fail.
 				if (!string.IsNullOrEmpty(filePath) && !IsVideoFile(filePath))
 				{
-					await using var fileStream = File.OpenRead(filePath);
-					texture = Texture2D.FromStream(GraphicsDevice, fileStream);
+					if (IsGif(filePath))
+					{
+						using var image = Image.FromFile(filePath);
+						var dimension = new FrameDimension(image.FrameDimensionsList[0]);
+						var frameTimesByteArray = image.GetPropertyItem(0x5100)?.Value;
+						var frameCount = image.GetFrameCount(dimension);
+						textures = new Texture2D[frameCount];
+						frameDurations = new double[frameCount];
+						for (var i = 0; i < frameCount; i++)
+						{
+							frameDurations[i] = BitConverter.ToInt32(frameTimesByteArray, i * 4) / 100.0;
+							image.SelectActiveFrame(dimension, i);
+							using var stream = new MemoryStream();
+							image.Save(stream, ImageFormat.Bmp);
+							stream.Position = 0;
+							textures[i] = Texture2D.FromStream(GraphicsDevice, stream);
+							CancellationTokenSource.Token.ThrowIfCancellationRequested();
+						}
+					}
+					else
+					{
+						await using var fileStream = File.OpenRead(filePath);
+						textures = new Texture2D[1];
+						textures[0] = Texture2D.FromStream(GraphicsDevice, fileStream);
+						frameDurations = new double[1];
+						frameDurations[0] = 0.0;
+					}
 				}
+			}
+			catch (OperationCanceledException)
+			{
+				throw;
 			}
 			catch (Exception e)
 			{
@@ -112,20 +150,23 @@ internal sealed class EditorTexture : IDisposable
 					Logger.Error($"Failed to load texture from \"{filePath}\". {e.Message}");
 				}
 
-				texture = null;
+				textures = null;
+				frameDurations = null;
+				textureColor = 0;
 			}
 
 			CancellationTokenSource.Token.ThrowIfCancellationRequested();
 
-			if (CacheTextureColor && texture != null)
+			if (CacheTextureColor && textures != null)
 			{
-				textureColor = TextureUtils.GetTextureColor(texture);
+				textureColor = TextureUtils.GetTextureColor(textures[0]);
 			}
 
 			// Save results.
 			lock (Lock)
 			{
-				Texture = texture;
+				Textures = textures;
+				FrameDurations = frameDurations;
 				TextureColor = textureColor;
 			}
 		}
@@ -135,14 +176,19 @@ internal sealed class EditorTexture : IDisposable
 	private readonly TextureLoadTask LoadTask;
 
 	private string FilePath;
-	private Texture2D TextureMonogame;
-	private Texture2D NewTexture;
+	private Texture2D[] TexturesMonogame;
+	private double[] TextureDurations;
+	private double TotalDuration;
+	private IntPtr[] TexturesImGui;
 	private uint TextureColor;
-	private uint NewTextureColor;
-	private IntPtr TextureImGui;
 	private bool Bound;
-	private bool NewTextureReady;
 	private bool Disposed;
+	private int Frame;
+
+	private bool NewTextureReady;
+	private Texture2D[] NewTextures;
+	private double[] NewDurations;
+	private uint NewTextureColor;
 
 	private static int Id;
 	private readonly string ImGuiId;
@@ -186,9 +232,10 @@ internal sealed class EditorTexture : IDisposable
 		Width = width;
 		Height = height;
 		NewTextureReady = false;
-		NewTexture = null;
+		NewTextures = null;
+		NewDurations = null;
 		LoadTask = new TextureLoadTask(cacheTextureColor, graphicsDevice);
-		LoadAsync(filePath);
+		_ = LoadAsync(filePath);
 	}
 
 	~EditorTexture()
@@ -213,10 +260,11 @@ internal sealed class EditorTexture : IDisposable
 			if (Bound)
 			{
 				Bound = false;
-				ImGuiRenderer.UnbindTexture(TextureImGui);
+				foreach (var textureImGui in TexturesImGui)
+					ImGuiRenderer.UnbindTexture(textureImGui);
 			}
 
-			TextureMonogame = null;
+			TexturesMonogame = null;
 		}
 
 		Disposed = true;
@@ -227,7 +275,7 @@ internal sealed class EditorTexture : IDisposable
 	/// </summary>
 	public bool IsBound()
 	{
-		CheckForSwappingToNewTexture();
+		CheckForSwappingToNewTextures();
 		return Bound;
 	}
 
@@ -248,7 +296,7 @@ internal sealed class EditorTexture : IDisposable
 	/// <param name="filePath">Path of texture to load.</param>
 	/// <param name="force">If true, load the texture even if it was already loaded.</param>
 	/// <param name="logErrors">If true, log any errors with loading.</param>
-	public async void LoadAsync(string filePath, bool force = false, bool logErrors = true)
+	public async Task LoadAsync(string filePath, bool force = false, bool logErrors = true)
 	{
 		// Early out.
 		if (FilePath == filePath && !force)
@@ -263,8 +311,8 @@ internal sealed class EditorTexture : IDisposable
 		if (!taskComplete)
 			return;
 
-		// Get the newly loaded texture and color.
-		var (newTexture, newTextureColor) = LoadTask.GetResults();
+		// Get the newly loaded textures and color.
+		var (newTextures, newDurations, newTextureColor) = LoadTask.GetResults();
 
 		// We cannot swap textures now because we may be in the middle of submitting
 		// instructions to ImGui. If we were unbind the texture during these calls, ImGui
@@ -272,7 +320,8 @@ internal sealed class EditorTexture : IDisposable
 		// the unbound image.
 		lock (TextureSwapLock)
 		{
-			NewTexture = newTexture;
+			NewTextures = newTextures;
+			NewDurations = newDurations;
 			NewTextureColor = newTextureColor;
 			NewTextureReady = true;
 		}
@@ -291,69 +340,114 @@ internal sealed class EditorTexture : IDisposable
 	}
 
 	/// <summary>
+	/// Returns whether or not the given texture file is a gif.
+	/// </summary>
+	/// <param name="filePath">Texture file path.</param>
+	/// <returns>Whether or not the given texture file is a gif.</returns>
+	private static bool IsGif(string filePath)
+	{
+		if (!Fumen.Path.GetExtensionWithoutSeparator(filePath, out var extension))
+			return false;
+		return extension == "gif";
+	}
+
+	/// <summary>
+	/// Updates time dependent data.
+	/// For animated textures like gifs this will update the frame.
+	/// </summary>
+	/// <param name="currentTime">Total application time in seconds.</param>
+	public void Update(double currentTime)
+	{
+		Frame = 0;
+		if (TotalDuration <= 0.0 || TextureDurations == null || TextureDurations.Length == 0)
+			return;
+		var relativeTime = currentTime - (int)(currentTime / TotalDuration) * TotalDuration;
+		while (Frame < TextureDurations.Length)
+		{
+			if (relativeTime < TextureDurations[Frame])
+				break;
+			relativeTime -= TextureDurations[Frame];
+			Frame++;
+		}
+	}
+
+	/// <summary>
 	/// Unload the currently loaded texture.
 	/// Idempotent.
 	/// </summary>
 	public void UnloadAsync()
 	{
-		LoadAsync(null);
+		_ = LoadAsync(null);
 	}
 
 	/// <summary>
-	/// Checks if a new texture as finished loading.
-	/// If so, swaps to the new texture and releases the previous texture so it
+	/// Checks if new textures have finished loading.
+	/// If so, swaps to the new textures and releases the previous textures so they
 	/// can be garbage collected.
 	/// </summary>
-	private void CheckForSwappingToNewTexture()
+	private void CheckForSwappingToNewTextures()
 	{
 		lock (TextureSwapLock)
 		{
-			// Check if we need to swap to a newly loaded texture.
+			// Check if we need to swap to a newly loaded textures.
 			if (!NewTextureReady)
 				return;
 			NewTextureReady = false;
 
-			// Unbind the previous texture.
+			// Unbind the previous textures.
 			if (Bound)
 			{
 				Bound = false;
-				ImGuiRenderer.UnbindTexture(TextureImGui);
+				foreach (var textureImGui in TexturesImGui)
+					ImGuiRenderer.UnbindTexture(textureImGui);
 			}
 
-			// Update the texture to the newly loaded texture and bind it.
-			TextureMonogame = NewTexture;
-			if (NewTexture != null)
+			// Update the textures to the newly loaded textures and bind them.
+			TexturesMonogame = NewTextures;
+			TextureDurations = NewDurations;
+			TotalDuration = 0;
+			Frame = 0;
+			if (TextureDurations != null)
+				foreach (var duration in TextureDurations)
+					TotalDuration += duration;
+			if (TexturesMonogame != null)
+				TexturesImGui = new IntPtr[TexturesMonogame.Length];
+			else
+				TexturesImGui = null;
+			if (TexturesMonogame != null)
 			{
-				TextureImGui = ImGuiRenderer.BindTexture(TextureMonogame);
+				for (var i = 0; i < TexturesMonogame.Length; i++)
+					TexturesImGui![i] = ImGuiRenderer.BindTexture(TexturesMonogame[i]);
 				Bound = true;
 			}
 
 			TextureColor = NewTextureColor;
-			NewTexture = null;
+			NewTextures = null;
+			NewDurations = null;
 		}
 	}
 
 	/// <summary>
 	/// Draws the texture as an image through ImGui.
 	/// </summary>
-	/// <param name="mode">TextureLayoutMode for how to layout this texture.</param>
+	/// <param name="mode">TextureLayoutMode for how to lay out this texture.</param>
 	/// <returns>True if the texture was successfully drawn and false otherwise.</returns>
 	public bool Draw(TextureLayoutMode mode = TextureLayoutMode.Box)
 	{
 		// Prior to drawing, check if there is a newly loaded texture to swap to.
-		CheckForSwappingToNewTexture();
+		CheckForSwappingToNewTextures();
 
 		if (!Bound)
 			return false;
 
-		ImGuiUtils.DrawImage(ImGuiId, TextureImGui, TextureMonogame, Width, Height, mode);
+		ImGuiUtils.DrawImage(ImGuiId, TexturesImGui[Frame], TexturesMonogame[Frame], Width, Height, mode);
 		return true;
 	}
 
 	/// <summary>
 	/// Draws the texture as a button through ImGui.
 	/// </summary>
-	/// <param name="mode">TextureLayoutMode for how to layout this texture.</param>
+	/// <param name="mode">TextureLayoutMode for how to lay out this texture.</param>
 	/// <returns>
 	/// Tuple where the first value represents if the texture was successfully drawn.
 	/// The second value represents if the button was pressed.
@@ -361,12 +455,12 @@ internal sealed class EditorTexture : IDisposable
 	public (bool, bool) DrawButton(TextureLayoutMode mode = TextureLayoutMode.Box)
 	{
 		// Prior to drawing, check if there is a newly loaded texture to swap to.
-		CheckForSwappingToNewTexture();
+		CheckForSwappingToNewTextures();
 
 		if (!Bound)
 			return (false, false);
 
-		return (true, ImGuiUtils.DrawButton(ImGuiId, TextureImGui, TextureMonogame, Width, Height, mode));
+		return (true, ImGuiUtils.DrawButton(ImGuiId, TexturesImGui[Frame], TexturesMonogame[Frame], Width, Height, mode));
 	}
 
 	/// <summary>
@@ -377,15 +471,15 @@ internal sealed class EditorTexture : IDisposable
 	/// <param name="y">Y position to draw the texture.</param>
 	/// <param name="w">Width of area to draw the texture.</param>
 	/// <param name="h">Height of are to draw the texture.</param>
-	/// <param name="mode">TextureLayoutMode for how to layout this texture.</param>
+	/// <param name="mode">TextureLayoutMode for how to lay out this texture.</param>
 	public void DrawTexture(SpriteBatch spriteBatch, int x, int y, uint w, uint h, TextureLayoutMode mode = TextureLayoutMode.Box)
 	{
 		// Prior to drawing, check if there is a newly loaded texture to swap to.
-		CheckForSwappingToNewTexture();
+		CheckForSwappingToNewTextures();
 
 		if (!Bound)
 			return;
 
-		TextureUtils.DrawTexture(spriteBatch, TextureMonogame, x, y, w, h, mode);
+		TextureUtils.DrawTexture(spriteBatch, TexturesMonogame[Frame], x, y, w, h, mode);
 	}
 }

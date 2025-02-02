@@ -1544,7 +1544,8 @@ internal sealed class Editor :
 
 			CheckForAutoLoadingLastSong();
 
-			ActiveSong?.Update();
+			ActiveSong?.Update(currentTime);
+			ActivePack?.Update(currentTime);
 			SoundManager.Update();
 
 			ProcessInput(gameTime, currentTime);
