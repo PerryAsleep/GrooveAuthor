@@ -517,7 +517,7 @@ internal sealed class UISongProperties : UIWindow
 
 	private void JumpToLastSecondHint()
 	{
-		Editor.SetChartTime(EditorSong.LastSecondHint);
+		Editor.SetSongTime(EditorSong.LastSecondHint);
 	}
 
 	private void ApplyItgSongOffset()
