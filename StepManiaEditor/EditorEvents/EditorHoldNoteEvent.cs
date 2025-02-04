@@ -81,6 +81,20 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 		SetNewHoldEndPosition(row + len);
 	}
 
+	/// <summary>
+	/// Sets the player index associated with this event.
+	/// </summary>
+	/// <param name="player">Player index to set.</param>
+	/// <remarks>
+	/// Set this carefully. This changes how events are sorted.
+	/// This cannot be changed while this event is in a sorted list without resorting.
+	/// </remarks>
+	public override void SetPlayer(int player)
+	{
+		LaneHoldStartNote.Player = player;
+		LaneHoldEndNote.Player = player;
+	}
+
 	public void RefreshHoldEndTime()
 	{
 		SetNewHoldEndPosition(GetRow() + GetRowDuration());

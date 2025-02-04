@@ -422,7 +422,7 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	/// Set this carefully. This changes how events are sorted.
 	/// This cannot be changed while this event is in a sorted list without resorting.
 	/// </remarks>
-	public void SetPlayer(int player)
+	public virtual void SetPlayer(int player)
 	{
 		Assert(ChartEvent is Note);
 		if (ChartEvent is Note n)
