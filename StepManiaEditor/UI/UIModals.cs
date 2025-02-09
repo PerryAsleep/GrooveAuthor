@@ -121,7 +121,7 @@ internal sealed class UIModals
 	/// <summary>
 	/// Draws any currently active modals.
 	/// </summary>
-	public static void Draw()
+	public static void Draw(IEditorPlatform platformInterface)
 	{
 		// Draw modals in the order they were enqueued.
 		while (Modals.Count > 0)
@@ -132,7 +132,7 @@ internal sealed class UIModals
 			{
 				if (modal.ShouldPlaySound)
 				{
-					SystemSounds.Exclamation.Play();
+					platformInterface.PlayExclamationSound();
 					modal.ShouldPlaySound = false;
 				}
 

@@ -1,20 +1,15 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.IO;
 using System.Net.Http;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
-using System.Text;
 using System.Threading.Tasks;
-using System.Windows.Forms;
 using Fumen;
 using Fumen.Converters;
 using ImGuiNET;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using Path = Fumen.Path;
 
 namespace StepManiaEditor;
 
@@ -119,13 +114,13 @@ internal sealed class Utils
 	public const double PreviewRegionZOffset = 0.5;
 	public const double PatternRegionZOffset = 0.6;
 
-	public static readonly string[] ExpectedAudioFormats = { "mp3", "oga", "ogg", "wav" };
-	public static readonly string[] ExpectedImageFormats = { "bmp", "gif", "jpeg", "jpg", "png", "tif", "tiff", "webp" };
+	public static readonly string[] ExpectedAudioFormats = ["mp3", "oga", "ogg", "wav"];
+	public static readonly string[] ExpectedImageFormats = ["bmp", "gif", "jpeg", "jpg", "png", "tif", "tiff", "webp"];
 
 	public static readonly string[] ExpectedVideoFormats =
-		{ "avi", "f4v", "flv", "mkv", "mp4", "mpeg", "mpg", "mov", "ogv", "webm", "wmv" };
+		["avi", "f4v", "flv", "mkv", "mp4", "mpeg", "mpg", "mov", "ogv", "webm", "wmv"];
 
-	public static readonly string[] ExpectedLyricsFormats = { "lrc" };
+	public static readonly string[] ExpectedLyricsFormats = ["lrc"];
 
 	private static string AppName;
 	private static Version AppVersion;
@@ -152,14 +147,14 @@ internal sealed class Utils
 
 	public static string GetAppName()
 	{
-		return AppName ??= Assembly.GetExecutingAssembly().GetName().Name;
+		return AppName ??= Assembly.GetEntryAssembly()?.GetName().Name;
 	}
 
 	public static Version GetAppVersion()
 	{
 		if (AppVersion == null)
 		{
-			var assemblyVersion = Assembly.GetExecutingAssembly().GetName().Version;
+			var assemblyVersion = Assembly.GetEntryAssembly()?.GetName().Version;
 			if (assemblyVersion != null)
 				AppVersion = new Version(assemblyVersion.Major, assemblyVersion.Minor, assemblyVersion.Build);
 		}
@@ -338,11 +333,6 @@ internal sealed class Utils
 		}
 	}
 
-	public static void CopyToClipboard(string text)
-	{
-		Clipboard.SetText(text);
-	}
-
 	public static int GetBeatSubdivision(SubdivisionType subdivisionType)
 	{
 		return SMCommon.ValidDenominators[(int)subdivisionType];
@@ -445,99 +435,29 @@ internal sealed class Utils
 
 	#region File Open Helpers
 
-	public static string FileOpenFilterForImages(string name, bool includeAllFiles)
+	public static List<string[]> GetExtensionsForImages()
 	{
-		var extenstionTypes = new List<string[]> { ExpectedImageFormats };
-		return FileOpenFilter(name, extenstionTypes, includeAllFiles);
+		return [ExpectedImageFormats];
 	}
 
-	public static string FileOpenFilterForImagesAndVideos(string name, bool includeAllFiles)
+	public static List<string[]> GetExtensionsForImagesAndVideos()
 	{
-		var extenstionTypes = new List<string[]> { ExpectedImageFormats, ExpectedVideoFormats };
-		return FileOpenFilter(name, extenstionTypes, includeAllFiles);
+		return [ExpectedImageFormats, ExpectedVideoFormats];
 	}
 
-	public static string FileOpenFilterForAudio(string name, bool includeAllFiles)
+	public static List<string[]> GetExtensionsForAudio()
 	{
-		var extenstionTypes = new List<string[]> { ExpectedAudioFormats };
-		return FileOpenFilter(name, extenstionTypes, includeAllFiles);
+		return [ExpectedAudioFormats];
 	}
 
-	public static string FileOpenFilterForVideo(string name, bool includeAllFiles)
+	public static List<string[]> GetExtensionsForVideo()
 	{
-		var extenstionTypes = new List<string[]> { ExpectedVideoFormats };
-		return FileOpenFilter(name, extenstionTypes, includeAllFiles);
+		return [ExpectedVideoFormats];
 	}
 
-	public static string FileOpenFilterForLyrics(string name, bool includeAllFiles)
+	public static List<string[]> GetExtensionsForLyrics()
 	{
-		var extenstionTypes = new List<string[]> { ExpectedLyricsFormats };
-		return FileOpenFilter(name, extenstionTypes, includeAllFiles);
-	}
-
-	private static string FileOpenFilter(string name, List<string[]> extensionTypes, bool includeAllFiles)
-	{
-		var sb = new StringBuilder();
-		sb.Append(name);
-		sb.Append(" Files (");
-		var first = true;
-		foreach (var extensions in extensionTypes)
-		{
-			foreach (var extension in extensions)
-			{
-				if (!first)
-					sb.Append(",");
-				sb.Append("*.");
-				sb.Append(extension);
-				first = false;
-			}
-		}
-
-		sb.Append(")|");
-		first = true;
-		foreach (var extensions in extensionTypes)
-		{
-			foreach (var extension in extensions)
-			{
-				if (!first)
-					sb.Append(";");
-				sb.Append("*.");
-				sb.Append(extension);
-				first = false;
-			}
-		}
-
-		if (includeAllFiles)
-		{
-			sb.Append("|All files (*.*)|*.*");
-		}
-
-		return sb.ToString();
-	}
-
-	public static string BrowseFile(string name, string initialDirectory, string currentFileRelativePath, string filter)
-	{
-		string relativePath = null;
-		using var openFileDialog = new OpenFileDialog();
-		var startInitialDirectory = initialDirectory;
-		if (!string.IsNullOrEmpty(currentFileRelativePath))
-		{
-			initialDirectory = Path.Combine(initialDirectory, currentFileRelativePath);
-			initialDirectory = System.IO.Path.GetDirectoryName(initialDirectory);
-		}
-
-		openFileDialog.InitialDirectory = initialDirectory ?? "";
-		openFileDialog.Filter = filter;
-		openFileDialog.FilterIndex = 1;
-		openFileDialog.Title = $"Open {name} File";
-
-		if (openFileDialog.ShowDialog() == DialogResult.OK)
-		{
-			var fileName = openFileDialog.FileName;
-			relativePath = Path.GetRelativePath(startInitialDirectory, fileName);
-		}
-
-		return relativePath;
+		return [ExpectedLyricsFormats];
 	}
 
 	#endregion File Open Helpers
@@ -561,27 +481,7 @@ internal sealed class Utils
 		}
 	}
 
-	#endregion FielComparer
-
-	#region Application Focus
-
-	public static bool IsApplicationFocused()
-	{
-		var activatedHandle = GetForegroundWindow();
-		if (activatedHandle == IntPtr.Zero)
-			return false;
-
-		GetWindowThreadProcessId(activatedHandle, out var activeProcId);
-		return activeProcId == Process.GetCurrentProcess().Id;
-	}
-
-	[DllImport("user32.dll", CharSet = CharSet.Auto, ExactSpelling = true)]
-	private static extern IntPtr GetForegroundWindow();
-
-	[DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-	private static extern int GetWindowThreadProcessId(IntPtr handle, out int processId);
-
-	#endregion Application Focus
+	#endregion FileComparer
 
 	#region Reflection
 

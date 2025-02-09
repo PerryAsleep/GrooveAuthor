@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using SkiaSharp;
 using static StepManiaEditor.Utils;
 using static StepManiaEditor.ImGuiUtils;
 
@@ -170,21 +171,15 @@ internal sealed class EditorSongImageUtils
 
 	private static (int, int) GetImageDimensions(string filePath)
 	{
-		var w = 1;
-		var h = 1;
 		try
 		{
-			using Stream stream = File.OpenRead(filePath);
-			using var sourceImage = System.Drawing.Image.FromStream(stream, false, false);
-			w = sourceImage.Width;
-			h = sourceImage.Height;
+			using var codec = SKCodec.Create(filePath);
+			return (codec.Info.Width, codec.Info.Height);
 		}
 		catch (Exception)
 		{
-			// Ignored.
+			return (1, 1);
 		}
-
-		return (w, h);
 	}
 
 	private static bool DoesAspectRatioMatch(int sW, int sH, int eW, int eH)

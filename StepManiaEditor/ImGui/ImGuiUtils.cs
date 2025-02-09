@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -20,7 +21,6 @@ namespace StepManiaEditor;
 internal sealed class ImGuiUtils
 {
 	private static double DpiScale;
-	private static double DpiScaleSystemDefault;
 
 	// UI positioning values affected by DPI scaling.
 	public const int HelpWidthDefaultDPI = 18;
@@ -91,30 +91,18 @@ internal sealed class ImGuiUtils
 		[FieldOffset(8)] public byte SortDirection;
 	}
 
-	[DllImport("msvcrt.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl)]
-	private static extern int _snwprintf_s([MarshalAs(UnmanagedType.LPWStr)] StringBuilder sb, IntPtr sizeOfBuffer, IntPtr count,
-		string format, int p);
-
-	public static string FormatImGuiInt(string fmt, int i, int sizeOfBuffer = 64, int count = 32)
+	public static string FormatImGuiInt(string fmt, int i)
 	{
-		var sb = new StringBuilder(sizeOfBuffer);
-		_snwprintf_s(sb, sizeOfBuffer, count, fmt, i);
-		return sb.ToString();
+		return Printf.Sprintf(fmt, i);
 	}
 
-	[DllImport("msvcrt.dll", CharSet = CharSet.Unicode, CallingConvention = CallingConvention.Cdecl)]
-	private static extern int _snwprintf_s([MarshalAs(UnmanagedType.LPWStr)] StringBuilder sb, IntPtr sizeOfBuffer, IntPtr count,
-		string format, double p);
-
-	public static string FormatImGuiDouble(string fmt, double d, int sizeOfBuffer = 64, int count = 32)
+	public static string FormatImGuiDouble(string fmt, double d)
 	{
-		var sb = new StringBuilder(sizeOfBuffer);
-		_snwprintf_s(sb, sizeOfBuffer, count, fmt, d);
-		return sb.ToString();
+		return Printf.Sprintf(fmt, d);
 	}
 
 	/// <summary>
-	/// Draws an ImGui Combo element for the values of of the enum of type T.
+	/// Draws an ImGui Combo element for the values of the enum of type T.
 	/// </summary>
 	/// <typeparam name="T">Enum type of values in the Combo element.</typeparam>
 	/// <param name="name">Name of the element for ImGui.</param>
@@ -819,30 +807,6 @@ internal sealed class ImGuiUtils
 			DpiScale = 1.0;
 
 		return DpiScale;
-	}
-
-	public static double GetDpiScaleSystemDefault()
-	{
-		if (!DpiScaleSystemDefault.DoubleEquals(0.0))
-			return DpiScaleSystemDefault;
-
-		try
-		{
-			var dpi = int.Parse((string)Registry.GetValue(
-				@"HKEY_CURRENT_USER\Software\Microsoft\Windows\CurrentVersion\ThemeManager",
-				"LastLoadedDPI", "96") ?? throw new InvalidOperationException());
-			DpiScaleSystemDefault = dpi / 96.0;
-		}
-		catch (Exception)
-		{
-			DpiScaleSystemDefault = 1.0;
-		}
-
-		// Ensure the DPI scale is set to a valid value.
-		if (DpiScaleSystemDefault <= 0.0)
-			DpiScaleSystemDefault = 1.0;
-
-		return DpiScaleSystemDefault;
 	}
 
 	public static int UiScaled(int value)

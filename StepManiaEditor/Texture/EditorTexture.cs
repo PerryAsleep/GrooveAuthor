@@ -1,12 +1,11 @@
 ﻿using System;
-using System.Drawing;
-using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Fumen;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGameExtensions;
+using SkiaSharp;
 using static MonoGameExtensions.TextureUtils;
 
 namespace StepManiaEditor;
@@ -110,30 +109,55 @@ internal sealed class EditorTexture : IDisposable
 				// Don't try to load video files. We expect them to fail.
 				if (!string.IsNullOrEmpty(filePath) && !IsVideoFile(filePath))
 				{
+					// Gif handling.
 					if (IsGif(filePath))
 					{
-						using var image = Image.FromFile(filePath);
-						var dimension = new FrameDimension(image.FrameDimensionsList[0]);
-						var frameTimesByteArray = image.GetPropertyItem(0x5100)?.Value;
-						var frameCount = image.GetFrameCount(dimension);
+						using var codec = SKCodec.Create(filePath);
+
+						CancellationTokenSource.Token.ThrowIfCancellationRequested();
+
+						var frameCount = codec.FrameCount;
 						textures = new Texture2D[frameCount];
 						frameDurations = new double[frameCount];
+
+						// Get frame durations.
+						var frameInfo = codec.FrameInfo;
+						for (var i = 0; i < frameCount; i++)
+							frameDurations[i] = Math.Max(0.0, frameInfo[i].Duration / 1000.0);
+
+						// Decode each frame into raw RGBA data so we can wrap it with a texture.
+						var imageInfo = new SKImageInfo(codec.Info.Width, codec.Info.Height, SKColorType.Rgba8888);
+						var pixels = new byte[imageInfo.RowBytes * imageInfo.Height];
 						for (var i = 0; i < frameCount; i++)
 						{
-							frameDurations[i] = BitConverter.ToInt32(frameTimesByteArray, i * 4) / 100.0;
-							image.SelectActiveFrame(dimension, i);
-							using var stream = new MemoryStream();
-							image.Save(stream, ImageFormat.Bmp);
-							stream.Position = 0;
-							textures[i] = Texture2D.FromStream(GraphicsDevice, stream);
+							// Decode the image.
+							var options = new SKCodecOptions(i);
+							unsafe
+							{
+								fixed (byte* p = pixels)
+								{
+									codec.GetPixels(imageInfo, (IntPtr)p, options);
+								}
+							}
+
+							CancellationTokenSource.Token.ThrowIfCancellationRequested();
+
+							// Create a texture for it.
+							textures[i] = new Texture2D(GraphicsDevice, imageInfo.Width, imageInfo.Height);
+							textures[i].SetData(pixels);
+
 							CancellationTokenSource.Token.ThrowIfCancellationRequested();
 						}
 					}
+
+					// Normal image handling.
 					else
 					{
 						await using var fileStream = File.OpenRead(filePath);
+						CancellationTokenSource.Token.ThrowIfCancellationRequested();
 						textures = new Texture2D[1];
 						textures[0] = Texture2D.FromStream(GraphicsDevice, fileStream);
+						CancellationTokenSource.Token.ThrowIfCancellationRequested();
 						frameDurations = new double[1];
 						frameDurations[0] = 0.0;
 					}
