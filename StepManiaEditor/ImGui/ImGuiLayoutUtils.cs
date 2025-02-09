@@ -196,22 +196,6 @@ internal sealed class ImGuiLayoutUtils
 		}
 	}
 
-	public static void DrawRowTitleAndTextWithCopy(string title, string text, string help = null)
-	{
-		DrawRowTitleAndAdvanceColumn(title);
-
-		var remainingWidth = DrawHelp(help, ImGui.GetContentRegionAvail().X);
-		var textWidth = remainingWidth - ButtonCopySize.X;
-		ImGui.SetNextItemWidth(textWidth);
-		Text(text, textWidth);
-
-		ImGui.SameLine();
-		if (ImGui.Button("Copy", ButtonCopySize))
-		{
-			CopyToClipboard(text);
-		}
-	}
-
 	private static string GetDragHelpText(string helpText)
 	{
 		return string.IsNullOrEmpty(helpText) ? null : helpText + DragHelpText;
@@ -3834,7 +3818,7 @@ internal sealed class ImGuiLayoutUtils
 
 	#region Stream
 
-	public static void DrawRowStream(string title, string stream, string help = null)
+	public static void DrawRowStream(string title, string stream, IEditorPlatform platform, string help = null)
 	{
 		DrawRowTitleAndAdvanceColumn(title);
 
@@ -3855,7 +3839,7 @@ internal sealed class ImGuiLayoutUtils
 		ImGui.SameLine();
 		if (ImGui.Button("Copy", ButtonCopySize))
 		{
-			CopyToClipboard(stream);
+			platform.CopyToClipboard(stream);
 		}
 	}
 

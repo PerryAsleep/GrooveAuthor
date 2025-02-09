@@ -2093,6 +2093,14 @@ half4 FxaaPixelShader(
 #endif
 
 // Begin Fumen modification
+#if OPENGL
+#define PS_PROFILE ps_3_0
+#define VS_PROFILE vs_3_0
+#else
+#define PS_PROFILE ps_5_0
+#define VS_PROFILE vs_5_0
+#endif
+
 float4 PixelShaderFunction(float4 position : SV_Position, float4 color : COLOR0, float2 texCoords : TEXCOORD0) : SV_Target0
 {
     float4 value = FxaaPixelShader(
@@ -2111,7 +2119,7 @@ technique fxaa
 {
     pass Pass1
     {
-        PixelShader = compile ps_5_0 PixelShaderFunction();
+        PixelShader = compile PS_PROFILE PixelShaderFunction();
     }
 }
 // End Fumen modification

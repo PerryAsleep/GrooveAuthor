@@ -14,7 +14,6 @@ namespace StepManiaEditor;
 internal sealed class EditorPack
 {
 	private EditorSong ActiveSong;
-	private DirectoryInfo PackDirectoryInfo;
 	private readonly EditorImageData Banner = new(null);
 	private string PackName;
 
@@ -102,7 +101,6 @@ internal sealed class EditorPack
 	{
 		Songs.Clear();
 		PackName = null;
-		PackDirectoryInfo = null;
 		Banner.UpdatePath(null, null);
 		if (ActiveSong == null)
 			return;

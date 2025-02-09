@@ -4,11 +4,9 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Media;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
-using System.Windows.Forms;
 using Fumen;
 using Fumen.ChartDefinition;
 using ImGuiNET;
@@ -35,7 +33,7 @@ namespace StepManiaEditor;
 /// The Editor.
 /// Implemented as a MonoGame Game.
 /// </summary>
-internal sealed class Editor :
+public sealed class Editor :
 	Game,
 	Fumen.IObserver<EditorSong>,
 	Fumen.IObserver<EditorChart>,
@@ -170,6 +168,8 @@ internal sealed class Editor :
 	};
 
 	private static readonly int MaxNumLanesForAnySupportedChartType;
+
+	private readonly IEditorPlatform PlatformInterface;
 
 	private GraphicsDeviceManager Graphics;
 	private SpriteBatch SpriteBatch;
@@ -336,8 +336,11 @@ internal sealed class Editor :
 	/// <summary>
 	/// Constructor.
 	/// </summary>
-	public Editor()
+	public Editor(IEditorPlatform platformInterface)
 	{
+		PlatformInterface = platformInterface;
+		PlatformInterface.SetEditor(this);
+
 		// Record main thread id.
 		MainThreadId = Environment.CurrentManagedThreadId;
 
@@ -380,7 +383,7 @@ internal sealed class Editor :
 	protected override void Initialize()
 	{
 		InitializeWindowSize();
-		InitializeFormCallbacks();
+		PlatformInterface.InitializeWindowHandleCallbacks(Preferences.Instance.WindowMaximized);
 		InitializeImGui();
 		InitializeFonts();
 		InitializeGuiDpiScale();
@@ -837,22 +840,6 @@ internal sealed class Editor :
 		ImGuiRenderer = new ImGuiRenderer(this, ImGuiConfigFlags.DockingEnable);
 	}
 
-	private void InitializeFormCallbacks()
-	{
-		var p = Preferences.Instance;
-		var form = (Form)Control.FromHandle(Window.Handle);
-		if (form == null)
-			return;
-
-		if (p.WindowMaximized)
-			form.WindowState = FormWindowState.Maximized;
-
-		form.FormClosing += ClosingForm;
-		form.AllowDrop = true;
-		form.DragEnter += DragEnter;
-		form.DragDrop += DragDrop;
-	}
-
 	private void InitializeFonts()
 	{
 		var guiScale = GetDpiScale();
@@ -1172,6 +1159,11 @@ internal sealed class Editor :
 
 	#region Helpers
 
+	public IEditorPlatform GetPlatformInterface()
+	{
+		return PlatformInterface;
+	}
+
 	public bool IsOnMainThread()
 	{
 		return Environment.CurrentManagedThreadId == MainThreadId;
@@ -1200,7 +1192,7 @@ internal sealed class Editor :
 		return GetFocusedChartData()?.Position.SongTime ?? 0.0;
 	}
 
-	public IReadOnlyEditorPosition GetPosition()
+	internal IReadOnlyEditorPosition GetPosition()
 	{
 		var focusedChartData = GetFocusedChartData();
 		if (focusedChartData != null)
@@ -1210,17 +1202,17 @@ internal sealed class Editor :
 		return new EditorPosition();
 	}
 
-	public EditorMouseState GetMouseState()
+	internal EditorMouseState GetMouseState()
 	{
 		return EditorMouseState;
 	}
 
-	public EditorSong GetActiveSong()
+	internal EditorSong GetActiveSong()
 	{
 		return ActiveSong;
 	}
 
-	public EditorChart GetFocusedChart()
+	internal EditorChart GetFocusedChart()
 	{
 		return FocusedChart;
 	}
@@ -1281,21 +1273,9 @@ internal sealed class Editor :
 
 	#region Window Resizing
 
-	private void SetResolution(int x, int y)
-	{
-		var form = (Form)Control.FromHandle(Window.Handle);
-		if (form == null)
-			return;
-		form.WindowState = FormWindowState.Normal;
-		form.ClientSize = new System.Drawing.Size(x, y);
-	}
-
 	public void OnResize(object sender, EventArgs e)
 	{
-		var form = (Form)Control.FromHandle(Window.Handle);
-		if (form == null)
-			return;
-		var maximized = form.WindowState == FormWindowState.Maximized;
+		var maximized = PlatformInterface.IsMaximized();
 
 		// Update window preferences.
 		if (!maximized)
@@ -1458,14 +1438,14 @@ internal sealed class Editor :
 		return true;
 	}
 
-	public static bool CanSongBeEdited(EditorSong song)
+	internal static bool CanSongBeEdited(EditorSong song)
 	{
 		if (ActionQueue.Instance.IsDoingOrUndoing())
 			return false;
 		return song?.CanBeEdited() ?? false;
 	}
 
-	public static bool CanChartBeEdited(EditorChart chart)
+	internal static bool CanChartBeEdited(EditorChart chart)
 	{
 		if (ActionQueue.Instance.IsDoingOrUndoing())
 			return false;
@@ -1493,7 +1473,7 @@ internal sealed class Editor :
 				Logger.Warn("Edits cannot be made asynchronous edits are running.");
 			}
 
-			SystemSounds.Exclamation.Play();
+			PlatformInterface.PlayExclamationSound();
 			return true;
 		}
 
@@ -1730,7 +1710,7 @@ internal sealed class Editor :
 		WaveFormRenderer.Update(GetPosition().SongTime, waveFormPPS * ZoomManager.GetSpacingZoom());
 	}
 
-	public uint GetWaveFormWidth(ActiveEditorChart activeChart)
+	internal uint GetWaveFormWidth(ActiveEditorChart activeChart)
 	{
 		var p = Preferences.Instance.PreferencesWaveForm;
 		if (p.WaveFormScaleWidthToChart && activeChart != null)
@@ -1756,7 +1736,7 @@ internal sealed class Editor :
 	/// <param name="currentTime">Current time in seconds.</param>
 	private void ProcessInput(GameTime gameTime, double currentTime)
 	{
-		var inFocus = IsApplicationFocused();
+		var inFocus = PlatformInterface.IsApplicationFocused();
 
 		CurrentDesiredCursor = MouseCursor.Arrow;
 		CanShowRightClickPopupThisFrame = false;
@@ -3463,7 +3443,7 @@ internal sealed class Editor :
 
 		UIAbout.Instance.Draw();
 		UIControls.Instance.Draw();
-		UILog.Instance.Draw(LogBuffer, LogBufferLock, LogFilePath);
+		UILog.Instance.Draw(LogBuffer, LogBufferLock, LogFilePath, PlatformInterface);
 		UIScrollPreferences.Instance.Draw();
 		UISelectionPreferences.Instance.Draw();
 		UIWaveFormPreferences.Instance.Draw();
@@ -3498,7 +3478,7 @@ internal sealed class Editor :
 		var lastPos = EditorMouseState.GetButtonState(EditorMouseState.Button.Right).GetLastClickUpPosition();
 		DrawRightClickMenu((int)lastPos.X, (int)lastPos.Y);
 
-		UIModals.Draw();
+		UIModals.Draw(PlatformInterface);
 	}
 
 	private void DrawMainMenuUI()
@@ -3851,7 +3831,7 @@ internal sealed class Editor :
 					{
 						if (ImGui.MenuItem($"{sortedModes[i].Width,5} x{sortedModes[i].Height,5}"))
 						{
-							SetResolution(sortedModes[i].Width, sortedModes[i].Height);
+							PlatformInterface.SetResolution(sortedModes[i].Width, sortedModes[i].Height);
 						}
 					}
 
@@ -3884,7 +3864,7 @@ internal sealed class Editor :
 		}
 	}
 
-	public void DrawCopyChartEventsMenuItems(EditorChart chart)
+	internal void DrawCopyChartEventsMenuItems(EditorChart chart)
 	{
 		if (chart == null)
 			return;
@@ -4075,7 +4055,7 @@ internal sealed class Editor :
 		}
 	}
 
-	public void ShowAutogenChartUI(EditorChart sourceChart = null)
+	internal void ShowAutogenChartUI(EditorChart sourceChart = null)
 	{
 		if (sourceChart != null && !sourceChart.SupportsAutogenFeatures())
 			sourceChart = null;
@@ -4657,25 +4637,14 @@ internal sealed class Editor :
 		if (ActiveSong == null)
 			return;
 
-		var saveFileDialog = new SaveFileDialog();
-		saveFileDialog.Filter = "SSC File|*.ssc|SM File|*.sm";
-		saveFileDialog.Title = "Save As...";
-		saveFileDialog.FilterIndex = 0;
-		if (ActiveSong.GetFileFormat() != null && ActiveSong.GetFileFormat().Type == FileFormatType.SM)
-		{
-			saveFileDialog.FilterIndex = 2;
-		}
-
 		var songDirectory = ActiveSong.GetFileDirectory();
-		if (!string.IsNullOrEmpty(songDirectory))
-			saveFileDialog.InitialDirectory = songDirectory;
-		else
-			saveFileDialog.InitialDirectory = Preferences.Instance.OpenFileDialogInitialDirectory;
+		if (string.IsNullOrEmpty(songDirectory))
+			songDirectory = Preferences.Instance.OpenFileDialogInitialDirectory;
 
-		if (saveFileDialog.ShowDialog() != DialogResult.OK)
+		var (confirmed, fullPath) = PlatformInterface.ShowSaveSimFileDialog(songDirectory, ActiveSong.GetFileFormat().Type);
+		if (!confirmed)
 			return;
 
-		var fullPath = saveFileDialog.FileName;
 		var extension = System.IO.Path.GetExtension(fullPath);
 		var fileFormat = FileFormat.GetFileFormatByExtension(extension);
 		if (fileFormat == null)
@@ -4728,19 +4697,14 @@ internal sealed class Editor :
 		if (!CanLoadSongs())
 			return;
 
-		var pOptions = Preferences.Instance.PreferencesOptions;
-		using var openFileDialog = new OpenFileDialog();
-		openFileDialog.InitialDirectory = Preferences.Instance.OpenFileDialogInitialDirectory;
-		openFileDialog.Filter = "StepMania Files (*.sm,*.ssc)|*.sm;*.ssc|All files (*.*)|*.*";
-		openFileDialog.FilterIndex = 1;
+		var (confirmed, fileName) = PlatformInterface.ShowOpenSimFileDialog(Preferences.Instance.OpenFileDialogInitialDirectory);
+		if (!confirmed)
+			return;
 
-		if (openFileDialog.ShowDialog() == DialogResult.OK)
-		{
-			var fileName = openFileDialog.FileName;
-			Preferences.Instance.OpenFileDialogInitialDirectory = System.IO.Path.GetDirectoryName(fileName);
-			_ = OpenSongFileAsync(openFileDialog.FileName,
-				new DefaultChartListProvider(pOptions.DefaultStepsType, pOptions.DefaultDifficultyType));
-		}
+		var pOptions = Preferences.Instance.PreferencesOptions;
+		Preferences.Instance.OpenFileDialogInitialDirectory = System.IO.Path.GetDirectoryName(fileName);
+		_ = OpenSongFileAsync(fileName,
+			new DefaultChartListProvider(pOptions.DefaultStepsType, pOptions.DefaultDifficultyType));
 	}
 
 	public void OpenSongFile(string fileName)
@@ -5263,7 +5227,7 @@ internal sealed class Editor :
 
 	#region Selection
 
-	public IReadOnlySelection GetSelection()
+	internal IReadOnlySelection GetSelection()
 	{
 		return GetFocusedChartData()?.GetSelection();
 	}
@@ -5273,7 +5237,7 @@ internal sealed class Editor :
 		TransformingSelectedNotes = true;
 	}
 
-	public void OnNoteTransformationEnd(List<EditorEvent> transformedEvents)
+	internal void OnNoteTransformationEnd(List<EditorEvent> transformedEvents)
 	{
 		TransformingSelectedNotes = false;
 
@@ -5399,7 +5363,7 @@ internal sealed class Editor :
 		GetFocusedChartData()?.OnSelectAllShift();
 	}
 
-	public void OnSelectAllForCurrentPlayer(Func<EditorEvent, bool> isSelectable)
+	internal void OnSelectAllForCurrentPlayer(Func<EditorEvent, bool> isSelectable)
 	{
 		var focusedChartData = GetFocusedChartData();
 		if (focusedChartData == null)
@@ -5408,7 +5372,7 @@ internal sealed class Editor :
 		focusedChartData.OnSelectAll(e => e.GetPlayer() == player && isSelectable(e));
 	}
 
-	public void OnSelectAll(Func<EditorEvent, bool> isSelectable)
+	internal void OnSelectAll(Func<EditorEvent, bool> isSelectable)
 	{
 		GetFocusedChartData()?.OnSelectAll(isSelectable);
 	}
@@ -5420,7 +5384,7 @@ internal sealed class Editor :
 		GetFocusedChartData()?.OnShiftSelectedNotesLeft();
 	}
 
-	public void OnShiftNotesLeft(IEnumerable<EditorEvent> events)
+	internal void OnShiftNotesLeft(IEnumerable<EditorEvent> events)
 	{
 		if (EditEarlyOut())
 			return;
@@ -5439,7 +5403,7 @@ internal sealed class Editor :
 		GetFocusedChartData()?.OnShiftSelectedNotesLeftAndWrap();
 	}
 
-	public void OnShiftNotesLeftAndWrap(IEnumerable<EditorEvent> events)
+	internal void OnShiftNotesLeftAndWrap(IEnumerable<EditorEvent> events)
 	{
 		if (EditEarlyOut())
 			return;
@@ -5458,7 +5422,7 @@ internal sealed class Editor :
 		GetFocusedChartData()?.OnShiftSelectedNotesRight();
 	}
 
-	public void OnShiftNotesRight(IEnumerable<EditorEvent> events)
+	internal void OnShiftNotesRight(IEnumerable<EditorEvent> events)
 	{
 		if (EditEarlyOut())
 			return;
@@ -5477,7 +5441,7 @@ internal sealed class Editor :
 		GetFocusedChartData()?.OnShiftSelectedNotesRightAndWrap();
 	}
 
-	public void OnShiftNotesRightAndWrap(IEnumerable<EditorEvent> events)
+	internal void OnShiftNotesRightAndWrap(IEnumerable<EditorEvent> events)
 	{
 		if (EditEarlyOut())
 			return;
@@ -5504,7 +5468,7 @@ internal sealed class Editor :
 		GetFocusedChartData()?.OnShiftSelectedNotesEarlier(GetShiftNotesRows());
 	}
 
-	public void OnShiftNotesEarlier(IEnumerable<EditorEvent> events)
+	internal void OnShiftNotesEarlier(IEnumerable<EditorEvent> events)
 	{
 		if (EditEarlyOut())
 			return;
@@ -5518,7 +5482,7 @@ internal sealed class Editor :
 		GetFocusedChartData()?.OnShiftSelectedNotesLater(GetShiftNotesRows());
 	}
 
-	public void OnShiftNotesLater(IEnumerable<EditorEvent> events)
+	internal void OnShiftNotesLater(IEnumerable<EditorEvent> events)
 	{
 		if (EditEarlyOut())
 			return;
@@ -5708,7 +5672,7 @@ internal sealed class Editor :
 		Logger.Info($"Set Spacing Mode to {Preferences.Instance.PreferencesScroll.SpacingMode}");
 	}
 
-	public void OnActiveChartPositionChanged(ActiveEditorChart activeChart)
+	internal void OnActiveChartPositionChanged(ActiveEditorChart activeChart)
 	{
 		if (activeChart != GetFocusedChartData())
 			return;
@@ -5729,7 +5693,7 @@ internal sealed class Editor :
 		}
 	}
 
-	public SnapManager GetSnapManager()
+	internal SnapManager GetSnapManager()
 	{
 		return SnapManager;
 	}
@@ -6013,7 +5977,7 @@ internal sealed class Editor :
 		OnMoveToPreviousPattern(GetPosition().ChartPosition);
 	}
 
-	public void OnMoveToPreviousPattern(EditorPatternEvent currentPattern)
+	internal void OnMoveToPreviousPattern(EditorPatternEvent currentPattern)
 	{
 		OnMoveToPreviousPattern(currentPattern.GetChartPosition());
 	}
@@ -6051,7 +6015,7 @@ internal sealed class Editor :
 		OnMoveToNextPattern(GetPosition().ChartPosition);
 	}
 
-	public void OnMoveToNextPattern(EditorPatternEvent currentPattern)
+	internal void OnMoveToNextPattern(EditorPatternEvent currentPattern)
 	{
 		OnMoveToNextPattern(currentPattern.GetChartPosition());
 	}
@@ -6222,7 +6186,7 @@ internal sealed class Editor :
 		}
 	}
 
-	public void UpdateSongImage(SongImageType imageType, string path)
+	internal void UpdateSongImage(SongImageType imageType, string path)
 	{
 		if (ActiveSong == null || path == null)
 			return;
@@ -6328,12 +6292,12 @@ internal sealed class Editor :
 	}
 
 
-	public ActiveEditorChart GetFocusedChartData()
+	internal ActiveEditorChart GetFocusedChartData()
 	{
 		return FocusedChartData;
 	}
 
-	public ActiveEditorChart GetActiveChartData(EditorChart chart)
+	internal ActiveEditorChart GetActiveChartData(EditorChart chart)
 	{
 		for (var i = 0; i < ActiveCharts.Count; i++)
 		{
@@ -6344,12 +6308,12 @@ internal sealed class Editor :
 		return null;
 	}
 
-	public bool IsChartActive(EditorChart chart)
+	internal bool IsChartActive(EditorChart chart)
 	{
 		return GetActiveChartData(chart) != null;
 	}
 
-	public bool DoesChartHaveDedicatedTab(EditorChart chart)
+	internal bool DoesChartHaveDedicatedTab(EditorChart chart)
 	{
 		return GetActiveChartData(chart)?.HasDedicatedTab() ?? false;
 	}
@@ -6368,7 +6332,7 @@ internal sealed class Editor :
 		}
 	}
 
-	public void SetChartHasDedicatedTab(EditorChart chart, bool hasDedicatedTab)
+	internal void SetChartHasDedicatedTab(EditorChart chart, bool hasDedicatedTab)
 	{
 		if (chart == null)
 			return;
@@ -6392,7 +6356,7 @@ internal sealed class Editor :
 		}
 	}
 
-	public void CloseChart(EditorChart chart)
+	internal void CloseChart(EditorChart chart)
 	{
 		if (chart == null)
 			return;
@@ -6444,7 +6408,7 @@ internal sealed class Editor :
 		RefreshPlayerLimitFromFocusedChart();
 	}
 
-	public void MoveActiveChartLeft(EditorChart chart)
+	internal void MoveActiveChartLeft(EditorChart chart)
 	{
 		if (chart == null)
 			return;
@@ -6466,7 +6430,7 @@ internal sealed class Editor :
 		(ActiveChartData[index - 1], ActiveChartData[index]) = (ActiveChartData[index], ActiveChartData[index - 1]);
 	}
 
-	public void MoveActiveChartRight(EditorChart chart)
+	internal void MoveActiveChartRight(EditorChart chart)
 	{
 		if (chart == null)
 			return;
@@ -6488,7 +6452,7 @@ internal sealed class Editor :
 		(ActiveChartData[index + 1], ActiveChartData[index]) = (ActiveChartData[index], ActiveChartData[index + 1]);
 	}
 
-	public void ShowChart(EditorChart chart, bool withDedicatedTab)
+	internal void ShowChart(EditorChart chart, bool withDedicatedTab)
 	{
 		if (chart == null)
 			return;
@@ -6552,7 +6516,7 @@ internal sealed class Editor :
 		}
 	}
 
-	public void SetChartFocused(EditorChart chart, bool undoable = false)
+	internal void SetChartFocused(EditorChart chart, bool undoable = false)
 	{
 		Debug.Assert(IsOnMainThread());
 
@@ -6652,7 +6616,7 @@ internal sealed class Editor :
 		OnMusicPreviewChanged();
 	}
 
-	public EditorChart AddChart(ChartType chartType, bool selectNewChart)
+	internal EditorChart AddChart(ChartType chartType, bool selectNewChart)
 	{
 		Debug.Assert(IsOnMainThread());
 
@@ -6663,7 +6627,7 @@ internal sealed class Editor :
 		return chart;
 	}
 
-	public EditorChart AddChart(EditorChart chart, bool selectNewChart)
+	internal EditorChart AddChart(EditorChart chart, bool selectNewChart)
 	{
 		Debug.Assert(IsOnMainThread());
 
@@ -6685,7 +6649,7 @@ internal sealed class Editor :
 		PlayerPerChart.TryAdd(chart, player);
 	}
 
-	public void DeleteChart(EditorChart chart, EditorChart chartToSelect)
+	internal void DeleteChart(EditorChart chart, EditorChart chartToSelect)
 	{
 		Debug.Assert(IsOnMainThread());
 
@@ -6713,55 +6677,10 @@ internal sealed class Editor :
 	#region Drag and Drop
 
 	/// <summary>
-	/// Called when dragging a file into the window.
-	/// </summary>
-	public void DragEnter(object sender, DragEventArgs e)
-	{
-		if (e.Data == null)
-			return;
-		// The application only supports opening one file at a time.
-		if (!e.Data.GetDataPresent(DataFormats.FileDrop))
-			return;
-		var files = (string[])e.Data.GetData(DataFormats.FileDrop);
-		if (files?.Length != 1)
-		{
-			e.Effect = DragDropEffects.None;
-			return;
-		}
-
-		var file = files[0];
-
-		// Get the extension to determine if the file type is supported.
-		if (!Path.GetExtensionWithoutSeparator(file, out var extension))
-		{
-			e.Effect = DragDropEffects.None;
-			return;
-		}
-
-		// Set the effect for the drop based on if the file type is supported.
-		if (IsExtensionSupportedForFileDrop(extension))
-			e.Effect = DragDropEffects.Copy;
-		else
-			e.Effect = DragDropEffects.None;
-	}
-
-	/// <summary>
 	/// Called when dropping a file into the window.
 	/// </summary>
-	public void DragDrop(object sender, DragEventArgs e)
+	public void DragDrop(string file)
 	{
-		if (e.Data == null)
-			return;
-		// The application only supports opening one file at a time.
-		if (!e.Data.GetDataPresent(DataFormats.FileDrop))
-			return;
-		var files = (string[])e.Data.GetData(DataFormats.FileDrop);
-		if (files == null)
-			return;
-		if (files.Length != 1)
-			return;
-		var file = files[0];
-
 		// Get the extension to determine if the file type is supported.
 		if (!Path.GetExtensionWithoutSeparator(file, out var extension))
 			return;
@@ -6785,7 +6704,7 @@ internal sealed class Editor :
 	/// </summary>
 	/// <param name="extension">Extension without separator.</param>
 	/// <returns>Whether or not the file is supported for opening via drag and drop.</returns>
-	private static bool IsExtensionSupportedForFileDrop(string extension)
+	public static bool IsExtensionSupportedForFileDrop(string extension)
 	{
 		if (IsSongExtensionSupported(extension))
 			return true;
@@ -6875,12 +6794,12 @@ internal sealed class Editor :
 		ActionQueue.Instance.Do(new ActionAutoGeneratePatterns(this, FocusedChart, patterns));
 	}
 
-	public UIPatternComparer GetPatternComparer()
+	internal UIPatternComparer GetPatternComparer()
 	{
 		return PatternComparer;
 	}
 
-	public UIPerformedChartComparer GetPerformedChartComparer()
+	internal UIPerformedChartComparer GetPerformedChartComparer()
 	{
 		return PerformedChartComparer;
 	}
@@ -6939,7 +6858,7 @@ internal sealed class Editor :
 		return GetPlayer(FocusedChart);
 	}
 
-	public int GetPlayer(EditorChart chart)
+	internal int GetPlayer(EditorChart chart)
 	{
 		var p = Preferences.Instance;
 		if (chart == null)
@@ -6953,7 +6872,7 @@ internal sealed class Editor :
 
 	#region IObserver
 
-	public void OnNotify(string eventId, EditorSong song, object payload)
+	void Fumen.IObserver<EditorSong>.OnNotify(string eventId, EditorSong song, object payload)
 	{
 		if (song != ActiveSong)
 			return;
@@ -6978,7 +6897,7 @@ internal sealed class Editor :
 		}
 	}
 
-	public void OnNotify(string eventId, EditorChart chart, object payload)
+	void Fumen.IObserver<EditorChart>.OnNotify(string eventId, EditorChart chart, object payload)
 	{
 		if (chart != FocusedChart)
 			return;
@@ -7029,7 +6948,7 @@ internal sealed class Editor :
 		}
 	}
 
-	public void OnNotify(string eventId, PreferencesOptions options, object payload)
+	void Fumen.IObserver<PreferencesOptions>.OnNotify(string eventId, PreferencesOptions options, object payload)
 	{
 		switch (eventId)
 		{
@@ -7039,7 +6958,7 @@ internal sealed class Editor :
 		}
 	}
 
-	public void OnNotify(string eventId, PreferencesAudio audio, object payload)
+	void Fumen.IObserver<PreferencesAudio>.OnNotify(string eventId, PreferencesAudio audio, object payload)
 	{
 		switch (eventId)
 		{
@@ -7082,7 +7001,7 @@ internal sealed class Editor :
 		}
 	}
 
-	public void OnNotify(string eventId, ActionQueue actionQueue, object payload)
+	void Fumen.IObserver<ActionQueue>.OnNotify(string eventId, ActionQueue actionQueue, object payload)
 	{
 		switch (eventId)
 		{

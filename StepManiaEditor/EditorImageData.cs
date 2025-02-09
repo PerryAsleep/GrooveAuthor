@@ -90,7 +90,7 @@ internal sealed class EditorImageData : IReadOnlyEditorImageData
 			{
 				if (Texture != null)
 				{
-					Texture.LoadAsync(Fumen.Path.Combine(FileDirectory, Path));
+					_ = Texture.LoadAsync(Fumen.Path.Combine(FileDirectory, Path));
 					StartObservingFile();
 				}
 			}

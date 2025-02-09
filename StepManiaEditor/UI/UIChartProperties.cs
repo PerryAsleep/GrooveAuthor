@@ -97,7 +97,7 @@ internal sealed class UIChartProperties : UIWindow
 					"Originally meant to denote \"Pad\" versus \"Keyboard\" charts.");
 
 				ImGuiLayoutUtils.DrawRowFileBrowse("Music", editorChart, nameof(EditorChart.MusicPath),
-					() => BrowseMusicFile(editorChart),
+					() => BrowseMusicFile(Editor.GetPlatformInterface(), editorChart),
 					() => ClearMusicFile(editorChart),
 					true,
 					"The audio file to use for this chart, overriding the song music." +
@@ -136,6 +136,7 @@ internal sealed class UIChartProperties : UIWindow
 				var noteType = GetSubdivisionTypeString(Preferences.Instance.PreferencesStream.NoteType);
 				var steps = GetMeasureSubdivision(Preferences.Instance.PreferencesStream.NoteType);
 				ImGuiLayoutUtils.DrawRowStream("Stream", editorChart?.GetStreamBreakdown() ?? "",
+					Editor.GetPlatformInterface(),
 					$"Breakdown of {noteType} note stream."
 					+ $"\nThis follows ITGmania / Simply Love rules where a measure is {SMCommon.RowsPerMeasure} rows and a measure"
 					+ $"\nwith at least {steps} steps is considered stream regardless of if the individual steps are {noteType} notes.");
@@ -263,13 +264,13 @@ internal sealed class UIChartProperties : UIWindow
 		ImGui.End();
 	}
 
-	private static void BrowseMusicFile(EditorChart editorChart)
+	private static void BrowseMusicFile(IEditorPlatform platformInterface, EditorChart editorChart)
 	{
-		var relativePath = BrowseFile(
+		var relativePath = platformInterface.BrowseFile(
 			"Music",
 			editorChart.GetEditorSong().GetFileDirectory(),
 			editorChart.MusicPath,
-			FileOpenFilterForAudio("Music", true));
+			GetExtensionsForAudio(), true);
 		if (relativePath != null && relativePath != editorChart.MusicPath)
 			ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(editorChart,
 				nameof(editorChart.MusicPath), relativePath, true));

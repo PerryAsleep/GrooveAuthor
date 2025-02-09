@@ -74,13 +74,13 @@ internal sealed class UISongProperties : UIWindow
 			{
 				var (bound, pressed) = EditorSong.GetBanner().GetTexture().DrawButton();
 				if (pressed || (!bound && EmptyTextureBanner.DrawButton()))
-					BrowseBanner();
+					BrowseBanner(Editor.GetPlatformInterface());
 
 				ImGui.SameLine();
 
 				(bound, pressed) = EditorSong.GetCDTitle().GetTexture().DrawButton();
 				if (pressed || (!bound && EmptyTextureCDTitle.DrawButton()))
-					BrowseCDTitle();
+					BrowseCDTitle(Editor.GetPlatformInterface());
 			}
 			else
 			{
@@ -108,19 +108,27 @@ internal sealed class UISongProperties : UIWindow
 			ImGui.Separator();
 			if (ImGuiLayoutUtils.BeginTable("SongAssetsTable", TitleColumnWidth))
 			{
-				ImGuiLayoutUtils.DrawRowAutoFileBrowse("Banner", EditorSong, nameof(EditorSong.BannerPath), TryFindBestBanner,
-					BrowseBanner, ClearBanner, true,
+				ImGuiLayoutUtils.DrawRowAutoFileBrowse("Banner", EditorSong, nameof(EditorSong.BannerPath),
+					TryFindBestBanner,
+					() => BrowseBanner(Editor.GetPlatformInterface()),
+					ClearBanner,
+					true,
 					"The banner graphic to display for this song when it is selected in the song wheel."
 					+ "\nITG banners are 418x164."
 					+ "\nDDR banners are 512x160 or 256x80.");
 
 				ImGuiLayoutUtils.DrawRowAutoFileBrowse("Background", EditorSong, nameof(EditorSong.BackgroundPath),
-					TryFindBestBackground, BrowseBackground, ClearBackground, true,
+					TryFindBestBackground,
+					() => BrowseBackground(Editor.GetPlatformInterface()),
+					ClearBackground,
+					true,
 					"The background graphic to display for this song while it is being played."
 					+ "\nITG backgrounds are 640x480.");
 
-				ImGuiLayoutUtils.DrawRowFileBrowse("CD Title", EditorSong, nameof(EditorSong.CDTitlePath), BrowseCDTitle,
-					ClearCDTitle, true,
+				ImGuiLayoutUtils.DrawRowFileBrowse("CD Title", EditorSong, nameof(EditorSong.CDTitlePath),
+					() => BrowseCDTitle(Editor.GetPlatformInterface()),
+					ClearCDTitle,
+					true,
 					"The CD title graphic is most commonly used as a logo for the file author."
 					+ "\nDimensions are arbitrary.");
 				ImGuiLayoutUtils.EndTable();
@@ -132,7 +140,8 @@ internal sealed class UISongProperties : UIWindow
 				var musicError = EditorSong?.IsMusicInvalid() ?? true;
 				if (musicError)
 					PushErrorColor();
-				ImGuiLayoutUtils.DrawRowFileBrowse("Music", EditorSong, nameof(EditorSong.MusicPath), BrowseMusicFile,
+				ImGuiLayoutUtils.DrawRowFileBrowse("Music", EditorSong, nameof(EditorSong.MusicPath),
+					() => BrowseMusicFile(Editor.GetPlatformInterface()),
 					ClearMusicFile, true,
 					"The default audio file to use for all Charts for this Song." +
 					"\nIn most cases all Charts use the same Music and it is defined here at the Song level." +
@@ -227,7 +236,9 @@ internal sealed class UISongProperties : UIWindow
 			if (ImGuiLayoutUtils.BeginTable("UncommonPreview", TitleColumnWidth))
 			{
 				ImGuiLayoutUtils.DrawRowFileBrowse("Preview File", EditorSong, nameof(EditorSong.MusicPreviewPath),
-					BrowseMusicPreviewFile, ClearMusicPreviewFile, true,
+					() => BrowseMusicPreviewFile(Editor.GetPlatformInterface()),
+					ClearMusicPreviewFile,
+					true,
 					"An audio file to use for a preview instead of playing a range from the music file.");
 
 				ImGuiLayoutUtils.EndTable();
@@ -236,26 +247,34 @@ internal sealed class UISongProperties : UIWindow
 			ImGui.Separator();
 			if (ImGuiLayoutUtils.BeginTable("UncommonAssets", TitleColumnWidth))
 			{
-				ImGuiLayoutUtils.DrawRowFileBrowse("Jacket", EditorSong, nameof(EditorSong.CDTitlePath), BrowseJacket,
-					ClearJacket, true,
+				ImGuiLayoutUtils.DrawRowFileBrowse("Jacket", EditorSong, nameof(EditorSong.CDTitlePath),
+					() => BrowseJacket(Editor.GetPlatformInterface()),
+					ClearJacket,
+					true,
 					"Jacket graphic."
 					+ "\nMeant for themes which display songs with jacket assets in the song wheel like DDR X2."
 					+ "\nTypically square, but dimensions are arbitrary.");
 
-				ImGuiLayoutUtils.DrawRowFileBrowse("CD Image", EditorSong, nameof(EditorSong.CDTitlePath), BrowseCDImage,
-					ClearCDImage, true,
+				ImGuiLayoutUtils.DrawRowFileBrowse("CD Image", EditorSong, nameof(EditorSong.CDTitlePath),
+					() => BrowseCDImage(Editor.GetPlatformInterface()),
+					ClearCDImage,
+					true,
 					"CD image graphic."
 					+ "\nOriginally meant to capture song select graphics which looked like CDs from the original DDR."
 					+ "\nTypically square, but dimensions are arbitrary.");
 
-				ImGuiLayoutUtils.DrawRowFileBrowse("Disc Image", EditorSong, nameof(EditorSong.CDTitlePath), BrowseDiscImage,
-					ClearDiscImage, true,
+				ImGuiLayoutUtils.DrawRowFileBrowse("Disc Image", EditorSong, nameof(EditorSong.CDTitlePath),
+					() => BrowseDiscImage(Editor.GetPlatformInterface()),
+					ClearDiscImage,
+					true,
 					"Disc Image graphic."
 					+ "\nOriginally meant to capture PIU song select graphics, which were discs in very old versions."
 					+ "\nMore modern PIU uses rectangular banners, but dimensions are arbitrary.");
 
 				ImGuiLayoutUtils.DrawRowFileBrowse("Preview Video", EditorSong, nameof(EditorSong.PreviewVideoPath),
-					BrowsePreviewVideoFile, ClearPreviewVideoFile, true,
+					() => BrowsePreviewVideoFile(Editor.GetPlatformInterface()),
+					ClearPreviewVideoFile,
+					true,
 					"The preview video file." +
 					"\nMeant for themes based on PIU where videos play on the song select screen.");
 
@@ -270,8 +289,10 @@ internal sealed class UISongProperties : UIWindow
 					"\nMeant to capture stage requirements from DDR like extra stage and one more extra stage." +
 					"\nLeave as YES if you are unsure what to use.");
 
-				ImGuiLayoutUtils.DrawRowFileBrowse("Lyrics", EditorSong, nameof(EditorSong.LyricsPath), BrowseLyricsFile,
-					ClearLyricsFile, true,
+				ImGuiLayoutUtils.DrawRowFileBrowse("Lyrics", EditorSong, nameof(EditorSong.LyricsPath),
+					() => BrowseLyricsFile(Editor.GetPlatformInterface()),
+					ClearLyricsFile,
+					true,
 					"Lyrics file for displaying lyrics while the song plays.");
 
 				ImGuiLayoutUtils.EndTable();
@@ -302,13 +323,13 @@ internal sealed class UISongProperties : UIWindow
 		}
 	}
 
-	private void BrowseBanner()
+	private void BrowseBanner(IEditorPlatform platformInterface)
 	{
-		var relativePath = BrowseFile(
+		var relativePath = platformInterface.BrowseFile(
 			"Banner",
 			EditorSong.GetFileDirectory(),
 			EditorSong.BannerPath,
-			FileOpenFilterForImages("Banner", true));
+			GetExtensionsForImages(), true);
 		Editor.UpdateSongImage(SongImageType.Banner, relativePath);
 	}
 
@@ -335,13 +356,13 @@ internal sealed class UISongProperties : UIWindow
 		}
 	}
 
-	private void BrowseBackground()
+	private void BrowseBackground(IEditorPlatform platformInterface)
 	{
-		var relativePath = BrowseFile(
+		var relativePath = platformInterface.BrowseFile(
 			"Background",
 			EditorSong.GetFileDirectory(),
 			EditorSong.BackgroundPath,
-			FileOpenFilterForImagesAndVideos("Background", true));
+			GetExtensionsForImagesAndVideos(), true);
 		Editor.UpdateSongImage(SongImageType.Background, relativePath);
 	}
 
@@ -350,13 +371,13 @@ internal sealed class UISongProperties : UIWindow
 		Editor.UpdateSongImage(SongImageType.Background, "");
 	}
 
-	private void BrowseCDTitle()
+	private void BrowseCDTitle(IEditorPlatform platformInterface)
 	{
-		var relativePath = BrowseFile(
+		var relativePath = platformInterface.BrowseFile(
 			"CD Title",
 			EditorSong.GetFileDirectory(),
 			EditorSong.CDTitlePath,
-			FileOpenFilterForImages("CD Title", true));
+			GetExtensionsForImages(), true);
 		Editor.UpdateSongImage(SongImageType.CDTitle, relativePath);
 	}
 
@@ -365,13 +386,13 @@ internal sealed class UISongProperties : UIWindow
 		Editor.UpdateSongImage(SongImageType.CDTitle, "");
 	}
 
-	private void BrowseJacket()
+	private void BrowseJacket(IEditorPlatform platformInterface)
 	{
-		var relativePath = BrowseFile(
+		var relativePath = platformInterface.BrowseFile(
 			"Jacket",
 			EditorSong.GetFileDirectory(),
 			EditorSong.JacketPath,
-			FileOpenFilterForImages("Jacket", true));
+			GetExtensionsForImages(), true);
 		Editor.UpdateSongImage(SongImageType.Jacket, relativePath);
 	}
 
@@ -380,13 +401,13 @@ internal sealed class UISongProperties : UIWindow
 		Editor.UpdateSongImage(SongImageType.Jacket, "");
 	}
 
-	private void BrowseCDImage()
+	private void BrowseCDImage(IEditorPlatform platformInterface)
 	{
-		var relativePath = BrowseFile(
+		var relativePath = platformInterface.BrowseFile(
 			"CD Image",
 			EditorSong.GetFileDirectory(),
 			EditorSong.CDImagePath,
-			FileOpenFilterForImages("CD Image", true));
+			GetExtensionsForImages(), true);
 		Editor.UpdateSongImage(SongImageType.CDImage, relativePath);
 	}
 
@@ -395,13 +416,13 @@ internal sealed class UISongProperties : UIWindow
 		Editor.UpdateSongImage(SongImageType.CDImage, "");
 	}
 
-	private void BrowseDiscImage()
+	private void BrowseDiscImage(IEditorPlatform platformInterface)
 	{
-		var relativePath = BrowseFile(
+		var relativePath = platformInterface.BrowseFile(
 			"Disc Image",
 			EditorSong.GetFileDirectory(),
 			EditorSong.DiscImagePath,
-			FileOpenFilterForImages("Disc Image", true));
+			GetExtensionsForImages(), true);
 		Editor.UpdateSongImage(SongImageType.DiscImage, relativePath);
 	}
 
@@ -410,13 +431,13 @@ internal sealed class UISongProperties : UIWindow
 		Editor.UpdateSongImage(SongImageType.DiscImage, "");
 	}
 
-	private void BrowseMusicFile()
+	private void BrowseMusicFile(IEditorPlatform platformInterface)
 	{
-		var relativePath = BrowseFile(
+		var relativePath = platformInterface.BrowseFile(
 			"Music",
 			EditorSong.GetFileDirectory(),
 			EditorSong.MusicPath,
-			FileOpenFilterForAudio("Music", true));
+			GetExtensionsForAudio(), true);
 		Editor.UpdateMusicPath(relativePath);
 	}
 
@@ -427,13 +448,13 @@ internal sealed class UISongProperties : UIWindow
 				new ActionSetObjectFieldOrPropertyReference<string>(EditorSong, nameof(EditorSong.MusicPath), "", true));
 	}
 
-	private void BrowseMusicPreviewFile()
+	private void BrowseMusicPreviewFile(IEditorPlatform platformInterface)
 	{
-		var relativePath = BrowseFile(
+		var relativePath = platformInterface.BrowseFile(
 			"Music Preview",
 			EditorSong.GetFileDirectory(),
 			EditorSong.MusicPreviewPath,
-			FileOpenFilterForAudio("Music Preview", true));
+			GetExtensionsForAudio(), true);
 		if (relativePath != null && relativePath != EditorSong.MusicPreviewPath)
 			ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong,
 				nameof(EditorSong.MusicPreviewPath), relativePath, true));
@@ -446,13 +467,13 @@ internal sealed class UISongProperties : UIWindow
 				new ActionSetObjectFieldOrPropertyReference<string>(EditorSong, nameof(EditorSong.MusicPreviewPath), "", true));
 	}
 
-	private void BrowseLyricsFile()
+	private void BrowseLyricsFile(IEditorPlatform platformInterface)
 	{
-		var relativePath = BrowseFile(
+		var relativePath = platformInterface.BrowseFile(
 			"Lyrics",
 			EditorSong.GetFileDirectory(),
 			EditorSong.LyricsPath,
-			FileOpenFilterForLyrics("Lyrics", true));
+			GetExtensionsForLyrics(), true);
 		Editor.UpdateLyricsPath(relativePath);
 	}
 
@@ -463,13 +484,13 @@ internal sealed class UISongProperties : UIWindow
 				new ActionSetObjectFieldOrPropertyReference<string>(EditorSong, nameof(EditorSong.LyricsPath), "", true));
 	}
 
-	private void BrowsePreviewVideoFile()
+	private void BrowsePreviewVideoFile(IEditorPlatform platformInterface)
 	{
-		var relativePath = BrowseFile(
+		var relativePath = platformInterface.BrowseFile(
 			"Preview Video",
 			EditorSong.GetFileDirectory(),
 			EditorSong.PreviewVideoPath,
-			FileOpenFilterForVideo("Preview Video", true));
+			GetExtensionsForVideo(), true);
 		if (relativePath != null && relativePath != EditorSong.PreviewVideoPath)
 			ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong,
 				nameof(EditorSong.PreviewVideoPath), relativePath, true));

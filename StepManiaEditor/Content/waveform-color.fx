@@ -6,6 +6,14 @@ Expects the waveform texture to use the following colors prior to recoloring:
     Dense Color: pure green
 */
 
+#if OPENGL
+#define PS_PROFILE ps_3_0
+#define VS_PROFILE vs_3_0
+#else
+#define PS_PROFILE ps_5_0
+#define VS_PROFILE vs_5_0
+#endif
+
 Texture2D SpriteTexture;
 
 sampler2D SpriteTextureSampler = sampler_state
@@ -46,6 +54,6 @@ technique color
 {
     pass Pass1
     {
-        PixelShader = compile ps_5_0 PixelShaderFunction();
+        PixelShader = compile PS_PROFILE PixelShaderFunction();
     }
 }
