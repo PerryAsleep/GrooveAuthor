@@ -36,6 +36,12 @@
 		<Exec Command="dotnet tool restore" />
 	</Target>
 	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
-		<Exec Command="call &quot;$(ProjectDir)build.bat&quot; &quot;$(ProjectDir)&quot; &quot;$(TargetDir)&quot;" />
+		<Copy SourceFiles="$(ProjectDir)..\StepManiaLibrary\Fumen\Fumen\Sound\fmod\lib\linux\x86_64\libfmod.so" DestinationFolder="$(TargetDir)" />
+		<Copy SourceFiles="$(ProjectDir)..\StepManiaLibrary\Fumen\Fumen\Sound\fmod\lib\linux\x86_64\libfmod.so.13" DestinationFolder="$(TargetDir)" />
+		<Copy SourceFiles="$(ProjectDir)..\StepManiaLibrary\Fumen\Fumen\Sound\fmod\lib\linux\x86_64\libfmod.so.13.3" DestinationFolder="$(TargetDir)" />
+		<Copy SourceFiles="$(ProjectDir)..\StepManiaLibrary\Fumen\Fumen\Sound\fmod\lib\linux\x86_64\libfmodL.so" DestinationFolder="$(TargetDir)" />
+		<Copy SourceFiles="$(ProjectDir)..\StepManiaLibrary\Fumen\Fumen\Sound\fmod\lib\linux\x86_64\libfmodL.so.13" DestinationFolder="$(TargetDir)" />
+		<Copy SourceFiles="$(ProjectDir)..\StepManiaLibrary\Fumen\Fumen\Sound\fmod\lib\linux\x86_64\libfmodL.so.13.3" DestinationFolder="$(TargetDir)" />
+		<Copy SourceFiles="$(ProjectDir)..\ImGui.NET\deps\cimgui\linux-x64\cimgui.so" DestinationFolder="$(TargetDir)" />
 	</Target>
 </Project>
