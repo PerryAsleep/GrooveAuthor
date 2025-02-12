@@ -239,4 +239,9 @@ internal sealed class EditorWindowsInterface : IEditorPlatform
 	private static extern int GetWindowThreadProcessId(IntPtr handle, out int processId);
 
 	#endregion Application Focus
+
+	public void Update(GameTime gameTime)
+	{
+
+	}
 }

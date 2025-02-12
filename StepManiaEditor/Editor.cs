@@ -848,7 +848,7 @@ public sealed class Editor :
 		{
 			var programPath = assembly.Location;
 			var programDir = System.IO.Path.GetDirectoryName(programPath);
-			var mPlusFontPath = Path.Combine(programDir, @"Content\Mplus1Code-Medium.ttf");
+			var mPlusFontPath = Path.Combine([programDir, "Content", "Mplus1Code-Medium.ttf"]);
 			ImGuiFont = ImGui.GetIO().Fonts.AddFontFromFileTTF(mPlusFontPath, (int)(15 * guiScale), null,
 				ImGui.GetIO().Fonts.GetGlyphRangesJapanese());
 			ImGuiRenderer.RebuildFontAtlas();
@@ -1068,7 +1068,6 @@ public sealed class Editor :
 		Logger.Shutdown();
 
 		ImGuiRenderer.UnbindTexture(TextureAtlasImGuiTexture);
-
 		base.EndRun();
 	}
 
@@ -1513,6 +1512,8 @@ public sealed class Editor :
 				if (GarbageCollectFrame == 0)
 					GC.Collect();
 			}
+
+			PlatformInterface.Update(gameTime);
 
 			var newChartArea = UIDockSpace.GetCentralNodeArea();
 			if (newChartArea != ChartArea)

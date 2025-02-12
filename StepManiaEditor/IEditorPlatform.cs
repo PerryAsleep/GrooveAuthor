@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using Fumen;
+using Microsoft.Xna.Framework;
 
 namespace StepManiaEditor;
 
@@ -40,4 +41,6 @@ public interface IEditorPlatform
 		bool includeAllFiles);
 
 	public void CopyToClipboard(string text);
+
+	public void Update(GameTime gameTime);
 }
