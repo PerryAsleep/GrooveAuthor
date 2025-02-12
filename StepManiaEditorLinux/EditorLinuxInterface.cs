@@ -1,6 +1,8 @@
 ﻿using System.Collections.Generic;
 using Fumen;
 using StepManiaEditor;
+using Gtk;
+using Microsoft.Xna.Framework;
 
 namespace StepManiaEditorLinux;
 
@@ -10,10 +12,17 @@ namespace StepManiaEditorLinux;
 internal sealed class EditorLinuxInterface : IEditorPlatform
 {
 	private Editor Editor;
+	private Application App;
+
+	public EditorLinuxInterface()
+	{
+	}
 
 	public void SetEditor(Editor editor)
 	{
 		Editor = editor;
+
+		Application.Init();
 	}
 
 	public void InitializeWindowHandleCallbacks(bool maximized)
@@ -58,7 +67,22 @@ internal sealed class EditorLinuxInterface : IEditorPlatform
 
 	public (bool, string) ShowOpenSimFileDialog(string initialDirectory)
 	{
-		return (false, null);
+		var openedFile = false;
+		string fileName = null;
+		var dialog = new FileChooserDialog("Open simfile",
+		null,
+		FileChooserAction.Open,
+		"Cancel", ResponseType.Cancel,
+		"Open", ResponseType.Accept);
+		dialog.Modal = true;
+		dialog.KeepAbove = true;
+		if (dialog.Run() == (int)ResponseType.Accept)
+		{
+			openedFile = true;
+			fileName = dialog.Filename;
+		}
+		dialog.Destroy();
+		return (openedFile, fileName);
 	}
 
 	public string BrowseFile(string name, string initialDirectory, string currentFileRelativePath, List<string[]> extensionTypes,
@@ -86,4 +110,10 @@ internal sealed class EditorLinuxInterface : IEditorPlatform
 	}
 
 	#endregion Application Focus
+
+	public void Update(GameTime gameTime)
+	{
+		while(Application.EventsPending())
+			Application.RunIteration();
+	}
 }
