@@ -46,11 +46,11 @@ public class ImGuiRenderer
 	private RasterizerState _rasterizerState;
 
 	private byte[] _vertexData;
-	private VertexBuffer _vertexBuffer;
+	private DynamicVertexBuffer _vertexBuffer;
 	private int _vertexBufferSize;
 
 	private byte[] _indexData;
-	private IndexBuffer _indexBuffer;
+	private DynamicIndexBuffer _indexBuffer;
 	private int _indexBufferSize;
 
 	// Textures
@@ -349,7 +349,7 @@ public class ImGuiRenderer
 			_vertexBuffer?.Dispose();
 
 			_vertexBufferSize = (int)(drawData.TotalVtxCount * 1.5f);
-			_vertexBuffer = new VertexBuffer(_graphicsDevice, DrawVertDeclaration.Declaration, _vertexBufferSize,
+			_vertexBuffer = new DynamicVertexBuffer(_graphicsDevice, DrawVertDeclaration.Declaration, _vertexBufferSize,
 				BufferUsage.None);
 			_vertexData = new byte[_vertexBufferSize * DrawVertDeclaration.Size];
 		}
@@ -359,7 +359,7 @@ public class ImGuiRenderer
 			_indexBuffer?.Dispose();
 
 			_indexBufferSize = (int)(drawData.TotalIdxCount * 1.5f);
-			_indexBuffer = new IndexBuffer(_graphicsDevice, IndexElementSize.SixteenBits, _indexBufferSize, BufferUsage.None);
+			_indexBuffer = new DynamicIndexBuffer(_graphicsDevice, IndexElementSize.SixteenBits, _indexBufferSize, BufferUsage.None);
 			_indexData = new byte[_indexBufferSize * sizeof(ushort)];
 		}
 
