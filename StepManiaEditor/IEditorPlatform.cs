@@ -20,12 +20,13 @@ public interface IEditorPlatform
 	/// Show a save file dialog for a simfile.
 	/// </summary>
 	/// <param name="initialDirectory">The initial directory of the dialog.</param>
+	/// <param name="fileName">File name to default to for saving.</param>
 	/// <param name="fileFormatType">The file format type to default to in the dialog.</param>
 	/// <returns>Tuple with the following values:
 	/// - A boolean representing whether the dialog was confirmed and saving should continue.
 	/// - A string representing the full path to the file to be saved.
 	/// </returns>
-	public (bool, string) ShowSaveSimFileDialog(string initialDirectory, FileFormatType? fileFormatType);
+	public (bool, string) ShowSaveSimFileDialog(string initialDirectory, string fileName, FileFormatType? fileFormatType);
 
 	/// <summary>
 	/// Show an open file dialog for a simfile.

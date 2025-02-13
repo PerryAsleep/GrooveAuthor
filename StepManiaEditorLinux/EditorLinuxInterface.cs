@@ -1,9 +1,9 @@
 ﻿using System.Collections.Generic;
+using System.Text;
 using Fumen;
-using StepManiaEditor;
 using Gtk;
 using Microsoft.Xna.Framework;
-using System.Text;
+using StepManiaEditor;
 
 namespace StepManiaEditorLinux;
 
@@ -28,11 +28,9 @@ internal sealed class EditorLinuxInterface : IEditorPlatform
 
 	public void InitializeWindowHandleCallbacks(bool maximized)
 	{
-		
 	}
 
 	#region Drag and Drop
-
 
 	#endregion Drag and Drop
 
@@ -40,7 +38,6 @@ internal sealed class EditorLinuxInterface : IEditorPlatform
 
 	public void SetResolution(int x, int y)
 	{
-		
 	}
 
 	public bool IsMaximized()
@@ -54,22 +51,21 @@ internal sealed class EditorLinuxInterface : IEditorPlatform
 
 	public void PlayExclamationSound()
 	{
-		
 	}
 
 	#endregion Sounds
 
 	#region File I/O
 
-	public (bool, string) ShowSaveSimFileDialog(string initialDirectory, FileFormatType? fileFormatType)
+	public (bool, string) ShowSaveSimFileDialog(string initialDirectory, string fileName, FileFormatType? fileFormatType)
 	{
 		var confirmed = false;
-		string fileName = null;
+		string savedFileName = null;
 		var dialog = new FileChooserDialog("Save As...",
-		null,
-		FileChooserAction.Save,
-		"Cancel", ResponseType.Cancel,
-		"Save", ResponseType.Accept);
+			null,
+			FileChooserAction.Save,
+			"Cancel", ResponseType.Cancel,
+			"Save", ResponseType.Accept);
 		dialog.Modal = true;
 		dialog.KeepAbove = true;
 
@@ -84,16 +80,17 @@ internal sealed class EditorLinuxInterface : IEditorPlatform
 		dialog.AddFilter(smFileFilter);
 
 		dialog.Filter = fileFormatType == FileFormatType.SM ? smFileFilter : sscFileFilter;
-
+		dialog.CurrentName = fileName;
 		dialog.SetCurrentFolder(initialDirectory);
 
 		if (dialog.Run() == (int)ResponseType.Accept)
 		{
 			confirmed = true;
-			fileName = dialog.Filename;
+			savedFileName = dialog.Filename;
 		}
+
 		dialog.Destroy();
-		return (confirmed, fileName);
+		return (confirmed, savedFileName);
 	}
 
 	public (bool, string) ShowOpenSimFileDialog(string initialDirectory)
@@ -101,10 +98,10 @@ internal sealed class EditorLinuxInterface : IEditorPlatform
 		var openedFile = false;
 		string fileName = null;
 		var dialog = new FileChooserDialog("Open File",
-		null,
-		FileChooserAction.Open,
-		"Cancel", ResponseType.Cancel,
-		"Open", ResponseType.Accept);
+			null,
+			FileChooserAction.Open,
+			"Cancel", ResponseType.Cancel,
+			"Open", ResponseType.Accept);
 		dialog.Modal = true;
 		dialog.KeepAbove = true;
 
@@ -128,6 +125,7 @@ internal sealed class EditorLinuxInterface : IEditorPlatform
 			openedFile = true;
 			fileName = dialog.Filename;
 		}
+
 		dialog.Destroy();
 		return (openedFile, fileName);
 	}
@@ -144,10 +142,10 @@ internal sealed class EditorLinuxInterface : IEditorPlatform
 		}
 
 		var dialog = new FileChooserDialog($"Open {name} File",
-		null,
-		FileChooserAction.Open,
-		"Cancel", ResponseType.Cancel,
-		"Open", ResponseType.Accept);
+			null,
+			FileChooserAction.Open,
+			"Cancel", ResponseType.Cancel,
+			"Open", ResponseType.Accept);
 		dialog.Modal = true;
 		dialog.KeepAbove = true;
 
@@ -168,6 +166,7 @@ internal sealed class EditorLinuxInterface : IEditorPlatform
 				first = false;
 			}
 		}
+
 		sb.Append(')');
 		filter.Name = sb.ToString();
 		dialog.AddFilter(filter);
@@ -190,6 +189,7 @@ internal sealed class EditorLinuxInterface : IEditorPlatform
 			var fileName = dialog.Filename;
 			relativePath = Path.GetRelativePath(startInitialDirectory, fileName);
 		}
+
 		dialog.Destroy();
 		return relativePath;
 	}
@@ -200,7 +200,6 @@ internal sealed class EditorLinuxInterface : IEditorPlatform
 
 	public void CopyToClipboard(string text)
 	{
-
 	}
 
 	#endregion Clipboard
@@ -216,7 +215,7 @@ internal sealed class EditorLinuxInterface : IEditorPlatform
 
 	public void Update(GameTime gameTime)
 	{
-		while(Application.EventsPending())
+		while (Application.EventsPending())
 			Application.RunIteration();
 	}
 }
