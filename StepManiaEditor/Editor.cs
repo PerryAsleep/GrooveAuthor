@@ -1495,11 +1495,11 @@ public sealed class Editor :
 
 		FrameCount++;
 
-		PerformanceMonitor.SetTime(PerformanceTimings.Present, PreviousPresentTime.Ticks);
+		PerformanceMonitor.SetTimeFromTimeSpan(PerformanceTimings.Present, PreviousPresentTime.Ticks);
 
 		PerformanceMonitor.SetEnabled(!Preferences.Instance.PreferencesPerformance.PerformanceMonitorPaused);
-		PerformanceMonitor.BeginFrame(gameTime.TotalGameTime.Ticks);
-		PerformanceMonitor.SetTime(PerformanceTimings.PresentWait, PresentWaitTime.Ticks);
+		PerformanceMonitor.BeginFrameFromTimeSpan(gameTime.TotalGameTime.Ticks);
+		PerformanceMonitor.SetTimeFromTimeSpan(PerformanceTimings.PresentWait, PresentWaitTime.Ticks);
 		PerformanceMonitor.StartTiming(PerformanceTimings.EditorCPU);
 		PerformanceMonitor.Time(PerformanceTimings.Update, () =>
 		{
