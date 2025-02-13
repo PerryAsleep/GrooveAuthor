@@ -4641,8 +4641,11 @@ public sealed class Editor :
 		var songDirectory = ActiveSong.GetFileDirectory();
 		if (string.IsNullOrEmpty(songDirectory))
 			songDirectory = Preferences.Instance.OpenFileDialogInitialDirectory;
-
-		var (confirmed, fullPath) = PlatformInterface.ShowSaveSimFileDialog(songDirectory, ActiveSong.GetFileFormat().Type);
+		var fileName = ActiveSong.GetFileName();
+		if (string.IsNullOrEmpty(fileName))
+			fileName = ActiveSong.Title;
+		var (confirmed, fullPath) =
+			PlatformInterface.ShowSaveSimFileDialog(songDirectory, fileName, ActiveSong.GetFileFormat()?.Type);
 		if (!confirmed)
 			return;
 

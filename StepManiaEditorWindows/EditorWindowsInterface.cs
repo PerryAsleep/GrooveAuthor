@@ -6,6 +6,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
 using Fumen;
+using Microsoft.Xna.Framework;
 using StepManiaEditor;
 
 namespace StepManiaEditorWindows;
@@ -118,7 +119,7 @@ internal sealed class EditorWindowsInterface : IEditorPlatform
 
 	#region File I/O
 
-	public (bool, string) ShowSaveSimFileDialog(string initialDirectory, FileFormatType? fileFormatType)
+	public (bool, string) ShowSaveSimFileDialog(string initialDirectory, string fileName, FileFormatType? fileFormatType)
 	{
 		var saveFileDialog = new SaveFileDialog();
 		saveFileDialog.Filter = "SSC File|*.ssc|SM File|*.sm";
@@ -127,6 +128,7 @@ internal sealed class EditorWindowsInterface : IEditorPlatform
 		if (fileFormatType == FileFormatType.SM)
 			saveFileDialog.FilterIndex = 2;
 		saveFileDialog.InitialDirectory = initialDirectory;
+		saveFileDialog.FileName = fileName;
 		var confirmed = saveFileDialog.ShowDialog() == DialogResult.OK;
 		return (confirmed, saveFileDialog.FileName);
 	}
@@ -242,6 +244,5 @@ internal sealed class EditorWindowsInterface : IEditorPlatform
 
 	public void Update(GameTime gameTime)
 	{
-
 	}
 }
