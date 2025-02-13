@@ -1608,7 +1608,7 @@ internal sealed class ActiveEditorChart
 						if (adjustedMinTime < adjustedMaxTime)
 						{
 							var enumerator = Chart.GetEvents().FindLeastAfterChartTime(adjustedMinTime);
-							while (enumerator.MoveNext())
+							while (enumerator != null && enumerator.MoveNext())
 							{
 								if (enumerator.Current!.GetChartTime() > adjustedMaxTime)
 									break;
