@@ -200,7 +200,7 @@ internal sealed class PerformanceMonitor : IEnumerable
 
 		public double GetSeconds()
 		{
-			return (double)TotalTicks / TimeSpan.TicksPerSecond;
+			return (double)TotalTicks / Stopwatch.Frequency;
 		}
 
 		#endregion ITimingData
@@ -364,6 +364,11 @@ internal sealed class PerformanceMonitor : IEnumerable
 		return Enabled;
 	}
 
+	private static long ConvertTimeSpanTicksToStopWatchTicks(long timeSpanTicks)
+	{
+		return timeSpanTicks * Stopwatch.Frequency / TimeSpan.TicksPerSecond;
+	}
+
 	public void StartTiming(string identifier)
 	{
 		if (!Enabled)
@@ -407,7 +412,7 @@ internal sealed class PerformanceMonitor : IEnumerable
 		frame.Timings[index].EndTiming(Timer.ElapsedTicks);
 	}
 
-	public void SetTime(string identifier, long ticks)
+	public void SetTimeFromStopWatch(string identifier, long stopWatchTicks)
 	{
 		if (!Enabled)
 			return;
@@ -416,10 +421,20 @@ internal sealed class PerformanceMonitor : IEnumerable
 			return;
 		if (!GetTimingIndex(identifier, out var index))
 			return;
-		frame.Timings[index].AddTime(ticks);
+		frame.Timings[index].AddTime(stopWatchTicks);
 	}
 
-	public void BeginFrame(long ticksAtFrameStart)
+	public void SetTimeFromTimeSpan(string identifier, long timeSpanTicks)
+	{
+		SetTimeFromStopWatch(identifier, ConvertTimeSpanTicksToStopWatchTicks(timeSpanTicks));
+	}
+
+	public void BeginFrameFromTimeSpan(long timeSpanTicksAtFrameStart)
+	{
+		BeginFrameFromStopWatch(ConvertTimeSpanTicksToStopWatchTicks(timeSpanTicksAtFrameStart));
+	}
+
+	public void BeginFrameFromStopWatch(long stopWatchTicksAtFrameStart)
 	{
 		GetTimingIndex(FrameTimingIdentifier, out var frameTimingIndex);
 
@@ -427,7 +442,7 @@ internal sealed class PerformanceMonitor : IEnumerable
 		var frame = GetCurrentFrameData();
 		if (frame != null && !frame.Timings[frameTimingIndex].IsComplete())
 		{
-			frame.Timings[frameTimingIndex].EndTiming(ticksAtFrameStart);
+			frame.Timings[frameTimingIndex].EndTiming(stopWatchTicksAtFrameStart);
 			if (LastValidFrameIndex < 0)
 				LastValidFrameIndex = CurrentFrameIndex;
 		}
@@ -443,7 +458,7 @@ internal sealed class PerformanceMonitor : IEnumerable
 		// Initialize new frame.
 		frame = GetCurrentFrameData();
 		frame.Reset();
-		frame.Timings[frameTimingIndex].StartTiming(ticksAtFrameStart);
+		frame.Timings[frameTimingIndex].StartTiming(stopWatchTicksAtFrameStart);
 	}
 
 	#region Enumerator
