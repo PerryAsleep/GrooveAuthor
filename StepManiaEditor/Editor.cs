@@ -1026,14 +1026,7 @@ public sealed class Editor :
 	private void PerformPostContentLoadInitialization()
 	{
 		InitStepGraphDataAsync();
-
-		// If we have a saved file to open, open it now.
-		if (Preferences.Instance.PreferencesOptions.OpenLastOpenedFileOnLaunch
-		    && Preferences.Instance.RecentFiles.Count > 0)
-		{
-			OpenRecentIndex = 0;
-			OnOpenRecentFile();
-		}
+		CheckForAutoLoadingLastSong();
 	}
 
 	#endregion Initialization
@@ -4578,6 +4571,7 @@ public sealed class Editor :
 	{
 		if (HasCheckedForAutoLoadingLastSong || !CanLoadSongs())
 			return;
+		HasCheckedForAutoLoadingLastSong = true;
 
 		// If we have a saved file to open, open it now.
 		if (Preferences.Instance.PreferencesOptions.OpenLastOpenedFileOnLaunch
@@ -4586,8 +4580,6 @@ public sealed class Editor :
 			OpenRecentIndex = 0;
 			OnOpenRecentFile();
 		}
-
-		HasCheckedForAutoLoadingLastSong = true;
 	}
 
 	private bool IsSaving()
