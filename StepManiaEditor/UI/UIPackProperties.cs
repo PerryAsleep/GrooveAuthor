@@ -86,7 +86,7 @@ internal sealed class UIPackProperties : UIWindow
 
 			if (ImGuiLayoutUtils.BeginTable("Pack Properties", TitleColumnWidth))
 			{
-				ImGuiLayoutUtils.DrawRowTitleAndTextWithButton("Name", packName, () => { _ = Pack.Refresh(); }, "Refresh",
+				ImGuiLayoutUtils.DrawRowTitleAndTextWithButton("Name", packName, () => { Pack.Refresh(); }, "Refresh",
 					RefreshButtonWidth,
 					"A pack's name is defined by the name of the folder which contains the pack's song folders.");
 

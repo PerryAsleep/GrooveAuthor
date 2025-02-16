@@ -32,17 +32,34 @@ internal sealed class PackLoadState
 	}
 }
 
+internal sealed class PackLoadResult
+{
+	private readonly List<PackSong> Songs;
+	private readonly string PackName;
+
+	public PackLoadResult(List<PackSong> songs, string packName)
+	{
+		Songs = songs;
+		PackName = packName;
+	}
+
+	public List<PackSong> GetSongs()
+	{
+		return Songs;
+	}
+
+	public string GetPackName()
+	{
+		return PackName;
+	}
+}
+
 /// <summary>
 /// CancellableTask for performing async loads of pack files.
 /// </summary>
-internal sealed class PackLoadTask : CancellableTask<PackLoadState>
+internal sealed class PackLoadTask : CancellableTask<PackLoadState, PackLoadResult>
 {
-	private readonly object Lock = new();
-
-	private List<PackSong> Songs;
-	private string PackName;
-
-	protected override async Task DoWork(PackLoadState state)
+	protected override async Task<PackLoadResult> DoWork(PackLoadState state)
 	{
 		var songs = new List<PackSong>();
 		var packDirectoryInfo = state.GetPackDirectoryInfo();
@@ -105,12 +122,7 @@ internal sealed class PackLoadTask : CancellableTask<PackLoadState>
 
 		token.ThrowIfCancellationRequested();
 
-		// Save results
-		lock (Lock)
-		{
-			Songs = songs;
-			PackName = packName;
-		}
+		return new PackLoadResult(songs, packName);
 	}
 
 	private void LoadPackBanner(PackLoadState state)
@@ -157,23 +169,5 @@ internal sealed class PackLoadTask : CancellableTask<PackLoadState>
 	/// </summary>
 	protected override void Cancel()
 	{
-		ClearResults();
-	}
-
-	public (string, List<PackSong>) GetResults()
-	{
-		lock (Lock)
-		{
-			return (PackName, Songs);
-		}
-	}
-
-	public void ClearResults()
-	{
-		lock (Lock)
-		{
-			PackName = null;
-			Songs.Clear();
-		}
 	}
 }

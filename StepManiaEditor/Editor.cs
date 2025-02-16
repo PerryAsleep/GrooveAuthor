@@ -129,7 +129,6 @@ public sealed class Editor :
 	private string PendingLyricsFile;
 	private Action PostSaveFunction;
 	private int OpenRecentIndex;
-	private bool AutogenConfigsLoaded;
 	private bool HasCheckedForAutoLoadingLastSong;
 
 	public static readonly ChartType[] SupportedSinglePlayerChartTypes =
@@ -199,7 +198,6 @@ public sealed class Editor :
 
 	private SongLoadTask SongLoadTask;
 	private FileSystemWatcher SongFileWatcher;
-	private bool ShouldCheckForShowingSongFileChangedNotification;
 	private bool ShowingSongFileChangedNotification;
 	private bool HasShownUpdateModal;
 	private int GarbageCollectFrame;
@@ -524,19 +522,15 @@ public sealed class Editor :
 		Init(this);
 	}
 
-	private async void InitializeAutogenConfigsAsync()
+	private void InitializeAutogenConfigsAsync()
 	{
 		PatternConfigManager.Instance.SetConfigComparer(PatternComparer);
 		PerformedChartConfigManager.Instance.SetConfigComparer(PerformedChartComparer);
 
 		// Load autogen configs asynchronously.
-		await Task.WhenAll(new List<Task>(3)
-		{
-			PerformedChartConfigManager.Instance.LoadConfigsAsync(),
-			ExpressedChartConfigManager.Instance.LoadConfigsAsync(),
-			PatternConfigManager.Instance.LoadConfigsAsync(),
-		});
-		AutogenConfigsLoaded = true;
+		PerformedChartConfigManager.Instance.LoadConfigsAsync();
+		ExpressedChartConfigManager.Instance.LoadConfigsAsync();
+		PatternConfigManager.Instance.LoadConfigsAsync();
 	}
 
 	private void InitializeZoomManager()
@@ -1025,7 +1019,7 @@ public sealed class Editor :
 
 	private void PerformPostContentLoadInitialization()
 	{
-		InitStepGraphDataAsync();
+		_ = InitStepGraphDataAsync();
 		CheckForAutoLoadingLastSong();
 	}
 
@@ -1506,6 +1500,8 @@ public sealed class Editor :
 					GC.Collect();
 			}
 
+			MainThreadDispatcher.Pump();
+
 			PlatformInterface.Update(gameTime);
 
 			var newChartArea = UIDockSpace.GetCentralNodeArea();
@@ -1550,7 +1546,6 @@ public sealed class Editor :
 			}
 
 			CheckForShowingUpdateModal();
-			CheckForShowingSongFileChangedNotification();
 
 			// Update splash screen timer.
 			UpdateSplashTime(gameTime);
@@ -4379,7 +4374,7 @@ public sealed class Editor :
 	/// Initializes all PadData and creates corresponding StepGraphs for all ChartTypes
 	/// specified in the StartupChartTypes.
 	/// </summary>
-	private async void InitStepGraphDataAsync()
+	private async Task InitStepGraphDataAsync()
 	{
 		foreach (var chartType in SupportedChartTypes)
 			PadDataByChartType[chartType] = null;
@@ -4530,9 +4525,7 @@ public sealed class Editor :
 
 	public PadData GetPadData(ChartType chartType)
 	{
-		if (PadDataByChartType.TryGetValue(chartType, out var padData))
-			return padData;
-		return null;
+		return PadDataByChartType.GetValueOrDefault(chartType);
 	}
 
 	public bool GetStepGraph(ChartType chartType, out StepGraph stepGraph, bool logErrorOnFailure)
@@ -4564,7 +4557,9 @@ public sealed class Editor :
 	private bool CanLoadSongs()
 	{
 		// Songs may reference patterns which require autogen configs to be loaded.
-		return AutogenConfigsLoaded;
+		return PerformedChartConfigManager.Instance.HasFinishedLoading()
+		       && ExpressedChartConfigManager.Instance.HasFinishedLoading()
+		       && PatternConfigManager.Instance.HasFinishedLoading();
 	}
 
 	private void CheckForAutoLoadingLastSong()
@@ -4699,7 +4694,7 @@ public sealed class Editor :
 
 		var pOptions = Preferences.Instance.PreferencesOptions;
 		Preferences.Instance.OpenFileDialogInitialDirectory = System.IO.Path.GetDirectoryName(fileName);
-		_ = OpenSongFileAsync(fileName,
+		OpenSongFileAsync(fileName,
 			new DefaultChartListProvider(pOptions.DefaultStepsType, pOptions.DefaultDifficultyType));
 	}
 
@@ -4716,7 +4711,7 @@ public sealed class Editor :
 	/// </summary>
 	/// <param name="fileName">File name of the Song file to open.</param>
 	/// <param name="chartListProvider">IActiveChartListProvider for determining which active charts to use.</param>
-	private async Task OpenSongFileAsync(
+	private void OpenSongFileAsync(
 		string fileName,
 		IActiveChartListProvider chartListProvider)
 	{
@@ -4728,58 +4723,62 @@ public sealed class Editor :
 
 		// Start the load. If we are already loading, return.
 		// The previous call will use the newly provided file state.
-		var taskComplete = await SongLoadTask.Start(new SongLoadState(fileName, chartListProvider));
-		if (!taskComplete)
-			return;
-		var (newActiveSong, newFocusedChart, newActiveCharts, newFileName) = SongLoadTask.GetResults();
+		_ = MainThreadDispatcher.RunContinuationOnMainThread(
+			SongLoadTask.Start(new SongLoadState(fileName, chartListProvider)),
+			(results) =>
+			{
+				Debug.Assert(IsOnMainThread());
 
-		Debug.Assert(IsOnMainThread());
+				// The results may be null if we have multiple calls to load simultaneous and our call was cancelled.
+				if (results == null)
+					return;
 
-		CloseSong();
-		OpeningSong = false;
+				CloseSong();
+				OpeningSong = false;
 
-		// Get the newly loaded song.
-		ActiveSong = newActiveSong;
-		ActivePack.SetSong(ActiveSong);
-		if (ActiveSong == null)
-		{
-			return;
-		}
+				// Get the newly loaded song.
+				ActiveSong = results.GetSong();
+				ActivePack.SetSong(ActiveSong);
+				if (ActiveSong == null)
+				{
+					return;
+				}
 
-		// Observe the song and its charts.
-		ActiveSong.AddObservers(this, this);
+				// Observe the song and its charts.
+				ActiveSong.AddObservers(this, this);
 
-		// Observe the song file for changes.
-		StartObservingSongFile(newFileName);
+				// Observe the song file for changes.
+				StartObservingSongFile(results.GetFileName());
 
-		// Set the position and zoom to the last used values for this song.
-		var desiredChartPosition = 0.0;
-		var desiredZoom = 1.0;
-		var savedInfo = GetMostRecentSavedSongInfoForActiveSong();
-		if (savedInfo != null)
-		{
-			desiredChartPosition = savedInfo.ChartPosition;
-			desiredZoom = savedInfo.SpacingZoom;
-		}
+				// Set the position and zoom to the last used values for this song.
+				var desiredChartPosition = 0.0;
+				var desiredZoom = 1.0;
+				var savedInfo = GetMostRecentSavedSongInfoForActiveSong();
+				if (savedInfo != null)
+				{
+					desiredChartPosition = savedInfo.ChartPosition;
+					desiredZoom = savedInfo.SpacingZoom;
+				}
 
-		// Set the active and focused charts. Ensure the focal point doesn't move.
-		// Set every chart to have a dedicated tab.
-		var focalPointX = GetFocalPointScreenSpaceX();
-		var focalPointY = GetFocalPointScreenSpaceY();
-		ActiveCharts.Clear();
-		ActiveChartData.Clear();
-		foreach (var activeChart in newActiveCharts)
-			SetChartHasDedicatedTab(activeChart, true);
-		SetChartFocused(newFocusedChart);
-		SetFocalPointScreenSpace(focalPointX, focalPointY);
+				// Set the active and focused charts. Ensure the focal point doesn't move.
+				// Set every chart to have a dedicated tab.
+				var focalPointX = GetFocalPointScreenSpaceX();
+				var focalPointY = GetFocalPointScreenSpaceY();
+				ActiveCharts.Clear();
+				ActiveChartData.Clear();
+				foreach (var activeChart in results.GetActiveCharts())
+					SetChartHasDedicatedTab(activeChart, true);
+				SetChartFocused(results.GetFocusedChart());
+				SetFocalPointScreenSpace(focalPointX, focalPointY);
 
-		// Set position and zoom.
-		ResetPosition();
-		SetChartPosition(desiredChartPosition);
-		ZoomManager.SetZoom(desiredZoom);
+				// Set position and zoom.
+				ResetPosition();
+				SetChartPosition(desiredChartPosition);
+				ZoomManager.SetZoom(desiredZoom);
 
-		// Insert a new entry at the top of the saved recent files.
-		UpdateRecentFilesForActiveSong();
+				// Insert a new entry at the top of the saved recent files.
+				UpdateRecentFilesForActiveSong();
+			});
 	}
 
 	private void StartObservingSongFile(string fileName)
@@ -4811,17 +4810,11 @@ public sealed class Editor :
 			return;
 
 		// Check for showing a notification on the main thread.
-		// This method is called from a separate thread and we don't want to access ActiveSong outside of
-		// the main thread.
-		ShouldCheckForShowingSongFileChangedNotification = true;
+		MainThreadDispatcher.RunOnMainThread(CheckForShowingSongFileChangedNotification);
 	}
 
 	private void CheckForShowingSongFileChangedNotification()
 	{
-		if (!ShouldCheckForShowingSongFileChangedNotification)
-			return;
-		ShouldCheckForShowingSongFileChangedNotification = false;
-
 		if (ActiveSong == null)
 			return;
 
@@ -4974,7 +4967,7 @@ public sealed class Editor :
 		if (string.IsNullOrEmpty(PendingOpenSongFileName))
 			return;
 		var pOptions = Preferences.Instance.PreferencesOptions;
-		_ = OpenSongFileAsync(PendingOpenSongFileName,
+		OpenSongFileAsync(PendingOpenSongFileName,
 			new DefaultChartListProvider(pOptions.DefaultStepsType, pOptions.DefaultDifficultyType));
 	}
 
@@ -5020,7 +5013,7 @@ public sealed class Editor :
 		if (OpenRecentIndex >= p.RecentFiles.Count)
 			return;
 
-		_ = OpenSongFileAsync(p.RecentFiles[OpenRecentIndex].FileName, p.RecentFiles[OpenRecentIndex]);
+		OpenSongFileAsync(p.RecentFiles[OpenRecentIndex].FileName, p.RecentFiles[OpenRecentIndex]);
 	}
 
 	private void OnNew()
@@ -5156,7 +5149,6 @@ public sealed class Editor :
 
 		StopPlayback();
 		MusicManager.UnloadAsync();
-		SongLoadTask.ClearResults();
 		ActiveSong = null;
 		if (!OpeningSong)
 			ActivePack.SetSong(ActiveSong);

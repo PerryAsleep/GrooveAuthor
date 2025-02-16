@@ -123,7 +123,7 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 		Deletions = ActionDeletePatternNotes.DeleteEventsOverlappingPatterns(EditorChart, Patterns);
 
 		// Asynchronously generate the patterns.
-		DoPatternGenerationAsync(stepGraph, expressedChartConfig.Config);
+		_ = DoPatternGenerationAsync(stepGraph, expressedChartConfig.Config);
 	}
 
 	/// <summary>
@@ -133,7 +133,7 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 	/// </summary>
 	/// <param name="stepGraph">The StepGraph for the EditorChart.</param>
 	/// <param name="expressedChartConfig">The ExpressedChart Config for the EditorChart.</param>
-	private async void DoPatternGenerationAsync(StepGraph stepGraph, Config expressedChartConfig)
+	private async Task DoPatternGenerationAsync(StepGraph stepGraph, Config expressedChartConfig)
 	{
 		// Get the timing events. These are needed by the PerformedChart to properly time new events to support
 		// generation logic which relies on time.
@@ -177,12 +177,8 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 			});
 
 			// Synchronously add the events.
-			// Due to the application being a Windows Forms application we know this continuation after the
-			// above async operation will occur on the calling (main) thread. These continuations occur separately
-			// from the Application's Idle EventHandler, which control the main tick function. So no extra
-			// synchronization work is needed to ensure these are added safely on the main thread.
 			if (patternEvents != null)
-				EditorChart.AddEvents(patternEvents);
+				MainThreadDispatcher.RunOnMainThread(() => EditorChart.AddEvents(patternEvents));
 		}
 
 		OnDone();

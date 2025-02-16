@@ -39,7 +39,7 @@ internal abstract class ConfigManager<TEditorConfig, TConfig> : Notifier<ConfigM
 	private readonly string ConfigPrefix;
 
 	/// <summary>
-	/// Human readable string for identifying the type of EditorConfig objects managed by this class.
+	/// Human-readable string for identifying the type of EditorConfig objects managed by this class.
 	/// </summary>
 	private readonly string ConfigTypeReadableName;
 
@@ -64,13 +64,18 @@ internal abstract class ConfigManager<TEditorConfig, TConfig> : Notifier<ConfigM
 	private readonly HashSet<Guid> DeletedConfigs = new();
 
 	/// <summary>
+	/// Whether the configs have finished loading.
+	/// </summary>
+	private bool FinishedLoading;
+
+	/// <summary>
 	/// Constructor.
 	/// </summary>
 	/// <param name="configPrefix">
 	/// Prefix used on save files for the EditorConfig objects managed by this class.
 	/// </param>
 	/// <param name="configTypeReadableName">
-	/// Human readable string for identifying the type of EditorConfig objects managed by this class.
+	/// Human-readable string for identifying the type of EditorConfig objects managed by this class.
 	/// </param>
 	protected ConfigManager(string configPrefix, string configTypeReadableName)
 	{
@@ -172,7 +177,7 @@ internal abstract class ConfigManager<TEditorConfig, TConfig> : Notifier<ConfigM
 	/// <summary>
 	/// Asynchronously loads all EditorConfig files from disk.
 	/// </summary>
-	public async Task LoadConfigsAsync()
+	public void LoadConfigsAsync()
 	{
 		Logger.Info($"Loading {ConfigTypeReadableName} files...");
 
@@ -196,6 +201,7 @@ internal abstract class ConfigManager<TEditorConfig, TConfig> : Notifier<ConfigM
 		catch (Exception e)
 		{
 			Logger.Error($"Failed to search for {ConfigTypeReadableName} files in {ConfigDirectory}. {e}");
+			FinishedLoading = true;
 			return;
 		}
 
@@ -220,17 +226,27 @@ internal abstract class ConfigManager<TEditorConfig, TConfig> : Notifier<ConfigM
 			}
 		}
 
-		if (tasks.Count > 0)
+		if (tasks.Count == 0)
 		{
-			await Task.WhenAll(tasks);
+			FinishLoadingConfigs();
+			return;
+		}
+
+		_ = MainThreadDispatcher.RunContinuationOnMainThread(Task.WhenAll(tasks), () =>
+		{
 			foreach (var task in tasks)
 			{
 				var config = task.Result;
 				if (config != null)
 					ConfigData.AddConfig(config);
 			}
-		}
 
+			FinishLoadingConfigs();
+		});
+	}
+
+	private void FinishLoadingConfigs()
+	{
 		if (ConfigData.GetConfigs().Count == 0)
 		{
 			Logger.Info($"No {ConfigTypeReadableName} configs found.");
@@ -249,6 +265,8 @@ internal abstract class ConfigManager<TEditorConfig, TConfig> : Notifier<ConfigM
 				numDefaultConfigs++;
 			config.Value.UpdateLastSavedState();
 		}
+
+		FinishedLoading = true;
 
 		Logger.Info($"Loaded {numConfigs} {ConfigTypeReadableName} configs ({numDefaultConfigs} default).");
 	}
@@ -271,7 +289,7 @@ internal abstract class ConfigManager<TEditorConfig, TConfig> : Notifier<ConfigM
 			Logger.Error($"Failed to load {fileName}: {e}");
 		}
 
-		return default;
+		return null;
 	}
 
 	/// <summary>
@@ -323,6 +341,11 @@ internal abstract class ConfigManager<TEditorConfig, TConfig> : Notifier<ConfigM
 		ConfigData.UpdateSortedConfigs();
 
 		OnPostLoadComplete();
+	}
+
+	public bool HasFinishedLoading()
+	{
+		return FinishedLoading;
 	}
 
 	#endregion Load
