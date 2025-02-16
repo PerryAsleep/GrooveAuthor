@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Threading.Tasks;
 using Fumen;
 using StepManiaEditor.AutogenConfig;
 using static Fumen.Converters.SMCommon;
@@ -188,47 +187,6 @@ internal sealed class Preferences
 	/// Loads the Preferences from the preferences json file.
 	/// </summary>
 	/// <returns>Preferences Instance.</returns>
-	public static async Task<Preferences> LoadAsync(Editor editor)
-	{
-		Logger.Info($"Loading {PreferencesFileName}...");
-
-		try
-		{
-			await using var openStream =
-				File.OpenRead(Fumen.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, PreferencesFileName));
-			Instance = await JsonSerializer.DeserializeAsync<Preferences>(openStream, SerializationOptions);
-			Instance.Editor = editor;
-			Instance.PostLoad();
-			Logger.Info($"Loaded {PreferencesFileName}.");
-			return Instance;
-		}
-		catch (FileNotFoundException)
-		{
-			Logger.Info($"No preferences found at {PreferencesFileName}. Using defaults.");
-		}
-		catch (Exception e)
-		{
-			Logger.Error($"Failed to load {PreferencesFileName}. {e}");
-		}
-
-		Instance = new Preferences();
-		try
-		{
-			Instance.Editor = editor;
-			Instance.PostLoad();
-		}
-		catch (Exception e)
-		{
-			Logger.Error($"Failed to initialize Preferences. {e}");
-		}
-
-		return Instance;
-	}
-
-	/// <summary>
-	/// Loads the Preferences from the preferences json file.
-	/// </summary>
-	/// <returns>Preferences Instance.</returns>
 	public static Preferences Load(Editor editor)
 	{
 		Logger.Info($"Loading {PreferencesFileName}...");
@@ -263,29 +221,6 @@ internal sealed class Preferences
 		}
 
 		return Instance;
-	}
-
-	/// <summary>
-	/// Save the Preferences to the preferences json file.
-	/// </summary>
-	public static async Task SaveAsync()
-	{
-		Logger.Info($"Saving {PreferencesFileName}...");
-
-		try
-		{
-			Instance.PreSave();
-			var jsonString = JsonSerializer.Serialize(Instance, SerializationOptions);
-			await File.WriteAllTextAsync(Fumen.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, PreferencesFileName),
-				jsonString);
-		}
-		catch (Exception e)
-		{
-			Logger.Error($"Failed to save {PreferencesFileName}. {e}");
-			return;
-		}
-
-		Logger.Info($"Saved {PreferencesFileName}.");
 	}
 
 	/// <summary>

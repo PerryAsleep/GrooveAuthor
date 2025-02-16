@@ -54,7 +54,7 @@ internal sealed class EditorSound : Notifier<EditorSound>
 	/// <summary>
 	/// CancellableTask for performing async loads of sound data.
 	/// </summary>
-	private sealed class SoundLoadTask : CancellableTask<SoundLoadState>
+	private sealed class SoundLoadTask : CancellableTask<SoundLoadState, object>
 	{
 		/// <summary>
 		/// The EditorSound to load.
@@ -81,7 +81,7 @@ internal sealed class EditorSound : Notifier<EditorSound>
 		/// Called when loading should begin.
 		/// </summary>
 		/// <param name="state">SoundLoadState to use for loading.</param>
-		protected override async Task DoWork(SoundLoadState state)
+		protected override async Task<object> DoWork(SoundLoadState state)
 		{
 			// Reset the mip map before loading the new sound because loading the sound
 			// can take a moment and we don't want to continue to render the old audio.
@@ -148,6 +148,8 @@ internal sealed class EditorSound : Notifier<EditorSound>
 					SoundManager.ErrCheck(fmodSound.release());
 				}
 			}
+
+			return null;
 		}
 
 		/// <summary>
@@ -285,13 +287,13 @@ internal sealed class EditorSound : Notifier<EditorSound>
 		StopObservingFile();
 		LoadState = new SoundLoadState(file, generateMipMap);
 		StartObservingFile();
-		LoadAsyncFromLoadState();
+		_ = LoadAsyncFromLoadState();
 	}
 
 	/// <summary>
 	/// Loads the sound from the LoadState.
 	/// </summary>
-	private async void LoadAsyncFromLoadState()
+	private async Task LoadAsyncFromLoadState()
 	{
 		if (LoadState == null)
 			return;
@@ -383,7 +385,7 @@ internal sealed class EditorSound : Notifier<EditorSound>
 		if (string.IsNullOrEmpty(LoadState?.GetFile()))
 			return;
 		Logger.Info($"Reloading {LoadState.GetFile()} due to external modification.");
-		LoadAsyncFromLoadState();
+		_ = LoadAsyncFromLoadState();
 	}
 
 	/// <summary>

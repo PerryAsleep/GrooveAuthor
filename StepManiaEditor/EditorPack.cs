@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Threading.Tasks;
 using Fumen;
 using Microsoft.Xna.Framework.Graphics;
 using static StepManiaEditor.ImGuiUtils;
@@ -31,7 +30,7 @@ internal sealed class EditorPack
 		var dirty = !AreSongsInSamePack(ActiveSong, song);
 		ActiveSong = song;
 		if (dirty)
-			_ = Refresh();
+			Refresh();
 	}
 
 	public string GetPackName()
@@ -97,7 +96,7 @@ internal sealed class EditorPack
 	/// Refresh all songs in the pack from disk.
 	/// </summary>
 	/// <returns></returns>
-	public async Task Refresh()
+	public void Refresh()
 	{
 		Songs.Clear();
 		PackName = null;
@@ -121,12 +120,14 @@ internal sealed class EditorPack
 			return;
 		}
 
-		var taskComplete = await PackLoadTask.Start(new PackLoadState(packDirectoryInfo, Banner));
-		if (!taskComplete)
-			return;
-		if (ActiveSong != null)
-		{
-			(PackName, Songs) = PackLoadTask.GetResults();
-		}
+		_ = MainThreadDispatcher.RunContinuationOnMainThread(
+			PackLoadTask.Start(new PackLoadState(packDirectoryInfo, Banner)),
+			(results) =>
+			{
+				if (results == null)
+					return;
+				PackName = results.GetPackName();
+				Songs = results.GetSongs();
+			});
 	}
 }

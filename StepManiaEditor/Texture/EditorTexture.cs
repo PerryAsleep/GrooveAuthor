@@ -26,10 +26,50 @@ namespace StepManiaEditor;
 /// </summary>
 internal sealed class EditorTexture : IDisposable
 {
+	internal sealed class TextureLoadResult
+	{
+		/// <summary>
+		/// The last Textures loaded.
+		/// </summary>
+		private readonly Texture2D[] Textures;
+
+		/// <summary>
+		/// The last frame durations loaded.
+		/// </summary>
+		private readonly double[] FrameDurations;
+
+		/// <summary>
+		/// The color of the last Texture loaded.
+		/// </summary>
+		private readonly uint TextureColor;
+
+		public TextureLoadResult(Texture2D[] textures, double[] frameDurations, uint textureColor)
+		{
+			Textures = textures;
+			FrameDurations = frameDurations;
+			TextureColor = textureColor;
+		}
+
+		public Texture2D[] GetTextures()
+		{
+			return Textures;
+		}
+
+		public double[] GetFrameDurations()
+		{
+			return FrameDurations;
+		}
+
+		public uint GetTextureColor()
+		{
+			return TextureColor;
+		}
+	}
+
 	/// <summary>
 	/// CancellableTask for loading the EditorTexture.
 	/// </summary>
-	internal sealed class TextureLoadTask : CancellableTask<string>
+	internal sealed class TextureLoadTask : CancellableTask<string, TextureLoadResult>
 	{
 		/// <summary>
 		/// Whether or not to cache the texture color when loading.
@@ -42,26 +82,6 @@ internal sealed class EditorTexture : IDisposable
 		private readonly GraphicsDevice GraphicsDevice;
 
 		/// <summary>
-		/// The last Textures loaded.
-		/// </summary>
-		private Texture2D[] Textures;
-
-		/// <summary>
-		/// The last frame durations loaded.
-		/// </summary>
-		private double[] FrameDurations;
-
-		/// <summary>
-		/// The color of the last Texture loaded.
-		/// </summary>
-		private uint TextureColor;
-
-		/// <summary>
-		/// Lock for updating and retrieving results.
-		/// </summary>
-		private readonly object Lock = new();
-
-		/// <summary>
 		/// Whether or not to log errors.
 		/// </summary>
 		private bool LogErrors = true;
@@ -70,14 +90,6 @@ internal sealed class EditorTexture : IDisposable
 		{
 			CacheTextureColor = cacheTextureColor;
 			GraphicsDevice = graphicsDevice;
-		}
-
-		public (Texture2D[], double[], uint) GetResults()
-		{
-			lock (Lock)
-			{
-				return (Textures, FrameDurations, TextureColor);
-			}
 		}
 
 		public void SetLogErrors(bool logErrors)
@@ -97,7 +109,7 @@ internal sealed class EditorTexture : IDisposable
 		/// Called when loading should begin.
 		/// </summary>
 		/// <param name="state">File path of the texture to use for loading.</param>
-		protected override async Task DoWork(string state)
+		protected override async Task<TextureLoadResult> DoWork(string state)
 		{
 			// The state used is the path of the file for the texture.
 			var filePath = state;
@@ -174,9 +186,7 @@ internal sealed class EditorTexture : IDisposable
 					Logger.Error($"Failed to load texture from \"{filePath}\". {e.Message}");
 				}
 
-				textures = null;
-				frameDurations = null;
-				textureColor = 0;
+				return null;
 			}
 
 			CancellationTokenSource.Token.ThrowIfCancellationRequested();
@@ -186,13 +196,7 @@ internal sealed class EditorTexture : IDisposable
 				textureColor = TextureUtils.GetTextureColor(textures[0]);
 			}
 
-			// Save results.
-			lock (Lock)
-			{
-				Textures = textures;
-				FrameDurations = frameDurations;
-				TextureColor = textureColor;
-			}
+			return new TextureLoadResult(textures, frameDurations, textureColor);
 		}
 	}
 
@@ -331,12 +335,9 @@ internal sealed class EditorTexture : IDisposable
 
 		// Start the load. If we are already loading, return. The previous call
 		// will use the newly provided file path.
-		var taskComplete = await LoadTask.Start(filePath);
-		if (!taskComplete)
+		var results = await LoadTask.Start(filePath);
+		if (results == null)
 			return;
-
-		// Get the newly loaded textures and color.
-		var (newTextures, newDurations, newTextureColor) = LoadTask.GetResults();
 
 		// We cannot swap textures now because we may be in the middle of submitting
 		// instructions to ImGui. If we were unbind the texture during these calls, ImGui
@@ -344,9 +345,9 @@ internal sealed class EditorTexture : IDisposable
 		// the unbound image.
 		lock (TextureSwapLock)
 		{
-			NewTextures = newTextures;
-			NewDurations = newDurations;
-			NewTextureColor = newTextureColor;
+			NewTextures = results.GetTextures();
+			NewDurations = results.GetFrameDurations();
+			NewTextureColor = GetTextureColor();
 			NewTextureReady = true;
 		}
 	}

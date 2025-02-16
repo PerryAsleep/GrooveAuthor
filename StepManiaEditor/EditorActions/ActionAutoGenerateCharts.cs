@@ -193,7 +193,7 @@ internal sealed class ActionAutoGenerateCharts : EditorAction
 				}
 			});
 
-			OnChartAutogenComplete(index, newEditorChart);
+			MainThreadDispatcher.RunOnMainThread(() => OnChartAutogenComplete(index, newEditorChart));
 		}
 
 		// Create a Chart from the EditorChart.

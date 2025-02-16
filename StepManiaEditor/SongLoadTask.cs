@@ -31,20 +31,49 @@ internal sealed class SongLoadState
 	}
 }
 
+internal sealed class SongLoadResult
+{
+	private readonly EditorSong Song;
+	private readonly List<EditorChart> ActiveCharts;
+	private readonly EditorChart FocusedChart;
+	private readonly string FileName;
+
+	public SongLoadResult(EditorSong song, List<EditorChart> activeCharts, EditorChart focusedChart, string fileName)
+	{
+		Song = song;
+		ActiveCharts = activeCharts;
+		FocusedChart = focusedChart;
+		FileName = fileName;
+	}
+
+	public EditorSong GetSong()
+	{
+		return Song;
+	}
+
+	public List<EditorChart> GetActiveCharts()
+	{
+		return ActiveCharts;
+	}
+
+	public EditorChart GetFocusedChart()
+	{
+		return FocusedChart;
+	}
+
+	public string GetFileName()
+	{
+		return FileName;
+	}
+}
+
 /// <summary>
 /// CancellableTask for performing async loads of Song files.
 /// </summary>
-internal sealed class SongLoadTask : CancellableTask<SongLoadState>
+internal sealed class SongLoadTask : CancellableTask<SongLoadState, SongLoadResult>
 {
 	private readonly GraphicsDevice GraphicsDevice;
 	private readonly ImGuiRenderer ImGuiRenderer;
-
-	private readonly object Lock = new();
-
-	private EditorSong ActiveSong;
-	private List<EditorChart> ActiveCharts;
-	private EditorChart FocusedChart;
-	private string ActiveFileName;
 
 	public SongLoadTask(GraphicsDevice graphicsDevice, ImGuiRenderer imGuiRenderer)
 	{
@@ -52,9 +81,9 @@ internal sealed class SongLoadTask : CancellableTask<SongLoadState>
 		ImGuiRenderer = imGuiRenderer;
 	}
 
-	protected override async Task DoWork(SongLoadState state)
+	protected override async Task<SongLoadResult> DoWork(SongLoadState state)
 	{
-		EditorSong newActiveSong = null;
+		EditorSong newSong = null;
 
 		// Load the song file.
 		var fileName = state.GetFileName();
@@ -62,7 +91,7 @@ internal sealed class SongLoadTask : CancellableTask<SongLoadState>
 		if (reader == null)
 		{
 			Logger.Error($"Unsupported file format. Cannot parse {fileName}");
-			return;
+			return null;
 		}
 
 		Logger.Info($"Loading {fileName}...");
@@ -70,7 +99,7 @@ internal sealed class SongLoadTask : CancellableTask<SongLoadState>
 		if (song == null)
 		{
 			Logger.Error($"Failed to load {fileName}");
-			return;
+			return null;
 		}
 
 		Logger.Info($"Loaded {fileName}");
@@ -78,7 +107,7 @@ internal sealed class SongLoadTask : CancellableTask<SongLoadState>
 		CancellationTokenSource.Token.ThrowIfCancellationRequested();
 		await Task.Run(() =>
 		{
-			newActiveSong = new EditorSong(
+			newSong = new EditorSong(
 				fileName,
 				song,
 				GraphicsDevice,
@@ -87,18 +116,11 @@ internal sealed class SongLoadTask : CancellableTask<SongLoadState>
 		});
 
 		// Select the best Charts to make active.
-		var focusedChart = state.GetChartListProvider().GetChartToUseForFocusedChart(newActiveSong);
-		var activeCharts = state.GetChartListProvider().GetChartsToUseForActiveCharts(newActiveSong);
+		var focusedChart = state.GetChartListProvider().GetChartToUseForFocusedChart(newSong);
+		var activeCharts = state.GetChartListProvider().GetChartsToUseForActiveCharts(newSong);
 		CancellationTokenSource.Token.ThrowIfCancellationRequested();
 
-		// Save results
-		lock (Lock)
-		{
-			ActiveSong = newActiveSong;
-			FocusedChart = focusedChart;
-			ActiveCharts = activeCharts;
-			ActiveFileName = fileName;
-		}
+		return new SongLoadResult(newSong, activeCharts, focusedChart, fileName);
 	}
 
 	/// <summary>
@@ -106,25 +128,5 @@ internal sealed class SongLoadTask : CancellableTask<SongLoadState>
 	/// </summary>
 	protected override void Cancel()
 	{
-		ClearResults();
-	}
-
-	public (EditorSong, EditorChart, List<EditorChart>, string) GetResults()
-	{
-		lock (Lock)
-		{
-			return (ActiveSong, FocusedChart, ActiveCharts, ActiveFileName);
-		}
-	}
-
-	public void ClearResults()
-	{
-		lock (Lock)
-		{
-			ActiveFileName = null;
-			ActiveSong = null;
-			FocusedChart = null;
-			ActiveCharts = null;
-		}
 	}
 }
