@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<OutputType>WinExe</OutputType>
+		<TargetFramework>net8.0-windows7.0</TargetFramework>
+		<PublishReadyToRun>false</PublishReadyToRun>
+		<TieredCompilation>false</TieredCompilation>
+		<UseWindowsForms>true</UseWindowsForms>
+		<MonoGamePlatform>DesktopGL</MonoGamePlatform>
+	</PropertyGroup>
+	<PropertyGroup>
+		<AssemblyName>GrooveAuthor</AssemblyName>
+		<ApplicationIcon>..\StepManiaEditor\Icon.ico</ApplicationIcon>
+		<Version>0.4.1</Version>
+	</PropertyGroup>
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+	</PropertyGroup>
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+	</PropertyGroup>
+	<ItemGroup>
+		<MonoGameContentReference Include="..\StepManiaEditor\Content\Content.mgcb" />
+	</ItemGroup>
+	<ItemGroup>
+		<TrimmerRootAssembly Include="Microsoft.Xna.Framework.Content.ContentTypeReader" Visible="false" />
+	</ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="MonoGame.Content.Builder.Task" Version="3.8.1.303" />
+		<PackageReference Include="System.Text.Json" Version="9.0.0" />
+	</ItemGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\StepManiaEditor\MonoGame\MonoGame.Framework\MonoGame.Framework.DesktopGL.csproj" />
+		<ProjectReference Include="..\StepManiaEditor\StepManiaEditor.csproj" />
+	</ItemGroup>
+	<Target Name="RestoreDotnetTools" BeforeTargets="Restore">
+		<Message Text="Restoring dotnet tools" Importance="High" />
+		<Exec Command="dotnet tool restore" />
+	</Target>
+	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
+		<Copy SourceFiles="$(ProjectDir)..\StepManiaLibrary\Fumen\Fumen\Sound\fmod\lib\windows\x64\fmod.dll" DestinationFolder="$(TargetDir)" />
+		<Copy SourceFiles="$(ProjectDir)..\StepManiaLibrary\Fumen\Fumen\Sound\fmod\lib\windows\x64\fmod_vc.lib" DestinationFolder="$(TargetDir)" />
+		<Copy SourceFiles="$(ProjectDir)..\StepManiaLibrary\Fumen\Fumen\Sound\fmod\lib\windows\x64\fmodL.dll" DestinationFolder="$(TargetDir)" />
+		<Copy SourceFiles="$(ProjectDir)..\StepManiaLibrary\Fumen\Fumen\Sound\fmod\lib\windows\x64\fmodL_vc.lib" DestinationFolder="$(TargetDir)" />
+		<Copy SourceFiles="$(ProjectDir)..\ImGui.NET\deps\cimgui\win-x64\cimgui.dll" DestinationFolder="$(TargetDir)" />
+	</Target>
+</Project>
