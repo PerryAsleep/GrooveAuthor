@@ -193,7 +193,8 @@ public sealed class Editor :
 
 	private Effect FxaaEffect;
 	private Effect WaveformColorEffect;
-	private RenderTarget2D[] WaveformRenderTargets;
+	private RenderTarget2D WaveformRenderTarget;
+	private RenderTarget2D MiniMapRenderTarget;
 	private StepDensityEffect DensityGraph;
 
 	private SongLoadTask SongLoadTask;
@@ -879,7 +880,7 @@ public sealed class Editor :
 		WaveFormRenderer.SetXPerChannelScale(p.PreferencesWaveForm.WaveFormMaxXPercentagePerChannel);
 		WaveFormRenderer.SetSoundMipMap(MusicManager.GetMusicMipMap());
 		WaveFormRenderer.SetFocalPointLocalY(GetFocalPointChartSpaceY());
-		RecreateWaveformRenderTargets(true);
+		RecreateWaveformRenderTarget(true);
 	}
 
 	private uint GetDesiredWaveFormTextureHeight()
@@ -887,7 +888,7 @@ public sealed class Editor :
 		return (uint)Math.Max(1, GetViewportHeight());
 	}
 
-	private void RecreateWaveformRenderTargets(bool force)
+	private void RecreateWaveformRenderTarget(bool force)
 	{
 		var desiredHeight = GetDesiredWaveFormTextureHeight();
 		if (!force)
@@ -897,18 +898,13 @@ public sealed class Editor :
 		}
 
 		WaveFormTextureHeight = desiredHeight;
-
-		WaveformRenderTargets = new RenderTarget2D[2];
-		for (var i = 0; i < 2; i++)
-		{
-			WaveformRenderTargets[i] = new RenderTarget2D(
-				GraphicsDevice,
-				WaveFormTextureWidth,
-				(int)WaveFormTextureHeight,
-				false,
-				GraphicsDevice.PresentationParameters.BackBufferFormat,
-				DepthFormat.Depth24);
-		}
+		WaveformRenderTarget = new RenderTarget2D(
+			GraphicsDevice,
+			WaveFormTextureWidth,
+			(int)WaveFormTextureHeight,
+			false,
+			GraphicsDevice.PresentationParameters.BackBufferFormat,
+			DepthFormat.Depth24);
 	}
 
 	private void InitializeDensityGraph()
@@ -1303,7 +1299,7 @@ public sealed class Editor :
 				WaveFormTextureWidth,
 				(uint)Math.Max(1, GetViewportHeight()),
 				(uint)Math.Max(1, ChartArea.Height));
-			RecreateWaveformRenderTargets(false);
+			RecreateWaveformRenderTarget(false);
 		}
 	}
 
@@ -2370,27 +2366,21 @@ public sealed class Editor :
 	/// </summary>
 	private void PreDrawToRenderTargets()
 	{
-		PreDrawWaveFormToRenderTargets();
+		PreDrawWaveFormToRenderTarget();
+		PreDrawMiniMapToRenderTarget();
 	}
 
 	/// <summary>
-	/// Draws to the waveform custom render targets.
-	/// This renders the waveform to WaveformRenderTargets[0] then renders a recoloring pass
-	/// to WaveformRenderTargets[1]. DrawWaveForm will finish rendering WaveformRenderTargets[1]
-	/// to the backbuffer.
+	/// Draws to the waveform custom render target.
 	/// </summary>
-	private void PreDrawWaveFormToRenderTargets()
+	private void PreDrawWaveFormToRenderTarget()
 	{
 		var p = Preferences.Instance.PreferencesWaveForm;
 		if (!p.ShowWaveForm || !p.EnableWaveForm)
 			return;
 
-		// Draw the waveform to the first render target.
-		GraphicsDevice.SetRenderTarget(WaveformRenderTargets[0]);
-		GraphicsDevice.Clear(Color.Transparent);
-		SpriteBatch.Begin();
-		WaveFormRenderer.Draw(SpriteBatch);
-		SpriteBatch.End();
+		// Draw the waveform to its internal render target.
+		var waveFormRenterTarget = WaveFormRenderer.Draw();
 
 		// Determine the sparse color.
 		var sparseColor = p.WaveFormSparseColor;
@@ -2413,14 +2403,19 @@ public sealed class Editor :
 		WaveformColorEffect.Parameters["denseColor"].SetValue(p.WaveFormDenseColor);
 		WaveformColorEffect.Parameters["sparseColor"].SetValue(sparseColor);
 
-		// Draw the recolored waveform to the second render target.
-		GraphicsDevice.SetRenderTarget(WaveformRenderTargets[1]);
+		// Draw the recolored waveform to our render target.
+		GraphicsDevice.SetRenderTarget(WaveformRenderTarget);
 		GraphicsDevice.Clear(Color.Transparent);
 		SpriteBatch.Begin(SpriteSortMode.Deferred, null, null, null, null, WaveformColorEffect);
 		WaveformColorEffect.CurrentTechnique.Passes[0].Apply();
-		SpriteBatch.Draw(WaveformRenderTargets[0],
-			new Rectangle(0, 0, WaveformRenderTargets[0].Width, WaveformRenderTargets[0].Height), Color.White);
+		SpriteBatch.Draw(waveFormRenterTarget,
+			new Rectangle(0, 0, waveFormRenterTarget.Width, waveFormRenterTarget.Height), Color.White);
 		SpriteBatch.End();
+	}
+
+	private void PreDrawMiniMapToRenderTarget()
+	{
+		MiniMapRenderTarget = MiniMap.Draw();
 	}
 
 	private void DrawChartHeaders()
@@ -2614,9 +2609,9 @@ public sealed class Editor :
 			FxaaEffect.Parameters["fxaaQualitySubpix"].SetValue(p.AntiAliasSubpix);
 			FxaaEffect.Parameters["fxaaQualityEdgeThreshold"].SetValue(p.AntiAliasEdgeThreshold);
 			FxaaEffect.Parameters["fxaaQualityEdgeThresholdMin"].SetValue(p.AntiAliasEdgeThresholdMin);
-			FxaaEffect.Parameters["inverseRenderTargetWidth"].SetValue(1.0f / WaveformRenderTargets[1].Width);
-			FxaaEffect.Parameters["inverseRenderTargetHeight"].SetValue(1.0f / WaveformRenderTargets[1].Height);
-			FxaaEffect.Parameters["renderTargetTexture"].SetValue(WaveformRenderTargets[1]);
+			FxaaEffect.Parameters["inverseRenderTargetWidth"].SetValue(1.0f / WaveformRenderTarget.Width);
+			FxaaEffect.Parameters["inverseRenderTargetHeight"].SetValue(1.0f / WaveformRenderTarget.Height);
+			FxaaEffect.Parameters["renderTargetTexture"].SetValue(WaveformRenderTarget);
 
 			// Draw the recolored waveform with antialiasing to the back buffer.
 			SpriteBatch.Begin(SpriteSortMode.Deferred, null, null, null, null, FxaaEffect);
@@ -2645,9 +2640,8 @@ public sealed class Editor :
 			return;
 		var width = (int)GetWaveFormWidth(activeChart);
 		var x = activeChart.GetFocalPointX() - (width >> 1);
-		// At this point WaveformRenderTargets[1] contains the recolored waveform.
-		SpriteBatch.Draw(WaveformRenderTargets[1],
-			new Rectangle(x, TransformChartSpaceYToScreenSpaceY(0), width, WaveformRenderTargets[1].Height), Color.White);
+		SpriteBatch.Draw(WaveformRenderTarget,
+			new Rectangle(x, TransformChartSpaceYToScreenSpaceY(0), width, WaveformRenderTarget.Height), Color.White);
 	}
 
 	private void DrawActiveChartBoundaries()
@@ -3245,7 +3239,10 @@ public sealed class Editor :
 			return;
 		if (FocusedChart == null)
 			return;
-		MiniMap.Draw(SpriteBatch);
+		if (MiniMapRenderTarget == null)
+			return;
+		SpriteBatch.Draw(MiniMapRenderTarget,
+			new Rectangle(MiniMap.GetX(), MiniMap.GetY(), MiniMapRenderTarget.Width, MiniMapRenderTarget.Height), Color.White);
 	}
 
 	#endregion MiniMap

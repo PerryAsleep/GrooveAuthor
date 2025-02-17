@@ -1,6 +1,6 @@
 ﻿using System;
-using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using MonoGameExtensions;
 using static Fumen.FumenExtensions;
 
 namespace StepManiaEditor;
@@ -21,11 +21,6 @@ public class WaveFormRenderer
 	/// Sentinel value for an invalid index.
 	/// </summary>
 	private const long QuantizedSampleIndexInvalid = -1L;
-
-	/// <summary>
-	/// Number of textures to use for buffering. Double buffering is fine.
-	/// </summary>
-	private const int NumTextures = 2;
 
 	/// <summary>
 	/// Color for sparse area of waveform. BGR565.
@@ -68,14 +63,9 @@ public class WaveFormRenderer
 	private float XPerChannelScale = 1.0f;
 
 	/// <summary>
-	/// Textures to render to. Array for double buffering.
+	/// RenderTarget2D to render to.
 	/// </summary>
-	private Texture2D[] Textures;
-
-	/// <summary>
-	/// BGR565 data to set on the texture after updating each frame.
-	/// </summary>
-	private ushort[] BGR565Data;
+	private DoubleBufferedRenderTarget2D<ushort> RenderTarget;
 
 	/// <summary>
 	/// One row of dense colored pixels, used for copying memory quickly into the data buffer instead of looping.
@@ -86,11 +76,6 @@ public class WaveFormRenderer
 	/// One row of sparse colored pixels, used for copying memory quickly into the data buffer instead of looping.
 	/// </summary>
 	private ushort[] SparseLine;
-
-	/// <summary>
-	/// Index into Textures array to control which texture we write to while the other is being rendered.
-	/// </summary>
-	private int TextureIndex;
 
 	/// <summary>
 	/// SoundMipMap data to use for rendering.
@@ -165,15 +150,11 @@ public class WaveFormRenderer
 			TextureWidth = textureWidth;
 			TextureHeight = textureHeight;
 
-			// Set up the textures.
-			Textures = new Texture2D[NumTextures];
-			for (var i = 0; i < NumTextures; i++)
-			{
-				Textures[i] = new Texture2D(graphicsDevice, (int)TextureWidth, (int)TextureHeight, false, SurfaceFormat.Bgr565);
-			}
+			// Set up the render target.
+			RenderTarget = new DoubleBufferedRenderTarget2D<ushort>(graphicsDevice, (int)TextureWidth, (int)TextureHeight,
+				SurfaceFormat.Bgr565, DepthFormat.Depth24);
 
 			// Set up the pixel data.
-			BGR565Data = new ushort[TextureWidth * TextureHeight];
 			DenseLine = new ushort[TextureWidth];
 			SparseLine = new ushort[TextureWidth];
 			for (var i = 0; i < TextureWidth; i++)
@@ -297,13 +278,9 @@ public class WaveFormRenderer
 	/// <summary>
 	/// Renders the waveform.
 	/// </summary>
-	/// <param name="spriteBatch">SpriteBatch to use for rendering the texture.</param>
-	public void Draw(SpriteBatch spriteBatch)
+	public RenderTarget2D Draw()
 	{
-		// Draw the current texture.
-		spriteBatch.Draw(Textures[TextureIndex], Vector2.Zero, null, Color.White);
-		// Advance to the next texture index for the next frame.
-		TextureIndex = (TextureIndex + 1) % NumTextures;
+		return RenderTarget.Draw();
 	}
 
 	/// <summary>
@@ -314,10 +291,9 @@ public class WaveFormRenderer
 	/// <param name="pixelsPerSecond">The number of y pixels which cover 1 second of time in the sound.</param>
 	public void Update(double soundTimeSeconds, double pixelsPerSecond)
 	{
-		// Get the correct texture to update.
-		var texture = Textures[TextureIndex];
-
 		var lockTaken = false;
+		var renderTargetData = RenderTarget.GetCurrentData();
+		var (lastFrameDataValid, lastFrameData) = RenderTarget.GetLastFrameData();
 		try
 		{
 			// Try to lock, but don't require it. If the lock is already taken then SoundMipMap is destroying
@@ -325,17 +301,19 @@ public class WaveFormRenderer
 			MipMap.TryLockMipLevels(ref lockTaken);
 			if (!lockTaken)
 			{
-				Array.Clear(BGR565Data, 0, (int)(TextureWidth * VisibleHeight));
+				Array.Clear(renderTargetData, 0, (int)(TextureWidth * VisibleHeight));
 			}
 			else
 			{
+				if (!lastFrameDataValid)
+					InvalidateLastFrameData();
+
 				// Don't render unless there is SoundMipMap data to use.
 				// It doesn't matter if the SoundMipMap data is fully generated yet as it can
 				// still be partially renderer.
 				if (MipMap == null || !MipMap.IsMipMapDataAllocated())
 				{
-					Array.Clear(BGR565Data, 0, (int)(TextureWidth * VisibleHeight));
-					texture.SetData(BGR565Data);
+					Array.Clear(renderTargetData, 0, (int)(TextureWidth * VisibleHeight));
 					return;
 				}
 
@@ -378,6 +356,7 @@ public class WaveFormRenderer
 					// Just reuse last frame's buffer.
 					if (LastQuantizedIndexStart == quantizedStartSampleIndex)
 					{
+						Array.Copy(lastFrameData, renderTargetData, TextureWidth * TextureHeight);
 						yEnd = 0;
 					}
 
@@ -387,12 +366,13 @@ public class WaveFormRenderer
 					{
 						var diff = LastQuantizedIndexStart - quantizedStartSampleIndex;
 
-						// This frame, compute from pixel 0 to the the start of last frame's data.
+						// This frame, compute from pixel 0 to the start of last frame's data.
 						yEnd = (uint)diff;
 						// Copy the start of last frame's buffer to where it falls within this frame's range.
-						Array.Copy(BGR565Data, 0, BGR565Data, (int)(TextureWidth * diff), (VisibleHeight - diff) * TextureWidth);
+						Array.Copy(lastFrameData, 0, renderTargetData, (int)(TextureWidth * diff),
+							(VisibleHeight - diff) * TextureWidth);
 						// Clear the top of the buffer so we can write to it.
-						Array.Clear(BGR565Data, 0, (int)(TextureWidth * diff));
+						Array.Clear(renderTargetData, 0, (int)(TextureWidth * diff));
 					}
 
 					// The previous range overlaps the start of this frame's range.
@@ -404,22 +384,23 @@ public class WaveFormRenderer
 						// This frame, compute from the end of last frame's data to the end of the texture.
 						yStart = (uint)(VisibleHeight - diff);
 						// Copy the end of last frame's buffer to where it falls within this frame's range.
-						Array.Copy(BGR565Data, diff * TextureWidth, BGR565Data, 0, (VisibleHeight - diff) * TextureWidth);
+						Array.Copy(lastFrameData, diff * TextureWidth, renderTargetData, 0,
+							(VisibleHeight - diff) * TextureWidth);
 						// Clear the bottom of the buffer so we can write to it.
-						Array.Clear(BGR565Data, (int)(yStart * TextureWidth), (int)(diff * TextureWidth));
+						Array.Clear(renderTargetData, (int)(yStart * TextureWidth), (int)(diff * TextureWidth));
 					}
 
 					// The previous range does not overlap the new range at all.
 					// Clear the entire buffer.
 					else
 					{
-						Array.Clear(BGR565Data, 0, (int)(TextureWidth * VisibleHeight));
+						Array.Clear(renderTargetData, 0, (int)(TextureWidth * VisibleHeight));
 					}
 				}
 				// No valid last frame data to leverage, clear the buffer and fill it entirely.
 				else
 				{
-					Array.Clear(BGR565Data, 0, (int)(TextureWidth * VisibleHeight));
+					Array.Clear(renderTargetData, 0, (int)(TextureWidth * VisibleHeight));
 				}
 
 				// Update the last frame tracking variables for the next frame.
@@ -464,7 +445,7 @@ public class WaveFormRenderer
 					}
 				}
 
-				// Loop over every y pixel and update the pixels in BGR565Data for that row.
+				// Loop over every y pixel and update the pixels in renderTargetData for that row.
 				for (var y = yStart; y < yEnd; y++)
 				{
 					var bSilentSample = false;
@@ -667,11 +648,11 @@ public class WaveFormRenderer
 						var sparsePixelEnd = startIndexForRowAndChannel + maxX;
 
 						// Copy the sparse color line into the waveform pixel data.
-						Buffer.BlockCopy(SparseLine, 0, BGR565Data, sparsePixelStart << 1,
+						Buffer.BlockCopy(SparseLine, 0, renderTargetData, sparsePixelStart << 1,
 							(sparsePixelEnd + 1 - sparsePixelStart) << 1);
 						// Copy the dense color line into the waveform pixel data.
 						if (denseRange > 0.0)
-							Buffer.BlockCopy(DenseLine, 0, BGR565Data, densePixelStart << 1,
+							Buffer.BlockCopy(DenseLine, 0, renderTargetData, densePixelStart << 1,
 								(densePixelEnd + 1 - densePixelStart) << 1);
 					}
 				}
@@ -682,8 +663,5 @@ public class WaveFormRenderer
 			if (lockTaken)
 				MipMap.UnlockMipLevels();
 		}
-
-		// Update the texture with the updated data.
-		texture.SetData(BGR565Data);
 	}
 }
