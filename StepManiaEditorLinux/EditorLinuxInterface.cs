@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Text;
+using System.Threading;
 using Fumen;
 using Gtk;
 using Microsoft.Xna.Framework;
@@ -13,7 +14,6 @@ namespace StepManiaEditorLinux;
 internal sealed class EditorLinuxInterface : IEditorPlatform
 {
 	private Editor Editor;
-	private Application App;
 
 	public EditorLinuxInterface()
 	{
@@ -23,7 +23,13 @@ internal sealed class EditorLinuxInterface : IEditorPlatform
 	{
 		Editor = editor;
 
+		// Initialize GTK but prevent it from modifying the SynchronizationContext.
+		// It will set it to a GLibSynchronizationContext which will run every async
+		// continuation on the main thread which results in nested async operations
+		// locking up the main thread.
+		var sc = SynchronizationContext.Current;
 		Application.Init();
+		SynchronizationContext.SetSynchronizationContext(sc);
 	}
 
 	public void InitializeWindowHandleCallbacks(bool maximized)
