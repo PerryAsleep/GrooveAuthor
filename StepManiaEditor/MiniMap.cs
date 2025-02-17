@@ -2,6 +2,8 @@
 using Fumen;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using MonoGameExtensions;
+using ColorUtils = Fumen.ColorUtils;
 
 namespace StepManiaEditor;
 
@@ -96,11 +98,6 @@ internal sealed class MiniMap
 	}
 
 	/// <summary>
-	/// Number of textures to use for buffering. Double buffering is fine.
-	/// </summary>
-	private const int NumTextures = 2;
-
-	/// <summary>
 	/// Width in pixels of rim border around the MiniMap.
 	/// The rim is inset.
 	/// </summary>
@@ -168,19 +165,14 @@ internal sealed class MiniMap
 	private static readonly uint PreviewColor;
 
 	/// <summary>
-	/// Textures to render to. Array for double buffering.
+	/// RenderTarget2D to render to.
 	/// </summary>
-	private Texture2D[] Textures;
+	private DoubleBufferedRenderTarget2D<uint> RenderTarget;
 
 	/// <summary>
 	/// Index into Textures array to control which texture we write to while the other is being rendered.
 	/// </summary>
 	private int TextureIndex;
-
-	/// <summary>
-	/// RGBA color data to set on the texture after updating each frame.
-	/// </summary>
-	private uint[] ColorData;
 
 	/// <summary>
 	/// Buffer holding color data for the content region.
@@ -474,17 +466,14 @@ internal sealed class MiniMap
 		// Set up the textures.
 		if (textureDimensionsDirty)
 		{
-			Textures = new Texture2D[NumTextures];
-			for (var i = 0; i < NumTextures; i++)
-			{
-				Textures[i] = new Texture2D(graphicsDevice, bounds.Width, bounds.Height, false, SurfaceFormat.Color);
-			}
+			RenderTarget = new DoubleBufferedRenderTarget2D<uint>(graphicsDevice, bounds.Width, bounds.Height,
+				SurfaceFormat.Color,
+				DepthFormat.None);
 		}
 
 		// Set up the pixel data.
 		if (textureDimensionsDirty)
 		{
-			ColorData = new uint[bounds.Width * bounds.Height];
 			ClearData = new uint[bounds.Width * bounds.Height];
 			ClearDataEditorArea = new uint[bounds.Width * bounds.Height];
 			ClearDataEditorMouseOverArea = new uint[bounds.Width * bounds.Height];
@@ -535,6 +524,16 @@ internal sealed class MiniMap
 
 		// Bounds affect lane positions.
 		UpdateLaneXPositions();
+	}
+
+	public int GetX()
+	{
+		return Bounds.X;
+	}
+
+	public int GetY()
+	{
+		return Bounds.Y;
 	}
 
 	/// <summary>
@@ -912,6 +911,8 @@ internal sealed class MiniMap
 			y = RimWidth;
 		}
 
+		var colorData = RenderTarget.GetCurrentData();
+
 		while (y < yEnd)
 		{
 			if (y >= VisibleHeight - RimWidth)
@@ -940,15 +941,15 @@ internal sealed class MiniMap
 				// Blend the note color with the background color.
 				color = noteColor;
 				if (i == 0)
-					color = Utils.ColorRGBAInterpolateBGR(noteColor, ColorData[y * Bounds.Width + x],
+					color = Utils.ColorRGBAInterpolateBGR(noteColor, colorData[y * Bounds.Width + x],
 						(float)(yStart - yStartInt));
 				else if (y + 1 >= yEnd)
-					color = Utils.ColorRGBAInterpolateBGR(noteColor, ColorData[y * Bounds.Width + x], (float)(1.0 - (yEnd - y)));
+					color = Utils.ColorRGBAInterpolateBGR(noteColor, colorData[y * Bounds.Width + x], (float)(1.0 - (yEnd - y)));
 			}
 
 			// Set the color.
 			for (var j = x; j < x + w; j++)
-				ColorData[y * Bounds.Width + j] = color;
+				colorData[y * Bounds.Width + j] = color;
 
 			i++;
 			y++;
@@ -994,10 +995,12 @@ internal sealed class MiniMap
 		var i = yInt * Bounds.Width + x;
 		var iEnd = i + w;
 
+		var colorData = RenderTarget.GetCurrentData();
+
 		if (QuantizePositions && !forceUnquantized)
 		{
 			for (; i < iEnd; i++)
-				ColorData[i] = color;
+				colorData[i] = color;
 			return AddResult.InRange;
 		}
 
@@ -1006,13 +1009,13 @@ internal sealed class MiniMap
 		var c = 0u;
 		for (; i < iEnd; i++)
 		{
-			if (ColorData[i] != previousData)
+			if (colorData[i] != previousData)
 			{
-				previousData = ColorData[i];
-				c = Utils.ColorRGBAInterpolateBGR(ColorData[i], color, percent);
+				previousData = colorData[i];
+				c = Utils.ColorRGBAInterpolateBGR(colorData[i], color, percent);
 			}
 
-			ColorData[i] = c;
+			colorData[i] = c;
 		}
 
 		yInt++;
@@ -1026,13 +1029,13 @@ internal sealed class MiniMap
 		c = 0u;
 		for (; i < iEnd; i++)
 		{
-			if (ColorData[i] != previousData)
+			if (colorData[i] != previousData)
 			{
-				previousData = ColorData[i];
-				c = Utils.ColorRGBAInterpolateBGR(ColorData[i], color, percent);
+				previousData = colorData[i];
+				c = Utils.ColorRGBAInterpolateBGR(colorData[i], color, percent);
 			}
 
-			ColorData[i] = c;
+			colorData[i] = c;
 		}
 
 		return AddResult.InRange;
@@ -1065,6 +1068,8 @@ internal sealed class MiniMap
 			y = RimWidth;
 		}
 
+		var colorData = RenderTarget.GetCurrentData();
+
 		while (y < endY)
 		{
 			if (y >= VisibleHeight - RimWidth)
@@ -1076,16 +1081,16 @@ internal sealed class MiniMap
 			if (!QuantizePositions)
 			{
 				if (i == 0)
-					destColor = Utils.ColorRGBAInterpolateBGR(color, ColorData[y * Bounds.Width + startX],
+					destColor = Utils.ColorRGBAInterpolateBGR(color, colorData[y * Bounds.Width + startX],
 						(float)(startY - startYInt));
 				else if (y + 1 >= endY)
-					destColor = Utils.ColorRGBAInterpolateBGR(color, ColorData[y * Bounds.Width + startX],
+					destColor = Utils.ColorRGBAInterpolateBGR(color, colorData[y * Bounds.Width + startX],
 						(float)(1.0 - (endY - y)));
 			}
 
 			// Set the color.
 			for (var j = startX; j <= endX; j++)
-				ColorData[y * Bounds.Width + j] = destColor;
+				colorData[y * Bounds.Width + j] = destColor;
 
 			i++;
 			y++;
@@ -1101,8 +1106,7 @@ internal sealed class MiniMap
 	{
 		if (Bounds.Height <= 0 || Bounds.Width <= 0 || VisibleHeight <= 0)
 			return;
-		Array.Copy(ClearData, ColorData, Bounds.Width * Bounds.Height);
-		Textures[TextureIndex].SetData(ColorData);
+		Array.Copy(ClearData, RenderTarget.GetCurrentData(), Bounds.Width * Bounds.Height);
 	}
 
 	/// <summary>
@@ -1153,7 +1157,9 @@ internal sealed class MiniMap
 		if (GetEditorAreaPercentageOfMiniMapArea() >= 1.0)
 			return;
 
-		Array.Copy(ClearData, ColorData, Bounds.Width * Bounds.Height);
+		var colorData = RenderTarget.GetCurrentData();
+
+		Array.Copy(ClearData, colorData, Bounds.Width * Bounds.Height);
 
 		// TODO: There is a lot of copy/paste logic around blending colors below. Could be cleaned up.
 
@@ -1166,7 +1172,7 @@ internal sealed class MiniMap
 		{
 			// ReSharper disable UselessBinaryOperation
 			Array.Copy(ClearDataOutsideContentArea, yStartInt * Bounds.Width,
-				ColorData, yStartInt * Bounds.Width, (yEndInt - yStartInt) * Bounds.Width);
+				colorData, yStartInt * Bounds.Width, (yEndInt - yStartInt) * Bounds.Width);
 			// ReSharper restore UselessBinaryOperation
 		}
 
@@ -1176,7 +1182,7 @@ internal sealed class MiniMap
 				Utils.ColorRGBAInterpolateBGR(OutsideContentRangeColor, BackgroundColor, (float)(1.0 - (yEnd - yEndInt)));
 			for (var x = RimWidth; x < Bounds.Width - RimWidth; x++)
 			{
-				ColorData[yEndInt * Bounds.Width + x] = blendColor;
+				colorData[yEndInt * Bounds.Width + x] = blendColor;
 			}
 		}
 
@@ -1191,14 +1197,14 @@ internal sealed class MiniMap
 				Utils.ColorRGBAInterpolateBGR(OutsideContentRangeColor, BackgroundColor, (float)(yStart - yStartInt));
 			for (var x = RimWidth; x < Bounds.Width - RimWidth; x++)
 			{
-				ColorData[yStartInt * Bounds.Width + x] = blendColor;
+				colorData[yStartInt * Bounds.Width + x] = blendColor;
 			}
 		}
 
 		if (yStartInt + 1 < yEndInt)
 		{
 			Array.Copy(ClearDataOutsideContentArea, (yStartInt + 1) * Bounds.Width,
-				ColorData, (yStartInt + 1) * Bounds.Width, (yEndInt - (yStartInt + 1)) * Bounds.Width);
+				colorData, (yStartInt + 1) * Bounds.Width, (yEndInt - (yStartInt + 1)) * Bounds.Width);
 		}
 
 		// Draw the editor area.
@@ -1225,26 +1231,26 @@ internal sealed class MiniMap
 			var yStartForCopy = Math.Max(RimWidth, yStartForCopyInclusive);
 			var yEndForCopy = Math.Min(yEndForCopyInclusive, VisibleHeight - RimWidth);
 			Array.Copy(editorClearData, yStartForCopy * Bounds.Width,
-				ColorData, yStartForCopy * Bounds.Width, (yEndForCopy - yStartForCopy) * Bounds.Width);
+				colorData, yStartForCopy * Bounds.Width, (yEndForCopy - yStartForCopy) * Bounds.Width);
 		}
 
 		if (yStartInt >= RimWidth && yStartInt < VisibleHeight - RimWidth)
 		{
-			var blendColor = Utils.ColorRGBAInterpolateBGR(editorColor, ColorData[yStartInt * Bounds.Width + RimWidth],
+			var blendColor = Utils.ColorRGBAInterpolateBGR(editorColor, colorData[yStartInt * Bounds.Width + RimWidth],
 				(float)(editorStartYPixel - yStartInt));
 			for (var x = RimWidth; x < Bounds.Width - RimWidth; x++)
 			{
-				ColorData[yStartInt * Bounds.Width + x] = blendColor;
+				colorData[yStartInt * Bounds.Width + x] = blendColor;
 			}
 		}
 
 		if (yEndInt >= RimWidth && yEndInt < VisibleHeight - RimWidth)
 		{
-			var blendColor = Utils.ColorRGBAInterpolateBGR(editorColor, ColorData[yEndInt * Bounds.Width + RimWidth],
+			var blendColor = Utils.ColorRGBAInterpolateBGR(editorColor, colorData[yEndInt * Bounds.Width + RimWidth],
 				(float)(1.0 - (editorEndYPixel - yEndInt)));
 			for (var x = RimWidth; x < Bounds.Width - RimWidth; x++)
 			{
-				ColorData[yEndInt * Bounds.Width + x] = blendColor;
+				colorData[yEndInt * Bounds.Width + x] = blendColor;
 			}
 		}
 
@@ -1270,19 +1276,19 @@ internal sealed class MiniMap
 		if (editorAreaPercentage >= 1.0)
 			return;
 
+		var colorData = RenderTarget.GetCurrentData();
+
 		// Fade out if configured to do so.
 		if (editorAreaPercentage >= FadeOutPercentage)
 		{
 			var alphaPercentage = Interpolation.Lerp(1.0, 0.0, FadeOutPercentage, 1.0, editorAreaPercentage);
 			var alphaByte = (byte)(alphaPercentage * byte.MaxValue);
 			var alphaColor = (uint)alphaByte << 24;
-			for (var i = 0; i < ColorData.Length; i++)
+			for (var i = 0; i < colorData.Length; i++)
 			{
-				ColorData[i] = (ColorData[i] & 0x00FFFFFF) | alphaColor;
+				colorData[i] = (colorData[i] & 0x00FFFFFF) | alphaColor;
 			}
 		}
-
-		Textures[TextureIndex].SetData(ColorData);
 	}
 
 	/// <summary>
@@ -1297,23 +1303,19 @@ internal sealed class MiniMap
 	}
 
 	/// <summary>
-	/// Renders the MiniMap texture.
+	/// Renders the MiniMap.
 	/// </summary>
-	/// <param name="spriteBatch">SpriteBatch to use for rendering the texture.</param>
-	public void Draw(SpriteBatch spriteBatch)
+	public RenderTarget2D Draw()
 	{
 		if (Bounds.Height <= 0 || Bounds.Width <= 0 || VisibleHeight <= 0)
-			return;
+			return null;
 
 		// If we are zoomed out so far that the MiniMap Area can't fit the Editor Areas or scroll
-		// then we can't render anything meaningful and we should early-ouy.
+		// then we can't render anything meaningful, and we should early-ouy.
 		if (GetEditorAreaPercentageOfMiniMapArea() >= 1.0)
-			return;
+			return null;
 
-		// Draw the current texture.
-		spriteBatch.Draw(Textures[TextureIndex], new Vector2(Bounds.X, Bounds.Y), null, Color.White);
-		// Advance to the next texture index for the next frame.
-		TextureIndex = (TextureIndex + 1) % NumTextures;
+		return RenderTarget.Draw();
 	}
 
 	/// <summary>
