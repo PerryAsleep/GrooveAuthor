@@ -26,26 +26,13 @@ internal sealed class EditorLinuxInterface : IEditorPlatform
 		Application.Init();
 	}
 
-	public void InitializeWindowHandleCallbacks(bool maximized)
+	public void InitializeWindowHandleCallbacks()
 	{
 	}
 
 	#region Drag and Drop
 
 	#endregion Drag and Drop
-
-	#region Window Size
-
-	public void SetResolution(int x, int y)
-	{
-	}
-
-	public bool IsMaximized()
-	{
-		return false;
-	}
-
-	#endregion Window Size
 
 	#region Sounds
 
@@ -203,15 +190,6 @@ internal sealed class EditorLinuxInterface : IEditorPlatform
 	}
 
 	#endregion Clipboard
-
-	#region Application Focus
-
-	public bool IsApplicationFocused()
-	{
-		return true;
-	}
-
-	#endregion Application Focus
 
 	public void Update(GameTime gameTime)
 	{

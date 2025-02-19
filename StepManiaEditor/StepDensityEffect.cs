@@ -630,8 +630,8 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 		if (!Preferences.Instance.PreferencesDensityGraph.ShowDensityGraph)
 			return;
 
-		var viewportW = Graphics.PreferredBackBufferWidth;
-		var viewportH = Graphics.PreferredBackBufferHeight;
+		var viewportW = GraphicsDevice.Viewport.Width;
+		var viewportH = GraphicsDevice.Viewport.Height;
 		var x = (int)(viewportW * 0.5 - Bounds.X + 0.5);
 		DensityEffect.Projection = Matrix.CreateOrthographic(viewportW, viewportH, -10, 10);
 

@@ -1,8 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Diagnostics;
+﻿using System.Collections.Generic;
 using System.Media;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Windows.Forms;
 using Fumen;
@@ -23,7 +20,7 @@ internal sealed class EditorWindowsOpenGLInterface : IEditorPlatform
 		Editor = editor;
 	}
 
-	public void InitializeWindowHandleCallbacks(bool maximized)
+	public void InitializeWindowHandleCallbacks()
 	{
 	}
 
@@ -44,19 +41,6 @@ internal sealed class EditorWindowsOpenGLInterface : IEditorPlatform
 	}
 
 	#endregion Drag and Drop
-
-	#region Window Size
-
-	public void SetResolution(int x, int y)
-	{
-	}
-
-	public bool IsMaximized()
-	{
-		return false;
-	}
-
-	#endregion Window Size
 
 	#region Sounds
 
@@ -171,26 +155,6 @@ internal sealed class EditorWindowsOpenGLInterface : IEditorPlatform
 	}
 
 	#endregion Clipboard
-
-	#region Application Focus
-
-	public bool IsApplicationFocused()
-	{
-		var activatedHandle = GetForegroundWindow();
-		if (activatedHandle == IntPtr.Zero)
-			return false;
-
-		GetWindowThreadProcessId(activatedHandle, out var activeProcId);
-		return activeProcId == Process.GetCurrentProcess().Id;
-	}
-
-	[DllImport("user32.dll", CharSet = CharSet.Auto, ExactSpelling = true)]
-	private static extern IntPtr GetForegroundWindow();
-
-	[DllImport("user32.dll", CharSet = CharSet.Auto, SetLastError = true)]
-	private static extern int GetWindowThreadProcessId(IntPtr handle, out int processId);
-
-	#endregion Application Focus
 
 	public void Update(GameTime gameTime)
 	{
