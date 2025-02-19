@@ -10,10 +10,7 @@ namespace StepManiaEditor;
 public interface IEditorPlatform
 {
 	public void SetEditor(Editor editor);
-	public void InitializeWindowHandleCallbacks(bool maximized);
-	public void SetResolution(int x, int y);
-	public bool IsMaximized();
-	public bool IsApplicationFocused();
+	public void InitializeWindowHandleCallbacks();
 	public void PlayExclamationSound();
 
 	/// <summary>

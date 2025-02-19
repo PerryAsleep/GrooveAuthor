@@ -130,6 +130,7 @@ public sealed class Editor :
 	private Action PostSaveFunction;
 	private int OpenRecentIndex;
 	private bool HasCheckedForAutoLoadingLastSong;
+	private bool HasPreparedDeviceSettingsForMonoGame;
 
 	public static readonly ChartType[] SupportedSinglePlayerChartTypes =
 	{
@@ -373,6 +374,19 @@ public sealed class Editor :
 #endif
 	}
 
+	private void PreparingDeviceSettings(object graphicsDeviceInformation, PreparingDeviceSettingsEventArgs args)
+	{
+		if (HasPreparedDeviceSettingsForMonoGame)
+			return;
+		HasPreparedDeviceSettingsForMonoGame = true;
+		var p = Preferences.Instance;
+		args.GraphicsDeviceInformation.GraphicsProfile = GraphicsProfile.HiDef;
+		args.GraphicsDeviceInformation.PresentationParameters.IsFullScreen = false;
+		args.GraphicsDeviceInformation.PresentationParameters.IsMaximized = p.WindowMaximized;
+		args.GraphicsDeviceInformation.PresentationParameters.BackBufferWidth = p.ViewportWidth;
+		args.GraphicsDeviceInformation.PresentationParameters.BackBufferHeight = p.ViewportHeight;
+	}
+
 	/// <summary>
 	/// Override of MonoGame Game Initialize method.
 	/// From MonoGame:
@@ -381,8 +395,7 @@ public sealed class Editor :
 	/// </summary>
 	protected override void Initialize()
 	{
-		InitializeWindowSize();
-		PlatformInterface.InitializeWindowHandleCallbacks(Preferences.Instance.WindowMaximized);
+		PlatformInterface.InitializeWindowHandleCallbacks();
 		InitializeImGui();
 		InitializeFonts();
 		InitializeGuiDpiScale();
@@ -566,6 +579,7 @@ public sealed class Editor :
 	{
 		Graphics = new GraphicsDeviceManager(this);
 		Graphics.GraphicsProfile = GraphicsProfile.HiDef;
+		Graphics.PreparingDeviceSettings += PreparingDeviceSettings;
 	}
 
 	private void InitializeKeyCommandManager()
@@ -819,15 +833,6 @@ public sealed class Editor :
 	private void InitializeSnapManager()
 	{
 		SnapManager = new SnapManager();
-	}
-
-	private void InitializeWindowSize()
-	{
-		var p = Preferences.Instance;
-		Graphics.PreferredBackBufferWidth = p.ViewportWidth;
-		Graphics.PreferredBackBufferHeight = p.ViewportHeight;
-		Graphics.IsFullScreen = false;
-		Graphics.ApplyChanges();
 	}
 
 	private void InitializeImGui()
@@ -1091,6 +1096,11 @@ public sealed class Editor :
 
 	#region Graphics
 
+	public GraphicsDeviceManager GetGraphicsDeviceManager()
+	{
+		return Graphics;
+	}
+
 	public bool IsVSyncEnabled()
 	{
 		return Graphics.SynchronizeWithVerticalRetrace;
@@ -1257,7 +1267,7 @@ public sealed class Editor :
 
 	public void OnResize(object sender, EventArgs e)
 	{
-		var maximized = PlatformInterface.IsMaximized();
+		var maximized = Window.IsMaximized();
 
 		// Update window preferences.
 		if (!maximized)
@@ -1333,7 +1343,7 @@ public sealed class Editor :
 		// from the window size because of DPI / OS-specific dressing sizes. Because of
 		// all of this we need to wait one frame before performing any logic which depends
 		// on window size.
-		return FrameCount > 1L;
+		return FrameCount > 2;
 	}
 
 	#endregion Window Resizing
@@ -1721,7 +1731,7 @@ public sealed class Editor :
 	/// <param name="currentTime">Current time in seconds.</param>
 	private void ProcessInput(GameTime gameTime, double currentTime)
 	{
-		var inFocus = PlatformInterface.IsApplicationFocused();
+		var inFocus = IsActive;
 
 		CurrentDesiredCursor = MouseCursor.Arrow;
 		CanShowRightClickPopupThisFrame = false;
@@ -3817,7 +3827,7 @@ public sealed class Editor :
 					{
 						if (ImGui.MenuItem($"{sortedModes[i].Width,5} x{sortedModes[i].Height,5}"))
 						{
-							PlatformInterface.SetResolution(sortedModes[i].Width, sortedModes[i].Height);
+							Window.SetResolution(sortedModes[i].Width, sortedModes[i].Height);
 						}
 					}
 
