@@ -292,9 +292,10 @@ public sealed class Editor :
 	private ImFontPtr ImGuiFont;
 	private SpriteFont Font;
 
-	// Cursor
-	private MouseCursor CurrentDesiredCursor = MouseCursor.Arrow;
-	private MouseCursor PreviousDesiredCursor = MouseCursor.Arrow;
+	// Cursor. Intentionally null to avoid invoking static initializers on SDL mouse
+	// classes before SDL is initialized.
+	private MouseCursor CurrentDesiredCursor;
+	private MouseCursor PreviousDesiredCursor;
 
 	// Performance Monitoring
 	private PerformanceMonitor PerformanceMonitor;
@@ -1876,7 +1877,8 @@ public sealed class Editor :
 		// behavior like indicating resizeability at the edges of the window. But not setting every frame
 		// causes it to go back to the Default. Set it every frame only if it setting it to something
 		// other than the Default.
-		if (CurrentDesiredCursor != PreviousDesiredCursor || CurrentDesiredCursor != MouseCursor.Arrow)
+		if ((CurrentDesiredCursor != null && CurrentDesiredCursor != PreviousDesiredCursor) ||
+		    CurrentDesiredCursor != MouseCursor.Arrow)
 		{
 			Mouse.SetCursor(CurrentDesiredCursor);
 		}
