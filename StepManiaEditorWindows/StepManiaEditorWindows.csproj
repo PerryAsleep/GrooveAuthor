@@ -9,7 +9,7 @@
 	</PropertyGroup>
 	<PropertyGroup>
 		<AssemblyName>GrooveAuthor</AssemblyName>
-		<ApplicationIcon>..\StepManiaEditor\Icon.ico</ApplicationIcon>
+		<ApplicationIcon>Icon.ico</ApplicationIcon>
 		<Version>0.4.1</Version>
 	</PropertyGroup>
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
