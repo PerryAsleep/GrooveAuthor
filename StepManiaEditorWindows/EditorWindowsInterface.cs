@@ -24,7 +24,6 @@ internal sealed class EditorWindowsInterface : IEditorPlatform
 
 	public void InitializeWindowHandleCallbacks()
 	{
-		Form.FormClosing += Editor.ClosingForm;
 		Form.AllowDrop = true;
 		Form.DragEnter += DragEnter;
 		Form.DragDrop += DragDrop;
