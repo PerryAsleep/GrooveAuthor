@@ -1029,19 +1029,28 @@ public sealed class Editor :
 
 	#region Shutdown
 
-	public void ClosingForm(object sender, System.ComponentModel.CancelEventArgs e)
+	/// <summary>
+	/// The window/platform has indicated the user is requesting shutdown.
+	/// Return whether or not that shutdown should be allowed.
+	/// Games may want to prevent this in situations like having unsaved changes.
+	/// </summary>
+	/// <returns>True if the app should shut down and false otherwise.</returns>
+	public override bool HandleExitRequest()
 	{
 		if (ActionQueue.Instance.HasUnsavedChanges())
 		{
-			e.Cancel = true;
 			PostSaveFunction = OnExitNoSave;
 			ShowUnsavedChangesModal();
+			return false;
 		}
-		else if (IsSaving())
+
+		if (IsSaving())
 		{
-			e.Cancel = true;
 			PostSaveFunction = OnExitNoSave;
+			return false;
 		}
+
+		return true;
 	}
 
 	protected override void EndRun()
