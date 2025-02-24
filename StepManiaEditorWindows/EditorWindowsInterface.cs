@@ -191,15 +191,6 @@ internal sealed class EditorWindowsInterface : IEditorPlatform
 
 	#endregion File I/O
 
-	#region Clipboard
-
-	public void CopyToClipboard(string text)
-	{
-		Clipboard.SetText(text);
-	}
-
-	#endregion Clipboard
-
 	public void Update(GameTime gameTime)
 	{
 	}

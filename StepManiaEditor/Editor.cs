@@ -3450,7 +3450,7 @@ public sealed class Editor :
 
 		UIAbout.Instance.Draw();
 		UIControls.Instance.Draw();
-		UILog.Instance.Draw(LogBuffer, LogBufferLock, LogFilePath, PlatformInterface);
+		UILog.Instance.Draw(LogBuffer, LogBufferLock, LogFilePath);
 		UIScrollPreferences.Instance.Draw();
 		UISelectionPreferences.Instance.Draw();
 		UIWaveFormPreferences.Instance.Draw();

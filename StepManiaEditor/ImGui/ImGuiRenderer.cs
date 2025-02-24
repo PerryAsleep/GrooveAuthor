@@ -84,6 +84,8 @@ public class ImGuiRenderer
 		};
 
 		SetupInput();
+
+		SetupClipboard();
 	}
 
 	#region ImGuiRenderer
@@ -177,6 +179,22 @@ public class ImGuiRenderer
 		};
 	}
 
+	[UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+	private delegate IntPtr GetClipboardDelegate(IntPtr userData);
+
+	[UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+	private delegate void SetClipboardDelegate(IntPtr userData, string text);
+
+	private GetClipboardDelegate _getClipboardDelegate;
+	private SetClipboardDelegate _setClipboardDelegate;
+
+	private void SetupClipboard()
+	{
+		_getClipboardDelegate = (userData) => Marshal.StringToHGlobalAnsi(_game.GetClipboardText());
+		_setClipboardDelegate = (userData, text) => _game.SetClipboardText(text);
+		ImGui.GetIO().GetClipboardTextFn = Marshal.GetFunctionPointerForDelegate(_getClipboardDelegate);
+		ImGui.GetIO().SetClipboardTextFn = Marshal.GetFunctionPointerForDelegate(_setClipboardDelegate);
+	}
 
 	/// <summary>
 	/// Updates the <see cref="Effect" /> to the current matrices and texture
@@ -359,7 +377,8 @@ public class ImGuiRenderer
 			_indexBuffer?.Dispose();
 
 			_indexBufferSize = (int)(drawData.TotalIdxCount * 1.5f);
-			_indexBuffer = new DynamicIndexBuffer(_graphicsDevice, IndexElementSize.SixteenBits, _indexBufferSize, BufferUsage.None);
+			_indexBuffer =
+				new DynamicIndexBuffer(_graphicsDevice, IndexElementSize.SixteenBits, _indexBufferSize, BufferUsage.None);
 			_indexData = new byte[_indexBufferSize * sizeof(ushort)];
 		}
 
