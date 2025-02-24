@@ -9,8 +9,7 @@ namespace StepManiaEditor;
 /// </summary>
 public interface IEditorPlatform
 {
-	public void SetEditor(Editor editor);
-	public void InitializeWindowHandleCallbacks();
+	public void Initialize();
 	public void PlayExclamationSound();
 
 	/// <summary>

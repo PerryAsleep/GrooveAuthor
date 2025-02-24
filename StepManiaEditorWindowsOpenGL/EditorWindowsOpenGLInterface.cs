@@ -13,34 +13,9 @@ namespace StepManiaEditorWindowsOpenGL;
 /// </summary>
 internal sealed class EditorWindowsOpenGLInterface : IEditorPlatform
 {
-	private Editor Editor;
-
-	public void SetEditor(Editor editor)
-	{
-		Editor = editor;
-	}
-
-	public void InitializeWindowHandleCallbacks()
+	public void Initialize()
 	{
 	}
-
-	#region Drag and Drop
-
-	/// <summary>
-	/// Called when dragging a file into the window.
-	/// </summary>
-	public void DragEnter(object sender, DragEventArgs e)
-	{
-	}
-
-	/// <summary>
-	/// Called when dropping a file into the window.
-	/// </summary>
-	public void DragDrop(object sender, DragEventArgs e)
-	{
-	}
-
-	#endregion Drag and Drop
 
 	#region Sounds
 

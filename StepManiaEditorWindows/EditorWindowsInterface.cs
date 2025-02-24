@@ -13,78 +13,9 @@ namespace StepManiaEditorWindows;
 /// </summary>
 internal sealed class EditorWindowsInterface : IEditorPlatform
 {
-	private Editor Editor;
-	private Form Form;
-
-	public void SetEditor(Editor editor)
+	public void Initialize()
 	{
-		Editor = editor;
-		Form = (Form)Control.FromHandle(Editor.Window.Handle);
 	}
-
-	public void InitializeWindowHandleCallbacks()
-	{
-		Form.AllowDrop = true;
-		Form.DragEnter += DragEnter;
-		Form.DragDrop += DragDrop;
-	}
-
-	#region Drag and Drop
-
-	/// <summary>
-	/// Called when dragging a file into the window.
-	/// </summary>
-	public void DragEnter(object sender, DragEventArgs e)
-	{
-		if (e.Data == null)
-			return;
-		// The application only supports opening one file at a time.
-		if (!e.Data.GetDataPresent(DataFormats.FileDrop))
-			return;
-		var files = (string[])e.Data.GetData(DataFormats.FileDrop);
-		if (files?.Length != 1)
-		{
-			e.Effect = DragDropEffects.None;
-			return;
-		}
-
-		var file = files[0];
-
-		// Get the extension to determine if the file type is supported.
-		if (!Path.GetExtensionWithoutSeparator(file, out var extension))
-		{
-			e.Effect = DragDropEffects.None;
-			return;
-		}
-
-		// Set the effect for the drop based on if the file type is supported.
-		if (Editor.IsExtensionSupportedForFileDrop(extension))
-			e.Effect = DragDropEffects.Copy;
-		else
-			e.Effect = DragDropEffects.None;
-	}
-
-	/// <summary>
-	/// Called when dropping a file into the window.
-	/// </summary>
-	public void DragDrop(object sender, DragEventArgs e)
-	{
-		if (e.Data == null)
-			return;
-		// The application only supports opening one file at a time.
-		if (!e.Data.GetDataPresent(DataFormats.FileDrop))
-			return;
-		var files = (string[])e.Data.GetData(DataFormats.FileDrop);
-		if (files == null)
-			return;
-		if (files.Length != 1)
-			return;
-		var file = files[0];
-
-		Editor.DragDrop(file);
-	}
-
-	#endregion Drag and Drop
 
 	#region Sounds
 
