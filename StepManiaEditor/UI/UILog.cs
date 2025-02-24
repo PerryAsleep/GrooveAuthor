@@ -71,7 +71,7 @@ internal class UILog : UIWindow
 		return LogWindowLevelColors[(int)level];
 	}
 
-	public void Draw(LinkedList<Logger.LogMessage> logBuffer, object logBufferLock, string logFilePath, IEditorPlatform platformInterface)
+	public void Draw(LinkedList<Logger.LogMessage> logBuffer, object logBufferLock, string logFilePath)
 	{
 		if (!Preferences.Instance.ShowLogWindow)
 			return;
@@ -227,7 +227,7 @@ internal class UILog : UIWindow
 					var text = copyStringBuilder.ToString();
 					if (!string.IsNullOrEmpty(text))
 					{
-						platformInterface.CopyToClipboard(text);
+						Editor.SetClipboardText(text);
 						Logger.Info("Copied log to clipboard.");
 					}
 					else

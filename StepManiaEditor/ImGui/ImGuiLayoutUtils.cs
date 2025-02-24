@@ -3818,7 +3818,7 @@ internal sealed class ImGuiLayoutUtils
 
 	#region Stream
 
-	public static void DrawRowStream(string title, string stream, IEditorPlatform platform, string help = null)
+	public static void DrawRowStream(string title, string stream, Editor editor, string help = null)
 	{
 		DrawRowTitleAndAdvanceColumn(title);
 
@@ -3839,7 +3839,7 @@ internal sealed class ImGuiLayoutUtils
 		ImGui.SameLine();
 		if (ImGui.Button("Copy", ButtonCopySize))
 		{
-			platform.CopyToClipboard(stream);
+			editor.SetClipboardText(stream);
 		}
 	}
 

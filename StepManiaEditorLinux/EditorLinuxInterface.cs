@@ -189,14 +189,6 @@ internal sealed class EditorLinuxInterface : IEditorPlatform
 
 	#endregion File I/O
 
-	#region Clipboard
-
-	public void CopyToClipboard(string text)
-	{
-	}
-
-	#endregion Clipboard
-
 	public void Update(GameTime gameTime)
 	{
 		while (Application.EventsPending())

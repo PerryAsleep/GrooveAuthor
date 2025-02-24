@@ -38,7 +38,5 @@ public interface IEditorPlatform
 	public string BrowseFile(string name, string initialDirectory, string currentFileRelativePath, List<string[]> extensionTypes,
 		bool includeAllFiles);
 
-	public void CopyToClipboard(string text);
-
 	public void Update(GameTime gameTime);
 }
