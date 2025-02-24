@@ -13,16 +13,8 @@ namespace StepManiaEditorLinux;
 /// </summary>
 internal sealed class EditorLinuxInterface : IEditorPlatform
 {
-	private Editor Editor;
-
-	public EditorLinuxInterface()
+	public void Initialize()
 	{
-	}
-
-	public void SetEditor(Editor editor)
-	{
-		Editor = editor;
-
 		// Initialize GTK but prevent it from modifying the SynchronizationContext.
 		// It will set it to a GLibSynchronizationContext which will run every async
 		// continuation on the main thread which results in nested async operations
@@ -31,14 +23,6 @@ internal sealed class EditorLinuxInterface : IEditorPlatform
 		Application.Init();
 		SynchronizationContext.SetSynchronizationContext(sc);
 	}
-
-	public void InitializeWindowHandleCallbacks()
-	{
-	}
-
-	#region Drag and Drop
-
-	#endregion Drag and Drop
 
 	#region Sounds
 

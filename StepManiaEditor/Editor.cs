@@ -340,7 +340,7 @@ public sealed class Editor :
 	public Editor(IEditorPlatform platformInterface)
 	{
 		PlatformInterface = platformInterface;
-		PlatformInterface.SetEditor(this);
+		PlatformInterface.Initialize();
 
 		// Record main thread id.
 		MainThreadId = Environment.CurrentManagedThreadId;
@@ -396,7 +396,7 @@ public sealed class Editor :
 	/// </summary>
 	protected override void Initialize()
 	{
-		PlatformInterface.InitializeWindowHandleCallbacks();
+		InitializeDragDrop();
 		InitializeImGui();
 		InitializeFonts();
 		InitializeGuiDpiScale();
@@ -530,6 +530,12 @@ public sealed class Editor :
 
 		// Load Preferences synchronously so they can be used immediately.
 		Preferences.Load(this);
+	}
+
+	private void InitializeDragDrop()
+	{
+		AllowDragDrop(true);
+		Window.FileDrop += OnDragDrop;
 	}
 
 	private void InitializeImGuiUtils()
@@ -6682,11 +6688,30 @@ public sealed class Editor :
 
 	#region Drag and Drop
 
+	public override bool OnDragEnter(string[] files)
+	{
+		if (files?.Length != 1)
+			return false;
+		var file = files[0];
+
+		// Get the extension to determine if the file type is supported.
+		if (!Path.GetExtensionWithoutSeparator(file, out var extension))
+			return false;
+		return IsExtensionSupportedForFileDrop(extension);
+	}
+
 	/// <summary>
 	/// Called when dropping a file into the window.
 	/// </summary>
-	public void DragDrop(string file)
+	private void OnDragDrop(object? sender, FileDropEventArgs args)
 	{
+		var files = args.Files;
+		if (files == null)
+			return;
+		if (files.Length != 1)
+			return;
+		var file = files[0];
+
 		// Get the extension to determine if the file type is supported.
 		if (!Path.GetExtensionWithoutSeparator(file, out var extension))
 			return;
