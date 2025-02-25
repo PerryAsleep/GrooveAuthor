@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Numerics;
+using System.Runtime.InteropServices;
 using Fumen;
 using ImGuiNET;
 using Microsoft.Xna.Framework.Input;
@@ -431,7 +432,10 @@ internal sealed class UIControls : UIWindow, Fumen.IObserver<PreferencesKeyBinds
 					break;
 				case Keys.LeftWindows:
 				case Keys.RightWindows:
-					inputString += "Win";
+					if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+						inputString += "Win";
+					else
+						inputString += "Super";
 					break;
 				case Keys.OemSemicolon:
 					inputString += ";";
