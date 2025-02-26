@@ -29,6 +29,9 @@
 		<PackageReference Include="SkiaSharp" Version="3.116.1" />
 		<PackageReference Include="System.Text.Json" Version="9.0.0" />
 	</ItemGroup>
+	<ItemGroup Condition="'$(RuntimeIdentifier)' == 'linux-x64'">
+		<PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="3.116.1" />
+	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\ImGui.NET\src\ImGui.NET\ImGui.NET.csproj" />
 		<ProjectReference Include="..\MonoGameExtensions\MonoGameExtensions.csproj" />
