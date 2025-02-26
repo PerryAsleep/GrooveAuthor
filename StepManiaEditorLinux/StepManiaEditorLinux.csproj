@@ -10,6 +10,9 @@
 		<AssemblyName>GrooveAuthor</AssemblyName>
 		<Version>0.4.1</Version>
 	</PropertyGroup>
+	<PropertyGroup>
+		<RuntimeIdentifier>linux-x64</RuntimeIdentifier>
+	</PropertyGroup>
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 	</PropertyGroup>
