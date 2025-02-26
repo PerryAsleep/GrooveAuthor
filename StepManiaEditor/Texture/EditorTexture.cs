@@ -160,16 +160,73 @@ internal sealed class EditorTexture : IDisposable
 
 							CancellationTokenSource.Token.ThrowIfCancellationRequested();
 						}
+
+						// Color caching from the already loaded data. Since we aren't querying the texture directly
+						// we do not need to do any checks about what can be done asynchronously.
+						if (CacheTextureColor && textures.Length > 0)
+						{
+							var colorData = new uint[pixels.Length / 4];
+							Buffer.BlockCopy(pixels, 0, colorData, 0, pixels.Length);
+							textureColor = TextureUtils.GetTextureColor(colorData);
+						}
 					}
 
 					// Normal image handling.
 					else
 					{
-						await using var fileStream = File.OpenRead(filePath);
-						CancellationTokenSource.Token.ThrowIfCancellationRequested();
-						textures = new Texture2D[1];
-						textures[0] = Texture2D.FromStream(GraphicsDevice, fileStream);
-						CancellationTokenSource.Token.ThrowIfCancellationRequested();
+						// If we need to get the color and we can't access texture data asynchronously then
+						// we should use Skia to load the color data first, then cache the color and create
+						// a new texture from it. This minimizes the number of file loads and incurs one call
+						// to set the texture data.
+						if (CacheTextureColor && !Texture2D.CanGetDataOnAnyThread())
+						{
+							// Get the raw image data.
+							using var codec = SKCodec.Create(filePath);
+							var imageInfo = new SKImageInfo(codec.Info.Width, codec.Info.Height, SKColorType.Rgba8888);
+							var pixels = new byte[imageInfo.RowBytes * imageInfo.Height];
+							var options = new SKCodecOptions(0);
+							unsafe
+							{
+								fixed (byte* p = pixels)
+								{
+									codec.GetPixels(imageInfo, (IntPtr)p, options);
+								}
+							}
+
+							CancellationTokenSource.Token.ThrowIfCancellationRequested();
+
+							// Create a texture from it.
+							textures = new Texture2D[1];
+							textures[0] = new Texture2D(GraphicsDevice, codec.Info.Width, codec.Info.Height);
+							textures[0].SetData(pixels);
+							CancellationTokenSource.Token.ThrowIfCancellationRequested();
+
+							// Cache the color data.
+							var colorData = new uint[pixels.Length / 4];
+							Buffer.BlockCopy(pixels, 0, colorData, 0, pixels.Length);
+							textureColor = TextureUtils.GetTextureColor(colorData);
+							CancellationTokenSource.Token.ThrowIfCancellationRequested();
+						}
+
+						// Otherwise we don't need special handling. Just load the texture and optionally
+						// get its color data after it is loaded.
+						else
+						{
+							// Create a texture.
+							await using var fileStream = File.OpenRead(filePath);
+							CancellationTokenSource.Token.ThrowIfCancellationRequested();
+							textures = new Texture2D[1];
+							textures[0] = Texture2D.FromStream(GraphicsDevice, fileStream);
+							CancellationTokenSource.Token.ThrowIfCancellationRequested();
+
+							// Cache the color data.
+							if (CacheTextureColor)
+							{
+								textureColor = TextureUtils.GetTextureColor(textures[0]);
+								CancellationTokenSource.Token.ThrowIfCancellationRequested();
+							}
+						}
+
 						frameDurations = new double[1];
 						frameDurations[0] = 0.0;
 					}
@@ -190,11 +247,6 @@ internal sealed class EditorTexture : IDisposable
 			}
 
 			CancellationTokenSource.Token.ThrowIfCancellationRequested();
-
-			if (CacheTextureColor && textures != null)
-			{
-				textureColor = TextureUtils.GetTextureColor(textures[0]);
-			}
 
 			return new TextureLoadResult(textures, frameDurations, textureColor);
 		}
@@ -347,7 +399,7 @@ internal sealed class EditorTexture : IDisposable
 		{
 			NewTextures = results.GetTextures();
 			NewDurations = results.GetFrameDurations();
-			NewTextureColor = GetTextureColor();
+			NewTextureColor = results.GetTextureColor();
 			NewTextureReady = true;
 		}
 	}
