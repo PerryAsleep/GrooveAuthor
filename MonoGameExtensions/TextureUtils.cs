@@ -247,6 +247,11 @@ public class TextureUtils
 	public static uint GetTextureColor(Texture2D texture)
 	{
 		var colorData = GetRGBAColorData(texture);
+		return GetTextureColor(colorData);
+	}
+
+	public static uint GetTextureColor(uint[] colorData)
+	{
 		double hueXSum = 0.0f;
 		double hueYSum = 0.0f;
 		double saturationSumOfSquares = 0.0f;
