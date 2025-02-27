@@ -95,7 +95,8 @@ internal sealed class EditorLinuxInterface : IEditorPlatform
 
 		dialog.Filter = simFileFilter;
 
-		dialog.SetCurrentFolder(initialDirectory);
+		if (!string.IsNullOrEmpty(initialDirectory))
+			dialog.SetCurrentFolder(initialDirectory);
 
 		if (dialog.Run() == (int)ResponseType.Accept)
 		{
