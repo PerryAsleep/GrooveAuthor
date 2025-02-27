@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Fumen;
@@ -143,7 +144,7 @@ internal sealed class Preferences
 	[JsonInclude] public bool ShowDebugWindow;
 	[JsonInclude] public bool ShowControlsWindow;
 	[JsonInclude] public bool ShowHotbar = true;
-	[JsonInclude] public string OpenFileDialogInitialDirectory = @"C:\Games\StepMania 5\Songs\";
+	[JsonInclude] public string OpenFileDialogInitialDirectory;
 	[JsonInclude] public List<SavedSongInformation> RecentFiles = new();
 	[JsonInclude] public Editor.NoteEntryMode NoteEntryMode = Editor.NoteEntryMode.Normal;
 	[JsonInclude] public int SnapIndex;
@@ -169,6 +170,22 @@ internal sealed class Preferences
 
 	private void PostLoad()
 	{
+		if (string.IsNullOrEmpty(OpenFileDialogInitialDirectory))
+		{
+			if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+			{
+				// On Windows, use the default install location for StepMania.
+				OpenFileDialogInitialDirectory = @"C:\Games\StepMania 5\Songs\";
+			}
+			else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+			{
+				// On Linux there is no default install location. It is just an archive that
+				// the user can put where they like. ITGMania has a default install location
+				// though, so prefer that.
+				OpenFileDialogInitialDirectory = @"/opt/itgmania/Songs/";
+			}
+		}
+
 		foreach (var savedSongData in RecentFiles)
 			savedSongData.PostLoad();
 		PreferencesMultiplayer.PostLoad();

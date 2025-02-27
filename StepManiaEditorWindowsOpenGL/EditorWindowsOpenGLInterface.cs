@@ -45,7 +45,7 @@ internal sealed class EditorWindowsOpenGLInterface : IEditorPlatform
 	public (bool, string) ShowOpenSimFileDialog(string initialDirectory)
 	{
 		using var openFileDialog = new OpenFileDialog();
-		openFileDialog.InitialDirectory = initialDirectory;
+		openFileDialog.InitialDirectory = initialDirectory ?? "";
 		openFileDialog.Filter = "StepMania Files (*.sm,*.ssc)|*.sm;*.ssc|All files (*.*)|*.*";
 		openFileDialog.FilterIndex = 1;
 		var confirmed = openFileDialog.ShowDialog() == DialogResult.OK;
