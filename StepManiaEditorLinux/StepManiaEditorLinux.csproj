@@ -36,6 +36,7 @@
 	<ItemGroup>
 		<ProjectReference Include="..\StepManiaEditor\MonoGame\MonoGame.Framework\MonoGame.Framework.DesktopGL.csproj" />
 		<ProjectReference Include="..\StepManiaEditor\StepManiaEditor.csproj" />
+		<PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="3.116.1" />
 	</ItemGroup>
 	<Target Name="RestoreDotnetTools" BeforeTargets="Restore">
 		<Message Text="Restoring dotnet tools" Importance="High" />
