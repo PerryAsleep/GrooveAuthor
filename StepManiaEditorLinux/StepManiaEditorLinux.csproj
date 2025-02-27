@@ -38,6 +38,14 @@
 		<ProjectReference Include="..\StepManiaEditor\StepManiaEditor.csproj" />
 		<PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="3.116.1" />
 	</ItemGroup>
+	<ItemGroup>
+	  <None Update="GrooveAuthor.desktop">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
+	  <None Update="Icon.svg">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
+	</ItemGroup>
 	<Target Name="RestoreDotnetTools" BeforeTargets="Restore">
 		<Message Text="Restoring dotnet tools" Importance="High" />
 		<Exec Command="dotnet tool restore" />
