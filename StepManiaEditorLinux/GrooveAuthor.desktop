@@ -1,0 +1,14 @@
+[Desktop Entry]
+Type=Application
+Name=GrooveAuthor
+GenericName=Editor for StepMania
+Comment=Editor for StepMania charts
+Icon=/opt/GrooveAuthor/Icon.svg
+TryExec=/opt/GrooveAuthor/GrooveAuthor
+Exec=/opt/GrooveAuthor/GrooveAuthor
+Path=/opt/GrooveAuthor
+Terminal=false
+Categories=AudioVideo;AudioVideoEditing;
+Keywords=GrooveAuthor,StepMania,ITG,ITGmania,DDR,PIU,Pump It Up,Dance,StepF2,StepP1
+PrefersNonDefaultGPU=true
+SingleMainWindow=true
