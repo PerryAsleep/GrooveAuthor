@@ -15,10 +15,17 @@ internal class UIOptions : UIWindow
 	private static readonly float ButtonHelpWidth = UiScaled(32);
 	private static readonly int DefaultWidth = UiScaled(606);
 
+	private Editor Editor;
+
 	public static UIOptions Instance { get; } = new();
 
 	private UIOptions() : base("Options")
 	{
+	}
+
+	public void Init(Editor editor)
+	{
+		Editor = editor;
 	}
 
 	public override void Open(bool focus)
@@ -110,14 +117,14 @@ internal class UIOptions : UIWindow
 			ImGui.Separator();
 			if (ImGuiLayoutUtils.BeginTable("Options UI", TitleColumnWidth))
 			{
-				//var defaultDpiScale = GetDpiScaleSystemDefault();
+				var defaultDpiScale = Editor.GetMonitorDpiScale();
 
 				ImGuiLayoutUtils.DrawRowDragDoubleWithEnabledCheckbox(true, "Custom DPI Scale", p,
 					nameof(PreferencesOptions.DpiScale),
 					nameof(PreferencesOptions.UseCustomDpiScale),
 					false,
 					"Custom DPI scale to use for UI."
-					//+ $"\nIf not specified, the default value for this computer ({defaultDpiScale}) will be used."
+					+ $"\nIf not specified, the default value for this monitor ({defaultDpiScale}) will be used."
 					+ "\nChanges to this value take effect on an application restart.",
 					0.01f, "%.2f", 0.25, 8.0);
 

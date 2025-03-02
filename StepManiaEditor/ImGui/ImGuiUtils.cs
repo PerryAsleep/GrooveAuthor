@@ -1,14 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Drawing;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using System.Text;
 using Fumen;
 using Fumen.Converters;
 using ImGuiNET;
-using Microsoft.Win32;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGameExtensions;
 using static StepManiaEditor.Utils;
@@ -783,24 +781,9 @@ internal sealed class ImGuiUtils
 		if (Preferences.Instance.PreferencesOptions.UseCustomDpiScale)
 			DpiScale = Preferences.Instance.PreferencesOptions.DpiScale;
 
-		// At some point between when DPI scaling logic was implemented and now the behavior has changed.
-		// Originally, on a 4k display with 2x scaling, the window/viewport/backbuffer would all be 4k.
-		// To scale the UI up based on the Windows scaling factor, we'd determine the scale from the DPI,
-		// then effectively double all the UI values.
-		// At the time of this writing with the same configuration the window/viewport/backbuffer on a 4k
-		// display with 2x scaling are all scaled values (e.g. 1920x1080). Applying a scale on top of that
-		// results in an incorrect looking 4x scale.
-		// I don't know what changed. Could be Windows 10->11, could be a Monogame update.
-		// The logic for getting the resolution is in SharpDX, which is not currently built from source and is
-		// not maintained.
-		// The real fix would be to dig into this further, keep rendering at the monitor's correct unscaled
-		// resolution, and scale the UI up. Until that is done, it is better to avoid trying to automatically
-		// scale the UI. We'll default to always using a UI scale of 1.0 and let the user change their
-		// preferred scale manually.
-
 		// If no DPI scale is specified in the preferences, use the system default DPI scale.
-		//if (DpiScale.DoubleEquals(0.0))
-		//	DpiScale = GetDpiScaleSystemDefault();
+		if (DpiScale.DoubleEquals(0.0))
+			DpiScale = Editor.GetMonitorDpiScale();
 
 		// Ensure the DPI scale is set to a valid value.
 		if (DpiScale <= 0.0)
