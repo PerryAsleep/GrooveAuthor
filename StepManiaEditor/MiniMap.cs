@@ -170,11 +170,6 @@ internal sealed class MiniMap
 	private DoubleBufferedRenderTarget2D<uint> RenderTarget;
 
 	/// <summary>
-	/// Index into Textures array to control which texture we write to while the other is being rendered.
-	/// </summary>
-	private int TextureIndex;
-
-	/// <summary>
 	/// Buffer holding color data for the content region.
 	/// </summary>
 	private uint[] ClearData;

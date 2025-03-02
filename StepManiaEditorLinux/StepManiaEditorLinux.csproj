@@ -59,4 +59,10 @@
 		<Copy SourceFiles="$(ProjectDir)..\StepManiaLibrary\Fumen\Fumen\Sound\fmod\lib\linux\x86_64\libfmodL.so.13.3" DestinationFolder="$(TargetDir)" />
 		<Copy SourceFiles="$(ProjectDir)..\ImGui.NET\deps\cimgui\linux-x64\cimgui.so" DestinationFolder="$(TargetDir)" />
 	</Target>
+	<Target Name="PostPublish" AfterTargets="Publish">
+		<Copy SourceFiles="$(ProjectDir)..\StepManiaLibrary\Fumen\Fumen\Sound\fmod\lib\linux\x86_64\libfmod.so" DestinationFolder="$(PublishDir)" />
+		<Copy SourceFiles="$(ProjectDir)..\StepManiaLibrary\Fumen\Fumen\Sound\fmod\lib\linux\x86_64\libfmod.so.13" DestinationFolder="$(PublishDir)" />
+		<Copy SourceFiles="$(ProjectDir)..\StepManiaLibrary\Fumen\Fumen\Sound\fmod\lib\linux\x86_64\libfmod.so.13.3" DestinationFolder="$(PublishDir)" />
+		<Copy SourceFiles="$(ProjectDir)..\ImGui.NET\deps\cimgui\linux-x64\cimgui.so" DestinationFolder="$(PublishDir)" />
+	</Target>
 </Project>
