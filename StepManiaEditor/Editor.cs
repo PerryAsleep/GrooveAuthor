@@ -6703,7 +6703,7 @@ public sealed class Editor :
 	/// <summary>
 	/// Called when dropping a file into the window.
 	/// </summary>
-	private void OnDragDrop(object? sender, FileDropEventArgs args)
+	private void OnDragDrop(object sender, FileDropEventArgs args)
 	{
 		var files = args.Files;
 		if (files == null)

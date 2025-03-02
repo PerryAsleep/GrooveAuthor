@@ -46,4 +46,9 @@
 		<Copy SourceFiles="$(ProjectDir)..\StepManiaLibrary\Fumen\Fumen\Sound\fmod\lib\windows\x64\fmodL_vc.lib" DestinationFolder="$(TargetDir)" />
 		<Copy SourceFiles="$(ProjectDir)..\ImGui.NET\deps\cimgui\win-x64\cimgui.dll" DestinationFolder="$(TargetDir)" />
 	</Target>
+	<Target Name="PostPublish" AfterTargets="Publish">
+		<Copy SourceFiles="$(ProjectDir)..\StepManiaLibrary\Fumen\Fumen\Sound\fmod\lib\windows\x64\fmod.dll" DestinationFolder="$(PublishDir)" />
+		<Copy SourceFiles="$(ProjectDir)..\StepManiaLibrary\Fumen\Fumen\Sound\fmod\lib\windows\x64\fmod_vc.lib" DestinationFolder="$(PublishDir)" />
+		<Copy SourceFiles="$(ProjectDir)..\ImGui.NET\deps\cimgui\win-x64\cimgui.dll" DestinationFolder="$(PublishDir)" />
+	</Target>
 </Project>
