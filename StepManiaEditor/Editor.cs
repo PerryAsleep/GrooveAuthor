@@ -946,6 +946,7 @@ public sealed class Editor :
 		UIChartList.Instance.Init(this);
 		UIWaveFormPreferences.Instance.Init(MusicManager);
 		UIReceptorPreferences.Instance.Init(this);
+		UIOptions.Instance.Init(this);
 		UIAudioPreferences.Instance.Init(SoundManager);
 		UIExpressedChartConfig.Instance.Init(this);
 		UIPerformedChartConfig.Instance.Init(this);
