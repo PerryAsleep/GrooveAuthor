@@ -31,9 +31,10 @@ bld/
 [Oo]bj/
 [Ll]og/
 
-# Fuman exceptions
+# Fumen exceptions
 !/StepManiaEditor/fmod/lib/x86/
 !/StepManiaEditor/fmod/lib/x64/
+/Releases/
 
 # Visual Studio 2015/2017 cache/options directory
 .vs/
