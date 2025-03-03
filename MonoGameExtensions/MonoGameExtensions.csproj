@@ -3,6 +3,7 @@
 		<TargetFramework>net8.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>disable</Nullable>
+		<PathMap>$(MSBuildProjectDirectory)=.</PathMap>
 	</PropertyGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\StepManiaEditor\MonoGame\MonoGame.Framework\MonoGame.Framework.DesktopGL.csproj">

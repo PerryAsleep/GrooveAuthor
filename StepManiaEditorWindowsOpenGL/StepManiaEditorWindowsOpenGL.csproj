@@ -6,6 +6,7 @@
 		<TieredCompilation>false</TieredCompilation>
 		<UseWindowsForms>true</UseWindowsForms>
 		<MonoGamePlatform>DesktopGL</MonoGamePlatform>
+		<PathMap>$(MSBuildProjectDirectory)=.</PathMap>
 	</PropertyGroup>
 	<PropertyGroup>
 		<AssemblyName>GrooveAuthor</AssemblyName>

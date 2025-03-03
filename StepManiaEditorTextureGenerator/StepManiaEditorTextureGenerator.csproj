@@ -4,6 +4,7 @@
 		<TargetFramework>net8.0-windows7.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>disable</Nullable>
+		<PathMap>$(MSBuildProjectDirectory)=.</PathMap>
 	</PropertyGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\MonoGameExtensions\MonoGameExtensions.csproj" />
