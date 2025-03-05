@@ -40,10 +40,22 @@ internal sealed class EditorLinuxInterface : IEditorPlatform
 	/// </summary>
 	private void InitializePersistenceDirectory()
 	{
-		const string desiredBaseDir = "~/.local/share";
-		const string desiredPersistenceDir = $"{desiredBaseDir}/grooveauthor";
+		// Fallback.
+		PersistenceDirectory = Editor.GetAssemblyPath();
 
-		var failed = false;
+		string homeDir;
+		try
+		{
+			homeDir = Environment.GetEnvironmentVariable("HOME");
+		}
+		catch(Exception e)
+		{
+			Console.WriteLine($"Failed creating creating persistence directory. Could not read HOME directory. {e}");
+			return;
+		}
+		var desiredBaseDir = $"{homeDir}/.local/share";
+		var desiredPersistenceDir = $"{desiredBaseDir}/grooveauthor";
+
 		if (!Directory.Exists(desiredBaseDir))
 		{
 			try
@@ -58,37 +70,33 @@ internal sealed class EditorLinuxInterface : IEditorPlatform
 				// We have to log to the console here instead of using the Logger because the Logger
 				// depends on these directories.
 				Console.WriteLine($"Failed creating {desiredBaseDir}. {e}");
-				failed = true;
+				return;
 			}
 		}
 
-		if (!failed)
+		if (!Directory.Exists(desiredPersistenceDir))
 		{
-			if (!Directory.Exists(desiredPersistenceDir))
+			try
 			{
-				try
-				{
-					Directory.CreateDirectory(desiredPersistenceDir,
-						UnixFileMode.UserRead
-						| UnixFileMode.UserWrite
-						| UnixFileMode.UserExecute
-						| UnixFileMode.GroupRead
-						| UnixFileMode.GroupExecute
-						| UnixFileMode.OtherRead
-						| UnixFileMode.OtherExecute);
-				}
-				catch (Exception e)
-				{
-					// We have to log to the console here instead of using the Logger because the Logger
-					// depends on these directories.
-					Console.WriteLine($"Failed creating {desiredPersistenceDir}. {e}");
-					failed = true;
-				}
+				Directory.CreateDirectory(desiredPersistenceDir,
+					UnixFileMode.UserRead
+					| UnixFileMode.UserWrite
+					| UnixFileMode.UserExecute
+					| UnixFileMode.GroupRead
+					| UnixFileMode.GroupExecute
+					| UnixFileMode.OtherRead
+					| UnixFileMode.OtherExecute);
+			}
+			catch (Exception e)
+			{
+				// We have to log to the console here instead of using the Logger because the Logger
+				// depends on these directories.
+				Console.WriteLine($"Failed creating {desiredPersistenceDir}. {e}");
+				return;
 			}
 		}
 
-		// Fallback to using the assembly path for persistence.
-		PersistenceDirectory = failed ? Editor.GetAssemblyPath() : desiredPersistenceDir;
+		PersistenceDirectory = desiredPersistenceDir;
 	}
 
 	#region Sounds
