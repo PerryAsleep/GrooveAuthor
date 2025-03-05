@@ -207,7 +207,7 @@ internal sealed class Preferences
 
 		try
 		{
-			using var openStream = File.OpenRead(Fumen.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, fileName));
+			using var openStream = File.OpenRead(fileName);
 			Instance = JsonSerializer.Deserialize<Preferences>(openStream, SerializationOptions);
 			Instance.Editor = editor;
 			Instance.PostLoad();
@@ -249,7 +249,7 @@ internal sealed class Preferences
 		{
 			Instance.PreSave();
 			var jsonString = JsonSerializer.Serialize(Instance, SerializationOptions);
-			File.WriteAllText(Fumen.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, fileName), jsonString);
+			File.WriteAllText(fileName, jsonString);
 		}
 		catch (Exception e)
 		{
