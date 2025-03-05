@@ -25,6 +25,8 @@
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using System.Text;
+using Fumen;
 using ImGuiNET;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -61,12 +63,20 @@ public class ImGuiRenderer
 
 	// Input
 	private Keys[] _allKeys = Enum.GetValues<Keys>();
+	private readonly PinnedBuffer _iniFileName;
 
-	public ImGuiRenderer(Game game, ImGuiConfigFlags flags)
+	public ImGuiRenderer(Game game, ImGuiConfigFlags flags, string iniFileName)
 	{
+		_iniFileName = new PinnedBuffer(Encoding.UTF8.GetBytes(iniFileName));
 		var context = ImGui.CreateContext();
 		ImGui.SetCurrentContext(context);
 		ImGui.GetIO().ConfigFlags = flags;
+
+		// ImGui.NET doesn't offer a clean way to set this, so set the pointer directly.
+		unsafe
+		{
+			ImGui.GetIO().NativePtr->IniFilename = (byte*)_iniFileName.GetPinnedDataHandle();
+		}
 
 		_game = game ?? throw new ArgumentNullException(nameof(game));
 		_graphicsDevice = game.GraphicsDevice;
