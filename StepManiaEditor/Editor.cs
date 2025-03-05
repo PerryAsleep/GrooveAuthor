@@ -421,25 +421,11 @@ public sealed class Editor :
 
 	private void InitializeLogger()
 	{
-		var assembly = System.Reflection.Assembly.GetEntryAssembly();
-		string logDirectory = null;
-
 		var canLogToFile = true;
 		var logToFileError = "";
+		var logDirectory = PlatformInterface.GetLogsDirectory();
 		try
 		{
-			if (assembly != null)
-			{
-				var programPath = assembly.Location;
-				var programDir = System.IO.Path.GetDirectoryName(programPath);
-				logDirectory = Path.Combine(programDir, "logs");
-			}
-
-			if (logDirectory == null)
-			{
-				throw new Exception("Could not determine log directory.");
-			}
-
 			// Make a log directory if one doesn't exist.
 			Directory.CreateDirectory(logDirectory);
 
@@ -529,7 +515,7 @@ public sealed class Editor :
 		PreferencesWaveForm.InitializeRuntimeDefaults(defaultWaveformLoadParallelism);
 
 		// Load Preferences synchronously so they can be used immediately.
-		Preferences.Load(this);
+		Preferences.Load(this, PlatformInterface.GetPreferencesSaveFileName());
 	}
 
 	private void InitializeDragDrop()
@@ -545,6 +531,11 @@ public sealed class Editor :
 
 	private void InitializeAutogenConfigsAsync()
 	{
+		var configDirectory = PlatformInterface.GetAutogenConfigsDirectory();
+		PerformedChartConfigManager.Instance.SetConfigDirectory(configDirectory);
+		ExpressedChartConfigManager.Instance.SetConfigDirectory(configDirectory);
+		PatternConfigManager.Instance.SetConfigDirectory(configDirectory);
+
 		PatternConfigManager.Instance.SetConfigComparer(PatternComparer);
 		PerformedChartConfigManager.Instance.SetConfigComparer(PerformedChartComparer);
 
@@ -844,26 +835,24 @@ public sealed class Editor :
 
 	private void InitializeImGui()
 	{
-		ImGuiRenderer = new ImGuiRenderer(this, ImGuiConfigFlags.DockingEnable);
+		ImGuiRenderer = new ImGuiRenderer(this, ImGuiConfigFlags.DockingEnable, PlatformInterface.GetImGuiSaveFileName());
 	}
 
 	private void InitializeFonts()
 	{
-		var guiScale = GetDpiScale();
-		var assembly = System.Reflection.Assembly.GetEntryAssembly();
-		if (assembly != null)
+		try
 		{
-			var programPath = assembly.Location;
-			var programDir = System.IO.Path.GetDirectoryName(programPath);
-			var mPlusFontPath = Path.Combine([programDir, "Content", "Mplus1Code-Medium.ttf"]);
+			var guiScale = GetDpiScale();
+			var path = GetAssemblyPath();
+			var mPlusFontPath = Path.Combine([path, "Content", "Mplus1Code-Medium.ttf"]);
 			ImGuiFont = ImGui.GetIO().Fonts.AddFontFromFileTTF(mPlusFontPath, (int)(15 * guiScale), null,
 				ImGui.GetIO().Fonts.GetGlyphRangesJapanese());
 			ImGuiRenderer.RebuildFontAtlas();
 			ImGuiLayoutUtils.SetFont(ImGuiFont);
 		}
-		else
+		catch (Exception e)
 		{
-			Logger.Error("Failed to initialize ImGui fonts. Could not find assembly.");
+			Logger.Error($"Failed to initialize ImGui fonts. {e}.");
 		}
 
 		Font = Content.Load<SpriteFont>("mplus1code-medium");
@@ -1034,6 +1023,24 @@ public sealed class Editor :
 
 	#endregion Initialization
 
+	public static string GetAssemblyPath()
+	{
+		try
+		{
+			var assembly = System.Reflection.Assembly.GetEntryAssembly();
+			var programPath = assembly.Location;
+			var programDir = System.IO.Path.GetDirectoryName(programPath);
+			if (!string.IsNullOrEmpty(programDir))
+				return programDir;
+		}
+		catch (Exception)
+		{
+			// Ignored
+		}
+
+		return ".";
+	}
+
 	#region Shutdown
 
 	/// <summary>
@@ -1065,7 +1072,7 @@ public sealed class Editor :
 		CloseSong();
 		MusicManager.Shutdown();
 		// Commit preferences to disk.
-		Preferences.Save();
+		Preferences.Save(PlatformInterface.GetPreferencesSaveFileName());
 		// Commit unsaved changes to autogen configs to disk.
 		PerformedChartConfigManager.Instance.SynchronizeToDisk();
 		ExpressedChartConfigManager.Instance.SynchronizeToDisk();

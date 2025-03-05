@@ -1,10 +1,13 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Text;
 using System.Threading;
 using Fumen;
 using Gtk;
 using Microsoft.Xna.Framework;
 using StepManiaEditor;
+using Path = Fumen.Path;
 
 namespace StepManiaEditorLinux;
 
@@ -13,6 +16,11 @@ namespace StepManiaEditorLinux;
 /// </summary>
 internal sealed class EditorLinuxInterface : IEditorPlatform
 {
+	/// <summary>
+	/// Directory to use for persistence.
+	/// </summary>
+	private string PersistenceDirectory;
+
 	public void Initialize()
 	{
 		// Initialize GTK but prevent it from modifying the SynchronizationContext.
@@ -22,6 +30,65 @@ internal sealed class EditorLinuxInterface : IEditorPlatform
 		var sc = SynchronizationContext.Current;
 		Application.Init();
 		SynchronizationContext.SetSynchronizationContext(sc);
+
+		// Ensure the directory we need to use for persistence is available.
+		InitializePersistenceDirectory();
+	}
+
+	/// <summary>
+	/// Initialize the directory to use for persistence.
+	/// </summary>
+	private void InitializePersistenceDirectory()
+	{
+		const string desiredBaseDir = "~/.local/share";
+		const string desiredPersistenceDir = $"{desiredBaseDir}/grooveauthor";
+
+		var failed = false;
+		if (!Directory.Exists(desiredBaseDir))
+		{
+			try
+			{
+				Directory.CreateDirectory(desiredBaseDir,
+					UnixFileMode.UserRead
+					| UnixFileMode.UserWrite
+					| UnixFileMode.UserExecute);
+			}
+			catch (Exception e)
+			{
+				// We have to log to the console here instead of using the Logger because the Logger
+				// depends on these directories.
+				Console.WriteLine($"Failed creating {desiredBaseDir}. {e}");
+				failed = true;
+			}
+		}
+
+		if (!failed)
+		{
+			if (!Directory.Exists(desiredPersistenceDir))
+			{
+				try
+				{
+					Directory.CreateDirectory(desiredPersistenceDir,
+						UnixFileMode.UserRead
+						| UnixFileMode.UserWrite
+						| UnixFileMode.UserExecute
+						| UnixFileMode.GroupRead
+						| UnixFileMode.GroupExecute
+						| UnixFileMode.OtherRead
+						| UnixFileMode.OtherExecute);
+				}
+				catch (Exception e)
+				{
+					// We have to log to the console here instead of using the Logger because the Logger
+					// depends on these directories.
+					Console.WriteLine($"Failed creating {desiredPersistenceDir}. {e}");
+					failed = true;
+				}
+			}
+		}
+
+		// Fallback to using the assembly path for persistence.
+		PersistenceDirectory = failed ? Editor.GetAssemblyPath() : desiredPersistenceDir;
 	}
 
 	#region Sounds
@@ -33,6 +100,26 @@ internal sealed class EditorLinuxInterface : IEditorPlatform
 	#endregion Sounds
 
 	#region File I/O
+
+	public string GetImGuiSaveFileName()
+	{
+		return $"{PersistenceDirectory}/imgui.ini";
+	}
+
+	public string GetPreferencesSaveFileName()
+	{
+		return $"{PersistenceDirectory}/Preferences.json";
+	}
+
+	public string GetLogsDirectory()
+	{
+		return $"{PersistenceDirectory}/logs";
+	}
+
+	public string GetAutogenConfigsDirectory()
+	{
+		return $"{PersistenceDirectory}/AutogenConfigs";
+	}
 
 	public (bool, string) ShowSaveSimFileDialog(string initialDirectory, string fileName, FileFormatType? fileFormatType)
 	{

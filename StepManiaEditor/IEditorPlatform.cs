@@ -37,5 +37,13 @@ public interface IEditorPlatform
 	public string BrowseFile(string name, string initialDirectory, string currentFileRelativePath, List<string[]> extensionTypes,
 		bool includeAllFiles);
 
+	public string GetImGuiSaveFileName();
+
+	public string GetPreferencesSaveFileName();
+
+	public string GetLogsDirectory();
+
+	public string GetAutogenConfigsDirectory();
+
 	public void Update(GameTime gameTime);
 }

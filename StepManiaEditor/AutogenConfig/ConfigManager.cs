@@ -46,7 +46,7 @@ internal abstract class ConfigManager<TEditorConfig, TConfig> : Notifier<ConfigM
 	/// <summary>
 	/// Directory for saving and loading configuration files.
 	/// </summary>
-	private readonly string ConfigDirectory;
+	private string ConfigDirectory;
 
 	/// <summary>
 	/// JsonSerializerOptions to use for reading and writing configuration files.
@@ -81,7 +81,6 @@ internal abstract class ConfigManager<TEditorConfig, TConfig> : Notifier<ConfigM
 	{
 		ConfigTypeReadableName = configTypeReadableName;
 		ConfigPrefix = configPrefix;
-		ConfigDirectory = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "AutogenConfigs");
 		SerializationOptions = new JsonSerializerOptions
 		{
 			Converters =
@@ -93,6 +92,15 @@ internal abstract class ConfigManager<TEditorConfig, TConfig> : Notifier<ConfigM
 			IncludeFields = true,
 			WriteIndented = true,
 		};
+	}
+
+	/// <summary>
+	/// Set the directory to use for saving and load configs.
+	/// </summary>
+	/// <param name="configDirectory">Directory to use for saving and loading configs.</param>
+	public void SetConfigDirectory(string configDirectory)
+	{
+		ConfigDirectory = configDirectory;
 	}
 
 	#region Save

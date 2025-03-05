@@ -28,6 +28,26 @@ internal sealed class EditorWindowsInterface : IEditorPlatform
 
 	#region File I/O
 
+	public string GetImGuiSaveFileName()
+	{
+		return $@"{Editor.GetAssemblyPath()}\imgui.ini";
+	}
+
+	public string GetPreferencesSaveFileName()
+	{
+		return $@"{Editor.GetAssemblyPath()}\Preferences.json";
+	}
+
+	public string GetLogsDirectory()
+	{
+		return $@"{Editor.GetAssemblyPath()}\logs";
+	}
+
+	public string GetAutogenConfigsDirectory()
+	{
+		return $@"{Editor.GetAssemblyPath()}\AutogenConfigs";
+	}
+
 	public (bool, string) ShowSaveSimFileDialog(string initialDirectory, string fileName, FileFormatType? fileFormatType)
 	{
 		var saveFileDialog = new SaveFileDialog();

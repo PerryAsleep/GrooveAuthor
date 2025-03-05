@@ -15,11 +15,6 @@ namespace StepManiaEditor;
 /// </summary>
 internal sealed class Preferences
 {
-	/// <summary>
-	/// File to use for deserializing Preferences.
-	/// </summary>
-	private const string PreferencesFileName = "Preferences.json";
-
 	public const string DefaultBalancedPerformedChartConfigName = "Default Balanced";
 	public const string DefaultStaminaPerformedChartConfigName = "Default Stamina";
 
@@ -182,7 +177,7 @@ internal sealed class Preferences
 				// On Linux there is no default install location. It is just an archive that
 				// the user can put where they like. ITGMania has a default install location
 				// though, so prefer that.
-				OpenFileDialogInitialDirectory = @"/opt/itgmania/Songs/";
+				OpenFileDialogInitialDirectory = "/opt/itgmania/Songs/";
 			}
 		}
 
@@ -201,29 +196,31 @@ internal sealed class Preferences
 	}
 
 	/// <summary>
-	/// Loads the Preferences from the preferences json file.
+	/// Loads the Preferences from the given file.
 	/// </summary>
+	/// <param name="editor">Editor instance</param>
+	/// <param name="fileName">Name of file to load from.</param>
 	/// <returns>Preferences Instance.</returns>
-	public static Preferences Load(Editor editor)
+	public static Preferences Load(Editor editor, string fileName)
 	{
-		Logger.Info($"Loading {PreferencesFileName}...");
+		Logger.Info($"Loading {fileName}...");
 
 		try
 		{
-			using var openStream = File.OpenRead(Fumen.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, PreferencesFileName));
+			using var openStream = File.OpenRead(Fumen.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, fileName));
 			Instance = JsonSerializer.Deserialize<Preferences>(openStream, SerializationOptions);
 			Instance.Editor = editor;
 			Instance.PostLoad();
-			Logger.Info($"Loaded {PreferencesFileName}.");
+			Logger.Info($"Loaded {fileName}.");
 			return Instance;
 		}
 		catch (FileNotFoundException)
 		{
-			Logger.Info($"No preferences found at {PreferencesFileName}. Using defaults.");
+			Logger.Info($"No preferences found at {fileName}. Using defaults.");
 		}
 		catch (Exception e)
 		{
-			Logger.Error($"Failed to load {PreferencesFileName}. {e}");
+			Logger.Error($"Failed to load {fileName}. {e}");
 		}
 
 		Instance = new Preferences();
@@ -241,24 +238,25 @@ internal sealed class Preferences
 	}
 
 	/// <summary>
-	/// Save the Preferences to the preferences json file.
+	/// Save the Preferences to the given file.
 	/// </summary>
-	public static void Save()
+	/// <param name="fileName">Name of file to save to.</param>
+	public static void Save(string fileName)
 	{
-		Logger.Info($"Saving {PreferencesFileName}...");
+		Logger.Info($"Saving {fileName}...");
 
 		try
 		{
 			Instance.PreSave();
 			var jsonString = JsonSerializer.Serialize(Instance, SerializationOptions);
-			File.WriteAllText(Fumen.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, PreferencesFileName), jsonString);
+			File.WriteAllText(Fumen.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, fileName), jsonString);
 		}
 		catch (Exception e)
 		{
-			Logger.Error($"Failed to save {PreferencesFileName}. {e}");
+			Logger.Error($"Failed to save {fileName}. {e}");
 			return;
 		}
 
-		Logger.Info($"Saved {PreferencesFileName}.");
+		Logger.Info($"Saved {fileName}.");
 	}
 }
