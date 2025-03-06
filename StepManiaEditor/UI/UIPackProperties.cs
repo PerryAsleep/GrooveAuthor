@@ -126,20 +126,20 @@ internal sealed class UIPackProperties : UIWindow
 
 						// Title.
 						ImGui.TableNextColumn();
-						ImGui.Text(song.Title ?? "");
+						ImGui.TextUnformatted(song.Title ?? "");
 
 						// Artist.
 						ImGui.TableNextColumn();
-						ImGui.Text(song.Artist ?? "");
+						ImGui.TextUnformatted(song.Artist ?? "");
 
 						// Credit.
 						ImGui.TableNextColumn();
 						song.Extras.TryGetExtra(SMCommon.TagCredit, out string credit, true);
-						ImGui.Text(credit ?? "");
+						ImGui.TextUnformatted(credit ?? "");
 
 						// Ratings.
 						ImGui.TableNextColumn();
-						ImGui.Text(packSong.GetRatingsString() ?? "");
+						ImGui.TextUnformatted(packSong.GetRatingsString() ?? "");
 
 						// Open.
 						ImGui.TableNextColumn();

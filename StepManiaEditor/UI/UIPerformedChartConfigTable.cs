@@ -145,27 +145,27 @@ internal sealed class UIPerformedChartConfigTable
 				ImGui.PopStyleColor();
 
 				ImGui.TableNextColumn();
-				ImGui.Text(config.GetStepDistanceMinString());
+				ImGui.TextUnformatted(config.GetStepDistanceMinString());
 				ImGui.TableNextColumn();
-				ImGui.Text(config.GetStepStretchMinString());
+				ImGui.TextUnformatted(config.GetStepStretchMinString());
 				ImGui.TableNextColumn();
-				ImGui.Text(config.GetLateralSpeedString());
+				ImGui.TextUnformatted(config.GetLateralSpeedString());
 				ImGui.TableNextColumn();
-				ImGui.Text(config.GetLateralRelativeNPSString());
+				ImGui.TextUnformatted(config.GetLateralRelativeNPSString());
 				ImGui.TableNextColumn();
-				ImGui.Text(config.GetLateralAbsoluteNPSString());
+				ImGui.TextUnformatted(config.GetLateralAbsoluteNPSString());
 				ImGui.TableNextColumn();
-				ImGui.Text(config.GetTransitionMinString());
+				ImGui.TextUnformatted(config.GetTransitionMinString());
 				ImGui.TableNextColumn();
-				ImGui.Text(config.GetTransitionMaxString());
+				ImGui.TextUnformatted(config.GetTransitionMaxString());
 				ImGui.TableNextColumn();
 				ImGui.TextUnformatted(config.GetFacingInwardLimitString());
 				ImGui.TableNextColumn();
 				ImGui.TextUnformatted(config.GetFacingOutwardLimitString());
 				ImGui.TableNextColumn();
-				ImGui.Text(config.GetAbbreviation() ?? "");
+				ImGui.TextUnformatted(config.GetAbbreviation() ?? "");
 				ImGui.TableNextColumn();
-				ImGui.Text(config.Name ?? "");
+				ImGui.TextUnformatted(config.Name ?? "");
 				if (!string.IsNullOrEmpty(config.Description))
 					ToolTip(config.Description);
 

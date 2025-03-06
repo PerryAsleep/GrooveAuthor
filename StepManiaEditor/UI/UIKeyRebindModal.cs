@@ -109,18 +109,20 @@ internal sealed class UIKeyRebindModal
 
 		// Draw conflicts.
 		ImGui.Separator();
-		ImGui.Text("Conflicting Bindings:");
+		ImGui.TextUnformatted("Conflicting Bindings:");
 		if (ImGui.BeginChild("ConflictingBindings", new Vector2(0, ConflictingBindingsHeight), ImGuiChildFlags.Border))
 		{
 			if (ConflictingCommands.Count == 0)
 			{
-				ImGui.Text("None");
+				ImGui.TextUnformatted("None");
 			}
 			else
 			{
 				foreach (var conflict in ConflictingCommands)
 				{
-					ImGui.TextColored(UILog.GetColor(LogLevel.Warn), conflict);
+					ImGui.PushStyleColor(ImGuiCol.Text, UILog.GetColor(LogLevel.Warn));
+					ImGui.TextUnformatted(conflict);
+					ImGui.PopStyleColor();
 				}
 			}
 		}

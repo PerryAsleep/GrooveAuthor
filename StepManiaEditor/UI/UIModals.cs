@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Media;
 using System.Numerics;
 using ImGuiNET;
 using static StepManiaEditor.ImGuiUtils;
@@ -139,7 +138,9 @@ internal sealed class UIModals
 				var hasMessage = !string.IsNullOrEmpty(modal.Message);
 				// Draw the message.
 				if (hasMessage)
-					ImGui.TextWrapped(modal.Message);
+				{
+					ImGui.TextWrapped(EscapeTextForImGui(modal.Message));
+				}
 
 				// Draw any custom body UI.
 				if (modal.CustomBodyUI != null)
@@ -249,7 +250,7 @@ internal sealed class UIModals
 
 		if (open)
 		{
-			ImGui.Text(title);
+			ImGui.TextUnformatted(title);
 			ImGui.Separator();
 		}
 

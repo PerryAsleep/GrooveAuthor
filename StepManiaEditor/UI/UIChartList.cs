@@ -89,7 +89,7 @@ internal sealed class UIChartList : UIWindow
 
 			if (numCharts == 0)
 			{
-				ImGui.Text("No Charts");
+				ImGui.TextUnformatted("No Charts");
 			}
 
 			ImGui.Separator();
@@ -111,7 +111,7 @@ internal sealed class UIChartList : UIWindow
 
 				if (ImGui.BeginPopup("AddChartPopup"))
 				{
-					ImGui.Text("Type");
+					ImGui.TextUnformatted("Type");
 					ImGui.Separator();
 					foreach (var chartType in Editor.SupportedChartTypes)
 					{
@@ -188,7 +188,7 @@ internal sealed class UIChartList : UIWindow
 						ImGui.Separator();
 					}
 
-					ImGui.Text(GetPrettyEnumString(chartType));
+					ImGui.TextUnformatted(GetPrettyEnumString(chartType));
 
 					var width = ImGui.GetContentRegionAvail().X;
 					if (primaryChartList)
@@ -314,7 +314,7 @@ internal sealed class UIChartList : UIWindow
 		// Rating.
 		ImGui.TableSetColumnIndex(1);
 		ImGui.TableSetBgColor(ImGuiTableBgTarget.CellBg, color);
-		ImGui.Text(chart.Rating.ToString());
+		ImGui.TextUnformatted(chart.Rating.ToString());
 
 		// Description.
 		ImGui.TableSetColumnIndex(2);
@@ -331,12 +331,12 @@ internal sealed class UIChartList : UIWindow
 				}
 			}
 
-			ImGui.Text(chart.Description);
+			ImGui.TextUnformatted(chart.Description);
 			ImGui.PopStyleColor(colorPushCount);
 		}
 		else
 		{
-			ImGui.Text(chart.Description);
+			ImGui.TextUnformatted(chart.Description);
 		}
 
 		// If the selectable was right clicked, invoke the right click action.

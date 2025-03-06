@@ -202,13 +202,15 @@ internal class UILog : UIWindow
 								copyStringBuilder.Append(' ');
 							}
 
-							ImGui.Text(timeText);
+							ImGui.TextUnformatted(timeText);
 							ImGui.SameLine();
 						}
 
 						if (Preferences.Instance.LogWindowLineWrap)
 							ImGui.PushTextWrapPos();
-						ImGui.TextColored(LogWindowLevelColors[(int)message.Level], message.Message);
+						ImGui.PushStyleColor(ImGuiCol.Text, LogWindowLevelColors[(int)message.Level]);
+						ImGui.TextUnformatted(message.Message);
+						ImGui.PopStyleColor();
 						if (!first && !logDate)
 							copyStringBuilder?.Append('\n');
 						copyStringBuilder?.Append(message.Message);

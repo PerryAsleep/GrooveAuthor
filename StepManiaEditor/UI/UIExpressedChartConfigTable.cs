@@ -74,7 +74,7 @@ internal sealed class UIExpressedChartConfigTable
 
 				// Description.
 				ImGui.TableNextColumn();
-				ImGui.Text(config.Description ?? "");
+				ImGui.TextUnformatted(config.Description ?? "");
 
 				// Clone button.
 				ImGui.TableNextColumn();

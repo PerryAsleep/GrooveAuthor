@@ -51,7 +51,7 @@ internal sealed class UIReceptorPreferences : UIWindow
 	{
 		var p = Preferences.Instance.PreferencesReceptors;
 
-		ImGui.Text("Position");
+		ImGui.TextUnformatted("Position");
 		if (ImGuiLayoutUtils.BeginTable("Receptor Placement", TitleColumnWidth))
 		{
 			var pushDisabled = p.LockPosition;
@@ -81,7 +81,7 @@ internal sealed class UIReceptorPreferences : UIWindow
 		}
 
 		ImGui.Separator();
-		ImGui.Text("Animation Misc");
+		ImGui.TextUnformatted("Animation Misc");
 		if (ImGuiLayoutUtils.BeginTable("Receptor Animation Misc", TitleColumnWidth))
 		{
 			ImGuiLayoutUtils.DrawRowCheckbox(true, "Pulse Receptors", p, nameof(PreferencesReceptors.PulseReceptorsWithTempo),
@@ -91,7 +91,7 @@ internal sealed class UIReceptorPreferences : UIWindow
 		}
 
 		ImGui.Separator();
-		ImGui.Text("Autoplay Animations");
+		ImGui.TextUnformatted("Autoplay Animations");
 		if (ImGuiLayoutUtils.BeginTable("Receptor Animation Autoplay", TitleColumnWidth))
 		{
 			ImGuiLayoutUtils.DrawRowCheckbox(true, "Hide Arrows", p, nameof(PreferencesReceptors.AutoPlayHideArrows), false,
@@ -108,7 +108,7 @@ internal sealed class UIReceptorPreferences : UIWindow
 		}
 
 		ImGui.Separator();
-		ImGui.Text("Input Animations");
+		ImGui.TextUnformatted("Input Animations");
 		if (ImGuiLayoutUtils.BeginTable("Receptor Animation Input", TitleColumnWidth))
 		{
 			ImGuiLayoutUtils.DrawRowCheckbox(true, "Rim Effect", p, nameof(PreferencesReceptors.TapRimEffect), false,
