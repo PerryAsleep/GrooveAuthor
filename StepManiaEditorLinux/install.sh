@@ -7,7 +7,7 @@ if [ $(id -u) -ne 0 ]; then
 fi
 
 # Back up the existing install.
-if [ -d /opt/GrooveAuthor ]; then
+if [ -d /opt/grooveauthor ]; then
     echo "Backing up current GrooveAuthor installation."
     mv /opt/grooveauthor /opt/grooveauthor.old
 fi
@@ -29,7 +29,7 @@ echo "Adding desktop entry."
 ln -sf /opt/grooveauthor/GrooveAuthor.desktop /usr/share/applications
 
 # Remove backup.
-if [ -d /opt/GrooveAuthor.old ]; then
+if [ -d /opt/grooveauthor.old ]; then
     echo "Removing previous GrooveAuthor backup."
     rm -rf /opt/grooveauthor.old
 fi
