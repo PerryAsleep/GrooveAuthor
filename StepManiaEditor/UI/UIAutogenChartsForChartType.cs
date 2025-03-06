@@ -118,7 +118,7 @@ internal sealed class UIAutogenChartsForChartType : UIWindow
 				{
 					ImGuiLayoutUtils.DrawTitle(sourceTypeTitle, sourceTypeHelp);
 					ImGui.SameLine();
-					ImGui.Text("No available Charts.");
+					ImGui.TextUnformatted("No available Charts.");
 				}
 
 				// Destination ChartType.

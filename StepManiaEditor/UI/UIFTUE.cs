@@ -106,8 +106,8 @@ internal sealed class UIFTUE
 	{
 		if (OpenWindow($"Welcome##{version}", FtueWindowSize.Small))
 		{
-			ImGui.Text($"Thank you for installing {Utils.GetAppName()}."
-			           + $"\n\nPlease take a moment to set a few options so {Utils.GetAppName()} can provide you with the best experience.");
+			ImGui.TextUnformatted($"Thank you for installing {Utils.GetAppName()}."
+			                      + $"\n\nPlease take a moment to set a few options so {Utils.GetAppName()} can provide you with the best experience.");
 			DrawNextButton();
 			ImGui.EndPopup();
 		}
@@ -117,7 +117,7 @@ internal sealed class UIFTUE
 	{
 		if (OpenWindow($"Welcome##{version}DefaultChartType", FtueWindowSize.Small))
 		{
-			ImGui.Text("Which type of chart do you work with the most?");
+			ImGui.TextUnformatted("Which type of chart do you work with the most?");
 
 			ImGui.Separator();
 			if (ImGuiLayoutUtils.BeginTable("Default Chart Type", TitleColumnWidth))
@@ -135,7 +135,7 @@ internal sealed class UIFTUE
 	{
 		if (OpenWindow($"Welcome##{version}SongSync", FtueWindowSize.Small))
 		{
-			ImGui.Text("When creating new songs, how do you prefer them to be synced?");
+			ImGui.TextUnformatted("When creating new songs, how do you prefer them to be synced?");
 
 			ImGui.Separator();
 			if (ImGuiLayoutUtils.BeginTable("New Song Sync", TitleColumnWidth))
@@ -153,7 +153,8 @@ internal sealed class UIFTUE
 	{
 		if (OpenWindow($"Welcome##{version}DefaultSync", FtueWindowSize.Small))
 		{
-			ImGui.Text($"When opening existing songs with unknown sync, what default sync should {Utils.GetAppName()} use?");
+			ImGui.TextUnformatted(
+				$"When opening existing songs with unknown sync, what default sync should {Utils.GetAppName()} use?");
 
 			ImGui.Separator();
 			if (ImGuiLayoutUtils.BeginTable("Default Song Sync", TitleColumnWidth))
@@ -266,11 +267,11 @@ internal sealed class UIFTUE
 
 		if (open)
 		{
-			ImGui.Text("Welcome!");
+			ImGui.TextUnformatted("Welcome!");
 			ImGui.SameLine();
 			ImGui.Dummy(PageIndexPadding);
 			ImGui.SameLine();
-			ImGui.Text($"{Preferences.Instance.FtueIndex + 1}/{NumFtueSteps}");
+			ImGui.TextUnformatted($"{Preferences.Instance.FtueIndex + 1}/{NumFtueSteps}");
 			ImGui.Separator();
 		}
 

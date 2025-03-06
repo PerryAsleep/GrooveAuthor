@@ -4344,8 +4344,9 @@ public sealed class Editor :
 			{
 				if (ActionQueue.Instance.HasUnsavedChanges())
 				{
-					ImGui.TextColored(UILog.GetColor(LogLevel.Warn),
-						"Warning: There are unsaved changes. Reloading will lose these changes.");
+					ImGui.PushStyleColor(ImGuiCol.Text, UILog.GetColor(LogLevel.Warn));
+					ImGui.TextUnformatted("Warning: There are unsaved changes. Reloading will lose these changes.");
+					ImGui.PopStyleColor();
 					ImGui.Separator();
 				}
 

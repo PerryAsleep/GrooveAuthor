@@ -388,6 +388,20 @@ internal sealed class ImGuiUtils
 	}
 
 	/// <summary>
+	/// ImGui Text methods take printf-style format strings.
+	/// We need to escape the special printf characters otherwise ImGui will
+	/// draw malformed text or crash.
+	/// </summary>
+	/// <param name="text">Unformatted text.</param>
+	/// <returns>Text escaped for sending to ImGui.</returns>
+	public static string EscapeTextForImGui(string text)
+	{
+		if (!text.Contains('%'))
+			return text;
+		return text.Replace("%", "%%");
+	}
+
+	/// <summary>
 	/// Draws an ImGui Text element with a specified width.
 	/// </summary>
 	/// <param name="text">Text to display in the ImGUi Text element.</param>
@@ -409,9 +423,16 @@ internal sealed class ImGuiUtils
 			ImGui.TableNextRow();
 			ImGui.TableSetColumnIndex(0);
 			if (disabled)
-				ImGui.TextDisabled(text);
+			{
+				PushDisabled();
+				ImGui.TextUnformatted(text);
+				PopDisabled();
+			}
 			else
-				ImGui.Text(text);
+			{
+				ImGui.TextUnformatted(text);
+			}
+
 			ImGui.EndTable();
 		}
 	}
@@ -437,7 +458,9 @@ internal sealed class ImGuiUtils
 			ImGui.TableSetupColumn("", ImGuiTableColumnFlags.WidthStretch, 100.0f);
 			ImGui.TableNextRow();
 			ImGui.TableSetColumnIndex(0);
-			ImGui.TextColored(color, text);
+			ImGui.PushStyleColor(ImGuiCol.Text, color);
+			ImGui.TextUnformatted(text);
+			ImGui.PopStyleColor();
 			ImGui.EndTable();
 		}
 	}

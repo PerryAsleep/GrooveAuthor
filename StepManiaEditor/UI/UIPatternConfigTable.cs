@@ -133,21 +133,21 @@ internal sealed class UIPatternConfigTable
 				ImGui.PopStyleColor();
 
 				ImGui.TableNextColumn();
-				ImGui.Text(config.Config.MaxSameArrowsInARowPerFoot.ToString());
+				ImGui.TextUnformatted(config.Config.MaxSameArrowsInARowPerFoot.ToString());
 				ImGui.TableNextColumn();
-				ImGui.Text(config.GetStepTypeString());
+				ImGui.TextUnformatted(config.GetStepTypeString());
 				ImGui.TableNextColumn();
-				ImGui.Text(config.GetStepTypeCheckPeriodString());
+				ImGui.TextUnformatted(config.GetStepTypeCheckPeriodString());
 				ImGui.TableNextColumn();
-				ImGui.Text(config.GetStartingFootString());
+				ImGui.TextUnformatted(config.GetStartingFootString());
 				ImGui.TableNextColumn();
-				ImGui.Text(config.GetStartFootingString());
+				ImGui.TextUnformatted(config.GetStartFootingString());
 				ImGui.TableNextColumn();
-				ImGui.Text(config.GetEndFootingString());
+				ImGui.TextUnformatted(config.GetEndFootingString());
 				ImGui.TableNextColumn();
-				ImGui.Text(config.GetAbbreviation() ?? "");
+				ImGui.TextUnformatted(config.GetAbbreviation() ?? "");
 				ImGui.TableNextColumn();
-				ImGui.Text(config.Name ?? "");
+				ImGui.TextUnformatted(config.Name ?? "");
 
 				// Clone button.
 				ImGui.TableNextColumn();

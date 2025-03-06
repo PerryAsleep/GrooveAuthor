@@ -318,7 +318,7 @@ internal sealed class UIHotbar : UIWindow
 			ImGui.SameLine();
 		}
 
-		ImGui.Text(text);
+		ImGui.TextUnformatted(text);
 	}
 
 	private static void DrawPositionTableRow(string label, int x, int y, IReadOnlyEditorPosition position)
@@ -327,7 +327,7 @@ internal sealed class UIHotbar : UIWindow
 		var colIndex = 0;
 
 		ImGui.TableSetColumnIndex(colIndex++);
-		ImGui.Text(label);
+		ImGui.TextUnformatted(label);
 
 		DrawPositionTableCell($"({x}, {y})", ref colIndex);
 		DrawPositionTableCell(FormatTime(position.SongTime), ref colIndex);
@@ -353,18 +353,18 @@ internal sealed class UIHotbar : UIWindow
 		var delimiterIndex = text.LastIndexOfAny(delimiters);
 		if (delimiterIndex < 0)
 		{
-			ImGui.Text(text);
+			ImGui.TextUnformatted(text);
 		}
 		else
 		{
 			var firstText = text.Substring(0, delimiterIndex);
 			var secondText = text.Substring(delimiterIndex);
 
-			ImGui.Text(firstText);
+			ImGui.TextUnformatted(firstText);
 			ImGui.SameLine();
 
 			ImGui.PushStyleColor(ImGuiCol.Text, ColorTextGrey);
-			ImGui.Text(secondText);
+			ImGui.TextUnformatted(secondText);
 			ImGui.PopStyleColor();
 		}
 	}

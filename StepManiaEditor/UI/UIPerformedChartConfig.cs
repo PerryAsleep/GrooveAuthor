@@ -282,7 +282,7 @@ internal sealed class UIPerformedChartConfig : UIWindow
 						ImGui.TableNextRow();
 
 						ImGui.TableSetColumnIndex(0);
-						ImGui.Text(GetPrettyEnumString(chartType));
+						ImGui.TextUnformatted(GetPrettyEnumString(chartType));
 
 						ImGui.TableSetColumnIndex(1);
 						ArrowWeightsWidgets[index].DrawConfig(editor, editorConfig, chartType);

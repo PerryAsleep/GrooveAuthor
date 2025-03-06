@@ -155,7 +155,7 @@ internal sealed class ImGuiLayoutUtils
 
 		ImGui.TableSetColumnIndex(0);
 		if (!string.IsNullOrEmpty(title))
-			ImGui.Text(title);
+			ImGui.TextUnformatted(title);
 
 		ImGui.TableSetColumnIndex(1);
 	}
@@ -166,7 +166,7 @@ internal sealed class ImGuiLayoutUtils
 
 		ImGui.TableSetColumnIndex(0);
 		if (!string.IsNullOrEmpty(title))
-			ImGui.Text(title);
+			ImGui.TextUnformatted(title);
 
 		ImGui.TableSetColumnIndex(1);
 		ImGui.SetNextItemWidth(DrawHelp(help, ImGui.GetContentRegionAvail().X));
@@ -176,7 +176,7 @@ internal sealed class ImGuiLayoutUtils
 	{
 		DrawRowTitleAndAdvanceColumn(title);
 		ImGui.SetNextItemWidth(DrawHelp(help, ImGui.GetContentRegionAvail().X));
-		ImGui.Text(text);
+		ImGui.TextUnformatted(text);
 	}
 
 	public static void DrawRowTitleAndTextWithButton(string title, string text, Action buttonAction, string buttonText,
@@ -2428,7 +2428,7 @@ internal sealed class ImGuiLayoutUtils
 
 					// "to" text to split the min and max.
 					ImGui.SameLine();
-					ImGui.Text("to");
+					ImGui.TextUnformatted("to");
 
 					// DragDouble for the max.
 					ImGui.SetNextItemWidth(splitTempoWidth);

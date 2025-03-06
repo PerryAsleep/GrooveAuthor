@@ -150,20 +150,20 @@ THE SOFTWARE.";
 			var version = Utils.GetAppVersion();
 
 			if (version != null)
-				ImGui.Text($"{appName} {Utils.GetPrettyVersion(version)}");
+				ImGui.TextUnformatted($"{appName} {Utils.GetPrettyVersion(version)}");
 			else
-				ImGui.Text(appName);
+				ImGui.TextUnformatted(appName);
 			var latestVersion = Utils.GetAppLatestVersion();
 			var latestVersionUrl = Utils.GetLatestVersionUrl();
 			if (version != null && latestVersion != null && !string.IsNullOrEmpty(latestVersionUrl))
 			{
 				if (latestVersion <= version)
 				{
-					ImGui.Text("You are on the latest version.");
+					ImGui.TextUnformatted("You are on the latest version.");
 				}
 				else
 				{
-					ImGui.Text("An update is available. ");
+					ImGui.TextUnformatted("An update is available. ");
 					ImGui.SameLine(0, 0);
 					ImGui.TextLinkOpenURL(latestVersionUrl);
 				}
@@ -171,22 +171,22 @@ THE SOFTWARE.";
 
 			if (ImGui.CollapsingHeader("License"))
 			{
-				ImGui.Text(LicenseStepManiaEditor);
+				ImGui.TextUnformatted(LicenseStepManiaEditor);
 			}
 
 			ImGui.Separator();
-			ImGui.Text($"{appName} is built with the following technologies.");
+			ImGui.TextUnformatted($"{appName} is built with the following technologies.");
 
 			ImGui.Separator();
 			if (ImGui.CollapsingHeader("MonoGame"))
 			{
-				ImGui.Text(LicenseMonoGameMspl);
+				ImGui.TextUnformatted(LicenseMonoGameMspl);
 				ImGui.Separator();
-				ImGui.Text(LicenseMonoGameMit);
+				ImGui.TextUnformatted(LicenseMonoGameMit);
 			}
 
 			ImGui.Separator();
-			ImGui.Text("FMOD Studio by Firelight Technologies Pty Ltd.");
+			ImGui.TextUnformatted("FMOD Studio by Firelight Technologies Pty Ltd.");
 		}
 
 		ImGui.End();

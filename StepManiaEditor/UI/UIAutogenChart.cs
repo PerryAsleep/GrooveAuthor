@@ -90,7 +90,7 @@ internal sealed class UIAutogenChart : UIWindow
 				}
 				else
 				{
-					ImGui.Text("No available Charts.");
+					ImGui.TextUnformatted("No available Charts.");
 				}
 
 				// Expressed Chart Config.

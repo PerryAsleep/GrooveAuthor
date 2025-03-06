@@ -158,15 +158,15 @@ internal sealed class UIChartProperties : UIWindow
 
 						ImGui.TableNextRow();
 						ImGui.TableNextColumn();
-						ImGui.Text("Step NPS");
+						ImGui.TextUnformatted("Step NPS");
 						ToolTip("Multiple notes on the same row are considered distinct notes.");
 						ImGui.TableNextColumn();
-						ImGui.Text($"{Editor.GetActiveChartPeakNPS():F2}n/s");
+						ImGui.TextUnformatted($"{Editor.GetActiveChartPeakNPS():F2}n/s");
 						ImGui.TableNextColumn();
-						ImGui.Text("Row NPS");
+						ImGui.TextUnformatted("Row NPS");
 						ToolTip("Multiple notes on the same row are considered one note.");
 						ImGui.TableNextColumn();
-						ImGui.Text($"{Editor.GetActiveChartPeakRPS():F2}n/s");
+						ImGui.TextUnformatted($"{Editor.GetActiveChartPeakRPS():F2}n/s");
 
 						ImGui.EndTable();
 					}
@@ -195,44 +195,44 @@ internal sealed class UIChartProperties : UIWindow
 
 						ImGui.TableNextRow();
 						ImGui.TableNextColumn();
-						ImGui.Text("Notes");
+						ImGui.TextUnformatted("Notes");
 						ToolTip(
 							"Total note count. Multiple notes on the same row are counted as distinct notes. Fakes are not counted as notes.");
 						ImGui.TableNextColumn();
-						ImGui.Text($"{stepTotals?.GetStepCount() ?? 0:N0}");
+						ImGui.TextUnformatted($"{stepTotals?.GetStepCount() ?? 0:N0}");
 						ImGui.TableNextColumn();
-						ImGui.Text("Holds");
+						ImGui.TextUnformatted("Holds");
 						ToolTip("Total hold count. Fakes are not counted as holds.");
 						ImGui.TableNextColumn();
-						ImGui.Text($"{stepTotals?.GetHoldCount() ?? 0:N0}");
+						ImGui.TextUnformatted($"{stepTotals?.GetHoldCount() ?? 0:N0}");
 						ImGui.TableNextColumn();
-						ImGui.Text("Lifts");
+						ImGui.TextUnformatted("Lifts");
 						ToolTip("Total lift count. Fakes are not counted as lifts.");
 						ImGui.TableNextColumn();
-						ImGui.Text($"{stepTotals?.GetLiftCount() ?? 0:N0}");
+						ImGui.TextUnformatted($"{stepTotals?.GetLiftCount() ?? 0:N0}");
 						ImGui.TableNextRow();
 						ImGui.TableNextColumn();
-						ImGui.Text("Steps");
+						ImGui.TextUnformatted("Steps");
 						ToolTip(
 							"Total step count. Multiple notes on the same row are counted as one step. Fakes are not counted as steps.");
 						ImGui.TableNextColumn();
-						ImGui.Text($"{stepTotals?.GetNumRowsWithSteps() ?? 0:N0}");
+						ImGui.TextUnformatted($"{stepTotals?.GetNumRowsWithSteps() ?? 0:N0}");
 						ImGui.TableNextColumn();
-						ImGui.Text("Rolls");
+						ImGui.TextUnformatted("Rolls");
 						ToolTip("Total roll count. Fakes are not counted as rolls.");
 						ImGui.TableNextColumn();
-						ImGui.Text($"{stepTotals?.GetRollCount() ?? 0:N0}");
+						ImGui.TextUnformatted($"{stepTotals?.GetRollCount() ?? 0:N0}");
 						ImGui.TableNextColumn();
-						ImGui.Text("Fakes");
+						ImGui.TextUnformatted("Fakes");
 						ToolTip("Total fake count.");
 						ImGui.TableNextColumn();
-						ImGui.Text($"{stepTotals?.GetFakeCount() ?? 0:N0}");
+						ImGui.TextUnformatted($"{stepTotals?.GetFakeCount() ?? 0:N0}");
 						ImGui.TableNextRow();
 						ImGui.TableNextColumn();
-						ImGui.Text("Mines");
+						ImGui.TextUnformatted("Mines");
 						ToolTip("Total mine count.");
 						ImGui.TableNextColumn();
-						ImGui.Text($"{stepTotals?.GetMineCount() ?? 0:N0}");
+						ImGui.TextUnformatted($"{stepTotals?.GetMineCount() ?? 0:N0}");
 
 						ImGui.EndTable();
 					}

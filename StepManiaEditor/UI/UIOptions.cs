@@ -137,7 +137,7 @@ internal class UIOptions : UIWindow
 			}
 
 			ImGui.Separator();
-			ImGui.Text("Suppress Notifications");
+			ImGui.TextUnformatted("Suppress Notifications");
 			if (ImGuiLayoutUtils.BeginTable("Options Notifications", TitleColumnWidth))
 			{
 				ImGuiLayoutUtils.DrawRowCheckbox(true, "Song Modified", p,

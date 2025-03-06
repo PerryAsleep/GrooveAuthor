@@ -185,7 +185,7 @@ internal class UICopyEventsBetweenCharts : UIWindow
 				}
 				else
 				{
-					ImGui.Text("No available charts.");
+					ImGui.TextUnformatted("No available charts.");
 				}
 
 				// Events to copy.
@@ -289,7 +289,7 @@ internal class UICopyEventsBetweenCharts : UIWindow
 					}
 					else
 					{
-						ImGui.Text("No available charts.");
+						ImGui.TextUnformatted("No available charts.");
 					}
 				}
 
