@@ -9,7 +9,7 @@ fi
 # Back up the existing install.
 if [ -d /opt/GrooveAuthor ]; then
     echo "Backing up current GrooveAuthor installation."
-    mv /opt/GrooveAuthor /opt/GrooveAuthor.old
+    mv /opt/grooveAuthor /opt/grooveAuthor.old
 fi
 
 cd "$(dirname "$0")"
@@ -22,16 +22,16 @@ fi
 
 # Copy the application.
 echo "Installing GrooveAuthor."
-cp -R --preserve=mode,timestamps GrooveAuthor /opt
+cp -R --preserve=mode,timestamps grooveAuthor /opt
 
 # Configure the dekstop entry.
 echo "Adding desktop entry."
-ln -sf /opt/GrooveAuthor/GrooveAuthor.desktop /usr/share/applications
+ln -sf /opt/grooveAuthor/GrooveAuthor.desktop /usr/share/applications
 
 # Remove backup.
 if [ -d /opt/GrooveAuthor.old ]; then
     echo "Removing previous GrooveAuthor backup."
-    rm -rf /opt/GrooveAuthor.old
+    rm -rf /opt/grooveAuthor.old
 fi
 
 echo "Done."
