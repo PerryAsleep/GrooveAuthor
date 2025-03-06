@@ -98,6 +98,11 @@ internal abstract class Build
 
 	#region Helpers
 
+	protected string GetRelativeProjectDirectory()
+	{
+		return $@"{RelativeProjectRoot}\{ProjectName}";
+	}
+
 	protected string GetRelativeBinRootDirectory()
 	{
 		return $@"{RelativeProjectRoot}\{ProjectName}\bin\Release";
