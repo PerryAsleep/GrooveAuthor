@@ -8,6 +8,10 @@ namespace PackageBuild;
 /// </summary>
 internal sealed class BuildLinux : Build
 {
+	private const string InstallScriptSourceName = "install.sh";
+	private const string InstallScriptDestName = "grooveauthor-install.sh";
+	private static readonly string AppDirName = AppName.ToLower();
+
 	private string SudoPassword;
 
 	public BuildLinux() : base(
@@ -26,40 +30,50 @@ internal sealed class BuildLinux : Build
 
 		// Create a temp directory for packaging. Use a directory outside
 		// the Windows filesystem so that we can set unix permissions.
-		var tempDirectory = $"/tmp/{AppName}";
-		Console.WriteLine($"Creating temporary directory: {tempDirectory}");
-		if (!ExecuteWslCommand($"rm -rf {tempDirectory}", true)
-		    || !ExecuteWslCommand($"mkdir {tempDirectory}", true))
+		var tempDirectory = "/tmp";
+		var tempAppDirectory = $"{tempDirectory}/{AppDirName}";
+		Console.WriteLine($"Creating temporary directory: {tempAppDirectory}");
+		if (!ExecuteWslCommand($"rm -rf {tempAppDirectory}", true)
+		    || !ExecuteWslCommand($"mkdir {tempAppDirectory}", true))
 		{
-			Console.WriteLine($"Failed creating temporary directory {tempDirectory}.");
+			Console.WriteLine($"Failed creating temporary directory {tempAppDirectory}.");
 			return false;
 		}
 
 		// Copy product to temp directory.
 		Console.WriteLine("Copying product to temporary directory.");
-		if (!ExecuteWslCommand($"cp -r {ConvertPathToUnix(GetRelativeBinaryDirectory())}/* {tempDirectory}/", true))
+		if (!ExecuteWslCommand($"cp -r {ConvertPathToUnix(GetRelativeBinaryDirectory())}/* {tempAppDirectory}/", true))
 		{
-			Console.WriteLine($"Failed copying product to temporary directory {tempDirectory}.");
+			Console.WriteLine($"Failed copying product to temporary directory {tempAppDirectory}.");
 			return false;
 		}
 
+		// Copy the installation script over as a sibling of the temp directory.
+		if (!ExecuteWslCommand($"cp -r {ConvertPathToUnix(GetRelativeProjectDirectory())}/{InstallScriptSourceName} {tempDirectory}/{InstallScriptDestName}", true))
+		{
+			Console.WriteLine($"Failed copying installation script to temporary directory {tempAppDirectory}.");
+			return false;
+		}
+
+
 		// Update unix permissions.
 		Console.WriteLine("Updating unix permissions");
-		if (!ExecuteWslCommand($"find {tempDirectory} -type f -exec chmod 644 {{}} +", true)
-		    || !ExecuteWslCommand($"find {tempDirectory} -type d -exec chmod 755 {{}} +", true)
-		    || !ExecuteWslCommand($"chmod 755 {tempDirectory}/{AppName}", true))
+		if (!ExecuteWslCommand($"find {tempAppDirectory} -type f -exec chmod 644 {{}} +", true)
+		    || !ExecuteWslCommand($"find {tempAppDirectory} -type d -exec chmod 755 {{}} +", true)
+		    || !ExecuteWslCommand($"chmod 755 {tempAppDirectory}/{AppName}", true)
+		    || !ExecuteWslCommand($"chmod 755 {tempDirectory}/{InstallScriptDestName}", true))
 		{
 			Console.WriteLine("Failed updating unix permissions.");
 			return false;
 		}
 
 		// Fix symlinks.
-		if (!ExecuteWslCommand($"rm {tempDirectory}/libfmod.so", true)
-		    || !ExecuteWslCommand($"rm {tempDirectory}/libfmod.so.13", true)
-		    || !ExecuteWslCommand($"rm {tempDirectory}/libSkiaSharp.so", true)
-		    || !ExecuteWslCommand($"ln -sr {tempDirectory}/libfmod.so.13.3 {tempDirectory}/libfmod.so", true)
-		    || !ExecuteWslCommand($"ln -sr {tempDirectory}/libfmod.so.13.3 {tempDirectory}/libfmod.so.13", true)
-		    || !ExecuteWslCommand($"ln -sr {tempDirectory}/libSkiaSharp.so.116.0.0 {tempDirectory}/libSkiaSharp.so", true))
+		if (!ExecuteWslCommand($"rm {tempAppDirectory}/libfmod.so", true)
+		    || !ExecuteWslCommand($"rm {tempAppDirectory}/libfmod.so.13", true)
+		    || !ExecuteWslCommand($"rm {tempAppDirectory}/libSkiaSharp.so", true)
+		    || !ExecuteWslCommand($"ln -sr {tempAppDirectory}/libfmod.so.13.3 {tempAppDirectory}/libfmod.so", true)
+		    || !ExecuteWslCommand($"ln -sr {tempAppDirectory}/libfmod.so.13.3 {tempAppDirectory}/libfmod.so.13", true)
+		    || !ExecuteWslCommand($"ln -sr {tempAppDirectory}/libSkiaSharp.so.116.0.0 {tempAppDirectory}/libSkiaSharp.so", true))
 		{
 			Console.WriteLine("Failed updating library symlinks.");
 			return false;
@@ -77,14 +91,15 @@ internal sealed class BuildLinux : Build
 
 		// Archive.
 		Console.WriteLine($"Archiving to: {archiveFile}");
-		if (!ExecuteWslCommand($"tar -cf {ConvertPathToUnix(archiveFile)} -C \"{tempDirectory}/..\" {AppName}", false))
+		if (!ExecuteWslCommand($"tar -cf {ConvertPathToUnix(archiveFile)} -C {tempDirectory} {AppDirName} {InstallScriptDestName}", false))
 		{
 			Console.WriteLine($"Packaging {archiveFile} failed.");
 			return false;
 		}
 
-		// Clean up temp directory.
-		ExecuteWslCommand($"rm -rf {tempDirectory}", true);
+		// Clean up temp data.
+		ExecuteWslCommand($"rm -rf {tempAppDirectory}", true);
+		ExecuteWslCommand($"rm -f {tempDirectory}/{InstallScriptDestName}", true);
 
 		// Remove existing compressed artifact.
 		var compressedFile = $"{archiveFile}.gz";
