@@ -49,7 +49,9 @@ internal sealed class BuildLinux : Build
 		}
 
 		// Copy the installation script over as a sibling of the temp directory.
-		if (!ExecuteWslCommand($"cp -r {ConvertPathToUnix(GetRelativeProjectDirectory())}/{InstallScriptSourceName} {tempDirectory}/{InstallScriptDestName}", true))
+		if (!ExecuteWslCommand(
+			    $"cp -r {ConvertPathToUnix(GetRelativeProjectDirectory())}/{InstallScriptSourceName} {tempDirectory}/{InstallScriptDestName}",
+			    true))
 		{
 			Console.WriteLine($"Failed copying installation script to temporary directory {tempAppDirectory}.");
 			return false;
@@ -91,7 +93,8 @@ internal sealed class BuildLinux : Build
 
 		// Archive.
 		Console.WriteLine($"Archiving to: {archiveFile}");
-		if (!ExecuteWslCommand($"tar -cf {ConvertPathToUnix(archiveFile)} -C {tempDirectory} {AppDirName} {InstallScriptDestName}", false))
+		if (!ExecuteWslCommand(
+			    $"tar -cf {ConvertPathToUnix(archiveFile)} -C {tempDirectory} {AppDirName} {InstallScriptDestName}", false))
 		{
 			Console.WriteLine($"Packaging {archiveFile} failed.");
 			return false;
