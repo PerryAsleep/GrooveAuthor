@@ -43,37 +43,10 @@ internal sealed class EditorLinuxInterface : IEditorPlatform
 		// Fallback.
 		PersistenceDirectory = Editor.GetAssemblyPath();
 
-		string homeDir;
-		try
-		{
-			homeDir = Environment.GetEnvironmentVariable("HOME");
-		}
-		catch(Exception e)
-		{
-			Console.WriteLine($"Failed creating creating persistence directory. Could not read HOME directory. {e}");
+		if (!TryGetDataHomeDirectory(out var dataHomeDirectory))
 			return;
-		}
-		var desiredBaseDir = $"{homeDir}/.local/share";
-		var desiredPersistenceDir = $"{desiredBaseDir}/grooveauthor";
 
-		if (!Directory.Exists(desiredBaseDir))
-		{
-			try
-			{
-				Directory.CreateDirectory(desiredBaseDir,
-					UnixFileMode.UserRead
-					| UnixFileMode.UserWrite
-					| UnixFileMode.UserExecute);
-			}
-			catch (Exception e)
-			{
-				// We have to log to the console here instead of using the Logger because the Logger
-				// depends on these directories.
-				Console.WriteLine($"Failed creating {desiredBaseDir}. {e}");
-				return;
-			}
-		}
-
+		var desiredPersistenceDir = $"{dataHomeDirectory}/grooveauthor";
 		if (!Directory.Exists(desiredPersistenceDir))
 		{
 			try
@@ -97,6 +70,54 @@ internal sealed class EditorLinuxInterface : IEditorPlatform
 		}
 
 		PersistenceDirectory = desiredPersistenceDir;
+	}
+
+	private bool TryGetDataHomeDirectory(out string directory)
+	{
+		// Try to use $XDG_DATA_HOME for persistence.
+		directory = null;
+		try
+		{
+			directory = Environment.GetEnvironmentVariable("XDG_DATA_HOME");
+		}
+		catch(Exception)
+		{
+			// Ignored
+		}
+		if (!string.IsNullOrEmpty(directory))
+		{
+			return true;
+		}
+
+		// If XDG_DATA_HOME is not set or empty, prefer $HOME/.local/share
+		try
+		{
+			directory = Environment.GetEnvironmentVariable("HOME");
+		}
+		catch(Exception e)
+		{
+			Console.WriteLine($"Failed creating creating persistence directory. Could not read HOME directory. {e}");
+			return false;
+		}
+		directory = $"{directory}/.local/share";
+		if (!Directory.Exists(directory))
+		{
+			try
+			{
+				Directory.CreateDirectory(directory,
+					UnixFileMode.UserRead
+					| UnixFileMode.UserWrite
+					| UnixFileMode.UserExecute);
+			}
+			catch (Exception e)
+			{
+				// We have to log to the console here instead of using the Logger because the Logger
+				// depends on these directories.
+				Console.WriteLine($"Failed creating {directory}. {e}");
+				return false;
+			}
+		}
+		return true;
 	}
 
 	#region Sounds
