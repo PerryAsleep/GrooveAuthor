@@ -6,6 +6,8 @@
 # Fumen
 notes.txt
 message.txt
+.DS_Store
+.vscode/*
 
 # User-specific files
 *.rsuser
