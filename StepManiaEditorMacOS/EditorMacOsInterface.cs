@@ -1,12 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Text;
-using System.Threading;
+using AppKit;
+using Foundation;
 using Fumen;
-using Gtk;
 using Microsoft.Xna.Framework;
 using StepManiaEditor;
+using UniformTypeIdentifiers;
 using Path = Fumen.Path;
 
 namespace StepManiaEditorMacOs;
@@ -23,14 +23,6 @@ internal sealed class EditorMacOsInterface : IEditorPlatform
 
 	public void Initialize()
 	{
-		// Initialize GTK but prevent it from modifying the SynchronizationContext.
-		// It will set it to a GLibSynchronizationContext which will run every async
-		// continuation on the main thread which results in nested async operations
-		// locking up the main thread.
-		var sc = SynchronizationContext.Current;
-		Application.Init();
-		SynchronizationContext.SetSynchronizationContext(sc);
-
 		// Ensure the directory we need to use for persistence is available.
 		InitializePersistenceDirectory();
 	}
@@ -114,82 +106,37 @@ internal sealed class EditorMacOsInterface : IEditorPlatform
 
 	public (bool, string) ShowSaveSimFileDialog(string initialDirectory, string fileName, FileFormatType? fileFormatType)
 	{
-		var confirmed = false;
-		string savedFileName = null;
-		var dialog = new FileChooserDialog("Save As...",
-			null,
-			FileChooserAction.Save,
-			"Cancel", ResponseType.Cancel,
-			"Save", ResponseType.Accept);
-		dialog.Modal = true;
-		dialog.KeepAbove = true;
-
-		var sscFileFilter = new FileFilter();
-		sscFileFilter.Name = "SSC File";
-		sscFileFilter.AddPattern("*.ssc");
-		dialog.AddFilter(sscFileFilter);
-
-		var smFileFilter = new FileFilter();
-		smFileFilter.Name = "SM File";
-		smFileFilter.AddPattern("*.sm");
-		dialog.AddFilter(smFileFilter);
-
-		dialog.Filter = fileFormatType == FileFormatType.SM ? smFileFilter : sscFileFilter;
-		dialog.CurrentName = fileName;
-		dialog.SetCurrentFolder(initialDirectory);
-
-		if (dialog.Run() == (int)ResponseType.Accept)
-		{
-			confirmed = true;
-			savedFileName = dialog.Filename;
-		}
-
-		dialog.Destroy();
-		return (confirmed, savedFileName);
+		var savePanel = NSSavePanel.SavePanel;
+		savePanel.Title = "Save As...";
+		savePanel.AllowedContentTypes = [UTType.CreateFromExtension("ssc"), UTType.CreateFromExtension("sm")];
+		savePanel.AllowsOtherFileTypes = false;
+		savePanel.DirectoryUrl = NSUrl.FromString(initialDirectory);
+		savePanel.NameFieldStringValue = fileName;
+		savePanel.CanCreateDirectories = true;
+		savePanel.ExtensionHidden = false;
+		var result = (NSModalResponse)savePanel.RunModal();
+		var confirmed = result == NSModalResponse.OK;
+		return (confirmed, savePanel.Url.Path);
 	}
 
 	public (bool, string) ShowOpenSimFileDialog(string initialDirectory)
 	{
-		var openedFile = false;
-		string fileName = null;
-		var dialog = new FileChooserDialog("Open File",
-			null,
-			FileChooserAction.Open,
-			"Cancel", ResponseType.Cancel,
-			"Open", ResponseType.Accept);
-		dialog.Modal = true;
-		dialog.KeepAbove = true;
-
-		var simFileFilter = new FileFilter();
-		simFileFilter.Name = "StepMania Files (*.sm,*.ssc)";
-		simFileFilter.AddPattern("*.sm");
-		simFileFilter.AddPattern("*.ssc");
-		dialog.AddFilter(simFileFilter);
-
-		var allFileFilter = new FileFilter();
-		allFileFilter.Name = "All Files (*.*)";
-		allFileFilter.AddPattern("*.*");
-		dialog.AddFilter(allFileFilter);
-
-		dialog.Filter = simFileFilter;
-
-		if (!string.IsNullOrEmpty(initialDirectory))
-			dialog.SetCurrentFolder(initialDirectory);
-
-		if (dialog.Run() == (int)ResponseType.Accept)
-		{
-			openedFile = true;
-			fileName = dialog.Filename;
-		}
-
-		dialog.Destroy();
-		return (openedFile, fileName);
+		var openPanel = NSOpenPanel.OpenPanel;
+		openPanel.AllowedContentTypes = [UTType.CreateFromExtension("ssc"), UTType.CreateFromExtension("sm")];
+		openPanel.DirectoryUrl = NSUrl.FromString(initialDirectory ?? "");
+		openPanel.AllowsMultipleSelection = false;
+		openPanel.CanChooseDirectories = false;
+		openPanel.CanChooseFiles = true;
+		var result = (NSModalResponse)openPanel.RunModal();
+		var confirmed = result == NSModalResponse.OK;
+		return (confirmed, openPanel.Url.Path);
 	}
 
 	public string BrowseFile(string name, string initialDirectory, string currentFileRelativePath, List<string[]> extensionTypes,
 		bool includeAllFiles)
 	{
 		string relativePath = null;
+
 		var startInitialDirectory = initialDirectory;
 		if (!string.IsNullOrEmpty(currentFileRelativePath))
 		{
@@ -197,56 +144,34 @@ internal sealed class EditorMacOsInterface : IEditorPlatform
 			initialDirectory = System.IO.Path.GetDirectoryName(initialDirectory);
 		}
 
-		var dialog = new FileChooserDialog($"Open {name} File",
-			null,
-			FileChooserAction.Open,
-			"Cancel", ResponseType.Cancel,
-			"Open", ResponseType.Accept);
-		dialog.Modal = true;
-		dialog.KeepAbove = true;
-
-		var filter = new FileFilter();
-		var sb = new StringBuilder();
-		sb.Append(name);
-		sb.Append(" Files (");
-		var first = true;
-		foreach (var extensions in extensionTypes)
+		var openPanel = NSOpenPanel.OpenPanel;
+		openPanel.Title = $"Open {name} File";
+		if (!includeAllFiles)
 		{
-			foreach (var extension in extensions)
+			var allowedContentTypes = new List<UTType>();
+			foreach (var extensionType in extensionTypes)
 			{
-				if (!first)
-					sb.Append(',');
-				var pattern = $"*.{extension}";
-				sb.Append(pattern);
-				filter.AddPattern(pattern);
-				first = false;
+				foreach (var extension in extensionType)
+				{
+					allowedContentTypes.Add(UTType.CreateFromExtension(extension));
+				}
 			}
+
+			openPanel.AllowedContentTypes = allowedContentTypes.ToArray();
 		}
 
-		sb.Append(')');
-		filter.Name = sb.ToString();
-		dialog.AddFilter(filter);
-
-		if (includeAllFiles)
+		openPanel.DirectoryUrl = NSUrl.FromString(initialDirectory ?? "");
+		openPanel.AllowsMultipleSelection = false;
+		openPanel.CanChooseDirectories = false;
+		openPanel.CanChooseFiles = true;
+		var result = (NSModalResponse)openPanel.RunModal();
+		var confirmed = result == NSModalResponse.OK;
+		if (confirmed)
 		{
-			var allFileFilter = new FileFilter();
-			allFileFilter.Name = "All Files (*.*)";
-			allFileFilter.AddPattern("*.*");
-			dialog.AddFilter(allFileFilter);
-		}
-
-		dialog.Filter = filter;
-
-		if (!string.IsNullOrEmpty(initialDirectory))
-			dialog.SetCurrentFolder(initialDirectory);
-
-		if (dialog.Run() == (int)ResponseType.Accept)
-		{
-			var fileName = dialog.Filename;
+			var fileName = openPanel.Url.Path;
 			relativePath = Path.GetRelativePath(startInitialDirectory, fileName);
 		}
 
-		dialog.Destroy();
 		return relativePath;
 	}
 
@@ -254,7 +179,5 @@ internal sealed class EditorMacOsInterface : IEditorPlatform
 
 	public void Update(GameTime gameTime)
 	{
-		while (Application.EventsPending())
-			Application.RunIteration();
 	}
 }
