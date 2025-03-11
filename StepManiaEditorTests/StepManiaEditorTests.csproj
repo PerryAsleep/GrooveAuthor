@@ -6,6 +6,8 @@
 		<Nullable>disable</Nullable>
 		<IsPackable>false</IsPackable>
 		<IsTestProject>true</IsTestProject>
+	</PropertyGroup>
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
 		<PathMap>$(MSBuildProjectDirectory)=.</PathMap>
 	</PropertyGroup>
 

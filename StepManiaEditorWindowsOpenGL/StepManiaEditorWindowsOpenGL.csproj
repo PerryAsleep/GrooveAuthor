@@ -6,6 +6,8 @@
 		<TieredCompilation>false</TieredCompilation>
 		<UseWindowsForms>true</UseWindowsForms>
 		<MonoGamePlatform>DesktopGL</MonoGamePlatform>
+	</PropertyGroup>
+	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
 		<PathMap>$(MSBuildProjectDirectory)=.</PathMap>
 	</PropertyGroup>
 	<PropertyGroup>
