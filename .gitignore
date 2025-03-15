@@ -8,6 +8,8 @@ notes.txt
 message.txt
 .DS_Store
 .vscode/*
+!.vscode/launch.json
+!.vscode/tasks.json
 
 # User-specific files
 *.rsuser
