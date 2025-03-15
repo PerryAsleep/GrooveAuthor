@@ -38,6 +38,20 @@
 			"logging": {
 				"moduleLoad": false
 			}
+		},
+		{
+			"name": "Linux Release",
+			"type": "coreclr",
+			"request": "launch",
+			"preLaunchTask": "Build Linux Release",
+			"program": "${workspaceFolder}/StepManiaEditorLinux/bin/Release/net8.0/linux-x64/GrooveAuthor.dll",
+			"args": [],
+			"cwd": "${workspaceFolder}",
+			"stopAtEntry": false,
+			"console": "internalConsole",
+			"logging": {
+				"moduleLoad": false
+			}
 		}
 	]
 }
