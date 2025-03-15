@@ -150,6 +150,11 @@ internal sealed class EditorLinuxInterface : IEditorPlatform
 		return $"{PersistenceDirectory}/AutogenConfigs";
 	}
 
+	public string GetResourceDirectory()
+	{
+		return AppDomain.CurrentDomain.BaseDirectory;
+	}
+
 	public (bool, string) ShowSaveSimFileDialog(string initialDirectory, string fileName, FileFormatType? fileFormatType)
 	{
 		var confirmed = false;

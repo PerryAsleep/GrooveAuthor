@@ -559,7 +559,7 @@ public sealed class Editor :
 	private void InitializeMusicManager()
 	{
 		var p = Preferences.Instance.PreferencesAudio;
-		MusicManager = new MusicManager(SoundManager, p.AudioOffset);
+		MusicManager = new MusicManager(SoundManager, p.AudioOffset, PlatformInterface.GetResourceDirectory());
 		MusicManager.SetMusicRate(p.MusicRate);
 		MusicManager.SetMainVolume(p.MainVolume);
 		MusicManager.SetMusicVolume(p.MusicVolume);
@@ -843,7 +843,7 @@ public sealed class Editor :
 		try
 		{
 			var guiScale = GetDpiScale();
-			var path = GetAssemblyPath();
+			var path = PlatformInterface.GetResourceDirectory();
 			var mPlusFontPath = Path.Combine([path, "Content", "Mplus1Code-Medium.ttf"]);
 			ImGuiFont = ImGui.GetIO().Fonts.AddFontFromFileTTF(mPlusFontPath, (int)(15 * guiScale), null,
 				ImGui.GetIO().Fonts.GetGlyphRangesJapanese());
@@ -983,17 +983,17 @@ public sealed class Editor :
 	private void LoadTextureAtlas()
 	{
 		var atlasFileName = "atlas.json";
-		var fullAtlasFileName = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, atlasFileName);
+		var fullAtlasFileName = Path.Combine(PlatformInterface.GetResourceDirectory(), atlasFileName);
 		if (!File.Exists(fullAtlasFileName))
 		{
 			Logger.Error($"Could not find texture atlas file {atlasFileName}.");
-			TextureAtlas = new StaticTextureAtlas(new Texture2D(GraphicsDevice, 0, 0));
+			TextureAtlas = new StaticTextureAtlas(new Texture2D(GraphicsDevice, 1, 1));
 			return;
 		}
 
 		// Initialize the TextureAtlas
 		TextureAtlas = StaticTextureAtlas.Load(Content, "atlas", fullAtlasFileName)
-		               ?? new StaticTextureAtlas(new Texture2D(GraphicsDevice, 0, 0));
+		               ?? new StaticTextureAtlas(new Texture2D(GraphicsDevice, 1, 1));
 
 		// Register the TextureAtlas's texture with ImGui so it can be drawn in UI.
 		TextureAtlasImGuiTexture = ImGuiRenderer.BindTexture(TextureAtlas.GetTexture());
@@ -4503,7 +4503,7 @@ public sealed class Editor :
 		}
 
 		// Load the default StepTypeFallbacks.
-		StepTypeFallbacks = await StepTypeFallbacks.Load(StepTypeFallbacks.DefaultFallbacksFileName);
+		StepTypeFallbacks = await StepTypeFallbacks.Load(Path.Combine(PlatformInterface.GetResourceDirectory(), StepTypeFallbacks.DefaultFallbacksFileName));
 	}
 
 	/// <summary>
@@ -4511,12 +4511,12 @@ public sealed class Editor :
 	/// </summary>
 	/// <param name="chartType">ChartType to load PadData for.</param>
 	/// <returns>Loaded PadData or null if any errors were generated.</returns>
-	private static async Task<PadData> LoadPadData(ChartType chartType)
+	private async Task<PadData> LoadPadData(ChartType chartType)
 	{
 		var chartTypeString = ChartTypeString(chartType);
 		var fileName = $"{chartTypeString}.json";
 
-		var fullFileName = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, fileName);
+		var fullFileName = Path.Combine(PlatformInterface.GetResourceDirectory(), fileName);
 		if (!File.Exists(fullFileName))
 		{
 			Logger.Warn($"Could not find PadData file {fileName}.");
@@ -4524,7 +4524,7 @@ public sealed class Editor :
 		}
 
 		Logger.Info($"Loading {chartTypeString} PadData from {fileName}.");
-		var padData = await PadData.LoadPadData(chartTypeString, fileName);
+		var padData = await PadData.LoadPadData(chartTypeString, fullFileName);
 		if (padData == null)
 			return null;
 		Logger.Info($"Finished loading {chartTypeString} PadData.");
@@ -4541,7 +4541,7 @@ public sealed class Editor :
 		var chartTypeString = ChartTypeString(chartType);
 		var fileName = $"{chartTypeString}.fsg";
 
-		var fullFileName = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, fileName);
+		var fullFileName = Path.Combine(PlatformInterface.GetResourceDirectory(), fileName);
 		if (!File.Exists(fullFileName))
 		{
 			Logger.Warn($"Could not find StepGraph file {fileName}.");

@@ -5,6 +5,9 @@
 		<PublishReadyToRun>false</PublishReadyToRun>
 		<TieredCompilation>false</TieredCompilation>
 		<MonoGamePlatform>DesktopGL</MonoGamePlatform>
+		<UseMacCatalyst>false</UseMacCatalyst>
+		<NullabilityInfoContextSupport>true</NullabilityInfoContextSupport>
+		<SupportedOSPlatformVersion>11.0</SupportedOSPlatformVersion>
 	</PropertyGroup>
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
 		<PathMap>$(MSBuildProjectDirectory)=.</PathMap>
@@ -14,7 +17,7 @@
 		<Version>0.4.1</Version>
 	</PropertyGroup>
 	<PropertyGroup>
-		<RuntimeIdentifier>osx-arm64</RuntimeIdentifier>
+		<RuntimeIdentifiers>osx-arm64;osx-x64</RuntimeIdentifiers>
 	</PropertyGroup>
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -24,15 +27,8 @@
 	</PropertyGroup>
 	<ItemGroup>
 		<MonoGameContentReference Include="..\StepManiaEditor\Content\Content.mgcb" />
-		<EmbeddedResource Include="Icon.bmp">
-			<LogicalName>Icon.bmp</LogicalName>
-		</EmbeddedResource>
 	</ItemGroup>
 	<ItemGroup>
-		<TrimmerRootAssembly Include="Microsoft.Xna.Framework.Content.ContentTypeReader" Visible="false" />
-	</ItemGroup>
-	<ItemGroup>
-		<PackageReference Include="MonoGame.Content.Builder.Task" Version="3.8.1.303" />
 		<PackageReference Include="System.Text.Json" Version="9.0.0" />
 	</ItemGroup>
 	<ItemGroup>
@@ -41,48 +37,145 @@
 		<PackageReference Include="SkiaSharp.NativeAssets.macOS" Version="3.116.1" />
 	</ItemGroup>
 	<ItemGroup>
-	  <None Update="Content\atlas.xnb">
-	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-	  </None>
-	  <None Update="Content\fxaa.xnb">
-	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-	  </None>
-	  <None Update="Content\logo-attribution.xnb">
-	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-	  </None>
-	  <None Update="Content\Mplus1Code-Bold.ttf">
-	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-	  </None>
-	  <None Update="Content\Mplus1Code-Medium.ttf">
-	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-	  </None>
-	  <None Update="Content\mplus1code-medium.xnb">
-	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-	  </None>
-	  <None Update="Content\Mplus1Code-Regular.ttf">
-	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-	  </None>
-	  <None Update="Content\waveform-color.xnb">
-	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-	  </None>
-	  <None Update="GrooveAuthor.desktop">
-	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-	  </None>
-	  <None Update="Icon.svg">
-	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-	  </None>
+	  <Content Include="icon.icns">
+		<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+	  </Content>
+	  <Content Include="..\StepManiaEditor\assist-tick.wav">
+		<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+	  </Content>
+	  <Content Include="..\StepManiaEditor\beat-tick.wav">
+		<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+	  </Content>
+	  <Content Include="Content\atlas.xnb">
+		<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+	  </Content>
+	  <Content Include="..\StepManiaEditor\atlas.json">
+		<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+	  </Content>
+	  <Content Include="Content\fxaa.xnb">
+	    <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+	  </Content>
+	  <Content Include="Content\logo-attribution.xnb">
+	    <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+	  </Content>
+	  <Content Include="Content\Mplus1Code-Bold.ttf">
+	    <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+	  </Content>
+	  <Content Include="Content\Mplus1Code-Medium.ttf">
+	    <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+	  </Content>
+	  <Content Include="Content\mplus1code-medium.xnb">
+	    <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+	  </Content>
+	  <Content Include="Content\Mplus1Code-Regular.ttf">
+	    <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+	  </Content>
+	  <Content Include="Content\waveform-color.xnb">
+	    <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+	  </Content>
+	</ItemGroup>
+	<ItemGroup>
+		<Content Include="..\StepManiaLibrary\StepManiaLibrary\dance-double.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+		<Content Include="..\StepManiaLibrary\StepManiaLibrary\dance-routine.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+		<Content Include="..\StepManiaLibrary\StepManiaLibrary\dance-single.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+		<Content Include="..\StepManiaLibrary\StepManiaLibrary\dance-double.fsg">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+		<Content Include="..\StepManiaLibrary\StepManiaLibrary\dance-single.fsg">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+		<Content Include="..\StepManiaLibrary\StepManiaLibrary\dance-solo.fsg">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+		<Content Include="..\StepManiaLibrary\StepManiaLibrary\dance-solo.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+		<Content Include="..\StepManiaLibrary\StepManiaLibrary\dance-threepanel.fsg">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+		<Content Include="..\StepManiaLibrary\StepManiaLibrary\dance-threepanel.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+		<Content Include="..\StepManiaLibrary\StepManiaLibrary\default-steptype-fallbacks.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+		<Content Include="..\StepManiaLibrary\StepManiaLibrary\pump-double.fsg">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+		<Content Include="..\StepManiaLibrary\StepManiaLibrary\pump-double.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+		<Content Include="..\StepManiaLibrary\StepManiaLibrary\pump-halfdouble.fsg">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+		<Content Include="..\StepManiaLibrary\StepManiaLibrary\pump-halfdouble.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+		<Content Include="..\StepManiaLibrary\StepManiaLibrary\pump-routine.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+		<Content Include="..\StepManiaLibrary\StepManiaLibrary\pump-single.fsg">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+		<Content Include="..\StepManiaLibrary\StepManiaLibrary\pump-single.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+		<Content Include="..\StepManiaLibrary\StepManiaLibrary\smx-beginner.fsg">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+		<Content Include="..\StepManiaLibrary\StepManiaLibrary\smx-beginner.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+		<Content Include="..\StepManiaLibrary\StepManiaLibrary\smx-dual.fsg">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+		<Content Include="..\StepManiaLibrary\StepManiaLibrary\smx-dual.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+		<Content Include="..\StepManiaLibrary\StepManiaLibrary\smx-full.fsg">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+		<Content Include="..\StepManiaLibrary\StepManiaLibrary\smx-full.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+		<Content Include="..\StepManiaLibrary\StepManiaLibrary\smx-single.fsg">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+		<Content Include="..\StepManiaLibrary\StepManiaLibrary\smx-single.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+		<Content Include="..\StepManiaLibrary\StepManiaLibrary\smx-team.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+		<Content Include="..\StepManiaLibrary\StepManiaLibrary\default-steptype-fallbacks.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+	</ItemGroup>
+	<ItemGroup>
+		<NativeReference Include="$(ProjectDir)..\StepManiaLibrary\Fumen\Fumen\Sound\fmod\lib\mac\libfmod.dylib">
+	    	<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+			<Kind>Dynamic</Kind>
+        	<PublishFolderType>NativeLibrary</PublishFolderType>
+	  	</NativeReference>
+		<NativeReference Include="$(ProjectDir)..\StepManiaLibrary\Fumen\Fumen\Sound\fmod\lib\mac\libfmodL.dylib">
+	    	<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+			<Kind>Dynamic</Kind>
+        	<PublishFolderType>NativeLibrary</PublishFolderType>
+	  	</NativeReference>
+		<NativeReference Include="$(ProjectDir)..\ImGui.NET\deps\cimgui\osx\cimgui.dylib">
+	    	<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+			<Kind>Dynamic</Kind>
+        	<PublishFolderType>NativeLibrary</PublishFolderType>
+	  	</NativeReference>
 	</ItemGroup>
 	<Target Name="RestoreDotnetTools" BeforeTargets="Restore">
 		<Message Text="Restoring dotnet tools" Importance="High" />
 		<Exec Command="dotnet tool restore" />
-	</Target>
-	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
-		<Copy SourceFiles="$(ProjectDir)..\StepManiaLibrary\Fumen\Fumen\Sound\fmod\lib\mac\libfmod.dylib" DestinationFolder="$(TargetDir)" />
-		<Copy SourceFiles="$(ProjectDir)..\StepManiaLibrary\Fumen\Fumen\Sound\fmod\lib\mac\libfmodL.dylib" DestinationFolder="$(TargetDir)" />
-		<Copy SourceFiles="$(ProjectDir)..\ImGui.NET\deps\cimgui\osx\cimgui.dylib" DestinationFolder="$(TargetDir)" />
-	</Target>
-	<Target Name="PostPublish" AfterTargets="Publish">
-		<Copy SourceFiles="$(ProjectDir)..\StepManiaLibrary\Fumen\Fumen\Sound\fmod\lib\mac\libfmod.dylib" DestinationFolder="$(PublishDir)" />
-		<Copy SourceFiles="$(ProjectDir)..\ImGui.NET\deps\cimgui\osx\cimgui.dylib" DestinationFolder="$(PublishDir)" />
 	</Target>
 </Project>

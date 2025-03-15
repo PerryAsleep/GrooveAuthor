@@ -242,7 +242,7 @@ internal sealed class MusicManager
 	/// </summary>
 	/// <param name="soundManager">SoundManager.</param>
 	/// <param name="musicOffset">Offset to use for playing the music.</param>
-	public MusicManager(SoundManager soundManager, double musicOffset)
+	public MusicManager(SoundManager soundManager, double musicOffset, string resourceDirectory)
 	{
 		SoundManager = soundManager;
 		SampleRate = SoundManager.GetSampleRate();
@@ -259,8 +259,8 @@ internal sealed class MusicManager
 		SetPreviewParameters(0.0, 0.0, 0.0, 1.5);
 
 		// Load the tick sounds.
-		AssistTickData.GetSound().LoadAsync(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "assist-tick.wav"), false);
-		BeatTickData.GetSound().LoadAsync(Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "beat-tick.wav"), false);
+		AssistTickData.GetSound().LoadAsync(Path.Combine(resourceDirectory, "assist-tick.wav"), false);
+		BeatTickData.GetSound().LoadAsync(Path.Combine(resourceDirectory, "beat-tick.wav"), false);
 
 		// Create the DSP.
 		SoundManager.CreateDsp(DspName, dspChannelGroup, DspRead, this);

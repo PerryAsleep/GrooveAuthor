@@ -45,5 +45,7 @@ public interface IEditorPlatform
 
 	public string GetAutogenConfigsDirectory();
 
+	public string GetResourceDirectory();
+
 	public void Update(GameTime gameTime);
 }
