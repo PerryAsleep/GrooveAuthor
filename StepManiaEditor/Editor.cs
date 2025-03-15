@@ -4503,7 +4503,8 @@ public sealed class Editor :
 		}
 
 		// Load the default StepTypeFallbacks.
-		StepTypeFallbacks = await StepTypeFallbacks.Load(Path.Combine(PlatformInterface.GetResourceDirectory(), StepTypeFallbacks.DefaultFallbacksFileName));
+		StepTypeFallbacks = await StepTypeFallbacks.Load(Path.Combine(PlatformInterface.GetResourceDirectory(),
+			StepTypeFallbacks.DefaultFallbacksFileName));
 	}
 
 	/// <summary>
