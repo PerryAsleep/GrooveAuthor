@@ -1,137 +1,164 @@
 {
-    "version": "2.0.0",
-    "tasks": [
+	"version": "2.0.0",
+	"tasks": [
 		{
-            "label": "Clean Solution",
-            "command": "dotnet",
-            "type": "process",
-            "args": [
-                "clean",
+			"label": "Clean Solution",
+			"command": "dotnet",
+			"type": "process",
+			"args": [
+				"clean",
 				"GrooveAuthor.sln",
-            ],
-            "problemMatcher": "$msCompile"
-        },
-        {
-            "label": "Clean MacOS Project",
-            "command": "dotnet",
-            "type": "process",
-            "args": [
-                "clean",
-				"./StepManiaEditorMacOS/StepManiaEditorMacOS.csproj",
-            ],
-            "problemMatcher": "$msCompile"
-        },
-        {
-            "label": "Build MacOS Debug Arm64",
-            "command": "dotnet",
-            "type": "process",
-            "args": [
-                "build",
-				"./StepManiaEditorMacOS/StepManiaEditorMacOS.csproj",
-                "-c",
-                "Debug",
-				"-r",
-                "osx-arm64",
-				"--self-contained",
-                "true",
-            ],
-            "problemMatcher": "$msCompile"
-        },
-        {
-            "label": "Build MacOS Release Arm64",
-            "command": "dotnet",
-            "type": "process",
-            "args": [
-                "build",
-				"./StepManiaEditorMacOS/StepManiaEditorMacOS.csproj",
-                "-c",
-                "Release",
-				"-r",
-                "osx-arm64",
-				"--self-contained",
-                "true",
-            ],
-            "problemMatcher": "$msCompile"
-        },
-        {
-            "label": "Build MacOS Debug X64",
-            "command": "dotnet",
-            "type": "process",
-            "args": [
-                "build",
-				"./StepManiaEditorMacOS/StepManiaEditorMacOS.csproj",
-                "-c",
-                "Debug",
-				"-r",
-                "osx-x64",
-				"--self-contained",
-                "true",
-            ],
-            "problemMatcher": "$msCompile"
-        },
-        {
-            "label": "Build MacOS Release X64",
-            "command": "dotnet",
-            "type": "process",
-            "args": [
-                "build",
-				"./StepManiaEditorMacOS/StepManiaEditorMacOS.csproj",
-                "-c",
-                "Release",
-				"-r",
-                "osx-x64",
-				"--self-contained",
-                "true",
-            ],
-            "problemMatcher": "$msCompile"
-        },
+			],
+			"problemMatcher": "$msCompile"
+		},
 		{
-            "label": "Sign MacOS Debug Arm64",
-            "type": "shell",
-            "dependsOn": "Build MacOS Debug Arm64",
-            "command": "find ${workspaceFolder}/StepManiaEditorMacOS/bin/Debug/net8.0-macos/osx-arm64/GrooveAuthor.app -type f \\( -name \"*.dylib\" -o -name \"GrooveAuthor\" \\) -exec codesign --force --sign - {} \\;",
-            "problemMatcher": []
-        },
-        {
-            "label": "Sign MacOS Release Arm64",
-            "type": "shell",
-            "dependsOn": "Build MacOS Release Arm64",
-            "command": "find ${workspaceFolder}/StepManiaEditorMacOS/bin/Release/net8.0-macos/osx-arm64/GrooveAuthor.app -type f \\( -name \"*.dylib\" -o -name \"GrooveAuthor\" \\) -exec codesign --force --sign - {} \\;",
-            "problemMatcher": []
-        },
-        {
-            "label": "Sign MacOS Debug X64",
-            "type": "shell",
-            "dependsOn": "Build MacOS Debug X64",
-            "command": "find ${workspaceFolder}/StepManiaEditorMacOS/bin/Debug/net8.0-macos/osx-x64/GrooveAuthor.app -type f \\( -name \"*.dylib\" -o -name \"GrooveAuthor\" \\) -exec codesign --force --sign - {} \\;",
-            "problemMatcher": []
-        },
-        {
-            "label": "Sign MacOS Release X64",
-            "type": "shell",
-            "dependsOn": "Build MacOS Release X64",
-            "command": "find ${workspaceFolder}/StepManiaEditorMacOS/bin/Release/net8.0-macos/osx-x64/GrooveAuthor.app -type f \\( -name \"*.dylib\" -o -name \"GrooveAuthor\" \\) -exec codesign --force --sign - {} \\;",
-            "problemMatcher": []
-        },
+			"label": "Clean MacOS Project",
+			"command": "dotnet",
+			"type": "process",
+			"args": [
+				"clean",
+				"./StepManiaEditorMacOS/StepManiaEditorMacOS.csproj",
+			],
+			"problemMatcher": "$msCompile"
+		},
 		{
-            "label": "Run MacOS Debug Arm64",
-            "command": "open",
-            "type": "process",
-            "args": [
-                "${workspaceFolder}/StepManiaEditorMacOS/bin/Debug/net8.0-macos/osx-arm64/GrooveAuthor.app"
-            ],
-            "dependsOn": ["Sign MacOS Debug Arm64"],
-            "problemMatcher": []
-        },
-        {
-            "label": "Run MacOS Release Arm64",
-            "command": "open",
-            "type": "process",
-            "args": [
-                "${workspaceFolder}/StepManiaEditorMacOS/bin/Release/net8.0-macos/osx-arm64/GrooveAuthor.app"
-            ],
-            "dependsOn": ["Sign MacOS Release Arm64"],
-            "problemMatcher": []
-        },
-    ]
+			"label": "Clean Linux Project",
+			"command": "dotnet",
+			"type": "process",
+			"args": [
+				"clean",
+				"./StepManiaEditorLinux/StepManiaEditorLinux.csproj",
+			],
+			"problemMatcher": "$msCompile"
+		},
+		{
+			"label": "Build MacOS Debug Arm64",
+			"command": "dotnet",
+			"type": "process",
+			"args": [
+				"build",
+				"./StepManiaEditorMacOS/StepManiaEditorMacOS.csproj",
+				"-c",
+				"Debug",
+				"-r",
+				"osx-arm64",
+				"--self-contained",
+				"true",
+			],
+			"problemMatcher": "$msCompile"
+		},
+		{
+			"label": "Build MacOS Release Arm64",
+			"command": "dotnet",
+			"type": "process",
+			"args": [
+				"build",
+				"./StepManiaEditorMacOS/StepManiaEditorMacOS.csproj",
+				"-c",
+				"Release",
+				"-r",
+				"osx-arm64",
+				"--self-contained",
+				"true",
+			],
+			"problemMatcher": "$msCompile"
+		},
+		{
+			"label": "Build MacOS Debug X64",
+			"command": "dotnet",
+			"type": "process",
+			"args": [
+				"build",
+				"./StepManiaEditorMacOS/StepManiaEditorMacOS.csproj",
+				"-c",
+				"Debug",
+				"-r",
+				"osx-x64",
+				"--self-contained",
+				"true",
+			],
+			"problemMatcher": "$msCompile"
+		},
+		{
+			"label": "Build MacOS Release X64",
+			"command": "dotnet",
+			"type": "process",
+			"args": [
+				"build",
+				"./StepManiaEditorMacOS/StepManiaEditorMacOS.csproj",
+				"-c",
+				"Release",
+				"-r",
+				"osx-x64",
+				"--self-contained",
+				"true",
+			],
+			"problemMatcher": "$msCompile"
+		},
+		{
+			"label": "Sign MacOS Debug Arm64",
+			"type": "shell",
+			"dependsOn": "Build MacOS Debug Arm64",
+			"command": "find ${workspaceFolder}/StepManiaEditorMacOS/bin/Debug/net8.0-macos/osx-arm64/GrooveAuthor.app -type f \\( -name \"*.dylib\" -o -name \"GrooveAuthor\" \\) -exec codesign --force --sign - {} \\;",
+			"problemMatcher": []
+		},
+		{
+			"label": "Sign MacOS Release Arm64",
+			"type": "shell",
+			"dependsOn": "Build MacOS Release Arm64",
+			"command": "find ${workspaceFolder}/StepManiaEditorMacOS/bin/Release/net8.0-macos/osx-arm64/GrooveAuthor.app -type f \\( -name \"*.dylib\" -o -name \"GrooveAuthor\" \\) -exec codesign --force --sign - {} \\;",
+			"problemMatcher": []
+		},
+		{
+			"label": "Sign MacOS Debug X64",
+			"type": "shell",
+			"dependsOn": "Build MacOS Debug X64",
+			"command": "find ${workspaceFolder}/StepManiaEditorMacOS/bin/Debug/net8.0-macos/osx-x64/GrooveAuthor.app -type f \\( -name \"*.dylib\" -o -name \"GrooveAuthor\" \\) -exec codesign --force --sign - {} \\;",
+			"problemMatcher": []
+		},
+		{
+			"label": "Sign MacOS Release X64",
+			"type": "shell",
+			"dependsOn": "Build MacOS Release X64",
+			"command": "find ${workspaceFolder}/StepManiaEditorMacOS/bin/Release/net8.0-macos/osx-x64/GrooveAuthor.app -type f \\( -name \"*.dylib\" -o -name \"GrooveAuthor\" \\) -exec codesign --force --sign - {} \\;",
+			"problemMatcher": []
+		},
+		{
+			"label": "Run MacOS Debug Arm64",
+			"command": "open",
+			"type": "process",
+			"args": [
+				"${workspaceFolder}/StepManiaEditorMacOS/bin/Debug/net8.0-macos/osx-arm64/GrooveAuthor.app"
+			],
+			"dependsOn": ["Sign MacOS Debug Arm64"],
+			"problemMatcher": []
+		},
+		{
+			"label": "Run MacOS Release Arm64",
+			"command": "open",
+			"type": "process",
+			"args": [
+				"${workspaceFolder}/StepManiaEditorMacOS/bin/Release/net8.0-macos/osx-arm64/GrooveAuthor.app"
+			],
+			"dependsOn": ["Sign MacOS Release Arm64"],
+			"problemMatcher": []
+		},
+
+		{
+			"label": "Build Linux Debug",
+			"type": "process",
+			"command": "dotnet",
+			"args": [
+				"build",
+				"./StepManiaEditorLinux/StepManiaEditorLinux.csproj",
+				"-c",
+				"Debug"
+			],
+			"problemMatcher": "$msCompile",
+			"group": {
+				"kind": "build",
+				"isDefault": true
+			}
+		}
+	]
 }
