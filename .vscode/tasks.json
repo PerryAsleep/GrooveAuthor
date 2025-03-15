@@ -143,6 +143,26 @@
 			"dependsOn": ["Sign MacOS Release Arm64"],
 			"problemMatcher": []
 		},
+		{
+			"label": "Run MacOS Debug X64",
+			"command": "open",
+			"type": "process",
+			"args": [
+				"${workspaceFolder}/StepManiaEditorMacOS/bin/Debug/net8.0-macos/osx-x64/GrooveAuthor.app"
+			],
+			"dependsOn": ["Sign MacOS Debug X64"],
+			"problemMatcher": []
+		},
+		{
+			"label": "Run MacOS Release X64",
+			"command": "open",
+			"type": "process",
+			"args": [
+				"${workspaceFolder}/StepManiaEditorMacOS/bin/Release/net8.0-macos/osx-x64/GrooveAuthor.app"
+			],
+			"dependsOn": ["Sign MacOS Release X64"],
+			"problemMatcher": []
+		},
 
 		{
 			"label": "Build Linux Debug",
