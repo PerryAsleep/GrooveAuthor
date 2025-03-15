@@ -60,7 +60,7 @@ Other editors stutter or lock up when editing long files but `GrooveAuthor` is b
 
 ## Installation
 
-`GrooveAuthor` is available for Windows, Linux, and MacOS. See [Installation](StepManiaEditor/docs/TableOfContents.md) for platform-specific installation instructions.
+`GrooveAuthor` is available for Windows, Linux, and MacOS. See [Installation](StepManiaEditor/docs/Installation.md) for platform-specific installation instructions.
 
 ## Documentation
 
