@@ -60,9 +60,7 @@ Other editors stutter or lock up when editing long files but `GrooveAuthor` is b
 
 ## Installation
 
-`GrooveAuthor` is available for Windows. Download the latest version from the [Releases](https://github.com/PerryAsleep/GrooveAuthor/releases) page and extract it to a desired location. To run `GrooveAuthor` open the `GrooveAuthor` folder and run `GrooveAuthor.exe`.
-
-`GrooveAuthor` requires [.Net Runtime 8.0](https://dotnet.microsoft.com/en-us/download/dotnet/8.0).
+`GrooveAuthor` is available for Windows, Linux, and MacOS. See [Installation](StepManiaEditor/docs/TableOfContents.md) for platform-specific installation instructions.
 
 ## Documentation
 
