@@ -104,6 +104,11 @@ internal sealed class EditorMacOsInterface : IEditorPlatform
 		return $"{PersistenceDirectory}/AutogenConfigs";
 	}
 
+	public string GetResourceDirectory()
+	{
+		return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"../Resources");
+	}
+
 	public (bool, string) ShowSaveSimFileDialog(string initialDirectory, string fileName, FileFormatType? fileFormatType)
 	{
 		var savePanel = NSSavePanel.SavePanel;

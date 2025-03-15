@@ -48,6 +48,11 @@ internal sealed class EditorWindowsInterface : IEditorPlatform
 		return $@"{Editor.GetAssemblyPath()}\AutogenConfigs";
 	}
 
+	public string GetResourceDirectory()
+	{
+		return AppDomain.CurrentDomain.BaseDirectory;
+	}
+
 	public (bool, string) ShowSaveSimFileDialog(string initialDirectory, string fileName, FileFormatType? fileFormatType)
 	{
 		var saveFileDialog = new SaveFileDialog();
