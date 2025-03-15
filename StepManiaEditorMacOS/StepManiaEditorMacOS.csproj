@@ -37,42 +37,42 @@
 		<PackageReference Include="SkiaSharp.NativeAssets.macOS" Version="3.116.1" />
 	</ItemGroup>
 	<ItemGroup>
-	  <Content Include="icon.icns">
-		<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-	  </Content>
-	  <Content Include="..\StepManiaEditor\assist-tick.wav">
-		<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-	  </Content>
-	  <Content Include="..\StepManiaEditor\beat-tick.wav">
-		<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-	  </Content>
-	  <Content Include="Content\atlas.xnb">
-		<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-	  </Content>
-	  <Content Include="..\StepManiaEditor\atlas.json">
-		<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-	  </Content>
-	  <Content Include="Content\fxaa.xnb">
-	    <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-	  </Content>
-	  <Content Include="Content\logo-attribution.xnb">
-	    <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-	  </Content>
-	  <Content Include="Content\Mplus1Code-Bold.ttf">
-	    <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-	  </Content>
-	  <Content Include="Content\Mplus1Code-Medium.ttf">
-	    <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-	  </Content>
-	  <Content Include="Content\mplus1code-medium.xnb">
-	    <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-	  </Content>
-	  <Content Include="Content\Mplus1Code-Regular.ttf">
-	    <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-	  </Content>
-	  <Content Include="Content\waveform-color.xnb">
-	    <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
-	  </Content>
+		<Content Include="icon.icns">
+			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+		</Content>
+		<Content Include="..\StepManiaEditor\assist-tick.wav">
+			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+		</Content>
+		<Content Include="..\StepManiaEditor\beat-tick.wav">
+			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+		</Content>
+		<Content Include="Content\atlas.xnb">
+			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+		</Content>
+		<Content Include="..\StepManiaEditor\atlas.json">
+			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+		</Content>
+		<Content Include="Content\fxaa.xnb">
+			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+		</Content>
+		<Content Include="Content\logo-attribution.xnb">
+			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+		</Content>
+		<Content Include="Content\Mplus1Code-Bold.ttf">
+			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+		</Content>
+		<Content Include="Content\Mplus1Code-Medium.ttf">
+			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+		</Content>
+		<Content Include="Content\mplus1code-medium.xnb">
+			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+		</Content>
+		<Content Include="Content\Mplus1Code-Regular.ttf">
+			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+		</Content>
+		<Content Include="Content\waveform-color.xnb">
+			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+		</Content>
 	</ItemGroup>
 	<ItemGroup>
 		<Content Include="..\StepManiaLibrary\StepManiaLibrary\dance-double.json">
@@ -159,20 +159,20 @@
 	</ItemGroup>
 	<ItemGroup>
 		<NativeReference Include="$(ProjectDir)..\StepManiaLibrary\Fumen\Fumen\Sound\fmod\lib\mac\libfmod.dylib">
-	    	<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
 			<Kind>Dynamic</Kind>
-        	<PublishFolderType>NativeLibrary</PublishFolderType>
-	  	</NativeReference>
+			<PublishFolderType>NativeLibrary</PublishFolderType>
+		</NativeReference>
 		<NativeReference Include="$(ProjectDir)..\StepManiaLibrary\Fumen\Fumen\Sound\fmod\lib\mac\libfmodL.dylib">
-	    	<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
 			<Kind>Dynamic</Kind>
-        	<PublishFolderType>NativeLibrary</PublishFolderType>
-	  	</NativeReference>
+			<PublishFolderType>NativeLibrary</PublishFolderType>
+		</NativeReference>
 		<NativeReference Include="$(ProjectDir)..\ImGui.NET\deps\cimgui\osx\cimgui.dylib">
-	    	<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+			<CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
 			<Kind>Dynamic</Kind>
-        	<PublishFolderType>NativeLibrary</PublishFolderType>
-	  	</NativeReference>
+			<PublishFolderType>NativeLibrary</PublishFolderType>
+		</NativeReference>
 	</ItemGroup>
 	<Target Name="RestoreDotnetTools" BeforeTargets="Restore">
 		<Message Text="Restoring dotnet tools" Importance="High" />

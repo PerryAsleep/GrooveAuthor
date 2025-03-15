@@ -242,6 +242,7 @@ internal sealed class MusicManager
 	/// </summary>
 	/// <param name="soundManager">SoundManager.</param>
 	/// <param name="musicOffset">Offset to use for playing the music.</param>
+	/// <param name="resourceDirectory">Directory of expected music resources.</param>
 	public MusicManager(SoundManager soundManager, double musicOffset, string resourceDirectory)
 	{
 		SoundManager = soundManager;
