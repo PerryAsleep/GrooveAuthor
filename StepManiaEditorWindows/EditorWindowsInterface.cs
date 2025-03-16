@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Media;
 using System.Text;
 using System.Windows.Forms;
@@ -144,6 +145,36 @@ internal sealed class EditorWindowsInterface : IEditorPlatform
 		}
 
 		return relativePath;
+	}
+
+	public void OpenUrl(string url)
+	{
+		try
+		{
+			Process.Start(new ProcessStartInfo { FileName = url, UseShellExecute = true });
+		}
+		catch (Exception e)
+		{
+			Logger.Error($"Failed opening {url}. {e}");
+		}
+	}
+
+	public void OpenFileBrowser(string path)
+	{
+		try
+		{
+			var psi = new ProcessStartInfo()
+			{
+				FileName = "explorer.exe",
+				WorkingDirectory = path,
+				ArgumentList = { path },
+			};
+			Process.Start(psi);
+		}
+		catch (Exception e)
+		{
+			Logger.Error($"Failed opening {path}. {e}");
+		}
 	}
 
 	#endregion File I/O

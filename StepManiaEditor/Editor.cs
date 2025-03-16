@@ -407,6 +407,7 @@ public sealed class Editor :
 		InitializeEditorPack();
 		InitializeUIHelpers();
 		InitializeKeyCommandManager();
+		InitializeDocumentation();
 		InitializeSongLoadTask();
 		_ = RefreshLatestVersion();
 		base.Initialize();
@@ -791,6 +792,11 @@ public sealed class Editor :
 		KeyCommandManager.Register(new KeyCommandManager.Command(name, id, callback, repeat, releaseCallback,
 			blocksInput));
 		UIControls.Instance.AddCommand(category, name, id);
+	}
+
+	private void InitializeDocumentation()
+	{
+		Documentation.Initialize(PlatformInterface);
 	}
 
 	private void InitializeContentManager()
@@ -4948,20 +4954,7 @@ public sealed class Editor :
 		var dir = ActiveSong.GetFileDirectory();
 		if (string.IsNullOrEmpty(dir))
 			return;
-		try
-		{
-			var psi = new ProcessStartInfo()
-			{
-				FileName = "explorer.exe",
-				WorkingDirectory = dir,
-				ArgumentList = { dir },
-			};
-			Process.Start(psi);
-		}
-		catch (Exception e)
-		{
-			Logger.Error($"Failed to open {dir}. {e}");
-		}
+		PlatformInterface.OpenFileBrowser(dir);
 	}
 
 	private void OnOpen()

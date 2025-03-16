@@ -1,7 +1,8 @@
 ﻿using System;
-using System.Runtime.InteropServices;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
+using System.Runtime.InteropServices;
 using AppKit;
 using Foundation;
 using Fumen;
@@ -186,6 +187,30 @@ internal sealed class EditorMacOsInterface : IEditorPlatform
 		}
 
 		return relativePath;
+	}
+
+	public void OpenUrl(string url)
+	{
+		try
+		{
+			Process.Start("open", url);
+		}
+		catch (Exception e)
+		{
+			Logger.Error($"Failed opening {url}. {e}");
+		}
+	}
+
+	public void OpenFileBrowser(string path)
+	{
+		try
+		{
+			Process.Start("open", path);
+		}
+		catch (Exception e)
+		{
+			Logger.Error($"Failed opening {path}. {e}");
+		}
 	}
 
 	#endregion File I/O
