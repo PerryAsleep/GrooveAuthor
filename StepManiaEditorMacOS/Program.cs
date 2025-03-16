@@ -10,8 +10,6 @@ public static class Program
 	{
 		// For attaching debugger.
 		//Thread.Sleep(10 * 1000);
-
-		NSApplication.Init();
 		using var editor = new Editor(new EditorMacOsInterface());
 		editor.Run();
 	}
