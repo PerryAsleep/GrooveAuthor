@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.InteropServices;
 using System.Collections.Generic;
 using System.IO;
 using AppKit;
@@ -76,8 +77,13 @@ internal sealed class EditorMacOsInterface : IEditorPlatform
 
 	#region Sounds
 
+	[DllImport("/System/Library/Frameworks/AudioToolbox.framework/AudioToolbox")]
+	private static extern void AudioServicesPlaySystemSound(uint inSystemSoundID);
+
 	public void PlayExclamationSound()
 	{
+		// 0x00001000 is kSystemSoundID_UserPreferredAlert.
+		AudioServicesPlaySystemSound(0x00001000);
 	}
 
 	#endregion Sounds
