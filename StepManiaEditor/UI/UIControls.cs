@@ -428,12 +428,17 @@ internal sealed class UIControls : UIWindow, Fumen.IObserver<PreferencesKeyBinds
 					break;
 				case Keys.LeftAlt:
 				case Keys.RightAlt:
-					inputString += "Alt";
+					if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+						inputString += "Opt";
+					else
+						inputString += "Alt";
 					break;
 				case Keys.LeftWindows:
 				case Keys.RightWindows:
 					if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
 						inputString += "Win";
+					else if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
+						inputString += "Cmd";
 					else
 						inputString += "Super";
 					break;
