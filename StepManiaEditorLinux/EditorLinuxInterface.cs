@@ -313,7 +313,7 @@ internal sealed class EditorLinuxInterface : IEditorPlatform
 	{
 		try
 		{
-			Process.Start("xdg-open", path);
+			Process.Start("xdg-open", $"\"{path}\"");
 		}
 		catch (Exception e)
 		{

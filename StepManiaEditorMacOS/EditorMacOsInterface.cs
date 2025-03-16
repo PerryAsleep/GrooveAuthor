@@ -205,7 +205,7 @@ internal sealed class EditorMacOsInterface : IEditorPlatform
 	{
 		try
 		{
-			Process.Start("open", path);
+			Process.Start("open", $"\"{path}\"");
 		}
 		catch (Exception e)
 		{
