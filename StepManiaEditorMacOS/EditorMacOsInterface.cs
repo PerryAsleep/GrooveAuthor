@@ -24,6 +24,8 @@ internal sealed class EditorMacOsInterface : IEditorPlatform
 
 	public void Initialize()
 	{
+		NSApplication.Init();
+
 		// Ensure the directory we need to use for persistence is available.
 		InitializePersistenceDirectory();
 	}
@@ -127,7 +129,7 @@ internal sealed class EditorMacOsInterface : IEditorPlatform
 		savePanel.ExtensionHidden = false;
 		var result = (NSModalResponse)savePanel.RunModal();
 		var confirmed = result == NSModalResponse.OK;
-		return (confirmed, savePanel.Url.Path);
+		return (confirmed, savePanel.Url?.Path);
 	}
 
 	public (bool, string) ShowOpenSimFileDialog(string initialDirectory)
@@ -140,7 +142,7 @@ internal sealed class EditorMacOsInterface : IEditorPlatform
 		openPanel.CanChooseFiles = true;
 		var result = (NSModalResponse)openPanel.RunModal();
 		var confirmed = result == NSModalResponse.OK;
-		return (confirmed, openPanel.Url.Path);
+		return (confirmed, openPanel.Url?.Path);
 	}
 
 	public string BrowseFile(string name, string initialDirectory, string currentFileRelativePath, List<string[]> extensionTypes,
@@ -179,7 +181,7 @@ internal sealed class EditorMacOsInterface : IEditorPlatform
 		var confirmed = result == NSModalResponse.OK;
 		if (confirmed)
 		{
-			var fileName = openPanel.Url.Path;
+			var fileName = openPanel.Url?.Path;
 			relativePath = Path.GetRelativePath(startInitialDirectory, fileName);
 		}
 
