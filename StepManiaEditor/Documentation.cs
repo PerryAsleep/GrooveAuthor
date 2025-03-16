@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Diagnostics;
 
 namespace StepManiaEditor;
 
@@ -21,6 +20,7 @@ internal sealed class Documentation
 	}
 
 	private static readonly string[] DocumentationFiles;
+	private static IEditorPlatform PlatformInterface;
 
 	static Documentation()
 	{
@@ -32,6 +32,11 @@ internal sealed class Documentation
 		DocumentationFiles[(int)Page.PerformedChartConfigs] = "PerformedChartConfigs.md";
 		DocumentationFiles[(int)Page.ExpressedChartConfigs] = "ExpressedChartConfigs.md";
 		DocumentationFiles[(int)Page.SongSync] = "SongSync.md";
+	}
+
+	public static void Initialize(IEditorPlatform platformInterface)
+	{
+		PlatformInterface = platformInterface;
 	}
 
 	private static string GetDocumentationBaseUrl()
@@ -64,13 +69,6 @@ internal sealed class Documentation
 
 	private static void OpenUrl(string url)
 	{
-		try
-		{
-			Process.Start("explorer.exe", url);
-		}
-		catch (Exception e)
-		{
-			Fumen.Logger.Error($"Failed to open {url}. {e}");
-		}
+		PlatformInterface?.OpenUrl(url);
 	}
 }

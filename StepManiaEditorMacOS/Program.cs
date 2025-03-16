@@ -1,5 +1,4 @@
 ﻿using System;
-using AppKit;
 using StepManiaEditor;
 using StepManiaEditorMacOs;
 

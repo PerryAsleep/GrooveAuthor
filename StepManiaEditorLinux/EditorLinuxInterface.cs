@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Threading;
@@ -80,10 +81,11 @@ internal sealed class EditorLinuxInterface : IEditorPlatform
 		{
 			directory = Environment.GetEnvironmentVariable("XDG_DATA_HOME");
 		}
-		catch(Exception)
+		catch (Exception)
 		{
 			// Ignored
 		}
+
 		if (!string.IsNullOrEmpty(directory))
 		{
 			return true;
@@ -94,11 +96,12 @@ internal sealed class EditorLinuxInterface : IEditorPlatform
 		{
 			directory = Environment.GetEnvironmentVariable("HOME");
 		}
-		catch(Exception e)
+		catch (Exception e)
 		{
 			Console.WriteLine($"Failed creating creating persistence directory. Could not read HOME directory. {e}");
 			return false;
 		}
+
 		directory = $"{directory}/.local/share";
 		if (!Directory.Exists(directory))
 		{
@@ -117,6 +120,7 @@ internal sealed class EditorLinuxInterface : IEditorPlatform
 				return false;
 			}
 		}
+
 		return true;
 	}
 
@@ -291,6 +295,30 @@ internal sealed class EditorLinuxInterface : IEditorPlatform
 
 		dialog.Destroy();
 		return relativePath;
+	}
+
+	public void OpenUrl(string url)
+	{
+		try
+		{
+			Process.Start("xdg-open", url);
+		}
+		catch (Exception e)
+		{
+			Logger.Error($"Failed opening {url}. {e}");
+		}
+	}
+
+	public void OpenFileBrowser(string path)
+	{
+		try
+		{
+			Process.Start("xdg-open", path);
+		}
+		catch (Exception e)
+		{
+			Logger.Error($"Failed opening {path}. {e}");
+		}
 	}
 
 	#endregion File I/O

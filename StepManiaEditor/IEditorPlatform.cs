@@ -47,5 +47,8 @@ public interface IEditorPlatform
 
 	public string GetResourceDirectory();
 
+	public void OpenUrl(string url);
+	public void OpenFileBrowser(string path);
+
 	public void Update(GameTime gameTime);
 }
