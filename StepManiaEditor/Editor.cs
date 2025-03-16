@@ -867,8 +867,9 @@ public sealed class Editor :
 
 	private void InitializeScreenHeight()
 	{
+		var platformDpiScale = GetPlatformDpiScale();
 		foreach (var adapter in GraphicsAdapter.Adapters)
-			MaxScreenHeight = Math.Max(MaxScreenHeight, (uint)adapter.CurrentDisplayMode.Height);
+			MaxScreenHeight = Math.Max(MaxScreenHeight, (uint)(adapter.CurrentDisplayMode.Height * platformDpiScale));
 		EditorEvent.SetScreenHeight(MaxScreenHeight);
 	}
 
