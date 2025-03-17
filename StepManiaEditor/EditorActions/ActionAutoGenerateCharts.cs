@@ -123,7 +123,7 @@ internal sealed class ActionAutoGenerateCharts : EditorAction
 			}
 		}
 
-		async void OnChartSaved(Chart chart)
+		async Task OnChartSaved(Chart chart)
 		{
 			EditorChart newEditorChart = null;
 			await Task.Run(() =>
