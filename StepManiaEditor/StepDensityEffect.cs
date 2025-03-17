@@ -353,7 +353,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 
 		InitializeScrollBar();
 
-		// Start a long running task to process updates to data derived from the StepDensity.
+		// Start a long-running task to process updates to data derived from the StepDensity.
 		UpdateDataTask = Task.Factory.StartNew(
 			UpdateData,
 			CancellationToken.None,
@@ -777,7 +777,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 	/// <summary>
 	/// Long-running task to update the primitives used for rendering.
 	/// </summary>
-	private async void UpdateData()
+	private async Task UpdateData()
 	{
 		// Local state.
 		DynamicArray<Measure> measures = null;
@@ -795,178 +795,186 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 		// Loop continuously, yielding when there is no work.
 		while (true)
 		{
-			// Check for work.
-			while (true)
+			try
 			{
-				// Return if we should be shutting down.
-				if (State.ShouldShutdown())
-					return;
-
-				// Try to pop any enqueued data. If there is data to process then break out and process it below.
-				if (State.TryPopEnqueuedData(ref measures, ref vertices, ref indices, ref finalTime, ref width, ref height,
-					    ref lowColor, ref highColor, ref backgroundColor, ref colorMode, ref accumulationMode))
-					break;
-				await Task.Delay(1);
-			}
-
-			// Begin processing new data.
-			var numPrimitives = 0;
-			var peakNps = 0.0;
-			var peakRps = 0.0;
-
-			// Early out on invalid bounds.
-			if (height < 0.0f || width < 0.0f)
-			{
-				UpdateData(vertices, indices, numPrimitives, peakNps, peakRps);
-				continue;
-			}
-
-			// Add the background primitives.
-			AddBackground(vertices, indices, ref numPrimitives, width, height, ref backgroundColor);
-
-			// Early out due to no measures or not enough area to render measures
-			if (measures.GetSize() == 0 || height <= RimW * 2 || width <= RimW * 2)
-			{
-				// Add the rim primitives.
-				AddRim(vertices, indices, ref numPrimitives, width, height);
-
-				UpdateData(vertices, indices, numPrimitives, peakNps, peakRps);
-				continue;
-			}
-
-			// Determine the greatest number of steps per measure.
-			for (var i = 0; i < measures.GetSize(); i++)
-			{
-				double measureTime;
-				if (i + 1 < measures.GetSize())
-					measureTime = measures[i + 1].StartTime - measures[i].StartTime;
-				else
-					measureTime = finalTime - measures[i].StartTime;
-				if (measureTime > 0.0)
+				// Check for work.
+				while (true)
 				{
-					peakNps = Math.Max(measures[i].Steps / measureTime, peakNps);
-					peakRps = Math.Max(measures[i].RowsWithSteps / measureTime, peakRps);
-				}
-			}
+					// Return if we should be shutting down.
+					if (State.ShouldShutdown())
+						return;
 
-			var peakSteps = accumulationMode == StepAccumulationType.Step ? peakNps : peakRps;
-
-			var previousMeasureHighIndex = 0;
-			var previousMeasureLowIndex = 0;
-			var previousMeasureStepsPerSecond = 0.0;
-			var previousPreviousMeasureStepsPerSecond = 0.0;
-			var minX = RimW;
-			var minY = RimW;
-			var stepHeight = height - RimW * 2;
-			var stepWidth = width - RimW * 2;
-			for (var i = 0; i < measures.GetSize(); i++)
-			{
-				double measureTime;
-				if (i + 1 < measures.GetSize())
-					measureTime = measures[i + 1].StartTime - measures[i].StartTime;
-				else
-					measureTime = finalTime - measures[i].StartTime;
-				var stepsPerSecond = 0.0;
-				if (measures[i].Steps > 0 && !measureTime.DoubleEquals(0.0))
-				{
-					stepsPerSecond = accumulationMode == StepAccumulationType.Step
-						? measures[i].Steps / measureTime
-						: measures[i].RowsWithSteps / measureTime;
+					// Try to pop any enqueued data. If there is data to process then break out and process it below.
+					if (State.TryPopEnqueuedData(ref measures, ref vertices, ref indices, ref finalTime, ref width, ref height,
+						    ref lowColor, ref highColor, ref backgroundColor, ref colorMode, ref accumulationMode))
+						break;
+					await Task.Delay(1);
 				}
 
-				var yPercent = stepsPerSecond / peakSteps;
-				var y = minY + (float)(yPercent * stepHeight);
-				var x = minX + (float)(measures[i].StartTime / finalTime * stepWidth);
+				// Begin processing new data.
+				var numPrimitives = 0;
+				var peakNps = 0.0;
+				var peakRps = 0.0;
 
-				// Special Case: No Steps.
-				if (measures[i].Steps == 0)
+				// Early out on invalid bounds.
+				if (height < 0.0f || width < 0.0f)
 				{
-					// If the previous measure also had no steps there is nothing we need to do. No new triangles are needed.
-					if (i == 0 || (i >= 1 && measures[i - 1].Steps == 0))
+					UpdateData(vertices, indices, numPrimitives, peakNps, peakRps);
+					continue;
+				}
+
+				// Add the background primitives.
+				AddBackground(vertices, indices, ref numPrimitives, width, height, ref backgroundColor);
+
+				// Early out due to no measures or not enough area to render measures
+				if (measures.GetSize() == 0 || height <= RimW * 2 || width <= RimW * 2)
+				{
+					// Add the rim primitives.
+					AddRim(vertices, indices, ref numPrimitives, width, height);
+
+					UpdateData(vertices, indices, numPrimitives, peakNps, peakRps);
+					continue;
+				}
+
+				// Determine the greatest number of steps per measure.
+				for (var i = 0; i < measures.GetSize(); i++)
+				{
+					double measureTime;
+					if (i + 1 < measures.GetSize())
+						measureTime = measures[i + 1].StartTime - measures[i].StartTime;
+					else
+						measureTime = finalTime - measures[i].StartTime;
+					if (measureTime > 0.0)
 					{
+						peakNps = Math.Max(measures[i].Steps / measureTime, peakNps);
+						peakRps = Math.Max(measures[i].RowsWithSteps / measureTime, peakRps);
+					}
+				}
+
+				var peakSteps = accumulationMode == StepAccumulationType.Step ? peakNps : peakRps;
+
+				var previousMeasureHighIndex = 0;
+				var previousMeasureLowIndex = 0;
+				var previousMeasureStepsPerSecond = 0.0;
+				var previousPreviousMeasureStepsPerSecond = 0.0;
+				var minX = RimW;
+				var minY = RimW;
+				var stepHeight = height - RimW * 2;
+				var stepWidth = width - RimW * 2;
+				for (var i = 0; i < measures.GetSize(); i++)
+				{
+					double measureTime;
+					if (i + 1 < measures.GetSize())
+						measureTime = measures[i + 1].StartTime - measures[i].StartTime;
+					else
+						measureTime = finalTime - measures[i].StartTime;
+					var stepsPerSecond = 0.0;
+					if (measures[i].Steps > 0 && !measureTime.DoubleEquals(0.0))
+					{
+						stepsPerSecond = accumulationMode == StepAccumulationType.Step
+							? measures[i].Steps / measureTime
+							: measures[i].RowsWithSteps / measureTime;
+					}
+
+					var yPercent = stepsPerSecond / peakSteps;
+					var y = minY + (float)(yPercent * stepHeight);
+					var x = minX + (float)(measures[i].StartTime / finalTime * stepWidth);
+
+					// Special Case: No Steps.
+					if (measures[i].Steps == 0)
+					{
+						// If the previous measure also had no steps there is nothing we need to do. No new triangles are needed.
+						if (i == 0 || (i >= 1 && measures[i - 1].Steps == 0))
+						{
+							continue;
+						}
+
+						// If the previous measure had steps then we need one triangle to connect down to the bottom of the graph.
+						vertices.Add(new VertexPositionColor(new Vector3(x, y, 0.0f), lowColor));
+						indices.Add(previousMeasureLowIndex);
+						indices.Add(previousMeasureHighIndex);
+						indices.Add(vertices.GetSize() - 1);
+						previousMeasureLowIndex = vertices.GetSize() - 1;
+						previousMeasureHighIndex = vertices.GetSize() - 1;
+						numPrimitives++;
+						previousPreviousMeasureStepsPerSecond = previousMeasureStepsPerSecond;
+						previousMeasureStepsPerSecond = stepsPerSecond;
 						continue;
 					}
 
-					// If the previous measure had steps then we need one triangle to connect down to the bottom of the graph.
-					vertices.Add(new VertexPositionColor(new Vector3(x, y, 0.0f), lowColor));
-					indices.Add(previousMeasureLowIndex);
-					indices.Add(previousMeasureHighIndex);
-					indices.Add(vertices.GetSize() - 1);
-					previousMeasureLowIndex = vertices.GetSize() - 1;
-					previousMeasureHighIndex = vertices.GetSize() - 1;
-					numPrimitives++;
-					previousPreviousMeasureStepsPerSecond = previousMeasureStepsPerSecond;
-					previousMeasureStepsPerSecond = stepsPerSecond;
-					continue;
-				}
+					// Special Case: This measure has the same number of steps per second as the previous two measures and should extend the previous quad.
+					if (i >= 2 && measures[i - 1].Steps != 0 && measures[i - 2].Steps != 0 &&
+					    stepsPerSecond.DoubleEquals(previousMeasureStepsPerSecond, 0.0001) &&
+					    stepsPerSecond.DoubleEquals(previousPreviousMeasureStepsPerSecond, 0.0001))
+					{
+						vertices[previousMeasureLowIndex] = new VertexPositionColor(
+							new Vector3(x, vertices[previousMeasureLowIndex].Position.Y, 0.0f),
+							vertices[previousMeasureLowIndex].Color);
+						vertices[previousMeasureHighIndex] = new VertexPositionColor(
+							new Vector3(x, vertices[previousMeasureHighIndex].Position.Y, 0.0f),
+							vertices[previousMeasureHighIndex].Color);
+						previousPreviousMeasureStepsPerSecond = previousMeasureStepsPerSecond;
+						previousMeasureStepsPerSecond = stepsPerSecond;
+						continue;
+					}
 
-				// Special Case: This measure has the same number of steps per second as the previous two measures and should extend the previous quad.
-				if (i >= 2 && measures[i - 1].Steps != 0 && measures[i - 2].Steps != 0 &&
-				    stepsPerSecond.DoubleEquals(previousMeasureStepsPerSecond, 0.0001) &&
-				    stepsPerSecond.DoubleEquals(previousPreviousMeasureStepsPerSecond, 0.0001))
-				{
-					vertices[previousMeasureLowIndex] = new VertexPositionColor(
-						new Vector3(x, vertices[previousMeasureLowIndex].Position.Y, 0.0f),
-						vertices[previousMeasureLowIndex].Color);
-					vertices[previousMeasureHighIndex] = new VertexPositionColor(
-						new Vector3(x, vertices[previousMeasureHighIndex].Position.Y, 0.0f),
-						vertices[previousMeasureHighIndex].Color);
-					previousPreviousMeasureStepsPerSecond = previousMeasureStepsPerSecond;
-					previousMeasureStepsPerSecond = stepsPerSecond;
-					continue;
-				}
+					// Special Case: Previous measure has no steps.
+					Color c;
+					if (i == 0 || measures[i - 1].Steps == 0)
+					{
+						// We need to record two new vertices for this measure.
+						c = ColorUtils.Interpolate(lowColor, highColor, (float)yPercent);
+						vertices.Add(new VertexPositionColor(new Vector3(x, minY, 0.0f),
+							colorMode == DensityGraphColorMode.ColorByDensity ? c : lowColor));
+						previousMeasureLowIndex = vertices.GetSize() - 1;
+						vertices.Add(new VertexPositionColor(new Vector3(x, y, 0.0f), c));
+						previousMeasureHighIndex = vertices.GetSize() - 1;
+						previousPreviousMeasureStepsPerSecond = previousMeasureStepsPerSecond;
+						previousMeasureStepsPerSecond = stepsPerSecond;
+						continue;
+					}
 
-				// Special Case: Previous measure has no steps.
-				Color c;
-				if (i == 0 || measures[i - 1].Steps == 0)
-				{
-					// We need to record two new vertices for this measure.
+					// Normal case: The previous measure had steps and this measure has a different number of steps.
+					// Add two vertices and two triangles.
 					c = ColorUtils.Interpolate(lowColor, highColor, (float)yPercent);
 					vertices.Add(new VertexPositionColor(new Vector3(x, minY, 0.0f),
 						colorMode == DensityGraphColorMode.ColorByDensity ? c : lowColor));
-					previousMeasureLowIndex = vertices.GetSize() - 1;
 					vertices.Add(new VertexPositionColor(new Vector3(x, y, 0.0f), c));
+					indices.Add(previousMeasureLowIndex);
+					indices.Add(previousMeasureHighIndex);
+					indices.Add(vertices.GetSize() - 2);
+					indices.Add(previousMeasureHighIndex);
+					indices.Add(vertices.GetSize() - 1);
+					indices.Add(vertices.GetSize() - 2);
+					numPrimitives += 2;
+					previousMeasureLowIndex = vertices.GetSize() - 2;
 					previousMeasureHighIndex = vertices.GetSize() - 1;
 					previousPreviousMeasureStepsPerSecond = previousMeasureStepsPerSecond;
 					previousMeasureStepsPerSecond = stepsPerSecond;
-					continue;
 				}
 
-				// Normal case: The previous measure had steps and this measure has a different number of steps.
-				// Add two vertices and two triangles.
-				c = ColorUtils.Interpolate(lowColor, highColor, (float)yPercent);
-				vertices.Add(new VertexPositionColor(new Vector3(x, minY, 0.0f),
-					colorMode == DensityGraphColorMode.ColorByDensity ? c : lowColor));
-				vertices.Add(new VertexPositionColor(new Vector3(x, y, 0.0f), c));
-				indices.Add(previousMeasureLowIndex);
-				indices.Add(previousMeasureHighIndex);
-				indices.Add(vertices.GetSize() - 2);
-				indices.Add(previousMeasureHighIndex);
-				indices.Add(vertices.GetSize() - 1);
-				indices.Add(vertices.GetSize() - 2);
-				numPrimitives += 2;
-				previousMeasureLowIndex = vertices.GetSize() - 2;
-				previousMeasureHighIndex = vertices.GetSize() - 1;
-				previousPreviousMeasureStepsPerSecond = previousMeasureStepsPerSecond;
-				previousMeasureStepsPerSecond = stepsPerSecond;
-			}
+				// If we made it to the end and there was a measure that ends with height, we need to 
+				// add one more triangle to bring it down to 0.
+				if (measures[measures.GetSize() - 1].Steps > 0)
+				{
+					vertices.Add(new VertexPositionColor(new Vector3(stepWidth, minY, 0.0f), lowColor));
+					indices.Add(previousMeasureLowIndex);
+					indices.Add(previousMeasureHighIndex);
+					indices.Add(vertices.GetSize() - 1);
+					numPrimitives++;
+				}
 
-			// If we made it to the end and there was a measure that ends with height, we need to 
-			// add one more triangle to bring it down to 0.
-			if (measures[measures.GetSize() - 1].Steps > 0)
+				// Add the rim primitives.
+				AddRim(vertices, indices, ref numPrimitives, width, height);
+
+				// Save results.
+				UpdateData(vertices, indices, numPrimitives, peakNps, peakRps);
+			}
+			catch (Exception)
 			{
-				vertices.Add(new VertexPositionColor(new Vector3(stepWidth, minY, 0.0f), lowColor));
-				indices.Add(previousMeasureLowIndex);
-				indices.Add(previousMeasureHighIndex);
-				indices.Add(vertices.GetSize() - 1);
-				numPrimitives++;
+				// Ignored.
+				// Logging here would likely result in log spam.
 			}
-
-			// Add the rim primitives.
-			AddRim(vertices, indices, ref numPrimitives, width, height);
-
-			// Save results.
-			UpdateData(vertices, indices, numPrimitives, peakNps, peakRps);
 		}
 	}
 
