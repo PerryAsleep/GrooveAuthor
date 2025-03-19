@@ -3848,6 +3848,11 @@ public sealed class Editor :
 						p.PreferencesOptions.ResetLayout = PreferencesOptions.Layout.Default;
 					if (ImGui.MenuItem("Expanded Layout"))
 						p.PreferencesOptions.ResetLayout = PreferencesOptions.Layout.Expanded;
+					ImGui.Separator();
+					if (ImGui.MenuItem("Portrait Layout"))
+						p.PreferencesOptions.ResetLayout = PreferencesOptions.Layout.Portrait;
+					if (ImGui.MenuItem("Portrait Hi-Res Layout"))
+						p.PreferencesOptions.ResetLayout = PreferencesOptions.Layout.PortraitHighRes;
 					ImGui.EndMenu();
 				}
 

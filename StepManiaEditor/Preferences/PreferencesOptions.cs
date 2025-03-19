@@ -53,6 +53,11 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 	public enum Layout
 	{
 		/// <summary>
+		/// Reset the layout, and determine the best layout to use based on the screen aspect ratio.
+		/// </summary>
+		Automatic,
+
+		/// <summary>
 		/// Reset to the default layout.
 		/// </summary>
 		Default,
@@ -61,6 +66,16 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 		/// Reset to the expanded layout.
 		/// </summary>
 		Expanded,
+
+		/// <summary>
+		/// Reset to the portrait layout.
+		/// </summary>
+		Portrait,
+
+		/// <summary>
+		/// Reset to the high-res portrait layout.
+		/// </summary>
+		PortraitHighRes,
 
 		/// <summary>
 		/// Do not reset the layout.
@@ -88,7 +103,7 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 	public const bool DefaultSuppressUpdateNotification = false;
 	public const bool DefaultHideSongBackground = false;
 	public const StepColorMethod DefaultStepColorMethodValue = StepColorMethod.Stepmania;
-	public const Layout DefaultResetLayout = Layout.Default;
+	public const Layout DefaultResetLayout = Layout.Automatic;
 	public const BackgroundImageSizeMode DefaultBackgroundImageSize = BackgroundImageSizeMode.ChartArea;
 	public const bool DefaultRenderNotes = true;
 	public const bool DefaultRenderMarkers = true;
