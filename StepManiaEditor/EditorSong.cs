@@ -1576,6 +1576,12 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 							? song.Charts[fallbackChartIndex]
 							: null;
 
+						// Set the source type to the type we want to save. Save logic examines the source
+						// type to infer if a conversion is occurring or if we are saving out the same file.
+						// We are saving out the same file we opened originally, even if their extensions
+						// are different.
+						song.SourceType = saveParameters.FileType;
+
 						song.Extras = new Extras(OriginalSongExtras);
 
 						song.Title = Title;
