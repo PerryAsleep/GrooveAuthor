@@ -101,7 +101,7 @@ internal sealed class EditorPack
 		Songs.Clear();
 		PackName = null;
 		Banner.UpdatePath(null, null);
-		if (ActiveSong == null)
+		if (ActiveSong == null || string.IsNullOrEmpty(ActiveSong.GetFileDirectory()))
 			return;
 
 		DirectoryInfo packDirectoryInfo;
