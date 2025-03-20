@@ -98,6 +98,8 @@ internal sealed class SavedSongInformation : IActiveChartListProvider
 	}
 
 	[JsonInclude] public string FileName;
+	[JsonInclude] public string SongName;
+	[JsonInclude] public string PackName;
 	[JsonInclude] public double SpacingZoom = 1.0;
 	[JsonInclude] public double ChartPosition;
 	[JsonInclude] public List<SavedChartInformation> ActiveCharts = new();
@@ -123,10 +125,18 @@ internal sealed class SavedSongInformation : IActiveChartListProvider
 	/// <summary>
 	/// Constructor taking all needed information for persistence.
 	/// </summary>
-	public SavedSongInformation(string fileName, double spacingZoom, double chartPosition,
-		IReadOnlyList<ActiveEditorChart> activeCharts, ActiveEditorChart focusedChart)
+	public SavedSongInformation(
+		string fileName,
+		string songName,
+		string packName,
+		double spacingZoom,
+		double chartPosition,
+		IReadOnlyList<ActiveEditorChart> activeCharts,
+		ActiveEditorChart focusedChart)
 	{
 		FileName = fileName;
+		SongName = songName;
+		PackName = packName;
 		Update(activeCharts, focusedChart, spacingZoom, chartPosition);
 	}
 
@@ -163,6 +173,45 @@ internal sealed class SavedSongInformation : IActiveChartListProvider
 
 		SpacingZoom = spacingZoom;
 		ChartPosition = chartPosition;
+	}
+
+	public string GetFileName()
+	{
+		return System.IO.Path.GetFileName(FileName);
+	}
+
+	public string GetPackName()
+	{
+		// Use the explicit pack name if we have it.
+		if (!string.IsNullOrEmpty(PackName))
+			return PackName;
+
+		// Infer the pack name from the full path.
+		if (!string.IsNullOrEmpty(FileName))
+		{
+			var parts = FileName.Split(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar);
+			if (parts.Length >= 3)
+				return parts[^3];
+		}
+
+		return null;
+	}
+
+	public string GetSongName()
+	{
+		// Use the explicit song name if we have it.
+		if (!string.IsNullOrEmpty(SongName))
+			return SongName;
+
+		// Infer song name from the full path.
+		if (!string.IsNullOrEmpty(FileName))
+		{
+			var parts = FileName.Split(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar);
+			if (parts.Length >= 2)
+				return parts[^2];
+		}
+
+		return null;
 	}
 
 	#region IActiveChartListProvider
