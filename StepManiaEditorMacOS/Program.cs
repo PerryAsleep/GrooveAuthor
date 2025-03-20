@@ -5,11 +5,11 @@ using StepManiaEditorMacOs;
 public static class Program
 {
 	[STAThread]
-	private static void Main()
+	private static void Main(string[] args)
 	{
 		// For attaching debugger.
 		//Thread.Sleep(10 * 1000);
-		using var editor = new Editor(new EditorMacOsInterface());
+		using var editor = new Editor(args, new EditorMacOsInterface());
 		editor.Run();
 	}
 }
