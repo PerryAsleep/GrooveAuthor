@@ -312,6 +312,8 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 	private static readonly List<Keys[]> DefaultSnapToFortyEighths                   = [Array.Empty<Keys>()];
 	private static readonly List<Keys[]> DefaultSnapToSixtyFourths                   = [Array.Empty<Keys>()];
 	private static readonly List<Keys[]> DefaultSnapToOneHundredNinetySeconds        = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultToggleWaveForm                       = [Array.Empty<Keys>()];
+	private static readonly List<Keys[]> DefaultToggleDark                           = [Array.Empty<Keys>()];
 	// @formatter:on
 
 	#region Properties
@@ -2219,6 +2221,32 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 	}
 
 	private List<Keys[]> SnapToOneHundredNinetySecondsInternal = DefaultSnapToOneHundredNinetySeconds;
+
+	[JsonInclude]
+	public List<Keys[]> ToggleWaveForm
+	{
+		get => ToggleWaveFormInternal;
+		set
+		{
+			ToggleWaveFormInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(ToggleWaveForm));
+		}
+	}
+
+	private List<Keys[]> ToggleWaveFormInternal = DefaultToggleWaveForm;
+
+	[JsonInclude]
+	public List<Keys[]> ToggleDark
+	{
+		get => ToggleDarkInternal;
+		set
+		{
+			ToggleDarkInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(ToggleDark));
+		}
+	}
+
+	private List<Keys[]> ToggleDarkInternal = DefaultToggleDark;
 
 	#endregion Properties
 

@@ -218,13 +218,17 @@ internal sealed class UIHotbar : UIWindow
 					Preferences.Instance.PreferencesDensityGraph.ShowDensityGraph = b;
 				}
 
+				var keyBind = UIControls.GetCommandString(pKeyBinds.ToggleWaveForm);
 				ImGuiLayoutUtils.DrawRowCheckboxWithButton("Waveform", ref Preferences.Instance.PreferencesWaveForm.ShowWaveForm,
 					"Options", () => { UIWaveFormPreferences.Instance.Open(true); },
-					"Whether or not to show the Waveform.");
+					"Whether or not to show the Waveform."
+					+ $"\n\nThe waveform can be toggled with {keyBind}.");
 
+				keyBind = UIControls.GetCommandString(pKeyBinds.ToggleDark);
 				ImGuiLayoutUtils.DrawRowCheckboxWithButton("Dark", ref Preferences.Instance.PreferencesDark.ShowDarkBg,
 					"Options", () => { UIDarkPreferences.Instance.Open(true); },
-					"Whether or not to show the dark background.");
+					"Whether or not to show the dark background."
+					+ $"\n\nThe dark background can be toggled with {keyBind}.");
 
 				ImGuiLayoutUtils.EndTable();
 			}
