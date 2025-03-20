@@ -217,6 +217,7 @@ public sealed class Editor :
 	private bool IsChartAreaSet;
 	private Rectangle ChartArea;
 
+	private string LaunchFile = null;
 	private bool OpeningSong = false;
 	private EditorPack ActivePack;
 
@@ -338,7 +339,7 @@ public sealed class Editor :
 	/// <summary>
 	/// Constructor.
 	/// </summary>
-	public Editor(IEditorPlatform platformInterface)
+	public Editor(string[] args, IEditorPlatform platformInterface)
 	{
 		PlatformInterface = platformInterface;
 		PlatformInterface.Initialize();
@@ -367,6 +368,17 @@ public sealed class Editor :
 
 		// Update the window title immediately.
 		UpdateWindowTitle();
+
+		// Record requested file to open.
+		if (args != null && args.Length > 0)
+		{
+			LaunchFile = args[0];
+			if (args.Length > 1)
+			{
+				Logger.Warn(
+					$"{args.Length} launch arguments provided but only the first will be used. Full argument list: {string.Join(", ", args)}");
+			}
+		}
 
 #if DEBUG
 		// Disable the splash screen on debug builds.
@@ -4648,6 +4660,14 @@ public sealed class Editor :
 		if (HasCheckedForAutoLoadingLastSong || !CanLoadSongs())
 			return;
 		HasCheckedForAutoLoadingLastSong = true;
+
+		// Prefer opening the explicitly request launch file if one is present.
+		if (!string.IsNullOrEmpty(LaunchFile))
+		{
+			Logger.Info($"Opening file provided as command line argument: {LaunchFile}");
+			OnOpenFile(LaunchFile);
+			return;
+		}
 
 		// If we have a saved file to open, open it now.
 		if (Preferences.Instance.PreferencesOptions.OpenLastOpenedFileOnLaunch

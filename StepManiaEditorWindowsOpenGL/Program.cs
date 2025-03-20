@@ -9,7 +9,7 @@ public static class Program
 	private static extern bool SetProcessDPIAware();
 
 	[STAThread]
-	private static void Main()
+	private static void Main(string[] args)
 	{
 		// At runtime set this process to be DPI aware. This is needed for
 		// us to ignore DPI scaling, which we want to do to avoid Windows
@@ -18,7 +18,7 @@ public static class Program
 		// monitor's DPI scaling value.
 		SetProcessDPIAware();
 
-		using var editor = new Editor(new EditorWindowsOpenGLInterface());
+		using var editor = new Editor(args, new EditorWindowsOpenGLInterface());
 		editor.Run();
 	}
 }
