@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -1034,7 +1035,7 @@ public sealed class Editor :
 	{
 		try
 		{
-			var assembly = System.Reflection.Assembly.GetEntryAssembly();
+			var assembly = Assembly.GetEntryAssembly();
 			var programPath = assembly.Location;
 			var programDir = System.IO.Path.GetDirectoryName(programPath);
 			if (!string.IsNullOrEmpty(programDir))
@@ -3535,16 +3536,38 @@ public sealed class Editor :
 
 				if (ImGui.BeginMenu("Open Recent", p.RecentFiles.Count > 0))
 				{
-					for (var i = 0; i < p.RecentFiles.Count; i++)
+					if (ImGui.BeginTable("##OpenRecentTable", 3, ImGuiTableFlags.Borders))
 					{
-						var recentFile = p.RecentFiles[i];
-						var fileNameWithPath = recentFile.FileName;
-						var fileName = System.IO.Path.GetFileName(fileNameWithPath);
-						if (ImGui.MenuItem(fileName, canOpen))
+						ImGui.TableSetupColumn("File Name");
+						ImGui.TableSetupColumn("Song Title");
+						ImGui.TableSetupColumn("Pack");
+						ImGui.TableHeadersRow();
+
+						var openRecentFile = false;
+						for (var i = 0; i < p.RecentFiles.Count; i++)
 						{
-							OpenRecentIndex = i;
-							OnOpenRecentFile();
+							var recentFile = p.RecentFiles[i];
+
+							ImGui.TableNextRow();
+							ImGui.TableSetColumnIndex(0);
+							if (ImGui.Selectable($"{recentFile.GetFileName() ?? ""}##OpenRecentTable{i}", false,
+								    ImGuiSelectableFlags.SpanAllColumns))
+							{
+								OpenRecentIndex = i;
+								openRecentFile = true;
+							}
+
+							ImGui.TableSetColumnIndex(1);
+							ImGui.TextUnformatted(recentFile.GetSongName() ?? "");
+
+							ImGui.TableSetColumnIndex(2);
+							ImGui.TextUnformatted(recentFile.GetPackName() ?? "");
 						}
+
+						if (openRecentFile)
+							OnOpenRecentFile();
+
+						ImGui.EndTable();
 					}
 
 					ImGui.EndMenu();
@@ -4912,6 +4935,8 @@ public sealed class Editor :
 		var pOptions = p.PreferencesOptions;
 		var savedSongInfo = new SavedSongInformation(
 			ActiveSong.GetFileFullPath(),
+			ActiveSong.Title,
+			ActivePack?.GetPackName(),
 			spacingZoom,
 			chartPosition,
 			ActiveChartData,
