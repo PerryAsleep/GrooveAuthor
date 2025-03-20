@@ -54,10 +54,12 @@ internal sealed class UIWaveFormPreferences : UIWindow
 
 		if (ImGuiLayoutUtils.BeginTable("Show Waveform", TitleColumnWidth))
 		{
+			var keyBind = UIControls.GetCommandString(Preferences.Instance.PreferencesKeyBinds.ToggleWaveForm);
 			ImGuiLayoutUtils.DrawRowCheckbox(true, "Show Waveform", p, nameof(PreferencesWaveForm.ShowWaveForm), false,
 				"Whether to show the waveform." +
 				"\nHiding the waveform will increase performance." +
-				"\nUnchecking this box will hide the waveform, but it will still be generated.");
+				"\nUnchecking this box will hide the waveform, but it will still be generated."
+				+ $"\n\nThe waveform can be toggled on and off with {keyBind}.");
 			ImGuiLayoutUtils.DrawRowCheckbox(true, "Enable Waveform", p, nameof(PreferencesWaveForm.EnableWaveForm), false,
 				"Whether to enable or disable the waveform." +
 				"\nUnchecking this box will prevent the waveform from being generated." +

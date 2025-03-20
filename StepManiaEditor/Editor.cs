@@ -637,6 +637,8 @@ public sealed class Editor :
 		AddKeyCommand(general, "Cancel / Go Back", nameof(PreferencesKeyBinds.CancelGoBack), OnEscape);
 		AddKeyCommand(general, "Toggle Note Entry Mode", nameof(PreferencesKeyBinds.ToggleNoteEntryMode), OnToggleNoteEntryMode);
 		AddKeyCommand(general, "Toggle Spacing Mode", nameof(PreferencesKeyBinds.ToggleSpacingMode), OnToggleSpacingMode);
+		AddKeyCommand(general, "Toggle Waveform", nameof(PreferencesKeyBinds.ToggleWaveForm), OnToggleWaveform);
+		AddKeyCommand(general, "Toggle Dark", nameof(PreferencesKeyBinds.ToggleDark), OnToggleDark);
 		UIControls.Instance.AddCommand(general, "Lock Receptor Move Axis", nameof(PreferencesKeyBinds.LockReceptorMoveAxis));
 		UIControls.Instance.AddStaticCommand(general, "Context Menu", "Right Mouse Button");
 		UIControls.Instance.AddStaticCommand(general, "Exit", "Alt+F4");
@@ -2095,6 +2097,16 @@ public sealed class Editor :
 		}
 
 		GetFocusedChartData()?.ClearSelection();
+	}
+
+	private void OnToggleWaveform()
+	{
+		Preferences.Instance.PreferencesWaveForm.ShowWaveForm = !Preferences.Instance.PreferencesWaveForm.ShowWaveForm;
+	}
+
+	private void OnToggleDark()
+	{
+		Preferences.Instance.PreferencesDark.ShowDarkBg = !Preferences.Instance.PreferencesDark.ShowDarkBg;
 	}
 
 	#endregion Input Processing

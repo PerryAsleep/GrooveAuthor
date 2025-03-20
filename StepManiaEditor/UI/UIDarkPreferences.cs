@@ -46,8 +46,10 @@ internal sealed class UIDarkPreferences : UIWindow
 
 		if (ImGuiLayoutUtils.BeginTable("Dark Preferences Table", TitleColumnWidth))
 		{
+			var keyBind = UIControls.GetCommandString(Preferences.Instance.PreferencesKeyBinds.ToggleDark);
 			ImGuiLayoutUtils.DrawRowCheckbox(true, "Show Dark Background", p, nameof(PreferencesDark.ShowDarkBg), false,
-				"Whether to show the dark background.");
+				"Whether to show the dark background."
+				+ $"\n\nThe dark background can be toggled on and off with {keyBind}.");
 
 			ImGuiLayoutUtils.DrawRowEnum<PreferencesDark.DrawOrder>(true, "Draw Order", p,
 				nameof(PreferencesDark.DarkBgDrawOrder), false,
