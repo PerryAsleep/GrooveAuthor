@@ -22,7 +22,7 @@ internal sealed class EditorLinuxInterface : IEditorPlatform
 	/// </summary>
 	private string PersistenceDirectory;
 
-	public void Initialize()
+	public void Initialize(Editor editor)
 	{
 		// Initialize GTK but prevent it from modifying the SynchronizationContext.
 		// It will set it to a GLibSynchronizationContext which will run every async

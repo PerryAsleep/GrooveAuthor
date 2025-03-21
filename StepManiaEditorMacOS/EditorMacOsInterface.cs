@@ -23,9 +23,35 @@ internal sealed class EditorMacOsInterface : IEditorPlatform
 	/// </summary>
 	private string PersistenceDirectory;
 
-	public void Initialize()
+	/// <summary>
+	/// Editor instance.
+	/// </summary>
+	private Editor Editor;
+
+	/// <summary>
+	/// Lock for managing the pending file to open.
+	/// </summary>
+	private readonly object PendingFileLock = new object();
+
+	/// <summary>
+	/// Pending file to open on the main thread.
+	/// </summary>
+	private string PendingFileToOpen;
+
+	public EditorMacOsInterface(string[] args)
 	{
+		// Initialize NSApplication but do not run it.
+		// Running it blocks the thread. The Mac OS app uses SDL for window management
+		// and Monogame for the update and render loop. We need to initialize the
+		// NSApplication in order to respond to OS level events.
 		NSApplication.Init();
+		NSApplication.SharedApplication.Delegate = new EditorAppDelegate(this);
+		NSApplication.SharedApplication.FinishLaunching();
+	}
+
+	public void Initialize(Editor editor)
+	{
+		Editor = editor;
 
 		// Ensure the directory we need to use for persistence is available.
 		InitializePersistenceDirectory();
@@ -217,5 +243,78 @@ internal sealed class EditorMacOsInterface : IEditorPlatform
 
 	public void Update(GameTime gameTime)
 	{
+		// Process Mac OS events since we do not use the normal NSApplication lifecycle.
+		NSEvent evt;
+		do
+		{
+			evt = NSApplication.SharedApplication.NextEvent(NSEventMask.AnyEvent, NSDate.DistantPast, NSRunLoopMode.Default, true);
+			if (evt != null)
+			{
+				NSApplication.SharedApplication.SendEvent(evt);
+				NSApplication.SharedApplication.UpdateWindows();
+			}
+		} while(evt != null);
+
+		// If the OS has requested we open a file, handle it now on the main thread.
+		string pendingFile = null;
+		lock(PendingFileLock)
+		{
+			if (!string.IsNullOrEmpty(PendingFileToOpen))
+			{
+				pendingFile = PendingFileToOpen;
+				PendingFileToOpen = null;
+			}
+		}
+		if (!string.IsNullOrEmpty(pendingFile))
+		{
+			Logger.Info($"Trying to open pending file from mac os: {pendingFile}");
+			Editor.OpenSongFile(pendingFile, true);
+		}
+	}
+
+	/// <summary>
+	/// Callback from EditorAppDelegate for the OS requesting we open a file.
+	/// </summary>
+	/// <param name="fileName">The file to open.</param>
+	public void OsRequestOpenFile(string fileName)
+	{
+		// We may be on a different thread than the main thread,
+		// and we can't guarantee the Editor is instantiated yet.
+		// Record the pending file to open for procesing later on
+		// the Update loop.
+		lock (PendingFileLock)
+		{
+			PendingFileToOpen = fileName;
+		}
+	}
+}
+
+/// <summary>
+/// NSApplicationDelegate implementation.
+/// This allows for responding to various OS events.
+/// See also: https://developer.apple.com/documentation/appkit/nsapplicationdelegate
+/// </summary>
+internal sealed class EditorAppDelegate : NSApplicationDelegate
+{
+	private readonly EditorMacOsInterface MacOsInterface;
+
+	public EditorAppDelegate(EditorMacOsInterface macOsInterface)
+	{
+		MacOsInterface = macOsInterface;
+	}
+
+	/// <summary>
+	/// Handle a message from the OS to open files.
+	/// See also: https://developer.apple.com/documentation/appkit/nsapplicationdelegate/application(_:openfiles:)
+	/// </summary>
+	/// <param name="sender">The application object associated with the delegate.</param>
+	/// <param name="filenames">An array of strings containing the names of the files to open.</param>
+	public override void OpenFiles(NSApplication sender, string[] filenames)
+	{
+		if (filenames != null && filenames.Length > 0)
+		{
+			// We can only open one file at a time. Just take the first.
+			MacOsInterface.OsRequestOpenFile(filenames[0]);
+		}
 	}
 }

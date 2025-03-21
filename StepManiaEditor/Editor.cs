@@ -342,7 +342,7 @@ public sealed class Editor :
 	public Editor(string[] args, IEditorPlatform platformInterface)
 	{
 		PlatformInterface = platformInterface;
-		PlatformInterface.Initialize();
+		PlatformInterface.Initialize(this);
 
 		// Record main thread id.
 		MainThreadId = Environment.CurrentManagedThreadId;
@@ -4799,10 +4799,21 @@ public sealed class Editor :
 			new DefaultChartListProvider(pOptions.DefaultStepsType, pOptions.DefaultDifficultyType));
 	}
 
-	public void OpenSongFile(string fileName)
+	public void OpenSongFile(string fileName, bool osRequest = false)
 	{
+		Logger.Info($"OpenSongFile {fileName}, {osRequest}");
+
 		if (string.IsNullOrEmpty(fileName))
 			return;
+
+		// If this open request came from the OS it may occur
+		// before we are ready to load songs. If that is the case,
+		// store this song as the file to launch.
+		if (!HasCheckedForAutoLoadingLastSong && osRequest)
+		{
+			LaunchFile = fileName;
+			return;
+		}
 		OnOpenFile(fileName);
 	}
 

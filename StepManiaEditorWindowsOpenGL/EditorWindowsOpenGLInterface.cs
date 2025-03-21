@@ -15,7 +15,7 @@ namespace StepManiaEditorWindowsOpenGL;
 /// </summary>
 internal sealed class EditorWindowsOpenGLInterface : IEditorPlatform
 {
-	public void Initialize()
+	public void Initialize(Editor editor)
 	{
 	}
 
