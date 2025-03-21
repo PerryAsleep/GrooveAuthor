@@ -4814,6 +4814,7 @@ public sealed class Editor :
 			LaunchFile = fileName;
 			return;
 		}
+
 		OnOpenFile(fileName);
 	}
 

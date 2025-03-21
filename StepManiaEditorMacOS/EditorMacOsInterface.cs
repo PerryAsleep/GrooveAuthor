@@ -31,7 +31,7 @@ internal sealed class EditorMacOsInterface : IEditorPlatform
 	/// <summary>
 	/// Lock for managing the pending file to open.
 	/// </summary>
-	private readonly object PendingFileLock = new object();
+	private readonly object PendingFileLock = new();
 
 	/// <summary>
 	/// Pending file to open on the main thread.
@@ -247,17 +247,18 @@ internal sealed class EditorMacOsInterface : IEditorPlatform
 		NSEvent evt;
 		do
 		{
-			evt = NSApplication.SharedApplication.NextEvent(NSEventMask.AnyEvent, NSDate.DistantPast, NSRunLoopMode.Default, true);
+			evt = NSApplication.SharedApplication.NextEvent(NSEventMask.AnyEvent, NSDate.DistantPast, NSRunLoopMode.Default,
+				true);
 			if (evt != null)
 			{
 				NSApplication.SharedApplication.SendEvent(evt);
 				NSApplication.SharedApplication.UpdateWindows();
 			}
-		} while(evt != null);
+		} while (evt != null);
 
 		// If the OS has requested we open a file, handle it now on the main thread.
 		string pendingFile = null;
-		lock(PendingFileLock)
+		lock (PendingFileLock)
 		{
 			if (!string.IsNullOrEmpty(PendingFileToOpen))
 			{
@@ -265,6 +266,7 @@ internal sealed class EditorMacOsInterface : IEditorPlatform
 				PendingFileToOpen = null;
 			}
 		}
+
 		if (!string.IsNullOrEmpty(pendingFile))
 		{
 			Logger.Info($"Trying to open pending file from mac os: {pendingFile}");
