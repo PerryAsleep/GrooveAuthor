@@ -8,8 +8,8 @@ public static class Program
 	private static void Main(string[] args)
 	{
 		// For attaching debugger.
-		//Thread.Sleep(10 * 1000);
-		using var editor = new Editor(args, new EditorMacOsInterface());
+		// System.Threading.Thread.Sleep(10 * 1000);
+		using var editor = new Editor(args, new EditorMacOsInterface(args));
 		editor.Run();
 	}
 }

@@ -15,7 +15,7 @@ namespace StepManiaEditorWindows;
 /// </summary>
 internal sealed class EditorWindowsInterface : IEditorPlatform
 {
-	public void Initialize()
+	public void Initialize(Editor editor)
 	{
 	}
 

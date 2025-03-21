@@ -9,7 +9,7 @@ namespace StepManiaEditor;
 /// </summary>
 public interface IEditorPlatform
 {
-	public void Initialize();
+	public void Initialize(Editor editor);
 	public void PlayExclamationSound();
 
 	/// <summary>
