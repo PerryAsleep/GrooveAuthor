@@ -12,6 +12,7 @@ using static Fumen.Converters.SMCommon;
 using static StepManiaEditor.AutogenConfig.EditorPatternConfig;
 using static StepManiaEditor.Editor;
 using static System.Diagnostics.Debug;
+using static Fumen.Converters.MSDFile;
 
 namespace StepManiaEditor;
 
@@ -2321,7 +2322,13 @@ internal sealed class ImGuiLayoutUtils
 		double actualMinTempo,
 		double actualMaxTempo)
 	{
-		DrawRowTitleAndAdvanceColumn("Display Tempo");
+		const string title = "Display Tempo";
+		const string help = "How the tempo for this chart should be displayed." +
+		                    "\nRandom:    The actual tempo will be hidden and replaced with a random display." +
+		                    "\nSpecified: A specified tempo or tempo range will be displayed." +
+		                    "\n           This is a good option when tempo gimmicks would result in a misleading actual tempo range." +
+		                    "\nActual:    The actual tempo or tempo range will be displayed.";
+		DrawRowTitleAndAdvanceColumn(title);
 
 		var spacing = ImGui.GetStyle().ItemSpacing.X;
 
@@ -2330,13 +2337,16 @@ internal sealed class ImGuiLayoutUtils
 			(ImGui.GetContentRegionAvail().X - DisplayTempoEnumWidth - RangeToWidth - spacing * 3.0f) * 0.5f);
 
 		// Draw an enum for choosing the DisplayTempoMode.
-		DrawEnum(undoable, "", chart, nameof(EditorChart.DisplayTempoMode), DisplayTempoEnumWidth, null, true,
-			"How the tempo for this chart should be displayed." +
-			"\nRandom:    The actual tempo will be hidden and replaced with a random display." +
-			"\nSpecified: A specified tempo or tempo range will be displayed." +
-			"\n           This is a good option when tempo gimmicks would result in a misleading actual tempo range." +
-			"\nActual:    The actual tempo or tempo range will be displayed.",
-			chart?.DisplayTempoMode ?? DisplayTempoMode.Actual);
+		// Use a custom action to set the mode afterward if we detect it has changed.
+		var previousDisplayMode = chart?.DisplayTempoMode ?? DisplayTempoMode.Actual;
+		var currentDisplayMode = previousDisplayMode;
+		var itemWidth = DrawHelp(help, DisplayTempoEnumWidth);
+		ImGui.SetNextItemWidth(itemWidth);
+		ComboFromEnum(GetElementTitle(title, "Combo"), ref currentDisplayMode);
+		if (chart != null && currentDisplayMode != previousDisplayMode)
+		{
+			ActionQueue.Instance.Do(new ActionSetDisplayTempoMode(chart, currentDisplayMode));
+		}
 
 		// The remainder of the row depends on the mode.
 		switch (chart?.DisplayTempoMode ?? DisplayTempoMode.Actual)
@@ -2356,7 +2366,6 @@ internal sealed class ImGuiLayoutUtils
 			// For a Specified display, draw the specified range.
 			case DisplayTempoMode.Specified:
 			{
-				// ReSharper disable PossibleNullReferenceException
 				// DragDouble for the min.
 				ImGui.SameLine();
 				ImGui.SetNextItemWidth(splitTempoWidth);
@@ -2369,7 +2378,7 @@ internal sealed class ImGuiLayoutUtils
 
 				// Checkbox for whether or not to use a distinct max.
 				ImGui.SameLine();
-				if (DrawCheckbox(false, "", chart, nameof(EditorChart.DisplayTempoShouldAllowEditsOfMax), 10.0f, true))
+				if (DrawCheckbox(false, "", chart, nameof(EditorChart.DisplayTempoShouldAllowEditsOfMax), CheckBoxWidth, true))
 				{
 					if (undoable)
 					{
@@ -2380,7 +2389,7 @@ internal sealed class ImGuiLayoutUtils
 				}
 
 				// If not using a distinct max, disable the max DragDouble and ensure that the max is set to the min.
-				if (!chart.DisplayTempoShouldAllowEditsOfMax)
+				if (chart != null && !chart.DisplayTempoShouldAllowEditsOfMax)
 				{
 					PushDisabled();
 
@@ -2396,12 +2405,10 @@ internal sealed class ImGuiLayoutUtils
 					0.001f, "%.6f", true);
 
 				// Pop the disabled setting if we pushed it before.
-				if (!chart.DisplayTempoShouldAllowEditsOfMax)
+				if (chart != null && !chart.DisplayTempoShouldAllowEditsOfMax)
 				{
 					PopDisabled();
 				}
-				// ReSharper restore PossibleNullReferenceException
-
 				break;
 			}
 

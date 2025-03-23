@@ -117,9 +117,15 @@ internal sealed class DisplayTempo
 			return false;
 		if (ReferenceEquals(this, other))
 			return true;
-		return Mode == other.Mode
-		       && SpecifiedTempoMin.Equals(other.SpecifiedTempoMin)
-		       && SpecifiedTempoMax.Equals(other.SpecifiedTempoMax)
-		       && ShouldAllowEditsOfMax == other.ShouldAllowEditsOfMax;
+		if (Mode != other.Mode)
+			return false;
+		if (Mode == DisplayTempoMode.Specified)
+		{
+			return SpecifiedTempoMin.Equals(other.SpecifiedTempoMin)
+			       && SpecifiedTempoMax.Equals(other.SpecifiedTempoMax)
+			       && ShouldAllowEditsOfMax == other.ShouldAllowEditsOfMax;
+		}
+
+		return true;
 	}
 }

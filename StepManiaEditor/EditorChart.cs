@@ -529,8 +529,9 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			}
 		}
 
-		DisplayTempoFromChart = !string.IsNullOrEmpty(chart.Tempo);
-		DisplayTempo.FromString(chart.Tempo);
+		DisplayTempoFromChart = chart.Extras.TryGetExtra(TagDisplayBPM, out string chartDisplayBpm, true);
+		if (DisplayTempoFromChart)
+			DisplayTempo.FromString(chartDisplayBpm);
 
 		SetUpEditorEvents(chart);
 
