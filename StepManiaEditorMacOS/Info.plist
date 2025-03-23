@@ -30,8 +30,6 @@
     <string>Copyright © 2025</string>
     <key>NSPrincipalClass</key>
     <string>NSApplication</string>
-    <key>LSRequiresNativeExecution</key>
-    <true/>
     <key>NSHighResolutionCapable</key>
     <true/>
     <key>CFBundleDocumentTypes</key>
