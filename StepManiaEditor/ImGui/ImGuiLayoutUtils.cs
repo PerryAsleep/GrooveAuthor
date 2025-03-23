@@ -2370,7 +2370,8 @@ internal sealed class ImGuiLayoutUtils
 				// DragDouble for the min.
 				ImGui.SameLine();
 				ImGui.SetNextItemWidth(specifiedSplitTempoWidth);
-				DrawDragDouble(undoable, "", chart, nameof(EditorChart.DisplayTempoSpecifiedTempoMin), specifiedSplitTempoWidth,
+				DrawDragDouble(undoable, GetElementTitle(title, "SpecifiedMin"), chart,
+					nameof(EditorChart.DisplayTempoSpecifiedTempoMin), specifiedSplitTempoWidth,
 					null,
 					0.001f, "%.6f", true);
 
@@ -2380,7 +2381,8 @@ internal sealed class ImGuiLayoutUtils
 
 				// Checkbox for whether or not to use a distinct max.
 				ImGui.SameLine();
-				if (DrawCheckbox(false, "", chart, nameof(EditorChart.DisplayTempoShouldAllowEditsOfMax), CheckBoxWidth, true))
+				if (DrawCheckbox(false, GetElementTitle(title, "SpecifiedCheckbox"), chart,
+					    nameof(EditorChart.DisplayTempoShouldAllowEditsOfMax), CheckBoxWidth, true))
 				{
 					if (undoable)
 					{
@@ -2402,7 +2404,8 @@ internal sealed class ImGuiLayoutUtils
 				// DragDouble for the max.
 				ImGui.SameLine();
 				ImGui.SetNextItemWidth(specifiedSplitTempoWidth);
-				DrawDragDouble(undoable, "", chart, nameof(EditorChart.DisplayTempoSpecifiedTempoMax),
+				DrawDragDouble(undoable, GetElementTitle(title, "SpecifiedMax"), chart,
+					nameof(EditorChart.DisplayTempoSpecifiedTempoMax),
 					ImGui.GetContentRegionAvail().X, null,
 					0.001f, "%.6f", true);
 
@@ -2425,7 +2428,7 @@ internal sealed class ImGuiLayoutUtils
 				{
 					ImGui.SetNextItemWidth(Math.Max(1.0f, tempoControlWidth));
 					ImGui.SameLine();
-					DragDouble(ref actualMinTempo, "");
+					DragDouble(ref actualMinTempo, GetElementTitle(title, "Actual"));
 				}
 
 				// If the actual tempo is a range then draw the min and max.
@@ -2434,7 +2437,7 @@ internal sealed class ImGuiLayoutUtils
 					// DragDouble for the min.
 					ImGui.SetNextItemWidth(actualSplitTempoWidth);
 					ImGui.SameLine();
-					DragDouble(ref actualMinTempo, "");
+					DragDouble(ref actualMinTempo, GetElementTitle(title, "ActualMin"));
 
 					// "to" text to split the min and max.
 					ImGui.SameLine();
@@ -2443,7 +2446,7 @@ internal sealed class ImGuiLayoutUtils
 					// DragDouble for the max.
 					ImGui.SetNextItemWidth(actualSplitTempoWidth);
 					ImGui.SameLine();
-					DragDouble(ref actualMaxTempo, "");
+					DragDouble(ref actualMaxTempo, GetElementTitle(title, "ActualMax"));
 				}
 
 				PopDisabled();
