@@ -12,7 +12,6 @@ using static Fumen.Converters.SMCommon;
 using static StepManiaEditor.AutogenConfig.EditorPatternConfig;
 using static StepManiaEditor.Editor;
 using static System.Diagnostics.Debug;
-using static Fumen.Converters.MSDFile;
 
 namespace StepManiaEditor;
 
@@ -2333,7 +2332,9 @@ internal sealed class ImGuiLayoutUtils
 		var spacing = ImGui.GetStyle().ItemSpacing.X;
 
 		var tempoControlWidth = ImGui.GetContentRegionAvail().X - DisplayTempoEnumWidth - spacing;
-		var splitTempoWidth = Math.Max(1.0f,
+		var specifiedSplitTempoWidth = Math.Max(1.0f,
+			(ImGui.GetContentRegionAvail().X - DisplayTempoEnumWidth - RangeToWidth - CheckBoxWidth - spacing * 4.0f) * 0.5f);
+		var actualSplitTempoWidth = Math.Max(1.0f,
 			(ImGui.GetContentRegionAvail().X - DisplayTempoEnumWidth - RangeToWidth - spacing * 3.0f) * 0.5f);
 
 		// Draw an enum for choosing the DisplayTempoMode.
@@ -2368,8 +2369,9 @@ internal sealed class ImGuiLayoutUtils
 			{
 				// DragDouble for the min.
 				ImGui.SameLine();
-				ImGui.SetNextItemWidth(splitTempoWidth);
-				DrawDragDouble(undoable, "", chart, nameof(EditorChart.DisplayTempoSpecifiedTempoMin), splitTempoWidth, null,
+				ImGui.SetNextItemWidth(specifiedSplitTempoWidth);
+				DrawDragDouble(undoable, "", chart, nameof(EditorChart.DisplayTempoSpecifiedTempoMin), specifiedSplitTempoWidth,
+					null,
 					0.001f, "%.6f", true);
 
 				// "to" text to split the min and max.
@@ -2399,7 +2401,7 @@ internal sealed class ImGuiLayoutUtils
 
 				// DragDouble for the max.
 				ImGui.SameLine();
-				ImGui.SetNextItemWidth(splitTempoWidth);
+				ImGui.SetNextItemWidth(specifiedSplitTempoWidth);
 				DrawDragDouble(undoable, "", chart, nameof(EditorChart.DisplayTempoSpecifiedTempoMax),
 					ImGui.GetContentRegionAvail().X, null,
 					0.001f, "%.6f", true);
@@ -2409,6 +2411,7 @@ internal sealed class ImGuiLayoutUtils
 				{
 					PopDisabled();
 				}
+
 				break;
 			}
 
@@ -2429,7 +2432,7 @@ internal sealed class ImGuiLayoutUtils
 				else
 				{
 					// DragDouble for the min.
-					ImGui.SetNextItemWidth(splitTempoWidth);
+					ImGui.SetNextItemWidth(actualSplitTempoWidth);
 					ImGui.SameLine();
 					DragDouble(ref actualMinTempo, "");
 
@@ -2438,7 +2441,7 @@ internal sealed class ImGuiLayoutUtils
 					ImGui.TextUnformatted("to");
 
 					// DragDouble for the max.
-					ImGui.SetNextItemWidth(splitTempoWidth);
+					ImGui.SetNextItemWidth(actualSplitTempoWidth);
 					ImGui.SameLine();
 					DragDouble(ref actualMaxTempo, "");
 				}
