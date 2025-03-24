@@ -1072,6 +1072,7 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 
 	public double GetBestChartStartingTempo()
 	{
+		// If other charts are present, use the most common tempo from the other charts.
 		var histogram = new Dictionary<double, int>();
 		foreach (var kvp in Charts)
 		{
@@ -1094,6 +1095,33 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 			return histogram.Aggregate((x, y) => x.Value > y.Value ? x : y).Key;
 		}
 
+		// Otherwise, if a tempo is specified on the song from the sm/ssc file, use that.
+		if (OriginalSongExtras.TryGetExtra(TagBPMs, out Dictionary<double, double> songTempos, true))
+		{
+			if (songTempos.TryGetValue(0.0, out var firstTempo))
+			{
+				if (firstTempo >= EditorTempoEvent.MinTempo)
+				{
+					return firstTempo;
+				}
+			}
+		}
+
+		// Otherwise, if the song has an explicit display BPM, use that.
+		if (OriginalSongExtras.TryGetExtra(TagDisplayBPM, out object _, true))
+		{
+			var displayTempo = new DisplayTempo();
+			displayTempo.FromString(GetDisplayBPMStringFromSourceExtrasList(OriginalSongExtras, null));
+			if (displayTempo.Mode == DisplayTempoMode.Specified)
+			{
+				if (displayTempo.SpecifiedTempoMin >= EditorTempoEvent.MinTempo)
+				{
+					return displayTempo.SpecifiedTempoMin;
+				}
+			}
+		}
+
+		// Failing all the above, use the default tempo.
 		return EditorChart.DefaultTempo;
 	}
 
