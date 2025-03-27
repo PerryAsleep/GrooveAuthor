@@ -130,7 +130,7 @@ internal abstract class Build
 	}
 
 	protected static void CopyDirectory(string sourceDir, string destinationDir,
-		IReadOnlyDictionary<string, string>? documentationReplacements = null)
+		IReadOnlyDictionary<string, string> documentationReplacements = null)
 	{
 		var dir = new DirectoryInfo(sourceDir);
 		if (!dir.Exists)
@@ -192,7 +192,7 @@ internal abstract class Build
 			DeleteFiles(subDirectory.FullName, regex);
 	}
 
-	protected static string? GetSevenZipPath()
+	protected static string GetSevenZipPath()
 	{
 		var sevenZipPath = Environment.GetEnvironmentVariable(Fumen7Z);
 		if (string.IsNullOrEmpty(sevenZipPath))
