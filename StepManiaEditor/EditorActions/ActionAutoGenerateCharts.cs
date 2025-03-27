@@ -198,7 +198,9 @@ internal sealed class ActionAutoGenerateCharts : EditorAction
 
 		// Create a Chart from the EditorChart.
 		sourceChart.SaveToChart(new EditorSong.SaveParameters(FileFormatType.SSC, null),
+#pragma warning disable CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
 			(chart, _) => OnChartSaved(chart));
+#pragma warning restore CS4014 // Because this call is not awaited, execution of the current method continues before the call is completed
 	}
 
 	protected override void DoImplementation()
