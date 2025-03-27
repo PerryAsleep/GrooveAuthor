@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Runtime.InteropServices;
 using AppKit;
@@ -38,10 +39,10 @@ internal sealed class EditorMacOsInterface : IEditorPlatform
 	/// </summary>
 	private string PendingFileToOpen;
 
-	public EditorMacOsInterface(string[] args)
+	public EditorMacOsInterface()
 	{
 		// Initialize NSApplication but do not run it.
-		// Running it blocks the thread. The Mac OS app uses SDL for window management
+		// Running it blocks the thread. The macOS app uses SDL for window management
 		// and Monogame for the update and render loop. We need to initialize the
 		// NSApplication in order to respond to OS level events.
 		NSApplication.Init();
@@ -106,8 +107,10 @@ internal sealed class EditorMacOsInterface : IEditorPlatform
 
 	#region Sounds
 
+	// ReSharper disable InconsistentNaming
 	[DllImport("/System/Library/Frameworks/AudioToolbox.framework/AudioToolbox")]
 	private static extern void AudioServicesPlaySystemSound(uint inSystemSoundID);
+	// ReSharper restore InconsistentNaming
 
 	public void PlayExclamationSound()
 	{
@@ -141,7 +144,7 @@ internal sealed class EditorMacOsInterface : IEditorPlatform
 
 	public string GetResourceDirectory()
 	{
-		return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"../Resources");
+		return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "../Resources");
 	}
 
 	public (bool, string) ShowSaveSimFileDialog(string initialDirectory, string fileName, FileFormatType? fileFormatType)
@@ -243,7 +246,7 @@ internal sealed class EditorMacOsInterface : IEditorPlatform
 
 	public void Update(GameTime gameTime)
 	{
-		// Process Mac OS events since we do not use the normal NSApplication lifecycle.
+		// Process macOS events since we do not use the normal NSApplication lifecycle.
 		NSEvent evt;
 		do
 		{
@@ -282,7 +285,7 @@ internal sealed class EditorMacOsInterface : IEditorPlatform
 	{
 		// We may be on a different thread than the main thread,
 		// and we can't guarantee the Editor is instantiated yet.
-		// Record the pending file to open for procesing later on
+		// Record the pending file to open for processing later on
 		// the Update loop.
 		lock (PendingFileLock)
 		{
@@ -311,8 +314,10 @@ internal sealed class EditorAppDelegate : NSApplicationDelegate
 	/// </summary>
 	/// <param name="sender">The application object associated with the delegate.</param>
 	/// <param name="filenames">An array of strings containing the names of the files to open.</param>
+	[SuppressMessage("ReSharper", "CommentTypo")]
 	public override void OpenFiles(NSApplication sender, string[] filenames)
 	{
+		// ReSharper disable once ConditionIsAlwaysTrueOrFalse
 		if (filenames != null && filenames.Length > 0)
 		{
 			// We can only open one file at a time. Just take the first.

@@ -9,7 +9,7 @@ public static class Program
 	{
 		// For attaching debugger.
 		// System.Threading.Thread.Sleep(10 * 1000);
-		using var editor = new Editor(args, new EditorMacOsInterface(args));
+		using var editor = new Editor(args, new EditorMacOsInterface());
 		editor.Run();
 	}
 }
