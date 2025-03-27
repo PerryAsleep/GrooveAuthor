@@ -2,7 +2,7 @@
 using System.Xml.Linq;
 
 // Get the current version.
-Version currentVersion = null;
+Version currentVersion;
 try
 {
 	currentVersion = GetAppVersion();
@@ -75,10 +75,10 @@ string GetVersionAsString(Version version)
 	return $"{version.Major}.{version.Minor}.{version.Build}";
 }
 
-bool WriteVersionIntoCsProj(string file, Version newVersion)
+bool WriteVersionIntoCsProj(string file, Version inVersion)
 {
 	var fileName = file.Substring(file.LastIndexOf('\\') + 1);
-	var newVersionString = GetVersionAsString(newVersion);
+	var newVersionString = GetVersionAsString(inVersion);
 	Console.WriteLine($"Updating {fileName} version to {newVersionString}.");
 	try
 	{
@@ -86,7 +86,7 @@ bool WriteVersionIntoCsProj(string file, Version newVersion)
 		text = Regex.Replace(
 			text,
 			"(<Version>)([^<]+)(</Version>)",
-			match => $"{match.Groups[1].Value}{newVersion}{match.Groups[3].Value}"
+			match => $"{match.Groups[1].Value}{inVersion}{match.Groups[3].Value}"
 		);
 		File.WriteAllText(file, text);
 		Console.WriteLine($"Updated {fileName} version to {newVersionString}.");
@@ -100,10 +100,10 @@ bool WriteVersionIntoCsProj(string file, Version newVersion)
 	return false;
 }
 
-bool WriteVersionIntoPlist(string file, Version newVersion)
+bool WriteVersionIntoPlist(string file, Version inVersion)
 {
 	var fileName = file.Substring(file.LastIndexOf('\\') + 1);
-	var newVersionString = GetVersionAsString(newVersion);
+	var newVersionString = GetVersionAsString(inVersion);
 	Console.WriteLine($"Updating {fileName} version to {newVersionString}.");
 	try
 	{
@@ -111,12 +111,12 @@ bool WriteVersionIntoPlist(string file, Version newVersion)
 		text = Regex.Replace(
 			text,
 			@"(<key>CFBundleShortVersionString</key>\s*<string>)([^<]+)(</string>)",
-			match => $"{match.Groups[1].Value}{newVersion}{match.Groups[3].Value}"
+			match => $"{match.Groups[1].Value}{inVersion}{match.Groups[3].Value}"
 		);
 		text = Regex.Replace(
 			text,
 			@"(<key>CFBundleVersion</key>\s*<string>)([^<]+)(</string>)",
-			match => $"{match.Groups[1].Value}{newVersion}{match.Groups[3].Value}"
+			match => $"{match.Groups[1].Value}{inVersion}{match.Groups[3].Value}"
 		);
 		File.WriteAllText(file, text);
 		Console.WriteLine($"Updated {fileName} version to {newVersionString}.");
@@ -124,7 +124,7 @@ bool WriteVersionIntoPlist(string file, Version newVersion)
 	}
 	catch (Exception e)
 	{
-		Console.WriteLine($"Failed updating {fileName} version to {newVersion}. {e}");
+		Console.WriteLine($"Failed updating {fileName} version to {inVersion}. {e}");
 	}
 
 	return false;
