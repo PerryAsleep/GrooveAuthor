@@ -15,19 +15,19 @@ namespace StepManiaEditor;
 internal class UILog : UIWindow
 {
 	private static readonly string[] LogWindowDateStrings =
-	{
+	[
 		"None",
 		"HH:mm:ss",
 		"HH:mm:ss.fff",
 		"yyyy-MM-dd HH:mm:ss.fff",
-	};
+	];
 
 	private static readonly Vector4[] LogWindowLevelColors =
-	{
+	[
 		new(1.0f, 1.0f, 1.0f, 1.0f),
 		new(1.0f, 1.0f, 0.0f, 1.0f),
 		new(1.0f, 0.0f, 0.0f, 1.0f),
-	};
+	];
 
 	private static readonly int LevelWidth = UiScaled(60);
 	private static readonly int LevelTextWidth = UiScaled(32);

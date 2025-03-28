@@ -11,7 +11,7 @@ namespace StepManiaEditor;
 ///
 /// Expected Usage:
 ///  Call BeginFrame at the start of each frame.
-///  Call PositionEvent once per each each visible miscellaneous EditorEvent per frame.
+///  Call PositionEvent once per each visible miscellaneous EditorEvent per frame.
 /// </summary>
 internal sealed class MiscEventWidgetLayoutManager
 {
@@ -74,8 +74,8 @@ internal sealed class MiscEventWidgetLayoutManager
 			{ typeof(EditorLastSecondHintEvent), new WidgetData() },
 		};
 
-		LeftTypes = new List<Type>
-		{
+		LeftTypes =
+		[
 			typeof(EditorTimeSignatureEvent),
 			typeof(EditorStopEvent),
 			typeof(EditorDelayEvent),
@@ -83,9 +83,9 @@ internal sealed class MiscEventWidgetLayoutManager
 			typeof(EditorTickCountEvent),
 			typeof(EditorMultipliersEvent),
 			typeof(EditorLabelEvent),
-		};
-		RightTypes = new List<Type>
-		{
+		];
+		RightTypes =
+		[
 			typeof(EditorPreviewRegionEvent),
 			typeof(EditorLastSecondHintEvent),
 			typeof(EditorPatternEvent),
@@ -93,7 +93,7 @@ internal sealed class MiscEventWidgetLayoutManager
 			typeof(EditorScrollRateEvent),
 			typeof(EditorInterpolatedRateAlteringEvent),
 			typeof(EditorFakeSegmentEvent),
-		};
+		];
 
 		for (var i = 0; i < LeftTypes.Count; i++)
 			Data[LeftTypes[i]].LeftOrder = i;

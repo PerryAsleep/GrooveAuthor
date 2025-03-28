@@ -75,8 +75,7 @@ internal sealed class ActionDeletePatternNotes : EditorAction
 		IEnumerable<EditorPatternEvent> allPatterns) : base(false, false)
 	{
 		EditorChart = editorChart;
-		Patterns = new List<EditorPatternEvent>();
-		Patterns.AddRange(allPatterns);
+		Patterns = [.. allPatterns];
 		Patterns.Sort();
 	}
 
@@ -173,7 +172,7 @@ internal sealed class ActionDeletePatternNotes : EditorAction
 			}
 
 			// Delete the events now rather than waiting to accumulate all events.
-			// These prevents accidentally trying to delete the same event more than once
+			// This prevents accidentally trying to delete the same event more than once
 			// when patterns overlap.
 			deletedEvents.AddRange(deletedEventsForPattern);
 			editorChart.DeleteEvents(deletedEventsForPattern);

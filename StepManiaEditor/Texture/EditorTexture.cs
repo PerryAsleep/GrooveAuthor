@@ -174,7 +174,7 @@ internal sealed class EditorTexture : IDisposable
 					// Normal image handling.
 					else
 					{
-						// If we need to get the color and we can't access texture data asynchronously then
+						// If we need to get the color, and we can't access texture data asynchronously then
 						// we should use Skia to load the color data first, then cache the color and create
 						// a new texture from it. This minimizes the number of file loads and incurs one call
 						// to set the texture data.

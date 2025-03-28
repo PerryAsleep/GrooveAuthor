@@ -88,11 +88,11 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 	public const ChartType DefaultDefaultStepsType = ChartType.dance_single;
 	public const ChartDifficultyType DefaultDefaultDifficultyType = ChartDifficultyType.Challenge;
 
-	public static readonly HashSet<ChartType> DefaultStartupStepGraphs = new()
-	{
+	public static readonly HashSet<ChartType> DefaultStartupStepGraphs =
+	[
 		ChartType.dance_single,
 		ChartType.dance_double,
-	};
+	];
 
 	public const bool DefaultOpenLastOpenedFileOnLaunch = true;
 	public const double DefaultNewSongSyncOffset = 0.009;
@@ -121,7 +121,7 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 	[JsonInclude] public int RecentFilesHistorySize = DefaultRecentFilesHistorySize;
 	[JsonInclude] public ChartType DefaultStepsType = DefaultDefaultStepsType;
 	[JsonInclude] public ChartDifficultyType DefaultDifficultyType = DefaultDefaultDifficultyType;
-	[JsonInclude] public HashSet<ChartType> StartupStepGraphs = new(DefaultStartupStepGraphs);
+	[JsonInclude] public HashSet<ChartType> StartupStepGraphs = [..DefaultStartupStepGraphs];
 	[JsonInclude] public bool OpenLastOpenedFileOnLaunch = DefaultOpenLastOpenedFileOnLaunch;
 	[JsonInclude] public double NewSongSyncOffset = DefaultNewSongSyncOffset;
 	[JsonInclude] public double OpenSongSyncOffset = DefaultOpenSongSyncOffset;
@@ -246,7 +246,7 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 		PreviousRecentFilesHistorySize = p.RecentFilesHistorySize;
 		PreviousDefaultStepsType = p.DefaultStepsType;
 		PreviousDefaultDifficultyType = p.DefaultDifficultyType;
-		PreviousStartupStepGraphs = new HashSet<ChartType>(p.StartupStepGraphs);
+		PreviousStartupStepGraphs = [..p.StartupStepGraphs];
 		PreviousOpenLastOpenedFileOnLaunch = p.OpenLastOpenedFileOnLaunch;
 		PreviousNewSongSyncOffset = p.NewSongSyncOffset;
 		PreviousOpenSongSyncOffset = p.OpenSongSyncOffset;
@@ -286,7 +286,7 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 		p.RecentFilesHistorySize = DefaultRecentFilesHistorySize;
 		p.DefaultStepsType = DefaultDefaultStepsType;
 		p.DefaultDifficultyType = DefaultDefaultDifficultyType;
-		p.StartupStepGraphs = new HashSet<ChartType>(DefaultStartupStepGraphs);
+		p.StartupStepGraphs = [..DefaultStartupStepGraphs];
 		p.OpenLastOpenedFileOnLaunch = DefaultOpenLastOpenedFileOnLaunch;
 		p.NewSongSyncOffset = DefaultNewSongSyncOffset;
 		p.OpenSongSyncOffset = DefaultOpenSongSyncOffset;
@@ -316,7 +316,7 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
 		p.RecentFilesHistorySize = PreviousRecentFilesHistorySize;
 		p.DefaultStepsType = PreviousDefaultStepsType;
 		p.DefaultDifficultyType = PreviousDefaultDifficultyType;
-		p.StartupStepGraphs = new HashSet<ChartType>(PreviousStartupStepGraphs);
+		p.StartupStepGraphs = [..PreviousStartupStepGraphs];
 		p.OpenLastOpenedFileOnLaunch = PreviousOpenLastOpenedFileOnLaunch;
 		p.NewSongSyncOffset = PreviousNewSongSyncOffset;
 		p.OpenSongSyncOffset = PreviousOpenSongSyncOffset;

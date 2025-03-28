@@ -88,7 +88,7 @@ internal sealed class AutoPlayer
 			var nextEventTime = nextEvent?.TimeSeconds ?? 0.0;
 
 			// If the previous call's next event row doesn't match the current next event row
-			// then something has changed and we should update input.
+			// then something has changed, and we should update input.
 			if (!AutoPlayStates[lane].NextEventTime.DoubleEquals(nextEventTime))
 			{
 				// Since we have already passed a note, we should offset any animations so they begin
@@ -144,8 +144,8 @@ internal sealed class AutoPlayer
 						Receptors[lane].OnAutoplayInputDown(timeDelta);
 
 						// Warp edge case.
-						// On taps we normally press and release. But if the next note is a hold
-						// end note it means a hold started at the same time as the tap and we
+						// On taps, we normally press and release. But if the next note is a hold
+						// end note it means a hold started at the same time as the tap, and we
 						// should stay held down.
 						if (nextEvent is not LaneHoldEndNote)
 						{

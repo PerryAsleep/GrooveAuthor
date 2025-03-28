@@ -13,10 +13,10 @@ namespace StepManiaEditor;
 internal sealed class EditorPack
 {
 	private EditorSong ActiveSong;
-	private readonly EditorImageData Banner = new(null);
+	private readonly EditorImageData Banner;
 	private string PackName;
 
-	private List<PackSong> Songs = new();
+	private List<PackSong> Songs = [];
 	private readonly PackLoadTask PackLoadTask = new();
 
 	public EditorPack(GraphicsDevice graphicsDevice, ImGuiRenderer imGuiRenderer)

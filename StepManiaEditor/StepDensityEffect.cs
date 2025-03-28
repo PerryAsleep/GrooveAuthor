@@ -177,11 +177,6 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 	private readonly CreatePrimitivesState State = new();
 
 	/// <summary>
-	/// The GraphicsDeviceManager used for rendering the density graph.
-	/// </summary>
-	private readonly GraphicsDeviceManager Graphics;
-
-	/// <summary>
 	/// The GraphicsDevice used for rendering the density graph.
 	/// </summary>
 	private readonly GraphicsDevice GraphicsDevice;
@@ -323,13 +318,11 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 	/// <summary>
 	/// Constructor.
 	/// </summary>
-	/// <param name="graphics">GraphicsDeviceManager to use for the effect.</param>
 	/// <param name="graphicsDevice">GraphicsDevice to use for the effect.</param>
 	/// <param name="font">Font for rendering stream text.</param>
-	public StepDensityEffect(GraphicsDeviceManager graphics, GraphicsDevice graphicsDevice, SpriteFont font)
+	public StepDensityEffect(GraphicsDevice graphicsDevice, SpriteFont font)
 	{
 		// Set up the Effect for rendering.
-		Graphics = graphics;
 		GraphicsDevice = graphicsDevice;
 		DensityEffect = new BasicEffect(GraphicsDevice);
 		DensityEffect.VertexColorEnabled = true;
@@ -494,7 +487,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 			GrabbedPositionAsPercentageOfScrollBar =
 				(screenPos - startTimeScreenSpace) / (endTimeScreenSpace - startTimeScreenSpace);
 		}
-		// Grabbed outside of the scroll bar.
+		// Grabbed outside the scroll bar.
 		else
 		{
 			GrabbedPositionAsPercentageOfScrollBar =
@@ -720,7 +713,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 
 	/// <summary>
 	/// Update the scroll bar primitives.
-	/// The scroll bar can frequently change every frame and we want it to be responsive so
+	/// The scroll bar can frequently change every frame, and we want it to be responsive so
 	/// we update these primitives directly rather than enqueueing actions for them.
 	/// </summary>
 	private void UpdateScrollBarPrimitives()

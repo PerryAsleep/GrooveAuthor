@@ -339,7 +339,7 @@ internal sealed class UIChartList : UIWindow
 			ImGui.TextUnformatted(chart.Description);
 		}
 
-		// If the selectable was right clicked, invoke the right click action.
+		// If the selectable was right-clicked, invoke the right click action.
 		if (onRightClick != null && ImGui.BeginPopup($"ChartRightClickPopup##{index}"))
 		{
 			onRightClick(chart);

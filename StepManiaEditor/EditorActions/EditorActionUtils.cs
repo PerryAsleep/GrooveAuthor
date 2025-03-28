@@ -13,7 +13,7 @@ internal sealed class EditorActionUtils
 
 	/// <summary>
 	/// Return string representing setting an object's field or property from an old value to a new value.
-	/// The majority of EditorActions in practice use this and we want the string to look natural to a user.
+	/// The majority of EditorActions in practice use this, and we want the string to look natural to a user.
 	/// </summary>
 	public static string GetSetFieldOrPropertyStringForClass<T>(object o, string fieldOrPropertyName, T previousValue,
 		T currentValue)
@@ -28,7 +28,7 @@ internal sealed class EditorActionUtils
 
 	/// <summary>
 	/// Return string representing setting an object's field or property from an old value to a new value.
-	/// The majority of EditorActions in practice use this and we want the string to look natural to a user.
+	/// The majority of EditorActions in practice use this, and we want the string to look natural to a user.
 	/// </summary>
 	public static string GetSetFieldOrPropertyStringForStruct<T>(object o, string fieldOrPropertyName, T previousValue,
 		T currentValue)

@@ -33,8 +33,8 @@ internal sealed class ActionAutoGenerateCharts : EditorAction
 		Config performedChartConfig) : base(true, false)
 	{
 		Editor = editor;
-		SourceCharts = new List<EditorChart> { sourceChart };
-		NewEditorCharts = new List<EditorChart>(1) { null };
+		SourceCharts = [sourceChart];
+		NewEditorCharts = [null];
 		PerformedChartConfig = performedChartConfig;
 		EditorSong = sourceChart.GetEditorSong();
 		PreviouslyFocusedChart = Editor.GetFocusedChart();

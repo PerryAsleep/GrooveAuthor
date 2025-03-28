@@ -1,7 +1,7 @@
-﻿using Fumen;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using Fumen;
 
 namespace StepManiaEditor;
 
@@ -131,7 +131,7 @@ internal sealed class WorkQueue : Notifier<WorkQueue>
 	/// <summary>
 	/// Queue of WorkQueueItems. 
 	/// </summary>
-	private readonly List<WorkQueueItem> Items = new();
+	private readonly List<WorkQueueItem> Items = [];
 
 	/// <summary>
 	/// The currently active WorkQueueItem.

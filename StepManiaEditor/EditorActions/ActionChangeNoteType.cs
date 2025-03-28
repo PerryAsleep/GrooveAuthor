@@ -42,8 +42,8 @@ internal sealed class ActionChangeNoteType : EditorAction
 	{
 		Editor = editor;
 		Chart = chart;
-		OriginalEvents = new List<EditorEvent>();
-		NewEvents = new List<EditorEvent>();
+		OriginalEvents = [];
+		NewEvents = [];
 		OriginalType = originalType;
 		NewType = newType;
 		foreach (var editorEvent in events)

@@ -51,7 +51,7 @@ internal sealed class ImGuiUtils
 	public static readonly string[] ValidSnapLevelStrings;
 
 	private static readonly Dictionary<string, EnumByAllowedValueCacheData> EnumDataCacheByCustomKey = new();
-	private static readonly List<bool> EnabledStack = new();
+	private static readonly List<bool> EnabledStack = [];
 
 	static ImGuiUtils()
 	{

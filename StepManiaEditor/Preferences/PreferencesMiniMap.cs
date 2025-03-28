@@ -14,7 +14,7 @@ namespace StepManiaEditor;
 internal sealed class PreferencesMiniMap
 {
 	public static readonly Editor.SpacingMode[] MiniMapVariableSpacingModes =
-		{ Editor.SpacingMode.ConstantTime, Editor.SpacingMode.ConstantRow };
+		[Editor.SpacingMode.ConstantTime, Editor.SpacingMode.ConstantRow];
 
 	// Default values.
 	public const bool DefaultShowMiniMap = true;

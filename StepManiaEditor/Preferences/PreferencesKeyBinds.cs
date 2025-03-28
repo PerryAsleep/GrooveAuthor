@@ -322,7 +322,9 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 	// Copy new Defaults below, then search for this in selection:
 	// .*private static readonly List\<Keys\[\]\> Default([a-zA-Z0-9]+) +.*;
 	// Replace with this:
+	// ReSharper disable CommentTypo
 	// \t[JsonInclude]\r\n\tpublic List<Keys[]> $1\r\n\t{\r\n\t\tget => $1Internal;\r\n\t\tset\r\n\t\t{\r\n\t\t\t$1Internal = value;\r\n\t\t\tNotify(NotificationKeyBindingChanged, this, nameof($1));\r\n\t\t}\r\n\t}\r\n\tprivate List<Keys[]> $1Internal = Default$1;\r\n\r\n
+	// ReSharper restore CommentTypo
 
 	[JsonInclude]
 	public List<Keys[]> Open
@@ -2263,7 +2265,7 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 
 				// Ensure each property has at least an empty key list.
 				if (value.Count == 0)
-					value.Add(Array.Empty<Keys>());
+					value.Add([]);
 
 				// Remove invalid keys.
 				for (var i = 0; i < value.Count; i++)

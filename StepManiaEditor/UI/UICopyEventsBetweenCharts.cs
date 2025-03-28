@@ -45,7 +45,7 @@ internal class UICopyEventsBetweenCharts : UIWindow
 	}
 
 	private static readonly CopyableTypeState[] State =
-	{
+	[
 		new(typeof(EditorTimeSignatureEvent), "Time Signatures", true, false, true),
 		new(typeof(EditorTempoEvent), "Tempos", true, false, true),
 		new(typeof(EditorStopEvent), "Stops", true, false, true),
@@ -58,7 +58,7 @@ internal class UICopyEventsBetweenCharts : UIWindow
 		new(typeof(EditorTickCountEvent), "Tick Counts", false, false, true),
 		new(typeof(EditorLabelEvent), "Labels", false, false, true),
 		new(typeof(EditorPatternEvent), "Patterns", false, false, false),
-	};
+	];
 
 	/// <summary>
 	/// Whether or not this window is showing.
@@ -298,7 +298,7 @@ internal class UICopyEventsBetweenCharts : UIWindow
 
 			ImGui.Separator();
 
-			// Determine whether the events can by copied.
+			// Determine whether the events can be copied.
 			var canCopy = numSelectedTypes > 0 && SourceChart != null;
 			if (canCopy)
 			{

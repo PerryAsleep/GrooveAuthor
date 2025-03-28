@@ -84,7 +84,7 @@ internal sealed class EditorSound : Notifier<EditorSound>
 		protected override async Task<object> DoWork(SoundLoadState state)
 		{
 			// Reset the mip map before loading the new sound because loading the sound
-			// can take a moment and we don't want to continue to render the old audio.
+			// can take a moment, and we don't want to continue to render the old audio.
 			Sound.Reset();
 
 			CancellationTokenSource.Token.ThrowIfCancellationRequested();

@@ -29,7 +29,7 @@ internal sealed class ImGuiLayoutUtils
 	/// We often need to edit a cached value instead of a real value
 	///  Example: Text entry where we do not want to commit the text until editing is complete.
 	/// We also often need to enqueue an undo action of a cached value from before editing began.
-	///  Example: With a slider the value is changing continuously and we do not want to enqueue
+	///  Example: With a slider the value is changing continuously, and we do not want to enqueue
 	///  an event until the user releases the control and the before value in this case should be
 	///  a previously cached value.
 	/// </summary>
@@ -2388,7 +2388,7 @@ internal sealed class ImGuiLayoutUtils
 					{
 						// Enqueue a custom action so that the ShouldAllowEditsOfMax and previous max tempo can be undone together.
 						ActionQueue.Instance.Do(
-							new ActionSetDisplayTempoAllowEditsOfMax(chart, chart.DisplayTempoShouldAllowEditsOfMax));
+							new ActionSetDisplayTempoAllowEditsOfMax(chart, chart!.DisplayTempoShouldAllowEditsOfMax));
 					}
 				}
 
@@ -4026,7 +4026,7 @@ internal sealed class ImGuiLayoutUtils
 		var cacheKey = GetCacheKey(title, fieldName);
 		if (!TryGetCachedValue(cacheKey, out T cachedValue))
 		{
-			cachedValue = default;
+			cachedValue = null;
 			// ReSharper disable once ExpressionIsAlwaysNull
 			SetCachedValue(cacheKey, cachedValue);
 		}
@@ -4039,7 +4039,7 @@ internal sealed class ImGuiLayoutUtils
 		ImGui.SetNextItemWidth(textWidth);
 
 		// Draw the ImGui control using the cached value.
-		// We do not want to see the effect of changing the value outside of the control
+		// We do not want to see the effect of changing the value outside the control
 		// until after editing is complete.
 		var (result, resultValue) = imGuiFunc(cachedValue);
 		cachedValue = resultValue;
@@ -4095,7 +4095,7 @@ internal sealed class ImGuiLayoutUtils
 		ImGui.SetNextItemWidth(textWidth);
 
 		// Draw the ImGui control using the cached value.
-		// We do not want to see the effect of changing the value outside of the control
+		// We do not want to see the effect of changing the value outside the control
 		// until after editing is complete.
 		var (result, resultValue) = imGuiFunc(cachedValue);
 		cachedValue = resultValue;
@@ -4114,7 +4114,7 @@ internal sealed class ImGuiLayoutUtils
 				SetFieldOrPropertyToValue(o, fieldName, cachedValue);
 			value = cachedValue;
 
-			// Consider the frame after letting go where the item is deactivated and we add an undoable action
+			// Consider the frame after letting go where the item is deactivated, and we add an undoable action
 			// to update the value to be an edit that should return true.
 			result = true;
 		}
@@ -4174,7 +4174,7 @@ internal sealed class ImGuiLayoutUtils
 		var itemWidth = DrawHelp(help, width);
 		ImGui.SetNextItemWidth(itemWidth);
 
-		// Draw a the ImGui control using the actual value, not the cached value.
+		// Draw the ImGui control using the actual value, not the cached value.
 		// We want to see the effect of changing this value immediately.
 		// Do not however enqueue an EditorAction for this change yet.
 		var (result, resultValue) = imGuiFunc(value);
@@ -4197,7 +4197,7 @@ internal sealed class ImGuiLayoutUtils
 			{
 				ActionQueue.Instance.Do(
 					new ActionSetObjectFieldOrPropertyValue<T>(o, fieldName, value, GetCachedValue<T>(cacheKey), affectsFile));
-				// Consider the frame after letting go where the item is deactivated and we add an undoable action
+				// Consider the frame after letting go where the item is deactivated, and we add an undoable action
 				// to update the value to be an edit that should return true.
 				result = true;
 			}

@@ -70,7 +70,7 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	protected double ChartPosition;
 
 	/// <summary>
-	/// This event's row relative to it's measure start. This is used for time signature based
+	/// This event's row relative to its measure start. This is used for time signature based
 	/// note coloring.
 	/// </summary>
 	private short RowRelativeToMeasureStart;
@@ -361,7 +361,7 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	/// <summary>
 	/// Gets the lane of the event. Notes have lanes. Many events have no lane.
 	/// </summary>
-	/// <returns>The lane of the event or InvalidArrowIndex if if this event has no lane.</returns>
+	/// <returns>The lane of the event or InvalidArrowIndex if this event has no lane.</returns>
 	public virtual int GetLane()
 	{
 		if (ChartEvent == null)
@@ -513,7 +513,7 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 
 		// When pasting a time signature over the first time signature we will momentarily
 		// have deleted the first time signature while we replace it. In this scenario the
-		// LastTimeSignature associated with a rate altering event may be null. However we
+		// LastTimeSignature associated with a rate altering event may be null. However, we
 		// will immediately add the new time signature and correct this by calling
 		// RefreshEventTimingData. We should ignore a null time signature here to avoid
 		// crashing during this scenario.
@@ -575,7 +575,7 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	/// <returns>Integer row of the end of the event.</returns>
 	public virtual int GetEndRow()
 	{
-		// By default an event has no length and its end row is its start row.
+		// By default, an event has no length and its end row is its start row.
 		return GetRow();
 	}
 
@@ -620,7 +620,7 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	/// <returns>Double row/ChartPosition of the end of the event.</returns>
 	public virtual double GetEndChartPosition()
 	{
-		// By default an event has no length and its end chart position is its
+		// By default, an event has no length and its end chart position is its
 		// start chart position.
 		return GetChartPosition();
 	}
@@ -653,7 +653,7 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	/// <returns>Chart time in seconds of the end of this event.</returns>
 	public virtual double GetEndChartTime()
 	{
-		// By default an event has no length and its end chart time is its
+		// By default, an event has no length and its end chart time is its
 		// start chart time.
 		return GetChartTime();
 	}
@@ -909,10 +909,8 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 
 		// Sort by types which only exist in the editor and aren't represented as Events
 		// in Stepmania, like the preview and the last second hint.
-		if (!CustomEventOrder.TryGetValue(GetType().Name, out var thisOrder))
-			thisOrder = DefaultCustomEventOrder;
-		if (!CustomEventOrder.TryGetValue(other.GetType().Name, out var otherOrder))
-			otherOrder = DefaultCustomEventOrder;
+		var thisOrder = CustomEventOrder.GetValueOrDefault(GetType().Name, DefaultCustomEventOrder);
+		var otherOrder = CustomEventOrder.GetValueOrDefault(other.GetType().Name, DefaultCustomEventOrder);
 		comparison = thisOrder.CompareTo(otherOrder);
 		if (comparison != 0)
 			return comparison;
@@ -960,8 +958,7 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 
 		// Sort by types which only exist in the editor and aren't represented as Events
 		// in Stepmania, like the preview and the last second hint.
-		if (!CustomEventOrder.TryGetValue(editorEvent.GetType().Name, out var editorEventOrder))
-			editorEventOrder = DefaultCustomEventOrder;
+		var editorEventOrder = CustomEventOrder.GetValueOrDefault(editorEvent.GetType().Name, DefaultCustomEventOrder);
 		comparison = editorEventOrder.CompareTo(DefaultCustomEventOrder);
 		if (comparison != 0)
 			return comparison;

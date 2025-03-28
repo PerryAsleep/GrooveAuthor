@@ -97,12 +97,12 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	private readonly Guid Id;
 
 	/// <summary>
-	/// Index of this Chart within it's song.
+	/// Index of this Chart within its song.
 	/// </summary>
 	private int IndexInSong;
 
 	/// <summary>
-	/// WorkQueue for long running tasks like saving.
+	/// WorkQueue for long-running tasks like saving.
 	/// </summary>
 	private readonly WorkQueue WorkQueue;
 
@@ -516,7 +516,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		MusicPathInternal = musicPath;
 
 		// Only set this chart to be using an explicit offset if it both has an offset
-		// and that offset is different than the song's offset. It is common for charts
+		// and that offset is different from the song's offset. It is common for charts
 		// to have explicit offsets that are copies of the song's, and in those cases we
 		// don't want to treat the chart as overriding the song.
 		var chartHasExplicitMusicOffset = chart.Extras.TryGetExtra(TagOffset, out double musicOffset, true);
@@ -1124,7 +1124,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			// Adjust stop timing remaining.
 			if (stopTimeRemaining != 0.0)
 			{
-				// In most cases with a non zero stop time remaining, the stop time remaining is positive.
+				// In most cases with a non-zero stop time remaining, the stop time remaining is positive.
 				// In those cases, the following events have already been adjusted such that their time
 				// takes into account the stop time, and they should have 0.0 for their stop time remaining.
 				// For negative stops however, we need to keep incrementing the stop time remaining until it
@@ -1882,7 +1882,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	/// </summary>
 	/// <param name="chartEvent">The EditorEvent to find the time of.</param>
 	/// <param name="chartTime">The time to be set.</param>
-	/// <returns>True if the time could be determine and false otherwise.</returns>
+	/// <returns>True if the time could be determined and false otherwise.</returns>
 	public bool TryGetTimeOfEvent(EditorEvent chartEvent, ref double chartTime)
 	{
 		var rateEvent = RateAlteringEvents?.FindActiveRateAlteringEvent(chartEvent);
@@ -1901,7 +1901,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	/// </summary>
 	/// <param name="smEvent">The Stepmania Event to find the time of.</param>
 	/// <param name="chartTime">The time to be set.</param>
-	/// <returns>True if the time could be determine and false otherwise.</returns>
+	/// <returns>True if the time could be determined and false otherwise.</returns>
 	public bool TryGetTimeOfEvent(Event smEvent, ref double chartTime)
 	{
 		var rateEvent = RateAlteringEvents?.FindActiveRateAlteringEvent(smEvent);
@@ -2043,7 +2043,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	/// <returns>
 	/// All holds overlapping the given position. The length of the array is the Chart's
 	/// NumInputs. If a hold is not overlapping the given position for a given lane then
-	/// that entry in the array will be null. Otherwise it will be the EditorHoldNoteEvent
+	/// that entry in the array will be null. Otherwise, it will be the EditorHoldNoteEvent
 	/// which overlaps.
 	/// </returns>
 	public EditorHoldNoteEvent[] GetHoldsOverlappingPosition(double chartPosition,
@@ -2097,7 +2097,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	/// <returns>
 	/// All holds overlapping the given time. The length of the array is the Chart's
 	/// NumInputs. If a hold is not overlapping the given time for a given lane then
-	/// that entry in the array will be null. Otherwise it will be the EditorHoldNoteEvent
+	/// that entry in the array will be null. Otherwise, it will be the EditorHoldNoteEvent
 	/// which overlaps.
 	/// </returns>
 	public EditorHoldNoteEvent[] GetHoldsOverlappingTime(double chartTime,
@@ -2723,7 +2723,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		// rate altering event notes such that calling SetEventTimeAndMetricPositionsFromRows
 		// once at the end re-sorts them based on time differences.
 		// To optimize this we could update events only up until the next rate altering event
-		// rather than going to the end of the chart each time. For a old style gimmick chart
+		// rather than going to the end of the chart each time. For an old style gimmick chart
 		// this would be a big perf win.
 		// Moving many rate altering events together is not a frequent operation.
 

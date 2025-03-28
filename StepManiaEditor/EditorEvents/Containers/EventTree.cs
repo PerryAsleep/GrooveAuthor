@@ -52,7 +52,7 @@ internal class EventTree : RedBlackTree<EditorEvent>, IReadOnlyEventTree
 	/// List just for looking the previous state of the sorted tree in the debugger.
 	/// </summary>
 	// ReSharper disable once NotAccessedField.Local
-	private List<EditorEvent> PreviousList = new();
+	private List<EditorEvent> PreviousList = [];
 
 	/// <summary>
 	/// Constructor

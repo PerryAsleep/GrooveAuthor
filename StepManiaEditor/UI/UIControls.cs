@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Numerics;
 using System.Runtime.InteropServices;
 using Fumen;
@@ -16,7 +15,7 @@ namespace StepManiaEditor;
 ///  Call Draw to draw.
 ///  Categories and commands will be drawn in the order they were added.
 /// </summary>
-internal sealed class UIControls : UIWindow, Fumen.IObserver<PreferencesKeyBinds>
+internal sealed class UIControls : UIWindow, IObserver<PreferencesKeyBinds>
 {
 	private static readonly int TitleColumnWidth = UiScaled(260);
 	private static readonly Vector2 DefaultSize = new(UiScaled(538), UiScaled(800));
@@ -76,10 +75,10 @@ internal sealed class UIControls : UIWindow, Fumen.IObserver<PreferencesKeyBinds
 		private readonly string Name;
 		private readonly string AdditionalInputText;
 		private readonly string Id;
-		private readonly List<string> InputsAsStrings = new();
+		private readonly List<string> InputsAsStrings = [];
 		private List<Keys[]> Inputs;
 		private readonly List<Keys[]> Defaults;
-		private readonly List<List<string>> Conflicts = new();
+		private readonly List<List<string>> Conflicts = [];
 		private bool Modified;
 
 		public KeyBindCommand(KeyCommandManager keyCommandManager, string name, string id,
@@ -141,7 +140,7 @@ internal sealed class UIControls : UIWindow, Fumen.IObserver<PreferencesKeyBinds
 			var p = Preferences.Instance.PreferencesKeyBinds;
 			Inputs = p.CloneKeyBinding(Id);
 
-			// Refresh our cached state for if the sate is modified from the Defaults.
+			// Refresh our cached state for if the state is modified from the Defaults.
 			RefreshModifiedState();
 
 			// Refresh our cached input strings.
@@ -289,7 +288,7 @@ internal sealed class UIControls : UIWindow, Fumen.IObserver<PreferencesKeyBinds
 
 			if (add)
 			{
-				Inputs.Add(Array.Empty<Keys>());
+				Inputs.Add([]);
 				Update();
 			}
 
@@ -297,7 +296,7 @@ internal sealed class UIControls : UIWindow, Fumen.IObserver<PreferencesKeyBinds
 			{
 				Inputs.RemoveAt(deleteIndex);
 				if (Inputs.Count == 0)
-					Inputs.Add(Array.Empty<Keys>());
+					Inputs.Add([]);
 				Update();
 			}
 
@@ -324,7 +323,7 @@ internal sealed class UIControls : UIWindow, Fumen.IObserver<PreferencesKeyBinds
 	internal class Category
 	{
 		private readonly string Name;
-		private readonly List<ICommand> Commands = new();
+		private readonly List<ICommand> Commands = [];
 
 		public Category(string name)
 		{
@@ -360,7 +359,7 @@ internal sealed class UIControls : UIWindow, Fumen.IObserver<PreferencesKeyBinds
 	/// <summary>
 	/// All Categories.
 	/// </summary>
-	private readonly List<Category> Categories = new();
+	private readonly List<Category> Categories = [];
 
 	private readonly Dictionary<string, KeyBindCommand> AllKeyBindCommands = new();
 	public const string MultipleInputsJoinString = " / ";

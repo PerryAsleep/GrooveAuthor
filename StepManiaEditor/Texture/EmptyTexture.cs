@@ -59,7 +59,7 @@ internal sealed class EmptyTexture : IDisposable
 	/// <summary>
 	/// Draw the empty texture as an image through ImGui.
 	/// </summary>
-	/// <param name="mode">TextureLayoutMode for how to layout this texture.</param>
+	/// <param name="mode">TextureLayoutMode for how to lay out this texture.</param>
 	public void Draw(TextureLayoutMode mode = TextureLayoutMode.Box)
 	{
 		ImGuiUtils.DrawImage(ImGuiId, TextureImGui, TextureMonogame, Width, Height, mode);
@@ -68,7 +68,7 @@ internal sealed class EmptyTexture : IDisposable
 	/// <summary>
 	/// Draw the empty texture as a button through ImGui.
 	/// </summary>
-	/// <param name="mode">TextureLayoutMode for how to layout this texture.</param>
+	/// <param name="mode">TextureLayoutMode for how to lay out this texture.</param>
 	/// <returns>True if the button was pressed and false otherwise.</returns>
 	public bool DrawButton(TextureLayoutMode mode = TextureLayoutMode.Box)
 	{

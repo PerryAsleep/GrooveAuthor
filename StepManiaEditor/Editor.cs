@@ -134,7 +134,7 @@ public sealed class Editor :
 	private bool HasPreparedDeviceSettingsForMonoGame;
 
 	public static readonly ChartType[] SupportedSinglePlayerChartTypes =
-	{
+	[
 		ChartType.dance_single,
 		ChartType.dance_double,
 		ChartType.dance_solo,
@@ -146,10 +146,10 @@ public sealed class Editor :
 		ChartType.smx_single,
 		ChartType.smx_dual,
 		ChartType.smx_full,
-	};
+	];
 
 	public static readonly ChartType[] SupportedChartTypes =
-	{
+	[
 		ChartType.dance_single,
 		ChartType.dance_double,
 		//dance_couple,
@@ -166,7 +166,7 @@ public sealed class Editor :
 		ChartType.smx_dual,
 		ChartType.smx_full,
 		ChartType.smx_team,
-	};
+	];
 
 	private static readonly int MaxNumLanesForAnySupportedChartType;
 
@@ -217,8 +217,8 @@ public sealed class Editor :
 	private bool IsChartAreaSet;
 	private Rectangle ChartArea;
 
-	private string LaunchFile = null;
-	private bool OpeningSong = false;
+	private string LaunchFile;
+	private bool OpeningSong;
 	private EditorPack ActivePack;
 
 	private EditorSong ActiveSong
@@ -269,10 +269,10 @@ public sealed class Editor :
 
 	private ActiveEditorChart FocusedChartDataInternal;
 
-	private readonly List<EditorChart> ActiveCharts = new();
-	private readonly List<ActiveEditorChart> ActiveChartData = new();
-	private readonly List<EditorEvent> CopiedEvents = new();
-	private Dictionary<EditorChart, int> PlayerPerChart = new();
+	private readonly List<EditorChart> ActiveCharts = [];
+	private readonly List<ActiveEditorChart> ActiveChartData = [];
+	private readonly List<EditorEvent> CopiedEvents = [];
+	private readonly Dictionary<EditorChart, int> PlayerPerChart = new();
 
 	// Movement controls.
 	private bool UpdatingSongTimeDirectly;
@@ -308,7 +308,7 @@ public sealed class Editor :
 
 	// Logger
 	private string LogFilePath;
-	private readonly LinkedList<Logger.LogMessage> LogBuffer = new();
+	private readonly LinkedList<Logger.LogMessage> LogBuffer = [];
 	private readonly object LogBufferLock = new();
 
 	// Splash
@@ -932,7 +932,7 @@ public sealed class Editor :
 
 	private void InitializeDensityGraph()
 	{
-		DensityGraph = new StepDensityEffect(Graphics, GraphicsDevice, Font);
+		DensityGraph = new StepDensityEffect(GraphicsDevice, Font);
 	}
 
 	private void InitializeMiniMap()
@@ -1027,7 +1027,7 @@ public sealed class Editor :
 		if (SplashBackground == null)
 		{
 			SplashBackground = new Texture2D(GraphicsDevice, 1, 1);
-			SplashBackground.SetData(new[] { Color.Black });
+			SplashBackground.SetData([Color.Black]);
 		}
 	}
 
@@ -1050,7 +1050,7 @@ public sealed class Editor :
 		try
 		{
 			var assembly = Assembly.GetEntryAssembly();
-			var programPath = assembly.Location;
+			var programPath = assembly!.Location;
 			var programDir = System.IO.Path.GetDirectoryName(programPath);
 			if (!string.IsNullOrEmpty(programDir))
 				return programDir;
@@ -1829,7 +1829,7 @@ public sealed class Editor :
 		var downThisFrame = lmbState.DownThisFrame();
 		var clickingToDragWindowEdge = atEdgeOfScreen && downThisFrame;
 
-		// If the user has clicked this frame and they are at the edge of screen treat that as an intent to resize the window.
+		// If the user has clicked this frame, and they are at the edge of screen treat that as an intent to resize the window.
 		if (!clickingToDragWindowEdge)
 		{
 			var inReceptorArea = Receptor.IsInReceptorArea(
@@ -1889,7 +1889,7 @@ public sealed class Editor :
 					{
 						if (activeChart != focusedChartData)
 						{
-							SetChartFocused(activeChart.GetChart(), false);
+							SetChartFocused(activeChart.GetChart());
 						}
 
 						break;
@@ -2026,7 +2026,7 @@ public sealed class Editor :
 		var focusedChartData = GetFocusedChartData();
 
 		// When starting interpolation start at the time from the previous frame. This lets one frame of
-		// movement occur this frame. For input like touch pads and smooth scroll wheels we can receive input
+		// movement occur this frame. For input like touchpads and smooth scroll wheels we can receive input
 		// each frame, in which case we want to ensure each frame moves.
 		var startTimeForInput = currentTime - deltaTime;
 
@@ -2074,8 +2074,8 @@ public sealed class Editor :
 			}
 			else
 			{
-				// TODO: On touch pads where scroll delta will be small, we may want to accumulate more scroll
-				// before moving. Without doing that on a touch pad we end up scrolling very fast.
+				// TODO: On touchpads where scroll delta will be small, we may want to accumulate more scroll
+				// before moving. Without doing that on a touchpad we end up scrolling very fast.
 				if (scrollDelta > 0.0f)
 					OnMoveUp();
 				else
@@ -4526,7 +4526,7 @@ public sealed class Editor :
 					var found = true;
 
 					// Add the root node as the first tier.
-					rootNodes.Add(new List<GraphNode> { stepGraph.GetRoot() });
+					rootNodes.Add([stepGraph.GetRoot()]);
 
 					// Loop over the remaining tiers.
 					for (var tier = 1; tier < stepGraph.PadData.StartingPositions.Length; tier++)
@@ -6003,6 +6003,7 @@ public sealed class Editor :
 		MoveToChartPosition(rowFromPrevious);
 		return;
 
+		// ReSharper disable once UnusedLocalFunctionReturnValue
 		bool AdvanceBackwards(IReadOnlyRedBlackTree<EditorEvent>.IReadOnlyRedBlackTreeEnumerator inEnum)
 		{
 			return preceding ? inEnum.MoveNext() : inEnum.MovePrev();

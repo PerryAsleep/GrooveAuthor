@@ -110,7 +110,7 @@ internal sealed class StepTotals : IReadOnlyStepTotals
 	/// <summary>
 	/// List of added and deleted steps which need to be committed to StepDensity.
 	/// </summary>
-	private readonly List<PendingDensityStep> PendingStepsForDensity = new();
+	private readonly List<PendingDensityStep> PendingStepsForDensity = [];
 
 	/// <summary>
 	/// Constructor.

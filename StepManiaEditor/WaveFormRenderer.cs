@@ -46,7 +46,7 @@ public class WaveFormRenderer
 	/// Height of the visible area of the waveform in pixels.
 	/// Less than or equal to TextureHeight.
 	/// This is tracked separately as UI resizing can cause the visible area to change
-	/// often but we do not want to perform expensive texture resizes that often.
+	/// often, but we do not want to perform expensive texture resizes that often.
 	/// </summary>
 	private uint VisibleHeight;
 
@@ -88,10 +88,10 @@ public class WaveFormRenderer
 	/// https://en.wikipedia.org/wiki/De_Bruijn_sequence
 	/// </summary>
 	private static readonly int[] DeBruijnBitPositions =
-	{
+	[
 		0, 1, 28, 2, 29, 14, 24, 3, 30, 22, 20, 15, 25, 17, 4, 8,
 		31, 27, 13, 23, 21, 19, 16, 7, 26, 12, 18, 6, 11, 5, 10, 9,
-	};
+	];
 
 	/// <summary>
 	/// Pixels per second last frame. Used to determine if we can re-use any of the last frame's data.

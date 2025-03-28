@@ -61,7 +61,7 @@ internal abstract class ConfigManager<TEditorConfig, TConfig> : Notifier<ConfigM
 	/// <summary>
 	/// All explicitly deleted configs.
 	/// </summary>
-	private readonly HashSet<Guid> DeletedConfigs = new();
+	private readonly HashSet<Guid> DeletedConfigs = [];
 
 	/// <summary>
 	/// Whether the configs have finished loading.

@@ -18,7 +18,7 @@ internal sealed class ActionDeletePerformedChartConfig : EditorAction
 	{
 		ConfigGuid = configGuid;
 		Config = PerformedChartConfigManager.Instance.GetConfig(ConfigGuid);
-		EventsWithDeletedConfig = new List<EditorPatternEvent>();
+		EventsWithDeletedConfig = [];
 
 		var song = editor.GetActiveSong();
 		if (song != null)

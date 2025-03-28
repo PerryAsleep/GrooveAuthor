@@ -59,8 +59,8 @@ internal sealed class ActionCopyEventsBetweenCharts : EditorAction
 		IEnumerable<EditorChart> destinationCharts) : base(false, false)
 	{
 		SourceChart = sourceChart;
-		EventTypes = new List<Type>(eventTypes);
-		DestinationCharts = new List<EditorChart>(destinationCharts);
+		EventTypes = [..eventTypes];
+		DestinationCharts = [..destinationCharts];
 	}
 
 	public override string ToString()

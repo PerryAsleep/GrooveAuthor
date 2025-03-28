@@ -177,13 +177,13 @@ internal sealed class PreferencesMultiplayer
 
 	private Vector3 Player9ColorInternal = DefaultPlayer9Color;
 
-	private readonly List<Vector3> NoteColors = new();
-	private readonly List<Color> XnaNoteColors = new();
-	private readonly List<Color> XnaHeldNoteColors = new();
-	private readonly List<Color> XnaSelectedNoteColors = new();
-	private readonly List<Color> XnaHeldAndSelectedNoteColors = new();
-	private readonly List<uint> UINoteColors = new();
-	private readonly List<uint> SelectedUINoteColors = new();
+	private readonly List<Vector3> NoteColors = [];
+	private readonly List<Color> XnaNoteColors = [];
+	private readonly List<Color> XnaHeldNoteColors = [];
+	private readonly List<Color> XnaSelectedNoteColors = [];
+	private readonly List<Color> XnaHeldAndSelectedNoteColors = [];
+	private readonly List<uint> UINoteColors = [];
+	private readonly List<uint> SelectedUINoteColors = [];
 
 	public void PostLoad()
 	{

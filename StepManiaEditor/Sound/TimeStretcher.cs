@@ -27,7 +27,7 @@ internal sealed class TimeStretcher
 		double rate)
 	{
 		// The bulk of this logic is duplicated in SoundManager.FillSamples.
-		// Ideally it lives in one spot, but the the logic is slightly different between
+		// Ideally it lives in one spot, but the logic is slightly different between
 		// the two current implementations due to the formats of the data being parsed.
 		// Abstracting out the differences would involve perf overhead that currently
 		// isn't worth it.
@@ -62,7 +62,7 @@ internal sealed class TimeStretcher
 					// range of the input data.
 					var inputIndex = Math.Clamp((startInputSampleIndex + hermiteIndex) * numChannels + channel, 0, maxInputIndex);
 					// Parse the sample at this index.
-					// This often results in redundant parses, but in practice optimizing them out isn't a big gain
+					// This often results in redundant parses, but in practice optimizing them out isn't a big gain,
 					// and it adds a lot of complexity. The main perf hit is InterpolateHermite.
 					hermitePoints[hermiteIndex] = inputBuffer[inputIndex];
 				}

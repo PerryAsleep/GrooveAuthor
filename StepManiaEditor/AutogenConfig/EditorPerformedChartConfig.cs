@@ -72,17 +72,17 @@ internal sealed class EditorPerformedChartConfig :
 		// Initialize default arrow weights.
 		DefaultArrowWeights = new Dictionary<string, List<int>>
 		{
-			[ChartTypeString(ChartType.dance_single)] = new() { 25, 25, 25, 25 },
-			[ChartTypeString(ChartType.dance_double)] = new() { 6, 12, 10, 22, 22, 12, 10, 6 },
-			[ChartTypeString(ChartType.dance_solo)] = new() { 13, 12, 25, 25, 12, 13 },
-			[ChartTypeString(ChartType.dance_threepanel)] = new() { 25, 50, 25 },
-			[ChartTypeString(ChartType.pump_single)] = new() { 17, 16, 34, 16, 17 },
-			[ChartTypeString(ChartType.pump_halfdouble)] = new() { 25, 12, 13, 13, 12, 25 },
-			[ChartTypeString(ChartType.pump_double)] = new() { 4, 4, 17, 12, 13, 13, 12, 17, 4, 4 },
-			[ChartTypeString(ChartType.smx_beginner)] = new() { 25, 50, 25 },
-			[ChartTypeString(ChartType.smx_single)] = new() { 25, 21, 8, 21, 25 },
-			[ChartTypeString(ChartType.smx_dual)] = new() { 8, 17, 25, 25, 17, 8 },
-			[ChartTypeString(ChartType.smx_full)] = new() { 6, 8, 7, 8, 22, 22, 8, 7, 8, 6 },
+			[ChartTypeString(ChartType.dance_single)] = [25, 25, 25, 25],
+			[ChartTypeString(ChartType.dance_double)] = [6, 12, 10, 22, 22, 12, 10, 6],
+			[ChartTypeString(ChartType.dance_solo)] = [13, 12, 25, 25, 12, 13],
+			[ChartTypeString(ChartType.dance_threepanel)] = [25, 50, 25],
+			[ChartTypeString(ChartType.pump_single)] = [17, 16, 34, 16, 17],
+			[ChartTypeString(ChartType.pump_halfdouble)] = [25, 12, 13, 13, 12, 25],
+			[ChartTypeString(ChartType.pump_double)] = [4, 4, 17, 12, 13, 13, 12, 17, 4, 4],
+			[ChartTypeString(ChartType.smx_beginner)] = [25, 50, 25],
+			[ChartTypeString(ChartType.smx_single)] = [25, 21, 8, 21, 25],
+			[ChartTypeString(ChartType.smx_dual)] = [8, 17, 25, 25, 17, 8],
+			[ChartTypeString(ChartType.smx_full)] = [6, 8, 7, 8, 22, 22, 8, 7, 8, 6],
 		};
 	}
 

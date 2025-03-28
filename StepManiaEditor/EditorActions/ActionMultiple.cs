@@ -12,7 +12,7 @@ internal sealed class ActionMultiple : EditorAction
 
 	public ActionMultiple() : base(false, false)
 	{
-		Actions = new List<EditorAction>();
+		Actions = [];
 	}
 
 	public ActionMultiple(List<EditorAction> actions) : base(false, false)

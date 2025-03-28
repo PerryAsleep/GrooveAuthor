@@ -21,7 +21,7 @@ internal sealed class Preferences
 	/// <summary>
 	/// Serialization options.
 	/// </summary>
-	private static JsonSerializerOptions SerializationOptions;
+	private static readonly JsonSerializerOptions SerializationOptions;
 
 	static Preferences()
 	{
@@ -140,7 +140,7 @@ internal sealed class Preferences
 	[JsonInclude] public bool ShowControlsWindow;
 	[JsonInclude] public bool ShowHotbar = true;
 	[JsonInclude] public string OpenFileDialogInitialDirectory;
-	[JsonInclude] public List<SavedSongInformation> RecentFiles = new();
+	[JsonInclude] public List<SavedSongInformation> RecentFiles = [];
 	[JsonInclude] public Editor.NoteEntryMode NoteEntryMode = Editor.NoteEntryMode.Normal;
 	[JsonInclude] public int SnapIndex;
 	[JsonInclude] public int SnapLockIndex;
@@ -156,7 +156,7 @@ internal sealed class Preferences
 
 	/// <summary>
 	/// Public Constructor.
-	/// This should be private but it needs to be public for JSON deserialization.
+	/// This should be private, but it needs to be public for JSON deserialization.
 	/// </summary>
 	public Preferences()
 	{

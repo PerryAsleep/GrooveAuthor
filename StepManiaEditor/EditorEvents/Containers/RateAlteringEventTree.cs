@@ -160,7 +160,7 @@ internal class RateAlteringEventTree : RedBlackTree<EditorRateAlteringEvent>, IR
 
 	/// <summary>
 	/// Finds the active EditorRateAlteringEvent enumerator for the given chart time.
-	/// This method is suitable when a chart time is known and it is not for an EditorEvent or Stepmania Event.
+	/// This method is suitable when a chart time is known, and it is not for an EditorEvent or Stepmania Event.
 	/// If an EditorEvent or Stepmania Event is known, prefer FindActiveRateAlteringEvent as event sorting
 	/// may result in certain events falling before or afters at the same row.
 	/// </summary>
@@ -189,7 +189,7 @@ internal class RateAlteringEventTree : RedBlackTree<EditorRateAlteringEvent>, IR
 
 	/// <summary>
 	/// Finds the active EditorRateAlteringEvent for the given chart time.
-	/// This method is suitable when a chart time is known and it is not for an EditorEvent or Stepmania Event.
+	/// This method is suitable when a chart time is known, and it is not for an EditorEvent or Stepmania Event.
 	/// If an EditorEvent or Stepmania Event is known, prefer FindActiveRateAlteringEvent as event sorting
 	/// may result in certain events falling before or afters at the same row.
 	/// </summary>
@@ -218,7 +218,7 @@ internal class RateAlteringEventTree : RedBlackTree<EditorRateAlteringEvent>, IR
 
 	/// <summary>
 	/// Finds the active EditorRateAlteringEvent enumerator for the given position.
-	/// This method is suitable when a position is known and it is not for an EditorEvent or Stepmania Event.
+	/// This method is suitable when a position is known, and it is not for an EditorEvent or Stepmania Event.
 	/// If an EditorEvent or Stepmania Event is known, prefer FindActiveRateAlteringEvent as event sorting
 	/// may result in certain events falling before or afters at the same row.
 	/// </summary>
@@ -246,7 +246,7 @@ internal class RateAlteringEventTree : RedBlackTree<EditorRateAlteringEvent>, IR
 
 	/// <summary>
 	/// Finds the active EditorRateAlteringEvent for the given position.
-	/// This method is suitable when a position is known and it is not for an EditorEvent or Stepmania Event.
+	/// This method is suitable when a position is known, and it is not for an EditorEvent or Stepmania Event.
 	/// If an EditorEvent or Stepmania Event is known, prefer FindActiveRateAlteringEvent as event sorting
 	/// may result in certain events falling before or afters at the same row.
 	/// </summary>

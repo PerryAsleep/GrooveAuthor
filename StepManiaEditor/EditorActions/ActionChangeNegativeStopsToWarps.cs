@@ -27,8 +27,8 @@ internal sealed class ActionChangeNegativeStopsToWarps : EditorAction
 	{
 		Editor = editor;
 		Chart = chart;
-		OriginalEvents = new List<EditorEvent>();
-		NewEvents = new List<EditorEvent>();
+		OriginalEvents = [];
+		NewEvents = [];
 
 		foreach (var stop in chart.GetStops())
 		{
@@ -52,8 +52,8 @@ internal sealed class ActionChangeNegativeStopsToWarps : EditorAction
 	{
 		Editor = editor;
 		Chart = chart;
-		OriginalEvents = new List<EditorEvent>();
-		NewEvents = new List<EditorEvent>();
+		OriginalEvents = [];
+		NewEvents = [];
 		foreach (var editorEvent in events)
 		{
 			if (editorEvent is EditorStopEvent stop && stop.GetStopLengthSeconds() < 0.0)

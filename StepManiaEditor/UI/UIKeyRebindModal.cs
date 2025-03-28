@@ -79,9 +79,9 @@ internal sealed class UIKeyRebindModal
 		if (!IsRebinding)
 		{
 			IsRebinding = true;
-			NewKeys = new List<Keys>();
+			NewKeys = [];
 			CommandString = NoKeysMessage;
-			ConflictingCommands = new List<string>();
+			ConflictingCommands = [];
 			KeyCommandManager.NotifyRebindingStart();
 		}
 

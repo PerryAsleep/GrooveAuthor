@@ -135,7 +135,7 @@ internal sealed class UIChartHeader
 				ImGui.SameLine();
 			}
 
-			// Title. Use a transparent Selectable to support single and double clicking.
+			// Title. Use a transparent Selectable to support single and double-clicking.
 			ImGui.SetNextItemWidth(textWidth);
 			ImGui.PushStyleColor(ImGuiCol.HeaderHovered, 0x00000000);
 			ImGui.PushStyleColor(ImGuiCol.HeaderActive, 0x00000000);

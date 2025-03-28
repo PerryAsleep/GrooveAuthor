@@ -17,7 +17,7 @@ internal sealed class ActionDeleteExpressedChartConfig : EditorAction
 	{
 		ConfigGuid = configGuid;
 		Config = ExpressedChartConfigManager.Instance.GetConfig(ConfigGuid);
-		ChartsWithDeletedConfig = new List<EditorChart>();
+		ChartsWithDeletedConfig = [];
 
 		var song = editor.GetActiveSong();
 		if (song != null)

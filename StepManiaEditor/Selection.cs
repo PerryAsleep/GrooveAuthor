@@ -23,12 +23,12 @@ internal sealed class Selection : IReadOnlySelection
 	/// <summary>
 	/// All currently selected EditorEvents.
 	/// </summary>
-	private readonly HashSet<EditorEvent> SelectedEvents = new();
+	private readonly HashSet<EditorEvent> SelectedEvents = [];
 
 	/// <summary>
 	/// All currently selected EditorPatternEvents.
 	/// </summary>
-	private readonly HashSet<EditorPatternEvent> SelectedPatterns = new();
+	private readonly HashSet<EditorPatternEvent> SelectedPatterns = [];
 
 	/// <summary>
 	/// The last selected EditorEvent.

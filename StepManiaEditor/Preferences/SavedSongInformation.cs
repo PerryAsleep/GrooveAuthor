@@ -16,7 +16,7 @@ internal sealed class SavedSongInformation : IActiveChartListProvider
 	/// when the song file is reloaded. We want to uniquely identify a chart but charts
 	/// have nothing inherently unique about them. Multiple charts can have the same
 	/// type, difficulty type, name, description, rating, etc. This application uses
-	/// guids but those are not persisted and it is best to not try add more
+	/// guids but those are not persisted, and it is best to not try to add more
 	/// application-specific saved data in the sm/ssc files unless it is needed. We also
 	/// do not want to save the sorted chart index because if that sort logic ever changes
 	/// it could have significant effects on which charts are shown at startup. Given
@@ -102,7 +102,7 @@ internal sealed class SavedSongInformation : IActiveChartListProvider
 	[JsonInclude] public string PackName;
 	[JsonInclude] public double SpacingZoom = 1.0;
 	[JsonInclude] public double ChartPosition;
-	[JsonInclude] public List<SavedChartInformation> ActiveCharts = new();
+	[JsonInclude] public List<SavedChartInformation> ActiveCharts = [];
 	[JsonInclude] public int FocusedChartIndex = UnsetChartIndex;
 
 	[JsonInclude]
@@ -145,10 +145,10 @@ internal sealed class SavedSongInformation : IActiveChartListProvider
 		// Migrate from deprecated data.
 		if (ActiveCharts == null || ActiveCharts.Count == 0)
 		{
-			ActiveCharts = new List<SavedChartInformation>
-			{
-				new(LastChartTypeDeprecated, LastChartDifficultyTypeDeprecated),
-			};
+			ActiveCharts =
+			[
+				new SavedChartInformation(LastChartTypeDeprecated, LastChartDifficultyTypeDeprecated),
+			];
 			FocusedChartIndex = 0;
 		}
 

@@ -7,7 +7,7 @@ namespace StepManiaEditor;
 /// <summary>
 /// EditorAction to set a Field or a Property for a reference type on an object.
 /// This action does not clone the reference type object. As such the responsibility is on the caller
-/// to ensure that no state changes are made to the object outside of the ActionQueue that would
+/// to ensure that no state changes are made to the object outside the ActionQueue that would
 /// cause undo/redo to have unexpected behavior.
 /// </summary>
 /// <typeparam name="T">

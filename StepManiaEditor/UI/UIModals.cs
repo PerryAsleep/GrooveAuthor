@@ -53,10 +53,10 @@ internal sealed class UIModals
 			Title = title;
 			Message = message;
 			CustomBodyUI = customBodyUI;
-			Buttons = new List<ButtonData>(1)
-			{
-				new(buttonText, buttonCallback),
-			};
+			Buttons =
+			[
+				new ButtonData(buttonText, buttonCallback),
+			];
 			Size = size;
 			ShouldPlaySound = shouldPlaySound;
 		}
@@ -69,11 +69,11 @@ internal sealed class UIModals
 			Title = title;
 			Message = message;
 			CustomBodyUI = customBodyUI;
-			Buttons = new List<ButtonData>(2)
-			{
-				new(button1Text, button1Callback),
-				new(button2Text, button2Callback),
-			};
+			Buttons =
+			[
+				new ButtonData(button1Text, button1Callback),
+				new ButtonData(button2Text, button2Callback),
+			];
 			Size = size;
 			ShouldPlaySound = shouldPlaySound;
 		}
@@ -87,12 +87,12 @@ internal sealed class UIModals
 			Title = title;
 			Message = message;
 			CustomBodyUI = customBodyUI;
-			Buttons = new List<ButtonData>(3)
-			{
-				new(button1Text, button1Callback),
-				new(button2Text, button2Callback),
-				new(button3Text, button3Callback),
-			};
+			Buttons =
+			[
+				new ButtonData(button1Text, button1Callback),
+				new ButtonData(button2Text, button2Callback),
+				new ButtonData(button3Text, button3Callback),
+			];
 			Size = size;
 			ShouldPlaySound = shouldPlaySound;
 		}
@@ -106,7 +106,7 @@ internal sealed class UIModals
 	/// <summary>
 	/// All currently active modals.
 	/// </summary>
-	private static readonly List<ModalState> Modals = new();
+	private static readonly List<ModalState> Modals = [];
 
 	/// <summary>
 	/// Initialization method.

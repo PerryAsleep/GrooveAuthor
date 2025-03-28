@@ -7,7 +7,7 @@ namespace StepManiaEditor;
 /// </summary>
 internal sealed class ActionDeleteEditorEvents : EditorAction
 {
-	private readonly List<EditorEvent> EditorEvents = new();
+	private readonly List<EditorEvent> EditorEvents = [];
 
 	public ActionDeleteEditorEvents(EditorEvent editorEvent) : base(false, false)
 	{

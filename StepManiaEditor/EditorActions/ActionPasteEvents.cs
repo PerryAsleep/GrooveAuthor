@@ -20,7 +20,7 @@ internal class ActionPasteEvents : EditorAction
 	/// <summary>
 	/// Side effects for pasting each event.
 	/// </summary>
-	private List<ForceAddSideEffect> SideEffects = new();
+	private List<ForceAddSideEffect> SideEffects = [];
 
 	/// <summary>
 	/// All the events which this action will operate on.
@@ -52,7 +52,7 @@ internal class ActionPasteEvents : EditorAction
 
 		// Copy the given events so we can operate on them without risk of the caller
 		// modifying the provided data structure.
-		OriginalEvents = new List<EditorEvent>();
+		OriginalEvents = [];
 		int? previousPlayer = null;
 		AllOriginalEventsForSamePlayer = true;
 		foreach (var chartEvent in events)
@@ -107,7 +107,7 @@ internal class ActionPasteEvents : EditorAction
 	private void PasteUntransformedEvents()
 	{
 		// Set up lists to hold the events in various states to support undo and redo.
-		SideEffects = new List<ForceAddSideEffect>();
+		SideEffects = [];
 		PastedEvents = new List<EditorEvent>(OriginalEvents.Count);
 
 		var destinationChartPlayer = Editor.GetPlayer(Chart);
@@ -158,7 +158,7 @@ internal class ActionPasteEvents : EditorAction
 	private void PasteTransformedEvents()
 	{
 		// Set up a new Transformations list to hold the results of re-adding the transformed events.
-		SideEffects = new List<ForceAddSideEffect>();
+		SideEffects = [];
 
 		// Re-add each already transformed event.
 		foreach (var editorEvent in PastedEvents)

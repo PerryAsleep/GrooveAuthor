@@ -84,15 +84,15 @@ internal abstract class ArrowGraphicManager
 
 	private static readonly Dictionary<ChartType, List<string>> ArrowIcons = new()
 	{
-		[ChartType.dance_single] = new List<string>
-		{
+		[ChartType.dance_single] =
+		[
 			"icon-dance-left",
 			"icon-dance-down",
 			"icon-dance-up",
 			"icon-dance-right",
-		},
-		[ChartType.dance_double] = new List<string>
-		{
+		],
+		[ChartType.dance_double] =
+		[
 			"icon-dance-left",
 			"icon-dance-down",
 			"icon-dance-up",
@@ -101,24 +101,24 @@ internal abstract class ArrowGraphicManager
 			"icon-dance-down",
 			"icon-dance-up",
 			"icon-dance-right",
-		},
-		[ChartType.dance_solo] = new List<string>
-		{
+		],
+		[ChartType.dance_solo] =
+		[
 			"icon-dance-left",
 			"icon-dance-up-left",
 			"icon-dance-down",
 			"icon-dance-up",
 			"icon-dance-up-right",
 			"icon-dance-right",
-		},
-		[ChartType.dance_threepanel] = new List<string>
-		{
+		],
+		[ChartType.dance_threepanel] =
+		[
 			"icon-dance-up-left",
 			"icon-dance-down",
 			"icon-dance-up-right",
-		},
-		[ChartType.dance_routine] = new List<string>
-		{
+		],
+		[ChartType.dance_routine] =
+		[
 			"icon-dance-left",
 			"icon-dance-down",
 			"icon-dance-up",
@@ -127,39 +127,26 @@ internal abstract class ArrowGraphicManager
 			"icon-dance-down",
 			"icon-dance-up",
 			"icon-dance-right",
-		},
-		[ChartType.pump_single] = new List<string>
-		{
+		],
+		[ChartType.pump_single] =
+		[
 			"icon-pump-down-left",
 			"icon-pump-up-left",
 			"icon-pump-center",
 			"icon-pump-up-right",
 			"icon-pump-down-right",
-		},
-		[ChartType.pump_halfdouble] = new List<string>
-		{
-			"icon-pump-center",
-			"icon-pump-up-right",
-			"icon-pump-down-right",
-			"icon-pump-down-left",
-			"icon-pump-up-left",
-			"icon-pump-center",
-		},
-		[ChartType.pump_double] = new List<string>
-		{
-			"icon-pump-down-left",
-			"icon-pump-up-left",
+		],
+		[ChartType.pump_halfdouble] =
+		[
 			"icon-pump-center",
 			"icon-pump-up-right",
 			"icon-pump-down-right",
 			"icon-pump-down-left",
 			"icon-pump-up-left",
 			"icon-pump-center",
-			"icon-pump-up-right",
-			"icon-pump-down-right",
-		},
-		[ChartType.pump_routine] = new List<string>
-		{
+		],
+		[ChartType.pump_double] =
+		[
 			"icon-pump-down-left",
 			"icon-pump-up-left",
 			"icon-pump-center",
@@ -170,45 +157,58 @@ internal abstract class ArrowGraphicManager
 			"icon-pump-center",
 			"icon-pump-up-right",
 			"icon-pump-down-right",
-		},
-		[ChartType.smx_beginner] = new List<string>
-		{
+		],
+		[ChartType.pump_routine] =
+		[
+			"icon-pump-down-left",
+			"icon-pump-up-left",
+			"icon-pump-center",
+			"icon-pump-up-right",
+			"icon-pump-down-right",
+			"icon-pump-down-left",
+			"icon-pump-up-left",
+			"icon-pump-center",
+			"icon-pump-up-right",
+			"icon-pump-down-right",
+		],
+		[ChartType.smx_beginner] =
+		[
 			"icon-dance-left",
 			"icon-dance-center",
 			"icon-dance-right",
-		},
-		[ChartType.smx_single] = new List<string>
-		{
-			"icon-dance-left",
-			"icon-dance-down",
-			"icon-dance-center",
-			"icon-dance-up",
-			"icon-dance-right",
-		},
-		[ChartType.smx_dual] = new List<string>
-		{
-			"icon-dance-left",
-			"icon-dance-center",
-			"icon-dance-right",
-			"icon-dance-left",
-			"icon-dance-center",
-			"icon-dance-right",
-		},
-		[ChartType.smx_full] = new List<string>
-		{
+		],
+		[ChartType.smx_single] =
+		[
 			"icon-dance-left",
 			"icon-dance-down",
 			"icon-dance-center",
 			"icon-dance-up",
 			"icon-dance-right",
+		],
+		[ChartType.smx_dual] =
+		[
+			"icon-dance-left",
+			"icon-dance-center",
+			"icon-dance-right",
+			"icon-dance-left",
+			"icon-dance-center",
+			"icon-dance-right",
+		],
+		[ChartType.smx_full] =
+		[
 			"icon-dance-left",
 			"icon-dance-down",
 			"icon-dance-center",
 			"icon-dance-up",
 			"icon-dance-right",
-		},
-		[ChartType.smx_team] = new List<string>
-		{
+			"icon-dance-left",
+			"icon-dance-down",
+			"icon-dance-center",
+			"icon-dance-up",
+			"icon-dance-right",
+		],
+		[ChartType.smx_team] =
+		[
 			"icon-dance-left",
 			"icon-dance-down",
 			"icon-dance-center",
@@ -219,7 +219,7 @@ internal abstract class ArrowGraphicManager
 			"icon-dance-center",
 			"icon-dance-up",
 			"icon-dance-right",
-		},
+		],
 	};
 
 	private static readonly Dictionary<ChartType, List<string>> DimArrowIcons;
@@ -253,14 +253,14 @@ internal abstract class ArrowGraphicManager
 	{
 		if (ArrowIcons.TryGetValue(chartType, out var icons))
 			return icons;
-		return new List<string>();
+		return [];
 	}
 
 	public static List<string> GetDimIcons(ChartType chartType)
 	{
 		if (DimArrowIcons.TryGetValue(chartType, out var icons))
 			return icons;
-		return new List<string>();
+		return [];
 	}
 
 	protected static string GetTextureId(string textureId, bool selected)
@@ -761,12 +761,12 @@ internal abstract class ArrowGraphicManagerDance : ArrowGraphicManager
 internal class ArrowGraphicManagerDanceSingleOrDouble : ArrowGraphicManagerDance
 {
 	private static readonly float[] ArrowRotations =
-	{
+	[
 		(float)Math.PI * 0.5f, // L
 		0.0f, // D
 		(float)Math.PI, // U
 		(float)Math.PI * 1.5f, // R
-	};
+	];
 
 	public override (string, float) GetArrowTexture(int row, int lane, bool selected)
 	{
@@ -1035,14 +1035,14 @@ internal abstract class ArrowGraphicManagerDanceSoloBase : ArrowGraphicManagerDa
 internal sealed class ArrowGraphicManagerDanceSolo : ArrowGraphicManagerDanceSoloBase
 {
 	private static readonly float[] ArrowRotations =
-	{
+	[
 		(float)Math.PI * 0.5f, // L
 		0.0f, // UL
 		0.0f, // D
 		(float)Math.PI, // U
 		(float)Math.PI * 0.5f, // UR
 		(float)Math.PI * 1.5f, // R
-	};
+	];
 
 	protected override bool ShouldUseUpLeftArrow(int lane)
 	{
@@ -1058,11 +1058,11 @@ internal sealed class ArrowGraphicManagerDanceSolo : ArrowGraphicManagerDanceSol
 internal sealed class ArrowGraphicManagerDanceThreePanel : ArrowGraphicManagerDanceSoloBase
 {
 	private static readonly float[] ArrowRotations =
-	{
+	[
 		0.0f, // UL
 		0.0f, // D
 		(float)Math.PI * 0.5f, // UR
-	};
+	];
 
 	protected override bool ShouldUseUpLeftArrow(int lane)
 	{
@@ -1180,11 +1180,11 @@ internal abstract class ArrowGraphicManagerDanceSMX : ArrowGraphicManagerDance
 internal sealed class ArrowGraphicManagerDanceSMXBeginner : ArrowGraphicManagerDanceSMX
 {
 	private static readonly float[] ArrowRotations =
-	{
+	[
 		(float)Math.PI * 0.5f, // L
 		0.0f, // Center
 		(float)Math.PI * 1.5f, // R
-	};
+	];
 
 	protected override bool ShouldUseCenterArrow(int lane)
 	{
@@ -1200,13 +1200,13 @@ internal sealed class ArrowGraphicManagerDanceSMXBeginner : ArrowGraphicManagerD
 internal class ArrowGraphicManagerDanceSMXSingleOrFull : ArrowGraphicManagerDanceSMX
 {
 	private static readonly float[] ArrowRotations =
-	{
+	[
 		(float)Math.PI * 0.5f, // L
 		0.0f, // D
 		0.0f, // Center
 		(float)Math.PI, // U
 		(float)Math.PI * 1.5f, // R
-	};
+	];
 
 	protected override bool ShouldUseCenterArrow(int lane)
 	{
@@ -1222,14 +1222,14 @@ internal class ArrowGraphicManagerDanceSMXSingleOrFull : ArrowGraphicManagerDanc
 internal sealed class ArrowGraphicManagerDanceSMXDual : ArrowGraphicManagerDanceSMX
 {
 	private static readonly float[] ArrowRotations =
-	{
+	[
 		(float)Math.PI * 0.5f, // L
 		0.0f, // Center
 		(float)Math.PI * 1.5f, // R
 		(float)Math.PI * 0.5f, // L
 		0.0f, // Center
 		(float)Math.PI * 1.5f, // R
-	};
+	];
 
 	protected override bool ShouldUseCenterArrow(int lane)
 	{
@@ -1339,130 +1339,130 @@ internal abstract class ArrowGraphicManagerPIU : ArrowGraphicManager
 	protected static readonly ArrowUIColorSet RollColorYellow;
 
 	protected static readonly float[] ArrowRotationsColored =
-	{
+	[
 		0.0f, // DL
 		0.0f, // UL
 		0.0f, // C
 		(float)Math.PI * 0.5f, // UR
 		(float)Math.PI * 1.5f, // DR
-	};
+	];
 
 	protected static readonly float[] ArrowRotations =
-	{
+	[
 		(float)Math.PI * 1.5f, // DL
 		0.0f, // UL
 		0.0f, // C
 		(float)Math.PI * 0.5f, // UR
 		(float)Math.PI, // DR
-	};
+	];
 
 	protected static readonly string[] ArrowRimTextures =
-	{
+	[
 		"piu-diagonal-rim", // DL
 		"piu-diagonal-rim", // UL
 		"piu-center-rim", // C
 		"piu-diagonal-rim", // UR
 		"piu-diagonal-rim", // DR
-	};
+	];
 
 	protected static readonly string[] ArrowFillTextures =
-	{
+	[
 		"piu-diagonal-fill", // DL
 		"piu-diagonal-fill", // UL
 		"piu-center-fill", // C
 		"piu-diagonal-fill", // UR
 		"piu-diagonal-fill", // DR
-	};
+	];
 
 	protected static readonly string[] ArrowHoldAndRollRimTextures =
-	{
+	[
 		"piu-hold-diagonal-rim", // DL
 		"piu-hold-diagonal-rim", // UL
 		"piu-hold-center-rim", // C
 		"piu-hold-diagonal-rim", // UR
 		"piu-hold-diagonal-rim", // DR
-	};
+	];
 
 	protected static readonly string[] ArrowHoldFillTextures =
-	{
+	[
 		"piu-hold-diagonal-fill", // DL
 		"piu-hold-diagonal-fill", // UL
 		"piu-hold-center-fill", // C
 		"piu-hold-diagonal-fill", // UR
 		"piu-hold-diagonal-fill", // DR
-	};
+	];
 
 	protected static readonly string[] ArrowRollFillTextures =
-	{
+	[
 		"piu-roll-diagonal-fill", // DL
 		"piu-roll-diagonal-fill", // UL
 		"piu-roll-center-fill", // C
 		"piu-roll-diagonal-fill", // UR
 		"piu-roll-diagonal-fill", // DR
-	};
+	];
 
 	protected static readonly string[] ReceptorTextures =
-	{
+	[
 		"piu-diagonal-receptor", // DL
 		"piu-diagonal-receptor", // UL
 		"piu-center-receptor", // C
 		"piu-diagonal-receptor", // UR
 		"piu-diagonal-receptor", // DR
-	};
+	];
 
 	protected static readonly string[] ReceptorGlowTextures =
-	{
+	[
 		"piu-diagonal-receptor-glow", // DL
 		"piu-diagonal-receptor-glow", // UL
 		"piu-center-receptor-glow", // C
 		"piu-diagonal-receptor-glow", // UR
 		"piu-diagonal-receptor-glow", // DR
-	};
+	];
 
 	protected static readonly string[] ReceptorHeldTextures =
-	{
+	[
 		"piu-diagonal-receptor-held", // DL
 		"piu-diagonal-receptor-held", // UL
 		"piu-center-receptor-held", // C
 		"piu-diagonal-receptor-held", // UR
 		"piu-diagonal-receptor-held", // DR
-	};
+	];
 
 	protected static readonly string[] ArrowTextures =
-	{
+	[
 		"piu-diagonal-blue", // DL
 		"piu-diagonal-red", // UL
 		"piu-center", // C
 		"piu-diagonal-red", // UR
 		"piu-diagonal-blue", // DR
-	};
+	];
 
 	protected static readonly string[] HoldTextures =
-	{
+	[
 		"piu-hold-blue", // DL
 		"piu-hold-red", // UL
 		"piu-hold-center", // C
 		"piu-hold-red", // UR
 		"piu-hold-blue", // DR
-	};
+	];
 
 	protected static readonly string[] RollTextures =
-	{
+	[
 		"piu-roll-blue", // DL
 		"piu-roll-red", // UL
 		"piu-roll-center", // C
 		"piu-roll-red", // UR
 		"piu-roll-blue", // DR
-	};
+	];
 
 	protected static readonly bool[] HoldMirrored =
-	{
+	[
 		false, // DL
 		false, // UL
 		false, // C
 		true, // UR
 		true, // DR
-	};
+	];
 
 	protected static readonly ArrowUIColorSet[] ArrowColors;
 	protected static readonly ArrowUIColorSet[] HoldColors;
@@ -1484,30 +1484,30 @@ internal abstract class ArrowGraphicManagerPIU : ArrowGraphicManager
 		RollColorBlue = new ArrowUIColorSet(0xFFB38C1B);
 		RollColorYellow = new ArrowUIColorSet(0xFF2FABB5);
 
-		ArrowColors = new[]
-		{
+		ArrowColors =
+		[
 			ArrowColorBlue,
 			ArrowColorRed,
 			ArrowColorYellow,
 			ArrowColorRed,
 			ArrowColorBlue,
-		};
-		HoldColors = new[]
-		{
+		];
+		HoldColors =
+		[
 			HoldColorBlue,
 			HoldColorRed,
 			HoldColorYellow,
 			HoldColorRed,
 			HoldColorBlue,
-		};
-		RollColors = new[]
-		{
+		];
+		RollColors =
+		[
 			RollColorBlue,
 			RollColorRed,
 			RollColorYellow,
 			RollColorRed,
 			RollColorBlue,
-		};
+		];
 	}
 
 	protected int GetTextureIndex(int lane)

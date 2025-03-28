@@ -15,7 +15,7 @@ internal sealed class UIDockSpace
 	private const string RootDockSpaceId = "DockSpace";
 	private static Rectangle CentralNodeArea;
 
-	private static float WindowBorderSize = 0.0f;
+	private static float WindowBorderSize;
 
 	/// <summary>
 	/// </summary>
@@ -273,7 +273,7 @@ internal sealed class UIDockSpace
 	/// </summary>
 	/// <remarks>
 	/// The only way in ImGui to use clip rects is to do so in the context of a Window.
-	/// You cannot just push an arbitrary clip rect outside of a Window. Because of this
+	/// You cannot just push an arbitrary clip rect outside a Window. Because of this
 	/// in order to clip Windows to the Central Node area, we need to use an invisible
 	/// Window that doesn't capture inputs over the Central Node, and then put child
 	/// Windows within that.

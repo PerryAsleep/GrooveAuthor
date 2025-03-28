@@ -24,14 +24,14 @@ internal sealed class ActiveEditorChart
 	private readonly IReadOnlyTextureAtlas TextureAtlas;
 	private readonly IReadOnlyKeyCommandManager KeyCommandManager;
 	private EventSpacingHelper SpacingHelper;
-	private readonly List<EditorEvent> VisibleEvents = new();
-	private readonly List<EditorMarkerEvent> VisibleMarkers = new();
-	private readonly List<IChartRegion> VisibleRegions = new();
-	private readonly HashSet<IChartRegion> RegionsOverlappingStart = new();
+	private readonly List<EditorEvent> VisibleEvents = [];
+	private readonly List<EditorMarkerEvent> VisibleMarkers = [];
+	private readonly List<IChartRegion> VisibleRegions = [];
+	private readonly HashSet<IChartRegion> RegionsOverlappingStart = [];
 	private readonly SelectedRegion SelectedRegion = new();
 	private readonly Selection Selection = new();
 	private EditorPatternEvent LastSelectedPatternEvent;
-	private readonly List<EditorEvent> MovingNotes = new();
+	private readonly List<EditorEvent> MovingNotes = [];
 	private readonly Receptor[] Receptors;
 	private readonly LaneEditState[] LaneEditStates;
 	private readonly AutoPlayer AutoPlayer;
@@ -369,7 +369,7 @@ internal sealed class ActiveEditorChart
 	public bool ShouldDrawMiscEvents()
 	{
 		// Originally this was limited to only the focused chart.
-		// Showing the misc events for all charts is better because it gives more information
+		// Showing the misc events for all charts is better because it gives more information,
 		// and it makes the width of individual active charts less variable which makes switching
 		// the focused chart less jarring.
 		// The only negative to drawing the misc events for all charts is the additional width but
@@ -916,7 +916,7 @@ internal sealed class ActiveEditorChart
 				// overlapping the start of the viewable area to have positive Y values even when they occur before the stop.
 				// For the normal SpacingHelper math to work, we need to ensure that we do math based on off a preceding rate
 				// altering event and not a following one. But for very long regions (like patterns), we don't really want to
-				// be iterating backwards to find that event to get an accurate start time. Instead just ensure that any region
+				// be iterating backwards to find that event to get an accurate start time. Instead, just ensure that any region
 				// that actually starts above the screen doesn't render as starting below the top of the screen. This makes the
 				// region bounds technically wrong, but they are wrong already due to similar issues in ending them when they
 				// end beyond the end of the screen. The regions are used for rendering so this is acceptable.
@@ -1098,7 +1098,7 @@ internal sealed class ActiveEditorChart
 		{
 			if (CheckForCompletingHold(hold, previousRateEventY, nextRateEvent))
 			{
-				holdsToRemove ??= new List<EditorHoldNoteEvent>();
+				holdsToRemove ??= [];
 				holdsToRemove.Add(hold);
 			}
 		}
@@ -1161,6 +1161,7 @@ internal sealed class ActiveEditorChart
 	/// <param name="sizeZoom">Current zoom level to use for setting the width and scale of the MarkerEvents.</param>
 	/// <param name="previousRateEventY">Y position of previous rate altering event.</param>
 	/// <param name="screenHeight">Screen height in pixels.</param>
+	/// <param name="maxMarkersToDraw">Maximum number of beat markers to draw this frame.</param>
 	/// <remarks>Helper for UpdateChartEvents.</remarks>
 	private void UpdateBeatMarkers(
 		EditorRateAlteringEvent currentRateEvent,
@@ -1333,7 +1334,7 @@ internal sealed class ActiveEditorChart
 					return spacingHelper.GetChartTimeAndRow(desiredY, rateEventY, rateChartTime, rateRow);
 
 				// Otherwise, now that we have advance the rate enumerator to its preceding event, we can
-				// update the the current rate event variables to check again next loop.
+				// update the current rate event variables to check again next loop.
 				spacingHelper.UpdatePpsAndPpr(rateEnumerator.Current, interpolatedScrollRate, spacingZoom);
 				rateEventY = spacingHelper.GetY(rateEnumerator.Current, rateEventY, rateChartTime, rateRow);
 				rateChartTime = rateEnumerator.Current.GetChartTime();
@@ -1351,7 +1352,7 @@ internal sealed class ActiveEditorChart
 					return spacingHelper.GetChartTimeAndRow(desiredY, rateEventY, rateChartTime, rateRow);
 
 				// Otherwise, we need to determine the position of the next rate event. If it is beyond
-				// the desired position then we have gone to far and we need to use the previous rate
+				// the desired position then we have gone too far, and we need to use the previous rate
 				// information to determine the chart time and row of the desired position.
 				rateEventY = spacingHelper.GetY(rateEnumerator.Current, rateEventY, rateChartTime, rateRow);
 				spacingHelper.UpdatePpsAndPpr(rateEnumerator.Current, interpolatedScrollRate, spacingZoom);
@@ -1552,7 +1553,7 @@ internal sealed class ActiveEditorChart
 		var halfArrowH = arrowHeightUnscaled * ZoomManager.GetSizeZoom() * 0.5;
 
 		// For clicking, we want to select only one note. The latest note whose bounding rect
-		// overlaps with the point that was clicked. The events are sorted but we cannot binary
+		// overlaps with the point that was clicked. The events are sorted, but we cannot binary
 		// search them because we only want to consider events which are in the same lane as
 		// the click. A binary search won't consider every event so we may miss an event which
 		// overlaps the click. However, the visible events list is limited in size such that it
@@ -1622,7 +1623,7 @@ internal sealed class ActiveEditorChart
 						}
 					}
 
-					// If nothing was selected and the selection was partially outside of the lanes, treat it as
+					// If nothing was selected and the selection was partially outside the lanes, treat it as
 					// an attempt to select misc events.
 					if (newlySelectedEvents.Count == 0 && partiallyOutsideLanes)
 						selectMiscEvents = true;
@@ -1666,7 +1667,7 @@ internal sealed class ActiveEditorChart
 						}
 					}
 
-					// If nothing was selected and the selection was partially outside of the lanes, treat it as
+					// If nothing was selected and the selection was partially outside the lanes, treat it as
 					// an attempt to select misc events.
 					if (newlySelectedEvents.Count == 0 && partiallyOutsideLanes)
 						selectMiscEvents = true;
@@ -1774,7 +1775,7 @@ internal sealed class ActiveEditorChart
 		// As a result, searching for events that fall within the selection's time or row range is insufficient.
 		// We need to extend the search such that misc events which occur earlier or later but would render
 		// within the selection are captured. This requires searching because they are offset by screen space
-		// values and we do not know the screen space position of off screen events without scanning up or down from
+		// values, and we do not know the screen space position of off-screen events without scanning up or down from
 		// the focal point using rate altering events. The function performs two scans starting at the focal point,
 		// one up and one down.
 
@@ -2618,7 +2619,7 @@ internal sealed class ActiveEditorChart
 		if (!LaneEditStates[lane].IsActive())
 			return;
 
-		// If this action is only a delete, just commit the existing delete action.
+		// If this action is only a deletion, just commit the existing delete action.
 		if (LaneEditStates[lane].IsOnlyDelete())
 		{
 			LaneEditStates[lane].Commit();
@@ -2646,10 +2647,9 @@ internal sealed class ActiveEditorChart
 					if (!existingIsMine && newNoteIsMine)
 					{
 						LaneEditStates[lane].SetEditingTapOrMine(LaneEditStates[lane].GetEventBeingEdited(),
-							new List<EditorAction>
-							{
-								new ActionDeleteEditorEvents(existingEvent),
-							});
+						[
+							new ActionDeleteEditorEvents(existingEvent),
+						]);
 					}
 
 					// In all other cases, just delete the existing note and don't add anything else.
@@ -2668,19 +2668,18 @@ internal sealed class ActiveEditorChart
 					if (row == existingEvent.GetRow())
 					{
 						LaneEditStates[lane].SetEditingTapOrMine(LaneEditStates[lane].GetEventBeingEdited(),
-							new List<EditorAction>
-							{
-								new ActionDeleteEditorEvents(existingEvent),
-							});
+						[
+							new ActionDeleteEditorEvents(existingEvent),
+						]);
 					}
 
-					// If the tap note is in the in the middle of the hold, shorten the hold.
+					// If the tap note is in the middle of the hold, shorten the hold.
 					else
 					{
 						// Move the hold up by a 16th.
 						var newHoldEndRow = row - MaxValidDenominator / 4;
 
-						// If the hold would have a non-positive length, delete it and replace it with a tap.
+						// If the hold would now have a non-positive length, delete it and replace it with a tap.
 						if (newHoldEndRow <= existingEvent.GetRow())
 						{
 							var deleteHold = new ActionDeleteEditorEvents(existingEvent);
@@ -2689,11 +2688,10 @@ internal sealed class ActiveEditorChart
 							var insertNewNoteAtHoldStart = new ActionAddEditorEvent(EditorEvent.CreateEvent(config));
 
 							LaneEditStates[lane].SetEditingTapOrMine(LaneEditStates[lane].GetEventBeingEdited(),
-								new List<EditorAction>
-								{
-									deleteHold,
-									insertNewNoteAtHoldStart,
-								});
+							[
+								deleteHold,
+								insertNewNoteAtHoldStart,
+							]);
 						}
 
 						// Otherwise, the new length is valid. Update it.
@@ -2701,10 +2699,9 @@ internal sealed class ActiveEditorChart
 						{
 							var changeLength = new ActionChangeHoldLength(hn, newHoldEndRow - hn.GetRow());
 							LaneEditStates[lane].SetEditingTapOrMine(LaneEditStates[lane].GetEventBeingEdited(),
-								new List<EditorAction>
-								{
-									changeLength,
-								});
+							[
+								changeLength,
+							]);
 						}
 					}
 				}
@@ -2734,7 +2731,7 @@ internal sealed class ActiveEditorChart
 
 			// If existing holds overlap with only the start or end of the new hold, delete them and extend the
 			// new hold to cover their range. We just need to extend the new event now. The deletion of the
-			// old event will will be handled below when we check for events fully contained within the new
+			// old event will be handled below when we check for events fully contained within the new
 			// hold region.
 			if (existingEvent is EditorHoldNoteEvent hsnStart
 			    && hsnStart.GetRow() < row

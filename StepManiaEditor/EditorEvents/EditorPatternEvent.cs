@@ -206,7 +206,7 @@ internal sealed class EditorPatternEvent : EditorEvent, IEquatable<EditorPattern
 	}
 
 	/// <summary>
-	/// Whether or not the this pattern should ignore preceding steps when determining
+	/// Whether or not this pattern should ignore preceding steps when determining
 	/// how steps should be distributed.
 	/// </summary>
 	[JsonInclude]

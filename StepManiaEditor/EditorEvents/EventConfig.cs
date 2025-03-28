@@ -588,7 +588,7 @@ internal sealed class EventConfig
 	/// <param name="rate">Scroll rate event value.</param>
 	/// <param name="periodLen">Scroll rate interpolation period in rows.</param>
 	/// <param name="periodTime">Scroll rate interpolation period in seconds.</param>
-	/// <param name="preferPeriodAsTime">Whether to prefer time over rows for scroll rate interpolation period.</param>
+	/// <param name="preferPeriodAsTime">Whether to prefer time to rows for scroll rate interpolation period.</param>
 	/// <returns>EventConfig for the new EditorInterpolatedRateAlteringEvent.</returns>
 	public static EventConfig CreateScrollRateInterpolationConfig(
 		EditorChart chart,

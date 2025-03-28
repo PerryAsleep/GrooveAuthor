@@ -10,7 +10,7 @@ internal abstract class UIWindow
 {
 	protected readonly string WindowTitle;
 
-	private static readonly HashSet<UIWindow> Windows = new();
+	private static readonly HashSet<UIWindow> Windows = [];
 
 	protected UIWindow(string windowTitle)
 	{

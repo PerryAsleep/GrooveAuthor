@@ -110,7 +110,7 @@ internal sealed class EditorImageData : IReadOnlyEditorImageData
 		try
 		{
 			var fullPath = Fumen.Path.Combine(FileDirectory, Path);
-			// Remove potential relative directory symbols like ".." as FileSystemWatcher
+			// Remove potential relative directory symbols as FileSystemWatcher
 			// throws exceptions when they are present.
 			fullPath = System.IO.Path.GetFullPath(fullPath);
 			var dir = System.IO.Path.GetDirectoryName(fullPath);

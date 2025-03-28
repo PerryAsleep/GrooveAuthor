@@ -16,10 +16,11 @@ namespace StepManiaEditor;
 /// </summary>
 public class SoundMipMap
 {
+	// ReSharper disable GrammarMistakeInComment
 	/// <summary>
 	/// Data stored at one mip level.
 	/// An array of 32 bit uints where each uint represents data for a range of underlying audio samples.
-	/// Each uint holds three values which can be get and set using the public static methods of this class:
+	/// Each uint holds three values which can be modified using the public static methods of this class:
 	///  - A minimum value representing the lowest value of the underlying samples.
 	///  - A maximum value representing the highest value of the underlying samples.
 	///  - A distance value representing the sum of the deltas between each underlying sample from its
@@ -30,6 +31,7 @@ public class SoundMipMap
 	/// is 2 to the power of the mip level. For example at mip level 0 each uint
 	/// entry corresponds to 1 sample. At mip level 1 it is 2 samples, at 2 it is 4, etc.
 	/// </summary>
+	// ReSharper restore GrammarMistakeInComment
 	public class MipLevel
 	{
 		/// <summary>
@@ -133,7 +135,7 @@ public class SoundMipMap
 	/// We don't need to lock while editing the data in MipLevels, as only
 	/// this class writes to it, but we need to lock when we are going to
 	/// delete the data.
-	/// We could have other classes cache MipLevels but we want to control
+	/// We could have other classes cache MipLevels, but we want to control
 	/// when this data is deleted with a manual Garbage Collector Collect because
 	/// otherwise we could see memory usage double when resetting and loading
 	/// a new song. As this data can be multiple GBs, we want to avoid that.
@@ -280,7 +282,7 @@ public class SoundMipMap
 	private async Task<bool> InternalCreateMipMapAsync(Sound sound, int xRange, CancellationToken token)
 	{
 		// Get the sound data from FMOD.
-		if (!SoundManager.ErrCheck(sound.getDefaults(out var soundFrequency, out var _)))
+		if (!SoundManager.ErrCheck(sound.getDefaults(out var soundFrequency, out _)))
 			return false;
 		SampleRate = (uint)soundFrequency;
 		if (!SoundManager.ErrCheck(sound.getLength(out var length, TIMEUNIT.PCMBYTES)))
@@ -385,9 +387,9 @@ public class SoundMipMap
 
 			// Divide up the mip map generation into parallel tasks.
 			// Each task must operate on a completely independent set of MipLevel data.
-			// Otherwise we would need to lock around non-atomic operations like += and min/max updates.
+			// Otherwise, we would need to lock around non-atomic operations like += and min/max updates.
 			// This will fill the densest mip levels, and then afterwards we can fill
-			// each remaining sparse mip level by combining samples from it's previous level.
+			// each remaining sparse mip level by combining samples from its previous level.
 			var tasks = new Task[numTasks];
 			for (var i = 0; i < numTasks; i++)
 			{
@@ -534,7 +536,7 @@ public class SoundMipMap
 
 	/// <summary>
 	/// Called by CreateMipMap to perform a portion of the work of filling MipLevels data.
-	/// This method can be run on its own thead but it is expected that the data range covered
+	/// This method can be run on its own thead, but it is expected that the data range covered
 	/// by the provided sampleStart, sampleEnd, and numMipLevels is not also being modified
 	/// on another thread. The operations to fill a SampleDataPerChannel are not thread safe.
 	/// </summary>

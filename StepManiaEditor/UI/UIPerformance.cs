@@ -85,7 +85,7 @@ internal sealed class UIPerformance : UIWindow
 					break;
 			}
 
-			// At startup we may have no frames to display. In that case don't draw anything.
+			// At startup, we may have no frames to display. In that case don't draw anything.
 			if (numFrames == 0)
 			{
 				// We could have no frames because the performance monitor is disabled.

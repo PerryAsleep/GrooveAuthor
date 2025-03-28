@@ -48,7 +48,7 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 	/// <summary>
 	/// All EditorEvents added as a result of the last time this action was run.
 	/// </summary>
-	private readonly List<EditorEvent> AddedEvents = new();
+	private readonly List<EditorEvent> AddedEvents = [];
 
 	public ActionAutoGeneratePatterns(
 		Editor editor,
@@ -57,7 +57,7 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 	{
 		Editor = editor;
 		EditorChart = editorChart;
-		Patterns = new List<EditorPatternEvent>();
+		Patterns = [..allPatterns];
 		Patterns.AddRange(allPatterns);
 		Patterns.Sort();
 	}
@@ -578,8 +578,8 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 			numStepsAtLastTransition = totalStepsBeforePattern - currentStepsInRegionBeforePattern +
 			                           stepsIntoPrecedingRangeOfLastTransition;
 
-		// There is a situation where we might check all preceding steps and not find a transition but we are
-		// deep into the chart and we need to set lastTransitionLeft. Guess the last transition direction based on
+		// There is a situation where we might check all preceding steps and not find a transition, but we are
+		// deep into the chart, and we need to set lastTransitionLeft. Guess the last transition direction based on
 		// the distribution of steps within the region we checked.
 		if (lastTransitionLeft == null && rangeStartsAfterStartOfChart && numStepsCheckedBeforePattern > 0)
 		{
@@ -824,7 +824,7 @@ internal sealed class ActionAutoGeneratePatterns : EditorAction
 									stepFoot = f;
 								}
 
-								// If we already had a different foot assigned at the same time it means this is a jump and we don't know the footing.
+								// If we already had a different foot assigned at the same time it means this is a jump, and we don't know the footing.
 								else if (stepFoot != f && stepFootTime[stepFoot].DoubleEquals(node.TimeSeconds))
 								{
 									stepFoot = Constants.InvalidFoot;

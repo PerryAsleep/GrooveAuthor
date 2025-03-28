@@ -13,7 +13,7 @@ namespace StepManiaEditor;
 /// Offers idempotent asynchronous methods for loading sound files from disk.
 /// 
 /// Offers methods for playing the music and setting the music time directly.
-/// Gracefully handles desired music times which are negative or outside of the
+/// Gracefully handles desired music times which are negative or outside the
 /// range of the music sound.
 /// 
 /// Offers methods for playing and stopping the music preview. The music preview
@@ -332,7 +332,7 @@ internal sealed class MusicManager
 	/// </param>
 	/// <param name="force">
 	/// If true then the music will be loaded even if the given path is the same
-	/// as the previously loaded music. If false, then the sound will not by loaded if
+	/// as the previously loaded music. If false, then the sound will not be loaded if
 	/// the previously loaded music was from the same path.
 	/// </param>
 	/// <param name="generateMipMap">
@@ -359,7 +359,7 @@ internal sealed class MusicManager
 	/// </param>
 	/// <param name="force">
 	/// If true then the preview music will be loaded even if the given path is the same
-	/// as the previously loaded preview. If false, then the sound will not by loaded if
+	/// as the previously loaded preview. If false, then the sound will not be loaded if
 	/// the previously loaded preview was from the same path.
 	/// </param>
 	public void LoadMusicPreviewAsync(string fullPathToMusicFile, bool force = false)
@@ -588,7 +588,7 @@ internal sealed class MusicManager
 
 	/// <summary>
 	/// Start playing the preview.
-	/// If the last call to LoadMusicPreviewAsync was for a non null and non empty file string,
+	/// If the last call to LoadMusicPreviewAsync was for a non-null and non-empty file string,
 	/// then the preview is assumed to be the audio file specified by that path.
 	/// If the last call to LoadMusicPreviewAsync was for a null or empty file string, then the
 	/// preview is assumed to be the music file using a range defined by the parameters set
@@ -633,7 +633,7 @@ internal sealed class MusicManager
 	/// Sets the music to the given time in seconds.
 	/// If a preview is playing that uses the music file, then the given value will
 	/// be set after the preview is stopped.
-	/// The given time my be negative or outside the time range of the music sound.
+	/// The given time may be negative or outside the time range of the music sound.
 	/// </summary>
 	/// <param name="musicTimeInSeconds">The desired music time in seconds.</param>
 	public void SetMusicTimeInSeconds(double musicTimeInSeconds)
@@ -649,7 +649,7 @@ internal sealed class MusicManager
 	/// Private internal method for setting the music sound to a desired time in seconds.
 	/// Used for both setting the time for the music and for the preview when the preview
 	/// uses the music file instead of an independent preview file.
-	/// The given time my be negative or outside the time range of the music sound.
+	/// The given time may be negative or outside the time range of the music sound.
 	/// </summary>
 	/// <param name="soundData">Sound data to set the time on.</param>
 	/// <param name="timeInSeconds">Sound time in seconds.</param>
@@ -963,7 +963,7 @@ internal sealed class MusicManager
 		if (!previewPlaying)
 			return false;
 
-		// By default the preview plays at the music volume.
+		// By default, the preview plays at the music volume.
 		var defaultVolume = MusicVolume * MainVolume;
 
 		// If the preview is playing, render it.
@@ -1143,7 +1143,7 @@ internal sealed class MusicManager
 	/// <summary>
 	/// Given a SoundPlaybackState, update it such that it is in a correct state for being at the end of
 	/// the range of samples processed by the current DSP callback. This is done prior to rendering any
-	/// audio as updating the state requires locking and we want to lock for as short a time as possible.
+	/// audio as updating the state requires locking, and we want to lock for as short a time as possible.
 	/// While updating the SoundPlaybackState, also determine and return some variables needed for rendering.
 	/// </summary>
 	/// <remarks>Helper for RenderMusicAndTicks.</remarks>

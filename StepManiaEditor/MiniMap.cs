@@ -66,12 +66,12 @@ internal sealed class MiniMap
 		LeftSideOfWindow,
 
 		/// <summary>
-		/// Mounted to the right of the focused chart. Will not moving with scaling.
+		/// Mounted to the right of the focused chart. Will not move with scaling.
 		/// </summary>
 		FocusedChartWithoutScaling,
 
 		/// <summary>
-		/// Mounted to the right of the focused chart. Will moving with scaling.
+		/// Mounted to the right of the focused chart. Will move with scaling.
 		/// </summary>
 		FocusedChartWithScaling,
 	}
@@ -119,13 +119,13 @@ internal sealed class MiniMap
 	private const uint TransparentColor = 0x00000000;
 
 	/// <summary>
-	/// RGBA color of the line separating the areas outside of the Chart content from
+	/// RGBA color of the line separating the areas outside the Chart content from
 	/// the area representing the Chart content.
 	/// </summary>
 	private const uint ContentMarkerColor = 0xFFFFFFFF;
 
 	/// <summary>
-	/// RGBA color of the area outside of the Chart content.
+	/// RGBA color of the area outside the Chart content.
 	/// </summary>
 	private const uint OutsideContentRangeColor = 0xFF020202;
 
@@ -135,7 +135,7 @@ internal sealed class MiniMap
 	private const uint EditorAreaColor = 0xFF303030;
 
 	/// <summary>
-	/// RGBA color of the editor area when the mouse is over it but it is not being held.
+	/// RGBA color of the editor area when the mouse is over it, but it is not being held.
 	/// </summary>
 	private const uint EditorAreaMouseOverColor = 0xFF373737;
 
@@ -180,7 +180,7 @@ internal sealed class MiniMap
 	private uint[] ClearDataEditorArea;
 
 	/// <summary>
-	/// Buffer holding color data for the editor area when the mouse is over it but it is not being held.
+	/// Buffer holding color data for the editor area when the mouse is over it, but it is not being held.
 	/// </summary>
 	private uint[] ClearDataEditorMouseOverArea;
 
@@ -190,7 +190,7 @@ internal sealed class MiniMap
 	private uint[] ClearDataEditorSelectedArea;
 
 	/// <summary>
-	/// Buffer holding color data for areas outside of the content region.
+	/// Buffer holding color data for areas outside the content region.
 	/// </summary>
 	private uint[] ClearDataOutsideContentArea;
 
@@ -203,7 +203,7 @@ internal sealed class MiniMap
 	/// Height of the visible area of the MiniMap in pixels.
 	/// Less than or equal to the Bounds height.
 	/// This is tracked separately as UI resizing can cause the visible area to change
-	/// often but we do not want to perform expensive texture resizes that often.
+	/// often. but we do not want to perform expensive texture resizes that often.
 	/// </summary>
 	private int VisibleHeight;
 
@@ -571,7 +571,7 @@ internal sealed class MiniMap
 			GrabbedPositionAsPercentageOfEditorArea = (relativePosY - editorStartYPixel) / (editorEndYPixel - editorStartYPixel);
 		}
 
-		// Grabbed outside of the editor area.
+		// Grabbed outside the editor area.
 		else
 		{
 			GrabbedPositionAsPercentageOfEditorArea = (CursorPosition - EditorAreaStart) / (EditorAreaEnd - EditorAreaStart);
@@ -811,7 +811,7 @@ internal sealed class MiniMap
 	public AddResult AddCursor(double position)
 	{
 		// Force the use of an unquantized position for the cursor.
-		// This is because it should look locked in with the editor area and we never
+		// This is because it should look locked in with the editor area, and we never
 		// quantize the editor area.
 		return AddHorizontalLine(
 			GetYPixelRelativeToBounds(position, true),
@@ -1148,7 +1148,7 @@ internal sealed class MiniMap
 		SetMiniMapAreaFromEditorArea();
 
 		// If we are zoomed out so far that the MiniMap Area can't fit the Editor Areas or scroll
-		// then we can't render anything meaningful and we should early-ouy.
+		// then we can't render anything meaningful, and we should early-ouy.
 		if (GetEditorAreaPercentageOfMiniMapArea() >= 1.0)
 			return;
 
@@ -1266,7 +1266,7 @@ internal sealed class MiniMap
 			return;
 
 		// If we are zoomed out so far that the MiniMap Area can't fit the Editor Areas or scroll
-		// then we can't render anything meaningful and we should early-ouy.
+		// then we can't render anything meaningful, and we should early-ouy.
 		var editorAreaPercentage = GetEditorAreaPercentageOfMiniMapArea();
 		if (editorAreaPercentage >= 1.0)
 			return;
@@ -1288,7 +1288,7 @@ internal sealed class MiniMap
 
 	/// <summary>
 	/// Gets the Editor Area as a percentage of the MiniMap Area.
-	/// If this is greater than or equal to 1.0 then we can't rendering a meaningful representation
+	/// If this is greater than or equal to 1.0 then we can't render a meaningful representation
 	/// or scroll so we should not render.
 	/// </summary>
 	/// <returns>Editor Area as a percentage of the MiniMap Area.</returns>

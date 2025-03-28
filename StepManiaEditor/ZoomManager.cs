@@ -126,7 +126,7 @@ internal class ZoomManager : Fumen.IObserver<PreferencesScroll>, IReadOnlyZoomMa
 	private readonly InterpolatedValueData ConstantRowSpacingData;
 	private readonly InterpolatedValueData VariableSpacingData;
 	private readonly List<InterpolatedValueData> AllValues;
-	private double SizeCap = MaxSizeCap;
+	private double SizeCap;
 
 	/// <summary>
 	/// Constructor.
@@ -147,13 +147,13 @@ internal class ZoomManager : Fumen.IObserver<PreferencesScroll>, IReadOnlyZoomMa
 			newValue => { pScroll.VariablePixelsPerSecondAtDefaultBPM = newValue; });
 		SizeCap = pScroll.SizeCap;
 
-		AllValues = new List<InterpolatedValueData>
-		{
+		AllValues =
+		[
 			ZoomData,
 			ConstantTimeSpacingData,
 			ConstantRowSpacingData,
 			VariableSpacingData,
-		};
+		];
 
 		Preferences.Instance.PreferencesScroll.AddObserver(this);
 		RefreshZoomLimit();

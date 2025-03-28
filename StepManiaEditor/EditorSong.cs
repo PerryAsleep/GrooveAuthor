@@ -139,7 +139,7 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 	};
 
 	/// <summary>
-	/// WorkQueue for long running tasks like saving.
+	/// WorkQueue for long-running tasks like saving.
 	/// </summary>
 	private readonly WorkQueue WorkQueue;
 
@@ -158,7 +158,7 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 	/// Charts from the original Song that are unsupported in the editor.
 	/// These are saved off into this member so they can be saved back out.
 	/// </summary>
-	private readonly List<Chart> UnsupportedCharts = new();
+	private readonly List<Chart> UnsupportedCharts = [];
 
 	/// <summary>
 	/// Extras from the original Song.
@@ -764,7 +764,7 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 			}
 
 			if (!Charts.ContainsKey(editorChart.ChartType))
-				Charts.Add(editorChart.ChartType, new List<EditorChart>());
+				Charts.Add(editorChart.ChartType, []);
 			Charts[editorChart.ChartType].Add(editorChart);
 
 			if (hasDisplayTempo && !editorChart.HasDisplayTempoFromChart())
@@ -787,9 +787,7 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 
 	public IReadOnlyList<EditorChart> GetCharts(ChartType chartType)
 	{
-		if (!Charts.TryGetValue(chartType, out var charts))
-			return null;
-		return charts;
+		return Charts.GetValueOrDefault(chartType);
 	}
 
 	public IReadOnlyList<EditorChart> GetCharts()
@@ -829,7 +827,7 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 		}
 
 		if (!Charts.ContainsKey(chartType))
-			Charts.Add(chartType, new List<EditorChart>());
+			Charts.Add(chartType, []);
 		Charts[chartType].Add(chart);
 
 		TimingChart ??= chart;
@@ -845,7 +843,7 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 			return null;
 
 		if (!Charts.ContainsKey(chart.ChartType))
-			Charts.Add(chart.ChartType, new List<EditorChart>());
+			Charts.Add(chart.ChartType, []);
 		Charts[chart.ChartType].Add(chart);
 		UpdateChartSortInternal();
 		return chart;
@@ -857,9 +855,9 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 		if (!CanBeEdited())
 			return;
 
-		if (!Charts.ContainsKey(chart.ChartType))
+		if (!Charts.TryGetValue(chart.ChartType, out var charts))
 			return;
-		Charts[chart.ChartType].Remove(chart);
+		charts.Remove(chart);
 		if (Charts[chart.ChartType].Count == 0)
 			Charts.Remove(chart.ChartType);
 
@@ -1764,7 +1762,7 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 			// Custom completion check.
 			() => complete);
 
-		// Mark that we done saving.
+		// Mark that we are done saving.
 		WorkQueue.Enqueue(() =>
 		{
 			LastSaveCompleteTime = DateTime.Now;

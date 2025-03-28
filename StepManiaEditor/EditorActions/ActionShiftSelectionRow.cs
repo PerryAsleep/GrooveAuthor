@@ -38,7 +38,7 @@ internal sealed class ActionShiftSelectionRow : EditorAction
 	/// <summary>
 	/// Each individual event transformation.
 	/// </summary>
-	private List<Transformation> Transformations = new();
+	private List<Transformation> Transformations = [];
 
 	/// <summary>
 	/// All the events which this action will operate on. This is a subset of the provided
@@ -47,7 +47,7 @@ internal sealed class ActionShiftSelectionRow : EditorAction
 	private readonly List<EditorEvent> TransformableEvents;
 
 	/// <summary>
-	/// Events which are normally able to be repositioned but could not be moved as part of
+	/// Events which can normally be repositioned but could not be moved as part of
 	/// this action (e.g. because they would move to an invalid position). These events will
 	/// be deleted in Do and re-added in Undo.
 	/// </summary>
@@ -78,7 +78,7 @@ internal sealed class ActionShiftSelectionRow : EditorAction
 		// modifying the provided data structure. We also only want to attempt to move
 		// events which can be repositioned. Certain events (like the first tempo) we
 		// just ignore.
-		TransformableEvents = new List<EditorEvent>();
+		TransformableEvents = [];
 		foreach (var chartEvent in events)
 		{
 			if (!chartEvent.CanBeRepositioned())
@@ -112,9 +112,9 @@ internal sealed class ActionShiftSelectionRow : EditorAction
 		Chart.DeleteEvents(TransformableEvents);
 
 		// Set up lists to hold the events in various states to support undo and redo.
-		Transformations = new List<Transformation>();
-		RemainingOriginalEventsAfterTransform = new List<EditorEvent>();
-		EventsWhichCouldNotBeTransformed = new List<EditorEvent>();
+		Transformations = [];
+		RemainingOriginalEventsAfterTransform = [];
+		EventsWhichCouldNotBeTransformed = [];
 
 		// Update each event.
 		var allAddedEvents = new List<EditorEvent>(TransformableEvents.Count);

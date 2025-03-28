@@ -31,7 +31,7 @@ internal abstract class ActionTransformSelectionLanes : EditorAction
 		// events which can have their lanes altered. Certain events (like rate altering
 		// events) we just ignore.
 		var padData = Editor.GetPadData(Chart.ChartType);
-		TransformableEvents = new List<EditorEvent>();
+		TransformableEvents = [];
 		if (padData != null)
 		{
 			foreach (var chartEvent in events)
@@ -87,7 +87,7 @@ internal abstract class ActionTransformSelectionLanes : EditorAction
 		Chart.DeleteEvents(TransformableEvents);
 
 		// Transform events.
-		RemainingOriginalEventsAfterTransform = new List<EditorEvent>();
+		RemainingOriginalEventsAfterTransform = [];
 		foreach (var editorEvent in TransformableEvents)
 		{
 			if (DoTransform(editorEvent, padData))

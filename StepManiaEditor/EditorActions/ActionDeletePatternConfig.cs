@@ -17,7 +17,7 @@ internal sealed class ActionDeletePatternConfig : EditorAction
 	{
 		ConfigGuid = configGuid;
 		Config = PatternConfigManager.Instance.GetConfig(ConfigGuid);
-		EventsWithDeletedConfig = new List<EditorPatternEvent>();
+		EventsWithDeletedConfig = [];
 
 		var song = editor.GetActiveSong();
 		if (song != null)

@@ -29,7 +29,7 @@ internal sealed class LaneEditState
 	/// All actions to perform as part of this edit.
 	/// Usually this is just one action to add a new event.
 	/// In some cases it contains multiple events, like when creating a hold
-	/// over existing notes and we need to delete old notes.
+	/// over existing notes, and we need to delete old notes.
 	/// </summary>
 	private ActionMultiple Actions = new();
 

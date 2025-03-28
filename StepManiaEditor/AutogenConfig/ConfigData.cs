@@ -59,7 +59,7 @@ internal sealed class ConfigData<TEditorConfig, TConfig> :
 	/// <summary>
 	/// All IEditorConfigs of the same type, sorted.
 	/// </summary>
-	private readonly List<TEditorConfig> SortedConfigs = new();
+	private readonly List<TEditorConfig> SortedConfigs = [];
 
 	/// <summary>
 	/// Comparer to use for sorting TEditorConfig instances.
@@ -113,9 +113,7 @@ internal sealed class ConfigData<TEditorConfig, TConfig> :
 
 	public TEditorConfig GetConfig(Guid guid)
 	{
-		if (!Configs.TryGetValue(guid, out var config))
-			return default;
-		return config;
+		return Configs.GetValueOrDefault(guid);
 	}
 
 	public TEditorConfig CloneConfig(Guid guid)

@@ -206,6 +206,13 @@ internal sealed class PackSongComparer : IComparer<PackSong>
 {
 	int IComparer<PackSong>.Compare(PackSong p1, PackSong p2)
 	{
+		if (p1 == null && p2 == null)
+			return 0;
+		if (p1 == null)
+			return -1;
+		if (p2 == null)
+			return 1;
+
 		var song1 = p1.GetSong();
 		var song2 = p2.GetSong();
 		int comparison;

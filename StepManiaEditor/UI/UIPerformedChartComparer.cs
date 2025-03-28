@@ -25,11 +25,11 @@ internal sealed class UIPerformedChartComparer : IComparer<EditorPerformedChartC
 		}
 	}
 
-	private readonly List<Spec> SortSpecs = new();
+	private readonly List<Spec> SortSpecs = [];
 
 	public void SetSortSpecs(ImGuiTableSortSpecsPtr sortSpecs)
 	{
-		// Copy needed data from from the ImGui ImGuiTableSortSpecsPtr.
+		// Copy needed data from the ImGui ImGuiTableSortSpecsPtr.
 		SortSpecs.Clear();
 		unsafe
 		{

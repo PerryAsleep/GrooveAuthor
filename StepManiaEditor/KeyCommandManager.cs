@@ -59,12 +59,6 @@ internal sealed class KeyCommandManager : IReadOnlyKeyCommandManager, Fumen.IObs
 		public readonly Action ReleaseCallback;
 
 		/// <summary>
-		/// Sequence of Keys which much be pressed to activate the Command.
-		/// Order is important in that that last Keys must be pressed last.
-		/// </summary>
-		public readonly List<Keys[]> Inputs;
-
-		/// <summary>
 		/// Whether or not this Command should repeatedly invoke the Callback
 		/// while the Input is held.
 		/// </summary>
@@ -107,7 +101,7 @@ internal sealed class KeyCommandManager : IReadOnlyKeyCommandManager, Fumen.IObs
 			Command = command;
 			if (input == null || input.Length == 0)
 			{
-				Input = Array.Empty<Keys>();
+				Input = [];
 			}
 			else
 			{
@@ -149,7 +143,7 @@ internal sealed class KeyCommandManager : IReadOnlyKeyCommandManager, Fumen.IObs
 
 		/// <summary>
 		/// Returns true if the given inputs would conflict with the other given input and prevent
-		/// it from triggering. This means the given inputs are a subset of the other inputs and they
+		/// it from triggering. This means the given inputs are a subset of the other inputs, and they
 		/// would end before the others, and the given inputs are configured to block input.
 		/// </summary>
 		/// <param name="blocksInput">Whether the given input should block other input.</param>
@@ -355,7 +349,7 @@ internal sealed class KeyCommandManager : IReadOnlyKeyCommandManager, Fumen.IObs
 	/// <summary>
 	/// CommandStates for all registered Commands. Processed in order.
 	/// </summary>
-	private List<CommandState> CommandStates = new();
+	private List<CommandState> CommandStates = [];
 
 	/// <summary>
 	/// All Commands keyed by their Id.
@@ -523,7 +517,7 @@ internal sealed class KeyCommandManager : IReadOnlyKeyCommandManager, Fumen.IObs
 		foreach (var commandState in CommandStates)
 		{
 			// Ignore the given command. Ideally we only ignore the one specific input being checked rather
-			// than all potential inputs for the command but we don't have a good way of identifying them
+			// than all potential inputs for the command, but we don't have a good way of identifying them,
 			// and it is rare to have move than one per command, let alone one which conflicts with another
 			// from the same command.
 			if (commandState.Command.Id == id)
