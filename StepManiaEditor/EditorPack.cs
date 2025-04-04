@@ -410,7 +410,18 @@ internal sealed class EditorPack : Fumen.IObserver<EditorItgManiaPack>, IDisposa
 		{
 			case EditorItgManiaPack.NotificationBannerChanged:
 			{
-				Banner.UpdatePath(EditorItgManiaPack.GetPackDirectory(), EditorItgManiaPack.Banner);
+				// If an explicit banner is set, use that.
+				if (!string.IsNullOrEmpty(EditorItgManiaPack.Banner))
+				{
+					Banner.UpdatePath(EditorItgManiaPack.GetPackDirectory(), EditorItgManiaPack.Banner);
+				}
+				// If no explicit banner is set, fall back to Stepmania logic.
+				else
+				{
+					var (dir, name) = PackLoadTask.GetBannerFromDirectory(PackDirectory);
+					Banner.UpdatePath(dir, name);
+				}
+
 				break;
 			}
 		}

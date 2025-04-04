@@ -151,6 +151,47 @@ internal sealed class PackLoadTask : CancellableTask<PackLoadState, PackLoadResu
 			return;
 		}
 
+		// Otherwise, parse the directory for the best banner using Stepmania's logic.
+		var (dirName, bannerName) = GetBannerFromDirectory(state.GetPackDirectoryInfo());
+		if (string.IsNullOrEmpty(dirName) || string.IsNullOrEmpty(bannerName))
+			return;
+		state.GetPackBannerImage().UpdatePath(dirName, bannerName);
+	}
+
+	/// <summary>
+	/// Gets the banner to use from the pack's directory using Stepmania rules.
+	/// </summary>
+	/// <param name="packDirectory">Pack directory.</param>
+	/// <returns>
+	/// Tuple with the following values:
+	/// - Banner asset path.
+	/// - Banner asset file name.
+	/// </returns>
+	public static (string, string) GetBannerFromDirectory(string packDirectory)
+	{
+		try
+		{
+			return GetBannerFromDirectory(new DirectoryInfo(packDirectory));
+		}
+		catch (Exception)
+		{
+			// Ignored.
+		}
+
+		return (null, null);
+	}
+
+	/// <summary>
+	/// Gets the banner to use from the pack's directory using Stepmania rules.
+	/// </summary>
+	/// <param name="packDirectoryInfo">Pack DirectoryInfo.</param>
+	/// <returns>
+	/// Tuple with the following values:
+	/// - Banner asset path.
+	/// - Banner asset file name.
+	/// </returns>
+	public static (string, string) GetBannerFromDirectory(DirectoryInfo packDirectoryInfo)
+	{
 		// This order matches Stepmania. See SongManager::AddGroup.
 		List<string> preferredExtensions =
 		[
@@ -162,10 +203,9 @@ internal sealed class PackLoadTask : CancellableTask<PackLoadState, PackLoadResu
 		];
 
 		FileInfo bannerFileInfo = null;
-		var packDirectoryInfo = state.GetPackDirectoryInfo();
 		var files = packDirectoryInfo.GetFiles();
 		if (files == null || files.Length == 0)
-			return;
+			return (null, null);
 		Array.Sort(files, new FileInfoNameComparer());
 		foreach (var extension in preferredExtensions)
 		{
@@ -183,9 +223,8 @@ internal sealed class PackLoadTask : CancellableTask<PackLoadState, PackLoadResu
 		}
 
 		if (bannerFileInfo == null)
-			return;
-
-		state.GetPackBannerImage().UpdatePath(bannerFileInfo.DirectoryName, bannerFileInfo.Name);
+			return (null, null);
+		return (bannerFileInfo.DirectoryName, bannerFileInfo.Name);
 	}
 
 	/// <summary>
