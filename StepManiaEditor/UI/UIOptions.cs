@@ -144,6 +144,10 @@ internal class UIOptions : UIWindow
 					nameof(PreferencesOptions.SuppressExternalSongModificationNotification),
 					false,
 					"Whether to suppress notifications about the open song file being modified externally.");
+				ImGuiLayoutUtils.DrawRowCheckbox(true, "Pack Modified", p,
+					nameof(PreferencesOptions.SuppressExternalPackModificationNotification),
+					false,
+					$"Whether to suppress notifications about the open ITGmania {ItgManiaPack.FileName} file being modified externally.");
 				ImGuiLayoutUtils.DrawRowCheckbox(true, "Update Available", p,
 					nameof(PreferencesOptions.SuppressUpdateNotification),
 					false,
@@ -238,24 +242,24 @@ internal class UIOptions : UIWindow
 	private static void SetNewSongSyncItg()
 	{
 		ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyValue<double>(
-			Preferences.Instance.PreferencesOptions, nameof(PreferencesOptions.NewSongSyncOffset), 0.009, false));
+			Preferences.Instance.PreferencesOptions, nameof(PreferencesOptions.NewSongSyncOffset), SMCommon.ItgOffset, false));
 	}
 
 	private static void SetNewSongSyncDdr()
 	{
 		ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyValue<double>(
-			Preferences.Instance.PreferencesOptions, nameof(PreferencesOptions.NewSongSyncOffset), 0.0, false));
+			Preferences.Instance.PreferencesOptions, nameof(PreferencesOptions.NewSongSyncOffset), SMCommon.NullOffset, false));
 	}
 
 	private static void SetDefaultSongSyncItg()
 	{
 		ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyValue<double>(
-			Preferences.Instance.PreferencesOptions, nameof(PreferencesOptions.OpenSongSyncOffset), 0.009, false));
+			Preferences.Instance.PreferencesOptions, nameof(PreferencesOptions.OpenSongSyncOffset), SMCommon.ItgOffset, false));
 	}
 
 	private static void SetDefaultSongSyncDdr()
 	{
 		ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyValue<double>(
-			Preferences.Instance.PreferencesOptions, nameof(PreferencesOptions.OpenSongSyncOffset), 0.0, false));
+			Preferences.Instance.PreferencesOptions, nameof(PreferencesOptions.OpenSongSyncOffset), SMCommon.NullOffset, false));
 	}
 }

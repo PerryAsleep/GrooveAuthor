@@ -16,7 +16,7 @@ internal interface IReadOnlyEditorImageData
 /// represents a file path to an image asset. Will automatically reload
 /// the texture if it changes on disk.
 /// </summary>
-internal sealed class EditorImageData : IReadOnlyEditorImageData
+internal sealed class EditorImageData : IReadOnlyEditorImageData, IDisposable
 {
 	private string FileDirectory;
 	private readonly EditorTexture Texture;
@@ -117,6 +117,7 @@ internal sealed class EditorImageData : IReadOnlyEditorImageData
 			var file = System.IO.Path.GetFileName(fullPath);
 			if (!string.IsNullOrEmpty(dir) && !string.IsNullOrEmpty(file))
 			{
+				FileWatcher?.Dispose();
 				FileWatcher = new FileSystemWatcher(dir);
 				FileWatcher.NotifyFilter = NotifyFilters.LastWrite;
 				FileWatcher.Changed += OnFileChangedNotification;
@@ -145,8 +146,19 @@ internal sealed class EditorImageData : IReadOnlyEditorImageData
 
 	private void StopObservingFile()
 	{
+		FileWatcher?.Dispose();
 		FileWatcher = null;
 	}
 
 	#endregion File Observation
+
+	#region IDisposable
+
+	public void Dispose()
+	{
+		FileWatcher?.Dispose();
+		FileWatcher = null;
+	}
+
+	#endregion IDisposable
 }

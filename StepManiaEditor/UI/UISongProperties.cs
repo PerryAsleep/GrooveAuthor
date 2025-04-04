@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Numerics;
 using Fumen;
+using Fumen.Converters;
 using ImGuiNET;
 using Microsoft.Xna.Framework.Graphics;
 using static StepManiaEditor.Utils;
@@ -545,21 +546,22 @@ internal sealed class UISongProperties : UIWindow
 	{
 		var multiple = new ActionMultiple();
 		multiple.EnqueueAndDo(new ActionSetObjectFieldOrPropertyValue<double>(EditorSong, nameof(EditorSong.MusicOffset),
-			EditorSong.MusicOffset + 0.009, true));
+			EditorSong.MusicOffset + SMCommon.ItgOffset, true));
 		multiple.EnqueueAndDo(
-			new ActionSetObjectFieldOrPropertyValue<double>(EditorSong, nameof(EditorSong.SyncOffset), 0.009, true));
+			new ActionSetObjectFieldOrPropertyValue<double>(EditorSong, nameof(EditorSong.SyncOffset), SMCommon.ItgOffset, true));
 		ActionQueue.Instance.EnqueueWithoutDoing(multiple);
 	}
 
 	private void SetSyncItg()
 	{
 		ActionQueue.Instance.Do(
-			new ActionSetObjectFieldOrPropertyValue<double>(EditorSong, nameof(EditorSong.SyncOffset), 0.009, true));
+			new ActionSetObjectFieldOrPropertyValue<double>(EditorSong, nameof(EditorSong.SyncOffset), SMCommon.ItgOffset, true));
 	}
 
 	private void SetSyncDdr()
 	{
 		ActionQueue.Instance.Do(
-			new ActionSetObjectFieldOrPropertyValue<double>(EditorSong, nameof(EditorSong.SyncOffset), 0.0, true));
+			new ActionSetObjectFieldOrPropertyValue<double>(EditorSong, nameof(EditorSong.SyncOffset), SMCommon.NullOffset,
+				true));
 	}
 }

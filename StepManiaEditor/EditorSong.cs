@@ -38,7 +38,7 @@ internal enum Selectable
 /// 
 /// It is expected that Update is called once per frame.
 /// </summary>
-internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQueue>
+internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQueue>, IDisposable
 {
 	/// <summary>
 	/// Data saved in the song file as a custom data chunk of Editor-specific data at the Song level.
@@ -55,17 +55,13 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 	/// </summary>
 	internal class SaveParameters
 	{
-		public SaveParameters(FileFormatType fileType, string fullPath)
-		{
-			FileType = fileType;
-			FullPath = fullPath;
-		}
-
-		public SaveParameters(FileFormatType fileType, string fullPath, Action<bool> callback)
+		public SaveParameters(FileFormatType fileType, string fullPath, Action<bool> callback = null,
+			EditorPack packToSave = null)
 		{
 			FileType = fileType;
 			FullPath = fullPath;
 			Callback = callback;
+			PackToSave = packToSave;
 		}
 
 		/// <summary>
@@ -77,6 +73,11 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 		/// Full path to the file to save to.
 		/// </summary>
 		public readonly string FullPath;
+
+		/// <summary>
+		/// Optional EditorPack to save while saving the song.
+		/// </summary>
+		public readonly EditorPack PackToSave;
 
 		/// <summary>
 		/// Action to call when saving is complete.
@@ -1595,8 +1596,24 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 				// This Action will be invoked on the main thread.
 				void OnAllChartsComplete()
 				{
-					// Run the code below in a new Task as it is CPU and IO intensive.
-					Task.Run(() =>
+					var saveLock = new object();
+					var packSaveComplete = saveParameters.PackToSave != null;
+					var songSaveComplete = false;
+
+					// Save the pack.
+					saveParameters.PackToSave?.SaveItgManiaPack(true, () =>
+					{
+						// Mark this WorkQueue item as complete when both the pack and song are done saving.
+						lock (saveLock)
+						{
+							packSaveComplete = true;
+							if (songSaveComplete)
+								complete = true;
+						}
+					});
+
+					// Run the code to save the song in a new Task as it is CPU and IO intensive.
+					_ = Task.Run(() =>
 					{
 						var fallbackChart = fallbackChartIndex >= 0 && fallbackChartIndex < song.Charts.Count
 							? song.Charts[fallbackChartIndex]
@@ -1703,8 +1720,13 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 
 						Logger.Info($"Saved {saveParameters.FullPath}.");
 
-						// Mark the entire save as completed now so the WorkQueue can continue.
-						complete = true;
+						// Mark this WorkQueue item as complete when both the pack and song are done saving.
+						lock (saveLock)
+						{
+							songSaveComplete = true;
+							if (packSaveComplete)
+								complete = true;
+						}
 					});
 				}
 
@@ -1927,4 +1949,18 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 	}
 
 	#endregion Custom Data Serialization
+
+	#region IDisposable
+
+	public void Dispose()
+	{
+		Banner?.Dispose();
+		Background?.Dispose();
+		Jacket?.Dispose();
+		CDImage?.Dispose();
+		DiscImage?.Dispose();
+		CDTitle?.Dispose();
+	}
+
+	#endregion IDisposable
 }

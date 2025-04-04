@@ -39,7 +39,7 @@ namespace StepManiaEditor;
 ///  Call StartPreviewPlayback and StopPreviewPlayback to start and stop playing the preview.
 ///  Call Shutdown at the end of the session.
 /// </summary>
-internal sealed class MusicManager
+internal sealed class MusicManager : IDisposable
 {
 	/// <summary>
 	/// Internal state of the MusicManager.
@@ -274,6 +274,7 @@ internal sealed class MusicManager
 	public void Shutdown()
 	{
 		SoundManager.DestroyDsp(DspName);
+		Dispose();
 	}
 
 	#region Accessors
@@ -1433,4 +1434,16 @@ internal sealed class MusicManager
 	}
 
 	#endregion DSP
+
+	#region IDisposable
+
+	public void Dispose()
+	{
+		AssistTickData?.Dispose();
+		BeatTickData?.Dispose();
+		MusicData?.Dispose();
+		PreviewData?.Dispose();
+	}
+
+	#endregion IDisposable
 }

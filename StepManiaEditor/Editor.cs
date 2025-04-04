@@ -10,6 +10,7 @@ using System.Text;
 using System.Threading.Tasks;
 using Fumen;
 using Fumen.ChartDefinition;
+using Fumen.Converters;
 using ImGuiNET;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
@@ -226,6 +227,7 @@ public sealed class Editor :
 		set
 		{
 			Debug.Assert(IsOnMainThread());
+			ActiveSongInternal?.Dispose();
 			ActiveSongInternal = value;
 		}
 		get
@@ -606,6 +608,7 @@ public sealed class Editor :
 		AddKeyCommand(fileIo, "Open Containing Folder", nameof(PreferencesKeyBinds.OpenContainingFolder), OnOpenContainingFolder);
 		AddKeyCommand(fileIo, "Save As", nameof(PreferencesKeyBinds.SaveAs), OnSaveAs);
 		AddKeyCommand(fileIo, "Save", nameof(PreferencesKeyBinds.Save), OnSave);
+		AddKeyCommand(fileIo, "Save Pack", nameof(PreferencesKeyBinds.SavePackFile), () => { ActivePack?.SaveItgManiaPack(false); } );
 		AddKeyCommand(fileIo, "New", nameof(PreferencesKeyBinds.New), OnNew);
 		AddKeyCommand(fileIo, "Reload", nameof(PreferencesKeyBinds.Reload), OnReload);
 		AddKeyCommand(fileIo, "Close", nameof(PreferencesKeyBinds.Close), OnClose);
@@ -1065,6 +1068,21 @@ public sealed class Editor :
 
 	#region Shutdown
 
+	private bool HasUnsavedSongOrPackChanges()
+	{
+		return HasUnsavedSongChanges() || HasUnsavedPackChanges();
+	}
+
+	private bool HasUnsavedSongChanges()
+	{
+		return ActionQueue.Instance.HasUnsavedChanges();
+	}
+
+	private bool HasUnsavedPackChanges()
+	{
+		return ActivePack?.HasUnsavedChanges() ?? false;
+	}
+
 	/// <summary>
 	/// The window/platform has indicated the user is requesting shutdown.
 	/// Return whether or not that shutdown should be allowed.
@@ -1073,7 +1091,7 @@ public sealed class Editor :
 	/// <returns>True if the app should shut down and false otherwise.</returns>
 	public override bool HandleExitRequest()
 	{
-		if (ActionQueue.Instance.HasUnsavedChanges())
+		if (HasUnsavedSongOrPackChanges())
 		{
 			PostSaveFunction = OnExitNoSave;
 			ShowUnsavedChangesModal();
@@ -1101,13 +1119,16 @@ public sealed class Editor :
 		PatternConfigManager.Instance.SynchronizeToDisk();
 		Logger.Shutdown();
 
+		ActivePack?.Dispose();
+		ActivePack = null;
+
 		ImGuiRenderer.UnbindTexture(TextureAtlasImGuiTexture);
 		base.EndRun();
 	}
 
 	private void OnExit()
 	{
-		if (ActionQueue.Instance.HasUnsavedChanges())
+		if (HasUnsavedSongOrPackChanges())
 		{
 			PostSaveFunction = OnExitNoSave;
 			ShowUnsavedChangesModal();
@@ -1590,7 +1611,7 @@ public sealed class Editor :
 			UpdateReceptors();
 
 			// Update the Window title if the state of unsaved changes has changed.
-			var hasUnsavedChanges = ActionQueue.Instance.HasUnsavedChanges();
+			var hasUnsavedChanges = HasUnsavedSongChanges();
 			if (UnsavedChangesLastFrame != hasUnsavedChanges)
 			{
 				UnsavedChangesLastFrame = hasUnsavedChanges;
@@ -3622,6 +3643,13 @@ public sealed class Editor :
 				if (ImGui.MenuItem("Save As...", UIControls.GetCommandString(keyBinds.SaveAs), false, canEditSong))
 					OnSaveAs();
 
+				var hasPackFile = ActivePack?.GetItgManiaPack() != null;
+				if (ImGui.MenuItem($"Save {ItgManiaPack.FileName}", UIControls.GetCommandString(keyBinds.SavePackFile), false,
+					    hasPackFile))
+				{
+					ActivePack?.SaveItgManiaPack(false);
+				}
+
 				if (ImGui.BeginMenu("Advanced Save Options"))
 				{
 					var titleColumnWidth = UiScaled(220);
@@ -4358,26 +4386,106 @@ public sealed class Editor :
 		return null;
 	}
 
-	private void ShowUnsavedChangesModal()
+	/// <summary>
+	/// Shows a modal for unsaved changes to the active song and/or pack.
+	/// If the user saves their changes and PostSaveFunction is set, then PostSaveFunction
+	/// will be invoked after the save is complete.
+	/// In all cases, the PostSaveFunction will be cleared after the modal is complete.
+	/// </summary>
+	/// <param name="onlyPack">
+	/// If true, then the modal will only show a notification about potential unsaved pack changes,
+	/// and it will not show any notification about unsaved song changes. If there are no unsaved
+	/// pack changes then the modal will not show, even if there are unsaved song changes.
+	/// </param>
+	/// <param name="newSongFilePromptingModal">
+	/// The path to a new song file which is prompting this unsaved changes modal. In many situations
+	/// there is no new song prompting the modal, such as exiting the application. However, if there is
+	/// a new song, it may be in the same pack as the current song. In this situation, the
+	/// pack will not need to be reloaded so we can avoid prompting for unsaved pack changes.
+	/// </param>
+	private void ShowUnsavedChangesModal(
+		bool onlyPack = false,
+		string newSongFilePromptingModal = null)
 	{
-		var message = string.IsNullOrEmpty(ActiveSong.Title)
-			? "Do you want to save your changes?\n\nYour changes will be lost if you don't save them."
-			: $"Do you want to save the changes you made to {ActiveSong.Title}?\n\nYour changes will be lost if you don't save them.";
+		// Determine which assets to notify the user about in the modal.
+		var unsavedSong = !onlyPack && HasUnsavedSongChanges();
+		var unsavedPack = HasUnsavedPackChanges();
+		if (unsavedPack && !string.IsNullOrEmpty(newSongFilePromptingModal))
+		{
+			if (ActiveSong != null && EditorPack.AreSongsInSamePack(ActiveSong.GetFileFullPath(), newSongFilePromptingModal))
+			{
+				unsavedPack = false;
+			}
+		}
 
+		// If, due to the conditions above, we do not want a show a modal, just invoke the PostSaveFunction and return.
+		if (!unsavedPack && !unsavedSong)
+		{
+			TryInvokePostSaveFunction();
+			return;
+		}
+
+		// Configure the modal text.
+		string title;
+		string message;
+		var songHasTitle = !string.IsNullOrEmpty(ActiveSong?.Title);
+		if (unsavedSong && unsavedPack)
+		{
+			title = "Unsaved Simfile And Pack Changes";
+			if (songHasTitle)
+			{
+				message = $"Do you want to save your changes to {ActiveSong.Title} and {ItgManiaPack.FileName}?";
+			}
+			else
+			{
+				message = $"Do you want to save your changes to the current simfile and {ItgManiaPack.FileName}?";
+			}
+		}
+		else if (unsavedSong)
+		{
+			title = "Unsaved Simfile Changes";
+			if (songHasTitle)
+			{
+				message = $"Do you want to save your changes to {ActiveSong.Title}?";
+			}
+			else
+			{
+				message = "Do you want to save your changes to the current simfile?";
+			}
+		}
+		else
+		{
+			title = "Unsaved Pack Changes";
+			message = $"Do you want to save your changes to {ItgManiaPack.FileName}?";
+		}
+
+		message += "\n\nYour changes will be lost if you don't save them.";
+
+		// Show the modal.
 		UIModals.OpenModalThreeButtons(
-			"Unsaved Changes",
+			title,
 			message,
 			"Cancel", () => { PostSaveFunction = null; },
 			"Don't Save", TryInvokePostSaveFunction,
 			"Save", () =>
 			{
-				if (CanSaveWithoutLocationPrompt())
+				// Save the song. Saving the song will automatically save the pack.
+				if (unsavedSong)
 				{
-					OnSave();
+					if (CanSaveWithoutLocationPrompt())
+					{
+						OnSave();
+					}
+					else
+					{
+						OnSaveAs();
+					}
 				}
-				else
+				// Only if we didn't save the song, and we need to save the pack, save the pack.
+				else if (unsavedPack)
 				{
-					OnSaveAs();
+					ActivePack.SaveItgManiaPack(false,
+						() => { MainThreadDispatcher.RunOnMainThread(TryInvokePostSaveFunction); });
 				}
 			});
 	}
@@ -4391,7 +4499,7 @@ public sealed class Editor :
 		var fileName = ActiveSong?.GetFileName() ?? "The current song";
 
 		UIModals.OpenModalTwoButtons(
-			"External Modification",
+			"External Simfile Modification",
 			$"{fileName} was modified externally.",
 			"Ignore", () => { ShowingSongFileChangedNotification = false; },
 			"Reload", () =>
@@ -4401,10 +4509,29 @@ public sealed class Editor :
 			},
 			() =>
 			{
-				if (ActionQueue.Instance.HasUnsavedChanges())
+				var unsavedSong = HasUnsavedSongChanges();
+				var unsavedPack = HasUnsavedPackChanges();
+
+				if (unsavedSong && unsavedPack)
+				{
+					ImGui.PushStyleColor(ImGuiCol.Text, UILog.GetColor(LogLevel.Warn));
+					ImGui.TextUnformatted(
+						$"Warning: There are unsaved changes to {fileName} and {ItgManiaPack.FileName}. Reloading will lose these changes.");
+					ImGui.PopStyleColor();
+					ImGui.Separator();
+				}
+				else if (unsavedSong)
 				{
 					ImGui.PushStyleColor(ImGuiCol.Text, UILog.GetColor(LogLevel.Warn));
 					ImGui.TextUnformatted("Warning: There are unsaved changes. Reloading will lose these changes.");
+					ImGui.PopStyleColor();
+					ImGui.Separator();
+				}
+				else if (unsavedPack)
+				{
+					ImGui.PushStyleColor(ImGuiCol.Text, UILog.GetColor(LogLevel.Warn));
+					ImGui.TextUnformatted(
+						$"Warning: There are unsaved changes to {ItgManiaPack.FileName}. Reloading will lose these changes.");
 					ImGui.PopStyleColor();
 					ImGui.Separator();
 				}
@@ -4750,6 +4877,7 @@ public sealed class Editor :
 		if (EditEarlyOut())
 			return;
 
+		// Save the song.
 		var saveParameters = new EditorSong.SaveParameters(fileType, fullPath, (success) =>
 		{
 			UpdateWindowTitle();
@@ -4770,7 +4898,7 @@ public sealed class Editor :
 			}
 
 			TryInvokePostSaveFunction();
-		})
+		}, ActivePack)
 		{
 			RequireIdenticalTimingInSmFiles = Preferences.Instance.RequireIdenticalTimingInSmFiles,
 			OmitChartTimingData = Preferences.Instance.OmitChartTimingData,
@@ -4801,8 +4929,6 @@ public sealed class Editor :
 
 	public void OpenSongFile(string fileName, bool osRequest = false)
 	{
-		Logger.Info($"OpenSongFile {fileName}, {osRequest}");
-
 		if (string.IsNullOrEmpty(fileName))
 			return;
 
@@ -4902,6 +5028,7 @@ public sealed class Editor :
 			var file = System.IO.Path.GetFileName(fileName);
 			if (!string.IsNullOrEmpty(dir) && !string.IsNullOrEmpty(file))
 			{
+				SongFileWatcher?.Dispose();
 				SongFileWatcher = new FileSystemWatcher(dir);
 				SongFileWatcher.NotifyFilter = NotifyFilters.LastWrite;
 				SongFileWatcher.Changed += OnSongFileChangedNotification;
@@ -4949,6 +5076,7 @@ public sealed class Editor :
 
 	private void StopObservingSongFile()
 	{
+		SongFileWatcher?.Dispose();
 		SongFileWatcher = null;
 	}
 
@@ -5036,7 +5164,7 @@ public sealed class Editor :
 		if (!CanLoadSongs())
 			return;
 
-		if (ActionQueue.Instance.HasUnsavedChanges())
+		if (HasUnsavedSongOrPackChanges())
 		{
 			PostSaveFunction = OpenSongFile;
 			ShowUnsavedChangesModal();
@@ -5053,10 +5181,10 @@ public sealed class Editor :
 			return;
 
 		PendingOpenSongFileName = songFile;
-		if (ActionQueue.Instance.HasUnsavedChanges())
+		if (HasUnsavedSongOrPackChanges())
 		{
 			PostSaveFunction = OnOpenFileNoSave;
-			ShowUnsavedChangesModal();
+			ShowUnsavedChangesModal(false, songFile);
 		}
 		else
 		{
@@ -5071,6 +5199,24 @@ public sealed class Editor :
 		var pOptions = Preferences.Instance.PreferencesOptions;
 		OpenSongFileAsync(PendingOpenSongFileName,
 			new DefaultChartListProvider(pOptions.DefaultStepsType, pOptions.DefaultDifficultyType));
+	}
+
+	public void ReloadPack()
+	{
+		if (HasUnsavedPackChanges())
+		{
+			PostSaveFunction = OnReloadPackNoSave;
+			ShowUnsavedChangesModal(true);
+		}
+		else
+		{
+			OnReloadPackNoSave();
+		}
+	}
+
+	private void OnReloadPackNoSave()
+	{
+		ActivePack?.Refresh();
 	}
 
 	private void OnReload()
@@ -5095,10 +5241,10 @@ public sealed class Editor :
 		if (OpenRecentIndex >= p.RecentFiles.Count)
 			return;
 
-		if (!ignoreUnsavedChanges && ActionQueue.Instance.HasUnsavedChanges())
+		if (!ignoreUnsavedChanges && HasUnsavedSongOrPackChanges())
 		{
 			PostSaveFunction = OpenRecentFile;
-			ShowUnsavedChangesModal();
+			ShowUnsavedChangesModal(false, p.RecentFiles[OpenRecentIndex].FileName);
 		}
 		else
 		{
@@ -5123,7 +5269,7 @@ public sealed class Editor :
 		if (!CanLoadSongs())
 			return;
 
-		if (ActionQueue.Instance.HasUnsavedChanges())
+		if (HasUnsavedSongOrPackChanges())
 		{
 			PostSaveFunction = OnNewNoSave;
 			ShowUnsavedChangesModal();
@@ -5198,7 +5344,7 @@ public sealed class Editor :
 
 	private void OnClose()
 	{
-		if (ActionQueue.Instance.HasUnsavedChanges())
+		if (HasUnsavedSongOrPackChanges())
 		{
 			PostSaveFunction = OnCloseNoSave;
 			ShowUnsavedChangesModal();
@@ -5280,7 +5426,7 @@ public sealed class Editor :
 
 		if (Window == null)
 			return;
-		var hasUnsavedChanges = ActionQueue.Instance.HasUnsavedChanges();
+		var hasUnsavedChanges = HasUnsavedSongChanges();
 		var appName = GetAppName();
 		var sb = new StringBuilder();
 		var title = "New File";

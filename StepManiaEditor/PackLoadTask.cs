@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Threading.Tasks;
 using Fumen;
+using Fumen.Converters;
 using static StepManiaEditor.Utils;
 
 namespace StepManiaEditor;
@@ -36,11 +37,13 @@ internal sealed class PackLoadResult
 {
 	private readonly List<PackSong> Songs;
 	private readonly string PackName;
+	private readonly ItgManiaPack ItgManiaPack;
 
-	public PackLoadResult(List<PackSong> songs, string packName)
+	public PackLoadResult(List<PackSong> songs, string packName, ItgManiaPack itgManiaPack)
 	{
 		Songs = songs;
 		PackName = packName;
+		ItgManiaPack = itgManiaPack;
 	}
 
 	public List<PackSong> GetSongs()
@@ -51,6 +54,11 @@ internal sealed class PackLoadResult
 	public string GetPackName()
 	{
 		return PackName;
+	}
+
+	public ItgManiaPack GetItgManiaPack()
+	{
+		return ItgManiaPack;
 	}
 }
 
@@ -64,10 +72,19 @@ internal sealed class PackLoadTask : CancellableTask<PackLoadState, PackLoadResu
 		var songs = new List<PackSong>();
 		var packDirectoryInfo = state.GetPackDirectoryInfo();
 		var packName = packDirectoryInfo.Name;
+		ItgManiaPack itgManiaPack = null;
 		var token = CancellationTokenSource.Token;
 
 		try
 		{
+			// Try to load an ITGMania Pack.ini file if one is present.
+			var iniFileName = System.IO.Path.Join(packDirectoryInfo.FullName, ItgManiaPack.FileName);
+			if (File.Exists(iniFileName))
+			{
+				itgManiaPack = await ItgManiaPack.LoadAsync(iniFileName, token);
+				token.ThrowIfCancellationRequested();
+			}
+
 			var dirs = packDirectoryInfo.EnumerateDirectories();
 			token.ThrowIfCancellationRequested();
 
@@ -108,7 +125,7 @@ internal sealed class PackLoadTask : CancellableTask<PackLoadState, PackLoadResu
 				songs.Sort(new PackSongComparer());
 			}
 
-			LoadPackBanner(state);
+			LoadPackBanner(state, itgManiaPack);
 		}
 		catch (OperationCanceledException)
 		{
@@ -122,11 +139,18 @@ internal sealed class PackLoadTask : CancellableTask<PackLoadState, PackLoadResu
 
 		token.ThrowIfCancellationRequested();
 
-		return new PackLoadResult(songs, packName);
+		return new PackLoadResult(songs, packName, itgManiaPack);
 	}
 
-	private void LoadPackBanner(PackLoadState state)
+	private void LoadPackBanner(PackLoadState state, ItgManiaPack itgManiaPack)
 	{
+		// Prefer the explicit ItgMania pack Banner if one is specified.
+		if (itgManiaPack != null && !string.IsNullOrEmpty(itgManiaPack.Banner))
+		{
+			state.GetPackBannerImage().UpdatePath(state.GetPackDirectoryInfo().FullName, itgManiaPack.Banner);
+			return;
+		}
+
 		// This order matches Stepmania. See SongManager::AddGroup.
 		List<string> preferredExtensions =
 		[

@@ -8,7 +8,7 @@ namespace StepManiaEditor;
 /// source use the sample index maintained by this class to control playback of
 /// the wrapped EditorSound's sample data.
 /// </summary>
-internal sealed class SoundPlaybackState
+internal sealed class SoundPlaybackState : IDisposable
 {
 	/// <summary>
 	/// The EditorSound being played.
@@ -157,4 +157,13 @@ internal sealed class SoundPlaybackState
 				break;
 		}
 	}
+
+	#region IDisposable
+
+	public void Dispose()
+	{
+		Sound?.Dispose();
+	}
+
+	#endregion IDisposable
 }

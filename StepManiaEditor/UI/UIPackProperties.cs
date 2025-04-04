@@ -1,7 +1,9 @@
 ﻿using System;
+using Fumen;
 using Fumen.Converters;
 using ImGuiNET;
 using Microsoft.Xna.Framework.Graphics;
+using static Fumen.Converters.ItgManiaPack;
 using static StepManiaEditor.ImGuiUtils;
 
 namespace StepManiaEditor;
@@ -29,8 +31,8 @@ internal sealed class UIPackProperties : UIWindow
 	private EmptyTexture EmptyTextureBanner;
 
 	private static readonly ColumnData[] TableColumnData;
-	private static readonly int TitleColumnWidth = UiScaled(40);
-	private static readonly float DefaultWidth = UiScaled(508);
+	private static readonly int TitleColumnWidth = UiScaled(80);
+	private static readonly float DefaultWidth = UiScaled(548);
 	private static readonly float DefaultHeight = UiScaled(860);
 	private static readonly float RefreshButtonWidth = UiScaled(52);
 
@@ -84,18 +86,125 @@ internal sealed class UIPackProperties : UIWindow
 			if (!hasPack)
 				PushDisabled();
 
+			var itgManiaPack = Pack.GetItgManiaPack();
+			var hasItgManiaPack = itgManiaPack != null;
+
 			if (ImGuiLayoutUtils.BeginTable("Pack Properties", TitleColumnWidth))
 			{
-				ImGuiLayoutUtils.DrawRowTitleAndTextWithButton("Name", packName, () => { Pack.Refresh(); }, "Refresh",
+				ImGuiLayoutUtils.DrawRowTitleAndTextWithButton("Name", packName, () => { Editor.ReloadPack(); }, "Refresh",
 					RefreshButtonWidth,
-					"A pack's name is defined by the name of the folder which contains the pack's song folders.");
+					"A pack's name is defined by the name of the folder which contains the pack's song folders."
+					+ (hasItgManiaPack ? "\n\nIn ITGmania the name can be defined explicitly in the Pack file below." : ""));
 
 				ImGuiLayoutUtils.DrawRowTexture("Banner", Pack.GetBanner()?.GetTexture(), EmptyTextureBanner,
 					"Stepmania infers a pack's banner from image assets in the pack's folder." +
 					" It uses the lexicographically first image asset in the pack folder regardless of its size or dimensions, preferring the following extensions in order: "
 					+ "png, jpg, jpeg, gif, bmp. Depending on the Stepmania theme banners have different recommended sizes."
 					+ "\nITG banners are 418x164."
-					+ "\nDDR banners are 512x160 or 256x80.");
+					+ "\nDDR banners are 512x160 or 256x80."
+					+ (hasItgManiaPack ? "\n\nIn ITGmania the banner can be defined explicitly in the Pack file below." : ""));
+
+				ImGuiLayoutUtils.EndTable();
+			}
+
+			ImGui.Separator();
+
+			// ItgMania pack data.
+			if (ImGuiLayoutUtils.BeginTable("ItgMania Pack Properties", TitleColumnWidth))
+			{
+				var packCannotBeEdited = !Pack.CanBeEdited();
+				if (packCannotBeEdited)
+					PushDisabled();
+
+				// No ITGmania pack file exists. Show a button for adding one.
+				if (!hasItgManiaPack)
+				{
+					if (ImGuiLayoutUtils.DrawRowButton("ITGmania Pack", "Add ITGmania Pack File",
+						    $"ITGmania is a popular fork of Stepmania which supports {FileName} files that offer more control for how"
+						    + " the game displays packs. Adding an ITGmania Pack will have no effect in Stepmania."))
+					{
+						// Determine an appropriate default sync for the new ItgMania pack.
+						SyncOffSetType? packOffset = null;
+						var song = Editor.GetActiveSong();
+						if (song != null)
+						{
+							if (song.SyncOffset.DoubleEquals(SMCommon.ItgOffset))
+								packOffset = SyncOffSetType.ITG;
+							else if (song.SyncOffset.DoubleEquals(SMCommon.NullOffset))
+								packOffset = SyncOffSetType.NULL;
+						}
+
+						if (packOffset == null)
+						{
+							var preferredSync = Preferences.Instance.PreferencesOptions.NewSongSyncOffset;
+							if (preferredSync.DoubleEquals(SMCommon.ItgOffset))
+								packOffset = SyncOffSetType.ITG;
+							else if (preferredSync.DoubleEquals(SMCommon.NullOffset))
+								packOffset = SyncOffSetType.NULL;
+						}
+
+						packOffset ??= SyncOffSetType.ITG;
+
+						// Create the pack.
+						Pack.CreateItgManiaPack(packOffset.Value);
+					}
+				}
+
+				// An ITGmania pack exists. Show controls for editing it.
+				else
+				{
+					ImGuiLayoutUtils.DrawRowTextInputWithTransliteration(true, "Title", itgManiaPack,
+						nameof(EditorItgManiaPack.Title), nameof(EditorItgManiaPack.TitleTransliteration), false, false,
+						"(ITGmania only) The pack's title in game.");
+					ImGuiLayoutUtils.DrawRowTextInput(true, "Sort Title", itgManiaPack, nameof(EditorItgManiaPack.TitleSort),
+						false,
+						"(ITGmania only) Text to use for sorting this pack against other packs in game.");
+					ImGuiLayoutUtils.DrawRowTextInput(true, "Series", itgManiaPack, nameof(EditorItgManiaPack.Series), false,
+						"(ITGmania only) What series this pack is a part of.");
+					ImGuiLayoutUtils.DrawRowDragInt(true, "Year", itgManiaPack, nameof(EditorItgManiaPack.Year), false,
+						"(ITGmania only) The year of this pack's release.", 0.1f, "%i", 0);
+					ImGuiLayoutUtils.DrawRowFileBrowse("Banner", itgManiaPack, nameof(EditorItgManiaPack.Banner),
+						() => BrowseBanner(Editor.GetPlatformInterface()),
+						ClearBanner,
+						false,
+						"(ITGmania only) An explicit banner to use for the pack."
+						+ "\nITGmania banners are 418x164.");
+					ImGuiLayoutUtils.DrawRowEnum<SyncOffSetType>(true, "Sync", itgManiaPack,
+						nameof(EditorItgManiaPack.SyncOffset), false,
+						"(ITGmania only) The pack's sync offset. ITGmania intends to use this in the future as a mechanism for avoiding"
+						+ " needing to apply the standard 9ms offset in all charts. This is currently unused but is recommended to specify"
+						+ " a value which reflects the sync of the charts within the pack. ITGmania only supports 0ms and 9ms values."
+						+ "\nNull: (Less Common) The pack's charts are synced to 0ms."
+						+ "\nItg:  (More Common) The pack's charts are synced to 9ms.");
+
+					var hasUnsavedChanges = itgManiaPack.HasUnsavedChanges();
+					if (!hasUnsavedChanges)
+						PushDisabled();
+					var saveKeybind = UIControls.GetCommandString(Preferences.Instance.PreferencesKeyBinds.SavePackFile);
+					if (ImGuiLayoutUtils.DrawRowButton("Save", "Save Pack File",
+						    $"Save the {FileName} file."
+						    + $"\nThe {FileName} file can also be saved with {saveKeybind}."
+						    + (hasUnsavedChanges ? "\nThere are currently unsaved changes." : "")))
+					{
+						Pack.SaveItgManiaPack(false);
+					}
+
+					if (!hasUnsavedChanges)
+						PopDisabled();
+
+					if (ImGuiLayoutUtils.DrawRowButton("Delete", "Delete Pack File",
+						    $"Delete the {FileName} file."))
+					{
+						UIModals.OpenModalTwoButtons(
+							"Confirm Deletion",
+							$"Are you sure you want to delete {FileName}? This operation cannot be undone.",
+							"Cancel", () => { },
+							"Delete", Pack.DeleteItgManiaPack);
+					}
+				}
+
+				if (packCannotBeEdited)
+					PopDisabled();
 
 				ImGuiLayoutUtils.EndTable();
 			}
@@ -163,5 +272,30 @@ internal sealed class UIPackProperties : UIWindow
 		}
 
 		ImGui.End();
+	}
+
+	private void BrowseBanner(IEditorPlatform platformInterface)
+	{
+		var itgManiaPack = Pack.GetItgManiaPack();
+		if (itgManiaPack == null)
+			return;
+		var relativePath = platformInterface.BrowseFile(
+			"Pack Banner",
+			Pack.GetPackDirectory(),
+			itgManiaPack.Banner,
+			Utils.GetExtensionsForImages(), true);
+		if (string.IsNullOrEmpty(relativePath))
+			return;
+		ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(itgManiaPack,
+			nameof(EditorItgManiaPack.Banner), relativePath, false));
+	}
+
+	private void ClearBanner()
+	{
+		var itgManiaPack = Pack.GetItgManiaPack();
+		if (itgManiaPack == null)
+			return;
+		ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(itgManiaPack,
+			nameof(EditorItgManiaPack.Banner), "", false));
 	}
 }

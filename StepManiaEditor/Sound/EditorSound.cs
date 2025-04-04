@@ -12,7 +12,7 @@ namespace StepManiaEditor;
 /// EditorSounds can optionally populate a SoundMipMap for rendering a waveform of the sound data.
 /// EditorSounds load asynchronously, and notify listeners when the underlying sample data has changed.
 /// </summary>
-internal sealed class EditorSound : Notifier<EditorSound>
+internal sealed class EditorSound : Notifier<EditorSound>, IDisposable
 {
 	/// <summary>
 	/// State used for performing async loads of sound data.
@@ -362,6 +362,7 @@ internal sealed class EditorSound : Notifier<EditorSound>
 			var file = System.IO.Path.GetFileName(fullPath);
 			if (!string.IsNullOrEmpty(dir) && !string.IsNullOrEmpty(file))
 			{
+				FileWatcher?.Dispose();
 				FileWatcher = new FileSystemWatcher(dir);
 				FileWatcher.NotifyFilter = NotifyFilters.LastWrite;
 				FileWatcher.Changed += OnFileChangedNotification;
@@ -393,8 +394,19 @@ internal sealed class EditorSound : Notifier<EditorSound>
 	/// </summary>
 	private void StopObservingFile()
 	{
+		FileWatcher?.Dispose();
 		FileWatcher = null;
 	}
 
 	#endregion File Observation
+
+	#region IDisposable
+
+	public void Dispose()
+	{
+		FileWatcher?.Dispose();
+		FileWatcher = null;
+	}
+
+	#endregion IDisposable
 }
