@@ -1095,7 +1095,7 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 		}
 
 		// Otherwise, if a tempo is specified on the song from the sm/ssc file, use that.
-		if (OriginalSongExtras.TryGetExtra(TagBPMs, out Dictionary<double, double> songTempos, true))
+		if (OriginalSongExtras?.TryGetExtra(TagBPMs, out Dictionary<double, double> songTempos, true) ?? false)
 		{
 			if (songTempos.TryGetValue(0.0, out var firstTempo))
 			{
@@ -1107,7 +1107,7 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 		}
 
 		// Otherwise, if the song has an explicit display BPM, use that.
-		if (OriginalSongExtras.TryGetExtra(TagDisplayBPM, out object _, true))
+		if (OriginalSongExtras?.TryGetExtra(TagDisplayBPM, out object _, true) ?? false)
 		{
 			var displayTempo = new DisplayTempo();
 			displayTempo.FromString(GetDisplayBPMStringFromSourceExtrasList(OriginalSongExtras, null));

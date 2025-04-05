@@ -805,7 +805,7 @@ internal sealed class ImGuiUtils
 			DpiScale = Preferences.Instance.PreferencesOptions.DpiScale;
 
 		// If no DPI scale is specified in the preferences, use the system default DPI scale.
-		if (DpiScale.DoubleEquals(0.0))
+		if (DpiScale.DoubleEquals(0.0) && Editor != null)
 			DpiScale = Editor.GetMonitorDpiScale();
 
 		// Ensure the DPI scale is set to a valid value.
