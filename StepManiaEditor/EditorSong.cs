@@ -122,6 +122,7 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 	public const string NotificationSyncOffsetChanged = "SyncOffsetChanged";
 	public const string NotificationMusicOffsetChanged = "MusicOffsetChanged";
 	public const string NotificationSampleLengthChanged = "SampleLengthChanged";
+	public const string NotificationFileDirectoryChanged = "FileDirectoryChanged";
 
 	private const string TagCustomSongData = "SongData";
 	private const string TagCustomSongDataVersion = "SongDataVersion";
@@ -1359,6 +1360,9 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 
 		// Update paths which were relative to the old path to be relative to the new path.
 		UpdateRelativePaths(oldPath, FileFullPath);
+
+		if (oldPath != FileFullPath)
+			Notify(NotificationFileDirectoryChanged, this);
 	}
 
 	/// <summary>

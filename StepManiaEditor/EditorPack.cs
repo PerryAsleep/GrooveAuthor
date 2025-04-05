@@ -23,7 +23,7 @@ namespace StepManiaEditor;
 /// to respond to the work completing, callbacks can be provided, as with for example
 /// SaveItgManiaPack.
 /// </summary>
-internal sealed class EditorPack : Fumen.IObserver<EditorItgManiaPack>, IDisposable
+internal sealed class EditorPack : Fumen.IObserver<EditorItgManiaPack>, Fumen.IObserver<EditorSong>, IDisposable
 {
 	/// <summary>
 	/// The active EditorSong which is responsible for loading this EditorPack.
@@ -120,8 +120,10 @@ internal sealed class EditorPack : Fumen.IObserver<EditorItgManiaPack>, IDisposa
 	{
 		WorkQueue.Enqueue(async () =>
 		{
+			ActiveSong?.RemoveObserver(this);
 			var dirty = !AreSongsInSamePack(ActiveSong, song);
 			ActiveSong = song;
+			ActiveSong?.AddObserver(this);
 			if (dirty)
 			{
 				await RefreshInternal();
@@ -427,12 +429,32 @@ internal sealed class EditorPack : Fumen.IObserver<EditorItgManiaPack>, IDisposa
 		}
 	}
 
+	public void OnNotify(string eventId, EditorSong notifier, object payload)
+	{
+		switch (eventId)
+		{
+			case EditorSong.NotificationFileDirectoryChanged:
+			{
+				// When the active song's path changes it means the pack directory has changed.
+				// This commonly occurs when creating a new song with no path, and then saving
+				// it for the first time.
+				if (notifier == ActiveSong)
+				{
+					Refresh();
+				}
+
+				break;
+			}
+		}
+	}
+
 	#endregion IObserver
 
 	#region IDisposable
 
 	public void Dispose()
 	{
+		ActiveSong?.RemoveObserver(this);
 		EditorItgManiaPack?.Dispose();
 		EditorItgManiaPack?.RemoveObserver(this);
 		EditorItgManiaPack = null;
