@@ -490,6 +490,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	{
 		Id = Guid.NewGuid();
 		WorkQueue = new WorkQueue();
+		WorkQueue.AddObserver(this);
 		ExpressedChartConfigInternal = ExpressedChartConfigManager.DefaultExpressedChartDynamicConfigGuid;
 
 		OriginalChartExtras = chart.Extras;
@@ -551,6 +552,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	{
 		Id = Guid.NewGuid();
 		WorkQueue = new WorkQueue();
+		WorkQueue.AddObserver(this);
 
 		ExpressedChartConfigInternal = ExpressedChartConfigManager.DefaultExpressedChartDynamicConfigGuid;
 
@@ -603,6 +605,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	{
 		Id = Guid.NewGuid();
 		WorkQueue = new WorkQueue();
+		WorkQueue.AddObserver(this);
 
 		ExpressedChartConfigInternal = other.ExpressedChartConfigInternal;
 
@@ -913,6 +916,16 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	}
 
 	#endregion Constructors
+
+	#region Clean-up
+
+	public void RemoveObservers()
+	{
+		WorkQueue.RemoveObserver(this);
+		StepTotals?.RemoveObservers();
+	}
+
+	#endregion Clean-up
 
 	#region Idenfitication
 

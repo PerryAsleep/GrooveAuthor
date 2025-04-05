@@ -785,6 +785,22 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 
 	#endregion Constructors
 
+	#region Clean-up
+
+	public void RemoveObservers()
+	{
+		WorkQueue.RemoveObserver(this);
+		foreach (var editorChartsForChartType in Charts)
+		{
+			foreach (var editorChart in editorChartsForChartType.Value)
+			{
+				editorChart.RemoveObservers();
+			}
+		}
+	}
+
+	#endregion Clean-up
+
 	#region EditorChart
 
 	public IReadOnlyList<EditorChart> GetCharts(ChartType chartType)

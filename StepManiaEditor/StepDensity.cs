@@ -140,6 +140,12 @@ internal sealed class StepDensity : Notifier<StepDensity>, Fumen.IObserver<Prefe
 		Notify(NotificationMeasuresChanged, this);
 	}
 
+	public void RemoveObservers()
+	{
+		Preferences.Instance.PreferencesStream.RemoveObserver(this);
+		EditorChart.RemoveObserver(this);
+	}
+
 	/// <summary>
 	/// Returns the array of all Measures.
 	/// </summary>

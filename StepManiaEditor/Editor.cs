@@ -5389,6 +5389,7 @@ public sealed class Editor :
 			GarbageCollectFrame = 2;
 
 		ActiveSong?.RemoveObservers(this, this);
+		ActiveSong?.RemoveObservers();
 
 		// Close any UI which holds on to Song/Chart state.
 		UIAutogenChart.Instance.Close();

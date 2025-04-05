@@ -122,6 +122,11 @@ internal sealed class StepTotals : IReadOnlyStepTotals
 		Clear();
 	}
 
+	public void RemoveObservers()
+	{
+		StepDensity?.RemoveObservers();
+	}
+
 	public void InitializeStepDensity()
 	{
 		StepDensity = new StepDensity(EditorChart);
