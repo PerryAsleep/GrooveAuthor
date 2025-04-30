@@ -153,7 +153,7 @@ internal sealed class EditorMacOsInterface : IEditorPlatform
 		savePanel.Title = "Save As...";
 		savePanel.AllowedContentTypes = [UTType.CreateFromExtension("ssc"), UTType.CreateFromExtension("sm")];
 		savePanel.AllowsOtherFileTypes = false;
-		savePanel.DirectoryUrl = NSUrl.FromString(initialDirectory);
+		savePanel.DirectoryUrl = NSUrl.FromFilename(initialDirectory);
 		savePanel.NameFieldStringValue = fileName;
 		savePanel.CanCreateDirectories = true;
 		savePanel.ExtensionHidden = false;
@@ -166,7 +166,7 @@ internal sealed class EditorMacOsInterface : IEditorPlatform
 	{
 		var openPanel = NSOpenPanel.OpenPanel;
 		openPanel.AllowedContentTypes = [UTType.CreateFromExtension("ssc"), UTType.CreateFromExtension("sm")];
-		openPanel.DirectoryUrl = NSUrl.FromString(initialDirectory ?? "");
+		openPanel.DirectoryUrl = NSUrl.FromFilename(initialDirectory ?? "");
 		openPanel.AllowsMultipleSelection = false;
 		openPanel.CanChooseDirectories = false;
 		openPanel.CanChooseFiles = true;
@@ -203,7 +203,7 @@ internal sealed class EditorMacOsInterface : IEditorPlatform
 			openPanel.AllowedContentTypes = allowedContentTypes.ToArray();
 		}
 
-		openPanel.DirectoryUrl = NSUrl.FromString(initialDirectory ?? "");
+		openPanel.DirectoryUrl = NSUrl.FromFilename(initialDirectory ?? "");
 		openPanel.AllowsMultipleSelection = false;
 		openPanel.CanChooseDirectories = false;
 		openPanel.CanChooseFiles = true;
