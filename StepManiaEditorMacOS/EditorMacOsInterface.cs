@@ -147,74 +147,119 @@ internal sealed class EditorMacOsInterface : IEditorPlatform
 		return Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "../Resources");
 	}
 
+	private UTType[] GetAllowSimFileTypes()
+	{
+		var allowedTypes = new List<UTType>();
+		var sscType = UTType.CreateFromExtension("ssc");
+		if (sscType != null)
+			allowedTypes.Add(sscType);
+		var smType = UTType.CreateFromExtension("sm");
+		if (smType != null)
+			allowedTypes.Add(smType);
+		return allowedTypes.ToArray();
+	}
+
 	public (bool, string) ShowSaveSimFileDialog(string initialDirectory, string fileName, FileFormatType? fileFormatType)
 	{
-		var savePanel = NSSavePanel.SavePanel;
-		savePanel.Title = "Save As...";
-		savePanel.AllowedContentTypes = [UTType.CreateFromExtension("ssc"), UTType.CreateFromExtension("sm")];
-		savePanel.AllowsOtherFileTypes = false;
-		savePanel.DirectoryUrl = NSUrl.FromFilename(initialDirectory);
-		savePanel.NameFieldStringValue = fileName;
-		savePanel.CanCreateDirectories = true;
-		savePanel.ExtensionHidden = false;
-		var result = (NSModalResponse)savePanel.RunModal();
-		var confirmed = result == NSModalResponse.OK;
-		return (confirmed, savePanel.Url?.Path);
+		var confirmed = false;
+		var path = "";
+		try
+		{
+			var savePanel = NSSavePanel.SavePanel;
+			savePanel.Title = "Save As...";
+			savePanel.AllowedContentTypes = GetAllowSimFileTypes();
+			savePanel.AllowsOtherFileTypes = false;
+			if (!string.IsNullOrEmpty(initialDirectory) && Directory.Exists(initialDirectory))
+				savePanel.DirectoryUrl = NSUrl.FromFilename(initialDirectory);
+			savePanel.NameFieldStringValue = fileName;
+			savePanel.CanCreateDirectories = true;
+			savePanel.ExtensionHidden = false;
+			var result = (NSModalResponse)savePanel.RunModal();
+			confirmed = result == NSModalResponse.OK;
+			path = savePanel.Url?.Path;
+		}
+		catch(Exception e)
+		{
+			Logger.Error($"Failed showing file save simfile dialog: {e}");
+		}
+		return (confirmed, path);
 	}
 
 	public (bool, string) ShowOpenSimFileDialog(string initialDirectory)
 	{
-		var openPanel = NSOpenPanel.OpenPanel;
-		openPanel.AllowedContentTypes = [UTType.CreateFromExtension("ssc"), UTType.CreateFromExtension("sm")];
-		openPanel.DirectoryUrl = NSUrl.FromFilename(initialDirectory ?? "");
-		openPanel.AllowsMultipleSelection = false;
-		openPanel.CanChooseDirectories = false;
-		openPanel.CanChooseFiles = true;
-		var result = (NSModalResponse)openPanel.RunModal();
-		var confirmed = result == NSModalResponse.OK;
-		return (confirmed, openPanel.Url?.Path);
+		var confirmed = false;
+		var path = "";
+		try
+		{
+			var openPanel = NSOpenPanel.OpenPanel;
+			openPanel.AllowedContentTypes = GetAllowSimFileTypes();
+
+			if (!string.IsNullOrEmpty(initialDirectory) && Directory.Exists(initialDirectory))
+				openPanel.DirectoryUrl = NSUrl.FromFilename(initialDirectory);
+
+			openPanel.AllowsMultipleSelection = false;
+			openPanel.CanChooseDirectories = false;
+			openPanel.CanChooseFiles = true;
+			var result = (NSModalResponse)openPanel.RunModal();
+			confirmed = result == NSModalResponse.OK;
+			path = openPanel.Url?.Path;
+		}
+		catch(Exception e)
+		{
+			Logger.Error($"Failed showing file open simfile dialog: {e}");
+		}
+		return (confirmed, path);
 	}
 
 	public string BrowseFile(string name, string initialDirectory, string currentFileRelativePath, List<string[]> extensionTypes,
 		bool includeAllFiles)
 	{
 		string relativePath = null;
-
-		var startInitialDirectory = initialDirectory;
-		if (!string.IsNullOrEmpty(currentFileRelativePath))
+		try
 		{
-			initialDirectory = Path.Combine(initialDirectory, currentFileRelativePath);
-			initialDirectory = System.IO.Path.GetDirectoryName(initialDirectory);
-		}
-
-		var openPanel = NSOpenPanel.OpenPanel;
-		openPanel.Title = $"Open {name} File";
-		if (!includeAllFiles)
-		{
-			var allowedContentTypes = new List<UTType>();
-			foreach (var extensionType in extensionTypes)
+			var startInitialDirectory = initialDirectory;
+			if (!string.IsNullOrEmpty(currentFileRelativePath))
 			{
-				foreach (var extension in extensionType)
-				{
-					allowedContentTypes.Add(UTType.CreateFromExtension(extension));
-				}
+				initialDirectory = Path.Combine(initialDirectory, currentFileRelativePath);
+				initialDirectory = System.IO.Path.GetDirectoryName(initialDirectory);
 			}
 
-			openPanel.AllowedContentTypes = allowedContentTypes.ToArray();
-		}
+			var openPanel = NSOpenPanel.OpenPanel;
+			openPanel.Title = $"Open {name} File";
+			if (!includeAllFiles)
+			{
+				var allowedContentTypes = new List<UTType>();
+				foreach (var extensionType in extensionTypes)
+				{
+					foreach (var extension in extensionType)
+					{
+						var fileType = UTType.CreateFromExtension(extension);
+						if (fileType != null)
+						{
+							allowedContentTypes.Add(UTType.CreateFromExtension(extension));
+						}
+					}
+				}
 
-		openPanel.DirectoryUrl = NSUrl.FromFilename(initialDirectory ?? "");
-		openPanel.AllowsMultipleSelection = false;
-		openPanel.CanChooseDirectories = false;
-		openPanel.CanChooseFiles = true;
-		var result = (NSModalResponse)openPanel.RunModal();
-		var confirmed = result == NSModalResponse.OK;
-		if (confirmed)
+				openPanel.AllowedContentTypes = allowedContentTypes.ToArray();
+			}
+
+			openPanel.DirectoryUrl = NSUrl.FromFilename(initialDirectory ?? "");
+			openPanel.AllowsMultipleSelection = false;
+			openPanel.CanChooseDirectories = false;
+			openPanel.CanChooseFiles = true;
+			var result = (NSModalResponse)openPanel.RunModal();
+			var confirmed = result == NSModalResponse.OK;
+			if (confirmed)
+			{
+				var fileName = openPanel.Url?.Path;
+				relativePath = Path.GetRelativePath(startInitialDirectory, fileName);
+			}
+		}
+		catch(Exception e)
 		{
-			var fileName = openPanel.Url?.Path;
-			relativePath = Path.GetRelativePath(startInitialDirectory, fileName);
+			Logger.Error($"Failed showing file open dialog: {e}");
 		}
-
 		return relativePath;
 	}
 
