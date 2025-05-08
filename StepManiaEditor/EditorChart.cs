@@ -660,6 +660,11 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		// Helper method for adding an EditorEvent to this method's local data structures.
 		void AddLocalEvent(Event chartEvent, EditorEvent editorEvent)
 		{
+			// Remove all extras. We do not want any extra information from the events to be used
+			// when we save. Since we copy/paste events this could result in position information
+			// from an old event overriding the new position on a pasted event.
+			chartEvent?.Extras.Clear();
+
 			if (editorEvent != null)
 				editorEvents.Insert(editorEvent);
 
