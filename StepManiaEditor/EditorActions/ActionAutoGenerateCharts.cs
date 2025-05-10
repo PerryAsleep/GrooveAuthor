@@ -159,7 +159,7 @@ internal sealed class ActionAutoGenerateCharts : EditorAction
 					var newChartEvents = performedChart.CreateSMChartEvents();
 					CopyNonPerformanceEvents(chart.Layers[0].Events, newChartEvents);
 					newChartEvents.Sort(new SMEventComparer());
-					SetEventTimeAndMetricPositionsFromRows(newChartEvents);
+					SetEventTimeFromRows(newChartEvents);
 
 					// Create a new Chart from the Events.
 					var chartTypeString = ChartTypeString(ChartType);

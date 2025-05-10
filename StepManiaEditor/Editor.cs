@@ -970,6 +970,7 @@ public sealed class Editor :
 		UIAutogenChartsForChartType.Instance.Init(this);
 		UICopyEventsBetweenCharts.Instance.Init(this);
 		UIPatternEvent.Instance.Init(this);
+		UIAttackEvent.Instance.Init(this);
 		UIPerformance.Instance.Init(PerformanceMonitor);
 		UIHotbar.Instance.Init(this);
 #if DEBUG
@@ -3542,6 +3543,7 @@ public sealed class Editor :
 		UIAutogenChartsForChartType.Instance.Draw();
 		UICopyEventsBetweenCharts.Instance.Draw();
 		UIPatternEvent.Instance.Draw(GetFocusedChartData()?.GetLastSelectedPatternEvent());
+		UIAttackEvent.Instance.Draw(GetFocusedChartData()?.GetLastSelectedAttackEvent());
 		UIHotbar.Instance.Draw();
 
 		if (CanShowRightClickPopupThisFrame && EditorMouseState.GetButtonState(EditorMouseState.Button.Right).UpThisFrame())
@@ -6302,6 +6304,12 @@ public sealed class Editor :
 		MoveToChartPosition(FocusedChart?.GetEndPosition() ?? 0.0);
 	}
 
+	private void OnSelectAttack(EditorAttackEvent attack)
+	{
+		GetActiveChartData(attack.GetEditorChart())?.SelectAttack(attack);
+		UIAttackEvent.Instance.Open(true);
+	}
+
 	#endregion Chart Navigation
 
 	#region Lane Input
@@ -7195,6 +7203,9 @@ public sealed class Editor :
 				break;
 			case EditorChart.NotificationEventsMoveEnd:
 				focusedChartData.OnEventMoveEnd((EditorEvent)payload);
+				break;
+			case EditorChart.NotificationAttackRequestEdit:
+				OnSelectAttack((EditorAttackEvent)payload);
 				break;
 			case EditorChart.NotificationPatternRequestEdit:
 				OnSelectPattern((EditorPatternEvent)payload);

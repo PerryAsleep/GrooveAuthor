@@ -819,6 +819,7 @@ internal sealed class UIEditEvents
 			var hasMultipliersEvent = false;
 			var hasTimeSignatureEvent = false;
 			var hasLabelEvent = false;
+			var hasAttackEvent = false;
 			var hasPatternEvent = false;
 
 			if (eventsAtRow != null)
@@ -847,6 +848,8 @@ internal sealed class UIEditEvents
 						hasTimeSignatureEvent = true;
 					else if (currentEvent is EditorLabelEvent)
 						hasLabelEvent = true;
+					else if (currentEvent is EditorAttackEvent)
+						hasAttackEvent = true;
 					else if (currentEvent is EditorPatternEvent)
 						hasPatternEvent = true;
 				}
@@ -892,6 +895,9 @@ internal sealed class UIEditEvents
 			DrawAddEventMenuItem("Label", p.AddEventLabel, !hasLabelEvent, UILabelColorRGBA,
 				EditorLabelEvent.EventShortDescription, row,
 				() => CreateLabelEvent(row));
+			DrawAddEventMenuItem("Attack", p.AddEventAttack, !hasAttackEvent, UIAttackColorRGBA,
+				EditorAttackEvent.EventShortDescription, row,
+				() => CreateAttackEvent(row));
 			DrawAddPatternMenuItem(row, hasPatternEvent);
 
 			ImGui.Separator();
@@ -1035,6 +1041,11 @@ internal sealed class UIEditEvents
 	private EditorEvent CreateLabelEvent(int row)
 	{
 		return EditorEvent.CreateEvent(EventConfig.CreateLabelConfig(Editor.GetFocusedChart(), row));
+	}
+
+	private EditorEvent CreateAttackEvent(int row)
+	{
+		return EditorEvent.CreateEvent(EventConfig.CreateAttackConfig(Editor.GetFocusedChart(), row));
 	}
 
 	private EditorEvent CreatePatternEvent(int row)

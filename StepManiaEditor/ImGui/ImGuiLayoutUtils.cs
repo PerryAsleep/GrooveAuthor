@@ -3212,6 +3212,44 @@ internal sealed class ImGuiLayoutUtils
 		MiscEditorEventWidget(id, e, x, y, width, colorRGBA, selected, canBeDeleted, alpha, help, Func);
 	}
 
+	public static void MiscEditorEventAttackWidget(
+		string id,
+		EditorAttackEvent e,
+		int x,
+		int y,
+		int width,
+		uint colorRGBA,
+		bool selected,
+		float alpha,
+		string help,
+		Action requestEditCallback)
+	{
+		if (alpha <= 0.0f)
+			return;
+
+		void Func(float elementWidth)
+		{
+			var colorPushCount = 0;
+			if (alpha < 1.0f)
+			{
+				PushAlpha(ImGuiCol.Text, alpha);
+				colorPushCount++;
+			}
+
+			ImGui.PushStyleColor(ImGuiCol.Button, colorRGBA);
+			colorPushCount++;
+
+			if (ImGui.Button($"{e.GetMiscEventText()}##{id}"))
+			{
+				requestEditCallback();
+			}
+
+			ImGui.PopStyleColor(colorPushCount);
+		}
+
+		MiscEditorEventWidget(id, e, x, y, width, colorRGBA, selected, true, alpha, help, Func);
+	}
+
 	public static void MiscEditorEventPatternWidget(
 		string id,
 		EditorPatternEvent e,
@@ -3236,6 +3274,9 @@ internal sealed class ImGuiLayoutUtils
 				PushAlpha(ImGuiCol.Text, alpha);
 				colorPushCount++;
 			}
+
+			ImGui.PushStyleColor(ImGuiCol.Button, colorRGBA);
+			colorPushCount++;
 
 			if (ImGui.Button($"{e.GetMiscEventText()}##{id}"))
 			{

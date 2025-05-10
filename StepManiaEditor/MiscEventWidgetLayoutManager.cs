@@ -72,6 +72,7 @@ internal sealed class MiscEventWidgetLayoutManager
 			{ typeof(EditorPatternEvent), new WidgetData() },
 			{ typeof(EditorPreviewRegionEvent), new WidgetData() },
 			{ typeof(EditorLastSecondHintEvent), new WidgetData() },
+			{ typeof(EditorAttackEvent), new WidgetData() },
 		};
 
 		LeftTypes =
@@ -83,6 +84,7 @@ internal sealed class MiscEventWidgetLayoutManager
 			typeof(EditorTickCountEvent),
 			typeof(EditorMultipliersEvent),
 			typeof(EditorLabelEvent),
+			typeof(EditorAttackEvent),
 		];
 		RightTypes =
 		[

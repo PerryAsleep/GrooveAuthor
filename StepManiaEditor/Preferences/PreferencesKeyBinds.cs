@@ -283,6 +283,7 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 	private static readonly List<Keys[]> DefaultAddEventComboMultipliers             = [[]];
 	private static readonly List<Keys[]> DefaultAddEventTimeSignature                = [[]];
 	private static readonly List<Keys[]> DefaultAddEventLabel                        = [[]];
+	private static readonly List<Keys[]> DefaultAddEventAttack                       = [[]];
 	private static readonly List<Keys[]> DefaultAddEventPattern                      = [[]];
 	private static readonly List<Keys[]> DefaultMoveEventPreview                     = [[]];
 	private static readonly List<Keys[]> DefaultMoveEventEndHint                     = [[]];
@@ -1859,6 +1860,19 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 	}
 
 	private List<Keys[]> AddEventLabelInternal = DefaultAddEventLabel;
+
+	[JsonInclude]
+	public List<Keys[]> AddEventAttack
+	{
+		get => AddEventAttackInternal;
+		set
+		{
+			AddEventAttackInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(AddEventAttack));
+		}
+	}
+
+	private List<Keys[]> AddEventAttackInternal = DefaultAddEventAttack;
 
 	[JsonInclude]
 	public List<Keys[]> AddEventPattern

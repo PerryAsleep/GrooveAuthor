@@ -48,7 +48,11 @@ internal sealed class EditorTimeSignatureEvent : EditorRateAlteringEvent
 		}
 	}
 
-	public int Measure { get; set; }
+	public int Measure
+	{
+		get => TimeSignatureEvent.Measure;
+		set => TimeSignatureEvent.Measure = value;
+	}
 
 	public Fraction GetSignature()
 	{
@@ -123,8 +127,6 @@ internal sealed class EditorTimeSignatureEvent : EditorRateAlteringEvent
 	public EditorTimeSignatureEvent(EventConfig config, TimeSignature chartEvent) : base(config)
 	{
 		TimeSignatureEvent = chartEvent;
-		// Pull the measure from the MetricPosition.
-		Measure = TimeSignatureEvent.MetricPosition.Measure;
 		WidthDirty = true;
 	}
 
