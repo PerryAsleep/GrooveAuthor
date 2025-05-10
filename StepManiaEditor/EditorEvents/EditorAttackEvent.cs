@@ -70,6 +70,11 @@ internal sealed class EditorAttackEvent : EditorEvent
 		WidthDirty = true;
 	}
 
+	public Attack GetAttack()
+	{
+		return AttackEvent;
+	}
+
 	public string GetMiscEventText()
 	{
 		if (AttackEvent.Modifiers.Count == 0)
@@ -97,6 +102,11 @@ internal sealed class EditorAttackEvent : EditorEvent
 	public override bool IsSelectableWithModifiers()
 	{
 		return true;
+	}
+
+	public void OnModifiersChanged()
+	{
+		WidthDirty = true;
 	}
 
 	public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)
