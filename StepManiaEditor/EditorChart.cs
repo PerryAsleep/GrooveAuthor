@@ -661,6 +661,11 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		// Helper method for adding an EditorEvent to this method's local data structures.
 		void AddLocalEvent(Event chartEvent, EditorEvent editorEvent)
 		{
+			// Remove all extras. We do not want any extra information from the events to be used
+			// when we save. Since we copy/paste events this could result in position information
+			// from an old event overriding the new position on a pasted event.
+			chartEvent?.Extras.Clear();
+
 			if (editorEvent != null)
 				editorEvents.Insert(editorEvent);
 
@@ -3514,48 +3519,50 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		var customProperties = saveParameters.OmitCustomSaveData ? null : new Dictionary<string, string>();
 
 		// Enqueue a task to save this EditorChart to a Chart.
-		WorkQueue.Enqueue(new Task(() =>
-			{
-				chart.Extras = new Extras(OriginalChartExtras);
-
-				chart.Type = ChartTypeString(ChartType);
-				chart.DifficultyType = ChartDifficultyType.ToString();
-				chart.NumInputs = NumInputs;
-				chart.NumPlayers = MaxPlayers;
-				chart.DifficultyRating = Rating;
-				chart.Extras.AddDestExtra(TagMusic, MusicPath, true);
-				chart.Tempo = DisplayTempo.ToString();
-
-				if (saveParameters.AnonymizeSaveData)
+		// Run this on the main thread so the WorkQueue notifications are processed on the main thread.
+		MainThreadDispatcher.RunOnMainThread(() =>
+			WorkQueue.Enqueue(new Task(() =>
 				{
-					chart.Description = null;
-					chart.Author = null;
-					chart.Extras.RemoveSourceExtra(TagChartName);
-					chart.Extras.RemoveSourceExtra(TagChartStyle);
-				}
-				else
-				{
-					chart.Description = Description;
-					chart.Author = Credit;
-					chart.Extras.AddDestExtra(TagChartName, Name, true);
-					chart.Extras.AddDestExtra(TagChartStyle, Style, true);
-				}
+					chart.Extras = new Extras(OriginalChartExtras);
 
-				// Always set the chart's music offset. Clear any existing extra tag that may be stale.
-				chart.ChartOffsetFromMusic = GetMusicOffset();
-				chart.Extras.RemoveSourceExtra(TagOffset);
+					chart.Type = ChartTypeString(ChartType);
+					chart.DifficultyType = ChartDifficultyType.ToString();
+					chart.NumInputs = NumInputs;
+					chart.NumPlayers = MaxPlayers;
+					chart.DifficultyRating = Rating;
+					chart.Extras.AddDestExtra(TagMusic, MusicPath, true);
+					chart.Tempo = DisplayTempo.ToString();
 
-				if (!saveParameters.OmitCustomSaveData)
-					SerializeCustomChartData(customProperties);
+					if (saveParameters.AnonymizeSaveData)
+					{
+						chart.Description = null;
+						chart.Author = null;
+						chart.Extras.RemoveSourceExtra(TagChartName);
+						chart.Extras.RemoveSourceExtra(TagChartStyle);
+					}
+					else
+					{
+						chart.Description = Description;
+						chart.Author = Credit;
+						chart.Extras.AddDestExtra(TagChartName, Name, true);
+						chart.Extras.AddDestExtra(TagChartStyle, Style, true);
+					}
 
-				var layer = new Layer
-				{
-					Events = GenerateSmEvents(),
-				};
-				chart.Layers.Add(layer);
-			}),
-			// When complete, call the given callback with the saved data.
-			() => callback(chart, customProperties));
+					// Always set the chart's music offset. Clear any existing extra tag that may be stale.
+					chart.ChartOffsetFromMusic = GetMusicOffset();
+					chart.Extras.RemoveSourceExtra(TagOffset);
+
+					if (!saveParameters.OmitCustomSaveData)
+						SerializeCustomChartData(customProperties);
+
+					var layer = new Layer
+					{
+						Events = GenerateSmEvents(),
+					};
+					chart.Layers.Add(layer);
+				}),
+				// When complete, call the given callback with the saved data.
+				() => callback(chart, customProperties)));
 	}
 
 	#endregion Saving
