@@ -104,6 +104,9 @@ internal sealed class Preferences
 	[JsonInclude] public bool ShowPatternListWindow;
 	[JsonInclude] public bool ShowPatternEventWindow;
 
+	// Attack window preferences
+	[JsonInclude] public bool ShowAttackEventWindow;
+
 	// Performance monitoring preferences
 	[JsonInclude] public PreferencesPerformance PreferencesPerformance = new();
 

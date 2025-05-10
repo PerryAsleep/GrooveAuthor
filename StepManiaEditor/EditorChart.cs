@@ -63,6 +63,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	public const string NotificationEventsDeleted = "EventsDeleted";
 	public const string NotificationEventsMoveStart = "EventsMoveStart";
 	public const string NotificationEventsMoveEnd = "EventsMoveEnd";
+	public const string NotificationAttackRequestEdit = "AttackRequestEdit";
 	public const string NotificationPatternRequestEdit = "PatternRequestEdit";
 	public const string NotificationTimingChanged = "TimingChanged";
 	public const string NotificationMaxPlayersChanged = "MaxPlayersChanged";
@@ -868,56 +869,32 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 	private static TimeSignature CreateDefaultTimeSignature(EditorSong editorSong)
 	{
-		return new TimeSignature(editorSong.GetBestChartStartingTimeSignature())
-		{
-			IntegerPosition = 0,
-			MetricPosition = new MetricPosition(0, 0),
-		};
+		return new TimeSignature(editorSong.GetBestChartStartingTimeSignature(), 0);
 	}
 
 	private static Tempo CreateDefaultTempo(EditorSong editorSong)
 	{
-		return new Tempo(editorSong.GetBestChartStartingTempo())
-		{
-			IntegerPosition = 0,
-			MetricPosition = new MetricPosition(0, 0),
-		};
+		return new Tempo(editorSong.GetBestChartStartingTempo());
 	}
 
 	private static ScrollRate CreateDefaultScrollRate()
 	{
-		return new ScrollRate(DefaultScrollRate)
-		{
-			IntegerPosition = 0,
-			MetricPosition = new MetricPosition(0, 0),
-		};
+		return new ScrollRate(DefaultScrollRate);
 	}
 
 	private static ScrollRateInterpolation CreateDefaultScrollRateInterpolation()
 	{
-		return new ScrollRateInterpolation(DefaultScrollRate, 0, 0.0, false)
-		{
-			IntegerPosition = 0,
-			MetricPosition = new MetricPosition(0, 0),
-		};
+		return new ScrollRateInterpolation(DefaultScrollRate, 0, 0.0, false);
 	}
 
 	private static TickCount CreateDefaultTickCount()
 	{
-		return new TickCount(DefaultTickCount)
-		{
-			IntegerPosition = 0,
-			MetricPosition = new MetricPosition(0, 0),
-		};
+		return new TickCount(DefaultTickCount);
 	}
 
 	private static Multipliers CreateDefaultMultipliers()
 	{
-		return new Multipliers(DefaultHitMultiplier, DefaultMissMultiplier)
-		{
-			IntegerPosition = 0,
-			MetricPosition = new MetricPosition(0, 0),
-		};
+		return new Multipliers(DefaultHitMultiplier, DefaultMissMultiplier);
 	}
 
 	#endregion Constructors
@@ -1325,13 +1302,12 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	/// </summary>
 	/// <remarks>
 	/// This method contains logic which duplicates much of the logic in StepManiaLibrary's
-	/// SetEventTimeAndMetricPositionsFromRows method. While isn't ideal to have the complicated logic
+	/// SetEventTimeFromRows method. While isn't ideal to have the complicated logic
 	/// around warp and stop time accrual in multiple places, we need to set some information that
 	/// the library doesn't care about (note coloring data like each step's row relative to its
-	/// starting measure and each step's time signature denominator) and we don't need some of the
-	/// information that the library function spends time updating, like MetricPosition. It's
-	/// better to only do one pass and compute exactly what we need rather than trying leveraging
-	/// the library function and then do a second pass for what we need.
+	/// starting measure and each step's time signature denominator). It's better to only do one
+	/// pass and compute exactly what we need rather than trying leveraging the library function
+	/// and then do a second pass for what we need.
 	/// </remarks>
 	/// <returns>List of all EditorEvents which were deleted as a result.</returns>
 	private void RefreshEventTimingData()
@@ -2435,6 +2411,11 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		}
 	}
 
+	public void OnAttackEventRequestEdit(EditorAttackEvent eaa)
+	{
+		Notify(NotificationAttackRequestEdit, this, eaa);
+	}
+
 	/// <summary>
 	/// Called when an EditorPatternEvent's length is modified.
 	/// </summary>
@@ -2738,7 +2719,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		// When deleting a re-adding many rate altering events this causes a hitch.
 		// We can't just call RefreshEventTimingData once at the end of the loop because
 		// note within the song may have their positions altered relative to individual
-		// rate altering event notes such that calling SetEventTimeAndMetricPositionsFromRows
+		// rate altering event notes such that calling SetEventTimeFromRows
 		// once at the end re-sorts them based on time differences.
 		// To optimize this we could update events only up until the next rate altering event
 		// rather than going to the end of the chart each time. For an old style gimmick chart

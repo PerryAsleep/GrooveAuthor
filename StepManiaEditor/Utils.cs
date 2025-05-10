@@ -48,6 +48,7 @@ internal sealed class Utils
 	public const uint UIMultipliersColorRGBA = 0x8A297A63; // lime
 	public const uint UIFakesColorRGBA = 0x8A29467A; // dark orange
 	public const uint UILabelColorRGBA = 0x8A68297A; // pink
+	public const uint UIAttackColorRGBA = 0x8A297A3F; // olive
 
 	public const uint UIPatternColorRGBA = 0x8A6A7A29; // teal
 

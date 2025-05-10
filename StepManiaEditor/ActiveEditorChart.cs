@@ -30,6 +30,7 @@ internal sealed class ActiveEditorChart
 	private readonly HashSet<IChartRegion> RegionsOverlappingStart = [];
 	private readonly SelectedRegion SelectedRegion = new();
 	private readonly Selection Selection = new();
+	private EditorAttackEvent LastSelectedAttackEvent;
 	private EditorPatternEvent LastSelectedPatternEvent;
 	private readonly List<EditorEvent> MovingNotes = [];
 	private readonly Receptor[] Receptors;
@@ -1445,6 +1446,8 @@ internal sealed class ActiveEditorChart
 			// If an event was deleted that is in a member variable, remove the reference.
 			if (ReferenceEquals(deletedEvent, LastSelectedPatternEvent))
 				LastSelectedPatternEvent = null;
+			if (ReferenceEquals(deletedEvent, LastSelectedAttackEvent))
+				LastSelectedAttackEvent = null;
 		}
 	}
 
@@ -1480,6 +1483,8 @@ internal sealed class ActiveEditorChart
 			// If an event was deleted that is in a member variable, remove the reference.
 			if (ReferenceEquals(deletedEvent, LastSelectedPatternEvent))
 				LastSelectedPatternEvent = null;
+			if (ReferenceEquals(deletedEvent, LastSelectedAttackEvent))
+				LastSelectedAttackEvent = null;
 		}
 	}
 
@@ -2436,6 +2441,16 @@ internal sealed class ActiveEditorChart
 	public void ClearSelection()
 	{
 		Selection.ClearSelectedEvents();
+	}
+
+	public EditorAttackEvent GetLastSelectedAttackEvent()
+	{
+		return LastSelectedAttackEvent;
+	}
+
+	public void SelectAttack(EditorAttackEvent attack)
+	{
+		LastSelectedAttackEvent = attack;
 	}
 
 	public EditorPatternEvent GetLastSelectedPatternEvent()

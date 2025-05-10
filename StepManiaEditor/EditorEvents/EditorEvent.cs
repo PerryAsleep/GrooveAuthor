@@ -204,6 +204,9 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 					case FakeSegment fs:
 						newEvent = new EditorFakeSegmentEvent(config, fs);
 						break;
+					case Attack a:
+						newEvent = new EditorAttackEvent(config, a);
+						break;
 					case Pattern:
 						newEvent = new EditorPatternEvent(config);
 						break;

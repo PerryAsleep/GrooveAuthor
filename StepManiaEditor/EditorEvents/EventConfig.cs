@@ -518,11 +518,9 @@ internal sealed class EventConfig
 	public static EventConfig CreateTimeSignatureConfig(EditorChart chart, int row, Fraction timeSignature)
 	{
 		var measure = chart.GetMeasureForNewTimeSignatureAtRow(row);
-		return new EventConfig(chart, new TimeSignature(timeSignature)
+		return new EventConfig(chart, new TimeSignature(timeSignature, measure)
 		{
 			IntegerPosition = row,
-			// Pass the measure in through the MetricPosition.
-			MetricPosition = new MetricPosition(measure, 0, 0, timeSignature.Denominator),
 		});
 	}
 
@@ -599,6 +597,22 @@ internal sealed class EventConfig
 		bool preferPeriodAsTime = false)
 	{
 		return new EventConfig(chart, new ScrollRateInterpolation(rate, periodLen, periodTime, preferPeriodAsTime)
+		{
+			IntegerPosition = row,
+		});
+	}
+
+	/// <summary>
+	/// Create an EventConfig for an Attack based off of the given parameters.
+	/// Will automatically determine row-based dependencies with an O(log(N)) search on the rate
+	/// altering events.
+	/// </summary>
+	/// <param name="chart">EditorChart to own the new Attack.</param>
+	/// <param name="row">Attack row.</param>
+	/// <returns>EventConfig for the new EditorAttackEvent.</returns>
+	public static EventConfig CreateAttackConfig(EditorChart chart, int row)
+	{
+		return new EventConfig(chart, new Attack
 		{
 			IntegerPosition = row,
 		});

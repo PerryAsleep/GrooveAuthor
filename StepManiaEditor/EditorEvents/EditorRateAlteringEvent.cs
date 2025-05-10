@@ -159,11 +159,11 @@ internal abstract class EditorRateAlteringEvent : EditorEvent, IComparable<Edito
 	/// <returns>Chart time of the given position.</returns>
 	public double GetChartTimeFromPosition(double chartPosition)
 	{
-		// Note that this math matches the math used in SetEventTimeAndMetricPositionsFromRows.
+		// Note that this math matches the math used in SetEventTimeFromRows.
 		// This is important as we expect the time of an event computed here and in SMCommon to
 		// be equal. Specifically the times calculated by both functions should return true when
 		// compared by DoubleEquals. This is important because when rate altering events are added
-		// or removed we use the SMCommon SetEventTimeAndMetricPositionsFromRows function to recalculate
+		// or removed we use the SMCommon SetEventTimeFromRows function to recalculate
 		// the times for all events. If those times were to shift as part of that recalculation then
 		// the events may compare differently and any data structure holding the events that relies
 		// on comparisons (like a RedBlackTree) would then fail to find events.
