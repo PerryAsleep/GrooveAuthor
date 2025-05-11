@@ -897,7 +897,7 @@ internal sealed class UIEditEvents
 				() => CreateLabelEvent(row));
 			DrawAddEventMenuItem("Attack", p.AddEventAttack, !hasAttackEvent, UIAttackColorRGBA,
 				EditorAttackEvent.EventShortDescription, row,
-				() => CreateAttackEvent(row));
+				() => CreateAttackEvent(row, currentRateAlteringEvent));
 			DrawAddPatternMenuItem(row, hasPatternEvent);
 
 			ImGui.Separator();
@@ -1043,9 +1043,10 @@ internal sealed class UIEditEvents
 		return EditorEvent.CreateEvent(EventConfig.CreateLabelConfig(Editor.GetFocusedChart(), row));
 	}
 
-	private EditorEvent CreateAttackEvent(int row)
+	private EditorEvent CreateAttackEvent(int row, EditorRateAlteringEvent currentRateAlteringEvent)
 	{
-		return EditorEvent.CreateEvent(EventConfig.CreateAttackConfig(Editor.GetFocusedChart(), row));
+		var attackLength = currentRateAlteringEvent!.GetSecondsPerRow() * SMCommon.MaxValidDenominator;
+		return EditorEvent.CreateEvent(EventConfig.CreateAttackConfig(Editor.GetFocusedChart(), row, attackLength));
 	}
 
 	private EditorEvent CreatePatternEvent(int row)

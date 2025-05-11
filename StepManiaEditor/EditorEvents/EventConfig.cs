@@ -609,13 +609,32 @@ internal sealed class EventConfig
 	/// </summary>
 	/// <param name="chart">EditorChart to own the new Attack.</param>
 	/// <param name="row">Attack row.</param>
+	/// <param name="attackLength">Length of attack modifier in seconds.</param>
 	/// <returns>EventConfig for the new EditorAttackEvent.</returns>
-	public static EventConfig CreateAttackConfig(EditorChart chart, int row)
+	public static EventConfig CreateAttackConfig(EditorChart chart, int row, double attackLength)
 	{
-		return new EventConfig(chart, new Attack
+		var attack = new Attack
 		{
 			IntegerPosition = row,
-		});
+		};
+		attack.Modifiers.Add(CreateDefaultModifier(attackLength));
+		return new EventConfig(chart, attack);
+	}
+
+	/// <summary>
+	/// Create a default Modifier to use for a new Attack.
+	/// </summary>
+	/// <param name="lengthSeconds">Length of the modifier in seconds.</param>
+	/// <returns>New Modifier.</returns>
+	public static Modifier CreateDefaultModifier(double lengthSeconds)
+	{
+		return new Modifier
+		{
+			Name = "Dizzy",
+			Level = 100.0,
+			Speed = 1.0,
+			LengthSeconds = lengthSeconds,
+		};
 	}
 
 	/// <summary>

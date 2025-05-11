@@ -1,5 +1,6 @@
 ﻿using Fumen;
 using Fumen.ChartDefinition;
+using Fumen.Converters;
 using ImGuiNET;
 using static StepManiaEditor.ImGuiUtils;
 
@@ -481,9 +482,22 @@ internal sealed class UIAttackEvent : UIWindow
 				ImGuiLayoutUtils.DrawRowChartPosition("Position", Editor, attackEvent,
 					"The position of the attack.");
 
-				if (ImGuiLayoutUtils.DrawRowButton("Add Mod", "Add Modifier", "Add a new modifier to this attack."))
+				if (ImGuiLayoutUtils.DrawRowButton("Add Modifier", "Add Modifier", "Add a new modifier to this attack."))
 				{
-					ActionQueue.Instance.Do(new ActionAddModToAttack(attackEvent));
+					double modLength;
+					var existingMods = attackEvent.GetAttack().Modifiers;
+					if (existingMods != null && existingMods.Count > 0)
+					{
+						modLength = existingMods[0].LengthSeconds;
+					}
+					else
+					{
+						var currentRateAlteringEvent = attackEvent.GetEditorChart()?.GetRateAlteringEvents()
+							?.FindActiveRateAlteringEventForPosition(attackEvent.GetRow());
+						modLength = currentRateAlteringEvent!.GetSecondsPerRow() * SMCommon.MaxValidDenominator;
+					}
+
+					ActionQueue.Instance.Do(new ActionAddModToAttack(attackEvent, modLength));
 				}
 
 				ImGuiLayoutUtils.EndTable();
@@ -510,8 +524,8 @@ internal sealed class UIAttackEvent : UIWindow
 
 					var oldSpeed = mod.Speed;
 					ImGuiLayoutUtils.DrawRowDragDouble(true, "Speed", mod, nameof(Modifier.Speed), true,
-						"Speed at which the modifier is applied.",
-						0.01f, "%.6fs");
+						"Speed at which the modifier is applied, represented as a multiplier. 1.0x is the default speed of 1 second.",
+						0.01f, "%.6fx");
 					if (!mod.Speed.DoubleEquals(oldSpeed))
 						attackEvent.OnModifiersChanged();
 
