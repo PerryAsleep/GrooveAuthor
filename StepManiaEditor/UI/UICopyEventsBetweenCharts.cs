@@ -57,6 +57,7 @@ internal class UICopyEventsBetweenCharts : UIWindow
 		new(typeof(EditorMultipliersEvent), "Multipliers", false, false, true),
 		new(typeof(EditorTickCountEvent), "Tick Counts", false, false, true),
 		new(typeof(EditorLabelEvent), "Labels", false, false, true),
+		new(typeof(EditorAttackEvent), "Attacks", false, false, true),
 		new(typeof(EditorPatternEvent), "Patterns", false, false, false),
 	];
 
