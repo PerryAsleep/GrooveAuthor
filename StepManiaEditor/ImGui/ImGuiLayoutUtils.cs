@@ -503,7 +503,11 @@ internal sealed class ImGuiLayoutUtils
 		(bool, string) Func(string v)
 		{
 			v ??= "";
-			var r = ImGui.InputTextWithHint(GetElementTitle(title, fieldName), title, ref v, 256);
+			bool r;
+			if (string.IsNullOrEmpty(title) || title.StartsWith("##"))
+				r = ImGui.InputText(GetElementTitle(title, fieldName), ref v, 256);
+			else
+				r = ImGui.InputTextWithHint(GetElementTitle(title, fieldName), title, ref v, 256);
 			return (r, v);
 		}
 
@@ -3399,6 +3403,54 @@ internal sealed class ImGuiLayoutUtils
 	}
 
 	#endregion Misc Editor Events
+
+	#region Attacks
+
+	public static void DrawRowModifier(
+		object o,
+		string fieldName,
+		bool affectsFile,
+		string[] modifierChoices)
+	{
+		const string title = "Modifier";
+		const string help = "Modifier to apply."
+		                    + "\nThe modifiers supported by Stepmania vary by version and fork. Modifier names are not"
+		                    + " case-sensitive. The dropdown list is meant as a convenience and while it contains most"
+		                    + " modifiers supported by modern versions Stepmania it should not be considered exhaustive"
+		                    + " or accurate for all versions."
+		                    + "\n\nIn addition to the modifiers listed, Stepmania also supports the following values."
+		                    + "\n<number>x:       X speed modifier"
+		                    + "\nc<number>:       C speed modifier"
+		                    + "\nm<number>:       M speed modifier"
+		                    + "\n<noteskin name>: Noteskin";
+
+		DrawRowTitleAndAdvanceColumn(title);
+		var width = DrawHelp(help, ImGui.GetContentRegionAvail().X);
+		var spacing = ImGui.GetStyle().ItemSpacing.X;
+
+		var controlWidth = (int)((width - spacing) * 0.5);
+
+		// Text input for manual entry.
+		var textInputTitle = GetElementTitle(title, "TextInput");
+		DrawTextInput(true, textInputTitle, o, fieldName, controlWidth, affectsFile);
+
+		// Combo control for quick selection.
+		ImGui.SameLine();
+		var comboTitle = GetElementTitle(title, "Combo");
+		ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X);
+		var selectedIndex = -1;
+		if (ComboFromArray(comboTitle, ref selectedIndex, modifierChoices))
+		{
+			if (selectedIndex >= 0 && selectedIndex < modifierChoices.Length)
+			{
+				ActionQueue.Instance.Do(
+					new ActionSetObjectFieldOrPropertyReference<string>(o, fieldName, modifierChoices[selectedIndex],
+						affectsFile));
+			}
+		}
+	}
+
+	#endregion Attacks
 
 	#region Chart Position
 
