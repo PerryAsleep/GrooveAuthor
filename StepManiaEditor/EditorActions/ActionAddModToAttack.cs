@@ -8,15 +8,10 @@ internal sealed class ActionAddModToAttack : EditorAction
 	private readonly EditorAttackEvent Attack;
 	private readonly Modifier Mod;
 
-	public ActionAddModToAttack(EditorAttackEvent attack) : base(false, false)
+	public ActionAddModToAttack(EditorAttackEvent attack, double modLength) : base(false, false)
 	{
 		Attack = attack;
-		Mod = new Modifier()
-		{
-			Level = 1,
-			Speed = 1,
-			LengthSeconds = 1.0,
-		};
+		Mod = EventConfig.CreateDefaultModifier(modLength);
 	}
 
 	public override bool AffectsFile()
