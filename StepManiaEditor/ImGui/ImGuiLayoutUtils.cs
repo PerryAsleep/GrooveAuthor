@@ -3432,7 +3432,8 @@ internal sealed class ImGuiLayoutUtils
 
 		// Text input for manual entry.
 		var textInputTitle = GetElementTitle(title, "TextInput");
-		DrawTextInput(true, textInputTitle, o, fieldName, controlWidth, affectsFile);
+		DrawTextInput(true, textInputTitle, o, fieldName, controlWidth, affectsFile,
+			EditorAttackEvent.IsValidModString);
 
 		// Combo control for quick selection.
 		ImGui.SameLine();
