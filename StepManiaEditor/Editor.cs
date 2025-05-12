@@ -3659,10 +3659,12 @@ public sealed class Editor :
 					{
 						ImGuiLayoutUtils.DrawRowCheckbox(true, "Require Identical Timing in SM Files", Preferences.Instance,
 							nameof(Preferences.RequireIdenticalTimingInSmFiles), false,
-							"In sm files all timing events must be identical between all charts. If this option is checked" +
-							$" then when saving sm files {GetAppName()} will treat any discrepancies in timing events between" +
+							"In sm files, many kinds of events must be identical between all charts. Most notably, all events" +
+							" which affect timing must be identical but this also extends to other kinds of miscellaneous" +
+							" events like attacks. If \"Require Identical Timing in SM Files\" is checked" +
+							$" then when saving sm files {GetAppName()} will treat any discrepancies in these events between" +
 							" charts as an error and will fail to save the chart. If this option is not checked then discrepancies" +
-							" will be treated as a warning and song's Timing Chart will be used for every chart's timing events." +
+							" will be treated as a warning and song's Timing Chart will be used for these events in every chart." +
 							" Note that if this option is unchecked then for songs with different timing events between" +
 							" charts it can result in sm files with data loss and timing that does not match what you see" +
 							$" in {GetAppName()}.");

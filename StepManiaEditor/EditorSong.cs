@@ -1467,9 +1467,9 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 	/// <returns>
 	/// Tuple with the following values:
 	///  compatible: Whether or not the song is compatible with the sm format.
-	///  timingMismatchProblem: Whether there is a problematic mismatch of timing events between the charts.
+	///  eventMismatchProblem: Whether there is a problematic mismatch of events between the charts.
 	/// </returns>
-	private (bool compatible, bool timingMismatchProblem) IsCompatibleWithFormat(FileFormatType fileFormat,
+	private (bool compatible, bool eventMismatchProblem) IsCompatibleWithFormat(FileFormatType fileFormat,
 		SaveParameters saveParameters)
 	{
 		var compatible = true;
@@ -1519,8 +1519,8 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 			}
 		}
 
-		var chartTimingEventMismatchProblem = fileFormat == FileFormatType.SM && !DoChartTimingEventsMatch();
-		return (compatible, chartTimingEventMismatchProblem);
+		var chartEventMismatchProblem = fileFormat == FileFormatType.SM && !DoChartEventsWhichCannotBeSplitInSmFilesMatch();
+		return (compatible, chartEventMismatchProblem);
 	}
 
 	/// <summary>
@@ -1555,6 +1555,38 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 	}
 
 	/// <summary>
+	/// Returns whether or not events which cannot be split by chart in sm files
+	/// match across all charts.
+	/// Logs warnings on inconsistencies.
+	/// </summary>
+	/// <returns>True if all events match and false otherwise.</returns>
+	private bool DoChartEventsWhichCannotBeSplitInSmFilesMatch()
+	{
+		var timingMatches = DoChartTimingEventsMatch();
+
+		var attacksMatch = true;
+		var chartToCompareAgainst = TimingChart;
+		foreach (var kvp in Charts)
+		{
+			var charts = kvp.Value;
+			foreach (var chart in charts)
+			{
+				if (chartToCompareAgainst == null)
+				{
+					chartToCompareAgainst = chart;
+				}
+				else if (chartToCompareAgainst != chart)
+				{
+					if (!chart.DoAttacksMatch(chartToCompareAgainst, true))
+						attacksMatch = false;
+				}
+			}
+		}
+
+		return timingMatches && attacksMatch;
+	}
+
+	/// <summary>
 	/// Saves this EditorSong to disk.
 	/// Much of the work for saving occurs asynchronously.
 	/// </summary>
@@ -1583,7 +1615,7 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 					if (saveParameters.RequireIdenticalTimingInSmFiles)
 					{
 						Logger.Error(
-							$"The charts in this song have different timing events. {saveParameters.FileType} files do not support this. Consider saving this file as an {FileFormatType.SSC} file." +
+							$"The charts in this song have different timing/miscellaneous events. {saveParameters.FileType} files do not support this. Consider saving this file as an {FileFormatType.SSC} file." +
 							$" You can also force saving of {saveParameters.FileType} files with incompatible timing by unchecking \"Require Identical Timing in SM Files\".");
 
 						complete = true;
@@ -1591,7 +1623,7 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 					}
 
 					Logger.Warn(
-						$"The charts in this song have different timing events. {saveParameters.FileType} files do not support this. The saved charts will all use the timing events from {TimingChart.GetDescriptiveName()}."
+						$"The charts in this song have different timing/miscellaneous events. {saveParameters.FileType} files do not support this. The saved charts will all use the timing events from {TimingChart.GetDescriptiveName()}."
 						+ " To treat this as an error you can enable \"Require Identical Timing in SM Files\" in Advanced Save Options.");
 				}
 
