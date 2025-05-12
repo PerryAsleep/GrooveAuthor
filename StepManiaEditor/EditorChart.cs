@@ -139,6 +139,11 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	private EventTree Labels;
 
 	/// <summary>
+	/// Tree of all EditorAttackEvents.
+	/// </summary>
+	private EventTree Attacks;
+
+	/// <summary>
 	/// Tree of all EditorRateAlteringEvents.
 	/// </summary>
 	private RateAlteringEventTree RateAlteringEvents;
@@ -647,6 +652,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		var interpolatedScrollRateEvents = new InterpolatedRateAlteringEventTree(this);
 		var miscEvents = new EventTree(this);
 		var labels = new EventTree(this);
+		var attacks = new EventTree(this);
 		var maxPlayer = 1;
 
 		var pendingHoldStarts = new LaneHoldStartNote[NumInputs];
@@ -765,6 +771,12 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 					editorEvent = EditorEvent.CreateEvent(EventConfig.CreateConfig(this, chartEvent, false));
 					break;
 				}
+				case Attack:
+				{
+					editorEvent = EditorEvent.CreateEvent(EventConfig.CreateConfig(this, chartEvent, false));
+					attacks.Insert(editorEvent);
+					break;
+				}
 				default:
 				{
 					editorEvent = EditorEvent.CreateEvent(EventConfig.CreateConfig(this, chartEvent, false));
@@ -801,6 +813,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		InterpolatedScrollRateEvents = interpolatedScrollRateEvents;
 		MiscEvents = miscEvents;
 		Labels = labels;
+		Attacks = attacks;
 
 		if (maxPlayer + 1 > MaxPlayers)
 			MaxPlayers = maxPlayer + 1;
@@ -838,6 +851,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		var interpolatedScrollRateEvents = new InterpolatedRateAlteringEventTree(this);
 		var miscEvents = new EventTree(this);
 		var labels = new EventTree(this);
+		var attacks = new EventTree(this);
 
 		foreach (var editorEvent in events)
 		{
@@ -853,6 +867,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 				LastSecondHintEvent = lse;
 			if (editorEvent is EditorLabelEvent)
 				labels.Insert(editorEvent);
+			if (editorEvent is EditorAttackEvent)
+				attacks.Insert(editorEvent);
 			editorEvent.OnAddedToChart();
 		}
 
@@ -862,6 +878,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		InterpolatedScrollRateEvents = interpolatedScrollRateEvents;
 		MiscEvents = miscEvents;
 		Labels = labels;
+		Attacks = attacks;
 
 		RefreshIntervals();
 		RefreshRateAlteringEvents();
@@ -950,6 +967,11 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		return Labels;
 	}
 
+	public IReadOnlyEventTree GetAttacks()
+	{
+		return Attacks;
+	}
+
 	public IReadOnlyRateAlteringEventTree GetRateAlteringEvents()
 	{
 		return RateAlteringEvents;
@@ -993,6 +1015,19 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	public EditorSong GetEditorSong()
 	{
 		return EditorSong;
+	}
+
+	public List<EditorChart> GetAllOtherEditorCharts()
+	{
+		var allOtherCharts = new List<EditorChart>();
+		foreach (var songChart in EditorSong!.GetCharts())
+		{
+			if (songChart == this)
+				continue;
+			allOtherCharts.Add(songChart);
+		}
+
+		return allOtherCharts;
 	}
 
 	public double GetMusicOffset()
@@ -2521,6 +2556,12 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			Assert(deleted);
 		}
 
+		if (editorEvent is EditorAttackEvent)
+		{
+			deleted = Attacks.Delete(editorEvent);
+			Assert(deleted);
+		}
+
 		var rowDependentDataDirty = false;
 		switch (editorEvent)
 		{
@@ -2655,6 +2696,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			MiscEvents.Insert(editorEvent);
 		if (editorEvent is EditorLabelEvent)
 			Labels.Insert(editorEvent);
+		if (editorEvent is EditorAttackEvent)
+			Attacks.Insert(editorEvent);
 
 		switch (editorEvent)
 		{
@@ -3420,9 +3463,9 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	/// events must be identical.
 	/// </summary>
 	/// <param name="other">EditorChart to compare this EditorChart to.</param>
-	/// <param name="logDifferences">If true, log differences as errors.</param>
+	/// <param name="logDifferences">If true, log differences as warnings.</param>
 	/// <returns>
-	/// True if this EditorChart's timing events match the given EditorChart and false otherwise.
+	/// True if this EditorChart's timing events match those from the given other EditorChart and false otherwise.
 	/// </returns>
 	public bool DoSmTimingEventsMatch(EditorChart other, bool logDifferences)
 	{
@@ -3488,6 +3531,47 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		}
 
 		return match;
+	}
+
+	/// <summary>
+	/// Legacy sm files save timing data per song, not per chart.
+	/// For a song's charts to be able to be saved in an sm file, their attacks
+	/// must be identical.
+	/// </summary>
+	/// <param name="other">EditorChart to compare this EditorChart to.</param>
+	/// <param name="logDifferences">If true, log differences as warnings.</param>
+	/// <returns>
+	/// True if this EditorChart's attacks match those from the given other EditorChart and false otherwise.
+	/// </returns>
+	public bool DoAttacksMatch(EditorChart other, bool logDifferences)
+	{
+		if ((Attacks?.GetCount() ?? 0) != (other.Attacks?.GetCount() ?? 0))
+		{
+			if (logDifferences)
+			{
+				LogWarn($"Attacks do not match attacks from {other.GetDescriptiveName()}.");
+			}
+
+			return false;
+		}
+
+		if (Attacks == null || Attacks.GetCount() == 0)
+			return true;
+
+		using var enumerator = Attacks.GetEnumerator();
+		using var otherEnumerator = other.Attacks!.GetEnumerator();
+		while (enumerator.MoveNext() && otherEnumerator.MoveNext())
+		{
+			var attack = (EditorAttackEvent)enumerator.Current;
+			var otherAttack = (EditorAttackEvent)otherEnumerator.Current;
+			if (!attack!.Matches(otherAttack))
+			{
+				LogWarn($"Attacks do not match attacks from {other.GetDescriptiveName()}.");
+				return false;
+			}
+		}
+
+		return true;
 	}
 
 	/// <summary>

@@ -68,8 +68,7 @@ internal sealed class ImGuiLayoutUtils
 	public static readonly float ArrowIconWidth = UiScaled(16);
 	public static readonly float ArrowIconHeight = UiScaled(16);
 	public static readonly Vector2 ArrowIconSize = new(ArrowIconWidth, ArrowIconHeight);
-	public static readonly float ButtonApplyTimingWidth = UiScaled(80);
-	public static readonly float ButtonApplyTimingAndScrollWidth = UiScaled(40);
+	public static readonly float ButtonApplyWidth = UiScaled(60);
 	public static readonly Vector2 ButtonCopySize = new(UiScaled(32), 0);
 	public static readonly Vector2 ButtonSettingsSize = new(UiScaled(56), 0);
 	public static readonly float SnapLimitTextWidth = UiScaled(30);
@@ -3810,7 +3809,7 @@ internal sealed class ImGuiLayoutUtils
 
 		var remainingWidth = DrawHelp(help, ImGui.GetContentRegionAvail().X);
 		var comboWidth = Math.Max(1.0f,
-			remainingWidth - ButtonApplyTimingWidth - ButtonApplyTimingAndScrollWidth - ImGui.GetStyle().ItemSpacing.X * 2);
+			remainingWidth - ButtonApplyWidth - ImGui.GetStyle().ItemSpacing.X);
 
 		if (song != null)
 		{
@@ -3846,45 +3845,58 @@ internal sealed class ImGuiLayoutUtils
 				PushDisabled();
 
 			ImGui.SameLine();
-			if (ImGui.Button($"Apply Timing{GetElementTitle(title, "ApplyTimingButton")}",
-				    new Vector2(ButtonApplyTimingWidth, 0.0f)))
-			{
-				var allOtherCharts = new List<EditorChart>();
-				foreach (var songChart in song!.GetCharts())
-				{
-					if (songChart == chart)
-						continue;
-					allOtherCharts.Add(songChart);
-				}
 
-				if (allOtherCharts.Count > 0)
-				{
-					ActionQueue.Instance.Do(new ActionCopyEventsBetweenCharts(
-						chart,
-						UICopyEventsBetweenCharts.GetTimingTypes(),
-						allOtherCharts));
-				}
+
+			if (ImGui.Button("Apply...", new Vector2(ButtonApplyWidth, 0.0f)))
+			{
+				ImGui.OpenPopup("ApplyTimingPopup");
 			}
 
-			ImGui.SameLine();
-			if (ImGui.Button($"Apply{GetElementTitle(title, "ApplyTimingAndScrollButton")}",
-				    new Vector2(ButtonApplyTimingAndScrollWidth, 0.0f)))
+			if (ImGui.BeginPopup("ApplyTimingPopup"))
 			{
-				var allOtherCharts = new List<EditorChart>();
-				foreach (var songChart in song!.GetCharts())
+				if (ImGui.Selectable("Timing events to all other charts"))
 				{
-					if (songChart == chart)
-						continue;
-					allOtherCharts.Add(songChart);
+					var allOtherCharts = chart?.GetAllOtherEditorCharts();
+					if (allOtherCharts?.Count > 0)
+					{
+						ActionQueue.Instance.Do(new ActionCopyEventsBetweenCharts(
+							chart,
+							UICopyEventsBetweenCharts.GetTimingTypes(),
+							allOtherCharts));
+					}
 				}
 
-				if (allOtherCharts.Count > 0)
+				if (ImGui.Selectable("Timing and scroll events to all other charts"))
 				{
-					ActionQueue.Instance.Do(new ActionCopyEventsBetweenCharts(
-						chart,
-						UICopyEventsBetweenCharts.GetTimingAndScrollTypes(),
-						allOtherCharts));
+					var allOtherCharts = chart?.GetAllOtherEditorCharts();
+					if (allOtherCharts?.Count > 0)
+					{
+						ActionQueue.Instance.Do(new ActionCopyEventsBetweenCharts(
+							chart,
+							UICopyEventsBetweenCharts.GetTimingAndScrollTypes(),
+							allOtherCharts));
+					}
 				}
+
+				if (ImGui.Selectable("All events which cannot differ per chart in sm files to all other charts"))
+				{
+					var allOtherCharts = chart?.GetAllOtherEditorCharts();
+					if (allOtherCharts?.Count > 0)
+					{
+						ActionQueue.Instance.Do(new ActionCopyEventsBetweenCharts(
+							chart,
+							UICopyEventsBetweenCharts.GetStepmaniaTypes(),
+							allOtherCharts));
+					}
+				}
+
+				ImGui.Separator();
+				if (ImGui.Selectable("Advanced Event Copy..."))
+				{
+					UICopyEventsBetweenCharts.Instance.Open(true);
+				}
+
+				ImGui.EndPopup();
 			}
 
 			if (chart == null)
