@@ -1,11 +1,14 @@
-﻿using Fumen.ChartDefinition;
+﻿using System.Collections.Generic;
+using Fumen;
+using Fumen.ChartDefinition;
 using Fumen.Converters;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGameExtensions;
+using static StepManiaEditor.EditorAttackEvent;
 
 namespace StepManiaEditor;
 
-internal sealed class EditorAttackEvent : EditorEvent
+internal sealed class EditorAttackEvent : EditorEvent, IObserver<EditorModifier>
 {
 	public static readonly string EventShortDescription =
 		"Modifiers to apply during gameplay.";
@@ -438,7 +441,85 @@ internal sealed class EditorAttackEvent : EditorEvent
 		"ZigZagZPeriod",
 	};
 
+	/// <summary>
+	/// Class for wrapping an Attack Modifier and notifying the EditorAttack when it changes.
+	/// </summary>
+	internal sealed class EditorModifier : Notifier<EditorModifier>
+	{
+		public const string NotificationModiferChanged = "ModiferChanged";
+		public readonly Modifier Modifier;
+
+		public EditorModifier(Modifier modifier)
+		{
+			Modifier = modifier;
+		}
+
+		public string Name
+		{
+			get => Modifier.Name;
+			set
+			{
+				if (Modifier.Name != value)
+				{
+					Modifier.Name = value;
+					Notify(NotificationModiferChanged, this);
+				}
+			}
+		}
+
+		public double Level
+		{
+			get => Modifier.Level;
+			set
+			{
+				if (!Modifier.Level.DoubleEquals(value))
+				{
+					Modifier.Level = value;
+					Notify(NotificationModiferChanged, this);
+				}
+			}
+		}
+
+		public double Speed
+		{
+			get => Modifier.Speed;
+			set
+			{
+				if (!Modifier.Speed.DoubleEquals(value))
+				{
+					Modifier.Speed = value;
+					Notify(NotificationModiferChanged, this);
+				}
+			}
+		}
+
+		public double LengthSeconds
+		{
+			get => Modifier.LengthSeconds;
+			set
+			{
+				if (!Modifier.LengthSeconds.DoubleEquals(value))
+				{
+					Modifier.LengthSeconds = value;
+					Notify(NotificationModiferChanged, this);
+				}
+			}
+		}
+	}
+
+	/// <summary>
+	/// Underlying Attack event.
+	/// </summary>
 	private readonly Attack AttackEvent;
+
+	/// <summary>
+	/// Wrappers for the Attack's Modifiers.
+	/// </summary>
+	private readonly List<EditorModifier> EditorModifiers;
+
+	/// <summary>
+	/// Flag for whether the misc event widget width is dirty.
+	/// </summary>
 	private bool WidthDirty;
 
 	/// <remarks>
@@ -493,12 +574,80 @@ internal sealed class EditorAttackEvent : EditorEvent
 	public EditorAttackEvent(EventConfig config, Attack chartEvent) : base(config)
 	{
 		AttackEvent = chartEvent;
+		EditorModifiers = new List<EditorModifier>();
+		foreach (var modifier in AttackEvent.Modifiers)
+		{
+			var mod = new EditorModifier(modifier);
+			mod.AddObserver(this);
+			EditorModifiers.Add(mod);
+		}
+
 		WidthDirty = true;
 	}
 
-	public Attack GetAttack()
+	public IReadOnlyList<EditorModifier> GetModifiers()
 	{
-		return AttackEvent;
+		return EditorModifiers;
+	}
+
+	public void AddModifier(Modifier modifier)
+	{
+		var mod = new EditorModifier(modifier);
+		mod.AddObserver(this);
+		EditorModifiers.Add(mod);
+		AttackEvent.Modifiers.Add(modifier);
+		WidthDirty = true;
+	}
+
+	public int IndexOf(Modifier modifier)
+	{
+		for (var i = 0; i < EditorModifiers.Count; i++)
+		{
+			if (EditorModifiers[i].Modifier == modifier)
+			{
+				return i;
+			}
+		}
+
+		return -1;
+	}
+
+	public void InsertModifier(int index, EditorModifier modifier)
+	{
+		modifier.AddObserver(this);
+		EditorModifiers.Insert(index, modifier);
+		AttackEvent.Modifiers.Insert(index, modifier.Modifier);
+		WidthDirty = true;
+	}
+
+	public void RemoveModifier(Modifier modifier)
+	{
+		for (var i = 0; i < EditorModifiers.Count; i++)
+		{
+			if (EditorModifiers[i].Modifier == modifier)
+			{
+				EditorModifiers[i].RemoveObserver(this);
+				EditorModifiers.RemoveAt(i);
+				AttackEvent.Modifiers.RemoveAt(i);
+				WidthDirty = true;
+				return;
+			}
+		}
+	}
+
+	public void RemoveModifier(EditorModifier modifier)
+	{
+		for (var i = 0; i < EditorModifiers.Count; i++)
+		{
+			if (EditorModifiers[i] == modifier)
+			{
+				EditorModifiers[i].RemoveObserver(this);
+				EditorModifiers.RemoveAt(i);
+				AttackEvent.Modifiers.RemoveAt(i);
+				WidthDirty = true;
+				return;
+			}
+		}
 	}
 
 	public string GetMiscEventText()
@@ -530,11 +679,6 @@ internal sealed class EditorAttackEvent : EditorEvent
 		return true;
 	}
 
-	public void OnModifiersChanged()
-	{
-		WidthDirty = true;
-	}
-
 	public override void Draw(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)
 	{
 		if (Alpha <= 0.0f)
@@ -548,5 +692,10 @@ internal sealed class EditorAttackEvent : EditorEvent
 			Alpha,
 			WidgetHelp,
 			() => { EditorChart.OnAttackEventRequestEdit(this); });
+	}
+
+	public void OnNotify(string eventId, EditorModifier notifier, object payload)
+	{
+		WidthDirty = true;
 	}
 }

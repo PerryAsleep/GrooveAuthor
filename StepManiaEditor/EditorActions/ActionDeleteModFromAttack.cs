@@ -1,19 +1,18 @@
-﻿using Fumen.ChartDefinition;
-using Fumen.Converters;
+﻿using Fumen.Converters;
 
 namespace StepManiaEditor;
 
 internal sealed class ActionDeleteModFromAttack : EditorAction
 {
 	private readonly EditorAttackEvent Attack;
-	private readonly Modifier Mod;
+	private readonly EditorAttackEvent.EditorModifier Mod;
 	private readonly int ModIndex;
 
-	public ActionDeleteModFromAttack(EditorAttackEvent attack, Modifier mod) : base(false, false)
+	public ActionDeleteModFromAttack(EditorAttackEvent attack, int index) : base(false, false)
 	{
 		Attack = attack;
-		Mod = mod;
-		ModIndex = Attack.GetAttack().Modifiers.IndexOf(Mod);
+		ModIndex = index;
+		Mod = Attack.GetModifiers()[ModIndex];
 	}
 
 	public override bool AffectsFile()
@@ -23,18 +22,16 @@ internal sealed class ActionDeleteModFromAttack : EditorAction
 
 	public override string ToString()
 	{
-		return $"Delete modifier from attack at row {Attack.GetRow()}: {SMCommon.GetModString(Mod, false, true)}";
+		return $"Delete modifier from attack at row {Attack.GetRow()}: {SMCommon.GetModString(Mod.Modifier, false, true)}";
 	}
 
 	protected override void DoImplementation()
 	{
-		Attack.GetAttack().Modifiers.Remove(Mod);
-		Attack.OnModifiersChanged();
+		Attack.RemoveModifier(Mod);
 	}
 
 	protected override void UndoImplementation()
 	{
-		Attack.GetAttack().Modifiers.Insert(ModIndex, Mod);
-		Attack.OnModifiersChanged();
+		Attack.InsertModifier(ModIndex, Mod);
 	}
 }

@@ -26,13 +26,11 @@ internal sealed class ActionAddModToAttack : EditorAction
 
 	protected override void DoImplementation()
 	{
-		Attack.GetAttack().Modifiers.Add(Mod);
-		Attack.OnModifiersChanged();
+		Attack.AddModifier(Mod);
 	}
 
 	protected override void UndoImplementation()
 	{
-		Attack.GetAttack().Modifiers.Remove(Mod);
-		Attack.OnModifiersChanged();
+		Attack.RemoveModifier(Mod);
 	}
 }

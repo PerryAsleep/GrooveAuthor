@@ -1,6 +1,4 @@
-﻿using Fumen;
-using Fumen.ChartDefinition;
-using Fumen.Converters;
+﻿using Fumen.Converters;
 using ImGuiNET;
 using static StepManiaEditor.ImGuiUtils;
 
@@ -49,8 +47,6 @@ internal sealed class UIAttackEvent : UIWindow
 		if (!Preferences.Instance.ShowAttackEventWindow)
 			return;
 
-		var attack = attackEvent!.GetAttack();
-
 		if (BeginWindow(WindowTitle, ref Preferences.Instance.ShowAttackEventWindow, DefaultWidth))
 		{
 			var disabled = !Editor.CanEdit();
@@ -65,7 +61,7 @@ internal sealed class UIAttackEvent : UIWindow
 				if (ImGuiLayoutUtils.DrawRowButton("Add Modifier", "Add Modifier", "Add a new modifier to this attack."))
 				{
 					double modLength;
-					var existingMods = attackEvent.GetAttack().Modifiers;
+					var existingMods = attackEvent!.GetModifiers();
 					if (existingMods != null && existingMods.Count > 0)
 					{
 						modLength = existingMods[0].LengthSeconds;
@@ -83,42 +79,33 @@ internal sealed class UIAttackEvent : UIWindow
 				ImGuiLayoutUtils.EndTable();
 			}
 
-			for (var i = 0; i < attack.Modifiers.Count; i++)
+			var mods = attackEvent!.GetModifiers();
+			for (var i = 0; i < mods.Count; i++)
 			{
 				ImGui.Separator();
 				if (ImGuiLayoutUtils.BeginTable($"ModTable{i}", TitleColumnWidth))
 				{
-					var mod = attack.Modifiers[i];
+					var mod = mods[i];
 
-					var oldName = mod.Name;
-					ImGuiLayoutUtils.DrawRowModifier(mod, nameof(Modifier.Name), true, EditorAttackEvent.ModifierTypes);
-					if (mod.Name != oldName)
-						attackEvent.OnModifiersChanged();
+					ImGuiLayoutUtils.DrawRowModifier(mod, nameof(EditorAttackEvent.EditorModifier.Name), true,
+						EditorAttackEvent.ModifierTypes);
 
-					var oldLevel = mod.Level;
-					ImGuiLayoutUtils.DrawRowDragDouble(true, "Level", mod, nameof(Modifier.Level), true,
+					ImGuiLayoutUtils.DrawRowDragDouble(true, "Level", mod, nameof(EditorAttackEvent.EditorModifier.Level), true,
 						"Modifier level. Sometimes referred to as strength. 100% is the default level. 0% will disable a modifier. Negative values will invert some modifiers.",
 						1.0f, "%.6f%%");
-					if (!mod.Level.DoubleEquals(oldLevel))
-						attackEvent.OnModifiersChanged();
 
-					var oldSpeed = mod.Speed;
-					ImGuiLayoutUtils.DrawRowDragDouble(true, "Speed", mod, nameof(Modifier.Speed), true,
+					ImGuiLayoutUtils.DrawRowDragDouble(true, "Speed", mod, nameof(EditorAttackEvent.EditorModifier.Speed), true,
 						"Speed at which the modifier is applied, represented as a multiplier. 1.0x is the default speed of 1 second.",
 						0.01f, "%.6fx");
-					if (!mod.Speed.DoubleEquals(oldSpeed))
-						attackEvent.OnModifiersChanged();
 
-					var oldLength = mod.LengthSeconds;
-					ImGuiLayoutUtils.DrawRowDragDouble(true, "Length", mod, nameof(Modifier.LengthSeconds), true,
+					ImGuiLayoutUtils.DrawRowDragDouble(true, "Length", mod,
+						nameof(EditorAttackEvent.EditorModifier.LengthSeconds), true,
 						"Length of the modifier.",
 						0.01f, "%.6fs");
-					if (!mod.LengthSeconds.DoubleEquals(oldLength))
-						attackEvent.OnModifiersChanged();
 
 					if (ImGuiLayoutUtils.DrawRowButton("Delete", "Delete Modifier", "Delete this Modifier."))
 					{
-						ActionQueue.Instance.Do(new ActionDeleteModFromAttack(attackEvent, mod));
+						ActionQueue.Instance.Do(new ActionDeleteModFromAttack(attackEvent, i));
 					}
 
 					ImGuiLayoutUtils.EndTable();
