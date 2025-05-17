@@ -3878,7 +3878,7 @@ internal sealed class ImGuiLayoutUtils
 					}
 				}
 
-				if (ImGui.Selectable("All events which cannot differ per chart in sm files to all other charts"))
+				if (ImGui.Selectable("All misc. Stepmania events to all other charts"))
 				{
 					var allOtherCharts = chart?.GetAllOtherEditorCharts();
 					if (allOtherCharts?.Count > 0)

@@ -3657,6 +3657,7 @@ public sealed class Editor :
 					var titleColumnWidth = UiScaled(220);
 					if (ImGuiLayoutUtils.BeginTable("AdvancedSaveOptionsTable", titleColumnWidth))
 					{
+						// ReSharper disable StringLiteralTypo
 						ImGuiLayoutUtils.DrawRowCheckbox(true, "Require Identical Timing in SM Files", Preferences.Instance,
 							nameof(Preferences.RequireIdenticalTimingInSmFiles), false,
 							"In sm files, many kinds of events must be identical between all charts. Most notably, all events" +
@@ -3667,8 +3668,27 @@ public sealed class Editor :
 							" will be treated as a warning and song's Timing Chart will be used for these events in every chart." +
 							" Note that if this option is unchecked then for songs with different timing events between" +
 							" charts it can result in sm files with data loss and timing that does not match what you see" +
-							$" in {GetAppName()}.");
+							$" in {GetAppName()}." +
+							"\n\nThe specific events which much match in sm files are:" +
+							"\nMusic Offset              (#OFFSET)" +
+							"\nDisplay Tempo             (#DISPLAYBPM)" +
+							"\nTime Signatures           (#TIMESIGNATURES)" +
+							"\nTempos                    (#BPM)" +
+							"\nStops                     (#STOPS)" +
+							"\nDelays                    (#DELAYS)" +
+							"\nTick Counts               (#TICKCOUNTS)" +
+							"\nAttacks                   (#ATTACKS)" +
+							"\n\nThe above list does not include events which are completely incompatible with sm files." +
+							" Those events are:" +
+							"\nCombo Multipliers         (#COMBOS)" +
+							"\nWarps                     (#WARPS)" +
+							"\nScroll Rates              (#SCROLLS)" +
+							"\nInterpolated Scroll Rates (#SPEEDS)" +
+							"\nFakes                     (#FAKES)" +
+							"\nLabels                    (#LABELS)");
+						// ReSharper restore StringLiteralTypo
 
+						// ReSharper disable StringLiteralTypo
 						ImGuiLayoutUtils.DrawRowCheckbox(true, "Remove Chart Timing", Preferences.Instance,
 							nameof(Preferences.OmitChartTimingData), false,
 							"If checked then individual charts will have their timing data omitted from their files." +
@@ -3676,7 +3696,23 @@ public sealed class Editor :
 							" This has no effect on sm files which are already limited to only using timing data specified" +
 							" at the song level. Under normal circumstances this option is not recommended but if you" +
 							" use Stepmania files for other applications which struggle with chart timing data or you" +
-							" are working under additional restrictions to file format this option may be useful.");
+							" are working under additional restrictions to file format this option may be useful. " +
+							"\n\nThe specific events that will be omitted are those which Stepmania treats as signaling " +
+							"chart timing. These events are:" +
+							"\nMusic offset              (#OFFSET)" +
+							"\nDisplay Tempo             (#DISPLAYBPM)" +
+							"\nTime Signatures           (#TIMESIGNATURES)" +
+							"\nTempos                    (#BPM)" +
+							"\nStops                     (#STOPS)" +
+							"\nDelays                    (#DELAYS)" +
+							"\nTick Counts               (#TICKCOUNTS)" +
+							"\nCombo Multipliers         (#COMBOS)" +
+							"\nWarps                     (#WARPS)" +
+							"\nScroll Rates              (#SCROLLS)" +
+							"\nInterpolated Scroll Rates (#SPEEDS)" +
+							"\nFakes                     (#FAKES)" +
+							"\nLabels                    (#LABELS)");
+						// ReSharper restore StringLiteralTypo
 
 						ImGuiLayoutUtils.DrawRowCheckbox(true, "Remove Custom Save Data", Preferences.Instance,
 							nameof(Preferences.OmitCustomSaveData), false,

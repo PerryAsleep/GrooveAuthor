@@ -20,6 +20,7 @@ internal interface IReadOnlyStepTotals
 	public int GetLiftCount();
 
 	public int GetMultipliersCount();
+	public int GetTickCountEventCount();
 	public int GetNumPlayersWithNotes();
 }
 
@@ -93,6 +94,11 @@ internal sealed class StepTotals : IReadOnlyStepTotals
 	private int MultipliersCount;
 
 	/// <summary>
+	/// Total tick count event count for the EditorChart.
+	/// </summary>
+	private int TickCountEventCount;
+
+	/// <summary>
 	/// The EditorChart whose totals are cached.
 	/// </summary>
 	private readonly EditorChart EditorChart;
@@ -146,6 +152,7 @@ internal sealed class StepTotals : IReadOnlyStepTotals
 		FakeCount = 0;
 		LiftCount = 0;
 		MultipliersCount = 0;
+		TickCountEventCount = 0;
 		StepCountPerRow.Clear();
 		NoteCountsPerPlayer.Clear();
 		StepCountsByLane = new int[EditorChart.NumInputs];
@@ -215,6 +222,9 @@ internal sealed class StepTotals : IReadOnlyStepTotals
 				break;
 			case EditorMultipliersEvent:
 				MultipliersCount++;
+				break;
+			case EditorTickCountEvent:
+				TickCountEventCount++;
 				break;
 		}
 
@@ -298,6 +308,9 @@ internal sealed class StepTotals : IReadOnlyStepTotals
 				break;
 			case EditorMultipliersEvent:
 				MultipliersCount--;
+				break;
+			case EditorTickCountEvent:
+				TickCountEventCount--;
 				break;
 		}
 
@@ -474,6 +487,11 @@ internal sealed class StepTotals : IReadOnlyStepTotals
 	public int GetMultipliersCount()
 	{
 		return MultipliersCount;
+	}
+
+	public int GetTickCountEventCount()
+	{
+		return TickCountEventCount;
 	}
 
 	public int GetNumPlayersWithNotes()
