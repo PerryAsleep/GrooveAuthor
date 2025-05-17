@@ -144,6 +144,16 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	private EventTree Attacks;
 
 	/// <summary>
+	/// Tree of all EditorTickCountEvents.
+	/// </summary>
+	private EventTree TickCounts;
+
+	/// <summary>
+	/// Tree of all EditorMultiplierEvents.
+	/// </summary>
+	private EventTree Multipliers;
+
+	/// <summary>
 	/// Tree of all EditorRateAlteringEvents.
 	/// </summary>
 	private RateAlteringEventTree RateAlteringEvents;
@@ -653,6 +663,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		var miscEvents = new EventTree(this);
 		var labels = new EventTree(this);
 		var attacks = new EventTree(this);
+		var tickCounts = new EventTree(this);
+		var multipliers = new EventTree(this);
 		var maxPlayer = 1;
 
 		var pendingHoldStarts = new LaneHoldStartNote[NumInputs];
@@ -777,6 +789,18 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 					attacks.Insert(editorEvent);
 					break;
 				}
+				case TickCount:
+				{
+					editorEvent = EditorEvent.CreateEvent(EventConfig.CreateConfig(this, chartEvent, false));
+					tickCounts.Insert(editorEvent);
+					break;
+				}
+				case Fumen.ChartDefinition.Multipliers:
+				{
+					editorEvent = EditorEvent.CreateEvent(EventConfig.CreateConfig(this, chartEvent, false));
+					multipliers.Insert(editorEvent);
+					break;
+				}
 				default:
 				{
 					editorEvent = EditorEvent.CreateEvent(EventConfig.CreateConfig(this, chartEvent, false));
@@ -814,6 +838,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		MiscEvents = miscEvents;
 		Labels = labels;
 		Attacks = attacks;
+		TickCounts = tickCounts;
+		Multipliers = multipliers;
 
 		if (maxPlayer + 1 > MaxPlayers)
 			MaxPlayers = maxPlayer + 1;
@@ -852,6 +878,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		var miscEvents = new EventTree(this);
 		var labels = new EventTree(this);
 		var attacks = new EventTree(this);
+		var tickCounts = new EventTree(this);
+		var multipliers = new EventTree(this);
 
 		foreach (var editorEvent in events)
 		{
@@ -869,6 +897,10 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 				labels.Insert(editorEvent);
 			if (editorEvent is EditorAttackEvent)
 				attacks.Insert(editorEvent);
+			if (editorEvent is EditorTickCountEvent)
+				tickCounts.Insert(editorEvent);
+			if (editorEvent is EditorMultipliersEvent)
+				multipliers.Insert(editorEvent);
 			editorEvent.OnAddedToChart();
 		}
 
@@ -879,6 +911,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		MiscEvents = miscEvents;
 		Labels = labels;
 		Attacks = attacks;
+		TickCounts = tickCounts;
+		Multipliers = multipliers;
 
 		RefreshIntervals();
 		RefreshRateAlteringEvents();
@@ -970,6 +1004,16 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	public IReadOnlyEventTree GetAttacks()
 	{
 		return Attacks;
+	}
+
+	public IReadOnlyEventTree GetTickCounts()
+	{
+		return TickCounts;
+	}
+
+	public IReadOnlyEventTree GetMultipliers()
+	{
+		return Multipliers;
 	}
 
 	public IReadOnlyRateAlteringEventTree GetRateAlteringEvents()
@@ -2562,6 +2606,18 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			Assert(deleted);
 		}
 
+		if (editorEvent is EditorTickCountEvent)
+		{
+			deleted = TickCounts.Delete(editorEvent);
+			Assert(deleted);
+		}
+
+		if (editorEvent is EditorMultipliersEvent)
+		{
+			deleted = Multipliers.Delete(editorEvent);
+			Assert(deleted);
+		}
+
 		var rowDependentDataDirty = false;
 		switch (editorEvent)
 		{
@@ -2698,6 +2754,10 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			Labels.Insert(editorEvent);
 		if (editorEvent is EditorAttackEvent)
 			Attacks.Insert(editorEvent);
+		if (editorEvent is EditorTickCountEvent)
+			TickCounts.Insert(editorEvent);
+		if (editorEvent is EditorMultipliersEvent)
+			Multipliers.Insert(editorEvent);
 
 		switch (editorEvent)
 		{
@@ -3264,40 +3324,35 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	#region Saving
 
 	/// <summary>
-	/// Returns whether or not this chart is compatible with the given file format.
+	/// Performs a series of checks prior to saving to ensure this chart has no incompatibilities with
+	/// the given SaveParameters. Will log warnings and errors based on any incompatibilities. This
+	/// function only considers the current chart in isolation.
 	/// </summary>
-	/// <param name="format">FileFormatType to check.</param>
 	/// <param name="saveParameters">SaveParameters used for saving.</param>
-	/// <param name="logIncompatibilities">If true, log incompatibilities as errors.</param>
-	/// <returns>True if this chart is compatible with the given format and false otherwise.</returns>
-	public bool IsCompatibleWithFormat(FileFormatType format, SaveParameters saveParameters, bool logIncompatibilities)
+	/// <returns>True if this chart can be saved and false otherwise.</returns>
+	public bool PerformPreSaveChecks(SaveParameters saveParameters)
 	{
-		var compatible = true;
+		var canBeSaved = true;
 
 		// Perform format-agnostic checks.
 		if (saveParameters.OmitCustomSaveData)
 		{
 			if (Patterns.GetCount() > 0)
 			{
-				if (logIncompatibilities)
-					LogWarn(
-						"Chart has Patterns. These will be deleted when saving because \"Remove Custom Save Data\" is selected.");
+				LogWarn("Chart has Patterns. These will be deleted when saving because \"Remove Custom Save Data\" is selected.");
 			}
 		}
 
+		// Step F2 routine checks.
 		if (saveParameters.UseStepF2ForPumpRoutine && ChartType == ChartType.pump_routine)
 		{
 			// Player count.
 			if (MaxPlayers > StepF2MaxPlayers)
 			{
-				if (logIncompatibilities)
-				{
-					LogError(
-						$"Pump Routine Chart has {MaxPlayers} Players but StepF2 only supports {StepF2MaxPlayers} Players and \"Use StepF2 Format for Pump Routine\" is selected."
-						+ " Remove steps for unsupported players and reduce the Players in the Chart Properties window, or save without \"Use StepF2 Format for Pump Routine\".");
-				}
-
-				compatible = false;
+				LogError(
+					$"Pump Routine Chart has {MaxPlayers} Players but StepF2 only supports {StepF2MaxPlayers} Players and \"Use StepF2 Format for Pump Routine\" is selected."
+					+ " Remove steps for unsupported players and reduce the Players in the Chart Properties window, or save without \"Use StepF2 Format for Pump Routine\".");
+				canBeSaved = false;
 			}
 
 			// Rolls, lifts, and per-player mines.
@@ -3317,26 +3372,18 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 			if (hasRolls)
 			{
-				if (logIncompatibilities)
-				{
-					LogError(
-						"Pump Routine Chart has Rolls but StepF2 does not support Rolls and \"Use StepF2 Format for Pump Routine\" is selected."
-						+ " Remove all Rolls or save without \"Use StepF2 Format for Pump Routine\".");
-				}
-
-				compatible = false;
+				LogError(
+					"Pump Routine Chart has Rolls but StepF2 does not support Rolls and \"Use StepF2 Format for Pump Routine\" is selected."
+					+ " Remove all Rolls or save without \"Use StepF2 Format for Pump Routine\".");
+				canBeSaved = false;
 			}
 
 			if (hasLifts)
 			{
-				if (logIncompatibilities)
-				{
-					LogError(
-						"Pump Routine Chart has Lifts but StepF2 does not support Lifts and \"Use StepF2 Format for Pump Routine\" is selected."
-						+ " Remove all Lifts or save without \"Use StepF2 Format for Pump Routine\".");
-				}
-
-				compatible = false;
+				LogError(
+					"Pump Routine Chart has Lifts but StepF2 does not support Lifts and \"Use StepF2 Format for Pump Routine\" is selected."
+					+ " Remove all Lifts or save without \"Use StepF2 Format for Pump Routine\".");
+				canBeSaved = false;
 			}
 
 			if (hasNonP1Mines)
@@ -3348,86 +3395,87 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		}
 
 		// Perform format-specific checks.
-		switch (format)
+		switch (saveParameters.FileType)
 		{
 			case FileFormatType.SM:
 			{
-				// Warps affect timing and their presence would result in a busted sm chart.
+				// Warps affect timing and their presence would result in an incorrectly timed sm chart.
 				if (Warps.GetCount() > 0)
 				{
-					if (logIncompatibilities)
-						LogError(
-							$"Chart has Warps. Stepmania ignores Warps in {FileFormatType.SM} files. Consider using negative Stops.");
-					compatible = false;
+					LogError(
+						$"Chart has Warps. Stepmania ignores Warps in {FileFormatType.SM} files. Consider using negative Stops.");
+					canBeSaved = false;
 				}
 
-				// Warn on other events which aren't supported but can be ignored.
-				if (logIncompatibilities)
+				// Fake Segments aren't supported but can be ignored.
+				if (Fakes.GetCount() > 0)
 				{
-					// Fake Segments
-					if (Fakes.GetCount() > 0)
-					{
-						LogWarn($"Chart has Fake Regions. Fake Regions are not compatible with {FileFormatType.SM} files.");
-					}
+					LogWarn($"Chart has Fake Regions. Fake Regions are not compatible with {FileFormatType.SM} files.");
+				}
 
-					// Multipliers.
-					if (StepTotals.GetMultipliersCount() > 0)
+				// Labels aren't supported but can be ignored.
+				if (Labels.GetCount() > 0)
+				{
+					LogWarn($"Chart has Labels. Labels are not compatible with {FileFormatType.SM} files.");
+				}
+
+				// Multipliers aren't supported but can be ignored.
+				if (StepTotals.GetMultipliersCount() > 0)
+				{
+					var hasIncompatibleMultipliers = true;
+					if (StepTotals.GetMultipliersCount() == 1)
 					{
-						var hasIncompatibleMultipliers = true;
-						if (StepTotals.GetMultipliersCount() == 1)
+						foreach (var editorEvent in EditorEvents)
 						{
-							foreach (var editorEvent in EditorEvents)
+							if (editorEvent.GetRow() > 0)
+								break;
+							if (editorEvent is EditorMultipliersEvent m)
 							{
-								if (editorEvent.GetRow() > 0)
-									break;
-								if (editorEvent is EditorMultipliersEvent m)
+								if (m.GetRow() == 0 && m.GetHitMultiplier() == DefaultHitMultiplier &&
+								    m.GetHitMultiplier() == DefaultMissMultiplier)
 								{
-									if (m.GetRow() == 0 && m.GetHitMultiplier() == DefaultHitMultiplier &&
-									    m.GetHitMultiplier() == DefaultMissMultiplier)
-									{
-										hasIncompatibleMultipliers = false;
-										break;
-									}
+									hasIncompatibleMultipliers = false;
+									break;
 								}
 							}
 						}
-
-						if (hasIncompatibleMultipliers)
-						{
-							LogWarn(
-								$"Chart has Combo Multipliers. Combo Multipliers are not compatible with {FileFormatType.SM} files.");
-						}
 					}
 
-					// Scroll rate events.
-					foreach (var rateAlteringEvent in RateAlteringEvents)
+					if (hasIncompatibleMultipliers)
 					{
-						if (rateAlteringEvent is EditorScrollRateEvent sre)
-						{
-							// Ignore the default scroll rate event.
-							if (sre.GetRow() == 0 && sre.GetScrollRate().DoubleEquals(DefaultScrollRate))
-							{
-								continue;
-							}
-
-							LogWarn($"Chart has Scroll Rates. Scroll Rates are not compatible with {FileFormatType.SM} files.");
-							break;
-						}
+						LogWarn(
+							$"Chart has Combo Multipliers. Combo Multipliers are not compatible with {FileFormatType.SM} files.");
 					}
+				}
 
-					// Interpolated scroll rate events.
-					foreach (var irae in InterpolatedScrollRateEvents)
+				// Scroll rate events aren't supported but can be ignored.
+				foreach (var rateAlteringEvent in RateAlteringEvents)
+				{
+					if (rateAlteringEvent is EditorScrollRateEvent sre)
 					{
-						// Ignore the default interpolated scroll rate event.
-						if (irae.GetRow() == 0 && irae.GetRate().DoubleEquals(DefaultScrollRate) && irae.IsInstant())
+						// Ignore the default scroll rate event.
+						if (sre.GetRow() == 0 && sre.GetScrollRate().DoubleEquals(DefaultScrollRate))
 						{
 							continue;
 						}
 
-						LogWarn(
-							$"Chart has Interpolated Scroll Rates. Interpolated Scroll Rates are not compatible with {FileFormatType.SM} files.");
+						LogWarn($"Chart has Scroll Rates. Scroll Rates are not compatible with {FileFormatType.SM} files.");
 						break;
 					}
+				}
+
+				// Interpolated scroll rate events aren't supported but can be ignored.
+				foreach (var irae in InterpolatedScrollRateEvents)
+				{
+					// Ignore the default interpolated scroll rate event.
+					if (irae.GetRow() == 0 && irae.GetRate().DoubleEquals(DefaultScrollRate) && irae.IsInstant())
+					{
+						continue;
+					}
+
+					LogWarn(
+						$"Chart has Interpolated Scroll Rates. Interpolated Scroll Rates are not compatible with {FileFormatType.SM} files.");
+					break;
 				}
 
 				break;
@@ -3439,13 +3487,9 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 				{
 					if (stop.GetStopLengthSeconds() < 0.0f)
 					{
-						if (logIncompatibilities)
-						{
-							LogError(
-								$"Chart has negative Stops. Stepmania ignores negative Stops in {FileFormatType.SSC} files. Consider using Warps.");
-						}
-
-						compatible = false;
+						LogError(
+							$"Chart has negative Stops. Stepmania ignores negative Stops in {FileFormatType.SSC} files. Consider using Warps.");
+						canBeSaved = false;
 						break;
 					}
 				}
@@ -3454,20 +3498,22 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			}
 		}
 
-		return compatible;
+		return canBeSaved;
 	}
 
 	/// <summary>
-	/// Legacy sm files save timing data per song, not per chart.
-	/// For a song's charts to be able to be saved in an sm file, their timing
-	/// events must be identical.
+	/// Returns whether this EditorChart's timing and scroll events match those from the given EditorChart.
+	/// Logs warnings on any mismatches.
+	/// Specifically, this function checks:
+	///  - Music offset
+	///  - Display tempo
+	///  - Stops, Delays, Scroll Rates, Interpolated Scroll Rates, Tempos, Time Signatures, Warps
 	/// </summary>
 	/// <param name="other">EditorChart to compare this EditorChart to.</param>
-	/// <param name="logDifferences">If true, log differences as warnings.</param>
 	/// <returns>
-	/// True if this EditorChart's timing events match those from the given other EditorChart and false otherwise.
+	/// True if this EditorChart's timing and scroll events match those from the given other EditorChart and false otherwise.
 	/// </returns>
-	public bool DoSmTimingEventsMatch(EditorChart other, bool logDifferences)
+	public bool DoTimingAndScrollEventsMatch(EditorChart other)
 	{
 		if (other == null)
 			return false;
@@ -3479,24 +3525,16 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		var otherMusicOffset = other.GetMusicOffset();
 		if (!musicOffset.DoubleEquals(otherMusicOffset))
 		{
-			if (logDifferences)
-			{
-				LogWarn(
-					$"Music offset ({musicOffset}) does not match offset ({otherMusicOffset}) from {other.GetDescriptiveName()}.");
-			}
-
+			LogWarn(
+				$"Music offset ({musicOffset}) does not match offset ({otherMusicOffset}) from {other.GetDescriptiveName()}.");
 			match = false;
 		}
 
 		// Charts must have the same display bpm.
 		if (!DisplayTempo.Matches(other.DisplayTempo))
 		{
-			if (logDifferences)
-			{
-				LogWarn(
-					$"Display tempo ({DisplayTempo}) does not match display tempo ({other.DisplayTempo}) from {other.GetDescriptiveName()}.");
-			}
-
+			LogWarn(
+				$"Display tempo ({DisplayTempo}) does not match display tempo ({other.DisplayTempo}) from {other.GetDescriptiveName()}.");
 			match = false;
 		}
 
@@ -3525,7 +3563,31 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			}
 		}
 
-		if (!rateAlteringEventsMatch && logDifferences)
+		// All interpolated scroll rate events between charts must match.
+		var numInterpolatedScrollRateEvents = InterpolatedScrollRateEvents.GetCount();
+		if (numInterpolatedScrollRateEvents != other.InterpolatedScrollRateEvents.GetCount())
+		{
+			rateAlteringEventsMatch = false;
+			match = false;
+		}
+
+		if (match && numInterpolatedScrollRateEvents > 0)
+		{
+			var enumerator = InterpolatedScrollRateEvents.First();
+			var otherEnumerator = other.InterpolatedScrollRateEvents.First();
+			while (enumerator.MoveNext() && otherEnumerator.MoveNext())
+			{
+				var chartEvent = enumerator.Current;
+				var otherChartEvent = otherEnumerator.Current;
+				if (!chartEvent!.Matches(otherChartEvent))
+				{
+					rateAlteringEventsMatch = false;
+					match = false;
+				}
+			}
+		}
+
+		if (!rateAlteringEventsMatch)
 		{
 			LogWarn($"Timing and scroll events do not match events from {other.GetDescriptiveName()}.");
 		}
@@ -3534,24 +3596,18 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	}
 
 	/// <summary>
-	/// Legacy sm files save timing data per song, not per chart.
-	/// For a song's charts to be able to be saved in an sm file, their attacks
-	/// must be identical.
+	/// Returns whether this EditorChart's Attacks match those from the given EditorChart.
+	/// Logs warnings if they do not match.
 	/// </summary>
 	/// <param name="other">EditorChart to compare this EditorChart to.</param>
-	/// <param name="logDifferences">If true, log differences as warnings.</param>
 	/// <returns>
 	/// True if this EditorChart's attacks match those from the given other EditorChart and false otherwise.
 	/// </returns>
-	public bool DoAttacksMatch(EditorChart other, bool logDifferences)
+	public bool DoAttacksMatch(EditorChart other)
 	{
 		if ((Attacks?.GetCount() ?? 0) != (other.Attacks?.GetCount() ?? 0))
 		{
-			if (logDifferences)
-			{
-				LogWarn($"Attacks do not match attacks from {other.GetDescriptiveName()}.");
-			}
-
+			LogWarn($"Attacks do not match attacks from {other.GetDescriptiveName()}.");
 			return false;
 		}
 
@@ -3567,6 +3623,146 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 			if (!attack!.Matches(otherAttack))
 			{
 				LogWarn($"Attacks do not match attacks from {other.GetDescriptiveName()}.");
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	/// <summary>
+	/// Returns whether this EditorChart's TickCounts match those from the given EditorChart.
+	/// Logs warnings if they do not match.
+	/// </summary>
+	/// <param name="other">EditorChart to compare this EditorChart to.</param>
+	/// <returns>
+	/// True if this EditorChart's tick counts match those from the given other EditorChart and false otherwise.
+	/// </returns>
+	public bool DoTickCountsMatch(EditorChart other)
+	{
+		if ((TickCounts?.GetCount() ?? 0) != (other.TickCounts?.GetCount() ?? 0))
+		{
+			LogWarn($"Tick counts do not match tick counts from {other.GetDescriptiveName()}.");
+			return false;
+		}
+
+		if (TickCounts == null || TickCounts.GetCount() == 0)
+			return true;
+
+		using var enumerator = TickCounts.GetEnumerator();
+		using var otherEnumerator = other.TickCounts!.GetEnumerator();
+		while (enumerator.MoveNext() && otherEnumerator.MoveNext())
+		{
+			var tickCount = (EditorTickCountEvent)enumerator.Current;
+			var otherTickCount = (EditorTickCountEvent)otherEnumerator.Current;
+			if (!tickCount!.Matches(otherTickCount))
+			{
+				LogWarn($"Tick counts do not match tick counts from {other.GetDescriptiveName()}.");
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	/// <summary>
+	/// Returns whether this EditorChart's Labels match those from the given EditorChart.
+	/// Logs warnings if they do not match.
+	/// </summary>
+	/// <param name="other">EditorChart to compare this EditorChart to.</param>
+	/// <returns>
+	/// True if this EditorChart's labels match those from the given other EditorChart and false otherwise.
+	/// </returns>
+	public bool DoLabelsMatch(EditorChart other)
+	{
+		if ((Labels?.GetCount() ?? 0) != (other.Labels?.GetCount() ?? 0))
+		{
+			LogWarn($"Labels do not match labels from {other.GetDescriptiveName()}.");
+			return false;
+		}
+
+		if (Labels == null || Labels.GetCount() == 0)
+			return true;
+
+		using var enumerator = Labels.GetEnumerator();
+		using var otherEnumerator = other.Labels!.GetEnumerator();
+		while (enumerator.MoveNext() && otherEnumerator.MoveNext())
+		{
+			var label = (EditorLabelEvent)enumerator.Current;
+			var otherLabel = (EditorLabelEvent)otherEnumerator.Current;
+			if (!label!.Matches(otherLabel))
+			{
+				LogWarn($"Labels do not match labels from {other.GetDescriptiveName()}.");
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	/// <summary>
+	/// Returns whether this EditorChart's Fake segments match those from the given EditorChart.
+	/// Logs warnings if they do not match.
+	/// </summary>
+	/// <param name="other">EditorChart to compare this EditorChart to.</param>
+	/// <returns>
+	/// True if this EditorChart's fake segments match those from the given other EditorChart and false otherwise.
+	/// </returns>
+	public bool DoFakeSegmentsMatch(EditorChart other)
+	{
+		if ((Fakes?.GetCount() ?? 0) != (other.Fakes?.GetCount() ?? 0))
+		{
+			LogWarn($"Fake segments do not match fake segments from {other.GetDescriptiveName()}.");
+			return false;
+		}
+
+		if (Fakes == null || Fakes.GetCount() == 0)
+			return true;
+
+		using var enumerator = Fakes.GetEnumerator();
+		using var otherEnumerator = other.Fakes!.GetEnumerator();
+		while (enumerator.MoveNext() && otherEnumerator.MoveNext())
+		{
+			var fakeSegment = enumerator.Current;
+			var otherFakeSegment = otherEnumerator.Current;
+			if (!fakeSegment!.Matches(otherFakeSegment))
+			{
+				LogWarn($"Fake segments do not match fake segments from {other.GetDescriptiveName()}.");
+				return false;
+			}
+		}
+
+		return true;
+	}
+
+	/// <summary>
+	/// Returns whether this EditorChart's multipliers match those from the given EditorChart.
+	/// Logs warnings if they do not match.
+	/// </summary>
+	/// <param name="other">EditorChart to compare this EditorChart to.</param>
+	/// <returns>
+	/// True if this EditorChart's multipliers match those from the given other EditorChart and false otherwise.
+	/// </returns>
+	public bool DoMultipliersMatch(EditorChart other)
+	{
+		if ((Multipliers?.GetCount() ?? 0) != (other.Multipliers?.GetCount() ?? 0))
+		{
+			LogWarn($"Multipliers do not match multipliers from {other.GetDescriptiveName()}.");
+			return false;
+		}
+
+		if (Multipliers == null || Multipliers.GetCount() == 0)
+			return true;
+
+		using var enumerator = Multipliers.GetEnumerator();
+		using var otherEnumerator = other.Multipliers!.GetEnumerator();
+		while (enumerator.MoveNext() && otherEnumerator.MoveNext())
+		{
+			var multipliers = (EditorMultipliersEvent)enumerator.Current;
+			var otherMultipliers = (EditorMultipliersEvent)otherEnumerator.Current;
+			if (!multipliers!.Matches(otherMultipliers))
+			{
+				LogWarn($"Multipliers do not match multipliers from {other.GetDescriptiveName()}.");
 				return false;
 			}
 		}

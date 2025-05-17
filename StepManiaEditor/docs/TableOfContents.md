@@ -10,6 +10,7 @@
 
  - [Key Bindings](Keybinds.md)
  - [Chart Navigation](ChartNavigation.md)
+ - [Saving Simfiles](SavingSimfiles.md)
 
 ## Sync and Timing
 

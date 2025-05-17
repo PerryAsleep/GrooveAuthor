@@ -20,6 +20,7 @@ In StepMania 5 the `ssc` format was introduced which addresses this problem and 
 - Combo Multipliers (`#COMBOS`)
 - Ticks Count (`#TICKCOUNTS`)
 - Label (`#LABELS`)
+- Attacks (`#ATTACKS`)
 
 By keeping events always on the charts rather than the song, there is no confusion about what is affected by edits.
 
@@ -46,6 +47,7 @@ The groups in this context menu encompass the following events.
 | Multipliers              | X              |              |              |
 | Tick Counts              | X              |              |              |
 | Label                    | X              |              |              |
+| Attack                   | X              |              |              |
 | Pattern                  |                |              |              |
 
 Additionally, the `Copy Events` window accessible from the menu bar via `Chart` > `Advanced Event Copy...` will let you specify exactly which events you would like to copy.
@@ -60,38 +62,8 @@ To work around this issue `GrooveAuthor` always assigns one chart as the song's 
 
 ![Timing Chart](timing-timing-chart.png "The Timing Chart's timing data is applied to the song when saving.")
 
-Buttons to `Apply Timing` and `Apply Timing + Scroll` are present by the `Timing Chart` to quickly apply its timing events to all other charts.
+The `Apply...` button next to the `Timing Chart` presents a number of options for quickly applying timing, scroll, and other events from the `Timing Chart` to all other charts.
 
-## Saving `sm` Files
+## Saving Simfiles
 
-If your setup is locked to an older version of StepMania that does not have support for `ssc` files then you may want to save in the legacy `sm` format. If your setup does not strictly require use of the `sm` format, then you should use the `ssc` format.
-
-When saving to the legacy `sm` format which requires only one set of timing events that live on the song, the `Timing Chart`'s events will be used for the song.
-
-### `sm` Save Errors
-
-If any chart contains events which aren't compatible with the `sm` format, *and those events would produce a chart where note timing would be affected by their absence*, then an error is displayed and the song will not be saved unless those events are removed. `GrooveAuthor` treats the following events as incompatible and will log errors when they are present:
-- Warps (`#WARPS`)
-
-Warps can be converted to negative stops for compatibility with the `sm` format by selecting `Edit` > `Convert All` > `Warps to Negative Stops`.
-
-Additionally, if any chart has timing data which differs from the `Timing Chart` then an error is displayed and the song will not be saved. This behavior can be overridden by unchecking `Require Identical Timing in SM Files` under `Advanced Save Options`.
-
-### `sm` Save Warnings
-
-If `Require Identical Timing in SM Files` is disabled, then instead of an error being logged a warning will be logged when any chart has timing data which differs from the `Timing Chart` and the song will still save using the `Timing Chart`'s data.
-
-Any events which are not supported in the `sm` format but do not affect timing will also only be treated as warnings and they will be omitted when saving. The events supported in `sm` files depends on the version of StepMania. `GrooveAuthor` treats the following events as incompatible and will log warnings when they are present:
-- Scroll Rates (`#SCROLLS`)
-- Interpolated Scroll Rates (`#SPEEDS`)
-- Fake Regions (`#FAKES`)
-- Combo Multipliers (`#COMBOS`)
-
-An exception is made for events which `GrooveAuthor` adds to new songs by default. These include:
-- 1x Scroll Rate at row 0.
-- 1x/1x Combo Multipliers at row 0.
-- 1x/0rows Interpolated Scroll Rate at row 0.
-
-## Saving `ssc` Files
-
-Stepmania will ignore negative stops when they are present in `ssc` files. `GrooveAuthor` treats the presence of negative stops in `ssc` files as an error when saving. Negative stops can be converted to warps for compatibility with the `ssc` format by selecting `Edit` > `Convert All` > `Negative Stops to Warps`.
+See [Saving Simfiles](SavingSimfiles.md) for details on simfile formats and how `GrooveAuthor` handles saving timing data.
