@@ -1,4 +1,5 @@
-﻿using Fumen.Converters;
+﻿using System;
+using Fumen.Converters;
 using ImGuiNET;
 using static StepManiaEditor.ImGuiUtils;
 
@@ -11,6 +12,8 @@ internal sealed class UIAttackEvent : UIWindow
 {
 	private static readonly int TitleColumnWidth = UiScaled(80);
 	private static readonly int DefaultWidth = UiScaled(460);
+	private static readonly float ButtonSetWidth = UiScaled(108);
+	private static readonly float ButtonGoWidth = UiScaled(20);
 
 	private Editor Editor;
 
@@ -98,10 +101,12 @@ internal sealed class UIAttackEvent : UIWindow
 						"Speed at which the modifier is applied, represented as a multiplier. 1.0x is the default speed of 1 second.",
 						0.01f, "%.6fx");
 
-					ImGuiLayoutUtils.DrawRowDragDouble(true, "Length", mod,
+					ImGuiLayoutUtils.DrawRowDragDoubleWithTwoButtons(true, "Length", mod,
 						nameof(EditorAttackEvent.EditorModifier.LengthSeconds), true,
+						() => SetModLengthFromCurrentTime(attackEvent, mod), "Use Current Time", ButtonSetWidth,
+						() => JumpToModEnd(attackEvent, mod), "Go", ButtonGoWidth,
 						"Length of the modifier.",
-						0.01f, "%.6fs");
+						0.01f, "%.6fs", 0.0);
 
 					if (ImGuiLayoutUtils.DrawRowButton("Delete", "Delete Modifier", "Delete this Modifier."))
 					{
@@ -117,5 +122,20 @@ internal sealed class UIAttackEvent : UIWindow
 		}
 
 		ImGui.End();
+	}
+
+	private void SetModLengthFromCurrentTime(EditorAttackEvent attack, EditorAttackEvent.EditorModifier mod)
+	{
+		var currentTime = Math.Max(0.0, Editor.GetPosition().ChartTime);
+		var startTime = attack.GetChartTime();
+		var modLength = Math.Max(0.0, currentTime - startTime);
+		ActionQueue.Instance.Do(
+			new ActionSetObjectFieldOrPropertyValue<double>(mod, nameof(EditorAttackEvent.EditorModifier.LengthSeconds),
+				modLength, true));
+	}
+
+	private void JumpToModEnd(EditorAttackEvent attack, EditorAttackEvent.EditorModifier mod)
+	{
+		Editor.SetChartTime(attack.GetChartTime() + mod.LengthSeconds);
 	}
 }
