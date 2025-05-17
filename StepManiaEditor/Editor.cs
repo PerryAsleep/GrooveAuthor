@@ -722,6 +722,12 @@ public sealed class Editor :
 		AddKeyCommand(routine, "Convert Selected Notes to Player 2", nameof(PreferencesKeyBinds.ConvertSelectedNotesToPlayer2), () => { UIEditEvents.ConvertSelectedNotesToPlayer(1); });
 		AddKeyCommand(routine, "Convert Selected Notes to Player 3", nameof(PreferencesKeyBinds.ConvertSelectedNotesToPlayer3), () => { UIEditEvents.ConvertSelectedNotesToPlayer(2); });
 		AddKeyCommand(routine, "Convert Selected Notes to Player 4", nameof(PreferencesKeyBinds.ConvertSelectedNotesToPlayer4), () => { UIEditEvents.ConvertSelectedNotesToPlayer(3); });
+		AddKeyCommand(routine, "Swap Selected Player 1 and Player 2 Notes", nameof(PreferencesKeyBinds.SwapSelectedPlayer1And2Notes), () => { UIEditEvents.SwapSelectedNotesBetweenPlayers(0, 1); });
+		AddKeyCommand(routine, "Swap Selected Player 1 and Player 3 Notes", nameof(PreferencesKeyBinds.SwapSelectedPlayer1And3Notes), () => { UIEditEvents.SwapSelectedNotesBetweenPlayers(0, 2); });
+		AddKeyCommand(routine, "Swap Selected Player 1 and Player 4 Notes", nameof(PreferencesKeyBinds.SwapSelectedPlayer1And4Notes), () => { UIEditEvents.SwapSelectedNotesBetweenPlayers(0, 3); });
+		AddKeyCommand(routine, "Swap Selected Player 2 and Player 3 Notes", nameof(PreferencesKeyBinds.SwapSelectedPlayer2And3Notes), () => { UIEditEvents.SwapSelectedNotesBetweenPlayers(1, 2); });
+		AddKeyCommand(routine, "Swap Selected Player 2 and Player 4 Notes", nameof(PreferencesKeyBinds.SwapSelectedPlayer2And4Notes), () => { UIEditEvents.SwapSelectedNotesBetweenPlayers(1, 3); });
+		AddKeyCommand(routine, "Swap Selected Player 3 and Player 4 Notes", nameof(PreferencesKeyBinds.SwapSelectedPlayer3And4Notes), () => { UIEditEvents.SwapSelectedNotesBetweenPlayers(2, 3); });
 
 		const string patterns = "Patterns";
 		AddKeyCommand(patterns, "Move To Next Pattern", nameof(PreferencesKeyBinds.MoveToNextPattern), OnMoveToNextPattern, true);
@@ -760,6 +766,18 @@ public sealed class Editor :
 		AddKeyCommand(convertSelection, "Rolls to Mines", nameof(PreferencesKeyBinds.ConvertSelectedRollsToMines), UIEditEvents.ConvertSelectedRollsToMines);
 		AddKeyCommand(convertSelection, "Warps to Negative Stops", nameof(PreferencesKeyBinds.ConvertSelectedWarpsToNegativeStops), UIEditEvents.ConvertSelectedWarpsToNegativeStops);
 		AddKeyCommand(convertSelection, "Negative Stops to Warps", nameof(PreferencesKeyBinds.ConvertSelectedNegativeStopsToWarps), UIEditEvents.ConvertSelectedNegativeStopsToWarps);
+
+		const string swapSelection = "Swap Selection";
+		AddKeyCommand(swapSelection, "Taps and Mines", nameof(PreferencesKeyBinds.SwapSelectedTapsAndMines), UIEditEvents.SwapSelectedTapsAndMines);
+		AddKeyCommand(swapSelection, "Taps and Fakes", nameof(PreferencesKeyBinds.SwapSelectedTapsAndFakes), UIEditEvents.SwapSelectedTapsAndFakes);
+		AddKeyCommand(swapSelection, "Taps and Lifts", nameof(PreferencesKeyBinds.SwapSelectedTapsAndLifts), UIEditEvents.SwapSelectedTapsAndLifts);
+		AddKeyCommand(swapSelection, "Mines and Fakes", nameof(PreferencesKeyBinds.SwapSelectedMinesAndFakes), UIEditEvents.SwapSelectedMinesAndFakes);
+		AddKeyCommand(swapSelection, "Mines and Lifts", nameof(PreferencesKeyBinds.SwapSelectedMinesAndLifts), UIEditEvents.SwapSelectedMinesAndLifts);
+		AddKeyCommand(swapSelection, "Holds and Rolls", nameof(PreferencesKeyBinds.SwapSelectedHoldsAndRolls), UIEditEvents.SwapSelectedHoldsAndRolls);
+		AddKeyCommand(swapSelection, "Holds and Taps", nameof(PreferencesKeyBinds.SwapSelectedHoldsAndTaps), UIEditEvents.SwapSelectedHoldsAndTaps);
+		AddKeyCommand(swapSelection, "Holds and Mines", nameof(PreferencesKeyBinds.SwapSelectedHoldsAndMines), UIEditEvents.SwapSelectedHoldsAndMines);
+		AddKeyCommand(swapSelection, "Rolls and Taps", nameof(PreferencesKeyBinds.SwapSelectedRollsAndTaps), UIEditEvents.SwapSelectedRollsAndTaps);
+		AddKeyCommand(swapSelection, "Rolls and Mines", nameof(PreferencesKeyBinds.SwapSelectedRollsAndMines), UIEditEvents.SwapSelectedRollsAndMines);
 
 		const string eventEntry = "Event Entry";
 		AddKeyCommand(eventEntry, "Add Tempo", nameof(PreferencesKeyBinds.AddEventTempo), UIEditEvents.AddTempoEvent);
@@ -3779,12 +3797,14 @@ public sealed class Editor :
 				if (!hasSelectedEvents)
 					PushDisabled();
 				UIEditEvents.DrawConvertSelectedMenu(selectedEvents);
+				UIEditEvents.DrawSwapSelectedMenu(selectedEvents);
 				UIEditEvents.DrawShiftSelectedMenu(selectedEvents);
 				if (!hasSelectedEvents)
 					PopDisabled();
 
 				ImGui.Separator();
 				UIEditEvents.DrawConvertAllMenu();
+				UIEditEvents.DrawSwapAllMenu();
 				UIEditEvents.DrawShiftAllMenu();
 				ImGui.Separator();
 				if (ImGui.MenuItem("Copy", UIControls.GetCommandString(keyBinds.Copy)))

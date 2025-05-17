@@ -215,6 +215,12 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 	private static readonly List<Keys[]> DefaultConvertSelectedNotesToPlayer2        = [[]];
 	private static readonly List<Keys[]> DefaultConvertSelectedNotesToPlayer3        = [[]];
 	private static readonly List<Keys[]> DefaultConvertSelectedNotesToPlayer4        = [[]];
+	private static readonly List<Keys[]> DefaultSwapSelectedPlayer1And2Notes         = [[]];
+	private static readonly List<Keys[]> DefaultSwapSelectedPlayer1And3Notes         = [[]];
+	private static readonly List<Keys[]> DefaultSwapSelectedPlayer1And4Notes         = [[]];
+	private static readonly List<Keys[]> DefaultSwapSelectedPlayer2And3Notes         = [[]];
+	private static readonly List<Keys[]> DefaultSwapSelectedPlayer2And4Notes         = [[]];
+	private static readonly List<Keys[]> DefaultSwapSelectedPlayer3And4Notes         = [[]];
 	private static readonly List<Keys[]> DefaultOpenPreviousChart                    = [[Ctrl, Keys.LeftAlt, Keys.Left]];
 	private static readonly List<Keys[]> DefaultOpenNextChart                        = [[Ctrl, Keys.LeftAlt, Keys.Right]];
 	private static readonly List<Keys[]> DefaultCloseFocusedChart                    = [[Ctrl, Keys.F4], [Ctrl, Keys.W]];
@@ -303,6 +309,16 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 	private static readonly List<Keys[]> DefaultConvertSelectedRollsToMines          = [[]];
 	private static readonly List<Keys[]> DefaultConvertSelectedWarpsToNegativeStops  = [[]];
 	private static readonly List<Keys[]> DefaultConvertSelectedNegativeStopsToWarps  = [[]];
+	private static readonly List<Keys[]> DefaultSwapSelectedTapsAndMines             = [[]];
+	private static readonly List<Keys[]> DefaultSwapSelectedTapsAndFakes             = [[]];
+	private static readonly List<Keys[]> DefaultSwapSelectedTapsAndLifts             = [[]];
+	private static readonly List<Keys[]> DefaultSwapSelectedMinesAndFakes            = [[]];
+	private static readonly List<Keys[]> DefaultSwapSelectedMinesAndLifts            = [[]];
+	private static readonly List<Keys[]> DefaultSwapSelectedHoldsAndRolls            = [[]];
+	private static readonly List<Keys[]> DefaultSwapSelectedHoldsAndTaps             = [[]];
+	private static readonly List<Keys[]> DefaultSwapSelectedHoldsAndMines            = [[]];
+	private static readonly List<Keys[]> DefaultSwapSelectedRollsAndTaps             = [[]];
+	private static readonly List<Keys[]> DefaultSwapSelectedRollsAndMines            = [[]];
 	private static readonly List<Keys[]> DefaultSnapToNone                           = [[]];
 	private static readonly List<Keys[]> DefaultSnapToQuarters                       = [[]];
 	private static readonly List<Keys[]> DefaultSnapToEighths                        = [[]];
@@ -976,6 +992,89 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 	}
 
 	private List<Keys[]> ConvertSelectedNotesToPlayer4Internal = DefaultConvertSelectedNotesToPlayer4;
+
+	[JsonInclude]
+	public List<Keys[]> SwapSelectedPlayer1And2Notes
+	{
+		get => SwapSelectedPlayer1And2NotesInternal;
+		set
+		{
+			SwapSelectedPlayer1And2NotesInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(SwapSelectedPlayer1And2Notes));
+		}
+	}
+
+	private List<Keys[]> SwapSelectedPlayer1And2NotesInternal = DefaultSwapSelectedPlayer1And2Notes;
+
+
+	[JsonInclude]
+	public List<Keys[]> SwapSelectedPlayer1And3Notes
+	{
+		get => SwapSelectedPlayer1And3NotesInternal;
+		set
+		{
+			SwapSelectedPlayer1And3NotesInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(SwapSelectedPlayer1And3Notes));
+		}
+	}
+
+	private List<Keys[]> SwapSelectedPlayer1And3NotesInternal = DefaultSwapSelectedPlayer1And3Notes;
+
+
+	[JsonInclude]
+	public List<Keys[]> SwapSelectedPlayer1And4Notes
+	{
+		get => SwapSelectedPlayer1And4NotesInternal;
+		set
+		{
+			SwapSelectedPlayer1And4NotesInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(SwapSelectedPlayer1And4Notes));
+		}
+	}
+
+	private List<Keys[]> SwapSelectedPlayer1And4NotesInternal = DefaultSwapSelectedPlayer1And4Notes;
+
+
+	[JsonInclude]
+	public List<Keys[]> SwapSelectedPlayer2And3Notes
+	{
+		get => SwapSelectedPlayer2And3NotesInternal;
+		set
+		{
+			SwapSelectedPlayer2And3NotesInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(SwapSelectedPlayer2And3Notes));
+		}
+	}
+
+	private List<Keys[]> SwapSelectedPlayer2And3NotesInternal = DefaultSwapSelectedPlayer2And3Notes;
+
+
+	[JsonInclude]
+	public List<Keys[]> SwapSelectedPlayer2And4Notes
+	{
+		get => SwapSelectedPlayer2And4NotesInternal;
+		set
+		{
+			SwapSelectedPlayer2And4NotesInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(SwapSelectedPlayer2And4Notes));
+		}
+	}
+
+	private List<Keys[]> SwapSelectedPlayer2And4NotesInternal = DefaultSwapSelectedPlayer2And4Notes;
+
+
+	[JsonInclude]
+	public List<Keys[]> SwapSelectedPlayer3And4Notes
+	{
+		get => SwapSelectedPlayer3And4NotesInternal;
+		set
+		{
+			SwapSelectedPlayer3And4NotesInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(SwapSelectedPlayer3And4Notes));
+		}
+	}
+
+	private List<Keys[]> SwapSelectedPlayer3And4NotesInternal = DefaultSwapSelectedPlayer3And4Notes;
 
 	[JsonInclude]
 	public List<Keys[]> OpenPreviousChart
@@ -2120,6 +2219,136 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 	}
 
 	private List<Keys[]> ConvertSelectedNegativeStopsToWarpsInternal = DefaultConvertSelectedNegativeStopsToWarps;
+
+	[JsonInclude]
+	public List<Keys[]> SwapSelectedTapsAndMines
+	{
+		get => SwapSelectedTapsAndMinesInternal;
+		set
+		{
+			SwapSelectedTapsAndMinesInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(SwapSelectedTapsAndMines));
+		}
+	}
+
+	private List<Keys[]> SwapSelectedTapsAndMinesInternal = DefaultSwapSelectedTapsAndMines;
+
+	[JsonInclude]
+	public List<Keys[]> SwapSelectedTapsAndFakes
+	{
+		get => SwapSelectedTapsAndFakesInternal;
+		set
+		{
+			SwapSelectedTapsAndFakesInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(SwapSelectedTapsAndFakes));
+		}
+	}
+
+	private List<Keys[]> SwapSelectedTapsAndFakesInternal = DefaultSwapSelectedTapsAndFakes;
+
+	[JsonInclude]
+	public List<Keys[]> SwapSelectedTapsAndLifts
+	{
+		get => SwapSelectedTapsAndLiftsInternal;
+		set
+		{
+			SwapSelectedTapsAndLiftsInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(SwapSelectedTapsAndLifts));
+		}
+	}
+
+	private List<Keys[]> SwapSelectedTapsAndLiftsInternal = DefaultSwapSelectedTapsAndLifts;
+
+	[JsonInclude]
+	public List<Keys[]> SwapSelectedMinesAndFakes
+	{
+		get => SwapSelectedMinesAndFakesInternal;
+		set
+		{
+			SwapSelectedMinesAndFakesInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(SwapSelectedMinesAndFakes));
+		}
+	}
+
+	private List<Keys[]> SwapSelectedMinesAndFakesInternal = DefaultSwapSelectedMinesAndFakes;
+
+	[JsonInclude]
+	public List<Keys[]> SwapSelectedMinesAndLifts
+	{
+		get => SwapSelectedMinesAndLiftsInternal;
+		set
+		{
+			SwapSelectedMinesAndLiftsInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(SwapSelectedMinesAndLifts));
+		}
+	}
+
+	private List<Keys[]> SwapSelectedMinesAndLiftsInternal = DefaultSwapSelectedMinesAndLifts;
+
+	[JsonInclude]
+	public List<Keys[]> SwapSelectedHoldsAndRolls
+	{
+		get => SwapSelectedHoldsAndRollsInternal;
+		set
+		{
+			SwapSelectedHoldsAndRollsInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(SwapSelectedHoldsAndRolls));
+		}
+	}
+
+	private List<Keys[]> SwapSelectedHoldsAndRollsInternal = DefaultSwapSelectedHoldsAndRolls;
+
+	[JsonInclude]
+	public List<Keys[]> SwapSelectedHoldsAndTaps
+	{
+		get => SwapSelectedHoldsAndTapsInternal;
+		set
+		{
+			SwapSelectedHoldsAndTapsInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(SwapSelectedHoldsAndTaps));
+		}
+	}
+
+	private List<Keys[]> SwapSelectedHoldsAndTapsInternal = DefaultSwapSelectedHoldsAndTaps;
+
+	[JsonInclude]
+	public List<Keys[]> SwapSelectedHoldsAndMines
+	{
+		get => SwapSelectedHoldsAndMinesInternal;
+		set
+		{
+			SwapSelectedHoldsAndMinesInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(SwapSelectedHoldsAndMines));
+		}
+	}
+
+	private List<Keys[]> SwapSelectedHoldsAndMinesInternal = DefaultSwapSelectedHoldsAndMines;
+
+	[JsonInclude]
+	public List<Keys[]> SwapSelectedRollsAndTaps
+	{
+		get => SwapSelectedRollsAndTapsInternal;
+		set
+		{
+			SwapSelectedRollsAndTapsInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(SwapSelectedRollsAndTaps));
+		}
+	}
+
+	private List<Keys[]> SwapSelectedRollsAndTapsInternal = DefaultSwapSelectedRollsAndTaps;
+
+	[JsonInclude]
+	public List<Keys[]> SwapSelectedRollsAndMines
+	{
+		get => SwapSelectedRollsAndMinesInternal;
+		set
+		{
+			SwapSelectedRollsAndMinesInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(SwapSelectedRollsAndMines));
+		}
+	}
+
+	private List<Keys[]> SwapSelectedRollsAndMinesInternal = DefaultSwapSelectedRollsAndMines;
 
 	[JsonInclude]
 	public List<Keys[]> SnapToNone

@@ -14,6 +14,7 @@ internal sealed class ActionChangeNoteType : EditorAction
 	private readonly EditorChart Chart;
 	private readonly string OriginalType;
 	private readonly string NewType;
+	private readonly bool Swap;
 
 	/// <summary>
 	/// Constructor.
@@ -31,6 +32,7 @@ internal sealed class ActionChangeNoteType : EditorAction
 	/// </param>
 	/// <param name="originalType">Original type to use for logging.</param>
 	/// <param name="newType">New type to use for logging.</param>
+	/// <param name="swap">Whether this action is being to swap instead of convert. Used only for logging.</param>
 	public ActionChangeNoteType(
 		Editor editor,
 		EditorChart chart,
@@ -38,7 +40,8 @@ internal sealed class ActionChangeNoteType : EditorAction
 		Func<EditorEvent, bool> filter,
 		Func<EditorEvent, EditorEvent> converter,
 		string originalType,
-		string newType) : base(false, false)
+		string newType,
+		bool swap = false) : base(false, false)
 	{
 		Editor = editor;
 		Chart = chart;
@@ -46,6 +49,7 @@ internal sealed class ActionChangeNoteType : EditorAction
 		NewEvents = [];
 		OriginalType = originalType;
 		NewType = newType;
+		Swap = swap;
 		foreach (var editorEvent in events)
 		{
 			if (filter(editorEvent))
@@ -60,6 +64,8 @@ internal sealed class ActionChangeNoteType : EditorAction
 
 	public override string ToString()
 	{
+		if (Swap)
+			return $"Swap {OriginalEvents.Count} {OriginalType} and {NewType}.";
 		return $"Convert {OriginalEvents.Count} {OriginalType} to {NewType}.";
 	}
 
