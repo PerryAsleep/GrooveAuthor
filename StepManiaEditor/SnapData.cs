@@ -10,25 +10,12 @@ namespace StepManiaEditor;
 internal sealed class SnapData
 {
 	public readonly int Rows;
-	public readonly string Texture;
-	private int SubDivision;
-	private string Text;
+	public readonly int SubDivision;
+	public readonly string Text;
 
 	public SnapData(int rows)
 	{
 		Rows = rows;
-		Init();
-	}
-
-	public SnapData(int rows, string texture)
-	{
-		Rows = rows;
-		Texture = texture;
-		Init();
-	}
-
-	private void Init()
-	{
 		if (Rows > 0)
 		{
 			SubDivision = SMCommon.MaxValidDenominator / Rows;
@@ -41,15 +28,10 @@ internal sealed class SnapData
 		}
 	}
 
-	public uint GetColor()
+	public uint GetUIColor()
 	{
-		if (Rows > 0)
-			return ArrowGraphicManager.GetArrowColorForSubdivision(SubDivision);
+		if (Rows > 0 && ArrowGraphicManager.TryGetArrowUIColorForSubdivision(SubDivision, out var color))
+			return color;
 		return ImGui.GetColorU32(ImGuiCol.Text);
-	}
-
-	public string GetText()
-	{
-		return Text;
 	}
 }

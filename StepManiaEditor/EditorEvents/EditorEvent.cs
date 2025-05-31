@@ -1065,21 +1065,21 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 
 	protected void DrawFakeMarker(TextureAtlas textureAtlas, SpriteBatch spriteBatch, ArrowGraphicManager arrowGraphicManager)
 	{
-		var (textureId, _) = arrowGraphicManager.GetArrowTexture(GetRow(), GetLane(), IsSelected());
+		var (textureId, _) = arrowGraphicManager.GetArrowTextureRim(GetLane(), IsSelected());
 		DrawFakeMarker(textureAtlas, spriteBatch, textureId, X, Y);
 	}
 
-	protected void DrawFakeMarker(TextureAtlas textureAtlas, SpriteBatch spriteBatch, string arrowTextureId)
+	protected void DrawFakeMarker(TextureAtlas textureAtlas, SpriteBatch spriteBatch, string arrowTextureRimId)
 	{
-		DrawFakeMarker(textureAtlas, spriteBatch, arrowTextureId, X, Y);
+		DrawFakeMarker(textureAtlas, spriteBatch, arrowTextureRimId, X, Y);
 	}
 
-	protected void DrawFakeMarker(TextureAtlas textureAtlas, SpriteBatch spriteBatch, string arrowTextureId, double arrowX,
+	protected void DrawFakeMarker(TextureAtlas textureAtlas, SpriteBatch spriteBatch, string arrowTextureRimId, double arrowX,
 		double arrowY)
 	{
 		// Draw the fake marker. Do not draw it with the selection overlay as it looks weird.
-		var fakeTextureId = ArrowGraphicManager.GetFakeMarkerTexture(GetRow(), GetLane(), false);
-		var (arrowW, arrowH) = textureAtlas.GetDimensions(arrowTextureId);
+		var fakeTextureId = ArrowGraphicManager.GetFakeMarkerTexture(false);
+		var (arrowW, arrowH) = textureAtlas.GetDimensions(arrowTextureRimId);
 		var (markerW, markerH) = textureAtlas.GetDimensions(fakeTextureId);
 		var markerX = arrowX + (arrowW - markerW) * 0.5 * Scale;
 		var markerY = arrowY + (arrowH - markerH) * 0.5 * Scale;
@@ -1101,42 +1101,22 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 		double y)
 	{
 		var alpha = GetRenderAlpha();
+		// hack
 		var pos = new Vector2((float)x, (float)y);
+		//var pos = new Vector2((int)x, (int)y);
 		var selected = IsSelected();
-		string textureId;
-		float rot;
 		var row = GetStepColorRow();
 		var lane = GetLane();
 
-		// Draw the routine note.
-		if (EditorChart.IsMultiPlayer())
-		{
-			// If the multiplayer overlay has alpha draw the normal note below it.
-			var player = GetPlayer();
-			var p = Preferences.Instance.PreferencesMultiplayer;
-			if (p.RoutineNoteColorAlpha < 1.0f)
-			{
-				(textureId, rot) = arrowGraphicManager.GetArrowTexture(row, lane, selected);
-				textureAtlas.Draw(textureId, spriteBatch, pos, Scale, rot, alpha);
-			}
+		// Draw fill.
+		var player = GetPlayer();
+		var (textureId, rot, c) = arrowGraphicManager.GetArrowTextureFill(row, lane, selected, player);
+		c.A = (byte)(c.A * alpha);
+		textureAtlas.Draw(textureId, spriteBatch, pos, Scale, rot, c);
 
-			// Draw fill.
-			(textureId, rot, var c) = arrowGraphicManager.GetPlayerArrowTextureFill(row, lane, selected, player);
-			c.A = (byte)(c.A * alpha);
-			textureAtlas.Draw(textureId, spriteBatch, pos, Scale, rot, c);
-
-			// Draw rim.
-			(textureId, rot) = arrowGraphicManager.GetPlayerArrowTextureRim(lane, selected);
-			textureAtlas.Draw(textureId, spriteBatch, pos, Scale, rot, alpha);
-		}
-
-		// Draw a normal note.
-		else
-		{
-			(textureId, rot) =
-				arrowGraphicManager.GetArrowTexture(row, lane, selected);
-			textureAtlas.Draw(textureId, spriteBatch, pos, Scale, rot, alpha);
-		}
+		// Draw rim.
+		(textureId, rot) = arrowGraphicManager.GetArrowTextureRim(lane, selected);
+		textureAtlas.Draw(textureId, spriteBatch, pos, Scale, rot, alpha);
 	}
 
 	#endregion Positioning and Drawing

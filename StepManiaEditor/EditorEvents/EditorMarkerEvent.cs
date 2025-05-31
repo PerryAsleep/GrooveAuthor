@@ -1,9 +1,11 @@
-﻿using Fumen;
+﻿using System.Drawing;
+using Fumen;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGameExtensions;
 using static StepManiaEditor.Utils;
 using static StepManiaEditor.ImGuiUtils;
+using Color = Microsoft.Xna.Framework.Color;
 
 namespace StepManiaEditor;
 
@@ -44,7 +46,7 @@ internal sealed class EditorMarkerEvent
 			textureAtlas.Draw(
 				TextureIdMeasureMarker,
 				spriteBatch,
-				new Rectangle((int)(X + 0.5), (int)(Y + 0.5), (int)(W + .5), (int)(H + 0.5)),
+				new RectangleF((float)X, (float)Y, (float)W, (float)H),
 				(float)alpha);
 
 			// Measure number value.
@@ -69,7 +71,7 @@ internal sealed class EditorMarkerEvent
 			textureAtlas.Draw(
 				TextureIdBeatMarker,
 				spriteBatch,
-				new Rectangle((int)(X + 0.5), (int)(Y + 0.5), (int)(W + .5), (int)(H + 0.5)),
+				new RectangleF((float)X, (float)Y, (float)W, (float)H),
 				(float)alpha);
 		}
 	}

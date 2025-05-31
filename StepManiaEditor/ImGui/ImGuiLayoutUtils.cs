@@ -2796,17 +2796,23 @@ internal sealed class ImGuiLayoutUtils
 		var currentBeatSubdivision = GetBeatSubdivision(currentValue);
 		var currentMeasureSubdivision = GetMeasureSubdivision(currentValue);
 
-		ImGui.PushStyleColor(ImGuiCol.Text, ArrowGraphicManager.GetArrowColorForSubdivision(currentBeatSubdivision));
+		var pushColor = ArrowGraphicManager.TryGetArrowUIColorForSubdivision(currentBeatSubdivision, out var color);
+		if (pushColor)
+			ImGui.PushStyleColor(ImGuiCol.Text, color);
 
 		if (ImGui.BeginCombo($"{elementTitle}Combo", GetPrettySubdivisionString(currentValue)))
 		{
-			ImGui.PopStyleColor();
+			if (pushColor)
+				ImGui.PopStyleColor();
 
 			foreach (var subdivisionType in Enum.GetValues(typeof(SubdivisionType)))
 			{
 				var beatSubdivision = GetBeatSubdivision((SubdivisionType)subdivisionType);
 				var measureSubdivision = GetMeasureSubdivision((SubdivisionType)subdivisionType);
-				ImGui.PushStyleColor(ImGuiCol.Text, ArrowGraphicManager.GetArrowColorForSubdivision(beatSubdivision));
+
+				var pushInnerColor = ArrowGraphicManager.TryGetArrowUIColorForSubdivision(beatSubdivision, out var innerColor);
+				if (pushInnerColor)
+					ImGui.PushStyleColor(ImGuiCol.Text, innerColor);
 
 				var isSelected = currentMeasureSubdivision == measureSubdivision;
 				if (ImGui.Selectable(GetPrettySubdivisionString((SubdivisionType)subdivisionType), isSelected))
@@ -2819,14 +2825,16 @@ internal sealed class ImGuiLayoutUtils
 					ImGui.SetItemDefaultFocus();
 				}
 
-				ImGui.PopStyleColor();
+				if (pushInnerColor)
+					ImGui.PopStyleColor();
 			}
 
 			ImGui.EndCombo();
 		}
 		else
 		{
-			ImGui.PopStyleColor();
+			if (pushColor)
+				ImGui.PopStyleColor();
 		}
 
 		if (currentValue != originalValue)
@@ -2855,8 +2863,8 @@ internal sealed class ImGuiLayoutUtils
 
 		// Snap level.
 		ImGui.SetNextItemWidth(comboWidth);
-		ImGui.PushStyleColor(ImGuiCol.Text, snapLevels[snapLevelIndex].GetColor());
-		if (ImGui.BeginCombo($"{elementTitle}SnapLevels", snapLevels[snapLevelIndex].GetText()))
+		ImGui.PushStyleColor(ImGuiCol.Text, snapLevels[snapLevelIndex].GetUIColor());
+		if (ImGui.BeginCombo($"{elementTitle}SnapLevels", snapLevels[snapLevelIndex].Text))
 		{
 			var newIndex = snapLevelIndex;
 			ImGui.PopStyleColor();
@@ -2867,9 +2875,9 @@ internal sealed class ImGuiLayoutUtils
 					continue;
 
 				var snapLevel = snapLevels[snapIndex];
-				ImGui.PushStyleColor(ImGuiCol.Text, snapLevel.GetColor());
+				ImGui.PushStyleColor(ImGuiCol.Text, snapLevel.GetUIColor());
 				var isSelected = snapIndex == snapLevelIndex;
-				if (ImGui.Selectable(snapLevel.GetText(), isSelected))
+				if (ImGui.Selectable(snapLevel.Text, isSelected))
 				{
 					newIndex = snapIndex;
 				}
@@ -2910,8 +2918,8 @@ internal sealed class ImGuiLayoutUtils
 		// Snap lock level.
 		ImGui.SameLine();
 		ImGui.SetNextItemWidth(comboWidth);
-		ImGui.PushStyleColor(ImGuiCol.Text, snapLevels[snapLockIndex].GetColor());
-		if (ImGui.BeginCombo($"{elementTitle}SnapLockLevels", snapLevels[snapLockIndex].GetText()))
+		ImGui.PushStyleColor(ImGuiCol.Text, snapLevels[snapLockIndex].GetUIColor());
+		if (ImGui.BeginCombo($"{elementTitle}SnapLockLevels", snapLevels[snapLockIndex].Text))
 		{
 			var newIndex = snapLockIndex;
 			ImGui.PopStyleColor();
@@ -2919,9 +2927,9 @@ internal sealed class ImGuiLayoutUtils
 			for (var snapIndex = 0; snapIndex < snapLevels.Count; snapIndex++)
 			{
 				var snapLevel = snapLevels[snapIndex];
-				ImGui.PushStyleColor(ImGuiCol.Text, snapLevel.GetColor());
+				ImGui.PushStyleColor(ImGuiCol.Text, snapLevel.GetUIColor());
 				var isSelected = snapIndex == snapLockIndex;
-				if (ImGui.Selectable(snapLevel.GetText(), isSelected))
+				if (ImGui.Selectable(snapLevel.Text, isSelected))
 				{
 					newIndex = snapIndex;
 				}
@@ -3975,7 +3983,7 @@ internal sealed class ImGuiLayoutUtils
 		var originalPlayer = currentPlayer;
 
 		if (arrowGraphicManager != null)
-			ImGui.PushStyleColor(ImGuiCol.Text, arrowGraphicManager.GetArrowColor(0, 0, false, originalPlayer));
+			ImGui.PushStyleColor(ImGuiCol.Text, arrowGraphicManager.GetArrowUIColor(0, 0, false, originalPlayer));
 		if (ImGui.BeginCombo(GetElementTitle(title), $"Player {originalPlayer + 1}"))
 		{
 			if (arrowGraphicManager != null)
@@ -3984,7 +3992,7 @@ internal sealed class ImGuiLayoutUtils
 			for (var i = 0; i < maxPlayers; i++)
 			{
 				if (arrowGraphicManager != null)
-					ImGui.PushStyleColor(ImGuiCol.Text, arrowGraphicManager.GetArrowColor(0, 0, false, i));
+					ImGui.PushStyleColor(ImGuiCol.Text, arrowGraphicManager.GetArrowUIColor(0, 0, false, i));
 
 				var isSelected = i == originalPlayer;
 				if (ImGui.Selectable($"Player {i + 1}", isSelected))

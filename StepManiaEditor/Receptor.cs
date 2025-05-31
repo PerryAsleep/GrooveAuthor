@@ -24,7 +24,7 @@ internal sealed class Receptor
 	private const float BeatAnimTimeEnd = 0.3f; // Percentage through beat.
 
 	// Animation parameters for showing a rim around the receptor when held.
-	private const float RimAnimEndScale = 1.3f;
+	private const float RimAnimEndScale = 1.2f;
 	private const float RimAnimTimeEnd = 0.2f;
 
 	// Animation parameters for showing a glow effect on the receptor when hitting a note.

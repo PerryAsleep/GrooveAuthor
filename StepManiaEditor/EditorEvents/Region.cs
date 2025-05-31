@@ -1,7 +1,8 @@
-﻿using Microsoft.Xna.Framework;
+﻿using System.Drawing;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGameExtensions;
 using static StepManiaEditor.Utils;
+using Color = Microsoft.Xna.Framework.Color;
 
 namespace StepManiaEditor;
 
@@ -49,7 +50,7 @@ internal interface IRegion
 		}
 
 		textureAtlas.Draw(TextureIdRegionRect, spriteBatch,
-			new Rectangle((int)(x + 0.5), (int)(y + 0.5), (int)(w + 0.5), (int)(h + 0.5)), color);
+			new RectangleF((float)x, (float)y, (float)w, (float)h), color);
 	}
 
 	public static Color GetColor(Color color, float alpha)

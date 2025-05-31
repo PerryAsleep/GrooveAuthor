@@ -784,7 +784,7 @@ internal sealed class MiniMap
 		return AddShortNote(
 			GetYPixelRelativeToBounds(position),
 			LaneXPositions[chartEvent.GetLane()],
-			ArrowGraphicManager.GetArrowColor(chartEvent.GetStepColorRow(), chartEvent.GetLane(), selected,
+			ArrowGraphicManager.GetArrowUIColor(chartEvent.GetStepColorRow(), chartEvent.GetLane(), selected,
 				chartEvent.GetPlayer()));
 	}
 
@@ -800,7 +800,7 @@ internal sealed class MiniMap
 		return AddShortNote(
 			GetYPixelRelativeToBounds(position),
 			LaneXPositions[chartEvent.GetLane()],
-			ArrowGraphicManager.GetMineColor(selected));
+			ArrowGraphicManager.GetMineUIColor(selected, chartEvent.GetPlayer()));
 	}
 
 	/// <summary>
@@ -884,9 +884,10 @@ internal sealed class MiniMap
 
 		var x = LaneXPositions[start.GetLane()];
 		var bodyColor = roll
-			? ArrowGraphicManager.GetRollColor(start.GetStepColorRow(), start.GetLane(), selected, start.GetPlayer())
-			: ArrowGraphicManager.GetHoldColor(start.GetStepColorRow(), start.GetLane(), selected, start.GetPlayer());
-		var headColor = ArrowGraphicManager.GetArrowColor(start.GetStepColorRow(), start.GetLane(), selected, start.GetPlayer());
+			? ArrowGraphicManager.GetRollUIColor(start.GetStepColorRow(), start.GetLane(), selected, start.GetPlayer())
+			: ArrowGraphicManager.GetHoldUIColor(start.GetStepColorRow(), start.GetLane(), selected, start.GetPlayer());
+		var headColor =
+			ArrowGraphicManager.GetArrowUIColor(start.GetStepColorRow(), start.GetLane(), selected, start.GetPlayer());
 
 		var w = (uint)Math.Min(Bounds.Width - (RimWidth << 1), NoteWidth);
 

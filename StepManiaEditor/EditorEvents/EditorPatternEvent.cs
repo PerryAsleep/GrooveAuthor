@@ -414,7 +414,9 @@ internal sealed class EditorPatternEvent : EditorEvent, IEquatable<EditorPattern
 	public uint GetMiscEventTextColor()
 	{
 		var patternConfig = GetPatternConfig();
-		return ArrowGraphicManager.GetArrowColorForSubdivision(GetBeatSubdivision(patternConfig.PatternType));
+		if (ArrowGraphicManager.TryGetArrowUIColorForSubdivision(GetBeatSubdivision(patternConfig.PatternType), out var color))
+			return color;
+		return 0xFFFFFFFF;
 	}
 
 	public override string GetShortTypeName()

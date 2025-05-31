@@ -1,6 +1,9 @@
-﻿using Fumen;
+﻿using System.Drawing;
+using Fumen;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using Color = Microsoft.Xna.Framework.Color;
+using Rectangle = Microsoft.Xna.Framework.Rectangle;
 
 namespace MonoGameExtensions;
 
@@ -18,6 +21,21 @@ public interface IReadOnlyTextureAtlas
 /// </summary>
 public abstract class TextureAtlas : IReadOnlyTextureAtlas
 {
+	public enum PaddingMode
+	{
+		/// <summary>
+		/// When adding padding, extend the edges outward.
+		/// Best for non-tiled images.
+		/// </summary>
+		Extend,
+
+		/// <summary>
+		/// When adding padding, wrap the opposite edge around.
+		/// Best for tiled images.
+		/// </summary>
+		Wrap,
+	}
+
 	/// <summary>
 	/// A node in the TextureAtlas containing the location of the sub-texture and
 	/// any that texture's mips.
@@ -43,6 +61,11 @@ public abstract class TextureAtlas : IReadOnlyTextureAtlas
 		/// The rect of the sub-texture within the TextureAtlas.
 		/// </summary>
 		public Rectangle TextureRect;
+
+		/// <summary>
+		/// The PaddingMode for this PackNode.
+		/// </summary>
+		public readonly PaddingMode PaddingMode;
 
 		/// <summary>
 		/// The original sub-texture packed into the TextureAtlas.
@@ -76,9 +99,10 @@ public abstract class TextureAtlas : IReadOnlyTextureAtlas
 		{
 		}
 
-		private PackNode(Rectangle packingRect)
+		private PackNode(Rectangle packingRect, PaddingMode paddingMode)
 		{
 			PackingRect = packingRect;
+			PaddingMode = paddingMode;
 		}
 
 		/// <summary>
@@ -114,7 +138,7 @@ public abstract class TextureAtlas : IReadOnlyTextureAtlas
 		/// </param>
 		/// <param name="mipLevel">The mip level of the returned PackNode.</param>
 		/// <returns>PackNode to use.</returns>
-		public PackNode GetBest(Rectangle destinationRectangle, out double scale, out int mipLevel)
+		public PackNode GetBest(RectangleF destinationRectangle, out double scale, out int mipLevel)
 		{
 			var xScale = destinationRectangle.Width / (double)TextureRect.Width;
 			var yScale = destinationRectangle.Height / (double)TextureRect.Height;
@@ -129,15 +153,16 @@ public abstract class TextureAtlas : IReadOnlyTextureAtlas
 		/// </summary>
 		/// <param name="texture">Texture to pack.</param>
 		/// <param name="padding">Padding in pixels to include around the Texture.</param>
+		/// <param name="paddingMode">How to pad the edges.</param>
 		/// <returns>New PackNode or null if the given texture could not be packed.</returns>
-		public PackNode Pack(Texture2D texture, int padding)
+		public PackNode Pack(Texture2D texture, int padding, PaddingMode paddingMode = PaddingMode.Extend)
 		{
 			// This PackNode is not a leaf.
 			if (Children[0] != null)
 			{
 				// Try packing in each child.
-				var newNode = Children[0].Pack(texture, padding);
-				return newNode ?? Children[1].Pack(texture, padding);
+				var newNode = Children[0].Pack(texture, padding, paddingMode);
+				return newNode ?? Children[1].Pack(texture, padding, paddingMode);
 			}
 
 			// This PackNode is a leaf.
@@ -168,20 +193,20 @@ public abstract class TextureAtlas : IReadOnlyTextureAtlas
 			// Split into two rectangles aligned horizontally.
 			if (PackingRect.Width - twp > PackingRect.Height - thp)
 			{
-				Children[0] = new PackNode(new Rectangle(PackingRect.X, PackingRect.Y, twp, PackingRect.Height));
+				Children[0] = new PackNode(new Rectangle(PackingRect.X, PackingRect.Y, twp, PackingRect.Height), paddingMode);
 				Children[1] = new PackNode(new Rectangle(PackingRect.X + twp, PackingRect.Y, PackingRect.Width - twp,
-					PackingRect.Height));
+					PackingRect.Height), paddingMode);
 			}
 			// Split into two rectangles aligned vertically.
 			else
 			{
-				Children[0] = new PackNode(new Rectangle(PackingRect.X, PackingRect.Y, PackingRect.Width, thp));
+				Children[0] = new PackNode(new Rectangle(PackingRect.X, PackingRect.Y, PackingRect.Width, thp), paddingMode);
 				Children[1] = new PackNode(new Rectangle(PackingRect.X, PackingRect.Y + thp, PackingRect.Width,
-					PackingRect.Height - thp));
+					PackingRect.Height - thp), paddingMode);
 			}
 
 			// Pack into the first child, which is now sized perfectly in at least one dimension.
-			return Children[0].Pack(texture, padding);
+			return Children[0].Pack(texture, padding, paddingMode);
 		}
 
 		public void OnPackComplete()
@@ -302,7 +327,7 @@ public abstract class TextureAtlas : IReadOnlyTextureAtlas
 		return true;
 	}
 
-	private bool GetNode(string subTextureId, Rectangle destinationRectangle, out PackNode node, out int mipLevel)
+	private bool GetNode(string subTextureId, RectangleF destinationRectangle, out PackNode node, out int mipLevel)
 	{
 		mipLevel = 0;
 		if (!GetNode(subTextureId, out node))
@@ -343,7 +368,7 @@ public abstract class TextureAtlas : IReadOnlyTextureAtlas
 		return (node.TextureRect.X, node.TextureRect.Y, node.TextureRect.Width, node.TextureRect.Height);
 	}
 
-	public void Draw(string subTextureId, SpriteBatch spriteBatch, Rectangle destinationRectangle)
+	public void Draw(string subTextureId, SpriteBatch spriteBatch, RectangleF destinationRectangle)
 	{
 		if (!GetNode(subTextureId, destinationRectangle, out var node, out _))
 		{
@@ -354,7 +379,7 @@ public abstract class TextureAtlas : IReadOnlyTextureAtlas
 		spriteBatch.Draw(Texture, destinationRectangle, node.TextureRect, Color.White);
 	}
 
-	public void Draw(string subTextureId, SpriteBatch spriteBatch, Rectangle destinationRectangle, float alpha)
+	public void Draw(string subTextureId, SpriteBatch spriteBatch, RectangleF destinationRectangle, float alpha)
 	{
 		if (!GetNode(subTextureId, destinationRectangle, out var node, out _))
 		{
@@ -365,7 +390,7 @@ public abstract class TextureAtlas : IReadOnlyTextureAtlas
 		spriteBatch.Draw(Texture, destinationRectangle, node.TextureRect, new Color(1.0f, 1.0f, 1.0f, alpha));
 	}
 
-	public void Draw(string subTextureId, SpriteBatch spriteBatch, Rectangle destinationRectangle, Color c)
+	public void Draw(string subTextureId, SpriteBatch spriteBatch, RectangleF destinationRectangle, Color c)
 	{
 		if (!GetNode(subTextureId, destinationRectangle, out var node, out _))
 		{
@@ -376,12 +401,12 @@ public abstract class TextureAtlas : IReadOnlyTextureAtlas
 		spriteBatch.Draw(Texture, destinationRectangle, node.TextureRect, c);
 	}
 
-	public void Draw(string subTextureId, SpriteBatch spriteBatch, Rectangle destinationRectangle, float rotation, float alpha)
+	public void Draw(string subTextureId, SpriteBatch spriteBatch, RectangleF destinationRectangle, float rotation, float alpha)
 	{
 		Draw(subTextureId, spriteBatch, destinationRectangle, rotation, alpha, SpriteEffects.None);
 	}
 
-	public void Draw(string subTextureId, SpriteBatch spriteBatch, Rectangle destinationRectangle, float rotation,
+	public void Draw(string subTextureId, SpriteBatch spriteBatch, RectangleF destinationRectangle, float rotation,
 		Vector2 rotationOffset, Color c, SpriteEffects spriteEffects)
 	{
 		if (!GetNode(subTextureId, destinationRectangle, out var node, out _))
@@ -394,20 +419,20 @@ public abstract class TextureAtlas : IReadOnlyTextureAtlas
 			rotationOffset, spriteEffects, 1.0f);
 	}
 
-	public void Draw(string subTextureId, SpriteBatch spriteBatch, Rectangle destinationRectangle, float rotation,
+	public void Draw(string subTextureId, SpriteBatch spriteBatch, RectangleF destinationRectangle, float rotation,
 		Vector2 rotationOffset, float alpha, SpriteEffects spriteEffects)
 	{
 		Draw(subTextureId, spriteBatch, destinationRectangle, rotation, rotationOffset, new Color(1.0f, 1.0f, 1.0f, alpha),
 			spriteEffects);
 	}
 
-	public void Draw(string subTextureId, SpriteBatch spriteBatch, Rectangle destinationRectangle, float rotation, float alpha,
+	public void Draw(string subTextureId, SpriteBatch spriteBatch, RectangleF destinationRectangle, float rotation, float alpha,
 		SpriteEffects spriteEffects)
 	{
 		Draw(subTextureId, spriteBatch, destinationRectangle, rotation, new Color(1.0f, 1.0f, 1.0f, alpha), spriteEffects);
 	}
 
-	public void Draw(string subTextureId, SpriteBatch spriteBatch, Rectangle destinationRectangle, float rotation, Color c,
+	public void Draw(string subTextureId, SpriteBatch spriteBatch, RectangleF destinationRectangle, float rotation, Color c,
 		SpriteEffects spriteEffects)
 	{
 		if (!GetNode(subTextureId, destinationRectangle, out var node, out _))
@@ -423,8 +448,8 @@ public abstract class TextureAtlas : IReadOnlyTextureAtlas
 		if (rotation != 0.0f)
 		{
 			rotationOffset = new Vector2(node.TextureRect.Width >> 1, node.TextureRect.Height >> 1);
-			destinationRectangle.X += destinationRectangle.Width >> 1;
-			destinationRectangle.Y += destinationRectangle.Height >> 1;
+			destinationRectangle.X += destinationRectangle.Width * 0.5f;
+			destinationRectangle.Y += destinationRectangle.Height * 0.5f;
 		}
 
 		Draw(subTextureId, spriteBatch, destinationRectangle, rotation, rotationOffset, c, spriteEffects);
@@ -477,14 +502,14 @@ public abstract class TextureAtlas : IReadOnlyTextureAtlas
 		spriteBatch.Draw(Texture, position, node.TextureRect, c, rotation, origin, (float)scale, spriteEffects, 1.0f);
 	}
 
-	public void Draw(string subTextureId, SpriteBatch spriteBatch, Rectangle sourceRectangle, Rectangle destinationRectangle,
+	public void Draw(string subTextureId, SpriteBatch spriteBatch, Rectangle sourceRectangle, RectangleF destinationRectangle,
 		float rotation, float alpha, SpriteEffects spriteEffects)
 	{
 		Draw(subTextureId, spriteBatch, sourceRectangle, destinationRectangle, rotation, new Color(1.0f, 1.0f, 1.0f, alpha),
 			spriteEffects);
 	}
 
-	public void Draw(string subTextureId, SpriteBatch spriteBatch, Rectangle sourceRectangle, Rectangle destinationRectangle,
+	public void Draw(string subTextureId, SpriteBatch spriteBatch, Rectangle sourceRectangle, RectangleF destinationRectangle,
 		float rotation, Color c, SpriteEffects spriteEffects)
 	{
 		if (!GetNode(subTextureId, destinationRectangle, out var node, out var mipLevel))
@@ -500,8 +525,8 @@ public abstract class TextureAtlas : IReadOnlyTextureAtlas
 		if (rotation != 0.0f)
 		{
 			rotationOffset = new Vector2(node.TextureRect.Width >> 1, node.TextureRect.Height >> 1);
-			destinationRectangle.X += destinationRectangle.Width >> 1;
-			destinationRectangle.Y += destinationRectangle.Height >> 1;
+			destinationRectangle.X += destinationRectangle.Width * 0.5f;
+			destinationRectangle.Y += destinationRectangle.Height * 0.5f;
 		}
 
 		// If we are using a smaller texture, we need to offset the source rectangle accordingly.
@@ -521,13 +546,13 @@ public abstract class TextureAtlas : IReadOnlyTextureAtlas
 			rotationOffset, spriteEffects, 1.0f);
 	}
 
-	public void Draw(string subTextureId, SpriteBatch spriteBatch, Rectangle destinationRectangle, float rotation,
+	public void Draw(string subTextureId, SpriteBatch spriteBatch, RectangleF destinationRectangle, float rotation,
 		Vector2 rotationOffset, float alpha)
 	{
 		Draw(subTextureId, spriteBatch, destinationRectangle, rotation, rotationOffset, new Color(1.0f, 1.0f, 1.0f, alpha));
 	}
 
-	public void Draw(string subTextureId, SpriteBatch spriteBatch, Rectangle destinationRectangle, float rotation,
+	public void Draw(string subTextureId, SpriteBatch spriteBatch, RectangleF destinationRectangle, float rotation,
 		Vector2 rotationOffset, Color c)
 	{
 		if (!GetNode(subTextureId, destinationRectangle, out var node, out _))

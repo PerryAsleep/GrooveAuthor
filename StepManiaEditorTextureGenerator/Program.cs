@@ -27,202 +27,7 @@ internal class Program
 /// </summary>
 internal class TextureGeneratorGame : Game
 {
-	private static readonly string[] ArrowSquareSubImageIds =
-	[
-		// Row 1.
-		"itg-down-1-4",
-		"itg-solo-1-4",
-		"itg-center-1-4",
-		"itg-down-1-8",
-		"itg-solo-1-8",
-		"itg-center-1-8",
-		"itg-down-1-32",
-		"itg-solo-1-32",
-		"itg-center-1-32",
-
-		// Row 2.
-		"itg-down-receptor",
-		"itg-solo-receptor",
-		"itg-center-receptor",
-		"itg-down-1-16",
-		"itg-solo-1-16",
-		"itg-center-1-16",
-		"itg-down-1-48",
-		"itg-solo-1-48",
-		"itg-center-1-48",
-
-		// Row 3.
-		"itg-down-receptor-held",
-		"itg-solo-receptor-held",
-		"itg-center-receptor-held",
-		"itg-down-1-12",
-		"itg-solo-1-12",
-		"itg-center-1-12",
-		"itg-down-1-64",
-		"itg-solo-1-64",
-		"itg-center-1-64",
-
-		// Row 4.
-		"itg-down-receptor-glow",
-		"itg-solo-receptor-glow",
-		"itg-center-receptor-glow",
-		"itg-down-1-24",
-		"itg-solo-1-24",
-		"itg-center-1-24",
-		"piu-diagonal-red",
-		"piu-center",
-		"piu-diagonal-blue",
-
-		// Row 5.
-		"itg-hold-body-inactive",
-		null, //"itg-hold-end-inactive",
-		"itg-hold-center-body-inactive",
-		null, //"itg-hold-center-end-inactive",
-		"itg-hold-solo-body-inactive",
-		null, //"itg-hold-solo-end-inactive",
-		"piu-diagonal-receptor",
-		"piu-center-receptor",
-		"piu-hold-blue",
-
-		// Row 6.
-		"itg-roll-body-inactive",
-		null, //"itg-roll-end-inactive",
-		"itg-roll-center-body-inactive",
-		null, //"itg-roll-center-end-inactive",
-		"itg-roll-solo-body-inactive",
-		null, //"itg-roll-solo-end-inactive",
-		"piu-diagonal-receptor-held",
-		"piu-center-receptor-held",
-		"piu-roll-blue",
-
-		// Row 7.
-		"itg-hold-body-active",
-		null, //"itg-hold-end-active",
-		"itg-hold-center-body-active",
-		null, //"itg-hold-center-end-active",
-		"itg-hold-solo-body-active",
-		null, //"itg-hold-solo-end-active",
-		"piu-diagonal-receptor-glow",
-		"piu-center-receptor-glow",
-		"piu-hold-red",
-
-		// Row 8.
-		"itg-roll-body-active",
-		null, //"itg-roll-end-active",
-		"itg-roll-center-body-active",
-		null, //"itg-roll-center-end-active",
-		"itg-roll-solo-body-active",
-		null, //"itg-roll-solo-end-active",
-		"piu-roll-center",
-		"piu-hold-center",
-		"piu-roll-red",
-
-		// Row 9.
-		"mine",
-		null,
-		null,
-		null,
-		null,
-		null,
-		null,
-		null,
-		null,
-
-		// Row 10.
-		"itg-down-fill",
-		"itg-down-rim",
-		"itg-solo-fill",
-		"itg-solo-rim",
-		"itg-center-fill",
-		"itg-center-rim",
-		"piu-diagonal-fill",
-		"piu-diagonal-rim",
-		"piu-center-fill",
-
-		// Row 11.
-		"piu-center-rim",
-		"piu-hold-diagonal-fill",
-		"piu-hold-diagonal-rim",
-		"piu-roll-diagonal-fill",
-		"piu-hold-center-fill",
-		"piu-hold-center-rim",
-		"piu-roll-center-fill",
-		"mine-fill",
-		"mine-rim",
-
-		// Row 12.
-		"itg-hold-body-fill",
-		null, //"itg-hold-end-fill",
-		"itg-hold-center-body-fill",
-		null, //"itg-hold-center-end-fill",
-		"itg-hold-body-rim",
-		null, //"itg-hold-end-rim",
-		"itg-hold-center-body-rim",
-		null, //"itg-hold-center-end-rim",
-		null,
-
-		// Row 13.
-		"itg-roll-body-fill",
-		null, //"itg-roll-end-fill",
-		"itg-roll-center-body-fill",
-		null, //"itg-roll-center-end-fill",
-	];
-
-	private static readonly string[] ArrowSnapSubImageIds =
-	[
-		"snap-1-4",
-		"snap-1-8",
-		"snap-1-24",
-		"snap-1-32",
-		"snap-1-16",
-		"snap-1-12",
-		"snap-1-48",
-		"snap-1-64",
-	];
-
-	private static readonly string[] ArrowHoldStartSubImageIds =
-	[
-		"itg-hold-solo-start-active",
-		"itg-hold-solo-start-inactive",
-		"itg-roll-solo-start-active",
-		"itg-roll-solo-start-inactive",
-	];
-
-	private static readonly string[] ArrowSpecialTapMarkerIds =
-	[
-		"fake-marker",
-		"lift-marker",
-		"player-marker-fill",
-		"player-marker-rim",
-	];
-
-	private static readonly string[] IconSubImageIds =
-	[
-		"icon-dance-left",
-		"icon-dance-down",
-		"icon-dance-up",
-		"icon-dance-right",
-		"icon-dance-center",
-		"icon-dance-up-left",
-		"icon-dance-up-right",
-		"icon-pump-down-left",
-		"icon-pump-up-left",
-		"icon-pump-center",
-		"icon-pump-up-right",
-		"icon-pump-down-right",
-		"icon-dance-left-dim",
-		"icon-dance-down-dim",
-		"icon-dance-up-dim",
-		"icon-dance-right-dim",
-		"icon-dance-center-dim",
-		"icon-dance-up-left-dim",
-		"icon-dance-up-right-dim",
-		"icon-pump-down-left-dim",
-		"icon-pump-up-left-dim",
-		"icon-pump-center-dim",
-		"icon-pump-up-right-dim",
-		"icon-pump-down-right-dim",
-	];
+	private const int ArrowTextureDimension = 128;
 
 	private const string ContentDir = @"..\..\..\..\StepManiaEditor\Content\";
 	private const string EditorDir = @"..\..\..\..\StepManiaEditor\";
@@ -230,8 +35,8 @@ internal class TextureGeneratorGame : Game
 	private const string InputIcons = "icons.png";
 	private const string OutputImage = "atlas.png";
 	private const string OutputAtlas = "atlas.json";
-	private const int OutputAtlasWidth = 2048;
-	private const int OutputAtlasHeight = 2048;
+	private const int OutputAtlasWidth = 1280;
+	private const int OutputAtlasHeight = 1280;
 	private const int MarkerTextureWidth = 128;
 
 	// Selected texture variant parameters.
@@ -418,41 +223,7 @@ internal class TextureGeneratorGame : Game
 		var arrowsTexture = LoadTexture(InputArrows);
 		if (arrowsTexture == null)
 			return;
-
-		ProcessGridOfImages(arrowsTexture, ArrowSquareSubImageIds, 9, 0, 0, 128, 128, 0);
-		ProcessGridOfImages(arrowsTexture, ArrowSnapSubImageIds, 4, 776, 1032, 40, 40, 8);
-		ProcessGridOfImages(arrowsTexture, ArrowHoldStartSubImageIds, 4, 128, 1060, 128, 28, 0);
-		ProcessGridOfImages(arrowsTexture, ArrowSpecialTapMarkerIds, 2, 648, 1032, 40, 40, 8);
-
-		// Process hold end caps trimmed to their exact height.
-		// This is done because we use the texture size for determining if a click lands on a hold.
-		// Most arrows are big enough in the 128x128 frames, but the hold ends are much shorter.
-		// TODO: read color data to trim height.
-
-		// Padding to account for programmatically generated selection rims.
-		var capHeightPadding = SelectionRimSize;
-		var capHeight = 57 + capHeightPadding;
-		var capHeightCenter = 43 + capHeightPadding;
-		var capHeightSolo = 45 + capHeightPadding;
-		ProcessGridOfImages(arrowsTexture, ["itg-hold-end-inactive"], 1, 128, 512, 128, capHeight, 0);
-		ProcessGridOfImages(arrowsTexture, ["itg-hold-center-end-inactive"], 1, 384, 512, 128, capHeightCenter, 0);
-		ProcessGridOfImages(arrowsTexture, ["itg-hold-solo-end-inactive"], 1, 640, 512, 128, capHeightSolo, 0);
-		ProcessGridOfImages(arrowsTexture, ["itg-roll-end-inactive"], 1, 128, 640, 128, capHeight, 0);
-		ProcessGridOfImages(arrowsTexture, ["itg-roll-center-end-inactive"], 1, 384, 640, 128, capHeightCenter, 0);
-		ProcessGridOfImages(arrowsTexture, ["itg-roll-solo-end-inactive"], 1, 640, 640, 128, capHeightSolo, 0);
-		ProcessGridOfImages(arrowsTexture, ["itg-hold-end-active"], 1, 128, 768, 128, capHeight, 0);
-		ProcessGridOfImages(arrowsTexture, ["itg-hold-center-end-active"], 1, 384, 768, 128, capHeightCenter, 0);
-		ProcessGridOfImages(arrowsTexture, ["itg-hold-solo-end-active"], 1, 640, 768, 128, capHeightSolo, 0);
-		ProcessGridOfImages(arrowsTexture, ["itg-roll-end-active"], 1, 128, 896, 128, capHeight, 0);
-		ProcessGridOfImages(arrowsTexture, ["itg-roll-center-end-active"], 1, 384, 896, 128, capHeightCenter, 0);
-		ProcessGridOfImages(arrowsTexture, ["itg-roll-solo-end-active"], 1, 640, 896, 128, capHeightSolo, 0);
-		ProcessGridOfImages(arrowsTexture, ["itg-hold-end-fill"], 1, 128, 1408, 128, capHeight, 0);
-		ProcessGridOfImages(arrowsTexture, ["itg-hold-center-end-fill"], 1, 384, 1408, 128, capHeightCenter, 0);
-		ProcessGridOfImages(arrowsTexture, ["itg-hold-end-rim"], 1, 640, 1408, 128, capHeight, 0);
-		ProcessGridOfImages(arrowsTexture, ["itg-hold-center-end-rim"], 1, 896, 1408, 128, capHeightCenter, 0);
-		ProcessGridOfImages(arrowsTexture, ["itg-roll-end-fill"], 1, 128, 1536, 128, capHeight, 0);
-		ProcessGridOfImages(arrowsTexture, ["itg-roll-center-end-fill"], 1, 384, 1536, 128, capHeightCenter, 0);
-
+		ProcessArrows(arrowsTexture);
 		Logger.Info($"Added images from {InputArrows}.");
 	}
 
@@ -462,12 +233,131 @@ internal class TextureGeneratorGame : Game
 		var iconsTexture = LoadTexture(InputIcons);
 		if (iconsTexture == null)
 			return;
-		ProcessGridOfImages(iconsTexture, IconSubImageIds, 12, 0, 0, 16, 16, 0);
+
+		string[] iconSubImageIds =
+		[
+			"icon-dance-left",
+			"icon-dance-down",
+			"icon-dance-up",
+			"icon-dance-right",
+			"icon-dance-center",
+			"icon-dance-up-left",
+			"icon-dance-up-right",
+			"icon-pump-down-left",
+			"icon-pump-up-left",
+			"icon-pump-center",
+			"icon-pump-up-right",
+			"icon-pump-down-right",
+			"icon-dance-left-dim",
+			"icon-dance-down-dim",
+			"icon-dance-up-dim",
+			"icon-dance-right-dim",
+			"icon-dance-center-dim",
+			"icon-dance-up-left-dim",
+			"icon-dance-up-right-dim",
+			"icon-pump-down-left-dim",
+			"icon-pump-up-left-dim",
+			"icon-pump-center-dim",
+			"icon-pump-up-right-dim",
+			"icon-pump-down-right-dim",
+		];
+		ProcessGridOfImages(iconsTexture, iconSubImageIds, 12, 0, 0, 16, 16, 0, 0x00FFFFFF);
 		Logger.Info($"Added images from {InputIcons}.");
 	}
 
+	private void ProcessArrows(Texture2D source)
+	{
+		var x = 0;
+		var sourceColorData = new uint[source.Width * source.Height];
+		source.GetData(sourceColorData);
+
+		void AddArrowTextureSet(string name, bool hasHoldStarts, bool hasHoldEnds, int startHeight, int endHeight)
+		{
+			ProcessArrowTextureSet(sourceColorData, source.Width, name, x, hasHoldStarts, hasHoldEnds, startHeight, endHeight);
+			x += ArrowTextureDimension;
+		}
+
+		// Process hold end caps trimmed to their exact height.
+		// This is done because we use the texture size for determining if a click lands on a hold.
+		// Most arrows are big enough in the 128x128 frames, but the hold ends are much shorter.
+		// Add padding to account for programmatically generated selection rims.
+
+		AddArrowTextureSet("itg-down", false, true, 0, 57 + SelectionRimSize);
+		AddArrowTextureSet("itg-solo", true, true, 28, 45 + SelectionRimSize);
+		AddArrowTextureSet("itg-center", false, true, 0, 43 + SelectionRimSize);
+		AddArrowTextureSet("piu-diagonal", false, false, 0, 0);
+		AddArrowTextureSet("piu-center", false, false, 0, 0);
+
+		// Mines.
+		ProcessGridOfImages(source, ["mine-rim", "mine-fill"], 1, x, ArrowTextureDimension, ArrowTextureDimension,
+			ArrowTextureDimension, 0, 0x00FFFFFF);
+
+		// Misc Indicators.
+		ProcessGridOfImages(source, ["fake-marker", "lift-marker", "player-marker-fill", "player-marker-rim"], 2, 648, 8, 40, 40,
+			8, 0x00FFFFFF);
+	}
+
+	private void ProcessArrowTextureSet(
+		uint[] sourceColorData,
+		int sourceWidth,
+		string baseIdentifier,
+		int x,
+		bool hasHoldStarts,
+		bool hasHoldEnds,
+		int startHeight,
+		int endHeight)
+	{
+		var y = 0;
+
+		void AddArrowTexture(string name, int yOffset = 0, int height = ArrowTextureDimension, uint transparentColor = 0x00000000)
+		{
+			var subTexture = CopySubTexture(sourceColorData, sourceWidth, x, y + yOffset, ArrowTextureDimension, height,
+				transparentColor);
+			var paddingMode = TextureAtlas.PaddingMode.Extend;
+			if (name.Contains("hold-fill")
+			    || name.Contains("roll-fill"))
+			{
+				paddingMode = TextureAtlas.PaddingMode.Wrap;
+			}
+
+			Atlas.AddSubTexture(name, subTexture, true, paddingMode);
+			y += ArrowTextureDimension;
+
+			if (!name.Contains("receptor")
+			    && !name.Contains("glow")
+			    && !name.Contains("fill"))
+			{
+				var selectedSubTexture = GenerateSelectedTexture(subTexture);
+				Atlas.AddSubTexture($"{name}-selected", selectedSubTexture, true);
+			}
+		}
+
+		AddArrowTexture($"{baseIdentifier}-receptor");
+		AddArrowTexture($"{baseIdentifier}-receptor-held", 0, ArrowTextureDimension, 0x00FFFFFF);
+		AddArrowTexture($"{baseIdentifier}-receptor-glow", 0, ArrowTextureDimension, 0x00FFFFFF);
+		AddArrowTexture($"{baseIdentifier}-fill", 0, ArrowTextureDimension, 0x00FFFFFF);
+		AddArrowTexture($"{baseIdentifier}-rim", 0, ArrowTextureDimension, 0x00FFFFFF);
+		AddArrowTexture($"{baseIdentifier}-hold-rim", 0, ArrowTextureDimension, 0x00FFFFFF);
+		AddArrowTexture($"{baseIdentifier}-hold-fill", 0, ArrowTextureDimension, 0x00FFFFFF);
+		AddArrowTexture($"{baseIdentifier}-roll-fill", 0, ArrowTextureDimension, 0x00FFFFFF);
+		if (hasHoldEnds)
+		{
+			AddArrowTexture($"{baseIdentifier}-hold-end-rim", 0, endHeight, 0x00FFFFFF);
+			AddArrowTexture($"{baseIdentifier}-hold-end-fill", 0, endHeight, 0x00FFFFFF);
+			AddArrowTexture($"{baseIdentifier}-roll-end-fill", 0, endHeight, 0x00FFFFFF);
+		}
+
+		if (hasHoldStarts)
+		{
+			var yOffset = (ArrowTextureDimension >> 1) - startHeight;
+			AddArrowTexture($"{baseIdentifier}-hold-start-rim", yOffset, startHeight, 0x00FFFFFF);
+			AddArrowTexture($"{baseIdentifier}-hold-start-fill", yOffset, startHeight, 0x00FFFFFF);
+			AddArrowTexture($"{baseIdentifier}-roll-start-fill", yOffset, startHeight, 0x00FFFFFF);
+		}
+	}
+
 	private void ProcessGridOfImages(Texture2D source, string[] identifiers, int numCols, int startX, int startY, int w, int h,
-		int padding)
+		int padding, uint transparentColor)
 	{
 		var sourceColorData = new uint[source.Width * source.Height];
 		source.GetData(sourceColorData);
@@ -487,22 +377,18 @@ internal class TextureGeneratorGame : Game
 					  || identifier.Contains("fake")
 					  || identifier.Contains("lift")
 					  || identifier.Contains("fill")
-					  || identifier.Contains("player -marker"));
+					  || identifier.Contains("player-marker"));
 
 				// Copy the sub-texture out of the source texture.
-				var subTexture = new Texture2D(GraphicsDevice, w, h);
-				var subTextureData = new uint[w * h];
-				var sourceX = startX + (w + padding) * (i % numCols);
-				for (var subX = 0; subX < w; subX++, sourceX++)
-				{
-					var sourceY = startY + (h + padding) * (i / numCols);
-					for (var subY = 0; subY < h; subY++, sourceY++)
-					{
-						subTextureData[subX + subY * w] = sourceColorData[sourceX + sourceY * sourceW];
-					}
-				}
+				var subTexture = CopySubTexture(
+					sourceColorData,
+					source.Width,
+					startX + (w + padding) * (i % numCols),
+					startY + (h + padding) * (i / numCols),
+					w,
+					h,
+					transparentColor);
 
-				subTexture.SetData(subTextureData);
 				Atlas.AddSubTexture(identifier, subTexture, generateMips);
 
 				if (generateSelectedTexture)
@@ -581,6 +467,34 @@ internal class TextureGeneratorGame : Game
 		return null;
 	}
 
+	private Texture2D CopySubTexture(uint[] sourceColorData, int sourceW, int x, int y, int w, int h,
+		uint transparentColor = 0x00000000)
+	{
+		var subTexture = new Texture2D(GraphicsDevice, w, h);
+		var subTextureData = new uint[w * h];
+		var sourceX = x;
+		for (var subX = 0; subX < w; subX++, sourceX++)
+		{
+			var sourceY = y;
+			for (var subY = 0; subY < h; subY++, sourceY++)
+			{
+				subTextureData[subX + subY * w] = sourceColorData[sourceX + sourceY * sourceW];
+
+				// When copying the sub-texture, if we encounter fully transparent pixels then use the
+				// specified transparentColor. This allows us to have per-sub-texture transparent colors.
+				// This is useful when some images have black rims and some have white rims, and we want
+				// Monogame to blend with a color appropriate for that rim when it draws the image scaled.
+				if (((subTextureData[subX + subY * w] >> 24) & 0xFF) == 0)
+				{
+					subTextureData[subX + subY * w] = transparentColor;
+				}
+			}
+		}
+
+		subTexture.SetData(subTextureData);
+		return subTexture;
+	}
+
 	private string GetContentPath(string fileName)
 	{
 		return System.IO.Path.Combine(RelativeContentDir, fileName);
@@ -614,7 +528,7 @@ internal class TextureGeneratorGame : Game
 		input.GetData(colorData);
 
 		// Determine the inner transparent pixels via flood fill.
-		// This happens for routine mode graphic rims.
+		// This happens for rims.
 		var innerTransparentPixels = new bool[n];
 		FloodFill(w, h, colorData, innerTransparentPixels, w >> 1, h >> 1);
 
@@ -650,7 +564,13 @@ internal class TextureGeneratorGame : Game
 				{
 					// If this is an inner transparent area then do not add a rim.
 					if (innerTransparentPixels[i])
+					{
+						// Ensure the inner pixel color is white even though it is transparent.
+						// This is to ensure that when monogame draws the texture scaled down and blends
+						// the pixels it doesn't blend our desired white rim with black.
+						newColorData[i] = 0x00FFFFFF;
 						continue;
+					}
 
 					// Determine the largest source alpha in the mask centered on this pixel.
 					var alpha = 0.0f;

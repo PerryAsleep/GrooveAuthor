@@ -17,9 +17,7 @@ internal sealed class SnapManager
 		SnapLevels[0] = new SnapData(0);
 		for (var denominatorIndex = 0; denominatorIndex < ValidDenominators.Length; denominatorIndex++)
 		{
-			SnapLevels[denominatorIndex + 1] = new SnapData(
-				MaxValidDenominator / ValidDenominators[denominatorIndex],
-				ArrowGraphicManager.GetSnapIndicatorTexture(ValidDenominators[denominatorIndex]));
+			SnapLevels[denominatorIndex + 1] = new SnapData(MaxValidDenominator / ValidDenominators[denominatorIndex]);
 		}
 
 		var p = Preferences.Instance;
@@ -39,9 +37,9 @@ internal sealed class SnapManager
 		return SnapLevels[Preferences.Instance.SnapIndex].Rows;
 	}
 
-	public string GetCurrentTexture()
+	public int GetCurrentGetSubDivision()
 	{
-		return SnapLevels[Preferences.Instance.SnapIndex].Texture;
+		return SnapLevels[Preferences.Instance.SnapIndex].SubDivision;
 	}
 
 	public static bool IsSnapIndexValidForSnapLock(int snapIndex)

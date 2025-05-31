@@ -68,8 +68,8 @@ internal sealed class EditorLiftNoteEvent : EditorEvent
 		// relaying fake information is more important than relaying lift information.
 		if (!IsFake())
 		{
-			var liftTextureId = ArrowGraphicManager.GetLiftMarkerTexture(LaneTapNote.IntegerPosition, GetLane(), false);
-			var (textureId, _) = arrowGraphicManager.GetArrowTexture(GetRow(), GetLane(), IsSelected());
+			var liftTextureId = ArrowGraphicManager.GetLiftMarkerTexture(false);
+			var (textureId, _) = arrowGraphicManager.GetArrowTextureRim(GetLane(), IsSelected());
 			var (arrowW, arrowH) = textureAtlas.GetDimensions(textureId);
 			var (markerW, markerH) = textureAtlas.GetDimensions(liftTextureId);
 			var markerX = X + (arrowW - markerW) * 0.5 * Scale;

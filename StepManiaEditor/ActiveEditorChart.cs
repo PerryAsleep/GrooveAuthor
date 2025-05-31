@@ -528,7 +528,7 @@ internal sealed class ActiveEditorChart
 
 		// Determine graphic dimensions based on the zoom level.
 		var (arrowW, arrowH) = GetArrowDimensions();
-		var (holdCapTexture, _) = ArrowGraphicManager.GetHoldEndTexture(0, 0, false, false);
+		var (holdCapTexture, _) = ArrowGraphicManager.GetHoldEndTextureRim(0, false);
 		var (_, holdCapTextureHeight) = TextureAtlas.GetDimensions(holdCapTexture);
 		var holdCapHeight = holdCapTextureHeight * sizeZoom;
 		if (ArrowGraphicManager.AreHoldCapsCentered())
@@ -787,7 +787,7 @@ internal sealed class ActiveEditorChart
 
 	private (double, double) GetArrowDimensions(bool scaled = true)
 	{
-		var (arrowTexture, _) = ArrowGraphicManager.GetArrowTexture(0, 0, false);
+		var (arrowTexture, _) = ArrowGraphicManager.GetArrowTextureRim(0, false);
 		(double arrowW, double arrowH) = TextureAtlas.GetDimensions(arrowTexture);
 		if (scaled)
 		{
@@ -801,7 +801,7 @@ internal sealed class ActiveEditorChart
 
 	private double GetHoldCapHeight()
 	{
-		var (holdCapTexture, _) = ArrowGraphicManager.GetHoldEndTexture(0, 0, false, false);
+		var (holdCapTexture, _) = ArrowGraphicManager.GetHoldEndTextureRim(0, false);
 		var (_, holdCapTextureHeight) = TextureAtlas.GetDimensions(holdCapTexture);
 		var holdCapHeight = holdCapTextureHeight * ZoomManager.GetSizeZoom();
 		if (ArrowGraphicManager.AreHoldCapsCentered())

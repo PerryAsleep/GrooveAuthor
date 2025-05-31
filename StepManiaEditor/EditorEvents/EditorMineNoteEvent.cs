@@ -52,31 +52,16 @@ internal sealed class EditorMineNoteEvent : EditorEvent
 
 		var pos = new Vector2((float)X, (float)Y);
 		var selected = IsSelected();
-		string textureId;
-		var row = GetStepColorRow();
-		var lane = GetLane();
+		var player = GetPlayer();
 
-		// Draw the routine mine.
-		if (EditorChart.IsMultiPlayer())
-		{
-			var player = GetPlayer();
+		// Draw fill.
+		var (textureId, c) = arrowGraphicManager.GetMineFillTexture(selected, player);
+		c.A = (byte)(alpha * byte.MaxValue);
+		textureAtlas.Draw(textureId, spriteBatch, pos, Scale, 0.0f, c);
 
-			// Draw fill.
-			(textureId, var c) = arrowGraphicManager.GetMineFillTexture(row, lane, selected, player);
-			c.A = (byte)(alpha * byte.MaxValue);
-			textureAtlas.Draw(textureId, spriteBatch, pos, Scale, 0.0f, c);
-
-			// Draw rim.
-			textureId = arrowGraphicManager.GetMineRimTexture(row, lane, selected);
-			textureAtlas.Draw(textureId, spriteBatch, pos, Scale, 0.0f, alpha);
-		}
-
-		// Draw a normal mine.
-		else
-		{
-			textureId = arrowGraphicManager.GetMineTexture(row, lane, IsSelected());
-			textureAtlas.Draw(textureId, spriteBatch, pos, Scale, 0.0f, alpha);
-		}
+		// Draw rim.
+		textureId = arrowGraphicManager.GetMineRimTexture(selected);
+		textureAtlas.Draw(textureId, spriteBatch, pos, Scale, 0.0f, alpha);
 
 		if (IsFake())
 			DrawFakeMarker(textureAtlas, spriteBatch, arrowGraphicManager);

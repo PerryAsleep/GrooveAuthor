@@ -117,7 +117,8 @@ internal sealed class Preferences
 	// Key Binds
 	[JsonInclude] public PreferencesKeyBinds PreferencesKeyBinds = new();
 
-	[JsonInclude] public PreferencesMultiplayer PreferencesMultiplayer = new();
+	[JsonInclude] [JsonPropertyName("PreferencesMultiplayer")]
+	public PreferencesNoteColor PreferencesNoteColor = new();
 
 	// Log preferences
 	[JsonInclude] public bool ShowLogWindow = true;
@@ -186,7 +187,7 @@ internal sealed class Preferences
 
 		foreach (var savedSongData in RecentFiles)
 			savedSongData.PostLoad();
-		PreferencesMultiplayer.PostLoad();
+		PreferencesNoteColor.PostLoad();
 		PreferencesReceptors.SetEditor(Editor);
 		PreferencesWaveForm.PostLoad();
 		PreferencesMiniMap.PostLoad();

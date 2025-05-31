@@ -125,7 +125,9 @@ internal sealed class EditorPatternConfig : EditorConfig<Config>, IEquatable<Edi
 	public override uint GetStringColor()
 	{
 		// Patterns should be colored based on the subdivision type.
-		return ArrowGraphicManager.GetArrowColorForSubdivision(Config.BeatSubDivision);
+		if (ArrowGraphicManager.TryGetArrowUIColorForSubdivision(Config.BeatSubDivision, out var color))
+			return color;
+		return 0xFFFFFFFF;
 	}
 
 	/// <summary>

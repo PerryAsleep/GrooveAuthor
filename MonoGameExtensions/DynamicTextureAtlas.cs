@@ -42,7 +42,9 @@ public class DynamicTextureAtlas : TextureAtlas
 	/// <param name="subTextureId">String identifier of the given sub-texture.</param>
 	/// <param name="texture">The texture to pack.</param>
 	/// <param name="generateMipLevels">Whether or not to generate mip levels for the given texture.</param>
-	public void AddSubTexture(string subTextureId, Texture2D texture, bool generateMipLevels)
+	/// <param name="paddingMode">How to pad this sub-texture.</param>
+	public void AddSubTexture(string subTextureId, Texture2D texture, bool generateMipLevels,
+		PaddingMode paddingMode = PaddingMode.Extend)
 	{
 		if (subTextureId == null)
 		{
@@ -77,7 +79,7 @@ public class DynamicTextureAtlas : TextureAtlas
 				}
 
 				// Pack.
-				var node = Root.Pack(mipLevel, Padding);
+				var node = Root.Pack(mipLevel, Padding, paddingMode);
 				if (node == null)
 				{
 					Logger.Warn($"Failed to pack texture \"{id}\" into TextureAtlas. Not enough space.");
@@ -107,7 +109,7 @@ public class DynamicTextureAtlas : TextureAtlas
 		// No mip levels - just pack the texture directly.
 		else
 		{
-			var node = Root.Pack(texture, Padding);
+			var node = Root.Pack(texture, Padding, paddingMode);
 			if (node == null)
 			{
 				Logger.Warn($"Failed to pack texture \"{texture}\" into TextureAtlas. Not enough space.");
@@ -144,54 +146,124 @@ public class DynamicTextureAtlas : TextureAtlas
 			// If we are using padding, extend the rim of the texture by one to mitigate sampling artifacts.
 			if (Padding > 0)
 			{
-				// Left padding.
-				sb.Draw(node.Texture,
-					new Rectangle(node.TextureRect.X - 1, node.TextureRect.Y, 1, node.TextureRect.Height),
-					new Rectangle(0, 0, 1, node.TextureRect.Height),
-					Color.White);
+				switch (node.PaddingMode)
+				{
+					case PaddingMode.Extend:
+					{
+						// Left padding.
+						sb.Draw(node.Texture,
+							new Rectangle(node.TextureRect.X - Padding, node.TextureRect.Y, Padding, node.TextureRect.Height),
+							new Rectangle(0, 0, Padding, node.TextureRect.Height),
+							Color.White);
 
-				// Top left padding.
-				sb.Draw(node.Texture,
-					new Rectangle(node.TextureRect.X - 1, node.TextureRect.Y - 1, 1, 1),
-					new Rectangle(0, 0, 1, 1),
-					Color.White);
+						// Top left padding.
+						sb.Draw(node.Texture,
+							new Rectangle(node.TextureRect.X - Padding, node.TextureRect.Y - Padding, Padding, Padding),
+							new Rectangle(0, 0, Padding, Padding),
+							Color.White);
 
-				// Bottom left padding.
-				sb.Draw(node.Texture,
-					new Rectangle(node.TextureRect.X - 1, node.TextureRect.Y + node.TextureRect.Height, 1, 1),
-					new Rectangle(0, node.TextureRect.Height - 1, 1, 1),
-					Color.White);
+						// Bottom left padding.
+						sb.Draw(node.Texture,
+							new Rectangle(node.TextureRect.X - Padding, node.TextureRect.Y + node.TextureRect.Height, Padding,
+								Padding),
+							new Rectangle(0, node.TextureRect.Height - Padding, Padding, Padding),
+							Color.White);
 
-				// Right padding.
-				sb.Draw(node.Texture,
-					new Rectangle(node.TextureRect.X + node.TextureRect.Width, node.TextureRect.Y, 1, node.TextureRect.Height),
-					new Rectangle(node.TextureRect.Width - 1, 0, 1, node.TextureRect.Height),
-					Color.White);
+						// Right padding.
+						sb.Draw(node.Texture,
+							new Rectangle(node.TextureRect.X + node.TextureRect.Width, node.TextureRect.Y, Padding,
+								node.TextureRect.Height),
+							new Rectangle(node.TextureRect.Width - Padding, 0, Padding, node.TextureRect.Height),
+							Color.White);
 
-				// Top right padding.
-				sb.Draw(node.Texture,
-					new Rectangle(node.TextureRect.X + node.TextureRect.Width, node.TextureRect.Y - 1, 1, 1),
-					new Rectangle(node.TextureRect.Width - 1, 0, 1, 1),
-					Color.White);
+						// Top right padding.
+						sb.Draw(node.Texture,
+							new Rectangle(node.TextureRect.X + node.TextureRect.Width, node.TextureRect.Y - Padding, Padding,
+								Padding),
+							new Rectangle(node.TextureRect.Width - Padding, 0, Padding, Padding),
+							Color.White);
 
-				// Bottom right padding.
-				sb.Draw(node.Texture,
-					new Rectangle(node.TextureRect.X + node.TextureRect.Width, node.TextureRect.Y + node.TextureRect.Height, 1,
-						1),
-					new Rectangle(node.TextureRect.Width - 1, node.TextureRect.Height - 1, 1, 1),
-					Color.White);
+						// Bottom right padding.
+						sb.Draw(node.Texture,
+							new Rectangle(node.TextureRect.X + node.TextureRect.Width,
+								node.TextureRect.Y + node.TextureRect.Height, Padding,
+								Padding),
+							new Rectangle(node.TextureRect.Width - Padding, node.TextureRect.Height - Padding, Padding, Padding),
+							Color.White);
 
-				// Top padding.
-				sb.Draw(node.Texture,
-					new Rectangle(node.TextureRect.X, node.TextureRect.Y - 1, node.TextureRect.Width, 1),
-					new Rectangle(0, 0, node.TextureRect.Width, 1),
-					Color.White);
+						// Top padding.
+						sb.Draw(node.Texture,
+							new Rectangle(node.TextureRect.X, node.TextureRect.Y - Padding, node.TextureRect.Width, Padding),
+							new Rectangle(0, 0, node.TextureRect.Width, Padding),
+							Color.White);
 
-				// Bottom padding.
-				sb.Draw(node.Texture,
-					new Rectangle(node.TextureRect.X, node.TextureRect.Y + node.TextureRect.Height, node.TextureRect.Width, 1),
-					new Rectangle(0, node.TextureRect.Height - 1, node.TextureRect.Width, 1),
-					Color.White);
+						// Bottom padding.
+						sb.Draw(node.Texture,
+							new Rectangle(node.TextureRect.X, node.TextureRect.Y + node.TextureRect.Height,
+								node.TextureRect.Width, Padding),
+							new Rectangle(0, node.TextureRect.Height - Padding, node.TextureRect.Width, Padding),
+							Color.White);
+						break;
+					}
+
+					case PaddingMode.Wrap:
+					{
+						// Left padding.
+						sb.Draw(node.Texture,
+							new Rectangle(node.TextureRect.X - Padding, node.TextureRect.Y, Padding, node.TextureRect.Height),
+							new Rectangle(node.TextureRect.Width - Padding, 0, Padding, node.TextureRect.Height),
+							Color.White);
+
+						// Top left padding.
+						sb.Draw(node.Texture,
+							new Rectangle(node.TextureRect.X - Padding, node.TextureRect.Y - Padding, Padding, Padding),
+							new Rectangle(node.TextureRect.Width - Padding, node.TextureRect.Height - Padding, Padding, Padding),
+							Color.White);
+
+						// Bottom left padding.
+						sb.Draw(node.Texture,
+							new Rectangle(node.TextureRect.X - Padding, node.TextureRect.Y + node.TextureRect.Height, Padding,
+								Padding),
+							new Rectangle(node.TextureRect.Width - Padding, 0, Padding, Padding),
+							Color.White);
+
+						// Right padding.
+						sb.Draw(node.Texture,
+							new Rectangle(node.TextureRect.X + node.TextureRect.Width, node.TextureRect.Y, Padding,
+								node.TextureRect.Height),
+							new Rectangle(0, 0, Padding, node.TextureRect.Height),
+							Color.White);
+
+						// Top right padding.
+						sb.Draw(node.Texture,
+							new Rectangle(node.TextureRect.X + node.TextureRect.Width, node.TextureRect.Y - Padding, Padding,
+								Padding),
+							new Rectangle(0, node.TextureRect.Height - Padding, Padding, Padding),
+							Color.White);
+
+						// Bottom right padding.
+						sb.Draw(node.Texture,
+							new Rectangle(node.TextureRect.X + node.TextureRect.Width,
+								node.TextureRect.Y + node.TextureRect.Height, Padding,
+								Padding),
+							new Rectangle(0, 0, Padding, Padding),
+							Color.White);
+
+						// Top padding.
+						sb.Draw(node.Texture,
+							new Rectangle(node.TextureRect.X, node.TextureRect.Y - Padding, node.TextureRect.Width, Padding),
+							new Rectangle(0, node.TextureRect.Height - Padding, node.TextureRect.Width, Padding),
+							Color.White);
+
+						// Bottom padding.
+						sb.Draw(node.Texture,
+							new Rectangle(node.TextureRect.X, node.TextureRect.Y + node.TextureRect.Height,
+								node.TextureRect.Width, Padding),
+							new Rectangle(0, 0, node.TextureRect.Width, Padding),
+							Color.White);
+						break;
+					}
+				}
 			}
 
 			// Let the node perform cleanup now that it is done rendering to the texture atlas.

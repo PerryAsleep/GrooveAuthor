@@ -225,9 +225,13 @@ public class TextureUtils
 				var b = colorData[y * previousLevelWidth + x + 1];
 				var c = colorData[(y + 1) * previousLevelWidth + x];
 				var d = colorData[(y + 1) * previousLevelWidth + x + 1];
-				newColorData[yIndex * currentLevelWidth + xIndex] = Fumen.ColorUtils.ColorRGBAInterpolate(
-					Fumen.ColorUtils.ColorRGBAInterpolate(a, b, 0.5f),
-					Fumen.ColorUtils.ColorRGBAInterpolate(c, d, 0.5f), 0.5f);
+
+				// If the colors are completely transparent it means we should not use its color as it is likely black.
+				// Consider a rounded white edge. We do not want to blend black in with the white as it fades out.
+				// We should ignore colors from completely transparent pixels.
+				newColorData[yIndex * currentLevelWidth + xIndex] = Fumen.ColorUtils.ColorRGBAInterpolateIgnoringTransparentColor(
+					Fumen.ColorUtils.ColorRGBAInterpolateIgnoringTransparentColor(a, b, 0.5f),
+					Fumen.ColorUtils.ColorRGBAInterpolateIgnoringTransparentColor(c, d, 0.5f), 0.5f);
 			}
 		}
 

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Drawing;
 using System.Globalization;
 using System.IO;
 using System.Linq;
@@ -25,7 +26,9 @@ using static StepManiaEditor.ImGuiUtils;
 using static Fumen.Converters.SMCommon;
 using static StepManiaEditor.EditorSongImageUtils;
 using static StepManiaEditor.MiniMap;
+using Color = Microsoft.Xna.Framework.Color;
 using Path = Fumen.Path;
+using Rectangle = Microsoft.Xna.Framework.Rectangle;
 
 [assembly: InternalsVisibleTo("StepManiaEditorTests")]
 
@@ -2595,7 +2598,7 @@ public sealed class Editor :
 		var (x, w) = GetDarkBgXAndW();
 
 		SpriteBatch.Begin();
-		TextureAtlas.Draw("dark-bg", SpriteBatch, new Rectangle(x, 0, w, GetViewportHeight()),
+		TextureAtlas.Draw("dark-bg", SpriteBatch, new RectangleF(x, 0, w, GetViewportHeight()),
 			new Color(p.Color.X, p.Color.Y, p.Color.Z, p.Color.W));
 		SpriteBatch.End();
 	}
@@ -2629,21 +2632,40 @@ public sealed class Editor :
 		var focusedChartData = GetFocusedChartData();
 		if (focusedChartData == null)
 			return;
-		var snapTextureId = SnapManager.GetCurrentTexture();
-		if (string.IsNullOrEmpty(snapTextureId))
+		var arrowGraphicManager = focusedChartData.GetArrowGraphicManager();
+		if (arrowGraphicManager == null)
 			return;
+
+		var (fillTextureId, color) = arrowGraphicManager.GetSnapIndicatorFillTexture(SnapManager.GetCurrentGetSubDivision());
+		if (string.IsNullOrEmpty(fillTextureId))
+			return;
+		var (fillW, fillH) = TextureAtlas.GetDimensions(fillTextureId);
+
+		var rimTextureId = ArrowGraphicManager.GetSnapIndicatorRimTexture();
+		var (rimW, rimH) = TextureAtlas.GetDimensions(rimTextureId);
 
 		var zoom = ZoomManager.GetSizeZoom();
 		var receptorsLeftEdge = focusedChartData.GetScreenSpaceXOfLanesStartWithCurrentScale();
-		var (snapTextureWidth, snapTextureHeight) = TextureAtlas.GetDimensions(snapTextureId);
-		var leftX = receptorsLeftEdge - snapTextureWidth * 0.5 * zoom;
+		var leftX = receptorsLeftEdge - rimW * 0.5 * zoom;
 		var y = GetFocalPointScreenSpaceY();
 
+		// Draw fill.
 		TextureAtlas.Draw(
-			snapTextureId,
+			fillTextureId,
 			SpriteBatch,
 			new Vector2((float)leftX, y),
-			new Vector2((float)(snapTextureWidth * 0.5), (float)(snapTextureHeight * 0.5)),
+			new Vector2((float)(fillW * 0.5), (float)(fillH * 0.5)),
+			color,
+			(float)zoom,
+			0.0f,
+			SpriteEffects.None);
+
+		// Draw rim.
+		TextureAtlas.Draw(
+			rimTextureId,
+			SpriteBatch,
+			new Vector2((float)leftX, y),
+			new Vector2((float)(rimW * 0.5), (float)(rimH * 0.5)),
 			Color.White,
 			(float)zoom,
 			0.0f,
@@ -2663,7 +2685,7 @@ public sealed class Editor :
 		var player = GetPlayer(FocusedChart);
 		var rimTextureId = ArrowGraphicManager.GetPlayerMarkerRimTexture();
 		var (rimW, rimH) = TextureAtlas.GetDimensions(rimTextureId);
-		var (fillTextureId, color) = ArrowGraphicManager.GetPlayerMarkerFillTexture(player);
+		var (fillTextureId, color) = arrowGraphicManager.GetPlayerMarkerFillTexture(player);
 		var (fillW, fillH) = TextureAtlas.GetDimensions(fillTextureId);
 
 		var zoom = ZoomManager.GetSizeZoom();
@@ -2761,9 +2783,9 @@ public sealed class Editor :
 			if (!activeChartData.IsVisible())
 				continue;
 			var textureId = activeChartData.IsFocused() ? TextureIdFocusedChartBoundary : TextureIdUnfocusedChartBoundary;
-			var rect = new Rectangle(activeChartData.GetScreenSpaceXOfFullChartAreaStart(), y, w, h);
+			var rect = new RectangleF(activeChartData.GetScreenSpaceXOfFullChartAreaStart(), y, w, h);
 			TextureAtlas.Draw(textureId, SpriteBatch, rect);
-			rect = new Rectangle(activeChartData.GetScreenSpaceXOfFullChartAreaEnd() - w, y, w, h);
+			rect = new RectangleF(activeChartData.GetScreenSpaceXOfFullChartAreaEnd() - w, y, w, h);
 			TextureAtlas.Draw(textureId, SpriteBatch, rect);
 		}
 	}
@@ -3547,7 +3569,7 @@ public sealed class Editor :
 		UIAudioPreferences.Instance.Draw();
 		UIStreamPreferences.Instance.Draw();
 		UIDensityGraphPreferences.Instance.Draw();
-		UIMultiplayerPreferences.Instance.Draw();
+		UINoteColorPreferences.Instance.Draw();
 
 		UISongProperties.Instance.Draw(ActiveSong);
 		UIChartProperties.Instance.Draw(FocusedChart);
@@ -3852,8 +3874,8 @@ public sealed class Editor :
 					UIStreamPreferences.Instance.Open(true);
 				if (ImGui.MenuItem("Density Graph Preferences"))
 					UIDensityGraphPreferences.Instance.Open(true);
-				if (ImGui.MenuItem("Multiplayer Preferences"))
-					UIMultiplayerPreferences.Instance.Open(true);
+				if (ImGui.MenuItem("Note Color Preferences"))
+					UINoteColorPreferences.Instance.Open(true);
 
 				ImGui.Separator();
 				if (ImGui.MenuItem("Log"))

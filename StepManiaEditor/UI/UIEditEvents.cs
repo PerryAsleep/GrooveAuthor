@@ -124,7 +124,7 @@ internal sealed class UIEditEvents
 	{
 		if (ImGui.BeginMenu("Convert Selected"))
 		{
-			DrawConvertMenuItems(Editor.GetFocusedChart(), events);
+			DrawConvertMenuItems(Editor.GetFocusedChartData(), events);
 			ImGui.EndMenu();
 		}
 	}
@@ -133,7 +133,7 @@ internal sealed class UIEditEvents
 	{
 		if (ImGui.BeginMenu("Convert All"))
 		{
-			DrawConvertMenuItems(Editor.GetFocusedChart());
+			DrawConvertMenuItems(Editor.GetFocusedChartData());
 			ImGui.EndMenu();
 		}
 	}
@@ -170,8 +170,10 @@ internal sealed class UIEditEvents
 		return true;
 	}
 
-	private void DrawConvertMenuItems(EditorChart chart, IEnumerable<EditorEvent> events = null)
+	private void DrawConvertMenuItems(ActiveEditorChart activeChart, IEnumerable<EditorEvent> events = null)
 	{
+		var chart = activeChart?.GetChart();
+
 		var allEvents = false;
 		if (events == null)
 		{
@@ -189,7 +191,7 @@ internal sealed class UIEditEvents
 		{
 			for (var i = 0; i < chart.MaxPlayers; i++)
 			{
-				ImGui.PushStyleColor(ImGuiCol.Text, ArrowGraphicManager.GetUIColorForPlayer(i));
+				ImGui.PushStyleColor(ImGuiCol.Text, activeChart.GetArrowGraphicManager().GetUIColorForPlayer(i));
 
 				var shortCut = i switch
 				{
@@ -917,9 +919,10 @@ internal sealed class UIEditEvents
 			if (multiPlayer)
 			{
 				var numPlayers = Editor.GetFocusedChart().MaxPlayers;
+				var arrowGraphicManager = Editor.GetFocusedChartData().GetArrowGraphicManager();
 				var currentPlayer = Editor.GetPlayer();
 
-				ImGui.PushStyleColor(ImGuiCol.Text, ArrowGraphicManager.GetUIColorForPlayer(currentPlayer));
+				ImGui.PushStyleColor(ImGuiCol.Text, arrowGraphicManager.GetUIColorForPlayer(currentPlayer));
 				if (ImGui.BeginMenu($"Current Player ({currentPlayer + 1})"))
 				{
 					ImGui.PopStyleColor();
@@ -976,7 +979,7 @@ internal sealed class UIEditEvents
 				for (var i = 0; i < numPlayers; i++)
 				{
 					var player = i;
-					ImGui.PushStyleColor(ImGuiCol.Text, ArrowGraphicManager.GetUIColorForPlayer(player));
+					ImGui.PushStyleColor(ImGuiCol.Text, arrowGraphicManager.GetUIColorForPlayer(player));
 					if (ImGui.BeginMenu($"Player {player + 1}"))
 					{
 						ImGui.PopStyleColor();

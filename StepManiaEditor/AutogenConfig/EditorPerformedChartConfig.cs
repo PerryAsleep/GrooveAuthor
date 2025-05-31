@@ -394,7 +394,10 @@ internal sealed class EditorPerformedChartConfig :
 
 	public uint GetSpeedStringColor()
 	{
-		return ArrowGraphicManager.GetArrowColorForSubdivision(ValidDenominators[TravelSpeedNoteTypeDenominatorIndex]);
+		if (ArrowGraphicManager.TryGetArrowUIColorForSubdivision(ValidDenominators[TravelSpeedNoteTypeDenominatorIndex],
+			    out var color))
+			return color;
+		return 0xFFFFFFFF;
 	}
 
 	#endregion String Representataion
