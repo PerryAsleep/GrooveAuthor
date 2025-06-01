@@ -126,7 +126,8 @@ internal sealed class UISongProperties : UIWindow
 					"The background graphic to display for this song while it is being played."
 					+ "\nITG backgrounds are 640x480.");
 
-				ImGuiLayoutUtils.DrawRowFileBrowse("CD Title", EditorSong, nameof(EditorSong.CDTitlePath),
+				ImGuiLayoutUtils.DrawRowAutoFileBrowse("CD Title", EditorSong, nameof(EditorSong.CDTitlePath),
+					TryFindCDTitle,
 					() => BrowseCDTitle(Editor.GetPlatformInterface()),
 					ClearCDTitle,
 					true,
@@ -247,7 +248,7 @@ internal sealed class UISongProperties : UIWindow
 			ImGui.Separator();
 			if (ImGuiLayoutUtils.BeginTable("UncommonAssets", TitleColumnWidth))
 			{
-				ImGuiLayoutUtils.DrawRowFileBrowse("Jacket", EditorSong, nameof(EditorSong.CDTitlePath),
+				ImGuiLayoutUtils.DrawRowFileBrowse("Jacket", EditorSong, nameof(EditorSong.JacketPath),
 					() => BrowseJacket(Editor.GetPlatformInterface()),
 					ClearJacket,
 					true,
@@ -255,7 +256,7 @@ internal sealed class UISongProperties : UIWindow
 					+ "\nMeant for themes which display songs with jacket assets in the song wheel like DDR X2."
 					+ "\nTypically square, but dimensions are arbitrary.");
 
-				ImGuiLayoutUtils.DrawRowFileBrowse("CD Image", EditorSong, nameof(EditorSong.CDTitlePath),
+				ImGuiLayoutUtils.DrawRowFileBrowse("CD Image", EditorSong, nameof(EditorSong.CDImagePath),
 					() => BrowseCDImage(Editor.GetPlatformInterface()),
 					ClearCDImage,
 					true,
@@ -263,7 +264,7 @@ internal sealed class UISongProperties : UIWindow
 					+ "\nOriginally meant to capture song select graphics which looked like CDs from the original DDR."
 					+ "\nTypically square, but dimensions are arbitrary.");
 
-				ImGuiLayoutUtils.DrawRowFileBrowse("Disc Image", EditorSong, nameof(EditorSong.CDTitlePath),
+				ImGuiLayoutUtils.DrawRowFileBrowse("Disc Image", EditorSong, nameof(EditorSong.DiscImagePath),
 					() => BrowseDiscImage(Editor.GetPlatformInterface()),
 					ClearDiscImage,
 					true,
@@ -307,7 +308,7 @@ internal sealed class UISongProperties : UIWindow
 
 	private void TryFindBestBanner()
 	{
-		var bestFile = EditorSongImageUtils.TryFindBestBanner(EditorSong.GetFileDirectory());
+		var bestFile = TryFindBestImage(SongImageType.Banner, EditorSong.GetFileDirectory());
 		if (!string.IsNullOrEmpty(bestFile))
 		{
 			var relativePath = Path.GetRelativePath(EditorSong.GetFileDirectory(), bestFile);
@@ -340,7 +341,7 @@ internal sealed class UISongProperties : UIWindow
 
 	private void TryFindBestBackground()
 	{
-		var bestFile = EditorSongImageUtils.TryFindBestBackground(EditorSong.GetFileDirectory());
+		var bestFile = TryFindBestImage(SongImageType.Background, EditorSong.GetFileDirectory());
 		if (!string.IsNullOrEmpty(bestFile))
 		{
 			var relativePath = Path.GetRelativePath(EditorSong.GetFileDirectory(), bestFile);
@@ -369,6 +370,24 @@ internal sealed class UISongProperties : UIWindow
 	private void ClearBackground()
 	{
 		Editor.UpdateSongImage(SongImageType.Background, "");
+	}
+
+	private void TryFindCDTitle()
+	{
+		var bestFile = TryFindBestImage(SongImageType.CDTitle, EditorSong.GetFileDirectory());
+		if (!string.IsNullOrEmpty(bestFile))
+		{
+			var relativePath = Path.GetRelativePath(EditorSong.GetFileDirectory(), bestFile);
+			if (relativePath != EditorSong.CDTitlePath)
+				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong,
+					nameof(EditorSong.CDTitlePath), relativePath, true));
+			else
+				Logger.Info($"CD title is already set to the best automatic choice: '{relativePath}'.");
+		}
+		else
+		{
+			Logger.Info("Could not automatically determine the CD title.");
+		}
 	}
 
 	private void BrowseCDTitle(IEditorPlatform platformInterface)

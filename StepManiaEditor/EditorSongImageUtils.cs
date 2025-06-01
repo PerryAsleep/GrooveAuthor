@@ -14,151 +14,219 @@ namespace StepManiaEditor;
 internal sealed class EditorSongImageUtils
 {
 	private const float AspectRatioMatchTolerance = 0.05f;
-	private const string BannerPostfix = "bn";
-	private const string BannerContains = "banner";
-	private const string BackgroundPostfix = "bg";
-	private const string BackgroundContains = "background";
 
+	/// <summary>
+	/// Image types.
+	/// The order is used for matching files.
+	/// </summary>
 	public enum SongImageType
 	{
 		Background,
 		Banner,
+		CDTitle,
 		Jacket,
 		CDImage,
 		DiscImage,
-		CDTitle,
 	}
 
 	/// <summary>
-	/// Given a path to a directory, finds the best banner image file in the directory or null if no banner image file could be found.
+	/// Data per each SongImageType for performing searches.
 	/// </summary>
-	/// <param name="directory">Full path to the directory.</param>
-	/// <returns>Full path to the best banner image or null if none could be found.</returns>
-	public static string TryFindBestBanner(string directory)
+	private class ImageSearchData
 	{
-		return TryFindBestAsset(
-			directory,
-			BannerWidthDefaultDPI,
-			BannerHeightDefaultDPI,
-			BannerPostfix,
-			BannerContains,
-			false,
-			false,
-			false);
-	}
+		private readonly List<string> Prefixes;
+		private readonly List<string> Contains;
+		private readonly List<string> Postfixes;
+		private readonly bool ShouldMatchAspectRatio;
+		private readonly int ExpectedWidth;
+		private readonly int ExpectedHeight;
+		private readonly bool IncludeVideoFiles;
+		private readonly bool PreferBiggestFile;
+		private readonly bool PreferAnyVideo;
 
-	/// <summary>
-	/// Given a path to a directory, finds the best background image file in the directory or null if no banner image file could be found.
-	/// </summary>
-	/// <param name="directory">Full path to the directory.</param>
-	/// <returns>Full path to the best background image or null if none could be found.</returns>
-	public static string TryFindBestBackground(string directory)
-	{
-		return TryFindBestAsset(
-			directory,
-			BackgroundWidthDefaultDPI,
-			BackgroundHeightDefaultDPI,
-			BackgroundPostfix,
-			BackgroundContains,
-			true,
-			true,
-			true);
-	}
-
-	private static string TryFindBestAsset(
-		string directory,
-		int w,
-		int h,
-		string endsWith,
-		string contains,
-		bool includeVideoFiles,
-		bool preferBiggestFile,
-		bool preferAnyVideo)
-	{
-		try
+		public ImageSearchData(
+			List<string> prefixes = null,
+			List<string> contains = null,
+			List<string> postfixes = null,
+			bool shouldMatchAspectRatio = false,
+			int expectedWidth = 0,
+			int expectedHeight = 0,
+			bool includeVideoFiles = false,
+			bool preferBiggestFile = false,
+			bool preferAnyVideo = false)
 		{
-			var files = Directory.GetFiles(directory);
+			Prefixes = prefixes;
+			Contains = contains;
+			Postfixes = postfixes;
+			ShouldMatchAspectRatio = shouldMatchAspectRatio;
+			ExpectedWidth = expectedWidth;
+			ExpectedHeight = expectedHeight;
+			IncludeVideoFiles = includeVideoFiles;
+			PreferBiggestFile = preferBiggestFile;
+			PreferAnyVideo = preferAnyVideo;
+		}
 
-			// Check for files which match StepMania's expected names.
-			var assetFiles = new List<string>();
-			var videoFiles = new List<string>();
-			foreach (var file in files)
+		public string TryFindBestAsset(string directory)
+		{
+			try
 			{
-				try
+				var files = Directory.GetFiles(directory);
+
+				// Check for files which match StepMania's expected names.
+				var assetFiles = new List<string>();
+				var videoFiles = new List<string>();
+				foreach (var file in files)
 				{
-					var (fileNameNoExtension, extension) = GetFileNameAndExtension(file);
-					var imageFile = ExpectedImageFormats.Contains(extension);
-					var videoFile = ExpectedVideoFormats.Contains(extension);
-
-					if (!includeVideoFiles && !imageFile)
-						continue;
-					if (includeVideoFiles && !imageFile && !videoFile)
-						continue;
-
-					assetFiles.Add(file);
-					if (videoFile)
-						videoFiles.Add(file);
-					if (fileNameNoExtension.EndsWith(endsWith) || fileNameNoExtension.Contains(contains))
+					try
 					{
-						return file;
+						var (fileNameNoExtension, extension) = GetFileNameAndExtension(file);
+						var imageFile = ExpectedImageFormats.Contains(extension);
+						var videoFile = ExpectedVideoFormats.Contains(extension);
+
+						if (!IncludeVideoFiles && !imageFile)
+							continue;
+						if (IncludeVideoFiles && !imageFile && !videoFile)
+							continue;
+
+						assetFiles.Add(file);
+						if (videoFile)
+							videoFiles.Add(file);
+
+						if (MatchesName(fileNameNoExtension))
+							return file;
+					}
+					catch (Exception)
+					{
+						// Ignored.
 					}
 				}
-				catch (Exception)
+
+				// Try to match expected dimensions.
+				if (ShouldMatchAspectRatio || PreferBiggestFile)
 				{
-					// Ignored.
+					var filesWithExpectedAspectRatio = new List<string>();
+					string biggestFile = null;
+					var biggestSize = 0;
+					foreach (var file in assetFiles)
+					{
+						try
+						{
+							var (sourceWidth, sourceHeight) = GetImageDimensions(file);
+							if (DoesAspectRatioMatch(sourceWidth, sourceHeight, ExpectedWidth, ExpectedHeight))
+								filesWithExpectedAspectRatio.Add(file);
+
+							var size = sourceWidth * sourceHeight;
+							if (size > biggestSize && sourceWidth >= ExpectedWidth && sourceHeight >= ExpectedHeight)
+							{
+								biggestSize = size;
+								biggestFile = file;
+							}
+
+							if (sourceWidth == ExpectedWidth && sourceHeight == ExpectedHeight)
+							{
+								return file;
+							}
+						}
+						catch (Exception)
+						{
+							// Ignored.
+						}
+					}
+
+					// Try to match expected aspect ratio.
+					if (ShouldMatchAspectRatio && filesWithExpectedAspectRatio.Count > 0)
+						return filesWithExpectedAspectRatio[0];
+
+					// If configured to prefer the biggest file and a file exists that is at
+					// least as expected dimensions, use that.
+					if (PreferBiggestFile && !string.IsNullOrEmpty(biggestFile))
+						return biggestFile;
+				}
+
+				// If configured to prefer video files and any video file exists, use that.
+				if (PreferAnyVideo && videoFiles.Count > 0)
+					return videoFiles[0];
+			}
+			catch (Exception)
+			{
+				// Ignored.
+			}
+
+			return null;
+		}
+
+		public bool Matches(string fileName, int w, int h)
+		{
+			if (MatchesName(fileName))
+				return true;
+			if (ShouldMatchAspectRatio && DoesAspectRatioMatch(w, h, ExpectedWidth, ExpectedHeight))
+				return true;
+			return false;
+		}
+
+		private bool MatchesName(string fileName)
+		{
+			if (Prefixes != null)
+			{
+				foreach (var prefix in Prefixes)
+				{
+					if (fileName.StartsWith(prefix))
+					{
+						return true;
+					}
 				}
 			}
 
-			// Try to match expected dimensions.
-			var filesWithExpectedAspectRatio = new List<string>();
-			string biggestFile = null;
-			var biggestSize = 0;
-			foreach (var file in assetFiles)
+			if (Contains != null)
 			{
-				try
+				foreach (var contains in Contains)
 				{
-					var (sourceWidth, sourceHeight) = GetImageDimensions(file);
-					if (DoesAspectRatioMatch(sourceWidth, sourceHeight, w, h))
-						filesWithExpectedAspectRatio.Add(file);
-
-					var size = sourceWidth * sourceHeight;
-					if (size > biggestSize && sourceWidth >= w && sourceHeight >= h)
+					if (fileName.Contains(contains))
 					{
-						biggestSize = size;
-						biggestFile = file;
+						return true;
 					}
-
-					if (sourceWidth == w && sourceHeight == h)
-					{
-						return file;
-					}
-				}
-				catch (Exception)
-				{
-					// Ignored.
 				}
 			}
 
-			// Try to match expected aspect ratio.
-			if (filesWithExpectedAspectRatio.Count > 0)
-				return filesWithExpectedAspectRatio[0];
+			if (Postfixes != null)
+			{
+				foreach (var postfix in Postfixes)
+				{
+					if (fileName.EndsWith(postfix))
+					{
+						return true;
+					}
+				}
+			}
 
-			// If configured to prefer the biggest file and a file exists that is at
-			// least as expected dimensions, use that.
-			if (preferBiggestFile && !string.IsNullOrEmpty(biggestFile))
-				return biggestFile;
-
-			// If configured to prefer video files and any video file exists, use that.
-			if (preferAnyVideo && videoFiles.Count > 0)
-				return videoFiles[0];
+			return false;
 		}
-		catch (Exception)
+
+		private static bool DoesAspectRatioMatch(int sW, int sH, int eW, int eH)
 		{
-			// Ignored.
+			if (sW == 0 || sH == 0 || eW == 0 || eH == 0)
+				return false;
+			var sourceAspectRatio = (float)sW / sH;
+			var expectedAspectRation = (float)eW / eH;
+			return Math.Abs(sourceAspectRatio - expectedAspectRation) < AspectRatioMatchTolerance;
 		}
-
-		return null;
 	}
+
+	private static readonly Dictionary<SongImageType, ImageSearchData> ImageData = new();
+
+	static EditorSongImageUtils()
+	{
+		ImageData[SongImageType.Background] = new ImageSearchData(null, ["background"], ["bg"], true, BackgroundWidthDefaultDPI,
+			BackgroundHeightDefaultDPI, true, true, true);
+		ImageData[SongImageType.Banner] =
+			new ImageSearchData(null, ["banner"], [" bn"], true, BannerWidthDefaultDPI, BannerHeightDefaultDPI);
+		ImageData[SongImageType.CDTitle] = new ImageSearchData(null, ["cdtitle"]);
+		ImageData[SongImageType.Jacket] = new ImageSearchData(["jk_"], ["jacket", "albumart"]);
+		ImageData[SongImageType.CDImage] = new ImageSearchData(null, null, ["-cd"]);
+		ImageData[SongImageType.DiscImage] = new ImageSearchData(null, null, [" disc", " title"]);
+	}
+
+	#region Private Helpers
 
 	private static (string, string) GetFileNameAndExtension(string filePath)
 	{
@@ -182,11 +250,19 @@ internal sealed class EditorSongImageUtils
 		}
 	}
 
-	private static bool DoesAspectRatioMatch(int sW, int sH, int eW, int eH)
+	#endregion Private Helpers
+
+	#region Public Search Methods
+
+	/// <summary>
+	/// Given a path to a directory, finds the best image file of the given type in the directory or null if no image file could be found.
+	/// </summary>
+	/// <param name="directory">Full path to the directory.</param>
+	/// <param name="imageType">SongImageType to search for.</param>
+	/// <returns>Full path to the best image or null if none could be found.</returns>
+	public static string TryFindBestImage(SongImageType imageType, string directory)
 	{
-		var sourceAspectRatio = (float)sW / sH;
-		var expectedAspectRation = (float)eW / eH;
-		return Math.Abs(sourceAspectRatio - expectedAspectRation) < AspectRatioMatchTolerance;
+		return ImageData[imageType].TryFindBestAsset(directory);
 	}
 
 	/// <summary>
@@ -199,15 +275,12 @@ internal sealed class EditorSongImageUtils
 		try
 		{
 			var (fileNameNoExtension, _) = GetFileNameAndExtension(imagePath);
-
-			// If the file name or file dimensions match expectations for a banner image, assume it is a banner.
-			if (fileNameNoExtension.EndsWith(BannerPostfix) || fileNameNoExtension.Contains(BannerContains))
-				return SongImageType.Banner;
-			var (sourceWidth, sourceHeight) = GetImageDimensions(imagePath);
-			if (DoesAspectRatioMatch(sourceWidth, sourceHeight, BannerWidthDefaultDPI, BannerHeightDefaultDPI))
-				return SongImageType.Banner;
-
-			// The other image types are all square and not common.
+			var (w, h) = GetImageDimensions(imagePath);
+			foreach (var songType in Enum.GetValues(typeof(SongImageType)).Cast<SongImageType>())
+			{
+				if (ImageData[songType].Matches(fileNameNoExtension, w, h))
+					return songType;
+			}
 		}
 		catch (Exception)
 		{
@@ -217,4 +290,6 @@ internal sealed class EditorSongImageUtils
 		// The best image by default is a background.
 		return SongImageType.Background;
 	}
+
+	#endregion Public Search Methods
 }
