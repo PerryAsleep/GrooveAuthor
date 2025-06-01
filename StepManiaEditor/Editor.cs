@@ -291,8 +291,6 @@ public sealed class Editor :
 	private bool StartPlayingWhenMouseScrollingDone;
 	private bool TransformingSelectedNotes;
 
-	private uint MaxScreenHeight;
-
 	private string FormTitle;
 
 	// Fonts
@@ -916,10 +914,7 @@ public sealed class Editor :
 
 	private void InitializeScreenHeight()
 	{
-		var platformDpiScale = GetPlatformDpiScale();
-		foreach (var adapter in GraphicsAdapter.Adapters)
-			MaxScreenHeight = Math.Max(MaxScreenHeight, (uint)(adapter.CurrentDisplayMode.Height * platformDpiScale));
-		EditorEvent.SetScreenHeight(MaxScreenHeight);
+		RefreshEditorEventCachedScreenHeight();
 	}
 
 	private void InitializeWaveFormRenderer()
@@ -1404,6 +1399,14 @@ public sealed class Editor :
 				(uint)Math.Max(1, ChartArea.Height));
 			RecreateWaveformRenderTarget(false);
 		}
+
+		// Update the EditorEvent cached height.
+		RefreshEditorEventCachedScreenHeight();
+	}
+
+	private void RefreshEditorEventCachedScreenHeight()
+	{
+		EditorEvent.SetScreenHeight((uint)Math.Max(1, Math.Max(ChartArea.Height, GetViewportHeight())));
 	}
 
 	/// <summary>
