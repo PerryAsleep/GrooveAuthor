@@ -70,8 +70,20 @@ internal sealed class EditorSongImageUtils
 		{
 			try
 			{
-				var files = Directory.GetFiles(directory);
+				return TryFindBestAsset(Directory.GetFiles(directory));
+			}
+			catch (Exception)
+			{
+				// Ignored.
+			}
 
+			return null;
+		}
+
+		public string TryFindBestAsset(string[] files = null)
+		{
+			try
+			{
 				// Check for files which match StepMania's expected names.
 				var assetFiles = new List<string>();
 				var videoFiles = new List<string>();
@@ -255,14 +267,123 @@ internal sealed class EditorSongImageUtils
 	#region Public Search Methods
 
 	/// <summary>
+	/// Given a path to a directory, finds the best images for every SongImageType.
+	/// </summary>
+	/// <param name="directory">Full path to the directory.</param>
+	/// <returns>Dictionary containing relative paths to best images for each SongImageType.</returns>
+	public static Dictionary<SongImageType, string> TryFindBestImages(string directory)
+	{
+		try
+		{
+			var files = Directory.GetFiles(directory);
+			return TryFindBestImages(directory, files);
+		}
+		catch (Exception)
+		{
+			// Ignored.
+		}
+
+		return new Dictionary<SongImageType, string>();
+	}
+
+	/// <summary>
+	/// Given a path to a directory and a list of files in that directory, finds the best images for every SongImageType.
+	/// </summary>
+	/// <param name="directory">Full path to the directory.</param>
+	/// <param name="files">Files to search.</param>
+	/// <returns>Dictionary containing relative paths to best images for each SongImageType.</returns>
+	public static Dictionary<SongImageType, string> TryFindBestImages(string directory, string[] files)
+	{
+		var results = new Dictionary<SongImageType, string>();
+
+		try
+		{
+			foreach (var songType in Enum.GetValues(typeof(SongImageType)).Cast<SongImageType>())
+			{
+				var result = MakeRelative(directory, ImageData[songType].TryFindBestAsset(files));
+				if (!string.IsNullOrEmpty(result))
+				{
+					results[songType] = result;
+				}
+			}
+		}
+		catch (Exception)
+		{
+			// Ignored.
+		}
+
+		return results;
+	}
+
+	/// <summary>
+	/// Given a path to a directory, finds the best lyrics file.
+	/// </summary>
+	/// <param name="directory">Full path to the directory.</param>
+	/// <returns>Relative path to best lyrics file.</returns>
+	public static string TryFindBestLyrics(string directory)
+	{
+		try
+		{
+			var files = Directory.GetFiles(directory);
+			return TryFindBestLyrics(directory, files);
+		}
+		catch (Exception)
+		{
+			// Ignored.
+		}
+
+		return null;
+	}
+
+	/// <summary>
+	/// Given a path to a directory and a list of files in that directory, finds the best lyrics file.
+	/// </summary>
+	/// <param name="directory">Full path to the directory.</param>
+	/// <param name="files">Files to search.</param>
+	/// <returns>Relative path to best lyrics file.</returns>
+	public static string TryFindBestLyrics(string directory, string[] files)
+	{
+		try
+		{
+			foreach (var file in files)
+			{
+				var (_, extension) = GetFileNameAndExtension(file);
+				if (ExpectedLyricsFormats.Contains(extension))
+					return MakeRelative(directory, file);
+			}
+		}
+		catch (Exception)
+		{
+			// Ignored.
+		}
+
+		return null;
+	}
+
+	/// <summary>
 	/// Given a path to a directory, finds the best image file of the given type in the directory or null if no image file could be found.
 	/// </summary>
 	/// <param name="directory">Full path to the directory.</param>
 	/// <param name="imageType">SongImageType to search for.</param>
-	/// <returns>Full path to the best image or null if none could be found.</returns>
+	/// <returns>Relative path to the best image or null if none could be found.</returns>
 	public static string TryFindBestImage(SongImageType imageType, string directory)
 	{
-		return ImageData[imageType].TryFindBestAsset(directory);
+		return MakeRelative(directory, ImageData[imageType].TryFindBestAsset(directory));
+	}
+
+	private static string MakeRelative(string directory, string assetPath)
+	{
+		try
+		{
+			if (!string.IsNullOrEmpty(assetPath))
+				return Fumen.Path.GetRelativePath(directory, assetPath);
+		}
+		catch (Exception)
+		{
+			// Ignored.
+		}
+
+		return assetPath;
 	}
 
 	/// <summary>

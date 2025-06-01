@@ -643,6 +643,10 @@ public sealed class Editor :
 		AddKeyCommand(copyPaste, "Cut", nameof(PreferencesKeyBinds.Cut), OnCut, true);
 		AddKeyCommand(copyPaste, "Paste", nameof(PreferencesKeyBinds.Paste), OnPaste, true);
 
+		const string song = "Song Shortcuts";
+		AddKeyCommand(song, "Automatically Apply All Song Assets", nameof(PreferencesKeyBinds.AutoApplyAllSongAssets), () => ApplyBestSongAssets(false));
+		AddKeyCommand(song, "Automatically Apply Unset Song Assets", nameof(PreferencesKeyBinds.AutoApplyUnsetSongAssets), () => ApplyBestSongAssets(true));
+
 		const string sound = "Sound";
 		AddKeyCommand(sound, "Toggle Preview", nameof(PreferencesKeyBinds.TogglePreview), OnTogglePlayPreview);
 		AddKeyCommand(sound, "Toggle Assist Tick", nameof(PreferencesKeyBinds.ToggleAssistTick), OnToggleAssistTick);
@@ -3705,7 +3709,7 @@ public sealed class Editor :
 							" events like attacks. If \"Require Identical Timing in SM Files\" is checked" +
 							$" then when saving sm files {GetAppName()} will treat any discrepancies in these events between" +
 							" charts as an error and will fail to save the chart. If this option is not checked then discrepancies" +
-							" will be treated as a warning and song's Timing Chart will be used for these events in every chart." +
+							" will be treated as a warning and the song's Timing Chart will be used for these events in every chart." +
 							" Note that if this option is unchecked then for songs with different timing events between" +
 							" charts it can result in sm files with data loss and timing that does not match what you see" +
 							$" in {GetAppName()}." +
@@ -3893,6 +3897,35 @@ public sealed class Editor :
 				ImGui.EndMenu();
 			}
 
+			if (ImGui.BeginMenu("Song"))
+			{
+				if (ImGui.MenuItem("New Song", UIControls.GetCommandString(keyBinds.New), false, canOpen))
+				{
+					OnNew();
+				}
+
+				ImGui.Separator();
+				if (ImGui.MenuItem("View Song Properties"))
+					UISongProperties.Instance.Open(true);
+				if (ImGui.MenuItem("View Pack Properties"))
+					UIPackProperties.Instance.Open(true);
+
+				ImGui.Separator();
+				if (ImGui.MenuItem("Automatically Apply Best Assets (All)",
+					    UIControls.GetCommandString(keyBinds.AutoApplyAllSongAssets), false, canEditSong))
+				{
+					ApplyBestSongAssets(false);
+				}
+
+				if (ImGui.MenuItem("Automatically Apply Best Assets (Unset Only)",
+					    UIControls.GetCommandString(keyBinds.AutoApplyUnsetSongAssets), false, canEditSong))
+				{
+					ApplyBestSongAssets(true);
+				}
+
+				ImGui.EndMenu();
+			}
+
 			if (ImGui.BeginMenu("Chart"))
 			{
 				if (ImGui.BeginMenu("New Chart", canEditSong))
@@ -4051,6 +4084,24 @@ public sealed class Editor :
 			}
 
 			ImGui.EndMainMenuBar();
+		}
+	}
+
+	private void ApplyBestSongAssets(bool ifUnset)
+	{
+		if (!CanEdit())
+			return;
+		var action = new ActionSetSongAssets(ActiveSong, ifUnset);
+		if (action.WillHaveAnEffect())
+		{
+			ActionQueue.Instance.Do(action);
+		}
+		else
+		{
+			if (ifUnset)
+				Logger.Info("All unset assets are already set to their best values.");
+			else
+				Logger.Info("All assets are already set to their best values.");
 		}
 	}
 

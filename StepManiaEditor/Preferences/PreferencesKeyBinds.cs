@@ -331,6 +331,8 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 	private static readonly List<Keys[]> DefaultSnapToOneHundredNinetySeconds        = [[]];
 	private static readonly List<Keys[]> DefaultToggleWaveForm                       = [[]];
 	private static readonly List<Keys[]> DefaultToggleDark                           = [[]];
+	private static readonly List<Keys[]> DefaultAutoApplyAllSongAssets               = [[]];
+	private static readonly List<Keys[]> DefaultAutoApplyUnsetSongAssets             = [[]];
 	// @formatter:on
 
 	#region Properties
@@ -2505,6 +2507,32 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 	}
 
 	private List<Keys[]> ToggleDarkInternal = DefaultToggleDark;
+
+	[JsonInclude]
+	public List<Keys[]> AutoApplyAllSongAssets
+	{
+		get => AutoApplyAllSongAssetsInternal;
+		set
+		{
+			AutoApplyAllSongAssetsInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(AutoApplyAllSongAssets));
+		}
+	}
+
+	private List<Keys[]> AutoApplyAllSongAssetsInternal = DefaultAutoApplyAllSongAssets;
+
+	[JsonInclude]
+	public List<Keys[]> AutoApplyUnsetSongAssets
+	{
+		get => AutoApplyUnsetSongAssetsInternal;
+		set
+		{
+			AutoApplyUnsetSongAssetsInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(AutoApplyUnsetSongAssets));
+		}
+	}
+
+	private List<Keys[]> AutoApplyUnsetSongAssetsInternal = DefaultAutoApplyUnsetSongAssets;
 
 	#endregion Properties
 

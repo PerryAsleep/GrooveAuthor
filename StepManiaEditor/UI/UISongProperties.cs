@@ -6,7 +6,6 @@ using ImGuiNET;
 using Microsoft.Xna.Framework.Graphics;
 using static StepManiaEditor.Utils;
 using static StepManiaEditor.ImGuiUtils;
-using static StepManiaEditor.EditorSongImageUtils;
 
 namespace StepManiaEditor;
 
@@ -248,7 +247,8 @@ internal sealed class UISongProperties : UIWindow
 			ImGui.Separator();
 			if (ImGuiLayoutUtils.BeginTable("UncommonAssets", TitleColumnWidth))
 			{
-				ImGuiLayoutUtils.DrawRowFileBrowse("Jacket", EditorSong, nameof(EditorSong.JacketPath),
+				ImGuiLayoutUtils.DrawRowAutoFileBrowse("Jacket", EditorSong, nameof(EditorSong.JacketPath),
+					TryFindBestJacket,
 					() => BrowseJacket(Editor.GetPlatformInterface()),
 					ClearJacket,
 					true,
@@ -256,7 +256,8 @@ internal sealed class UISongProperties : UIWindow
 					+ "\nMeant for themes which display songs with jacket assets in the song wheel like DDR X2."
 					+ "\nTypically square, but dimensions are arbitrary.");
 
-				ImGuiLayoutUtils.DrawRowFileBrowse("CD Image", EditorSong, nameof(EditorSong.CDImagePath),
+				ImGuiLayoutUtils.DrawRowAutoFileBrowse("CD Image", EditorSong, nameof(EditorSong.CDImagePath),
+					TryFindBestCDImage,
 					() => BrowseCDImage(Editor.GetPlatformInterface()),
 					ClearCDImage,
 					true,
@@ -264,7 +265,8 @@ internal sealed class UISongProperties : UIWindow
 					+ "\nOriginally meant to capture song select graphics which looked like CDs from the original DDR."
 					+ "\nTypically square, but dimensions are arbitrary.");
 
-				ImGuiLayoutUtils.DrawRowFileBrowse("Disc Image", EditorSong, nameof(EditorSong.DiscImagePath),
+				ImGuiLayoutUtils.DrawRowAutoFileBrowse("Disc Image", EditorSong, nameof(EditorSong.DiscImagePath),
+					TryFindBestDiscImage,
 					() => BrowseDiscImage(Editor.GetPlatformInterface()),
 					ClearDiscImage,
 					true,
@@ -290,7 +292,8 @@ internal sealed class UISongProperties : UIWindow
 					"\nMeant to capture stage requirements from DDR like extra stage and one more extra stage." +
 					"\nLeave as YES if you are unsure what to use.");
 
-				ImGuiLayoutUtils.DrawRowFileBrowse("Lyrics", EditorSong, nameof(EditorSong.LyricsPath),
+				ImGuiLayoutUtils.DrawRowAutoFileBrowse("Lyrics", EditorSong, nameof(EditorSong.LyricsPath),
+					TryFindBestLyrics,
 					() => BrowseLyricsFile(Editor.GetPlatformInterface()),
 					ClearLyricsFile,
 					true,
@@ -308,10 +311,10 @@ internal sealed class UISongProperties : UIWindow
 
 	private void TryFindBestBanner()
 	{
-		var bestFile = TryFindBestImage(SongImageType.Banner, EditorSong.GetFileDirectory());
-		if (!string.IsNullOrEmpty(bestFile))
+		var relativePath =
+			EditorSongImageUtils.TryFindBestImage(EditorSongImageUtils.SongImageType.Banner, EditorSong.GetFileDirectory());
+		if (!string.IsNullOrEmpty(relativePath))
 		{
-			var relativePath = Path.GetRelativePath(EditorSong.GetFileDirectory(), bestFile);
 			if (relativePath != EditorSong.BannerPath)
 				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong,
 					nameof(EditorSong.BannerPath), relativePath, true));
@@ -331,20 +334,20 @@ internal sealed class UISongProperties : UIWindow
 			EditorSong.GetFileDirectory(),
 			EditorSong.BannerPath,
 			GetExtensionsForImages(), true);
-		Editor.UpdateSongImage(SongImageType.Banner, relativePath);
+		Editor.UpdateSongImage(EditorSongImageUtils.SongImageType.Banner, relativePath);
 	}
 
 	private void ClearBanner()
 	{
-		Editor.UpdateSongImage(SongImageType.Banner, "");
+		Editor.UpdateSongImage(EditorSongImageUtils.SongImageType.Banner, "");
 	}
 
 	private void TryFindBestBackground()
 	{
-		var bestFile = TryFindBestImage(SongImageType.Background, EditorSong.GetFileDirectory());
-		if (!string.IsNullOrEmpty(bestFile))
+		var relativePath =
+			EditorSongImageUtils.TryFindBestImage(EditorSongImageUtils.SongImageType.Background, EditorSong.GetFileDirectory());
+		if (!string.IsNullOrEmpty(relativePath))
 		{
-			var relativePath = Path.GetRelativePath(EditorSong.GetFileDirectory(), bestFile);
 			if (relativePath != EditorSong.BackgroundPath)
 				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong,
 					nameof(EditorSong.BackgroundPath), relativePath, true));
@@ -364,20 +367,20 @@ internal sealed class UISongProperties : UIWindow
 			EditorSong.GetFileDirectory(),
 			EditorSong.BackgroundPath,
 			GetExtensionsForImagesAndVideos(), true);
-		Editor.UpdateSongImage(SongImageType.Background, relativePath);
+		Editor.UpdateSongImage(EditorSongImageUtils.SongImageType.Background, relativePath);
 	}
 
 	private void ClearBackground()
 	{
-		Editor.UpdateSongImage(SongImageType.Background, "");
+		Editor.UpdateSongImage(EditorSongImageUtils.SongImageType.Background, "");
 	}
 
 	private void TryFindCDTitle()
 	{
-		var bestFile = TryFindBestImage(SongImageType.CDTitle, EditorSong.GetFileDirectory());
-		if (!string.IsNullOrEmpty(bestFile))
+		var relativePath =
+			EditorSongImageUtils.TryFindBestImage(EditorSongImageUtils.SongImageType.CDTitle, EditorSong.GetFileDirectory());
+		if (!string.IsNullOrEmpty(relativePath))
 		{
-			var relativePath = Path.GetRelativePath(EditorSong.GetFileDirectory(), bestFile);
 			if (relativePath != EditorSong.CDTitlePath)
 				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong,
 					nameof(EditorSong.CDTitlePath), relativePath, true));
@@ -397,12 +400,30 @@ internal sealed class UISongProperties : UIWindow
 			EditorSong.GetFileDirectory(),
 			EditorSong.CDTitlePath,
 			GetExtensionsForImages(), true);
-		Editor.UpdateSongImage(SongImageType.CDTitle, relativePath);
+		Editor.UpdateSongImage(EditorSongImageUtils.SongImageType.CDTitle, relativePath);
 	}
 
 	private void ClearCDTitle()
 	{
-		Editor.UpdateSongImage(SongImageType.CDTitle, "");
+		Editor.UpdateSongImage(EditorSongImageUtils.SongImageType.CDTitle, "");
+	}
+
+	private void TryFindBestJacket()
+	{
+		var relativePath =
+			EditorSongImageUtils.TryFindBestImage(EditorSongImageUtils.SongImageType.Jacket, EditorSong.GetFileDirectory());
+		if (!string.IsNullOrEmpty(relativePath))
+		{
+			if (relativePath != EditorSong.JacketPath)
+				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong,
+					nameof(EditorSong.JacketPath), relativePath, true));
+			else
+				Logger.Info($"Jacket is already set to the best automatic choice: '{relativePath}'.");
+		}
+		else
+		{
+			Logger.Info("Could not automatically determine the jacket.");
+		}
 	}
 
 	private void BrowseJacket(IEditorPlatform platformInterface)
@@ -412,12 +433,30 @@ internal sealed class UISongProperties : UIWindow
 			EditorSong.GetFileDirectory(),
 			EditorSong.JacketPath,
 			GetExtensionsForImages(), true);
-		Editor.UpdateSongImage(SongImageType.Jacket, relativePath);
+		Editor.UpdateSongImage(EditorSongImageUtils.SongImageType.Jacket, relativePath);
 	}
 
 	private void ClearJacket()
 	{
-		Editor.UpdateSongImage(SongImageType.Jacket, "");
+		Editor.UpdateSongImage(EditorSongImageUtils.SongImageType.Jacket, "");
+	}
+
+	private void TryFindBestCDImage()
+	{
+		var relativePath =
+			EditorSongImageUtils.TryFindBestImage(EditorSongImageUtils.SongImageType.CDImage, EditorSong.GetFileDirectory());
+		if (!string.IsNullOrEmpty(relativePath))
+		{
+			if (relativePath != EditorSong.CDImagePath)
+				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong,
+					nameof(EditorSong.CDImagePath), relativePath, true));
+			else
+				Logger.Info($"CD image is already set to the best automatic choice: '{relativePath}'.");
+		}
+		else
+		{
+			Logger.Info("Could not automatically determine the CD image.");
+		}
 	}
 
 	private void BrowseCDImage(IEditorPlatform platformInterface)
@@ -427,12 +466,30 @@ internal sealed class UISongProperties : UIWindow
 			EditorSong.GetFileDirectory(),
 			EditorSong.CDImagePath,
 			GetExtensionsForImages(), true);
-		Editor.UpdateSongImage(SongImageType.CDImage, relativePath);
+		Editor.UpdateSongImage(EditorSongImageUtils.SongImageType.CDImage, relativePath);
 	}
 
 	private void ClearCDImage()
 	{
-		Editor.UpdateSongImage(SongImageType.CDImage, "");
+		Editor.UpdateSongImage(EditorSongImageUtils.SongImageType.CDImage, "");
+	}
+
+	private void TryFindBestDiscImage()
+	{
+		var relativePath =
+			EditorSongImageUtils.TryFindBestImage(EditorSongImageUtils.SongImageType.DiscImage, EditorSong.GetFileDirectory());
+		if (!string.IsNullOrEmpty(relativePath))
+		{
+			if (relativePath != EditorSong.DiscImagePath)
+				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong,
+					nameof(EditorSong.DiscImagePath), relativePath, true));
+			else
+				Logger.Info($"Disc image is already set to the best automatic choice: '{relativePath}'.");
+		}
+		else
+		{
+			Logger.Info("Could not automatically determine the disc image.");
+		}
 	}
 
 	private void BrowseDiscImage(IEditorPlatform platformInterface)
@@ -442,12 +499,12 @@ internal sealed class UISongProperties : UIWindow
 			EditorSong.GetFileDirectory(),
 			EditorSong.DiscImagePath,
 			GetExtensionsForImages(), true);
-		Editor.UpdateSongImage(SongImageType.DiscImage, relativePath);
+		Editor.UpdateSongImage(EditorSongImageUtils.SongImageType.DiscImage, relativePath);
 	}
 
 	private void ClearDiscImage()
 	{
-		Editor.UpdateSongImage(SongImageType.DiscImage, "");
+		Editor.UpdateSongImage(EditorSongImageUtils.SongImageType.DiscImage, "");
 	}
 
 	private void BrowseMusicFile(IEditorPlatform platformInterface)
@@ -484,6 +541,23 @@ internal sealed class UISongProperties : UIWindow
 		if (!string.IsNullOrEmpty(EditorSong.MusicPreviewPath))
 			ActionQueue.Instance.Do(
 				new ActionSetObjectFieldOrPropertyReference<string>(EditorSong, nameof(EditorSong.MusicPreviewPath), "", true));
+	}
+
+	private void TryFindBestLyrics()
+	{
+		var relativePath = EditorSongImageUtils.TryFindBestLyrics(EditorSong.GetFileDirectory());
+		if (!string.IsNullOrEmpty(relativePath))
+		{
+			if (relativePath != EditorSong.LyricsPath)
+				ActionQueue.Instance.Do(new ActionSetObjectFieldOrPropertyReference<string>(EditorSong,
+					nameof(EditorSong.LyricsPath), relativePath, true));
+			else
+				Logger.Info($"Lyrics are already set to the best automatic choice: '{relativePath}'.");
+		}
+		else
+		{
+			Logger.Info("Could not automatically determine the lyrics.");
+		}
 	}
 
 	private void BrowseLyricsFile(IEditorPlatform platformInterface)

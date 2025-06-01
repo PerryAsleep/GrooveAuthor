@@ -45,7 +45,7 @@ internal sealed class ImGuiLayoutUtils
 	public static readonly float CheckBoxWidth = UiScaled(20);
 	public static readonly float FileBrowseXWidth = UiScaled(20);
 	public static readonly float FileBrowseBrowseWidth = UiScaled(50);
-	public static readonly float FileBrowseAutoWidth = UiScaled(50);
+	public static readonly float FileBrowseAutoWidth = UiScaled(40);
 	public static readonly float DisplayTempoEnumWidth = UiScaled(120);
 	public static readonly float RangeToWidth = UiScaled(14);
 	public static readonly float TextXWidth = UiScaled(8);
