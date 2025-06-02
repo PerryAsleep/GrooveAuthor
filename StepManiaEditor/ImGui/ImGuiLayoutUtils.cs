@@ -2051,6 +2051,14 @@ internal sealed class ImGuiLayoutUtils
 		return ComboFromEnum(GetElementTitle(title, elementName), ref value);
 	}
 
+	public static bool DrawRowEnum<T>(string title, string elementName, ref int index, string help = null)
+		where T : struct, Enum
+	{
+		DrawRowTitleAndAdvanceColumn(title);
+		ImGui.SetNextItemWidth(DrawHelp(help, ImGui.GetContentRegionAvail().X));
+		return ComboFromEnum<T>(GetElementTitle(title, elementName), ref index);
+	}
+
 	public static bool DrawRowEnum<T>(bool undoable, string title, object o, string fieldName, bool affectsFile,
 		string help = null, T defaultValue = default)
 		where T : struct, Enum

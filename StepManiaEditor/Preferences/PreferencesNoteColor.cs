@@ -15,6 +15,57 @@ namespace StepManiaEditor;
 /// </summary>
 internal sealed class PreferencesNoteColor
 {
+	public enum ColorSet
+	{
+		Grooveauthor,
+		Itg,
+		Stepmania,
+	}
+
+	public class NoteColorSet
+	{
+		public NoteColorSet(
+			Vector3 quarter,
+			Vector3 eighth,
+			Vector3 twelfth,
+			Vector3 sixteenth,
+			Vector3 twentyForth,
+			Vector3 thirtySecond,
+			Vector3 fortyEighth,
+			Vector3 sixtyForth,
+			Vector3 oneHundredNinetySecond,
+			Vector3 hold,
+			Vector3 roll,
+			Vector3 mine)
+		{
+			Quarter = quarter;
+			Eighth = eighth;
+			Twelfth = twelfth;
+			Sixteenth = sixteenth;
+			TwentyForth = twentyForth;
+			ThirtySecond = thirtySecond;
+			FortyEighth = fortyEighth;
+			SixtyForth = sixtyForth;
+			OneHundredNinetySecond = oneHundredNinetySecond;
+			Hold = hold;
+			Roll = roll;
+			Mine = mine;
+		}
+
+		public readonly Vector3 Quarter;
+		public readonly Vector3 Eighth;
+		public readonly Vector3 Twelfth;
+		public readonly Vector3 Sixteenth;
+		public readonly Vector3 TwentyForth;
+		public readonly Vector3 ThirtySecond;
+		public readonly Vector3 FortyEighth;
+		public readonly Vector3 SixtyForth;
+		public readonly Vector3 OneHundredNinetySecond;
+		public readonly Vector3 Hold;
+		public readonly Vector3 Roll;
+		public readonly Vector3 Mine;
+	}
+
 	/// <summary>
 	/// Brightness multiplier for selected variants of colors.
 	/// </summary>
@@ -44,6 +95,49 @@ internal sealed class PreferencesNoteColor
 	/// </summary>
 	public const float DefaultPiuHoldSaturationMultiplier = 0.8f;
 
+	public static readonly NoteColorSet[] DefaultNoteColors =
+	[
+		new(
+			new Vector3(0.7137255f, 0.0941176f, 0.0941176f),
+			new Vector3(0.0941176f, 0.2078431f, 0.7137255f),
+			new Vector3(0.2117647f, 0.6784314f, 0.2156863f),
+			new Vector3(0.8745098f, 0.8470588f, 0.0588235f),
+			new Vector3(0.5176471f, 0.0941176f, 0.7137255f),
+			new Vector3(0.0941176f, 0.7137255f, 0.5960784f),
+			new Vector3(0.7137255f, 0.0941176f, 0.5019607f),
+			new Vector3(0.3098039f, 0.4352941f, 0.3450980f),
+			new Vector3(0.3098039f, 0.4352941f, 0.3450980f),
+			new Vector3(0.2666667f, 0.2666667f, 0.2666667f),
+			new Vector3(0.7803921f, 0.4666667f, 0.1607843f),
+			new Vector3(0.8196078f, 0.0078431f, 0.0078431f)),
+		new(
+			new Vector3(0.910f, 0.000f, 0.000f),
+			new Vector3(0.157f, 0.275f, 1.000f),
+			new Vector3(0.706f, 0.290f, 1.000f),
+			new Vector3(0.000f, 0.815f, 0.000f),
+			new Vector3(0.706f, 0.290f, 1.000f),
+			new Vector3(1.000f, 1.000f, 0.000f),
+			new Vector3(0.706f, 0.290f, 1.000f),
+			new Vector3(0.000f, 0.910f, 0.898f),
+			new Vector3(0.000f, 0.910f, 0.898f),
+			new Vector3(0.498f, 0.494f, 0.498f),
+			new Vector3(0.820f, 0.808f, 0.000f),
+			new Vector3(1.000f, 0.000f, 0.000f)),
+		new(
+			new Vector3(0.922f, 0.125f, 0.004f),
+			new Vector3(0.000f, 0.447f, 0.910f),
+			new Vector3(0.361f, 0.914f, 0.000f),
+			new Vector3(0.914f, 0.757f, 0.000f),
+			new Vector3(0.412f, 0.400f, 0.925f),
+			new Vector3(0.000f, 0.914f, 0.502f),
+			new Vector3(0.914f, 0.000f, 0.404f),
+			new Vector3(0.424f, 0.569f, 0.345f),
+			new Vector3(0.424f, 0.569f, 0.345f),
+			new Vector3(0.204f, 0.325f, 0.494f),
+			new Vector3(0.275f, 0.494f, 0.204f),
+			new Vector3(0.925f, 0.000f, 0.000f)),
+	];
+
 	public const float DefaultRoutineNoteColorAlpha = 0.90f;
 	public const bool DefaultColorMultiplayerHoldsAndRolls = true;
 	public static readonly Vector3 DefaultPlayer0Color = new(0.7109375f, 0.09375f, 0.7109375f);
@@ -56,21 +150,9 @@ internal sealed class PreferencesNoteColor
 	public static readonly Vector3 DefaultPlayer7Color = new(0.7109375f, 0.390625f, 0.390625f);
 	public static readonly Vector3 DefaultPlayer8Color = new(0.390625f, 0.390625f, 0.7109375f);
 	public static readonly Vector3 DefaultPlayer9Color = new(0.390625f, 0.7109375f, 0.390625f);
-	public static readonly Vector3 DefaultQuarterColor = new(0.7137255f, 0.0941176f, 0.0941176f);
-	public static readonly Vector3 DefaultEighthColor = new(0.0941176f, 0.2078431f, 0.7137255f);
-	public static readonly Vector3 DefaultTwelfthColor = new(0.2117647f, 0.6784314f, 0.2156863f);
-	public static readonly Vector3 DefaultSixteenthColor = new(0.8745098f, 0.8470588f, 0.0588235f);
-	public static readonly Vector3 DefaultTwentyForthColor = new(0.5176471f, 0.0941176f, 0.7137255f);
-	public static readonly Vector3 DefaultThirtySecondColor = new(0.0941176f, 0.7137255f, 0.5960784f);
-	public static readonly Vector3 DefaultFortyEighthColor = new(0.7137255f, 0.0941176f, 0.5019607f);
-	public static readonly Vector3 DefaultSixtyForthColor = new(0.3098039f, 0.4352941f, 0.3450980f);
-	public static readonly Vector3 DefaultOneHundredNinetySecondColor = new(0.3098039f, 0.4352941f, 0.3450980f);
 	public static readonly Vector3 DefaultPiuTopColor = new(0.7019608f, 0.1058824f, 0.2156863f);
 	public static readonly Vector3 DefaultPiuMiddleColor = new(1.0000000f, 0.9176471f, 0.0000000f);
 	public static readonly Vector3 DefaultPiuBottomColor = new(0.1058824f, 0.2509804f, 0.7019608f);
-	public static readonly Vector3 DefaultHoldColor = new(0.2666667f, 0.2666667f, 0.2666667f);
-	public static readonly Vector3 DefaultRollColor = new(0.7803921f, 0.4666667f, 0.1607843f);
-	public static readonly Vector3 DefaultMineColor = new(0.8196078f, 0.0078431f, 0.0078431f);
 
 	[JsonInclude] public bool ShowNoteColorPreferencesWindow;
 
@@ -296,7 +378,7 @@ internal sealed class PreferencesNoteColor
 		}
 	}
 
-	private Vector3 QuarterColorInternal = DefaultQuarterColor;
+	private Vector3 QuarterColorInternal = DefaultNoteColors[(int)ColorSet.Grooveauthor].Quarter;
 
 	[JsonInclude]
 	public Vector3 EighthColor
@@ -309,7 +391,7 @@ internal sealed class PreferencesNoteColor
 		}
 	}
 
-	private Vector3 EighthColorInternal = DefaultEighthColor;
+	private Vector3 EighthColorInternal = DefaultNoteColors[(int)ColorSet.Grooveauthor].Eighth;
 
 	[JsonInclude]
 	public Vector3 TwelfthColor
@@ -322,7 +404,7 @@ internal sealed class PreferencesNoteColor
 		}
 	}
 
-	private Vector3 TwelfthColorInternal = DefaultTwelfthColor;
+	private Vector3 TwelfthColorInternal = DefaultNoteColors[(int)ColorSet.Grooveauthor].Twelfth;
 
 	[JsonInclude]
 	public Vector3 SixteenthColor
@@ -335,7 +417,7 @@ internal sealed class PreferencesNoteColor
 		}
 	}
 
-	private Vector3 SixteenthColorInternal = DefaultSixteenthColor;
+	private Vector3 SixteenthColorInternal = DefaultNoteColors[(int)ColorSet.Grooveauthor].Sixteenth;
 
 	[JsonInclude]
 	public Vector3 TwentyForthColor
@@ -348,7 +430,7 @@ internal sealed class PreferencesNoteColor
 		}
 	}
 
-	private Vector3 TwentyForthColorInternal = DefaultTwentyForthColor;
+	private Vector3 TwentyForthColorInternal = DefaultNoteColors[(int)ColorSet.Grooveauthor].TwentyForth;
 
 	[JsonInclude]
 	public Vector3 ThirtySecondColor
@@ -361,7 +443,7 @@ internal sealed class PreferencesNoteColor
 		}
 	}
 
-	private Vector3 ThirtySecondColorInternal = DefaultThirtySecondColor;
+	private Vector3 ThirtySecondColorInternal = DefaultNoteColors[(int)ColorSet.Grooveauthor].ThirtySecond;
 
 	[JsonInclude]
 	public Vector3 FortyEighthColor
@@ -374,7 +456,7 @@ internal sealed class PreferencesNoteColor
 		}
 	}
 
-	private Vector3 FortyEighthColorInternal = DefaultFortyEighthColor;
+	private Vector3 FortyEighthColorInternal = DefaultNoteColors[(int)ColorSet.Grooveauthor].FortyEighth;
 
 	[JsonInclude]
 	public Vector3 SixtyForthColor
@@ -387,7 +469,7 @@ internal sealed class PreferencesNoteColor
 		}
 	}
 
-	private Vector3 SixtyForthColorInternal = DefaultSixtyForthColor;
+	private Vector3 SixtyForthColorInternal = DefaultNoteColors[(int)ColorSet.Grooveauthor].SixtyForth;
 
 	[JsonInclude]
 	public Vector3 OneHundredNinetySecondColor
@@ -400,7 +482,7 @@ internal sealed class PreferencesNoteColor
 		}
 	}
 
-	private Vector3 OneHundredNinetySecondColorInternal = DefaultOneHundredNinetySecondColor;
+	private Vector3 OneHundredNinetySecondColorInternal = DefaultNoteColors[(int)ColorSet.Grooveauthor].OneHundredNinetySecond;
 
 	[JsonInclude]
 	public Vector3 PiuTopColor
@@ -452,7 +534,7 @@ internal sealed class PreferencesNoteColor
 		}
 	}
 
-	private Vector3 HoldColorInternal = DefaultHoldColor;
+	private Vector3 HoldColorInternal = DefaultNoteColors[(int)ColorSet.Grooveauthor].Hold;
 
 	[JsonInclude]
 	public Vector3 RollColor
@@ -465,7 +547,7 @@ internal sealed class PreferencesNoteColor
 		}
 	}
 
-	private Vector3 RollColorInternal = DefaultRollColor;
+	private Vector3 RollColorInternal = DefaultNoteColors[(int)ColorSet.Grooveauthor].Roll;
 
 	[JsonInclude]
 	public Vector3 MineColor
@@ -478,7 +560,7 @@ internal sealed class PreferencesNoteColor
 		}
 	}
 
-	private Vector3 MineColorInternal = DefaultMineColor;
+	private Vector3 MineColorInternal = DefaultNoteColors[(int)ColorSet.Grooveauthor].Mine;
 
 	private class PerPlayerNoteColors
 	{
@@ -1186,6 +1268,43 @@ internal sealed class PreferencesNoteColor
 
 	#endregion Multiplayer PIU Colors
 
+	#region Color Sets
+
+	public NoteColorSet GetCurrentNoteColors()
+	{
+		return new NoteColorSet(
+			QuarterColor,
+			EighthColor,
+			TwelfthColor,
+			SixteenthColor,
+			TwentyForthColor,
+			ThirtySecondColor,
+			FortyEighthColor,
+			SixtyForthColor,
+			OneHundredNinetySecondColor,
+			HoldColor,
+			RollColor,
+			MineColor);
+	}
+
+	public void ApplyColorSet(ColorSet colorSet)
+	{
+		QuarterColor = DefaultNoteColors[(int)colorSet].Quarter;
+		EighthColor = DefaultNoteColors[(int)colorSet].Eighth;
+		TwelfthColor = DefaultNoteColors[(int)colorSet].Twelfth;
+		SixteenthColor = DefaultNoteColors[(int)colorSet].Sixteenth;
+		TwentyForthColor = DefaultNoteColors[(int)colorSet].TwentyForth;
+		ThirtySecondColor = DefaultNoteColors[(int)colorSet].ThirtySecond;
+		FortyEighthColor = DefaultNoteColors[(int)colorSet].FortyEighth;
+		SixtyForthColor = DefaultNoteColors[(int)colorSet].SixtyForth;
+		OneHundredNinetySecondColor = DefaultNoteColors[(int)colorSet].OneHundredNinetySecond;
+		HoldColor = DefaultNoteColors[(int)colorSet].Hold;
+		RollColor = DefaultNoteColors[(int)colorSet].Roll;
+		MineColor = DefaultNoteColors[(int)colorSet].Mine;
+	}
+
+	#endregion Color Sets
+
 	public bool IsUsingDefaults()
 	{
 		return SelectionColorMultiplier.FloatEquals(DefaultSelectionColorMultiplier)
@@ -1205,21 +1324,21 @@ internal sealed class PreferencesNoteColor
 		       && Player7Color.Equals(DefaultPlayer7Color)
 		       && Player8Color.Equals(DefaultPlayer8Color)
 		       && Player9Color.Equals(DefaultPlayer9Color)
-		       && QuarterColor.Equals(DefaultQuarterColor)
-		       && EighthColor.Equals(DefaultEighthColor)
-		       && TwelfthColor.Equals(DefaultTwelfthColor)
-		       && SixteenthColor.Equals(DefaultSixteenthColor)
-		       && TwentyForthColor.Equals(DefaultTwentyForthColor)
-		       && ThirtySecondColor.Equals(DefaultThirtySecondColor)
-		       && FortyEighthColor.Equals(DefaultFortyEighthColor)
-		       && SixtyForthColor.Equals(DefaultSixtyForthColor)
-		       && OneHundredNinetySecondColor.Equals(DefaultOneHundredNinetySecondColor)
+		       && QuarterColor.Equals(DefaultNoteColors[(int)ColorSet.Grooveauthor].Quarter)
+		       && EighthColor.Equals(DefaultNoteColors[(int)ColorSet.Grooveauthor].Eighth)
+		       && TwelfthColor.Equals(DefaultNoteColors[(int)ColorSet.Grooveauthor].Twelfth)
+		       && SixteenthColor.Equals(DefaultNoteColors[(int)ColorSet.Grooveauthor].Sixteenth)
+		       && TwentyForthColor.Equals(DefaultNoteColors[(int)ColorSet.Grooveauthor].TwentyForth)
+		       && ThirtySecondColor.Equals(DefaultNoteColors[(int)ColorSet.Grooveauthor].ThirtySecond)
+		       && FortyEighthColor.Equals(DefaultNoteColors[(int)ColorSet.Grooveauthor].FortyEighth)
+		       && SixtyForthColor.Equals(DefaultNoteColors[(int)ColorSet.Grooveauthor].SixtyForth)
+		       && OneHundredNinetySecondColor.Equals(DefaultNoteColors[(int)ColorSet.Grooveauthor].OneHundredNinetySecond)
 		       && PiuTopColor.Equals(DefaultPiuTopColor)
 		       && PiuMiddleColor.Equals(DefaultPiuMiddleColor)
 		       && PiuBottomColor.Equals(DefaultPiuBottomColor)
-		       && HoldColor.Equals(DefaultHoldColor)
-		       && RollColor.Equals(DefaultRollColor)
-		       && MineColor.Equals(DefaultMineColor);
+		       && HoldColor.Equals(DefaultNoteColors[(int)ColorSet.Grooveauthor].Hold)
+		       && RollColor.Equals(DefaultNoteColors[(int)ColorSet.Grooveauthor].Roll)
+		       && MineColor.Equals(DefaultNoteColors[(int)ColorSet.Grooveauthor].Mine);
 	}
 
 	public void RestoreDefaults()
@@ -1336,21 +1455,21 @@ internal sealed class ActionRestoreNoteColorPreferenceDefaults : EditorAction
 		p.Player7Color = DefaultPlayer7Color;
 		p.Player8Color = DefaultPlayer8Color;
 		p.Player9Color = DefaultPlayer9Color;
-		p.QuarterColor = DefaultQuarterColor;
-		p.EighthColor = DefaultEighthColor;
-		p.TwelfthColor = DefaultTwelfthColor;
-		p.SixteenthColor = DefaultSixteenthColor;
-		p.TwentyForthColor = DefaultTwentyForthColor;
-		p.ThirtySecondColor = DefaultThirtySecondColor;
-		p.FortyEighthColor = DefaultFortyEighthColor;
-		p.SixtyForthColor = DefaultSixtyForthColor;
-		p.OneHundredNinetySecondColor = DefaultOneHundredNinetySecondColor;
+		p.QuarterColor = DefaultNoteColors[(int)ColorSet.Grooveauthor].Quarter;
+		p.EighthColor = DefaultNoteColors[(int)ColorSet.Grooveauthor].Eighth;
+		p.TwelfthColor = DefaultNoteColors[(int)ColorSet.Grooveauthor].Twelfth;
+		p.SixteenthColor = DefaultNoteColors[(int)ColorSet.Grooveauthor].Sixteenth;
+		p.TwentyForthColor = DefaultNoteColors[(int)ColorSet.Grooveauthor].TwentyForth;
+		p.ThirtySecondColor = DefaultNoteColors[(int)ColorSet.Grooveauthor].ThirtySecond;
+		p.FortyEighthColor = DefaultNoteColors[(int)ColorSet.Grooveauthor].FortyEighth;
+		p.SixtyForthColor = DefaultNoteColors[(int)ColorSet.Grooveauthor].SixtyForth;
+		p.OneHundredNinetySecondColor = DefaultNoteColors[(int)ColorSet.Grooveauthor].OneHundredNinetySecond;
 		p.PiuTopColor = DefaultPiuTopColor;
 		p.PiuMiddleColor = DefaultPiuMiddleColor;
 		p.PiuBottomColor = DefaultPiuBottomColor;
-		p.HoldColor = DefaultHoldColor;
-		p.RollColor = DefaultRollColor;
-		p.MineColor = DefaultMineColor;
+		p.HoldColor = DefaultNoteColors[(int)ColorSet.Grooveauthor].Hold;
+		p.RollColor = DefaultNoteColors[(int)ColorSet.Grooveauthor].Roll;
+		p.MineColor = DefaultNoteColors[(int)ColorSet.Grooveauthor].Mine;
 	}
 
 	protected override void UndoImplementation()

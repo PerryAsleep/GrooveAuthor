@@ -1,5 +1,6 @@
 ﻿using ImGuiNET;
 using static StepManiaEditor.ImGuiUtils;
+using static StepManiaEditor.PreferencesNoteColor;
 
 namespace StepManiaEditor;
 
@@ -55,6 +56,14 @@ internal sealed class UINoteColorPreferences : UIWindow
 				ImGuiLayoutUtils.DrawRowColorEdit3(true, "Mine Color", p,
 					nameof(PreferencesNoteColor.MineColor), ImGuiColorEditFlags.NoAlpha, false,
 					"Mine color.");
+
+				var index = -1;
+				if (ImGuiLayoutUtils.DrawRowEnum<ColorSet>("Presets", "NoteColorPresetCombo", ref index,
+					    "Presets for common note colors.") && index >= 0)
+				{
+					var colorSet = (ColorSet)index;
+					ActionQueue.Instance.Do(new ActionSetNoteColorSet(colorSet));
+				}
 
 				ImGuiLayoutUtils.EndTable();
 			}

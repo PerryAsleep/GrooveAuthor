@@ -116,6 +116,19 @@ internal sealed class ImGuiUtils
 	}
 
 	/// <summary>
+	/// Draws an ImGui Combo element for the values of the enum of type T.
+	/// </summary>
+	/// <typeparam name="T">Enum type of values in the Combo element.</typeparam>
+	/// <param name="name">Name of the element for ImGui.</param>
+	/// <param name="index">Desired index in the Combo element. Can be -1 to force no current value.</param>
+	/// <returns>Whether the Combo value has changed.</returns>
+	public static bool ComboFromEnum<T>(string name, ref int index) where T : Enum
+	{
+		var strings = GetCachedEnumStrings<T>();
+		return ImGui.Combo(name, ref index, strings, strings.Length);
+	}
+
+	/// <summary>
 	/// Draws an ImGui Combo element for the array of allowed values of type T.
 	/// This assumes that allowedValues does not change across multiple calls for the same cacheKey.
 	/// </summary>
