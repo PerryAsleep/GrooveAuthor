@@ -49,6 +49,8 @@ Other editors stutter or lock up when editing long files but `GrooveAuthor` is b
 - [Multiplayer chart](StepManiaEditor/docs/MultiplayerCharts.md) support, including limited [StepF2](https://stepf2.blogspot.com/) co-op compatibility.
 - Robust [autogen functionality](StepManiaEditor/docs/AutogenConfigs.md). All the functionality from [StepManiaChartGenerator](https://github.com/PerryAsleep/StepManiaChartGenerator) is available in-editor.
 - Accurate `ssc` scroll rate rendering.
+- Fully customizable note colors and time signature based note coloring options.
+- In-editor pack browsing and [ITGmania](https://github.com/itgmania/itgmania) `Pack.ini` editing support.
 - Near infinite zooming with 100% accurate waveform rendering and offset compensation.
 - Open many charts [simultaneously](StepManiaEditor/docs/ChartNavigation.md).
 - Optional automove. Press one key to add a note and advance for quickly writing streams.
