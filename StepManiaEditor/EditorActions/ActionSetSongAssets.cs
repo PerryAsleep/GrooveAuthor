@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using static StepManiaEditor.EditorSongImageUtils;
@@ -37,9 +38,18 @@ internal sealed class ActionSetSongAssets : EditorAction
 		IfUnset = ifUnset;
 
 		var directory = Song.GetFileDirectory();
-		var files = Directory.GetFiles(Song.GetFileDirectory());
-		var imagePaths = TryFindBestImages(directory, files);
-		var lyricsPath = TryFindBestLyrics(directory, files);
+		Dictionary<SongImageType, string> imagePaths = [];
+		string lyricsPath = null;
+		try
+		{
+			var files = Directory.GetFiles(directory);
+			imagePaths = TryFindBestImages(directory, files);
+			lyricsPath = TryFindBestLyrics(directory, files);
+		}
+		catch (Exception)
+		{
+			// Ignored.
+		}
 
 		AssetUpdates = [];
 
