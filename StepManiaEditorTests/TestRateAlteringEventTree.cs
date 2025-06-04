@@ -134,6 +134,7 @@ public class TestRateAlteringEventTree
 				case nameof(FakeSegment):
 				case nameof(Multipliers):
 				case nameof(Label):
+				case nameof(Attack):
 					continue;
 			}
 
