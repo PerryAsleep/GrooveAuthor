@@ -41,7 +41,7 @@ internal sealed class ActionSetSongAssets : EditorAction
 		var imagePaths = TryFindBestImages(directory, files);
 		var lyricsPath = TryFindBestLyrics(directory, files);
 
-		AssetUpdates = new List<Asset>();
+		AssetUpdates = [];
 
 		void AddAssetUpdate(string prettyName, string propertyName, string newPath)
 		{

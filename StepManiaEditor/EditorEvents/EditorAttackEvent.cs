@@ -21,8 +21,9 @@ internal sealed class EditorAttackEvent : EditorEvent, IObserver<EditorModifier>
 	/// Modifer strings from Stepmania. This is not exhaustive as
 	/// text like tempos and noteskin names can be used as attack modifiers.
 	/// </summary>
+	// ReSharper disable StringLiteralTypo
 	public static readonly string[] ModifierTypes =
-	{
+	[
 		"Alternate",
 		"AttackMines",
 		"AttenuateX",
@@ -439,7 +440,8 @@ internal sealed class EditorAttackEvent : EditorEvent, IObserver<EditorModifier>
 		"ZigZagZ",
 		"ZigZagZOffset",
 		"ZigZagZPeriod",
-	};
+	];
+	// ReSharper restore StringLiteralTypo
 
 	/// <summary>
 	/// Class for wrapping an Attack Modifier and notifying the EditorAttack when it changes.
@@ -574,7 +576,7 @@ internal sealed class EditorAttackEvent : EditorEvent, IObserver<EditorModifier>
 	public EditorAttackEvent(EventConfig config, Attack chartEvent) : base(config)
 	{
 		AttackEvent = chartEvent;
-		EditorModifiers = new List<EditorModifier>();
+		EditorModifiers = [];
 		foreach (var modifier in AttackEvent.Modifiers)
 		{
 			var mod = new EditorModifier(modifier);

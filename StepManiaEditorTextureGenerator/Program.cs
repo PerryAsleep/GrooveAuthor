@@ -363,7 +363,6 @@ internal class TextureGeneratorGame : Game
 		source.GetData(sourceColorData);
 
 		var i = 0;
-		var sourceW = source.Width;
 		foreach (var identifier in identifiers)
 		{
 			if (!string.IsNullOrEmpty(identifier))

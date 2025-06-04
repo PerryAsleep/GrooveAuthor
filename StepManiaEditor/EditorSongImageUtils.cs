@@ -80,7 +80,7 @@ internal sealed class EditorSongImageUtils
 			return null;
 		}
 
-		public string TryFindBestAsset(string[] files = null)
+		public string TryFindBestAsset(string[] files)
 		{
 			try
 			{
@@ -228,6 +228,7 @@ internal sealed class EditorSongImageUtils
 
 	static EditorSongImageUtils()
 	{
+		// ReSharper disable StringLiteralTypo
 		ImageData[SongImageType.Background] = new ImageSearchData(null, ["background"], ["bg"], true, BackgroundWidthDefaultDPI,
 			BackgroundHeightDefaultDPI, true, true, true);
 		ImageData[SongImageType.Banner] =
@@ -236,6 +237,7 @@ internal sealed class EditorSongImageUtils
 		ImageData[SongImageType.Jacket] = new ImageSearchData(["jk_"], ["jacket", "albumart"]);
 		ImageData[SongImageType.CDImage] = new ImageSearchData(null, null, ["-cd"]);
 		ImageData[SongImageType.DiscImage] = new ImageSearchData(null, null, [" disc", " title"]);
+		// ReSharper restore StringLiteralTypo
 	}
 
 	#region Private Helpers
