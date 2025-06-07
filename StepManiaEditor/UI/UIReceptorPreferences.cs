@@ -54,28 +54,32 @@ internal sealed class UIReceptorPreferences : UIWindow
 		ImGui.TextUnformatted("Position");
 		if (ImGuiLayoutUtils.BeginTable("Receptor Placement", TitleColumnWidth))
 		{
-			var pushDisabled = p.LockPosition;
-			if (pushDisabled)
+			if (p.LockPositionX)
 				PushDisabled();
-
 			ImGuiLayoutUtils.DrawRowCheckbox(true, "Center Horizontally", p, nameof(PreferencesReceptors.CenterHorizontally),
 				false,
 				"Whether to keep the receptors centered horizontally in the window.");
+			if (p.LockPositionX)
+				PopDisabled();
 
+			var canMoveX = !p.LockPositionX && !p.CenterHorizontally;
+			var canMoveY = !p.LockPositionY;
 			var keybind = UIControls.GetCommandString(Preferences.Instance.PreferencesKeyBinds.LockReceptorMoveAxis);
 			ImGuiLayoutUtils.DrawRowDragInt2(true, "Position", p, nameof(PreferencesReceptors.ChartSpacePositionX),
-				nameof(PreferencesReceptors.ChartSpacePositionY), false, !p.CenterHorizontally, true,
+				nameof(PreferencesReceptors.ChartSpacePositionY), false, canMoveX, canMoveY,
 				"Position of the receptors."
 				+ "\nThe receptors can also be moved by dragging them with the left mouse button."
 				+ $"\nHold {keybind} while dragging to limit movement to one dimension.", 1.0f, "%i", 0,
 				Editor.GetViewportWidth() - 1,
 				0, Editor.GetViewportHeight() - 1);
 
-			if (pushDisabled)
-				PopDisabled();
-
-			ImGuiLayoutUtils.DrawRowCheckbox(true, "Lock Position", p, nameof(PreferencesReceptors.LockPosition), false,
-				"Whether to lock the receptors to the current position and prevent position changes.");
+			ImGuiLayoutUtils.DrawRowCheckbox(true, "Lock X Position", p, nameof(PreferencesReceptors.LockPositionX), false,
+				"Lock the x position of the receptors.");
+			ImGuiLayoutUtils.DrawRowCheckbox(true, "Lock Y Position", p, nameof(PreferencesReceptors.LockPositionY), false,
+				"Lock the y position of the receptors.");
+			ImGuiLayoutUtils.DrawRowCheckbox(true, "Don't Lock Header", p,
+				nameof(PreferencesReceptors.AllowChartMoveWhenPositionLocked), false,
+				"Allow moving charts through their header bars even if the receptors are locked. Centering the receptors horizontally however will always prevent movement through header bars.");
 
 			ImGuiLayoutUtils.EndTable();
 		}

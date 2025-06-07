@@ -19,7 +19,9 @@ internal sealed class PreferencesReceptors
 	public const bool DefaultTapShrinkEffect = true;
 	public const bool DefaultPulseReceptorsWithTempo = true;
 	public const bool DefaultCenterHorizontally = false;
-	public const bool DefaultLockPosition = false;
+	public const bool DefaultAllowChartMoveWhenPositionLocked = true;
+	public const bool DefaultLockPositionX = false;
+	public const bool DefaultLockPositionY = false;
 	public const int DefaultChartSpacePositionX = 842;
 	public const int DefaultChartSpacePositionY = 110;
 
@@ -34,7 +36,9 @@ internal sealed class PreferencesReceptors
 	[JsonInclude] public bool TapShrinkEffect = DefaultTapShrinkEffect;
 	[JsonInclude] public bool PulseReceptorsWithTempo = DefaultPulseReceptorsWithTempo;
 	[JsonInclude] public bool CenterHorizontally = DefaultCenterHorizontally;
-	[JsonInclude] public bool LockPosition = DefaultLockPosition;
+	[JsonInclude] public bool AllowChartMoveWhenPositionLocked = DefaultAllowChartMoveWhenPositionLocked;
+	[JsonInclude] public bool LockPositionX = DefaultLockPositionX;
+	[JsonInclude] public bool LockPositionY = DefaultLockPositionY;
 
 	[JsonInclude]
 	[JsonPropertyName("PositionX")]
@@ -113,7 +117,9 @@ internal sealed class PreferencesReceptors
 		       && CenterHorizontally == DefaultCenterHorizontally
 		       && ChartSpacePositionX == DefaultChartSpacePositionX
 		       && ChartSpacePositionY == DefaultChartSpacePositionY
-		       && LockPosition == DefaultLockPosition;
+		       && AllowChartMoveWhenPositionLocked == DefaultAllowChartMoveWhenPositionLocked
+		       && LockPositionX == DefaultLockPositionX
+		       && LockPositionY == DefaultLockPositionY;
 	}
 
 	public void RestoreDefaults()
@@ -139,7 +145,9 @@ internal sealed class ActionRestoreAnimationsPreferenceDefaults : EditorAction
 	private readonly bool PreviousTapShrinkEffect;
 	private readonly bool PreviousPulseReceptorsWithTempo;
 	private readonly bool PreviousCenterHorizontally;
-	private readonly bool PreviousLockPosition;
+	private readonly bool PreviousAllowChartMoveWhenPositionLocked;
+	private readonly bool PreviousLockPositionX;
+	private readonly bool PreviousLockPositionY;
 	private readonly int PreviousChartSpacePositionX;
 	private readonly int PreviousChartSpacePositionY;
 
@@ -155,7 +163,9 @@ internal sealed class ActionRestoreAnimationsPreferenceDefaults : EditorAction
 		PreviousTapShrinkEffect = p.TapShrinkEffect;
 		PreviousPulseReceptorsWithTempo = p.PulseReceptorsWithTempo;
 		PreviousCenterHorizontally = p.CenterHorizontally;
-		PreviousLockPosition = p.LockPosition;
+		PreviousAllowChartMoveWhenPositionLocked = p.AllowChartMoveWhenPositionLocked;
+		PreviousLockPositionX = p.LockPositionX;
+		PreviousLockPositionY = p.LockPositionY;
 		PreviousChartSpacePositionX = p.ChartSpacePositionX;
 		PreviousChartSpacePositionY = p.ChartSpacePositionY;
 	}
@@ -183,7 +193,9 @@ internal sealed class ActionRestoreAnimationsPreferenceDefaults : EditorAction
 		p.TapShrinkEffect = PreferencesReceptors.DefaultTapShrinkEffect;
 		p.PulseReceptorsWithTempo = PreferencesReceptors.DefaultPulseReceptorsWithTempo;
 		p.CenterHorizontally = PreferencesReceptors.DefaultCenterHorizontally;
-		p.LockPosition = PreferencesReceptors.DefaultLockPosition;
+		p.AllowChartMoveWhenPositionLocked = PreferencesReceptors.DefaultAllowChartMoveWhenPositionLocked;
+		p.LockPositionX = PreferencesReceptors.DefaultLockPositionX;
+		p.LockPositionY = PreferencesReceptors.DefaultLockPositionY;
 		p.ChartSpacePositionX = PreferencesReceptors.DefaultChartSpacePositionX;
 		p.ChartSpacePositionY = PreferencesReceptors.DefaultChartSpacePositionY;
 	}
@@ -200,7 +212,9 @@ internal sealed class ActionRestoreAnimationsPreferenceDefaults : EditorAction
 		p.TapShrinkEffect = PreviousTapShrinkEffect;
 		p.PulseReceptorsWithTempo = PreviousPulseReceptorsWithTempo;
 		p.CenterHorizontally = PreviousCenterHorizontally;
-		p.LockPosition = PreviousLockPosition;
+		p.AllowChartMoveWhenPositionLocked = PreviousAllowChartMoveWhenPositionLocked;
+		p.LockPositionX = PreviousLockPositionX;
+		p.LockPositionY = PreviousLockPositionY;
 		p.ChartSpacePositionX = PreviousChartSpacePositionX;
 		p.ChartSpacePositionY = PreviousChartSpacePositionY;
 	}

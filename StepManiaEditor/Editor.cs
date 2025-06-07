@@ -123,6 +123,7 @@ public sealed class Editor :
 	private bool FocalPointMoved;
 	private bool LastMouseUpEventWasUsedForMovingFocalPoint;
 	private bool ForceOnlyHorizontalFocalPointMove;
+	private bool ForceOnlyVerticalFocalPointMove;
 	private Vector2 FocalPointAtMoveStart;
 	private Vector2 FocalPointMoveOffset;
 
@@ -1908,10 +1909,20 @@ public sealed class Editor :
 			// Process input for grabbing the receptors and moving the focal point.
 			if (!(focusedChartData?.IsSelectedRegionActive() ?? false) && !MiniMapCapturingMouse && !DensityGraphCapturingMouse)
 			{
-				ProcessInputForMovingFocalPoint(inReceptorArea);
+				ProcessInputForMovingFocalPoint(inReceptorArea, false);
 				// Update cursor based on whether the receptors could be grabbed.
-				if (inReceptorArea && !Preferences.Instance.PreferencesReceptors.LockPosition)
-					CurrentDesiredCursor = MouseCursor.SizeAll;
+				if (inReceptorArea)
+				{
+					var p = Preferences.Instance.PreferencesReceptors;
+					var canMoveX = !p.LockPositionX && !p.CenterHorizontally;
+					var canMoveY = !p.LockPositionY;
+					if (canMoveX && canMoveY)
+						CurrentDesiredCursor = MouseCursor.SizeAll;
+					else if (canMoveX)
+						CurrentDesiredCursor = MouseCursor.SizeWE;
+					else if (canMoveY)
+						CurrentDesiredCursor = MouseCursor.SizeNS;
+				}
 			}
 
 			var areSceneElementsCapturingMouse = MiniMapCapturingMouse || MovingFocalPoint || DensityGraphCapturingMouse;
@@ -2004,15 +2015,23 @@ public sealed class Editor :
 	/// Processes input for moving the focal point with the mouse.
 	/// </summary>
 	/// <remarks>Helper for ProcessInput.</remarks>
-	private void ProcessInputForMovingFocalPoint(bool inReceptorArea, bool forceOnlyHorizontalMove = false)
+	private void ProcessInputForMovingFocalPoint(bool inReceptorArea, bool fromHeaderMove)
 	{
+		var p = Preferences.Instance.PreferencesReceptors;
+		var canMoveX = !p.CenterHorizontally;
+		if (p.LockPositionX && (!fromHeaderMove || !p.AllowChartMoveWhenPositionLocked))
+			canMoveX = false;
+		var canMoveY = !(p.LockPositionY || fromHeaderMove);
+		var canMove = canMoveX || canMoveY;
+
 		// Begin moving focal point.
 		if (EditorMouseState.GetButtonState(EditorMouseState.Button.Left).DownThisFrame()
 		    && inReceptorArea
-		    && !Preferences.Instance.PreferencesReceptors.LockPosition)
+		    && canMove)
 		{
 			MovingFocalPoint = true;
-			ForceOnlyHorizontalFocalPointMove = forceOnlyHorizontalMove;
+			ForceOnlyHorizontalFocalPointMove = !canMoveY;
+			ForceOnlyVerticalFocalPointMove = !canMoveX;
 			FocalPointAtMoveStart = GetFocalPointChartSpace();
 			FocalPointMoveOffset = new Vector2(EditorMouseState.X() - GetFocalPointScreenSpaceX(),
 				EditorMouseState.Y() - GetFocalPointScreenSpaceY());
@@ -2033,16 +2052,20 @@ public sealed class Editor :
 			var newX = TransformScreenSpaceXToChartSpaceX(EditorMouseState.X()) - (int)FocalPointMoveOffset.X;
 			var newY = TransformScreenSpaceYToChartSpaceY(EditorMouseState.Y()) - (int)FocalPointMoveOffset.Y;
 
-			if (KeyCommandManager.IsAnyInputDown(Preferences.Instance.PreferencesKeyBinds.LockReceptorMoveAxis))
+			if (ForceOnlyHorizontalFocalPointMove)
+			{
+				SetReceptorPosition(newX, (int)FocalPointAtMoveStart.Y);
+			}
+			else if (ForceOnlyVerticalFocalPointMove)
+			{
+				SetReceptorPosition((int)FocalPointAtMoveStart.X, newY);
+			}
+			else if (KeyCommandManager.IsAnyInputDown(Preferences.Instance.PreferencesKeyBinds.LockReceptorMoveAxis))
 			{
 				if (Math.Abs(newX - FocalPointAtMoveStart.X) > Math.Abs(newY - FocalPointAtMoveStart.Y))
 					SetReceptorPosition(newX, (int)FocalPointAtMoveStart.Y);
 				else
 					SetReceptorPosition((int)FocalPointAtMoveStart.X, newY);
-			}
-			else if (ForceOnlyHorizontalFocalPointMove)
-			{
-				SetReceptorPosition(newX, (int)FocalPointAtMoveStart.Y);
 			}
 			else
 			{

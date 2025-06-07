@@ -487,11 +487,12 @@ internal sealed class ImGuiLayoutUtils
 
 		if (currentValueError)
 			PushErrorColor();
-		DrawTextInput(undoable, title, o, fieldName, ImGui.GetContentRegionAvail().X * 0.5f, affectsFile, null, help);
+		var w = (ImGui.GetContentRegionAvail().X - ImGui.GetStyle().ItemSpacing.X) * 0.5f;
+		DrawTextInput(undoable, title, o, fieldName, w, affectsFile, null, help);
 		if (currentValueError)
 			PopErrorColor();
 		ImGui.SameLine();
-		DrawTextInput(undoable, "Transliteration", o, transliterationFieldName, ImGui.GetContentRegionAvail().X, affectsFile,
+		DrawTextInput(undoable, "Transliteration", o, transliterationFieldName, w, affectsFile,
 			null,
 			"Optional text to use when sorting by this value.\nStepMania sorts values lexicographically, preferring transliterations.");
 	}
@@ -1046,14 +1047,16 @@ internal sealed class ImGuiLayoutUtils
 		DrawRowTitleAndAdvanceColumn(title);
 		if (!field1Enabled)
 			PushDisabled();
-		DrawDragInt(undoable, "", o, fieldName1, ImGui.GetContentRegionAvail().X * 0.5f, affectsFile, help, speed, format, min1,
+		var dragW = (ImGui.GetContentRegionAvail().X - ImGui.GetStyle().ItemSpacing.X * 2 - GetHelpWidth()) * 0.5f;
+		var firstW = ImGui.GetContentRegionAvail().X - dragW - ImGui.GetStyle().ItemSpacing.X;
+		DrawDragInt(undoable, "", o, fieldName1, firstW, affectsFile, help, speed, format, min1,
 			max1);
 		if (!field1Enabled)
 			PopDisabled();
 		ImGui.SameLine();
 		if (!field2Enabled)
 			PushDisabled();
-		DrawDragInt(undoable, "", o, fieldName2, ImGui.GetContentRegionAvail().X, affectsFile, "", speed, format, min2, max2);
+		DrawDragInt(undoable, "", o, fieldName2, dragW, affectsFile, "", speed, format, min2, max2);
 		if (!field2Enabled)
 			PopDisabled();
 	}
