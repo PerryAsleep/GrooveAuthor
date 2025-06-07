@@ -3013,6 +3013,9 @@ public sealed class Editor :
 
 	private void ProcessInputForMiniMap()
 	{
+		if (!Preferences.Instance.PreferencesMiniMap.ShowMiniMap)
+			return;
+
 		var pScroll = Preferences.Instance.PreferencesScroll;
 		var focalPointY = GetFocalPointScreenSpaceY();
 
@@ -3485,6 +3488,9 @@ public sealed class Editor :
 
 	private void ProcessInputForDensityGraph()
 	{
+		if (!Preferences.Instance.PreferencesDensityGraph.ShowDensityGraph)
+			return;
+
 		var pScroll = Preferences.Instance.PreferencesScroll;
 
 		var densityGraphCapturingMouseLastFrame = DensityGraphCapturingMouse;
