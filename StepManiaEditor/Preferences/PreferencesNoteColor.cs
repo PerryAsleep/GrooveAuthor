@@ -628,7 +628,7 @@ internal sealed class PreferencesNoteColor
 			{
 				var key = new Fraction(i, SMCommon.MaxValidDenominator).Reduce().Denominator;
 				if (!ColorsBySubdivision.ContainsKey(key))
-					key = 16;
+					key = 48;
 				ColorsByRow[i] = ColorsBySubdivision[key];
 			}
 
@@ -711,7 +711,7 @@ internal sealed class PreferencesNoteColor
 			{
 				var key = new Fraction(i, SMCommon.MaxValidDenominator).Reduce().Denominator;
 				if (!ColorsBySubdivision.ContainsKey(key))
-					key = 16;
+					key = 48;
 				ColorsByRow[i] = ColorsBySubdivision[key];
 			}
 
