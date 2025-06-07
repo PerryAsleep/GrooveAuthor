@@ -203,7 +203,10 @@ internal sealed class StepTotals : IReadOnlyStepTotals
 
 				break;
 			case EditorMineNoteEvent:
-				MineCount++;
+				if (isFake)
+					FakeCount++;
+				else
+					MineCount++;
 				break;
 			case EditorFakeNoteEvent:
 				FakeCount++;
@@ -228,12 +231,7 @@ internal sealed class StepTotals : IReadOnlyStepTotals
 				break;
 		}
 
-		if (editorEvent.IsLaneNote())
-		{
-			var player = editorEvent.GetPlayer();
-			NoteCountsPerPlayer.TryAdd(player, 0);
-			NoteCountsPerPlayer[player]++;
-		}
+		IncrementNoteCount(editorEvent);
 
 		if (isStep)
 		{
@@ -249,6 +247,15 @@ internal sealed class StepTotals : IReadOnlyStepTotals
 		{
 			PendingStepsForDensity.Add(new PendingDensityStep(true, editorEvent, 0));
 		}
+	}
+
+	private void IncrementNoteCount(EditorEvent editorEvent)
+	{
+		if (!editorEvent.IsLaneNote())
+			return;
+		var player = editorEvent.GetPlayer();
+		NoteCountsPerPlayer.TryAdd(player, 0);
+		NoteCountsPerPlayer[player]++;
 	}
 
 	/// <summary>
@@ -289,7 +296,10 @@ internal sealed class StepTotals : IReadOnlyStepTotals
 
 				break;
 			case EditorMineNoteEvent:
-				MineCount--;
+				if (isFake)
+					FakeCount--;
+				else
+					MineCount--;
 				break;
 			case EditorFakeNoteEvent:
 				FakeCount--;
@@ -314,13 +324,7 @@ internal sealed class StepTotals : IReadOnlyStepTotals
 				break;
 		}
 
-		if (editorEvent.IsLaneNote())
-		{
-			var player = editorEvent.GetPlayer();
-			NoteCountsPerPlayer[player]--;
-			if (NoteCountsPerPlayer[player] == 0)
-				NoteCountsPerPlayer.Remove(player);
-		}
+		DecrementNoteCount(editorEvent);
 
 		if (isStep)
 		{
@@ -338,6 +342,16 @@ internal sealed class StepTotals : IReadOnlyStepTotals
 		{
 			PendingStepsForDensity.Add(new PendingDensityStep(false, editorEvent, 0));
 		}
+	}
+
+	private void DecrementNoteCount(EditorEvent editorEvent)
+	{
+		if (!editorEvent.IsLaneNote())
+			return;
+		var player = editorEvent.GetPlayer();
+		NoteCountsPerPlayer[player]--;
+		if (NoteCountsPerPlayer[player] == 0)
+			NoteCountsPerPlayer.Remove(player);
 	}
 
 	/// <summary>
@@ -428,11 +442,13 @@ internal sealed class StepTotals : IReadOnlyStepTotals
 		if (!editorEvent.IsFake())
 		{
 			FakeCount--;
+			DecrementNoteCount(editorEvent);
 			OnEventAdded(editorEvent, false);
 		}
 		else
 		{
 			FakeCount++;
+			IncrementNoteCount(editorEvent);
 			OnEventDeleted(editorEvent, false);
 		}
 	}
