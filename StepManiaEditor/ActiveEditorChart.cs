@@ -78,7 +78,6 @@ internal sealed class ActiveEditorChart
 		LaneEditStates = laneEditStates;
 
 		Position = new EditorPosition(OnPositionChanged, Chart);
-
 		Header = new UIChartHeader(Editor, this);
 	}
 
@@ -355,6 +354,8 @@ internal sealed class ActiveEditorChart
 		if (!ChartIsFocused)
 		{
 			Selection.ClearSelectedEvents();
+			SelectedRegion.Stop();
+			Chart.EndRowSelection();
 			foreach (var laneEditState in LaneEditStates)
 			{
 				laneEditState.Clear(true);
@@ -441,7 +442,7 @@ internal sealed class ActiveEditorChart
 		return VisibleRegions;
 	}
 
-	public IReadOnlySelectedRegion GetSelectedRegion()
+	public IReadOnlySelectedRegion GetSelectedMouseRegion()
 	{
 		return SelectedRegion;
 	}
@@ -459,6 +460,15 @@ internal sealed class ActiveEditorChart
 	#endregion Accessors
 
 	#region Chart Event Updates
+
+	public void UpdateRowSelection()
+	{
+		if (!Chart.CanBeEdited())
+			return;
+		if (Chart.GetRowSelection() == null)
+			return;
+		Chart.UpdateRowSelection(Position);
+	}
 
 	private (int maxMarkers, int maxEvents, int maxRateAlteringEvents) GetMaxEventsToDrawPerFrame()
 	{
@@ -886,7 +896,7 @@ internal sealed class ActiveEditorChart
 			return;
 		if (regionsNeedingToBeAdded.Contains(region) || addedRegions.Contains(region))
 			return;
-		if (!SpacingHelper.DoesRegionHavePositiveDuration(region))
+		if (SpacingHelper.ShouldSkipDrawingRegion(region))
 			return;
 		region.SetRegionX(x);
 		region.SetRegionY(SpacingHelper.GetRegionY(region, previousRateEventY));
@@ -1485,6 +1495,44 @@ internal sealed class ActiveEditorChart
 				LastSelectedPatternEvent = null;
 			if (ReferenceEquals(deletedEvent, LastSelectedAttackEvent))
 				LastSelectedAttackEvent = null;
+		}
+	}
+
+	public void ToggleRowSelection()
+	{
+		// Cancel any existing selection.
+		Selection.ClearSelectedEvents();
+		SelectedRegion.Stop();
+
+		if (Chart.GetRowSelection() != null)
+		{
+			Chart.UpdateRowSelection(Position);
+
+			// Select events.
+			var newlySelectedEvents = new List<EditorEvent>();
+			var selectedRows = Chart.GetRowSelection();
+			var startRow = selectedRows.GetRow();
+			var endRow = selectedRows.GetEndRow();
+			var enumerator = Chart.GetEvents().FindLeastAtOrAfterChartPosition(startRow);
+			while (enumerator != null && enumerator.MoveNext())
+			{
+				if (enumerator.Current!.GetRow() > endRow)
+					break;
+				if (!enumerator.Current.IsSelectableWithoutModifiers())
+					continue;
+				newlySelectedEvents.Add(enumerator.Current);
+			}
+
+			for (var i = 0; i < newlySelectedEvents.Count; i++)
+			{
+				Selection.SelectEvent(newlySelectedEvents[i], i == newlySelectedEvents.Count - 1);
+			}
+
+			Chart.EndRowSelection();
+		}
+		else
+		{
+			Chart.BeginRowSelection(Position);
 		}
 	}
 
@@ -2441,6 +2489,7 @@ internal sealed class ActiveEditorChart
 	public void ClearSelection()
 	{
 		Selection.ClearSelectedEvents();
+		Chart.EndRowSelection();
 	}
 
 	public EditorAttackEvent GetLastSelectedAttackEvent()
@@ -2486,6 +2535,8 @@ internal sealed class ActiveEditorChart
 		// Starting a selection.
 		if (buttonState.DownThisFrame() || forceStartRegionFromClick)
 		{
+			Chart.EndRowSelection();
+
 			var screenSpaceY = mouseState.Y();
 			var (chartTime, chartPosition) = FindChartTimeAndRowForScreenSpaceY(screenSpaceY);
 			var xInChartSpace = (mouseState.X() - FocalPointScreenSpaceX) / sizeZoom;

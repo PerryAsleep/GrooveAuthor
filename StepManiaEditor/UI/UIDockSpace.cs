@@ -238,6 +238,10 @@ internal sealed class UIDockSpace
 				}
 			}
 
+			// Clear the window focus. We don't want the GUI capturing keys like Tab
+			// which are used in the scene.
+			ImGui.SetWindowFocus();
+
 			Preferences.Instance.PreferencesOptions.ResetLayout = PreferencesOptions.Layout.None;
 		}
 

@@ -100,7 +100,17 @@ internal sealed class EditorStopEvent : EditorRateAlteringEvent, IEquatable<Edit
 
 	public Color GetRegionColor()
 	{
-		return IRegion.GetColor(StopEvent.LengthSeconds > 0.0 ? StopRegionColor : WarpRegionColor, Alpha);
+		return StopEvent.LengthSeconds > 0.0 ? StopRegionColor : WarpRegionColor;
+	}
+
+	public float GetRegionAlpha()
+	{
+		return Alpha;
+	}
+
+	public bool IsRegionSelection()
+	{
+		return false;
 	}
 
 	#endregion IChartRegion Implementation

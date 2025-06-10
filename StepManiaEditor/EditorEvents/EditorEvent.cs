@@ -240,6 +240,11 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 					newEvent = new EditorLastSecondHintEvent(config);
 					break;
 				}
+				case EventConfig.SpecialType.SelectedRows:
+				{
+					newEvent = new EditorSelectedRowsEvent(config);
+					break;
+				}
 			}
 		}
 
@@ -863,8 +868,9 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 
 	private static readonly Dictionary<string, int> CustomEventOrder = new()
 	{
-		{ "EditorPreviewRegionEvent", 0 },
-		{ "EditorLastSecondHintEvent", 1 },
+		{ "EditorSelectedRowsEvent", 0 },
+		{ "EditorPreviewRegionEvent", 1 },
+		{ "EditorLastSecondHintEvent", 2 },
 	};
 
 	private const int DefaultCustomEventOrder = 2;

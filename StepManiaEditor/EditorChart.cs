@@ -189,6 +189,16 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	private EventIntervalTree<EditorPatternEvent> Patterns;
 
 	/// <summary>
+	/// The EditorSelectedRowsEvent.
+	/// </summary>
+	private EditorSelectedRowsEvent SelectedRows;
+
+	/// <summary>
+	/// The start row when performing a row-based selection.
+	/// </summary>
+	private int SelectedRowsStartRow;
+
+	/// <summary>
 	/// The EditorPreviewRegionEvent.
 	/// </summary>
 	private EditorPreviewRegionEvent PreviewEvent;
@@ -869,7 +879,11 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	{
 		var events = new List<EditorEvent>();
 		foreach (var chartEvent in other.GetEvents())
+		{
+			if (chartEvent is EditorSelectedRowsEvent)
+				continue;
 			events.Add(chartEvent.Clone(this));
+		}
 
 		var editorEvents = new EventTree(this);
 		var holds = new EventTree(this);
@@ -2071,6 +2085,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		var patterns = GetPatternEventsOverlapping(chartPosition);
 		if (patterns?.Count > 0)
 			regionEvents.AddRange(patterns);
+		if (SelectedRows != null && chartPosition >= SelectedRows.GetRow() && chartPosition <= SelectedRows.GetEndRow())
+			regionEvents.Add(SelectedRows);
 		regionEvents.Sort();
 		var regions = new List<IChartRegion>();
 		foreach (var regionEvent in regionEvents)
@@ -3203,6 +3219,51 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	}
 
 	#endregion Misc
+
+	#region Selected Rows
+
+	public void BeginRowSelection(EditorPosition position)
+	{
+		if (!CanBeEdited())
+			return;
+		if (SelectedRows != null)
+			EndRowSelection();
+
+		SelectedRows = (EditorSelectedRowsEvent)EditorEvent.CreateEvent(EventConfig.CreateSelectedRowsConfig(this));
+		SelectedRowsStartRow = position.GetNearestRow();
+		SelectedRows.SetSelectionRows(SelectedRowsStartRow, SelectedRowsStartRow);
+		AddEvent(SelectedRows);
+	}
+
+	public void UpdateRowSelection(EditorPosition position)
+	{
+		if (!CanBeEdited() || SelectedRows == null)
+			return;
+		var startRow = SelectedRowsStartRow;
+		var endRow = position.GetNearestRow();
+		if (startRow > endRow)
+			(startRow, endRow) = (endRow, startRow);
+		DeleteEvent(SelectedRows);
+		SelectedRows = (EditorSelectedRowsEvent)EditorEvent.CreateEvent(EventConfig.CreateSelectedRowsConfig(this));
+		SelectedRows.SetSelectionRows(startRow, endRow);
+		AddEvent(SelectedRows);
+	}
+
+	public void EndRowSelection()
+	{
+		if (!CanBeEdited())
+			return;
+		if (SelectedRows != null)
+			DeleteEvent(SelectedRows);
+		SelectedRows = null;
+	}
+
+	public EditorSelectedRowsEvent GetRowSelection()
+	{
+		return SelectedRows;
+	}
+
+	#endregion Selected Rows
 
 	#region Pattern Helpers
 

@@ -295,7 +295,17 @@ internal sealed class EditorPatternEvent : EditorEvent, IEquatable<EditorPattern
 
 	public Color GetRegionColor()
 	{
-		return IRegion.GetColor(PatternRegionColor, Alpha);
+		return PatternRegionColor;
+	}
+
+	public float GetRegionAlpha()
+	{
+		return Alpha;
+	}
+
+	public bool IsRegionSelection()
+	{
+		return false;
 	}
 
 	#endregion IChartRegion Implementation

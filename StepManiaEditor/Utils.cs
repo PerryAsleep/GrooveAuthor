@@ -100,13 +100,14 @@ internal sealed class Utils
 	public const string TextureIdRegionRect = "region-rect";
 	public const string TextureIdLogoAttribution = "logo-attribution";
 
-	public static Color StopRegionColor = new(0x7A, 0x29, 0x29, 0x7F);
-	public static Color DelayRegionColor = new(0x7A, 0x5E, 0x29, 0x7F);
-	public static Color FakeRegionColor = new(0x7A, 0x46, 0x29, 0x7F);
-	public static Color WarpRegionColor = new(0x29, 0x79, 0x7A, 0x7F);
-	public static Color PreviewRegionColor = new(0x7A, 0x7A, 0x7A, 0x7F);
-	public static Color PatternRegionColor = new(0x29, 0x7A, 0x6A, 0x7F);
-	public static Color SelectionRegionColor = new(0xB8, 0xB4, 0x3E, 0x7F);
+	public const float RegionAlpha = 0.5f;
+	public static Color StopRegionColor = new(0x7A, 0x29, 0x29, 0xFF);
+	public static Color DelayRegionColor = new(0x7A, 0x5E, 0x29, 0xFF);
+	public static Color FakeRegionColor = new(0x7A, 0x46, 0x29, 0xFF);
+	public static Color WarpRegionColor = new(0x29, 0x79, 0x7A, 0xFF);
+	public static Color PreviewRegionColor = new(0x7A, 0x7A, 0x7A, 0xFF);
+	public static Color PatternRegionColor = new(0x29, 0x7A, 0x6A, 0xFF);
+	public static Color SelectionRegionColor = new(0xB8, 0xB4, 0x3E, 0xFF);
 
 	public const double StopRegionZOffset = 0.1;
 	public const double DelayRegionZOffset = 0.2;
@@ -114,6 +115,7 @@ internal sealed class Utils
 	public const double WarpRegionZOffset = 0.4;
 	public const double PreviewRegionZOffset = 0.5;
 	public const double PatternRegionZOffset = 0.6;
+	public const double SelectedRowsRegionZOffset = 0.7;
 
 	public static readonly string[] ExpectedAudioFormats = ["mp3", "oga", "ogg", "wav"];
 	public static readonly string[] ExpectedImageFormats = ["bmp", "gif", "jpeg", "jpg", "png", "tif", "tiff", "webp"];

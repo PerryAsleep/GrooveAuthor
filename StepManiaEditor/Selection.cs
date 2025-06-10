@@ -16,7 +16,7 @@ internal interface IReadOnlySelection
 }
 
 /// <summary>
-/// Class for selection EditorEvents and providing easy access to which EditorEvents are selected.
+/// Class for selecting EditorEvents and providing easy access to which EditorEvents are selected.
 /// </summary>
 internal sealed class Selection : IReadOnlySelection
 {

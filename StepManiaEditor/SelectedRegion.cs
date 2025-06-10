@@ -78,6 +78,11 @@ internal sealed class SelectedRegion : IReadOnlySelectedRegion
 		return SelectionRegionColor;
 	}
 
+	public float GetRegionAlpha()
+	{
+		return 1.0f;
+	}
+
 	#endregion IRegion Implementation
 
 	// State tracking.

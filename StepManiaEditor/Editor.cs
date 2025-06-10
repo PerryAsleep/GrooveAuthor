@@ -625,6 +625,8 @@ public sealed class Editor :
 		UIControls.Instance.AddCommand(selection, "Select Misc. Events In Region", nameof(PreferencesKeyBinds.MouseSelectionAltBehavior), UIControls.MultipleKeysJoinString + "Drag Left Mouse Button");
 		UIControls.Instance.AddCommand(selection, "Add to Selection", nameof(PreferencesKeyBinds.MouseSelectionControlBehavior), UIControls.MultipleKeysJoinString + "Left Mouse Button");
 		UIControls.Instance.AddCommand(selection, "Extend Selection", nameof(PreferencesKeyBinds.MouseSelectionShiftBehavior), UIControls.MultipleKeysJoinString + "Left Mouse Button");
+
+		AddKeyCommand(selection, "Select Row Range", nameof(PreferencesKeyBinds.SelectRowRange), OnSelectRowRange);
 		AddKeyCommand(selection, "Select All Notes", nameof(PreferencesKeyBinds.SelectAllNotes), OnSelectAll);
 		AddKeyCommand(selection, "Select All Taps", nameof(PreferencesKeyBinds.SelectAllTaps), () => OnSelectAll(e => e is EditorTapNoteEvent));
 		AddKeyCommand(selection, "Select All Mines", nameof(PreferencesKeyBinds.SelectAllMines), () => OnSelectAll(e => e is EditorMineNoteEvent));
@@ -1585,6 +1587,13 @@ public sealed class Editor :
 
 		FrameCount++;
 
+		// We want to set the focus to the scene and off the UI when the app starts.
+		// This is so that the UI doesn't capture input which is more likely intended
+		// for the scene, like Tab for selection. Needing to do this on frame 3 is
+		// a bit of a hack, but it is the earliest frame which has an effect on the UI.
+		if (FrameCount == 3)
+			ImGui.SetWindowFocus();
+
 		PerformanceMonitor.SetTimeFromTimeSpan(PerformanceTimings.Present, PreviousPresentTime.Ticks);
 
 		PerformanceMonitor.SetEnabled(!Preferences.Instance.PreferencesPerformance.PerformanceMonitorPaused);
@@ -2461,7 +2470,7 @@ public sealed class Editor :
 
 			DrawActiveChartBoundaries();
 			DrawMeasureMarkers();
-			DrawRegions();
+			DrawRegions(false);
 			DrawReceptors();
 			DrawSnapIndicator();
 			DrawPlayerIndicator();
@@ -2479,7 +2488,8 @@ public sealed class Editor :
 			UIDockSpace.EndCentralNodeAreaWindow();
 
 			DrawReceptorForegroundEffects();
-			DrawSelectedRegion();
+			DrawSelectedMouseRegion();
+			DrawRegions(true);
 
 			DrawMiniMap();
 
@@ -2836,9 +2846,9 @@ public sealed class Editor :
 		}
 	}
 
-	private void DrawRegions()
+	private void DrawRegions(bool selections)
 	{
-		if (!Preferences.Instance.PreferencesOptions.RenderRegions)
+		if (!selections && !Preferences.Instance.PreferencesOptions.RenderRegions)
 			return;
 
 		foreach (var activeChartData in ActiveChartData)
@@ -2847,18 +2857,21 @@ public sealed class Editor :
 				continue;
 			foreach (var visibleRegion in activeChartData.GetVisibleRegions())
 			{
+				if (selections != visibleRegion.IsRegionSelection())
+					continue;
 				visibleRegion.DrawRegion(TextureAtlas, SpriteBatch, GetViewportHeight());
 			}
 		}
 	}
 
-	private void DrawSelectedRegion()
+	private void DrawSelectedMouseRegion()
 	{
-		var selectedRegion = GetFocusedChartData()?.GetSelectedRegion();
-		if (selectedRegion?.IsActive() ?? false)
-		{
-			selectedRegion.DrawRegion(TextureAtlas, SpriteBatch, GetViewportHeight());
-		}
+		var focusedChartData = GetFocusedChartData();
+		if (focusedChartData == null)
+			return;
+		var mouseRegion = focusedChartData.GetSelectedMouseRegion();
+		if (mouseRegion?.IsActive() ?? false)
+			mouseRegion.DrawRegion(TextureAtlas, SpriteBatch, GetViewportHeight());
 	}
 
 	private void DrawChartEvents()
@@ -2992,8 +3005,13 @@ public sealed class Editor :
 	{
 		var screenHeight = GetViewportHeight();
 		for (var i = 0; i < ActiveCharts.Count; i++)
+		{
 			if (ActiveChartData[i].IsVisible())
+			{
+				ActiveChartData[i].UpdateRowSelection();
 				ActiveChartData[i].UpdateChartEvents(screenHeight);
+			}
+		}
 	}
 
 	/// <summary>
@@ -5569,9 +5587,9 @@ public sealed class Editor :
 		FocusedChart = null;
 		FocusedChartData = null;
 		LastKnownSongTime = null;
-		foreach (var activeChartDat in ActiveChartData)
+		foreach (var activeChartData in ActiveChartData)
 		{
-			activeChartDat.Clear();
+			activeChartData.Clear();
 		}
 
 		ActiveChartData.Clear();
@@ -5734,6 +5752,11 @@ public sealed class Editor :
 			return;
 		var activeChartData = GetActiveChartData(deletedEvents[0].GetEditorChart());
 		activeChartData?.OnEventsDeleted(deletedEvents, TransformingSelectedNotes);
+	}
+
+	private void OnSelectRowRange()
+	{
+		GetFocusedChartData()?.ToggleRowSelection();
 	}
 
 	public void OnSelectAll()

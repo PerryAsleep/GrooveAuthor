@@ -88,7 +88,17 @@ internal sealed class EditorFakeSegmentEvent : EditorEvent, IEquatable<EditorFak
 
 	public Color GetRegionColor()
 	{
-		return IRegion.GetColor(FakeRegionColor, Alpha);
+		return FakeRegionColor;
+	}
+
+	public float GetRegionAlpha()
+	{
+		return Alpha;
+	}
+
+	public bool IsRegionSelection()
+	{
+		return false;
 	}
 
 	#endregion IChartRegion Implementation

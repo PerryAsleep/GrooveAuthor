@@ -92,7 +92,17 @@ internal sealed class EditorWarpEvent : EditorRateAlteringEvent, IEquatable<Edit
 
 	public Color GetRegionColor()
 	{
-		return IRegion.GetColor(WarpRegionColor, Alpha);
+		return WarpRegionColor;
+	}
+
+	public float GetRegionAlpha()
+	{
+		return Alpha;
+	}
+
+	public bool IsRegionSelection()
+	{
+		return false;
 	}
 
 	#endregion IChartRegion Implementation

@@ -21,6 +21,7 @@ internal sealed class EventConfig
 		RowSearch,
 		Preview,
 		LastSecondHint,
+		SelectedRows,
 	}
 
 	/// <summary>
@@ -155,6 +156,9 @@ internal sealed class EventConfig
 				break;
 			case EditorLastSecondHintEvent:
 				specialType = SpecialType.LastSecondHint;
+				break;
+			case EditorSelectedRowsEvent:
+				specialType = SpecialType.SelectedRows;
 				break;
 		}
 
@@ -679,6 +683,16 @@ internal sealed class EventConfig
 		var chartPosition = 0.0;
 		chart.TryGetChartPositionFromTime(chartTime, ref chartPosition);
 		return new EventConfig(chart, null, true, chartPosition, chartTime, SpecialType.LastSecondHint, false, false);
+	}
+
+	/// <summary>
+	/// Create an EventConfig for an EditorSelectedRowsEvent.
+	/// </summary>
+	/// <param name="chart">EditorChart to own the event.</param>
+	/// <returns>EventConfig for the new EditorSelectedRowsEvent.</returns>
+	public static EventConfig CreateSelectedRowsConfig(EditorChart chart)
+	{
+		return new EventConfig(chart, null, false, 0.0, 0.0, SpecialType.SelectedRows, false, false);
 	}
 
 	/// <summary>

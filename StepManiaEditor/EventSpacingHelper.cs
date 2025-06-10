@@ -212,11 +212,12 @@ internal abstract class EventSpacingHelper
 	public abstract bool DoesRegionEndBeforeEvent(IChartRegion region, EditorEvent editorEvent);
 
 	/// <summary>
-	/// Returns whether or not the given region has a positive duration.
+	/// Returns whether the given region should be skipped when rendering.
+	/// The region may still not be rendered even if this is true if it is off-screen.
 	/// </summary>
 	/// <param name="region">Region in question.</param>
-	/// <returns>True if the region has a positive duration and false otherwise.</returns>
-	public abstract bool DoesRegionHavePositiveDuration(IChartRegion region);
+	/// <returns>True if the region should be skipped when rendering and false otherwise.</returns>
+	public abstract bool ShouldSkipDrawingRegion(IChartRegion region);
 
 	/// <summary>
 	/// Gets the position in screen space of the start of a given region.
@@ -305,9 +306,11 @@ internal sealed class EventSpacingHelperConstantTime : EventSpacingHelper
 		return editorEvent.GetChartTime() > region.GetChartTime() + region.GetChartTimeDurationForRegion();
 	}
 
-	public override bool DoesRegionHavePositiveDuration(IChartRegion region)
+	public override bool ShouldSkipDrawingRegion(IChartRegion region)
 	{
-		return region.GetChartTimeDurationForRegion() > 0.0;
+		if (region.IsRegionSelection())
+			return false;
+		return region.GetChartTimeDurationForRegion() <= 0.0;
 	}
 
 	public override double GetRegionY(IChartRegion region, double previousRateEventY)
@@ -384,9 +387,11 @@ internal abstract class EventSpacingHelperRow : EventSpacingHelper
 		return editorEvent.GetChartPosition() > region.GetChartPosition() + region.GetChartPositionDurationForRegion();
 	}
 
-	public override bool DoesRegionHavePositiveDuration(IChartRegion region)
+	public override bool ShouldSkipDrawingRegion(IChartRegion region)
 	{
-		return region.GetChartPositionDurationForRegion() > 0.0;
+		if (region.IsRegionSelection())
+			return false;
+		return region.GetChartPositionDurationForRegion() <= 0.0;
 	}
 
 	public override double GetRegionY(IChartRegion region, double previousRateEventY)

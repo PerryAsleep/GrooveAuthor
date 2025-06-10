@@ -175,6 +175,7 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 	private static readonly List<Keys[]> DefaultClose                                = [[Ctrl, Keys.LeftShift, Keys.F4], [Ctrl, Keys.LeftShift, Keys.W]];
 	private static readonly List<Keys[]> DefaultUndo                                 = [[Ctrl, Keys.Z]];
 	private static readonly List<Keys[]> DefaultRedo                                 = [[Ctrl, Keys.LeftShift, Keys.Z], [Ctrl, Keys.Y]];
+	private static readonly List<Keys[]> DefaultSelectRowRange                       = [[Keys.Tab]];
 	private static readonly List<Keys[]> DefaultSelectAllNotes                       = [[Ctrl, Keys.A]];
 	private static readonly List<Keys[]> DefaultSelectAllTaps                        = [[]];
 	private static readonly List<Keys[]> DefaultSelectAllMines                       = [[]];
@@ -474,6 +475,19 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 	}
 
 	private List<Keys[]> RedoInternal = DefaultRedo;
+
+	[JsonInclude]
+	public List<Keys[]> SelectRowRange
+	{
+		get => SelectRowRangeInternal;
+		set
+		{
+			SelectRowRangeInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(SelectRowRange));
+		}
+	}
+
+	private List<Keys[]> SelectRowRangeInternal = DefaultSelectRowRange;
 
 	[JsonInclude]
 	public List<Keys[]> SelectAllNotes

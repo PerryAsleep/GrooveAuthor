@@ -78,7 +78,17 @@ internal sealed class EditorPreviewRegionEvent : EditorEvent, IChartRegion, Fume
 
 	public Color GetRegionColor()
 	{
-		return IRegion.GetColor(PreviewRegionColor, Alpha);
+		return PreviewRegionColor;
+	}
+
+	public float GetRegionAlpha()
+	{
+		return Alpha;
+	}
+
+	public bool IsRegionSelection()
+	{
+		return false;
 	}
 
 	#endregion IChartRegion Implementation

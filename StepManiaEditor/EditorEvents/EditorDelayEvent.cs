@@ -94,7 +94,17 @@ internal sealed class EditorDelayEvent : EditorRateAlteringEvent, IEquatable<Edi
 
 	public Color GetRegionColor()
 	{
-		return IRegion.GetColor(DelayRegionColor, Alpha);
+		return DelayRegionColor;
+	}
+
+	public float GetRegionAlpha()
+	{
+		return Alpha;
+	}
+
+	public bool IsRegionSelection()
+	{
+		return false;
 	}
 
 	#endregion IChartRegion Implementation

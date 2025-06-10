@@ -16,9 +16,10 @@ internal interface IRegion
 	public double GetRegionW();
 	public double GetRegionH();
 	public double GetRegionZ();
+	public float GetRegionAlpha();
 	public Color GetRegionColor();
 
-	public void DrawRegionImpl(TextureAtlas textureAtlas, SpriteBatch spriteBatch, int screenHeight, Color color)
+	public void DrawRegionImpl(TextureAtlas textureAtlas, SpriteBatch spriteBatch, int screenHeight, Color color, float alpha)
 	{
 		var x = GetRegionX();
 		var w = GetRegionW();
@@ -49,15 +50,39 @@ internal interface IRegion
 			h = screenHeight - y;
 		}
 
-		textureAtlas.Draw(TextureIdRegionRect, spriteBatch,
-			new RectangleF((float)x, (float)y, (float)w, (float)h), color);
+		var xf = (float)x;
+		var yf = (float)y;
+		var wf = (float)w;
+		var hf = (float)h;
+
+		// If the bounds are so small that the border would cover all the fill, just draw the border.
+		var rimColor = GetColor(color, alpha);
+		if (hf <= 2.0f || wf <= 2.0f)
+		{
+			textureAtlas.Draw(TextureIdRegionRect, spriteBatch, new RectangleF(xf, yf, wf, hf), rimColor);
+		}
+		else
+		{
+			// Draw fill.
+			var fillColor = GetColor(color, alpha * RegionAlpha);
+			textureAtlas.Draw(TextureIdRegionRect, spriteBatch, new RectangleF(xf, yf, wf, hf), fillColor);
+
+			// Draw border.
+			textureAtlas.Draw(TextureIdRegionRect, spriteBatch,
+				new RectangleF(xf, yf, 1.0f, hf), rimColor);
+			textureAtlas.Draw(TextureIdRegionRect, spriteBatch,
+				new RectangleF(xf, yf, wf, 1.0f), rimColor);
+			textureAtlas.Draw(TextureIdRegionRect, spriteBatch,
+				new RectangleF(xf + wf - 1.0f, yf, 1.0f, hf), rimColor);
+			textureAtlas.Draw(TextureIdRegionRect, spriteBatch,
+				new RectangleF(xf, yf + hf - 1.0f, wf, 1.0f), rimColor);
+		}
 	}
 
-	public static Color GetColor(Color color, float alpha)
+	private static Color GetColor(Color color, float alpha)
 	{
 		if (alpha >= 1.0f)
 			return color;
-		alpha = System.Math.Clamp(alpha * ((float)color.A / byte.MaxValue), 0.0f, 1.0f);
 		return new Color((float)color.R / byte.MaxValue, (float)color.G / byte.MaxValue, (float)color.B / byte.MaxValue, alpha);
 	}
 }
@@ -77,12 +102,13 @@ internal interface IChartRegion : IRegion
 	public double GetChartTime();
 	public double GetChartPositionDurationForRegion();
 	public double GetChartTimeDurationForRegion();
+	public bool IsRegionSelection();
 }
 
 internal static class RegionExtensions
 {
 	public static void DrawRegion(this IRegion region, TextureAtlas textureAtlas, SpriteBatch spriteBatch, int screenHeight)
 	{
-		region.DrawRegionImpl(textureAtlas, spriteBatch, screenHeight, region.GetRegionColor());
+		region.DrawRegionImpl(textureAtlas, spriteBatch, screenHeight, region.GetRegionColor(), region.GetRegionAlpha());
 	}
 }
