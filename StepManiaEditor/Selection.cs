@@ -93,10 +93,14 @@ internal sealed class Selection : IReadOnlySelection
 		LastSelectedEvent = null;
 	}
 
-	public void SetSelectEvents(List<EditorEvent> selectedEvents)
+	public void SetSelectedEvents(List<EditorEvent> selectedEvents, bool ifAddedToChart)
 	{
 		ClearSelectedEvents();
 		foreach (var selectedEvent in selectedEvents)
+		{
+			if (ifAddedToChart && !selectedEvent.IsAddedToChart())
+				continue;
 			SelectEvent(selectedEvent, true);
+		}
 	}
 }

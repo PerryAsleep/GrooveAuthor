@@ -5678,9 +5678,17 @@ public sealed class Editor :
 				// Do not set the selection if it isn't the focused chart. We only ever want the
 				// focused chart to have selected notes.
 				if (activeChartDataForSelection == FocusedChartData)
-					activeChartDataForSelection.SetSelectedEvents(transformedEvents);
+				{
+					// When selecting events, only select them if they are added to the chart.
+					// When copying notes we clone them, and they aren't added to the chart.
+					// When undoing a paste of those notes, we do not want to select these cloned
+					// notes.
+					activeChartDataForSelection.SetSelectedEvents(transformedEvents, true);
+				}
 				else
+				{
 					activeChartDataForSelection.ClearSelection();
+				}
 			}
 		}
 
@@ -5950,9 +5958,12 @@ public sealed class Editor :
 		if (!selection.HasSelectedEvents())
 			return;
 
+		// Clone the events now for copying them to avoid modifications made
+		// after the copy affecting the copied notes. For example if we copy,
+		// then mirror, then paste, we want to paste un-mirrored notes.
 		CopiedEvents.Clear();
 		foreach (var selectedEvent in selection.GetSelectedEvents())
-			CopiedEvents.Add(selectedEvent);
+			CopiedEvents.Add(selectedEvent.Clone());
 		CopiedEvents.Sort();
 	}
 

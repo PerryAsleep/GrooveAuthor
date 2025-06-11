@@ -1388,9 +1388,9 @@ internal sealed class ActiveEditorChart
 		return Selection;
 	}
 
-	public void SetSelectedEvents(List<EditorEvent> events)
+	public void SetSelectedEvents(List<EditorEvent> events, bool ifAddedToChart)
 	{
-		Selection.SetSelectEvents(events);
+		Selection.SetSelectedEvents(events, ifAddedToChart);
 	}
 
 	public void OnDelete()
