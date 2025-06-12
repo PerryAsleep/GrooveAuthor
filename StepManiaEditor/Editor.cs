@@ -2051,7 +2051,6 @@ public sealed class Editor :
 		{
 			void SetReceptorPosition(int x, int y)
 			{
-				var p = Preferences.Instance.PreferencesReceptors;
 				if (p.ChartSpacePositionX != x || p.ChartSpacePositionY != y)
 					FocalPointMoved = true;
 				p.ChartSpacePositionX = x;
