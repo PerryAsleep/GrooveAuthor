@@ -174,6 +174,83 @@ public class ImGuiRenderer
 
 	#endregion ImGuiRenderer
 
+	#region Clipboard
+
+	[UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+	private delegate IntPtr GetClipboardDelegate(IntPtr userData);
+
+	[UnmanagedFunctionPointer(CallingConvention.Cdecl)]
+	private delegate void SetClipboardDelegate(IntPtr userData, IntPtr textPtr);
+
+	private GetClipboardDelegate _getClipboardDelegate;
+	private SetClipboardDelegate _setClipboardDelegate;
+
+	private void SetupClipboard()
+	{
+		_getClipboardDelegate = (userData) => GetClipboardText();
+		_setClipboardDelegate = (userData, textPtr) => SetClipboardText(textPtr);
+		ImGui.GetIO().GetClipboardTextFn = Marshal.GetFunctionPointerForDelegate(_getClipboardDelegate);
+		ImGui.GetIO().SetClipboardTextFn = Marshal.GetFunctionPointerForDelegate(_setClipboardDelegate);
+	}
+
+	private static IntPtr LastClipboardTextPtr = IntPtr.Zero;
+
+	private unsafe IntPtr GetClipboardText()
+	{
+		try
+		{
+			if (LastClipboardTextPtr != IntPtr.Zero)
+			{
+				Marshal.FreeHGlobal(LastClipboardTextPtr);
+				LastClipboardTextPtr = IntPtr.Zero;
+			}
+
+			var s = _game.GetClipboardText();
+			if (s is null)
+			{
+				return IntPtr.Zero;
+			}
+
+			var nb = Encoding.UTF8.GetMaxByteCount(s.Length);
+
+			LastClipboardTextPtr = Marshal.AllocHGlobal(checked(nb + 1));
+
+			var pbMem = (byte*)LastClipboardTextPtr;
+			var nbWritten = Encoding.UTF8.GetBytes(s, new Span<byte>(pbMem, nb));
+			pbMem[nbWritten] = 0;
+
+			return LastClipboardTextPtr;
+		}
+		catch (Exception)
+		{
+			return IntPtr.Zero;
+		}
+	}
+
+	private void SetClipboardText(IntPtr ptr)
+	{
+		try
+		{
+			if (ptr == IntPtr.Zero)
+				return;
+
+			var len = 0;
+			while (Marshal.ReadByte(ptr, len) != 0)
+				len++;
+
+			var buffer = new byte[len];
+			Marshal.Copy(ptr, buffer, 0, len);
+
+			_game.SetClipboardText(Encoding.UTF8.GetString(buffer));
+		}
+		catch (Exception)
+		{
+			// Ignored.
+		}
+	}
+
+	#endregion Clipboard
+
 	#region Setup & Update
 
 	/// <summary>
@@ -187,23 +264,6 @@ public class ImGuiRenderer
 			if (a.Character == '\t') return;
 			io.AddInputCharacter(a.Character);
 		};
-	}
-
-	[UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-	private delegate IntPtr GetClipboardDelegate(IntPtr userData);
-
-	[UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-	private delegate void SetClipboardDelegate(IntPtr userData, string text);
-
-	private GetClipboardDelegate _getClipboardDelegate;
-	private SetClipboardDelegate _setClipboardDelegate;
-
-	private void SetupClipboard()
-	{
-		_getClipboardDelegate = (userData) => Marshal.StringToHGlobalAnsi(_game.GetClipboardText());
-		_setClipboardDelegate = (userData, text) => _game.SetClipboardText(text);
-		ImGui.GetIO().GetClipboardTextFn = Marshal.GetFunctionPointerForDelegate(_getClipboardDelegate);
-		ImGui.GetIO().SetClipboardTextFn = Marshal.GetFunctionPointerForDelegate(_setClipboardDelegate);
 	}
 
 	/// <summary>
