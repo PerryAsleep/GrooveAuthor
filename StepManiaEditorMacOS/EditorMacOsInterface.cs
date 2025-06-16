@@ -8,6 +8,7 @@ using AppKit;
 using Foundation;
 using Fumen;
 using Microsoft.Xna.Framework;
+using Microsoft.Xna.Framework.Input;
 using StepManiaEditor;
 using UniformTypeIdentifiers;
 using Path = Fumen.Path;
@@ -48,6 +49,86 @@ internal sealed class EditorMacOsInterface : IEditorPlatform
 		NSApplication.Init();
 		NSApplication.SharedApplication.Delegate = new EditorAppDelegate(this);
 		NSApplication.SharedApplication.FinishLaunching();
+
+		InitializeKeyboardEvents();
+	}
+
+	/// <summary>
+	/// On Mac SDL often does not issue key up events, resulting in input getting stuck.
+	/// However, Mac's NSEvents for key events do seem to always fire even when the SDL
+	/// events do not. Because of this we respond to the NSEvents and route them to the
+	/// Monogame Keyboard. This could be moved to inside Monogame but I am currently
+	/// trying to keep all the AppKit/Foundation logic in one place.
+	/// </summary>
+	private void InitializeKeyboardEvents()
+	{
+		NSEvent.AddLocalMonitorForEventsMatchingMask(NSEventMask.KeyUp, evt =>
+		{
+			if (KeyboardUtil.TryGetKeyFromNSEventKey(evt.KeyCode, out var key))
+				Keyboard.KeyUp(key);
+			return evt;
+		});
+		NSEvent.AddLocalMonitorForEventsMatchingMask(NSEventMask.KeyDown, evt =>
+		{
+			if (KeyboardUtil.TryGetKeyFromNSEventKey(evt.KeyCode, out var key))
+				Keyboard.KeyDown(key);
+			return evt;
+		});
+
+		// Modifier keys work differently. This event will fire when any modifier key changes
+		// but we do not know if the given key was pressed or released as there are multiple
+		// keys per modifier (e.g. left shift and right shift both affect shift) and all we can
+		// check is the key-agnostic modifier state (e.g. is shift active or not). Because of
+		// this limitation (and because our app treats all right modifiers as left) just use the
+		// the left modifier keys. This could result in a situation where pressing left, then
+		// right then releasing right then left would result in left down, left down again 2
+		// more times incorrectly, then finally left up. But this doesn't matter in practice
+		// because it is rare to hold both keys for a single modifier.
+		NSEvent.AddLocalMonitorForEventsMatchingMask(NSEventMask.FlagsChanged, evt =>
+		{
+			switch (evt.KeyCode)
+			{
+				case 0x38: // Left Shift
+				case 0x3C: // Right Shift
+					if (evt.ModifierFlags.HasFlag(NSEventModifierMask.ShiftKeyMask))
+						Keyboard.KeyDown(Keys.LeftShift);
+					else
+						Keyboard.KeyUp(Keys.LeftShift);
+					break;
+				case 0x3B: // Left Control
+				case 0x3E: // Right Control
+					if (evt.ModifierFlags.HasFlag(NSEventModifierMask.ControlKeyMask))
+						Keyboard.KeyDown(Keys.LeftControl);
+					else
+						Keyboard.KeyUp(Keys.LeftControl);
+					break;
+				case 0x3A: // Left Option
+				case 0x3D: // Right Option
+					if (evt.ModifierFlags.HasFlag(NSEventModifierMask.AlternateKeyMask))
+						Keyboard.KeyDown(Keys.LeftAlt);
+					else
+						Keyboard.KeyUp(Keys.LeftAlt);
+					break;
+				case 0x37: // Left Command
+				case 0x36: // Right Command
+					if (evt.ModifierFlags.HasFlag(NSEventModifierMask.CommandKeyMask))
+						Keyboard.KeyDown(Keys.LeftWindows);
+					else
+						Keyboard.KeyUp(Keys.LeftWindows);
+					break;
+			}
+			return evt;
+		});
+
+		// Clear all held keys when gaining or losing focus.
+		NSNotificationCenter.DefaultCenter.AddObserver(NSApplication.DidBecomeActiveNotification,
+			notification => Keyboard.ClearHeldKeys());
+		NSNotificationCenter.DefaultCenter.AddObserver(NSApplication.DidResignActiveNotification,
+			notification => Keyboard.ClearHeldKeys());
+		NSNotificationCenter.DefaultCenter.AddObserver(NSWindow.DidBecomeKeyNotification,
+			notification => Keyboard.ClearHeldKeys());
+		NSNotificationCenter.DefaultCenter.AddObserver(NSWindow.DidResignKeyNotification,
+			notification => Keyboard.ClearHeldKeys());
 	}
 
 	public void Initialize(Editor editor)
@@ -177,8 +258,9 @@ internal sealed class EditorMacOsInterface : IEditorPlatform
 			var result = (NSModalResponse)savePanel.RunModal();
 			confirmed = result == NSModalResponse.OK;
 			path = savePanel.Url?.Path;
+			RestoreMainWindowFocus();
 		}
-		catch(Exception e)
+		catch (Exception e)
 		{
 			Logger.Error($"Failed showing file save simfile dialog: {e}");
 		}
@@ -203,8 +285,9 @@ internal sealed class EditorMacOsInterface : IEditorPlatform
 			var result = (NSModalResponse)openPanel.RunModal();
 			confirmed = result == NSModalResponse.OK;
 			path = openPanel.Url?.Path;
+			RestoreMainWindowFocus();
 		}
-		catch(Exception e)
+		catch (Exception e)
 		{
 			Logger.Error($"Failed showing file open simfile dialog: {e}");
 		}
@@ -255,8 +338,9 @@ internal sealed class EditorMacOsInterface : IEditorPlatform
 				var fileName = openPanel.Url?.Path;
 				relativePath = Path.GetRelativePath(startInitialDirectory, fileName);
 			}
+			RestoreMainWindowFocus();
 		}
-		catch(Exception e)
+		catch (Exception e)
 		{
 			Logger.Error($"Failed showing file open dialog: {e}");
 		}
@@ -284,6 +368,32 @@ internal sealed class EditorMacOsInterface : IEditorPlatform
 		catch (Exception e)
 		{
 			Logger.Error($"Failed opening {path}. {e}");
+		}
+	}
+
+	private void RestoreMainWindowFocus()
+	{
+		try
+		{
+			var nsApp = NSApplication.SharedApplication;
+			nsApp.ActivateIgnoringOtherApps(true);
+			var windowsArray = nsApp.ValueForKey((NSString)"windows") as NSArray;
+			if (windowsArray != null)
+			{
+				for (nuint i = 0; i < windowsArray.Count; i++)
+				{
+					var windowPtr = windowsArray.GetItem<NSObject>(i);
+					if (windowPtr is NSWindow window && window.IsVisible && !window.IsMiniaturized)
+					{
+						window.MakeKeyAndOrderFront(null);
+						break;
+					}
+				}
+			}
+		}
+		catch (Exception)
+		{
+			// Ignored.
 		}
 	}
 
