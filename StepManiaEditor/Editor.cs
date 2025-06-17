@@ -895,8 +895,38 @@ public sealed class Editor :
 			var guiScale = GetDpiScale();
 			var path = PlatformInterface.GetResourceDirectory();
 			var mPlusFontPath = Path.Combine([path, "Content", "Mplus1Code-Medium.ttf"]);
-			ImGuiFont = ImGui.GetIO().Fonts.AddFontFromFileTTF(mPlusFontPath, (int)(15 * guiScale), null,
-				ImGui.GetIO().Fonts.GetGlyphRangesJapanese());
+
+			unsafe
+			{
+				// Construct a list of glyph ranges.
+				var data = new List<ushort>();
+
+				// Add ImGui's Japanese ranges, which include Basic Latin and Latin-1 Supplement.
+				var japanese = (ushort*)ImGui.GetIO().Fonts.GetGlyphRangesJapanese();
+				var current = japanese;
+				while (*current != 0)
+				{
+					data.Add(*current);
+					current++;
+				}
+
+				// Add extended Latin A for common European Latin characters.
+				data.AddRange([0x0100, 0x017F]);
+
+				// Add extended Latin B as it contains some modern European Latin characters.
+				data.AddRange([0x0180, 0x024F]);
+
+				// Terminate the list.
+				data.Add(0x0000);
+
+				// Create the font for the glyph ranges.
+				fixed (ushort* dataPtr = data.ToArray())
+				{
+					ImGuiFont = ImGui.GetIO().Fonts
+						.AddFontFromFileTTF(mPlusFontPath, (int)(15 * guiScale), null, (IntPtr)dataPtr);
+				}
+			}
+
 			ImGuiRenderer.RebuildFontAtlas();
 			ImGuiLayoutUtils.SetFont(ImGuiFont);
 		}
