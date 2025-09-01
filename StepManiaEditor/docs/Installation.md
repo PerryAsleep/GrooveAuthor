@@ -18,6 +18,17 @@
     ```
 3. When complete you can delete the `tar.gz` file and the extracted contents.
 
+### Arch Linux
+
+You can install via the AUR with `paru`
+```sh
+paru -S grooveauthor-bin
+```
+or `yay`
+```sh
+yay -S grooveauthor-bin
+```
+
 ## MacOS
 
 `GrooveAuthor` requires MacOS 11.0 or greater.
