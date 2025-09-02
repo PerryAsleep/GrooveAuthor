@@ -20,6 +20,9 @@
 
 ### Arch Linux
 
+> [!WARNING]
+> The AUR is maintained by third parties, and packages may be out-of-date.
+
 You can install via the AUR with `paru`
 ```sh
 paru -S grooveauthor-bin
@@ -28,7 +31,6 @@ or `yay`
 ```sh
 yay -S grooveauthor-bin
 ```
-
 ## MacOS
 
 `GrooveAuthor` requires MacOS 11.0 or greater.
