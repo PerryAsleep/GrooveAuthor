@@ -3878,6 +3878,11 @@ public sealed class Editor :
 							" players. This format also does not support rolls, lifts, or per-player mines. If this option" +
 							$" is checked then when {GetAppName()} saves a Pump Routine chart it will use the StepF2 format.");
 
+						ImGuiLayoutUtils.DrawRowCheckbox(true, "Use Outfox Format for SMX", Preferences.Instance,
+							nameof(Preferences.UseOutfoxFormatForSmx), false,
+							"Project Outfox is a fork of Stepmania which supports StepManiaX emulation. If this option" +
+							$" is checked then when {GetAppName()} saves SMX charts it will use the Outfox format.");
+
 						ImGuiLayoutUtils.EndTable();
 					}
 
@@ -5117,6 +5122,7 @@ public sealed class Editor :
 			OmitCustomSaveData = Preferences.Instance.OmitCustomSaveData,
 			AnonymizeSaveData = Preferences.Instance.AnonymizeSaveData,
 			UseStepF2ForPumpRoutine = Preferences.Instance.UseStepF2ForPumpRoutine,
+			UseOutfoxFormatForSmx = Preferences.Instance.UseOutfoxFormatForSmx,
 		};
 		editorSong?.Save(saveParameters);
 	}

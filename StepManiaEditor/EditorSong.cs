@@ -109,6 +109,11 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 		/// Whether or not to use the StepF2 format for Pump routine charts.
 		/// </summary>
 		public bool UseStepF2ForPumpRoutine;
+
+		/// <summary>
+		/// Whether or not to use Outfox's SMX format.
+		/// </summary>
+		public bool UseOutfoxFormatForSmx;
 	}
 
 	/// <summary>
@@ -1816,6 +1821,7 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 							FallbackChart = fallbackChart,
 							ForceOnlySongLevelTiming = saveParameters.OmitChartTimingData,
 							UseStepF2ForPumpMultiplayerCharts = saveParameters.UseStepF2ForPumpRoutine,
+							UseOutfoxFormatForSmx = saveParameters.UseOutfoxFormatForSmx,
 						};
 						switch (saveParameters.FileType)
 						{
