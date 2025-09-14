@@ -3871,8 +3871,11 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 					chart.NumInputs = NumInputs;
 					chart.NumPlayers = MaxPlayers;
 					chart.DifficultyRating = Rating;
-					chart.Extras.AddDestExtra(TagMusic, MusicPath, true);
 					chart.Tempo = DisplayTempo.ToString();
+
+					chart.Extras.AddDestExtra(TagMusic, MusicPath, true);
+					if (!string.IsNullOrEmpty(MusicPath))
+						chart.MusicFile = MusicPath;
 
 					if (saveParameters.AnonymizeSaveData)
 					{
