@@ -260,13 +260,22 @@ internal abstract class ArrowGraphicManager
 			case ChartType.pump_single:
 			case ChartType.pump_double:
 			case ChartType.pump_couple:
-				newArrowGraphicManager = new ArrowGraphicManagerPIUSingleOrDouble(preferences);
+				if (preferences.UseRowBasedColoringForPiu)
+					newArrowGraphicManager = new ArrowGraphicManagerPIUSingleOrDoubleRowBased(preferences);
+				else
+					newArrowGraphicManager = new ArrowGraphicManagerPIUSingleOrDouble(preferences);
 				break;
 			case ChartType.pump_routine:
-				newArrowGraphicManager = new ArrowGraphicManagerPIURoutine(preferences);
+				if (preferences.UseRowBasedColoringForPiu)
+					newArrowGraphicManager = new ArrowGraphicManagerPIURoutineRowBased(preferences);
+				else
+					newArrowGraphicManager = new ArrowGraphicManagerPIURoutine(preferences);
 				break;
 			case ChartType.pump_halfdouble:
-				newArrowGraphicManager = new ArrowGraphicManagerPIUSingleHalfDouble(preferences);
+				if (preferences.UseRowBasedColoringForPiu)
+					newArrowGraphicManager = new ArrowGraphicManagerPIUSingleHalfDoubleRowBased(preferences);
+				else
+					newArrowGraphicManager = new ArrowGraphicManagerPIUSingleHalfDouble(preferences);
 				break;
 			default:
 				return null;
@@ -1414,6 +1423,125 @@ internal sealed class ArrowGraphicManagerPIURoutine : ArrowGraphicManagerPIUSing
 	{
 		var i = GetTextureIndex(lane);
 		return Preferences.GetPiuUIHoldColor(player, i, selected);
+	}
+
+	public override uint GetMineUIColor(bool selected, int player)
+	{
+		return Preferences.GetUIMineColor(player, selected);
+	}
+
+	public override (string, Color) GetMineFillTexture(bool selected, int player)
+	{
+		return (TextureIdMineFill, Preferences.GetMineColor(player, selected, false));
+	}
+}
+
+internal abstract class ArrowGraphicManagerPIURowBased : ArrowGraphicManagerPIU
+{
+	protected ArrowGraphicManagerPIURowBased(PreferencesNoteColor preferences) : base(preferences)
+	{
+	}
+
+	public override (string, float, Color) GetArrowTextureFill(int row, int lane, bool selected, int player)
+	{
+		var i = GetTextureIndex(lane);
+		return (ArrowFillTextures[i], ArrowRotations[i], Preferences.GetNoteColor(row, selected));
+	}
+
+	public override (string, bool, Color) GetHoldBodyTextureFill(int row, int lane, bool held, bool selected, int player)
+	{
+		var i = GetTextureIndex(lane);
+		return (HoldFillTextures[i], HoldMirrored[i], Preferences.GetHoldBodyColor(selected, held));
+	}
+
+	public override (string, bool, Color) GetRollBodyTextureFill(int row, int lane, bool held, bool selected, int player)
+	{
+		var i = GetTextureIndex(lane);
+		return (RollFillTextures[i], HoldMirrored[i], Preferences.GetRollBodyColor(selected, held));
+	}
+
+	public override uint GetArrowUIColor(int row, int lane, bool selected, int player)
+	{
+		return Preferences.GetUINoteColor(row, selected);
+	}
+
+	public override uint GetHoldUIColor(int row, int lane, bool selected, int player)
+	{
+		return Preferences.GetUIHoldColor(selected);
+	}
+
+	public override uint GetRollUIColor(int row, int lane, bool selected, int player)
+	{
+		return Preferences.GetUIRollColor(selected);
+	}
+}
+
+internal class ArrowGraphicManagerPIUSingleOrDoubleRowBased : ArrowGraphicManagerPIURowBased
+{
+	public ArrowGraphicManagerPIUSingleOrDoubleRowBased(PreferencesNoteColor preferences) : base(preferences)
+	{
+		StartArrowIndex = 0;
+	}
+}
+
+internal sealed class ArrowGraphicManagerPIUSingleHalfDoubleRowBased : ArrowGraphicManagerPIURowBased
+{
+	public ArrowGraphicManagerPIUSingleHalfDoubleRowBased(PreferencesNoteColor preferences) : base(preferences)
+	{
+		StartArrowIndex = 2;
+	}
+}
+
+internal sealed class ArrowGraphicManagerPIURoutineRowBased : ArrowGraphicManagerPIUSingleOrDoubleRowBased
+{
+	public ArrowGraphicManagerPIURoutineRowBased(PreferencesNoteColor preferences) : base(preferences)
+	{
+	}
+
+	public override bool ShouldColorHoldsAndRollsInMultiplayerCharts()
+	{
+		return Preferences.ColorMultiplayerHoldsAndRolls;
+	}
+
+	public override (string, float, Color) GetArrowTextureFill(int row, int lane, bool selected, int player)
+	{
+		var i = GetTextureIndex(lane);
+		return (ArrowFillTextures[i], ArrowRotations[i], Preferences.GetNoteColor(player, row, selected));
+	}
+
+	public override (string, bool, Color) GetHoldBodyTextureFill(int row, int lane, bool held, bool selected, int player)
+	{
+		var i = GetTextureIndex(lane);
+		if (!ShouldColorHoldsAndRollsInMultiplayerCharts())
+			return (HoldFillTextures[i], HoldMirrored[i], Preferences.GetHoldBodyColor(selected, held));
+		return (HoldFillTextures[i], HoldMirrored[i], Preferences.GetHoldBodyColor(player, selected, held));
+	}
+
+	public override (string, bool, Color) GetRollBodyTextureFill(int row, int lane, bool held, bool selected, int player)
+	{
+		var i = GetTextureIndex(lane);
+		if (!ShouldColorHoldsAndRollsInMultiplayerCharts())
+			return (RollFillTextures[i], HoldMirrored[i], Preferences.GetRollBodyColor(selected, held));
+		return (RollFillTextures[i], HoldMirrored[i], Preferences.GetRollBodyColor(player, selected, held));
+	}
+
+	public override uint GetArrowUIColor(int row, int lane, bool selected, int player)
+	{
+		return Preferences.GetUINoteColor(player, row, selected);
+	}
+
+	public override uint GetHoldUIColor(int row, int lane, bool selected, int player)
+	{
+		if (!ShouldColorHoldsAndRollsInMultiplayerCharts())
+			return Preferences.GetUIHoldColor(selected);
+		return Preferences.GetUIHoldColor(player, selected);
+	}
+
+	public override uint GetRollUIColor(int row, int lane, bool selected, int player)
+	{
+		if (!ShouldColorHoldsAndRollsInMultiplayerCharts())
+			return Preferences.GetUIRollColor(selected);
+		return Preferences.GetUIRollColor(player, selected);
 	}
 
 	public override uint GetMineUIColor(bool selected, int player)

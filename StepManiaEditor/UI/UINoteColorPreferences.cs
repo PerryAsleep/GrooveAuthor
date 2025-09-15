@@ -94,6 +94,10 @@ internal sealed class UINoteColorPreferences : UIWindow
 			ImGui.Separator();
 			if (ImGuiLayoutUtils.BeginTable("Options PIU Note Color", TitleColumnWidth))
 			{
+				ImGuiLayoutUtils.DrawRowCheckbox(true, "Color Pump Notes By Row", p,
+					nameof(PreferencesNoteColor.UseRowBasedColoringForPiu), false,
+					"Whether to color pump notes by row instead of by lane.");
+
 				ImGuiLayoutUtils.DrawRowColorEdit3(true, "Pump Top Row Color", p,
 					nameof(PreferencesNoteColor.PiuTopColor), ImGuiColorEditFlags.NoAlpha, false,
 					"Note color for the top row in pump charts.");

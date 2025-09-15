@@ -13,7 +13,7 @@ namespace StepManiaEditor;
 /// Note color preferences.
 /// Multiplayer colors are individual properties in order to ease edits through UI.
 /// </summary>
-internal sealed class PreferencesNoteColor
+internal sealed class PreferencesNoteColor : Notifier<PreferencesNoteColor>
 {
 	public enum ColorSet
 	{
@@ -66,6 +66,8 @@ internal sealed class PreferencesNoteColor
 		public readonly Vector3 Mine;
 	}
 
+	public const string NotificationPiuColoringMethodChanged = "PiuColoringMethodChanged";
+
 	/// <summary>
 	/// Brightness multiplier for selected variants of colors.
 	/// </summary>
@@ -94,6 +96,11 @@ internal sealed class PreferencesNoteColor
 	/// Saturation multiplier for coloring PIU holds.
 	/// </summary>
 	public const float DefaultPiuHoldSaturationMultiplier = 0.8f;
+
+	/// <summary>
+	/// Whether or not to use row-based coloring for PIU.
+	/// </summary>
+	public const bool DefaultUseRowBasedColoringForPiu = false;
 
 	public static readonly NoteColorSet[] DefaultNoteColors =
 	[
@@ -220,6 +227,19 @@ internal sealed class PreferencesNoteColor
 	}
 
 	private float PiuHoldSaturationMultiplierInternal = DefaultPiuHoldSaturationMultiplier;
+
+	[JsonInclude]
+	public bool UseRowBasedColoringForPiu
+	{
+		get => UseRowBasedColoringForPiuInternal;
+		set
+		{
+			UseRowBasedColoringForPiuInternal = value;
+			Notify(NotificationPiuColoringMethodChanged, this);
+		}
+	}
+
+	private bool UseRowBasedColoringForPiuInternal = DefaultUseRowBasedColoringForPiu;
 
 	[JsonInclude] [JsonPropertyName("ColorHoldsAndRolls")]
 	public bool ColorMultiplayerHoldsAndRolls = DefaultColorMultiplayerHoldsAndRolls;
@@ -1312,6 +1332,7 @@ internal sealed class PreferencesNoteColor
 		       && ArrowUIColorMultiplier.FloatEquals(DefaultArrowUIColorMultiplier)
 		       && ArrowUISelectedColorMultiplier.FloatEquals(DefaultArrowUISelectedColorMultiplier)
 		       && PiuHoldSaturationMultiplier.FloatEquals(DefaultPiuHoldSaturationMultiplier)
+		       && UseRowBasedColoringForPiu == DefaultUseRowBasedColoringForPiu
 		       && RoutineNoteColorAlpha.FloatEquals(DefaultRoutineNoteColorAlpha)
 		       && ColorMultiplayerHoldsAndRolls == DefaultColorMultiplayerHoldsAndRolls
 		       && Player0Color.Equals(DefaultPlayer0Color)
@@ -1360,6 +1381,7 @@ internal sealed class ActionRestoreNoteColorPreferenceDefaults : EditorAction
 	private readonly float PreviousArrowUIColorMultiplier;
 	private readonly float PreviousArrowUISelectedColorMultiplier;
 	private readonly float PreviousPiuHoldSaturationMultiplier;
+	private readonly bool PreviousUseRowBasedColoringForPiu;
 	private readonly float PreviousRoutineNoteColorAlpha;
 	private readonly bool PreviousColorMultiplayerHoldsAndRolls;
 	private readonly Vector3 PreviousPlayer0Color;
@@ -1396,6 +1418,7 @@ internal sealed class ActionRestoreNoteColorPreferenceDefaults : EditorAction
 		PreviousArrowUIColorMultiplier = p.ArrowUIColorMultiplier;
 		PreviousArrowUISelectedColorMultiplier = p.ArrowUISelectedColorMultiplier;
 		PreviousPiuHoldSaturationMultiplier = p.PiuHoldSaturationMultiplier;
+		PreviousUseRowBasedColoringForPiu = p.UseRowBasedColoringForPiu;
 		PreviousRoutineNoteColorAlpha = p.RoutineNoteColorAlpha;
 		PreviousColorMultiplayerHoldsAndRolls = p.ColorMultiplayerHoldsAndRolls;
 		PreviousPlayer0Color = p.Player0Color;
@@ -1443,6 +1466,7 @@ internal sealed class ActionRestoreNoteColorPreferenceDefaults : EditorAction
 		p.ArrowUIColorMultiplier = DefaultArrowUIColorMultiplier;
 		p.ArrowUISelectedColorMultiplier = DefaultArrowUISelectedColorMultiplier;
 		p.PiuHoldSaturationMultiplier = DefaultPiuHoldSaturationMultiplier;
+		p.UseRowBasedColoringForPiu = DefaultUseRowBasedColoringForPiu;
 		p.RoutineNoteColorAlpha = DefaultRoutineNoteColorAlpha;
 		p.ColorMultiplayerHoldsAndRolls = DefaultColorMultiplayerHoldsAndRolls;
 		p.Player0Color = DefaultPlayer0Color;
@@ -1480,6 +1504,7 @@ internal sealed class ActionRestoreNoteColorPreferenceDefaults : EditorAction
 		p.ArrowUIColorMultiplier = PreviousArrowUIColorMultiplier;
 		p.ArrowUISelectedColorMultiplier = PreviousArrowUISelectedColorMultiplier;
 		p.PiuHoldSaturationMultiplier = PreviousPiuHoldSaturationMultiplier;
+		p.UseRowBasedColoringForPiu = PreviousUseRowBasedColoringForPiu;
 		p.RoutineNoteColorAlpha = PreviousRoutineNoteColorAlpha;
 		p.ColorMultiplayerHoldsAndRolls = PreviousColorMultiplayerHoldsAndRolls;
 		p.Player0Color = PreviousPlayer0Color;

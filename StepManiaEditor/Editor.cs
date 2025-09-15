@@ -5222,7 +5222,11 @@ public sealed class Editor :
 				var focalPointX = GetFocalPointScreenSpaceX();
 				var focalPointY = GetFocalPointScreenSpaceY();
 				ActiveCharts.Clear();
+
+				foreach (var activeChartData in ActiveChartData)
+					activeChartData.Dispose();
 				ActiveChartData.Clear();
+
 				foreach (var activeChart in results.GetActiveCharts())
 					SetChartHasDedicatedTab(activeChart, true);
 				SetChartFocused(results.GetFocusedChart());
@@ -5622,12 +5626,15 @@ public sealed class Editor :
 		FocusedChart = null;
 		FocusedChartData = null;
 		LastKnownSongTime = null;
+
 		foreach (var activeChartData in ActiveChartData)
 		{
 			activeChartData.Clear();
+			activeChartData.Dispose();
 		}
 
 		ActiveChartData.Clear();
+
 		ActiveCharts.Clear();
 		PlayerPerChart.Clear();
 		EditorMouseState.SetActiveChart(null);
@@ -6803,6 +6810,7 @@ public sealed class Editor :
 			if (ActiveCharts[i] == chart)
 			{
 				ActiveChartData[i].Clear();
+				ActiveChartData[i].Dispose();
 				ActiveChartData.RemoveAt(i);
 				ActiveCharts.RemoveAt(i);
 				break;

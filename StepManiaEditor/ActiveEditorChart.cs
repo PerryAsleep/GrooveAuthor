@@ -4,10 +4,10 @@ using Fumen;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using MonoGameExtensions;
-using static StepManiaEditor.Editor;
-using static StepManiaEditor.Utils;
 using static Fumen.Converters.SMCommon;
+using static StepManiaEditor.Editor;
 using static StepManiaEditor.ImGuiUtils;
+using static StepManiaEditor.Utils;
 
 namespace StepManiaEditor;
 
@@ -16,7 +16,7 @@ namespace StepManiaEditor;
 /// ActiveEditorChart handles Editor-specific functionality for a visible EditorChart
 /// including input handling, autoplay, and rendering.
 /// </summary>
-internal sealed class ActiveEditorChart
+internal sealed class ActiveEditorChart : Fumen.IObserver<PreferencesNoteColor>, IDisposable
 {
 	private readonly Editor Editor;
 	private readonly EditorChart Chart;
@@ -36,7 +36,7 @@ internal sealed class ActiveEditorChart
 	private readonly Receptor[] Receptors;
 	private readonly LaneEditState[] LaneEditStates;
 	private readonly AutoPlayer AutoPlayer;
-	private readonly ArrowGraphicManager ArrowGraphicManager;
+	private ArrowGraphicManager ArrowGraphicManager;
 	private readonly MiscEventWidgetLayoutManager MiscEventWidgetLayoutManager = new();
 	private double WaveFormPPS = 1.0;
 	private bool ChartHasDedicatedTab;
@@ -64,7 +64,8 @@ internal sealed class ActiveEditorChart
 		TextureAtlas = textureAtlas;
 		KeyCommandManager = keyCommandManager;
 
-		ArrowGraphicManager = ArrowGraphicManager.CreateArrowGraphicManager(Chart.ChartType);
+		RecreateArrowGraphicManager();
+
 		var laneEditStates = new LaneEditState[Chart.NumInputs];
 		var receptors = new Receptor[Chart.NumInputs];
 		for (var i = 0; i < Chart.NumInputs; i++)
@@ -79,12 +80,19 @@ internal sealed class ActiveEditorChart
 
 		Position = new EditorPosition(OnPositionChanged, Chart);
 		Header = new UIChartHeader(Editor, this);
+
+		Preferences.Instance.PreferencesNoteColor.AddObserver(this);
 	}
 
 	public void Clear()
 	{
 		SetFocused(false);
 		ChartHasDedicatedTab = false;
+	}
+
+	private void RecreateArrowGraphicManager()
+	{
+		ArrowGraphicManager = ArrowGraphicManager.CreateArrowGraphicManager(Chart.ChartType);
 	}
 
 	#region Focal Point
@@ -2960,4 +2968,28 @@ internal sealed class ActiveEditorChart
 	}
 
 	#endregion UI
+
+	#region IObserver
+
+	public void OnNotify(string eventId, PreferencesNoteColor notifier, object payload)
+	{
+		switch (eventId)
+		{
+			case PreferencesNoteColor.NotificationPiuColoringMethodChanged:
+				if (IsPumpType(Chart.ChartType))
+					RecreateArrowGraphicManager();
+				break;
+		}
+	}
+
+	#endregion IObserver
+
+	#region IDisposable
+
+	public void Dispose()
+	{
+		Preferences.Instance.PreferencesNoteColor.RemoveObserver(this);
+	}
+
+	#endregion IDisposable
 }
