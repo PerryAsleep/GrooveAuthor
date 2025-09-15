@@ -14,7 +14,7 @@
 	</PropertyGroup>
 	<PropertyGroup>
 		<AssemblyName>GrooveAuthor</AssemblyName>
-		<Version>1.1.2</Version>
+		<Version>1.1.3</Version>
 	</PropertyGroup>
 	<PropertyGroup>
 		<RuntimeIdentifiers>osx-arm64;osx-x64</RuntimeIdentifiers>
