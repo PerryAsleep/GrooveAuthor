@@ -16,6 +16,7 @@ using ImGuiNET;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using MonoGame.Framework.Utilities;
 using MonoGameExtensions;
 using StepManiaEditor.AutogenConfig;
 using StepManiaEditor.UI;
@@ -137,6 +138,7 @@ public sealed class Editor :
 	private int OpenRecentIndex;
 	private bool HasCheckedForAutoLoadingLastSong;
 	private bool HasPreparedDeviceSettingsForMonoGame;
+	private bool CtrlQPressedLastFrame; // macOS only
 
 	public static readonly ChartType[] SupportedSinglePlayerChartTypes =
 	[
@@ -427,6 +429,10 @@ public sealed class Editor :
 		InitializeDocumentation();
 		InitializeSongLoadTask();
 		_ = RefreshLatestVersion();
+
+		if (CurrentPlatform.OS == OS.MacOSX)
+			Window.AllowAltF4 = false;
+		
 		base.Initialize();
 	}
 
@@ -664,7 +670,8 @@ public sealed class Editor :
 		AddKeyCommand(general, "Toggle Dark", nameof(PreferencesKeyBinds.ToggleDark), OnToggleDark);
 		UIControls.Instance.AddCommand(general, "Lock Receptor Move Axis", nameof(PreferencesKeyBinds.LockReceptorMoveAxis));
 		UIControls.Instance.AddStaticCommand(general, "Context Menu", "Right Mouse Button");
-		UIControls.Instance.AddStaticCommand(general, "Exit", "Alt+F4");
+		var exitShortcut = CurrentPlatform.OS == OS.MacOSX ? "Ctrl+Q" : "Alt+F4";
+		UIControls.Instance.AddStaticCommand(general, "Exit", exitShortcut);
 
 		const string chartSelection ="Chart Selection";
 		AddKeyCommand(chartSelection, "Open Previous Chart", nameof(PreferencesKeyBinds.OpenPreviousChart), OpenPreviousChart);
@@ -1899,6 +1906,16 @@ public sealed class Editor :
 			KeyCommandManager.CancelAllCommands();
 		else
 			KeyCommandManager.Update(currentTime);
+
+		// On MacOSX we want to allow exiting via Ctrl+Q rather than Alt+F4.
+		if (CurrentPlatform.OS == OS.MacOSX)
+		{
+			var keyboardState = Keyboard.GetState();
+			var ctrlQPressed = keyboardState.IsKeyDown(Keys.LeftControl) && keyboardState.IsKeyDown(Keys.Q);
+			if (ctrlQPressed && !CtrlQPressedLastFrame)
+				OnExit();
+			CtrlQPressedLastFrame = ctrlQPressed;
+		}
 
 		var mouseX = EditorMouseState.X();
 		var mouseY = EditorMouseState.Y();
