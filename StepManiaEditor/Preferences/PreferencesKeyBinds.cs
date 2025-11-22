@@ -173,6 +173,7 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 	private static readonly List<Keys[]> DefaultNew                                  = [[Ctrl, Keys.N]];
 	private static readonly List<Keys[]> DefaultReload                               = [[Ctrl, Keys.R]];
 	private static readonly List<Keys[]> DefaultClose                                = [[Ctrl, Keys.LeftShift, Keys.F4], [Ctrl, Keys.LeftShift, Keys.W]];
+	private static readonly List<Keys[]> DefaultExit                                 = RuntimeInformation.IsOSPlatform(OSPlatform.OSX) ? [[Ctrl, Keys.Q]] : [[Keys.LeftAlt, Keys.F4]];
 	private static readonly List<Keys[]> DefaultUndo                                 = [[Ctrl, Keys.Z]];
 	private static readonly List<Keys[]> DefaultRedo                                 = [[Ctrl, Keys.LeftShift, Keys.Z], [Ctrl, Keys.Y]];
 	private static readonly List<Keys[]> DefaultSelectRowRange                       = [[Keys.Tab]];
@@ -449,6 +450,19 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 	}
 
 	private List<Keys[]> CloseInternal = DefaultClose;
+
+	[JsonInclude]
+	public List<Keys[]> Exit
+	{
+		get => ExitInternal;
+		set
+		{
+			ExitInternal = value;
+			Notify(NotificationKeyBindingChanged, this, nameof(Exit));
+		}
+	}
+
+	private List<Keys[]> ExitInternal = DefaultExit;
 
 	[JsonInclude]
 	public List<Keys[]> Undo
