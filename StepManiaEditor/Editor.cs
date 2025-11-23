@@ -604,6 +604,9 @@ public sealed class Editor :
 		UIKeyRebindModal.Instance.SetKeyCommandManager(KeyCommandManager);
 		UIControls.Instance.Initialize(KeyCommandManager);
 
+		// Disable Monogame Alt+F4 handling. We will handle inputs for exiting below.
+		Window.AllowAltF4 = false;
+
 		// @formatter:off
 		const string fileIo = "File I/O";
 		AddKeyCommand(fileIo, "Open", nameof(PreferencesKeyBinds.Open), OnOpen);
@@ -664,7 +667,7 @@ public sealed class Editor :
 		AddKeyCommand(general, "Toggle Dark", nameof(PreferencesKeyBinds.ToggleDark), OnToggleDark);
 		UIControls.Instance.AddCommand(general, "Lock Receptor Move Axis", nameof(PreferencesKeyBinds.LockReceptorMoveAxis));
 		UIControls.Instance.AddStaticCommand(general, "Context Menu", "Right Mouse Button");
-		UIControls.Instance.AddStaticCommand(general, "Exit", "Alt+F4");
+		AddKeyCommand(general, "Exit", nameof(PreferencesKeyBinds.Exit), OnExit);
 
 		const string chartSelection ="Chart Selection";
 		AddKeyCommand(chartSelection, "Open Previous Chart", nameof(PreferencesKeyBinds.OpenPreviousChart), OpenPreviousChart);
