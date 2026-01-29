@@ -5087,7 +5087,10 @@ public sealed class Editor :
 		var extension = System.IO.Path.GetExtension(fullPath);
 		var fileFormat = FileFormat.GetFileFormatByExtension(extension);
 		if (fileFormat == null)
+		{
+			Logger.Error($"Could not infer file format from {fullPath}. Aborting save.");
 			return;
+		}
 
 		Save(fileFormat.Type, fullPath, ActiveSong);
 	}

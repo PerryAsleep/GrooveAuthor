@@ -191,6 +191,23 @@ internal sealed class EditorLinuxInterface : IEditorPlatform
 			savedFileName = dialog.Filename;
 		}
 
+		// If the file name has no extension, assume the extension from the fileFormatType.
+		if (confirmed)
+		{
+			try
+			{
+				var extension = System.IO.Path.GetExtension(savedFileName);
+				if (string.IsNullOrEmpty(extension))
+				{
+					savedFileName += fileFormatType == FileFormatType.SM ? ".sm" : ".ssc";
+				}
+			}
+			catch (Exception)
+			{
+				// Ignored.
+			}
+		}
+
 		dialog.Destroy();
 		return (confirmed, savedFileName);
 	}
