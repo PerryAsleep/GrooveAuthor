@@ -175,7 +175,7 @@ internal sealed class PreferencesStream : Notifier<PreferencesStream>
 /// <summary>
 /// Action to restore stream breakdown preferences to their default values.
 /// </summary>
-internal sealed class ActionRestoreStreamPreferenceDefaults : EditorAction
+internal sealed class ActionRestoreStreamPreferenceDefaults : UndoableAction
 {
 	private readonly SubdivisionType PreviousNoteType;
 	private readonly StepAccumulationType PreviousAccumulationType;

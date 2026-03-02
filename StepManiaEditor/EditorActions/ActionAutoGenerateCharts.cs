@@ -14,7 +14,7 @@ namespace StepManiaEditor;
 /// <summary>
 /// Action to autogenerate one or more EditorCharts from existing EditorCharts.
 /// </summary>
-internal sealed class ActionAutoGenerateCharts : EditorAction
+internal sealed class ActionAutoGenerateCharts : UndoableAction
 {
 	private readonly Editor Editor;
 	private readonly EditorSong EditorSong;

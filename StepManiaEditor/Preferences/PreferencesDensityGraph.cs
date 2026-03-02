@@ -256,7 +256,7 @@ internal sealed class PreferencesDensityGraph : Notifier<PreferencesDensityGraph
 /// <summary>
 /// Action to restore density graph preferences to their default values.
 /// </summary>
-internal sealed class ActionRestoreDensityGraphPreferenceDefaults : EditorAction
+internal sealed class ActionRestoreDensityGraphPreferenceDefaults : UndoableAction
 {
 	private readonly bool PreviousShowDensityGraph;
 	private readonly bool PreviousShowStream;

@@ -68,7 +68,7 @@ internal sealed class PreferencesPerformance
 /// <summary>
 /// Action to restore performance monitoring preferences to their default values.
 /// </summary>
-internal sealed class ActionRestorePerformancePreferenceDefaults : EditorAction
+internal sealed class ActionRestorePerformancePreferenceDefaults : UndoableAction
 {
 	private readonly int PreviousMaxFramesToDraw;
 	private readonly FrameMaxTimeMode PreviousFrameMaxTime;

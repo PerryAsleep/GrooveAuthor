@@ -1,4 +1,5 @@
 ﻿using System.Text.Json.Serialization;
+using Fumen;
 
 namespace StepManiaEditor;
 
@@ -134,7 +135,7 @@ internal sealed class PreferencesReceptors
 /// <summary>
 /// Action to restore animation preferences to their default values.
 /// </summary>
-internal sealed class ActionRestoreAnimationsPreferenceDefaults : EditorAction
+internal sealed class ActionRestoreAnimationsPreferenceDefaults : UndoableAction
 {
 	private readonly bool PreviousAutoPlayHideArrows;
 	private readonly bool PreviousAutoPlayLightHolds;

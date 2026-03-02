@@ -653,7 +653,7 @@ internal sealed class EditorPerformedChartConfig :
 /// <summary>
 /// Action to restore a EditorPerformedChartConfig to its default values.
 /// </summary>
-internal sealed class ActionRestorePerformedChartConfigDefaults : EditorAction
+internal sealed class ActionRestorePerformedChartConfigDefaults : UndoableAction
 {
 	private readonly EditorPerformedChartConfig Config;
 

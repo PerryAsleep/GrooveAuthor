@@ -1,9 +1,10 @@
-﻿using Fumen.ChartDefinition;
+﻿using Fumen;
+using Fumen.ChartDefinition;
 using Fumen.Converters;
 
 namespace StepManiaEditor;
 
-internal sealed class ActionAddModToAttack : EditorAction
+internal sealed class ActionAddModToAttack : UndoableAction
 {
 	private readonly EditorAttackEvent Attack;
 	private readonly Modifier Mod;

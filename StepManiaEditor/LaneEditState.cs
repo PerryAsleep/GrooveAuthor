@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using Fumen;
 
 namespace StepManiaEditor;
 
@@ -37,7 +38,7 @@ internal sealed class LaneEditState
 	/// When starting to edit over an existing note, this holds the action
 	/// for deleting the existing note.
 	/// </summary>
-	private EditorAction InitialDeleteAction;
+	private UndoableAction InitialDeleteAction;
 
 	public bool IsActive()
 	{
@@ -67,7 +68,7 @@ internal sealed class LaneEditState
 	/// </summary>
 	public void StartEditingWithDelete(
 		int startingRow,
-		EditorAction deleteAction)
+		UndoableAction deleteAction)
 	{
 		Clear(false);
 		InitialDeleteAction = deleteAction;
@@ -84,7 +85,7 @@ internal sealed class LaneEditState
 	/// </summary>
 	public void SetEditingTapOrMine(
 		EditorEvent note,
-		List<EditorAction> firstActions = null)
+		List<UndoableAction> firstActions = null)
 	{
 		Clear(false);
 
@@ -114,7 +115,7 @@ internal sealed class LaneEditState
 		int startingRow,
 		int length,
 		bool roll,
-		List<EditorAction> firstActions = null)
+		List<UndoableAction> firstActions = null)
 	{
 		Clear(false);
 
@@ -209,7 +210,7 @@ internal sealed class LaneEditState
 		StartingRow = 0;
 	}
 
-	private void MarkActionsAsNotBeingEdited(EditorAction action)
+	private void MarkActionsAsNotBeingEdited(UndoableAction action)
 	{
 		switch (action)
 		{

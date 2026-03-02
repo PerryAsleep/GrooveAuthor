@@ -61,7 +61,7 @@ internal sealed class PreferencesDark
 /// <summary>
 /// Action to restore Dark background preferences to their default values.
 /// </summary>
-internal sealed class ActionRestoreDarkBgPreferenceDefaults : EditorAction
+internal sealed class ActionRestoreDarkBgPreferenceDefaults : UndoableAction
 {
 	private readonly bool PreviousShowDarkBg;
 	private readonly SizeMode PreviousSize;

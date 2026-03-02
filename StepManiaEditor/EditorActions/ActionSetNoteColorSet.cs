@@ -1,11 +1,12 @@
-﻿using static StepManiaEditor.PreferencesNoteColor;
+﻿using Fumen;
+using static StepManiaEditor.PreferencesNoteColor;
 
 namespace StepManiaEditor;
 
 /// <summary>
 /// Action for setting note colors to a pre-defined set of colors.
 /// </summary>
-internal sealed class ActionSetNoteColorSet : EditorAction
+internal sealed class ActionSetNoteColorSet : UndoableAction
 {
 	private readonly NoteColorSet PreviousColors;
 	private readonly ColorSet NewColorSet;

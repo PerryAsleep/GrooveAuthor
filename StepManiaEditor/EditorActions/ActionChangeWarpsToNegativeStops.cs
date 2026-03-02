@@ -9,7 +9,7 @@ namespace StepManiaEditor;
 /// Note that overlapping warps do not stack and overlapping stops do.
 /// This action will not take any steps to try and stack or unstack any potentially overlapping events.
 /// </summary>
-internal sealed class ActionChangeWarpsToNegativeStops : EditorAction
+internal sealed class ActionChangeWarpsToNegativeStops : UndoableAction
 {
 	private readonly List<EditorEvent> OriginalEvents;
 	private readonly List<EditorEvent> NewEvents;

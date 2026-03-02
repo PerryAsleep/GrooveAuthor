@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Fumen;
 using StepManiaEditor.AutogenConfig;
 
 namespace StepManiaEditor;
@@ -7,7 +8,7 @@ namespace StepManiaEditor;
 /// <summary>
 /// Action to delete an EditorPatternConfig.
 /// </summary>
-internal sealed class ActionDeletePatternConfig : EditorAction
+internal sealed class ActionDeletePatternConfig : UndoableAction
 {
 	private readonly Guid ConfigGuid;
 	private readonly EditorPatternConfig Config;

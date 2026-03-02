@@ -1,5 +1,6 @@
 ﻿using System.Collections.Generic;
 using System.Reflection;
+using Fumen;
 using Microsoft.Xna.Framework.Input;
 
 namespace StepManiaEditor;
@@ -8,7 +9,7 @@ namespace StepManiaEditor;
 /// Action for updating key bindings.
 /// Clones entire key binding arrays for simplicity because they are small.
 /// </summary>
-internal sealed class ActionUpdateKeyBinding : EditorAction
+internal sealed class ActionUpdateKeyBinding : UndoableAction
 {
 	private readonly string Name;
 	private readonly List<Keys[]> NewValue;

@@ -182,7 +182,7 @@ internal sealed class PreferencesScroll : Notifier<PreferencesScroll>
 /// <summary>
 /// Action to restore scroll preferences to their default values.
 /// </summary>
-internal sealed class ActionRestoreScrollPreferenceDefaults : EditorAction
+internal sealed class ActionRestoreScrollPreferenceDefaults : UndoableAction
 {
 	private readonly Editor.SpacingMode PreviousSpacingMode;
 	private readonly double PreviousTimeBasedPixelsPerSecond;

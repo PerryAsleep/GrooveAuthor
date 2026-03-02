@@ -1,4 +1,5 @@
 ﻿using System;
+using Fumen;
 using StepManiaEditor.AutogenConfig;
 
 namespace StepManiaEditor;
@@ -6,7 +7,7 @@ namespace StepManiaEditor;
 /// <summary>
 /// Action to clone an EditorPerformedChartConfig.
 /// </summary>
-internal sealed class ActionClonePerformedChartConfig : EditorAction
+internal sealed class ActionClonePerformedChartConfig : UndoableAction
 {
 	private readonly Guid ExistingConfigGuid;
 	private EditorPerformedChartConfig ClonedConfig;

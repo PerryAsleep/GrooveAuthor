@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using Fumen;
 using ImGuiNET;
 using static StepManiaEditor.ImGuiUtils;
 

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Numerics;
+using Fumen;
 using ImGuiNET;
 using StepManiaEditor.AutogenConfig;
 using StepManiaEditor.EditorActions;

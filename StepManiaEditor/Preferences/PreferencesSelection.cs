@@ -55,7 +55,7 @@ internal sealed class PreferencesSelection
 /// <summary>
 /// Action to restore selection preferences to their default values.
 /// </summary>
-internal sealed class ActionRestoreSelectionPreferenceDefaults : EditorAction
+internal sealed class ActionRestoreSelectionPreferenceDefaults : UndoableAction
 {
 	private readonly SelectionMode PreviousMode;
 	private readonly SelectionRegionMode PreviousRegionMode;

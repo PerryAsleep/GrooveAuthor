@@ -1,9 +1,11 @@
-﻿namespace StepManiaEditor;
+﻿using Fumen;
+
+namespace StepManiaEditor;
 
 /// <summary>
 /// Action to add a single EditorEvent.
 /// </summary>
-internal sealed class ActionAddEditorEvent : EditorAction
+internal sealed class ActionAddEditorEvent : UndoableAction
 {
 	private EditorEvent EditorEvent;
 

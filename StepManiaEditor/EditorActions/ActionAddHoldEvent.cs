@@ -1,9 +1,11 @@
-﻿namespace StepManiaEditor;
+﻿using Fumen;
+
+namespace StepManiaEditor;
 
 /// <summary>
 /// Action to add an EditorHoldNoteEvent.
 /// </summary>
-internal sealed class ActionAddHoldEvent : EditorAction
+internal sealed class ActionAddHoldEvent : UndoableAction
 {
 	private readonly EditorHoldNoteEvent Hold;
 

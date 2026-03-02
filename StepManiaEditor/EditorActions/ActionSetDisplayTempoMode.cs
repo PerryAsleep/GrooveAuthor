@@ -7,7 +7,7 @@ namespace StepManiaEditor;
 /// When changing mode we may want to alter other properties of the DisplayTempo, like it's
 /// specified values.
 /// </summary>
-internal sealed class ActionSetDisplayTempoMode : EditorAction
+internal sealed class ActionSetDisplayTempoMode : UndoableAction
 {
 	private readonly EditorChart Chart;
 	private readonly DisplayTempoMode Mode;

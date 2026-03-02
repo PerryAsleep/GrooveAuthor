@@ -1,11 +1,12 @@
 ﻿using System.Collections.Generic;
+using Fumen;
 
 namespace StepManiaEditor;
 
 /// <summary>
 /// Action to delete EditorEvents.
 /// </summary>
-internal sealed class ActionDeleteEditorEvents : EditorAction
+internal sealed class ActionDeleteEditorEvents : UndoableAction
 {
 	private readonly List<EditorEvent> EditorEvents = [];
 

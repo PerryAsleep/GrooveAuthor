@@ -1,4 +1,5 @@
 ﻿using System;
+using Fumen;
 using StepManiaEditor.AutogenConfig;
 
 namespace StepManiaEditor;
@@ -6,7 +7,7 @@ namespace StepManiaEditor;
 /// <summary>
 /// Action to clone an EditorPatternConfig.
 /// </summary>
-internal sealed class ActionClonePatternConfig : EditorAction
+internal sealed class ActionClonePatternConfig : UndoableAction
 {
 	private readonly Guid ExistingConfigGuid;
 	private EditorPatternConfig ClonedConfig;

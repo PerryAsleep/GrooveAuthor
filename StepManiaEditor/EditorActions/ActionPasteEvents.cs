@@ -1,12 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using Fumen;
 
 namespace StepManiaEditor;
 
 /// <summary>
 /// Action to duplicate a set of events and paste them at a specified location.
 /// </summary>
-internal class ActionPasteEvents : EditorAction
+internal class ActionPasteEvents : UndoableAction
 {
 	private readonly int Rows;
 	private readonly Editor Editor;

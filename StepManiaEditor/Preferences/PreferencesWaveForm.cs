@@ -114,7 +114,7 @@ internal sealed class PreferencesWaveForm
 /// <summary>
 /// Action to restore WaveForm preferences to their default values.
 /// </summary>
-internal sealed class ActionRestoreWaveFormPreferenceDefaults : EditorAction
+internal sealed class ActionRestoreWaveFormPreferenceDefaults : UndoableAction
 {
 	private readonly bool PreviousShowWaveForm;
 	private readonly bool PreviousEnableWaveForm;

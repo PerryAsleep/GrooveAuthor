@@ -1,9 +1,11 @@
-﻿namespace StepManiaEditor;
+﻿using Fumen;
+
+namespace StepManiaEditor;
 
 /// <summary>
 /// Action to change an EditorHoldNoteEvent between a roll and a hold.
 /// </summary>
-internal sealed class ActionChangeHoldType : EditorAction
+internal sealed class ActionChangeHoldType : UndoableAction
 {
 	private readonly bool Roll;
 	private readonly int Player;

@@ -1,4 +1,5 @@
-﻿using Fumen.Converters;
+﻿using Fumen;
+using Fumen.Converters;
 using ImGuiNET;
 using StepManiaEditor.AutogenConfig;
 using StepManiaLibrary.PerformedChart;

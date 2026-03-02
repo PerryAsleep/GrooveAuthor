@@ -1,11 +1,12 @@
 ﻿using System.Collections.Generic;
+using Fumen;
 
 namespace StepManiaEditor;
 
 /// <summary>
 /// Action to change the player of notes in a selection to another player.
 /// </summary>
-internal sealed class ActionChangeNotePlayer : EditorAction
+internal sealed class ActionChangeNotePlayer : UndoableAction
 {
 	private readonly List<EditorEvent> OriginalEvents = [];
 	private readonly List<EditorEvent> NewEvents = [];

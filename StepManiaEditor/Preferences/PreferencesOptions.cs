@@ -210,7 +210,7 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 /// <summary>
 /// Action to restore Options preferences to their default values.
 /// </summary>
-internal sealed class ActionRestoreOptionPreferenceDefaults : EditorAction
+internal sealed class ActionRestoreOptionPreferenceDefaults : UndoableAction
 {
 	private readonly int PreviousRecentFilesHistorySize;
 	private readonly ChartType PreviousDefaultStepsType;

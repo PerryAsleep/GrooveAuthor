@@ -1,9 +1,11 @@
-﻿namespace StepManiaEditor;
+﻿using Fumen;
+
+namespace StepManiaEditor;
 
 /// <summary>
 /// Action to select a given chart as the new focused chart for the active song.
 /// </summary>
-internal sealed class ActionSelectChart : EditorAction
+internal sealed class ActionSelectChart : UndoableAction
 {
 	private readonly Editor Editor;
 	private readonly EditorChart Chart;

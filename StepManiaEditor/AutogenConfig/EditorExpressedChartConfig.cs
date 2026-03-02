@@ -157,7 +157,7 @@ internal sealed class EditorExpressedChartConfig : EditorConfig<Config>, IEquata
 /// <summary>
 /// Action to restore an EditorExpressedChartConfig to its default values.
 /// </summary>
-internal sealed class ActionRestoreExpressedChartConfigDefaults : EditorAction
+internal sealed class ActionRestoreExpressedChartConfigDefaults : UndoableAction
 {
 	private readonly EditorExpressedChartConfig Config;
 	private readonly BracketParsingMethod PreviousDefaultBracketParsingMethod;

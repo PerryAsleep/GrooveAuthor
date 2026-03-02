@@ -1,8 +1,9 @@
-﻿using Fumen.Converters;
+﻿using Fumen;
+using Fumen.Converters;
 
 namespace StepManiaEditor;
 
-internal sealed class ActionDeleteModFromAttack : EditorAction
+internal sealed class ActionDeleteModFromAttack : UndoableAction
 {
 	private readonly EditorAttackEvent Attack;
 	private readonly EditorAttackEvent.EditorModifier Mod;

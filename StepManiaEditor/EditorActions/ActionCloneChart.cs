@@ -1,9 +1,11 @@
-﻿namespace StepManiaEditor;
+﻿using Fumen;
+
+namespace StepManiaEditor;
 
 /// <summary>
 /// Action to clone an existing chart to a new a chart.
 /// </summary>
-internal sealed class ActionCloneChart : EditorAction
+internal sealed class ActionCloneChart : UndoableAction
 {
 	private readonly Editor Editor;
 	private readonly EditorChart BaseChart;

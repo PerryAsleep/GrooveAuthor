@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
+using Fumen;
 using static StepManiaEditor.EditorSongImageUtils;
 
 namespace StepManiaEditor;
@@ -9,7 +10,7 @@ namespace StepManiaEditor;
 /// <summary>
 /// Action to set multiple assets on an EditorSong.
 /// </summary>
-internal sealed class ActionSetSongAssets : EditorAction
+internal sealed class ActionSetSongAssets : UndoableAction
 {
 	private readonly EditorSong Song;
 	private readonly bool IfUnset;

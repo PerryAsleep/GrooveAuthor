@@ -1,13 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using Fumen;
 
 namespace StepManiaEditor;
 
 /// <summary>
 /// Action to copy types of EditorEvents from one EditorChart to one or more other EditorCharts.
 /// </summary>
-internal sealed class ActionCopyEventsBetweenCharts : EditorAction
+internal sealed class ActionCopyEventsBetweenCharts : UndoableAction
 {
 	/// <summary>
 	/// State per destination EditorChart for undoing the action.

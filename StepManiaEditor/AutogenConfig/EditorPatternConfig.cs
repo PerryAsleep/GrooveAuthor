@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Text;
 using System.Text.Json.Serialization;
+using Fumen;
 using StepManiaLibrary.PerformedChart;
 using static StepManiaEditor.AutogenConfig.EditorPatternConfig;
 using static StepManiaEditor.Utils;
@@ -495,7 +496,7 @@ internal sealed class EditorPatternConfig : EditorConfig<Config>, IEquatable<Edi
 /// <summary>
 /// Action to restore an EditorPatternConfig to its default values.
 /// </summary>
-internal sealed class ActionRestorePatternConfigDefaults : EditorAction
+internal sealed class ActionRestorePatternConfigDefaults : UndoableAction
 {
 	private readonly EditorPatternConfig EditorConfig;
 	private readonly SubdivisionType PreviousPatternType;

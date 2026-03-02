@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Fumen;
 using static System.Diagnostics.Debug;
 
 namespace StepManiaEditor;
@@ -7,7 +8,7 @@ namespace StepManiaEditor;
 /// <summary>
 /// Action to move a selected group of events earlier or later by a given number of rows.
 /// </summary>
-internal sealed class ActionShiftSelectionRow : EditorAction
+internal sealed class ActionShiftSelectionRow : UndoableAction
 {
 	/// <summary>
 	/// Class to hold all events which were modified as a result of transforming a single event.

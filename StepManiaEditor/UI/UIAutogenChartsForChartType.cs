@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using Fumen;
 using ImGuiNET;
 using StepManiaEditor.AutogenConfig;
 using static Fumen.Converters.SMCommon;

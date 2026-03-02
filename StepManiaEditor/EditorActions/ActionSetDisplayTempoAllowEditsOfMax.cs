@@ -1,4 +1,6 @@
-﻿namespace StepManiaEditor;
+﻿using Fumen;
+
+namespace StepManiaEditor;
 
 /// <summary>
 /// EditorAction for changing the ShouldAllowEditsOfMax field of an EditorChart's display tempo.
@@ -6,7 +8,7 @@
 /// If they were different before setting ShouldAllowEditsOfMax to true, then undoing
 /// that change should restore the max tempo back to what it was previously.
 /// </summary>
-internal sealed class ActionSetDisplayTempoAllowEditsOfMax : EditorAction
+internal sealed class ActionSetDisplayTempoAllowEditsOfMax : UndoableAction
 {
 	private readonly EditorChart Chart;
 	private readonly double PreviousMax;

@@ -1,11 +1,12 @@
 ﻿using System.Collections.Generic;
+using Fumen;
 
 namespace StepManiaEditor;
 
 /// <summary>
 /// Action to delete notes in the ranges of EditorPatternEvents.
 /// </summary>
-internal sealed class ActionDeletePatternNotes : EditorAction
+internal sealed class ActionDeletePatternNotes : UndoableAction
 {
 	/// <summary>
 	/// Class to hold all alterations from deleting the events in a pattern region.

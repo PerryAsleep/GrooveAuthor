@@ -257,7 +257,7 @@ internal sealed class PreferencesAudio : Notifier<PreferencesAudio>
 /// <summary>
 /// Action to restore audio preferences to their default values.
 /// </summary>
-internal sealed class ActionRestoreAudioPreferenceDefaults : EditorAction
+internal sealed class ActionRestoreAudioPreferenceDefaults : UndoableAction
 {
 	private readonly double PreviousAudioOffset;
 	private readonly double PreviousMusicRate;

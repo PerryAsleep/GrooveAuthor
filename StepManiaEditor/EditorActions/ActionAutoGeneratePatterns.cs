@@ -17,7 +17,7 @@ namespace StepManiaEditor;
 /// <summary>
 /// Action to autogenerate steps for one or more EditorPatternEvents.
 /// </summary>
-internal sealed class ActionAutoGeneratePatterns : EditorAction
+internal sealed class ActionAutoGeneratePatterns : UndoableAction
 {
 	/// <summary>
 	/// When searching for surrounding footing for a pattern, extend this many number steps beyond the bounds

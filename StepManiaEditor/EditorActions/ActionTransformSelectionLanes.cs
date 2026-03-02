@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Fumen;
 using StepManiaLibrary;
 
 namespace StepManiaEditor;
@@ -7,7 +8,7 @@ namespace StepManiaEditor;
 /// <summary>
 /// Abstract action to transform the lanes of the given events.
 /// </summary>
-internal abstract class ActionTransformSelectionLanes : EditorAction
+internal abstract class ActionTransformSelectionLanes : UndoableAction
 {
 	private readonly Editor Editor;
 	private readonly List<EditorEvent> TransformableEvents;

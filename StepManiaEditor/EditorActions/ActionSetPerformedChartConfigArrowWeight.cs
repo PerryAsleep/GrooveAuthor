@@ -1,4 +1,5 @@
-﻿using StepManiaEditor.AutogenConfig;
+﻿using Fumen;
+using StepManiaEditor.AutogenConfig;
 using static Fumen.Converters.SMCommon;
 
 namespace StepManiaEditor;
@@ -6,7 +7,7 @@ namespace StepManiaEditor;
 /// <summary>
 /// Action which sets an arrow weight on a Performed Chart Config.
 /// </summary>
-internal sealed class ActionSetPerformedChartConfigArrowWeight : EditorAction
+internal sealed class ActionSetPerformedChartConfigArrowWeight : UndoableAction
 {
 	private readonly EditorPerformedChartConfig Config;
 	private readonly ChartType ChartType;

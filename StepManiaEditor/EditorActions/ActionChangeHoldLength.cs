@@ -1,9 +1,11 @@
-﻿namespace StepManiaEditor;
+﻿using Fumen;
+
+namespace StepManiaEditor;
 
 /// <summary>
 /// Action to change an EditorHoldNoteEvent's length.
 /// </summary>
-internal sealed class ActionChangeHoldLength : EditorAction
+internal sealed class ActionChangeHoldLength : UndoableAction
 {
 	private readonly EditorHoldNoteEvent Hold;
 	private readonly int OriginalLength;

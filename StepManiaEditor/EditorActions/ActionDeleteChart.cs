@@ -1,9 +1,11 @@
-﻿namespace StepManiaEditor;
+﻿using Fumen;
+
+namespace StepManiaEditor;
 
 /// <summary>
 /// Action to delete a chart from the active song.
 /// </summary>
-internal sealed class ActionDeleteChart : EditorAction
+internal sealed class ActionDeleteChart : UndoableAction
 {
 	private readonly Editor Editor;
 	private readonly EditorChart Chart;

@@ -1,12 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using Fumen;
 
 namespace StepManiaEditor;
 
 /// <summary>
 /// Action to change the type of notes in a selection to another type.
 /// </summary>
-internal sealed class ActionChangeNoteType : EditorAction
+internal sealed class ActionChangeNoteType : UndoableAction
 {
 	private readonly List<EditorEvent> OriginalEvents;
 	private readonly List<EditorEvent> NewEvents;

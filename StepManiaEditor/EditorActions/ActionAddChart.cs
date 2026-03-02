@@ -1,11 +1,12 @@
-﻿using static Fumen.Converters.SMCommon;
+﻿using Fumen;
+using static Fumen.Converters.SMCommon;
 
 namespace StepManiaEditor;
 
 /// <summary>
 /// Action to add a chart to the active song.
 /// </summary>
-internal sealed class ActionAddChart : EditorAction
+internal sealed class ActionAddChart : UndoableAction
 {
 	private readonly Editor Editor;
 	private readonly ChartType ChartType;

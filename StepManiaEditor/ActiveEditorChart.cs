@@ -2801,7 +2801,7 @@ internal sealed class ActiveEditorChart : Fumen.IObserver<PreferencesNoteColor>,
 				return;
 			}
 
-			var deleteActions = new List<EditorAction>();
+			var deleteActions = new List<UndoableAction>();
 
 			// If existing holds overlap with only the start or end of the new hold, delete them and extend the
 			// new hold to cover their range. We just need to extend the new event now. The deletion of the

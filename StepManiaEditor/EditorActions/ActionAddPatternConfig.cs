@@ -1,4 +1,5 @@
 ﻿using System;
+using Fumen;
 using StepManiaEditor.AutogenConfig;
 
 namespace StepManiaEditor;
@@ -6,7 +7,7 @@ namespace StepManiaEditor;
 /// <summary>
 /// Action to add an EditorPatternConfig.
 /// </summary>
-internal sealed class ActionAddPatternConfig : EditorAction
+internal sealed class ActionAddPatternConfig : UndoableAction
 {
 	private readonly Guid ConfigGuid;
 

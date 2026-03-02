@@ -1374,7 +1374,7 @@ internal sealed class PreferencesNoteColor : Notifier<PreferencesNoteColor>
 /// <summary>
 /// Action to restore not color preferences to their default values.
 /// </summary>
-internal sealed class ActionRestoreNoteColorPreferenceDefaults : EditorAction
+internal sealed class ActionRestoreNoteColorPreferenceDefaults : UndoableAction
 {
 	private readonly float PreviousSelectionColorMultiplier;
 	private readonly float PreviousHeldColorMultiplier;

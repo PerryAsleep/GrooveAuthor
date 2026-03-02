@@ -1,4 +1,5 @@
-﻿using ImGuiNET;
+﻿using Fumen;
+using ImGuiNET;
 using StepManiaEditor.AutogenConfig;
 using StepManiaLibrary.ExpressedChart;
 using static StepManiaEditor.ImGuiUtils;

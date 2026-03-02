@@ -1,9 +1,11 @@
-﻿namespace StepManiaEditor.EditorActions;
+﻿using Fumen;
+
+namespace StepManiaEditor.EditorActions;
 
 /// <summary>
 /// Action to move an EditorEvent to a new position.
 /// </summary>
-internal sealed class ActionMoveEditorEvent : EditorAction
+internal sealed class ActionMoveEditorEvent : UndoableAction
 {
 	private readonly EditorEvent EditorEvent;
 	private readonly int Row;

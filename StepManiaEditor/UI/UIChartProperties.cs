@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Numerics;
+using Fumen;
 using Fumen.Converters;
 using ImGuiNET;
 using static StepManiaEditor.ImGuiUtils;

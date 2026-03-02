@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Fumen;
 using Fumen.Converters;
 using ImGuiNET;
 using Microsoft.Xna.Framework.Input;

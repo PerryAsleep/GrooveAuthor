@@ -1,4 +1,5 @@
 ﻿using System;
+using Fumen;
 using StepManiaEditor.AutogenConfig;
 
 namespace StepManiaEditor;
@@ -6,7 +7,7 @@ namespace StepManiaEditor;
 /// <summary>
 /// Action to add an EditorExpressedChartConfig.
 /// </summary>
-internal sealed class ActionAddExpressedChartConfig : EditorAction
+internal sealed class ActionAddExpressedChartConfig : UndoableAction
 {
 	private readonly Guid ConfigGuid;
 	private readonly EditorChart EditorChart;

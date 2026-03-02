@@ -140,7 +140,7 @@ internal sealed class PreferencesMiniMap
 /// <summary>
 /// Action to restore Mini Map preferences to their default values.
 /// </summary>
-internal sealed class ActionRestoreMiniMapPreferenceDefaults : EditorAction
+internal sealed class ActionRestoreMiniMapPreferenceDefaults : UndoableAction
 {
 	private readonly bool PreviousShowMiniMap;
 	private readonly MiniMap.SelectMode PreviousMiniMapSelectMode;
