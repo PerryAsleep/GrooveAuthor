@@ -1822,6 +1822,21 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 							ForceOnlySongLevelTiming = saveParameters.OmitChartTimingData,
 							UseStepF2ForPumpMultiplayerCharts = saveParameters.UseStepF2ForPumpRoutine,
 							UseOutfoxFormatForSmx = saveParameters.UseOutfoxFormatForSmx,
+
+							// We do not want to write attacks at the song level when using SSC files.
+							// Doing so would result in other charts that don't have the attacks
+							// incorrectly getting them, both in StepMania and in GrooveAuthor. This
+							// is because the logic that gets run for preferring chart vs. song values
+							// for the timing events doesn't apply to attacks.
+							//
+							// In Stepmania, if a chart does not use split timing, ONLY the song is
+							// considered for attacks. This seems wrong as it means valid attacks
+							// on a single chart will be ignored, but that is how it works. StepMania
+							// will honor per-chart attacks only if the song has other fields which
+							// force it to use split timing.
+							//
+							// See also https://github.com/PerryAsleep/GrooveAuthor/issues/68.
+							WriteAttacksFromFallbackChart = saveParameters.FileType == FileFormatType.SM,
 						};
 						switch (saveParameters.FileType)
 						{
