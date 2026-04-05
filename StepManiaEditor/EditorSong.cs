@@ -1850,6 +1850,12 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 							//
 							// See also https://github.com/PerryAsleep/GrooveAuthor/issues/68.
 							WriteAttacksFromFallbackChart = saveParameters.FileType == FileFormatType.SM,
+
+							// Some closed-source forks of Stepmania which are not maintained crash when
+							// reading valid sm/ssc files that have an empty DISPLAYBPM field. We should
+							// omit the field if it is empty in order to work around this issue.
+							// See also https://github.com/PerryAsleep/GrooveAuthor/issues/63
+							OmitEmptyDisplayBpm = true,
 						};
 						switch (saveParameters.FileType)
 						{
