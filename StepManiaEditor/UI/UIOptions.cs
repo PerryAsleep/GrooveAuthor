@@ -153,6 +153,10 @@ internal class UIOptions : UIWindow
 					nameof(PreferencesOptions.SuppressUpdateNotification),
 					false,
 					$"Whether to suppress notifications that an update is available to {Utils.GetAppName()}.");
+				ImGuiLayoutUtils.DrawRowCheckbox(true, "Opus Codec Used", p,
+					nameof(PreferencesOptions.SuppressOpusCodecUsageNotification),
+					false,
+					"Whether to suppress notifications about using the Opus audio codec, which most StepMania forks do not support.");
 				ImGuiLayoutUtils.EndTable();
 			}
 

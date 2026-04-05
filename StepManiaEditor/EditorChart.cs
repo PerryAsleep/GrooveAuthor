@@ -3395,6 +3395,17 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 	{
 		var canBeSaved = true;
 
+		// Warn about Opus audio files, which most StepMania forks do not support.
+		// We only check the extension here because we don't want to open the file to parse it,
+		// and it is possible that we have never opened the file up until this point so we
+		// can't rely on a previously cached value. This is good enough because we also warn
+		// when loading.
+		if (!Preferences.Instance.PreferencesOptions.SuppressOpusCodecUsageNotification)
+		{
+			if (SoundManager.HasOpusExtension(MusicPath))
+				Logger.Warn($"{MusicPath} uses the Opus codec. Most StepMania forks do not support Opus audio.");
+		}
+
 		// Perform format-agnostic checks.
 		if (saveParameters.OmitCustomSaveData)
 		{

@@ -105,47 +105,76 @@ internal sealed class EditorSound : Notifier<EditorSound>, IDisposable
 
 				Logger.Info($"Loading {fileName}...");
 
-				// Load the sound file.
-				// This is not cancelable. According to FMOD: "you can't cancel it"
-				// https://qa.fmod.com/t/reusing-channels/13145/3
-				// Normally this is not a problem, but for hour-long files this is unfortunate.
-				var fmodSound = await SoundManager.LoadAsync(file);
-				CancellationTokenSource.Token.ThrowIfCancellationRequested();
-				Logger.Info($"Loaded {fileName}.");
-
-				try
+				if (SoundManager.IsOpusFile(file))
 				{
-					Logger.Info($"Parsing {fileName}...");
+					// Opus path: decode externally since FMOD does not support Opus.
+					var (samples, numChannels) = await SoundManager.DecodeOpusAsync(
+						file, Sound.SampleRate, CancellationTokenSource.Token);
+					CancellationTokenSource.Token.ThrowIfCancellationRequested();
+					Logger.Info($"Loaded {fileName}.");
 
-					// Allocate and set the sample buffer immediately so we can start playing it as we write to it.
-					SoundManager.AllocateSampleBuffer(fmodSound, Sound.SampleRate, out var samples, out var numChannels);
+					Logger.Info($"Parsing {fileName}...");
 					Sound.SetSampleData(numChannels, samples);
 
-					CancellationTokenSource.Token.ThrowIfCancellationRequested();
-
-					// Add a task for parsing the samples into the buffer.
-					var parsingTasks = new List<Task>
-					{
-						SoundManager.FillSamplesAsync(fmodSound, Sound.SampleRate, samples, numChannels,
-							CancellationTokenSource.Token),
-					};
-
-					// Add a task for setting up the new sound mip map.
+					// Generate MipMap from decoded float[] data.
 					if (state.ShouldGenerateMipMap() && Sound.MipMap != null)
 					{
-						parsingTasks.Add(Sound.MipMap.CreateMipMapAsync(fmodSound,
-							Utils.WaveFormTextureWidth,
-							CancellationTokenSource.Token));
+						await Sound.MipMap.CreateMipMapAsync(samples, numChannels, Sound.SampleRate,
+							Utils.WaveFormTextureWidth, CancellationTokenSource.Token);
 					}
 
-					// Run the parsing tasks.
-					await Task.WhenAll(parsingTasks);
-
 					Logger.Info($"Parsed {fileName}.");
+
+					if (!Preferences.Instance.PreferencesOptions.SuppressOpusCodecUsageNotification)
+					{
+						Logger.Warn($"{fileName} uses the Opus codec. Most StepMania forks do not support Opus audio.");
+					}
 				}
-				finally
+				else
 				{
-					SoundManager.ErrCheck(fmodSound.release());
+					// Standard FMOD path.
+					// Loading is not cancelable. According to FMOD: "you can't cancel it"
+					// https://qa.fmod.com/t/reusing-channels/13145/3
+					// Normally this is not a problem, but for hour-long files this is unfortunate.
+					var fmodSound = await SoundManager.LoadAsync(file);
+					CancellationTokenSource.Token.ThrowIfCancellationRequested();
+					Logger.Info($"Loaded {fileName}.");
+
+					try
+					{
+						Logger.Info($"Parsing {fileName}...");
+
+						// Allocate and set the sample buffer immediately so we can start playing it as we write to it.
+						SoundManager.AllocateSampleBuffer(fmodSound, Sound.SampleRate, out var samples,
+							out var numChannels);
+						Sound.SetSampleData(numChannels, samples);
+
+						CancellationTokenSource.Token.ThrowIfCancellationRequested();
+
+						// Add a task for parsing the samples into the buffer.
+						var parsingTasks = new List<Task>
+						{
+							SoundManager.FillSamplesAsync(fmodSound, Sound.SampleRate, samples, numChannels,
+								CancellationTokenSource.Token),
+						};
+
+						// Add a task for setting up the new sound mip map.
+						if (state.ShouldGenerateMipMap() && Sound.MipMap != null)
+						{
+							parsingTasks.Add(Sound.MipMap.CreateMipMapAsync(fmodSound,
+								Utils.WaveFormTextureWidth,
+								CancellationTokenSource.Token));
+						}
+
+						// Run the parsing tasks.
+						await Task.WhenAll(parsingTasks);
+
+						Logger.Info($"Parsed {fileName}.");
+					}
+					finally
+					{
+						SoundManager.ErrCheck(fmodSound.release());
+					}
 				}
 			}
 

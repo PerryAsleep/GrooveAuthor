@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using FMOD;
@@ -269,6 +270,79 @@ public class SoundMipMap
 	}
 
 	/// <summary>
+	/// Creates the mip map data from interleaved float PCM samples.
+	/// Used for audio decoded externally.
+	/// </summary>
+	/// <param name="samples">Interleaved float PCM sample data.</param>
+	/// <param name="numChannels">Number of channels in the sample data.</param>
+	/// <param name="sampleRate">Sample rate of the sample data.</param>
+	/// <param name="xRange">Total x range in pixels for all channels.</param>
+	/// <param name="token">CancellationToken for cancelling this Task.</param>
+	public async Task CreateMipMapAsync(float[] samples, int numChannels, uint sampleRate, int xRange,
+		CancellationToken token)
+	{
+		if (samples == null || samples.Length == 0)
+		{
+			Logger.Warn("Cannot create sound mip map data. No sample data provided.");
+			return;
+		}
+
+		Logger.Info("Generating sound mip map...");
+		bool success;
+		try
+		{
+			success = await InternalCreateMipMapFromFloatAsync(samples, numChannels, sampleRate, xRange, token);
+		}
+		catch (OperationCanceledException)
+		{
+			Logger.Info("Cancelled generating sound mip map.");
+			throw;
+		}
+
+		if (!success)
+		{
+			Logger.Warn("Failed generating sound mip map.");
+			return;
+		}
+
+		Logger.Info("Finished generating sound mip map.");
+		MipMapDataLoaded = true;
+	}
+
+	/// <summary>
+	/// Creates and fills out the MipLevels from interleaved float PCM data.
+	/// </summary>
+	/// <param name="samples">Interleaved float PCM sample data.</param>
+	/// <param name="numChannels">Number of channels in the sample data.</param>
+	/// <param name="sampleRate">Sample rate of the sample data.</param>
+	/// <param name="xRange">Total x range in pixels for all channels.</param>
+	/// <param name="token">CancellationToken for cancelling this Task.</param>
+	/// <returns>True if successful and false otherwise.</returns>
+	private async Task<bool> InternalCreateMipMapFromFloatAsync(float[] samples, int numChannels, uint sampleRate,
+		int xRange, CancellationToken token)
+	{
+		SampleRate = sampleRate;
+		NumChannels = (uint)numChannels;
+
+		// Normally we operate on FMOD Sound buffers with an unmanaged pointer.
+		// It is easier to share the logic by hooking into this existing flow by just
+		// pinning our managed buffer and operating on that.
+		var handle = GCHandle.Alloc(samples, GCHandleType.Pinned);
+		try
+		{
+			var ptr = handle.AddrOfPinnedObject();
+			var length = (uint)(samples.Length * sizeof(float));
+
+			return await InternalCreateMipMapFromPtrAsync(
+				ptr, length, numChannels, 32, SOUND_FORMAT.PCMFLOAT, xRange, token);
+		}
+		finally
+		{
+			handle.Free();
+		}
+	}
+
+	/// <summary>
 	/// Creates and fills out the MipLevels for the loaded Sound.
 	/// </summary>
 	/// <remarks>
@@ -304,6 +378,46 @@ public class SoundMipMap
 
 			NumChannels = (uint)numChannels;
 
+			return await InternalCreateMipMapFromPtrAsync(ptr1, length, numChannels, bits, format, xRange, token);
+		}
+		catch (OperationCanceledException)
+		{
+			Reset();
+			// ReSharper disable once ConditionIsAlwaysTrueOrFalse
+			if (soundNeedsUnlock)
+			{
+				SoundManager.ErrCheck(sound.unlock(ptr1, ptr2, len1, len2));
+				soundNeedsUnlock = false;
+			}
+
+			throw;
+		}
+		finally
+		{
+			if (soundNeedsUnlock)
+			{
+				SoundManager.ErrCheck(sound.unlock(ptr1, ptr2, len1, len2));
+			}
+		}
+	}
+
+	/// <summary>
+	/// Core mip map creation logic that operates on a raw memory pointer.
+	/// Shared by both the FMOD Sound and float[] overloads.
+	/// </summary>
+	/// <param name="ptr">Pointer to the raw PCM data.</param>
+	/// <param name="length">Length of the data in bytes.</param>
+	/// <param name="numChannels">Number of audio channels.</param>
+	/// <param name="bits">Bits per channel per sample.</param>
+	/// <param name="format">FMOD sound format of the data.</param>
+	/// <param name="xRange">Total x range in pixels for all channels.</param>
+	/// <param name="token">CancellationToken for cancelling this Task.</param>
+	/// <returns>True if successful and false otherwise.</returns>
+	private async Task<bool> InternalCreateMipMapFromPtrAsync(IntPtr ptr, uint length, int numChannels, int bits,
+		SOUND_FORMAT format, int xRange, CancellationToken token)
+	{
+		try
+		{
 			var xRangePerChannel = xRange / numChannels;
 			var bitsPerSample = (uint)bits * (uint)numChannels;
 			var bytesPerSample = bitsPerSample >> 3;
@@ -400,7 +514,7 @@ public class SoundMipMap
 						try
 						{
 							FillMipMapWorker(
-								ptr1,
+								ptr,
 								startSample,
 								endSample,
 								bytesPerSample,
@@ -515,20 +629,7 @@ public class SoundMipMap
 		catch (OperationCanceledException)
 		{
 			Reset();
-			if (soundNeedsUnlock)
-			{
-				SoundManager.ErrCheck(sound.unlock(ptr1, ptr2, len1, len2));
-				soundNeedsUnlock = false;
-			}
-
 			throw;
-		}
-		finally
-		{
-			if (soundNeedsUnlock)
-			{
-				SoundManager.ErrCheck(sound.unlock(ptr1, ptr2, len1, len2));
-			}
 		}
 
 		return true;

@@ -117,7 +117,7 @@ internal sealed class Utils
 	public const double PatternRegionZOffset = 0.6;
 	public const double SelectedRowsRegionZOffset = 0.7;
 
-	public static readonly string[] ExpectedAudioFormats = ["mp3", "oga", "ogg", "wav"];
+	public static readonly string[] ExpectedAudioFormats = ["mp3", "oga", "ogg", "opus", "wav"];
 	public static readonly string[] ExpectedImageFormats = ["bmp", "gif", "jpeg", "jpg", "png", "tif", "tiff", "webp"];
 
 	public static readonly string[] ExpectedVideoFormats =

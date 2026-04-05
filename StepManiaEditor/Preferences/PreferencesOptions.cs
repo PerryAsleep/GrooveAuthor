@@ -102,6 +102,7 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 	public const bool DefaultSuppressExternalSongModificationNotification = false;
 	public const bool DefaultSuppressUpdateNotification = false;
 	public const bool DefaultSuppressExternalPackModificationNotification = false;
+	public const bool DefaultSuppressOpusCodecUsageNotification = false;
 	public const bool DefaultHideSongBackground = false;
 	public const StepColorMethod DefaultStepColorMethodValue = StepColorMethod.Stepmania;
 	public const Layout DefaultResetLayout = Layout.Automatic;
@@ -131,6 +132,7 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 	[JsonInclude] public bool SuppressExternalSongModificationNotification = DefaultSuppressExternalSongModificationNotification;
 	[JsonInclude] public bool SuppressUpdateNotification = DefaultSuppressUpdateNotification;
 	[JsonInclude] public bool SuppressExternalPackModificationNotification = DefaultSuppressExternalPackModificationNotification;
+	[JsonInclude] public bool SuppressOpusCodecUsageNotification = DefaultSuppressOpusCodecUsageNotification;
 	[JsonInclude] public bool HideSongBackground = DefaultHideSongBackground;
 	[JsonInclude] public StepColorMethod StepColorMethodValue = DefaultStepColorMethodValue;
 	[JsonInclude] public Layout ResetLayout = DefaultResetLayout;
@@ -182,6 +184,7 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 		       && SuppressExternalSongModificationNotification == DefaultSuppressExternalSongModificationNotification
 		       && SuppressUpdateNotification == DefaultSuppressUpdateNotification
 		       && SuppressExternalPackModificationNotification == DefaultSuppressExternalPackModificationNotification
+		       && SuppressOpusCodecUsageNotification == DefaultSuppressOpusCodecUsageNotification
 		       && HideSongBackground == DefaultHideSongBackground
 		       && StepColorMethodValue == DefaultStepColorMethodValue
 		       // && ResetLayout == DefaultResetLayout
@@ -224,6 +227,7 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : UndoableAction
 	private readonly bool PreviousSuppressExternalSongModificationNotification;
 	private readonly bool PreviousSuppressUpdateNotification;
 	private readonly bool PreviousSuppressExternalPackModificationNotification;
+	private readonly bool PreviousSuppressOpusCodecUsageNotification;
 	private readonly bool PreviousHideSongBackground;
 
 	private readonly StepColorMethod PreviousStepColorMethodValue;
@@ -259,6 +263,7 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : UndoableAction
 		PreviousSuppressExternalSongModificationNotification = p.SuppressExternalSongModificationNotification;
 		PreviousSuppressUpdateNotification = p.SuppressUpdateNotification;
 		PreviousSuppressExternalPackModificationNotification = p.SuppressExternalPackModificationNotification;
+		PreviousSuppressOpusCodecUsageNotification = p.SuppressOpusCodecUsageNotification;
 		PreviousHideSongBackground = p.HideSongBackground;
 		PreviousStepColorMethodValue = p.StepColorMethodValue;
 		// PreviousResetLayout = p.ResetLayout;
@@ -300,6 +305,7 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : UndoableAction
 		p.SuppressExternalSongModificationNotification = DefaultSuppressExternalSongModificationNotification;
 		p.SuppressUpdateNotification = DefaultSuppressUpdateNotification;
 		p.SuppressExternalPackModificationNotification = DefaultSuppressExternalPackModificationNotification;
+		p.SuppressOpusCodecUsageNotification = DefaultSuppressOpusCodecUsageNotification;
 		p.HideSongBackground = DefaultHideSongBackground;
 		p.StepColorMethodValue = DefaultStepColorMethodValue;
 		// p.ResetLayout = DefaultResetLayout;
@@ -331,6 +337,7 @@ internal sealed class ActionRestoreOptionPreferenceDefaults : UndoableAction
 		p.SuppressExternalSongModificationNotification = PreviousSuppressExternalSongModificationNotification;
 		p.SuppressUpdateNotification = PreviousSuppressUpdateNotification;
 		p.SuppressExternalPackModificationNotification = PreviousSuppressExternalPackModificationNotification;
+		p.SuppressOpusCodecUsageNotification = PreviousSuppressOpusCodecUsageNotification;
 		p.HideSongBackground = PreviousHideSongBackground;
 		p.StepColorMethodValue = PreviousStepColorMethodValue;
 		// p.ResetLayout = PreviousResetLayout;
