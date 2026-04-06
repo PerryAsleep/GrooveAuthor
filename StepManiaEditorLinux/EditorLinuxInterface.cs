@@ -208,7 +208,19 @@ internal sealed class EditorLinuxInterface : IEditorPlatform
 			}
 		}
 
+		// Explicitly dispose GTK objects from the main thread before returning.
+		// GtkSharp finalizers call g_object_remove_toggle_ref() to release the managed-side
+		// reference to the underlying GObject, but .NET finalizers always run on the GC
+		// finalizer thread, not the GTK main thread. GTK's toggle ref mechanism is not
+		// thread-safe, so if these objects are left for the GC to finalize, the finalizer
+		// thread can race with the main thread inside GTK and corrupt internal state, leading
+		// to a segfault on the next dialog call. Calling Dispose() here ensures the cleanup
+		// happens on the main thread and the finalizer becomes a no-op.
+		// This is a speculative fix for https://github.com/PerryAsleep/GrooveAuthor/issues/69.
+		sscFileFilter.Dispose();
+		smFileFilter.Dispose();
 		dialog.Destroy();
+		dialog.Dispose();
 		return (confirmed, savedFileName);
 	}
 
@@ -246,7 +258,20 @@ internal sealed class EditorLinuxInterface : IEditorPlatform
 			fileName = dialog.Filename;
 		}
 
+		// Explicitly dispose GTK objects from the main thread before returning.
+		// GtkSharp finalizers call g_object_remove_toggle_ref() to release the managed-side
+		// reference to the underlying GObject, but .NET finalizers always run on the GC
+		// finalizer thread, not the GTK main thread. GTK's toggle ref mechanism is not
+		// thread-safe, so if these objects are left for the GC to finalize, the finalizer
+		// thread can race with the main thread inside GTK and corrupt internal state, leading
+		// to a segfault on the next dialog call. Calling Dispose() here ensures the cleanup
+		// happens on the main thread and the finalizer becomes a no-op.
+		// This is a speculative fix for https://github.com/PerryAsleep/GrooveAuthor/issues/69.
+		simFileFilter.Dispose();
+		allFileFilter.Dispose();
 		dialog.Destroy();
+		dialog.Dispose();
+
 		return (openedFile, fileName);
 	}
 
@@ -291,9 +316,10 @@ internal sealed class EditorLinuxInterface : IEditorPlatform
 		filter.Name = sb.ToString();
 		dialog.AddFilter(filter);
 
+		FileFilter allFileFilter = null;
 		if (includeAllFiles)
 		{
-			var allFileFilter = new FileFilter();
+			allFileFilter = new FileFilter();
 			allFileFilter.Name = "All Files (*.*)";
 			allFileFilter.AddPattern("*.*");
 			dialog.AddFilter(allFileFilter);
@@ -310,7 +336,19 @@ internal sealed class EditorLinuxInterface : IEditorPlatform
 			relativePath = Path.GetRelativePath(startInitialDirectory, fileName);
 		}
 
+		// Explicitly dispose GTK objects from the main thread before returning.
+		// GtkSharp finalizers call g_object_remove_toggle_ref() to release the managed-side
+		// reference to the underlying GObject, but .NET finalizers always run on the GC
+		// finalizer thread, not the GTK main thread. GTK's toggle ref mechanism is not
+		// thread-safe, so if these objects are left for the GC to finalize, the finalizer
+		// thread can race with the main thread inside GTK and corrupt internal state, leading
+		// to a segfault on the next dialog call. Calling Dispose() here ensures the cleanup
+		// happens on the main thread and the finalizer becomes a no-op.
+		// This is a speculative fix for https://github.com/PerryAsleep/GrooveAuthor/issues/69.
+		filter.Dispose();
+		allFileFilter?.Dispose();
 		dialog.Destroy();
+		dialog.Dispose();
 		return relativePath;
 	}
 
