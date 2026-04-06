@@ -129,8 +129,7 @@ internal abstract class Build
 		return xmlDoc.Descendants("Version").First().Value;
 	}
 
-	protected static void CopyDirectory(string sourceDir, string destinationDir,
-		IReadOnlyDictionary<string, string> documentationReplacements = null)
+	protected static void CopyDirectory(string sourceDir, string destinationDir)
 	{
 		var dir = new DirectoryInfo(sourceDir);
 		if (!dir.Exists)
@@ -144,34 +143,14 @@ internal abstract class Build
 		{
 			var targetFilePath = Path.Combine(destinationDir, fileInfo.Name);
 			fileInfo.CopyTo(targetFilePath);
-
-			// Update documentation if this is a markdown file.
-			if (documentationReplacements != null && fileInfo.Extension.Equals(".md"))
-			{
-				ReplaceTextInFile(targetFilePath, documentationReplacements);
-			}
 		}
 
 		// Recursively copy directories.
 		foreach (var subDirectory in subDirectories)
 		{
 			var newDestinationDir = Path.Combine(destinationDir, subDirectory.Name);
-			CopyDirectory(subDirectory.FullName, newDestinationDir, documentationReplacements);
+			CopyDirectory(subDirectory.FullName, newDestinationDir);
 		}
-	}
-
-	private static void ReplaceTextInFile(string fileName, IReadOnlyDictionary<string, string> replacements)
-	{
-		if (replacements == null || replacements.Count == 0)
-			return;
-
-		var text = File.ReadAllText(fileName);
-		foreach (var replacement in replacements)
-		{
-			text = text.Replace(replacement.Key, replacement.Value);
-		}
-
-		File.WriteAllText(fileName, text);
 	}
 
 	protected static void DeleteFiles(string sourceDir, string regex)
