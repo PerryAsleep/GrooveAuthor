@@ -1,0 +1,331 @@
+name: Build Release
+
+on:
+  # Run in response to pushing a version tag.
+  push:
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+
+  # Allow manual trigger from the Actions tab, but require an explicit version tag.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to build (e.g. v0.9.0)"
+        required: true
+        type: string
+
+# If a tag is deleted and re-pushed, cancel any in-progress run for that tag
+# so the new push starts fresh.
+concurrency:
+  group: release-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: true
+
+env:
+  APP_NAME: "GrooveAuthor"
+
+jobs:
+  # ──────────────────────────────────────────────
+  # Resolve the version string and .NET SDK version.
+  # ──────────────────────────────────────────────
+  resolve-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+      dotnet-version: ${{ steps.version.outputs.dotnet-version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: false
+          ref: ${{ github.event.inputs.tag || github.ref_name }}
+          sparse-checkout: StepManiaEditor/StepManiaEditor.csproj
+
+      - name: Determine tag and .NET version
+        id: version
+        run: |
+          TAG="${{ github.event.inputs.tag || github.ref_name }}"
+          VERSION="${TAG#v}"
+
+          # Parse TargetFramework (e.g. "net8.0" or "net8.0-windows7.0") and
+          # extract the major.minor portion for the SDK setup action.
+          TFM=$(grep -oP '(?<=<TargetFramework>)net[^<]+' StepManiaEditor/StepManiaEditor.csproj | head -1)
+          DOTNET_VERSION=$(echo "$TFM" | grep -oP '[0-9]+\.[0-9]+')
+
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "dotnet-version=${DOTNET_VERSION}.x" >> "$GITHUB_OUTPUT"
+          echo "Building for tag=$TAG version=$VERSION dotnet=${DOTNET_VERSION}.x"
+
+  # ──────────────────────────────────────────────
+  # Windows (win-x64)
+  # ──────────────────────────────────────────────
+  build-windows:
+    needs: resolve-version
+    runs-on: windows-latest
+    env:
+      VERSION: ${{ needs.resolve-version.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          ref: ${{ needs.resolve-version.outputs.tag }}
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ needs.resolve-version.outputs.dotnet-version }}
+
+      - name: Publish
+        run: >
+          dotnet publish ./StepManiaEditorWindows/StepManiaEditorWindows.csproj
+          --force -c Release -r win-x64
+          -o "${{ runner.temp }}/publish"
+          -p:PublishReadyToRun=false -p:TieredCompilation=false
+
+      - name: Package
+        shell: pwsh
+        run: |
+          $publishDir = "$env:RUNNER_TEMP/publish"
+          $artifactName = "${{ env.APP_NAME }}-v${{ env.VERSION }}-win-x64"
+          $stagingDir = "$env:RUNNER_TEMP/${{ env.APP_NAME }}"
+
+          # Copy published output to a staging folder named "GrooveAuthor"
+          # so the zip contains a single top-level folder.
+          if (Test-Path $stagingDir) { Remove-Item $stagingDir -Recurse -Force }
+          Copy-Item -Path $publishDir -Destination $stagingDir -Recurse
+
+          # Create zip.
+          7z a "$artifactName.zip" "$stagingDir"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: win-x64
+          path: ${{ env.APP_NAME }}-v${{ env.VERSION }}-win-x64.zip
+
+  # ──────────────────────────────────────────────
+  # Linux (linux-x64)
+  # ──────────────────────────────────────────────
+  build-linux:
+    needs: resolve-version
+    runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ needs.resolve-version.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          ref: ${{ needs.resolve-version.outputs.tag }}
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ needs.resolve-version.outputs.dotnet-version }}
+
+      - name: Publish
+        run: >
+          dotnet publish ./StepManiaEditorLinux/StepManiaEditorLinux.csproj
+          --force -c Release -r linux-x64
+          -o "$RUNNER_TEMP/publish"
+          -p:PublishReadyToRun=false -p:TieredCompilation=false
+
+      - name: Package
+        run: |
+          PUBLISH_DIR="$RUNNER_TEMP/publish"
+          STAGING_DIR="$RUNNER_TEMP/grooveauthor"
+          ARTIFACT_NAME="${APP_NAME}-v${VERSION}-linux-x64"
+
+          # Copy to staging directory.
+          rm -rf "$STAGING_DIR"
+          cp -r "$PUBLISH_DIR" "$STAGING_DIR"
+
+          # Remove macOS artifacts that some dependencies generate.
+          find "$STAGING_DIR" -name "*.dylib" -delete
+          find "$STAGING_DIR" -name "*.dSYM" -type d -exec rm -rf {} + 2>/dev/null || true
+
+          # Set permissions: 644 for files, 755 for directories and the main binary.
+          find "$STAGING_DIR" -type f -exec chmod 644 {} +
+          find "$STAGING_DIR" -type d -exec chmod 755 {} +
+          chmod 755 "$STAGING_DIR/GrooveAuthor"
+
+          # Fix FMOD symlinks. The publish step copies the actual files but
+          # the symlinks may not survive. Recreate them.
+          cd "$STAGING_DIR"
+          rm -f libfmod.so libfmod.so.13
+          ln -sr libfmod.so.13.3 libfmod.so
+          ln -sr libfmod.so.13.3 libfmod.so.13
+
+          # Fix SkiaSharp symlink if needed.
+          SKIA_FILES=(libSkiaSharp.so.*)
+          if [ ${#SKIA_FILES[@]} -eq 1 ] && [ -f "${SKIA_FILES[0]}" ]; then
+            rm -f libSkiaSharp.so
+            ln -sr "${SKIA_FILES[0]}" libSkiaSharp.so
+          elif [ ${#SKIA_FILES[@]} -gt 1 ]; then
+            echo "::error::Multiple libSkiaSharp.so.* files found — cannot determine which to symlink"
+            exit 1
+          fi
+          cd -
+
+          # Copy the install script alongside the app directory.
+          INSTALL_SCRIPT="StepManiaEditorLinux/install.sh"
+          INSTALL_DEST="$RUNNER_TEMP/grooveauthor-install.sh"
+          cp "$INSTALL_SCRIPT" "$INSTALL_DEST"
+          chmod 755 "$INSTALL_DEST"
+
+          # Create tar.gz with the app directory and install script.
+          tar -czf "${ARTIFACT_NAME}.tar.gz" \
+            -C "$RUNNER_TEMP" \
+            grooveauthor grooveauthor-install.sh
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-x64
+          path: ${{ env.APP_NAME }}-v${{ env.VERSION }}-linux-x64.tar.gz
+
+  # ──────────────────────────────────────────────
+  # macOS arm64
+  # ──────────────────────────────────────────────
+  build-macos-arm64:
+    needs: resolve-version
+    runs-on: macos-latest
+    env:
+      VERSION: ${{ needs.resolve-version.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          ref: ${{ needs.resolve-version.outputs.tag }}
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ needs.resolve-version.outputs.dotnet-version }}
+
+      - name: Build
+        run: >
+          dotnet build ./StepManiaEditorMacOS/StepManiaEditorMacOS.csproj
+          -c Release -r osx-arm64 --self-contained true
+          -o "$RUNNER_TEMP/osx-arm64"
+
+      - name: Sign
+        run: |
+          APP_PATH="$RUNNER_TEMP/osx-arm64/${{ env.APP_NAME }}.app"
+          find "$APP_PATH" -name "*.dylib" -exec codesign --force --sign - {} \;
+          codesign --force --sign - --deep --verbose "$APP_PATH"
+
+      - name: Create DMG
+        run: |
+          APP_PATH="$RUNNER_TEMP/osx-arm64/${{ env.APP_NAME }}.app"
+          DMG_PATH="${APP_NAME}-v${VERSION}-mac-arm64.dmg"
+          hdiutil create -volname "${{ env.APP_NAME }}" -srcfolder "$APP_PATH" -ov -format UDZO "$DMG_PATH"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mac-arm64
+          path: ${{ env.APP_NAME }}-v${{ env.VERSION }}-mac-arm64.dmg
+
+  # ──────────────────────────────────────────────
+  # macOS x64
+  # ──────────────────────────────────────────────
+  build-macos-x64:
+    needs: resolve-version
+    runs-on: macos-15-intel
+    env:
+      VERSION: ${{ needs.resolve-version.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          ref: ${{ needs.resolve-version.outputs.tag }}
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ needs.resolve-version.outputs.dotnet-version }}
+
+      - name: Build
+        run: >
+          dotnet build ./StepManiaEditorMacOS/StepManiaEditorMacOS.csproj
+          -c Release -r osx-x64 --self-contained true
+          -o "$RUNNER_TEMP/osx-x64"
+
+      - name: Sign
+        run: |
+          APP_PATH="$RUNNER_TEMP/osx-x64/${{ env.APP_NAME }}.app"
+          find "$APP_PATH" -name "*.dylib" -exec codesign --force --sign - {} \;
+          codesign --force --sign - --deep --verbose "$APP_PATH"
+
+      - name: Create DMG
+        run: |
+          APP_PATH="$RUNNER_TEMP/osx-x64/${{ env.APP_NAME }}.app"
+          DMG_PATH="${APP_NAME}-v${VERSION}-mac-x64.dmg"
+          hdiutil create -volname "${{ env.APP_NAME }}" -srcfolder "$APP_PATH" -ov -format UDZO "$DMG_PATH"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mac-x64
+          path: ${{ env.APP_NAME }}-v${{ env.VERSION }}-mac-x64.dmg
+
+  # ──────────────────────────────────────────────
+  # Create a draft GitHub Release with all artifacts.
+  # ──────────────────────────────────────────────
+  create-release:
+    needs: [resolve-version, build-windows, build-linux, build-macos-arm64, build-macos-x64]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      VERSION: ${{ needs.resolve-version.outputs.version }}
+      TAG: ${{ needs.resolve-version.outputs.tag }}
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: List artifacts
+        run: ls -lhR artifacts/
+
+      - name: Create or update draft release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Check if a release already exists for this tag.
+          RELEASE_JSON=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft,assets 2>/dev/null || true)
+
+          if [ -n "$RELEASE_JSON" ]; then
+            IS_DRAFT=$(echo "$RELEASE_JSON" | jq -r '.isDraft')
+            if [ "$IS_DRAFT" != "true" ]; then
+              echo "::error::A published (non-draft) release already exists for $TAG. Refusing to modify it."
+              exit 1
+            fi
+
+            echo "Draft release exists for $TAG — replacing artifacts."
+
+            # Delete existing assets so stale builds don't linger.
+            ASSET_NAMES=$(echo "$RELEASE_JSON" | jq -r '.assets[].name')
+            for ASSET in $ASSET_NAMES; do
+              echo "Deleting old asset: $ASSET"
+              gh release delete-asset "$TAG" "$ASSET" --repo "$GITHUB_REPOSITORY" --yes
+            done
+
+            # Upload new artifacts.
+            gh release upload "$TAG" artifacts/* --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            echo "No release exists for $TAG — creating a new draft."
+            gh release create "$TAG" \
+              --repo "$GITHUB_REPOSITORY" \
+              --title "${{ env.APP_NAME }} $TAG" \
+              --draft \
+              --generate-notes \
+              artifacts/*
+          fi
