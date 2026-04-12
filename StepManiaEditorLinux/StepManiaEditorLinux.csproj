@@ -15,6 +15,7 @@
 	</PropertyGroup>
 	<PropertyGroup>
 		<RuntimeIdentifier>linux-x64</RuntimeIdentifier>
+		<SkipContentBuild>true</SkipContentBuild>
 	</PropertyGroup>
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -23,17 +24,39 @@
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 	</PropertyGroup>
 	<ItemGroup>
-		<MonoGameContentReference Include="..\StepManiaEditor\Content\Content.mgcb" />
 		<EmbeddedResource Include="Icon.bmp">
 			<LogicalName>Icon.bmp</LogicalName>
 		</EmbeddedResource>
+		<Content Include="Content\atlas.xnb">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+		<Content Include="Content\fxaa.xnb">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+		<Content Include="Content\logo-attribution.xnb">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+		<Content Include="Content\Mplus1Code-Bold.ttf">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+		<Content Include="Content\Mplus1Code-Medium.ttf">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+		<Content Include="Content\mplus1code-medium.xnb">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+		<Content Include="Content\Mplus1Code-Regular.ttf">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
+		<Content Include="Content\waveform-color.xnb">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</Content>
 	</ItemGroup>
 	<ItemGroup>
 		<TrimmerRootAssembly Include="Microsoft.Xna.Framework.Content.ContentTypeReader" Visible="false" />
 	</ItemGroup>
 	<ItemGroup>
 		<PackageReference Include="GtkSharp" Version="3.24.24.95" />
-		<PackageReference Include="MonoGame.Content.Builder.Task" Version="3.8.1.303" />
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\StepManiaEditor\MonoGame\MonoGame.Framework\MonoGame.Framework.DesktopGL.csproj" />

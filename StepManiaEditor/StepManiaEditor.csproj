@@ -20,7 +20,7 @@
 		<None Remove="docs\**" />
 		<None Remove="MonoGame\**" />
 	</ItemGroup>
-	<ItemGroup>
+	<ItemGroup Condition="'$(SkipContentBuild)' != 'true'">
 		<MonoGameContentReference Include="Content\Content.mgcb" />
 	</ItemGroup>
 	<ItemGroup>
