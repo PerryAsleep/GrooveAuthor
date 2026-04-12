@@ -172,11 +172,11 @@ jobs:
           path: ${{ env.APP_NAME }}-v${{ env.VERSION }}-linux-x64.tar.gz
 
   # ──────────────────────────────────────────────
-  # macOS arm64
+  # macOS (arm64 and x64, built on a single runner)
   # ──────────────────────────────────────────────
-  build-macos-arm64:
+  build-macos:
     needs: resolve-version
-    runs-on: macos-latest
+    runs-on: macos-26
     env:
       VERSION: ${{ needs.resolve-version.outputs.version }}
     steps:
@@ -194,72 +194,41 @@ jobs:
       - name: Restore workloads
         run: dotnet workload restore --project ./StepManiaEditorMacOS/StepManiaEditorMacOS.csproj
 
-      - name: Build
+      - name: Build arm64
         run: >
           dotnet build ./StepManiaEditorMacOS/StepManiaEditorMacOS.csproj
           -c Release -r osx-arm64 --self-contained true
           -o "$RUNNER_TEMP/osx-arm64"
 
-      - name: Sign
-        run: |
-          APP_PATH="$RUNNER_TEMP/osx-arm64/${{ env.APP_NAME }}.app"
-          find "$APP_PATH" -name "*.dylib" -exec codesign --force --sign - {} \;
-          codesign --force --sign - --deep --verbose "$APP_PATH"
-
-      - name: Create DMG
-        run: |
-          APP_PATH="$RUNNER_TEMP/osx-arm64/${{ env.APP_NAME }}.app"
-          DMG_PATH="${APP_NAME}-v${VERSION}-mac-arm64.dmg"
-          hdiutil create -volname "${{ env.APP_NAME }}" -srcfolder "$APP_PATH" -ov -format UDZO "$DMG_PATH"
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: mac-arm64
-          path: ${{ env.APP_NAME }}-v${{ env.VERSION }}-mac-arm64.dmg
-
-  # ──────────────────────────────────────────────
-  # macOS x64
-  # ──────────────────────────────────────────────
-  build-macos-x64:
-    needs: resolve-version
-    runs-on: macos-15-intel
-    env:
-      VERSION: ${{ needs.resolve-version.outputs.version }}
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          ref: ${{ needs.resolve-version.outputs.tag }}
-
-      - name: Setup .NET
-        uses: actions/setup-dotnet@v4
-        with:
-          global-json-file: global.json
-
-      - name: Restore workloads
-        run: dotnet workload restore --project ./StepManiaEditorMacOS/StepManiaEditorMacOS.csproj
-
-      - name: Build
+      - name: Build x64
         run: >
           dotnet build ./StepManiaEditorMacOS/StepManiaEditorMacOS.csproj
           -c Release -r osx-x64 --self-contained true
           -o "$RUNNER_TEMP/osx-x64"
 
-      - name: Sign
+      - name: Sign and package arm64
+        run: |
+          APP_PATH="$RUNNER_TEMP/osx-arm64/${{ env.APP_NAME }}.app"
+          find "$APP_PATH" -name "*.dylib" -exec codesign --force --sign - {} \;
+          codesign --force --sign - --deep --verbose "$APP_PATH"
+          hdiutil create -volname "${{ env.APP_NAME }}" -srcfolder "$APP_PATH" -ov -format UDZO \
+            "${APP_NAME}-v${VERSION}-mac-arm64.dmg"
+
+      - name: Sign and package x64
         run: |
           APP_PATH="$RUNNER_TEMP/osx-x64/${{ env.APP_NAME }}.app"
           find "$APP_PATH" -name "*.dylib" -exec codesign --force --sign - {} \;
           codesign --force --sign - --deep --verbose "$APP_PATH"
+          hdiutil create -volname "${{ env.APP_NAME }}" -srcfolder "$APP_PATH" -ov -format UDZO \
+            "${APP_NAME}-v${VERSION}-mac-x64.dmg"
 
-      - name: Create DMG
-        run: |
-          APP_PATH="$RUNNER_TEMP/osx-x64/${{ env.APP_NAME }}.app"
-          DMG_PATH="${APP_NAME}-v${VERSION}-mac-x64.dmg"
-          hdiutil create -volname "${{ env.APP_NAME }}" -srcfolder "$APP_PATH" -ov -format UDZO "$DMG_PATH"
+      - name: Upload arm64 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mac-arm64
+          path: ${{ env.APP_NAME }}-v${{ env.VERSION }}-mac-arm64.dmg
 
-      - name: Upload artifact
+      - name: Upload x64 artifact
         uses: actions/upload-artifact@v4
         with:
           name: mac-x64
@@ -269,7 +238,7 @@ jobs:
   # Create a draft GitHub Release with all artifacts.
   # ──────────────────────────────────────────────
   create-release:
-    needs: [resolve-version, build-windows, build-linux, build-macos-arm64, build-macos-x64]
+    needs: [resolve-version, build-windows, build-linux, build-macos]
     runs-on: ubuntu-latest
     permissions:
       contents: write
