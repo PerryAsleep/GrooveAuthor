@@ -1261,25 +1261,23 @@ internal sealed class MusicManager : IDisposable
 					if (lastNextTickStartInRange != null)
 					{
 						// Scale the start time by the music rate so that ticks play at an unaffected speed.
-						sampleIndex = (long)((sampleIndexEndExclusive - lastNextTickStartInRange) / MusicRate);
-						playbackData.StartPlaying(sampleIndex);
+						var lastNextTickSampleIndex = (long)((sampleIndexEndExclusive - lastNextTickStartInRange) / MusicRate);
+						playbackData.StartPlaying(lastNextTickSampleIndex);
 					}
 					else
 					{
 						if (playbackData.IsPlaying())
 						{
 							// Scale the time by the music rate so that ticks play at an unaffected speed.
-							sampleIndex = playbackData.GetSampleIndex() +
-							              (long)((sampleIndexEndExclusive - sampleIndexStartInclusive) / MusicRate);
-							playbackData.SetSampleIndex(sampleIndex);
+							var finalSampleIndex = playbackData.GetSampleIndex() +
+							                  (long)((sampleIndexEndExclusive - sampleIndexStartInclusive) / MusicRate);
+							playbackData.SetSampleIndex(finalSampleIndex);
 						}
 					}
 
 					if (playbackData.GetSampleIndex() >= numSamples)
 					{
 						playbackData.StopPlaying();
-						sampleIndex = 0L;
-						playing = false;
 					}
 				}
 			}
