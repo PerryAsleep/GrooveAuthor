@@ -191,6 +191,9 @@ jobs:
         with:
           global-json-file: global.json
 
+      - name: Restore workloads
+        run: dotnet workload restore --project ./StepManiaEditorMacOS/StepManiaEditorMacOS.csproj
+
       - name: Build
         run: >
           dotnet build ./StepManiaEditorMacOS/StepManiaEditorMacOS.csproj
@@ -234,6 +237,9 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
+
+      - name: Restore workloads
+        run: dotnet workload restore --project ./StepManiaEditorMacOS/StepManiaEditorMacOS.csproj
 
       - name: Build
         run: >
