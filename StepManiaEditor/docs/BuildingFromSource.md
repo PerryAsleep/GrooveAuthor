@@ -37,6 +37,7 @@ If you experience errors building related to `NuGet package restore failed` thes
 >The instructions below assume Ubuntu and VSCode. You can likely use different distros and development tools but they aren't officially supported.
 
 1. Follow the instructions from MonoGame for [setting up a Linux development environment](https://docs.monogame.net/articles/getting_started/1_setting_up_your_os_for_development_ubuntu.html).
+    1. Note that `GrooveAuthor` does not compile MonoGame effects when building for Linux. Effects are compiled for OpenGL on Windows and checked in to source control. As such you do not need to follow the `Setup Wine For Effect Compilation` steps.
 2. Clone the repository and init submodules.
 	```
 	git clone https://github.com/PerryAsleep/GrooveAuthor.git
@@ -48,7 +49,7 @@ If you experience errors building related to `NuGet package restore failed` thes
 
 ## Mac OS
 
-Building from source requires MacOS 11.0 or greater.
+Building from source requires Xcode 26.2 or greater and MacOS Sequoia 15.6 or greater.
 
 > [!NOTE]
 >The instructions below assume VSCode. You can likely use different development tools but they aren't officially supported.
