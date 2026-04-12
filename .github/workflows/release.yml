@@ -52,13 +52,13 @@ jobs:
       VERSION: ${{ needs.resolve-version.outputs.version }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: recursive
           ref: ${{ needs.resolve-version.outputs.tag }}
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           global-json-file: global.json
 
@@ -85,7 +85,7 @@ jobs:
           7z a "$artifactName.zip" "$stagingDir"
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: win-x64
           path: ${{ env.APP_NAME }}-v${{ env.VERSION }}-win-x64.zip
@@ -100,13 +100,13 @@ jobs:
       VERSION: ${{ needs.resolve-version.outputs.version }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: recursive
           ref: ${{ needs.resolve-version.outputs.tag }}
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           global-json-file: global.json
 
@@ -166,7 +166,7 @@ jobs:
             grooveauthor grooveauthor-install.sh
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: linux-x64
           path: ${{ env.APP_NAME }}-v${{ env.VERSION }}-linux-x64.tar.gz
@@ -181,13 +181,13 @@ jobs:
       VERSION: ${{ needs.resolve-version.outputs.version }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: recursive
           ref: ${{ needs.resolve-version.outputs.tag }}
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v4
+        uses: actions/setup-dotnet@v5
         with:
           global-json-file: global.json
 
@@ -223,13 +223,13 @@ jobs:
             "${APP_NAME}-v${VERSION}-mac-x64.dmg"
 
       - name: Upload arm64 artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: mac-arm64
           path: ${{ env.APP_NAME }}-v${{ env.VERSION }}-mac-arm64.dmg
 
       - name: Upload x64 artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: mac-x64
           path: ${{ env.APP_NAME }}-v${{ env.VERSION }}-mac-x64.dmg
@@ -247,7 +247,7 @@ jobs:
       TAG: ${{ needs.resolve-version.outputs.tag }}
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           path: artifacts
           merge-multiple: true
