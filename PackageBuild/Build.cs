@@ -25,7 +25,7 @@ internal abstract class Build
 	protected readonly string ProjectName;
 
 	/// <summary>
-	/// Framework, e.g. net8.0
+	/// Framework, e.g. net10.0
 	/// </summary>
 	protected readonly string Framework;
 

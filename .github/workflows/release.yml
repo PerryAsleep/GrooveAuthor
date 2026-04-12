@@ -25,37 +25,22 @@ env:
 
 jobs:
   # ──────────────────────────────────────────────
-  # Resolve the version string and .NET SDK version.
+  # Resolve the version string from the tag.
   # ──────────────────────────────────────────────
   resolve-version:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
       tag: ${{ steps.version.outputs.tag }}
-      dotnet-version: ${{ steps.version.outputs.dotnet-version }}
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          submodules: false
-          ref: ${{ github.event.inputs.tag || github.ref_name }}
-          sparse-checkout: StepManiaEditor/StepManiaEditor.csproj
-
-      - name: Determine tag and .NET version
+      - name: Determine tag
         id: version
         run: |
           TAG="${{ github.event.inputs.tag || github.ref_name }}"
           VERSION="${TAG#v}"
-
-          # Parse TargetFramework (e.g. "net8.0" or "net8.0-windows7.0") and
-          # extract the major.minor portion for the SDK setup action.
-          TFM=$(grep -oP '(?<=<TargetFramework>)net[^<]+' StepManiaEditor/StepManiaEditor.csproj | head -1)
-          DOTNET_VERSION=$(echo "$TFM" | grep -oP '[0-9]+\.[0-9]+')
-
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-          echo "dotnet-version=${DOTNET_VERSION}.x" >> "$GITHUB_OUTPUT"
-          echo "Building for tag=$TAG version=$VERSION dotnet=${DOTNET_VERSION}.x"
+          echo "Building for tag=$TAG version=$VERSION"
 
   # ──────────────────────────────────────────────
   # Windows (win-x64)
@@ -75,7 +60,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: ${{ needs.resolve-version.outputs.dotnet-version }}
+          global-json-file: global.json
 
       - name: Publish
         run: >
@@ -123,7 +108,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: ${{ needs.resolve-version.outputs.dotnet-version }}
+          global-json-file: global.json
 
       - name: Publish
         run: >
@@ -204,7 +189,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: ${{ needs.resolve-version.outputs.dotnet-version }}
+          global-json-file: global.json
 
       - name: Build
         run: >
@@ -248,7 +233,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: ${{ needs.resolve-version.outputs.dotnet-version }}
+          global-json-file: global.json
 
       - name: Build
         run: >

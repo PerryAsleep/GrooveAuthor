@@ -40,189 +40,176 @@ internal sealed class PreferencesAudio : Notifier<PreferencesAudio>
 	[JsonInclude]
 	public double MusicRate
 	{
-		get => MusicRateInternal;
+		get;
 		set
 		{
-			if (!MusicRateInternal.DoubleEquals(value))
+			if (!field.DoubleEquals(value))
 			{
-				MusicRateInternal = value;
+				field = value;
 				Notify(NotificationMusicRateChanged, this);
 			}
 		}
-	}
+	} = DefaultMusicRate;
 
 	[JsonInclude]
 	public double AudioOffset
 	{
-		get => AudioOffsetInternal;
+		get;
 		set
 		{
-			if (!AudioOffsetInternal.DoubleEquals(value))
+			if (!field.DoubleEquals(value))
 			{
-				AudioOffsetInternal = value;
+				field = value;
 				Notify(NotificationAudioOffsetChanged, this);
 			}
 		}
-	}
+	} = DefaultAudioOffset;
 
 	[JsonInclude]
 	public float MainVolume
 	{
-		get => MainVolumeInternal;
+		get;
 		set
 		{
-			if (!MainVolumeInternal.FloatEquals(value))
+			if (!field.FloatEquals(value))
 			{
-				MainVolumeInternal = value;
+				field = value;
 				Notify(NotificationMainVolumeChanged, this);
 			}
 		}
-	}
+	} = DefaultMainVolume;
 
 	[JsonInclude]
 	public float MusicVolume
 	{
-		get => MusicVolumeInternal;
+		get;
 		set
 		{
-			if (!MusicVolumeInternal.FloatEquals(value))
+			if (!field.FloatEquals(value))
 			{
-				MusicVolumeInternal = value;
+				field = value;
 				Notify(NotificationMusicVolumeChanged, this);
 			}
 		}
-	}
+	} = DefaultMusicVolume;
 
 	[JsonInclude]
 	public float AssistTickVolume
 	{
-		get => AssistTickVolumeInternal;
+		get;
 		set
 		{
-			if (!AssistTickVolumeInternal.FloatEquals(value))
+			if (!field.FloatEquals(value))
 			{
-				AssistTickVolumeInternal = value;
+				field = value;
 				Notify(NotificationAssistTickVolumeChanged, this);
 			}
 		}
-	}
+	} = DefaultAssistTickVolume;
 
 	[JsonInclude]
 	public float AssistTickAttackTime
 	{
-		get => AssistTickAttackTimeInternal;
+		get;
 		set
 		{
-			if (!AssistTickAttackTimeInternal.FloatEquals(value))
+			if (!field.FloatEquals(value))
 			{
-				AssistTickAttackTimeInternal = value;
+				field = value;
 				Notify(NotificationAssistTickAttackTimeChanged, this);
 			}
 		}
-	}
+	} = DefaultAssistTickAttackTime;
 
 	[JsonInclude]
 	public bool UseAssistTick
 	{
-		get => UseAssistTickInternal;
+		get;
 		set
 		{
-			if (UseAssistTickInternal != value)
+			if (field != value)
 			{
-				UseAssistTickInternal = value;
+				field = value;
 				Notify(NotificationUseAssistTickChanged, this);
 			}
 		}
-	}
+	} = DefaultUseAssistTick;
 
 	[JsonInclude]
 	public bool SkipAssistTickOnBeatTick
 	{
-		get => SkipAssistTickOnBeatTickInternal;
+		get;
 		set
 		{
-			if (SkipAssistTickOnBeatTickInternal != value)
+			if (field != value)
 			{
-				SkipAssistTickOnBeatTickInternal = value;
+				field = value;
 				Notify(NotificationSkipAssistTickOnBeatTickChanged, this);
 			}
 		}
-	}
+	} = DefaultSkipAssistTickOnBeatTick;
 
 	[JsonInclude]
 	public float BeatTickVolume
 	{
-		get => BeatTickVolumeInternal;
+		get;
 		set
 		{
-			if (!BeatTickVolumeInternal.FloatEquals(value))
+			if (!field.FloatEquals(value))
 			{
-				BeatTickVolumeInternal = value;
+				field = value;
 				Notify(NotificationBeatTickVolumeChanged, this);
 			}
 		}
-	}
+	} = DefaultBeatTickVolume;
 
 	[JsonInclude]
 	public float BeatTickAttackTime
 	{
-		get => BeatTickAttackTimeInternal;
+		get;
 		set
 		{
-			if (!BeatTickAttackTimeInternal.FloatEquals(value))
+			if (!field.FloatEquals(value))
 			{
-				BeatTickAttackTimeInternal = value;
+				field = value;
 				Notify(NotificationBeatTickAttackTimeChanged, this);
 			}
 		}
-	}
+	} = DefaultBeatTickAttackTime;
 
 	[JsonInclude]
 	public bool UseBeatTick
 	{
-		get => UseBeatTickInternal;
+		get;
 		set
 		{
-			if (UseBeatTickInternal != value)
+			if (field != value)
 			{
-				UseBeatTickInternal = value;
+				field = value;
 				Notify(NotificationUseBeatTickChanged, this);
 			}
 		}
-	}
+	} = DefaultUseBeatTick;
 
 	[JsonInclude]
 	public bool SkipBeatTickOnAssistTick
 	{
-		get => SkipBeatTickOnAssistTickInternal;
+		get;
 		set
 		{
-			if (SkipBeatTickOnAssistTickInternal != value)
+			if (field != value)
 			{
-				SkipBeatTickOnAssistTickInternal = value;
+				field = value;
 				Notify(NotificationSkipBeatTickOnAssistTickChanged, this);
 			}
 		}
-	}
+	} = DefaultSkipBeatTickOnAssistTick;
 
 	[JsonInclude] public bool ShowAudioPreferencesWindow;
 	[JsonInclude] public int DspBufferSize = DefaultDspBufferSize;
 	[JsonInclude] public int DspNumBuffers = DefaultDspNumBuffers;
 	[JsonInclude] public double PreviewFadeInTime = DefaultPreviewFadeInTime;
 	[JsonInclude] public double PreviewFadeOutTime = DefaultPreviewFadeOutTime;
-
-	private double MusicRateInternal = DefaultMusicRate;
-	private float MainVolumeInternal = DefaultMainVolume;
-	private float MusicVolumeInternal = DefaultMusicVolume;
-	private double AudioOffsetInternal = DefaultAudioOffset;
-	private float AssistTickVolumeInternal = DefaultAssistTickVolume;
-	private float AssistTickAttackTimeInternal = DefaultAssistTickAttackTime;
-	private bool UseAssistTickInternal = DefaultUseAssistTick;
-	private bool SkipAssistTickOnBeatTickInternal = DefaultSkipAssistTickOnBeatTick;
-	private float BeatTickVolumeInternal = DefaultBeatTickVolume;
-	private float BeatTickAttackTimeInternal = DefaultBeatTickAttackTime;
-	private bool UseBeatTickInternal = DefaultUseBeatTick;
-	private bool SkipBeatTickOnAssistTickInternal = DefaultSkipBeatTickOnAssistTick;
 
 	public bool IsUsingDefaults()
 	{

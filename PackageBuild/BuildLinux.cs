@@ -17,7 +17,7 @@ internal sealed class BuildLinux : Build
 	public BuildLinux() : base(
 		"linux-x64",
 		"StepManiaEditorLinux",
-		"net8.0",
+		"net10.0",
 		"GrooveAuthor")
 	{
 	}

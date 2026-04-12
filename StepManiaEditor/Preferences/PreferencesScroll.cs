@@ -38,16 +38,16 @@ internal sealed class PreferencesScroll : Notifier<PreferencesScroll>
 	[JsonInclude]
 	public double TimeBasedPixelsPerSecond
 	{
-		get => TimeBasedPixelsPerSecondInternal;
+		get;
 		set
 		{
-			if (!TimeBasedPixelsPerSecondInternal.DoubleEquals(value))
+			if (!field.DoubleEquals(value))
 			{
-				TimeBasedPixelsPerSecondInternal = value;
+				field = value;
 				Notify(NotificationTimeBasedPpsChanged, this);
 			}
 		}
-	}
+	} = DefaultTimeBasedPixelsPerSecond;
 
 	/// <summary>
 	/// Float property for ImGui slider limitations.
@@ -59,21 +59,19 @@ internal sealed class PreferencesScroll : Notifier<PreferencesScroll>
 		set => TimeBasedPixelsPerSecond = value;
 	}
 
-	private double TimeBasedPixelsPerSecondInternal = DefaultTimeBasedPixelsPerSecond;
-
 	[JsonInclude]
 	public double RowBasedPixelsPerRow
 	{
-		get => RowBasedPixelsPerRowInternal;
+		get;
 		set
 		{
-			if (!RowBasedPixelsPerRowInternal.DoubleEquals(value))
+			if (!field.DoubleEquals(value))
 			{
-				RowBasedPixelsPerRowInternal = value;
+				field = value;
 				Notify(NotificationRowBasedPprChanged, this);
 			}
 		}
-	}
+	} = DefaultRowBasedPixelsPerRow;
 
 	/// <summary>
 	/// Float property for ImGui slider limitations.
@@ -85,21 +83,19 @@ internal sealed class PreferencesScroll : Notifier<PreferencesScroll>
 		set => RowBasedPixelsPerRow = value;
 	}
 
-	private double RowBasedPixelsPerRowInternal = DefaultRowBasedPixelsPerRow;
-
 	[JsonInclude]
 	public double VariablePixelsPerSecondAtDefaultBPM
 	{
-		get => VariablePixelsPerSecondAtDefaultBPMInternal;
+		get;
 		set
 		{
-			if (!VariablePixelsPerSecondAtDefaultBPMInternal.DoubleEquals(value))
+			if (!field.DoubleEquals(value))
 			{
-				VariablePixelsPerSecondAtDefaultBPMInternal = value;
+				field = value;
 				Notify(NotificationVariablePpsChanged, this);
 			}
 		}
-	}
+	} = DefaultVariablePixelsPerSecondAtDefaultBPM;
 
 	/// <summary>
 	/// Float property for ImGui slider limitations.
@@ -111,39 +107,33 @@ internal sealed class PreferencesScroll : Notifier<PreferencesScroll>
 		set => VariablePixelsPerSecondAtDefaultBPM = value;
 	}
 
-	private double VariablePixelsPerSecondAtDefaultBPMInternal = DefaultVariablePixelsPerSecondAtDefaultBPM;
-
 	[JsonInclude]
 	public double SizeCap
 	{
-		get => SizeCapInternal;
+		get;
 		set
 		{
-			if (!SizeCapInternal.DoubleEquals(value))
+			if (!field.DoubleEquals(value))
 			{
-				SizeCapInternal = value;
+				field = value;
 				Notify(NotificationSizeCapChanged, this);
 			}
 		}
-	}
-
-	private double SizeCapInternal = DefaultSizeCap;
+	} = DefaultSizeCap;
 
 	[JsonInclude]
 	public bool LimitZoomToSize
 	{
-		get => LimitZoomToSizeInternal;
+		get;
 		set
 		{
-			if (LimitZoomToSizeInternal != value)
+			if (field != value)
 			{
-				LimitZoomToSizeInternal = value;
+				field = value;
 				Notify(NotificationLimitZoomToSizeChanged, this);
 			}
 		}
-	}
-
-	private bool LimitZoomToSizeInternal = DefaultLimitZoomToSize;
+	} = DefaultLimitZoomToSize;
 
 	[JsonInclude] public Editor.WaveFormScrollMode RowBasedWaveFormScrollMode = DefaultRowBasedWaveFormScrollMode;
 	[JsonInclude] public bool StopPlaybackWhenScrolling = DefaultStopPlaybackWhenScrolling;

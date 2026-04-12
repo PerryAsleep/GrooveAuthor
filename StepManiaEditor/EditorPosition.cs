@@ -24,14 +24,12 @@ internal interface IReadOnlyEditorPosition
 /// </summary>
 internal sealed class EditorPosition : IReadOnlyEditorPosition
 {
-	private EditorChart ActiveChartInternal;
-
 	public EditorChart ActiveChart
 	{
-		get => ActiveChartInternal;
+		get;
 		set
 		{
-			ActiveChartInternal = value;
+			field = value;
 			// Different charts may have different timing events and time offsets.
 			// When changing charts, reset the Song time to ensure other values are correct.
 			ChartTime = ChartTimeInternal;

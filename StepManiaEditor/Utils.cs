@@ -428,10 +428,10 @@ internal sealed class Utils
 			case SMCommon.ChartDifficultyType.Medium: return UIDifficultyMediumColorRGBA;
 			case SMCommon.ChartDifficultyType.Hard: return UIDifficultyHardColorRGBA;
 			case SMCommon.ChartDifficultyType.Challenge: return UIDifficultyChallengeColorRGBA;
-			case SMCommon.ChartDifficultyType.Edit: return UIDifficultyEditColorRGBA;
+			case SMCommon.ChartDifficultyType.Edit:
+			default:
+				return UIDifficultyEditColorRGBA;
 		}
-
-		return UIDifficultyEditColorRGBA;
 	}
 
 	#endregion Color Helpers

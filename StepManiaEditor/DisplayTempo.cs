@@ -105,10 +105,9 @@ internal sealed class DisplayTempo
 
 				return SpecifiedTempoMin.ToString(SMDoubleFormat);
 			case DisplayTempoMode.Actual:
+			default:
 				return "";
 		}
-
-		return "";
 	}
 
 	public bool Matches(DisplayTempo other)

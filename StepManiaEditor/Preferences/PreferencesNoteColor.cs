@@ -166,80 +166,68 @@ internal sealed class PreferencesNoteColor : Notifier<PreferencesNoteColor>
 	[JsonInclude]
 	public float SelectionColorMultiplier
 	{
-		get => SelectionColorMultiplierInternal;
+		get;
 		set
 		{
-			SelectionColorMultiplierInternal = value;
+			field = value;
 			RefreshCachedColors();
 		}
-	}
-
-	private float SelectionColorMultiplierInternal = DefaultSelectionColorMultiplier;
+	} = DefaultSelectionColorMultiplier;
 
 	[JsonInclude]
 	public float HeldColorMultiplier
 	{
-		get => HeldColorMultiplierInternal;
+		get;
 		set
 		{
-			HeldColorMultiplierInternal = value;
+			field = value;
 			RefreshCachedColors();
 		}
-	}
-
-	private float HeldColorMultiplierInternal = DefaultHeldColorMultiplier;
+	} = DefaultHeldColorMultiplier;
 
 	[JsonInclude]
 	public float ArrowUIColorMultiplier
 	{
-		get => ArrowUIColorMultiplierInternal;
+		get;
 		set
 		{
-			ArrowUIColorMultiplierInternal = value;
+			field = value;
 			RefreshCachedColors();
 		}
-	}
-
-	private float ArrowUIColorMultiplierInternal = DefaultArrowUIColorMultiplier;
+	} = DefaultArrowUIColorMultiplier;
 
 	[JsonInclude]
 	public float ArrowUISelectedColorMultiplier
 	{
-		get => ArrowUISelectedColorMultiplierInternal;
+		get;
 		set
 		{
-			ArrowUISelectedColorMultiplierInternal = value;
+			field = value;
 			RefreshCachedColors();
 		}
-	}
-
-	private float ArrowUISelectedColorMultiplierInternal = DefaultArrowUISelectedColorMultiplier;
+	} = DefaultArrowUISelectedColorMultiplier;
 
 	[JsonInclude]
 	public float PiuHoldSaturationMultiplier
 	{
-		get => PiuHoldSaturationMultiplierInternal;
+		get;
 		set
 		{
-			PiuHoldSaturationMultiplierInternal = value;
+			field = value;
 			RefreshCachedColors();
 		}
-	}
-
-	private float PiuHoldSaturationMultiplierInternal = DefaultPiuHoldSaturationMultiplier;
+	} = DefaultPiuHoldSaturationMultiplier;
 
 	[JsonInclude]
 	public bool UseRowBasedColoringForPiu
 	{
-		get => UseRowBasedColoringForPiuInternal;
+		get;
 		set
 		{
-			UseRowBasedColoringForPiuInternal = value;
+			field = value;
 			Notify(NotificationPiuColoringMethodChanged, this);
 		}
-	}
-
-	private bool UseRowBasedColoringForPiuInternal = DefaultUseRowBasedColoringForPiu;
+	} = DefaultUseRowBasedColoringForPiu;
 
 	[JsonInclude] [JsonPropertyName("ColorHoldsAndRolls")]
 	public bool ColorMultiplayerHoldsAndRolls = DefaultColorMultiplayerHoldsAndRolls;
@@ -247,340 +235,288 @@ internal sealed class PreferencesNoteColor : Notifier<PreferencesNoteColor>
 	[JsonInclude]
 	public float RoutineNoteColorAlpha
 	{
-		get => RoutineNoteColorAlphaInternal;
+		get;
 		set
 		{
-			RoutineNoteColorAlphaInternal = value;
+			field = value;
 			RefreshCachedColors();
 		}
-	}
-
-	private float RoutineNoteColorAlphaInternal = DefaultRoutineNoteColorAlpha;
+	} = DefaultRoutineNoteColorAlpha;
 
 	[JsonInclude]
 	public Vector3 Player0Color
 	{
-		get => Player0ColorInternal;
+		get;
 		set
 		{
-			Player0ColorInternal = value;
+			field = value;
 			RefreshCachedColors();
 		}
-	}
-
-	private Vector3 Player0ColorInternal = DefaultPlayer0Color;
+	} = DefaultPlayer0Color;
 
 	[JsonInclude]
 	public Vector3 Player1Color
 	{
-		get => Player1ColorInternal;
+		get;
 		set
 		{
-			Player1ColorInternal = value;
+			field = value;
 			RefreshCachedColors();
 		}
-	}
-
-	private Vector3 Player1ColorInternal = DefaultPlayer1Color;
+	} = DefaultPlayer1Color;
 
 	[JsonInclude]
 	public Vector3 Player2Color
 	{
-		get => Player2ColorInternal;
+		get;
 		set
 		{
-			Player2ColorInternal = value;
+			field = value;
 			RefreshCachedColors();
 		}
-	}
-
-	private Vector3 Player2ColorInternal = DefaultPlayer2Color;
+	} = DefaultPlayer2Color;
 
 	[JsonInclude]
 	public Vector3 Player3Color
 	{
-		get => Player3ColorInternal;
+		get;
 		set
 		{
-			Player3ColorInternal = value;
+			field = value;
 			RefreshCachedColors();
 		}
-	}
-
-	private Vector3 Player3ColorInternal = DefaultPlayer3Color;
+	} = DefaultPlayer3Color;
 
 	[JsonInclude]
 	public Vector3 Player4Color
 	{
-		get => Player4ColorInternal;
+		get;
 		set
 		{
-			Player4ColorInternal = value;
+			field = value;
 			RefreshCachedColors();
 		}
-	}
-
-	private Vector3 Player4ColorInternal = DefaultPlayer4Color;
+	} = DefaultPlayer4Color;
 
 	[JsonInclude]
 	public Vector3 Player5Color
 	{
-		get => Player5ColorInternal;
+		get;
 		set
 		{
-			Player5ColorInternal = value;
+			field = value;
 			RefreshCachedColors();
 		}
-	}
-
-	private Vector3 Player5ColorInternal = DefaultPlayer5Color;
+	} = DefaultPlayer5Color;
 
 	[JsonInclude]
 	public Vector3 Player6Color
 	{
-		get => Player6ColorInternal;
+		get;
 		set
 		{
-			Player6ColorInternal = value;
+			field = value;
 			RefreshCachedColors();
 		}
-	}
-
-	private Vector3 Player6ColorInternal = DefaultPlayer6Color;
+	} = DefaultPlayer6Color;
 
 	[JsonInclude]
 	public Vector3 Player7Color
 	{
-		get => Player7ColorInternal;
+		get;
 		set
 		{
-			Player7ColorInternal = value;
+			field = value;
 			RefreshCachedColors();
 		}
-	}
-
-	private Vector3 Player7ColorInternal = DefaultPlayer7Color;
+	} = DefaultPlayer7Color;
 
 	[JsonInclude]
 	public Vector3 Player8Color
 	{
-		get => Player8ColorInternal;
+		get;
 		set
 		{
-			Player8ColorInternal = value;
+			field = value;
 			RefreshCachedColors();
 		}
-	}
-
-	private Vector3 Player8ColorInternal = DefaultPlayer8Color;
+	} = DefaultPlayer8Color;
 
 	[JsonInclude]
 	public Vector3 Player9Color
 	{
-		get => Player9ColorInternal;
+		get;
 		set
 		{
-			Player9ColorInternal = value;
+			field = value;
 			RefreshCachedColors();
 		}
-	}
-
-	private Vector3 Player9ColorInternal = DefaultPlayer9Color;
+	} = DefaultPlayer9Color;
 
 	[JsonInclude]
 	public Vector3 QuarterColor
 	{
-		get => QuarterColorInternal;
+		get;
 		set
 		{
-			QuarterColorInternal = value;
+			field = value;
 			RefreshCachedColors();
 		}
-	}
-
-	private Vector3 QuarterColorInternal = DefaultNoteColors[(int)ColorSet.Grooveauthor].Quarter;
+	} = DefaultNoteColors[(int)ColorSet.Grooveauthor].Quarter;
 
 	[JsonInclude]
 	public Vector3 EighthColor
 	{
-		get => EighthColorInternal;
+		get;
 		set
 		{
-			EighthColorInternal = value;
+			field = value;
 			RefreshCachedColors();
 		}
-	}
-
-	private Vector3 EighthColorInternal = DefaultNoteColors[(int)ColorSet.Grooveauthor].Eighth;
+	} = DefaultNoteColors[(int)ColorSet.Grooveauthor].Eighth;
 
 	[JsonInclude]
 	public Vector3 TwelfthColor
 	{
-		get => TwelfthColorInternal;
+		get;
 		set
 		{
-			TwelfthColorInternal = value;
+			field = value;
 			RefreshCachedColors();
 		}
-	}
-
-	private Vector3 TwelfthColorInternal = DefaultNoteColors[(int)ColorSet.Grooveauthor].Twelfth;
+	} = DefaultNoteColors[(int)ColorSet.Grooveauthor].Twelfth;
 
 	[JsonInclude]
 	public Vector3 SixteenthColor
 	{
-		get => SixteenthColorInternal;
+		get;
 		set
 		{
-			SixteenthColorInternal = value;
+			field = value;
 			RefreshCachedColors();
 		}
-	}
-
-	private Vector3 SixteenthColorInternal = DefaultNoteColors[(int)ColorSet.Grooveauthor].Sixteenth;
+	} = DefaultNoteColors[(int)ColorSet.Grooveauthor].Sixteenth;
 
 	[JsonInclude]
 	public Vector3 TwentyForthColor
 	{
-		get => TwentyForthColorInternal;
+		get;
 		set
 		{
-			TwentyForthColorInternal = value;
+			field = value;
 			RefreshCachedColors();
 		}
-	}
-
-	private Vector3 TwentyForthColorInternal = DefaultNoteColors[(int)ColorSet.Grooveauthor].TwentyForth;
+	} = DefaultNoteColors[(int)ColorSet.Grooveauthor].TwentyForth;
 
 	[JsonInclude]
 	public Vector3 ThirtySecondColor
 	{
-		get => ThirtySecondColorInternal;
+		get;
 		set
 		{
-			ThirtySecondColorInternal = value;
+			field = value;
 			RefreshCachedColors();
 		}
-	}
-
-	private Vector3 ThirtySecondColorInternal = DefaultNoteColors[(int)ColorSet.Grooveauthor].ThirtySecond;
+	} = DefaultNoteColors[(int)ColorSet.Grooveauthor].ThirtySecond;
 
 	[JsonInclude]
 	public Vector3 FortyEighthColor
 	{
-		get => FortyEighthColorInternal;
+		get;
 		set
 		{
-			FortyEighthColorInternal = value;
+			field = value;
 			RefreshCachedColors();
 		}
-	}
-
-	private Vector3 FortyEighthColorInternal = DefaultNoteColors[(int)ColorSet.Grooveauthor].FortyEighth;
+	} = DefaultNoteColors[(int)ColorSet.Grooveauthor].FortyEighth;
 
 	[JsonInclude]
 	public Vector3 SixtyForthColor
 	{
-		get => SixtyForthColorInternal;
+		get;
 		set
 		{
-			SixtyForthColorInternal = value;
+			field = value;
 			RefreshCachedColors();
 		}
-	}
-
-	private Vector3 SixtyForthColorInternal = DefaultNoteColors[(int)ColorSet.Grooveauthor].SixtyForth;
+	} = DefaultNoteColors[(int)ColorSet.Grooveauthor].SixtyForth;
 
 	[JsonInclude]
 	public Vector3 OneHundredNinetySecondColor
 	{
-		get => OneHundredNinetySecondColorInternal;
+		get;
 		set
 		{
-			OneHundredNinetySecondColorInternal = value;
+			field = value;
 			RefreshCachedColors();
 		}
-	}
-
-	private Vector3 OneHundredNinetySecondColorInternal = DefaultNoteColors[(int)ColorSet.Grooveauthor].OneHundredNinetySecond;
+	} = DefaultNoteColors[(int)ColorSet.Grooveauthor].OneHundredNinetySecond;
 
 	[JsonInclude]
 	public Vector3 PiuTopColor
 	{
-		get => PiuTopColorInternal;
+		get;
 		set
 		{
-			PiuTopColorInternal = value;
+			field = value;
 			RefreshCachedColors();
 		}
-	}
-
-	private Vector3 PiuTopColorInternal = DefaultPiuTopColor;
+	} = DefaultPiuTopColor;
 
 	[JsonInclude]
 	public Vector3 PiuMiddleColor
 	{
-		get => PiuMiddleColorInternal;
+		get;
 		set
 		{
-			PiuMiddleColorInternal = value;
+			field = value;
 			RefreshCachedColors();
 		}
-	}
-
-	private Vector3 PiuMiddleColorInternal = DefaultPiuMiddleColor;
+	} = DefaultPiuMiddleColor;
 
 	[JsonInclude]
 	public Vector3 PiuBottomColor
 	{
-		get => PiuBottomColorInternal;
+		get;
 		set
 		{
-			PiuBottomColorInternal = value;
+			field = value;
 			RefreshCachedColors();
 		}
-	}
-
-	private Vector3 PiuBottomColorInternal = DefaultPiuBottomColor;
+	} = DefaultPiuBottomColor;
 
 	[JsonInclude]
 	public Vector3 HoldColor
 	{
-		get => HoldColorInternal;
+		get;
 		set
 		{
-			HoldColorInternal = value;
+			field = value;
 			RefreshCachedColors();
 		}
-	}
-
-	private Vector3 HoldColorInternal = DefaultNoteColors[(int)ColorSet.Grooveauthor].Hold;
+	} = DefaultNoteColors[(int)ColorSet.Grooveauthor].Hold;
 
 	[JsonInclude]
 	public Vector3 RollColor
 	{
-		get => RollColorInternal;
+		get;
 		set
 		{
-			RollColorInternal = value;
+			field = value;
 			RefreshCachedColors();
 		}
-	}
-
-	private Vector3 RollColorInternal = DefaultNoteColors[(int)ColorSet.Grooveauthor].Roll;
+	} = DefaultNoteColors[(int)ColorSet.Grooveauthor].Roll;
 
 	[JsonInclude]
 	public Vector3 MineColor
 	{
-		get => MineColorInternal;
+		get;
 		set
 		{
-			MineColorInternal = value;
+			field = value;
 			RefreshCachedColors();
 		}
-	}
-
-	private Vector3 MineColorInternal = DefaultNoteColors[(int)ColorSet.Grooveauthor].Mine;
+	} = DefaultNoteColors[(int)ColorSet.Grooveauthor].Mine;
 
 	private class PerPlayerNoteColors
 	{

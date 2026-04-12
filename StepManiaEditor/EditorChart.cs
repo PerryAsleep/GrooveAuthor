@@ -2282,7 +2282,6 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 				var simultaneousDelay = RateAlteringEvents.FindEventAtRow<EditorDelayEvent>(row);
 				if (simultaneousDelay != null)
 					continue;
-				return true;
 			}
 
 			return true;

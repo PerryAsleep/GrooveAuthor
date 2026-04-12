@@ -321,7 +321,7 @@ internal sealed class EditorSongImageUtils
 	/// Given a path to a directory, finds the best lyrics file.
 	/// </summary>
 	/// <param name="directory">Full path to the directory.</param>
-	/// <returns>Relative path to best lyrics file.</returns>
+	/// <returns>Relative path to the best lyrics file.</returns>
 	public static string TryFindBestLyrics(string directory)
 	{
 		try
@@ -342,7 +342,7 @@ internal sealed class EditorSongImageUtils
 	/// </summary>
 	/// <param name="directory">Full path to the directory.</param>
 	/// <param name="files">Files to search.</param>
-	/// <returns>Relative path to best lyrics file.</returns>
+	/// <returns>Relative path to the best lyrics file.</returns>
 	public static string TryFindBestLyrics(string directory, string[] files)
 	{
 		try

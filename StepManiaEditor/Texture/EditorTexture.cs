@@ -1,6 +1,6 @@
 ﻿using System;
 using System.IO;
-using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Fumen;
 using Microsoft.Xna.Framework.Graphics;
@@ -276,7 +276,7 @@ internal sealed class EditorTexture : IDisposable
 	private readonly uint Width;
 	private readonly uint Height;
 
-	private readonly object TextureSwapLock = new();
+	private readonly Lock TextureSwapLock = new();
 
 	/// <summary>
 	/// Constructor.

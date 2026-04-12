@@ -10,7 +10,7 @@ internal sealed class BuildWindows : Build
 	public BuildWindows() : base(
 		"win-x64",
 		"StepManiaEditorWindows",
-		"net8.0-windows7.0",
+		"net10.0-windows7.0",
 		"GrooveAuthor.exe")
 	{
 	}

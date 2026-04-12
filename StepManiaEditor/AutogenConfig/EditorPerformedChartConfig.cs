@@ -89,41 +89,35 @@ internal sealed class EditorPerformedChartConfig :
 	[JsonInclude]
 	public int TravelSpeedNoteTypeDenominatorIndex
 	{
-		get => TravelSpeedNoteTypeDenominatorIndexInternal;
+		get;
 		set
 		{
-			TravelSpeedNoteTypeDenominatorIndexInternal = MathUtils.Clamp(value, 0, ValidDenominators.Length - 1);
+			field = MathUtils.Clamp(value, 0, ValidDenominators.Length - 1);
 			UpdateStepTighteningSpeed();
 		}
 	}
-
-	private int TravelSpeedNoteTypeDenominatorIndexInternal;
 
 	[JsonInclude]
 	public int TravelSpeedMinBPM
 	{
-		get => TravelSpeedMinBPMInternal;
+		get;
 		set
 		{
-			TravelSpeedMinBPMInternal = value;
+			field = value;
 			UpdateStepTighteningSpeed();
 		}
-	}
-
-	private int TravelSpeedMinBPMInternal = 1;
+	} = 1;
 
 	[JsonInclude]
 	public int TravelSpeedMaxBPM
 	{
-		get => TravelSpeedMaxBPMInternal;
+		get;
 		set
 		{
-			TravelSpeedMaxBPMInternal = value;
+			field = value;
 			UpdateStepTighteningSpeed();
 		}
-	}
-
-	private int TravelSpeedMaxBPMInternal = 1;
+	} = 1;
 
 	/// <summary>
 	/// Optional short string representation of this EditorPerformedChartConfig.

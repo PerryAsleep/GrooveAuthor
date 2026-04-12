@@ -44,108 +44,100 @@ internal sealed class PreferencesStream : Notifier<PreferencesStream>
 	[JsonInclude]
 	public SubdivisionType NoteType
 	{
-		get => NoteTypeInternal;
+		get;
 		set
 		{
-			if (NoteTypeInternal != value)
+			if (field != value)
 			{
-				NoteTypeInternal = value;
+				field = value;
 				Notify(NotificationNoteTypeChanged, this);
 			}
 		}
-	}
+	} = DefaultNoteType;
 
 	[JsonInclude]
 	public StepAccumulationType AccumulationType
 	{
-		get => AccumulationTypeInternal;
+		get;
 		set
 		{
-			if (AccumulationTypeInternal != value)
+			if (field != value)
 			{
-				AccumulationTypeInternal = value;
+				field = value;
 				Notify(NotificationAccumulationTypeChanged, this);
 			}
 		}
-	}
+	} = DefaultAccumulationType;
 
 	[JsonInclude]
 	public bool ShowBreakLengths
 	{
-		get => ShowBreakLengthsInternal;
+		get;
 		set
 		{
-			if (ShowBreakLengthsInternal != value)
+			if (field != value)
 			{
-				ShowBreakLengthsInternal = value;
+				field = value;
 				Notify(NotificationStreamTextParametersChanged, this);
 			}
 		}
-	}
+	} = DefaultShowBreakLengths;
 
 	[JsonInclude]
 	public int MinimumLengthToConsiderStream
 	{
-		get => MinimumLengthToConsiderStreamInternal;
+		get;
 		set
 		{
-			if (MinimumLengthToConsiderStreamInternal != value)
+			if (field != value)
 			{
-				MinimumLengthToConsiderStreamInternal = value;
+				field = value;
 				Notify(NotificationStreamTextParametersChanged, this);
 			}
 		}
-	}
+	} = DefaultMinimumLengthToConsiderStream;
 
 	[JsonInclude]
 	public int ShortBreakCutoff
 	{
-		get => ShortBreakCutoffInternal;
+		get;
 		set
 		{
-			if (ShortBreakCutoffInternal != value)
+			if (field != value)
 			{
-				ShortBreakCutoffInternal = value;
+				field = value;
 				Notify(NotificationStreamTextParametersChanged, this);
 			}
 		}
-	}
+	} = DefaultShortBreakCutoff;
 
 	[JsonInclude]
 	public char ShortBreakCharacter
 	{
-		get => ShortBreakCharacterInternal;
+		get;
 		set
 		{
-			if (ShortBreakCharacterInternal != value)
+			if (field != value)
 			{
-				ShortBreakCharacterInternal = value;
+				field = value;
 				Notify(NotificationStreamTextParametersChanged, this);
 			}
 		}
-	}
+	} = DefaultShortBreakCharacter;
 
 	[JsonInclude]
 	public char LongBreakCharacter
 	{
-		get => LongBreakCharacterInternal;
+		get;
 		set
 		{
-			if (LongBreakCharacterInternal != value)
+			if (field != value)
 			{
-				LongBreakCharacterInternal = value;
+				field = value;
 				Notify(NotificationStreamTextParametersChanged, this);
 			}
 		}
-	}
-
-	private SubdivisionType NoteTypeInternal = DefaultNoteType;
-	private StepAccumulationType AccumulationTypeInternal = DefaultAccumulationType;
-	private bool ShowBreakLengthsInternal = DefaultShowBreakLengths;
-	private int MinimumLengthToConsiderStreamInternal = DefaultMinimumLengthToConsiderStream;
-	private int ShortBreakCutoffInternal = DefaultShortBreakCutoff;
-	private char ShortBreakCharacterInternal = DefaultShortBreakCharacter;
-	private char LongBreakCharacterInternal = DefaultLongBreakCharacter;
+	} = DefaultLongBreakCharacter;
 
 	public static void RegisterDefaultsForInvalidEnumValues(PermissiveEnumJsonConverterFactory factory)
 	{

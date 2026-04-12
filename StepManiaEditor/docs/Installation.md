@@ -1,6 +1,6 @@
 # Installation
 
-`GrooveAuthor` requires [.Net Runtime 8.0](https://dotnet.microsoft.com/en-us/download/dotnet/8.0).
+`GrooveAuthor` requires [.Net Runtime 10.0](https://dotnet.microsoft.com/en-us/download/dotnet/10.0).
 
 ## Windows
 
@@ -12,7 +12,7 @@
 ## Linux
 
 1. Download the latest `linux-x64` `tar.gz` file from the [Releases](https://github.com/PerryAsleep/GrooveAuthor/releases) page and extract it.
-2. Ensure you have [.Net Runtime 8.0](https://dotnet.microsoft.com/en-us/download/dotnet/8.0) installed. If you encounter any errors installing see [Install .NET on Linux](https://learn.microsoft.com/en-us/dotnet/core/install/linux) for detailed instructions.
+2. Ensure you have [.Net Runtime 10.0](https://dotnet.microsoft.com/en-us/download/dotnet/10.0) installed. If you encounter any errors installing see [Install .NET on Linux](https://learn.microsoft.com/en-us/dotnet/core/install/linux) for detailed instructions.
 3. Inside the extracted directory run the `grooveauthor-install.sh` script with `sudo`. The [grooveauthor-install.sh](../../StepManiaEditorLinux/install.sh) script will install `GrooveAuthor` to `/opt` and set up a desktop entry in `/usr/share/applications`
     ```
     sudo ./grooveauthor-install.sh
@@ -37,7 +37,7 @@ yay -S grooveauthor-bin
 `GrooveAuthor` requires MacOS 11.0 or greater.
 
 1. Download the latest `mac` `dmg` file for your architecture from the [Releases](https://github.com/PerryAsleep/GrooveAuthor/releases) page and run it. If your Mac has an Apple Silicon CPU you should use the `arm64` release. If your Mac has an Intel CPU you should use the `x64` release.
-2. Ensure you have [.Net Runtime 8.0](https://dotnet.microsoft.com/en-us/download/dotnet/8.0) installed. If you encounter any errors installing see [Install .NET on macOS](https://learn.microsoft.com/en-us/dotnet/core/install/macos) for detailed instructions.
+2. Ensure you have [.Net Runtime 10.0](https://dotnet.microsoft.com/en-us/download/dotnet/10.0) installed. If you encounter any errors installing see [Install .NET on macOS](https://learn.microsoft.com/en-us/dotnet/core/install/macos) for detailed instructions.
 3. Copy `GrooveAuthor.app` to the `/Applications` directory.
 4. Run the following command to remove the quarantine that Apple places on unsigned applications.
     ```

@@ -138,21 +138,19 @@ internal sealed class EditorWarpEvent : EditorRateAlteringEvent, IEquatable<Edit
 	/// loading the chart for example, this could crash. By lazily setting it we avoid this
 	/// problem as long as we assume the caller of GetW() happens on the main thread.
 	/// </remarks>
-	private double WidthInternal;
-
 	public override double W
 	{
 		get
 		{
 			if (WidthDirty)
 			{
-				WidthInternal = ImGuiLayoutUtils.GetMiscEditorEventDragIntWidgetWidth(IntValue, Format);
+				field = ImGuiLayoutUtils.GetMiscEditorEventDragIntWidgetWidth(IntValue, Format);
 				WidthDirty = false;
 			}
 
-			return WidthInternal;
+			return field;
 		}
-		set => WidthInternal = value;
+		set;
 	}
 
 	public override double H

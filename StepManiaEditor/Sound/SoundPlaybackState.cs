@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 
 namespace StepManiaEditor;
 
@@ -28,7 +29,7 @@ internal sealed class SoundPlaybackState : IDisposable
 	/// <summary>
 	/// Lock for updating state in a thread-safe manner.
 	/// </summary>
-	private readonly object Lock = new();
+	private readonly Lock Lock = new();
 
 	/// <summary>
 	/// Constructor
@@ -139,7 +140,7 @@ internal sealed class SoundPlaybackState : IDisposable
 	/// reconsidered.
 	/// </remarks>
 	/// <returns>Lock object for mutating this EditorSound.</returns>
-	public object GetLock()
+	public Lock GetLock()
 	{
 		return Lock;
 	}

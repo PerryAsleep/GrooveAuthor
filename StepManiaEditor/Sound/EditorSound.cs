@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
 using Fumen;
 
@@ -205,7 +206,7 @@ internal sealed class EditorSound : Notifier<EditorSound>, IDisposable
 	/// <summary>
 	/// Lock for mutating NumChannels and SampleData together.
 	/// </summary>
-	private readonly object SampleLock = new();
+	private readonly Lock SampleLock = new();
 
 	/// <summary>
 	/// Number of channels in the SampleData.

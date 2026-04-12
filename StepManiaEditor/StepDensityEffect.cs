@@ -51,7 +51,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 	/// </summary>
 	internal sealed class CreatePrimitivesState
 	{
-		private readonly object Lock = new();
+		private readonly Lock Lock = new();
 
 		private readonly DynamicArray<Measure> EnqueuedMeasures = new(MinNumMeasures);
 		private double FinalTime;
@@ -204,7 +204,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 	/// <summary>
 	/// Lock for data computed from the StepDensity measure data.
 	/// </summary>
-	private readonly object DataLock = new();
+	private readonly Lock DataLock = new();
 
 	/// <summary>
 	/// Primitive vertex array.

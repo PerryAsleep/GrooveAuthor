@@ -80,32 +80,32 @@ internal sealed class PreferencesDensityGraph : Notifier<PreferencesDensityGraph
 	[JsonInclude]
 	public bool ShowDensityGraph
 	{
-		get => ShowDensityGraphInternal;
+		get;
 		set
 		{
-			if (ShowDensityGraphInternal != value)
+			if (field != value)
 			{
-				ShowDensityGraphInternal = value;
+				field = value;
 				Notify(NotificationShowDensityGraphChanged, this);
 			}
 		}
-	}
+	} = DefaultShowDensityGraph;
 
 	[JsonInclude] public bool ShowStream = DefaultShowStream;
 
 	[JsonInclude]
 	public StepAccumulationType AccumulationType
 	{
-		get => AccumulationTypeInternal;
+		get;
 		set
 		{
-			if (AccumulationTypeInternal != value)
+			if (field != value)
 			{
-				AccumulationTypeInternal = value;
+				field = value;
 				Notify(NotificationAccumulationTypeChanged, this);
 			}
 		}
-	}
+	} = DefaultAccumulationType;
 
 	[JsonInclude] public DensityGraphPosition DensityGraphPositionValue = DefaultDensityGraphPositionValue;
 	[JsonInclude] public int DensityGraphHeight = DefaultDensityGraphHeight;
@@ -113,68 +113,61 @@ internal sealed class PreferencesDensityGraph : Notifier<PreferencesDensityGraph
 	[JsonInclude]
 	public DensityGraphColorMode DensityGraphColorModeValue
 	{
-		get => DensityGraphColorModeValueInternal;
+		get;
 		set
 		{
-			if (DensityGraphColorModeValueInternal != value)
+			if (field != value)
 			{
-				DensityGraphColorModeValueInternal = value;
+				field = value;
 				Notify(NotificationDensityGraphColorModeChanged, this);
 			}
 		}
-	}
+	} = DefaultDensityGraphColorModeValue;
 
 	[JsonInclude]
 	public Vector4 DensityGraphLowColor
 	{
-		get => DensityGraphLowColorInternal;
+		get;
 		set
 		{
-			if (DensityGraphLowColorInternal != value)
+			if (field != value)
 			{
-				DensityGraphLowColorInternal = value;
+				field = value;
 				Notify(NotificationDensityGraphColorsChanged, this);
 			}
 		}
-	}
+	} = DefaultDensityGraphLowColor;
 
 	[JsonInclude]
 	public Vector4 DensityGraphHighColor
 	{
-		get => DensityGraphHighColorInternal;
+		get;
 		set
 		{
-			if (DensityGraphHighColorInternal != value)
+			if (field != value)
 			{
-				DensityGraphHighColorInternal = value;
+				field = value;
 				Notify(NotificationDensityGraphColorsChanged, this);
 			}
 		}
-	}
+	} = DefaultDensityGraphHighColor;
 
 	[JsonInclude]
 	public Vector4 DensityGraphBackgroundColor
 	{
-		get => DensityGraphBackgroundColorInternal;
+		get;
 		set
 		{
-			if (DensityGraphBackgroundColorInternal != value)
+			if (field != value)
 			{
-				DensityGraphBackgroundColorInternal = value;
+				field = value;
 				Notify(NotificationDensityGraphColorsChanged, this);
 			}
 		}
-	}
+	} = DefaultDensityGraphBackgroundColor;
 
 	[JsonInclude] public Dictionary<DensityGraphPosition, int> DensityGraphPositionOffsets = new();
 	[JsonInclude] public Dictionary<DensityGraphPosition, int> DensityGraphWidthOffsets = new();
-
-	private bool ShowDensityGraphInternal = DefaultShowDensityGraph;
-	private StepAccumulationType AccumulationTypeInternal = DefaultAccumulationType;
-	private DensityGraphColorMode DensityGraphColorModeValueInternal = DefaultDensityGraphColorModeValue;
-	private Vector4 DensityGraphLowColorInternal = DefaultDensityGraphLowColor;
-	private Vector4 DensityGraphHighColorInternal = DefaultDensityGraphHighColor;
-	private Vector4 DensityGraphBackgroundColorInternal = DefaultDensityGraphBackgroundColor;
 
 	[JsonIgnore]
 	public int DensityGraphPositionOffset

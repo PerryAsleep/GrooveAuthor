@@ -64,7 +64,7 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 	/// <summary>
 	/// The ChartPosition as a double. EditorEvents with a ChartEvent are expected to have
 	/// integer values for their ChartPosition/Row/IntegerPosition. EditorEvents created
-	/// from properties which only include time values may have non-integer ChartPosition
+	/// from properties which only include time values may have noninteger ChartPosition
 	/// values.
 	/// </summary>
 	protected double ChartPosition;
@@ -909,7 +909,7 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 		}
 
 		// Sort by position as a double first. We position certain EditorEvents that
-		// don't correspond to a Stepmania event (like the preview) at non-integer
+		// don't correspond to a Stepmania event (like the preview) at noninteger
 		// positions. Under normal circumstances (using only integer rows), this check
 		// would be redundant with the SMCommon comparison below.
 		var comparison = GetChartPosition().CompareTo(other.GetChartPosition());

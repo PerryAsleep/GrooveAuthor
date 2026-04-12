@@ -317,21 +317,19 @@ internal sealed class EditorPatternEvent : EditorEvent, IEquatable<EditorPattern
 	/// loading the chart for example, this could crash. By lazily setting it we avoid this
 	/// problem as long as we assume the caller of GetW() happens on the main thread.
 	/// </remarks>
-	private double WidthInternal;
-
 	public override double W
 	{
 		get
 		{
 			if (WidthDirty)
 			{
-				WidthInternal = ImGuiLayoutUtils.GetMiscEditorEventStringWidth(GetMiscEventText());
+				field = ImGuiLayoutUtils.GetMiscEditorEventStringWidth(GetMiscEventText());
 				WidthDirty = false;
 			}
 
-			return WidthInternal;
+			return field;
 		}
-		set => WidthInternal = value;
+		set;
 	}
 
 	public override double H

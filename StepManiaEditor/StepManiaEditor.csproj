@@ -1,6 +1,6 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 	<PropertyGroup>
-		<TargetFramework>net8.0</TargetFramework>
+		<TargetFramework>net10.0</TargetFramework>
 		<PublishReadyToRun>false</PublishReadyToRun>
 		<TieredCompilation>false</TieredCompilation>
 		<DisableFastUpToDateCheck>true</DisableFastUpToDateCheck>
@@ -28,7 +28,6 @@
 	</ItemGroup>
 	<ItemGroup>
 		<PackageReference Include="SkiaSharp" Version="3.116.1" />
-		<PackageReference Include="System.Text.Json" Version="9.0.0" />
 	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\ImGui.NET\src\ImGui.NET\ImGui.NET.csproj" />

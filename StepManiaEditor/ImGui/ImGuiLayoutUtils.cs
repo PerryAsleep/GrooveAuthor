@@ -6,7 +6,6 @@ using ImGuiNET;
 using StepManiaEditor.AutogenConfig;
 using StepManiaEditor.EditorActions;
 using StepManiaLibrary.PerformedChart;
-using static Fumen.FumenExtensions;
 using static StepManiaEditor.ImGuiUtils;
 using static StepManiaEditor.Utils;
 using static Fumen.Converters.SMCommon;

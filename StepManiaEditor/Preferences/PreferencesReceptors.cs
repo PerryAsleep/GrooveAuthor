@@ -45,52 +45,49 @@ internal sealed class PreferencesReceptors
 	[JsonPropertyName("PositionX")]
 	public int ChartSpacePositionX
 	{
-		get => ChartSpacePositionXInternal;
+		get;
 		set
 		{
-			ChartSpacePositionXInternal = value;
+			field = value;
 			if (Editor != null && Editor.GetChartAreaInChartSpaceWithoutHeader(out var chartArea))
 			{
-				if (ChartSpacePositionXInternal < chartArea.X)
-					ChartSpacePositionXInternal = chartArea.X;
-				if (ChartSpacePositionXInternal >= chartArea.Width)
-					ChartSpacePositionXInternal = chartArea.Width - 1;
+				if (field < chartArea.X)
+					field = chartArea.X;
+				if (field >= chartArea.Width)
+					field = chartArea.Width - 1;
 			}
 			else
 			{
-				if (ChartSpacePositionXInternal < 0)
-					ChartSpacePositionXInternal = 0;
+				if (field < 0)
+					field = 0;
 			}
 		}
-	}
+	} = DefaultChartSpacePositionX;
 
 	[JsonInclude]
 	[JsonPropertyName("PositionY")]
 	public int ChartSpacePositionY
 	{
-		get => ChartSpacePositionYInternal;
+		get;
 		set
 		{
-			ChartSpacePositionYInternal = value;
-			if (ChartSpacePositionYInternal < 0)
-				ChartSpacePositionYInternal = 0;
+			field = value;
+			if (field < 0)
+				field = 0;
 			if (Editor != null && Editor.GetChartAreaInChartSpaceWithoutHeader(out var chartArea))
 			{
-				if (ChartSpacePositionYInternal < chartArea.Y)
-					ChartSpacePositionYInternal = chartArea.Y;
-				if (ChartSpacePositionYInternal >= chartArea.Height)
-					ChartSpacePositionYInternal = chartArea.Height - 1;
+				if (field < chartArea.Y)
+					field = chartArea.Y;
+				if (field >= chartArea.Height)
+					field = chartArea.Height - 1;
 			}
 			else
 			{
-				if (ChartSpacePositionYInternal < 0)
-					ChartSpacePositionYInternal = 0;
+				if (field < 0)
+					field = 0;
 			}
 		}
-	}
-
-	private int ChartSpacePositionXInternal = DefaultChartSpacePositionX;
-	private int ChartSpacePositionYInternal = DefaultChartSpacePositionY;
+	} = DefaultChartSpacePositionY;
 
 	public void SetEditor(Editor editor)
 	{

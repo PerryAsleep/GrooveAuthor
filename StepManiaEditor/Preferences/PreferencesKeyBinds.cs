@@ -344,2223 +344,1883 @@ internal sealed class PreferencesKeyBinds : Notifier<PreferencesKeyBinds>
 	// .*private static readonly List\<Keys\[\]\> Default([a-zA-Z0-9]+) +.*;
 	// Replace with this:
 	// ReSharper disable CommentTypo
-	// \t[JsonInclude]\r\n\tpublic List<Keys[]> $1\r\n\t{\r\n\t\tget => $1Internal;\r\n\t\tset\r\n\t\t{\r\n\t\t\t$1Internal = value;\r\n\t\t\tNotify(NotificationKeyBindingChanged, this, nameof($1));\r\n\t\t}\r\n\t}\r\n\tprivate List<Keys[]> $1Internal = Default$1;\r\n\r\n
+	// \t[JsonInclude]\r\n\tpublic List<Keys[]> $1\r\n\t{\r\n\t\tget;\r\n\t\tset\r\n\t\t{\r\n\t\t\tfield = value;\r\n\t\t\tNotify(NotificationKeyBindingChanged, this, nameof($1));\r\n\t\t}\r\n\t} = Default$1;\r\n\r\n
 	// ReSharper restore CommentTypo
 
 	[JsonInclude]
 	public List<Keys[]> Open
 	{
-		get => OpenInternal;
+		get;
 		set
 		{
-			OpenInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(Open));
 		}
-	}
-
-	private List<Keys[]> OpenInternal = DefaultOpen;
+	} = DefaultOpen;
 
 	[JsonInclude]
 	public List<Keys[]> OpenContainingFolder
 	{
-		get => OpenContainingFolderInternal;
+		get;
 		set
 		{
-			OpenContainingFolderInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(OpenContainingFolder));
 		}
-	}
-
-	private List<Keys[]> OpenContainingFolderInternal = DefaultOpenContainingFolder;
+	} = DefaultOpenContainingFolder;
 
 	[JsonInclude]
 	public List<Keys[]> SaveAs
 	{
-		get => SaveAsInternal;
+		get;
 		set
 		{
-			SaveAsInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SaveAs));
 		}
-	}
-
-	private List<Keys[]> SaveAsInternal = DefaultSaveAs;
+	} = DefaultSaveAs;
 
 	[JsonInclude]
 	public List<Keys[]> Save
 	{
-		get => SaveInternal;
+		get;
 		set
 		{
-			SaveInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(Save));
 		}
-	}
-
-	private List<Keys[]> SaveInternal = DefaultSave;
+	} = DefaultSave;
 
 	[JsonInclude]
 	public List<Keys[]> SavePackFile
 	{
-		get => SavePackFileInternal;
+		get;
 		set
 		{
-			SavePackFileInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SavePackFile));
 		}
-	}
-
-	private List<Keys[]> SavePackFileInternal = DefaultSavePackFile;
+	} = DefaultSavePackFile;
 
 	[JsonInclude]
 	public List<Keys[]> New
 	{
-		get => NewInternal;
+		get;
 		set
 		{
-			NewInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(New));
 		}
-	}
-
-	private List<Keys[]> NewInternal = DefaultNew;
+	} = DefaultNew;
 
 	[JsonInclude]
 	public List<Keys[]> Reload
 	{
-		get => ReloadInternal;
+		get;
 		set
 		{
-			ReloadInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(Reload));
 		}
-	}
-
-	private List<Keys[]> ReloadInternal = DefaultReload;
+	} = DefaultReload;
 
 	[JsonInclude]
 	public List<Keys[]> Close
 	{
-		get => CloseInternal;
+		get;
 		set
 		{
-			CloseInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(Close));
 		}
-	}
-
-	private List<Keys[]> CloseInternal = DefaultClose;
+	} = DefaultClose;
 
 	[JsonInclude]
 	public List<Keys[]> Exit
 	{
-		get => ExitInternal;
+		get;
 		set
 		{
-			ExitInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(Exit));
 		}
-	}
-
-	private List<Keys[]> ExitInternal = DefaultExit;
+	} = DefaultExit;
 
 	[JsonInclude]
 	public List<Keys[]> Undo
 	{
-		get => UndoInternal;
+		get;
 		set
 		{
-			UndoInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(Undo));
 		}
-	}
-
-	private List<Keys[]> UndoInternal = DefaultUndo;
+	} = DefaultUndo;
 
 	[JsonInclude]
 	public List<Keys[]> Redo
 	{
-		get => RedoInternal;
+		get;
 		set
 		{
-			RedoInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(Redo));
 		}
-	}
-
-	private List<Keys[]> RedoInternal = DefaultRedo;
+	} = DefaultRedo;
 
 	[JsonInclude]
 	public List<Keys[]> SelectRowRange
 	{
-		get => SelectRowRangeInternal;
+		get;
 		set
 		{
-			SelectRowRangeInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SelectRowRange));
 		}
-	}
-
-	private List<Keys[]> SelectRowRangeInternal = DefaultSelectRowRange;
+	} = DefaultSelectRowRange;
 
 	[JsonInclude]
 	public List<Keys[]> SelectAllNotes
 	{
-		get => SelectAllNotesInternal;
+		get;
 		set
 		{
-			SelectAllNotesInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SelectAllNotes));
 		}
-	}
-
-	private List<Keys[]> SelectAllNotesInternal = DefaultSelectAllNotes;
+	} = DefaultSelectAllNotes;
 
 	[JsonInclude]
 	public List<Keys[]> SelectAllTaps
 	{
-		get => SelectAllTapsInternal;
+		get;
 		set
 		{
-			SelectAllTapsInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SelectAllTaps));
 		}
-	}
-
-	private List<Keys[]> SelectAllTapsInternal = DefaultSelectAllTaps;
+	} = DefaultSelectAllTaps;
 
 	[JsonInclude]
 	public List<Keys[]> SelectAllMines
 	{
-		get => SelectAllMinesInternal;
+		get;
 		set
 		{
-			SelectAllMinesInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SelectAllMines));
 		}
-	}
-
-	private List<Keys[]> SelectAllMinesInternal = DefaultSelectAllMines;
+	} = DefaultSelectAllMines;
 
 	[JsonInclude]
 	public List<Keys[]> SelectAllFakes
 	{
-		get => SelectAllFakesInternal;
+		get;
 		set
 		{
-			SelectAllFakesInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SelectAllFakes));
 		}
-	}
-
-	private List<Keys[]> SelectAllFakesInternal = DefaultSelectAllFakes;
+	} = DefaultSelectAllFakes;
 
 	[JsonInclude]
 	public List<Keys[]> SelectAllLifts
 	{
-		get => SelectAllLiftsInternal;
+		get;
 		set
 		{
-			SelectAllLiftsInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SelectAllLifts));
 		}
-	}
-
-	private List<Keys[]> SelectAllLiftsInternal = DefaultSelectAllLifts;
+	} = DefaultSelectAllLifts;
 
 	[JsonInclude]
 	public List<Keys[]> SelectAllHolds
 	{
-		get => SelectAllHoldsInternal;
+		get;
 		set
 		{
-			SelectAllHoldsInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SelectAllHolds));
 		}
-	}
-
-	private List<Keys[]> SelectAllHoldsInternal = DefaultSelectAllHolds;
+	} = DefaultSelectAllHolds;
 
 	[JsonInclude]
 	public List<Keys[]> SelectAllRolls
 	{
-		get => SelectAllRollsInternal;
+		get;
 		set
 		{
-			SelectAllRollsInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SelectAllRolls));
 		}
-	}
-
-	private List<Keys[]> SelectAllRollsInternal = DefaultSelectAllRolls;
+	} = DefaultSelectAllRolls;
 
 	[JsonInclude]
 	public List<Keys[]> SelectAllHoldsAndRolls
 	{
-		get => SelectAllHoldsAndRollsInternal;
+		get;
 		set
 		{
-			SelectAllHoldsAndRollsInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SelectAllHoldsAndRolls));
 		}
-	}
-
-	private List<Keys[]> SelectAllHoldsAndRollsInternal = DefaultSelectAllHoldsAndRolls;
+	} = DefaultSelectAllHoldsAndRolls;
 
 	[JsonInclude]
 	public List<Keys[]> SelectAllCurrentPlayerNotes
 	{
-		get => SelectAllCurrentPlayerNotesInternal;
+		get;
 		set
 		{
-			SelectAllCurrentPlayerNotesInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SelectAllCurrentPlayerNotes));
 		}
-	}
-
-	private List<Keys[]> SelectAllCurrentPlayerNotesInternal = DefaultSelectAllCurrentPlayerNotes;
+	} = DefaultSelectAllCurrentPlayerNotes;
 
 	[JsonInclude]
 	public List<Keys[]> SelectAllCurrentPlayerTaps
 	{
-		get => SelectAllCurrentPlayerTapsInternal;
+		get;
 		set
 		{
-			SelectAllCurrentPlayerTapsInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SelectAllCurrentPlayerTaps));
 		}
-	}
-
-	private List<Keys[]> SelectAllCurrentPlayerTapsInternal = DefaultSelectAllCurrentPlayerTaps;
+	} = DefaultSelectAllCurrentPlayerTaps;
 
 	[JsonInclude]
 	public List<Keys[]> SelectAllCurrentPlayerMines
 	{
-		get => SelectAllCurrentPlayerMinesInternal;
+		get;
 		set
 		{
-			SelectAllCurrentPlayerMinesInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SelectAllCurrentPlayerMines));
 		}
-	}
-
-	private List<Keys[]> SelectAllCurrentPlayerMinesInternal = DefaultSelectAllCurrentPlayerMines;
+	} = DefaultSelectAllCurrentPlayerMines;
 
 	[JsonInclude]
 	public List<Keys[]> SelectAllCurrentPlayerFakes
 	{
-		get => SelectAllCurrentPlayerFakesInternal;
+		get;
 		set
 		{
-			SelectAllCurrentPlayerFakesInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SelectAllCurrentPlayerFakes));
 		}
-	}
-
-	private List<Keys[]> SelectAllCurrentPlayerFakesInternal = DefaultSelectAllCurrentPlayerFakes;
+	} = DefaultSelectAllCurrentPlayerFakes;
 
 	[JsonInclude]
 	public List<Keys[]> SelectAllCurrentPlayerLifts
 	{
-		get => SelectAllCurrentPlayerLiftsInternal;
+		get;
 		set
 		{
-			SelectAllCurrentPlayerLiftsInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SelectAllCurrentPlayerLifts));
 		}
-	}
-
-	private List<Keys[]> SelectAllCurrentPlayerLiftsInternal = DefaultSelectAllCurrentPlayerLifts;
+	} = DefaultSelectAllCurrentPlayerLifts;
 
 	[JsonInclude]
 	public List<Keys[]> SelectAllCurrentPlayerHolds
 	{
-		get => SelectAllCurrentPlayerHoldsInternal;
+		get;
 		set
 		{
-			SelectAllCurrentPlayerHoldsInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SelectAllCurrentPlayerHolds));
 		}
-	}
-
-	private List<Keys[]> SelectAllCurrentPlayerHoldsInternal = DefaultSelectAllCurrentPlayerHolds;
+	} = DefaultSelectAllCurrentPlayerHolds;
 
 	[JsonInclude]
 	public List<Keys[]> SelectAllCurrentPlayerRolls
 	{
-		get => SelectAllCurrentPlayerRollsInternal;
+		get;
 		set
 		{
-			SelectAllCurrentPlayerRollsInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SelectAllCurrentPlayerRolls));
 		}
-	}
-
-	private List<Keys[]> SelectAllCurrentPlayerRollsInternal = DefaultSelectAllCurrentPlayerRolls;
+	} = DefaultSelectAllCurrentPlayerRolls;
 
 	[JsonInclude]
 	public List<Keys[]> SelectAllCurrentPlayerHoldsAndRolls
 	{
-		get => SelectAllCurrentPlayerHoldsAndRollsInternal;
+		get;
 		set
 		{
-			SelectAllCurrentPlayerHoldsAndRollsInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SelectAllCurrentPlayerHoldsAndRolls));
 		}
-	}
-
-	private List<Keys[]> SelectAllCurrentPlayerHoldsAndRollsInternal = DefaultSelectAllCurrentPlayerHoldsAndRolls;
+	} = DefaultSelectAllCurrentPlayerHoldsAndRolls;
 
 	[JsonInclude]
 	public List<Keys[]> SelectAllMiscEvents
 	{
-		get => SelectAllMiscEventsInternal;
+		get;
 		set
 		{
-			SelectAllMiscEventsInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SelectAllMiscEvents));
 		}
-	}
-
-	private List<Keys[]> SelectAllMiscEventsInternal = DefaultSelectAllMiscEvents;
+	} = DefaultSelectAllMiscEvents;
 
 	[JsonInclude]
 	public List<Keys[]> SelectAll
 	{
-		get => SelectAllInternal;
+		get;
 		set
 		{
-			SelectAllInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SelectAll));
 		}
-	}
-
-	private List<Keys[]> SelectAllInternal = DefaultSelectAll;
+	} = DefaultSelectAll;
 
 	[JsonInclude]
 	public List<Keys[]> SelectAllPatterns
 	{
-		get => SelectAllPatternsInternal;
+		get;
 		set
 		{
-			SelectAllPatternsInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SelectAllPatterns));
 		}
-	}
-
-	private List<Keys[]> SelectAllPatternsInternal = DefaultSelectAllPatterns;
+	} = DefaultSelectAllPatterns;
 
 	[JsonInclude]
 	public List<Keys[]> Copy
 	{
-		get => CopyInternal;
+		get;
 		set
 		{
-			CopyInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(Copy));
 		}
-	}
-
-	private List<Keys[]> CopyInternal = DefaultCopy;
+	} = DefaultCopy;
 
 	[JsonInclude]
 	public List<Keys[]> Cut
 	{
-		get => CutInternal;
+		get;
 		set
 		{
-			CutInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(Cut));
 		}
-	}
-
-	private List<Keys[]> CutInternal = DefaultCut;
+	} = DefaultCut;
 
 	[JsonInclude]
 	public List<Keys[]> Paste
 	{
-		get => PasteInternal;
+		get;
 		set
 		{
-			PasteInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(Paste));
 		}
-	}
-
-	private List<Keys[]> PasteInternal = DefaultPaste;
+	} = DefaultPaste;
 
 	[JsonInclude]
 	public List<Keys[]> TogglePreview
 	{
-		get => TogglePreviewInternal;
+		get;
 		set
 		{
-			TogglePreviewInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(TogglePreview));
 		}
-	}
-
-	private List<Keys[]> TogglePreviewInternal = DefaultTogglePreview;
+	} = DefaultTogglePreview;
 
 	[JsonInclude]
 	public List<Keys[]> ToggleAssistTick
 	{
-		get => ToggleAssistTickInternal;
+		get;
 		set
 		{
-			ToggleAssistTickInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(ToggleAssistTick));
 		}
-	}
-
-	private List<Keys[]> ToggleAssistTickInternal = DefaultToggleAssistTick;
+	} = DefaultToggleAssistTick;
 
 	[JsonInclude]
 	public List<Keys[]> ToggleBeatTick
 	{
-		get => ToggleBeatTickInternal;
+		get;
 		set
 		{
-			ToggleBeatTickInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(ToggleBeatTick));
 		}
-	}
-
-	private List<Keys[]> ToggleBeatTickInternal = DefaultToggleBeatTick;
+	} = DefaultToggleBeatTick;
 
 	[JsonInclude]
 	public List<Keys[]> DecreaseMusicRate
 	{
-		get => DecreaseMusicRateInternal;
+		get;
 		set
 		{
-			DecreaseMusicRateInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(DecreaseMusicRate));
 		}
-	}
-
-	private List<Keys[]> DecreaseMusicRateInternal = DefaultDecreaseMusicRate;
+	} = DefaultDecreaseMusicRate;
 
 	[JsonInclude]
 	public List<Keys[]> IncreaseMusicRate
 	{
-		get => IncreaseMusicRateInternal;
+		get;
 		set
 		{
-			IncreaseMusicRateInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(IncreaseMusicRate));
 		}
-	}
-
-	private List<Keys[]> IncreaseMusicRateInternal = DefaultIncreaseMusicRate;
+	} = DefaultIncreaseMusicRate;
 
 	[JsonInclude]
 	public List<Keys[]> PlayPause
 	{
-		get => PlayPauseInternal;
+		get;
 		set
 		{
-			PlayPauseInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(PlayPause));
 		}
-	}
-
-	private List<Keys[]> PlayPauseInternal = DefaultPlayPause;
+	} = DefaultPlayPause;
 
 	[JsonInclude]
 	public List<Keys[]> CancelGoBack
 	{
-		get => CancelGoBackInternal;
+		get;
 		set
 		{
-			CancelGoBackInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(CancelGoBack));
 		}
-	}
-
-	private List<Keys[]> CancelGoBackInternal = DefaultCancelGoBack;
+	} = DefaultCancelGoBack;
 
 	[JsonInclude]
 	public List<Keys[]> ToggleNoteEntryMode
 	{
-		get => ToggleNoteEntryModeInternal;
+		get;
 		set
 		{
-			ToggleNoteEntryModeInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(ToggleNoteEntryMode));
 		}
-	}
-
-	private List<Keys[]> ToggleNoteEntryModeInternal = DefaultToggleNoteEntryMode;
+	} = DefaultToggleNoteEntryMode;
 
 	[JsonInclude]
 	public List<Keys[]> ToggleSpacingMode
 	{
-		get => ToggleSpacingModeInternal;
+		get;
 		set
 		{
-			ToggleSpacingModeInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(ToggleSpacingMode));
 		}
-	}
-
-	private List<Keys[]> ToggleSpacingModeInternal = DefaultToggleSpacingMode;
+	} = DefaultToggleSpacingMode;
 
 	[JsonInclude]
 	public List<Keys[]> TogglePlayer
 	{
-		get => TogglePlayerInternal;
+		get;
 		set
 		{
-			TogglePlayerInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(TogglePlayer));
 		}
-	}
-
-	private List<Keys[]> TogglePlayerInternal = DefaultTogglePlayer;
+	} = DefaultTogglePlayer;
 
 	[JsonInclude]
 	public List<Keys[]> SetPlayer1
 	{
-		get => SetPlayer1Internal;
+		get;
 		set
 		{
-			SetPlayer1Internal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SetPlayer1));
 		}
-	}
-
-	private List<Keys[]> SetPlayer1Internal = DefaultSetPlayer1;
+	} = DefaultSetPlayer1;
 
 	[JsonInclude]
 	public List<Keys[]> SetPlayer2
 	{
-		get => SetPlayer2Internal;
+		get;
 		set
 		{
-			SetPlayer2Internal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SetPlayer2));
 		}
-	}
-
-	private List<Keys[]> SetPlayer2Internal = DefaultSetPlayer2;
+	} = DefaultSetPlayer2;
 
 	[JsonInclude]
 	public List<Keys[]> SetPlayer3
 	{
-		get => SetPlayer3Internal;
+		get;
 		set
 		{
-			SetPlayer3Internal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SetPlayer3));
 		}
-	}
-
-	private List<Keys[]> SetPlayer3Internal = DefaultSetPlayer3;
+	} = DefaultSetPlayer3;
 
 	[JsonInclude]
 	public List<Keys[]> SetPlayer4
 	{
-		get => SetPlayer4Internal;
+		get;
 		set
 		{
-			SetPlayer4Internal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SetPlayer4));
 		}
-	}
-
-	private List<Keys[]> SetPlayer4Internal = DefaultSetPlayer4;
+	} = DefaultSetPlayer4;
 
 	[JsonInclude]
 	public List<Keys[]> ConvertSelectedNotesToPlayer1
 	{
-		get => ConvertSelectedNotesToPlayer1Internal;
+		get;
 		set
 		{
-			ConvertSelectedNotesToPlayer1Internal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(ConvertSelectedNotesToPlayer1));
 		}
-	}
-
-	private List<Keys[]> ConvertSelectedNotesToPlayer1Internal = DefaultConvertSelectedNotesToPlayer1;
+	} = DefaultConvertSelectedNotesToPlayer1;
 
 	[JsonInclude]
 	public List<Keys[]> ConvertSelectedNotesToPlayer2
 	{
-		get => ConvertSelectedNotesToPlayer2Internal;
+		get;
 		set
 		{
-			ConvertSelectedNotesToPlayer2Internal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(ConvertSelectedNotesToPlayer2));
 		}
-	}
-
-	private List<Keys[]> ConvertSelectedNotesToPlayer2Internal = DefaultConvertSelectedNotesToPlayer2;
+	} = DefaultConvertSelectedNotesToPlayer2;
 
 	[JsonInclude]
 	public List<Keys[]> ConvertSelectedNotesToPlayer3
 	{
-		get => ConvertSelectedNotesToPlayer3Internal;
+		get;
 		set
 		{
-			ConvertSelectedNotesToPlayer3Internal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(ConvertSelectedNotesToPlayer3));
 		}
-	}
-
-	private List<Keys[]> ConvertSelectedNotesToPlayer3Internal = DefaultConvertSelectedNotesToPlayer3;
+	} = DefaultConvertSelectedNotesToPlayer3;
 
 	[JsonInclude]
 	public List<Keys[]> ConvertSelectedNotesToPlayer4
 	{
-		get => ConvertSelectedNotesToPlayer4Internal;
+		get;
 		set
 		{
-			ConvertSelectedNotesToPlayer4Internal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(ConvertSelectedNotesToPlayer4));
 		}
-	}
-
-	private List<Keys[]> ConvertSelectedNotesToPlayer4Internal = DefaultConvertSelectedNotesToPlayer4;
+	} = DefaultConvertSelectedNotesToPlayer4;
 
 	[JsonInclude]
 	public List<Keys[]> SwapSelectedPlayer1And2Notes
 	{
-		get => SwapSelectedPlayer1And2NotesInternal;
+		get;
 		set
 		{
-			SwapSelectedPlayer1And2NotesInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SwapSelectedPlayer1And2Notes));
 		}
-	}
-
-	private List<Keys[]> SwapSelectedPlayer1And2NotesInternal = DefaultSwapSelectedPlayer1And2Notes;
+	} = DefaultSwapSelectedPlayer1And2Notes;
 
 
 	[JsonInclude]
 	public List<Keys[]> SwapSelectedPlayer1And3Notes
 	{
-		get => SwapSelectedPlayer1And3NotesInternal;
+		get;
 		set
 		{
-			SwapSelectedPlayer1And3NotesInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SwapSelectedPlayer1And3Notes));
 		}
-	}
-
-	private List<Keys[]> SwapSelectedPlayer1And3NotesInternal = DefaultSwapSelectedPlayer1And3Notes;
+	} = DefaultSwapSelectedPlayer1And3Notes;
 
 
 	[JsonInclude]
 	public List<Keys[]> SwapSelectedPlayer1And4Notes
 	{
-		get => SwapSelectedPlayer1And4NotesInternal;
+		get;
 		set
 		{
-			SwapSelectedPlayer1And4NotesInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SwapSelectedPlayer1And4Notes));
 		}
-	}
-
-	private List<Keys[]> SwapSelectedPlayer1And4NotesInternal = DefaultSwapSelectedPlayer1And4Notes;
+	} = DefaultSwapSelectedPlayer1And4Notes;
 
 
 	[JsonInclude]
 	public List<Keys[]> SwapSelectedPlayer2And3Notes
 	{
-		get => SwapSelectedPlayer2And3NotesInternal;
+		get;
 		set
 		{
-			SwapSelectedPlayer2And3NotesInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SwapSelectedPlayer2And3Notes));
 		}
-	}
-
-	private List<Keys[]> SwapSelectedPlayer2And3NotesInternal = DefaultSwapSelectedPlayer2And3Notes;
+	} = DefaultSwapSelectedPlayer2And3Notes;
 
 
 	[JsonInclude]
 	public List<Keys[]> SwapSelectedPlayer2And4Notes
 	{
-		get => SwapSelectedPlayer2And4NotesInternal;
+		get;
 		set
 		{
-			SwapSelectedPlayer2And4NotesInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SwapSelectedPlayer2And4Notes));
 		}
-	}
-
-	private List<Keys[]> SwapSelectedPlayer2And4NotesInternal = DefaultSwapSelectedPlayer2And4Notes;
+	} = DefaultSwapSelectedPlayer2And4Notes;
 
 
 	[JsonInclude]
 	public List<Keys[]> SwapSelectedPlayer3And4Notes
 	{
-		get => SwapSelectedPlayer3And4NotesInternal;
+		get;
 		set
 		{
-			SwapSelectedPlayer3And4NotesInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SwapSelectedPlayer3And4Notes));
 		}
-	}
-
-	private List<Keys[]> SwapSelectedPlayer3And4NotesInternal = DefaultSwapSelectedPlayer3And4Notes;
+	} = DefaultSwapSelectedPlayer3And4Notes;
 
 	[JsonInclude]
 	public List<Keys[]> OpenPreviousChart
 	{
-		get => OpenPreviousChartInternal;
+		get;
 		set
 		{
-			OpenPreviousChartInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(OpenPreviousChart));
 		}
-	}
-
-	private List<Keys[]> OpenPreviousChartInternal = DefaultOpenPreviousChart;
+	} = DefaultOpenPreviousChart;
 
 	[JsonInclude]
 	public List<Keys[]> OpenNextChart
 	{
-		get => OpenNextChartInternal;
+		get;
 		set
 		{
-			OpenNextChartInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(OpenNextChart));
 		}
-	}
-
-	private List<Keys[]> OpenNextChartInternal = DefaultOpenNextChart;
+	} = DefaultOpenNextChart;
 
 	[JsonInclude]
 	public List<Keys[]> CloseFocusedChart
 	{
-		get => CloseFocusedChartInternal;
+		get;
 		set
 		{
-			CloseFocusedChartInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(CloseFocusedChart));
 		}
-	}
-
-	private List<Keys[]> CloseFocusedChartInternal = DefaultCloseFocusedChart;
+	} = DefaultCloseFocusedChart;
 
 	[JsonInclude]
 	public List<Keys[]> KeepChartOpen
 	{
-		get => KeepChartOpenInternal;
+		get;
 		set
 		{
-			KeepChartOpenInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(KeepChartOpen));
 		}
-	}
-
-	private List<Keys[]> KeepChartOpenInternal = DefaultKeepChartOpen;
+	} = DefaultKeepChartOpen;
 
 	[JsonInclude]
 	public List<Keys[]> MoveFocusedChartLeft
 	{
-		get => MoveFocusedChartLeftInternal;
+		get;
 		set
 		{
-			MoveFocusedChartLeftInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(MoveFocusedChartLeft));
 		}
-	}
-
-	private List<Keys[]> MoveFocusedChartLeftInternal = DefaultMoveFocusedChartLeft;
+	} = DefaultMoveFocusedChartLeft;
 
 	[JsonInclude]
 	public List<Keys[]> MoveFocusedChartRight
 	{
-		get => MoveFocusedChartRightInternal;
+		get;
 		set
 		{
-			MoveFocusedChartRightInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(MoveFocusedChartRight));
 		}
-	}
-
-	private List<Keys[]> MoveFocusedChartRightInternal = DefaultMoveFocusedChartRight;
+	} = DefaultMoveFocusedChartRight;
 
 	[JsonInclude]
 	public List<Keys[]> FocusPreviousChart
 	{
-		get => FocusPreviousChartInternal;
+		get;
 		set
 		{
-			FocusPreviousChartInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(FocusPreviousChart));
 		}
-	}
-
-	private List<Keys[]> FocusPreviousChartInternal = DefaultFocusPreviousChart;
+	} = DefaultFocusPreviousChart;
 
 	[JsonInclude]
 	public List<Keys[]> FocusNextChart
 	{
-		get => FocusNextChartInternal;
+		get;
 		set
 		{
-			FocusNextChartInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(FocusNextChart));
 		}
-	}
-
-	private List<Keys[]> FocusNextChartInternal = DefaultFocusNextChart;
+	} = DefaultFocusNextChart;
 
 	[JsonInclude]
 	public List<Keys[]> DecreaseSnap
 	{
-		get => DecreaseSnapInternal;
+		get;
 		set
 		{
-			DecreaseSnapInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(DecreaseSnap));
 		}
-	}
-
-	private List<Keys[]> DecreaseSnapInternal = DefaultDecreaseSnap;
+	} = DefaultDecreaseSnap;
 
 	[JsonInclude]
 	public List<Keys[]> IncreaseSnap
 	{
-		get => IncreaseSnapInternal;
+		get;
 		set
 		{
-			IncreaseSnapInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(IncreaseSnap));
 		}
-	}
-
-	private List<Keys[]> IncreaseSnapInternal = DefaultIncreaseSnap;
+	} = DefaultIncreaseSnap;
 
 	[JsonInclude]
 	public List<Keys[]> MoveUp
 	{
-		get => MoveUpInternal;
+		get;
 		set
 		{
-			MoveUpInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(MoveUp));
 		}
-	}
-
-	private List<Keys[]> MoveUpInternal = DefaultMoveUp;
+	} = DefaultMoveUp;
 
 	[JsonInclude]
 	public List<Keys[]> MoveDown
 	{
-		get => MoveDownInternal;
+		get;
 		set
 		{
-			MoveDownInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(MoveDown));
 		}
-	}
-
-	private List<Keys[]> MoveDownInternal = DefaultMoveDown;
+	} = DefaultMoveDown;
 
 	[JsonInclude]
 	public List<Keys[]> MoveToPreviousRowWithSteps
 	{
-		get => MoveToPreviousRowWithStepsInternal;
+		get;
 		set
 		{
-			MoveToPreviousRowWithStepsInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(MoveToPreviousRowWithSteps));
 		}
-	}
-
-	private List<Keys[]> MoveToPreviousRowWithStepsInternal = DefaultMoveToPreviousRowWithSteps;
+	} = DefaultMoveToPreviousRowWithSteps;
 
 	[JsonInclude]
 	public List<Keys[]> MoveToNextRowWithSteps
 	{
-		get => MoveToNextRowWithStepsInternal;
+		get;
 		set
 		{
-			MoveToNextRowWithStepsInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(MoveToNextRowWithSteps));
 		}
-	}
-
-	private List<Keys[]> MoveToNextRowWithStepsInternal = DefaultMoveToNextRowWithSteps;
+	} = DefaultMoveToNextRowWithSteps;
 
 	[JsonInclude]
 	public List<Keys[]> MoveToPreviousRowWithEvent
 	{
-		get => MoveToPreviousRowWithEventInternal;
+		get;
 		set
 		{
-			MoveToPreviousRowWithEventInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(MoveToPreviousRowWithEvent));
 		}
-	}
-
-	private List<Keys[]> MoveToPreviousRowWithEventInternal = DefaultMoveToPreviousRowWithEvent;
+	} = DefaultMoveToPreviousRowWithEvent;
 
 	[JsonInclude]
 	public List<Keys[]> MoveToNextRowWithEvent
 	{
-		get => MoveToNextRowWithEventInternal;
+		get;
 		set
 		{
-			MoveToNextRowWithEventInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(MoveToNextRowWithEvent));
 		}
-	}
-
-	private List<Keys[]> MoveToNextRowWithEventInternal = DefaultMoveToNextRowWithEvent;
+	} = DefaultMoveToNextRowWithEvent;
 
 	[JsonInclude]
 	public List<Keys[]> MoveToStartOfStream
 	{
-		get => MoveToStartOfStreamInternal;
+		get;
 		set
 		{
-			MoveToStartOfStreamInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(MoveToStartOfStream));
 		}
-	}
-
-	private List<Keys[]> MoveToStartOfStreamInternal = DefaultMoveToStartOfStream;
+	} = DefaultMoveToStartOfStream;
 
 	[JsonInclude]
 	public List<Keys[]> MoveToEndOfStream
 	{
-		get => MoveToEndOfStreamInternal;
+		get;
 		set
 		{
-			MoveToEndOfStreamInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(MoveToEndOfStream));
 		}
-	}
-
-	private List<Keys[]> MoveToEndOfStreamInternal = DefaultMoveToEndOfStream;
+	} = DefaultMoveToEndOfStream;
 
 	[JsonInclude]
 	public List<Keys[]> MoveToPreviousMeasure
 	{
-		get => MoveToPreviousMeasureInternal;
+		get;
 		set
 		{
-			MoveToPreviousMeasureInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(MoveToPreviousMeasure));
 		}
-	}
-
-	private List<Keys[]> MoveToPreviousMeasureInternal = DefaultMoveToPreviousMeasure;
+	} = DefaultMoveToPreviousMeasure;
 
 	[JsonInclude]
 	public List<Keys[]> MoveToNextMeasure
 	{
-		get => MoveToNextMeasureInternal;
+		get;
 		set
 		{
-			MoveToNextMeasureInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(MoveToNextMeasure));
 		}
-	}
-
-	private List<Keys[]> MoveToNextMeasureInternal = DefaultMoveToNextMeasure;
+	} = DefaultMoveToNextMeasure;
 
 	[JsonInclude]
 	public List<Keys[]> MoveToChartStart
 	{
-		get => MoveToChartStartInternal;
+		get;
 		set
 		{
-			MoveToChartStartInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(MoveToChartStart));
 		}
-	}
-
-	private List<Keys[]> MoveToChartStartInternal = DefaultMoveToChartStart;
+	} = DefaultMoveToChartStart;
 
 	[JsonInclude]
 	public List<Keys[]> MoveToChartEnd
 	{
-		get => MoveToChartEndInternal;
+		get;
 		set
 		{
-			MoveToChartEndInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(MoveToChartEnd));
 		}
-	}
-
-	private List<Keys[]> MoveToChartEndInternal = DefaultMoveToChartEnd;
+	} = DefaultMoveToChartEnd;
 
 	[JsonInclude]
 	public List<Keys[]> MoveToNextLabel
 	{
-		get => MoveToNextLabelInternal;
+		get;
 		set
 		{
-			MoveToNextLabelInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(MoveToNextLabel));
 		}
-	}
-
-	private List<Keys[]> MoveToNextLabelInternal = DefaultMoveToNextLabel;
+	} = DefaultMoveToNextLabel;
 
 	[JsonInclude]
 	public List<Keys[]> MoveToPreviousLabel
 	{
-		get => MoveToPreviousLabelInternal;
+		get;
 		set
 		{
-			MoveToPreviousLabelInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(MoveToPreviousLabel));
 		}
-	}
-
-	private List<Keys[]> MoveToPreviousLabelInternal = DefaultMoveToPreviousLabel;
+	} = DefaultMoveToPreviousLabel;
 
 	[JsonInclude]
 	public List<Keys[]> MoveToNextPattern
 	{
-		get => MoveToNextPatternInternal;
+		get;
 		set
 		{
-			MoveToNextPatternInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(MoveToNextPattern));
 		}
-	}
-
-	private List<Keys[]> MoveToNextPatternInternal = DefaultMoveToNextPattern;
+	} = DefaultMoveToNextPattern;
 
 	[JsonInclude]
 	public List<Keys[]> MoveToPreviousPattern
 	{
-		get => MoveToPreviousPatternInternal;
+		get;
 		set
 		{
-			MoveToPreviousPatternInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(MoveToPreviousPattern));
 		}
-	}
-
-	private List<Keys[]> MoveToPreviousPatternInternal = DefaultMoveToPreviousPattern;
+	} = DefaultMoveToPreviousPattern;
 
 	[JsonInclude]
 	public List<Keys[]> RegenerateAllPatternsFixedSeeds
 	{
-		get => RegenerateAllPatternsFixedSeedsInternal;
+		get;
 		set
 		{
-			RegenerateAllPatternsFixedSeedsInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(RegenerateAllPatternsFixedSeeds));
 		}
-	}
-
-	private List<Keys[]> RegenerateAllPatternsFixedSeedsInternal = DefaultRegenerateAllPatternsFixedSeeds;
+	} = DefaultRegenerateAllPatternsFixedSeeds;
 
 	[JsonInclude]
 	public List<Keys[]> RegenerateAllPatternsNewSeeds
 	{
-		get => RegenerateAllPatternsNewSeedsInternal;
+		get;
 		set
 		{
-			RegenerateAllPatternsNewSeedsInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(RegenerateAllPatternsNewSeeds));
 		}
-	}
-
-	private List<Keys[]> RegenerateAllPatternsNewSeedsInternal = DefaultRegenerateAllPatternsNewSeeds;
+	} = DefaultRegenerateAllPatternsNewSeeds;
 
 	[JsonInclude]
 	public List<Keys[]> RegenerateSelectedPatternsFixedSeeds
 	{
-		get => RegenerateSelectedPatternsFixedSeedsInternal;
+		get;
 		set
 		{
-			RegenerateSelectedPatternsFixedSeedsInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(RegenerateSelectedPatternsFixedSeeds));
 		}
-	}
-
-	private List<Keys[]> RegenerateSelectedPatternsFixedSeedsInternal = DefaultRegenerateSelectedPatternsFixedSeeds;
+	} = DefaultRegenerateSelectedPatternsFixedSeeds;
 
 	[JsonInclude]
 	public List<Keys[]> RegenerateSelectedPatternsNewSeeds
 	{
-		get => RegenerateSelectedPatternsNewSeedsInternal;
+		get;
 		set
 		{
-			RegenerateSelectedPatternsNewSeedsInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(RegenerateSelectedPatternsNewSeeds));
 		}
-	}
-
-	private List<Keys[]> RegenerateSelectedPatternsNewSeedsInternal = DefaultRegenerateSelectedPatternsNewSeeds;
+	} = DefaultRegenerateSelectedPatternsNewSeeds;
 
 	[JsonInclude]
 	public List<Keys[]> Delete
 	{
-		get => DeleteInternal;
+		get;
 		set
 		{
-			DeleteInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(Delete));
 		}
-	}
-
-	private List<Keys[]> DeleteInternal = DefaultDelete;
+	} = DefaultDelete;
 
 	[JsonInclude]
 	public List<Keys[]> ShiftLeft
 	{
-		get => ShiftLeftInternal;
+		get;
 		set
 		{
-			ShiftLeftInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(ShiftLeft));
 		}
-	}
-
-	private List<Keys[]> ShiftLeftInternal = DefaultShiftLeft;
+	} = DefaultShiftLeft;
 
 	[JsonInclude]
 	public List<Keys[]> ShiftLeftAndWrap
 	{
-		get => ShiftLeftAndWrapInternal;
+		get;
 		set
 		{
-			ShiftLeftAndWrapInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(ShiftLeftAndWrap));
 		}
-	}
-
-	private List<Keys[]> ShiftLeftAndWrapInternal = DefaultShiftLeftAndWrap;
+	} = DefaultShiftLeftAndWrap;
 
 	[JsonInclude]
 	public List<Keys[]> ShiftRight
 	{
-		get => ShiftRightInternal;
+		get;
 		set
 		{
-			ShiftRightInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(ShiftRight));
 		}
-	}
-
-	private List<Keys[]> ShiftRightInternal = DefaultShiftRight;
+	} = DefaultShiftRight;
 
 	[JsonInclude]
 	public List<Keys[]> ShiftRightAndWrap
 	{
-		get => ShiftRightAndWrapInternal;
+		get;
 		set
 		{
-			ShiftRightAndWrapInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(ShiftRightAndWrap));
 		}
-	}
-
-	private List<Keys[]> ShiftRightAndWrapInternal = DefaultShiftRightAndWrap;
+	} = DefaultShiftRightAndWrap;
 
 	[JsonInclude]
 	public List<Keys[]> ShiftEarlier
 	{
-		get => ShiftEarlierInternal;
+		get;
 		set
 		{
-			ShiftEarlierInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(ShiftEarlier));
 		}
-	}
-
-	private List<Keys[]> ShiftEarlierInternal = DefaultShiftEarlier;
+	} = DefaultShiftEarlier;
 
 	[JsonInclude]
 	public List<Keys[]> ShiftLater
 	{
-		get => ShiftLaterInternal;
+		get;
 		set
 		{
-			ShiftLaterInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(ShiftLater));
 		}
-	}
-
-	private List<Keys[]> ShiftLaterInternal = DefaultShiftLater;
+	} = DefaultShiftLater;
 
 	[JsonInclude]
 	public List<Keys[]> Mirror
 	{
-		get => MirrorInternal;
+		get;
 		set
 		{
-			MirrorInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(Mirror));
 		}
-	}
-
-	private List<Keys[]> MirrorInternal = DefaultMirror;
+	} = DefaultMirror;
 
 	[JsonInclude]
 	public List<Keys[]> Flip
 	{
-		get => FlipInternal;
+		get;
 		set
 		{
-			FlipInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(Flip));
 		}
-	}
-
-	private List<Keys[]> FlipInternal = DefaultFlip;
+	} = DefaultFlip;
 
 	[JsonInclude]
 	public List<Keys[]> MirrorAndFlip
 	{
-		get => MirrorAndFlipInternal;
+		get;
 		set
 		{
-			MirrorAndFlipInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(MirrorAndFlip));
 		}
-	}
-
-	private List<Keys[]> MirrorAndFlipInternal = DefaultMirrorAndFlip;
+	} = DefaultMirrorAndFlip;
 
 	[JsonInclude]
 	public List<Keys[]> Arrow0
 	{
-		get => Arrow0Internal;
+		get;
 		set
 		{
-			Arrow0Internal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(Arrow0));
 		}
-	}
-
-	private List<Keys[]> Arrow0Internal = DefaultArrow0;
+	} = DefaultArrow0;
 
 	[JsonInclude]
 	public List<Keys[]> Arrow1
 	{
-		get => Arrow1Internal;
+		get;
 		set
 		{
-			Arrow1Internal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(Arrow1));
 		}
-	}
-
-	private List<Keys[]> Arrow1Internal = DefaultArrow1;
+	} = DefaultArrow1;
 
 	[JsonInclude]
 	public List<Keys[]> Arrow2
 	{
-		get => Arrow2Internal;
+		get;
 		set
 		{
-			Arrow2Internal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(Arrow2));
 		}
-	}
-
-	private List<Keys[]> Arrow2Internal = DefaultArrow2;
+	} = DefaultArrow2;
 
 	[JsonInclude]
 	public List<Keys[]> Arrow3
 	{
-		get => Arrow3Internal;
+		get;
 		set
 		{
-			Arrow3Internal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(Arrow3));
 		}
-	}
-
-	private List<Keys[]> Arrow3Internal = DefaultArrow3;
+	} = DefaultArrow3;
 
 	[JsonInclude]
 	public List<Keys[]> Arrow4
 	{
-		get => Arrow4Internal;
+		get;
 		set
 		{
-			Arrow4Internal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(Arrow4));
 		}
-	}
-
-	private List<Keys[]> Arrow4Internal = DefaultArrow4;
+	} = DefaultArrow4;
 
 	[JsonInclude]
 	public List<Keys[]> Arrow5
 	{
-		get => Arrow5Internal;
+		get;
 		set
 		{
-			Arrow5Internal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(Arrow5));
 		}
-	}
-
-	private List<Keys[]> Arrow5Internal = DefaultArrow5;
+	} = DefaultArrow5;
 
 	[JsonInclude]
 	public List<Keys[]> Arrow6
 	{
-		get => Arrow6Internal;
+		get;
 		set
 		{
-			Arrow6Internal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(Arrow6));
 		}
-	}
-
-	private List<Keys[]> Arrow6Internal = DefaultArrow6;
+	} = DefaultArrow6;
 
 	[JsonInclude]
 	public List<Keys[]> Arrow7
 	{
-		get => Arrow7Internal;
+		get;
 		set
 		{
-			Arrow7Internal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(Arrow7));
 		}
-	}
-
-	private List<Keys[]> Arrow7Internal = DefaultArrow7;
+	} = DefaultArrow7;
 
 	[JsonInclude]
 	public List<Keys[]> Arrow8
 	{
-		get => Arrow8Internal;
+		get;
 		set
 		{
-			Arrow8Internal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(Arrow8));
 		}
-	}
-
-	private List<Keys[]> Arrow8Internal = DefaultArrow8;
+	} = DefaultArrow8;
 
 	[JsonInclude]
 	public List<Keys[]> Arrow9
 	{
-		get => Arrow9Internal;
+		get;
 		set
 		{
-			Arrow9Internal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(Arrow9));
 		}
-	}
-
-	private List<Keys[]> Arrow9Internal = DefaultArrow9;
+	} = DefaultArrow9;
 
 	[JsonInclude]
 	public List<Keys[]> ArrowModification
 	{
-		get => ArrowModificationInternal;
+		get;
 		set
 		{
-			ArrowModificationInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(ArrowModification));
 		}
-	}
-
-	private List<Keys[]> ArrowModificationInternal = DefaultArrowModification;
+	} = DefaultArrowModification;
 
 	[JsonInclude]
 	public List<Keys[]> ScrollZoom
 	{
-		get => ScrollZoomInternal;
+		get;
 		set
 		{
-			ScrollZoomInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(ScrollZoom));
 		}
-	}
-
-	private List<Keys[]> ScrollZoomInternal = DefaultScrollZoom;
+	} = DefaultScrollZoom;
 
 	[JsonInclude]
 	public List<Keys[]> ScrollSpacing
 	{
-		get => ScrollSpacingInternal;
+		get;
 		set
 		{
-			ScrollSpacingInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(ScrollSpacing));
 		}
-	}
-
-	private List<Keys[]> ScrollSpacingInternal = DefaultScrollSpacing;
+	} = DefaultScrollSpacing;
 
 	[JsonInclude]
 	public List<Keys[]> MouseSelectionControlBehavior
 	{
-		get => MouseSelectionControlBehaviorInternal;
+		get;
 		set
 		{
-			MouseSelectionControlBehaviorInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(MouseSelectionControlBehavior));
 		}
-	}
-
-	private List<Keys[]> MouseSelectionControlBehaviorInternal = DefaultMouseSelectionControlBehavior;
+	} = DefaultMouseSelectionControlBehavior;
 
 	[JsonInclude]
 	public List<Keys[]> MouseSelectionShiftBehavior
 	{
-		get => MouseSelectionShiftBehaviorInternal;
+		get;
 		set
 		{
-			MouseSelectionShiftBehaviorInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(MouseSelectionShiftBehavior));
 		}
-	}
-
-	private List<Keys[]> MouseSelectionShiftBehaviorInternal = DefaultMouseSelectionShiftBehavior;
+	} = DefaultMouseSelectionShiftBehavior;
 
 	[JsonInclude]
 	public List<Keys[]> MouseSelectionAltBehavior
 	{
-		get => MouseSelectionAltBehaviorInternal;
+		get;
 		set
 		{
-			MouseSelectionAltBehaviorInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(MouseSelectionAltBehavior));
 		}
-	}
-
-	private List<Keys[]> MouseSelectionAltBehaviorInternal = DefaultMouseSelectionAltBehavior;
+	} = DefaultMouseSelectionAltBehavior;
 
 	[JsonInclude]
 	public List<Keys[]> LockReceptorMoveAxis
 	{
-		get => LockReceptorMoveAxisInternal;
+		get;
 		set
 		{
-			LockReceptorMoveAxisInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(LockReceptorMoveAxis));
 		}
-	}
-
-	private List<Keys[]> LockReceptorMoveAxisInternal = DefaultLockReceptorMoveAxis;
+	} = DefaultLockReceptorMoveAxis;
 
 	[JsonInclude]
 	public List<Keys[]> AddEventTempo
 	{
-		get => AddEventTempoInternal;
+		get;
 		set
 		{
-			AddEventTempoInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(AddEventTempo));
 		}
-	}
-
-	private List<Keys[]> AddEventTempoInternal = DefaultAddEventTempo;
+	} = DefaultAddEventTempo;
 
 	[JsonInclude]
 	public List<Keys[]> AddEventInterpolatedScrollRate
 	{
-		get => AddEventInterpolatedScrollRateInternal;
+		get;
 		set
 		{
-			AddEventInterpolatedScrollRateInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(AddEventInterpolatedScrollRate));
 		}
-	}
-
-	private List<Keys[]> AddEventInterpolatedScrollRateInternal = DefaultAddEventInterpolatedScrollRate;
+	} = DefaultAddEventInterpolatedScrollRate;
 
 	[JsonInclude]
 	public List<Keys[]> AddEventScrollRate
 	{
-		get => AddEventScrollRateInternal;
+		get;
 		set
 		{
-			AddEventScrollRateInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(AddEventScrollRate));
 		}
-	}
-
-	private List<Keys[]> AddEventScrollRateInternal = DefaultAddEventScrollRate;
+	} = DefaultAddEventScrollRate;
 
 	[JsonInclude]
 	public List<Keys[]> AddEventStop
 	{
-		get => AddEventStopInternal;
+		get;
 		set
 		{
-			AddEventStopInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(AddEventStop));
 		}
-	}
-
-	private List<Keys[]> AddEventStopInternal = DefaultAddEventStop;
+	} = DefaultAddEventStop;
 
 	[JsonInclude]
 	public List<Keys[]> AddEventDelay
 	{
-		get => AddEventDelayInternal;
+		get;
 		set
 		{
-			AddEventDelayInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(AddEventDelay));
 		}
-	}
-
-	private List<Keys[]> AddEventDelayInternal = DefaultAddEventDelay;
+	} = DefaultAddEventDelay;
 
 	[JsonInclude]
 	public List<Keys[]> AddEventWarp
 	{
-		get => AddEventWarpInternal;
+		get;
 		set
 		{
-			AddEventWarpInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(AddEventWarp));
 		}
-	}
-
-	private List<Keys[]> AddEventWarpInternal = DefaultAddEventWarp;
+	} = DefaultAddEventWarp;
 
 	[JsonInclude]
 	public List<Keys[]> AddEventFakeRegion
 	{
-		get => AddEventFakeRegionInternal;
+		get;
 		set
 		{
-			AddEventFakeRegionInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(AddEventFakeRegion));
 		}
-	}
-
-	private List<Keys[]> AddEventFakeRegionInternal = DefaultAddEventFakeRegion;
+	} = DefaultAddEventFakeRegion;
 
 	[JsonInclude]
 	public List<Keys[]> AddEventTicks
 	{
-		get => AddEventTicksInternal;
+		get;
 		set
 		{
-			AddEventTicksInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(AddEventTicks));
 		}
-	}
-
-	private List<Keys[]> AddEventTicksInternal = DefaultAddEventTicks;
+	} = DefaultAddEventTicks;
 
 	[JsonInclude]
 	public List<Keys[]> AddEventComboMultipliers
 	{
-		get => AddEventComboMultipliersInternal;
+		get;
 		set
 		{
-			AddEventComboMultipliersInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(AddEventComboMultipliers));
 		}
-	}
-
-	private List<Keys[]> AddEventComboMultipliersInternal = DefaultAddEventComboMultipliers;
+	} = DefaultAddEventComboMultipliers;
 
 	[JsonInclude]
 	public List<Keys[]> AddEventTimeSignature
 	{
-		get => AddEventTimeSignatureInternal;
+		get;
 		set
 		{
-			AddEventTimeSignatureInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(AddEventTimeSignature));
 		}
-	}
-
-	private List<Keys[]> AddEventTimeSignatureInternal = DefaultAddEventTimeSignature;
+	} = DefaultAddEventTimeSignature;
 
 	[JsonInclude]
 	public List<Keys[]> AddEventLabel
 	{
-		get => AddEventLabelInternal;
+		get;
 		set
 		{
-			AddEventLabelInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(AddEventLabel));
 		}
-	}
-
-	private List<Keys[]> AddEventLabelInternal = DefaultAddEventLabel;
+	} = DefaultAddEventLabel;
 
 	[JsonInclude]
 	public List<Keys[]> AddEventAttack
 	{
-		get => AddEventAttackInternal;
+		get;
 		set
 		{
-			AddEventAttackInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(AddEventAttack));
 		}
-	}
-
-	private List<Keys[]> AddEventAttackInternal = DefaultAddEventAttack;
+	} = DefaultAddEventAttack;
 
 	[JsonInclude]
 	public List<Keys[]> AddEventPattern
 	{
-		get => AddEventPatternInternal;
+		get;
 		set
 		{
-			AddEventPatternInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(AddEventPattern));
 		}
-	}
-
-	private List<Keys[]> AddEventPatternInternal = DefaultAddEventPattern;
+	} = DefaultAddEventPattern;
 
 	[JsonInclude]
 	public List<Keys[]> MoveEventPreview
 	{
-		get => MoveEventPreviewInternal;
+		get;
 		set
 		{
-			MoveEventPreviewInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(MoveEventPreview));
 		}
-	}
-
-	private List<Keys[]> MoveEventPreviewInternal = DefaultMoveEventPreview;
+	} = DefaultMoveEventPreview;
 
 	[JsonInclude]
 	public List<Keys[]> MoveEventEndHint
 	{
-		get => MoveEventEndHintInternal;
+		get;
 		set
 		{
-			MoveEventEndHintInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(MoveEventEndHint));
 		}
-	}
-
-	private List<Keys[]> MoveEventEndHintInternal = DefaultMoveEventEndHint;
+	} = DefaultMoveEventEndHint;
 
 	[JsonInclude]
 	public List<Keys[]> ConvertSelectedTapsToMines
 	{
-		get => ConvertSelectedTapsToMinesInternal;
+		get;
 		set
 		{
-			ConvertSelectedTapsToMinesInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(ConvertSelectedTapsToMines));
 		}
-	}
-
-	private List<Keys[]> ConvertSelectedTapsToMinesInternal = DefaultConvertSelectedTapsToMines;
+	} = DefaultConvertSelectedTapsToMines;
 
 	[JsonInclude]
 	public List<Keys[]> ConvertSelectedTapsToFakes
 	{
-		get => ConvertSelectedTapsToFakesInternal;
+		get;
 		set
 		{
-			ConvertSelectedTapsToFakesInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(ConvertSelectedTapsToFakes));
 		}
-	}
-
-	private List<Keys[]> ConvertSelectedTapsToFakesInternal = DefaultConvertSelectedTapsToFakes;
+	} = DefaultConvertSelectedTapsToFakes;
 
 	[JsonInclude]
 	public List<Keys[]> ConvertSelectedTapsToLifts
 	{
-		get => ConvertSelectedTapsToLiftsInternal;
+		get;
 		set
 		{
-			ConvertSelectedTapsToLiftsInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(ConvertSelectedTapsToLifts));
 		}
-	}
-
-	private List<Keys[]> ConvertSelectedTapsToLiftsInternal = DefaultConvertSelectedTapsToLifts;
+	} = DefaultConvertSelectedTapsToLifts;
 
 	[JsonInclude]
 	public List<Keys[]> ConvertSelectedMinesToTaps
 	{
-		get => ConvertSelectedMinesToTapsInternal;
+		get;
 		set
 		{
-			ConvertSelectedMinesToTapsInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(ConvertSelectedMinesToTaps));
 		}
-	}
-
-	private List<Keys[]> ConvertSelectedMinesToTapsInternal = DefaultConvertSelectedMinesToTaps;
+	} = DefaultConvertSelectedMinesToTaps;
 
 	[JsonInclude]
 	public List<Keys[]> ConvertSelectedMinesToFakes
 	{
-		get => ConvertSelectedMinesToFakesInternal;
+		get;
 		set
 		{
-			ConvertSelectedMinesToFakesInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(ConvertSelectedMinesToFakes));
 		}
-	}
-
-	private List<Keys[]> ConvertSelectedMinesToFakesInternal = DefaultConvertSelectedMinesToFakes;
+	} = DefaultConvertSelectedMinesToFakes;
 
 	[JsonInclude]
 	public List<Keys[]> ConvertSelectedMinesToLifts
 	{
-		get => ConvertSelectedMinesToLiftsInternal;
+		get;
 		set
 		{
-			ConvertSelectedMinesToLiftsInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(ConvertSelectedMinesToLifts));
 		}
-	}
-
-	private List<Keys[]> ConvertSelectedMinesToLiftsInternal = DefaultConvertSelectedMinesToLifts;
+	} = DefaultConvertSelectedMinesToLifts;
 
 	[JsonInclude]
 	public List<Keys[]> ConvertSelectedFakesToTaps
 	{
-		get => ConvertSelectedFakesToTapsInternal;
+		get;
 		set
 		{
-			ConvertSelectedFakesToTapsInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(ConvertSelectedFakesToTaps));
 		}
-	}
-
-	private List<Keys[]> ConvertSelectedFakesToTapsInternal = DefaultConvertSelectedFakesToTaps;
+	} = DefaultConvertSelectedFakesToTaps;
 
 	[JsonInclude]
 	public List<Keys[]> ConvertSelectedLiftsToTaps
 	{
-		get => ConvertSelectedLiftsToTapsInternal;
+		get;
 		set
 		{
-			ConvertSelectedLiftsToTapsInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(ConvertSelectedLiftsToTaps));
 		}
-	}
-
-	private List<Keys[]> ConvertSelectedLiftsToTapsInternal = DefaultConvertSelectedLiftsToTaps;
+	} = DefaultConvertSelectedLiftsToTaps;
 
 	[JsonInclude]
 	public List<Keys[]> ConvertSelectedHoldsToRolls
 	{
-		get => ConvertSelectedHoldsToRollsInternal;
+		get;
 		set
 		{
-			ConvertSelectedHoldsToRollsInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(ConvertSelectedHoldsToRolls));
 		}
-	}
-
-	private List<Keys[]> ConvertSelectedHoldsToRollsInternal = DefaultConvertSelectedHoldsToRolls;
+	} = DefaultConvertSelectedHoldsToRolls;
 
 	[JsonInclude]
 	public List<Keys[]> ConvertSelectedHoldsToTaps
 	{
-		get => ConvertSelectedHoldsToTapsInternal;
+		get;
 		set
 		{
-			ConvertSelectedHoldsToTapsInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(ConvertSelectedHoldsToTaps));
 		}
-	}
-
-	private List<Keys[]> ConvertSelectedHoldsToTapsInternal = DefaultConvertSelectedHoldsToTaps;
+	} = DefaultConvertSelectedHoldsToTaps;
 
 	[JsonInclude]
 	public List<Keys[]> ConvertSelectedHoldsToMines
 	{
-		get => ConvertSelectedHoldsToMinesInternal;
+		get;
 		set
 		{
-			ConvertSelectedHoldsToMinesInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(ConvertSelectedHoldsToMines));
 		}
-	}
-
-	private List<Keys[]> ConvertSelectedHoldsToMinesInternal = DefaultConvertSelectedHoldsToMines;
+	} = DefaultConvertSelectedHoldsToMines;
 
 	[JsonInclude]
 	public List<Keys[]> ConvertSelectedRollsToHolds
 	{
-		get => ConvertSelectedRollsToHoldsInternal;
+		get;
 		set
 		{
-			ConvertSelectedRollsToHoldsInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(ConvertSelectedRollsToHolds));
 		}
-	}
-
-	private List<Keys[]> ConvertSelectedRollsToHoldsInternal = DefaultConvertSelectedRollsToHolds;
+	} = DefaultConvertSelectedRollsToHolds;
 
 	[JsonInclude]
 	public List<Keys[]> ConvertSelectedRollsToTaps
 	{
-		get => ConvertSelectedRollsToTapsInternal;
+		get;
 		set
 		{
-			ConvertSelectedRollsToTapsInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(ConvertSelectedRollsToTaps));
 		}
-	}
-
-	private List<Keys[]> ConvertSelectedRollsToTapsInternal = DefaultConvertSelectedRollsToTaps;
+	} = DefaultConvertSelectedRollsToTaps;
 
 	[JsonInclude]
 	public List<Keys[]> ConvertSelectedRollsToMines
 	{
-		get => ConvertSelectedRollsToMinesInternal;
+		get;
 		set
 		{
-			ConvertSelectedRollsToMinesInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(ConvertSelectedRollsToMines));
 		}
-	}
-
-	private List<Keys[]> ConvertSelectedRollsToMinesInternal = DefaultConvertSelectedRollsToMines;
+	} = DefaultConvertSelectedRollsToMines;
 
 	[JsonInclude]
 	public List<Keys[]> ConvertSelectedWarpsToNegativeStops
 	{
-		get => ConvertSelectedWarpsToNegativeStopsInternal;
+		get;
 		set
 		{
-			ConvertSelectedWarpsToNegativeStopsInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(ConvertSelectedWarpsToNegativeStops));
 		}
-	}
-
-	private List<Keys[]> ConvertSelectedWarpsToNegativeStopsInternal = DefaultConvertSelectedWarpsToNegativeStops;
+	} = DefaultConvertSelectedWarpsToNegativeStops;
 
 	[JsonInclude]
 	public List<Keys[]> ConvertSelectedNegativeStopsToWarps
 	{
-		get => ConvertSelectedNegativeStopsToWarpsInternal;
+		get;
 		set
 		{
-			ConvertSelectedNegativeStopsToWarpsInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(ConvertSelectedNegativeStopsToWarps));
 		}
-	}
-
-	private List<Keys[]> ConvertSelectedNegativeStopsToWarpsInternal = DefaultConvertSelectedNegativeStopsToWarps;
+	} = DefaultConvertSelectedNegativeStopsToWarps;
 
 	[JsonInclude]
 	public List<Keys[]> SwapSelectedTapsAndMines
 	{
-		get => SwapSelectedTapsAndMinesInternal;
+		get;
 		set
 		{
-			SwapSelectedTapsAndMinesInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SwapSelectedTapsAndMines));
 		}
-	}
-
-	private List<Keys[]> SwapSelectedTapsAndMinesInternal = DefaultSwapSelectedTapsAndMines;
+	} = DefaultSwapSelectedTapsAndMines;
 
 	[JsonInclude]
 	public List<Keys[]> SwapSelectedTapsAndFakes
 	{
-		get => SwapSelectedTapsAndFakesInternal;
+		get;
 		set
 		{
-			SwapSelectedTapsAndFakesInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SwapSelectedTapsAndFakes));
 		}
-	}
-
-	private List<Keys[]> SwapSelectedTapsAndFakesInternal = DefaultSwapSelectedTapsAndFakes;
+	} = DefaultSwapSelectedTapsAndFakes;
 
 	[JsonInclude]
 	public List<Keys[]> SwapSelectedTapsAndLifts
 	{
-		get => SwapSelectedTapsAndLiftsInternal;
+		get;
 		set
 		{
-			SwapSelectedTapsAndLiftsInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SwapSelectedTapsAndLifts));
 		}
-	}
-
-	private List<Keys[]> SwapSelectedTapsAndLiftsInternal = DefaultSwapSelectedTapsAndLifts;
+	} = DefaultSwapSelectedTapsAndLifts;
 
 	[JsonInclude]
 	public List<Keys[]> SwapSelectedMinesAndFakes
 	{
-		get => SwapSelectedMinesAndFakesInternal;
+		get;
 		set
 		{
-			SwapSelectedMinesAndFakesInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SwapSelectedMinesAndFakes));
 		}
-	}
-
-	private List<Keys[]> SwapSelectedMinesAndFakesInternal = DefaultSwapSelectedMinesAndFakes;
+	} = DefaultSwapSelectedMinesAndFakes;
 
 	[JsonInclude]
 	public List<Keys[]> SwapSelectedMinesAndLifts
 	{
-		get => SwapSelectedMinesAndLiftsInternal;
+		get;
 		set
 		{
-			SwapSelectedMinesAndLiftsInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SwapSelectedMinesAndLifts));
 		}
-	}
-
-	private List<Keys[]> SwapSelectedMinesAndLiftsInternal = DefaultSwapSelectedMinesAndLifts;
+	} = DefaultSwapSelectedMinesAndLifts;
 
 	[JsonInclude]
 	public List<Keys[]> SwapSelectedHoldsAndRolls
 	{
-		get => SwapSelectedHoldsAndRollsInternal;
+		get;
 		set
 		{
-			SwapSelectedHoldsAndRollsInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SwapSelectedHoldsAndRolls));
 		}
-	}
-
-	private List<Keys[]> SwapSelectedHoldsAndRollsInternal = DefaultSwapSelectedHoldsAndRolls;
+	} = DefaultSwapSelectedHoldsAndRolls;
 
 	[JsonInclude]
 	public List<Keys[]> SwapSelectedHoldsAndTaps
 	{
-		get => SwapSelectedHoldsAndTapsInternal;
+		get;
 		set
 		{
-			SwapSelectedHoldsAndTapsInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SwapSelectedHoldsAndTaps));
 		}
-	}
-
-	private List<Keys[]> SwapSelectedHoldsAndTapsInternal = DefaultSwapSelectedHoldsAndTaps;
+	} = DefaultSwapSelectedHoldsAndTaps;
 
 	[JsonInclude]
 	public List<Keys[]> SwapSelectedHoldsAndMines
 	{
-		get => SwapSelectedHoldsAndMinesInternal;
+		get;
 		set
 		{
-			SwapSelectedHoldsAndMinesInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SwapSelectedHoldsAndMines));
 		}
-	}
-
-	private List<Keys[]> SwapSelectedHoldsAndMinesInternal = DefaultSwapSelectedHoldsAndMines;
+	} = DefaultSwapSelectedHoldsAndMines;
 
 	[JsonInclude]
 	public List<Keys[]> SwapSelectedRollsAndTaps
 	{
-		get => SwapSelectedRollsAndTapsInternal;
+		get;
 		set
 		{
-			SwapSelectedRollsAndTapsInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SwapSelectedRollsAndTaps));
 		}
-	}
-
-	private List<Keys[]> SwapSelectedRollsAndTapsInternal = DefaultSwapSelectedRollsAndTaps;
+	} = DefaultSwapSelectedRollsAndTaps;
 
 	[JsonInclude]
 	public List<Keys[]> SwapSelectedRollsAndMines
 	{
-		get => SwapSelectedRollsAndMinesInternal;
+		get;
 		set
 		{
-			SwapSelectedRollsAndMinesInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SwapSelectedRollsAndMines));
 		}
-	}
-
-	private List<Keys[]> SwapSelectedRollsAndMinesInternal = DefaultSwapSelectedRollsAndMines;
+	} = DefaultSwapSelectedRollsAndMines;
 
 	[JsonInclude]
 	public List<Keys[]> SnapToNone
 	{
-		get => SnapToNoneInternal;
+		get;
 		set
 		{
-			SnapToNoneInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SnapToNone));
 		}
-	}
-
-	private List<Keys[]> SnapToNoneInternal = DefaultSnapToNone;
+	} = DefaultSnapToNone;
 
 	[JsonInclude]
 	public List<Keys[]> SnapToQuarters
 	{
-		get => SnapToQuartersInternal;
+		get;
 		set
 		{
-			SnapToQuartersInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SnapToQuarters));
 		}
-	}
-
-	private List<Keys[]> SnapToQuartersInternal = DefaultSnapToQuarters;
+	} = DefaultSnapToQuarters;
 
 	[JsonInclude]
 	public List<Keys[]> SnapToEighths
 	{
-		get => SnapToEighthsInternal;
+		get;
 		set
 		{
-			SnapToEighthsInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SnapToEighths));
 		}
-	}
-
-	private List<Keys[]> SnapToEighthsInternal = DefaultSnapToEighths;
+	} = DefaultSnapToEighths;
 
 	[JsonInclude]
 	public List<Keys[]> SnapToTwelfths
 	{
-		get => SnapToTwelfthsInternal;
+		get;
 		set
 		{
-			SnapToTwelfthsInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SnapToTwelfths));
 		}
-	}
-
-	private List<Keys[]> SnapToTwelfthsInternal = DefaultSnapToTwelfths;
+	} = DefaultSnapToTwelfths;
 
 	[JsonInclude]
 	public List<Keys[]> SnapToSixteenths
 	{
-		get => SnapToSixteenthsInternal;
+		get;
 		set
 		{
-			SnapToSixteenthsInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SnapToSixteenths));
 		}
-	}
-
-	private List<Keys[]> SnapToSixteenthsInternal = DefaultSnapToSixteenths;
+	} = DefaultSnapToSixteenths;
 
 	[JsonInclude]
 	public List<Keys[]> SnapToTwentyFourths
 	{
-		get => SnapToTwentyFourthsInternal;
+		get;
 		set
 		{
-			SnapToTwentyFourthsInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SnapToTwentyFourths));
 		}
-	}
-
-	private List<Keys[]> SnapToTwentyFourthsInternal = DefaultSnapToTwentyFourths;
+	} = DefaultSnapToTwentyFourths;
 
 	[JsonInclude]
 	public List<Keys[]> SnapToThirtySeconds
 	{
-		get => SnapToThirtySecondsInternal;
+		get;
 		set
 		{
-			SnapToThirtySecondsInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SnapToThirtySeconds));
 		}
-	}
-
-	private List<Keys[]> SnapToThirtySecondsInternal = DefaultSnapToThirtySeconds;
+	} = DefaultSnapToThirtySeconds;
 
 	[JsonInclude]
 	public List<Keys[]> SnapToFortyEighths
 	{
-		get => SnapToFortyEighthsInternal;
+		get;
 		set
 		{
-			SnapToFortyEighthsInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SnapToFortyEighths));
 		}
-	}
-
-	private List<Keys[]> SnapToFortyEighthsInternal = DefaultSnapToFortyEighths;
+	} = DefaultSnapToFortyEighths;
 
 	[JsonInclude]
 	public List<Keys[]> SnapToSixtyFourths
 	{
-		get => SnapToSixtyFourthsInternal;
+		get;
 		set
 		{
-			SnapToSixtyFourthsInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SnapToSixtyFourths));
 		}
-	}
-
-	private List<Keys[]> SnapToSixtyFourthsInternal = DefaultSnapToSixtyFourths;
+	} = DefaultSnapToSixtyFourths;
 
 	[JsonInclude]
 	public List<Keys[]> SnapToOneHundredNinetySeconds
 	{
-		get => SnapToOneHundredNinetySecondsInternal;
+		get;
 		set
 		{
-			SnapToOneHundredNinetySecondsInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(SnapToOneHundredNinetySeconds));
 		}
-	}
-
-	private List<Keys[]> SnapToOneHundredNinetySecondsInternal = DefaultSnapToOneHundredNinetySeconds;
+	} = DefaultSnapToOneHundredNinetySeconds;
 
 	[JsonInclude]
 	public List<Keys[]> ToggleWaveForm
 	{
-		get => ToggleWaveFormInternal;
+		get;
 		set
 		{
-			ToggleWaveFormInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(ToggleWaveForm));
 		}
-	}
-
-	private List<Keys[]> ToggleWaveFormInternal = DefaultToggleWaveForm;
+	} = DefaultToggleWaveForm;
 
 	[JsonInclude]
 	public List<Keys[]> ToggleDark
 	{
-		get => ToggleDarkInternal;
+		get;
 		set
 		{
-			ToggleDarkInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(ToggleDark));
 		}
-	}
-
-	private List<Keys[]> ToggleDarkInternal = DefaultToggleDark;
+	} = DefaultToggleDark;
 
 	[JsonInclude]
 	public List<Keys[]> AutoApplyAllSongAssets
 	{
-		get => AutoApplyAllSongAssetsInternal;
+		get;
 		set
 		{
-			AutoApplyAllSongAssetsInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(AutoApplyAllSongAssets));
 		}
-	}
-
-	private List<Keys[]> AutoApplyAllSongAssetsInternal = DefaultAutoApplyAllSongAssets;
+	} = DefaultAutoApplyAllSongAssets;
 
 	[JsonInclude]
 	public List<Keys[]> AutoApplyUnsetSongAssets
 	{
-		get => AutoApplyUnsetSongAssetsInternal;
+		get;
 		set
 		{
-			AutoApplyUnsetSongAssetsInternal = value;
+			field = value;
 			Notify(NotificationKeyBindingChanged, this, nameof(AutoApplyUnsetSongAssets));
 		}
-	}
-
-	private List<Keys[]> AutoApplyUnsetSongAssetsInternal = DefaultAutoApplyUnsetSongAssets;
+	} = DefaultAutoApplyUnsetSongAssets;
 
 	#endregion Properties
 

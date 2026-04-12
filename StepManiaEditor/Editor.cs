@@ -231,49 +231,43 @@ public sealed class Editor :
 		set
 		{
 			Debug.Assert(IsOnMainThread());
-			ActiveSongInternal?.Dispose();
-			ActiveSongInternal = value;
+			field?.Dispose();
+			field = value;
 		}
 		get
 		{
 			Debug.Assert(IsOnMainThread());
-			return ActiveSongInternal;
+			return field;
 		}
 	}
-
-	private EditorSong ActiveSongInternal;
 
 	private EditorChart FocusedChart
 	{
 		set
 		{
 			Debug.Assert(IsOnMainThread());
-			FocusedChartInternal = value;
+			field = value;
 		}
 		get
 		{
 			Debug.Assert(IsOnMainThread());
-			return FocusedChartInternal;
+			return field;
 		}
 	}
-
-	private EditorChart FocusedChartInternal;
 
 	private ActiveEditorChart FocusedChartData
 	{
 		set
 		{
 			Debug.Assert(IsOnMainThread());
-			FocusedChartDataInternal = value;
+			field = value;
 		}
 		get
 		{
 			Debug.Assert(IsOnMainThread());
-			return FocusedChartDataInternal;
+			return field;
 		}
 	}
-
-	private ActiveEditorChart FocusedChartDataInternal;
 
 	private readonly List<EditorChart> ActiveCharts = [];
 	private readonly List<ActiveEditorChart> ActiveChartData = [];

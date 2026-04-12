@@ -36,18 +36,16 @@ internal abstract class EditorConfig<TConfig> :
 	[JsonInclude]
 	public string Name
 	{
-		get => NameInternal;
+		get;
 		set
 		{
-			if (!string.IsNullOrEmpty(NameInternal) && NameInternal.Equals(value))
+			if (!string.IsNullOrEmpty(field) && field.Equals(value))
 				return;
-			NameInternal = value;
+			field = value;
 			OnNameChanged();
 			Notify(NotificationNameChanged, this);
 		}
 	}
-
-	private string NameInternal;
 
 	[JsonInclude] public string Description;
 

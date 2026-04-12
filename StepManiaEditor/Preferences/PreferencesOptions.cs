@@ -150,18 +150,16 @@ internal sealed class PreferencesOptions : Notifier<PreferencesOptions>
 	[JsonInclude]
 	public int UndoHistorySize
 	{
-		get => UndoHistorySizeInternal;
+		get;
 		set
 		{
-			if (UndoHistorySizeInternal != value)
+			if (field != value)
 			{
-				UndoHistorySizeInternal = value;
+				field = value;
 				Notify(NotificationUndoHistorySizeChanged, this);
 			}
 		}
-	}
-
-	private int UndoHistorySizeInternal = DefaultUndoHistorySize;
+	} = DefaultUndoHistorySize;
 
 	public static void RegisterDefaultsForInvalidEnumValues(PermissiveEnumJsonConverterFactory factory)
 	{

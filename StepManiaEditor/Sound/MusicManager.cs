@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using FMOD;
 using Fumen;
 using Fumen.Converters;
@@ -141,7 +142,7 @@ internal sealed class MusicManager : IDisposable
 	/// <summary>
 	/// Lock for thread safe mutations of members needed in the DSP callback.
 	/// </summary>
-	private readonly object Lock = new();
+	private readonly Lock Lock = new();
 
 	/// <summary>
 	/// Internal state.

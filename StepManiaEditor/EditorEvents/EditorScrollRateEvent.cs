@@ -56,21 +56,19 @@ internal sealed class EditorScrollRateEvent : EditorRateAlteringEvent
 	/// loading the chart for example, this could crash. By lazily setting it we avoid this
 	/// problem as long as we assume the caller of GetW() happens on the main thread.
 	/// </remarks>
-	private double WidthInternal;
-
 	public override double W
 	{
 		get
 		{
 			if (WidthDirty)
 			{
-				WidthInternal = ImGuiLayoutUtils.GetMiscEditorEventDragDoubleWidgetWidth(DoubleValue, Format);
+				field = ImGuiLayoutUtils.GetMiscEditorEventDragDoubleWidgetWidth(DoubleValue, Format);
 				WidthDirty = false;
 			}
 
-			return WidthInternal;
+			return field;
 		}
-		set => WidthInternal = value;
+		set;
 	}
 
 	public override double H
