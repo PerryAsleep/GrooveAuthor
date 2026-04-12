@@ -279,6 +279,8 @@ public sealed class Editor :
 	private double? LastKnownSongTime;
 
 	private KeyCommandManager KeyCommandManager;
+	private bool EscDownLastFrame;
+	private bool CurrentEscPressUnfocusedImGui;
 	private bool Playing;
 	private bool PlayingPreview;
 	private bool MiniMapCapturingMouse;
@@ -882,7 +884,9 @@ public sealed class Editor :
 
 	private void InitializeImGui()
 	{
-		ImGuiRenderer = new ImGuiRenderer(this, ImGuiConfigFlags.DockingEnable, PlatformInterface.GetImGuiSaveFileName());
+		ImGuiRenderer = new ImGuiRenderer(this,
+			ImGuiConfigFlags.DockingEnable | ImGuiConfigFlags.NavEnableKeyboard,
+			PlatformInterface.GetImGuiSaveFileName());
 	}
 
 	private void InitializeFonts()
@@ -1892,10 +1896,31 @@ public sealed class Editor :
 		var imGuiWantKeyboard = ImGui.GetIO().WantCaptureKeyboard;
 
 		// Process Keyboard Input.
-		if (imGuiWantKeyboard)
+		if (imGuiWantKeyboard || CurrentEscPressUnfocusedImGui)
 			KeyCommandManager.CancelAllCommands();
 		else
 			KeyCommandManager.Update(currentTime);
+
+		// ImGui reports wanting the keyboard on a press of the Esc key even when it doesn't handle it.
+		// We want to treat pressing escape when a window has focus as an attempt to defocus the window
+		// and to return focus to our scene so keyboard input for chart navigation works again.
+		// We process Esc directly here instead of using the KeyCommandManager because the Esc button
+		// within ImGui is not remappable, and we don't want to pollute the API of KeyCommandManager with
+		// accessors for querying raw key data.
+		var escDown = Keyboard.GetState().IsKeyDown(Keys.Escape);
+		if (imGuiWantKeyboard
+		    && escDown && !EscDownLastFrame
+		    && !ImGui.IsPopupOpen("", ImGuiPopupFlags.AnyPopupId | ImGuiPopupFlags.AnyPopupLevel)
+		    && !ImGui.IsAnyItemActive()
+		    && !ImGui.IsAnyItemFocused())
+		{
+			ImGui.SetWindowFocus(null);
+			CurrentEscPressUnfocusedImGui = true;
+		}
+
+		EscDownLastFrame = escDown;
+		if (!escDown)
+			CurrentEscPressUnfocusedImGui = false;
 
 		var mouseX = EditorMouseState.X();
 		var mouseY = EditorMouseState.Y();
