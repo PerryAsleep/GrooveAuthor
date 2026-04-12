@@ -34,7 +34,7 @@ yay -S grooveauthor-bin
 ```
 ## MacOS
 
-`GrooveAuthor` requires MacOS 11.0 or greater.
+`GrooveAuthor` requires MacOS 12.0 (Monterey) or greater.
 
 1. Download the latest `mac` `dmg` file for your architecture from the [Releases](https://github.com/PerryAsleep/GrooveAuthor/releases) page and run it. If your Mac has an Apple Silicon CPU you should use the `arm64` release. If your Mac has an Intel CPU you should use the `x64` release.
 2. Ensure you have [.Net Runtime 10.0](https://dotnet.microsoft.com/en-us/download/dotnet/10.0) installed. If you encounter any errors installing see [Install .NET on macOS](https://learn.microsoft.com/en-us/dotnet/core/install/macos) for detailed instructions.
