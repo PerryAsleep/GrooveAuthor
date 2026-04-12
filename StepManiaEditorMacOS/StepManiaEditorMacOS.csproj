@@ -7,7 +7,7 @@
 		<MonoGamePlatform>DesktopGL</MonoGamePlatform>
 		<UseMacCatalyst>false</UseMacCatalyst>
 		<NullabilityInfoContextSupport>true</NullabilityInfoContextSupport>
-		<SupportedOSPlatformVersion>11.0</SupportedOSPlatformVersion>
+		<SupportedOSPlatformVersion>12.0</SupportedOSPlatformVersion>
 	</PropertyGroup>
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
 		<PathMap>$(MSBuildProjectDirectory)=.</PathMap>
