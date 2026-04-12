@@ -381,7 +381,14 @@ internal sealed class EditorMacOsInterface : IEditorPlatform
 		try
 		{
 			var nsApp = NSApplication.SharedApplication;
-			nsApp.ActivateIgnoringOtherApps(true);
+			if (OperatingSystem.IsMacOSVersionAtLeast(14))
+			{
+				nsApp.Activate();
+			}
+			else
+			{
+				nsApp.ActivateIgnoringOtherApps(true);
+			}
 			if (nsApp.ValueForKey((NSString)"windows") is NSArray windowsArray)
 			{
 				for (nuint i = 0; i < windowsArray.Count; i++)
