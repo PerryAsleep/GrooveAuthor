@@ -2,6 +2,8 @@
 using StepManiaEditor;
 using StepManiaEditorLinux;
 
+[assembly: System.Runtime.Versioning.SupportedOSPlatform("linux")]
+
 public static class Program
 {
 	[STAThread]
