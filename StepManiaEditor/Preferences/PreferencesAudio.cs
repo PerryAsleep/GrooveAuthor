@@ -26,8 +26,8 @@ internal sealed class PreferencesAudio : Notifier<PreferencesAudio>
 	public const float DefaultAssistTickVolume = 0.7f;
 	public const float DefaultAssistTickAttackTime = 0.0f;
 	public const bool DefaultUseAssistTick = false;
-	public const bool DefaultSkipAssistTickOnBeatTick = true;
-	public const float DefaultBeatTickVolume = 0.95f;
+	public const bool DefaultSkipAssistTickOnBeatTick = false;
+	public const float DefaultBeatTickVolume = 0.75f;
 	public const float DefaultBeatTickAttackTime = 0.0f;
 	public const bool DefaultUseBeatTick = false;
 	public const bool DefaultSkipBeatTickOnAssistTick = false;
