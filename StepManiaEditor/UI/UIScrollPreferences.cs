@@ -42,6 +42,9 @@ internal sealed class UIScrollPreferences : UIWindow
 		{
 			if (ImGuiLayoutUtils.BeginTable("Scroll", TitleColumnWidth))
 			{
+				ImGuiLayoutUtils.DrawRowCheckbox(true, "Reverse", p, nameof(p.Reverse), false,
+					"Reverse the scroll direction so that notes move down instead of up.");
+
 				DrawSpacingModeRow("Spacing Mode", false);
 				DrawWaveFormScrollMode();
 				ImGuiLayoutUtils.EndTable();

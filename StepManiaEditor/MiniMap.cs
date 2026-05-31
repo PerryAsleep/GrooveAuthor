@@ -264,6 +264,11 @@ internal sealed class MiniMap
 	private bool MouseOverEditor;
 
 	/// <summary>
+	/// Whether or not the MiniMap is displaying a reversed (flipped) view of the chart.
+	/// </summary>
+	private bool Reverse;
+
+	/// <summary>
 	/// When grabbing the editor area for scrolling, this stores where within the editor
 	/// area the user clicked so that when they scroll the editor doesn't jump to center
 	/// on the selected area.
@@ -443,7 +448,7 @@ internal sealed class MiniMap
 	/// </summary>
 	/// <param name="graphicsDevice">Graphics device for recreating textures.</param>
 	/// <param name="bounds">New bounds in screen space.</param>
-	/// <param name="visibleHeight"></param>
+	/// <param name="visibleHeight">Visible height of the MiniMap in screen space.</param>
 	public void UpdateBounds(GraphicsDevice graphicsDevice, Rectangle bounds, uint visibleHeight)
 	{
 		var textureDimensionsDirty = bounds.Width != Bounds.Width || bounds.Height != Bounds.Height;
@@ -532,6 +537,36 @@ internal sealed class MiniMap
 	}
 
 	/// <summary>
+	/// Returns the visible height of the MiniMap in pixels.
+	/// </summary>
+	public int GetVisibleHeight()
+	{
+		return VisibleHeight;
+	}
+
+	/// <summary>
+	/// Sets whether or not the MiniMap is displaying a reversed (vertically mirrored) view.
+	/// </summary>
+	/// <param name="reverse">Whether or not the view is reversed.</param>
+	public void SetReverse(bool reverse)
+	{
+		Reverse = reverse;
+	}
+
+	/// <summary>
+	/// Reflects a screen space y coordinate within the visible area of the MiniMap when
+	/// the view is reversed. When not reversed the input is returned unchanged.
+	/// The rendered texture is flipped vertically by the caller, so reflecting incoming
+	/// mouse coordinates lets all internal pixel math operate in the unflipped space.
+	/// </summary>
+	/// <param name="screenY">Y coordinate in screen space.</param>
+	/// <returns>Potentially reflected Y coordinate in screen space.</returns>
+	private int ReflectScreenYIfNeeded(int screenY)
+	{
+		return Reverse ? 2 * Bounds.Y + VisibleHeight - screenY : screenY;
+	}
+
+	/// <summary>
 	/// Sets the SelectMode for the editor region.
 	/// </summary>
 	/// <param name="selectMode">SelectMode to user.</param>
@@ -548,11 +583,19 @@ internal sealed class MiniMap
 	/// <returns>Whether or not the MiniMap has captured this input.</returns>
 	public bool MouseDown(int screenX, int screenY)
 	{
+		return MouseDownInternal(screenX, ReflectScreenYIfNeeded(screenY));
+	}
+
+	/// <summary>
+	/// Internal MouseDown implementation operating in texture screen space.
+	/// </summary>
+	private bool MouseDownInternal(int screenX, int screenY)
+	{
 		// Update tracking of if the mouse is over the editor area for visual feedback.
 		MouseOverEditor = IsScreenPositionInEditorBounds(screenX, screenY);
 
 		// If the mouse isn't over the MiniMap, do not do any further processing.
-		if (!IsScreenPositionInMiniMapBounds(screenX, screenY))
+		if (!IsScreenPositionInMiniMapBoundsInternal(screenX, screenY))
 			return false;
 
 		// Force unquantized positions since the editor area is never quantized.
@@ -622,7 +665,7 @@ internal sealed class MiniMap
 		}
 
 		// Update the areas.
-		MouseMove(screenX, screenY);
+		MouseMoveInternal(screenX, screenY);
 
 		return true;
 	}
@@ -633,6 +676,14 @@ internal sealed class MiniMap
 	/// <param name="screenX">Mouse X position in screen space.</param>
 	/// <param name="screenY">Mouse Y position in screen space.</param>
 	public void MouseMove(int screenX, int screenY)
+	{
+		MouseMoveInternal(screenX, ReflectScreenYIfNeeded(screenY));
+	}
+
+	/// <summary>
+	/// Internal MouseMove implementation operating in texture screen space.
+	/// </summary>
+	private void MouseMoveInternal(int screenX, int screenY)
 	{
 		// Update tracking of if the mouse is over the editor area for visual feedback.
 		MouseOverEditor = IsScreenPositionInEditorBounds(screenX, screenY);
@@ -650,6 +701,14 @@ internal sealed class MiniMap
 	/// <param name="screenX">Mouse X position in screen space.</param>
 	/// <param name="screenY">Mouse Y position in screen space.</param>
 	public void MouseUp(int screenX, int screenY)
+	{
+		MouseUpInternal(screenX, ReflectScreenYIfNeeded(screenY));
+	}
+
+	/// <summary>
+	/// Internal MouseUp implementation operating in texture screen space.
+	/// </summary>
+	private void MouseUpInternal(int screenX, int screenY)
 	{
 		// Update tracking of if the mouse is over the editor area for visual feedback.
 		MouseOverEditor = IsScreenPositionInEditorBounds(screenX, screenY);
@@ -1299,8 +1358,10 @@ internal sealed class MiniMap
 	}
 
 	/// <summary>
-	/// Renders the MiniMap.
+	/// Renders the MiniMap to a RenderTarget2D. It is the responsibility of the caller to flip
+	/// the RenderTarget2D when Reverse is true.
 	/// </summary>
+	/// <returns>RenderTarget2D for the caller to use.</returns>
 	public RenderTarget2D Draw()
 	{
 		if (Bounds.Height <= 0 || Bounds.Width <= 0 || VisibleHeight <= 0)
@@ -1362,6 +1423,14 @@ internal sealed class MiniMap
 	/// <returns>Whether or not the screen position is within the MiniMap bounds.</returns>
 	public bool IsScreenPositionInMiniMapBounds(int screenX, int screenY)
 	{
+		return IsScreenPositionInMiniMapBoundsInternal(screenX, ReflectScreenYIfNeeded(screenY));
+	}
+
+	/// <summary>
+	/// Internal IsScreenPositionInMiniMapBounds implementation operating in texture screen space.
+	/// </summary>
+	private bool IsScreenPositionInMiniMapBoundsInternal(int screenX, int screenY)
+	{
 		return screenX >= Bounds.X && screenX <= Bounds.X + Bounds.Width && screenY >= Bounds.Y &&
 		       screenY <= Bounds.Y + VisibleHeight;
 	}
@@ -1376,7 +1445,7 @@ internal sealed class MiniMap
 	private bool IsScreenPositionInEditorBounds(int screenX, int screenY)
 	{
 		// Force unquantized positions since we are comparing to the editor area which is never quantized.
-		return IsScreenPositionInMiniMapBounds(screenX, screenY)
+		return IsScreenPositionInMiniMapBoundsInternal(screenX, screenY)
 		       && screenX >= Bounds.X
 		       && screenX <= Bounds.X + Bounds.Width
 		       && screenY >= GetYPixelRelativeToScreen(EditorAreaStart, true)

@@ -30,6 +30,7 @@ internal sealed class PreferencesScroll : Notifier<PreferencesScroll>
 	public const double DefaultScrollInterpolationDuration = 0.1;
 	public const double DefaultSizeCap = 1.0;
 	public const bool DefaultLimitZoomToSize = false;
+	public const bool DefaultReverse = false;
 
 	// Preferences.
 	[JsonInclude] public bool ShowScrollControlPreferencesWindow;
@@ -135,6 +136,7 @@ internal sealed class PreferencesScroll : Notifier<PreferencesScroll>
 		}
 	} = DefaultLimitZoomToSize;
 
+	[JsonInclude] public bool Reverse= DefaultReverse;
 	[JsonInclude] public Editor.WaveFormScrollMode RowBasedWaveFormScrollMode = DefaultRowBasedWaveFormScrollMode;
 	[JsonInclude] public bool StopPlaybackWhenScrolling = DefaultStopPlaybackWhenScrolling;
 	[JsonInclude] public bool StopPlaybackWhenDraggingScrollBars = DefaultStopPlaybackWhenDraggingScrollBars;
@@ -157,7 +159,8 @@ internal sealed class PreferencesScroll : Notifier<PreferencesScroll>
 		       && ScrollWheelRows == DefaultScrollWheelRows
 		       && ScrollInterpolationDuration.DoubleEquals(DefaultScrollInterpolationDuration)
 		       && SizeCap.DoubleEquals(SizeCap)
-		       && LimitZoomToSize == DefaultLimitZoomToSize;
+		       && LimitZoomToSize == DefaultLimitZoomToSize
+		       && Reverse == DefaultReverse;
 	}
 
 	public void RestoreDefaults()
@@ -187,6 +190,7 @@ internal sealed class ActionRestoreScrollPreferenceDefaults : UndoableAction
 	private readonly double PreviousScrollInterpolationDuration;
 	private readonly double PreviousSizeCap;
 	private readonly bool PreviousLimitZoomToSize;
+	private readonly bool PreviousReverse;
 
 	public ActionRestoreScrollPreferenceDefaults() : base(false, false)
 	{
@@ -204,6 +208,7 @@ internal sealed class ActionRestoreScrollPreferenceDefaults : UndoableAction
 		PreviousScrollInterpolationDuration = p.ScrollInterpolationDuration;
 		PreviousSizeCap = p.SizeCap;
 		PreviousLimitZoomToSize = p.LimitZoomToSize;
+		PreviousReverse = p.Reverse;
 	}
 
 	public override bool AffectsFile()
@@ -232,6 +237,7 @@ internal sealed class ActionRestoreScrollPreferenceDefaults : UndoableAction
 		p.ScrollInterpolationDuration = PreferencesScroll.DefaultScrollInterpolationDuration;
 		p.SizeCap = PreferencesScroll.DefaultSizeCap;
 		p.LimitZoomToSize = PreferencesScroll.DefaultLimitZoomToSize;
+		p.Reverse = PreferencesScroll.DefaultReverse;
 	}
 
 	protected override void UndoImplementation()
@@ -250,5 +256,6 @@ internal sealed class ActionRestoreScrollPreferenceDefaults : UndoableAction
 		p.ScrollInterpolationDuration = PreviousScrollInterpolationDuration;
 		p.SizeCap = PreviousSizeCap;
 		p.LimitZoomToSize = PreviousLimitZoomToSize;
+		p.Reverse = PreviousReverse;
 	}
 }

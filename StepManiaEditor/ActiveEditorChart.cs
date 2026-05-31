@@ -552,11 +552,17 @@ internal sealed class ActiveEditorChart : Fumen.IObserver<PreferencesNoteColor>,
 		if (ArrowGraphicManager.AreHoldCapsCentered())
 			holdCapHeight *= 0.5;
 
+		// The sign of the scroll direction. When not reversed larger y values are later in the chart;
+		// when reversed larger y values are earlier in the chart.
+		var directionSign = GetScrollDirectionSign();
+
 		// Determine the starting x and y position in screen space.
-		// Y extended slightly above the top of the screen so that we start drawing arrows
-		// before their midpoints.
+		// The start edge is the screen edge corresponding to the earliest visible chart position.
+		// When not reversed this is the top of the screen. When reversed it is the bottom of the screen.
+		// It is extended slightly beyond the edge so that we start drawing arrows before their midpoints.
 		var startPosX = FocalPointScreenSpaceX - numArrows * arrowW * 0.5;
-		var startPosY = 0.0 - Math.Max(holdCapHeight, arrowH * 0.5);
+		var edgeMargin = Math.Max(holdCapHeight, arrowH * 0.5);
+		var startPosY = directionSign >= 0.0 ? 0.0 - edgeMargin : screenHeight + edgeMargin;
 
 		var noteAlpha = (float)Interpolation.Lerp(1.0, 0.0, NoteScaleToStartFading, NoteMinScale, sizeZoom);
 
@@ -595,7 +601,10 @@ internal sealed class ActiveEditorChart : Fumen.IObserver<PreferencesNoteColor>,
 		var previousRateEventRow = chartPosition;
 		var previousRateEventTime = time;
 		EditorRateAlteringEvent rateEvent = null;
-		while (previousRateEventY >= startPosY && rateEnumerator.MovePrev())
+		// Scan from the focal point toward the start edge until the rate event precedes the start edge.
+		// The comparison flips with the scroll direction: when not reversed we stop once the rate
+		// event's y rises above the top edge. When reversed we stop once it falls below the bottom edge.
+		while ((previousRateEventY - startPosY) * directionSign >= 0.0 && rateEnumerator.MovePrev())
 		{
 			// On the rate altering event which is active for the current chart position,
 			// Record the pixels per second to use for the WaveForm.
@@ -610,10 +619,16 @@ internal sealed class ActiveEditorChart : Fumen.IObserver<PreferencesNoteColor>,
 			previousRateEventTime = rateEvent.GetChartTime();
 		}
 
+		// In extremely rare circumstances the focal point may be off-screen. This can happen due to
+		// resizing the window and then ImGui taking a frame to update the ChartArea, which is needed
+		// when Reverse is enabled. In this case, early out and wait for the correct value next frame.
+		if (rateEvent == null)
+			return;
+
 		// Now we know the position of first rate altering event to use.
 		// We can now determine the chart time and position at the top of the screen.
 		var (chartTimeAtTopOfScreen, chartPositionAtTopOfScreen) =
-			SpacingHelper.GetChartTimeAndRow(startPosY, previousRateEventY, rateEvent!.GetChartTime(), rateEvent.GetRow());
+			SpacingHelper.GetChartTimeAndRow(startPosY, previousRateEventY, rateEvent.GetChartTime(), rateEvent.GetRow());
 
 		var beatMarkerRow = (int)chartPositionAtTopOfScreen;
 		var beatMarkerLastRecordedRow = -1;
@@ -640,6 +655,7 @@ internal sealed class ActiveEditorChart : Fumen.IObserver<PreferencesNoteColor>,
 				arrowW,
 				0.0, // we do not know the height yet.
 				sizeZoom);
+			hn.SetHoldStartHeight(arrowH);
 			noteEvents.Add(hn);
 
 			holdsNeedingToBeCompleted.Add(hn);
@@ -709,11 +725,13 @@ internal sealed class ActiveEditorChart : Fumen.IObserver<PreferencesNoteColor>,
 			var y = SpacingHelper.GetY(e, previousRateEventY);
 			var arrowY = y - arrowH * 0.5;
 
-			// If we have advanced beyond the end of the screen we can finish.
+			// If we have advanced beyond the far edge of the screen we can finish.
 			// An exception to this rule is if the current scroll rate is negative. We do not
 			// want to end processing on a negative region, particularly for regions which end
 			// beyond the end of the screen.
-			if (arrowY > screenHeight && !SpacingHelper.IsScrollRateNegative())
+			var arrowTrailingEdgeY = y - arrowH * 0.5 * directionSign;
+			if (IsBeyondVisibleFarEdge(arrowTrailingEdgeY, screenHeight, directionSign)
+			    && !SpacingHelper.IsScrollRateNegative())
 			{
 				reachedEndOfScreen = true;
 				break;
@@ -728,6 +746,8 @@ internal sealed class ActiveEditorChart : Fumen.IObserver<PreferencesNoteColor>,
 
 				if (e is EditorHoldNoteEvent hn)
 				{
+					hn.SetHoldStartHeight(arrowH);
+
 					// Record that there is in an in-progress hold that will need to be ended.
 					if (!CheckForCompletingHold(hn, previousRateEventY, nextRateEvent))
 						holdsNeedingToBeCompleted.Add(hn);
@@ -801,6 +821,21 @@ internal sealed class ActiveEditorChart : Fumen.IObserver<PreferencesNoteColor>,
 
 		// Store the notes and holds so we can render them.
 		VisibleEvents.AddRange(noteEvents);
+	}
+
+	/// <summary>
+	/// Returns whether the given screen space y position is beyond the far edge of the visible area
+	/// for the current scroll direction. The far edge is the bottom of the screen when not reversed
+	/// and the top of the screen when reversed.
+	/// </summary>
+	/// <param name="y">Screen space y position to check.</param>
+	/// <param name="screenHeight">Screen height in pixels.</param>
+	/// <param name="directionSign">The scroll direction sign.</param>
+	/// <returns>True if the position is beyond the far edge and false otherwise.</returns>
+	private static bool IsBeyondVisibleFarEdge(double y, int screenHeight, double directionSign)
+	{
+		var farEdgeY = directionSign >= 0.0 ? screenHeight : 0.0;
+		return (y - farEdgeY) * directionSign > 0.0;
 	}
 
 	private (double, double) GetArrowDimensions(bool scaled = true)
@@ -924,6 +959,7 @@ internal sealed class ActiveEditorChart : Fumen.IObserver<PreferencesNoteColor>,
 		double previousRateEventY,
 		EditorRateAlteringEvent nextRateEvent)
 	{
+		var directionSign = GetScrollDirectionSign();
 		var remainingRegionsNeededToBeAdded = new List<IChartRegion>();
 		foreach (var region in regionsNeedingToBeAdded)
 		{
@@ -941,11 +977,18 @@ internal sealed class ActiveEditorChart : Fumen.IObserver<PreferencesNoteColor>,
 				// end beyond the end of the screen. The regions are used for rendering so this is acceptable.
 				if (RegionsOverlappingStart.Contains(region))
 				{
-					var regionY = region.GetRegionY();
-					if (regionY > 0.0)
+					// This clamp assumes the start edge is the top of the screen, so only apply it when not
+					// reversed. When reversed, IRegion.DrawRegionImpl already clips the region (including its
+					// negative height) to the screen correctly, so clamping here would incorrectly collapse
+					// regions that span beyond the visible area.
+					if (directionSign >= 0.0)
 					{
-						region.SetRegionY(0.0);
-						h += regionY;
+						var regionY = region.GetRegionY();
+						if (regionY > 0.0)
+						{
+							region.SetRegionY(0.0);
+							h += regionY;
+						}
 					}
 
 					RegionsOverlappingStart.Remove(region);
@@ -1011,9 +1054,14 @@ internal sealed class ActiveEditorChart : Fumen.IObserver<PreferencesNoteColor>,
 		if (!selectedRegion.IsActive() || selectedRegion.HaveCurrentValuesBeenUpdatedThisFrame())
 			return;
 
-		if (selectedRegion.GetCurrentYInScreenSpace() < previousRateEventY
+		// These are screen space comparisons checking whether the current y falls at or before the next
+		// rate event boundary in the iteration direction. The relationship between screen y and chart
+		// order flips when reversed, so compare relative to the scroll direction sign.
+		var directionSign = GetScrollDirectionSign();
+		if ((selectedRegion.GetCurrentYInScreenSpace() - previousRateEventY) * directionSign < 0.0
 		    || nextRateEvent == null
-		    || selectedRegion.GetCurrentYInScreenSpace() < SpacingHelper.GetY(nextRateEvent, previousRateEventY))
+		    || (selectedRegion.GetCurrentYInScreenSpace() - SpacingHelper.GetY(nextRateEvent, previousRateEventY))
+		    * directionSign < 0.0)
 		{
 			var (chartTime, chartPosition) = SpacingHelper.GetChartTimeAndRow(
 				selectedRegion.GetCurrentYInScreenSpace(), previousRateEventY, rateEvent.GetChartTime(), rateEvent.GetRow());
@@ -1144,7 +1192,10 @@ internal sealed class ActiveEditorChart : Fumen.IObserver<PreferencesNoteColor>,
 		if (nextRateEvent == null || EditorEvent.CompareEditorEventToSmEvent(nextRateEvent, holdEndEvent) > 0)
 		{
 			var holdEndRow = hold.GetRow() + hold.GetRowDuration();
-			var holdEndY = SpacingHelper.GetYForRow(holdEndRow, previousRateEventY) + GetHoldCapHeight();
+			// The hold cap extends beyond the end row in the direction the chart scrolls forward, which
+			// is down the screen normally and up the screen when reversed.
+			var holdEndY = SpacingHelper.GetYForRow(holdEndRow, previousRateEventY)
+			               + GetHoldCapHeight() * GetScrollDirectionSign();
 			hold.H = holdEndY - hold.Y;
 			return true;
 		}
@@ -1213,6 +1264,8 @@ internal sealed class ActiveEditorChart : Fumen.IObserver<PreferencesNoteColor>,
 
 		var markerWidth = Chart.NumInputs * MarkerTextureWidth * sizeZoom;
 
+		var directionSign = GetScrollDirectionSign();
+
 		while (true)
 		{
 			// When changing time signatures we don't want to render the same row twice,
@@ -1235,8 +1288,8 @@ internal sealed class ActiveEditorChart : Fumen.IObserver<PreferencesNoteColor>,
 				return;
 			}
 
-			// If advancing moved beyond the end of the screen then we are done.
-			if (y > screenHeight)
+			// If advancing moved beyond the far edge of the screen then we are done.
+			if (IsBeyondVisibleFarEdge(y, screenHeight, directionSign))
 				return;
 
 			// Determine if this marker is a measure marker instead of a beat marker.
@@ -1340,16 +1393,23 @@ internal sealed class ActiveEditorChart : Fumen.IObserver<PreferencesNoteColor>,
 		var rateChartTime = rateEnumerator.Current!.GetChartTime();
 		var rateRow = rateEnumerator.Current.GetRow();
 
-		// If the desired Y is above the focal point.
-		if (desiredY < focalPointYDouble)
+		// The sign of the scroll direction. The relationship between screen y and chart order flips
+		// when reversed, so the scan direction and stop conditions below are expressed relative to it.
+		// A positive relativeDesiredY means the desired position is later in the chart than the focal
+		// point; a negative value means it is earlier.
+		var directionSign = GetScrollDirectionSign();
+		var relativeDesiredY = (desiredY - focalPointYDouble) * directionSign;
+
+		// If the desired Y is earlier in the chart than the focal point.
+		if (relativeDesiredY < 0.0)
 		{
-			// Scan upwards until we find the rate event that is active for the desired Y.
+			// Scan toward earlier rate events until we find the one that is active for the desired Y.
 			while (true)
 			{
-				// If the current rate event is above the focal point, or there is no preceding rate event,
-				// then this is the rate event we should use for determining the chart time and row of the
-				// desired position.
-				if (rateEventY <= desiredY || !rateEnumerator.MovePrev())
+				// If the current rate event is at or before the desired position in the chart, or there is
+				// no preceding rate event, then this is the rate event we should use for determining the
+				// chart time and row of the desired position.
+				if ((rateEventY - desiredY) * directionSign <= 0.0 || !rateEnumerator.MovePrev())
 					return spacingHelper.GetChartTimeAndRow(desiredY, rateEventY, rateChartTime, rateRow);
 
 				// Otherwise, now that we have advance the rate enumerator to its preceding event, we can
@@ -1360,8 +1420,8 @@ internal sealed class ActiveEditorChart : Fumen.IObserver<PreferencesNoteColor>,
 				rateRow = rateEnumerator.Current.GetRow();
 			}
 		}
-		// If the desired Y is below the focal point.
-		else if (desiredY > focalPointYDouble)
+		// If the desired Y is later in the chart than the focal point.
+		else if (relativeDesiredY > 0.0)
 		{
 			while (true)
 			{
@@ -1378,7 +1438,7 @@ internal sealed class ActiveEditorChart : Fumen.IObserver<PreferencesNoteColor>,
 				rateChartTime = rateEnumerator.Current.GetChartTime();
 				rateRow = rateEnumerator.Current.GetRow();
 
-				if (rateEventY >= desiredY)
+				if ((rateEventY - desiredY) * directionSign >= 0.0)
 					return spacingHelper.GetChartTimeAndRowFromPreviousRate(desiredY, rateEventY, rateChartTime, rateRow);
 			}
 		}
@@ -1611,7 +1671,9 @@ internal sealed class ActiveEditorChart : Fumen.IObserver<PreferencesNoteColor>,
 			: (e) => e.IsSelectableWithoutModifiers();
 
 		var (_, arrowHeightUnscaled) = GetArrowDimensions(false);
-		var halfArrowH = arrowHeightUnscaled * ZoomManager.GetSizeZoom() * 0.5;
+		var arrowH = arrowHeightUnscaled * ZoomManager.GetSizeZoom();
+		var halfArrowH = arrowH * 0.5;
+		var reverse = Preferences.Instance.PreferencesScroll.Reverse;
 
 		// For clicking, we want to select only one note. The latest note whose bounding rect
 		// overlaps with the point that was clicked. The events are sorted, but we cannot binary
@@ -1624,15 +1686,27 @@ internal sealed class ActiveEditorChart : Fumen.IObserver<PreferencesNoteColor>,
 		var isClick = SelectedRegion.IsClick();
 		if (isClick)
 		{
+			// Add an extra half arrow height to the early out checks so that short miscellaneous
+			// events do not cause us to early out prematurely. In reverse, also add a full arrow
+			// height to account for holds where the Y value of a hold cuts into its body.
+			var padding = halfArrowH + (reverse ? arrowH : 0.0);
+
 			var (x, y) = SelectedRegion.GetCurrentScreenSpacePosition();
 			EditorEvent best = null;
 			foreach (var visibleEvent in VisibleEvents)
 			{
-				// Early out if we have searched beyond the selected y. Add an extra half arrow
-				// height to this check so that short miscellaneous events do not cause us to
-				// early out prematurely.
-				if (visibleEvent.Y > y + halfArrowH)
-					break;
+				// Early out once we have searched beyond the clicked y in the iteration direction.
+				if (!reverse)
+				{
+					if (visibleEvent.Y > y + padding)
+						break;
+				}
+				else
+				{
+					if (visibleEvent.Y < y - padding)
+						break;
+				}
+
 				if (!canSelectNotes && !visibleEvent.IsMiscEvent())
 					continue;
 				if (!canSelectMiscEvents && visibleEvent.IsMiscEvent())
@@ -1885,10 +1959,17 @@ internal sealed class ActiveEditorChart : Fumen.IObserver<PreferencesNoteColor>,
 		if (selectedRegionStartYScreenSpacePos == null || selectedRegionEndYScreenSpacePos == null)
 			return newlySelectedEvents;
 		var (selectedRegionStartX, selectedRegionEndX) = SelectedRegion.GetSelectedXScreenSpaceRange();
+		// The region start is earlier in the chart than the region end. When reversed that maps to a
+		// larger screen y than the end, so normalize to a top/bottom range before the containment check
+		// (which expects yStart <= yEnd). This is a no-op when not reversed.
+		var selectedRegionTopY = (double)selectedRegionStartYScreenSpacePos;
+		var selectedRegionBottomY = (double)selectedRegionEndYScreenSpacePos;
+		if (selectedRegionTopY > selectedRegionBottomY)
+			(selectedRegionTopY, selectedRegionBottomY) = (selectedRegionBottomY, selectedRegionTopY);
 		foreach (var miscEvent in miscEventsToConsider)
 		{
-			if (DoesMiscEventFallWithinRange(miscEvent, selectedRegionStartX, (double)selectedRegionStartYScreenSpacePos,
-				    selectedRegionEndX, (double)selectedRegionEndYScreenSpacePos))
+			if (DoesMiscEventFallWithinRange(miscEvent, selectedRegionStartX, selectedRegionTopY,
+				    selectedRegionEndX, selectedRegionBottomY))
 			{
 				newlySelectedEvents.Add(miscEvent);
 			}
@@ -2055,10 +2136,14 @@ internal sealed class ActiveEditorChart : Fumen.IObserver<PreferencesNoteColor>,
 		double firstRateEventY)
 	{
 		// Check for scanning so far beyond the region boundary that we can safely stop.
+		// Scanning up moves toward earlier chart positions. That is up the screen when not reversed
+		// and down the screen when reversed, so the screen space distance past the boundary is
+		// measured relative to the scroll direction sign.
+		var directionSign = GetScrollDirectionSign();
 		// If we know the y pos of the region start, check if we are far enough beyond it.
 		if (selectedRegionStartYScreenSpacePos != null)
 		{
-			if (miscEventRowY < selectedRegionStartYScreenSpacePos -
+			if ((selectedRegionStartYScreenSpacePos.Value - miscEventRowY) * directionSign >
 			    MiscEventWidgetLayoutManager.GetMaxYForSingleRow())
 			{
 				scannedBeyondRegionBoundaryEnoughToCaptureMiscEvents = true;
@@ -2068,7 +2153,7 @@ internal sealed class ActiveEditorChart : Fumen.IObserver<PreferencesNoteColor>,
 		// Check if we are far enough beyond the first rate event.
 		else if (!regionStartIsInScanRange)
 		{
-			if (miscEventRowY < firstRateEventY - MiscEventWidgetLayoutManager.GetMaxYForSingleRow())
+			if ((firstRateEventY - miscEventRowY) * directionSign > MiscEventWidgetLayoutManager.GetMaxYForSingleRow())
 			{
 				scannedBeyondRegionBoundaryEnoughToCaptureMiscEvents = true;
 			}
@@ -2230,10 +2315,15 @@ internal sealed class ActiveEditorChart : Fumen.IObserver<PreferencesNoteColor>,
 		double firstRateEventY)
 	{
 		// Check for scanning so far beyond the region boundary that we can safely stop.
+		// Scanning down moves toward later chart positions. That is down the screen when not reversed
+		// and up the screen when reversed, so the screen space distance past the boundary is measured
+		// relative to the scroll direction sign.
+		var directionSign = GetScrollDirectionSign();
 		// If we know the y pos of the region end, check if we are far enough beyond it.
 		if (selectedRegionEndYScreenSpacePos != null)
 		{
-			if (miscEventRowY > selectedRegionEndYScreenSpacePos + MiscEventWidgetLayoutManager.GetMaxYForSingleRow())
+			if ((miscEventRowY - selectedRegionEndYScreenSpacePos.Value) * directionSign >
+			    MiscEventWidgetLayoutManager.GetMaxYForSingleRow())
 			{
 				scannedBeyondRegionBoundaryEnoughToCaptureMiscEvents = true;
 			}
@@ -2242,7 +2332,7 @@ internal sealed class ActiveEditorChart : Fumen.IObserver<PreferencesNoteColor>,
 		// Check if we are far enough beyond the first rate event.
 		else if (!regionEndIsInScanRange)
 		{
-			if (miscEventRowY > firstRateEventY + MiscEventWidgetLayoutManager.GetMaxYForSingleRow())
+			if ((miscEventRowY - firstRateEventY) * directionSign > MiscEventWidgetLayoutManager.GetMaxYForSingleRow())
 			{
 				scannedBeyondRegionBoundaryEnoughToCaptureMiscEvents = true;
 			}
@@ -2650,7 +2740,8 @@ internal sealed class ActiveEditorChart : Fumen.IObserver<PreferencesNoteColor>,
 			if (p.NoteEntryMode == NoteEntryMode.AdvanceBySnap && p.SnapIndex != 0 && !deletedNote)
 			{
 				OnLaneInputUp(lane);
-				Editor.OnMoveDown();
+				// Advance forward in the chart to the next snap position regardless of scroll direction.
+				Editor.MoveLaterInChart();
 			}
 		}
 	}

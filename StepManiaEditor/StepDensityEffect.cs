@@ -202,6 +202,13 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 	private readonly RasterizerState TextRasterizerState;
 
 	/// <summary>
+	/// RasterizerState used when rendering the density graph flipped due to Reverse.
+	/// Mirroring via the world matrix flips triangle winding, so culling is disabled to keep
+	/// the primitives visible.
+	/// </summary>
+	private readonly RasterizerState ReverseRasterizerState;
+
+	/// <summary>
 	/// Lock for data computed from the StepDensity measure data.
 	/// </summary>
 	private readonly Lock DataLock = new();
@@ -338,6 +345,16 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 			SlopeScaleDepthBias = 0,
 		};
 
+		ReverseRasterizerState = new RasterizerState
+		{
+			CullMode = CullMode.None,
+			DepthBias = 0,
+			FillMode = FillMode.Solid,
+			MultiSampleAntiAlias = false,
+			ScissorTestEnable = false,
+			SlopeScaleDepthBias = 0,
+		};
+
 		SpriteBatch = new SpriteBatch(GraphicsDevice);
 		Font = font;
 
@@ -444,6 +461,25 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 
 	#region Mouse Input
 
+	/// <summary>
+	/// Returns whether or not the density graph is currently displaying a reversed (flipped) view.
+	/// </summary>
+	private bool IsReversed()
+	{
+		return Preferences.Instance.PreferencesScroll.Reverse && EffectOrientation == Orientation.Vertical;
+	}
+
+	/// <summary>
+	/// Reflects a screen space y coordinate within the bounds of the density graph when the view
+	/// is reversed. When not reversed the input is returned unchanged.
+	/// </summary>
+	/// <param name="screenY">Y coordinate in screen space.</param>
+	/// <returns>Potentially reflected Y coordinate in screen space.</returns>
+	private int ReflectScreenYIfNeeded(int screenY)
+	{
+		return IsReversed() ? 2 * Bounds.Y + Bounds.Height - screenY : screenY;
+	}
+
 	public bool IsInDensityGraphArea(int screenX, int screenY)
 	{
 		return Bounds.Contains(screenX, screenY);
@@ -471,6 +507,14 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 	/// <returns>Whether or not the StepDensityEffect has captured this input.</returns>
 	public bool MouseDown(int screenX, int screenY)
 	{
+		return MouseDownInternal(screenX, ReflectScreenYIfNeeded(screenY));
+	}
+
+	/// <summary>
+	/// Internal MouseDown implementation operating in unflipped screen space.
+	/// </summary>
+	private bool MouseDownInternal(int screenX, int screenY)
+	{
 		UpdateTrackingMouseOverScrollBar(screenX, screenY);
 
 		if (!Bounds.Contains(screenX, screenY))
@@ -494,7 +538,7 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 				(ScrollBarCurrentTime - ScrollBarStartTime) / (ScrollBarEndTime - ScrollBarStartTime);
 		}
 
-		MouseMove(screenX, screenY);
+		MouseMoveInternal(screenX, screenY);
 		return true;
 	}
 
@@ -504,6 +548,14 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 	/// <param name="screenX">Mouse X position in screen space.</param>
 	/// <param name="screenY">Mouse Y position in screen space.</param>
 	public void MouseMove(int screenX, int screenY)
+	{
+		MouseMoveInternal(screenX, ReflectScreenYIfNeeded(screenY));
+	}
+
+	/// <summary>
+	/// Internal MouseMove implementation operating in unflipped screen space.
+	/// </summary>
+	private void MouseMoveInternal(int screenX, int screenY)
 	{
 		UpdateTrackingMouseOverScrollBar(screenX, screenY);
 		if (!Grabbed)
@@ -518,6 +570,14 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 	/// <param name="screenX">Mouse X position in screen space.</param>
 	/// <param name="screenY">Mouse Y position in screen space.</param>
 	public void MouseUp(int screenX, int screenY)
+	{
+		MouseUpInternal(screenX, ReflectScreenYIfNeeded(screenY));
+	}
+
+	/// <summary>
+	/// Internal MouseUp implementation operating in unflipped screen space.
+	/// </summary>
+	private void MouseUpInternal(int screenX, int screenY)
 	{
 		UpdateTrackingMouseOverScrollBar(screenX, screenY);
 		Grabbed = false;
@@ -640,6 +700,17 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 			DensityEffect.View = Matrix.CreateLookAt(new Vector3(x, y, 2), new Vector3(x, y, 0), Vector3.Up);
 		}
 
+		// When reversed, mirror the time axis so the density graph flips to match the reversed chart view.
+		var reversed = IsReversed();
+		DensityEffect.World = reversed
+			? Matrix.CreateScale(-1f, 1f, 1f) * Matrix.CreateTranslation(Bounds.Height, 0f, 0f)
+			: Matrix.Identity;
+
+		// Mirroring flips triangle winding, so disable culling while the mirrored primitives draw.
+		var previousRasterizerState = GraphicsDevice.RasterizerState;
+		if (reversed)
+			GraphicsDevice.RasterizerState = ReverseRasterizerState;
+
 		// Draw primitives.
 		lock (DataLock)
 		{
@@ -661,6 +732,9 @@ internal sealed class StepDensityEffect : Fumen.IObserver<StepDensity>, Fumen.IO
 				}
 			}
 		}
+
+		if (reversed)
+			GraphicsDevice.RasterizerState = previousRasterizerState;
 
 		// Draw stream breakdown text.
 		if (StepDensity != null && Font != null && Preferences.Instance.PreferencesDensityGraph.ShowStream)

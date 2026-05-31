@@ -21,11 +21,11 @@ using StepManiaEditor.AutogenConfig;
 using StepManiaEditor.UI;
 using StepManiaLibrary;
 using StepManiaLibrary.PerformedChart;
-using static StepManiaEditor.Utils;
-using static StepManiaEditor.ImGuiUtils;
 using static Fumen.Converters.SMCommon;
 using static StepManiaEditor.EditorSongImageUtils;
+using static StepManiaEditor.ImGuiUtils;
 using static StepManiaEditor.MiniMap;
+using static StepManiaEditor.Utils;
 using Color = Microsoft.Xna.Framework.Color;
 using Path = Fumen.Path;
 using Rectangle = Microsoft.Xna.Framework.Rectangle;
@@ -1500,6 +1500,18 @@ public sealed class Editor :
 		return screenSpaceY - ChartArea.Y;
 	}
 
+	/// <summary>
+	/// Returns the sign of the scroll direction.
+	/// When not reversed, larger screen space y values represent positions later in the chart and this returns 1.
+	/// When reversed, larger screen space y values represent positions earlier in the chart and this returns -1.
+	/// </summary>
+	/// <returns>The sign of the scroll direction.</returns>
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	public static double GetScrollDirectionSign()
+	{
+		return Preferences.Instance.PreferencesScroll.Reverse ? -1.0 : 1.0;
+	}
+
 	public int GetFocalPointChartSpaceX()
 	{
 		if (Preferences.Instance.PreferencesReceptors.CenterHorizontally)
@@ -1512,14 +1524,30 @@ public sealed class Editor :
 		return TransformChartSpaceXToScreenSpaceX(GetFocalPointChartSpaceX());
 	}
 
+	/// <summary>
+	/// Flips a chart space y value within the chart area.
+	/// </summary>
+	[MethodImpl(MethodImplOptions.AggressiveInlining)]
+	private int FlipChartSpaceY(int chartSpaceY)
+	{
+		return ChartArea.Height - chartSpaceY;
+	}
+
 	public int GetFocalPointChartSpaceY()
 	{
+		// This is the unreflected chart space position as stored in preferences. The reflection for
+		// reverse mode is applied when converting to screen space in GetFocalPointScreenSpaceY so that
+		// chart space focal point logic (such as dragging the receptors) operates in a single space.
 		return Preferences.Instance.PreferencesReceptors.ChartSpacePositionY;
 	}
 
 	public int GetFocalPointScreenSpaceY()
 	{
-		return TransformChartSpaceYToScreenSpaceY(GetFocalPointChartSpaceY());
+		var chartSpaceY = GetFocalPointChartSpaceY();
+		// When reversed the focal point is flipped to within the chart area.
+		if (Preferences.Instance.PreferencesScroll.Reverse)
+			chartSpaceY = FlipChartSpaceY(chartSpaceY);
+		return TransformChartSpaceYToScreenSpaceY(chartSpaceY);
 	}
 
 	public Vector2 GetFocalPointChartSpace()
@@ -1536,7 +1564,23 @@ public sealed class Editor :
 	{
 		var p = Preferences.Instance.PreferencesReceptors;
 		p.ChartSpacePositionX = TransformScreenSpaceXToChartSpaceX(screenSpaceX);
-		p.ChartSpacePositionY = TransformScreenSpaceYToChartSpaceY(screenSpaceY);
+		var chartSpaceY = TransformScreenSpaceYToChartSpaceY(screenSpaceY);
+		// When reversed the focal point is flipped to within the chart area.
+		if (Preferences.Instance.PreferencesScroll.Reverse)
+			chartSpaceY = FlipChartSpaceY(chartSpaceY);
+		p.ChartSpacePositionY = chartSpaceY;
+	}
+
+	/// <summary>
+	/// Returns the screen space distance in pixels from the focal point to the screen edge
+	/// corresponding to the earliest visible position. When scrolling normally the earliest
+	/// visible position is at the top of the screen. When reversed it is at the bottom of
+	/// the screen.
+	/// </summary>
+	private double GetDistanceFromFocalPointToEarliestVisibleEdge()
+	{
+		var focalPointY = GetFocalPointScreenSpaceY();
+		return GetScrollDirectionSign() >= 0.0 ? focalPointY : GetViewportHeight() - focalPointY;
 	}
 
 	#endregion Focal Point
@@ -2087,6 +2131,12 @@ public sealed class Editor :
 			var newX = TransformScreenSpaceXToChartSpaceX(EditorMouseState.X()) - (int)FocalPointMoveOffset.X;
 			var newY = TransformScreenSpaceYToChartSpaceY(EditorMouseState.Y()) - (int)FocalPointMoveOffset.Y;
 
+			// When reversed the focal point is flipped within the chart area for rendering. Reflect the
+			// screen-derived position back into the unflipped chart space stored in preferences so the
+			// receptors follow the mouse.
+			if (Preferences.Instance.PreferencesScroll.Reverse)
+				newY = FlipChartSpaceY(newY);
+
 			if (ForceOnlyHorizontalFocalPointMove)
 			{
 				SetReceptorPosition(newX, (int)FocalPointAtMoveStart.Y);
@@ -2146,8 +2196,9 @@ public sealed class Editor :
 			return;
 
 		// Adjust position.
-		var timeDelta = pScroll.ScrollWheelTime / ZoomManager.GetSpacingZoom() * -scrollDelta;
-		var rowDelta = pScroll.ScrollWheelRows / ZoomManager.GetSpacingZoom() * -scrollDelta;
+		var directionSign = GetScrollDirectionSign();
+		var timeDelta = pScroll.ScrollWheelTime / ZoomManager.GetSpacingZoom() * -scrollDelta * directionSign;
+		var rowDelta = pScroll.ScrollWheelRows / ZoomManager.GetSpacingZoom() * -scrollDelta * directionSign;
 		if (Playing)
 		{
 			if (focusedChartData != null)
@@ -2835,8 +2886,21 @@ public sealed class Editor :
 			return;
 		var width = (int)GetWaveFormWidth(activeChart);
 		var x = activeChart.GetFocalPointX() - (width >> 1);
+		var y = TransformChartSpaceYToScreenSpaceY(0);
+
+		// When reversed, flip the waveform so it matches the reversed chart view.
+		if (Preferences.Instance.PreferencesScroll.Reverse)
+		{
+			var areaHeight = Math.Max(1, ChartArea.Height);
+			SpriteBatch.Draw(WaveformRenderTarget,
+				new Rectangle(x, y, width, areaHeight),
+				new Rectangle(0, 0, WaveformRenderTarget.Width, areaHeight),
+				Color.White, 0.0f, Vector2.Zero, SpriteEffects.FlipVertically, 0.0f);
+			return;
+		}
+
 		SpriteBatch.Draw(WaveformRenderTarget,
-			new Rectangle(x, TransformChartSpaceYToScreenSpaceY(0), width, WaveformRenderTarget.Height), Color.White);
+			new Rectangle(x, y, width, WaveformRenderTarget.Height), Color.White);
 	}
 
 	private void DrawActiveChartBoundaries()
@@ -3084,7 +3148,7 @@ public sealed class Editor :
 			return;
 
 		var pScroll = Preferences.Instance.PreferencesScroll;
-		var focalPointY = GetFocalPointScreenSpaceY();
+		var distanceToEarliestEdge = GetDistanceFromFocalPointToEarliestVisibleEdge();
 
 		var miniMapCapturingMouseLastFrame = MiniMapCapturingMouse;
 
@@ -3122,13 +3186,13 @@ public sealed class Editor :
 				case SpacingMode.ConstantTime:
 				{
 					SetChartTime(editorPosition +
-					             focalPointY / (pScroll.TimeBasedPixelsPerSecond * ZoomManager.GetSpacingZoom()));
+					             distanceToEarliestEdge / (pScroll.TimeBasedPixelsPerSecond * ZoomManager.GetSpacingZoom()));
 					break;
 				}
 				case SpacingMode.ConstantRow:
 				{
 					SetChartPosition(editorPosition +
-					                 focalPointY / (pScroll.RowBasedPixelsPerRow * ZoomManager.GetSpacingZoom()));
+					                 distanceToEarliestEdge / (pScroll.RowBasedPixelsPerRow * ZoomManager.GetSpacingZoom()));
 					break;
 				}
 			}
@@ -3228,6 +3292,7 @@ public sealed class Editor :
 
 		MiniMap.SetSelectMode(pMiniMap.MiniMapSelectMode);
 		MiniMap.SetNumLanes((uint)FocusedChart.NumInputs);
+		MiniMap.SetReverse(pScroll.Reverse);
 
 		var position = GetPosition();
 		var screenHeight = GetViewportHeight();
@@ -3241,7 +3306,7 @@ public sealed class Editor :
 		{
 			// Editor Area. The visible time range.
 			var pps = pScroll.TimeBasedPixelsPerSecond * spacingZoom;
-			var editorAreaTimeStart = chartTime - GetFocalPointScreenSpaceY() / pps;
+			var editorAreaTimeStart = chartTime - GetDistanceFromFocalPointToEarliestVisibleEdge() / pps;
 			var editorAreaTimeEnd = editorAreaTimeStart + screenHeight / pps;
 			var editorAreaTimeRange = editorAreaTimeEnd - editorAreaTimeStart;
 
@@ -3269,7 +3334,7 @@ public sealed class Editor :
 		{
 			// Editor Area. The visible row range.
 			var ppr = pScroll.RowBasedPixelsPerRow * spacingZoom;
-			var editorAreaRowStart = chartPosition - GetFocalPointScreenSpaceY() / ppr;
+			var editorAreaRowStart = chartPosition - GetDistanceFromFocalPointToEarliestVisibleEdge() / ppr;
 			var editorAreaRowEnd = editorAreaRowStart + screenHeight / ppr;
 			var editorAreaRowRange = editorAreaRowEnd - editorAreaRowStart;
 
@@ -3447,6 +3512,22 @@ public sealed class Editor :
 			return;
 		if (MiniMapRenderTarget == null)
 			return;
+
+		// When reversed, flip the MiniMap vertically.
+		if (Preferences.Instance.PreferencesScroll.Reverse)
+		{
+			// The MiniMap renders its content into the visible area at the top of its texture, which due to the
+			// window docking may be less than its height. We need to offset by that height difference to flip at
+			// the correct location.
+			var visibleHeight = MiniMap.GetVisibleHeight();
+			var flipOffset = MiniMapRenderTarget.Height - visibleHeight;
+			SpriteBatch.Draw(MiniMapRenderTarget,
+				new Rectangle(MiniMap.GetX(), MiniMap.GetY(), MiniMapRenderTarget.Width, MiniMapRenderTarget.Height),
+				null,
+				Color.White, 0.0f, new Vector2(0, flipOffset), SpriteEffects.FlipVertically, 0.0f);
+			return;
+		}
+
 		SpriteBatch.Draw(MiniMapRenderTarget,
 			new Rectangle(MiniMap.GetX(), MiniMap.GetY(), MiniMapRenderTarget.Width, MiniMapRenderTarget.Height), Color.White);
 	}
@@ -3463,7 +3544,7 @@ public sealed class Editor :
 		var spacingZoom = ZoomManager.GetSpacingZoom();
 		var chartTime = GetPosition().ChartTime;
 		var pps = Preferences.Instance.PreferencesScroll.TimeBasedPixelsPerSecond * spacingZoom;
-		var timeStart = chartTime - GetFocalPointScreenSpaceY() / pps;
+		var timeStart = chartTime - GetDistanceFromFocalPointToEarliestVisibleEdge() / pps;
 		var timeEnd = timeStart + screenHeight / pps;
 		DensityGraph.Update(timeStart, timeEnd, chartTime);
 	}
@@ -6194,7 +6275,34 @@ public sealed class Editor :
 		UpdateAutoPlayFromScrolling();
 	}
 
+	/// <summary>
+	/// Moves the editor up the screen. This is earlier in the chart when not reversed and later in
+	/// the chart when reversed.
+	/// </summary>
 	public void OnMoveUp()
+	{
+		if (Preferences.Instance.PreferencesScroll.Reverse)
+			MoveLaterInChart();
+		else
+			MoveEarlierInChart();
+	}
+
+	/// <summary>
+	/// Moves the editor down the screen. This is later in the chart when not reversed and earlier in
+	/// the chart when reversed.
+	/// </summary>
+	public void OnMoveDown()
+	{
+		if (Preferences.Instance.PreferencesScroll.Reverse)
+			MoveEarlierInChart();
+		else
+			MoveLaterInChart();
+	}
+
+	/// <summary>
+	/// Moves the editor earlier in the chart, independent of scroll direction.
+	/// </summary>
+	public void MoveEarlierInChart()
 	{
 		if (Preferences.Instance.PreferencesScroll.StopPlaybackWhenScrolling)
 			StopPlayback();
@@ -6215,7 +6323,10 @@ public sealed class Editor :
 		}
 	}
 
-	public void OnMoveDown()
+	/// <summary>
+	/// Moves the editor later in the chart, independent of scroll direction.
+	/// </summary>
+	public void MoveLaterInChart()
 	{
 		if (Preferences.Instance.PreferencesScroll.StopPlaybackWhenScrolling)
 			StopPlayback();

@@ -38,6 +38,14 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 	/// </summary>
 	private double NextDrawActiveYCutoffPoint;
 
+	/// <summary>
+	/// The screen space height of the hold's head arrow, recorded when the hold's dimensions are set.
+	/// The head arrow always extends from Y in the positive y direction regardless of scroll direction,
+	/// so this is used to keep the head within the hold's selectable bounds when reversed (where the
+	/// body extends in the negative y direction and H is negative).
+	/// </summary>
+	private double HoldStartHeight;
+
 	public EditorHoldNoteEvent(EventConfig config, LaneHoldStartNote startEvent, LaneHoldEndNote endEvent) : base(config)
 	{
 		LaneHoldStartNote = startEvent;
@@ -183,6 +191,35 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 		NextDrawActiveYCutoffPoint = y;
 	}
 
+	public void SetHoldStartHeight(double height)
+	{
+		HoldStartHeight = height;
+	}
+
+	public override bool DoesPointIntersect(double x, double y)
+	{
+		var left = Math.Min(X, X + W);
+		var right = Math.Max(X, X + W);
+		// The body occupies [Y, Y + H] (H is negative when reversed) and the head arrow occupies
+		// [Y, Y + HoldStartHeight]. Use the union of the two so the head remains selectable in both
+		// scroll directions.
+		var top = Math.Min(Y + H, Y);
+		var bottom = Math.Max(Y + H, Y + HoldStartHeight);
+		return x >= left && x <= right && y >= top && y <= bottom;
+	}
+
+	public override bool DoesSelectionIntersect(double x, double y, double w, double h)
+	{
+		var left = Math.Min(X, X + W);
+		var right = Math.Max(X, X + W);
+		// The body occupies [Y, Y + H] (H is negative when reversed) and the head arrow occupies
+		// [Y, Y + HoldStartHeight]. Use the union of the two so the head remains selectable in both
+		// scroll directions.
+		var top = Math.Min(Y + H, Y);
+		var bottom = Math.Max(Y + H, Y + HoldStartHeight);
+		return left < x + w && right > x && top < y + h && bottom > y;
+	}
+
 	private readonly struct HoldRenderState
 	{
 		private readonly TextureAtlas TextureAtlas;
@@ -199,6 +236,7 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 		private readonly string BodyRimTextureId;
 		private readonly bool BodyRimMirrored;
 
+		public readonly double StartHeight;
 		private readonly string StartFillTextureId;
 		private readonly bool StartFillMirrored;
 		private readonly Color StartColor;
@@ -214,6 +252,9 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 		private readonly int BodyTextureWidth;
 		private readonly int BodyTextureHeight;
 
+		private readonly bool Reverse;
+		private readonly bool FlipEndCapsInReverse;
+
 		public HoldRenderState(
 			TextureAtlas textureAtlas,
 			SpriteBatch spriteBatch,
@@ -228,6 +269,8 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 			SpriteBatch = spriteBatch;
 			Alpha = alpha;
 			Scale = scale;
+			Reverse = Preferences.Instance.PreferencesScroll.Reverse;
+			FlipEndCapsInReverse = arrowGraphicManager.ShouldFlipHoldEndCapsInReverse();
 
 			var selected = holdNoteEvent.IsSelected();
 			var row = holdNoteEvent.GetRow();
@@ -264,9 +307,48 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 				arrowGraphicManager.GetHoldEndTextureRim(lane, selected);
 
 			(BodyTextureWidth, BodyTextureHeight) = textureAtlas.GetDimensions(BodyRimTextureId);
+
+			// Measure the start graphic height.
+			if (!string.IsNullOrEmpty(StartFillTextureId) && !string.IsNullOrEmpty(StartRimTextureId))
+			{
+				var (_, startRimHeight) = textureAtlas.GetDimensions(StartRimTextureId);
+				StartHeight = startRimHeight * Scale;
+			}
+			else
+			{
+				StartHeight = 0.0;
+			}
 		}
 
-		public void DrawStart(double x, double y, double w)
+		/// <summary>
+		/// Returns the top y in screen space at which to draw a rectangle whose unreflected top is the
+		/// given y and whose height is the given h. When reversed the rectangle is reflected about the
+		/// given pivot (the head center) so the hold renders extending upward from the head.
+		/// </summary>
+		private double ReflectTopIfNeeded(double y, double h, double pivotY)
+		{
+			return Reverse ? 2.0 * pivotY - (y + h) : y;
+		}
+
+		/// <summary>
+		/// Adds a vertical flip to the given sprite effects when reversed so body and cap sprites are
+		/// mirrored to point the correct way.
+		/// </summary>
+		private SpriteEffects ApplyFlip(SpriteEffects effects)
+		{
+			return Reverse ? effects | SpriteEffects.FlipVertically : effects;
+		}
+
+		/// <summary>
+		/// Adds a vertical flip to the end cap sprite effects when reversed, unless the current style
+		/// should not flip its end caps.
+		/// </summary>
+		private SpriteEffects ApplyEndCapFlip(SpriteEffects effects)
+		{
+			return Reverse && FlipEndCapsInReverse ? effects | SpriteEffects.FlipVertically : effects;
+		}
+
+		public void DrawStart(double x, double y, double w, double pivotY)
 		{
 			if (string.IsNullOrEmpty(StartFillTextureId) || string.IsNullOrEmpty(StartRimTextureId))
 				return;
@@ -274,38 +356,42 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 			// It is assumed there is no height padding baked into this texture.
 			var (_, holdBodyStartHeight) = TextureAtlas.GetDimensions(StartRimTextureId);
 			var holdBodyStartH = holdBodyStartHeight * Scale;
+			var top = ReflectTopIfNeeded(y - holdBodyStartH, holdBodyStartH, pivotY);
 
 			// Draw fill.
 			TextureAtlas.Draw(
 				StartFillTextureId,
 				SpriteBatch,
-				new RectangleF((float)x, (float)(y - holdBodyStartH), (float)w, (float)holdBodyStartH),
+				new RectangleF((float)x, (float)top, (float)w, (float)holdBodyStartH),
 				0.0f,
 				new Color(StartColor.R, StartColor.G, StartColor.B, (byte)(StartColor.A * Alpha)),
-				StartFillMirrored ? SpriteEffects.FlipHorizontally : SpriteEffects.None);
+				ApplyFlip(StartFillMirrored ? SpriteEffects.FlipHorizontally : SpriteEffects.None));
 
 			// Draw rim.
 			TextureAtlas.Draw(
 				StartRimTextureId,
 				SpriteBatch,
-				new RectangleF((float)x, (float)(y - holdBodyStartH), (float)w, (float)holdBodyStartH),
+				new RectangleF((float)x, (float)top, (float)w, (float)holdBodyStartH),
 				0.0f,
 				Alpha,
-				StartRimMirrored ? SpriteEffects.FlipHorizontally : SpriteEffects.None);
+				ApplyFlip(StartRimMirrored ? SpriteEffects.FlipHorizontally : SpriteEffects.None));
 		}
 
-		public void DrawBody(double x, double y, double w, double minY)
+		public void DrawBody(double x, double y, double w, double minY, double pivotY)
 		{
 			var bodyTileH = BodyTextureHeight * Scale;
-			var fillSpriteEffects = BodyFillMirrored ? SpriteEffects.FlipHorizontally : SpriteEffects.None;
-			var rimSpriteEffects = BodyRimMirrored ? SpriteEffects.FlipHorizontally : SpriteEffects.None;
+			var fillSpriteEffects = ApplyFlip(BodyFillMirrored ? SpriteEffects.FlipHorizontally : SpriteEffects.None);
+			var rimSpriteEffects = ApplyFlip(BodyRimMirrored ? SpriteEffects.FlipHorizontally : SpriteEffects.None);
 			var fillColor = new Color(BodyColor.R, BodyColor.G, BodyColor.B, (byte)(BodyColor.A * Alpha));
+
+			var screenBottom = Reverse ? 2.0 * pivotY : ScreenHeight;
+			var screenTop = Reverse ? 2.0 * pivotY - ScreenHeight : 0.0;
 
 			// Adjust the starting y value so we don't needlessly loop when zoomed in and a large
 			// area of the hold is off the screen.
-			if (y > ScreenHeight + bodyTileH)
+			if (y > screenBottom + bodyTileH)
 			{
-				y -= (int)((y - (ScreenHeight + bodyTileH)) / bodyTileH) * bodyTileH;
+				y -= (int)((y - (screenBottom + bodyTileH)) / bodyTileH) * bodyTileH;
 			}
 
 			// Draw the body by looping up from the bottom, ensuring that each tiled body texture aligns
@@ -317,13 +403,13 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 				if (h == 0)
 					break;
 				y -= h;
-				if (y < -bodyTileH)
+				if (y < screenTop - bodyTileH)
 					break;
 				if (h < bodyTileH)
 				{
 					var sourceH = (int)(BodyTextureHeight * (h / bodyTileH));
 					var sourceRect = new Rectangle(0, BodyTextureHeight - sourceH, BodyTextureWidth, sourceH);
-					var destRect = new RectangleF((float)x, (float)y, (float)w, (float)h);
+					var destRect = new RectangleF((float)x, (float)ReflectTopIfNeeded(y, h, pivotY), (float)w, (float)h);
 
 					// Draw fill.
 					TextureAtlas.Draw(
@@ -347,7 +433,7 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 				}
 				else
 				{
-					var destRect = new RectangleF((float)x, (float)y, (float)w, (float)h);
+					var destRect = new RectangleF((float)x, (float)ReflectTopIfNeeded(y, h, pivotY), (float)w, (float)h);
 
 					// Draw fill.
 					TextureAtlas.Draw(
@@ -370,9 +456,9 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 			}
 		}
 
-		public void DrawEnd(double x, double y, double w, double h)
+		public void DrawEnd(double x, double y, double w, double h, double pivotY)
 		{
-			var destination = new RectangleF((float)x, (float)y, (float)w, (float)h);
+			var destination = new RectangleF((float)x, (float)ReflectTopIfNeeded(y, h, pivotY), (float)w, (float)h);
 
 			// Draw fill.
 			TextureAtlas.Draw(
@@ -381,7 +467,7 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 				destination,
 				EndFillRotation,
 				new Color(EndColor.R, EndColor.G, EndColor.B, (byte)(EndColor.A * Alpha)),
-				SpriteEffects.None);
+				ApplyEndCapFlip(SpriteEffects.None));
 
 			// Draw rim.
 			TextureAtlas.Draw(
@@ -390,7 +476,7 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 				destination,
 				EndRimRotation,
 				Alpha,
-				SpriteEffects.None);
+				ApplyEndCapFlip(SpriteEffects.None));
 		}
 	}
 
@@ -413,14 +499,19 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 		var halfArrowHeight = startArrowHeight * 0.5 * Scale;
 		var (_, capTextureH) = textureAtlas.GetDimensions(state.EndRimTextureId);
 
-		// Determine the Y value and height to use.
-		// If the note is active, we should bring down the top to the cutoff point.
+		var reverse = Preferences.Instance.PreferencesScroll.Reverse;
+		// Point for flipping when in Reverse.
+		var pivotY = Y + halfArrowHeight;
+
+		// If the note is active, we should bring the head to the cutoff point.
 		var bodyY = Y + halfArrowHeight;
-		var noteH = H - halfArrowHeight;
+		var noteH = reverse ? -H + halfArrowHeight : H - halfArrowHeight;
+
 		if (activeAndCutoff)
 		{
-			noteH -= NextDrawActiveYCutoffPoint - bodyY;
-			bodyY = NextDrawActiveYCutoffPoint;
+			var newBodyY = reverse ? 2.0 * pivotY - NextDrawActiveYCutoffPoint : NextDrawActiveYCutoffPoint;
+			noteH -= newBodyY - bodyY;
+			bodyY = newBodyY;
 		}
 
 		var capH = capTextureH * Scale;
@@ -438,24 +529,48 @@ internal sealed class EditorHoldNoteEvent : EditorEvent
 			minimumCapY = Y;
 		}
 
+		// In Reverse, arrows are not flipped, so for an arrow that uses a hold start graphic (e.g. solo
+		// diagonals) the widest part of the arrow is on the side nearest the hold body. Rather than
+		// extending the body with the start graphic to fill the gap as we do when not reversed, cut
+		// off the start of the body by the start graphic's height so the body begins under the widest
+		// part of the arrow and the arrow hides the body's starting edge. The start graphic itself is
+		// not drawn in this case. The body occupies [minY, y] in unreflected space; if it is shorter
+		// than the cutoff we don't draw the body, but the arrow and end cap are still drawn. We always
+		// draw the end cap so the hold is indicated, but in rare edge cases when we need to clamp, it
+		// can cut into the center of the arrow. We would ideally push a scissor rect here to fix that
+		// but MonoGame only supports clip rects at the entire sprite batch level. This edge case is so
+		// rare (solo + reverse + extremely short hold) that it isn't worth the effort to improve this.
+		var drawStart = true;
+		if (reverse && state.StartHeight > 0.0)
+		{
+			drawStart = false;
+			minY = Math.Min(y, minY + state.StartHeight);
+		}
+
 		// Draw the body.
-		state.DrawBody(X, y, W, minY);
+		state.DrawBody(X, y, W, minY, pivotY);
 
 		// Some arrows, like solo diagonals need a hold start graphic to fill the gap at the top of the hold
-		// between the arrow midpoint and the widest part of the arrow.
-		state.DrawStart(X, minY, W);
+		// between the arrow midpoint and the widest part of the arrow. When reversed we cut off the body
+		// start instead (see above) and do not draw the start graphic.
+		if (drawStart)
+			state.DrawStart(X, minY, W, pivotY);
 
 		// Draw the cap, if it is visible.
 		// Also ensure that the cap is below the start. In negative scroll rate regions it may be
 		// above the start, in which case we do not want to render it.
 		// The cap should be drawn after the body as some caps render on top of the body.
-		if (capY > -capH && capY < ScreenHeight && capY >= minimumCapY)
+		// The visible range is expressed in unreflected space, which is shifted when reversed.
+		var normalScreenTop = reverse ? 2.0 * pivotY - ScreenHeight : 0.0;
+		var normalScreenBottom = reverse ? 2.0 * pivotY : ScreenHeight;
+		if (capY > normalScreenTop - capH && capY < normalScreenBottom && capY >= minimumCapY)
 		{
-			state.DrawEnd(X, capY, W, capH);
+			state.DrawEnd(X, capY, W, capH, pivotY);
 		}
 
-		// Draw the arrow at the start of the hold.
-		var holdStartY = bodyY - halfArrowHeight;
+		// Draw the arrow at the start of the hold. The head arrow is not reflected by the draw helpers,
+		// so when reversed compute its real screen position by reflecting bodyY about the pivot.
+		var holdStartY = (reverse ? 2.0 * pivotY - bodyY : bodyY) - halfArrowHeight;
 		DrawTap(textureAtlas, spriteBatch, arrowGraphicManager, X, holdStartY);
 
 		// Draw the fake marker if this note is a fake.

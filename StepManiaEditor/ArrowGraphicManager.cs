@@ -285,6 +285,7 @@ internal abstract class ArrowGraphicManager
 	}
 
 	public abstract bool AreHoldCapsCentered();
+	public abstract bool ShouldFlipHoldEndCapsInReverse();
 
 	public abstract (string, float) GetReceptorTexture(int lane);
 	public abstract (string, float) GetReceptorGlowTexture(int lane);
@@ -501,6 +502,11 @@ internal abstract class ArrowGraphicManagerDance : ArrowGraphicManager
 	public override bool AreHoldCapsCentered()
 	{
 		return false;
+	}
+
+	public override bool ShouldFlipHoldEndCapsInReverse()
+	{
+		return true;
 	}
 
 	public override bool ShouldColorHoldsAndRollsInMultiplayerCharts()
@@ -1253,6 +1259,11 @@ internal abstract class ArrowGraphicManagerPIU : ArrowGraphicManager
 	public override bool AreHoldCapsCentered()
 	{
 		return true;
+	}
+
+	public override bool ShouldFlipHoldEndCapsInReverse()
+	{
+		return false;
 	}
 
 	public override bool ShouldColorHoldsAndRollsInMultiplayerCharts()

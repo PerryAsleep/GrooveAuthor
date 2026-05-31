@@ -996,12 +996,24 @@ internal abstract class EditorEvent : IComparable<EditorEvent>
 
 	public virtual bool DoesPointIntersect(double x, double y)
 	{
-		return x >= X && x <= X + W && y >= Y && y <= Y + H;
+		// Normalize the bounds so events with a negative width or height (for example holds when the
+		// scroll direction is reversed, which have a negative height) still intersect correctly.
+		var left = Math.Min(X, X + W);
+		var right = Math.Max(X, X + W);
+		var top = Math.Min(Y, Y + H);
+		var bottom = Math.Max(Y, Y + H);
+		return x >= left && x <= right && y >= top && y <= bottom;
 	}
 
 	public virtual bool DoesSelectionIntersect(double x, double y, double w, double h)
 	{
-		return X < x + w && X + W > x && Y < y + h && Y + H > y;
+		// Normalize the bounds so events with a negative width or height (for example holds when the
+		// scroll direction is reversed, which have a negative height) still intersect correctly.
+		var left = Math.Min(X, X + W);
+		var right = Math.Max(X, X + W);
+		var top = Math.Min(Y, Y + H);
+		var bottom = Math.Max(Y, Y + H);
+		return left < x + w && right > x && top < y + h && bottom > y;
 	}
 
 	public bool IsSelected()

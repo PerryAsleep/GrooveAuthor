@@ -3,7 +3,7 @@
 namespace StepManiaEditor;
 
 /// <summary>
-/// Class for encapsulating spacing logic that depends on the current SpacingMode.
+/// Class for encapsulating spacing logic that depends on the current SpacingMode and Reverse preference.
 /// </summary>
 internal abstract class EventSpacingHelper
 {
@@ -38,6 +38,14 @@ internal abstract class EventSpacingHelper
 	protected EditorRateAlteringEvent RateAlteringEvent;
 
 	/// <summary>
+	/// The sign of the scroll direction. 1.0 when not reversed and -1.0 when reversed.
+	/// This is captured once when the helper is created so it is constant for the frame.
+	/// It is applied only when converting between chart space and screen space; the underlying
+	/// Pps and Ppr values (and therefore IsScrollRateNegative) are not affected by it.
+	/// </summary>
+	protected readonly double DirectionSign;
+
+	/// <summary>
 	/// Factory method for creating an EventSpacingHelper appropriate for the current
 	/// SpacingMode using the given active EditorChart.
 	/// </summary>
@@ -64,7 +72,28 @@ internal abstract class EventSpacingHelper
 	protected EventSpacingHelper(EditorChart activeChart)
 	{
 		ActiveChart = activeChart;
+		DirectionSign = Editor.GetScrollDirectionSign();
 	}
+
+	/// <summary>
+	/// Current pixels per second incorporating the scroll direction sign.
+	/// </summary>
+	protected double SignedPps => Pps * DirectionSign;
+
+	/// <summary>
+	/// Current pixels per row incorporating the scroll direction sign.
+	/// </summary>
+	protected double SignedPpr => Ppr * DirectionSign;
+
+	/// <summary>
+	/// Previous pixels per second incorporating the scroll direction sign.
+	/// </summary>
+	protected double SignedPreviousPps => PreviousPps * DirectionSign;
+
+	/// <summary>
+	/// Previous pixels per row incorporating the scroll direction sign.
+	/// </summary>
+	protected double SignedPreviousPpr => PreviousPpr * DirectionSign;
 
 	/// <summary>
 	/// Returns the current pixels per second value set in UpdatePpsAndPpr.
@@ -253,7 +282,7 @@ internal sealed class EventSpacingHelperConstantTime : EventSpacingHelper
 	public override (double, double) GetChartTimeAndRow(double y, double anchorY, double anchorChartTime, double anchorRow)
 	{
 		// Determine the chart time based on a screen space delta and the pixels per second.
-		var chartTime = anchorChartTime + (y - anchorY) / Pps;
+		var chartTime = anchorChartTime + (y - anchorY) / SignedPps;
 		// Derive the position from the time.
 		var chartPosition = RateAlteringEvent.GetChartPositionFromTime(chartTime);
 		return (chartTime, chartPosition);
@@ -263,7 +292,7 @@ internal sealed class EventSpacingHelperConstantTime : EventSpacingHelper
 		double anchorRow)
 	{
 		// Determine the chart time based on a screen space delta and the pixels per second.
-		var chartTime = anchorChartTime + (y - anchorY) / PreviousPps;
+		var chartTime = anchorChartTime + (y - anchorY) / SignedPreviousPps;
 		// Derive the position from the time.
 		var chartPosition = RateAlteringEvent.GetChartPositionFromTime(chartTime);
 		return (chartTime, chartPosition);
@@ -277,28 +306,28 @@ internal sealed class EventSpacingHelperConstantTime : EventSpacingHelper
 
 	public override double GetY(EditorEvent e, double previousRateEventY)
 	{
-		return previousRateEventY + (e.GetChartTime() - RateAlteringEvent.GetChartTime()) * Pps;
+		return previousRateEventY + (e.GetChartTime() - RateAlteringEvent.GetChartTime()) * SignedPps;
 	}
 
 	public override double GetY(EditorEvent e, double anchorY, double anchorChartTime, double anchorRow)
 	{
-		return anchorY + (e.GetChartTime() - anchorChartTime) * Pps;
+		return anchorY + (e.GetChartTime() - anchorChartTime) * SignedPps;
 	}
 
 	public override double GetY(double relativeTime, double relativeRow, double anchorY)
 	{
-		return anchorY + relativeTime * Pps;
+		return anchorY + relativeTime * SignedPps;
 	}
 
 	public override double GetY(double chartTime, double chartRow, double anchorY, double anchorChartTime, double anchorRow)
 	{
-		return anchorY + (chartTime - anchorChartTime) * Pps;
+		return anchorY + (chartTime - anchorChartTime) * SignedPps;
 	}
 
 	public override double GetYForRow(double row, double previousRateEventY)
 	{
 		var time = RateAlteringEvent.GetChartTimeFromPosition(row);
-		return previousRateEventY + (time - RateAlteringEvent.GetChartTime()) * Pps;
+		return previousRateEventY + (time - RateAlteringEvent.GetChartTime()) * SignedPps;
 	}
 
 	public override bool DoesRegionEndBeforeEvent(IChartRegion region, EditorEvent editorEvent)
@@ -317,15 +346,18 @@ internal sealed class EventSpacingHelperConstantTime : EventSpacingHelper
 	{
 		var delta = region.GetChartTime() - RateAlteringEvent.GetChartTime();
 		delta = Math.Max(0.0, delta);
-		return previousRateEventY + delta * Pps;
+		return previousRateEventY + delta * SignedPps;
 	}
 
 	public override double GetRegionH(IChartRegion region, double previousRateEventY)
 	{
+		// When reversed this returns a negative height. IRegion.DrawRegionImpl and other consumers
+		// normalize a negative height to a positive height with an adjusted y, so a region remains
+		// correct regardless of scroll direction.
 		var regionEnd = region.GetChartTime() + region.GetChartTimeDurationForRegion();
 		var delta = regionEnd - RateAlteringEvent.GetChartTime();
 		delta = Math.Max(0.0, delta);
-		return previousRateEventY + delta * Pps - region.GetRegionY();
+		return previousRateEventY + delta * SignedPps - region.GetRegionY();
 	}
 }
 
@@ -341,7 +373,7 @@ internal abstract class EventSpacingHelperRow : EventSpacingHelper
 	public override (double, double) GetChartTimeAndRow(double y, double anchorY, double anchorChartTime, double anchorRow)
 	{
 		// Determine the chart position based on a screen space delta and the pixels per row.
-		var chartPosition = anchorRow + (y - anchorY) / Ppr;
+		var chartPosition = anchorRow + (y - anchorY) / SignedPpr;
 		// Derive the time from the position.
 		var chartTime = RateAlteringEvent.GetChartTimeFromPosition(chartPosition);
 		return (chartTime, chartPosition);
@@ -351,7 +383,7 @@ internal abstract class EventSpacingHelperRow : EventSpacingHelper
 		double anchorRow)
 	{
 		// Determine the chart position based on a screen space delta and the pixels per row.
-		var chartPosition = anchorRow + (y - anchorY) / PreviousPpr;
+		var chartPosition = anchorRow + (y - anchorY) / SignedPreviousPpr;
 		// Derive the time from the position.
 		var chartTime = RateAlteringEvent.GetChartTimeFromPosition(chartPosition);
 		return (chartTime, chartPosition);
@@ -359,27 +391,27 @@ internal abstract class EventSpacingHelperRow : EventSpacingHelper
 
 	public override double GetY(EditorEvent e, double previousRateEventY)
 	{
-		return previousRateEventY + (e.GetChartPosition() - RateAlteringEvent.GetChartPosition()) * Ppr;
+		return previousRateEventY + (e.GetChartPosition() - RateAlteringEvent.GetChartPosition()) * SignedPpr;
 	}
 
 	public override double GetY(EditorEvent e, double anchorY, double anchorChartTime, double anchorRow)
 	{
-		return anchorY + (e.GetChartPosition() - anchorRow) * Ppr;
+		return anchorY + (e.GetChartPosition() - anchorRow) * SignedPpr;
 	}
 
 	public override double GetY(double relativeTime, double relativeRow, double anchorY)
 	{
-		return anchorY + relativeRow * Ppr;
+		return anchorY + relativeRow * SignedPpr;
 	}
 
 	public override double GetY(double chartTime, double chartRow, double anchorY, double anchorChartTime, double anchorRow)
 	{
-		return anchorY + (chartRow - anchorRow) * Ppr;
+		return anchorY + (chartRow - anchorRow) * SignedPpr;
 	}
 
 	public override double GetYForRow(double row, double previousRateEventY)
 	{
-		return previousRateEventY + (row - RateAlteringEvent.GetRow()) * Ppr;
+		return previousRateEventY + (row - RateAlteringEvent.GetRow()) * SignedPpr;
 	}
 
 	public override bool DoesRegionEndBeforeEvent(IChartRegion region, EditorEvent editorEvent)
@@ -398,15 +430,18 @@ internal abstract class EventSpacingHelperRow : EventSpacingHelper
 	{
 		var delta = region.GetChartPosition() - RateAlteringEvent.GetRow();
 		delta = Math.Max(0.0, delta);
-		return previousRateEventY + delta * Ppr;
+		return previousRateEventY + delta * SignedPpr;
 	}
 
 	public override double GetRegionH(IChartRegion region, double previousRateEventY)
 	{
+		// When reversed this returns a negative height. IRegion.DrawRegionImpl and other consumers
+		// normalize a negative height to a positive height with an adjusted y, so a region remains
+		// correct regardless of scroll direction.
 		var regionEnd = region.GetChartPosition() + region.GetChartPositionDurationForRegion();
 		var delta = regionEnd - RateAlteringEvent.GetRow();
 		delta = Math.Max(0.0, delta);
-		return previousRateEventY + delta * Ppr - region.GetRegionY();
+		return previousRateEventY + delta * SignedPpr - region.GetRegionY();
 	}
 }
 

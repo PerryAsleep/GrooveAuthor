@@ -60,7 +60,9 @@ internal sealed class EditorSelectedRowsEvent : EditorEvent, IChartRegion
 	public void SetRegionH(double h)
 	{
 		// Ensure the selected row region is always rendered with some height.
-		RegionH = Math.Max(2.0, h);
+		if (Math.Abs(h) < 2.0)
+			h = h < 0.0 ? -2.0 : 2.0;
+		RegionH = h;
 	}
 
 	public double GetChartPositionDurationForRegion()
