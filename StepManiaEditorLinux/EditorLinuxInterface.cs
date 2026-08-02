@@ -23,8 +23,10 @@ internal sealed class EditorLinuxInterface : IEditorPlatform
 	/// </summary>
 	private string PersistenceDirectory;
 
+	// ReSharper disable IdentifierTypo
 	[DllImport("libc", CallingConvention = CallingConvention.Cdecl)]
 	private static extern IntPtr setlocale(int category, string locale);
+	// ReSharper restore IdentifierTypo
 
 	public void Initialize(Editor editor)
 	{
@@ -42,9 +44,7 @@ internal sealed class EditorLinuxInterface : IEditorPlatform
 		// Set LC_NUMERIC locale to C to correct issue on Linux where an app dependency is changing it to the user's locale unexpectedly.
 		// See also https://github.com/PerryAsleep/GrooveAuthor/issues/75.
 		setlocale(1, "C");
-
 	}
-	
 
 	/// <summary>
 	/// Initialize the directory to use for persistence.

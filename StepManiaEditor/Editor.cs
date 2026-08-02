@@ -426,6 +426,7 @@ public sealed class Editor :
 
 	private void InitializeCulture()
 	{
+		// Default the application culture to the invariant culture to ensure consistent parsing in all file I/O.
 		CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
 		CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
 	}
