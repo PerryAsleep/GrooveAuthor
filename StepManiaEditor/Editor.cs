@@ -7,7 +7,6 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using Fumen;
@@ -429,12 +428,7 @@ public sealed class Editor :
 	{
 		CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
 		CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
-		if (OperatingSystem.IsLinux())
-			setlocale(1, "C");
 	}
-
-	[DllImport("libc", CallingConvention = CallingConvention.Cdecl)]
-	private static extern IntPtr setlocale(int category, string locale);
 
 	private void InitializeLogger()
 	{

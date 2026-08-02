@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Threading;
+using System.Runtime.InteropServices;
 using Fumen;
 using Gtk;
 using Microsoft.Xna.Framework;
@@ -22,6 +23,9 @@ internal sealed class EditorLinuxInterface : IEditorPlatform
 	/// </summary>
 	private string PersistenceDirectory;
 
+	[DllImport("libc", CallingConvention = CallingConvention.Cdecl)]
+	private static extern IntPtr setlocale(int category, string locale);
+
 	public void Initialize(Editor editor)
 	{
 		// Initialize GTK but prevent it from modifying the SynchronizationContext.
@@ -34,7 +38,13 @@ internal sealed class EditorLinuxInterface : IEditorPlatform
 
 		// Ensure the directory we need to use for persistence is available.
 		InitializePersistenceDirectory();
+
+		// Set LC_NUMERIC locale to C to correct issue on Linux where an app dependency is changing it to the user's locale unexpectedly.
+		// See also https://github.com/PerryAsleep/GrooveAuthor/issues/75.
+		setlocale(1, "C");
+
 	}
+	
 
 	/// <summary>
 	/// Initialize the directory to use for persistence.
