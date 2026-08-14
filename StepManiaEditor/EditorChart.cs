@@ -903,6 +903,8 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 				rateAlteringEvents.Insert(rae);
 			if (editorEvent.IsMiscEvent())
 				miscEvents.Insert(editorEvent);
+			if (editorEvent is EditorInterpolatedRateAlteringEvent irae)
+				interpolatedScrollRateEvents.Insert(irae);
 			if (editorEvent is EditorPreviewRegionEvent pe)
 				PreviewEvent = pe;
 			if (editorEvent is EditorLastSecondHintEvent lse)
