@@ -63,6 +63,8 @@ internal sealed class Preferences
 
 	[JsonInclude] public bool WindowMaximized = true;
 
+	[JsonInclude] public Version LastVersion;
+
 	// FTUE state
 	[JsonInclude] public Version LastCompletedFtueVersion;
 	[JsonInclude] public int FtueIndex;

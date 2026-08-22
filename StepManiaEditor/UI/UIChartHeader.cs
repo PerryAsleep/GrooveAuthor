@@ -111,7 +111,7 @@ internal sealed class UIChartHeader
 
 		ImGui.SetNextWindowPos(new Vector2(x, chartArea.Y));
 		ImGui.SetNextWindowSize(new Vector2(w, h));
-		if (ImGui.BeginChild($"##ChartHeader{chartId}", new Vector2(w, h), ImGuiChildFlags.Border,
+		if (ImGui.BeginChild($"##ChartHeader{chartId}", new Vector2(w, h), ImGuiChildFlags.Borders,
 			    ChartAreaChildWindowFlags))
 		{
 			var buttonWidth = GetCloseWidth();

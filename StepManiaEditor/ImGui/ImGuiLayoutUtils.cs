@@ -3376,7 +3376,7 @@ internal sealed class ImGuiLayoutUtils
 		// Start the window.
 		ImGui.SetNextWindowPos(new Vector2(x, y));
 		ImGui.SetNextWindowSize(new Vector2(width, height));
-		if (ImGui.BeginChild($"##Widget{id}", new Vector2(width, height), ImGuiChildFlags.Border, ChartAreaChildWindowFlags))
+		if (ImGui.BeginChild($"##Widget{id}", new Vector2(width, height), ImGuiChildFlags.Borders, ChartAreaChildWindowFlags))
 		{
 			var elementWidth = width - GetCloseWidth();
 

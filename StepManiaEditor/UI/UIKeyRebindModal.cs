@@ -110,7 +110,7 @@ internal sealed class UIKeyRebindModal
 		// Draw conflicts.
 		ImGui.Separator();
 		ImGui.TextUnformatted("Conflicting Bindings:");
-		if (ImGui.BeginChild("ConflictingBindings", new Vector2(0, ConflictingBindingsHeight), ImGuiChildFlags.Border))
+		if (ImGui.BeginChild("ConflictingBindings", new Vector2(0, ConflictingBindingsHeight), ImGuiChildFlags.Borders))
 		{
 			if (ConflictingCommands.Count == 0)
 			{

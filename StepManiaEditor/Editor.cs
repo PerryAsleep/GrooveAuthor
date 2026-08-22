@@ -210,6 +210,7 @@ public sealed class Editor :
 	private bool HasShownUpdateModal;
 	private int GarbageCollectFrame;
 	private long FrameCount;
+	private bool ImGuiFrameActive;
 
 	private readonly Dictionary<ChartType, PadData> PadDataByChartType = new();
 	private readonly Dictionary<ChartType, StepGraph> StepGraphByChartType = new();
@@ -528,6 +529,20 @@ public sealed class Editor :
 
 		// Load Preferences synchronously so they can be used immediately.
 		Preferences.Load(this, PlatformInterface.GetPreferencesSaveFileName());
+
+		// Handle migrations.
+
+		// After v1.1.4 ImGui was updated from 1.91.0 to 1.91.6.1 in order to address issues with
+		// UTF8 characters using more than 16 bits (see https://github.com/PerryAsleep/GrooveAuthor/issues/84).
+		// In 1.91.6 ImGui introduced a breaking change that affects saved data around docked UI which
+		// results in the UI becoming undocked once. (see https://raw.githubusercontent.com/ocornut/imgui/v1.91.6/docs/CHANGELOG.txt).
+		// When migrating from an existing save to the new version, reset the layout to redock it. LastVersion
+		// was introduced to support this change, and it is expected to be null rather than explicitly 1.1.4.
+		if (Preferences.Instance.LastVersion == null)
+		{
+			Logger.Warn("Performing one-time layout reset due to breaking changes in Dear ImGui.");
+			Preferences.Instance.PreferencesOptions.ResetLayout = PreferencesOptions.Layout.Automatic;
+		}
 	}
 
 	private void InitializeDragDrop()
@@ -1163,6 +1178,7 @@ public sealed class Editor :
 		CloseSong();
 		MusicManager.Shutdown();
 		// Commit preferences to disk.
+		Preferences.Instance.LastVersion = GetAppVersion();
 		Preferences.Save(PlatformInterface.GetPreferencesSaveFileName());
 		// Commit unsaved changes to autogen configs to disk.
 		PerformedChartConfigManager.Instance.SynchronizeToDisk();
@@ -1916,9 +1932,15 @@ public sealed class Editor :
 		var focusedChartData = GetFocusedChartData();
 		focusedChartData?.UpdateSelectedRegion(currentTime);
 
-		BeginImGuiFrame();
-		// TODO: Remove remaining input processing from ImGuiRenderer.
-		ImGuiRenderer.UpdateInput(gameTime);
+		// Monogame can call Update multiple times before drawing at startup. Don't
+		// tell ImGui start a new frame if it hasn't finished the previous frame.
+		if (!ImGuiFrameActive)
+		{
+			ImGuiFrameActive = true;
+			BeginImGuiFrame();
+			// TODO: Remove remaining input processing from ImGuiRenderer.
+			ImGuiRenderer.UpdateInput(gameTime);
+		}
 
 		// Process Mouse Input.
 		var state = Mouse.GetState();
@@ -2578,7 +2600,11 @@ public sealed class Editor :
 
 			ImGui.PopFont();
 
-			ImGuiRenderer.AfterLayout();
+			if (ImGuiFrameActive)
+			{
+				ImGuiRenderer.AfterLayout();
+				ImGuiFrameActive = false;
+			}
 
 			DrawSplash();
 

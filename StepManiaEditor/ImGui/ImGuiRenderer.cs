@@ -83,7 +83,7 @@ public class ImGuiRenderer
 
 		_loadedTextures = new Dictionary<IntPtr, Texture2D>();
 
-		_rasterizerState = new RasterizerState()
+		_rasterizerState = new RasterizerState
 		{
 			CullMode = CullMode.None,
 			DepthBias = 0,
@@ -156,6 +156,7 @@ public class ImGuiRenderer
 	/// </summary>
 	public virtual void BeforeLayout()
 	{
+		SetDisplaySize();
 		ImGui.NewFrame();
 	}
 
@@ -189,8 +190,8 @@ public class ImGuiRenderer
 	{
 		_getClipboardDelegate = (userData) => GetClipboardText();
 		_setClipboardDelegate = (userData, textPtr) => SetClipboardText(textPtr);
-		ImGui.GetIO().GetClipboardTextFn = Marshal.GetFunctionPointerForDelegate(_getClipboardDelegate);
-		ImGui.GetIO().SetClipboardTextFn = Marshal.GetFunctionPointerForDelegate(_setClipboardDelegate);
+		ImGui.GetPlatformIO().Platform_GetClipboardTextFn = Marshal.GetFunctionPointerForDelegate(_getClipboardDelegate);
+		ImGui.GetPlatformIO().Platform_SetClipboardTextFn = Marshal.GetFunctionPointerForDelegate(_setClipboardDelegate);
 	}
 
 	private static IntPtr LastClipboardTextPtr = IntPtr.Zero;
@@ -290,11 +291,14 @@ public class ImGuiRenderer
 	/// </summary>
 	public void UpdateInput(GameTime gameTime)
 	{
+		// ImGUi asserts with a 0.0 time, which can happen at startup in MonoGame projects.
+		var elapsedTime = gameTime.ElapsedGameTime.TotalSeconds;
+		if (elapsedTime <= 0.0)
+			return;
+
 		var io = ImGui.GetIO();
 		io.DeltaTime = (float)gameTime.ElapsedGameTime.TotalSeconds;
-		io.DisplaySize = new System.Numerics.Vector2(_graphicsDevice.PresentationParameters.BackBufferWidth,
-			_graphicsDevice.PresentationParameters.BackBufferHeight);
-		io.DisplayFramebufferScale = new System.Numerics.Vector2(1f, 1f);
+		SetDisplaySize();
 
 		if (!_game.IsActive)
 			return;
@@ -312,6 +316,14 @@ public class ImGuiRenderer
 		io.AddKeyEvent(ImGuiKey.ModShift, keyboard.IsKeyDown(Keys.LeftShift) || keyboard.IsKeyDown(Keys.RightShift));
 		io.AddKeyEvent(ImGuiKey.ModAlt, keyboard.IsKeyDown(Keys.LeftAlt) || keyboard.IsKeyDown(Keys.RightAlt));
 		io.AddKeyEvent(ImGuiKey.ModSuper, keyboard.IsKeyDown(Keys.LeftWindows) || keyboard.IsKeyDown(Keys.RightWindows));
+	}
+
+	private void SetDisplaySize()
+	{
+		var io = ImGui.GetIO();
+		io.DisplaySize = new System.Numerics.Vector2(_graphicsDevice.PresentationParameters.BackBufferWidth,
+			_graphicsDevice.PresentationParameters.BackBufferHeight);
+		io.DisplayFramebufferScale = new System.Numerics.Vector2(1f, 1f);
 	}
 
 	private bool TryMapKeys(Keys key, out ImGuiKey imguikey)
