@@ -5700,6 +5700,7 @@ public sealed class Editor :
 		UICopyEventsBetweenCharts.Instance.Close();
 
 		StopPlayback();
+		StopPreview();
 		MusicManager.UnloadAsync();
 		ActiveSong = null;
 		if (!OpeningSong)
