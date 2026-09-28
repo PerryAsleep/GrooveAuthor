@@ -128,6 +128,7 @@ public sealed class Editor :
 	private Vector2 FocalPointMoveOffset;
 
 	private bool UnsavedChangesLastFrame;
+	private double AutosaveElapsedSeconds;
 	private string PendingOpenSongFileName;
 	private string PendingMusicFile;
 	private string PendingImageFile;
@@ -1743,6 +1744,8 @@ public sealed class Editor :
 				UnsavedChangesLastFrame = hasUnsavedChanges;
 				UpdateWindowTitle();
 			}
+
+			CheckForAutosave(gameTime.ElapsedGameTime.TotalSeconds);
 
 			CheckForShowingUpdateModal();
 
@@ -3987,6 +3990,26 @@ public sealed class Editor :
 							"Project Outfox is a fork of Stepmania which supports StepManiaX emulation. If this option" +
 							$" is checked then when {GetAppName()} saves SMX charts it will use the Outfox format.");
 
+						ImGuiLayoutUtils.DrawRowCheckbox(false, "Autosave", Preferences.Instance,
+							nameof(Preferences.AutosaveEnabled), false,
+							"If checked then the active song will be saved to its own file once it has had unsaved changes for the" +
+							$" duration of the autosave interval. {GetAppName()} will never prompt for a save location during an autosave, so " +
+							"autosaving only applies to songs which have already been saved to disk at least once. Autosaved songs are" +
+							" marked as saved and are added to the recent files list just like a manual save. If an autosave fails, for" +
+							" example because the chart has timing incompatibilities, the reason will be logged and the song will remain " +
+							"unsaved.");
+
+						if (!Preferences.Instance.AutosaveEnabled)
+							PushDisabled();
+						ImGuiLayoutUtils.DrawRowDragInt(false, "Autosave Interval", Preferences.Instance,
+							nameof(Preferences.AutosaveIntervalSeconds), false,
+							"The amount of time in seconds that a song must have unsaved changes before it is autosaved by " +
+							$"{GetAppName()}. The timer resets whenever the song has no unsaved changes, so autosave only happens after a " +
+							"continuous stretch of unsaved work.",
+							1.0f, "%i seconds", Preferences.MinAutosaveIntervalSeconds, 3600);
+						if (!Preferences.Instance.AutosaveEnabled)
+							PopDisabled();
+
 						ImGuiLayoutUtils.EndTable();
 					}
 
@@ -5196,7 +5219,51 @@ public sealed class Editor :
 		Save(fileFormat.Type, fullPath, ActiveSong);
 	}
 
-	private void Save(FileFormatType fileType, string fullPath, EditorSong editorSong)
+	/// <summary>
+	/// Saves the active song without prompting if it has unsaved changes and has been
+	/// unsaved for longer than the configured autosave interval.
+	/// Called once per frame.
+	/// </summary>
+	/// <param name="elapsedSeconds">Time elapsed since the last frame.</param>
+	private void CheckForAutosave(double elapsedSeconds)
+	{
+		if (!Preferences.Instance.AutosaveEnabled || ActiveSong == null)
+		{
+			AutosaveElapsedSeconds = 0;
+			return;
+		}
+
+		// Only measure time spent with actual unsaved work pending. This resets the timer
+		// on load and on a manual save so autosave always waits a full interval afterwards.
+		// Pack changes count too because saving a Song also saves its Pack.
+		//
+		// PostSaveFunction is set when the editor is waiting on the user to decide what to do
+		// about unsaved changes, such as on exit or when opening another song. A modal does
+		// not stop the update loop, so without this check an autosave could land while the
+		// unsaved changes modal is up and then fire the pending action, closing the app or
+		// discarding the song before the user has answered.
+		if (!HasUnsavedSongOrPackChanges() || !CanEdit() || IsSaving() || PostSaveFunction != null)
+		{
+			AutosaveElapsedSeconds = 0;
+			return;
+		}
+
+		AutosaveElapsedSeconds += elapsedSeconds;
+		if (AutosaveElapsedSeconds < Preferences.Instance.AutosaveIntervalSeconds)
+			return;
+
+		AutosaveElapsedSeconds = 0;
+
+		// Without a known file path and format there is nowhere to autosave to and we cannot
+		// prompt from the update loop. The song must be saved manually first.
+		if (!CanSaveWithoutLocationPrompt())
+			return;
+
+		Logger.Info("Autosaving chart.");
+		Save(ActiveSong.GetFileFormat().Type, ActiveSong.GetFileFullPath(), ActiveSong, true);
+	}
+
+	private void Save(FileFormatType fileType, string fullPath, EditorSong editorSong, bool isAutosave = false)
 	{
 		if (EditEarlyOut())
 			return;
@@ -5210,7 +5277,9 @@ public sealed class Editor :
 			{
 				ActionQueue.Instance.OnSaved();
 			}
-			else
+			// Autosaves run unprompted, so a failure should not block the editor with a modal.
+			// PerformPreSaveChecks already logged the reason.
+			else if (!isAutosave)
 			{
 				var fileName = editorSong.GetFileName();
 				if (string.IsNullOrEmpty(fileName))
@@ -5221,7 +5290,12 @@ public sealed class Editor :
 					"Okay", () => { });
 			}
 
-			TryInvokePostSaveFunction();
+			// Never let an autosave fire a pending post-save action. Saving is asynchronous and
+			// spans many frames, so the user can request an exit or a different song while an
+			// autosave is in flight. That action belongs to the user's click, not to a save they
+			// never asked for, so leave PostSaveFunction for them to resolve via the modal.
+			if (!isAutosave)
+				TryInvokePostSaveFunction();
 		}, ActivePack)
 		{
 			RequireIdenticalTimingInSmFiles = Preferences.Instance.RequireIdenticalTimingInSmFiles,
