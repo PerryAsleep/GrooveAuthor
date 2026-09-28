@@ -811,6 +811,7 @@ public sealed class Editor :
 		AddKeyCommand(eventEntry, "Add Combo Multipliers", nameof(PreferencesKeyBinds.AddEventComboMultipliers), UIEditEvents.AddComboMultipliersEvent);
 		AddKeyCommand(eventEntry, "Add Time Signature", nameof(PreferencesKeyBinds.AddEventTimeSignature), UIEditEvents.AddTimeSignatureEvent);
 		AddKeyCommand(eventEntry, "Add Label", nameof(PreferencesKeyBinds.AddEventLabel), UIEditEvents.AddLabelEvent);
+		AddKeyCommand(eventEntry, "Add Attack", nameof(PreferencesKeyBinds.AddEventAttack), UIEditEvents.AddAttackEvent);
 		AddKeyCommand(eventEntry, "Add Pattern", nameof(PreferencesKeyBinds.AddEventPattern), UIEditEvents.AddPatternEvent);
 		AddKeyCommand(eventEntry, "Move Music Preview", nameof(PreferencesKeyBinds.MoveEventPreview), UIEditEvents.MoveMusicPreview);
 		AddKeyCommand(eventEntry, "Move End Hint", nameof(PreferencesKeyBinds.MoveEventEndHint), UIEditEvents.MoveEndHint);
