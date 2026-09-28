@@ -1522,6 +1522,15 @@ internal sealed class UIEditEvents
 		AddValidatedEvent(CreateLabelEvent(row));
 	}
 
+	public void AddAttackEvent()
+	{
+		if (!GetAddEventRowData(out var row, out var eventsAtRow, out var currentRateAlteringEvent))
+			return;
+		if (!CanTypeOfEventExistAtRow(eventsAtRow, typeof(EditorAttackEvent)))
+			return;
+		AddValidatedEvent(CreateAttackEvent(row, currentRateAlteringEvent));
+	}
+
 	public void AddPatternEvent()
 	{
 		if (!GetAddEventRowData(out var row, out var eventsAtRow, out _))
