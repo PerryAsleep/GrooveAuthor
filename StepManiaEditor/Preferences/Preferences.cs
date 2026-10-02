@@ -48,6 +48,11 @@ internal sealed class Preferences
 	}
 
 	/// <summary>
+	/// Smallest allowed value for <see cref="AutosaveIntervalSeconds"/>.
+	/// </summary>
+	public const int MinAutosaveIntervalSeconds = 10;
+
+	/// <summary>
 	/// Static Config instance.
 	/// </summary>
 	public static Preferences Instance { get; private set; } = new();
@@ -136,6 +141,10 @@ internal sealed class Preferences
 	[JsonInclude] public bool UseStepF2ForPumpRoutine;
 	[JsonInclude] public bool UseOutfoxFormatForSmx = true;
 
+	// Autosave Options
+	[JsonInclude] public bool AutosaveEnabled;
+	[JsonInclude] public int AutosaveIntervalSeconds = 120;
+
 	// Misc
 	[JsonInclude] public bool ShowSongPropertiesWindow = true;
 	[JsonInclude] public bool ShowChartPropertiesWindow = true;
@@ -187,6 +196,9 @@ internal sealed class Preferences
 				OpenFileDialogInitialDirectory = "/opt/itgmania/Songs/";
 			}
 		}
+
+		// Guard against a missing or nonsensical interval which would cause autosave to run every frame.
+		AutosaveIntervalSeconds = Math.Clamp(AutosaveIntervalSeconds, MinAutosaveIntervalSeconds, int.MaxValue);
 
 		foreach (var savedSongData in RecentFiles)
 			savedSongData.PostLoad();
