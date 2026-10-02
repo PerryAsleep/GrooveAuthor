@@ -1158,16 +1158,17 @@ public sealed class Editor :
 	/// <returns>True if the app should shut down and false otherwise.</returns>
 	public override bool HandleExitRequest()
 	{
+		// Override the PostSaveFunction below so that we prefer exiting when complete.
+		if (IsSaving())
+		{
+			PostSaveFunction = OnExitNoSave;
+			return false;
+		}
+
 		if (HasUnsavedSongOrPackChanges())
 		{
 			PostSaveFunction = OnExitNoSave;
 			ShowUnsavedChangesModal();
-			return false;
-		}
-
-		if (IsSaving())
-		{
-			PostSaveFunction = OnExitNoSave;
 			return false;
 		}
 
@@ -1196,14 +1197,15 @@ public sealed class Editor :
 
 	private void OnExit()
 	{
-		if (HasUnsavedSongOrPackChanges())
+		// Override the PostSaveFunction below so that we prefer exiting when complete.
+		if (IsSaving())
+		{
+			PostSaveFunction = OnExitNoSave;
+		}
+		else if (HasUnsavedSongOrPackChanges())
 		{
 			PostSaveFunction = OnExitNoSave;
 			ShowUnsavedChangesModal();
-		}
-		else if (IsSaving())
-		{
-			PostSaveFunction = OnExitNoSave;
 		}
 		else
 		{
@@ -1652,6 +1654,18 @@ public sealed class Editor :
 				Logger.Warn("Edits cannot be made asynchronous edits are running.");
 			}
 
+			PlatformInterface.PlayExclamationSound();
+			return true;
+		}
+
+		return false;
+	}
+
+	private bool SaveLoadCloseEarlyOut()
+	{
+		if (!CanLoadSongs())
+		{
+			Logger.Warn("File I/O in progress. Please wait.");
 			PlatformInterface.PlayExclamationSound();
 			return true;
 		}
@@ -5096,12 +5110,19 @@ public sealed class Editor :
 
 	#region Save and Load
 
-	private bool CanLoadSongs()
+	public bool CanLoadSongs()
 	{
 		// Songs may reference patterns which require autogen configs to be loaded.
-		return PerformedChartConfigManager.Instance.HasFinishedLoading()
-		       && ExpressedChartConfigManager.Instance.HasFinishedLoading()
-		       && PatternConfigManager.Instance.HasFinishedLoading();
+		if (!PerformedChartConfigManager.Instance.HasFinishedLoading()
+		    || !ExpressedChartConfigManager.Instance.HasFinishedLoading()
+		    || !PatternConfigManager.Instance.HasFinishedLoading())
+			return false;
+
+		// Don't allow opening when async actions like saving are in flight.
+		if (!CanEdit())
+			return false;
+
+		return true;
 	}
 
 	private void CheckForAutoLoadingLastSong()
@@ -5134,8 +5155,7 @@ public sealed class Editor :
 
 	private void TryInvokePostSaveFunction()
 	{
-		if (PostSaveFunction != null)
-			PostSaveFunction();
+		PostSaveFunction?.Invoke();
 		PostSaveFunction = null;
 	}
 
@@ -5240,7 +5260,7 @@ public sealed class Editor :
 	/// </summary>
 	private void OpenSongFile()
 	{
-		if (!CanLoadSongs())
+		if (SaveLoadCloseEarlyOut())
 			return;
 
 		var (confirmed, fileName) = PlatformInterface.ShowOpenSimFileDialog(Preferences.Instance.OpenFileDialogInitialDirectory);
@@ -5280,7 +5300,7 @@ public sealed class Editor :
 		string fileName,
 		IActiveChartListProvider chartListProvider)
 	{
-		if (!CanLoadSongs())
+		if (SaveLoadCloseEarlyOut())
 			return;
 
 		OpeningSong = true;
@@ -5491,7 +5511,7 @@ public sealed class Editor :
 
 	private void OnOpen()
 	{
-		if (!CanLoadSongs())
+		if (SaveLoadCloseEarlyOut())
 			return;
 
 		if (HasUnsavedSongOrPackChanges())
@@ -5507,7 +5527,7 @@ public sealed class Editor :
 
 	private void OnOpenFile(string songFile)
 	{
-		if (!CanLoadSongs())
+		if (SaveLoadCloseEarlyOut())
 			return;
 
 		PendingOpenSongFileName = songFile;
@@ -5535,6 +5555,12 @@ public sealed class Editor :
 	{
 		if (HasUnsavedPackChanges())
 		{
+			// PostSaveFunction is brittle. We don't want to override it if a save is in flight.
+			// Reloading a pack with unsaved changes is rare. Early out if we are saving / doing
+			// async work.
+			if (SaveLoadCloseEarlyOut())
+				return;
+
 			PostSaveFunction = OnReloadPackNoSave;
 			ShowUnsavedChangesModal(true);
 		}
@@ -5556,7 +5582,7 @@ public sealed class Editor :
 
 	private void OnReload(bool ignoreUnsavedChanges)
 	{
-		if (!CanLoadSongs())
+		if (SaveLoadCloseEarlyOut())
 			return;
 		OpenRecentIndex = 0;
 		OnOpenRecentFile(ignoreUnsavedChanges);
@@ -5564,7 +5590,7 @@ public sealed class Editor :
 
 	private void OnOpenRecentFile(bool ignoreUnsavedChanges = false)
 	{
-		if (!CanLoadSongs())
+		if (SaveLoadCloseEarlyOut())
 			return;
 
 		var p = Preferences.Instance;
@@ -5584,7 +5610,7 @@ public sealed class Editor :
 
 	private void OpenRecentFile()
 	{
-		if (!CanLoadSongs())
+		if (SaveLoadCloseEarlyOut())
 			return;
 
 		var p = Preferences.Instance;
@@ -5596,7 +5622,7 @@ public sealed class Editor :
 
 	private void OnNew()
 	{
-		if (!CanLoadSongs())
+		if (SaveLoadCloseEarlyOut())
 			return;
 
 		if (HasUnsavedSongOrPackChanges())
@@ -5614,7 +5640,7 @@ public sealed class Editor :
 	{
 		Debug.Assert(IsOnMainThread());
 
-		if (!CanLoadSongs())
+		if (SaveLoadCloseEarlyOut())
 			return;
 
 		CloseSong();
@@ -5674,6 +5700,9 @@ public sealed class Editor :
 
 	private void OnClose()
 	{
+		if (SaveLoadCloseEarlyOut())
+			return;
+
 		if (HasUnsavedSongOrPackChanges())
 		{
 			PostSaveFunction = OnCloseNoSave;

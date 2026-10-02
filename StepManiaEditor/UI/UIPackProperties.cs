@@ -212,6 +212,7 @@ internal sealed class UIPackProperties : UIWindow
 			ImGui.Separator();
 
 			// Song table.
+			var openDisabled = !Editor.CanLoadSongs();
 			var packSongs = Pack.GetSongs();
 			if (packSongs != null && packSongs.Count > 0)
 			{
@@ -252,10 +253,14 @@ internal sealed class UIPackProperties : UIWindow
 
 						// Open.
 						ImGui.TableNextColumn();
+						if (openDisabled)
+							PushDisabled();
 						if (ImGui.Button($"Open##{i}"))
 						{
 							fileToOpen = packSong.GetFileInfo().FullName;
 						}
+						if (openDisabled)
+							PopDisabled();
 					}
 
 					ImGui.EndTable();
