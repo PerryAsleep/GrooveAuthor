@@ -135,6 +135,8 @@ internal sealed class Preferences
 	[JsonInclude] public bool AnonymizeSaveData;
 	[JsonInclude] public bool UseStepF2ForPumpRoutine;
 	[JsonInclude] public bool UseOutfoxFormatForSmx = true;
+	[JsonInclude] public bool AutosaveEnabled;
+	[JsonInclude] public int AutosaveIntervalSeconds = 120;
 
 	// Misc
 	[JsonInclude] public bool ShowSongPropertiesWindow = true;

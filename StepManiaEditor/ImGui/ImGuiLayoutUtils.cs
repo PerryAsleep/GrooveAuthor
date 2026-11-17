@@ -1216,7 +1216,9 @@ internal sealed class ImGuiLayoutUtils
 
 		bool enabled;
 
-		var controlWidth = ImGui.GetContentRegionAvail().X - CheckBoxWidth - ImGui.GetStyle().ItemSpacing.X;
+		// Account for the help marker drawn alongside the checkbox so the interface doesn't get cut off.
+		var helpWidth = string.IsNullOrEmpty(help) ? 0.0f : GetHelpWidth() + ImGui.GetStyle().ItemSpacing.X;
+		var controlWidth = ImGui.GetContentRegionAvail().X - helpWidth - CheckBoxWidth - ImGui.GetStyle().ItemSpacing.X;
 
 		// Draw the checkbox for enabling the other control.
 		if (DrawCheckbox(false, title + "check", o, enabledFieldName, CheckBoxWidth, affectsFile, GetDragHelpText(help)))
@@ -1537,7 +1539,9 @@ internal sealed class ImGuiLayoutUtils
 
 		bool enabled;
 
-		var controlWidth = ImGui.GetContentRegionAvail().X - CheckBoxWidth - ImGui.GetStyle().ItemSpacing.X;
+  
+		var helpWidth = string.IsNullOrEmpty(help) ? 0.0f : GetHelpWidth() + ImGui.GetStyle().ItemSpacing.X;
+		var controlWidth = ImGui.GetContentRegionAvail().X - helpWidth - CheckBoxWidth - ImGui.GetStyle().ItemSpacing.X;
 
 		// Draw the checkbox for enabling the other control.
 		if (DrawCheckbox(false, title + "check", o, enabledFieldName, CheckBoxWidth, affectsFile, GetDragHelpText(help)))
@@ -1672,7 +1676,9 @@ internal sealed class ImGuiLayoutUtils
 
 		bool enabled;
 
-		var controlWidth = ImGui.GetContentRegionAvail().X - CheckBoxWidth - ImGui.GetStyle().ItemSpacing.X;
+		// Account for the help marker drawn alongside the checkbox so the interface doesn't get cut off.
+		var helpWidth = string.IsNullOrEmpty(help) ? 0.0f : GetHelpWidth() + ImGui.GetStyle().ItemSpacing.X;
+		var controlWidth = ImGui.GetContentRegionAvail().X - helpWidth - CheckBoxWidth - ImGui.GetStyle().ItemSpacing.X;
 
 		// Draw the checkbox for enabling the other control.
 		if (DrawCheckbox(false, title + "check", o, enabledFieldName, CheckBoxWidth, affectsFile, GetDragHelpText(help)))
