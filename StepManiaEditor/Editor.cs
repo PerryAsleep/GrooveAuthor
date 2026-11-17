@@ -3458,10 +3458,13 @@ public sealed class Editor :
 		if (pMiniMap.ShowPreview)
 		{
 			var preview = FocusedChart.GetPreview();
-			if (spaceByRow)
-				MiniMap.AddPreview(preview.GetChartPosition(), preview.GetEndChartPosition());
-			else
-				MiniMap.AddPreview(preview.GetChartTime(), preview.GetEndChartTime());
+			if (preview != null)
+			{
+				if (spaceByRow)
+					MiniMap.AddPreview(preview.GetChartPosition(), preview.GetEndChartPosition());
+				else
+					MiniMap.AddPreview(preview.GetChartTime(), preview.GetEndChartTime());
+			}
 		}
 
 		// Add labels.

@@ -1739,6 +1739,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		if (previewEnum == null || !previewEnum.MoveNext())
 			return false;
 		DeleteEvent(PreviewEvent);
+		PreviewEvent = null;
 		return true;
 	}
 
@@ -1756,6 +1757,9 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 
 		if (!EditorSong.IsUsingSongForPreview())
 			return;
+		if (PreviewEvent != null)
+			return;
+
 		var previewChartTime = EditorPosition.GetChartTimeFromSongTime(this, EditorSong.SampleStart);
 		PreviewEvent = (EditorPreviewRegionEvent)EditorEvent.CreateEvent(EventConfig.CreatePreviewConfig(this, previewChartTime));
 		PreviewEvent.RefreshEndChartPosition();
@@ -2082,7 +2086,7 @@ internal sealed class EditorChart : Notifier<EditorChart>, Fumen.IObserver<WorkQ
 		var warps = GetWarpEventOverlapping(chartPosition);
 		if (warps != null)
 			regionEvents.AddRange(warps);
-		if (PreviewEvent.GetChartTime() <= chartTime && PreviewEvent.GetEndChartTime() >= chartTime)
+		if (PreviewEvent != null && PreviewEvent.GetChartTime() <= chartTime && PreviewEvent.GetEndChartTime() >= chartTime)
 			regionEvents.Add(PreviewEvent);
 		var patterns = GetPatternEventsOverlapping(chartPosition);
 		if (patterns?.Count > 0)

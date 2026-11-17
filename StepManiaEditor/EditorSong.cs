@@ -373,7 +373,10 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 			if (MusicPreviewPathInternal == newMusicPreviewPath)
 				return;
 
+			DeletePreviewEvents();
 			MusicPreviewPathInternal = newMusicPreviewPath;
+			AddPreviewEvents();
+
 			Notify(NotificationMusicPreviewChanged, this);
 		}
 	}
@@ -1766,6 +1769,7 @@ internal sealed class EditorSong : Notifier<EditorSong>, Fumen.IObserver<WorkQue
 
 						song.Extras.AddDestExtra(TagMusic, MusicPath, true);
 						song.PreviewMusicFile = MusicPreviewPath;
+						song.Extras.AddDestExtra(TagPreview, MusicPreviewPath, true);
 						song.Extras.AddDestExtra(TagOffset, MusicOffset, true);
 						song.Extras.AddDestExtra(TagLastSecondHint, LastSecondHint, true);
 						song.PreviewSampleStart = SampleStart;
